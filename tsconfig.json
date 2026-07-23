@@ -87,6 +87,8 @@
       "@effect/sql-sqlite-wasm/*": ["./packages/sql/sqlite-wasm/src/*.ts"],
       "@effect/ai-codegen": ["./packages/tools/ai-codegen/src/index.ts"],
       "@effect/ai-codegen/*": ["./packages/tools/ai-codegen/src/*.ts"],
+      "@effect/api-diff": ["./packages/tools/api-diff/src/Cli.ts"],
+      "@effect/api-diff/*": ["./packages/tools/api-diff/src/*.ts"],
       "@effect/ai-docgen": ["./packages/tools/ai-docgen/src/index.ts"],
       "@effect/ai-docgen/*": ["./packages/tools/ai-docgen/src/*.ts"],
       "@effect/bundle/*": ["./packages/tools/bundle/src/*.ts"],

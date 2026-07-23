@@ -1,0 +1,3988 @@
+{
+  "version": 1,
+  "modules": [
+    {
+      "from": "@effect/platform/ChannelSchema",
+      "to": [
+        "effect/ChannelSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "@effect/platform/FileSystem",
+      "to": [
+        "effect/FileSystem"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/JSONSchema",
+      "to": [
+        "effect/JsonSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "@effect/platform/Path",
+      "to": [
+        "effect/Path"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "@effect/platform/Error",
+      "to": [
+        "effect/PlatformError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Either",
+      "to": [
+        "effect/Result"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "@effect/platform/Terminal",
+      "to": [
+        "effect/Terminal"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TDeferred",
+      "to": [
+        "effect/TxDeferred"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TMap",
+      "to": [
+        "effect/TxHashMap"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TSet",
+      "to": [
+        "effect/TxHashSet"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TPriorityQueue",
+      "to": [
+        "effect/TxPriorityQueue"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TPubSub",
+      "to": [
+        "effect/TxPubSub"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TQueue",
+      "to": [
+        "effect/TxQueue"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TReentrantLock",
+      "to": [
+        "effect/TxReentrantLock"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TRef",
+      "to": [
+        "effect/TxRef"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TSemaphore",
+      "to": [
+        "effect/TxSemaphore"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/TSubscriptionRef",
+      "to": [
+        "effect/TxSubscriptionRef"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/FastCheck",
+      "to": [
+        "effect/testing/FastCheck"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/testing"
+      ]
+    },
+    {
+      "from": "effect/TestClock",
+      "to": [
+        "effect/testing/TestClock"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/testing"
+      ]
+    },
+    {
+      "from": "@effect/cli/Args",
+      "to": [
+        "effect/unstable/cli/Argument"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cli/ValidationError",
+      "to": [
+        "effect/unstable/cli/CliError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cli/Command",
+      "to": [
+        "effect/unstable/cli/Command"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cli/CommandDescriptor",
+      "to": [
+        "effect/unstable/cli/Completions"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cli/Options",
+      "to": [
+        "effect/unstable/cli/Flag"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cli/BuiltInOptions",
+      "to": [
+        "effect/unstable/cli/GlobalFlag"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cli/HelpDoc",
+      "to": [
+        "effect/unstable/cli/HelpDoc"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cli/Primitive",
+      "to": [
+        "effect/unstable/cli/Primitive"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cli/Prompt",
+      "to": [
+        "effect/unstable/cli/Prompt"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "from": "@effect/cluster/ClusterCron",
+      "to": [
+        "effect/unstable/cluster/ClusterCron"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/ClusterError",
+      "to": [
+        "effect/unstable/cluster/ClusterError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/ClusterMetrics",
+      "to": [
+        "effect/unstable/cluster/ClusterMetrics"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/ClusterSchema",
+      "to": [
+        "effect/unstable/cluster/ClusterSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/ClusterWorkflowEngine",
+      "to": [
+        "effect/unstable/cluster/ClusterWorkflowEngine"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/DeliverAt",
+      "to": [
+        "effect/unstable/cluster/DeliverAt"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Entity",
+      "to": [
+        "effect/unstable/cluster/Entity"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/EntityAddress",
+      "to": [
+        "effect/unstable/cluster/EntityAddress"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/EntityId",
+      "to": [
+        "effect/unstable/cluster/EntityId"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/EntityProxy",
+      "to": [
+        "effect/unstable/cluster/EntityProxy"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/EntityProxyServer",
+      "to": [
+        "effect/unstable/cluster/EntityProxyServer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/EntityResource",
+      "to": [
+        "effect/unstable/cluster/EntityResource"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/EntityType",
+      "to": [
+        "effect/unstable/cluster/EntityType"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Envelope",
+      "to": [
+        "effect/unstable/cluster/Envelope"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/HttpRunner",
+      "to": [
+        "effect/unstable/cluster/HttpRunner"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/K8sHttpClient",
+      "to": [
+        "effect/unstable/cluster/K8sHttpClient"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/MachineId",
+      "to": [
+        "effect/unstable/cluster/MachineId"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Message",
+      "to": [
+        "effect/unstable/cluster/Message"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/MessageStorage",
+      "to": [
+        "effect/unstable/cluster/MessageStorage"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Reply",
+      "to": [
+        "effect/unstable/cluster/Reply"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Runner",
+      "to": [
+        "effect/unstable/cluster/Runner"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/RunnerAddress",
+      "to": [
+        "effect/unstable/cluster/RunnerAddress"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/RunnerHealth",
+      "to": [
+        "effect/unstable/cluster/RunnerHealth"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/RunnerServer",
+      "to": [
+        "effect/unstable/cluster/RunnerServer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/RunnerStorage",
+      "to": [
+        "effect/unstable/cluster/RunnerStorage"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Runners",
+      "to": [
+        "effect/unstable/cluster/Runners"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/ShardId",
+      "to": [
+        "effect/unstable/cluster/ShardId"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Sharding",
+      "to": [
+        "effect/unstable/cluster/Sharding"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/ShardingConfig",
+      "to": [
+        "effect/unstable/cluster/ShardingConfig"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/ShardingRegistrationEvent",
+      "to": [
+        "effect/unstable/cluster/ShardingRegistrationEvent"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/SingleRunner",
+      "to": [
+        "effect/unstable/cluster/SingleRunner"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Singleton",
+      "to": [
+        "effect/unstable/cluster/Singleton"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/SingletonAddress",
+      "to": [
+        "effect/unstable/cluster/SingletonAddress"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/Snowflake",
+      "to": [
+        "effect/unstable/cluster/Snowflake"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/SocketRunner",
+      "to": [
+        "effect/unstable/cluster/SocketRunner"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/SqlMessageStorage",
+      "to": [
+        "effect/unstable/cluster/SqlMessageStorage"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/SqlRunnerStorage",
+      "to": [
+        "effect/unstable/cluster/SqlRunnerStorage"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/cluster/TestRunner",
+      "to": [
+        "effect/unstable/cluster/TestRunner"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/cluster"
+      ]
+    },
+    {
+      "from": "@effect/experimental/DevTools",
+      "to": [
+        "effect/unstable/devtools/DevTools"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/devtools"
+      ]
+    },
+    {
+      "from": "@effect/experimental/DevTools/Client",
+      "to": [
+        "effect/unstable/devtools/DevToolsClient"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/devtools"
+      ]
+    },
+    {
+      "from": "@effect/experimental/DevTools/Domain",
+      "to": [
+        "effect/unstable/devtools/DevToolsSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/devtools"
+      ]
+    },
+    {
+      "from": "@effect/experimental/DevTools/Server",
+      "to": [
+        "effect/unstable/devtools/DevToolsServer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/devtools"
+      ]
+    },
+    {
+      "from": "@effect/platform/MsgPack",
+      "to": [
+        "effect/unstable/encoding/Msgpack"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/encoding"
+      ]
+    },
+    {
+      "from": "@effect/platform/Ndjson",
+      "to": [
+        "effect/unstable/encoding/Ndjson"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/encoding"
+      ]
+    },
+    {
+      "from": "@effect/experimental/Sse",
+      "to": [
+        "effect/unstable/encoding/Sse"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/encoding"
+      ]
+    },
+    {
+      "from": "@effect/ai/AiError",
+      "to": [
+        "effect/unstable/ai/AiError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/Chat",
+      "to": [
+        "effect/unstable/ai/Chat"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/EmbeddingModel",
+      "to": [
+        "effect/unstable/ai/EmbeddingModel"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/IdGenerator",
+      "to": [
+        "effect/unstable/ai/IdGenerator"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/LanguageModel",
+      "to": [
+        "effect/unstable/ai/LanguageModel"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/McpSchema",
+      "to": [
+        "effect/unstable/ai/McpSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/McpServer",
+      "to": [
+        "effect/unstable/ai/McpServer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/Model",
+      "to": [
+        "effect/unstable/ai/Model"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/Prompt",
+      "to": [
+        "effect/unstable/ai/Prompt"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/Response",
+      "to": [
+        "effect/unstable/ai/Response"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/Telemetry",
+      "to": [
+        "effect/unstable/ai/Telemetry"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/Tokenizer",
+      "to": [
+        "effect/unstable/ai/Tokenizer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/Tool",
+      "to": [
+        "effect/unstable/ai/Tool"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/ai/Toolkit",
+      "to": [
+        "effect/unstable/ai/Toolkit"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "from": "@effect/experimental/Event",
+      "to": [
+        "effect/unstable/eventlog/Event"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/experimental/EventGroup",
+      "to": [
+        "effect/unstable/eventlog/EventGroup"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/experimental/EventJournal",
+      "to": [
+        "effect/unstable/eventlog/EventJournal"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/experimental/EventLog",
+      "to": [
+        "effect/unstable/eventlog/EventLog"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/experimental/EventLogEncryption",
+      "to": [
+        "effect/unstable/eventlog/EventLogEncryption"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/experimental/EventLogRemote",
+      "to": [
+        "effect/unstable/eventlog/EventLogMessage",
+        "effect/unstable/eventlog/EventLogRemote"
+      ],
+      "status": "split",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/experimental/EventLogServer",
+      "to": [
+        "effect/unstable/eventlog/EventLogServer",
+        "effect/unstable/eventlog/EventLogServerEncrypted"
+      ],
+      "status": "split",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/sql/SqlEventJournal",
+      "to": [
+        "effect/unstable/eventlog/SqlEventJournal"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/sql/SqlEventLogServer",
+      "to": [
+        "effect/unstable/eventlog/SqlEventLogServerEncrypted"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "from": "@effect/platform/Cookies",
+      "to": [
+        "effect/unstable/http/Cookies"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/Etag",
+      "to": [
+        "effect/unstable/http/Etag"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/FetchHttpClient",
+      "to": [
+        "effect/unstable/http/FetchHttpClient"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/Headers",
+      "to": [
+        "effect/unstable/http/Headers"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpBody",
+      "to": [
+        "effect/unstable/http/HttpBody"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpClient",
+      "to": [
+        "effect/unstable/http/HttpClient"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpClientError",
+      "to": [
+        "effect/unstable/http/HttpClientError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpClientRequest",
+      "to": [
+        "effect/unstable/http/HttpClientRequest"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpClientResponse",
+      "to": [
+        "effect/unstable/http/HttpClientResponse"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApp",
+      "to": [
+        "effect/unstable/http/HttpEffect"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpIncomingMessage",
+      "to": [
+        "effect/unstable/http/HttpIncomingMessage"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpMethod",
+      "to": [
+        "effect/unstable/http/HttpMethod"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpMiddleware",
+      "to": [
+        "effect/unstable/http/HttpMiddleware"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpPlatform",
+      "to": [
+        "effect/unstable/http/HttpPlatform"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpRouter",
+      "to": [
+        "effect/unstable/http/HttpRouter"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpServer",
+      "to": [
+        "effect/unstable/http/HttpServer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpServerError",
+      "to": [
+        "effect/unstable/http/HttpServerError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpServerRequest",
+      "to": [
+        "effect/unstable/http/HttpServerRequest"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpServerRespondable",
+      "to": [
+        "effect/unstable/http/HttpServerRespondable"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpServerResponse",
+      "to": [
+        "effect/unstable/http/HttpServerResponse"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpTraceContext",
+      "to": [
+        "effect/unstable/http/HttpTraceContext"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/Multipart",
+      "to": [
+        "effect/unstable/http/Multipart"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/Template",
+      "to": [
+        "effect/unstable/http/Template"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/Url",
+      "to": [
+        "effect/unstable/http/Url"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/UrlParams",
+      "to": [
+        "effect/unstable/http/UrlParams"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApi",
+      "to": [
+        "effect/unstable/httpapi/HttpApi"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiBuilder",
+      "to": [
+        "effect/unstable/httpapi/HttpApiBuilder"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiClient",
+      "to": [
+        "effect/unstable/httpapi/HttpApiClient"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiEndpoint",
+      "to": [
+        "effect/unstable/httpapi/HttpApiEndpoint"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiError",
+      "to": [
+        "effect/unstable/httpapi/HttpApiError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiGroup",
+      "to": [
+        "effect/unstable/httpapi/HttpApiGroup"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiMiddleware",
+      "to": [
+        "effect/unstable/httpapi/HttpApiMiddleware"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiScalar",
+      "to": [
+        "effect/unstable/httpapi/HttpApiScalar"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiSchema",
+      "to": [
+        "effect/unstable/httpapi/HttpApiSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiSecurity",
+      "to": [
+        "effect/unstable/httpapi/HttpApiSecurity"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/HttpApiSwagger",
+      "to": [
+        "effect/unstable/httpapi/HttpApiSwagger"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/platform/OpenApi",
+      "to": [
+        "effect/unstable/httpapi/OpenApi"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "from": "@effect/opentelemetry/Otlp",
+      "to": [
+        "effect/unstable/observability/Otlp"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/observability"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/observability/OtlpExporter"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/observability"
+      ],
+      "note": "The similarly named v3 source file was excluded by the package exports map and was not consumer-visible."
+    },
+    {
+      "from": "@effect/opentelemetry/OtlpLogger",
+      "to": [
+        "effect/unstable/observability/OtlpLogger"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/observability"
+      ]
+    },
+    {
+      "from": "@effect/opentelemetry/OtlpMetrics",
+      "to": [
+        "effect/unstable/observability/OtlpMetrics"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/observability"
+      ]
+    },
+    {
+      "from": "@effect/opentelemetry/OtlpResource",
+      "to": [
+        "effect/unstable/observability/OtlpResource"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/observability"
+      ]
+    },
+    {
+      "from": "@effect/opentelemetry/OtlpSerialization",
+      "to": [
+        "effect/unstable/observability/OtlpSerialization"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/observability"
+      ]
+    },
+    {
+      "from": "@effect/opentelemetry/OtlpTracer",
+      "to": [
+        "effect/unstable/observability/OtlpTracer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/observability"
+      ]
+    },
+    {
+      "from": "@effect/platform/KeyValueStore",
+      "to": [
+        "effect/unstable/persistence/KeyValueStore"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/persistence"
+      ]
+    },
+    {
+      "from": "@effect/experimental/Persistence",
+      "to": [
+        "effect/unstable/persistence/Persistable",
+        "effect/unstable/persistence/Persistence"
+      ],
+      "status": "split",
+      "barrels": [
+        "effect/unstable/persistence"
+      ]
+    },
+    {
+      "from": "@effect/experimental/PersistedCache",
+      "to": [
+        "effect/unstable/persistence/PersistedCache"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/persistence"
+      ]
+    },
+    {
+      "from": "@effect/experimental/PersistedQueue",
+      "to": [
+        "effect/unstable/persistence/PersistedQueue"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/persistence"
+      ]
+    },
+    {
+      "from": "@effect/experimental/RateLimiter",
+      "to": [
+        "effect/unstable/persistence/RateLimiter"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/persistence"
+      ]
+    },
+    {
+      "from": "@effect/platform/Command",
+      "to": [
+        "effect/unstable/process/ChildProcess"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/process"
+      ]
+    },
+    {
+      "from": "@effect/platform/CommandExecutor",
+      "to": [
+        "effect/unstable/process/ChildProcessSpawner"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/process"
+      ]
+    },
+    {
+      "from": "@effect/experimental/Reactivity",
+      "to": [
+        "effect/unstable/reactivity/Reactivity"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/reactivity"
+      ]
+    },
+    {
+      "from": "@effect/rpc/Rpc",
+      "to": [
+        "effect/unstable/rpc/Rpc"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcClient",
+      "to": [
+        "effect/unstable/rpc/RpcClient"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcClientError",
+      "to": [
+        "effect/unstable/rpc/RpcClientError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcGroup",
+      "to": [
+        "effect/unstable/rpc/RpcGroup"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcMessage",
+      "to": [
+        "effect/unstable/rpc/RpcMessage"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcMiddleware",
+      "to": [
+        "effect/unstable/rpc/RpcMiddleware"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcSchema",
+      "to": [
+        "effect/unstable/rpc/RpcSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcSerialization",
+      "to": [
+        "effect/unstable/rpc/RpcSerialization"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcServer",
+      "to": [
+        "effect/unstable/rpc/RpcServer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcTest",
+      "to": [
+        "effect/unstable/rpc/RpcTest"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/rpc/RpcWorker",
+      "to": [
+        "effect/unstable/rpc/RpcWorker"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    },
+    {
+      "from": "@effect/sql/Model",
+      "to": [
+        "effect/unstable/schema/Model",
+        "effect/unstable/sql/SqlModel"
+      ],
+      "status": "split",
+      "barrels": [
+        "effect/unstable/schema",
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/experimental/VariantSchema",
+      "to": [
+        "effect/unstable/schema/VariantSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/schema"
+      ]
+    },
+    {
+      "from": "@effect/platform/Socket",
+      "to": [
+        "effect/unstable/socket/Socket"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/socket"
+      ]
+    },
+    {
+      "from": "@effect/platform/SocketServer",
+      "to": [
+        "effect/unstable/socket/SocketServer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/socket"
+      ]
+    },
+    {
+      "from": "@effect/sql/Migrator",
+      "to": [
+        "effect/unstable/sql/Migrator"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/sql/SqlClient",
+      "to": [
+        "effect/unstable/sql/SqlClient"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/sql/SqlConnection",
+      "to": [
+        "effect/unstable/sql/SqlConnection"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/sql/SqlError",
+      "to": [
+        "effect/unstable/sql/SqlError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/sql/SqlResolver",
+      "to": [
+        "effect/unstable/sql/SqlResolver"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/sql/SqlSchema",
+      "to": [
+        "effect/unstable/sql/SqlSchema"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/sql/SqlStream",
+      "to": [
+        "effect/unstable/sql/SqlStream"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/sql/Statement",
+      "to": [
+        "effect/unstable/sql/Statement"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/sql"
+      ]
+    },
+    {
+      "from": "@effect/platform/Transferable",
+      "to": [
+        "effect/unstable/workers/Transferable"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workers"
+      ]
+    },
+    {
+      "from": "@effect/platform/Worker",
+      "to": [
+        "effect/unstable/workers/Worker"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workers"
+      ]
+    },
+    {
+      "from": "@effect/platform/WorkerError",
+      "to": [
+        "effect/unstable/workers/WorkerError"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workers"
+      ]
+    },
+    {
+      "from": "@effect/platform/WorkerRunner",
+      "to": [
+        "effect/unstable/workers/WorkerRunner"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workers"
+      ]
+    },
+    {
+      "from": "@effect/workflow/Activity",
+      "to": [
+        "effect/unstable/workflow/Activity"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workflow"
+      ]
+    },
+    {
+      "from": "@effect/workflow/DurableClock",
+      "to": [
+        "effect/unstable/workflow/DurableClock"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workflow"
+      ]
+    },
+    {
+      "from": "@effect/workflow/DurableDeferred",
+      "to": [
+        "effect/unstable/workflow/DurableDeferred"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workflow"
+      ]
+    },
+    {
+      "from": "@effect/workflow/DurableQueue",
+      "to": [
+        "effect/unstable/workflow/DurableQueue"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workflow"
+      ]
+    },
+    {
+      "from": "@effect/workflow/Workflow",
+      "to": [
+        "effect/unstable/workflow/Workflow"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workflow"
+      ]
+    },
+    {
+      "from": "@effect/workflow/WorkflowEngine",
+      "to": [
+        "effect/unstable/workflow/WorkflowEngine"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workflow"
+      ]
+    },
+    {
+      "from": "@effect/workflow/WorkflowProxy",
+      "to": [
+        "effect/unstable/workflow/WorkflowProxy"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workflow"
+      ]
+    },
+    {
+      "from": "@effect/workflow/WorkflowProxyServer",
+      "to": [
+        "effect/unstable/workflow/WorkflowProxyServer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect/unstable/workflow"
+      ]
+    },
+    {
+      "from": "effect/Array",
+      "to": [
+        "effect/Array"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/BigDecimal",
+      "to": [
+        "effect/BigDecimal"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/BigInt",
+      "to": [
+        "effect/BigInt"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Boolean",
+      "to": [
+        "effect/Boolean"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Brand",
+      "to": [
+        "effect/Brand"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Cache",
+      "to": [
+        "effect/Cache"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Cause",
+      "to": [
+        "effect/Cause"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Channel",
+      "to": [
+        "effect/Channel"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Chunk",
+      "to": [
+        "effect/Chunk"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Clock",
+      "to": [
+        "effect/Clock"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "@effect/typeclass/Semigroup",
+      "to": [
+        "effect/Combiner"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Config",
+      "to": [
+        "effect/Config"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/ConfigProvider",
+      "to": [
+        "effect/ConfigProvider"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Console",
+      "to": [
+        "effect/Console"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Context",
+      "to": [
+        "effect/Context"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Cron",
+      "to": [
+        "effect/Cron"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Data",
+      "to": [
+        "effect/Data"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/DateTime",
+      "to": [
+        "effect/DateTime"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Deferred",
+      "to": [
+        "effect/Deferred"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Differ",
+      "to": [
+        "effect/Differ"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Duration",
+      "to": [
+        "effect/Duration"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Effect",
+      "to": [
+        "effect/Effect"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Effectable",
+      "to": [
+        "effect/Effectable"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Encoding",
+      "to": [
+        "effect/Encoding"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Equal",
+      "to": [
+        "effect/Equal"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Equivalence",
+      "to": [
+        "effect/Equivalence"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/ExecutionPlan",
+      "to": [
+        "effect/ExecutionPlan"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Exit",
+      "to": [
+        "effect/Exit"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Fiber",
+      "to": [
+        "effect/Fiber"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/FiberHandle",
+      "to": [
+        "effect/FiberHandle"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/FiberMap",
+      "to": [
+        "effect/FiberMap"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/FiberSet",
+      "to": [
+        "effect/FiberSet"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Inspectable",
+      "to": [
+        "effect/Formatter",
+        "effect/Inspectable",
+        "effect/Redactable"
+      ],
+      "status": "split",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Function",
+      "to": [
+        "effect/Function"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Graph",
+      "to": [
+        "effect/Graph"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/HKT",
+      "to": [
+        "effect/HKT"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Hash",
+      "to": [
+        "effect/Hash"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/HashMap",
+      "to": [
+        "effect/HashMap"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/HashRing",
+      "to": [
+        "effect/HashRing"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/HashSet",
+      "to": [
+        "effect/HashSet"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Iterable",
+      "to": [
+        "effect/Iterable"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Layer",
+      "to": [
+        "effect/Layer"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/LayerMap",
+      "to": [
+        "effect/LayerMap"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/LogLevel",
+      "to": [
+        "effect/LogLevel"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Logger",
+      "to": [
+        "effect/Logger"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/ManagedRuntime",
+      "to": [
+        "effect/ManagedRuntime"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Match",
+      "to": [
+        "effect/Match"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Metric",
+      "to": [
+        "effect/Metric"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/MutableHashMap",
+      "to": [
+        "effect/MutableHashMap"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/MutableHashSet",
+      "to": [
+        "effect/MutableHashSet"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/MutableList",
+      "to": [
+        "effect/MutableList"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/MutableRef",
+      "to": [
+        "effect/MutableRef"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/NonEmptyIterable",
+      "to": [
+        "effect/NonEmptyIterable"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Number",
+      "to": [
+        "effect/Number"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Option",
+      "to": [
+        "effect/Option"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Order",
+      "to": [
+        "effect/Order"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Ordering",
+      "to": [
+        "effect/Ordering"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/PartitionedSemaphore",
+      "to": [
+        "effect/PartitionedSemaphore"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Pipeable",
+      "to": [
+        "effect/Pipeable"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Pool",
+      "to": [
+        "effect/Pool"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Predicate",
+      "to": [
+        "effect/Predicate"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/PrimaryKey",
+      "to": [
+        "effect/PrimaryKey"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/PubSub",
+      "to": [
+        "effect/PubSub"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Queue",
+      "to": [
+        "effect/Queue"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Random",
+      "to": [
+        "effect/Random"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/RcMap",
+      "to": [
+        "effect/RcMap"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/RcRef",
+      "to": [
+        "effect/RcRef"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Record",
+      "to": [
+        "effect/Record"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Redacted",
+      "to": [
+        "effect/Redacted"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "@effect/typeclass/Monoid",
+      "to": [
+        "effect/Reducer"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Ref",
+      "to": [
+        "effect/Ref"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/FiberRef",
+      "to": [
+        "effect/References"
+      ],
+      "status": "moved",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/RegExp",
+      "to": [
+        "effect/RegExp"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Request",
+      "to": [
+        "effect/Request"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/RequestResolver",
+      "to": [
+        "effect/RequestResolver"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Resource",
+      "to": [
+        "effect/Resource"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Runtime",
+      "to": [
+        "effect/Runtime"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Schedule",
+      "to": [
+        "effect/Schedule"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Scheduler",
+      "to": [
+        "effect/Scheduler"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Schema",
+      "to": [
+        "effect/Schema",
+        "effect/SchemaTransformation"
+      ],
+      "status": "split",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/SchemaAST",
+      "to": [
+        "effect/SchemaAST"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/ParseResult",
+      "to": [
+        "effect/SchemaIssue",
+        "effect/SchemaParser"
+      ],
+      "status": "split",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Scope",
+      "to": [
+        "effect/Scope"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/ScopedCache",
+      "to": [
+        "effect/ScopedCache"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/ScopedRef",
+      "to": [
+        "effect/ScopedRef"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Sink",
+      "to": [
+        "effect/Sink"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Stream",
+      "to": [
+        "effect/Stream"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/String",
+      "to": [
+        "effect/String"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Struct",
+      "to": [
+        "effect/Struct"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/SubscriptionRef",
+      "to": [
+        "effect/SubscriptionRef"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Symbol",
+      "to": [
+        "effect/Symbol"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/SynchronizedRef",
+      "to": [
+        "effect/SynchronizedRef"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Take",
+      "to": [
+        "effect/Take"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Tracer",
+      "to": [
+        "effect/Tracer"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Trie",
+      "to": [
+        "effect/Trie"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Tuple",
+      "to": [
+        "effect/Tuple"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Types",
+      "to": [
+        "effect/Types"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Unify",
+      "to": [
+        "effect/Unify"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "from": "effect/Utils",
+      "to": [
+        "effect/Utils"
+      ],
+      "status": "unchanged",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/ErrorReporter"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/Filter"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/JsonPatch"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/JsonPointer"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/Latch"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/Newtype"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/Optic"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/Pull"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/SchemaGetter"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/SchemaRepresentation"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/SchemaUtils"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/Semaphore"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/Stdio"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/TxChunk"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/UndefinedOr"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect"
+      ]
+    },
+    {
+      "to": [
+        "effect/testing/TestConsole"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/testing"
+      ]
+    },
+    {
+      "to": [
+        "effect/testing/TestSchema"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/testing"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/ai/AnthropicStructuredOutput"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/ai/OpenAiStructuredOutput"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/ai/ResponseIdTracker"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/ai"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/cli/CliOutput"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/cli/Param"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/cli"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/eventlog/EventLogServerUnencrypted"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/eventlog/EventLogSessionAuth"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/eventlog/SqlEventLogServerUnencrypted"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/eventlog"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/http/FindMyWay"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/http/HttpStaticServer"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/http/Multipasta"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/http/Multipasta/HeadersParser"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/http/Multipasta/Node"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/http/Multipasta/Search"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/http/Multipasta/Web"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/http"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/httpapi/HttpApiTest"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/httpapi"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/observability/PrometheusMetrics"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/observability"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/persistence/Redis"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/persistence"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/reactivity/AsyncResult"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/reactivity"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/reactivity/Atom"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/reactivity"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/reactivity/AtomHttpApi"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/reactivity"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/reactivity/AtomRef"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/reactivity"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/reactivity/AtomRegistry"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/reactivity"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/reactivity/AtomRpc"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/reactivity"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/reactivity/Hydration"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/reactivity"
+      ]
+    },
+    {
+      "to": [
+        "effect/unstable/rpc/Utils"
+      ],
+      "status": "added",
+      "barrels": [
+        "effect/unstable/rpc"
+      ]
+    }
+  ],
+  "apis": [
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "async"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "callback"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "zipRight"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "andThen"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "zipLeft"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "tap"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "either"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "result"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "catchAll"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "catch"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "catchAllCause"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "catchCause"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "catchAllDefect"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "catchDefect"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "catchSome"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "catchFilter"
+        ]
+      },
+      "guide": "migration/error-handling.md"
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "catchIf"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "catchIf"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "optionFromOptional"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "catchNoSuchElement"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "catchSomeCause"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "catchCauseFilter"
+        ]
+      },
+      "guide": "migration/error-handling.md"
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "tapErrorCause"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "tapCause"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "ignoreLogged"
+        ]
+      },
+      "to": {
+        "module": "effect/Effect",
+        "path": [
+          "ignore"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "unsafeMakeLatch"
+        ]
+      },
+      "to": {
+        "module": "effect/Latch",
+        "path": [
+          "makeUnsafe"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "makeLatch"
+        ]
+      },
+      "to": {
+        "module": "effect/Latch",
+        "path": [
+          "make"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Layer",
+        "path": [
+          "scoped"
+        ]
+      },
+      "to": {
+        "module": "effect/Layer",
+        "path": [
+          "effect"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Layer",
+        "path": [
+          "scopedDiscard"
+        ]
+      },
+      "to": {
+        "module": "effect/Layer",
+        "path": [
+          "effectDiscard"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Layer",
+        "path": [
+          "tapErrorCause"
+        ]
+      },
+      "to": {
+        "module": "effect/Layer",
+        "path": [
+          "tapCause"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Mailbox",
+        "path": [
+          "Mailbox"
+        ],
+        "bucket": "type"
+      },
+      "to": {
+        "module": "effect/Queue",
+        "path": [
+          "Queue"
+        ],
+        "bucket": "type"
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Mailbox",
+        "path": [
+          "make"
+        ]
+      },
+      "to": {
+        "module": "effect/Queue",
+        "path": [
+          "make"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Either",
+        "path": [
+          "Either"
+        ],
+        "bucket": "type"
+      },
+      "to": {
+        "module": "effect/Result",
+        "path": [
+          "Result"
+        ],
+        "bucket": "type"
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Either",
+        "path": [
+          "Either"
+        ],
+        "bucket": "value"
+      },
+      "to": {
+        "module": "effect/Result",
+        "path": [
+          "Result"
+        ],
+        "bucket": "value"
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Either",
+        "path": [
+          "right"
+        ]
+      },
+      "to": {
+        "module": "effect/Result",
+        "path": [
+          "succeed"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Either",
+        "path": [
+          "left"
+        ]
+      },
+      "to": {
+        "module": "effect/Result",
+        "path": [
+          "fail"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Scope",
+        "path": [
+          "extend"
+        ]
+      },
+      "to": {
+        "module": "effect/Scope",
+        "path": [
+          "provide"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "unsafeMakeSemaphore"
+        ]
+      },
+      "to": {
+        "module": "effect/Semaphore",
+        "path": [
+          "makeUnsafe"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Effect",
+        "path": [
+          "makeSemaphore"
+        ]
+      },
+      "to": {
+        "module": "effect/Semaphore",
+        "path": [
+          "make"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "Stream",
+          "Context"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "Services"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/StreamHaltStrategy",
+        "path": [
+          "HaltStrategy"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "HaltStrategy"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "repeatEffect"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "fromEffectRepeat"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "repeatEffectWithSchedule"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "fromEffectSchedule"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "async"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "callback"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "asyncEffect"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "callback"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "asyncPush"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "callback"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "asyncScoped"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "callback"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "repeatEffectChunk"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "fromIterableEffectRepeat"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "fromChunk"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "fromArray"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "fromChunks"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "fromArrays"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "mapChunks"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "mapArray"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "mapChunksEffect"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "mapArrayEffect"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "either"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "result"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "flattenChunks"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "flattenArray"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "flattenIterables"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "flattenIterable"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "mergeEither"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "mergeResult"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "zipWithChunks"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "zipWithArray"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "bufferChunks"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "bufferArray"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "catchAllCause"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "catchCause"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "tapErrorCause"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "tapCause"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "catchAll"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "catch"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "catchSome"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "catchIf"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "catchSomeCause"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "catchCauseIf"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "combineChunks"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "combineArray"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "provideSomeLayer"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "provide"
+        ]
+      }
+    },
+    {
+      "from": {
+        "module": "effect/Stream",
+        "path": [
+          "provideSomeContext"
+        ]
+      },
+      "to": {
+        "module": "effect/Stream",
+        "path": [
+          "provide"
+        ]
+      }
+    }
+  ]
+}

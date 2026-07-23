@@ -1,19 +1,14 @@
 # v3 to v4 Import and API Rename Maps
 
-Mapped modules: 290
-No counterpart: 43
-API renames: 53
+Mapped modules: 289
+No counterpart: 44
+API renames: 54
 
-This file is intended for migration agents. It contains user-facing import
-specifier mappings and API rename mappings.
-
-Use the import map when rewriting import declarations. Use the API renames when
-rewriting renamed symbols.
+This file is generated from `migration/v3-to-v4.json`. Do not edit it directly.
 
 ## Import Map
 
-Each line is `v3 import -> v4 direct module import`. When a grouped v4 barrel
-exists, the suggested barrel import is shown in parentheses.
+Each line is `v3 import -> v4 direct module import`. Suggested barrels are shown in parentheses.
 
 ```text
 @effect/platform/ChannelSchema -> effect/ChannelSchema (barrel: effect)
@@ -108,10 +103,8 @@ effect/TestClock -> effect/testing/TestClock (barrel: effect/testing)
 @effect/experimental/EventJournal -> effect/unstable/eventlog/EventJournal (barrel: effect/unstable/eventlog)
 @effect/experimental/EventLog -> effect/unstable/eventlog/EventLog (barrel: effect/unstable/eventlog)
 @effect/experimental/EventLogEncryption -> effect/unstable/eventlog/EventLogEncryption (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogRemote -> effect/unstable/eventlog/EventLogMessage (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogRemote -> effect/unstable/eventlog/EventLogRemote (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogServer -> effect/unstable/eventlog/EventLogServer (barrel: effect/unstable/eventlog)
-@effect/experimental/EventLogServer -> effect/unstable/eventlog/EventLogServerEncrypted (barrel: effect/unstable/eventlog)
+@effect/experimental/EventLogRemote -> effect/unstable/eventlog/EventLogMessage, effect/unstable/eventlog/EventLogRemote (barrel: effect/unstable/eventlog)
+@effect/experimental/EventLogServer -> effect/unstable/eventlog/EventLogServer, effect/unstable/eventlog/EventLogServerEncrypted (barrel: effect/unstable/eventlog)
 @effect/sql/SqlEventJournal -> effect/unstable/eventlog/SqlEventJournal (barrel: effect/unstable/eventlog)
 @effect/sql/SqlEventLogServer -> effect/unstable/eventlog/SqlEventLogServerEncrypted (barrel: effect/unstable/eventlog)
 @effect/platform/Cookies -> effect/unstable/http/Cookies (barrel: effect/unstable/http)
@@ -152,17 +145,15 @@ effect/TestClock -> effect/testing/TestClock (barrel: effect/testing)
 @effect/platform/HttpApiSwagger -> effect/unstable/httpapi/HttpApiSwagger (barrel: effect/unstable/httpapi)
 @effect/platform/OpenApi -> effect/unstable/httpapi/OpenApi (barrel: effect/unstable/httpapi)
 @effect/opentelemetry/Otlp -> effect/unstable/observability/Otlp (barrel: effect/unstable/observability)
-@effect/opentelemetry/internal/otlpExporter -> effect/unstable/observability/OtlpExporter (barrel: effect/unstable/observability)
 @effect/opentelemetry/OtlpLogger -> effect/unstable/observability/OtlpLogger (barrel: effect/unstable/observability)
 @effect/opentelemetry/OtlpMetrics -> effect/unstable/observability/OtlpMetrics (barrel: effect/unstable/observability)
 @effect/opentelemetry/OtlpResource -> effect/unstable/observability/OtlpResource (barrel: effect/unstable/observability)
 @effect/opentelemetry/OtlpSerialization -> effect/unstable/observability/OtlpSerialization (barrel: effect/unstable/observability)
 @effect/opentelemetry/OtlpTracer -> effect/unstable/observability/OtlpTracer (barrel: effect/unstable/observability)
 @effect/platform/KeyValueStore -> effect/unstable/persistence/KeyValueStore (barrel: effect/unstable/persistence)
-@effect/experimental/Persistence -> effect/unstable/persistence/Persistable (barrel: effect/unstable/persistence)
+@effect/experimental/Persistence -> effect/unstable/persistence/Persistable, effect/unstable/persistence/Persistence (barrel: effect/unstable/persistence)
 @effect/experimental/PersistedCache -> effect/unstable/persistence/PersistedCache (barrel: effect/unstable/persistence)
 @effect/experimental/PersistedQueue -> effect/unstable/persistence/PersistedQueue (barrel: effect/unstable/persistence)
-@effect/experimental/Persistence -> effect/unstable/persistence/Persistence (barrel: effect/unstable/persistence)
 @effect/experimental/RateLimiter -> effect/unstable/persistence/RateLimiter (barrel: effect/unstable/persistence)
 @effect/platform/Command -> effect/unstable/process/ChildProcess (barrel: effect/unstable/process)
 @effect/platform/CommandExecutor -> effect/unstable/process/ChildProcessSpawner (barrel: effect/unstable/process)
@@ -178,7 +169,7 @@ effect/TestClock -> effect/testing/TestClock (barrel: effect/testing)
 @effect/rpc/RpcServer -> effect/unstable/rpc/RpcServer (barrel: effect/unstable/rpc)
 @effect/rpc/RpcTest -> effect/unstable/rpc/RpcTest (barrel: effect/unstable/rpc)
 @effect/rpc/RpcWorker -> effect/unstable/rpc/RpcWorker (barrel: effect/unstable/rpc)
-@effect/sql/Model -> effect/unstable/schema/Model (barrel: effect/unstable/schema)
+@effect/sql/Model -> effect/unstable/schema/Model, effect/unstable/sql/SqlModel (barrel: effect/unstable/schema, effect/unstable/sql)
 @effect/experimental/VariantSchema -> effect/unstable/schema/VariantSchema (barrel: effect/unstable/schema)
 @effect/platform/Socket -> effect/unstable/socket/Socket (barrel: effect/unstable/socket)
 @effect/platform/SocketServer -> effect/unstable/socket/SocketServer (barrel: effect/unstable/socket)
@@ -186,7 +177,6 @@ effect/TestClock -> effect/testing/TestClock (barrel: effect/testing)
 @effect/sql/SqlClient -> effect/unstable/sql/SqlClient (barrel: effect/unstable/sql)
 @effect/sql/SqlConnection -> effect/unstable/sql/SqlConnection (barrel: effect/unstable/sql)
 @effect/sql/SqlError -> effect/unstable/sql/SqlError (barrel: effect/unstable/sql)
-@effect/sql/Model -> effect/unstable/sql/SqlModel (barrel: effect/unstable/sql)
 @effect/sql/SqlResolver -> effect/unstable/sql/SqlResolver (barrel: effect/unstable/sql)
 @effect/sql/SqlSchema -> effect/unstable/sql/SqlSchema (barrel: effect/unstable/sql)
 @effect/sql/SqlStream -> effect/unstable/sql/SqlStream (barrel: effect/unstable/sql)
@@ -235,7 +225,7 @@ effect/Fiber -> effect/Fiber (barrel: effect)
 effect/FiberHandle -> effect/FiberHandle (barrel: effect)
 effect/FiberMap -> effect/FiberMap (barrel: effect)
 effect/FiberSet -> effect/FiberSet (barrel: effect)
-effect/Inspectable -> effect/Formatter (barrel: effect)
+effect/Inspectable -> effect/Formatter, effect/Inspectable, effect/Redactable (barrel: effect)
 effect/Function -> effect/Function (barrel: effect)
 effect/Graph -> effect/Graph (barrel: effect)
 effect/HKT -> effect/HKT (barrel: effect)
@@ -243,7 +233,6 @@ effect/Hash -> effect/Hash (barrel: effect)
 effect/HashMap -> effect/HashMap (barrel: effect)
 effect/HashRing -> effect/HashRing (barrel: effect)
 effect/HashSet -> effect/HashSet (barrel: effect)
-effect/Inspectable -> effect/Inspectable (barrel: effect)
 effect/Iterable -> effect/Iterable (barrel: effect)
 effect/Layer -> effect/Layer (barrel: effect)
 effect/LayerMap -> effect/LayerMap (barrel: effect)
@@ -272,7 +261,6 @@ effect/Random -> effect/Random (barrel: effect)
 effect/RcMap -> effect/RcMap (barrel: effect)
 effect/RcRef -> effect/RcRef (barrel: effect)
 effect/Record -> effect/Record (barrel: effect)
-effect/Inspectable -> effect/Redactable (barrel: effect)
 effect/Redacted -> effect/Redacted (barrel: effect)
 @effect/typeclass/Monoid -> effect/Reducer (barrel: effect)
 effect/Ref -> effect/Ref (barrel: effect)
@@ -284,11 +272,9 @@ effect/Resource -> effect/Resource (barrel: effect)
 effect/Runtime -> effect/Runtime (barrel: effect)
 effect/Schedule -> effect/Schedule (barrel: effect)
 effect/Scheduler -> effect/Scheduler (barrel: effect)
-effect/Schema -> effect/Schema (barrel: effect)
+effect/Schema -> effect/Schema, effect/SchemaTransformation (barrel: effect)
 effect/SchemaAST -> effect/SchemaAST (barrel: effect)
-effect/ParseResult -> effect/SchemaIssue (barrel: effect)
-effect/ParseResult -> effect/SchemaParser (barrel: effect)
-effect/Schema -> effect/SchemaTransformation (barrel: effect)
+effect/ParseResult -> effect/SchemaIssue, effect/SchemaParser (barrel: effect)
 effect/Scope -> effect/Scope (barrel: effect)
 effect/ScopedCache -> effect/ScopedCache (barrel: effect)
 effect/ScopedRef -> effect/ScopedRef (barrel: effect)
@@ -310,10 +296,10 @@ effect/Utils -> effect/Utils (barrel: effect)
 
 ## No Counterpart Imports
 
-These v4 modules did not have a mapped v3 module. Treat them as v4-only unless a
-more specific migration guide says otherwise.
+These v4 modules did not have a mapped v3 module.
 
 ```text
+effect/unstable/observability/OtlpExporter (barrel: effect/unstable/observability)
 effect/ErrorReporter (barrel: effect)
 effect/Filter (barrel: effect)
 effect/JsonPatch (barrel: effect)
@@ -361,61 +347,61 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ## API Renames
 
-Each line is `v3 API -> v4 API`. Use these mappings when rewriting renamed
-symbols from v3 source code to v4.
+Each line is `v3 API -> v4 API`.
 
 ```text
-Effect.async -> Effect.callback
-Effect.zipRight -> Effect.andThen
-Effect.zipLeft -> Effect.tap
-Effect.either -> Effect.result
-Effect.catchAll -> Effect.catch
-Effect.catchAllCause -> Effect.catchCause
-Effect.catchAllDefect -> Effect.catchDefect
-Effect.catchSome -> Effect.catchIf
-Effect.catchIf -> Effect.catchIf
-Effect.optionFromOptional -> Effect.catchNoSuchElement
-Effect.catchSomeCause -> Effect.catchCauseIf
-Effect.tapErrorCause -> Effect.tapCause
-Effect.ignoreLogged -> Effect.ignore
-Effect.makeLatchUnsafe -> Latch.makeUnsafe
-Effect.makeLatch -> Latch.make
-Layer.scoped -> Layer.effect
-Layer.scopedDiscard -> Layer.effectDiscard
-Layer.tapErrorCause -> Layer.tapCause
-Mailbox -> Queue.Queue
-Mailbox.make -> Queue.make
-Either -> Result.Result
-Either.right -> Result.succeed
-Either.left -> Result.fail
-Scope.extend -> Scope.provide
-Effect.makeSemaphoreUnsafe -> Semaphore.makeUnsafe
-Effect.makeSemaphore -> Semaphore.make
-Stream.Context -> Stream.Services
-StreamHaltStrategy.HaltStrategy -> Stream.HaltStrategy
-Stream.repeatEffect -> Stream.fromEffectRepeat
-Stream.repeatEffectWithSchedule -> Stream.fromEffectSchedule
-Stream.async -> Stream.callback
-Stream.asyncEffect -> Stream.callback
-Stream.asyncPush -> Stream.callback
-Stream.asyncScoped -> Stream.callback
-Stream.repeatEffectChunk -> Stream.fromIterableEffectRepeat
-Stream.fromChunk -> Stream.fromArray
-Stream.fromChunks -> Stream.fromArrays
-Stream.mapChunks -> Stream.mapArray
-Stream.mapChunksEffect -> Stream.mapArrayEffect
-Stream.either -> Stream.result
-Stream.flattenChunks -> Stream.flattenArray
-Stream.flattenIterables -> Stream.flattenIterable
-Stream.mergeEither -> Stream.mergeResult
-Stream.zipWithChunks -> Stream.zipWithArray
-Stream.bufferChunks -> Stream.bufferArray
-Stream.catchAllCause -> Stream.catchCause
-Stream.tapErrorCause -> Stream.tapCause
-Stream.catchAll -> Stream.catch
-Stream.catchSome -> Stream.catchIf
-Stream.catchSomeCause -> Stream.catchCauseIf
-Stream.combineChunks -> Stream.combineArray
-provideSomeLayer -> Stream.provide
-provideSomeContext -> Stream.provide
+effect/Effect#async -> effect/Effect#callback
+effect/Effect#zipRight -> effect/Effect#andThen
+effect/Effect#zipLeft -> effect/Effect#tap
+effect/Effect#either -> effect/Effect#result
+effect/Effect#catchAll -> effect/Effect#catch
+effect/Effect#catchAllCause -> effect/Effect#catchCause
+effect/Effect#catchAllDefect -> effect/Effect#catchDefect
+effect/Effect#catchSome -> effect/Effect#catchFilter
+effect/Effect#catchIf -> effect/Effect#catchIf
+effect/Effect#optionFromOptional -> effect/Effect#catchNoSuchElement
+effect/Effect#catchSomeCause -> effect/Effect#catchCauseFilter
+effect/Effect#tapErrorCause -> effect/Effect#tapCause
+effect/Effect#ignoreLogged -> effect/Effect#ignore
+effect/Effect#unsafeMakeLatch -> effect/Latch#makeUnsafe
+effect/Effect#makeLatch -> effect/Latch#make
+effect/Layer#scoped -> effect/Layer#effect
+effect/Layer#scopedDiscard -> effect/Layer#effectDiscard
+effect/Layer#tapErrorCause -> effect/Layer#tapCause
+effect/Mailbox#Mailbox -> effect/Queue#Queue
+effect/Mailbox#make -> effect/Queue#make
+effect/Either#Either -> effect/Result#Result
+effect/Either#Either -> effect/Result#Result
+effect/Either#right -> effect/Result#succeed
+effect/Either#left -> effect/Result#fail
+effect/Scope#extend -> effect/Scope#provide
+effect/Effect#unsafeMakeSemaphore -> effect/Semaphore#makeUnsafe
+effect/Effect#makeSemaphore -> effect/Semaphore#make
+effect/Stream#Stream.Context -> effect/Stream#Services
+effect/StreamHaltStrategy#HaltStrategy -> effect/Stream#HaltStrategy
+effect/Stream#repeatEffect -> effect/Stream#fromEffectRepeat
+effect/Stream#repeatEffectWithSchedule -> effect/Stream#fromEffectSchedule
+effect/Stream#async -> effect/Stream#callback
+effect/Stream#asyncEffect -> effect/Stream#callback
+effect/Stream#asyncPush -> effect/Stream#callback
+effect/Stream#asyncScoped -> effect/Stream#callback
+effect/Stream#repeatEffectChunk -> effect/Stream#fromIterableEffectRepeat
+effect/Stream#fromChunk -> effect/Stream#fromArray
+effect/Stream#fromChunks -> effect/Stream#fromArrays
+effect/Stream#mapChunks -> effect/Stream#mapArray
+effect/Stream#mapChunksEffect -> effect/Stream#mapArrayEffect
+effect/Stream#either -> effect/Stream#result
+effect/Stream#flattenChunks -> effect/Stream#flattenArray
+effect/Stream#flattenIterables -> effect/Stream#flattenIterable
+effect/Stream#mergeEither -> effect/Stream#mergeResult
+effect/Stream#zipWithChunks -> effect/Stream#zipWithArray
+effect/Stream#bufferChunks -> effect/Stream#bufferArray
+effect/Stream#catchAllCause -> effect/Stream#catchCause
+effect/Stream#tapErrorCause -> effect/Stream#tapCause
+effect/Stream#catchAll -> effect/Stream#catch
+effect/Stream#catchSome -> effect/Stream#catchIf
+effect/Stream#catchSomeCause -> effect/Stream#catchCauseIf
+effect/Stream#combineChunks -> effect/Stream#combineArray
+effect/Stream#provideSomeLayer -> effect/Stream#provide
+effect/Stream#provideSomeContext -> effect/Stream#provide
 ```
