@@ -78,7 +78,7 @@ The `docgen.json` configuration file allows you to customize `docgen`'s behavior
 | Tag           | Description                                                                                                                                                                                                                                            | Default   |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------- |
 | `@category`   | Groups associated module exports together in the generated documentation.                                                                                                                                                                              | `'utils'` |
-| `@example`    | Allows usage examples to be provided for your source code. All examples are type checked using `ts-node`. Examples are also run using `ts-node` and the NodeJS [assert](https://nodejs.org/api/assert.html) module can be used for on-the-fly testing. |           |
+| `@example`    | Allows usage examples to be provided for your source code. All examples are type checked using `tsc`. Examples are also run using `tsx` and the NodeJS [assert](https://nodejs.org/api/assert.html) module can be used for on-the-fly testing. |           |
 | `@since`      | Allows for documenting most recent library version in which a given piece of source code was updated.                                                                                                                                                  |           |
 | `@deprecated` | Marks source code as deprecated, which will ~~strikethrough~~ the name of the annotated module or function in the generated documentation.                                                                                                             | `false`   |
 | `@internal`   | Prevents `docgen` from generating documentation for the annotated block of code. Additionally, if the `stripInternal` flag is set to `true` in `tsconfig.json`, TypeScript will not emit declarations for the annotated code.                          |           |
@@ -95,6 +95,7 @@ The `docgen.json` configuration file adheres to the following interface:
 ```ts
 interface Config {
   readonly projectHomepage?: string
+  readonly srcLink?: string
   readonly srcDir?: string
   readonly outDir?: string
   readonly theme?: string
@@ -102,6 +103,7 @@ interface Config {
   readonly enforceDescriptions?: boolean
   readonly enforceExamples?: boolean
   readonly enforceVersion?: boolean
+  readonly tscExecutable?: string
   readonly exclude?: ReadonlyArray<string>
   readonly parseCompilerOptions?: string | Record<string, unknown>
   readonly examplesCompilerOptions?: string | Record<string, unknown>
@@ -110,19 +112,21 @@ interface Config {
 
 The following table describes each configuration parameter, its purpose, and its default value.
 
-| Parameter               | Description                                                                                                                                                                         | Default Value                 |
-| :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------- |
-| projectHomepage         | Will link to the project homepage from the [Auxiliary Links](https://pmarsceill.github.io/just-the-docs/docs/navigation-structure/#auxiliary-links) of the generated documentation. | `homepage` in `package.json`  |
-| srcDir                  | The directory in which `docgen` will search for TypeScript files to parse.                                                                                                          | `'src'`                       |
-| outDir                  | The directory to which `docgen` will generate its output markdown documents.                                                                                                        | `'docs'`                      |
-| theme                   | The theme that `docgen` will specify should be used for GitHub Docs in the generated `_config.yml` file.                                                                            | `'mikearnaldi/just-the-docs'` |
-| enableSearch            | Whether or not search should be enabled for GitHub Docs in the generated `_config.yml` file.                                                                                        | `true`                        |
-| enforceDescriptions     | Whether or not descriptions for each module export should be required.                                                                                                              | `false`                       |
-| enforceExamples         | Whether or not `@example` tags for each module export should be required. (**Note**: examples will not be enforced in module documentation)                                         | `false`                       |
-| enforceVersion          | Whether or not `@since` tags for each module export should be required.                                                                                                             | `true`                        |
-| exclude                 | An array of glob strings specifying files that should be excluded from the documentation.                                                                                           | `[]`                          |
-| parseCompilerOptions    | tsconfig for parsing options (or path to a tsconfig)                                                                                                                                | {}                            |
-| examplesCompilerOptions | tsconfig for the examples options (or path to a tsconfig)                                                                                                                           | {}                            |
+| Parameter               | Description                                                                                                                                                                         | Default Value                                 |
+| :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------- |
+| projectHomepage         | Will link to the project homepage from the [Auxiliary Links](https://pmarsceill.github.io/just-the-docs/docs/navigation-structure/#auxiliary-links) of the generated documentation. | `homepage` in `package.json`                  |
+| srcLink                 | Will link to the project source code.                                                                                                                                               | `{projectHomepage}/blob/main/src/`            |
+| srcDir                  | The directory in which `docgen` will search for TypeScript files to parse.                                                                                                          | `'src'`                                       |
+| outDir                  | The directory to which `docgen` will generate its output markdown documents.                                                                                                        | `'docs'`                                      |
+| theme                   | The theme that `docgen` will specify should be used for GitHub Docs in the generated `_config.yml` file.                                                                            | `'mikearnaldi/just-the-docs'`                 |
+| enableSearch            | Whether or not search should be enabled for GitHub Docs in the generated `_config.yml` file.                                                                                        | `true`                                        |
+| enforceDescriptions     | Whether or not descriptions for each module export should be required.                                                                                                              | `false`                                       |
+| enforceExamples         | Whether or not `@example` tags for each module export should be required. (**Note**: examples will not be enforced in module documentation)                                         | `false`                                       |
+| enforceVersion          | Whether or not `@since` tags for each module export should be required.                                                                                                             | `true`                                        |
+| tscExecutable           | The path to the TypeScript compiler executable that docgen should use when invoking the compiler programmatically.                                                                  | `'tsc'`                                       |
+| exclude                 | An array of glob strings specifying files that should be excluded from the documentation.                                                                                           | `[]`                                          |
+| parseCompilerOptions    | tsconfig for parsing options (or path to a tsconfig)                                                                                                                                | {}                                            |
+| examplesCompilerOptions | tsconfig for the examples options (or path to a tsconfig)                                                                                                                           | {}                                            |
 
 # FAQ
 
