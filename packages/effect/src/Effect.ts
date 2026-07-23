@@ -6256,9 +6256,8 @@ export const updateService: {
  *       yield* Effect.updateServiceScoped(
  *         CurrentNumber,
  *         (value) => value + 1,
- *         // Preserve a value installed after this scoped update
- *         (original, updated, current) =>
- *           current === updated ? original : current
+ *         // Install a different value when the scope closes
+ *         () => 100
  *       )
  *       return yield* CurrentNumber
  *     })
@@ -6266,7 +6265,7 @@ export const updateService: {
  *   const after = yield* CurrentNumber
  *
  *   console.log([before, during, after])
- *   // [1, 2, 1]
+ *   // [1, 2, 100]
  * })
  *
  * Effect.runPromise(program)
