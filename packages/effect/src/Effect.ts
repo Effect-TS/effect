@@ -6235,7 +6235,10 @@ export const updateService: {
  * The updater receives the currently visible service value. A
  * `Context.Service` remains in the requirements, while a `Context.Reference`
  * uses its default when no override is present and adds no service requirement.
- * The returned effect always requires `Scope`.
+ * The returned effect always requires `Scope`. The optional `reset` function
+ * receives the original, updated, and current values when the scope closes,
+ * allowing changes to be merged during restoration. It defaults to returning
+ * the original value.
  *
  * **Example** (Updating a reference within a scope)
  *
@@ -6270,7 +6273,10 @@ export const updateService: {
  */
 export const updateServiceScoped: <I, A>(
   service: Context.Key<I, A>,
-  f: (value: A) => A
+  f: (value: A) => A,
+  options?: {
+    readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
+  } | undefined
 ) => Effect<void, never, I | Scope> = internal.updateServiceScoped
 
 /**

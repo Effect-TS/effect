@@ -3042,6 +3042,10 @@ describe("Effect", () => {
       defaultValue: () => 1
     })
 
+    const CurrentValues = Context.Reference<ReadonlyArray<string>>("CurrentValues", {
+      defaultValue: () => []
+    })
+
     it.effect("updates a Context.Service until the scope closes", () =>
       Effect.gen(function*() {
         const before = yield* CurrentNumber
@@ -3068,6 +3072,35 @@ describe("Effect", () => {
         const after = yield* CurrentNumberReference
 
         assert.deepStrictEqual([before, during, after], [1, 2, 1])
+      }))
+
+    it.effect("supports merging the current value on reset", () =>
+      Effect.gen(function*() {
+        const scope = Scope.makeUnsafe()
+        let resetValues: ReadonlyArray<ReadonlyArray<string>> | undefined
+
+        const result = yield* Effect.gen(function*() {
+          yield* Effect.updateServiceScoped(
+            CurrentValues,
+            (values) => [...values, "scoped"],
+            {
+              reset: (original, updated, current) => {
+                resetValues = [original, updated, current]
+                return [...original, ...current.filter((value) => !updated.includes(value))]
+              }
+            }
+          )
+          yield* Effect.withFiber((fiber) =>
+            Effect.sync(() => {
+              fiber.setContext(Context.add(fiber.context, CurrentValues, ["scoped", "external"]))
+            })
+          )
+          yield* Scope.close(scope, Exit.void)
+          return yield* CurrentValues
+        }).pipe(Effect.provideService(Scope.Scope, scope))
+
+        assert.deepStrictEqual(resetValues, [[], ["scoped"], ["scoped", "external"]])
+        assert.deepStrictEqual(result, ["external"])
       }))
   })
 
