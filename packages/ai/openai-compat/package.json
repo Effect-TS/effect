@@ -1,6 +1,6 @@
 {
   "name": "@effect/ai-openai-compat",
-  "version": "4.0.0-beta.100",
+  "version": "4.0.0-beta.101",
   "type": "module",
   "license": "MIT",
   "description": "An OpenAI compat integration for Effect",
