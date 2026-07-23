@@ -4770,7 +4770,7 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
                 for (const reason of exit.cause.reasons) {
                   if (reason._tag === "Interrupt") continue
                   else if (terminal._tag === "Failure") {
-                    ;(terminal.cause.reasons as Array<any>).push(reason)
+                    terminal = exitFailCause(causeFromReasons(terminal.cause.reasons.concat(reason)))
                   } else {
                     terminal = exitFailCause(causeFromReasons([reason]))
                   }

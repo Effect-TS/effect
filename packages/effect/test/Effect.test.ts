@@ -532,6 +532,26 @@ describe("Effect", () => {
         assert.deepStrictEqual(done, [1, 2, 3])
       }))
 
+    it.effect("does not mutate reusable failures during concurrent aggregation", () =>
+      Effect.gen(function*() {
+        const primary = Exit.fail("primary")
+        const cleanup = Effect.never.pipe(Effect.ensuring(Effect.die("cleanup")))
+        const effects: ReadonlyArray<Effect.Effect<never, string>> = [cleanup, primary]
+
+        const result = yield* Effect.forEach(effects, (effect) => effect, {
+          concurrency: 2
+        }).pipe(Effect.exit)
+
+        assert.deepStrictEqual(
+          result,
+          Exit.failCause(Cause.combine(Cause.fail("primary"), Cause.die("cleanup")))
+        )
+        assert.deepStrictEqual(primary, Exit.fail("primary"))
+
+        const rerun = yield* Effect.exit(primary)
+        assert.deepStrictEqual(rerun, Exit.fail("primary"))
+      }))
+
     it("length = 0", () =>
       Effect.gen(function*() {
         const results = yield* Effect.forEach([], (_) => Effect.succeed(_))
