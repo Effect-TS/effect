@@ -5456,9 +5456,9 @@ export const runSyncExitWith = <R>(context: Context.Context<R>) => {
   return <A, E>(effect: Effect.Effect<A, E, R>): Exit.Exit<A, E> => {
     if (effectIsExit(effect)) return effect
     const scheduler = new Scheduler.MixedScheduler("sync")
-    const fiber = runFork(effect, { scheduler })
-    fiber.currentDispatcher?.flush()
-    return (fiber as FiberImpl<A, E>)._exit ?? exitDie(new AsyncFiberError(fiber))
+    const fiber = runFork(effect, { scheduler }) as FiberImpl<A, E>
+    fiber._dispatcher?.flush()
+    return fiber._exit ?? exitDie(new AsyncFiberError(fiber))
   }
 }
 
