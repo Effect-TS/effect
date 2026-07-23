@@ -521,7 +521,14 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this._yielded = undefined
     this._running = false
     this._deferredInterrupt = false
-    this.runtimeMetrics?.recordFiberStart(this.context)
+    this._exiting = false
+    this._runtimeHooksDisabled = false
+    try {
+      this.runtimeMetrics?.recordFiberStart(this.context)
+    } catch (error) {
+      this._exit = exitDie(error) as any
+      this.context = Context.empty()
+    }
   }
 
   readonly [FiberTypeId]: Fiber.Fiber.Variance<A, E>
@@ -537,6 +544,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   _yielded: Exit.Exit<any, any> | (() => void) | undefined
   _running: boolean
   _deferredInterrupt: boolean
+  _exiting: boolean
+  _runtimeHooksDisabled: boolean
 
   // set in setContext
   context!: Context.Context<never>
@@ -572,7 +581,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
   }
   interruptUnsafe(fiberId?: number | undefined, annotations?: Context.Context<never> | undefined): void {
-    if (this._exit) {
+    if (this._exit || this._exiting) {
       return
     }
     let cause = causeInterrupt(fiberId)
@@ -597,7 +606,7 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return this._exit
   }
   evaluate(effect: Primitive): void {
-    if (this._exit) {
+    if (this._exit || this._exiting) {
       return
     } else if (this._yielded !== undefined) {
       const yielded = this._yielded as () => void
@@ -616,10 +625,17 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       return this.evaluate(flatMap(interruptChildren, () => exit) as any)
     }
 
-    this._exit = exit
-    this.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
+    let finalExit = exit
+    this._exiting = true
+    try {
+      this.runtimeMetrics?.recordFiberEnd(this.context, finalExit)
+    } catch (error) {
+      finalExit = exitDie(error) as any
+    }
+    this._exit = finalExit
+    this._exiting = false
     for (let i = 0; i < this._observers.length; i++) {
-      this._observers[i](exit)
+      this._observers[i](finalExit)
     }
     this._observers.length = 0
     this._stack.length = 0
@@ -641,18 +657,37 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           current = failCause(this._interruptedCause!) as any
         }
         this.currentOpCount++
-        if (
-          !yielding &&
-          !this.currentPreventYield &&
-          this.currentScheduler.shouldYield(this as any)
-        ) {
-          yielding = true
-          const prev = current
-          current = flatMap(yieldNow, () => prev as any) as any
+        if (!this._runtimeHooksDisabled) {
+          try {
+            if (
+              !yielding &&
+              !this.currentPreventYield &&
+              this.currentScheduler.shouldYield(this as any)
+            ) {
+              yielding = true
+              const prev = current
+              current = flatMap(yieldNow, () => prev as any) as any
+            }
+          } catch (error) {
+            this._runtimeHooksDisabled = true
+            current = exitDie(error) as any
+            continue
+          }
         }
-        current = this.currentTracerContext
-          ? this.currentTracerContext(current as any, this)
-          : (current as any)[evaluate](this)
+        const tracerContext = !this._runtimeHooksDisabled ? this.currentTracerContext : undefined
+        try {
+          current = tracerContext
+            ? tracerContext(current as any, this)
+            : (current as any)[evaluate](this)
+        } catch (error) {
+          if (tracerContext) {
+            this._runtimeHooksDisabled = true
+          } else if (!hasProperty(current, evaluate)) {
+            return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
+          }
+          current = exitDie(error) as any
+          continue
+        }
         if (current === Yield) {
           const yielded = this._yielded!
           if (ExitTypeId in yielded) {
@@ -667,11 +702,6 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
           return Yield
         }
       }
-    } catch (error) {
-      if (!hasProperty(current, evaluate)) {
-        return exitDie(`Fiber.runLoop: Not a valid effect: ${String(current)}`)
-      }
-      return this.runLoop(exitDie(error) as any)
     } finally {
       this._running = prevRunning
       ;(globalThis as any)[currentFiberTypeId] = prevFiber
@@ -5189,10 +5219,12 @@ export const forkUnsafe = <FA, FE, A, E, R>(
 ): FiberImpl<A, E> => {
   const interruptible = uninterruptible === "inherit" ? parent.interruptible : !uninterruptible
   const child = new FiberImpl<A, E>(parent.context, interruptible)
-  if (immediate) {
-    child.evaluate(effect as any)
-  } else {
-    parent.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
+  if (!child._exit) {
+    if (immediate) {
+      child.evaluate(effect as any)
+    } else {
+      parent.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
+    }
   }
   if (!daemon && !child._exit) {
     parent.children().add(child)

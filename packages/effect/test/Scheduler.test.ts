@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Exit, Result } from "effect"
 import * as Scheduler from "effect/Scheduler"
 
 describe("Scheduler", () => {
@@ -67,4 +67,26 @@ describe("Scheduler", () => {
       )
       assert.strictEqual(calls, 0)
     }))
+
+  it("converts a throwing shouldYield to the original defect without recursive overflow", () => {
+    const defect = new Error("shouldYield")
+    let calls = 0
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "sync",
+      shouldYield: () => {
+        calls++
+        throw defect
+      },
+      makeDispatcher: () => ({}) as any
+    }
+
+    const exit = Effect.runFork(Effect.void, { scheduler }).pollUnsafe()
+    assert.isDefined(exit)
+    const result = Exit.findDefect(exit!)
+    assert.isTrue(Result.isSuccess(result))
+    if (Result.isSuccess(result)) {
+      assert.strictEqual(result.success, defect)
+    }
+    assert.strictEqual(calls, 1)
+  })
 })

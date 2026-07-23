@@ -13,11 +13,13 @@ import {
   Layer,
   Logger,
   type LogLevel,
+  Metric,
   Option,
   References,
   Result,
   Schedule,
   Scope,
+  Tracer,
   TxRef
 } from "effect"
 import { constFalse, constTrue, pipe } from "effect/Function"
@@ -75,6 +77,95 @@ describe("Effect", () => {
         const trace = Context.getUnsafe(annotations, Cause.StackTrace)
         assert.strictEqual(trace.name, "test span")
       }))
+
+    it.effect("converts a throwing tracer context to the original defect without retrying", () => {
+      const defect = new Error("tracer context")
+      let calls = 0
+      const tracer: Tracer.Tracer = {
+        span: () => {
+          throw new Error("unused")
+        },
+        context: () => {
+          calls++
+          throw defect
+        }
+      }
+
+      return Effect.gen(function*() {
+        const exit = yield* Effect.void.pipe(
+          Effect.provideService(Tracer.Tracer, tracer),
+          Effect.exit
+        )
+        assertExitDefect(exit, defect)
+        assert.strictEqual(calls, 1)
+      })
+    })
+  })
+
+  describe("runtime metric hooks", () => {
+    it.effect("a throwing start hook defects the new fiber without running its body or end hook", () => {
+      const defect = new Error("fiber start")
+      let starts = 0
+      let ends = 0
+      let body = false
+      const metrics: Metric.FiberRuntimeMetricsService = {
+        recordFiberStart: () => {
+          starts++
+          throw defect
+        },
+        recordFiberEnd: () => {
+          ends++
+        }
+      }
+
+      return Effect.gen(function*() {
+        const fiber = yield* Effect.sync(() => {
+          body = true
+        }).pipe(Effect.forkChild)
+        const exit = yield* Fiber.await(fiber)
+        assertExitDefect(exit, defect)
+        assert.isFalse(body)
+        assert.strictEqual(starts, 1)
+        assert.strictEqual(ends, 0)
+      }).pipe(Effect.provideService(Metric.FiberRuntimeMetrics, metrics))
+    })
+
+    it("a throwing end hook replaces the body exit atomically without retrying", async () => {
+      const defect = new Error("fiber end")
+      let starts = 0
+      let ends = 0
+      let body = false
+      let fiber!: Fiber.Fiber<void>
+      let hookPoll: Exit.Exit<void> | undefined
+      let hookObserver: Exit.Exit<void> | undefined
+      const metrics: Metric.FiberRuntimeMetricsService = {
+        recordFiberStart: () => {
+          starts++
+        },
+        recordFiberEnd: () => {
+          ends++
+          hookPoll = fiber.pollUnsafe()
+          fiber.addObserver((exit) => {
+            hookObserver = exit
+          })
+          throw defect
+        }
+      }
+
+      fiber = Effect.runForkWith(Context.make(Metric.FiberRuntimeMetrics, metrics))(
+        Effect.yieldNow.pipe(Effect.andThen(Effect.sync(() => {
+          body = true
+        })))
+      )
+      const exit = await Effect.runPromise(Fiber.await(fiber))
+      assertExitDefect(exit, defect)
+      assert.isUndefined(hookPoll)
+      assert.isDefined(hookObserver)
+      assertExitDefect(hookObserver!, defect)
+      assert.isTrue(body)
+      assert.strictEqual(starts, 1)
+      assert.strictEqual(ends, 1)
+    })
   })
 
   it("callback can branch over sync/async", async () => {
