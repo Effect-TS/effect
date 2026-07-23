@@ -883,8 +883,8 @@ export const whileLoop: <A, E, R>(options: {
  *
  * **Details**
  *
- * An optional `AbortSignal` can be provided to allow for interruption of the
- * wrapped `Promise` API.
+ * An `AbortSignal` is provided to allow for interruption of the wrapped
+ * `Promise` API.
  *
  * **Gotchas**
  *
@@ -1224,8 +1224,8 @@ export {
  *
  * **Details**
  *
- * The registration function receives a `resume` callback and, when requested,
- * an `AbortSignal`. Call `resume` at most once with the effect that should
+ * The registration function receives a `resume` callback and an
+ * `AbortSignal`. Call `resume` at most once with the effect that should
  * complete the fiber; later calls are ignored. Return an optional cleanup
  * effect from the registration function to run if the fiber is interrupted.
  *

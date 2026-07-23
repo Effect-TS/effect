@@ -1037,7 +1037,7 @@ export const promise = <A>(
       (a) => resume(succeed(a)),
       (e) => resume(die(e))
     )
-  }, evaluate.length !== 0)
+  }, true)
 
 /** @internal */
 export const tryPromise = <A, E = Cause.UnknownError>(
@@ -1066,7 +1066,7 @@ export const tryPromise = <A, E = Cause.UnknownError>(
     } catch (err) {
       failWithCatch(err)
     }
-  }, f.length !== 0)
+  }, true)
 }
 
 /** @internal */
@@ -1147,10 +1147,10 @@ export const callback = <A, E = never, R = never>(
     resume: (effect: Effect.Effect<A, E, R>) => void,
     signal: AbortSignal
   ) => void | Effect.Effect<void, never, R>
-): Effect.Effect<A, E, R> => callbackOptions(register as any, register.length >= 2)
+): Effect.Effect<A, E, R> => callbackOptions(register as any, true)
 
 /** @internal */
-export const never: Effect.Effect<never> = callback<never>(constVoid)
+export const never: Effect.Effect<never> = callbackOptions<never>(constVoid, false)
 
 /** @internal */
 export const gen = <

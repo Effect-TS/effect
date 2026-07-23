@@ -48,6 +48,52 @@ const assertUnknownError = <A>(exit: Exit.Exit<A, Cause.UnknownError>, cause: un
   }
 }
 
+const signalRegistrationShapes = ["normal", "default", "rest", "bound"] as const
+type SignalRegistrationShape = typeof signalRegistrationShapes[number]
+
+const makePromiseRegistration = (
+  shape: SignalRegistrationShape,
+  onSignal: (signal: AbortSignal) => void
+): (signal: AbortSignal) => PromiseLike<never> => {
+  const register = (signal: AbortSignal) => {
+    onSignal(signal)
+    return new Promise<never>(() => {})
+  }
+  switch (shape) {
+    case "normal":
+      return (signal) => register(signal)
+    case "default":
+      return (signal = undefined as never) => register(signal)
+    case "rest":
+      return (...[signal]: [AbortSignal]) => register(signal)
+    case "bound":
+      return (function(_name = "", ...[signal]: [AbortSignal]) {
+        return register(signal)
+      }).bind(undefined, "bound")
+  }
+}
+
+type CallbackResume = (effect: Effect.Effect<never>) => void
+
+const makeCallbackRegistration = (
+  shape: SignalRegistrationShape,
+  onSignal: (signal: AbortSignal) => void
+): (resume: CallbackResume, signal: AbortSignal) => void => {
+  const register = (_resume: CallbackResume, signal: AbortSignal) => onSignal(signal)
+  switch (shape) {
+    case "normal":
+      return (resume, signal) => register(resume, signal)
+    case "default":
+      return (resume, signal = undefined as never) => register(resume, signal)
+    case "rest":
+      return (...[resume, signal]: [CallbackResume, AbortSignal]) => register(resume, signal)
+    case "bound":
+      return (function(_name = "", ...[resume, signal]: [CallbackResume, AbortSignal]) {
+        return register(resume, signal)
+      }).bind(undefined, "bound")
+  }
+}
+
 describe("Effect", () => {
   it("isEffect", () => {
     assert.isTrue(Effect.isEffect(Effect.succeed(0)))
@@ -297,38 +343,25 @@ describe("Effect", () => {
         assert.strictEqual(result, 1)
       }))
 
-    it.effect("does not allocate AbortController for zero-argument thunks", () =>
-      Effect.gen(function*() {
-        const originalAbortController = globalThis.AbortController
-        let allocations = 0
-        class TestAbortController extends originalAbortController {
-          constructor() {
-            allocations += 1
-            super()
-          }
-        }
-
-        yield* Effect.acquireUseRelease(
-          Effect.sync(() => {
-            globalThis.AbortController = TestAbortController
-          }),
-          () =>
-            Effect.gen(function*() {
-              const direct = yield* Effect.tryPromise(() => Promise.resolve(1))
-              const options = yield* Effect.tryPromise({
-                try: () => Promise.resolve(2),
-                catch: () => "error" as const
-              })
-              assert.strictEqual(direct, 1)
-              assert.strictEqual(options, 2)
-              assert.strictEqual(allocations, 0)
-            }),
-          () =>
-            Effect.sync(() => {
-              globalThis.AbortController = originalAbortController
+    it.effect.each(signalRegistrationShapes)(
+      "delivers and aborts the signal for a %s registration",
+      (shape) =>
+        Effect.gen(function*() {
+          let signal: AbortSignal | undefined
+          let operationAborted = false
+          const registration = makePromiseRegistration(shape, (signal_) => {
+            signal = signal_
+            signal_.addEventListener("abort", () => {
+              operationAborted = true
             })
-        )
-      }))
+          })
+          const fiber = yield* Effect.tryPromise(registration).pipe(Effect.forkChild({ startImmediately: true }))
+          assert.instanceOf(signal, AbortSignal)
+          yield* Fiber.interrupt(fiber)
+          assert.strictEqual(signal?.aborted, true)
+          assert.isTrue(operationAborted)
+        })
+    )
 
     it.effect("maps synchronous throws to UnknownError in direct-thunk form", () =>
       Effect.gen(function*() {
@@ -411,17 +444,50 @@ describe("Effect", () => {
         }).pipe(Effect.exit)
         assertExitDefect(exit, defect)
       }))
+  })
 
-    it.effect("aborts the provided AbortSignal on interruption", () =>
-      Effect.gen(function*() {
-        let signal: AbortSignal | undefined
-        const fiber = yield* Effect.tryPromise((signal_) => {
-          signal = signal_
-          return new Promise<never>(() => {})
-        }).pipe(Effect.forkChild({ startImmediately: true }))
-        yield* Fiber.interrupt(fiber)
-        assert.strictEqual(signal?.aborted, true)
-      }))
+  describe("promise", () => {
+    it.effect.each(signalRegistrationShapes)(
+      "delivers and aborts the signal for a %s registration",
+      (shape) =>
+        Effect.gen(function*() {
+          let signal: AbortSignal | undefined
+          let operationAborted = false
+          const registration = makePromiseRegistration(shape, (signal_) => {
+            signal = signal_
+            signal_.addEventListener("abort", () => {
+              operationAborted = true
+            })
+          })
+          const fiber = yield* Effect.promise(registration).pipe(Effect.forkChild({ startImmediately: true }))
+          assert.instanceOf(signal, AbortSignal)
+          yield* Fiber.interrupt(fiber)
+          assert.strictEqual(signal?.aborted, true)
+          assert.isTrue(operationAborted)
+        })
+    )
+  })
+
+  describe("callback", () => {
+    it.effect.each(signalRegistrationShapes)(
+      "delivers and aborts the signal for a %s registration",
+      (shape) =>
+        Effect.gen(function*() {
+          let signal: AbortSignal | undefined
+          let operationAborted = false
+          const registration = makeCallbackRegistration(shape, (signal_) => {
+            signal = signal_
+            signal_.addEventListener("abort", () => {
+              operationAborted = true
+            })
+          })
+          const fiber = yield* Effect.callback<never>(registration).pipe(Effect.forkChild({ startImmediately: true }))
+          assert.instanceOf(signal, AbortSignal)
+          yield* Fiber.interrupt(fiber)
+          assert.strictEqual(signal?.aborted, true)
+          assert.isTrue(operationAborted)
+        })
+    )
   })
 
   describe("gen", () => {
@@ -1471,16 +1537,6 @@ describe("Effect", () => {
         const fiber = yield* child.pipe(Effect.uninterruptible, Effect.forkChild({ startImmediately: true }))
         yield* Fiber.interrupt(fiber)
         assert.isTrue(ref)
-      }))
-
-    it.effect("AbortSignal is aborted", () =>
-      Effect.gen(function*() {
-        let signal: AbortSignal
-        const fiber = yield* Effect.callback<void>((_cb, signal_) => {
-          signal = signal_
-        }).pipe(Effect.forkChild({ startImmediately: true }))
-        yield* Fiber.interrupt(fiber)
-        assert.strictEqual(signal!.aborted, true)
       }))
   })
 
