@@ -5,6 +5,7 @@ import { projectDocument, projectMultiDocument } from "./toRepresentation.ts"
 const RepresentationSchema = Schema.suspend(
   (): Schema.Codec<SchemaRepresentation.Representation> => RepresentationUnion
 )
+const RepresentationsSchema = Schema.Array(RepresentationSchema)
 
 const RepresentationAnnotationSchema = Schema.Struct({
   id: Schema.NonEmptyString,
@@ -13,22 +14,27 @@ const RepresentationAnnotationSchema = Schema.Struct({
 
 const CheckRepresentationAnnotationSchema = Schema.Struct({
   ...RepresentationAnnotationSchema.fields,
-  schemas: Schema.optional(Schema.Array(RepresentationSchema))
+  schemas: Schema.optional(RepresentationsSchema)
 })
 
-const AnnotationsSchema = Schema.Record(Schema.String, Schema.Json)
+const AnnotationsSchema = Schema.optional(Schema.Record(Schema.String, Schema.Json))
 
 const CheckSchema = Schema.suspend((): Schema.Codec<SchemaRepresentation.Check> => CheckUnion)
+const ChecksSchema = Schema.Array(CheckSchema)
+const KeywordFields = {
+  annotations: AnnotationsSchema,
+  checks: ChecksSchema
+}
 const FilterSchema = Schema.Struct({
   _tag: Schema.tag("Filter"),
   representation: CheckRepresentationAnnotationSchema,
-  annotations: Schema.optional(AnnotationsSchema),
+  annotations: AnnotationsSchema,
   aborted: Schema.Boolean
 })
 const FilterGroupSchema = Schema.Struct({
   _tag: Schema.tag("FilterGroup"),
   representation: Schema.optional(CheckRepresentationAnnotationSchema),
-  annotations: Schema.optional(AnnotationsSchema),
+  annotations: AnnotationsSchema,
   checks: Schema.NonEmptyArray(CheckSchema)
 })
 const CheckUnion = Schema.Union([FilterSchema, FilterGroupSchema])
@@ -36,33 +42,33 @@ const CheckUnion = Schema.Union([FilterSchema, FilterGroupSchema])
 function makeKeywordSchema<Tag extends Exclude<SchemaRepresentation.Representation["_tag"], "Reference">>(tag: Tag) {
   return Schema.Struct({
     _tag: Schema.tag(tag),
-    annotations: Schema.optional(AnnotationsSchema),
-    checks: Schema.Array(CheckSchema)
+    ...KeywordFields
   })
 }
 
 const DeclarationSchema = Schema.Struct({
   _tag: Schema.tag("Declaration"),
   representation: RepresentationAnnotationSchema,
-  annotations: Schema.optional(AnnotationsSchema),
-  typeParameters: Schema.Array(RepresentationSchema),
-  checks: Schema.Array(CheckSchema)
+  annotations: AnnotationsSchema,
+  typeParameters: RepresentationsSchema,
+  checks: ChecksSchema
 })
 const SuspendSchema = Schema.Struct({
   _tag: Schema.tag("Suspend"),
-  annotations: Schema.optional(AnnotationsSchema),
+  annotations: AnnotationsSchema,
   checks: Schema.Tuple([]),
   thunk: RepresentationSchema
 })
 function makeValueSchema<Type extends string, Value extends Schema.Constraint>(type: Type, value: Value) {
   return Schema.Struct({ type: Schema.tag(type), value })
 }
+const StringValueSchema = makeValueSchema("string", Schema.String)
+const NumberValueSchema = makeValueSchema("number", Schema.Number)
 const LiteralSchema = Schema.Struct({
   _tag: Schema.tag("Literal"),
-  annotations: Schema.optional(AnnotationsSchema),
-  checks: Schema.Array(CheckSchema),
+  ...KeywordFields,
   literal: Schema.Union([
-    makeValueSchema("string", Schema.String),
+    StringValueSchema,
     makeValueSchema("number", Schema.Finite),
     makeValueSchema("bigint", Schema.BigInt),
     makeValueSchema("boolean", Schema.Boolean)
@@ -70,51 +76,43 @@ const LiteralSchema = Schema.Struct({
 })
 const UniqueSymbolSchema = Schema.Struct({
   _tag: Schema.tag("UniqueSymbol"),
-  annotations: Schema.optional(AnnotationsSchema),
-  checks: Schema.Array(CheckSchema),
+  ...KeywordFields,
   symbol: Schema.Symbol
 })
 const EnumSchema = Schema.Struct({
   _tag: Schema.tag("Enum"),
-  annotations: Schema.optional(AnnotationsSchema),
-  checks: Schema.Array(CheckSchema),
+  ...KeywordFields,
   enums: Schema.Array(Schema.Tuple([
     Schema.String,
-    Schema.Union([
-      makeValueSchema("string", Schema.String),
-      makeValueSchema("number", Schema.Number)
-    ])
+    Schema.Union([StringValueSchema, NumberValueSchema])
   ]))
 })
 const TemplateLiteralSchema = Schema.Struct({
   _tag: Schema.tag("TemplateLiteral"),
-  annotations: Schema.optional(AnnotationsSchema),
-  checks: Schema.Array(CheckSchema),
-  parts: Schema.Array(RepresentationSchema)
+  ...KeywordFields,
+  parts: RepresentationsSchema
 })
 const ElementSchema = Schema.Struct({
   isOptional: Schema.Boolean,
   type: RepresentationSchema,
-  annotations: Schema.optional(AnnotationsSchema)
+  annotations: AnnotationsSchema
 })
 const ArraysSchema = Schema.Struct({
   _tag: Schema.tag("Arrays"),
-  annotations: Schema.optional(AnnotationsSchema),
-  checks: Schema.Array(CheckSchema),
+  ...KeywordFields,
   elements: Schema.Array(ElementSchema),
-  rest: Schema.Array(RepresentationSchema)
+  rest: RepresentationsSchema
 })
-const PropertyNameSchema = Schema.Union([
-  makeValueSchema("string", Schema.String),
-  makeValueSchema("number", Schema.Number),
-  makeValueSchema("symbol", Schema.Symbol)
-])
 const PropertySignatureSchema = Schema.Struct({
-  name: PropertyNameSchema,
+  name: Schema.Union([
+    StringValueSchema,
+    NumberValueSchema,
+    makeValueSchema("symbol", Schema.Symbol)
+  ]),
   type: RepresentationSchema,
   isOptional: Schema.Boolean,
   isMutable: Schema.Boolean,
-  annotations: Schema.optional(AnnotationsSchema)
+  annotations: AnnotationsSchema
 })
 const IndexSignatureSchema = Schema.Struct({
   parameter: RepresentationSchema,
@@ -122,16 +120,14 @@ const IndexSignatureSchema = Schema.Struct({
 })
 const ObjectsSchema = Schema.Struct({
   _tag: Schema.tag("Objects"),
-  annotations: Schema.optional(AnnotationsSchema),
-  checks: Schema.Array(CheckSchema),
+  ...KeywordFields,
   propertySignatures: Schema.Array(PropertySignatureSchema),
   indexSignatures: Schema.Array(IndexSignatureSchema)
 })
 const UnionSchema = Schema.Struct({
   _tag: Schema.tag("Union"),
-  annotations: Schema.optional(AnnotationsSchema),
-  checks: Schema.Array(CheckSchema),
-  types: Schema.Array(RepresentationSchema),
+  ...KeywordFields,
+  types: RepresentationsSchema,
   mode: Schema.Literals(["anyOf", "oneOf"])
 })
 const ReferenceSchema = Schema.Struct({
@@ -164,14 +160,16 @@ const RepresentationUnion = Schema.Union([
   UnionSchema
 ])
 
+const ReferencesSchema = Schema.Record(Schema.String, RepresentationSchema)
+
 const DocumentSchema = Schema.Struct({
   representation: RepresentationSchema,
-  references: Schema.Record(Schema.String, RepresentationSchema)
+  references: ReferencesSchema
 })
 
 const MultiDocumentSchema = Schema.Struct({
   representations: Schema.NonEmptyArray(RepresentationSchema),
-  references: Schema.Record(Schema.String, RepresentationSchema)
+  references: ReferencesSchema
 })
 
 const DocumentFromJson: Schema.Codec<SchemaRepresentation.Document, Schema.Json> = Schema.toCodecJson(
