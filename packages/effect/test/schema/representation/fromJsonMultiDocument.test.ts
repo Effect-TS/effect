@@ -18,8 +18,8 @@ describe("SchemaRepresentation.fromJsonMultiDocument", () => {
       representations: [
         { _tag: "String", checks: [] },
         { _tag: "Number", checks: [] },
-        { _tag: "Literal", literal: { type: "string", value: "1" }, checks: [] },
-        { _tag: "Literal", literal: { type: "bigint", value: 1n }, checks: [] }
+        { _tag: "Literal", literal: "1", checks: [] },
+        { _tag: "Literal", literal: 1n, checks: [] }
       ],
       references: {}
     })

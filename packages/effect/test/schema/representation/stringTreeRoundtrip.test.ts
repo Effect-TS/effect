@@ -1,30 +1,35 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, type SchemaRepresentation } from "effect"
+import { Schema, SchemaGetter } from "effect"
 
-function makeValueSchema<Type extends string, Value extends Schema.Top>(type: Type, value: Value) {
-  return Schema.Struct({ type: Schema.tag(type), value })
+function makeValueCodec<Type extends string, Value>(type: Type, value: Schema.Codec<Value>) {
+  return value.pipe(
+    Schema.encodeTo(Schema.Struct({ type: Schema.tag(type), value }), {
+      decode: SchemaGetter.transform((encoded: { readonly type: Type; readonly value: Value }) => encoded.value),
+      encode: SchemaGetter.transform((value: Value) => ({ type, value }))
+    })
+  )
 }
 
-const LiteralValueSchema: Schema.Codec<SchemaRepresentation.LiteralValue> = Schema.Union([
-  makeValueSchema("string", Schema.String),
-  makeValueSchema("number", Schema.Finite),
-  makeValueSchema("bigint", Schema.BigInt),
-  makeValueSchema("boolean", Schema.Boolean)
+const LiteralValueSchema = Schema.Union([
+  makeValueCodec("string", Schema.String),
+  makeValueCodec("number", Schema.Finite),
+  makeValueCodec("bigint", Schema.BigInt),
+  makeValueCodec("boolean", Schema.Boolean)
 ])
 
-const EnumValueSchema: Schema.Codec<SchemaRepresentation.EnumValue> = Schema.Union([
-  makeValueSchema("string", Schema.String),
-  makeValueSchema("number", Schema.Number)
+const EnumValueSchema = Schema.Union([
+  makeValueCodec("string", Schema.String),
+  makeValueCodec("number", Schema.Number)
 ])
 
-const PropertyNameSchema: Schema.Codec<SchemaRepresentation.PropertyName> = Schema.Union([
-  makeValueSchema("string", Schema.String),
-  makeValueSchema("number", Schema.Number),
-  makeValueSchema("symbol", Schema.Symbol)
+const PropertyNameSchema = Schema.Union([
+  makeValueCodec("string", Schema.String),
+  makeValueCodec("number", Schema.Number),
+  makeValueCodec("symbol", Schema.Symbol)
 ])
 
 function assertRoundtrips<A>(
-  schema: Schema.Codec<A>,
+  schema: Schema.Codec<A, unknown>,
   cases: ReadonlyArray<readonly [value: A, encoded: Schema.StringTree]>
 ): void {
   const codec = Schema.toCodecStringTree(schema)
@@ -36,32 +41,32 @@ function assertRoundtrips<A>(
   }
 }
 
-describe("SchemaRepresentation tagged values through StringTree", () => {
-  it("preserves LiteralValue types", () => {
+describe("SchemaRepresentation encoded values through StringTree", () => {
+  it("preserves literal value types", () => {
     assertRoundtrips(LiteralValueSchema, [
-      [{ type: "string", value: "1" }, { type: "string", value: "1" }],
-      [{ type: "number", value: 1 }, { type: "number", value: "1" }],
-      [{ type: "bigint", value: 1n }, { type: "bigint", value: "1" }],
-      [{ type: "string", value: "true" }, { type: "string", value: "true" }],
-      [{ type: "boolean", value: true }, { type: "boolean", value: "true" }]
+      ["1", { type: "string", value: "1" }],
+      [1, { type: "number", value: "1" }],
+      [1n, { type: "bigint", value: "1" }],
+      ["true", { type: "string", value: "true" }],
+      [true, { type: "boolean", value: "true" }]
     ])
   })
 
-  it("preserves EnumValue types", () => {
+  it("preserves enum value types", () => {
     assertRoundtrips(EnumValueSchema, [
-      [{ type: "string", value: "NaN" }, { type: "string", value: "NaN" }],
-      [{ type: "number", value: Number.NaN }, { type: "number", value: "NaN" }],
-      [{ type: "string", value: "Infinity" }, { type: "string", value: "Infinity" }],
-      [{ type: "number", value: Number.POSITIVE_INFINITY }, { type: "number", value: "Infinity" }]
+      ["NaN", { type: "string", value: "NaN" }],
+      [Number.NaN, { type: "number", value: "NaN" }],
+      ["Infinity", { type: "string", value: "Infinity" }],
+      [Number.POSITIVE_INFINITY, { type: "number", value: "Infinity" }]
     ])
   })
 
-  it("preserves PropertyName types", () => {
+  it("preserves property name types", () => {
     assertRoundtrips(PropertyNameSchema, [
-      [{ type: "string", value: "1" }, { type: "string", value: "1" }],
-      [{ type: "number", value: 1 }, { type: "number", value: "1" }],
-      [{ type: "string", value: "Symbol(key)" }, { type: "string", value: "Symbol(key)" }],
-      [{ type: "symbol", value: Symbol.for("key") }, { type: "symbol", value: "Symbol(key)" }]
+      ["1", { type: "string", value: "1" }],
+      [1, { type: "number", value: "1" }],
+      ["Symbol(key)", { type: "string", value: "Symbol(key)" }],
+      [Symbol.for("key"), { type: "symbol", value: "Symbol(key)" }]
     ])
   })
 })

@@ -1359,7 +1359,7 @@ describe("toCodeDocument", () => {
           Category: {
             _tag: "Objects",
             propertySignatures: [{
-              name: { type: "string", value: "children" },
+              name: "children",
               type: {
                 _tag: "Arrays",
                 elements: [],

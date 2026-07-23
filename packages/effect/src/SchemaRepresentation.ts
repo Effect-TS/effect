@@ -3,16 +3,18 @@
  *
  * @since 4.0.0
  */
+import * as InternalRecord from "./internal/record.ts"
 import * as InternalFromJsonSchemaDocument from "./internal/schema/fromJsonSchemaDocument.ts"
 import * as InternalFromRepresentation from "./internal/schema/fromRepresentation.ts"
-import * as InternalRepresentationJson from "./internal/schema/representationJson.ts"
 import * as InternalSchema from "./internal/schema/schema.ts"
 import * as InternalToCodeDocument from "./internal/schema/toCodeDocument.ts"
 import * as InternalToJsonSchemaDocument from "./internal/schema/toJsonSchemaDocument.ts"
 import * as InternalToRepresentation from "./internal/schema/toRepresentation.ts"
 import type * as JsonSchema from "./JsonSchema.ts"
-import type * as Schema from "./Schema.ts"
-import type * as SchemaAST from "./SchemaAST.ts"
+import * as Option from "./Option.ts"
+import * as Schema from "./Schema.ts"
+import * as SchemaAST from "./SchemaAST.ts"
+import * as SchemaGetter from "./SchemaGetter.ts"
 
 /**
  * Open persistence identity carried by declarations and opaque checks.
@@ -252,32 +254,18 @@ export interface BigInt extends Keyword<"BigInt"> {}
 export interface Symbol extends Keyword<"Symbol"> {}
 
 /**
- * A scalar literal value with an explicit type discriminator.
+ * A literal representation.
  *
  * **Details**
  *
- * The `type` field preserves scalar identity across encodings that cannot
- * distinguish every JavaScript primitive. JSON encodes bigints as strings,
- * while StringTree encodes numbers, bigints, and booleans as text, so values
- * such as `"1"`, `1`, and `1n` would otherwise be ambiguous.
- *
- * @category models
- * @since 4.0.0
- */
-export type LiteralValue =
-  | { readonly type: "string"; readonly value: string }
-  | { readonly type: "number"; readonly value: number }
-  | { readonly type: "bigint"; readonly value: bigint }
-  | { readonly type: "boolean"; readonly value: boolean }
-
-/**
- * A literal representation.
+ * The live representation stores the native literal value. Persistent codecs
+ * add an explicit type discriminator when encoding it.
  *
  * @category models
  * @since 4.0.0
  */
 export interface Literal extends Keyword<"Literal"> {
-  readonly literal: LiteralValue
+  readonly literal: SchemaAST.LiteralValue
 }
 
 /**
@@ -299,28 +287,18 @@ export interface UniqueSymbol extends Keyword<"UniqueSymbol"> {
 export interface ObjectKeyword extends Keyword<"ObjectKeyword"> {}
 
 /**
- * A string or number value carried by an enum representation.
+ * An enum representation.
  *
  * **Details**
  *
- * The discriminator keeps string enum members such as `"NaN"` distinct from
- * numeric members whose JSON encoding is also `"NaN"`.
- *
- * @category models
- * @since 4.0.0
- */
-export type EnumValue =
-  | { readonly type: "string"; readonly value: string }
-  | { readonly type: "number"; readonly value: number }
-
-/**
- * An enum representation.
+ * Enum members are stored as native string or number values. Persistent
+ * codecs add an explicit type discriminator when encoding them.
  *
  * @category models
  * @since 4.0.0
  */
 export interface Enum extends Keyword<"Enum"> {
-  readonly enums: ReadonlyArray<readonly [string, EnumValue]>
+  readonly enums: ReadonlyArray<readonly [string, string | number]>
 }
 
 /**
@@ -357,12 +335,12 @@ export interface Arrays extends Keyword<"Arrays"> {
 }
 
 /**
- * A string, number, or symbol property name with an explicit type discriminator.
+ * A property signature.
  *
  * **Details**
  *
- * The discriminator prevents textual encodings from conflating names such as
- * `"1"` and `1`, or `"Symbol(key)"` and `Symbol.for("key")`.
+ * The live representation stores the native property key. Persistent codecs
+ * add an explicit type discriminator when encoding it.
  *
  * **Gotchas**
  *
@@ -372,19 +350,8 @@ export interface Arrays extends Keyword<"Arrays"> {
  * @category models
  * @since 4.0.0
  */
-export type PropertyName =
-  | { readonly type: "string"; readonly value: string }
-  | { readonly type: "number"; readonly value: number }
-  | { readonly type: "symbol"; readonly value: symbol }
-
-/**
- * A property signature.
- *
- * @category models
- * @since 4.0.0
- */
 export interface PropertySignature {
-  readonly name: PropertyName
+  readonly name: PropertyKey
   readonly type: Representation
   readonly isOptional: boolean
   readonly isMutable: boolean
@@ -848,6 +815,214 @@ export function toCodeDocument(document: MultiDocument): CodeDocument {
   return InternalToCodeDocument.toCodeDocument(document)
 }
 
+const RepresentationSchema = Schema.suspend(
+  (): Schema.Codec<Representation, unknown> => RepresentationUnion
+)
+const RepresentationsSchema = Schema.Array(RepresentationSchema)
+
+const RepresentationAnnotationSchema = Schema.Struct({
+  id: Schema.NonEmptyString,
+  payload: Schema.Json
+})
+
+const CheckRepresentationAnnotationSchema = Schema.Struct({
+  ...RepresentationAnnotationSchema.fields,
+  schemas: Schema.optional(RepresentationsSchema)
+})
+
+const LiveAnnotationsSchema = Schema.Record(Schema.String, Schema.Unknown)
+const JsonAnnotationsSchema = Schema.Record(Schema.String, Schema.Json)
+
+function pruneAnnotations(
+  annotations: Readonly<Record<string, unknown>>
+): Option.Option<Readonly<Record<string, Schema.Json>>> {
+  const out: Record<string, Schema.Json> = {}
+  for (const [key, value] of Object.entries(annotations)) {
+    if (SchemaAST.isJson(value)) {
+      InternalRecord.set(out, key, value)
+    }
+  }
+  return Object.keys(out).length === 0 ? Option.none() : Option.some(out)
+}
+
+const AnnotationsSchema = Schema.optional(LiveAnnotationsSchema).pipe(
+  Schema.encodeTo(Schema.optionalKey(JsonAnnotationsSchema), {
+    decode: SchemaGetter.passthroughSubtype(),
+    encode: SchemaGetter.transformOptional((annotations) =>
+      Option.isNone(annotations) || annotations.value === undefined
+        ? Option.none()
+        : pruneAnnotations(annotations.value)
+    )
+  })
+)
+
+const CheckSchema = Schema.suspend((): Schema.Codec<Check, unknown> => CheckUnion)
+const ChecksSchema = Schema.Array(CheckSchema)
+const KeywordFields = {
+  annotations: AnnotationsSchema,
+  checks: ChecksSchema
+}
+const FilterSchema = Schema.Struct({
+  _tag: Schema.tag("Filter"),
+  representation: CheckRepresentationAnnotationSchema,
+  annotations: AnnotationsSchema,
+  aborted: Schema.Boolean
+})
+const FilterGroupSchema = Schema.Struct({
+  _tag: Schema.tag("FilterGroup"),
+  representation: Schema.optional(CheckRepresentationAnnotationSchema),
+  annotations: AnnotationsSchema,
+  checks: Schema.NonEmptyArray(CheckSchema)
+})
+const CheckUnion = Schema.Union([FilterSchema, FilterGroupSchema])
+
+function makeKeywordSchema<Tag extends Exclude<Representation["_tag"], "Reference">>(tag: Tag) {
+  return Schema.Struct({
+    _tag: Schema.tag(tag),
+    ...KeywordFields
+  })
+}
+
+const DeclarationSchema = Schema.Struct({
+  _tag: Schema.tag("Declaration"),
+  representation: RepresentationAnnotationSchema,
+  annotations: AnnotationsSchema,
+  typeParameters: RepresentationsSchema,
+  checks: ChecksSchema
+})
+const SuspendSchema = Schema.Struct({
+  _tag: Schema.tag("Suspend"),
+  annotations: AnnotationsSchema,
+  checks: Schema.Tuple([]),
+  thunk: RepresentationSchema
+})
+function makeValueSchema<Type extends string, Value>(type: Type, value: Schema.Codec<Value>) {
+  return value.pipe(
+    Schema.encodeTo(Schema.Struct({ type: Schema.tag(type), value }), {
+      decode: SchemaGetter.transform((encoded: { readonly type: Type; readonly value: Value }) => encoded.value),
+      encode: SchemaGetter.transform((value: Value) => ({ type, value }))
+    })
+  )
+}
+const StringValueCodec = makeValueSchema("string", Schema.String)
+const NumberValueCodec = makeValueSchema("number", Schema.Number)
+const LiteralSchema = Schema.Struct({
+  _tag: Schema.tag("Literal"),
+  ...KeywordFields,
+  literal: Schema.Union([
+    StringValueCodec,
+    makeValueSchema("number", Schema.Finite),
+    makeValueSchema("bigint", Schema.BigInt),
+    makeValueSchema("boolean", Schema.Boolean)
+  ])
+})
+const UniqueSymbolSchema = Schema.Struct({
+  _tag: Schema.tag("UniqueSymbol"),
+  ...KeywordFields,
+  symbol: Schema.Symbol
+})
+const EnumSchema = Schema.Struct({
+  _tag: Schema.tag("Enum"),
+  ...KeywordFields,
+  enums: Schema.Array(Schema.Tuple([
+    Schema.String,
+    Schema.Union([StringValueCodec, NumberValueCodec])
+  ]))
+})
+const TemplateLiteralSchema = Schema.Struct({
+  _tag: Schema.tag("TemplateLiteral"),
+  ...KeywordFields,
+  parts: RepresentationsSchema
+})
+const ElementSchema = Schema.Struct({
+  isOptional: Schema.Boolean,
+  type: RepresentationSchema,
+  annotations: AnnotationsSchema
+})
+const ArraysSchema = Schema.Struct({
+  _tag: Schema.tag("Arrays"),
+  ...KeywordFields,
+  elements: Schema.Array(ElementSchema),
+  rest: RepresentationsSchema
+})
+const PropertySignatureSchema = Schema.Struct({
+  name: Schema.Union([
+    StringValueCodec,
+    NumberValueCodec,
+    makeValueSchema("symbol", Schema.Symbol)
+  ]),
+  type: RepresentationSchema,
+  isOptional: Schema.Boolean,
+  isMutable: Schema.Boolean,
+  annotations: AnnotationsSchema
+})
+const IndexSignatureSchema = Schema.Struct({
+  parameter: RepresentationSchema,
+  type: RepresentationSchema
+})
+const ObjectsSchema = Schema.Struct({
+  _tag: Schema.tag("Objects"),
+  ...KeywordFields,
+  propertySignatures: Schema.Array(PropertySignatureSchema),
+  indexSignatures: Schema.Array(IndexSignatureSchema)
+})
+const UnionSchema = Schema.Struct({
+  _tag: Schema.tag("Union"),
+  ...KeywordFields,
+  types: RepresentationsSchema,
+  mode: Schema.Literals(["anyOf", "oneOf"])
+})
+const ReferenceSchema = Schema.Struct({
+  _tag: Schema.tag("Reference"),
+  $ref: Schema.NonEmptyString
+})
+
+const RepresentationUnion = Schema.Union([
+  DeclarationSchema,
+  ReferenceSchema,
+  SuspendSchema,
+  makeKeywordSchema("Null"),
+  makeKeywordSchema("Undefined"),
+  makeKeywordSchema("Void"),
+  makeKeywordSchema("Never"),
+  makeKeywordSchema("Unknown"),
+  makeKeywordSchema("Any"),
+  makeKeywordSchema("String"),
+  makeKeywordSchema("Number"),
+  makeKeywordSchema("Boolean"),
+  makeKeywordSchema("BigInt"),
+  makeKeywordSchema("Symbol"),
+  makeKeywordSchema("ObjectKeyword"),
+  LiteralSchema,
+  UniqueSymbolSchema,
+  EnumSchema,
+  TemplateLiteralSchema,
+  ArraysSchema,
+  ObjectsSchema,
+  UnionSchema
+])
+
+const ReferencesSchema = Schema.Record(Schema.String, RepresentationSchema)
+
+const DocumentFromJson: Schema.Codec<Document, Schema.Json> = Schema.toCodecJson(
+  Schema.Struct({
+    representation: RepresentationSchema,
+    references: ReferencesSchema
+  })
+)
+
+const MultiDocumentFromJson: Schema.Codec<MultiDocument, Schema.Json> = Schema.toCodecJson(
+  Schema.Struct({
+    representations: Schema.NonEmptyArray(RepresentationSchema),
+    references: ReferencesSchema
+  })
+)
+
+const encodeDocument = Schema.encodeSync(DocumentFromJson)
+const encodeMultiDocument = Schema.encodeSync(MultiDocumentFromJson)
+const decodeDocument = Schema.decodeSync(DocumentFromJson)
+const decodeMultiDocument = Schema.decodeSync(MultiDocumentFromJson)
+
 /**
  * Projects a live single-root representation document and encodes it as JSON.
  *
@@ -866,7 +1041,7 @@ export function toCodeDocument(document: MultiDocument): CodeDocument {
  * @since 4.0.0
  */
 export function toJson(document: Document): Schema.Json {
-  return InternalRepresentationJson.toJson(document)
+  return encodeDocument(document)
 }
 
 /**
@@ -887,7 +1062,7 @@ export function toJson(document: Document): Schema.Json {
  * @since 4.0.0
  */
 export function toJsonMultiDocument(document: MultiDocument): Schema.Json {
-  return InternalRepresentationJson.toJsonMultiDocument(document)
+  return encodeMultiDocument(document)
 }
 
 /**
@@ -909,7 +1084,7 @@ export function toJsonMultiDocument(document: MultiDocument): Schema.Json {
  * @since 4.0.0
  */
 export function fromJson(input: Schema.Json): Document {
-  return InternalRepresentationJson.fromJson(input)
+  return decodeDocument(input)
 }
 
 /**
@@ -931,7 +1106,7 @@ export function fromJson(input: Schema.Json): Document {
  * @since 4.0.0
  */
 export function fromJsonMultiDocument(input: Schema.Json): MultiDocument {
-  return InternalRepresentationJson.fromJsonMultiDocument(input)
+  return decodeMultiDocument(input)
 }
 
 /**

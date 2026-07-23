@@ -463,10 +463,10 @@ describe("SchemaRepresentation.toJson", () => {
       {
         _tag: "Enum",
         enums: [
-          ["StringNaN", { type: "string", value: "NaN" }],
-          ["NumberNaN", { type: "number", value: Number.NaN }],
-          ["StringInfinity", { type: "string", value: "Infinity" }],
-          ["NumberInfinity", { type: "number", value: Number.POSITIVE_INFINITY }]
+          ["StringNaN", "NaN"],
+          ["NumberNaN", Number.NaN],
+          ["StringInfinity", "Infinity"],
+          ["NumberInfinity", Number.POSITIVE_INFINITY]
         ],
         checks: []
       },
@@ -489,10 +489,10 @@ describe("SchemaRepresentation.toJson", () => {
       {
         _tag: "Objects",
         propertySignatures: [
-          makeStringProperty({ type: "string", value: "1" }),
-          makeStringProperty({ type: "number", value: 1 }),
-          makeStringProperty({ type: "string", value: "Symbol(acme/schema/key)" }),
-          makeStringProperty({ type: "symbol", value: globalSymbol })
+          makeStringProperty("1"),
+          makeStringProperty(1),
+          makeStringProperty("Symbol(acme/schema/key)"),
+          makeStringProperty(globalSymbol)
         ],
         indexSignatures: [],
         checks: []
@@ -556,7 +556,7 @@ describe("SchemaRepresentation.toJson", () => {
           representation: {
             _tag: "Objects",
             propertySignatures: [
-              makeStringProperty({ type: "symbol", value: Symbol("local") })
+              makeStringProperty(Symbol("local"))
             ],
             indexSignatures: [],
             checks: []

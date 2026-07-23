@@ -53,22 +53,14 @@ describe("SchemaRepresentation persisted wire", () => {
     >()
   })
 
-  it("correlates literal types and values", () => {
+  it("uses native literal values", () => {
     const literal = null as unknown as SchemaRepresentation.Literal
-    if (literal.literal.type === "string") {
-      expect(literal.literal.value).type.toBe<string>()
-    } else if (literal.literal.type === "number") {
-      expect(literal.literal.value).type.toBe<number>()
-    } else if (literal.literal.type === "bigint") {
-      expect(literal.literal.value).type.toBe<bigint>()
-    } else {
-      expect(literal.literal.value).type.toBe<boolean>()
-    }
+    expect(literal.literal).type.toBe<SchemaAST.LiteralValue>()
 
     expect(
       {
         _tag: "Literal",
-        literal: { type: "string", value: "value" },
+        literal: "value",
         checks: []
       } as const
     ).type.toBeAssignableTo<SchemaRepresentation.Literal>()
@@ -76,39 +68,27 @@ describe("SchemaRepresentation persisted wire", () => {
     expect(
       {
         _tag: "Literal",
-        literal: { type: "boolean", value: "true" },
+        literal: { type: "string", value: "value" },
         checks: []
       } as const
     ).type.not.toBeAssignableTo<SchemaRepresentation.Literal>()
   })
 
-  it("correlates Enum types and values", () => {
-    const value = null as unknown as SchemaRepresentation.EnumValue
-    if (value.type === "string") {
-      expect(value.value).type.toBe<string>()
-    } else {
-      expect(value.value).type.toBe<number>()
-    }
-
-    expect({ type: "number", value: 1 } as const).type.toBeAssignableTo<SchemaRepresentation.EnumValue>()
-    expect({ type: "number", value: "1" } as const).type.not.toBeAssignableTo<SchemaRepresentation.EnumValue>()
+  it("uses native Enum values", () => {
+    const representation = null as unknown as SchemaRepresentation.Enum
+    expect(representation.enums).type.toBe<ReadonlyArray<readonly [string, string | number]>>()
+    expect([["A", 1]] as const).type.toBeAssignableTo<SchemaRepresentation.Enum["enums"]>()
+    expect([["A", { type: "number", value: 1 }]] as const).type.not.toBeAssignableTo<
+      SchemaRepresentation.Enum["enums"]
+    >()
   })
 
-  it("correlates property name types and values", () => {
-    const name = null as unknown as SchemaRepresentation.PropertyName
-    if (name.type === "string") {
-      expect(name.value).type.toBe<string>()
-    } else if (name.type === "number") {
-      expect(name.value).type.toBe<number>()
-    } else {
-      expect(name.value).type.toBe<symbol>()
-    }
-
-    expect({ type: "symbol", value: Symbol.for("key") } as const).type.toBeAssignableTo<
-      SchemaRepresentation.PropertyName
-    >()
-    expect({ type: "symbol", value: "Symbol(key)" } as const).type.not.toBeAssignableTo<
-      SchemaRepresentation.PropertyName
+  it("uses native property keys", () => {
+    const property = null as unknown as SchemaRepresentation.PropertySignature
+    expect(property.name).type.toBe<PropertyKey>()
+    expect(Symbol.for("key")).type.toBeAssignableTo<SchemaRepresentation.PropertySignature["name"]>()
+    expect({ type: "symbol", value: Symbol.for("key") } as const).type.not.toBeAssignableTo<
+      SchemaRepresentation.PropertySignature["name"]
     >()
   })
 })

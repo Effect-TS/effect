@@ -83,7 +83,14 @@ describe("SchemaRepresentation.fromJson", () => {
       },
       references: {}
     } as const
-    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
+    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), {
+      representation: {
+        _tag: "Enum",
+        enums: [["A", "a"], ["One", 1]],
+        checks: []
+      },
+      references: {}
+    })
   })
 
   it("decodes TemplateLiteral", () => {
@@ -98,7 +105,17 @@ describe("SchemaRepresentation.fromJson", () => {
       },
       references: {}
     } as const
-    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
+    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), {
+      representation: {
+        _tag: "TemplateLiteral",
+        parts: [
+          { _tag: "Literal", literal: "prefix-", checks: [] },
+          { _tag: "String", checks: [] }
+        ],
+        checks: []
+      },
+      references: {}
+    })
   })
 
   it("decodes Arrays", () => {
@@ -132,7 +149,23 @@ describe("SchemaRepresentation.fromJson", () => {
       },
       references: {}
     } as const
-    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
+    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), {
+      representation: {
+        _tag: "Objects",
+        propertySignatures: [{
+          name: "value",
+          type: { _tag: "String", checks: [] },
+          isOptional: false,
+          isMutable: true
+        }],
+        indexSignatures: [{
+          parameter: { _tag: "String", checks: [] },
+          type: { _tag: "Number", checks: [] }
+        }],
+        checks: []
+      },
+      references: {}
+    })
   })
 
   it("decodes Union", () => {
@@ -228,7 +261,7 @@ describe("SchemaRepresentation.fromJson", () => {
         references: {}
       }),
       {
-        representation: { _tag: "Literal", literal: { type: "bigint", value: 1n }, checks: [] },
+        representation: { _tag: "Literal", literal: 1n, checks: [] },
         references: {}
       }
     )
@@ -284,7 +317,10 @@ describe("SchemaRepresentation.fromJson", () => {
         representation: { _tag: "Literal", literal: { type: "string", value: literal }, checks: [] },
         references: {}
       } as const
-      assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
+      assert.deepStrictEqual(SchemaRepresentation.fromJson(input), {
+        representation: { _tag: "Literal", literal, checks: [] },
+        references: {}
+      })
     }
   })
 
@@ -315,7 +351,10 @@ describe("SchemaRepresentation.fromJson", () => {
       references: {}
     } as const
 
-    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
+    assert.deepStrictEqual(SchemaRepresentation.fromJson(input), {
+      representation: { _tag: "Literal", literal: "Symbol(a)", checks: [] },
+      references: {}
+    })
   })
 
   it("requires representation on persisted Filters", () => {

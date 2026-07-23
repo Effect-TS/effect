@@ -51,7 +51,7 @@ describe("SchemaRepresentation.toRepresentations", () => {
         Objects_: {
           _tag: "Objects",
           propertySignatures: [{
-            name: { type: "string", value: "value" },
+            name: "value",
             type: { _tag: "String", checks: [] },
             isOptional: false,
             isMutable: false

@@ -153,7 +153,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         {
           _tag: "Objects",
           propertySignatures: [{
-            name: { type: "string", value: "value" },
+            name: "value",
             type: NumberRepresentation,
             isOptional: false,
             isMutable: false,
@@ -300,7 +300,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         {
           _tag: "Objects",
           propertySignatures: [{
-            name: { type: "number", value: 1 },
+            name: 1,
             type: { _tag: "Boolean", checks: [] },
             isOptional: false,
             isMutable: false
@@ -465,7 +465,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
         H: {
           _tag: "Objects",
           propertySignatures: [{
-            name: { type: "string", value: "value" },
+            name: "value",
             type: reference("G"),
             isOptional: false,
             isMutable: false
@@ -531,7 +531,7 @@ describe("SchemaRepresentation.toCodeDocument annotations", () => {
     const output = SchemaRepresentation.toCodeDocument({
       representations: [{
         _tag: "Union",
-        types: [{ _tag: "Literal", literal: { type: "string", value: "a" }, checks: [] }],
+        types: [{ _tag: "Literal", literal: "a", checks: [] }],
         mode: "anyOf",
         checks: []
       }],
