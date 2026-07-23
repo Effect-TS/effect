@@ -50,4 +50,24 @@ describe("SchemaRepresentation.fromSchemaMultiDocument", () => {
     })
     assert.deepStrictEqual(Object.keys(SchemaRepresentation.fromSchemaMultiDocument(document).references), ["Value"])
   })
+
+  it("supports __proto__ as an external definition key", () => {
+    const Value = Schema.Number
+    const definitions: Record<string, Schema.Top> = {}
+    Object.defineProperty(definitions, "__proto__", {
+      value: Value,
+      enumerable: true
+    })
+
+    const document = SchemaRepresentation.fromSchemaMultiDocument({
+      schemas: [Value],
+      definitions
+    })
+
+    assert.deepStrictEqual(document.representations[0], { _tag: "Reference", $ref: "__proto__" })
+    assert.deepStrictEqual(Object.keys(document.references), ["__proto__"])
+    assert.strictEqual(Object.getPrototypeOf(document.references), Object.prototype)
+    assert.isTrue(Object.hasOwn(document.references, "__proto__"))
+    assert.strictEqual(document.references["__proto__"]._tag, "Number")
+  })
 })

@@ -3,6 +3,7 @@ import * as Equal from "../../Equal.ts"
 import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
+import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
 
 /** @internal */
@@ -94,7 +95,7 @@ function lowerASTs(
   const representations = Arr.map(asts, (ast) => recur(ast))
 
   for (const definition of externalDefinitions) {
-    references[definition.key] = recur(definition.body, definition.key)
+    InternalRecord.set(references, definition.key, recur(definition.body, definition.key))
   }
 
   return { representations, references }
@@ -174,19 +175,19 @@ function lowerASTs(
       const reference = generateReference(identifier)
       referenceMap.set(ast, reference)
       const representation = on(ast)
-      const existing = references[identifier]
+      const existing = Object.hasOwn(references, identifier) ? references[identifier] : undefined
       if (existing !== undefined && Equal.equals(representation, existing)) {
         referenceMap.set(ast, identifier)
         return { _tag: "Reference", $ref: identifier }
       }
-      references[reference] = representation
+      InternalRecord.set(references, reference, representation)
       return { _tag: "Reference", $ref: reference }
     }
 
     if (ownedReference === undefined && shared.has(ast)) {
       const reference = generateReference(`${ast._tag}_`)
       referenceMap.set(ast, reference)
-      references[reference] = on(ast)
+      InternalRecord.set(references, reference, on(ast))
       return { _tag: "Reference", $ref: reference }
     }
 
@@ -202,7 +203,7 @@ function lowerASTs(
 
     const reference = referenceMap.get(ast)
     if (reference !== undefined && reference !== ownedReference) {
-      references[reference] = representation
+      InternalRecord.set(references, reference, representation)
       return { _tag: "Reference", $ref: reference }
     }
 

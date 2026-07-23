@@ -625,6 +625,18 @@ describe("SchemaRepresentation.toRepresentation", () => {
     })
   })
 
+  it("supports __proto__ as an identifier", () => {
+    const document = SchemaRepresentation.toRepresentation(
+      Schema.String.annotate({ identifier: "__proto__" }).ast
+    )
+
+    assert.deepStrictEqual(document.representation, { _tag: "Reference", $ref: "__proto__" })
+    assert.deepStrictEqual(Object.keys(document.references), ["__proto__"])
+    assert.strictEqual(Object.getPrototypeOf(document.references), Object.prototype)
+    assert.isTrue(Object.hasOwn(document.references, "__proto__"))
+    assert.strictEqual(document.references["__proto__"]._tag, "String")
+  })
+
   it("converts a non-recursive suspend", () => {
     assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.suspend(() => Schema.String).ast), {
       representation: {
