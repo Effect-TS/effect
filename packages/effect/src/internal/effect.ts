@@ -571,6 +571,19 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       }
     }
   }
+  addObserverFirst(cb: (exit: Exit.Exit<A, E>) => void): () => void {
+    if (this._exit) {
+      cb(this._exit)
+      return constVoid
+    }
+    this._observers.unshift(cb)
+    return () => {
+      const index = this._observers.indexOf(cb)
+      if (index >= 0) {
+        this._observers.splice(index, 1)
+      }
+    }
+  }
   interruptUnsafe(fiberId?: number | undefined, annotations?: Context.Context<never> | undefined): void {
     if (this._exit) {
       return
@@ -1528,35 +1541,63 @@ export const raceAllFirst = <Eff extends Effect.Effect<any, any, any>>(
   Effect.Services<Eff>
 > =>
   withFiber((parent) =>
-    callback((resume) => {
+    suspend(() => {
       let done = false
-      const fibers = new Set<Fiber.Fiber<any, any>>()
-      const onExit = (exit: Exit.Exit<any, any>) => {
+      const fibers = new Set<FiberImpl<any, any>>()
+      const cleanup = withFiber((fiber) => {
         done = true
-        resume(
-          fibers.size === 0
-            ? exit
-            : flatMap(uninterruptible(fiberInterruptAll(fibers)), () => exit)
-        )
-      }
-
-      let i = 0
-      for (const effect of all) {
-        if (done) break
-        const index = i++
-        const fiber = forkUnsafe(parent, effect, true, true, false)
-        fibers.add(fiber)
-        fiber.addObserver((exit) => {
-          fibers.delete(fiber)
-          const isWinner = !done
-          onExit(exit)
-          if (isWinner && options?.onWinner) {
-            options.onWinner({ fiber, index, parentFiber: parent })
-          }
+        const owned = Array.from(fibers)
+        if (owned.length === 0) return void_
+        const annotations = fiberStackAnnotations(fiber)
+        return callback<void>((resume) => {
+          fiber.currentDispatcher.scheduleTask(() => {
+            let resumed = false
+            const complete = () => {
+              if (resumed || owned.some((fiber) => fiber.pollUnsafe() === undefined)) return
+              resumed = true
+              resume(void_)
+            }
+            for (const fiber of owned) {
+              if (fiber.pollUnsafe() !== undefined) continue
+              fiber.addObserverFirst(() => complete())
+            }
+            for (const child of owned) {
+              try {
+                child.interruptUnsafe(fiber.id, annotations)
+              } catch {
+                // A public observer may throw while the fiber is completing.
+              }
+            }
+            complete()
+          }, 0)
         })
-      }
-
-      return fiberInterruptAll(fibers)
+      })
+      return onExitPrimitive(
+        callback((resume) => {
+          const onExit = (exit: Exit.Exit<any, any>) => {
+            if (done) return
+            done = true
+            resume(exit)
+          }
+          let index = 0
+          for (const effect of all) {
+            if (done) break
+            const fiber = new FiberImpl(parent.context)
+            fibers.add(fiber)
+            fiber.evaluate(effect as any)
+            const currentIndex = index++
+            fiber.addObserver((exit) => {
+              fibers.delete(fiber)
+              const isWinner = !done
+              onExit(exit)
+              if (isWinner && options?.onWinner) {
+                options.onWinner({ fiber, index: currentIndex, parentFiber: parent })
+              }
+            })
+          }
+        }),
+        () => cleanup
+      )
     })
   )
 

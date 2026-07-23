@@ -17,6 +17,7 @@ import {
   References,
   Result,
   Schedule,
+  Scheduler,
   Scope,
   TxRef
 } from "effect"
@@ -981,6 +982,219 @@ describe("Effect", () => {
       assert.deepStrictEqual(result, Exit.fail("boom"))
       // 100 doesn't start because 0 finishes the race first
       assert.deepStrictEqual(interrupted, [500, 300, 200])
+    }))
+
+  it.effect("raceAllFirst preserves an iterable defect before the first fork", () =>
+    Effect.gen(function*() {
+      const defect = new Error("iterator defect")
+      const iterable: Iterable<Effect.Effect<void>> = {
+        [Symbol.iterator]() {
+          throw defect
+        }
+      }
+      const exit = yield* Effect.raceAllFirst(iterable).pipe(Effect.exit)
+
+      assertExitDefect(exit, defect)
+    }))
+
+  it.effect("raceAllFirst interrupts and awaits workers when iteration throws", () =>
+    Effect.gen(function*() {
+      const interruptStarted = yield* Deferred.make<void>()
+      const releaseFinalizer = yield* Deferred.make<void>()
+      const defect = new Error("iterator defect")
+      let workerFiber: Fiber.Fiber<never, never> | undefined
+      const worker = Effect.fiber.pipe(
+        Effect.tap((fiber) =>
+          Effect.sync(() => {
+            workerFiber = fiber as Fiber.Fiber<never, never>
+          })
+        ),
+        Effect.andThen(Effect.never),
+        Effect.onInterrupt(() =>
+          Deferred.succeed(interruptStarted, void 0).pipe(
+            Effect.andThen(Deferred.await(releaseFinalizer))
+          )
+        )
+      )
+      const iterable: Iterable<Effect.Effect<never>> = {
+        [Symbol.iterator]() {
+          let first = true
+          return {
+            next() {
+              if (first) {
+                first = false
+                return { done: false, value: worker }
+              }
+              throw defect
+            }
+          }
+        }
+      }
+      const parent = yield* Effect.raceAllFirst(iterable).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* Effect.yieldNow
+      const workerStarted = workerFiber !== undefined
+      const parentAwaitingCleanup = parent.pollUnsafe() === undefined
+      yield* Deferred.await(interruptStarted)
+      yield* Deferred.succeed(releaseFinalizer, void 0)
+      const exit = yield* Fiber.await(parent)
+
+      assert.isTrue(workerStarted)
+      assert.isTrue(parentAwaitingCleanup)
+      assertExitDefect(exit, defect)
+      assert.isDefined(workerFiber!.pollUnsafe())
+      assert.isTrue(Exit.hasInterrupts(workerFiber!.pollUnsafe()!))
+    }))
+
+  it.effect("raceAllFirst owns workers before their first scheduler step", () =>
+    Effect.gen(function*() {
+      const defect = new Error("iterator defect")
+      let shouldYield = true
+      let workerFiber: Fiber.Fiber<never, never> | undefined
+      const scheduler = new Scheduler.MixedScheduler()
+      const iterable: Iterable<Effect.Effect<never>> = {
+        [Symbol.iterator]() {
+          let first = true
+          return {
+            next() {
+              if (first) {
+                first = false
+                return {
+                  done: false,
+                  value: Effect.fiber.pipe(
+                    Effect.tap((fiber) =>
+                      Effect.sync(() => {
+                        workerFiber = fiber as Fiber.Fiber<never, never>
+                      })
+                    ),
+                    Effect.andThen(Effect.never)
+                  )
+                }
+              }
+              throw defect
+            }
+          }
+        }
+      }
+      const exit = yield* Effect.raceAllFirst(iterable).pipe(
+        Effect.provideService(References.Scheduler, {
+          executionMode: scheduler.executionMode,
+          makeDispatcher: () => scheduler.makeDispatcher(),
+          shouldYield: () => {
+            const result = shouldYield
+            shouldYield = false
+            return result
+          }
+        }),
+        Effect.exit
+      )
+
+      assertExitDefect(exit, defect)
+      assert.isDefined(workerFiber)
+      assert.isTrue(Exit.hasInterrupts(workerFiber!.pollUnsafe()!))
+    }))
+
+  it.effect("raceAllFirst interrupts every worker when public observers throw", () =>
+    Effect.gen(function*() {
+      const defect = new Error("iterator defect")
+      const workerFibers: Array<Fiber.Fiber<never, never>> = []
+      const worker = Effect.fiber.pipe(
+        Effect.tap((fiber) =>
+          Effect.sync(() => {
+            workerFibers.push(fiber as Fiber.Fiber<never, never>)
+            fiber.addObserver(() => {
+              throw new Error("observer defect")
+            })
+          })
+        ),
+        Effect.andThen(Effect.never)
+      )
+      const iterable: Iterable<Effect.Effect<never>> = {
+        [Symbol.iterator]() {
+          let index = 0
+          return {
+            next() {
+              if (index++ < 2) return { done: false, value: worker }
+              throw defect
+            }
+          }
+        }
+      }
+      const exit = yield* Effect.raceAllFirst(iterable).pipe(Effect.exit)
+
+      assertExitDefect(exit, defect)
+      assert.strictEqual(workerFibers.length, 2)
+      assert.isTrue(workerFibers.every((fiber) => Exit.hasInterrupts(fiber.pollUnsafe()!)))
+    }))
+
+  it.effect("raceAllFirst cleans up when onWinner interrupts the parent reentrantly", () =>
+    Effect.gen(function*() {
+      const interruptStarted = yield* Deferred.make<void>()
+      const releaseFinalizer = yield* Deferred.make<void>()
+      let workerFiber: Fiber.Fiber<never, never> | undefined
+      const worker = Effect.fiber.pipe(
+        Effect.tap((fiber) =>
+          Effect.sync(() => {
+            workerFiber = fiber as Fiber.Fiber<never, never>
+          })
+        ),
+        Effect.andThen(Effect.never),
+        Effect.onInterrupt(() =>
+          Deferred.succeed(interruptStarted, void 0).pipe(
+            Effect.andThen(Deferred.await(releaseFinalizer))
+          )
+        )
+      )
+      const parent = yield* Effect.raceAllFirst([worker, Effect.succeed(1)], {
+        onWinner({ parentFiber }) {
+          parentFiber.interruptUnsafe()
+        }
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+
+      yield* Effect.yieldNow
+      const parentAwaitingCleanup = parent.pollUnsafe() === undefined
+      yield* Deferred.await(interruptStarted)
+      yield* Deferred.succeed(releaseFinalizer, void 0)
+      const exit = yield* Fiber.await(parent)
+
+      assert.isTrue(parentAwaitingCleanup)
+      assert.isTrue(Exit.hasInterrupts(exit))
+      assert.isTrue(Exit.hasInterrupts(workerFiber!.pollUnsafe()!))
+    }))
+
+  it.effect("raceAllFirst preserves a synchronous onWinner defect", () =>
+    Effect.gen(function*() {
+      const defect = new Error("onWinner defect")
+      const exit = yield* Effect.raceAllFirst([Effect.succeed(1)], {
+        onWinner() {
+          throw defect
+        }
+      }).pipe(Effect.exit)
+
+      assertExitDefect(exit, defect)
+    }))
+
+  it.effect("raceAllFirst preserves an iterator close defect after a synchronous winner", () =>
+    Effect.gen(function*() {
+      const defect = new Error("iterator close defect")
+      const iterable: Iterable<Effect.Effect<number>> = {
+        [Symbol.iterator]() {
+          let index = 0
+          return {
+            next() {
+              return { done: false, value: index++ === 0 ? Effect.succeed(1) : Effect.never }
+            },
+            return() {
+              throw defect
+            }
+          }
+        }
+      }
+      const exit = yield* Effect.raceAllFirst(iterable).pipe(Effect.exit)
+
+      assertExitDefect(exit, defect)
     }))
 
   describe("repeat", () => {
