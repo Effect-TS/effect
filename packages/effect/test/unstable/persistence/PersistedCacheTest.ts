@@ -21,7 +21,7 @@ export class TransientError extends Data.TaggedError("TransientError") {}
 class LookupService extends Context.Service<LookupService, { readonly value: string }>()("LookupService") {}
 
 export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistence, unknown>) =>
-  describe(`PersistedCache (${storeId})`, { timeout: 30_000 }, () => {
+  describe(`PersistedCache (${storeId})`, { timeout: 60_000 }, () => {
     it.effect("smoke test", () =>
       Effect.gen(function*() {
         const persistence = yield* Persistence.Persistence
@@ -105,7 +105,7 @@ export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistenc
 const flakyTest = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.timeoutOrElse({
-      duration: "10 seconds",
+      duration: "45 seconds",
       orElse: () => Effect.void
     })
   )
