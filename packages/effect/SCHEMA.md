@@ -2686,16 +2686,16 @@ const branded = Schema.String.pipe(Schema.brand("UserId"))
 
 Some filters check the structure of a value rather than its contents — for example, the number of items in an array or the number of keys in an object. These are called **structural filters**.
 
-Structural filters are evaluated separately from item-level filters, which allows multiple issues to be reported when `{ errors: "all" }` is used. Examples include:
+Examples include:
 
 - `isMinLength` or `isMaxLength` on arrays
 - `isMinSize` or `isMaxSize` on objects with a `size` property
 - `isMinProperties` or `isMaxProperties` on objects
 - any constraint that applies to the "shape" of a value rather than to its nested values
 
-These filters are evaluated separately from item-level filters and allow multiple issues to be reported when `{ errors: "all" }` is used.
+Structural filters run only after the base array, object, or declaration and its nested values parse successfully. If a nested value fails, its issue is reported but structural filters on the containing value are not evaluated, even with `{ errors: "all" }`.
 
-**Example** (Validating an array with item and structural constraints)
+**Example** (A nested failure prevents the structural filter from running)
 
 ```ts
 import { Schema } from "effect"
@@ -2709,9 +2709,7 @@ const schema = Schema.Struct({
 console.log(String(Schema.decodeUnknownExit(schema)({ tags: ["a", ""] }, { errors: "all" })))
 /*
 Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1, got ""
-  at ["tags"][1]
-Expected a value with a length of at least 3, got ["a",""]
-  at ["tags"])]))
+  at ["tags"][1])]))
 */
 ```
 
@@ -6314,6 +6312,11 @@ const multiDocument = SchemaRepresentation.toRepresentations([
 
 Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. `toMultiDocument(document)`
 wraps a single document when a compiler requires multiple roots.
+
+An explicit `identifier` uniquely names one schema within a conversion. Reusing the same schema shares its reference, but
+two distinct schemas with the same explicit `identifier` cause `toRepresentation` or `toRepresentations` to throw a
+`Duplicate identifier` error. Internal `~identifier` annotations are allocation hints rather than uniqueness claims; when
+a derived name is already occupied, the generated reference receives a numeric suffix.
 
 ## JSON persistence
 
