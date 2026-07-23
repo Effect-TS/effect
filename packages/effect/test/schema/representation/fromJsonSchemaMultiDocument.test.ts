@@ -95,6 +95,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
       references: {
         A: {
           _tag: "String",
+          annotations: { identifier: "A" },
           checks: [{
             _tag: "Filter",
             representation: {
@@ -132,10 +133,35 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
         thunk: { _tag: "Reference", $ref: "A" }
       }],
       references: {
-        A: { _tag: "Reference", $ref: "B" },
-        B: { _tag: "Reference", $ref: "C" },
+        A: {
+          _tag: "Number",
+          annotations: { identifier: "A" },
+          checks: [{
+            _tag: "Filter",
+            representation: { id: "effect/schema/isFinite", payload: null },
+            annotations: {
+              expected: "a finite number",
+              arbitrary: { constraint: { noInfinity: true, noNaN: true } }
+            },
+            aborted: false
+          }]
+        },
+        B: {
+          _tag: "Number",
+          annotations: { identifier: "B" },
+          checks: [{
+            _tag: "Filter",
+            representation: { id: "effect/schema/isFinite", payload: null },
+            annotations: {
+              expected: "a finite number",
+              arbitrary: { constraint: { noInfinity: true, noNaN: true } }
+            },
+            aborted: false
+          }]
+        },
         C: {
           _tag: "Number",
+          annotations: { identifier: "C" },
           checks: [{
             _tag: "Filter",
             representation: { id: "effect/schema/isFinite", payload: null },

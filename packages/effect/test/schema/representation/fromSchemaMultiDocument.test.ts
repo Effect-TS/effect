@@ -33,4 +33,21 @@ describe("SchemaRepresentation.fromSchemaMultiDocument", () => {
       }
     )
   })
+
+  it("restores the identifier of an external definition", () => {
+    const Value = Schema.Number
+    const representation = SchemaRepresentation.fromSchemaMultiDocument({
+      schemas: [Value],
+      definitions: { Value }
+    })
+    const document = SchemaRepresentation.fromRepresentations(representation, { revivers: [] })
+
+    assert.strictEqual(document.schemas[0], document.definitions.Value)
+    assert.strictEqual(document.definitions.Value.ast._tag, "Number")
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(document.schemas[0].ast).representation, {
+      _tag: "Reference",
+      $ref: "Value"
+    })
+    assert.deepStrictEqual(Object.keys(SchemaRepresentation.fromSchemaMultiDocument(document).references), ["Value"])
+  })
 })

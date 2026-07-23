@@ -1732,7 +1732,7 @@ describe("toCodeDocument", () => {
           nonRecursives: [{
             $ref: "A",
             code: makeCode(
-              `Schema.suspend((): Schema.Codec<string> => Schema.String).annotate({ "identifier": "A" })`,
+              `Schema.String.annotate({ "identifier": "A" })`,
               "string"
             )
           }]
@@ -1777,7 +1777,7 @@ describe("toCodeDocument", () => {
             {
               $ref: "A",
               code: makeCode(
-                `Schema.suspend((): Schema.Codec<{ readonly "b": number, readonly "a": string }> => Schema.Struct({ "b": Schema.Number.check(Schema.isFinite()), "a": Schema.String })).annotate({ "identifier": "A" })`,
+                `Schema.Struct({ "b": Schema.Number.check(Schema.isFinite()), "a": Schema.String }).annotate({ "identifier": "A" })`,
                 `{ readonly "b": number, readonly "a": string }`
               )
             }

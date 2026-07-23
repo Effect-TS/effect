@@ -2620,15 +2620,11 @@ describe("fromJsonSchemaDocument", () => {
           },
           "references": {
             "A": {
-              "_tag": "Suspend",
+              "_tag": "String",
               "annotations": {
                 "identifier": "A"
               },
-              "checks": [],
-              "thunk": {
-                "_tag": "String",
-                "checks": []
-              }
+              "checks": []
             }
           }
         }
@@ -2662,15 +2658,11 @@ describe("fromJsonSchemaDocument", () => {
           },
           "references": {
             "A": {
-              "_tag": "Suspend",
+              "_tag": "String",
               "annotations": {
                 "identifier": "A"
               },
-              "checks": [],
-              "thunk": {
-                "_tag": "String",
-                "checks": []
-              }
+              "checks": []
             }
           }
         }
@@ -2728,15 +2720,11 @@ describe("fromJsonSchemaDocument", () => {
           },
           "references": {
             "A": {
-              "_tag": "Suspend",
+              "_tag": "String",
               "annotations": {
                 "identifier": "A"
               },
-              "checks": [],
-              "thunk": {
-                "_tag": "String",
-                "checks": []
-              }
+              "checks": []
             }
           }
         }
@@ -2778,49 +2766,45 @@ describe("fromJsonSchemaDocument", () => {
           },
           "references": {
             "A": {
-              "_tag": "Suspend",
+              "_tag": "Objects",
               "annotations": {
                 "identifier": "A"
               },
               "checks": [],
-              "thunk": {
-                "_tag": "Objects",
-                "checks": [],
-                "propertySignatures": [
-                  {
-                    "name": {
-                      "type": "string",
-                      "value": "name"
-                    },
-                    "type": {
-                      "_tag": "String",
-                      "checks": []
-                    },
-                    "isOptional": false,
-                    "isMutable": false
+              "propertySignatures": [
+                {
+                  "name": {
+                    "type": "string",
+                    "value": "name"
                   },
-                  {
-                    "name": {
-                      "type": "string",
-                      "value": "children"
-                    },
-                    "type": {
-                      "_tag": "Arrays",
-                      "checks": [],
-                      "elements": [],
-                      "rest": [
-                        {
-                          "_tag": "Reference",
-                          "$ref": "A"
-                        }
-                      ]
-                    },
-                    "isOptional": false,
-                    "isMutable": false
-                  }
-                ],
-                "indexSignatures": []
-              }
+                  "type": {
+                    "_tag": "String",
+                    "checks": []
+                  },
+                  "isOptional": false,
+                  "isMutable": false
+                },
+                {
+                  "name": {
+                    "type": "string",
+                    "value": "children"
+                  },
+                  "type": {
+                    "_tag": "Arrays",
+                    "checks": [],
+                    "elements": [],
+                    "rest": [
+                      {
+                        "_tag": "Reference",
+                        "$ref": "A"
+                      }
+                    ]
+                  },
+                  "isOptional": false,
+                  "isMutable": false
+                }
+              ],
+              "indexSignatures": []
             }
           }
         }
@@ -2854,32 +2838,28 @@ describe("fromJsonSchemaDocument", () => {
           },
           references: {
             Node: {
-              _tag: "Suspend",
+              _tag: "Objects",
               annotations: {
                 identifier: "Node"
               },
               checks: [],
-              thunk: {
-                _tag: "Objects",
-                propertySignatures: [{
-                  name: { type: "string", value: "child" },
-                  type: {
-                    _tag: "Suspend",
-                    annotations: {
-                      description: "recursive child"
-                    },
-                    checks: [],
-                    thunk: {
-                      _tag: "Reference",
-                      $ref: "Node"
-                    }
+              propertySignatures: [{
+                name: { type: "string", value: "child" },
+                type: {
+                  _tag: "Suspend",
+                  annotations: {
+                    description: "recursive child"
                   },
-                  isOptional: false,
-                  isMutable: false
-                }],
-                indexSignatures: [],
-                checks: []
-              }
+                  checks: [],
+                  thunk: {
+                    _tag: "Reference",
+                    $ref: "Node"
+                  }
+                },
+                isOptional: false,
+                isMutable: false
+              }],
+              indexSignatures: []
             }
           }
         }

@@ -60,7 +60,11 @@ function resolveReferenceIdentifier(ast: SchemaAST.AST): string | undefined {
   const identifier = InternalAnnotations.resolveIdentifier(ast)
   if (identifier !== undefined) return identifier
   const fallback = InternalAnnotations.resolveIdentifierFallback(ast)
-  return fallback === undefined ? undefined : `${fallback}JsonEncoding`
+  if (fallback !== undefined) return `${fallback}JsonEncoding`
+  const ownIdentifier = ast.annotations?.identifier
+  if (typeof ownIdentifier === "string") return ownIdentifier
+  const ownFallback = ast.annotations?.[InternalAnnotations.IDENTIFIER_FALLBACK_KEY]
+  return typeof ownFallback === "string" ? `${ownFallback}JsonEncoding` : undefined
 }
 
 function lowerASTs(
@@ -145,8 +149,13 @@ function lowerASTs(
   ): SchemaRepresentation.Representation {
     let found = referenceMap.get(ast)
     if (found === undefined && SchemaAST.isSuspend(ast)) {
-      const bodyReference = externalBodyReferences.get(ast.thunk())
-      if (bodyReference !== undefined && bodyReference !== null) {
+      const body = ast.thunk()
+      const bodyReference = referenceMap.get(body) ?? externalBodyReferences.get(body)
+      if (
+        bodyReference !== undefined &&
+        bodyReference !== null &&
+        InternalAnnotations.resolveIdentifier(ast) === bodyReference
+      ) {
         found = bodyReference
         referenceMap.set(ast, bodyReference)
       }

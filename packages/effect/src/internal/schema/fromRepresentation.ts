@@ -1,7 +1,7 @@
 import * as Arr from "../../Array.ts"
 import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
-import type * as SchemaAST from "../../SchemaAST.ts"
+import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
 import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
@@ -18,6 +18,7 @@ export function fromRepresentations(
 
 class ReferenceSlot {
   body: Schema.Top | undefined
+  resolving = false
   readonly wrapper: Schema.Top
 
   constructor(key: string) {
@@ -60,6 +61,27 @@ function revivePersisted(
 
   for (const key of referenceKeys) {
     slots.set(key, new ReferenceSlot(key))
+  }
+
+  function resolveReference(key: string, path: Path): Schema.Top {
+    const slot = slots.get(key)
+    if (slot === undefined) {
+      throw errorWithPath(`Invalid reference ${key}`, [...path, "$ref"])
+    }
+    if (slot.body !== undefined) {
+      return slot.body
+    }
+    if (slot.resolving) {
+      return slot.wrapper
+    }
+
+    slot.resolving = true
+    try {
+      slot.body = annotateNode(recur(references[key], ["references", key]), { identifier: key })
+      return slot.body
+    } finally {
+      slot.resolving = false
+    }
   }
 
   function resolveReviver<R extends SchemaRepresentation.AnyReviver>(
@@ -166,7 +188,10 @@ function revivePersisted(
     schema: Schema.Top,
     annotations: Schema.Annotations.Annotations | undefined
   ): Schema.Top {
-    return annotations === undefined ? schema : schema.annotate(annotations)
+    if (annotations === undefined) {
+      return schema
+    }
+    return schema.rebuild(SchemaAST.annotateNode(schema.ast, annotations))
   }
 
   function finishStructural(
@@ -186,13 +211,8 @@ function revivePersisted(
     path: Path
   ): Schema.Top {
     switch (representation._tag) {
-      case "Reference": {
-        const slot = slots.get(representation.$ref)
-        if (slot === undefined) {
-          throw errorWithPath(`Invalid reference ${representation.$ref}`, [...path, "$ref"])
-        }
-        return slot.wrapper
-      }
+      case "Reference":
+        return resolveReference(representation.$ref, path)
       case "Declaration":
         return reviveDeclaration(representation, path)
       case "Suspend": {
@@ -295,9 +315,7 @@ function revivePersisted(
 
   const definitions: Record<string, Schema.Top> = {}
   for (const key of referenceKeys) {
-    const slot = slots.get(key)!
-    slot.body = recur(references[key], ["references", key])
-    InternalRecord.set(definitions, key, slot.wrapper)
+    InternalRecord.set(definitions, key, resolveReference(key, ["references", key]))
   }
 
   const schemas = representations.map((representation, index) =>

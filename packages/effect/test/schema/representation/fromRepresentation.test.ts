@@ -152,6 +152,32 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     assert.isFalse(Schema.is(schema)("value"))
   })
 
+  it("revives a reference in TemplateLiteral as a concrete part", () => {
+    const schema = assertRepresentationRoundtrip(
+      Schema.TemplateLiteral(["prefix-", Schema.String.annotate({ identifier: "Part" })])
+    )
+    assert.strictEqual(schema.ast._tag, "TemplateLiteral")
+    if (schema.ast._tag === "TemplateLiteral") {
+      assert.strictEqual(schema.ast.parts[1]._tag, "String")
+    }
+    assert.isTrue(Schema.is(schema)("prefix-value"))
+  })
+
+  it("revives nested references in a TemplateLiteral union", () => {
+    const schema = assertRepresentationRoundtrip(
+      Schema.TemplateLiteral([
+        "prefix-",
+        Schema.Union([
+          Schema.Literal("a").annotate({ identifier: "A" }),
+          Schema.Literal("b").annotate({ identifier: "B" })
+        ]).annotate({ identifier: "Part" })
+      ])
+    )
+    assert.isTrue(Schema.is(schema)("prefix-a"))
+    assert.isTrue(Schema.is(schema)("prefix-b"))
+    assert.isFalse(Schema.is(schema)("prefix-c"))
+  })
+
   it("revives Tuple", () => {
     assertRepresentationRoundtrip(Schema.Tuple([Schema.String, Schema.optionalKey(Schema.Number)]))
   })
@@ -176,6 +202,17 @@ describe("SchemaRepresentation.fromRepresentation", () => {
 
   it("revives Record", () => {
     assertRepresentationRoundtrip(Schema.Record(Schema.String, Schema.Number))
+  })
+
+  it("revives a reference used as a Record key", () => {
+    const schema = assertRepresentationRoundtrip(
+      Schema.Record(Schema.String.annotate({ identifier: "Key" }), Schema.Number)
+    )
+    assert.strictEqual(schema.ast._tag, "Objects")
+    if (schema.ast._tag === "Objects") {
+      assert.strictEqual(schema.ast.indexSignatures[0].parameter._tag, "String")
+    }
+    assert.deepStrictEqual(Schema.decodeUnknownSync(schema as Schema.Codec<unknown>)({ a: 1 }), { a: 1 })
   })
 
   it("revives StructWithRest", () => {
@@ -210,6 +247,15 @@ describe("SchemaRepresentation.fromRepresentation", () => {
       children: Schema.Array(Schema.suspend((): Schema.Codec<Category> => Category))
     }).annotate({ identifier: "Category" })
     const schema = revive(Category) as Schema.Codec<unknown>
+    assert.strictEqual(schema.ast._tag, "Objects")
+    if (schema.ast._tag === "Objects") {
+      const children = schema.ast.propertySignatures.find((property) => property.name === "children")
+      assert.isDefined(children)
+      assert.strictEqual(children.type._tag, "Arrays")
+      if (children.type._tag === "Arrays") {
+        assert.strictEqual(children.type.rest[0]._tag, "Suspend")
+      }
+    }
     assert.deepStrictEqual(
       Schema.decodeUnknownSync(schema)({
         name: "root",
