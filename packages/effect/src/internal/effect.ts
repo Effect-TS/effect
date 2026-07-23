@@ -826,21 +826,49 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
     const cancels = Arr.empty<() => void>()
     let done = 0
     let failed = false
+    let cleaned = false
+    let registering = true
+    let synchronousResult: Effect.Effect<any, any> | undefined
+    const cleanup = () => {
+      if (cleaned) return
+      cleaned = true
+      cancels.forEach((cancel) => cancel())
+    }
     for (let i = 0; i < fibers.length; i++) {
       if (failed) break
-      cancels.push(fibers[i].addObserver((exit) => {
+      const cancel = fibers[i].addObserver((exit) => {
         done++
         if (exit._tag === "Failure") {
           failed = true
-          cancels.forEach((cancel) => cancel())
-          return resume(exit as any)
+          if (registering) {
+            synchronousResult = exit
+          } else {
+            cleanup()
+            resume(exit as any)
+          }
+          return
         }
         out[i] = exit.value
         if (done === fibers.length) {
-          resume(succeed(out))
+          if (registering) {
+            synchronousResult = succeed(out)
+          } else {
+            resume(succeed(out))
+          }
         }
-      }))
+      })
+      if (cleaned) {
+        cancel()
+      } else {
+        cancels.push(cancel)
+      }
     }
+    registering = false
+    if (synchronousResult !== undefined) {
+      cleanup()
+      resume(synchronousResult)
+    }
+    return sync(cleanup)
   })
 
 /** @internal */
