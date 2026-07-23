@@ -148,7 +148,7 @@ export const renderMarkdownReport = (diff: ApiDiff): string => {
     }
   }
   if (suggested.length > 0) {
-    lines.push("## Suggested matches requiring review", "")
+    lines.push("## Suggested replacements for removed APIs", "")
     for (const change of suggested) {
       lines.push(...renderChange(change, 3))
     }

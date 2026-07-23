@@ -27,6 +27,10 @@ The command writes:
 - `diff.json`
 - `report.md`
 
+Unmatched APIs are reported as removals from the base and additions in the
+head. Likely replacements are reported separately for review, including
+cross-module moves and the paired type/value facets of class-style APIs.
+
 Regenerate the human-readable migration map after changing its JSON source:
 
 ```sh

@@ -85,12 +85,105 @@ describe("snapshot diff", () => {
     assert(diff.changes.some((change) => change.classification === "parameter-added"))
     assert(diff.changes.some((change) => change.classification === "return-type-changed"))
     assert(diff.changes.some((change) => change.baseApiId?.includes("similarName") && !change.authoritative))
-    assert(diff.changes.some((change) => change.classification === "api-removed"))
-    assert(diff.changes.some((change) => change.classification === "api-added"))
+    assert(
+      diff.changes.some((change) =>
+        change.classification === "api-removed" && change.baseApiId?.includes("similarName")
+      )
+    )
+    assert(
+      diff.changes.some((change) => change.classification === "api-added" && change.headApiId?.includes("similarNames"))
+    )
     const report = renderMarkdownReport(diff)
-    assert(report.includes("Suggested matches requiring review"))
+    assert(report.includes("Suggested replacements for removed APIs"))
     assert(report.includes(base.sha))
     assert.deepStrictEqual(diff, diffSnapshots(base, head, mapping, []))
+  })
+
+  it("suggests replacements across modules and preserves class facets", () => {
+    const variable = (name: string): DeclarationModel => ({
+      kind: "variable",
+      name,
+      type: { kind: "primitive", name: "unknown" }
+    })
+    const serviceInterface = (name: string, extraMember?: string): DeclarationModel => ({
+      kind: "interface",
+      name,
+      members: [
+        {
+          kind: "method",
+          name: "context",
+          parameters: [],
+          returnType: { kind: "primitive", name: "unknown" }
+        },
+        {
+          kind: "method",
+          name: "of",
+          parameters: [],
+          returnType: { kind: "primitive", name: "unknown" }
+        },
+        ...(extraMember === undefined
+          ? []
+          : [{
+            kind: "method",
+            name: extraMember,
+            parameters: [],
+            returnType: { kind: "primitive", name: "unknown" }
+          }])
+      ]
+    })
+    const withBucket = (api: ApiEntity, bucket: ApiEntity["bucket"]): ApiEntity => ({
+      ...api,
+      id: `${api.module}#${api.path.join(".")}#${bucket}`,
+      bucket
+    })
+    const effectService = {
+      ...entity("effect/Effect", "Service", variable("Service"), "effect-service"),
+      documentation: {
+        summary: "Creates a Context Tag and Layer for a service.",
+        stability: "stable" as const
+      }
+    }
+    const contextTagValue = entity("effect/Context", "Tag", variable("Tag"), "tag-value")
+    const contextTagType = withBucket(
+      entity("effect/Context", "Tag", serviceInterface("Tag"), "tag-type"),
+      "type"
+    )
+    const contextServiceValue = entity("effect/Context", "Service", variable("Service"), "service-value")
+    const contextServiceType = withBucket(
+      entity("effect/Context", "Service", serviceInterface("Service", "use"), "service-type"),
+      "type"
+    )
+    const layerMapService = entity("effect/LayerMap", "Service", variable("Service"), "layer-map-service")
+    const diff = diffSnapshots(
+      snapshot("a", [effectService, contextTagType, contextTagValue]),
+      snapshot("b", [contextServiceType, contextServiceValue, layerMapService]),
+      {
+        version: 1,
+        modules: [
+          { from: "effect/Effect", to: ["effect/Effect"], status: "unchanged" },
+          { from: "effect/Context", to: ["effect/Context"], status: "unchanged" },
+          { from: "effect/LayerMap", to: ["effect/LayerMap"], status: "unchanged" }
+        ],
+        apis: []
+      },
+      []
+    )
+    const suggestions = diff.changes.filter((change) => !change.authoritative)
+    assert(suggestions.some((change) =>
+      change.baseApiId === "effect/Effect#Service#value" &&
+      change.headApiId === "effect/Context#Service#value"
+    ))
+    assert(suggestions.some((change) =>
+      change.baseApiId === "effect/Context#Tag#type" &&
+      change.headApiId === "effect/Context#Service#type"
+    ))
+    assert(suggestions.some((change) =>
+      change.baseApiId === "effect/Context#Tag#value" &&
+      change.headApiId === "effect/Context#Service#value"
+    ))
+    assert(!suggestions.some((change) => change.headApiId === "effect/LayerMap#Service#value"))
+    assert.strictEqual(diff.changes.filter((change) => change.classification === "api-removed").length, 3)
+    assert.strictEqual(diff.changes.filter((change) => change.classification === "api-added").length, 3)
   })
 
   it("classifies overload and parameter reordering", () => {

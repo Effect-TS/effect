@@ -21,6 +21,12 @@ interface Match {
   readonly note?: string
 }
 
+interface ApiGroup {
+  readonly module: string
+  readonly path: ReadonlyArray<string>
+  readonly entities: ReadonlyArray<ApiEntity>
+}
+
 const targetEntities = (
   snapshot: ApiSnapshot,
   target: {
@@ -57,6 +63,119 @@ const levenshtein = (left: string, right: string): number => {
 const nameSimilarity = (left: string, right: string): number => {
   const length = Math.max(left.length, right.length)
   return length === 0 ? 1 : 1 - levenshtein(left.toLowerCase(), right.toLowerCase()) / length
+}
+
+const entityFeatureCache = new WeakMap<ApiEntity, ReadonlySet<string>>()
+
+const entityFeatures = (entity: ApiEntity): ReadonlySet<string> => {
+  const cached = entityFeatureCache.get(entity)
+  if (cached !== undefined) {
+    return cached
+  }
+  const features = new Set<string>()
+  for (const declaration of entity.declarations) {
+    features.add(`declaration:${declaration.kind}`)
+    for (const member of declaration.members ?? []) {
+      features.add(`member:${member.kind}:${member.name}`)
+    }
+  }
+  entityFeatureCache.set(entity, features)
+  return features
+}
+
+const setSimilarity = (left: ReadonlySet<string>, right: ReadonlySet<string>): number => {
+  if (left.size === 0 && right.size === 0) {
+    return 1
+  }
+  let shared = 0
+  for (const value of left) {
+    if (right.has(value)) {
+      shared++
+    }
+  }
+  return shared / (left.size + right.size - shared)
+}
+
+const documentationTokenCache = new WeakMap<ApiEntity, ReadonlySet<string>>()
+
+const documentationTokens = (entity: ApiEntity): ReadonlySet<string> => {
+  const cached = documentationTokenCache.get(entity)
+  if (cached !== undefined) {
+    return cached
+  }
+  const tokens = new Set(
+    (entity.documentation.summary ?? "")
+      .toLowerCase()
+      .match(/[a-z][a-z0-9]+/g)
+      ?.filter((token) => token.length >= 4) ?? []
+  )
+  documentationTokenCache.set(entity, tokens)
+  return tokens
+}
+
+const groupEntities = (entities: Iterable<ApiEntity>): ReadonlyArray<ApiGroup> => {
+  const groups = new Map<string, Array<ApiEntity>>()
+  for (const entity of entities) {
+    const key = `${entity.module}#${entity.path.join(".")}`
+    const group = groups.get(key)
+    if (group === undefined) {
+      groups.set(key, [entity])
+    } else {
+      group.push(entity)
+    }
+  }
+  return [...groups.values()].map((group) => ({
+    module: group[0]!.module,
+    path: group[0]!.path,
+    entities: group.sort((left, right) => left.bucket.localeCompare(right.bucket))
+  }))
+}
+
+const groupName = (group: ApiGroup): string => group.path.at(-1) ?? ""
+
+const groupSimilarity = (
+  base: ApiGroup,
+  head: ApiGroup,
+  mappedModules: ReadonlySet<string>
+): number => {
+  const facets = base.entities.flatMap((baseEntity) => {
+    const headEntity = head.entities.find((candidate) => candidate.bucket === baseEntity.bucket)
+    return headEntity === undefined ? [] : [{ base: baseEntity, head: headEntity }]
+  })
+  if (facets.length === 0) {
+    return 0
+  }
+  const sameKind = facets.filter(({ base, head }) => base.declarationKind === head.declarationKind).length /
+    facets.length
+  const structure = facets.reduce(
+    (total, { base, head }) => total + setSimilarity(entityFeatures(base), entityFeatures(head)),
+    0
+  ) / facets.length
+  const documentation = facets.reduce(
+    (total, { base, head }) => total + setSimilarity(documentationTokens(base), documentationTokens(head)),
+    0
+  ) / facets.length
+  const sameCategory = facets.some(({ base, head }) =>
+    base.documentation.category !== undefined &&
+    base.documentation.category === head.documentation.category
+  )
+  const headModuleName = head.module.split("/").at(-1)?.toLowerCase()
+  const mentionsHeadModule = headModuleName !== undefined &&
+    facets.some(({ base }) => documentationTokens(base).has(headModuleName))
+  const moduleScore = base.module === head.module ? 0.25 : mappedModules.has(head.module) ? 0.15 : 0
+  const packageScore = base.entities[0]!.packageName === head.entities[0]!.packageName ? 0.05 : 0
+  return Math.min(
+    0.99,
+    0.2 * nameSimilarity(groupName(base), groupName(head)) +
+      (groupName(base) === groupName(head) ? 0.15 : 0) +
+      moduleScore +
+      packageScore +
+      0.15 * sameKind +
+      0.15 * structure +
+      0.025 * documentation +
+      (sameCategory ? 0.05 : 0) +
+      (mentionsHeadModule ? 0.075 : 0)
+  )
 }
 
 const changeId = (
@@ -316,6 +435,7 @@ export const diffSnapshots = (
   const unmatchedBase = new Map(base.entities.map((entity) => [entity.id, entity]))
   const unmatchedHead = new Map(head.entities.map((entity) => [entity.id, entity]))
   const matches: Array<Match> = []
+  const suggestedMatches: Array<Match> = []
 
   const addMatch = (
     baseEntity: ApiEntity | undefined,
@@ -398,34 +518,48 @@ export const diffSnapshots = (
     }
   }
 
-  for (const moduleMapping of mapping.modules) {
-    if (moduleMapping.from === undefined) {
+  const explicitlyRemoved = new Set(
+    mapping.apis
+      .filter((entry) => entry.to === null)
+      .flatMap((entry) => targetEntities(base, entry.from).map((entity) => entity.id))
+  )
+  const headGroups = groupEntities(unmatchedHead.values())
+  for (const baseGroup of groupEntities(unmatchedBase.values())) {
+    if (baseGroup.entities.every((entity) => explicitlyRemoved.has(entity.id))) {
       continue
     }
-    const bases = [...unmatchedBase.values()].filter((entity) => entity.module === moduleMapping.from)
-    const heads = [...unmatchedHead.values()].filter((entity) => moduleMapping.to.includes(entity.module))
-    for (const baseEntity of bases) {
-      const ranked = heads
-        .filter((entity) => entity.bucket === baseEntity.bucket && unmatchedHead.has(entity.id))
-        .map((entity) => {
-          const sameKind = entity.declarationKind === baseEntity.declarationKind ? 0.15 : 0
-          const sameFingerprint = entity.fingerprint === baseEntity.fingerprint ? 0.5 : 0
-          const score = Math.min(
-            0.99,
-            0.35 * nameSimilarity(pathName(baseEntity), pathName(entity)) + sameKind +
-              sameFingerprint
-          )
-          return { entity, score }
-        })
-        .sort((left, right) => right.score - left.score || left.entity.id.localeCompare(right.entity.id))
-      const best = ranked[0]
-      const next = ranked[1]
-      if (best !== undefined && best.score >= 0.45 && (next === undefined || best.score - next.score >= 0.08)) {
-        addMatch(baseEntity, best.entity, {
+    const mappedModules = new Set(
+      mapping.modules
+        .filter((entry) => entry.from === baseGroup.module)
+        .flatMap((entry) => entry.to)
+    )
+    const ranked = headGroups
+      .filter((group) =>
+        groupName(group) === groupName(baseGroup) ||
+        group.module === baseGroup.module ||
+        mappedModules.has(group.module)
+      )
+      .map((group) => ({ group, score: groupSimilarity(baseGroup, group, mappedModules) }))
+      .filter(({ score }) => score > 0)
+      .sort((left, right) =>
+        right.score - left.score ||
+        left.group.module.localeCompare(right.group.module) ||
+        left.group.path.join(".").localeCompare(right.group.path.join("."))
+      )
+    const best = ranked[0]
+    const next = ranked[1]
+    if (best === undefined || best.score < 0.5 || (next !== undefined && best.score - next.score < 0.05)) {
+      continue
+    }
+    for (const baseEntity of baseGroup.entities) {
+      const headEntity = best.group.entities.find((candidate) => candidate.bucket === baseEntity.bucket)
+      if (headEntity !== undefined && !explicitlyRemoved.has(baseEntity.id)) {
+        suggestedMatches.push({
+          base: baseEntity,
+          head: headEntity,
           confidence: Number(best.score.toFixed(3)),
           authoritative: false,
-          mapping: moduleMapping,
-          note: "Suggested match; requires review"
+          note: "Suggested replacement for removed API; requires review"
         })
       }
     }
@@ -438,6 +572,12 @@ export const diffSnapshots = (
       changes.push(movement)
     }
     changes.push(...classifyStructure(match))
+  }
+  for (const match of suggestedMatches) {
+    const movement = movementChange(match)
+    if (movement !== undefined) {
+      changes.push(movement)
+    }
   }
   for (const entity of unmatchedBase.values()) {
     changes.push(makeChange("api-removed", {
