@@ -1,7 +1,7 @@
 // @effect-diagnostics floatingEffect:skip-file
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Stdio } from "effect"
-import { CliError, CliOutput, Command, Flag } from "effect/unstable/cli"
+import { Argument, CliError, CliOutput, Command, Flag } from "effect/unstable/cli"
 import { toImpl } from "effect/unstable/cli/internal/command"
 import * as Lexer from "effect/unstable/cli/internal/lexer"
 import * as Parser from "effect/unstable/cli/internal/parser"
@@ -114,6 +114,57 @@ describe("Command errors", () => {
         assert.strictEqual(error.subcommand, "deplyo")
         assert.isTrue(error.suggestions.includes("deploy"))
       }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("fails with UnexpectedArgument when a bounded variadic leaves operands", () =>
+      Effect.gen(function*() {
+        const command = Command.make("test", {
+          values: Argument.string("value").pipe(Argument.variadic({ max: 2 }))
+        })
+
+        const parsedInput = yield* Parser.parseArgs(
+          Lexer.lex(["one", "two", "three"]),
+          command
+        )
+        const error = yield* Effect.flip(toImpl(command).parse(parsedInput))
+
+        assert.instanceOf(error, CliError.UnexpectedArgument)
+        assert.deepStrictEqual(error.arguments, ["three"])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("allows a bounded variadic to leave an operand for a following argument", () =>
+      Effect.gen(function*() {
+        const command = Command.make("test", {
+          values: Argument.string("value").pipe(Argument.variadic({ max: 2 })),
+          destination: Argument.string("destination")
+        })
+
+        const parsedInput = yield* Parser.parseArgs(
+          Lexer.lex(["one", "two", "destination"]),
+          command
+        )
+        const result = yield* toImpl(command).parse(parsedInput)
+
+        assert.deepStrictEqual(result, {
+          values: ["one", "two"],
+          destination: "destination"
+        })
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("fails with UnexpectedArgument when a fixed argument leaves operands", () =>
+      Effect.gen(function*() {
+        const command = Command.make("test", {
+          value: Argument.string("value")
+        })
+
+        const parsedInput = yield* Parser.parseArgs(
+          Lexer.lex(["one", "two"]),
+          command
+        )
+        const error = yield* Effect.flip(toImpl(command).parse(parsedInput))
+
+        assert.instanceOf(error, CliError.UnexpectedArgument)
+        assert.deepStrictEqual(error.arguments, ["two"])
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("formatErrors", () => {
@@ -201,6 +252,20 @@ describe("Command errors", () => {
         error.message,
         `Missing value for flag --count. Expected a string representing a finite number, got ""`
       )
+    })
+  })
+
+  describe("UnexpectedArgument", () => {
+    it("formats one or more unexpected positional arguments", () => {
+      const single = new CliError.UnexpectedArgument({
+        arguments: ["extra"]
+      })
+      const multiple = new CliError.UnexpectedArgument({
+        arguments: ["first", "second"]
+      })
+
+      assert.strictEqual(single.message, `Unexpected positional argument: "extra"`)
+      assert.strictEqual(multiple.message, `Unexpected positional arguments: "first", "second"`)
     })
   })
 })

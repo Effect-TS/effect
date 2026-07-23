@@ -852,7 +852,7 @@ export const withSharedFlags: {
     type NextInput = Simplify<Input & SharedInput>
     type NextContextInput = Simplify<ContextInput & SharedInput>
 
-    const parseShared = makeParser(sharedConfig) as (
+    const parseShared = makeParser(sharedConfig, { allowLeftovers: true }) as (
       input: ParsedTokens
     ) => Effect.Effect<SharedInput, CliError.CliError, Environment>
 
