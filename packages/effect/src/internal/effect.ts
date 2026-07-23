@@ -5233,7 +5233,7 @@ export const awaitAllChildren = <A, E, R>(
   self: Effect.Effect<A, E, R>
 ): Effect.Effect<A, E, R> =>
   withFiber((fiber) => {
-    const initialChildren = fiber._children && Arr.fromIterable(fiber._children)
+    const initialChildren = fiber._children && new Set(fiber._children)
     return onExit(
       self,
       (_) => {
@@ -5243,7 +5243,7 @@ export const awaitAllChildren = <A, E, R>(
         } else if (initialChildren) {
           children = Iterable.filter(
             children,
-            (child: FiberImpl<any, any>) => !initialChildren.includes(child)
+            (child: FiberImpl<any, any>) => !initialChildren.has(child)
           ) as Set<FiberImpl<any, any>>
         }
         return asVoid(fiberAwaitAll(children))
