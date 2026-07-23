@@ -1,8 +1,7 @@
+import * as Schema from "effect/Schema"
 import { createHash } from "node:crypto"
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname } from "node:path"
 
-export const readJson = (path: string): unknown => JSON.parse(readFileSync(path, "utf8"))
+export const decodeJson = Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)
 
 export const stableJson = (value: unknown): string => {
   const visit = (input: unknown): unknown => {
@@ -24,7 +23,4 @@ export const stableJson = (value: unknown): string => {
 
 export const fingerprint = (value: unknown): string => createHash("sha256").update(stableJson(value)).digest("hex")
 
-export const writeJson = (path: string, value: unknown): void => {
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
-}
+export const prettyJson = (value: unknown): string => `${JSON.stringify(value, null, 2)}\n`

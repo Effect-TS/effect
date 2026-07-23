@@ -1,7 +1,8 @@
-import { mkdirSync, writeFileSync } from "node:fs"
-import { join } from "node:path"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Path from "effect/Path"
 
-export const writeFixturePackage = (
+export const writeFixturePackage = Effect.fnUntraced(function*(
   repoRoot: string,
   files: Readonly<Record<string, string>>,
   exports: Readonly<Record<string, unknown>> = {
@@ -9,11 +10,13 @@ export const writeFixturePackage = (
     "./*": "./*.js",
     "./internal/*": null
   }
-): void => {
-  const root = join(repoRoot, "packages", "sample", "dist")
-  mkdirSync(root, { recursive: true })
-  writeFileSync(
-    join(root, "package.json"),
+) {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const root = path.join(repoRoot, "packages", "sample", "dist")
+  yield* fs.makeDirectory(root, { recursive: true })
+  yield* fs.writeFileString(
+    path.join(root, "package.json"),
     `${
       JSON.stringify(
         {
@@ -27,8 +30,8 @@ export const writeFixturePackage = (
     }\n`
   )
   for (const [name, source] of Object.entries(files)) {
-    const path = join(root, name)
-    mkdirSync(join(path, ".."), { recursive: true })
-    writeFileSync(path, source)
+    const location = path.join(root, name)
+    yield* fs.makeDirectory(path.dirname(location), { recursive: true })
+    yield* fs.writeFileString(location, source)
   }
-}
+})

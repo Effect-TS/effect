@@ -1,10 +1,16 @@
-export type Bucket = "type" | "value"
+import * as Schema from "effect/Schema"
 
-export interface SourceLocation {
-  readonly file: string
-  readonly line: number
-  readonly column: number
-}
+export const Bucket = Schema.Literals(["type", "value"])
+
+export type Bucket = typeof Bucket.Type
+
+export const SourceLocation = Schema.Struct({
+  file: Schema.String,
+  line: Schema.Number,
+  column: Schema.Number
+})
+
+export type SourceLocation = typeof SourceLocation.Type
 
 export interface Documentation {
   readonly summary?: string | undefined
@@ -74,13 +80,15 @@ export interface Entrypoint {
   readonly declarationFile: string
 }
 
-export interface SnapshotDiagnostic {
-  readonly code: string
-  readonly message: string
-  readonly module?: string | undefined
-  readonly path?: ReadonlyArray<string> | undefined
-  readonly source?: SourceLocation | undefined
-}
+export const SnapshotDiagnostic = Schema.Struct({
+  code: Schema.String,
+  message: Schema.String,
+  module: Schema.optional(Schema.String),
+  path: Schema.optional(Schema.Array(Schema.String)),
+  source: Schema.optional(SourceLocation)
+})
+
+export type SnapshotDiagnostic = typeof SnapshotDiagnostic.Type
 
 export interface ApiSnapshot {
   readonly version: 1
@@ -96,35 +104,45 @@ export interface ApiSnapshot {
   readonly diagnostics: ReadonlyArray<SnapshotDiagnostic>
 }
 
-export type ModuleStatus = "added" | "moved" | "removed" | "split" | "consolidated" | "unchanged"
+export const ModuleStatus = Schema.Literals(["added", "moved", "removed", "split", "consolidated", "unchanged"])
 
-export interface ModuleMapping {
-  readonly from?: string | undefined
-  readonly to: ReadonlyArray<string>
-  readonly status: ModuleStatus
-  readonly barrels?: ReadonlyArray<string> | undefined
-  readonly guide?: string | undefined
-  readonly note?: string | undefined
-}
+export type ModuleStatus = typeof ModuleStatus.Type
 
-export interface ApiTarget {
-  readonly module: string
-  readonly path: ReadonlyArray<string>
-  readonly bucket?: Bucket | undefined
-}
+export const ModuleMapping = Schema.Struct({
+  from: Schema.optional(Schema.String),
+  to: Schema.Array(Schema.String),
+  status: ModuleStatus,
+  barrels: Schema.optional(Schema.Array(Schema.String)),
+  guide: Schema.optional(Schema.String),
+  note: Schema.optional(Schema.String)
+})
 
-export interface ApiMapping {
-  readonly from: ApiTarget
-  readonly to: ApiTarget | null
-  readonly guide?: string | undefined
-  readonly note?: string | undefined
-}
+export type ModuleMapping = typeof ModuleMapping.Type
 
-export interface MigrationMap {
-  readonly version: 1
-  readonly modules: ReadonlyArray<ModuleMapping>
-  readonly apis: ReadonlyArray<ApiMapping>
-}
+export const ApiTarget = Schema.Struct({
+  module: Schema.String,
+  path: Schema.Array(Schema.String),
+  bucket: Schema.optional(Bucket)
+})
+
+export type ApiTarget = typeof ApiTarget.Type
+
+export const ApiMapping = Schema.Struct({
+  from: ApiTarget,
+  to: Schema.NullOr(ApiTarget),
+  guide: Schema.optional(Schema.String),
+  note: Schema.optional(Schema.String)
+})
+
+export type ApiMapping = typeof ApiMapping.Type
+
+export const MigrationMap = Schema.Struct({
+  version: Schema.Literal(1),
+  modules: Schema.Array(ModuleMapping),
+  apis: Schema.Array(ApiMapping)
+})
+
+export type MigrationMap = typeof MigrationMap.Type
 
 export interface MappingDiagnostic {
   readonly severity: "error" | "warning"

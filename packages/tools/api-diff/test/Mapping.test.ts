@@ -1,9 +1,10 @@
-import { parseMigrationMap, renderMigrationMarkdown, validateMigrationMap } from "@effect/api-diff/Mapping"
+import { decodeMigrationMap, renderMigrationMarkdown, validateMigrationMap } from "@effect/api-diff/Mapping"
 import type { MigrationMap } from "@effect/api-diff/Model"
+import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs"
-import { tmpdir } from "node:os"
-import { join } from "node:path"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Path from "effect/Path"
 
 const mapping: MigrationMap = {
   version: 1,
@@ -67,30 +68,33 @@ describe("migration mapping", () => {
   })
 
   it("detects the conflicting catchSome guide", () => {
-    const root = mkdtempSync(join(tmpdir(), "api-diff-mapping-"))
-    writeFileSync(join(root, "guide.md"), "| `Effect.catchSome` | `Effect.catchIf` |\n")
     const diagnostics = validateMigrationMap({
       ...mapping,
       apis: [{
         ...mapping.apis[0]!,
         guide: "guide.md"
       }]
-    }, { repoRoot: root })
+    }, {
+      guideSources: new Map([["guide.md", "| `Effect.catchSome` | `Effect.catchIf` |\n"]])
+    })
     assert(diagnostics.some((diagnostic) => diagnostic.code === "contradictory-guide"))
   })
 
-  it("keeps the repository Markdown generated from the structured map", () => {
-    const jsonUrl = new URL("../../../../migration/v3-to-v4.json", import.meta.url)
-    const markdownUrl = new URL("../../../../migration/v3-to-v4.md", import.meta.url)
-    const parsed = parseMigrationMap(jsonUrl.pathname)
-    assert.strictEqual(renderMigrationMarkdown(parsed), readFileSync(markdownUrl, "utf8"))
-    assert.strictEqual(validateMigrationMap(parsed).length, 0)
-    const catchSome = parsed.apis.find((entry) =>
-      entry.from.module === "effect/Effect" && entry.from.path.join(".") === "catchSome"
-    )
-    assert.deepStrictEqual(catchSome?.to, {
-      module: "effect/Effect",
-      path: ["catchFilter"]
-    })
-  })
+  it.effect("keeps the repository Markdown generated from the structured map", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const path = yield* Path.Path
+      const jsonPath = yield* path.fromFileUrl(new URL("../../../../migration/v3-to-v4.json", import.meta.url))
+      const markdownPath = yield* path.fromFileUrl(new URL("../../../../migration/v3-to-v4.md", import.meta.url))
+      const parsed = yield* decodeMigrationMap(yield* fs.readFileString(jsonPath))
+      assert.strictEqual(renderMigrationMarkdown(parsed), yield* fs.readFileString(markdownPath))
+      assert.strictEqual(validateMigrationMap(parsed).length, 0)
+      const catchSome = parsed.apis.find((entry) =>
+        entry.from.module === "effect/Effect" && entry.from.path.join(".") === "catchSome"
+      )
+      assert.deepStrictEqual(catchSome?.to, {
+        module: "effect/Effect",
+        path: ["catchFilter"]
+      })
+    }).pipe(Effect.provide(NodeServices.layer)))
 })

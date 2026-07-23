@@ -1,8 +1,13 @@
-import { createHash } from "node:crypto"
-import { relative, sep } from "node:path"
+import * as Context from "effect/Context"
+import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
+import * as Path from "effect/Path"
+import * as Schema from "effect/Schema"
 import ts from "typescript-compiler"
-import { discoverEntrypoints } from "./Discovery.ts"
+import { Discovery, type DiscoveryResult } from "./Discovery.ts"
+import { ApiDiffError } from "./Error.ts"
 import { fingerprint, stableJson } from "./Json.ts"
+import { SnapshotDiagnostic as SnapshotDiagnosticSchema } from "./Model.ts"
 import type {
   ApiEntity,
   ApiSnapshot,
@@ -20,18 +25,20 @@ import type {
 
 interface SerializationContext {
   readonly checker: ts.TypeChecker
+  readonly path: Path.Path
   readonly repoRoot: string
   readonly typeParameters: ReadonlyMap<string, string>
   readonly publicSymbols: ReadonlyMap<string, string>
 }
 
-const normalizedPath = (root: string, path: string): string => relative(root, path).split(sep).join("/")
+const normalizedPath = (path: Path.Path, root: string, location: string): string =>
+  path.relative(root, location).split(path.sep).join("/")
 
-const sourceLocation = (root: string, node: ts.Node): SourceLocation => {
+const sourceLocation = (path: Path.Path, root: string, node: ts.Node): SourceLocation => {
   const source = node.getSourceFile()
   const position = source.getLineAndCharacterOfPosition(node.getStart(source, false))
   return {
-    file: normalizedPath(root, source.fileName),
+    file: normalizedPath(path, root, source.fileName),
     line: position.line + 1,
     column: position.character + 1
   }
@@ -83,14 +90,15 @@ const referenceResolution = (name: ts.EntityName, context: SerializationContext)
     return { apiId: publicApiId }
   }
   const file = declaration.getSourceFile().fileName
-  const nodeModules = file.lastIndexOf(`${sep}node_modules${sep}`)
+  const separator = context.path.sep
+  const nodeModules = file.lastIndexOf(`${separator}node_modules${separator}`)
   if (nodeModules !== -1) {
-    const remainder = file.slice(nodeModules + `${sep}node_modules${sep}`.length).split(sep)
+    const remainder = file.slice(nodeModules + `${separator}node_modules${separator}`.length).split(separator)
     return {
       externalPackage: remainder[0]?.startsWith("@") ? remainder.slice(0, 2).join("/") : remainder[0]
     }
   }
-  return { declaration: normalizedPath(context.repoRoot, file) }
+  return { declaration: normalizedPath(context.path, context.repoRoot, file) }
 }
 
 const primitiveKinds = new Map<ts.SyntaxKind, string>([
@@ -693,25 +701,32 @@ export interface ExtractSnapshotOptions {
   readonly modules: ReadonlyArray<string>
 }
 
-export class SnapshotExtractionError extends Error {
-  readonly diagnostics: ReadonlyArray<SnapshotDiagnostic>
-
-  constructor(diagnostics: ReadonlyArray<SnapshotDiagnostic>) {
-    super(diagnostics.map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`).join("\n"))
-    this.name = "SnapshotExtractionError"
-    this.diagnostics = diagnostics
+export class SnapshotExtractionError extends Schema.TaggedErrorClass<SnapshotExtractionError>()(
+  "SnapshotExtractionError",
+  {
+    message: Schema.String,
+    diagnostics: Schema.Array(SnapshotDiagnosticSchema)
   }
-}
+) {}
 
-export const extractSnapshot = (options: ExtractSnapshotOptions): ApiSnapshot => {
-  const discovered = discoverEntrypoints(options.repoRoot, options.modules)
+const snapshotExtractionError = (diagnostics: ReadonlyArray<SnapshotDiagnostic>): SnapshotExtractionError =>
+  new SnapshotExtractionError({
+    message: diagnostics.map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`).join("\n"),
+    diagnostics
+  })
+
+const extractSnapshot = (
+  options: ExtractSnapshotOptions,
+  discovered: DiscoveryResult,
+  path: Path.Path
+): ApiSnapshot => {
   const diagnostics: Array<SnapshotDiagnostic> = discovered.missing.map((module) => ({
     code: "missing-entrypoint",
     message: `Consumer-visible declaration entrypoint not found: ${module}`,
     module
   }))
   if (diagnostics.length > 0) {
-    throw new SnapshotExtractionError(diagnostics)
+    throw snapshotExtractionError(diagnostics)
   }
   const program = ts.createProgram({
     rootNames: discovered.entrypoints.map((entrypoint) => entrypoint.declarationFile),
@@ -729,12 +744,12 @@ export const extractSnapshot = (options: ExtractSnapshotOptions): ApiSnapshot =>
   const compilerDiagnostics = program.getSyntacticDiagnostics()
     .filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error)
   if (compilerDiagnostics.length > 0) {
-    throw new SnapshotExtractionError(compilerDiagnostics.map((diagnostic) => ({
+    throw snapshotExtractionError(compilerDiagnostics.map((diagnostic) => ({
       code: `typescript-${diagnostic.code}`,
       message: ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
       source: diagnostic.file === undefined
         ? undefined
-        : sourceLocation(options.repoRoot, diagnostic.file)
+        : sourceLocation(path, options.repoRoot, diagnostic.file)
     })))
   }
   const checker = program.getTypeChecker()
@@ -770,6 +785,7 @@ export const extractSnapshot = (options: ExtractSnapshotOptions): ApiSnapshot =>
       serialized = pendingEntity.declarations.map((node) =>
         serializeDeclaration(node, {
           checker,
+          path,
           repoRoot: options.repoRoot,
           typeParameters: new Map(),
           publicSymbols
@@ -781,7 +797,7 @@ export const extractSnapshot = (options: ExtractSnapshotOptions): ApiSnapshot =>
         message: error instanceof Error ? error.message : String(error),
         module: route.module,
         path: route.path,
-        source: sourceLocation(options.repoRoot, declaration)
+        source: sourceLocation(path, options.repoRoot, declaration)
       })
       continue
     }
@@ -800,11 +816,11 @@ export const extractSnapshot = (options: ExtractSnapshotOptions): ApiSnapshot =>
       displaySignature: displayDeclarations(pendingEntity.declarations),
       fingerprint: fingerprintDeclarations(serialized),
       documentation: documentation(pendingEntity.symbol, checker, route.module),
-      source: sourceLocation(options.repoRoot, declaration)
+      source: sourceLocation(path, options.repoRoot, declaration)
     })
   }
   if (diagnostics.length > 0) {
-    throw new SnapshotExtractionError(diagnostics)
+    throw snapshotExtractionError(diagnostics)
   }
 
   const packages = [...new Set(discovered.entrypoints.map((entrypoint) => entrypoint.packageName))].sort()
@@ -816,7 +832,7 @@ export const extractSnapshot = (options: ExtractSnapshotOptions): ApiSnapshot =>
     packages,
     entrypoints: discovered.entrypoints.map((entrypoint) => ({
       ...entrypoint,
-      declarationFile: normalizedPath(options.repoRoot, entrypoint.declarationFile)
+      declarationFile: normalizedPath(path, options.repoRoot, entrypoint.declarationFile)
     })),
     entities: entities.sort((left, right) => left.id.localeCompare(right.id)),
     diagnostics: []
@@ -826,7 +842,39 @@ export const extractSnapshot = (options: ExtractSnapshotOptions): ApiSnapshot =>
 export const snapshotCacheKey = (
   sha: string,
   modules: ReadonlyArray<string>
-): string =>
-  createHash("sha256")
-    .update(`snapshot-v3\0${sha}\0${ts.version}\0${[...modules].sort().join("\0")}`)
-    .digest("hex")
+): string => fingerprint(["snapshot-v3", sha, ts.version, [...modules].sort()])
+
+export class Snapshotter extends Context.Service<Snapshotter, {
+  readonly extract: (options: ExtractSnapshotOptions) => Effect.Effect<
+    ApiSnapshot,
+    ApiDiffError | SnapshotExtractionError
+  >
+}>()("@effect/api-diff/Snapshotter") {
+  static readonly layerNoDependencies = Layer.effect(
+    Snapshotter,
+    Effect.gen(function*() {
+      const discovery = yield* Discovery
+      const path = yield* Path.Path
+
+      const extract = Effect.fnUntraced(function*(options: ExtractSnapshotOptions) {
+        const discovered = yield* discovery.discoverEntrypoints(options.repoRoot, options.modules)
+        return yield* Effect.try({
+          try: () => extractSnapshot(options, discovered, path),
+          catch: (cause) =>
+            cause instanceof SnapshotExtractionError
+              ? cause
+              : new ApiDiffError({
+                message: `Could not extract the API snapshot for ${options.ref}`,
+                cause
+              })
+        })
+      })
+
+      return Snapshotter.of({ extract })
+    })
+  )
+
+  static readonly layer = this.layerNoDependencies.pipe(
+    Layer.provide(Discovery.layer)
+  )
+}

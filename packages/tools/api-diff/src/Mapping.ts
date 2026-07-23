@@ -1,52 +1,8 @@
-import { existsSync, readFileSync } from "node:fs"
-import { resolve } from "node:path"
-import { readJson } from "./Json.ts"
-import type { ApiMapping, ApiSnapshot, ApiTarget, MappingDiagnostic, MigrationMap, ModuleMapping } from "./Model.ts"
+import * as Schema from "effect/Schema"
+import type { ApiMapping, ApiSnapshot, ApiTarget, MappingDiagnostic, ModuleMapping } from "./Model.ts"
+import { MigrationMap } from "./Model.ts"
 
-const isStringArray = (value: unknown): value is ReadonlyArray<string> =>
-  Array.isArray(value) && value.every((entry) => typeof entry === "string")
-
-const isTarget = (value: unknown): value is ApiTarget =>
-  typeof value === "object" && value !== null &&
-  typeof Reflect.get(value, "module") === "string" &&
-  isStringArray(Reflect.get(value, "path")) &&
-  (Reflect.get(value, "bucket") === undefined ||
-    Reflect.get(value, "bucket") === "type" ||
-    Reflect.get(value, "bucket") === "value")
-
-export const parseMigrationMap = (path: string): MigrationMap => {
-  const value = readJson(path)
-  if (typeof value !== "object" || value === null || Reflect.get(value, "version") !== 1) {
-    throw new Error(`Unsupported migration map version in ${path}`)
-  }
-  const modules = Reflect.get(value, "modules")
-  const apis = Reflect.get(value, "apis")
-  if (!Array.isArray(modules) || !Array.isArray(apis)) {
-    throw new Error(`Migration map must contain modules and apis arrays: ${path}`)
-  }
-  for (const [index, module] of modules.entries()) {
-    if (
-      typeof module !== "object" || module === null ||
-      (Reflect.get(module, "from") !== undefined && typeof Reflect.get(module, "from") !== "string") ||
-      !isStringArray(Reflect.get(module, "to")) ||
-      !["added", "moved", "removed", "split", "consolidated", "unchanged"].includes(
-        String(Reflect.get(module, "status"))
-      )
-    ) {
-      throw new Error(`Invalid module mapping at modules[${index}]`)
-    }
-  }
-  for (const [index, api] of apis.entries()) {
-    if (
-      typeof api !== "object" || api === null ||
-      !isTarget(Reflect.get(api, "from")) ||
-      !(Reflect.get(api, "to") === null || isTarget(Reflect.get(api, "to")))
-    ) {
-      throw new Error(`Invalid API mapping at apis[${index}]`)
-    }
-  }
-  return value as unknown as MigrationMap
-}
+export const decodeMigrationMap = Schema.decodeUnknownEffect(Schema.fromJsonString(MigrationMap))
 
 const targetKey = (target: ApiTarget): string => `${target.module}#${target.path.join(".")}#${target.bucket ?? "*"}`
 
@@ -57,15 +13,14 @@ const entityMatchesTarget = (snapshot: ApiSnapshot, target: ApiTarget): number =
     (target.bucket === undefined || entity.bucket === target.bucket)
   ).length
 
-const linkedGuideMappings = (repoRoot: string, mapping: ApiMapping): ReadonlyArray<string> => {
-  if (mapping.guide === undefined) {
+const linkedGuideMappings = (
+  guideSources: ReadonlyMap<string, string>,
+  mapping: ApiMapping
+): ReadonlyArray<string> => {
+  if (mapping.guide === undefined || !guideSources.has(mapping.guide)) {
     return []
   }
-  const path = resolve(repoRoot, mapping.guide)
-  if (!existsSync(path)) {
-    return []
-  }
-  const source = readFileSync(path, "utf8")
+  const source = guideSources.get(mapping.guide)!
   const fromName = mapping.from.path.at(-1)
   if (fromName === undefined) {
     return []
@@ -83,7 +38,7 @@ const linkedGuideMappings = (repoRoot: string, mapping: ApiMapping): ReadonlyArr
 export interface ValidateMappingOptions {
   readonly base?: ApiSnapshot
   readonly head?: ApiSnapshot
-  readonly repoRoot?: string
+  readonly guideSources?: ReadonlyMap<string, string>
 }
 
 export const validateMigrationMap = (
@@ -164,8 +119,8 @@ export const validateMigrationMap = (
         })
       }
     }
-    if (options.repoRoot !== undefined && entry.to !== null) {
-      const documented = linkedGuideMappings(options.repoRoot, entry)
+    if (options.guideSources !== undefined && entry.to !== null) {
+      const documented = linkedGuideMappings(options.guideSources, entry)
       const expected = entry.to.path.join(".")
       for (const actual of documented) {
         if (actual !== expected && !actual.endsWith(`.${expected}`)) {
