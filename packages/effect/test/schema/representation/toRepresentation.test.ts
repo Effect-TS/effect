@@ -88,7 +88,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
 
   it("converts a literal", () => {
     assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Literal("value").ast), {
-      representation: { _tag: "Literal", literal: "value", checks: [] },
+      representation: { _tag: "Literal", literal: { type: "string", value: "value" }, checks: [] },
       references: {}
     })
   })
@@ -105,7 +105,10 @@ describe("SchemaRepresentation.toRepresentation", () => {
     assert.deepStrictEqual(SchemaRepresentation.toRepresentation(Schema.Enum({ A: "a", One: 1 }).ast), {
       representation: {
         _tag: "Enum",
-        enums: [["A", "a"], ["One", 1]],
+        enums: [
+          ["A", { type: "string", value: "a" }],
+          ["One", { type: "number", value: 1 }]
+        ],
         checks: []
       },
       references: {}
@@ -119,7 +122,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
         representation: {
           _tag: "TemplateLiteral",
           parts: [
-            { _tag: "Literal", literal: "prefix-", checks: [] },
+            { _tag: "Literal", literal: { type: "string", value: "prefix-" }, checks: [] },
             { _tag: "String", checks: [] },
             { _tag: "Number", checks: [] }
           ],
@@ -165,19 +168,19 @@ describe("SchemaRepresentation.toRepresentation", () => {
         _tag: "Objects",
         propertySignatures: [
           {
-            name: "required",
+            name: { type: "string", value: "required" },
             type: { _tag: "String", checks: [] },
             isOptional: false,
             isMutable: false
           },
           {
-            name: "optional",
+            name: { type: "string", value: "optional" },
             type: { _tag: "Number", checks: [] },
             isOptional: true,
             isMutable: false
           },
           {
-            name: "mutable",
+            name: { type: "string", value: "mutable" },
             type: { _tag: "Boolean", checks: [] },
             isOptional: false,
             isMutable: true
@@ -495,7 +498,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
       representation: {
         _tag: "Objects",
         propertySignatures: [{
-          name: "value",
+          name: { type: "string", value: "value" },
           type: { _tag: "String", checks: [] },
           isOptional: false,
           isMutable: false,
@@ -534,7 +537,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
         Objects_: {
           _tag: "Objects",
           propertySignatures: [{
-            name: "value",
+            name: { type: "string", value: "value" },
             type: { _tag: "String", checks: [] },
             isOptional: false,
             isMutable: false
@@ -554,7 +557,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
             {
               _tag: "Objects",
               propertySignatures: [{
-                name: "value",
+                name: { type: "string", value: "value" },
                 type: { _tag: "String", checks: [] },
                 isOptional: false,
                 isMutable: false
@@ -648,7 +651,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
           _tag: "Objects",
           annotations: { identifier: "Node" },
           propertySignatures: [{
-            name: "next",
+            name: { type: "string", value: "next" },
             type: {
               _tag: "Suspend",
               thunk: { _tag: "Reference", $ref: "Node" },

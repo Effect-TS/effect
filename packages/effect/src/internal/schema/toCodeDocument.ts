@@ -88,7 +88,7 @@ function toTypeParts(parts: ReadonlyArray<SchemaRepresentation.Representation>):
 function toTypePart(part: SchemaRepresentation.Representation): ReadonlyArray<string> {
   switch (part._tag) {
     case "Literal":
-      return [globalThis.String(part.literal)]
+      return [globalThis.String(part.literal.value)]
     case "String":
       return ["${string}"]
     case "Number":
@@ -461,7 +461,7 @@ export function toCodeDocument(
       case "Symbol":
         return makeCode("Schema.Symbol", "symbol")
       case "Literal": {
-        const literal = format(representation.literal)
+        const literal = format(representation.literal.value)
         return makeCode(`Schema.Literal(${literal})`, literal)
       }
       case "UniqueSymbol": {
@@ -477,7 +477,7 @@ export function toCodeDocument(
           identifier,
           code: makeCode(
             `enum ${identifier} { ${
-              representation.enums.map(([name, value]) => `${format(name)} = ${format(value)}`).join(
+              representation.enums.map(([name, value]) => `${format(name)} = ${format(value.value)}`).join(
                 ", "
               )
             } }`,
@@ -524,10 +524,10 @@ export function toCodeDocument(
       }
       case "Objects": {
         const properties = representation.propertySignatures.map((property, index) => {
-          const isSymbol = typeof property.name === "symbol"
+          const isSymbol = property.name.type === "symbol"
           const name = isSymbol
-            ? addSymbol(property.name)
-            : formatPropertyKey(property.name)
+            ? addSymbol(property.name.value)
+            : formatPropertyKey(property.name.value)
           const type = recur(property.type, [...path, "propertySignatures", index, "type"])
           let runtime = type.runtime
           if (property.isMutable) runtime = `Schema.mutableKey(${runtime})`
@@ -572,7 +572,7 @@ export function toCodeDocument(
       case "Union": {
         if (representation.types.length === 0) return makeCode("Schema.Never", "never")
         if (representation.types.every(isSimpleLiveLiteral)) {
-          const literals = representation.types.map((literal) => format(literal.literal))
+          const literals = representation.types.map((literal) => format(literal.literal.value))
           return literals.length === 1
             ? makeCode(`Schema.Literal(${literals[0]})`, literals[0])
             : makeCode(`Schema.Literals([${literals.join(", ")}])`, literals.join(" | "))

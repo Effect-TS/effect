@@ -8,6 +8,7 @@ import { errorWithPath } from "../errors.ts"
 import * as InternalRecord from "../record.ts"
 import * as InternalAnnotations from "./annotations.ts"
 import { fromRepresentation, fromRepresentations } from "./fromRepresentation.ts"
+import { makeTaggedValue } from "./toRepresentation.ts"
 
 type Path = ReadonlyArray<string | number>
 type Representation = SchemaRepresentation.Representation
@@ -32,6 +33,10 @@ type ImportedJsonSchemaRepresentation = Extract<Representation, {
 const never: ImportedJsonSchemaRepresentation = { _tag: "Never", checks: [] }
 const unknown: ImportedJsonSchemaRepresentation = { _tag: "Unknown", checks: [] }
 const string: ImportedJsonSchemaRepresentation = { _tag: "String", checks: [] }
+
+function makeLiteral(literal: string | number | boolean): SchemaRepresentation.Literal {
+  return { _tag: "Literal", literal: makeTaggedValue(literal), checks: [] }
+}
 
 function annotate(
   representation: ImportedJsonSchemaRepresentation,
@@ -360,8 +365,8 @@ function translateJsonSchemaMultiDocument(
       | SchemaRepresentation.Number,
     literal: SchemaRepresentation.Literal
   ): boolean {
-    const value = literal.literal
-    if (representation._tag === "String" ? typeof value !== "string" : typeof value !== "number") {
+    const value = literal.literal.value
+    if (representation._tag === "String" ? literal.literal.type !== "string" : literal.literal.type !== "number") {
       return false
     }
     return representation.checks.every((check) => satisfiesPrimitiveCheck(check, value as string | number))
@@ -375,7 +380,7 @@ function translateJsonSchemaMultiDocument(
     literal: SchemaRepresentation.Literal
   ): ImportedJsonSchemaRepresentation {
     const satisfies = primitive._tag === "Boolean"
-      ? typeof literal.literal === "boolean"
+      ? literal.literal.type === "boolean"
       : satisfiesLiteral(primitive, literal)
     return satisfies ? combinedAnnotations(literal, primitive, literal) : never
   }
@@ -428,25 +433,26 @@ function translateJsonSchemaMultiDocument(
     right: ReadonlyArray<SchemaRepresentation.PropertySignature>,
     path: Path
   ): Array<SchemaRepresentation.PropertySignature> {
-    const rightByName = new Map(right.map((property) => [property.name, property]))
+    const rightByName = new Map(right.map((property) => [property.name.value, property]))
     const names = new Set<PropertyKey | number>()
     const properties = left.map((property) => {
-      names.add(property.name)
-      const other = rightByName.get(property.name)
+      const name = property.name.value
+      names.add(name)
+      const other = rightByName.get(name)
       if (other === undefined) return property
       return {
         name: property.name,
         type: combine(
           property.type as ImportedJsonSchemaRepresentation,
           other.type as ImportedJsonSchemaRepresentation,
-          [...path, "properties", property.name as string]
+          [...path, "properties", globalThis.String(name)]
         ),
         isOptional: property.isOptional && other.isOptional,
         isMutable: false
       }
     })
     for (const property of right) {
-      if (!names.has(property.name)) properties.push(property)
+      if (!names.has(property.name.value)) properties.push(property)
     }
     return properties
   }
@@ -572,11 +578,10 @@ function translateJsonSchemaMultiDocument(
           : never
       case "Literal":
         if (right._tag === "Literal") {
-          return left.literal === right.literal
+          return left.literal.type === right.literal.type && left.literal.value === right.literal.value
             ? combinedAnnotations(
               {
-                _tag: "Literal",
-                literal: left.literal,
+                ...left,
                 checks: [...left.checks, ...right.checks]
               },
               left,
@@ -586,7 +591,7 @@ function translateJsonSchemaMultiDocument(
         }
         if (
           (right._tag === "String" || right._tag === "Number") && satisfiesLiteral(right, left) ||
-          right._tag === "Boolean" && typeof left.literal === "boolean"
+          right._tag === "Boolean" && left.literal.type === "boolean"
         ) {
           return combinedAnnotations(left, left, right)
         }
@@ -700,7 +705,7 @@ function translateJsonSchemaMultiDocument(
         return { _tag: "Null", checks: [] }
       }
       if (typeof schema.const === "string" || typeof schema.const === "number" || typeof schema.const === "boolean") {
-        return { _tag: "Literal", literal: schema.const, checks: [] }
+        return makeLiteral(schema.const)
       }
     }
     if (Array.isArray(schema.enum)) {
@@ -710,7 +715,7 @@ function translateJsonSchemaMultiDocument(
         if (value === null) {
           types.push({ _tag: "Null", checks: [] })
         } else if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-          types.push({ _tag: "Literal", literal: value, checks: [] })
+          types.push(makeLiteral(value))
         } else {
           types.push(recur(value, [...path, "enum", index]))
         }
@@ -827,7 +832,7 @@ function translateJsonSchemaMultiDocument(
       : []
     const keys = new Set([...Object.keys(properties), ...required])
     return Array.from(keys, (name) => ({
-      name,
+      name: { type: "string", value: name },
       type: recur(properties[name], [...path, "properties", name]),
       isOptional: !required.includes(name),
       isMutable: false

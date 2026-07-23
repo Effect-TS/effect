@@ -29,6 +29,15 @@ function annotationsField<A>(annotations: A | undefined): { readonly annotations
   return annotations === undefined ? undefined : { annotations }
 }
 
+export function makeTaggedValue(value: string | number): SchemaRepresentation.EnumValue
+export function makeTaggedValue(value: SchemaAST.LiteralValue): SchemaRepresentation.LiteralValue
+export function makeTaggedValue(value: PropertyKey | number): SchemaRepresentation.PropertyName
+export function makeTaggedValue(
+  value: SchemaAST.LiteralValue | symbol
+): SchemaRepresentation.LiteralValue | SchemaRepresentation.PropertyName {
+  return { type: typeof value, value } as SchemaRepresentation.LiteralValue | SchemaRepresentation.PropertyName
+}
+
 function projectCheckRepresentationAnnotation(
   input: CheckRepresentationAnnotation
 ): CheckRepresentationAnnotation {
@@ -412,7 +421,7 @@ function lowerASTs(
       case "Literal":
         return {
           _tag: "Literal",
-          literal: ast.literal,
+          literal: makeTaggedValue(ast.literal),
           checks,
           ...annotationsField(ast.annotations)
         }
@@ -426,7 +435,7 @@ function lowerASTs(
       case "Enum":
         return {
           _tag: "Enum",
-          enums: ast.enums,
+          enums: ast.enums.map(([name, value]) => [name, makeTaggedValue(value)]),
           checks,
           ...annotationsField(ast.annotations)
         }
@@ -460,7 +469,7 @@ function lowerASTs(
             const projected = SchemaAST.getLastEncoding(property.type)
             const annotations = projected.context?.annotations
             return {
-              name: property.name,
+              name: makeTaggedValue(property.name),
               type: recur(property.type),
               isOptional: SchemaAST.isOptional(projected),
               isMutable: SchemaAST.isMutable(projected),

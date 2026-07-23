@@ -252,13 +252,32 @@ export interface BigInt extends Keyword<"BigInt"> {}
 export interface Symbol extends Keyword<"Symbol"> {}
 
 /**
+ * A scalar literal value with an explicit type discriminator.
+ *
+ * **Details**
+ *
+ * The `type` field preserves scalar identity across encodings that cannot
+ * distinguish every JavaScript primitive. JSON encodes bigints as strings,
+ * while StringTree encodes numbers, bigints, and booleans as text, so values
+ * such as `"1"`, `1`, and `1n` would otherwise be ambiguous.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type LiteralValue =
+  | { readonly type: "string"; readonly value: string }
+  | { readonly type: "number"; readonly value: number }
+  | { readonly type: "bigint"; readonly value: bigint }
+  | { readonly type: "boolean"; readonly value: boolean }
+
+/**
  * A literal representation.
  *
  * @category models
  * @since 4.0.0
  */
 export interface Literal extends Keyword<"Literal"> {
-  readonly literal: string | number | boolean | bigint
+  readonly literal: LiteralValue
 }
 
 /**
@@ -280,13 +299,28 @@ export interface UniqueSymbol extends Keyword<"UniqueSymbol"> {
 export interface ObjectKeyword extends Keyword<"ObjectKeyword"> {}
 
 /**
+ * A string or number value carried by an enum representation.
+ *
+ * **Details**
+ *
+ * The discriminator keeps string enum members such as `"NaN"` distinct from
+ * numeric members whose JSON encoding is also `"NaN"`.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type EnumValue =
+  | { readonly type: "string"; readonly value: string }
+  | { readonly type: "number"; readonly value: number }
+
+/**
  * An enum representation.
  *
  * @category models
  * @since 4.0.0
  */
 export interface Enum extends Keyword<"Enum"> {
-  readonly enums: ReadonlyArray<readonly [string, string | number]>
+  readonly enums: ReadonlyArray<readonly [string, EnumValue]>
 }
 
 /**
@@ -323,13 +357,34 @@ export interface Arrays extends Keyword<"Arrays"> {
 }
 
 /**
+ * A string, number, or symbol property name with an explicit type discriminator.
+ *
+ * **Details**
+ *
+ * The discriminator prevents textual encodings from conflating names such as
+ * `"1"` and `1`, or `"Symbol(key)"` and `Symbol.for("key")`.
+ *
+ * **Gotchas**
+ *
+ * Local symbols can be represented while the schema is live, but persistent
+ * codecs reject them because they cannot be reconstructed by identity.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type PropertyName =
+  | { readonly type: "string"; readonly value: string }
+  | { readonly type: "number"; readonly value: number }
+  | { readonly type: "symbol"; readonly value: symbol }
+
+/**
  * A property signature.
  *
  * @category models
  * @since 4.0.0
  */
 export interface PropertySignature {
-  readonly name: PropertyKey | number
+  readonly name: PropertyName
   readonly type: Representation
   readonly isOptional: boolean
   readonly isMutable: boolean

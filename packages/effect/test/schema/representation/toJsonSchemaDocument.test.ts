@@ -98,17 +98,31 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
   })
 
   it("compiles a bigint Literal", () => {
-    assert.deepStrictEqual(compile({ _tag: "Literal", literal: 1n, checks: [] }), {
-      type: "string",
-      enum: ["1"]
-    })
+    assert.deepStrictEqual(
+      compile({
+        _tag: "Literal",
+        literal: { type: "bigint", value: 1n },
+        checks: []
+      }),
+      {
+        type: "string",
+        enum: ["1"]
+      }
+    )
   })
 
   it("compiles a string Literal", () => {
-    assert.deepStrictEqual(compile({ _tag: "Literal", literal: "a", checks: [] }), {
-      type: "string",
-      enum: ["a"]
-    })
+    assert.deepStrictEqual(
+      compile({
+        _tag: "Literal",
+        literal: { type: "string", value: "a" },
+        checks: []
+      }),
+      {
+        type: "string",
+        enum: ["a"]
+      }
+    )
   })
 
   it("compiles an empty Enum", () => {
@@ -116,19 +130,55 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
   })
 
   it("compiles an Enum", () => {
-    assert.deepStrictEqual(compile({ _tag: "Enum", enums: [["A", "a"], ["One", 1]], checks: [] }), {
-      anyOf: [
-        { type: "string", enum: ["a"], title: "A" },
-        { type: "number", enum: [1], title: "One" }
-      ]
-    })
+    assert.deepStrictEqual(
+      compile({
+        _tag: "Enum",
+        enums: [
+          ["A", { type: "string", value: "a" }],
+          ["One", { type: "number", value: 1 }]
+        ],
+        checks: []
+      }),
+      {
+        anyOf: [
+          { type: "string", enum: ["a"], title: "A" },
+          { type: "number", enum: [1], title: "One" }
+        ]
+      }
+    )
+  })
+
+  it("preserves ambiguous Enum values", () => {
+    assert.deepStrictEqual(
+      compile({
+        _tag: "Enum",
+        enums: [
+          ["StringNaN", { type: "string", value: "NaN" }],
+          ["NumberNaN", { type: "number", value: Number.NaN }],
+          ["StringInfinity", { type: "string", value: "Infinity" }],
+          ["NumberInfinity", { type: "number", value: Number.POSITIVE_INFINITY }]
+        ],
+        checks: []
+      }),
+      {
+        anyOf: [
+          { type: "string", enum: ["NaN"], title: "StringNaN" },
+          { type: "string", enum: ["NaN"], title: "NumberNaN" },
+          { type: "string", enum: ["Infinity"], title: "StringInfinity" },
+          { type: "string", enum: ["Infinity"], title: "NumberInfinity" }
+        ]
+      }
+    )
   })
 
   it("compiles a TemplateLiteral", () => {
     assert.deepStrictEqual(
       compile({
         _tag: "TemplateLiteral",
-        parts: [{ _tag: "Literal", literal: "prefix-", checks: [] }, StringRepresentation],
+        parts: [
+          { _tag: "Literal", literal: { type: "string", value: "prefix-" }, checks: [] },
+          StringRepresentation
+        ],
         checks: []
       }),
       { type: "string", pattern: "^prefix-[\\s\\S]*?$" }
@@ -181,7 +231,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         compile({
           _tag: "Objects",
           propertySignatures: [{
-            name: Symbol.for("value"),
+            name: { type: "symbol", value: Symbol.for("value") },
             type: StringRepresentation,
             isOptional: false,
             isMutable: false
@@ -222,8 +272,8 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
       compile({
         _tag: "Union",
         types: [
-          { _tag: "Literal", literal: "a", checks: [] },
-          { _tag: "Literal", literal: "b", checks: [] }
+          { _tag: "Literal", literal: { type: "string", value: "a" }, checks: [] },
+          { _tag: "Literal", literal: { type: "string", value: "b" }, checks: [] }
         ],
         mode: "anyOf",
         checks: []
@@ -237,8 +287,8 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
       compile({
         _tag: "Union",
         types: [
-          { _tag: "Literal", literal: "a", checks: [] },
-          { _tag: "Literal", literal: 1, checks: [] }
+          { _tag: "Literal", literal: { type: "string", value: "a" }, checks: [] },
+          { _tag: "Literal", literal: { type: "number", value: 1 }, checks: [] }
         ],
         mode: "anyOf",
         checks: []
@@ -391,7 +441,7 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
       compile({
         _tag: "Objects",
         propertySignatures: [{
-          name: "value",
+          name: { type: "string", value: "value" },
           type: StringRepresentation,
           isOptional: true,
           isMutable: false,
@@ -632,12 +682,12 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
     const representation: SchemaRepresentation.Representation = {
       _tag: "TemplateLiteral",
       parts: [
-        { _tag: "Literal", literal: "p", checks: [] },
+        { _tag: "Literal", literal: { type: "string", value: "p" }, checks: [] },
         NumberRepresentation,
         {
           _tag: "TemplateLiteral",
           parts: [
-            { _tag: "Literal", literal: "x", checks: [] },
+            { _tag: "Literal", literal: { type: "string", value: "x" }, checks: [] },
             StringRepresentation
           ],
           checks: []
@@ -645,8 +695,8 @@ describe("SchemaRepresentation.toJsonSchemaDocument annotations", () => {
         {
           _tag: "Union",
           types: [
-            { _tag: "Literal", literal: "a", checks: [] },
-            { _tag: "Literal", literal: "b", checks: [] }
+            { _tag: "Literal", literal: { type: "string", value: "a" }, checks: [] },
+            { _tag: "Literal", literal: { type: "string", value: "b" }, checks: [] }
           ],
           mode: "anyOf",
           checks: []

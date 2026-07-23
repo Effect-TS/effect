@@ -2,6 +2,25 @@ import { assert, describe, it } from "@effect/vitest"
 import { Schema, SchemaAST, SchemaRepresentation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
+function makeStringProperty<const Name>(name: Name) {
+  return {
+    name,
+    type: { _tag: "String", checks: [] },
+    isOptional: false,
+    isMutable: false
+  } as const
+}
+
+function assertRoundtrip(
+  representation: SchemaRepresentation.Representation,
+  jsonRepresentation: Schema.Json
+): void {
+  const document: SchemaRepresentation.Document = { representation, references: {} }
+  const json: Schema.Json = { representation: jsonRepresentation, references: {} }
+  assert.deepStrictEqual(SchemaRepresentation.toJson(document), json)
+  assert.deepStrictEqual(SchemaRepresentation.fromJson(json), document)
+}
+
 describe("SchemaRepresentation.toJson", () => {
   it("rejects invalid documents", () => {
     throws(
@@ -275,7 +294,7 @@ describe("SchemaRepresentation.toJson", () => {
         representation: {
           _tag: "Objects",
           propertySignatures: [{
-            name: "value",
+            name: { type: "string", value: "value" },
             type: { _tag: "String", checks: [] },
             isOptional: false,
             isMutable: false,
@@ -295,10 +314,63 @@ describe("SchemaRepresentation.toJson", () => {
       {
         representation: {
           _tag: "Literal",
-          literal: "1",
+          literal: { type: "bigint", value: "1" },
           checks: []
         },
         references: {}
+      }
+    )
+  })
+
+  it("preserves ambiguous Enum values", () => {
+    assertRoundtrip(
+      {
+        _tag: "Enum",
+        enums: [
+          ["StringNaN", { type: "string", value: "NaN" }],
+          ["NumberNaN", { type: "number", value: Number.NaN }],
+          ["StringInfinity", { type: "string", value: "Infinity" }],
+          ["NumberInfinity", { type: "number", value: Number.POSITIVE_INFINITY }]
+        ],
+        checks: []
+      },
+      {
+        _tag: "Enum",
+        enums: [
+          ["StringNaN", { type: "string", value: "NaN" }],
+          ["NumberNaN", { type: "number", value: "NaN" }],
+          ["StringInfinity", { type: "string", value: "Infinity" }],
+          ["NumberInfinity", { type: "number", value: "Infinity" }]
+        ],
+        checks: []
+      }
+    )
+  })
+
+  it("preserves ambiguous property names", () => {
+    const globalSymbol = Symbol.for("acme/schema/key")
+    assertRoundtrip(
+      {
+        _tag: "Objects",
+        propertySignatures: [
+          makeStringProperty({ type: "string", value: "1" }),
+          makeStringProperty({ type: "number", value: 1 }),
+          makeStringProperty({ type: "string", value: "Symbol(acme/schema/key)" }),
+          makeStringProperty({ type: "symbol", value: globalSymbol })
+        ],
+        indexSignatures: [],
+        checks: []
+      },
+      {
+        _tag: "Objects",
+        propertySignatures: [
+          makeStringProperty({ type: "string", value: "1" }),
+          makeStringProperty({ type: "number", value: 1 }),
+          makeStringProperty({ type: "string", value: "Symbol(acme/schema/key)" }),
+          makeStringProperty({ type: "symbol", value: "Symbol(acme/schema/key)" })
+        ],
+        indexSignatures: [],
+        checks: []
       }
     )
   })
@@ -308,7 +380,7 @@ describe("SchemaRepresentation.toJson", () => {
       assert.deepStrictEqual(
         SchemaRepresentation.toJson(SchemaRepresentation.toRepresentation(Schema.Literal(literal).ast)),
         {
-          representation: { _tag: "Literal", literal, checks: [] },
+          representation: { _tag: "Literal", literal: { type: "string", value: literal }, checks: [] },
           references: {}
         }
       )
@@ -338,6 +410,24 @@ describe("SchemaRepresentation.toJson", () => {
           SchemaRepresentation.toRepresentation(Schema.UniqueSymbol(Symbol("local")).ast)
         ),
       `cannot serialize to string, Symbol is not registered\n  at ["representation"]["symbol"]`
+    )
+  })
+
+  it("rejects local symbols used as property names", () => {
+    throws(
+      () =>
+        SchemaRepresentation.toJson({
+          representation: {
+            _tag: "Objects",
+            propertySignatures: [
+              makeStringProperty({ type: "symbol", value: Symbol("local") })
+            ],
+            indexSignatures: [],
+            checks: []
+          },
+          references: {}
+        }),
+      `cannot serialize to string, Symbol is not registered\n  at ["representation"]["propertySignatures"][0]["name"]["value"]`
     )
   })
 

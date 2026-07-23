@@ -242,16 +242,18 @@ function compileJsonSchema(
         }
       case "Boolean":
         return { type: "boolean" }
-      case "Literal":
-        return typeof representation.literal === "bigint"
-          ? { type: "string", enum: [globalThis.String(representation.literal)] }
-          : { type: typeof representation.literal, enum: [representation.literal] }
+      case "Literal": {
+        const literal = representation.literal
+        return literal.type === "bigint"
+          ? { type: "string", enum: [globalThis.String(literal.value)] }
+          : { type: literal.type, enum: [literal.value] }
+      }
       case "Enum": {
-        const types = representation.enums.map(([title, literal]) => ({
-          type: typeof literal,
-          enum: [literal],
-          title
-        }))
+        const types = representation.enums.map(([title, literal]) =>
+          literal.type === "number" && !globalThis.Number.isFinite(literal.value)
+            ? { type: "string", enum: [globalThis.String(literal.value)], title }
+            : { type: literal.type, enum: [literal.value], title }
+        )
         return types.length === 0 ? { not: {} } : { anyOf: types }
       }
       case "TemplateLiteral":
@@ -292,7 +294,7 @@ function compileJsonSchema(
         const required: Array<string> = []
         for (let index = 0; index < representation.propertySignatures.length; index++) {
           const property = representation.propertySignatures[index]
-          if (typeof property.name !== "string") {
+          if (property.name.type !== "string") {
             throw errorWithPath("Invalid schema representation document", [
               ...path,
               "propertySignatures",
@@ -300,10 +302,11 @@ function compileJsonSchema(
               "name"
             ])
           }
+          const name = property.name.value
           const compiled = recur(property.type, [...path, "propertySignatures", index, "type"])
           const annotations = collectJsonSchemaAnnotations(property.annotations, options)
-          properties[property.name] = annotations === undefined ? compiled : appendJsonSchema(compiled, annotations)
-          if (!property.isOptional) required.push(property.name)
+          properties[name] = annotations === undefined ? compiled : appendJsonSchema(compiled, annotations)
+          if (!property.isOptional) required.push(name)
         }
         if (representation.propertySignatures.length > 0) out.properties = properties
         if (required.length > 0) out.required = required
@@ -421,7 +424,7 @@ function collectPatterns(schema: JsonSchema.JsonSchema): ReadonlyArray<string> {
 function getPartPattern(part: SchemaRepresentation.Representation): string {
   switch (part._tag) {
     case "Literal":
-      return RegEx.escape(globalThis.String(part.literal))
+      return RegEx.escape(globalThis.String(part.literal.value))
     case "String":
       return SchemaAST.STRING_PATTERN
     case "Number":

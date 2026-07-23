@@ -73,7 +73,14 @@ describe("SchemaRepresentation.fromJson", () => {
 
   it("decodes Enum", () => {
     const input = {
-      representation: { _tag: "Enum", enums: [["A", "a"], ["One", 1]], checks: [] },
+      representation: {
+        _tag: "Enum",
+        enums: [
+          ["A", { type: "string", value: "a" }],
+          ["One", { type: "number", value: 1 }]
+        ],
+        checks: []
+      },
       references: {}
     } as const
     assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
@@ -84,7 +91,7 @@ describe("SchemaRepresentation.fromJson", () => {
       representation: {
         _tag: "TemplateLiteral",
         parts: [
-          { _tag: "Literal", literal: "prefix-", checks: [] },
+          { _tag: "Literal", literal: { type: "string", value: "prefix-" }, checks: [] },
           { _tag: "String", checks: [] }
         ],
         checks: []
@@ -112,7 +119,7 @@ describe("SchemaRepresentation.fromJson", () => {
       representation: {
         _tag: "Objects",
         propertySignatures: [{
-          name: "value",
+          name: { type: "string", value: "value" },
           type: { _tag: "String", checks: [] },
           isOptional: false,
           isMutable: true
@@ -215,22 +222,66 @@ describe("SchemaRepresentation.fromJson", () => {
       SchemaRepresentation.fromJson({
         representation: {
           _tag: "Literal",
-          literal: "1",
+          literal: { type: "bigint", value: "1" },
           checks: []
         },
         references: {}
       }),
       {
-        representation: { _tag: "Literal", literal: 1n, checks: [] },
+        representation: { _tag: "Literal", literal: { type: "bigint", value: 1n }, checks: [] },
         references: {}
       }
+    )
+  })
+
+  it("rejects mismatched literal types", () => {
+    for (
+      const representation of [
+        { _tag: "Literal", literal: { type: "bigint", value: "not-an-integer" }, checks: [] },
+        { _tag: "Literal", literal: { type: "boolean", value: "true" }, checks: [] },
+        { _tag: "Literal", literal: { type: "string", value: 1 }, checks: [] }
+      ] as const
+    ) {
+      throws(() => SchemaRepresentation.fromJson({ representation, references: {} }))
+    }
+  })
+
+  it("rejects mismatched Enum value types", () => {
+    throws(() =>
+      SchemaRepresentation.fromJson({
+        representation: {
+          _tag: "Enum",
+          enums: [["One", { type: "number", value: "1" }]],
+          checks: []
+        },
+        references: {}
+      })
+    )
+  })
+
+  it("rejects mismatched property name types", () => {
+    throws(() =>
+      SchemaRepresentation.fromJson({
+        representation: {
+          _tag: "Objects",
+          propertySignatures: [{
+            name: { type: "number", value: "1" },
+            type: { _tag: "String", checks: [] },
+            isOptional: false,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: []
+        },
+        references: {}
+      })
     )
   })
 
   it("preserves string literals resembling non-finite numbers", () => {
     for (const literal of ["NaN", "Infinity", "-Infinity"]) {
       const input = {
-        representation: { _tag: "Literal", literal, checks: [] },
+        representation: { _tag: "Literal", literal: { type: "string", value: literal }, checks: [] },
         references: {}
       } as const
       assert.deepStrictEqual(SchemaRepresentation.fromJson(input), input)
@@ -260,7 +311,7 @@ describe("SchemaRepresentation.fromJson", () => {
 
   it("does not coerce strings resembling symbols", () => {
     const input = {
-      representation: { _tag: "Literal", literal: "Symbol(a)", checks: [] },
+      representation: { _tag: "Literal", literal: { type: "string", value: "Symbol(a)" }, checks: [] },
       references: {}
     } as const
 

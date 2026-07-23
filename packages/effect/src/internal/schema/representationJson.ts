@@ -33,7 +33,7 @@ const FilterGroupSchema = Schema.Struct({
 })
 const CheckUnion = Schema.Union([FilterSchema, FilterGroupSchema])
 
-function keywordSchema<Tag extends Exclude<SchemaRepresentation.Representation["_tag"], "Reference">>(tag: Tag) {
+function makeKeywordSchema<Tag extends Exclude<SchemaRepresentation.Representation["_tag"], "Reference">>(tag: Tag) {
   return Schema.Struct({
     _tag: Schema.tag(tag),
     annotations: Schema.optional(AnnotationsSchema),
@@ -54,15 +54,18 @@ const SuspendSchema = Schema.Struct({
   checks: Schema.Tuple([]),
   thunk: RepresentationSchema
 })
+function makeValueSchema<Type extends string, Value extends Schema.Constraint>(type: Type, value: Value) {
+  return Schema.Struct({ type: Schema.tag(type), value })
+}
 const LiteralSchema = Schema.Struct({
   _tag: Schema.tag("Literal"),
   annotations: Schema.optional(AnnotationsSchema),
   checks: Schema.Array(CheckSchema),
   literal: Schema.Union([
-    Schema.Finite,
-    Schema.BigInt,
-    Schema.String,
-    Schema.Boolean
+    makeValueSchema("string", Schema.String),
+    makeValueSchema("number", Schema.Finite),
+    makeValueSchema("bigint", Schema.BigInt),
+    makeValueSchema("boolean", Schema.Boolean)
   ])
 })
 const UniqueSymbolSchema = Schema.Struct({
@@ -77,7 +80,10 @@ const EnumSchema = Schema.Struct({
   checks: Schema.Array(CheckSchema),
   enums: Schema.Array(Schema.Tuple([
     Schema.String,
-    Schema.Union([Schema.Number, Schema.String])
+    Schema.Union([
+      makeValueSchema("string", Schema.String),
+      makeValueSchema("number", Schema.Number)
+    ])
   ]))
 })
 const TemplateLiteralSchema = Schema.Struct({
@@ -98,13 +104,13 @@ const ArraysSchema = Schema.Struct({
   elements: Schema.Array(ElementSchema),
   rest: Schema.Array(RepresentationSchema)
 })
-const StructuralPropertyKeySchema = Schema.Union([
-  Schema.Symbol,
-  Schema.Number,
-  Schema.String
+const PropertyNameSchema = Schema.Union([
+  makeValueSchema("string", Schema.String),
+  makeValueSchema("number", Schema.Number),
+  makeValueSchema("symbol", Schema.Symbol)
 ])
 const PropertySignatureSchema = Schema.Struct({
-  name: StructuralPropertyKeySchema,
+  name: PropertyNameSchema,
   type: RepresentationSchema,
   isOptional: Schema.Boolean,
   isMutable: Schema.Boolean,
@@ -137,18 +143,18 @@ const RepresentationUnion = Schema.Union([
   DeclarationSchema,
   ReferenceSchema,
   SuspendSchema,
-  keywordSchema("Null"),
-  keywordSchema("Undefined"),
-  keywordSchema("Void"),
-  keywordSchema("Never"),
-  keywordSchema("Unknown"),
-  keywordSchema("Any"),
-  keywordSchema("String"),
-  keywordSchema("Number"),
-  keywordSchema("Boolean"),
-  keywordSchema("BigInt"),
-  keywordSchema("Symbol"),
-  keywordSchema("ObjectKeyword"),
+  makeKeywordSchema("Null"),
+  makeKeywordSchema("Undefined"),
+  makeKeywordSchema("Void"),
+  makeKeywordSchema("Never"),
+  makeKeywordSchema("Unknown"),
+  makeKeywordSchema("Any"),
+  makeKeywordSchema("String"),
+  makeKeywordSchema("Number"),
+  makeKeywordSchema("Boolean"),
+  makeKeywordSchema("BigInt"),
+  makeKeywordSchema("Symbol"),
+  makeKeywordSchema("ObjectKeyword"),
   LiteralSchema,
   UniqueSymbolSchema,
   EnumSchema,
@@ -176,24 +182,29 @@ const MultiDocumentFromJson: Schema.Codec<SchemaRepresentation.MultiDocument, Sc
   MultiDocumentSchema
 )
 
+const encodeDocument = Schema.encodeSync(DocumentFromJson)
+const encodeMultiDocument = Schema.encodeSync(MultiDocumentFromJson)
+const decodeDocument = Schema.decodeSync(DocumentFromJson)
+const decodeMultiDocument = Schema.decodeSync(MultiDocumentFromJson)
+
 /** @internal */
 export function toJson(document: SchemaRepresentation.Document): Schema.Json {
   const projected = projectDocument(document)
-  return Schema.encodeSync(DocumentFromJson)(projected)
+  return encodeDocument(projected)
 }
 
 /** @internal */
 export function toJsonMultiDocument(document: SchemaRepresentation.MultiDocument): Schema.Json {
   const projected = projectMultiDocument(document)
-  return Schema.encodeSync(MultiDocumentFromJson)(projected)
+  return encodeMultiDocument(projected)
 }
 
 /** @internal */
 export function fromJson(input: Schema.Json): SchemaRepresentation.Document {
-  return Schema.decodeSync(DocumentFromJson)(input)
+  return decodeDocument(input)
 }
 
 /** @internal */
 export function fromJsonMultiDocument(input: Schema.Json): SchemaRepresentation.MultiDocument {
-  return Schema.decodeSync(MultiDocumentFromJson)(input)
+  return decodeMultiDocument(input)
 }

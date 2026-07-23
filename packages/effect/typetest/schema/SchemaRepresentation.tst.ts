@@ -52,4 +52,63 @@ describe("SchemaRepresentation persisted wire", () => {
       SchemaRepresentation.CheckRepresentationAnnotation<SchemaRepresentation.Representation> | undefined
     >()
   })
+
+  it("correlates literal types and values", () => {
+    const literal = null as unknown as SchemaRepresentation.Literal
+    if (literal.literal.type === "string") {
+      expect(literal.literal.value).type.toBe<string>()
+    } else if (literal.literal.type === "number") {
+      expect(literal.literal.value).type.toBe<number>()
+    } else if (literal.literal.type === "bigint") {
+      expect(literal.literal.value).type.toBe<bigint>()
+    } else {
+      expect(literal.literal.value).type.toBe<boolean>()
+    }
+
+    expect(
+      {
+        _tag: "Literal",
+        literal: { type: "string", value: "value" },
+        checks: []
+      } as const
+    ).type.toBeAssignableTo<SchemaRepresentation.Literal>()
+
+    expect(
+      {
+        _tag: "Literal",
+        literal: { type: "boolean", value: "true" },
+        checks: []
+      } as const
+    ).type.not.toBeAssignableTo<SchemaRepresentation.Literal>()
+  })
+
+  it("correlates Enum types and values", () => {
+    const value = null as unknown as SchemaRepresentation.EnumValue
+    if (value.type === "string") {
+      expect(value.value).type.toBe<string>()
+    } else {
+      expect(value.value).type.toBe<number>()
+    }
+
+    expect({ type: "number", value: 1 } as const).type.toBeAssignableTo<SchemaRepresentation.EnumValue>()
+    expect({ type: "number", value: "1" } as const).type.not.toBeAssignableTo<SchemaRepresentation.EnumValue>()
+  })
+
+  it("correlates property name types and values", () => {
+    const name = null as unknown as SchemaRepresentation.PropertyName
+    if (name.type === "string") {
+      expect(name.value).type.toBe<string>()
+    } else if (name.type === "number") {
+      expect(name.value).type.toBe<number>()
+    } else {
+      expect(name.value).type.toBe<symbol>()
+    }
+
+    expect({ type: "symbol", value: Symbol.for("key") } as const).type.toBeAssignableTo<
+      SchemaRepresentation.PropertyName
+    >()
+    expect({ type: "symbol", value: "Symbol(key)" } as const).type.not.toBeAssignableTo<
+      SchemaRepresentation.PropertyName
+    >()
+  })
 })

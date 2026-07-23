@@ -103,10 +103,20 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     assertRepresentationRoundtrip(Schema.ObjectKeyword)
   })
 
-  it("revives Literal", () => {
-    const schema = assertRepresentationRoundtrip(Schema.Literal("value"))
-    assert.isTrue(Schema.is(schema)("value"))
-    assert.isFalse(Schema.is(schema)("other"))
+  it("revives Literal without changing its type", () => {
+    for (
+      const [literal, differentType] of [
+        ["1", 1n],
+        ["true", true],
+        [1, "1"],
+        [1n, "1"],
+        [true, "true"]
+      ] as const
+    ) {
+      const schema = assertRepresentationRoundtrip(Schema.Literal(literal))
+      assert.isTrue(Schema.is(schema)(literal))
+      assert.isFalse(Schema.is(schema)(differentType))
+    }
   })
 
   it("revives UniqueSymbol", () => {
@@ -121,6 +131,19 @@ describe("SchemaRepresentation.fromRepresentation", () => {
     assert.isTrue(Schema.is(schema)("a"))
     assert.isTrue(Schema.is(schema)(1))
     assert.isFalse(Schema.is(schema)("other"))
+  })
+
+  it("revives ambiguous Enum values without changing their type", () => {
+    const schema = assertRepresentationRoundtrip(Schema.Enum({
+      StringNaN: "NaN",
+      NumberNaN: Number.NaN,
+      StringInfinity: "Infinity",
+      NumberInfinity: Number.POSITIVE_INFINITY
+    }))
+    assert.isTrue(Schema.is(schema)("NaN"))
+    assert.isTrue(Schema.is(schema)(Number.NaN))
+    assert.isTrue(Schema.is(schema)("Infinity"))
+    assert.isTrue(Schema.is(schema)(Number.POSITIVE_INFINITY))
   })
 
   it("revives TemplateLiteral", () => {

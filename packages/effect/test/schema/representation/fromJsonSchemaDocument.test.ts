@@ -95,7 +95,10 @@ describe("fromJsonSchemaDocument", () => {
           "representation": {
             "_tag": "Literal",
             "checks": [],
-            "literal": "a"
+            "literal": {
+              "type": "string",
+              "value": "a"
+            }
           },
           "references": {}
         }
@@ -109,7 +112,10 @@ describe("fromJsonSchemaDocument", () => {
               "description": "a"
             },
             "checks": [],
-            "literal": "a"
+            "literal": {
+              "type": "string",
+              "value": "a"
+            }
           },
           "references": {}
         }
@@ -123,7 +129,10 @@ describe("fromJsonSchemaDocument", () => {
           "representation": {
             "_tag": "Literal",
             "checks": [],
-            "literal": 1
+            "literal": {
+              "type": "number",
+              "value": 1
+            }
           },
           "references": {}
         }
@@ -137,7 +146,10 @@ describe("fromJsonSchemaDocument", () => {
           "representation": {
             "_tag": "Literal",
             "checks": [],
-            "literal": true
+            "literal": {
+              "type": "boolean",
+              "value": true
+            }
           },
           "references": {}
         }
@@ -200,7 +212,10 @@ describe("fromJsonSchemaDocument", () => {
           "representation": {
             "_tag": "Literal",
             "checks": [],
-            "literal": "a"
+            "literal": {
+              "type": "string",
+              "value": "a"
+            }
           },
           "references": {}
         }
@@ -214,7 +229,10 @@ describe("fromJsonSchemaDocument", () => {
               "description": "a"
             },
             "checks": [],
-            "literal": "a"
+            "literal": {
+              "type": "string",
+              "value": "a"
+            }
           },
           "references": {}
         }
@@ -228,7 +246,10 @@ describe("fromJsonSchemaDocument", () => {
           "representation": {
             "_tag": "Literal",
             "checks": [],
-            "literal": 1
+            "literal": {
+              "type": "number",
+              "value": 1
+            }
           },
           "references": {}
         }
@@ -242,7 +263,10 @@ describe("fromJsonSchemaDocument", () => {
           "representation": {
             "_tag": "Literal",
             "checks": [],
-            "literal": true
+            "literal": {
+              "type": "boolean",
+              "value": true
+            }
           },
           "references": {}
         }
@@ -260,12 +284,18 @@ describe("fromJsonSchemaDocument", () => {
               {
                 "_tag": "Literal",
                 "checks": [],
-                "literal": "a"
+                "literal": {
+                  "type": "string",
+                  "value": "a"
+                }
               },
               {
                 "_tag": "Literal",
                 "checks": [],
-                "literal": 1
+                "literal": {
+                  "type": "number",
+                  "value": 1
+                }
               }
             ],
             "mode": "anyOf"
@@ -286,12 +316,18 @@ describe("fromJsonSchemaDocument", () => {
               {
                 "_tag": "Literal",
                 "checks": [],
-                "literal": "a"
+                "literal": {
+                  "type": "string",
+                  "value": "a"
+                }
               },
               {
                 "_tag": "Literal",
                 "checks": [],
-                "literal": 1
+                "literal": {
+                  "type": "number",
+                  "value": 1
+                }
               }
             ],
             "mode": "anyOf"
@@ -312,7 +348,10 @@ describe("fromJsonSchemaDocument", () => {
               {
                 "_tag": "Literal",
                 "checks": [],
-                "literal": "a"
+                "literal": {
+                  "type": "string",
+                  "value": "a"
+                }
               },
               {
                 "_tag": "Null",
@@ -338,7 +377,10 @@ describe("fromJsonSchemaDocument", () => {
             {
               "_tag": "Literal",
               "checks": [],
-              "literal": "a"
+              "literal": {
+                "type": "string",
+                "value": "a"
+              }
             },
             {
               "_tag": "Union",
@@ -347,12 +389,18 @@ describe("fromJsonSchemaDocument", () => {
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": 1
+                  "literal": {
+                    "type": "number",
+                    "value": 1
+                  }
                 },
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": 2
+                  "literal": {
+                    "type": "number",
+                    "value": 2
+                  }
                 }
               ],
               "mode": "anyOf"
@@ -388,7 +436,10 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [],
               "propertySignatures": [
                 {
-                  "name": "a",
+                  "name": {
+                    "type": "string",
+                    "value": "a"
+                  },
                   "type": {
                     "_tag": "String",
                     "checks": []
@@ -397,7 +448,10 @@ describe("fromJsonSchemaDocument", () => {
                   "isMutable": false
                 },
                 {
-                  "name": "id",
+                  "name": {
+                    "type": "string",
+                    "value": "id"
+                  },
                   "type": {
                     "_tag": "String",
                     "checks": []
@@ -432,7 +486,10 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [],
               "propertySignatures": [
                 {
-                  "name": "b",
+                  "name": {
+                    "type": "string",
+                    "value": "b"
+                  },
                   "type": {
                     "_tag": "Number",
                     "checks": [
@@ -459,7 +516,10 @@ describe("fromJsonSchemaDocument", () => {
                   "isMutable": false
                 },
                 {
-                  "name": "id",
+                  "name": {
+                    "type": "string",
+                    "value": "id"
+                  },
                   "type": {
                     "_tag": "String",
                     "checks": []
@@ -508,7 +568,10 @@ describe("fromJsonSchemaDocument", () => {
             {
               "_tag": "Literal",
               "checks": [],
-              "literal": "a"
+              "literal": {
+                "type": "string",
+                "value": "a"
+              }
             },
             {
               "_tag": "Union",
@@ -517,12 +580,18 @@ describe("fromJsonSchemaDocument", () => {
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": 1
+                  "literal": {
+                    "type": "number",
+                    "value": 1
+                  }
                 },
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": 2
+                  "literal": {
+                    "type": "number",
+                    "value": 2
+                  }
                 }
               ],
               "mode": "anyOf"
@@ -558,7 +627,10 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [],
               "propertySignatures": [
                 {
-                  "name": "a",
+                  "name": {
+                    "type": "string",
+                    "value": "a"
+                  },
                   "type": {
                     "_tag": "String",
                     "checks": []
@@ -567,7 +639,10 @@ describe("fromJsonSchemaDocument", () => {
                   "isMutable": false
                 },
                 {
-                  "name": "id",
+                  "name": {
+                    "type": "string",
+                    "value": "id"
+                  },
                   "type": {
                     "_tag": "String",
                     "checks": []
@@ -602,7 +677,10 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [],
               "propertySignatures": [
                 {
-                  "name": "b",
+                  "name": {
+                    "type": "string",
+                    "value": "b"
+                  },
                   "type": {
                     "_tag": "Number",
                     "checks": [
@@ -629,7 +707,10 @@ describe("fromJsonSchemaDocument", () => {
                   "isMutable": false
                 },
                 {
-                  "name": "id",
+                  "name": {
+                    "type": "string",
+                    "value": "id"
+                  },
                   "type": {
                     "_tag": "String",
                     "checks": []
@@ -1758,7 +1839,10 @@ describe("fromJsonSchemaDocument", () => {
             "checks": [],
             "propertySignatures": [
               {
-                "name": "a",
+                "name": {
+                  "type": "string",
+                  "value": "a"
+                },
                 "type": {
                   "_tag": "String",
                   "checks": []
@@ -1767,7 +1851,10 @@ describe("fromJsonSchemaDocument", () => {
                 "isMutable": false
               },
               {
-                "name": "b",
+                "name": {
+                  "type": "string",
+                  "value": "b"
+                },
                 "type": {
                   "_tag": "String",
                   "checks": []
@@ -1799,7 +1886,10 @@ describe("fromJsonSchemaDocument", () => {
             "checks": [],
             "propertySignatures": [
               {
-                "name": "a",
+                "name": {
+                  "type": "string",
+                  "value": "a"
+                },
                 "type": {
                   "_tag": "String",
                   "checks": []
@@ -2698,7 +2788,10 @@ describe("fromJsonSchemaDocument", () => {
                 "checks": [],
                 "propertySignatures": [
                   {
-                    "name": "name",
+                    "name": {
+                      "type": "string",
+                      "value": "name"
+                    },
                     "type": {
                       "_tag": "String",
                       "checks": []
@@ -2707,7 +2800,10 @@ describe("fromJsonSchemaDocument", () => {
                     "isMutable": false
                   },
                   {
-                    "name": "children",
+                    "name": {
+                      "type": "string",
+                      "value": "children"
+                    },
                     "type": {
                       "_tag": "Arrays",
                       "checks": [],
@@ -2766,7 +2862,7 @@ describe("fromJsonSchemaDocument", () => {
               thunk: {
                 _tag: "Objects",
                 propertySignatures: [{
-                  name: "child",
+                  name: { type: "string", value: "child" },
                   type: {
                     _tag: "Suspend",
                     annotations: {
@@ -3071,7 +3167,10 @@ describe("fromJsonSchemaDocument", () => {
                   {
                     "_tag": "Literal",
                     "checks": [],
-                    "literal": "ab"
+                    "literal": {
+                      "type": "string",
+                      "value": "ab"
+                    }
                   }
                 ],
                 "mode": "anyOf"
@@ -3754,7 +3853,10 @@ describe("fromJsonSchemaDocument", () => {
             "representation": {
               "_tag": "Literal",
               "checks": [],
-              "literal": "a"
+              "literal": {
+                "type": "string",
+                "value": "a"
+              }
             },
             "references": {}
           }
@@ -3776,7 +3878,10 @@ describe("fromJsonSchemaDocument", () => {
                 "description": "b"
               },
               "checks": [],
-              "literal": "a"
+              "literal": {
+                "type": "string",
+                "value": "a"
+              }
             },
             "references": {}
           }
@@ -3798,12 +3903,18 @@ describe("fromJsonSchemaDocument", () => {
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": "a"
+                  "literal": {
+                    "type": "string",
+                    "value": "a"
+                  }
                 },
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": "b"
+                  "literal": {
+                    "type": "string",
+                    "value": "b"
+                  }
                 }
               ],
               "mode": "anyOf"
@@ -3831,7 +3942,10 @@ describe("fromJsonSchemaDocument", () => {
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": "a"
+                  "literal": {
+                    "type": "string",
+                    "value": "a"
+                  }
                 }
               ],
               "mode": "anyOf"
@@ -4247,7 +4361,10 @@ describe("fromJsonSchemaDocument", () => {
             "representation": {
               "_tag": "Literal",
               "checks": [],
-              "literal": 1
+              "literal": {
+                "type": "number",
+                "value": 1
+              }
             },
             "references": {}
           }
@@ -4269,7 +4386,10 @@ describe("fromJsonSchemaDocument", () => {
                 "description": "b"
               },
               "checks": [],
-              "literal": 1
+              "literal": {
+                "type": "number",
+                "value": 1
+              }
             },
             "references": {}
           }
@@ -4291,12 +4411,18 @@ describe("fromJsonSchemaDocument", () => {
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": 1
+                  "literal": {
+                    "type": "number",
+                    "value": 1
+                  }
                 },
                 {
                   "_tag": "Literal",
                   "checks": [],
-                  "literal": 2
+                  "literal": {
+                    "type": "number",
+                    "value": 2
+                  }
                 }
               ],
               "mode": "anyOf"
@@ -4358,7 +4484,10 @@ describe("fromJsonSchemaDocument", () => {
             "representation": {
               "_tag": "Literal",
               "checks": [],
-              "literal": true
+              "literal": {
+                "type": "boolean",
+                "value": true
+              }
             },
             "references": {}
           }
@@ -4380,7 +4509,10 @@ describe("fromJsonSchemaDocument", () => {
                 "description": "b"
               },
               "checks": [],
-              "literal": true
+              "literal": {
+                "type": "boolean",
+                "value": true
+              }
             },
             "references": {}
           }
@@ -4495,7 +4627,10 @@ describe("fromJsonSchemaDocument", () => {
                   "type": {
                     "_tag": "Literal",
                     "checks": [],
-                    "literal": "tail"
+                    "literal": {
+                      "type": "string",
+                      "value": "tail"
+                    }
                   }
                 }
               ],
@@ -4740,7 +4875,10 @@ describe("fromJsonSchemaDocument", () => {
                   "type": {
                     "_tag": "Literal",
                     "checks": [],
-                    "literal": 2
+                    "literal": {
+                      "type": "number",
+                      "value": 2
+                    }
                   }
                 }
               ],
@@ -4789,7 +4927,10 @@ describe("fromJsonSchemaDocument", () => {
           "representation": {
             "_tag": "Literal",
             "checks": [],
-            "literal": 1
+            "literal": {
+              "type": "number",
+              "value": 1
+            }
           },
           "references": {}
         }
@@ -4806,7 +4947,10 @@ describe("fromJsonSchemaDocument", () => {
             "representation": {
               "_tag": "Literal",
               "checks": [],
-              "literal": true
+              "literal": {
+                "type": "boolean",
+                "value": true
+              }
             },
             "references": {}
           }
@@ -4982,7 +5126,10 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [],
               "propertySignatures": [
                 {
-                  "name": "a",
+                  "name": {
+                    "type": "string",
+                    "value": "a"
+                  },
                   "type": {
                     "_tag": "String",
                     "checks": []
@@ -5060,7 +5207,10 @@ describe("fromJsonSchemaDocument", () => {
               "checks": [],
               "propertySignatures": [
                 {
-                  "name": "a",
+                  "name": {
+                    "type": "string",
+                    "value": "a"
+                  },
                   "type": {
                     "_tag": "String",
                     "checks": []

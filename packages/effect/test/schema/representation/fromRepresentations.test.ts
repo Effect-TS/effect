@@ -59,13 +59,13 @@ describe("SchemaRepresentation.fromRepresentations", () => {
           checks: [],
           propertySignatures: [
             {
-              name: "value",
+              name: { type: "string", value: "value" },
               type: { _tag: "Number", checks: [] },
               isOptional: false,
               isMutable: false
             },
             {
-              name: "next",
+              name: { type: "string", value: "next" },
               type: { _tag: "Reference", $ref: "Recursive" },
               isOptional: true,
               isMutable: false

@@ -222,13 +222,17 @@ function revivePersisted(
       case "Symbol":
         return finishStructural(Schema.Symbol, representation, path)
       case "Literal":
-        return finishStructural(Schema.Literal(representation.literal), representation, path)
+        return finishStructural(Schema.Literal(representation.literal.value), representation, path)
       case "UniqueSymbol":
         return finishStructural(Schema.UniqueSymbol(representation.symbol), representation, path)
       case "ObjectKeyword":
         return finishStructural(Schema.ObjectKeyword, representation, path)
       case "Enum":
-        return finishStructural(Schema.Enum(Object.fromEntries(representation.enums)), representation, path)
+        return finishStructural(
+          Schema.Enum(Object.fromEntries(representation.enums.map(([name, value]) => [name, value.value]))),
+          representation,
+          path
+        )
       case "TemplateLiteral": {
         const parts = representation.parts.map((part, index) => recur(part, [...path, "parts", index]))
         return finishStructural(
@@ -267,7 +271,7 @@ function revivePersisted(
           if (property.isMutable) {
             schema = Schema.mutableKey(schema)
           }
-          InternalRecord.set(fields, property.name, schema)
+          InternalRecord.set(fields, property.name.value, schema)
         }
         const records = representation.indexSignatures.map((indexSignature, index) =>
           Schema.Record(
