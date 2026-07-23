@@ -532,6 +532,62 @@ describe("Effect", () => {
         assert.deepStrictEqual(done, [1, 2, 3])
       }))
 
+    it.effect("interrupts started workers when the mapper throws during initial pumping", () =>
+      Effect.gen(function*() {
+        const interruptStarted = yield* Deferred.make<void>()
+        const interruptFinished = yield* Deferred.make<void>()
+        const defect = new Error("mapper defect")
+        const fiber = yield* Effect.forEach([0, 1], (i) => {
+          if (i === 0) {
+            return Effect.never.pipe(
+              Effect.onInterrupt(() =>
+                Deferred.succeed(interruptStarted, void 0).pipe(
+                  Effect.andThen(Deferred.await(interruptFinished))
+                )
+              )
+            )
+          }
+          throw defect
+        }, { concurrency: 2 }).pipe(Effect.forkChild({ startImmediately: true }))
+
+        assert.isTrue(yield* Deferred.isDone(interruptStarted))
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* Deferred.succeed(interruptFinished, void 0)
+        const exit = fiber.pollUnsafe()
+        assert.isDefined(exit)
+        assertExitDefect(exit!, defect)
+      }))
+
+    it.effect("interrupts started workers when observer-driven refill throws", () =>
+      Effect.gen(function*() {
+        const release = yield* Deferred.make<void>()
+        const interruptStarted = yield* Deferred.make<void>()
+        const interruptFinished = yield* Deferred.make<void>()
+        const defect = new Error("refill defect")
+        const fiber = yield* Effect.forEach([0, 1, 2], (i) => {
+          if (i === 0) return Deferred.await(release)
+          if (i === 1) {
+            return Effect.never.pipe(
+              Effect.onInterrupt(() =>
+                Deferred.succeed(interruptStarted, void 0).pipe(
+                  Effect.andThen(Deferred.await(interruptFinished))
+                )
+              )
+            )
+          }
+          throw defect
+        }, { concurrency: 2 }).pipe(Effect.forkChild({ startImmediately: true }))
+
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* Deferred.succeed(release, void 0)
+        assert.isTrue(yield* Deferred.isDone(interruptStarted))
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* Deferred.succeed(interruptFinished, void 0)
+        const exit = fiber.pollUnsafe()
+        assert.isDefined(exit)
+        assertExitDefect(exit!, defect)
+      }))
+
     it("length = 0", () =>
       Effect.gen(function*() {
         const results = yield* Effect.forEach([], (_) => Effect.succeed(_))
