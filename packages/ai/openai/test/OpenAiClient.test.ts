@@ -438,6 +438,38 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result.reason._tag, "NetworkError")
       }))
 
+    it.effect("redacts OpenAI-specific headers in AI error context", () =>
+      Effect.gen(function*() {
+        const mockClient = makeMockHttpClient((request) =>
+          Effect.fail(
+            new HttpClientError.HttpClientError({
+              reason: new HttpClientError.TransportError({
+                request,
+                cause: new Error("Connection refused")
+              })
+            })
+          )
+        )
+
+        const client = yield* OpenAiClient.make({
+          apiKey: Redacted.make("test-key"),
+          organizationId: Redacted.make("org-secret"),
+          projectId: Redacted.make("proj-secret")
+        }).pipe(Effect.provide(Layer.succeed(HttpClient.HttpClient, mockClient)))
+
+        const result = yield* client.createResponse({ model: "gpt-4o", input: "test" }).pipe(
+          Effect.flip
+        )
+
+        assert.strictEqual(result.reason._tag, "NetworkError")
+        if (result.reason._tag !== "NetworkError") {
+          return
+        }
+        assert.strictEqual(String(result.reason.request.headers["authorization"]), "<redacted>")
+        assert.strictEqual(String(result.reason.request.headers["openai-organization"]), "<redacted>")
+        assert.strictEqual(String(result.reason.request.headers["openai-project"]), "<redacted>")
+      }))
+
     it.effect("maps 400 status to InvalidRequestError reason", () =>
       Effect.gen(function*() {
         const mockClient = makeMockHttpClient((request) =>

@@ -1,7 +1,7 @@
 import * as OpenAiClient from "@effect/ai-openai-compat/OpenAiClient"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Stream } from "effect"
-import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { HttpClient, HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("OpenAiClient", () => {
   describe("request behavior", () => {
@@ -333,6 +333,42 @@ describe("OpenAiClient", () => {
   })
 
   describe("error mapping", () => {
+    it.effect("redacts OpenAI-specific headers in AI error context", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.make({
+          apiKey: Redacted.make("sk-test-key"),
+          organizationId: Redacted.make("org-secret"),
+          projectId: Redacted.make("proj-secret")
+        }).pipe(
+          Effect.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.fail(
+                new HttpClientError.HttpClientError({
+                  reason: new HttpClientError.TransportError({
+                    request,
+                    cause: new Error("Connection refused")
+                  })
+                })
+              )
+            )
+          ))
+        )
+
+        const error = yield* client.createResponse({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "hello" }]
+        }).pipe(Effect.flip)
+
+        assert.strictEqual(error.reason._tag, "NetworkError")
+        if (error.reason._tag !== "NetworkError") {
+          return
+        }
+        assert.strictEqual(String(error.reason.request.headers["authorization"]), "<redacted>")
+        assert.strictEqual(String(error.reason.request.headers["openai-organization"]), "<redacted>")
+        assert.strictEqual(String(error.reason.request.headers["openai-project"]), "<redacted>")
+      }))
+
     it.effect("maps 400 responses to InvalidRequestError", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.make({

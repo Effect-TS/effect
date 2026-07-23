@@ -74,6 +74,14 @@ const RedactedOpenAiHeaders = {
   OpenAiProject: "OpenAI-Project"
 }
 
+const redactedOpenAiHeaderNames = Object.values(RedactedOpenAiHeaders)
+
+const withRedactedOpenAiHeaders = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+  Effect.updateService(effect, Headers.CurrentRedactedNames, Array.appendAll(redactedOpenAiHeaderNames))
+
+const withRedactedOpenAiClient = <E, R>(client: HttpClient.HttpClient.With<E, R>): HttpClient.HttpClient.With<E, R> =>
+  client.pipe(HttpClient.transformResponse(withRedactedOpenAiHeaders))
+
 // =============================================================================
 // Constructor
 // =============================================================================
@@ -112,22 +120,19 @@ export const make = Effect.fnUntraced(
       options.transformClient
         ? options.transformClient
         : identity
-    )
+    ).pipe(withRedactedOpenAiClient)
 
     return Generated.make(httpClient, {
       transformClient: Effect.fnUntraced(function*(client) {
         const config = yield* OpenAiConfig.getOrUndefined
         if (Predicate.isNotUndefined(config?.transformClient)) {
-          return config.transformClient(client)
+          return withRedactedOpenAiClient(config.transformClient(client))
         }
         return client
       })
     })
   },
-  Effect.updateService(
-    Headers.CurrentRedactedNames,
-    Array.appendAll(Object.values(RedactedOpenAiHeaders))
-  )
+  Effect.updateService(Headers.CurrentRedactedNames, Array.appendAll(redactedOpenAiHeaderNames))
 )
 
 // =============================================================================
