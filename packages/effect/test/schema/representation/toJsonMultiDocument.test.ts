@@ -20,7 +20,7 @@ describe("SchemaRepresentation.toJsonMultiDocument", () => {
   })
 
   it("encodes shared references once", () => {
-    const shared = Schema.String.annotate({ identifier: "Shared" })
+    const shared = Schema.String.annotate({ identifier: "Shared", callback: () => "live" })
     const document = SchemaRepresentation.toRepresentations([shared.ast, shared.ast])
 
     assert.deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {

@@ -1,6 +1,9 @@
+import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
+import * as SchemaAST from "../../SchemaAST.ts"
+import * as SchemaGetter from "../../SchemaGetter.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
-import { projectDocument, projectMultiDocument } from "./toRepresentation.ts"
+import * as InternalRecord from "../record.ts"
 
 const RepresentationSchema = Schema.suspend(
   (): Schema.Codec<SchemaRepresentation.Representation> => RepresentationUnion
@@ -17,7 +20,31 @@ const CheckRepresentationAnnotationSchema = Schema.Struct({
   schemas: Schema.optional(RepresentationsSchema)
 })
 
-const AnnotationsSchema = Schema.optional(Schema.Record(Schema.String, Schema.Json))
+const LiveAnnotationsSchema = Schema.Record(Schema.String, Schema.Unknown)
+const JsonAnnotationsSchema = Schema.Record(Schema.String, Schema.Json)
+
+function pruneAnnotations(
+  annotations: Readonly<Record<string, unknown>>
+): Option.Option<Readonly<Record<string, Schema.Json>>> {
+  const out: Record<string, Schema.Json> = {}
+  for (const [key, value] of Object.entries(annotations)) {
+    if (SchemaAST.isJson(value)) {
+      InternalRecord.set(out, key, value)
+    }
+  }
+  return Object.keys(out).length === 0 ? Option.none() : Option.some(out)
+}
+
+const AnnotationsSchema = Schema.optional(LiveAnnotationsSchema).pipe(
+  Schema.encodeTo(Schema.optionalKey(JsonAnnotationsSchema), {
+    decode: SchemaGetter.passthroughSubtype(),
+    encode: SchemaGetter.transformOptional((annotations) =>
+      Option.isNone(annotations) || annotations.value === undefined
+        ? Option.none()
+        : pruneAnnotations(annotations.value)
+    )
+  })
+)
 
 const CheckSchema = Schema.suspend((): Schema.Codec<SchemaRepresentation.Check> => CheckUnion)
 const ChecksSchema = Schema.Array(CheckSchema)
@@ -187,14 +214,12 @@ const decodeMultiDocument = Schema.decodeSync(MultiDocumentFromJson)
 
 /** @internal */
 export function toJson(document: SchemaRepresentation.Document): Schema.Json {
-  const projected = projectDocument(document)
-  return encodeDocument(projected)
+  return encodeDocument(document)
 }
 
 /** @internal */
 export function toJsonMultiDocument(document: SchemaRepresentation.MultiDocument): Schema.Json {
-  const projected = projectMultiDocument(document)
-  return encodeMultiDocument(projected)
+  return encodeMultiDocument(document)
 }
 
 /** @internal */

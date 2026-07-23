@@ -11,13 +11,23 @@ function makeStringProperty<const Name>(name: Name) {
   } as const
 }
 
+function assertToJson(
+  representation: SchemaRepresentation.Representation,
+  jsonRepresentation: Schema.Json
+): void {
+  assert.deepStrictEqual(
+    SchemaRepresentation.toJson({ representation, references: {} }),
+    { representation: jsonRepresentation, references: {} }
+  )
+}
+
 function assertRoundtrip(
   representation: SchemaRepresentation.Representation,
   jsonRepresentation: Schema.Json
 ): void {
   const document: SchemaRepresentation.Document = { representation, references: {} }
   const json: Schema.Json = { representation: jsonRepresentation, references: {} }
-  assert.deepStrictEqual(SchemaRepresentation.toJson(document), json)
+  assertToJson(representation, jsonRepresentation)
   assert.deepStrictEqual(SchemaRepresentation.fromJson(json), document)
 }
 
@@ -30,6 +40,21 @@ describe("SchemaRepresentation.toJson", () => {
           references: {}
         }),
       `Expected a value with a length of at least 1, got ""\n  at ["representation"]["$ref"]`
+    )
+  })
+
+  it("rejects checks on Suspend representations", () => {
+    throws(
+      () =>
+        SchemaRepresentation.toJson({
+          representation: {
+            _tag: "Suspend",
+            checks: [null],
+            thunk: { _tag: "String", checks: [] }
+          } as never,
+          references: {}
+        }),
+      `Unexpected key with value null\n  at ["representation"]["checks"][0]`
     )
   })
 
@@ -118,6 +143,117 @@ describe("SchemaRepresentation.toJson", () => {
       },
       references: {}
     })
+  })
+
+  it("omits annotations containing only non-JSON values", () => {
+    assertToJson(
+      {
+        _tag: "String",
+        annotations: { callback: () => "live" },
+        checks: []
+      },
+      { _tag: "String", checks: [] }
+    )
+  })
+
+  it("omits undefined annotations", () => {
+    assertToJson(
+      {
+        _tag: "String",
+        annotations: undefined,
+        checks: []
+      },
+      { _tag: "String", checks: [] }
+    )
+  })
+
+  it("prunes nested representation annotations", () => {
+    assertToJson(
+      {
+        _tag: "Union",
+        types: [{
+          _tag: "String",
+          annotations: {
+            title: "nested",
+            callback: () => "live"
+          },
+          checks: []
+        }],
+        mode: "anyOf",
+        checks: []
+      },
+      {
+        _tag: "Union",
+        types: [{
+          _tag: "String",
+          annotations: { title: "nested" },
+          checks: []
+        }],
+        mode: "anyOf",
+        checks: []
+      }
+    )
+  })
+
+  it("prunes annotations in check schema dependencies", () => {
+    assertToJson(
+      {
+        _tag: "String",
+        checks: [{
+          _tag: "Filter",
+          representation: {
+            id: "acme/schema/custom",
+            payload: null,
+            schemas: [{
+              _tag: "Number",
+              annotations: {
+                title: "dependency",
+                callback: () => "live"
+              },
+              checks: []
+            }]
+          },
+          aborted: false
+        }]
+      },
+      {
+        _tag: "String",
+        checks: [{
+          _tag: "Filter",
+          representation: {
+            id: "acme/schema/custom",
+            payload: null,
+            schemas: [{
+              _tag: "Number",
+              annotations: { title: "dependency" },
+              checks: []
+            }]
+          },
+          aborted: false
+        }]
+      }
+    )
+  })
+
+  it("preserves __proto__ annotations as data properties", () => {
+    const annotations: Record<string, unknown> = {}
+    Object.defineProperty(annotations, "__proto__", {
+      value: "safe",
+      enumerable: true
+    })
+
+    assertToJson(
+      {
+        _tag: "String",
+        annotations,
+        checks: []
+      },
+      {
+        _tag: "String",
+        annotations: JSON.parse(`{"__proto__":"safe"}`),
+        checks: []
+      }
+    )
   })
 
   it("preserves shared JSON annotation values", () => {
