@@ -2063,6 +2063,67 @@ export const __HttpApiMultipartFiles = Multipart.FilesSchema`,
   })
 
   describe("regression", () => {
+    it.effect("drops type-incompatible schema examples and emits a warning", () =>
+      Effect.gen(function*() {
+        const generator = yield* OpenApiGenerator.OpenApiGenerator
+        const warnings: Array<OpenApiGenerator.OpenApiGeneratorWarning> = []
+
+        const result = yield* generator.generate({
+          openapi: "3.0.0",
+          info: {
+            title: "Invalid schema example API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/templates": {
+              get: {
+                operationId: "getTemplates",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "OK",
+                    content: {
+                      "application/json": {
+                        schema: {
+                          $ref: "#/components/schemas/TemplateTriggers"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          components: {
+            schemas: {
+              TemplateTriggers: {
+                type: "array",
+                items: { type: "string" },
+                example: "create"
+              }
+            }
+          }
+        } as unknown as OpenAPISpec, {
+          name: "TestClient",
+          format: "httpclient",
+          onWarning: (warning) => {
+            warnings.push(warning)
+          }
+        })
+
+        assert.include(result, "export const TemplateTriggers = Schema.Array(Schema.String)")
+        assert.notInclude(result, "\"examples\": [\"create\"]")
+        assert.deepStrictEqual(warnings, [
+          {
+            code: "invalid-schema-example-dropped",
+            message:
+              "Dropped an example value of type \"string\" because it is incompatible with schema type \"array\"."
+          }
+        ])
+      }).pipe(
+        Effect.provide(OpenApiGenerator.layerTransformerSchema)
+      ))
+
     it.effect("runtime warnings do not report additional-tags-dropped outside httpapi", () =>
       assertRuntimeStableWithWarnings(
         {

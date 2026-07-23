@@ -60,10 +60,11 @@ export type OpenApiGeneratorWarningCode =
   | "security-and-downgraded"
   | "no-body-method-request-body-skipped"
   | "naming-collision"
+  | "invalid-schema-example-dropped"
 
 /**
- * Describes a non-fatal issue encountered while mapping an OpenAPI operation to
- * generated Effect source.
+ * Describes a non-fatal issue encountered while generating Effect source from
+ * an OpenAPI document.
  *
  * @category models
  * @since 4.0.0
@@ -159,6 +160,7 @@ export const make = Effect.gen(function*() {
           withHttpApiMultipartSchemas(spec.components?.schemas ?? {}, multipartSchemaRefs),
           {
             onEnter: options.onEnter,
+            onWarning: emitWarning,
             multipartSchemaRefs
           }
         )
@@ -167,7 +169,8 @@ export const make = Effect.gen(function*() {
           spec.components?.schemas ?? {},
           options.format === "httpclient-type-only",
           {
-            onEnter: options.onEnter
+            onEnter: options.onEnter,
+            onWarning: emitWarning
           }
         )
 

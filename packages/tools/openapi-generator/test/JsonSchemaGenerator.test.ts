@@ -57,6 +57,44 @@ export const A = Schema.String.annotate({ "description": "desc", "examples": ["e
 `)
   })
 
+  it("retains compatible examples and drops incompatible examples", () => {
+    const generator = JsonSchemaGenerator.make()
+    generator.addSchema("Arrays", {
+      type: "array",
+      items: { type: "string" },
+      examples: [["create"], "create", []]
+    })
+    generator.addSchema("NullableStrings", {
+      type: ["string", "null"],
+      examples: ["create", null, 1]
+    })
+    generator.addSchema("Unknown", {
+      examples: ["create"]
+    })
+    const warnings: Array<unknown> = []
+
+    const result = generator.generate("openapi-3.1", {}, false, {
+      onWarning: (warning) => {
+        warnings.push(warning)
+      }
+    })
+
+    expect(result).toContain("\"examples\": [[\"create\"],[]]")
+    expect(result).toContain("\"examples\": [\"create\",null]")
+    expect(result).toContain("export const Unknown = Schema.Json.annotate({ \"examples\": [\"create\"] })")
+    expect(warnings).toEqual([
+      {
+        code: "invalid-schema-example-dropped",
+        message: "Dropped an example value of type \"string\" because it is incompatible with schema type \"array\"."
+      },
+      {
+        code: "invalid-schema-example-dropped",
+        message:
+          "Dropped an example value of type \"number\" because it is incompatible with schema type \"string\" or \"null\"."
+      }
+    ])
+  })
+
   it("generateHttpApi emits explicit type and const declarations", () => {
     const generator = JsonSchemaGenerator.make()
     generator.addSchema("A", { type: "string" })
