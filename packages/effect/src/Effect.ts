@@ -6256,8 +6256,9 @@ export const updateService: {
  *       yield* Effect.updateServiceScoped(
  *         CurrentNumber,
  *         (value) => value + 1,
- *         // Install a different value when the scope closes
- *         () => 100
+ *         // Optional: when omitted, the original value is restored
+ *         (original, updated, current) =>
+ *           Math.max(original, updated, current) + 1
  *       )
  *       return yield* CurrentNumber
  *     })
@@ -6265,7 +6266,7 @@ export const updateService: {
  *   const after = yield* CurrentNumber
  *
  *   console.log([before, during, after])
- *   // [1, 2, 100]
+ *   // [1, 2, 3]
  * })
  *
  * Effect.runPromise(program)
