@@ -74,7 +74,8 @@ function lowerASTs(
 ): SchemaRepresentation.MultiDocument {
   const references: Record<string, SchemaRepresentation.Representation> = {}
   const referenceMap = new Map<SchemaAST.AST, string>()
-  const uniqueReferences = new Set(externalDefinitions.map((definition) => definition.key))
+  const externalReferences = new Set(externalDefinitions.map((definition) => definition.key))
+  const uniqueReferences = new Set(externalReferences)
   const visiting = new Set<SchemaAST.AST>()
   const visited = new Set<SchemaAST.AST>()
   const shared = new Set<SchemaAST.AST>()
@@ -168,6 +169,16 @@ function lowerASTs(
     const projected = SchemaAST.getLastEncoding(ast)
     if (projected !== ast) {
       return recur(projected, ownedReference)
+    }
+
+    const externalReference = ast.annotations?.identifier
+    if (
+      ownedReference === undefined &&
+      typeof externalReference === "string" &&
+      externalReferences.has(externalReference)
+    ) {
+      referenceMap.set(ast, externalReference)
+      return { _tag: "Reference", $ref: externalReference }
     }
 
     const identifier = ownedReference === undefined ? resolveReferenceIdentifier(ast) : undefined

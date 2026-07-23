@@ -15,9 +15,9 @@ describe("JsonSchemaGenerator representation v2", () => {
       output,
       `// non-recursive definitions
 export type Shared = string
-export const Shared = Schema.String
+export const Shared = Schema.String.annotate({ "identifier": "Shared" })
 export type Unused = boolean
-export const Unused = Schema.Boolean
+export const Unused = Schema.Boolean.annotate({ "identifier": "Unused" })
 // schemas
 export type Root = Shared
 export const Root = Shared
