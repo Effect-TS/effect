@@ -7,6 +7,31 @@ describe("Fiber", () => {
     assert.isTrue(Fiber.isFiber(result))
   })
 
+  describe("joinAll", () => {
+    it.effect("cleans up observers on interruption", () =>
+      Effect.gen(function*() {
+        const fiber = yield* Effect.forkChild(Effect.never)
+        let cleaned = 0
+        const tracked = new Proxy(fiber, {
+          get(target, property, receiver) {
+            if (property !== "addObserver") return Reflect.get(target, property, receiver)
+            return (observer: Parameters<typeof target.addObserver>[0]) => {
+              const cancel = target.addObserver(observer)
+              return () => {
+                cleaned++
+                cancel()
+              }
+            }
+          }
+        })
+        const joinFiber = yield* Fiber.joinAll([tracked]).pipe(
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(joinFiber)
+        assert.strictEqual(cleaned, 1)
+      }))
+  })
+
   describe("interruptAll", () => {
     it.effect("awaits fibers passed as a one-shot iterable", () =>
       Effect.gen(function*() {

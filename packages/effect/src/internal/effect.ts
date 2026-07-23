@@ -841,6 +841,10 @@ export const fiberJoinAll = <A extends Iterable<Fiber.Fiber<any, any>>>(self: A)
         }
       }))
     }
+    return sync(() => {
+      failed = true
+      cancels.forEach((cancel) => cancel())
+    })
   })
 
 /** @internal */
