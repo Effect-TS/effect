@@ -317,6 +317,14 @@ const SerializableTypeId: Atom.SerializableTypeId = "~effect-atom/atom/Atom/Seri
 const atomKey = <A>(atom: Atom.Atom<A>): Atom.Atom<A> | string =>
   SerializableTypeId in atom ? (atom as Atom.Serializable<any>)[SerializableTypeId].key : atom
 
+const initialValueTarget = <A>(atom: Atom.Atom<A>): Atom.Atom<A> => {
+  let target = atom
+  while (target.initialValueTarget) {
+    target = target.initialValueTarget
+  }
+  return target
+}
+
 class RegistryImpl implements AtomRegistry {
   readonly [TypeId]: TypeId
   readonly timeoutResolution: number
@@ -346,11 +354,7 @@ class RegistryImpl implements AtomRegistry {
     }
     if (initialValues !== undefined) {
       for (const [atom, value] of initialValues) {
-        let target = atom
-        while (target.initialValueTarget) {
-          target = target.initialValueTarget
-        }
-        this.ensureNode(target).setInitialValue(value)
+        this.ensureNode(initialValueTarget(atom)).setInitialValue(value)
       }
     }
   }
@@ -435,7 +439,12 @@ class RegistryImpl implements AtomRegistry {
       const encoded = this.preloadedSerializable.get(key)
       this.preloadedSerializable.delete(key)
       const decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(encoded)
-      node.setValue(decoded)
+      const target = initialValueTarget(atom)
+      if (target === atom) {
+        node.setInitialValue(decoded)
+      } else {
+        this.ensureNode(target).setInitialValue(decoded)
+      }
     }
     return node
   }
