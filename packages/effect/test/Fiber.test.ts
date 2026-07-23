@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Latch } from "effect"
+import { Cause, Context, Effect, Exit, Fiber, Latch, References } from "effect"
 
 describe("Fiber", () => {
   it("is a fiber", async () => {
@@ -68,6 +68,37 @@ describe("Fiber", () => {
         assert.isTrue(Exit.hasInterrupts(exit))
       })
   )
+
+  it.effect("retains distinct target and interruptor stack frames", () =>
+    Effect.gen(function*() {
+      const targetFrame: References.StackFrame = {
+        name: "target-frame",
+        stack: () => "at target-call-site.ts:1:1",
+        parent: undefined
+      }
+      const interruptorFrame: References.StackFrame = {
+        name: "interruptor-frame",
+        stack: () => "at interruptor-call-site.ts:2:2",
+        parent: undefined
+      }
+      const target = yield* Effect.never.pipe(
+        Effect.provideService(References.CurrentStackFrame, targetFrame),
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* Fiber.interrupt(target).pipe(
+        Effect.provideService(References.CurrentStackFrame, interruptorFrame)
+      )
+
+      const exit = yield* Fiber.await(target)
+      if (exit._tag !== "Failure") {
+        return assert.fail("expected interrupted fiber to exit with failure")
+      }
+      const annotations = Cause.reasonAnnotations(exit.cause.reasons[0])
+      assert.strictEqual(Context.getUnsafe(annotations, Cause.StackTrace), targetFrame)
+      assert.strictEqual(Context.getUnsafe(annotations, Cause.InterruptorStackTrace), interruptorFrame)
+      assert.isTrue(Cause.pretty(exit.cause).includes("interruptor-call-site.ts:2:2"))
+    }))
 
   it.effect("delivers a pending interrupt when interruptibleMask restores interruptibility", () =>
     Effect.gen(function*() {

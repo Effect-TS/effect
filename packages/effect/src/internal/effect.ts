@@ -746,7 +746,7 @@ const fiberMiddleware = {
 const fiberStackAnnotations = (fiber: Fiber.Fiber<any, any>) => {
   if (!fiber.currentStackFrame) return undefined
   const annotations = new Map<string, unknown>()
-  annotations.set(CauseStackTrace.key, fiber.currentStackFrame)
+  annotations.set(InterruptorStackTrace.key, fiber.currentStackFrame)
   return Context.makeUnsafe(annotations)
 }
 
