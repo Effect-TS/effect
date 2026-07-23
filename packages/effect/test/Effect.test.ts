@@ -3035,6 +3035,42 @@ describe("Effect", () => {
       }))
   })
 
+  describe("updateServiceScoped", () => {
+    class CurrentNumber extends Context.Service<CurrentNumber, number>()("CurrentNumber") {}
+
+    const CurrentNumberReference = Context.Reference<number>("CurrentNumberReference", {
+      defaultValue: () => 1
+    })
+
+    it.effect("updates a Context.Service until the scope closes", () =>
+      Effect.gen(function*() {
+        const before = yield* CurrentNumber
+        const during = yield* Effect.scoped(
+          Effect.gen(function*() {
+            yield* Effect.updateServiceScoped(CurrentNumber, (value) => value + 1)
+            return yield* CurrentNumber
+          })
+        )
+        const after = yield* CurrentNumber
+
+        assert.deepStrictEqual([before, during, after], [1, 2, 1])
+      }).pipe(Effect.provideService(CurrentNumber, 1)))
+
+    it.effect("updates a Context.Reference until the scope closes", () =>
+      Effect.gen(function*() {
+        const before = yield* CurrentNumberReference
+        const during = yield* Effect.scoped(
+          Effect.gen(function*() {
+            yield* Effect.updateServiceScoped(CurrentNumberReference, (value) => value + 1)
+            return yield* CurrentNumberReference
+          })
+        )
+        const after = yield* CurrentNumberReference
+
+        assert.deepStrictEqual([before, during, after], [1, 2, 1])
+      }))
+  })
+
   describe("provide", () => {
     class MyNumber extends Context.Service<MyNumber, number>()("MyNumber") {}
 

@@ -2112,6 +2112,20 @@ export const updateService: {
 )
 
 /** @internal */
+export const updateServiceScoped = <I, A>(
+  service: Context.Key<I, A>,
+  f: (value: A) => A
+): Effect.Effect<void, never, I | Scope.Scope> =>
+  uninterruptible(withFiber((fiber) => {
+    const prev = Context.getUnsafe(fiber.context, service)
+    fiber.setContext(Context.add(fiber.context, service, f(prev)))
+    return scopeAddFinalizerExit(Context.getUnsafe(fiber.context, scopeTag), (_) => {
+      fiber.setContext(Context.add(fiber.context, service, prev))
+      return void_
+    })
+  }))
+
+/** @internal */
 export const context = <R = never>(): Effect.Effect<Context.Context<R>> => getContext as any
 const getContext = withFiber((fiber) => succeed(fiber.context))
 
