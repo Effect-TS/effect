@@ -15,8 +15,11 @@ import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import { identity } from "../../Function.ts"
+import { sqlCleanupBatchSize } from "../../internal/persistence.ts"
 import * as Layer from "../../Layer.ts"
 import * as PrimaryKey from "../../PrimaryKey.ts"
+import * as Result from "../../Result.ts"
+import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
@@ -560,6 +563,127 @@ export const layerBackingSql: Layer.Layer<
       `
   }).pipe(Effect.orDie)
 
+  yield* sql.onDialectOrElse({
+    pg: () =>
+      sql`CREATE INDEX IF NOT EXISTS effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`
+        .pipe(Effect.orDie, Effect.asVoid),
+    mysql: () =>
+      Effect.gen(function*() {
+        const indexExists = sql<{ readonly count: number }>`
+          SELECT COUNT(*) AS count FROM information_schema.statistics
+          WHERE table_schema = DATABASE()
+            AND table_name = 'effect_persistence'
+            AND index_name = 'effect_persistence_expires_idx'
+        `.pipe(
+          Effect.map((rows) => Number(rows[0].count) > 0),
+          Effect.orDie
+        )
+        if (yield* indexExists) return
+
+        const createIndexResult = yield* sql`CREATE INDEX effect_persistence_expires_idx ON ${table} (expires)`
+          .pipe(Effect.result)
+        if (!(yield* indexExists)) {
+          if (Result.isFailure(createIndexResult)) {
+            return yield* Effect.die(createIndexResult.failure)
+          }
+          return yield* Effect.die(new Error("Failed to create effect_persistence_expires_idx"))
+        }
+      }),
+    mssql: () =>
+      sql`
+        IF NOT EXISTS (
+          SELECT * FROM sys.indexes
+          WHERE name = N'effect_persistence_expires_idx'
+            AND object_id = OBJECT_ID(N'effect_persistence')
+        )
+        CREATE INDEX effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL
+      `.pipe(Effect.orDie, Effect.asVoid),
+    // sqlite
+    orElse: () =>
+      sql`CREATE INDEX IF NOT EXISTS effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`
+        .pipe(Effect.orDie, Effect.asVoid)
+  })
+
+  const cleanupBatchDelay = Duration.millis(10)
+  const cleanupInterval = Duration.minutes(5)
+
+  const deleteExpiredBatch = sql.onDialectOrElse({
+    pg: () => (expiresAtOrBefore: number) =>
+      sql<{ readonly tupleId: string }>`
+        WITH expired_entries AS (
+          SELECT ctid FROM ${table}
+          WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
+          ORDER BY expires
+          LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
+        )
+        DELETE FROM ${table}
+        WHERE ctid IN (SELECT ctid FROM expired_entries)
+        RETURNING ctid::text AS "tupleId"
+      `.pipe(Effect.map((deletedEntries) => deletedEntries.length)),
+    mysql: () =>
+      Effect.fnUntraced(
+        function*(expiresAtOrBefore: number) {
+          yield* sql`
+            DELETE FROM ${table}
+            WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
+            ORDER BY expires
+            LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
+          `
+          const rows = yield* sql<{ readonly count: number }>`SELECT ROW_COUNT() AS count`
+          return Number(rows[0].count)
+        },
+        (effect) => effect.pipe(sql.withTransaction)
+      ),
+    mssql: () => (expiresAtOrBefore: number) =>
+      sql<{ readonly store_id: string }>`
+        WITH expired_entries AS (
+          SELECT TOP ${sql.literal(String(sqlCleanupBatchSize))} store_id, id FROM ${table}
+          WITH (UPDLOCK, READPAST, READCOMMITTEDLOCK)
+          WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
+          ORDER BY expires
+        )
+        DELETE persistence
+        OUTPUT DELETED.store_id
+        FROM ${table} AS persistence
+        INNER JOIN expired_entries
+          ON persistence.store_id = expired_entries.store_id
+          AND persistence.id = expired_entries.id
+      `.pipe(Effect.map((deletedEntries) => deletedEntries.length)),
+    // Some sqlite clients do not support interactive transactions, so use one bounded statement.
+    orElse: () => (expiresAtOrBefore: number) =>
+      sql<{ readonly store_id: string }>`
+        DELETE FROM ${table}
+        WHERE rowid IN (
+          SELECT rowid FROM ${table}
+          WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
+          ORDER BY expires
+          LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
+        )
+        RETURNING store_id
+      `.pipe(Effect.map((deletedEntries) => deletedEntries.length))
+  })
+
+  // Delay between batches and stop once a batch deletes no rows.
+  const deleteExpiredSchedule = Schedule.forever.pipe(
+    Schedule.setInputType<number>(),
+    Schedule.passthrough,
+    Schedule.while(({ input: deletedCount }) => deletedCount !== 0),
+    Schedule.addDelay(() => Effect.succeed(cleanupBatchDelay))
+  )
+
+  const deleteExpired = Effect.fnUntraced(function*() {
+    const expiresAtOrBefore = yield* Clock.currentTimeMillis
+    return yield* deleteExpiredBatch(expiresAtOrBefore).pipe(
+      Effect.repeat(deleteExpiredSchedule)
+    )
+  })
+
+  yield* deleteExpired().pipe(
+    Effect.catch((cause) => Effect.logWarning("Failed to clean up expired persistence entries", cause)),
+    Effect.repeat(Schedule.spaced(cleanupInterval)),
+    Effect.forkScoped
+  )
+
   type UpsertFn = (
     entries: Array<{ store_id: string; id: string; value: string; expires: number | null }>
   ) => Effect.Effect<unknown, SqlError>
@@ -605,11 +729,6 @@ export const layerBackingSql: Layer.Layer<
   return BackingPersistence.of({
     make: Effect.fnUntraced(function*(storeId) {
       const clock = yield* Clock.Clock
-
-      // Cleanup expired entries on startup
-      yield* Effect.ignore(
-        sql`DELETE FROM ${table} WHERE store_id = ${storeId} AND expires IS NOT NULL AND expires <= ${clock.currentTimeMillisUnsafe()}`
-      )
 
       return identity<BackingPersistenceStore>({
         get: (key) =>
