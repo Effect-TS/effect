@@ -4698,6 +4698,16 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
     let nextIndex = index
     const exits: Array<Exit.Exit<X, E> | undefined> | undefined = orderedStep ? new Array(end) : undefined
 
+    const failDefect = (error: unknown): Effect.Effect<void, E | E2, R> => {
+      const defect = exitDie(error)
+      terminal = defect
+      done = true
+      interrupted = true
+      return fibers && fibers.size > 0
+        ? flatMap(uninterruptible(fiberInterruptAll(Array.from(fibers))), () => defect)
+        : defect
+    }
+
     const runStep = (item: A, exit: Exit.Exit<X, E>, currentIndex: number): Exit.Exit<void, E | E2> | void => {
       if (!orderedStep) return step(state, item, exit, currentIndex)
       if (terminal) return terminal
@@ -4735,9 +4745,15 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
         } else if (!parentFiber) {
           return callback((cb) => {
             parentFiber = getCurrentFiber()!
+            fibers = new Set()
             effect = eff
             resume = cb
-            const result = go()
+            let result: Effect.Effect<void, E | E2, R> | undefined
+            try {
+              result = go()
+            } catch (error) {
+              return cb(failDefect(error))
+            }
             if (result) return cb(result)
             return suspend(() => {
               terminal = exitVoid
@@ -4759,43 +4775,46 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
           }
 
           // Add the fiber to the Set
-          if (fibers) fibers.add(fiber)
-          else fibers = new Set([fiber])
+          fibers!.add(fiber)
 
           const currentIndex = index
           fiber.addObserver((exit) => {
             fibers!.delete(fiber)
-            if (terminal) {
-              if (!interrupted && exit._tag === "Failure") {
-                for (const reason of exit.cause.reasons) {
-                  if (reason._tag === "Interrupt") continue
-                  else if (terminal._tag === "Failure") {
-                    ;(terminal.cause.reasons as Array<any>).push(reason)
-                  } else {
-                    terminal = exitFailCause(causeFromReasons([reason]))
+            try {
+              if (terminal) {
+                if (!interrupted && exit._tag === "Failure") {
+                  for (const reason of exit.cause.reasons) {
+                    if (reason._tag === "Interrupt") continue
+                    else if (terminal._tag === "Failure") {
+                      ;(terminal.cause.reasons as Array<any>).push(reason)
+                    } else {
+                      terminal = exitFailCause(causeFromReasons([reason]))
+                    }
                   }
                 }
+              } else {
+                const result = runStep(item, exit, currentIndex)
+                if (result) {
+                  terminal = result._tag === "Failure"
+                    ? exitFailCause(causeFromReasons(result.cause.reasons.slice()))
+                    : result
+                  go()
+                }
               }
-            } else {
-              const result = runStep(item, exit, currentIndex)
-              if (result) {
-                terminal = result._tag === "Failure"
-                  ? exitFailCause(causeFromReasons(result.cause.reasons.slice()))
-                  : result
-                go()
-              }
-            }
 
-            if (paused) {
-              const eff = go()
-              if (eff) resume!(eff)
-            } else if (done && fibers!.size === 0) {
-              resume!(terminal ?? void_)
+              if (paused) {
+                const eff = go()
+                if (eff) resume!(eff)
+              } else if (done && fibers!.size === 0) {
+                resume!(terminal ?? void_)
+              }
+            } catch (error) {
+              resume!(failDefect(error))
             }
           })
 
           // Check if we have reached the concurrency limit
-          if (fibers.size < concurrency) continue
+          if (fibers!.size < concurrency) continue
           paused = true
           index++
           return
