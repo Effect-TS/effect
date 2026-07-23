@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Exit, Fiber, Latch } from "effect"
+import { Cause, Context, Effect, Exit, Fiber, Latch, Metric, References, Scheduler, Tracer } from "effect"
 
 describe("Fiber", () => {
   it("is a fiber", async () => {
@@ -142,4 +142,115 @@ describe("Fiber", () => {
       assert.isTrue(Exit.hasInterrupts(exit))
       assert.deepStrictEqual(events, ["acquired", "finalizer-start", "finalizer-end", "awaited"])
     }))
+
+  it("clears context-derived caches on completion", () => {
+    const dispatcher: Scheduler.SchedulerDispatcher = {
+      scheduleTask() {},
+      flush() {}
+    }
+    const scheduler: Scheduler.Scheduler = {
+      executionMode: "sync",
+      shouldYield: () => false,
+      makeDispatcher: () => dispatcher
+    }
+    const span = Tracer.externalSpan({
+      spanId: "span",
+      traceId: "trace"
+    })
+    const tracerContext: NonNullable<Tracer.Tracer["context"]> = (primitive, fiber) =>
+      primitive["~effect/Effect/evaluate"](fiber)
+    const tracer = Tracer.make({
+      span: () => {
+        throw new Error("unexpected span")
+      },
+      context: tracerContext
+    })
+    let ended = false
+    let endedContext: Context.Context<never> | undefined
+    const metrics: Metric.FiberRuntimeMetricsService = {
+      recordFiberStart() {},
+      recordFiberEnd(context) {
+        ended = true
+        endedContext = context
+      }
+    }
+    const stackFrame: References.StackFrame = {
+      name: "frame",
+      stack: () => undefined,
+      parent: undefined
+    }
+    const context = Context.empty().pipe(
+      Context.add(Scheduler.Scheduler, scheduler),
+      Context.add(Tracer.ParentSpan, span),
+      Context.add(Tracer.Tracer, tracer),
+      Context.add(Metric.FiberRuntimeMetrics, metrics),
+      Context.add(References.CurrentStackFrame, stackFrame)
+    )
+
+    const fiber = Effect.runForkWith(context)(Effect.sync(() => {
+      const current = Fiber.getCurrent()!
+      assert.strictEqual(current.currentDispatcher, dispatcher)
+      assert.strictEqual(current.currentScheduler, scheduler)
+      assert.strictEqual(current.currentSpan, span)
+      assert.strictEqual(current.currentStackFrame, stackFrame)
+    })) as Fiber.Fiber<void> & {
+      readonly _dispatcher: Scheduler.SchedulerDispatcher | undefined
+      readonly currentTracerContext: Tracer.Tracer["context"]
+      readonly runtimeMetrics: Metric.FiberRuntimeMetricsService | undefined
+    }
+
+    assert.isDefined(fiber.pollUnsafe())
+    assert.isTrue(ended)
+    assert.strictEqual(endedContext, context)
+    assert.strictEqual(fiber.context, Context.empty())
+    assert.strictEqual(fiber.currentScheduler, fiber.getRef(Scheduler.Scheduler))
+    assert.notStrictEqual(fiber.currentScheduler, scheduler)
+    assert.notStrictEqual(fiber.getRef(Tracer.Tracer), tracer)
+    assert.isUndefined(fiber.getRef(Metric.FiberRuntimeMetrics))
+    assert.isUndefined(fiber.getRef(References.CurrentStackFrame))
+    assert.isUndefined(fiber.currentSpan)
+    assert.isUndefined(fiber.currentStackFrame)
+    assert.isUndefined(fiber._dispatcher)
+    assert.isUndefined(fiber.currentTracerContext)
+    assert.isUndefined(fiber.runtimeMetrics)
+  })
+
+  it("clears context-derived caches before running completion hooks", () => {
+    const span = Tracer.externalSpan({
+      spanId: "span",
+      traceId: "trace"
+    })
+    const metrics: Metric.FiberRuntimeMetricsService = {
+      recordFiberStart() {},
+      recordFiberEnd() {
+        completionHookRan = true
+        throw new Error("completion hook failed")
+      }
+    }
+    const context = Context.empty().pipe(
+      Context.add(Tracer.ParentSpan, span),
+      Context.add(Metric.FiberRuntimeMetrics, metrics)
+    )
+    let completionHookRan = false
+    let fiber:
+      | (Fiber.Fiber<void> & {
+        readonly runtimeMetrics: Metric.FiberRuntimeMetricsService | undefined
+      })
+      | undefined
+
+    try {
+      Effect.runForkWith(context)(Effect.sync(() => {
+        fiber = Fiber.getCurrent() as typeof fiber
+      }))
+    } catch {
+      // Completion-hook failure handling is outside this teardown invariant.
+    }
+
+    assert.isTrue(completionHookRan)
+    assert.isDefined(fiber)
+    assert.isDefined(fiber.pollUnsafe())
+    assert.strictEqual(fiber.context, Context.empty())
+    assert.isUndefined(fiber.currentSpan)
+    assert.isUndefined(fiber.runtimeMetrics)
+  })
 })

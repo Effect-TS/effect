@@ -617,14 +617,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     }
 
     this._exit = exit
-    this.runtimeMetrics?.recordFiberEnd(this.context, this._exit)
+    const context = this.context
+    const runtimeMetrics = this.runtimeMetrics
+    this._stack.length = 0
+    this._children = undefined
+    this.clearContext()
+    runtimeMetrics?.recordFiberEnd(context, this._exit)
     for (let i = 0; i < this._observers.length; i++) {
       this._observers[i](exit)
     }
     this._observers.length = 0
-    this._stack.length = 0
-    this._children = undefined
-    this.context = Context.empty()
   }
   runLoop(effect: Primitive): Exit.Exit<A, E> | Yield {
     const prevFiber = (globalThis as any)[currentFiberTypeId]
@@ -722,6 +724,13 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this.runtimeMetrics = context.mapUnsafe.get(InternalMetric.FiberRuntimeMetricsKey)
     const currentTracer = context.mapUnsafe.get(Tracer.TracerKey)
     this.currentTracerContext = currentTracer ? currentTracer["context"] : undefined
+  }
+  private clearContext(): void {
+    // A completed fiber exposes an empty context, all public context-derived
+    // fields reflect that context's defaults, and no private derived references
+    // are retained.
+    this.setContext(Context.empty())
+    this._dispatcher = undefined
   }
   get currentSpanLocal(): Tracer.Span | undefined {
     return this.currentSpan?._tag === "Span" ? this.currentSpan : undefined
