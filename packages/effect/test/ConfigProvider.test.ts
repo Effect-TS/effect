@@ -289,6 +289,22 @@ describe("ConfigProvider", () => {
   })
 
   describe("fromEnv", () => {
+    it("uses the default environment when no env is provided", async () => {
+      const key = "EFFECT_CONFIG_PROVIDER_TEST_DEFAULT_ENV"
+      const previous = process.env[key]
+      process.env[key] = "value1"
+      try {
+        const provider = ConfigProvider.fromEnv()
+        await assertSuccess(provider, [key], ConfigProvider.makeValue("value1"))
+      } finally {
+        if (previous === undefined) {
+          delete process.env[key]
+        } else {
+          process.env[key] = previous
+        }
+      }
+    })
+
     it("env without an underscore", async () => {
       const env = { A: "value1" }
       const provider = ConfigProvider.fromEnv({ env })

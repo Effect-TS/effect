@@ -890,15 +890,21 @@ export function fromEnv(options?: {
   readonly preserveEmptyStrings?: boolean | undefined
 }): ConfigProvider {
   const env: Record<string, string | undefined> = options?.env ?? {
-    ...(globalThis as {
-      readonly process?: { readonly env?: Record<string, string | undefined> }
-    }).process?.env,
-    ...(import.meta as any)?.env
+    ...globalThis?.process?.env,
+    ...getImportMetaEnv()
   }
   const preserveEmptyStrings = options?.preserveEmptyStrings === true
   const trie = buildEnvTrie(env)
 
   return make((path) => Effect.succeed(nodeAtEnv(trie, env, path, preserveEmptyStrings)))
+}
+
+function getImportMetaEnv(): Record<string, string> | undefined {
+  try {
+    return (import.meta as any)?.env
+  } catch {
+    return undefined
+  }
 }
 
 type EnvTrieNode = {
