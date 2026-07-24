@@ -755,7 +755,7 @@ export const withSubcommands: {
 
     const context = yield* impl.parseContext(raw)
     const result = yield* sub.parse(raw.subcommand.value.parsedInput)
-    return Object.assign({}, context, { [SubcommandStateSymbol]: { name: sub.name, result } }) as NextInput
+    return { ...context, [SubcommandStateSymbol]: { name: sub.name, result } } as NextInput
   })
 
   const handle = Effect.fnUntraced(function*(input: NextInput, path: ReadonlyArray<string>) {
@@ -859,13 +859,13 @@ export const withSharedFlags: {
     const parse = Effect.fnUntraced(function*(raw: ParsedTokens) {
       const base = yield* impl.parse(raw)
       const shared = yield* parseShared(raw)
-      return Object.assign({}, base, shared) as NextInput
+      return { ...(base as object), ...(shared as object) } as NextInput
     })
 
     const parseContext = Effect.fnUntraced(function*(raw: ParsedTokens) {
       const base = yield* impl.parseContext(raw)
       const shared = yield* parseShared(raw)
-      return Object.assign({}, base, shared) as NextContextInput
+      return { ...(base as object), ...(shared as object) } as NextContextInput
     })
 
     const handle = (

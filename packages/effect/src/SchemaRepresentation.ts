@@ -839,7 +839,7 @@ function pruneAnnotations(
   const out: Record<string, Schema.Json> = {}
   for (const [key, value] of Object.entries(annotations)) {
     if (SchemaAST.isJson(value)) {
-      InternalRecord.set(out, key, value)
+      InternalRecord.assignProperty(out, key, value)
     }
   }
   return Object.keys(out).length === 0 ? Option.none() : Option.some(out)

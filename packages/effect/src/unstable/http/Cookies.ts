@@ -13,6 +13,7 @@ import * as Data from "../../Data.ts"
 import * as Duration from "../../Duration.ts"
 import { dual } from "../../Function.ts"
 import * as Inspectable from "../../Inspectable.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
@@ -252,7 +253,7 @@ export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie
 export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
   const record: Record<string, Cookie> = {}
   for (const cookie of cookies) {
-    record[cookie.name] = cookie
+    InternalRecord.assignProperty(record, cookie.name, cookie)
   }
   return fromReadonlyRecord(record)
 }
@@ -527,7 +528,7 @@ export const setAllCookie: {
 } = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => {
   const record = { ...self.cookies }
   for (const cookie of cookies) {
-    record[cookie.name] = cookie
+    InternalRecord.assignProperty(record, cookie.name, cookie)
   }
   return fromReadonlyRecord(record)
 })
@@ -569,7 +570,8 @@ export const get: {
   (self: Cookies, name: string): Option.Option<Cookie>
 } = dual(
   (args) => isCookies(args[0]),
-  (self: Cookies, name: string): Option.Option<Cookie> => Option.fromUndefinedOr(self.cookies[name])
+  (self: Cookies, name: string): Option.Option<Cookie> =>
+    Option.fromUndefinedOr(Object.hasOwn(self.cookies, name) ? self.cookies[name] : undefined)
 )
 
 /**
@@ -743,7 +745,7 @@ export const setAll: {
       if (Result.isFailure(result)) {
         return result as Result.Failure<never, CookiesError>
       }
-      record[name] = result.success
+      InternalRecord.assignProperty(record, name, result.success)
     }
     return Result.succeed(fromReadonlyRecord(record))
   }
@@ -866,7 +868,7 @@ export const toRecord = (self: Cookies): Record<string, string> => {
   const cookies = Object.values(self.cookies)
   for (let index = 0; index < cookies.length; index++) {
     const cookie = cookies[index]
-    record[cookie.name] = cookie.value
+    InternalRecord.assignProperty(record, cookie.name, cookie.value)
   }
   return record
 }
@@ -927,14 +929,16 @@ export function parseHeader(header: string): Record<string, string> {
     }
 
     const key = header.substring(pos, eqIdx++).trim()
-    if (result[key] === undefined) {
+    if (!Object.hasOwn(result, key)) {
       const val = header.charCodeAt(eqIdx) === 0x22
         ? header.substring(eqIdx + 1, terminatorPos - 1).trim()
         : header.substring(eqIdx, terminatorPos).trim()
 
-      result[key] = !(val.indexOf("%") === -1)
-        ? tryDecodeURIComponent(val)
-        : val
+      InternalRecord.assignProperty(
+        result,
+        key,
+        !(val.indexOf("%") === -1) ? tryDecodeURIComponent(val) : val
+      )
     }
 
     pos = terminatorPos + 1

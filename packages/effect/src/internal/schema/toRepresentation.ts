@@ -104,7 +104,7 @@ function lowerASTs(
   const representations = Arr.map(asts, (ast) => recur(ast))
 
   for (const definition of externalDefinitions) {
-    InternalRecord.set(references, definition.key, recur(definition.body, definition.key))
+    InternalRecord.assignProperty(references, definition.key, recur(definition.body, definition.key))
   }
 
   return { representations, references }
@@ -184,7 +184,7 @@ function lowerASTs(
       const reference = getReference(referenceIdentifier, ast)
       referenceMap.set(ast, reference)
       if (!Object.hasOwn(references, reference) && !externalReferences.has(reference)) {
-        InternalRecord.set(references, reference, on(ast))
+        InternalRecord.assignProperty(references, reference, on(ast))
       }
       return { _tag: "Reference", $ref: reference }
     }
@@ -192,7 +192,7 @@ function lowerASTs(
     if (ownedReference === undefined && shared.has(ast)) {
       const reference = generateReference(`${ast._tag}_`, ast)
       referenceMap.set(ast, reference)
-      InternalRecord.set(references, reference, on(ast))
+      InternalRecord.assignProperty(references, reference, on(ast))
       return { _tag: "Reference", $ref: reference }
     }
 
@@ -208,7 +208,7 @@ function lowerASTs(
 
     const reference = referenceMap.get(ast)
     if (reference !== undefined && reference !== ownedReference) {
-      InternalRecord.set(references, reference, representation)
+      InternalRecord.assignProperty(references, reference, representation)
       return { _tag: "Reference", $ref: reference }
     }
 

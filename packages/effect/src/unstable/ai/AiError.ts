@@ -13,6 +13,7 @@
  */
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import { redact } from "../../Redactable.ts"
@@ -34,7 +35,7 @@ const redactHeaders = (headers: Record<string, string>): Record<string, string> 
   const result: Record<string, string> = {}
   for (const key in redacted) {
     const value = redacted[key]
-    result[key] = Redacted.isRedacted(value) ? value.toString() : value
+    InternalRecord.assignProperty(result, key, Redacted.isRedacted(value) ? value.toString() : value)
   }
   return result
 }

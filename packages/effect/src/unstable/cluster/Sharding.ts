@@ -23,6 +23,7 @@ import * as Fiber from "../../Fiber.ts"
 import * as FiberMap from "../../FiberMap.ts"
 import { constant, flow } from "../../Function.ts"
 import * as HashRing from "../../HashRing.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as MutableHashMap from "../../MutableHashMap.ts"
@@ -1167,12 +1168,14 @@ const make = Effect.gen(function*() {
             return entity.protocol.requests.has(p as string)
           },
           get(target, p) {
-            if (p in target) {
+            if (Object.hasOwn(target, p)) {
               return target[p]
             } else if (!entity.protocol.requests.has(p as string)) {
               return undefined
             }
-            return target[p] = (payload: any, options?: {}) => clientFn(p as string, payload, options)
+            const method = (payload: any, options?: {}) => clientFn(p as string, payload, options)
+            InternalRecord.assignProperty(target, p, method)
+            return method
           }
         })
       }

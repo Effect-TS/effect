@@ -15,6 +15,7 @@ import * as Equal from "./Equal.ts"
 import type { Equivalence } from "./Equivalence.ts"
 import { dual, identity } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as Option from "./Option.ts"
 import * as Reducer from "./Reducer.ts"
 import type { Result } from "./Result.ts"
@@ -248,7 +249,7 @@ export const fromIterableWith: {
     const out: Record<string, B> = empty()
     for (const a of self) {
       const [k, b] = f(a)
-      out[k] = b
+      InternalRecord.assignProperty(out, k, b)
     }
     return out
   }
@@ -438,7 +439,7 @@ export const get: {
 } = dual(
   2,
   <K extends string | symbol, A>(self: ReadonlyRecord<K, A>, key: NoInfer<K>): Option.Option<A> =>
-    has(self, key) ? Option.some(self[key]) : Option.none()
+    Object.hasOwn(self, key) ? Option.some(self[key]) : Option.none()
 )
 
 /**
@@ -624,7 +625,7 @@ export const map: {
   <K extends string, A, B>(self: ReadonlyRecord<K, A>, f: (a: A, key: NoInfer<K>) => B): Record<K, B> => {
     const out: Record<K, B> = { ...self } as any
     for (const key of keys(self)) {
-      out[key] = f(self[key], key)
+      InternalRecord.assignProperty(out, key, f(self[key], key))
     }
     return out
   }
@@ -665,7 +666,7 @@ export const mapKeys: {
     const out: Record<K2, A> = {} as any
     for (const key of keys(self)) {
       const a = self[key]
-      out[f(key, a)] = a
+      InternalRecord.assignProperty(out, f(key, a), a)
     }
     return out
   }
@@ -706,7 +707,7 @@ export const mapEntries: {
     const out = {} as Record<K2, B>
     for (const key of keys(self)) {
       const [k, b] = f(self[key], key)
-      out[k] = b
+      InternalRecord.assignProperty(out, k, b)
     }
     return out
   }
@@ -748,7 +749,7 @@ export const filterMap: {
     for (const key of keys(self)) {
       const result = f(self[key], key)
       if (R.isSuccess(result)) {
-        out[key] = result.success
+        InternalRecord.assignProperty(out, key, result.success)
       }
     }
     return out
@@ -795,7 +796,7 @@ export const filter: {
     const out: Record<string, A> = empty()
     for (const key of keys(self)) {
       if (predicate(self[key], key)) {
-        out[key] = self[key]
+        InternalRecord.assignProperty(out, key, self[key])
       }
     }
     return out
@@ -830,7 +831,7 @@ export const getSomes: <K extends string, A>(
   for (const key of keys(self)) {
     const option = self[key]
     if (Option.isSome(option)) {
-      out[key] = option.value
+      InternalRecord.assignProperty(out, key, option.value)
     }
   }
   return out
@@ -866,7 +867,7 @@ export const getFailures = <K extends string, A, E>(
   for (const key of keys(self)) {
     const value = self[key]
     if (R.isFailure(value)) {
-      out[key] = value.failure
+      InternalRecord.assignProperty(out, key, value.failure)
     }
   }
 
@@ -903,7 +904,7 @@ export const getSuccesses = <K extends string, A, E>(
   for (const key of keys(self)) {
     const value = self[key]
     if (R.isSuccess(value)) {
-      out[key] = value.success
+      InternalRecord.assignProperty(out, key, value.success)
     }
   }
 
@@ -954,9 +955,9 @@ export const partition: {
     for (const key of keys(self)) {
       const e = f(self[key], key)
       if (R.isFailure(e)) {
-        left[key] = e.failure
+        InternalRecord.assignProperty(left, key, e.failure)
       } else {
-        right[key] = e.success
+        InternalRecord.assignProperty(right, key, e.success)
       }
     }
     return [left, right]
@@ -1057,6 +1058,44 @@ export const set: {
     return { ...self, [key]: value } as any
   }
 )
+
+/**
+ * Mutates a record by assigning a value to a property.
+ *
+ * **When to use**
+ *
+ * Use when incrementally constructing a new record and copying it for every
+ * property would be unnecessary.
+ *
+ * **Gotchas**
+ *
+ * This function mutates `self`. When `key` is `"__proto__"`, it creates an
+ * own data property instead of changing the object's prototype.
+ *
+ * **Example** (Assigning an external key safely)
+ *
+ * ```ts
+ * import { Record } from "effect"
+ * import * as assert from "node:assert"
+ *
+ * const key: string = "__proto__" // Assume this comes from external input
+ * const value = { polluted: true }
+ *
+ * const unsafe: Record<string, unknown> = {}
+ * unsafe[key] = value
+ * assert.strictEqual(Object.getPrototypeOf(unsafe), value)
+ *
+ * const safe: Record<string, unknown> = {}
+ * Record.assignProperty(safe, key, value)
+ * assert.strictEqual(Object.getPrototypeOf(safe), Object.prototype)
+ * assert.strictEqual(safe[key], value)
+ * ```
+ *
+ * @see {@link set} for an immutable update
+ * @category mutations
+ * @since 4.0.0
+ */
+export const assignProperty: (self: object, key: PropertyKey, value: unknown) => void = InternalRecord.assignProperty
 
 /**
  * Checks whether all the keys and values in one record are also found in another record.
@@ -1292,14 +1331,14 @@ export const union: {
     const out: Record<string, A | B | C> = empty()
     for (const key of keys(self)) {
       if (has(that, key as any)) {
-        out[key] = combine(self[key], that[key as unknown as K1])
+        InternalRecord.assignProperty(out, key, combine(self[key], that[key as unknown as K1]))
       } else {
-        out[key] = self[key]
+        InternalRecord.assignProperty(out, key, self[key])
       }
     }
     for (const key of keys(that)) {
       if (!has(out, key)) {
-        out[key] = that[key]
+        InternalRecord.assignProperty(out, key, that[key])
       }
     }
     return out
@@ -1348,7 +1387,7 @@ export const intersection: {
     }
     for (const key of keys(self)) {
       if (has(that, key as any)) {
-        out[key] = combine(self[key], that[key as unknown as K1])
+        InternalRecord.assignProperty(out, key, combine(self[key], that[key as unknown as K1]))
       }
     }
     return out
@@ -1395,12 +1434,12 @@ export const difference: {
   const out = {} as Record<K0 | K1, A | B>
   for (const key of keys(self)) {
     if (!has(that, key as any)) {
-      out[key] = self[key]
+      InternalRecord.assignProperty(out, key, self[key])
     }
   }
   for (const key of keys(that)) {
     if (!has(self, key as any)) {
-      out[key] = that[key]
+      InternalRecord.assignProperty(out, key, that[key])
     }
   }
   return out

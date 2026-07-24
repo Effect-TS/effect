@@ -18,6 +18,7 @@ import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import { constVoid, dual, flow, identity } from "../../Function.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
@@ -608,7 +609,7 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extend
   } else {
     client = {}
     group.requests.forEach((rpc) => {
-      client[rpc._tag] = onRequest(rpc as any)
+      InternalRecord.assignProperty(client, rpc._tag, onRequest(rpc as any))
     })
   }
 

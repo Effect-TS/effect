@@ -203,6 +203,21 @@ describe("ConfigProvider", () => {
       await assertSuccess(provider, ["missing"], undefined)
     })
 
+    it("does not read inherited environment properties", async () => {
+      const provider = ConfigProvider.fromEnv({ env: {} })
+      await assertSuccess(provider, ["constructor"], undefined)
+    })
+
+    it("does not traverse inherited trie properties", async () => {
+      delete (Object as any).children
+      const provider = ConfigProvider.fromEnv({ env: { constructor_X: "value" } })
+      const polluted = Object.hasOwn(Object, "children")
+      delete (Object as any).children
+
+      deepStrictEqual(polluted, false)
+      await assertSuccess(provider, ["constructor", "X"], ConfigProvider.makeValue("value"))
+    })
+
     it("treats empty string values as missing while preserving structure by default", async () => {
       const env = { A: "", B: "value1" }
       const provider = ConfigProvider.fromEnv({ env })
@@ -676,6 +691,13 @@ DB_PASS=$PASSWORD
       await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["PASSWORD", "DB"])))
       await assertSuccess(provider, ["PASSWORD"], ConfigProvider.makeValue("value"))
       await assertSuccess(provider, ["DB_PASS"], ConfigProvider.makeValue("value"))
+    })
+
+    it("does not expand missing inherited variables", async () => {
+      const provider = ConfigProvider.fromDotEnvContents("VALUE=$constructor", {
+        expandVariables: true
+      })
+      await assertSuccess(provider, ["VALUE"], undefined)
     })
   })
 

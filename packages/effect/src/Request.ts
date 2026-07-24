@@ -17,6 +17,7 @@ import type * as Exit from "./Exit.ts"
 import { dual } from "./Function.ts"
 import * as core from "./internal/core.ts"
 import * as internalEffect from "./internal/effect.ts"
+import * as InternalRecord from "./internal/record.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Types from "./Types.ts"
 
@@ -280,7 +281,7 @@ export const isRequest = (u: unknown): u is Request<unknown, unknown, unknown> =
  * @since 2.0.0
  */
 export const of = <R extends Request<any, any, any>>(): Constructor<R> => (args) =>
-  Object.assign(Object.create(RequestPrototype), args)
+  Object.setPrototypeOf({ ...(args as R) }, RequestPrototype)
 
 /**
  * Creates a constructor function for a tagged Request type. The tag is automatically
@@ -328,10 +329,7 @@ export const tagged = <R extends Request<any, any, any> & { _tag: string }>(
   tag: R["_tag"]
 ): Constructor<R, "_tag"> =>
 (args) => {
-  const request = Object.create(RequestPrototype)
-  if (args) Object.assign(request, args)
-  request._tag = tag
-  return request
+  return Object.setPrototypeOf({ ...(args as R), _tag: tag }, RequestPrototype)
 }
 
 /**
@@ -364,9 +362,9 @@ export const Class: new<A extends Record<string, any>, Success, Error = never, C
   args: Types.Equals<Omit<A, keyof Request<unknown, unknown>>, {}> extends true ? void
     : { readonly [P in keyof A as P extends keyof Request<any, any, any> ? never : P]: A[P] }
 ) => Request<Success, Error, Context> & Readonly<A> = (function() {
-  function Class(this: any, args: any) {
+  function Class(this: object, args: object | undefined) {
     if (args) {
-      Object.assign(this, args)
+      InternalRecord.assignProperties(this, args)
     }
   }
   Class.prototype = RequestPrototype

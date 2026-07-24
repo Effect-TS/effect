@@ -745,14 +745,14 @@ const buildParameterSchema = <
 
       for (const [name, propertySchema] of Object.entries(paramSchema.properties)) {
         const adjustedName = `${parameter.name}[${name}]`
-        schema.properties[adjustedName] = propertySchema as JsonSchema.JsonSchema
+        Rec.assignProperty(schema.properties, adjustedName, propertySchema as JsonSchema.JsonSchema)
         if (required.includes(name)) {
           schema.required.push(adjustedName)
         }
         added.push(adjustedName)
       }
     } else {
-      schema.properties[parameter.name] = parameter.schema as JsonSchema.JsonSchema
+      Rec.assignProperty(schema.properties, parameter.name, parameter.schema as JsonSchema.JsonSchema)
       if (parameter.required) {
         schema.required.push(parameter.name)
       }
@@ -875,7 +875,7 @@ const transformMultipartSchema = (
 
     const out: Record<string, unknown> = {}
     for (const [key, current] of Object.entries(value)) {
-      out[key] = visit(current)
+      Rec.assignProperty(out, key, visit(current))
     }
 
     if (isMultipartBinaryFiles(out, singleFileRef)) {

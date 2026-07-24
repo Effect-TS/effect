@@ -24,6 +24,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Rec from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as ScopedRef from "effect/ScopedRef"
 import * as Semaphore from "effect/Semaphore"
@@ -183,7 +184,7 @@ export const makeMemory = (
                 if (rowMode === "object") {
                   const obj: Record<string, any> = {}
                   for (let i = 0; i < columns.length; i++) {
-                    obj[columns[i]] = row[i]
+                    Rec.assignProperty(obj, columns[i], row[i])
                   }
                   results.push(obj)
                 } else {
@@ -224,7 +225,7 @@ export const makeMemory = (
                 const row = sqlite3.row(stmt)
                 const obj: Record<string, any> = {}
                 for (let i = 0; i < columns.length; i++) {
-                  obj[columns[i]] = row[i]
+                  Rec.assignProperty(obj, columns[i], row[i])
                 }
                 yield obj
               }
@@ -456,7 +457,7 @@ export const make = (
 function rowToObject(columns: Array<string>, row: Array<any>) {
   const obj: Record<string, any> = {}
   for (let i = 0; i < columns.length; i++) {
-    obj[columns[i]] = row[i]
+    Rec.assignProperty(obj, columns[i], row[i])
   }
   return obj
 }

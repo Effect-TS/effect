@@ -396,7 +396,7 @@ export const discriminators = <D extends string>(field: D) =>
   fields: P
 ) => {
   const predicate = makeWhen(
-    (arg: any) => arg != null && arg[field] in fields,
+    (arg: any) => arg != null && Object.hasOwn(fields, arg[field]),
     (data: any) => (fields as any)[data[field]](data)
   )
 

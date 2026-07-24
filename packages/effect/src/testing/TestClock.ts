@@ -225,7 +225,7 @@ const SleepOrder = Order.flip(Order.Struct({
 export const make = Effect.fnUntraced(function*(
   options?: TestClock.Options
 ) {
-  const config = Object.assign({}, defaultOptions, options)
+  const config = { ...defaultOptions, ...options }
   let sequence = 0
   const sleeps: Array<{
     readonly sequence: number

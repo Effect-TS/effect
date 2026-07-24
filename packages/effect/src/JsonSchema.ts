@@ -9,6 +9,7 @@
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
+import * as InternalRecord from "./internal/record.ts"
 import { unescapeToken } from "./JsonPointer.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Rec from "./Record.ts"
@@ -745,11 +746,11 @@ function rewrite_refs(node: unknown, f: ($ref: string) => string): unknown {
     const v = node[k]
 
     if (k === "$ref") {
-      out[k] = typeof v === "string" ? f(v) : v
+      InternalRecord.assignProperty(out, k, typeof v === "string" ? f(v) : v)
     } else if (Array.isArray(v) || Predicate.isObject(v)) {
-      out[k] = rewrite_refs(v, f)
+      InternalRecord.assignProperty(out, k, rewrite_refs(v, f))
     } else {
-      out[k] = v
+      InternalRecord.assignProperty(out, k, v)
     }
   }
 
@@ -762,7 +763,7 @@ function walk_object(
 ): Record<string, unknown> | undefined {
   if (!Predicate.isObject(value)) return undefined
   const out: Record<string, unknown> = {}
-  for (const k of Object.keys(value)) out[k] = walk(value[k], false)
+  for (const k of Object.keys(value)) InternalRecord.assignProperty(out, k, walk(value[k], false))
   return out
 }
 
@@ -776,15 +777,15 @@ function normalize_OpenApi3_0_to_Draft07(node: unknown): unknown {
   for (const k of Object.keys(src)) {
     const v = src[k]
     if (k === "$ref" && typeof v === "string") {
-      out[k] = v.replace(RE_COMPONENTS_SCHEMAS, "#/definitions")
+      InternalRecord.assignProperty(out, k, v.replace(RE_COMPONENTS_SCHEMAS, "#/definitions"))
     } else if (k === "example") {
       if (src.examples === undefined) {
         out.examples = [v]
       }
     } else if (Array.isArray(v) || Predicate.isObject(v)) {
-      out[k] = normalize_OpenApi3_0_to_Draft07(v)
+      InternalRecord.assignProperty(out, k, normalize_OpenApi3_0_to_Draft07(v))
     } else {
-      out[k] = v
+      InternalRecord.assignProperty(out, k, v)
     }
   }
 
@@ -895,10 +896,7 @@ export function resolve$ref($ref: string, definitions: Definitions): JsonSchema 
   const tokens = $ref.split("/")
   if (tokens.length > 0) {
     const identifier = unescapeToken(tokens[tokens.length - 1])
-    const definition = definitions[identifier]
-    if (definition !== undefined) {
-      return definition
-    }
+    if (Object.hasOwn(definitions, identifier)) return definitions[identifier]
   }
 }
 

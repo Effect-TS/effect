@@ -17,6 +17,7 @@ import type { TypeLambda } from "./HKT.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as doNotation from "./internal/doNotation.ts"
 import * as option_ from "./internal/option.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as result from "./internal/result.ts"
 import type { Option } from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -1481,7 +1482,7 @@ export const all: <const I extends Iterable<Result<any, any>> | Record<string, R
       if (isFailure(e)) {
         return e
       }
-      out[key] = e.success
+      InternalRecord.assignProperty(out, key, e.success)
     }
     return succeed(out)
   }

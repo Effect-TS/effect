@@ -18,6 +18,7 @@ import * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Rec from "effect/Record"
 
 /**
  * Service tag for OpenTelemetry metadata attached to emitted telemetry.
@@ -120,7 +121,7 @@ export const layerFromEnv = (
             if (parts.length !== 2) {
               return acc
             }
-            acc[parts[0].trim()] = parts[1].trim()
+            Rec.assignProperty(acc, parts[0].trim(), parts[1].trim())
             return acc
           })
         })
@@ -129,7 +130,9 @@ export const layerFromEnv = (
         attributes[OtelSemConv.ATTR_SERVICE_NAME] = serviceName.value
       }
       if (additionalAttributes) {
-        Object.assign(attributes, additionalAttributes)
+        for (const [key, value] of Object.entries(additionalAttributes)) {
+          Rec.assignProperty(attributes, key, value)
+        }
       }
       return Resources.resourceFromAttributes(attributes)
     }).pipe(Effect.orDie)

@@ -8,6 +8,7 @@ import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Order from "effect/Order"
+import * as Rec from "effect/Record"
 import * as String from "effect/String"
 import type * as Parser from "./Parser.ts"
 
@@ -319,7 +320,7 @@ export class Process extends Context.Service<Process, {
     env: Effect.sync(() => {
       const env: Record<string, string> = {}
       for (const [key, value] of Object.entries(process.env)) {
-        if (value !== undefined) env[key] = value
+        if (value !== undefined) Rec.assignProperty(env, key, value)
       }
       return env
     })

@@ -46,6 +46,7 @@
  * 1. Flat iteration over all params for parsing/validation
  * 2. Reconstruction of original nested shape for handler input
  */
+import * as InternalRecord from "../../../internal/record.ts"
 import * as Param from "../Param.ts"
 
 /* ========================================================================== */
@@ -135,8 +136,8 @@ export const parseConfig = (config: Config): ConfigInternal => {
   const args: Array<Param.AnyArgument> = []
 
   function parse(config: Config): ConfigInternal.Tree {
-    const tree: ConfigInternal.Tree = {}
-    for (const key in config) {
+    const tree: ConfigInternal.Tree = Object.create(null)
+    for (const key of Object.keys(config)) {
       tree[key] = parseValue(config[key])
     }
     return tree
@@ -202,8 +203,8 @@ const shiftNodeIndexes = (node: ConfigInternal.Node, offset: number): ConfigInte
 }
 
 const shiftTreeIndexes = (tree: ConfigInternal.Tree, offset: number): ConfigInternal.Tree => {
-  const output: ConfigInternal.Tree = {}
-  for (const key in tree) {
+  const output: ConfigInternal.Tree = Object.create(null)
+  for (const key of Object.keys(tree)) {
     output[key] = shiftNodeIndexes(tree[key], offset)
   }
   return output
@@ -220,10 +221,7 @@ export const mergeConfig = (
     flags: [...left.flags, ...right.flags],
     arguments: [...left.arguments, ...right.arguments],
     orderedParams: [...left.orderedParams, ...right.orderedParams],
-    tree: {
-      ...left.tree,
-      ...shiftTreeIndexes(right.tree, offset)
-    }
+    tree: Object.assign(Object.create(null), left.tree, shiftTreeIndexes(right.tree, offset))
   }
 }
 
@@ -245,8 +243,8 @@ export const reconstructTree = (
 ): Record<string, any> => {
   const output: Record<string, any> = {}
 
-  for (const key in tree) {
-    output[key] = nodeValue(tree[key])
+  for (const key of Object.keys(tree)) {
+    InternalRecord.assignProperty(output, key, nodeValue(tree[key]))
   }
 
   return output

@@ -59,7 +59,7 @@ function collectJsonSchemaAnnotations(
       ) {
         continue
       }
-      if (SchemaAST.isJson(value)) out[key] = value
+      if (SchemaAST.isJson(value)) InternalRecord.assignProperty(out, key, value)
     }
   }
 
@@ -143,7 +143,7 @@ function compileJsonSchema(
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
   const definitions: Record<string, JsonSchema.JsonSchema> = {}
   for (const key of Object.keys(references)) {
-    InternalRecord.set(definitions, key, recur(references[key], ["references", key]))
+    InternalRecord.assignProperty(definitions, key, recur(references[key], ["references", key]))
   }
   const schemas = Arr.map(representations, (representation, index) => recur(representation, rootPaths[index]))
   return { dialect: "draft-2020-12", schemas, definitions }
@@ -306,7 +306,11 @@ function compileJsonSchema(
           const name = property.name
           const compiled = recur(property.type, [...path, "propertySignatures", index, "type"])
           const annotations = collectJsonSchemaAnnotations(property.annotations, options)
-          properties[name] = annotations === undefined ? compiled : appendJsonSchema(compiled, annotations)
+          InternalRecord.assignProperty(
+            properties,
+            name,
+            annotations === undefined ? compiled : appendJsonSchema(compiled, annotations)
+          )
           if (!property.isOptional) required.push(name)
         }
         if (representation.propertySignatures.length > 0) out.properties = properties
@@ -328,7 +332,7 @@ function compileJsonSchema(
           if (patterns.length === 0) {
             out.additionalProperties = type
           } else {
-            for (const pattern of patterns) patternProperties[pattern] = type
+            for (const pattern of patterns) InternalRecord.assignProperty(patternProperties, pattern, type)
           }
         }
         if (Object.keys(patternProperties).length > 0) {

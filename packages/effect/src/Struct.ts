@@ -14,6 +14,7 @@
 import * as Combiner from "./Combiner.ts"
 import * as Equivalence from "./Equivalence.ts"
 import { dual } from "./Function.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as order from "./Order.ts"
 import * as Reducer from "./Reducer.ts"
 
@@ -836,7 +837,7 @@ function buildStruct<
     const res = f(k, source[k])
     if (res) {
       const [nk, nv] = res
-      out[nk] = nv
+      InternalRecord.assignProperty(out, nk, nv)
     }
   }
   return out
@@ -888,7 +889,7 @@ export function makeCombiner<A>(
     for (const key of keys) {
       const merge = combiners[key].combine(self[key], that[key])
       if (omitKeyWhen(merge)) continue
-      out[key] = merge
+      InternalRecord.assignProperty(out as object, key, merge)
     }
     return out
   })
@@ -943,7 +944,7 @@ export function makeReducer<A>(
   for (const key of Reflect.ownKeys(reducers) as Array<keyof A>) {
     const iv = reducers[key].initialValue
     if (options?.omitKeyWhen?.(iv)) continue
-    initialValue[key] = iv
+    InternalRecord.assignProperty(initialValue as object, key, iv)
   }
   return Reducer.make(combine, initialValue)
 }
@@ -973,7 +974,7 @@ export function Record<const Keys extends ReadonlyArray<string | symbol>, Value>
 ): Record<Keys[number], Value> {
   const out: any = {}
   for (const key of keys) {
-    out[key] = value
+    InternalRecord.assignProperty(out, key, value)
   }
   return out
 }

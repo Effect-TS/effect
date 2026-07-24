@@ -26,6 +26,7 @@ import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
 import * as internalExecutionPlan from "./internal/executionPlan.ts"
 import * as internalLayer from "./internal/layer.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as internalRequest from "./internal/request.ts"
 import * as internalSchedule from "./internal/schedule.ts"
 import type * as Layer from "./Layer.ts"
@@ -14114,11 +14115,11 @@ export const annotateLogs = dual<
     ...args: [Record<string, unknown>] | [key: string, value: unknown]
   ): Effect<A, E, R> =>
     internal.updateService(effect, CurrentLogAnnotations, (annotations) => {
-      const newAnnotations = { ...annotations }
+      const newAnnotations = args.length === 1 ? { ...annotations, ...args[0] } : { ...annotations }
       if (args.length === 1) {
-        Object.assign(newAnnotations, args[0])
+        return newAnnotations
       } else {
-        newAnnotations[args[0]] = args[1]
+        InternalRecord.assignProperty(newAnnotations, args[0], args[1])
       }
       return newAnnotations
     })

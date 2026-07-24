@@ -19,6 +19,7 @@ import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Pool from "effect/Pool"
+import * as Rec from "effect/Record"
 import * as Redacted from "effect/Redacted"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -409,7 +410,7 @@ export const make = (
           }
 
           req.on("returnValue", (name, value) => {
-            result[name] = value
+            Rec.assignProperty(result, name, value)
           })
 
           conn.cancel()
@@ -738,7 +739,7 @@ function rowsToObjects(rows: ReadonlyArray<any>) {
     const newRow: any = {}
     for (let j = 0, columnLen = row.length; j < columnLen; j++) {
       const column = row[j]
-      newRow[column.metadata.colName] = column.value
+      Rec.assignProperty(newRow, column.metadata.colName, column.value)
     }
     newRows[i] = newRow
   }

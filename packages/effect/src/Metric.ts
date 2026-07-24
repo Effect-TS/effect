@@ -19,6 +19,7 @@ import type { Exit } from "./Exit.ts"
 import { constUndefined, dual } from "./Function.ts"
 import * as InternalEffect from "./internal/effect.ts"
 import * as InternalMetric from "./internal/metric.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as Layer from "./Layer.ts"
 import * as Order from "./Order.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -4041,7 +4042,7 @@ function mergeAttributes(
 function attributesToRecord(attributes?: Metric.Attributes): Metric.AttributeSet | undefined {
   if (Predicate.isNotUndefined(attributes) && Array.isArray(attributes)) {
     return attributes.reduce((acc, [key, value]) => {
-      acc[key] = value
+      InternalRecord.assignProperty(acc, key, value)
       return acc
     }, {} as Metric.AttributeSet)
   }

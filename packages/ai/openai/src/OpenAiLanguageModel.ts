@@ -885,7 +885,8 @@ const prepareMessages = Effect.fnUntraced(
         }
 
         case "assistant": {
-          const reasoningMessages: Record<string, DeepMutable<typeof OpenAiSchema.ReasoningItem.Encoded>> = {}
+          const reasoningMessages: Record<string, DeepMutable<typeof OpenAiSchema.ReasoningItem.Encoded>> = Object
+            .create(null)
 
           for (const part of message.content) {
             switch (part.type) {
@@ -1682,7 +1683,7 @@ const makeStreamResponse = Effect.fnUntraced(
     }
 
     // Track active reasoning items with state machine for proper concluding logic
-    const activeReasoning: Record<string, ReasoningPart> = {}
+    const activeReasoning: Record<string, ReasoningPart> = Object.create(null)
 
     const getOrCreateReasoningPart = (
       itemId: string,

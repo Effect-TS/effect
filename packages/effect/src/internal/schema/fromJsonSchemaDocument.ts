@@ -891,7 +891,7 @@ function translateJsonSchemaMultiDocument(
 
   const references: Record<string, Representation> = {}
   for (const key of Object.keys(document.definitions)) {
-    InternalRecord.set(references, key, unknownJsonSchemas(translateDefinition(key, ["definitions", key])))
+    InternalRecord.assignProperty(references, key, unknownJsonSchemas(translateDefinition(key, ["definitions", key])))
   }
   const representations = document.schemas.map((schema, index) =>
     unknownJsonSchemas(recur(schema, singleRoot ? ["schema"] : ["schemas", index]))

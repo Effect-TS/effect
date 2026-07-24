@@ -16,6 +16,7 @@ import { dual, identity } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
 import * as internalArray from "./internal/array.ts"
 import * as internalDoNotation from "./internal/doNotation.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as moduleIterable from "./Iterable.ts"
 import * as Option from "./Option.ts"
 import * as Order from "./Order.ts"
@@ -3073,7 +3074,7 @@ export const groupBy: {
     if (Object.hasOwn(out, k)) {
       out[k].push(a)
     } else {
-      out[k] = [a]
+      InternalRecord.assignProperty(out, k, [a])
     }
   }
   return out

@@ -17,6 +17,7 @@ import * as Effectable from "../../Effectable.ts"
 import type * as Fiber from "../../Fiber.ts"
 import { constUndefined } from "../../Function.ts"
 import * as internalEffect from "../../internal/effect.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import { hasProperty } from "../../Predicate.ts"
 import { TracerTimingEnabled } from "../../References.ts"
 import * as Stream from "../../Stream.ts"
@@ -1147,7 +1148,7 @@ export const defaultTransforms = (
   const transformObject = (obj: Record<string, any>): any => {
     const newObj: Record<string, any> = {}
     for (const key in obj) {
-      newObj[transformer(key)] = transformValue(obj[key])
+      InternalRecord.assignProperty(newObj, transformer(key), transformValue(obj[key]))
     }
     return newObj
   }
@@ -1163,7 +1164,7 @@ export const defaultTransforms = (
       } else {
         const obj: any = {}
         for (const key in row) {
-          obj[transformer(key)] = transformValue(row[key])
+          InternalRecord.assignProperty(obj, transformer(key), transformValue(row[key]))
         }
         newRows[i] = obj
       }
@@ -1182,7 +1183,7 @@ export const defaultTransforms = (
       } else {
         const obj: any = {}
         for (const key in row) {
-          obj[transformer(key)] = row[key]
+          InternalRecord.assignProperty(obj, transformer(key), row[key])
         }
         newRows[i] = obj
       }

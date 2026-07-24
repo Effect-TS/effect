@@ -295,7 +295,7 @@ function revivePersisted(
           if (property.isMutable) {
             schema = Schema.mutableKey(schema)
           }
-          InternalRecord.set(fields, property.name, schema)
+          InternalRecord.assignProperty(fields, property.name, schema)
         }
         const records = representation.indexSignatures.map((indexSignature, index) =>
           Schema.Record(
@@ -319,7 +319,7 @@ function revivePersisted(
 
   const definitions: Record<string, Schema.Top> = {}
   for (const key of referenceKeys) {
-    InternalRecord.set(definitions, key, resolveReference(key, ["references", key]))
+    InternalRecord.assignProperty(definitions, key, resolveReference(key, ["references", key]))
   }
 
   const schemas = representations.map((representation, index) =>

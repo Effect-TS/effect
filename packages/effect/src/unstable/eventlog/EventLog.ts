@@ -13,6 +13,7 @@ import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as FiberMap from "../../FiberMap.ts"
 import { constant, identity } from "../../Function.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Layer from "../../Layer.ts"
 import type { Pipeable } from "../../Pipeable.ts"
 import { pipeArguments } from "../../Pipeable.ts"
@@ -159,7 +160,9 @@ export const layerRegistry = Layer.effect(
       },
       registerReactivity: (keys) =>
         Effect.sync(() => {
-          Object.assign(reactivityKeys, keys)
+          for (const [key, value] of Object.entries(keys)) {
+            InternalRecord.assignProperty(reactivityKeys, key, value)
+          }
         }),
       reactivityKeys
     })
@@ -498,7 +501,7 @@ const handlersProto = {
       handlers: {
         ...this.handlers,
         [tag]: {
-          event: this.group.events[tag],
+          event: Object.hasOwn(this.group.events, tag) ? this.group.events[tag] : undefined!,
           context: this.context,
           handler
         }
@@ -547,7 +550,7 @@ export const group = <Events extends Event.Any, Return>(
       const handlers = Effect.isEffect(result)
         ? (yield* (result as unknown as Effect.Effect<Handlers<any>>))
         : (result as unknown as Handlers<any>)
-      for (const tag in handlers.handlers) {
+      for (const tag of Object.keys(handlers.handlers)) {
         registry.registerHandlerUnsafe({ event: tag, handler: handlers.handlers[tag] })
       }
     })
@@ -584,7 +587,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
       yield* registry.registerCompaction({
         events: Object.keys(group.events),
         effect: Effect.fnUntraced(function*({ entries, write }): Effect.fn.Return<void> {
-          const isEventTag = (tag: string): tag is Event.Tag<Events> => tag in group.events
+          const isEventTag = (tag: string): tag is Event.Tag<Events> => Object.hasOwn(group.events, tag)
           const decodePayload = <Tag extends Event.Tag<Events>>(tag: Tag, payload: Uint8Array) =>
             Schema.decodeUnknownEffect(group.events[tag].payloadMsgPack)(payload).pipe(
               Effect.updateContext((input) => Context.merge(services, input)),
@@ -595,7 +598,7 @@ export const groupCompaction = <Events extends Event.Any, R>(
             tag: Tag,
             payload: Event.PayloadWithTag<Events, Tag>
           ): Effect.fn.Return<void, never, Event.PayloadSchemaWithTag<Events, Tag>["EncodingServices"]> {
-            const event = group.events[tag]
+            const event = Object.hasOwn(group.events, tag) ? group.events[tag] : undefined!
             const entry = new Entry({
               id: makeEntryIdUnsafe({ msecs: timestamp }),
               event: tag,
@@ -674,8 +677,8 @@ export const groupReactivity = <Events extends Event.Any>(
       yield* registry.registerReactivity(keys as Record.ReadonlyRecord<string, ReadonlyArray<string>>)
       return
     }
-    const obj: Record<string, ReadonlyArray<string>> = {}
-    for (const tag in group.events) {
+    const obj: Record<string, ReadonlyArray<string>> = Object.create(null)
+    for (const tag of Object.keys(group.events)) {
       obj[tag] = keys
     }
     yield* registry.registerReactivity(obj)
@@ -741,7 +744,9 @@ export const makeReplayFromRemote = (options: {
         Effect.asVoid
       ) as any
 
-      const keys = options.reactivityKeys[entry.event]
+      const keys = Object.hasOwn(options.reactivityKeys, entry.event)
+        ? options.reactivityKeys[entry.event]
+        : undefined
       if (keys) {
         for (const key of keys) {
           options.reactivity.invalidateUnsafe({
@@ -780,7 +785,9 @@ const make = Effect.gen(function*() {
   const invalidateReactivityEntries = (entries: ReadonlyArray<Entry>) =>
     Effect.sync(() => {
       for (const entry of entries) {
-        const keys = registry.reactivityKeys[entry.event]
+        const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
+          ? registry.reactivityKeys[entry.event]
+          : undefined
         if (!keys) {
           continue
         }
@@ -903,8 +910,11 @@ const make = Effect.gen(function*() {
           Effect.updateContext((input) => Context.merge(handler.context, input)),
           Effect.provideService(Identity, identity),
           Effect.tap(() => {
-            if (registry.reactivityKeys[entry.event]) {
-              for (const key of registry.reactivityKeys[entry.event]) {
+            const keys = Object.hasOwn(registry.reactivityKeys, entry.event)
+              ? registry.reactivityKeys[entry.event]
+              : undefined
+            if (keys) {
+              for (const key of keys) {
                 reactivity.invalidateUnsafe({
                   [key]: [entry.primaryKey]
                 })

@@ -237,7 +237,7 @@ export function topologicalSort(
     }
   }
   const recursives: Record<string, SchemaRepresentation.Representation> = {}
-  for (const identifier of recursive) InternalRecord.set(recursives, identifier, references[identifier])
+  for (const identifier of recursive) InternalRecord.assignProperty(recursives, identifier, references[identifier])
   return { nonRecursives, recursives }
 }
 
@@ -262,7 +262,7 @@ export function toCodeDocument(
   const recursives: Record<string, SchemaRepresentation.Code> = {}
   for (const [$ref, representation] of Object.entries(sorted.recursives)) {
     compilingRecursiveDefinition = true
-    InternalRecord.set(recursives, ensureUniqueIdentifier($ref), recur(representation, ["references", $ref]))
+    InternalRecord.assignProperty(recursives, ensureUniqueIdentifier($ref), recur(representation, ["references", $ref]))
     compilingRecursiveDefinition = false
   }
   const codes = document.representations.map((representation, index) =>

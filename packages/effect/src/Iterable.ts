@@ -12,6 +12,7 @@
 import type { NonEmptyArray } from "./Array.ts"
 import * as Equal from "./Equal.ts"
 import { dual } from "./Function.ts"
+import * as InternalRecord from "./internal/record.ts"
 import type { Option } from "./Option.ts"
 import * as O from "./Option.ts"
 import { isBoolean } from "./Predicate.ts"
@@ -1366,7 +1367,7 @@ export const groupBy: {
     if (Object.hasOwn(out, k)) {
       out[k].push(a)
     } else {
-      out[k] = [a]
+      InternalRecord.assignProperty(out, k, [a])
     }
   }
   return out

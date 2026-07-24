@@ -21,6 +21,7 @@ import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import type * as LogLevel from "effect/LogLevel"
 import * as Predicate from "effect/Predicate"
+import * as Rec from "effect/Record"
 import * as References from "effect/References"
 import * as Tracer from "effect/Tracer"
 import { nanosToHrTime, unknownToAttributeValue } from "./internal/attributes.ts"
@@ -98,7 +99,7 @@ export const make: Effect.Effect<
     }
 
     for (const [key, value] of Object.entries(options.fiber.getRef(References.CurrentLogAnnotations))) {
-      attributes[key] = unknownToAttributeValue(value)
+      Rec.assignProperty(attributes, key, unknownToAttributeValue(value))
     }
     const now = options.date.getTime()
     for (const [label, startTime] of options.fiber.getRef(References.CurrentLogSpans)) {

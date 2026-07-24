@@ -1085,7 +1085,7 @@ export function splitKeyValue<E extends string>(options?: {
     input.split(separator).reduce((acc, pair) => {
       const [key, value] = pair.split(keyValueSeparator)
       if (key && value) {
-        acc[key] = value
+        InternalRecord.assignProperty(acc, key, value)
       }
       return acc
     }, {} as Record<string, string>)
@@ -1714,7 +1714,7 @@ function getOrCreateContainer(
     return current
   }
   const container = shouldBeArray ? [] : {}
-  InternalRecord.set(self, key, container)
+  InternalRecord.assignProperty(self, key, container)
   return container
 }
 
@@ -1789,9 +1789,9 @@ export function makeTreeRecord<A>(
         if (hasOwn && Array.isArray(cur[token])) {
           cur[token].push(value)
         } else if (hasOwn) {
-          InternalRecord.set(cur, token, [cur[token], value])
+          InternalRecord.assignProperty(cur, token, [cur[token], value])
         } else {
-          InternalRecord.set(cur, token, value)
+          InternalRecord.assignProperty(cur, token, value)
         }
       } else {
         const next = tokens[i + 1]

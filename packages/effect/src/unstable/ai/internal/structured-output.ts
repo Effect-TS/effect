@@ -1,4 +1,5 @@
 import * as Arr from "../../../Array.ts"
+import * as InternalRecord from "../../../internal/record.ts"
 import type * as JsonSchema from "../../../JsonSchema.ts"
 import * as Option from "../../../Option.ts"
 import * as Predicate from "../../../Predicate.ts"
@@ -402,31 +403,39 @@ export function walkJsonSchema(
         if (isJsonSchema(value)) {
           const properties: Record<string, unknown> = {}
           for (const [name, property] of Object.entries(value)) {
-            properties[name] = isJsonSchema(property) ? walkJsonSchema(property, visitor) : property
+            InternalRecord.assignProperty(
+              properties,
+              name,
+              isJsonSchema(property) ? walkJsonSchema(property, visitor) : property
+            )
           }
-          out[key] = properties
+          InternalRecord.assignProperty(out, key, properties)
         } else {
-          out[key] = value
+          InternalRecord.assignProperty(out, key, value)
         }
         break
       }
       case "additionalProperties":
       case "items":
       case "propertyNames": {
-        out[key] = isJsonSchema(value) ? walkJsonSchema(value, visitor) : value
+        InternalRecord.assignProperty(out, key, isJsonSchema(value) ? walkJsonSchema(value, visitor) : value)
         break
       }
       case "prefixItems":
       case "allOf":
       case "anyOf":
       case "oneOf": {
-        out[key] = Array.isArray(value)
-          ? value.map((member) => isJsonSchema(member) ? walkJsonSchema(member, visitor) : member)
-          : value
+        InternalRecord.assignProperty(
+          out,
+          key,
+          Array.isArray(value)
+            ? value.map((member) => isJsonSchema(member) ? walkJsonSchema(member, visitor) : member)
+            : value
+        )
         break
       }
       default:
-        out[key] = value
+        InternalRecord.assignProperty(out, key, value)
         break
     }
   }

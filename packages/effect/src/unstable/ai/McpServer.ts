@@ -909,7 +909,9 @@ export const registerResource: {
       uriTemplate: uriPath,
       annotations: options!
     })
-    const completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>> = {}
+    const completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>> = Object.create(
+      null
+    )
     for (const [param, handle] of Object.entries(options.completion ?? {})) {
       const encodeArray = Schema.encodeUnknownEffect(Schema.Array(params[param]))
       const handler = (input: string) =>
@@ -1079,7 +1081,7 @@ export const registerPrompt = <
     const completions: Record<
       string,
       (input: string) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
-    > = {}
+    > = Object.create(null)
     for (const [param, handle] of Object.entries(completion)) {
       const encodeArray = Schema.encodeEffect(Schema.Array(props[param]))
       const handler = (input: string) =>
@@ -1244,7 +1246,7 @@ const makeUriMatcher = <A>() => {
 const compileUriTemplate = (segments: TemplateStringsArray, ...schemas: ReadonlyArray<Schema.Constraint>) => {
   let routerPath = segments[0].replace(":", "::")
   let uriPath = segments[0]
-  const params: Record<string, Schema.Top> = {}
+  const params: Record<string, Schema.Top> = Object.create(null)
   let pathSchema = Schema.Tuple([]) as Schema.Top
   if (schemas.length > 0) {
     const arr: Array<Schema.Top> = []

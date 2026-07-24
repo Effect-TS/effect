@@ -54,10 +54,10 @@ export function make() {
 }
 
 function makeWithRepresentation() {
-  const store: Record<string, JsonSchema.JsonSchema> = {}
+  const store = Object.create(null) as Record<string, JsonSchema.JsonSchema>
 
   function addSchema(name: string, schema: JsonSchema.JsonSchema): string {
-    if (name in store) {
+    if (Object.hasOwn(store, name)) {
       throw new Error(`Schema ${name} already exists`)
     }
     store[name] = schema

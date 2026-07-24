@@ -17,6 +17,7 @@ import * as Exit from "../../Exit.ts"
 import type { LazyArg } from "../../Function.ts"
 import { constTrue, dual, identity } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import type { Predicate, Refinement } from "../../Predicate.ts"
@@ -694,12 +695,12 @@ export const all = <const Arg extends Iterable<any> | Record<string, any>>(
   for (let i = 0; i < entries.length; i++) {
     const [key, result] = entries[i]
     if (!isAsyncResult(result)) {
-      successes[key] = result
+      InternalRecord.assignProperty(successes, key, result)
       continue
     } else if (!isSuccess(result)) {
       return result as any
     }
-    successes[key] = result.value
+    InternalRecord.assignProperty(successes, key, result.value)
     if (result.waiting) {
       waiting = true
     }

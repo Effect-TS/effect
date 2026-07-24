@@ -2143,9 +2143,9 @@ export class Objects extends Base {
             const v2 = exitValue.value.value
             if (is.merge && is.merge.decode && Object.hasOwn(s.out, k2)) {
               const [k, v] = is.merge.decode.combine([k2, s.out[k2]], [k2, v2])
-              InternalRecord.set(s.out, k, v)
+              InternalRecord.assignProperty(s.out, k, v)
             } else {
-              InternalRecord.set(s.out, k2, v2)
+              InternalRecord.assignProperty(s.out, k2, v2)
             }
           }
         }),
@@ -2201,7 +2201,7 @@ export class Objects extends Base {
               }
             } else {
               // preserve key
-              InternalRecord.set(out, key, input[key])
+              InternalRecord.assignProperty(out, key, input[key])
             }
           }
         }
@@ -2241,7 +2241,7 @@ export class Objects extends Base {
         const preserved: Record<PropertyKey, unknown> = {}
         for (const key of keys) {
           if (Object.hasOwn(out, key)) {
-            InternalRecord.set(preserved, key, out[key])
+            InternalRecord.assignProperty(preserved, key, out[key])
           }
         }
         return Option.some(preserved)
@@ -2332,7 +2332,7 @@ const parseProperties = iterateEager<{
     if (exit._tag === "Failure") {
       return wrapPropertyKeyIssue(s, s.ast, p.name, exit)
     } else if (exit.value._tag === "Some") {
-      InternalRecord.set(s.out, p.name, exit.value.value)
+      InternalRecord.assignProperty(s.out, p.name, exit.value.value)
     } else if (!isOptional(p.type)) {
       const issue = new SchemaIssue.Pointer([p.name], new SchemaIssue.MissingKey(p.type.context?.annotations))
       if (s.options.errors === "all") {

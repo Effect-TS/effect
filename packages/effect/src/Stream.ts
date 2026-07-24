@@ -5733,7 +5733,8 @@ export const catchReasons: {
     }[keyof Cases]
   >
 } = dual((args) => isStream(args[0]), (self, errorTag, cases, orElse) => {
-  const handlers: Record<string, (reason: any, error: any) => Channel.Channel<any, any, any, any, any, any, any>> = {}
+  const handlers: Record<string, (reason: any, error: any) => Channel.Channel<any, any, any, any, any, any, any>> =
+    Object.create(null)
   for (const key of Object.keys(cases)) {
     const handler = (cases as any)[key]
     handlers[key] = (reason, error) => handler(reason, error).channel

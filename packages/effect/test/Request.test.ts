@@ -133,6 +133,26 @@ const provideEnv = flow(
 )
 
 describe.sequential("Request", () => {
+  it("preserves __proto__ as an own constructor property", () => {
+    interface ProtoRequest extends Request.Request<void> {
+      readonly "__proto__": { readonly polluted: boolean }
+    }
+    const make = Request.of<ProtoRequest>()
+    const value = { polluted: true }
+    const request = make({ ["__proto__"]: value })
+
+    assert.isTrue(Request.isRequest(request))
+    assert.isTrue(Object.hasOwn(request, "__proto__"))
+    assert.strictEqual(request["__proto__"], value)
+  })
+
+  it("copies enumerable symbol properties in Class", () => {
+    const key = Symbol()
+    class SymbolRequest extends Request.Class<{ readonly [key]: string }, void> {}
+
+    assert.strictEqual(new SymbolRequest({ [key]: "value" })[key], "value")
+  })
+
   it("compares StructuralProto values when hashes collide", () => {
     class Req extends Request.Class<{ id: string; account: string }, string> {}
 

@@ -520,10 +520,10 @@ export const makeWith = <ApiId extends string, Groups extends HttpApiGroup.Const
     ...options,
     onGroup({ group }) {
       if (group.topLevel) return
-      InternalRecord.set(client, group.identifier, {})
+      InternalRecord.assignProperty(client, group.identifier, {})
     },
     onEndpoint({ endpoint, endpointFn, group }) {
-      InternalRecord.set(
+      InternalRecord.assignProperty(
         group.topLevel ? client : client[group.identifier],
         endpoint.identifier,
         endpointFn
@@ -565,7 +565,7 @@ export const group = <
     ...options,
     predicate: ({ group }) => group.identifier === options.group,
     onEndpoint({ endpoint, endpointFn }) {
-      InternalRecord.set(client, endpoint.identifier, endpointFn)
+      InternalRecord.assignProperty(client, endpoint.identifier, endpointFn)
     }
   }).pipe(Effect.map(() => client)) as any
 }
@@ -662,7 +662,7 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
   HttpApi.reflect(api as unknown as HttpApi.Top, {
     onGroup({ group }) {
       if (group.topLevel) return
-      InternalRecord.set(builder, group.identifier, {})
+      InternalRecord.assignProperty(builder, group.identifier, {})
     },
     onEndpoint({ group, endpoint }) {
       const makeUrl = compilePath(endpoint.path)
@@ -688,7 +688,7 @@ export const urlBuilder = <Api extends HttpApi.Constraint>(api: Api, options?: {
         const url = query === "" ? path : `${path}?${query}`
         return options?.baseUrl === undefined ? url : new URL(url, options.baseUrl.toString()).toString()
       }
-      InternalRecord.set(
+      InternalRecord.assignProperty(
         group.topLevel ? builder : builder[group.identifier],
         endpoint.identifier,
         endpointBuilder

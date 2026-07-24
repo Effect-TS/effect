@@ -20,6 +20,7 @@ import * as Formatter from "./Formatter.ts"
 import { dual } from "./Function.ts"
 import { isEffect, withFiber } from "./internal/core.ts"
 import * as effect from "./internal/effect.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as Layer from "./Layer.ts"
 import type * as LogLevel from "./LogLevel.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -637,13 +638,13 @@ export const formatStructured: Logger<unknown, {
 
   const annotations = fiber.getRef(CurrentLogAnnotations)
   for (const [key, value] of Object.entries(annotations)) {
-    annotationsObj[key] = effect.structuredMessage(value)
+    InternalRecord.assignProperty(annotationsObj, key, effect.structuredMessage(value))
   }
 
   const now = date.getTime()
   const spans = fiber.getRef(CurrentLogSpans)
   for (const [label, timestamp] of spans) {
-    spansObj[label] = now - timestamp
+    InternalRecord.assignProperty(spansObj, label, now - timestamp)
   }
 
   const messageArr = Array.ensure(message)

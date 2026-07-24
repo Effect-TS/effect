@@ -3554,8 +3554,8 @@ export function encodeKeys<
 >(mapping: M) {
   return function(self: S): encodeKeys<S, M> {
     const fields: any = {}
-    const appliedMapping: any = {}
-    const reverseMapping: any = {}
+    const appliedMapping: any = Object.create(null)
+    const reverseMapping: any = Object.create(null)
     const seenEncodedKeys = new Set<string | symbol>()
     for (const k of Reflect.ownKeys(self.fields)) {
       const encoded = toEncoded(self.fields[k])
@@ -3566,7 +3566,7 @@ export function encodeKeys<
         throw new globalThis.Error(`Duplicate encoded keys: ${formatPropertyKey(encodedKey)}`)
       }
       seenEncodedKeys.add(canonical)
-      fields[encodedKey] = encoded
+      InternalRecord.assignProperty(fields, encodedKey, encoded)
       if (hasMapping) {
         appliedMapping[k] = encodedKey
         reverseMapping[encodedKey] = k
@@ -3633,7 +3633,7 @@ export function extendTo<S extends Struct<Struct.Fields>, const Fields extends S
             const f = derive[k]
             const o = f(input)
             if (Option_.isSome(o)) {
-              out[k] = o.value
+              InternalRecord.assignProperty(out, k, o.value)
             }
           }
           return out
@@ -6191,8 +6191,8 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
           }
           discriminantKeys.add(key)
           discriminants.push(literal)
-          InternalRecord.set(cases, literal, schema)
-          InternalRecord.set(guards, literal, is(toType(schema)))
+          InternalRecord.assignProperty(cases, literal, schema)
+          InternalRecord.assignProperty(guards, literal, is(toType(schema)))
           return
         }
       }
@@ -6204,12 +6204,16 @@ export function toTaggedUnion<const Tag extends PropertyKey>(tag: Tag) {
       if (arguments.length === 1) {
         const cases = arguments[0]
         return function(value: any) {
-          return cases[value[tag]](value)
+          const key = value[tag]
+          const handler = Object.hasOwn(cases, key) ? cases[key] : undefined
+          return handler(value)
         }
       }
       const value = arguments[0]
       const cases = arguments[1]
-      return cases[value[tag]](value)
+      const key = value[tag]
+      const handler = Object.hasOwn(cases, key) ? cases[key] : undefined
+      return handler(value)
     }
   }
 }
@@ -6281,7 +6285,9 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
   const cases: any = {}
   const members: any = []
   for (const key of Object.keys(casesByTag)) {
-    members.push(cases[key] = TaggedStruct(key, casesByTag[key]))
+    const member = TaggedStruct(key, casesByTag[key])
+    InternalRecord.assignProperty(cases, key, member)
+    members.push(member)
   }
   const union = Union(members)
   const { guards, isAnyOf, match } = toTaggedUnion("_tag")(union)

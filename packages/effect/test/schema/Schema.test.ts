@@ -3325,6 +3325,17 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
   })
 
   describe("make", () => {
+    it("preserves __proto__ as an own option", () => {
+      const value = { polluted: true }
+      const schema = Schema.make(Schema.String.ast, {
+        ["__proto__"]: value
+      })
+
+      assertTrue(Schema.isSchema(schema))
+      assertTrue(Object.hasOwn(schema, "__proto__"))
+      strictEqual((schema as any)["__proto__"], value)
+    })
+
     it("should throw an error when the cause contains both a schema issue and a defect", () => {
       const cause = Cause.combine(
         Cause.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue(Option.some("a"), { message: "schema issue" }))),

@@ -343,14 +343,14 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
     params.kind === argumentKind
       ? parsePositional(params.name, params.primitiveType, args)
       : parseFlag(params.name, params.primitiveType, args)
-  return Object.assign(Object.create(Proto), {
+  return Object.setPrototypeOf({
     _tag: "Single",
     ...params,
     description: params.description ?? Option.none(),
     aliases: params.aliases ?? [],
     hidden: params.hidden ?? false,
     parse
-  })
+  }, Proto)
 }
 
 /**
@@ -865,7 +865,7 @@ export const keyValuePair = <Kind extends ParamKind>(
       }),
       { min: 1 }
     ),
-    (objects) => Object.assign({}, ...objects)
+    (objects) => Object.fromEntries(objects.flatMap(Object.entries))
   )
 
 /**

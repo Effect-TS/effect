@@ -13,6 +13,7 @@ import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
+import * as InternalRecord from "./record.ts"
 
 /** @internal */
 export const EffectTypeId = `~effect/Effect` as const
@@ -587,10 +588,10 @@ export const Error: new<A extends Record<string, any> = {}>(
 ) => Cause.YieldableError & Readonly<A> = (function() {
   const plainArgsSymbol = Symbol.for("effect/Data/Error/plainArgs")
   return class Base extends YieldableError {
-    constructor(args: any) {
+    constructor(args: Record<string, any> | undefined) {
       super(args?.message, args?.cause ? { cause: args.cause } : undefined)
       if (args) {
-        Object.assign(this, args)
+        InternalRecord.assignProperties(this, args)
         // @effect-diagnostics-next-line floatingEffect:off
         Object.defineProperty(this, plainArgsSymbol, {
           value: args,

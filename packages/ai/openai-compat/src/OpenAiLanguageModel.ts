@@ -16,6 +16,7 @@ import { dual } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
+import * as Rec from "effect/Record"
 import * as Redactable from "effect/Redactable"
 import type * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
@@ -828,7 +829,7 @@ const prepareMessages = Effect.fnUntraced(
         }
 
         case "assistant": {
-          const reasoningMessages: Record<string, DeepMutable<ReasoningItem>> = {}
+          const reasoningMessages: Record<string, DeepMutable<ReasoningItem>> = Object.create(null)
 
           for (const part of message.content) {
             switch (part.type) {
@@ -1541,7 +1542,7 @@ const extractCustomRequestProperties = (payload: CreateResponse): Record<string,
   const customProperties: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(payload)) {
     if (!createResponseKnownProperties.has(key)) {
-      customProperties[key] = value
+      Rec.assignProperty(customProperties, key, value)
     }
   }
   return customProperties

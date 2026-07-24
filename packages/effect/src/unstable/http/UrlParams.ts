@@ -16,6 +16,7 @@ import { dual } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
 import type { Inspectable } from "../../Inspectable.ts"
 import { PipeInspectableProto } from "../../internal/core.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import type { Pipeable } from "../../Pipeable.ts"
 import { hasProperty } from "../../Predicate.ts"
@@ -487,13 +488,15 @@ export const toString = (input: Input): string => new URLSearchParams(fromInput(
 export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyArray<string>> => {
   const out: Record<string, string | Arr.NonEmptyArray<string>> = {}
   for (const [k, value] of self.params) {
-    const curr = out[k]
-    if (curr === undefined) {
-      out[k] = value
-    } else if (typeof curr === "string") {
-      out[k] = [curr, value]
+    if (!Object.hasOwn(out, k)) {
+      InternalRecord.assignProperty(out, k, value)
     } else {
-      curr.push(value)
+      const current = out[k]
+      if (typeof current === "string") {
+        InternalRecord.assignProperty(out, k, [current, value])
+      } else {
+        current.push(value)
+      }
     }
   }
   return out

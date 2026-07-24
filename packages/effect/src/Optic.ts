@@ -14,6 +14,7 @@
 
 import { format } from "./Formatter.ts"
 import { identity, memoize } from "./Function.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as Option from "./Option.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Result from "./Result.ts"
@@ -1072,7 +1073,7 @@ class OptionalImpl<S, A> implements Optional<S, A> {
                 delete copy[key]
               }
             } else {
-              copy[key] = a
+              InternalRecord.assignProperty(copy, key, a)
             }
             return copy
           }
@@ -1110,7 +1111,7 @@ class OptionalImpl<S, A> implements Optional<S, A> {
           (a, s) => {
             if (Object.hasOwn(s, key)) {
               const copy = cloneShallow(s)
-              copy[key] = a
+              InternalRecord.assignProperty(copy, key, a)
               return Result.succeed(copy)
             } else {
               return err
@@ -1283,12 +1284,12 @@ const recur = memoize((node: Node): Op => {
           let i = 0
           for (; i < path.length - 1; i++) {
             const key = path[i]
-            current[key] = cloneShallow(current[key])
+            InternalRecord.assignProperty(current, key, cloneShallow(current[key]))
             current = current[key]
           }
 
           const finalKey = path[i]
-          current[finalKey] = a
+          InternalRecord.assignProperty(current, finalKey, a)
 
           return out
         }

@@ -83,6 +83,7 @@ import {
 } from "./core.ts"
 import * as doNotation from "./doNotation.ts"
 import * as InternalMetric from "./metric.ts"
+import * as InternalRecord from "./record.ts"
 import {
   CurrentConcurrency,
   CurrentErrorReporters,
@@ -4353,7 +4354,7 @@ export const all = <
         Object.entries(arg),
         ([key, effect]) =>
           map(options?.mode === "result" ? result(effect) : effect, (value) => {
-            out[key] = value
+            InternalRecord.assignProperty(out, key, value)
           }),
         {
           discard: true,
@@ -5885,11 +5886,11 @@ export const annotateSpans: {
     ...args: [Record<string, unknown>] | [key: string, value: unknown]
   ): Effect.Effect<A, E, R> =>
     updateService(effect, TracerSpanAnnotations, (annotations) => {
-      const newAnnotations = { ...annotations }
+      const newAnnotations = args.length === 1 ? { ...annotations, ...args[0] } : { ...annotations }
       if (args.length === 1) {
-        Object.assign(newAnnotations, args[0])
+        return newAnnotations
       } else {
-        newAnnotations[args[0]] = args[1]
+        InternalRecord.assignProperty(newAnnotations, args[0], args[1])
       }
       return newAnnotations
     })
@@ -6160,7 +6161,7 @@ export const annotateLogsScoped: {
     const next = { ...prev }
     for (let i = 0; i < entries.length; i++) {
       const [key, value] = entries[i]
-      next[key] = value
+      InternalRecord.assignProperty(next, key, value)
     }
     fiber.setContext(Context.add(fiber.context, CurrentLogAnnotations, next))
     return scopeAddFinalizerExit(Context.getUnsafe(fiber.context, scopeTag), (_) => {
@@ -6169,8 +6170,8 @@ export const annotateLogsScoped: {
       for (let i = 0; i < entries.length; i++) {
         const [key, value] = entries[i]
         if (current[key] !== value) continue
-        if (key in prev) {
-          next[key] = prev[key]
+        if (Object.hasOwn(prev, key)) {
+          InternalRecord.assignProperty(next, key, prev[key])
         } else {
           delete next[key]
         }
@@ -6514,7 +6515,7 @@ export const tracerLogger = loggerMake<unknown, void>(({ cause, fiber, logLevel,
   if (span === undefined || span._tag === "ExternalSpan") return
   const attributes: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(annotations)) {
-    attributes[key] = value
+    InternalRecord.assignProperty(attributes, key, value)
   }
   attributes["effect.fiberId"] = fiber.id
   attributes["effect.logLevel"] = logLevel.toUpperCase()

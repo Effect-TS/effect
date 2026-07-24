@@ -874,8 +874,8 @@ function buildEnvTrie(env: Record<string, string | undefined>): EnvTrieNode {
 
     let node = trie
     for (const seg of segments) {
-      node.children ??= {}
-      node = node.children[seg] ??= {}
+      const children = node.children ??= Object.create(null)
+      node = children[seg] ??= {}
     }
   }
 
@@ -891,7 +891,7 @@ function nodeAtEnv(
   preserveEmptyStrings: boolean
 ): Node | undefined {
   const key = path.map(String).join("_")
-  const leafValue = emptyStringAsMissing(env[key], preserveEmptyStrings)
+  const leafValue = emptyStringAsMissing(Object.hasOwn(env, key) ? env[key] : undefined, preserveEmptyStrings)
 
   const trieNode = trieNodeAt(trie, path)
   const children = trieNode?.children ? Object.keys(trieNode.children) : []
@@ -979,7 +979,7 @@ const DOT_ENV_LINE =
   /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg
 
 function parseDotEnvContents(lines: string): Record<string, string> {
-  const obj: Record<string, string> = {}
+  const obj: Record<string, string> = Object.create(null)
 
   // Convert line breaks to same format
   lines = lines.replace(/\r\n?/gm, "\n")
@@ -1014,9 +1014,9 @@ function parseDotEnvContents(lines: string): Record<string, string> {
 }
 
 function dotEnvExpand(parsed: Record<string, string>): Record<string, string> {
-  const newParsed: Record<string, string> = {}
+  const newParsed: Record<string, string> = Object.create(null)
 
-  for (const configKey in parsed) {
+  for (const configKey of Object.keys(parsed)) {
     // resolve escape sequences
     newParsed[configKey] = interpolate(parsed[configKey], parsed).replace(/\\\$/g, "$")
   }
@@ -1054,7 +1054,7 @@ function interpolate(envValue: string, parsed: Record<string, string>): string {
     const [_, group, variableName, defaultValue] = match
 
     return interpolate(
-      envValue.replace(group, defaultValue || parsed[variableName] || ""),
+      envValue.replace(group, defaultValue || (Object.hasOwn(parsed, variableName) ? parsed[variableName] : "")),
       parsed
     )
   }

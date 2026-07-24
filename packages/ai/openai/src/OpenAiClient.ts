@@ -548,7 +548,11 @@ const makeSocket = Effect.gen(function*() {
                 method: "createResponseStream",
                 reason: AiError.reasonFromHttpStatus({
                   description: json,
-                  status: isNaN(status) ? errorTypeToStatus[error.type] ?? 500 : status,
+                  status: isNaN(status) ?
+                    Object.hasOwn(errorTypeToStatus, error.type)
+                      ? errorTypeToStatus[error.type]
+                      : 500 :
+                    status,
                   metadata: error as any,
                   http: {
                     body: json,
