@@ -338,6 +338,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
         tag.externalDocs = externalDocs
       })
       processAnnotation(group.annotations, Override, (override) => {
+        // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
         for (const [key, value] of Object.entries(override)) {
           InternalRecord.assignProperty(tag as any, key, value)
         }
@@ -574,6 +575,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
       )
 
       processAnnotation(endpoint.annotations, Override, (override) => {
+        // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
         for (const [key, value] of Object.entries(override)) {
           InternalRecord.assignProperty(op as any, key, value)
         }
@@ -652,6 +654,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
   })
 
   processAnnotation(api.annotations, Override, (override) => {
+    // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
     for (const [key, value] of Object.entries(override)) {
       InternalRecord.assignProperty(spec as any, key, value)
     }

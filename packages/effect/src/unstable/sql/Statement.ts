@@ -1147,7 +1147,7 @@ export const defaultTransforms = (
 
   const transformObject = (obj: Record<string, any>): any => {
     const newObj: Record<string, any> = {}
-    for (const key in obj) {
+    for (const key of Object.keys(obj)) {
       InternalRecord.assignProperty(newObj, transformer(key), transformValue(obj[key]))
     }
     return newObj
@@ -1163,8 +1163,9 @@ export const defaultTransforms = (
         newRows[i] = transformArrayNested(row) as any
       } else {
         const obj: any = {}
-        for (const key in row) {
-          InternalRecord.assignProperty(obj, transformer(key), transformValue(row[key]))
+        const record = row as Record<string, any>
+        for (const key of Object.keys(record)) {
+          InternalRecord.assignProperty(obj, transformer(key), transformValue(record[key]))
         }
         newRows[i] = obj
       }
@@ -1182,8 +1183,9 @@ export const defaultTransforms = (
         newRows[i] = transformArray(row) as any
       } else {
         const obj: any = {}
-        for (const key in row) {
-          InternalRecord.assignProperty(obj, transformer(key), row[key])
+        const record = row as Record<string, any>
+        for (const key of Object.keys(record)) {
+          InternalRecord.assignProperty(obj, transformer(key), record[key])
         }
         newRows[i] = obj
       }

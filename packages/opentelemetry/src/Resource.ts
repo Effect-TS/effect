@@ -129,12 +129,10 @@ export const layerFromEnv = (
       if (serviceName._tag === "Some") {
         attributes[OtelSemConv.ATTR_SERVICE_NAME] = serviceName.value
       }
-      if (additionalAttributes) {
-        for (const [key, value] of Object.entries(additionalAttributes)) {
-          Rec.assignProperty(attributes, key, value)
-        }
-      }
-      return Resources.resourceFromAttributes(attributes)
+      return Resources.resourceFromAttributes({
+        ...attributes,
+        ...additionalAttributes
+      })
     }).pipe(Effect.orDie)
   )
 

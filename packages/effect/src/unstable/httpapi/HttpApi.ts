@@ -157,7 +157,7 @@ const Proto = {
     api: Top
   ) {
     const newGroups = { ...this.groups }
-    for (const key in api.groups) {
+    for (const key of Object.keys(api.groups)) {
       const group = api.groups[key]
       InternalRecord.assignProperty(
         newGroups,
