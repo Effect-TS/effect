@@ -61,6 +61,11 @@ describe("Record", () => {
       })
 
       deepStrictEqual(Record.fromIterableBy(["a", symA], (s) => s), { a: "a", [symA]: symA })
+
+      deepStrictEqual(pipe(users, Record.fromIterableBy((user) => user.id)), {
+        "2": { id: "2", name: "name2" },
+        "1": { id: "1", name: "name1" }
+      })
     })
 
     it("fromEntries", () => {

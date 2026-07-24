@@ -281,10 +281,21 @@ export const fromIterableWith: {
  * @category constructors
  * @since 2.0.0
  */
-export const fromIterableBy = <A, K extends string | symbol>(
-  items: Iterable<A>,
-  f: (a: A) => K
-): Record<ReadonlyRecord.NonLiteralKey<K>, A> => fromIterableWith(items, (a) => [f(a), a])
+export const fromIterableBy: {
+  <A, K extends string | symbol>(
+    f: (a: A) => K
+  ): (items: Iterable<A>) => Record<ReadonlyRecord.NonLiteralKey<K>, A>
+  <A, K extends string | symbol>(
+    items: Iterable<A>,
+    f: (a: A) => K
+  ): Record<ReadonlyRecord.NonLiteralKey<K>, A>
+} = dual(
+  2,
+  <A, K extends string | symbol>(
+    items: Iterable<A>,
+    f: (a: A) => K
+  ): Record<ReadonlyRecord.NonLiteralKey<K>, A> => fromIterableWith(items, (a) => [f(a), a])
+)
 
 /**
  * Builds a record from an iterable of key-value pairs.
