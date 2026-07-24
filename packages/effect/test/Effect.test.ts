@@ -1041,6 +1041,64 @@ describe("Effect", () => {
       assert.deepStrictEqual(interrupted, [500, 300, 200])
     }))
 
+  it.effect("race interrupts the loser when the other side succeeds", () =>
+    Effect.gen(function*() {
+      const interrupted: Array<string> = []
+      const onInterrupt = (label: string) =>
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            interrupted.push(label)
+          })
+        )
+      const fiber = yield* Effect.race(
+        Effect.succeed("fast").pipe(Effect.delay(100), onInterrupt("fast")),
+        Effect.succeed("slow").pipe(Effect.delay(500), onInterrupt("slow"))
+      ).pipe(Effect.forkChild)
+      yield* TestClock.adjust("500 millis")
+      const result = yield* Fiber.join(fiber)
+      assert.strictEqual(result, "fast")
+      assert.deepStrictEqual(interrupted, ["slow"])
+    }))
+
+  it.effect("raceFirst interrupts the loser when the other side succeeds", () =>
+    Effect.gen(function*() {
+      const interrupted: Array<string> = []
+      const onInterrupt = (label: string) =>
+        Effect.onInterrupt(() =>
+          Effect.sync(() => {
+            interrupted.push(label)
+          })
+        )
+      const fiber = yield* Effect.raceFirst(
+        Effect.succeed("fast").pipe(Effect.delay(100), onInterrupt("fast")),
+        Effect.succeed("slow").pipe(Effect.delay(500), onInterrupt("slow"))
+      ).pipe(Effect.forkChild)
+      yield* TestClock.adjust("500 millis")
+      const result = yield* Fiber.join(fiber)
+      assert.strictEqual(result, "fast")
+      assert.deepStrictEqual(interrupted, ["slow"])
+    }))
+
+  it.effect("raceFirst interrupts the loser when the other side fails", () =>
+    Effect.gen(function*() {
+      const interrupted: Array<string> = []
+      const fiber = yield* Effect.raceFirst(
+        Effect.fail("boom").pipe(Effect.delay(100)),
+        Effect.succeed("slow").pipe(
+          Effect.delay(500),
+          Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              interrupted.push("slow")
+            })
+          )
+        )
+      ).pipe(Effect.exit, Effect.forkChild)
+      yield* TestClock.adjust("500 millis")
+      const result = yield* Fiber.join(fiber)
+      assert.deepStrictEqual(result, Exit.fail("boom"))
+      assert.deepStrictEqual(interrupted, ["slow"])
+    }))
+
   describe("repeat", () => {
     it.effect("is interruptible", () =>
       Effect.gen(function*() {
