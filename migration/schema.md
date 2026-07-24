@@ -30,6 +30,7 @@ This document maps v3 Schema APIs to their v4 equivalents. Simple renames and ar
 | `Redacted`                                      | `RedactedFromValue`                                                           | rename            |
 | `EitherFromSelf`                                | `Result`                                                                      | rename            |
 | `DateFromNumber`                                | `DateFromMillis`                                                              | rename            |
+| `Date`                                          | `DateFromString.check(isDateValid())`                                         | restructure       |
 | `TaggedError`                                   | `TaggedErrorClass`                                                            | rename            |
 | `decodeUnknown`                                 | `decodeUnknownEffect`                                                         | rename            |
 | `decode`                                        | `decodeEffect`                                                                | rename            |
@@ -86,6 +87,30 @@ This document maps v3 Schema APIs to their v4 equivalents. Simple renames and ar
 The following `*FromSelf` schemas have been renamed to drop the suffix:
 
 `DateFromSelf` → `Date`, `DurationFromSelf` → `Duration`, `ChunkFromSelf` → `Chunk`, `ReadonlyMapFromSelf` → `ReadonlyMap`, `ReadonlySetFromSelf` → `ReadonlySet`, `HashMapFromSelf` → `HashMap`, `HashSetFromSelf` → `HashSet`, `BigDecimalFromSelf` → `BigDecimal`, `CauseFromSelf` → `Cause`, `ExitFromSelf` → `Exit`, `OptionFromSelf` → `Option`, `RegExpFromSelf` → `RegExp`
+
+### `Date` encoded contract
+
+**Migration: restructure**
+
+In v3, `Schema.Date` decoded an ISO date string to a `Date` and rejected invalid dates. In v4, `Schema.Date` is the renamed `Schema.DateFromSelf`, so it expects a `Date` as its encoded value. Existing code can still type-check after upgrading while no longer accepting the same input.
+
+v3
+
+```ts
+import { Schema } from "effect"
+
+const DateFromIsoString = Schema.Date
+```
+
+v4
+
+```ts
+import { Schema } from "effect"
+
+const DateFromIsoString = Schema.DateFromString.check(Schema.isDateValid())
+```
+
+`Schema.DateFromString` preserves the string-to-`Date` transformation, while `Schema.isDateValid()` restores the validity check from the v3 schema.
 
 ### Filter renames
 
