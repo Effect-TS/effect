@@ -10,6 +10,14 @@
  * `RSA1_5` key management is intentionally unsupported — the Web Crypto API
  * does not implement RSAES-PKCS1-v1_5 encryption and RFC 8725 discourages it.
  *
+ * Security note: AES-GCM (content encryption and `A*GCMKW` key wrapping) uses
+ * a fresh random 96-bit IV per operation. Random 96-bit nonces are only safe
+ * up to roughly 2^32 encryptions under a single fixed key before the
+ * birthday-bound collision risk becomes non-negligible; this matters for
+ * `dir` with a reused Content Encryption Key and for a reused `A*GCMKW`
+ * key-encryption key. Rotate long-lived symmetric keys well before that
+ * bound, or prefer a key-management mode that derives a fresh CEK per message.
+ *
  * @since 4.0.0
  * @see https://www.rfc-editor.org/rfc/rfc7516 - JSON Web Encryption (JWE)
  * @see https://www.rfc-editor.org/rfc/rfc7518 - JSON Web Algorithms (JWA)
@@ -195,6 +203,12 @@ const timingSafeEqual = (a: Uint8Array, b: Uint8Array): boolean => {
 
 const die = (reason: JweErrorReason) => (cause: unknown) => new JweError({ reason, cause })
 
+/** @internal Decodes attacker-supplied base64url, mapping `atob` throws to a typed Malformed error. */
+const decodeB64 = (value: string) => Effect.try({ try: () => fromBase64Url(value), catch: die("Malformed") })
+
+/** Default cap on the PBES2 iteration count accepted on decrypt (DoS guard, per RFC 8725). */
+const defaultMaxPBES2Count = 10_000
+
 // -------------------------------------------------------------------------------------
 // Content encryption
 // -------------------------------------------------------------------------------------
@@ -345,11 +359,16 @@ const keyManagementEncrypt = Effect.fnUntraced(function*(
   enc: (typeof JweEncryption)["Type"],
   key: CryptoKey,
   cekBytes: number,
-  options: { readonly p2c: number }
+  options: { readonly p2c: number; readonly apu: Uint8Array; readonly apv: Uint8Array }
 ) {
+  const agreementExtras = {
+    ...(options.apu.length > 0 ? { apu: base64Url(options.apu) } : {}),
+    ...(options.apv.length > 0 ? { apv: base64Url(options.apv) } : {})
+  }
   switch (alg) {
     case "dir": {
       const cek = new Uint8Array(yield* Effect.promise(() => crypto.subtle.exportKey("raw", key)))
+      if (cek.length !== cekBytes) return yield* new JweError({ reason: "KeyManagementFailed" })
       return { cek, encryptedKey: new Uint8Array(0), headerExtras: {} }
     }
     case "RSA-OAEP":
@@ -402,16 +421,18 @@ const keyManagementEncrypt = Effect.fnUntraced(function*(
       const epk = yield* Effect.promise(() => crypto.subtle.exportKey("jwk", ephemeral.publicKey))
       const publicEpk = { kty: epk.kty, crv: epk.crv, x: epk.x, y: epk.y }
       if (alg === "ECDH-ES") {
-        const cek = yield* concatKdf(sharedSecret, cekBytes * 8, enc, new Uint8Array(0), new Uint8Array(0))
-        return { cek, encryptedKey: new Uint8Array(0), headerExtras: { epk: publicEpk } }
+        // ECDH-ES direct: algId is the content-encryption algorithm.
+        const cek = yield* concatKdf(sharedSecret, cekBytes * 8, enc, options.apu, options.apv)
+        return { cek, encryptedKey: new Uint8Array(0), headerExtras: { epk: publicEpk, ...agreementExtras } }
       }
-      const kekRaw = yield* concatKdf(sharedSecret, aesKwBits(alg), alg, new Uint8Array(0), new Uint8Array(0))
+      // ECDH-ES+AKW: algId is the key-management algorithm; derived bits are the KEK.
+      const kekRaw = yield* concatKdf(sharedSecret, aesKwBits(alg), alg, options.apu, options.apv)
       const kek = yield* Effect.promise(() =>
         crypto.subtle.importKey("raw", u8(kekRaw), "AES-KW", false, ["wrapKey", "unwrapKey"])
       )
       const cek = randomBytes(cekBytes)
       const encryptedKey = yield* aesKwWrap(kek, cek)
-      return { cek, encryptedKey, headerExtras: { epk: publicEpk } }
+      return { cek, encryptedKey, headerExtras: { epk: publicEpk, ...agreementExtras } }
     }
     case "PBES2-HS256+A128KW":
     case "PBES2-HS384+A192KW":
@@ -444,12 +465,18 @@ const keyManagementDecrypt = Effect.fnUntraced(function*(
   header: (typeof ProtectedHeader)["Type"],
   key: CryptoKey,
   encryptedKey: Uint8Array,
-  cekBytes: number
+  cekBytes: number,
+  options: { readonly maxPBES2Count: number }
 ) {
   const alg = header.alg
+  const apu = header.apu === undefined ? new Uint8Array(0) : yield* decodeB64(header.apu)
+  const apv = header.apv === undefined ? new Uint8Array(0) : yield* decodeB64(header.apv)
   switch (alg) {
-    case "dir":
-      return new Uint8Array(yield* Effect.promise(() => crypto.subtle.exportKey("raw", key)))
+    case "dir": {
+      const cek = new Uint8Array(yield* Effect.promise(() => crypto.subtle.exportKey("raw", key)))
+      if (cek.length !== cekBytes) return yield* new JweError({ reason: "KeyManagementFailed" })
+      return cek
+    }
     case "RSA-OAEP":
     case "RSA-OAEP-256":
       return new Uint8Array(
@@ -466,8 +493,8 @@ const keyManagementDecrypt = Effect.fnUntraced(function*(
     case "A192GCMKW":
     case "A256GCMKW": {
       if (header.iv === undefined || header.tag === undefined) return yield* new JweError({ reason: "Malformed" })
-      const iv = fromBase64Url(header.iv)
-      const tag = fromBase64Url(header.tag)
+      const iv = yield* decodeB64(header.iv)
+      const tag = yield* decodeB64(header.tag)
       const cek = yield* Effect.tryPromise({
         try: () =>
           crypto.subtle.decrypt(
@@ -484,18 +511,25 @@ const keyManagementDecrypt = Effect.fnUntraced(function*(
     case "ECDH-ES+A192KW":
     case "ECDH-ES+A256KW": {
       if (header.epk === undefined) return yield* new JweError({ reason: "Malformed" })
+      // The recipient's own curve is used for import. WebCrypto's EC "jwk"
+      // import rejects an epk whose "crv" does not match (and validates the
+      // point lies on the curve), which is what defeats invalid-curve attacks;
+      // a mismatch surfaces here as a typed KeyManagementFailed, not a defect.
       const { bitLength, namedCurve } = ecKeyInfo(key)
       const ephemeralPublic = yield* Effect.tryPromise({
         try: () => crypto.subtle.importKey("jwk", header.epk as JsonWebKey, { name: "ECDH", namedCurve }, false, []),
         catch: die("KeyManagementFailed")
       })
       const sharedSecret = new Uint8Array(
-        yield* Effect.promise(() => crypto.subtle.deriveBits({ name: "ECDH", public: ephemeralPublic }, key, bitLength))
+        yield* Effect.tryPromise({
+          try: () => crypto.subtle.deriveBits({ name: "ECDH", public: ephemeralPublic }, key, bitLength),
+          catch: die("KeyManagementFailed")
+        })
       )
       if (alg === "ECDH-ES") {
-        return yield* concatKdf(sharedSecret, cekBytes * 8, header.enc, new Uint8Array(0), new Uint8Array(0))
+        return yield* concatKdf(sharedSecret, cekBytes * 8, header.enc, apu, apv)
       }
-      const kekRaw = yield* concatKdf(sharedSecret, aesKwBits(alg), alg, new Uint8Array(0), new Uint8Array(0))
+      const kekRaw = yield* concatKdf(sharedSecret, aesKwBits(alg), alg, apu, apv)
       const kek = yield* Effect.promise(() =>
         crypto.subtle.importKey("raw", u8(kekRaw), "AES-KW", false, ["wrapKey", "unwrapKey"])
       )
@@ -505,16 +539,24 @@ const keyManagementDecrypt = Effect.fnUntraced(function*(
     case "PBES2-HS384+A192KW":
     case "PBES2-HS512+A256KW": {
       if (header.p2s === undefined || header.p2c === undefined) return yield* new JweError({ reason: "Malformed" })
+      // The iteration count is attacker-controlled; bound it to prevent a
+      // CPU-exhaustion DoS (RFC 8725). The expensive derivation only runs
+      // after this check passes.
+      if (!Number.isInteger(header.p2c) || header.p2c < 1000 || header.p2c > options.maxPBES2Count) {
+        return yield* new JweError({ reason: "Malformed" })
+      }
       const hash = alg.startsWith("PBES2-HS256") ? "SHA-256" : alg.startsWith("PBES2-HS384") ? "SHA-384" : "SHA-512"
-      const salt = concatBytes(textEncoder.encode(alg), new Uint8Array([0]), fromBase64Url(header.p2s))
+      const salt = concatBytes(textEncoder.encode(alg), new Uint8Array([0]), yield* decodeB64(header.p2s))
       const kekBits = new Uint8Array(
-        yield* Effect.promise(() =>
-          crypto.subtle.deriveBits(
-            { name: "PBKDF2", salt: u8(salt), iterations: header.p2c, hash },
-            key,
-            aesKwBits(alg)
-          )
-        )
+        yield* Effect.tryPromise({
+          try: () =>
+            crypto.subtle.deriveBits(
+              { name: "PBKDF2", salt: u8(salt), iterations: header.p2c!, hash },
+              key,
+              aesKwBits(alg)
+            ),
+          catch: die("KeyManagementFailed")
+        })
       )
       const kek = yield* Effect.promise(() =>
         crypto.subtle.importKey("raw", u8(kekBits), "AES-KW", false, ["wrapKey", "unwrapKey"])
@@ -545,12 +587,23 @@ export const encrypt = Effect.fnUntraced(function*(options: {
   readonly algorithm: (typeof JweAlgorithm)["Type"]
   readonly encryption: (typeof JweEncryption)["Type"]
   readonly protectedHeader?: Record<string, unknown> | undefined
-  /** PBES2 iteration count (defaults to 2048). */
+  /**
+   * PBES2 iteration count (defaults to 2048). Keep it at or below the
+   * recipient's `maxPBES2Count` on decrypt (default 10000). PBES2 is a
+   * password-based mode and its iteration count is bounded for DoS reasons,
+   * not a substitute for a high-entropy key.
+   */
   readonly p2c?: number | undefined
+  /** ECDH-ES Agreement PartyUInfo (`apu`), bound into the Concat KDF. */
+  readonly apu?: Uint8Array | undefined
+  /** ECDH-ES Agreement PartyVInfo (`apv`), bound into the Concat KDF. */
+  readonly apv?: Uint8Array | undefined
 }) {
   const params = encryptionParameters(options.encryption)
   const km = yield* keyManagementEncrypt(options.algorithm, options.encryption, options.key, params.cekBytes, {
-    p2c: options.p2c ?? 2048
+    p2c: options.p2c ?? 2048,
+    apu: options.apu ?? new Uint8Array(0),
+    apv: options.apv ?? new Uint8Array(0)
   })
 
   const header = {
@@ -589,26 +642,47 @@ export const encrypt = Effect.fnUntraced(function*(options: {
 export const decrypt = Effect.fnUntraced(function*(options: {
   readonly jwe: string
   readonly key: CryptoKey
+  /** When set, only these key-management (`alg`) values are accepted. */
+  readonly keyManagementAlgorithms?: ReadonlyArray<(typeof JweAlgorithm)["Type"]> | undefined
+  /** When set, only these content-encryption (`enc`) values are accepted. */
+  readonly contentEncryptionAlgorithms?: ReadonlyArray<(typeof JweEncryption)["Type"]> | undefined
+  /** Maximum PBES2 iteration count accepted (defaults to 10000; DoS guard). */
+  readonly maxPBES2Count?: number | undefined
 }) {
   const parts = yield* Schema.decodeUnknownEffect(Compact)(options.jwe).pipe(
     Effect.mapError((cause) => new JweError({ reason: "Malformed", cause }))
   )
 
-  const headerJson = new TextDecoder().decode(fromBase64Url(parts.protected))
+  const headerBytes = yield* decodeB64(parts.protected)
   const header = yield* Schema.decodeUnknownEffect(ProtectedHeader)(
-    yield* Effect.try({ try: () => JSON.parse(headerJson), catch: die("Malformed") })
+    yield* Effect.try({ try: () => JSON.parse(new TextDecoder().decode(headerBytes)), catch: die("Malformed") })
   ).pipe(Effect.mapError((cause) => new JweError({ reason: "Malformed", cause })))
 
+  // RFC 7516 §4.1.13: any `crit` extension we do not understand MUST be
+  // rejected. This implementation understands no critical extensions.
+  if ((header as Record<string, unknown>).crit !== undefined) {
+    return yield* new JweError({ reason: "UnsupportedAlgorithm" })
+  }
+  if (options.keyManagementAlgorithms !== undefined && !options.keyManagementAlgorithms.includes(header.alg)) {
+    return yield* new JweError({ reason: "UnsupportedAlgorithm" })
+  }
+  if (options.contentEncryptionAlgorithms !== undefined && !options.contentEncryptionAlgorithms.includes(header.enc)) {
+    return yield* new JweError({ reason: "UnsupportedAlgorithm" })
+  }
+
   const params = encryptionParameters(header.enc)
-  const cek = yield* keyManagementDecrypt(header, options.key, fromBase64Url(parts.encryptedKey), params.cekBytes)
+  const encryptedKey = yield* decodeB64(parts.encryptedKey)
+  const cek = yield* keyManagementDecrypt(header, options.key, encryptedKey, params.cekBytes, {
+    maxPBES2Count: options.maxPBES2Count ?? defaultMaxPBES2Count
+  })
 
   const aad = textEncoder.encode(parts.protected)
   const plaintext = yield* contentDecrypt(
     params,
     cek,
-    fromBase64Url(parts.iv),
-    fromBase64Url(parts.ciphertext),
-    fromBase64Url(parts.tag),
+    yield* decodeB64(parts.iv),
+    yield* decodeB64(parts.ciphertext),
+    yield* decodeB64(parts.tag),
     aad
   )
 

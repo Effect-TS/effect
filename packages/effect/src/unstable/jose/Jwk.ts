@@ -333,3 +333,61 @@ export const JwkSet = Schema.Struct({
   expected: "a JSON object with a 'keys' member containing an array of JWKs",
   description: "A set of JSON Web Keys as defined in RFC 7517 Section 5"
 })
+
+/**
+ * Returns whether a JWK may be used to verify a signature under the given JWS
+ * algorithm: the key type (and EC curve) must match the algorithm family, and
+ * a key explicitly marked for encryption (`use: "enc"`) is rejected. Gate key
+ * selection with this so a token cannot steer a key of one family into an
+ * incompatible algorithm — e.g. verifying an `RS256` token against an `oct`
+ * HMAC key (the classic asymmetric/symmetric confusion), which WebCrypto's
+ * import step alone does not prevent when the key set is attacker-influenced.
+ *
+ * @category Compatibility
+ * @since 4.0.0
+ */
+export const isCompatibleWith = (
+  alg: (typeof JwsAlgorithm)["Type"],
+  jwk: (typeof Jwk)["Type"]
+): boolean => {
+  if (jwk.use === "enc") return false
+  switch (alg) {
+    case "ES256":
+      return jwk.kty === "EC" && jwk.crv === "P-256"
+    case "ES384":
+      return jwk.kty === "EC" && jwk.crv === "P-384"
+    case "ES512":
+      return jwk.kty === "EC" && jwk.crv === "P-521"
+    case "RS256":
+    case "RS384":
+    case "RS512":
+    case "PS256":
+    case "PS384":
+    case "PS512":
+      return jwk.kty === "RSA"
+    case "HS256":
+    case "HS384":
+    case "HS512":
+      return jwk.kty === "oct"
+  }
+}
+
+/**
+ * Returns whether a JWK is a symmetric (secret) key. Such keys must never be
+ * accepted from an untrusted source (e.g. a token's `jku`/`jwk` header) as a
+ * signature-verification key, as that enables signature forgery.
+ *
+ * @category Compatibility
+ * @since 4.0.0
+ */
+export const isSymmetric = (jwk: (typeof Jwk)["Type"]): boolean => jwk.kty === "oct"
+
+/**
+ * Returns whether a JWK carries private key material (`d` for EC/RSA). A
+ * public verification key never does; presence of private material in a key
+ * pulled from an untrusted source indicates misuse and should be rejected.
+ *
+ * @category Compatibility
+ * @since 4.0.0
+ */
+export const isPrivate = (jwk: (typeof Jwk)["Type"]): boolean => (jwk.kty === "EC" || jwk.kty === "RSA") && "d" in jwk

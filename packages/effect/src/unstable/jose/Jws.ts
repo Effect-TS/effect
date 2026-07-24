@@ -30,7 +30,7 @@ import type * as Struct from "../../Struct.ts"
 import * as Tuple from "../../Tuple.ts"
 import * as VariantSchema from "../schema/VariantSchema.ts"
 import { importParameters, JwsAlgorithm, signatureParameters } from "./Jwa.ts"
-import { Jwk, JwkSet } from "./Jwk.ts"
+import { isCompatibleWith, isPrivate, isSymmetric, Jwk, JwkSet } from "./Jwk.ts"
 
 const joseVariantSchema = VariantSchema.make({
   variants: ["protected", "unprotected"],
@@ -454,7 +454,9 @@ export function verify<
     readonly [K in string]: Schema.Codec<unknown, Schema.Json, unknown, unknown>
   } = {}
 >({
+  algorithms,
   criticalHeaders,
+  maxSignatures = 4,
   payload,
   publicKeys,
   resolveJku,
@@ -465,6 +467,19 @@ export function verify<
   trustEmbeddedJwk?: boolean | undefined
   resolveJku?: ((url: string) => Effect.Effect<(typeof JwkSet)["Type"], E2, R2>) | undefined
   criticalHeaders?: (CriticalHeaders & ValidateCriticalHeaderKeys<CriticalHeaders>) | undefined
+  /**
+   * When set, only these `alg` values are accepted; a token selecting any
+   * other algorithm is rejected before key selection. Strongly recommended:
+   * pinning the algorithm is defence-in-depth against downgrade and
+   * key-type-confusion attacks.
+   */
+  algorithms?: ReadonlyArray<(typeof JwsAlgorithm)["Type"]> | undefined
+  /**
+   * Maximum number of signatures accepted in a General JSON serialization
+   * (defaults to 4). Bounds the per-token verification work an attacker can
+   * force, including `jku` fetches.
+   */
+  maxSignatures?: number | undefined
 }) {
   const keys = Arr.fromIterable(publicKeys ?? [])
   const textEncoder = new TextEncoder()
@@ -482,10 +497,16 @@ export function verify<
   const decodeProtectedHeader = Schema.decodeEffect(protectedHeaderSchema)
   const decodeSignature = Schema.decodeEffect(Schema.Uint8ArrayFromBase64Url)
 
+  // Import may reject on malformed key material or an alg/key-type mismatch;
+  // treat that as "unusable key" (null) rather than an unrecoverable defect.
   const importJwk = (jwk: (typeof Jwk)["Type"], alg: (typeof JwsAlgorithm)["Type"]) =>
-    Effect.promise(() => crypto.subtle.importKey("jwk", jwk as JsonWebKey, importParameters(alg), false, ["verify"]))
+    Effect.tryPromise(() => crypto.subtle.importKey("jwk", jwk as JsonWebKey, importParameters(alg), false, ["verify"]))
+      .pipe(Effect.catch(() => Effect.succeed(null as CryptoKey | null)))
 
   const verifier = Effect.fnUntraced(function*(jws: General) {
+    if (jws.signatures.length > maxSignatures) {
+      return yield* new InvalidJws({ reason: new InvalidHeaders() })
+    }
     for (const signatureEntry of jws.signatures) {
       const signatureBytes = yield* decodeSignature(signatureEntry.signature)
       const protectedHeader = yield* decodeProtectedHeader(signatureEntry.protected)
@@ -501,31 +522,48 @@ export function verify<
         return yield* new InvalidJws({ reason: new InvalidHeaders() })
       }
 
+      if (algorithms !== undefined && !algorithms.includes(header.alg)) {
+        return yield* new InvalidJws({ reason: new InvalidHeaders() })
+      }
+
       const localKeys: Array<CryptoKey> = []
+
+      // Keys pulled from the token itself (jku URL / embedded jwk) are only
+      // trusted when the caller opts in, and even then a key is used only if
+      // it is an asymmetric public key compatible with the header algorithm —
+      // never a symmetric or private key, which would enable forgery.
+      const trustable = (jwk: (typeof Jwk)["Type"]) =>
+        !isSymmetric(jwk) && !isPrivate(jwk) && isCompatibleWith(header.alg!, jwk)
 
       if (header.jku !== undefined && resolveJku !== undefined) {
         const jwkSet = yield* resolveJku(header.jku).pipe(
           Effect.mapError(() => new InvalidJws({ reason: new InvalidHeaders() }))
         )
         for (const jwk of jwkSet.keys) {
-          localKeys.push(yield* importJwk(jwk, header.alg))
+          if (!trustable(jwk)) continue
+          const imported = yield* importJwk(jwk, header.alg)
+          if (imported !== null) localKeys.push(imported)
         }
       }
 
-      if (header.jwk !== undefined && trustEmbeddedJwk === true) {
-        localKeys.push(yield* importJwk(header.jwk, header.alg))
+      if (header.jwk !== undefined && trustEmbeddedJwk === true && trustable(header.jwk)) {
+        const imported = yield* importJwk(header.jwk, header.alg)
+        if (imported !== null) localKeys.push(imported)
       }
 
       const verifyParameters = signatureParameters(header.alg)
       for (const key of [...keys, ...localKeys]) {
-        const verified = yield* Effect.promise(() =>
+        // A key whose bound algorithm does not match makes crypto.subtle.verify
+        // reject; treat that (and any other failure) as "did not verify" so the
+        // next candidate is tried and verification stays fail-closed.
+        const verified = yield* Effect.tryPromise(() =>
           crypto.subtle.verify(
             verifyParameters,
             key,
             Uint8Array.from(signatureBytes),
             textEncoder.encode(`${signatureEntry.protected}.${jws.unverifiedPayload}`)
           )
-        )
+        ).pipe(Effect.catch(() => Effect.succeed(false)))
 
         if (verified) {
           return {

@@ -67,6 +67,7 @@ export type JwtErrorReason =
   | "Malformed"
   | "UnknownKey"
   | "BadAlgorithm"
+  | "BadType"
   | "BadSignature"
   | "Expired"
   | "NotYetValid"
@@ -93,35 +94,12 @@ const HeaderHint = Schema.StringFromBase64Url.pipe(
     Schema.fromJsonString(
       Schema.Struct({
         alg: Jwa.JwsAlgorithm,
-        kid: Schema.String.pipe(Schema.optional)
+        kid: Schema.String.pipe(Schema.optional),
+        typ: Schema.String.pipe(Schema.optional)
       })
     )
   )
 )
-
-const compatibleWith = (alg: (typeof Jwa.JwsAlgorithm)["Type"]) => {
-  const curves = { ES256: "P-256", ES384: "P-384", ES512: "P-521" } as const
-  return (jwk: (typeof Jwk.Jwk)["Type"]): boolean => {
-    if (jwk.use === "enc") return false
-    switch (alg) {
-      case "ES256":
-      case "ES384":
-      case "ES512":
-        return jwk.kty === "EC" && jwk.crv === curves[alg]
-      case "RS256":
-      case "RS384":
-      case "RS512":
-      case "PS256":
-      case "PS384":
-      case "PS512":
-        return jwk.kty === "RSA"
-      case "HS256":
-      case "HS384":
-      case "HS512":
-        return jwk.kty === "oct"
-    }
-  }
-}
 
 /**
  * Generates a fresh ES256 signing key pair with a random `kid`. Persist the
@@ -193,9 +171,14 @@ export const sign = Effect.fnUntraced(function*(options: {
 /**
  * Verifies a compact-serialized JWT against a JWK Set: signature (any
  * supported JWS algorithm, with `kid`-based key selection), `exp`/`nbf`
- * (with 30s skew), and — when provided — `iss` and `aud`. Returns the
- * validated standard claims plus the rest record for decoding
- * token-specific claims with a more precise schema.
+ * (with 30s skew), and — when provided — `algorithms`, `types` (the `typ`
+ * header), `issuer`, and `audience`.
+ *
+ * `audience` is validated only when supplied; pass it whenever the token is
+ * addressed to a specific recipient. Pinning `algorithms` (e.g. `["ES256"]`)
+ * is recommended defence-in-depth. Returns the validated standard claims
+ * plus the rest record for decoding token-specific claims with a more
+ * precise schema.
  *
  * @category Verification
  * @since 4.0.0
@@ -206,6 +189,10 @@ export const verify = Effect.fnUntraced(function*(
     readonly jwks: (typeof Jwk.JwkSet)["Type"]
     readonly issuer?: string | undefined
     readonly audience?: string | undefined
+    /** When set, only these `alg` values are accepted (e.g. `["ES256"]`). */
+    readonly algorithms?: ReadonlyArray<(typeof Jwa.JwsAlgorithm)["Type"]> | undefined
+    /** When set, the `typ` header must be present and one of these (e.g. `["at+jwt"]`). */
+    readonly types?: ReadonlyArray<string> | undefined
   }
 ) {
   const flattened = yield* Schema.decodeUnknownEffect(Jws.Compact)(token).pipe(
@@ -216,8 +203,15 @@ export const verify = Effect.fnUntraced(function*(
     Effect.mapError(() => new JwtError({ reason: "Malformed" }))
   )
 
+  if (options.algorithms !== undefined && !options.algorithms.includes(hint.alg)) {
+    return yield* new JwtError({ reason: "BadAlgorithm" })
+  }
+  if (options.types !== undefined && (hint.typ === undefined || !options.types.includes(hint.typ))) {
+    return yield* new JwtError({ reason: "BadType" })
+  }
+
   const candidates = options.jwks.keys
-    .filter(compatibleWith(hint.alg))
+    .filter((jwk) => Jwk.isCompatibleWith(hint.alg, jwk))
     .filter((jwk) => hint.kid === undefined || jwk.kid === undefined || jwk.kid === hint.kid)
   if (candidates.length === 0) return yield* new JwtError({ reason: "UnknownKey" })
 
