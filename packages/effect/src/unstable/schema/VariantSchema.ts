@@ -15,7 +15,6 @@ import * as InternalRecord from "../../internal/record.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
-import type * as SchemaAST from "../../SchemaAST.ts"
 import * as Struct_ from "../../Struct.ts"
 
 /**
@@ -264,19 +263,7 @@ export interface Class<
   S extends Schema.Top & {
     readonly fields: Schema.Struct.Fields
   }
-> extends
-  Schema.BottomLazy<
-    SchemaAST.Declaration,
-    Schema.decodeTo<Schema.declareConstructor<Self, S["Encoded"], readonly [S], S["Iso"]>, S>,
-    readonly [S],
-    S["~type.mutability"],
-    S["~type.optionality"],
-    S["~type.constructor.default"],
-    S["~encoded.mutability"],
-    S["~encoded.optionality"]
-  >,
-  Struct<Struct_.Simplify<Fields>>
-{
+> extends Schema.Class<Self, S, {}>, Struct<Struct_.Simplify<Fields>> {
   readonly "Type": Self
   readonly "Encoded": S["Encoded"]
   readonly "DecodingServices": S["DecodingServices"]

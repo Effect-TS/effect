@@ -3838,7 +3838,7 @@ g(A.make({ a: "a" })) // error: Argument of type 'A' is not assignable to parame
 
 ## Schema as a Class
 
-`Schema.asClass` turns any schema into a class that can be extended with `extends`. The resulting class inherits the full schema API (e.g. `annotate`) and supports static methods that reference `this`.
+Any schema can be extended directly with `extends`. The resulting class inherits the full schema API (e.g. `annotate`) and supports static methods that reference `this`.
 
 Unlike `Schema.Opaque`, it does **not** make the decoded type nominally distinct, and unlike `Schema.Class`, it does **not** create prototype-backed instances with methods or constructors. It is a lightweight way to attach custom static helpers to a schema.
 
@@ -3847,7 +3847,7 @@ Unlike `Schema.Opaque`, it does **not** make the decoded type nominally distinct
 ```ts
 import { Schema } from "effect"
 
-class MyString extends Schema.asClass(Schema.String) {
+class MyString extends Schema.String {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 
@@ -3860,9 +3860,7 @@ console.log(MyString.decodeUnknownSync("a"))
 ```ts
 import { Schema } from "effect"
 
-class MyStruct extends Schema.asClass(
-  Schema.Struct({ name: Schema.String })
-) {
+class MyStruct extends Schema.Struct({ name: Schema.String }) {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 
@@ -3872,12 +3870,12 @@ console.log(MyStruct.decodeUnknownSync({ name: "a" }))
 
 ### Subclassing
 
-You can extend an `asClass` class to layer on more static helpers:
+You can extend a schema class to layer on more static helpers:
 
 ```ts
 import { Schema } from "effect"
 
-class MyString extends Schema.asClass(Schema.FiniteFromString) {
+class MyString extends Schema.FiniteFromString {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 

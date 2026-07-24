@@ -109,8 +109,8 @@ export type ConstructorDefault = "no-default" | "with-default"
  * Use when passing `disableChecks: true` to skip validation when you trust the data.
  * - Pass `parseOptions` to control error reporting behavior.
  *
- * @see {@link Bottom.makeEffect}
- * @see {@link Bottom.make}
+ * @see {@link BottomWithoutNew.makeEffect}
+ * @see {@link BottomWithoutNew.make}
  *
  * @category options
  * @since 3.13.4
@@ -133,19 +133,19 @@ export interface MakeOptions {
 }
 
 /**
- * The fully-parameterized base interface for all schemas. Exposes all 14 type
- * parameters controlling type inference, mutability, optionality, services, and
- * transformation behavior.
+ * The fully-parameterized schema interface without a construct signature.
+ * Exposes all 14 type parameters controlling type inference, mutability,
+ * optionality, services, and transformation behavior.
  *
  * **When to use**
  *
- * Use when you are writing advanced generic schema utilities or performing
- *   schema introspection.
+ * Use as the base for schema interfaces that provide a specialized construct
+ * signature.
  *
  * @category models
  * @since 4.0.0
  */
-export interface Bottom<
+export interface BottomWithoutNew<
   out T,
   out E,
   out RD,
@@ -207,8 +207,8 @@ export interface Bottom<
    * Causes that contain defects, interruptions, or other non-schema reasons
    * throw with the underlying `Cause` attached instead.
    *
-   * @see {@link Bottom.makeOption} — construct synchronously and discard validation details
-   * @see {@link Bottom.makeEffect} — construct through `Effect` when validation failure should stay in the error channel
+   * @see {@link BottomWithoutNew.makeOption} — construct synchronously and discard validation details
+   * @see {@link BottomWithoutNew.makeEffect} — construct through `Effect` when validation failure should stay in the error channel
    */
   make(input: this["~type.make.in"], options?: MakeOptions): this["Type"]
   /**
@@ -231,8 +231,8 @@ export interface Bottom<
    * that contain defects, interruptions, or other non-schema reasons throw
    * instead.
    *
-   * @see {@link Bottom.make} — construct synchronously when validation failure should throw
-   * @see {@link Bottom.makeEffect} — construct through `Effect` when validation details should stay in the error channel
+   * @see {@link BottomWithoutNew.make} — construct synchronously when validation failure should throw
+   * @see {@link BottomWithoutNew.makeEffect} — construct through `Effect` when validation details should stay in the error channel
    */
   makeOption(input: this["~type.make.in"], options?: MakeOptions): Option_.Option<this["Type"]>
   /**
@@ -244,38 +244,95 @@ export interface Bottom<
    * Use when constructor input may fail validation and you want to
    * compose that failure with other `Effect` operations instead of throwing.
    *
-   * @see {@link Bottom.make} — construct synchronously when validation failure should throw
-   * @see {@link Bottom.makeOption} — construct synchronously and discard validation details
+   * @see {@link BottomWithoutNew.make} — construct synchronously when validation failure should throw
+   * @see {@link BottomWithoutNew.makeOption} — construct synchronously and discard validation details
    */
   makeEffect(input: this["~type.make.in"], options?: MakeOptions): Effect.Effect<this["Type"], SchemaError>
 }
 
 /**
- * Lazy `Bottom` variant for schema implementations that compute their public
- * views on demand.
+ * Fully-parameterized base interface for schemas that can be extended directly
+ * by TypeScript classes.
  *
  * **When to use**
  *
- * Use as an implementation base for schema interfaces that must expose
- * `Bottom` behavior without forcing TypeScript to eagerly evaluate expensive
- * `Type`, `Encoded`, or service views.
+ * Use as the base for concrete schema interfaces whose runtime values support
+ * `class ... extends schema`.
+ *
+ * **Details**
+ *
+ * Extends {@link BottomWithoutNew} with a construct signature that accepts `never`. The
+ * signature enables class extension without making ordinary schemas directly
+ * constructible.
+ *
+ * @see {@link BottomWithoutNew} for the schema protocol without a construct signature
+ *
+ * @category utility types
+ * @since 4.0.0
+ */
+export interface Bottom<
+  out T,
+  out E,
+  out RD,
+  out RE,
+  out Ast extends SchemaAST.AST,
+  out Rebuild extends Top,
+  out TypeMakeIn = T,
+  out Iso = T,
+  in out TypeParameters extends ReadonlyArray<Constraint> = readonly [],
+  out TypeMake = TypeMakeIn,
+  out TypeMutability extends Mutability = "readonly",
+  out TypeOptionality extends Optionality = "required",
+  out TypeConstructorDefault extends ConstructorDefault = "no-default",
+  out EncodedMutability extends Mutability = "readonly",
+  out EncodedOptionality extends Optionality = "required"
+> extends
+  BottomWithoutNew<
+    T,
+    E,
+    RD,
+    RE,
+    Ast,
+    Rebuild,
+    TypeMakeIn,
+    Iso,
+    TypeParameters,
+    TypeMake,
+    TypeMutability,
+    TypeOptionality,
+    TypeConstructorDefault,
+    EncodedMutability,
+    EncodedOptionality
+  >
+{
+  new(_: never): {}
+}
+
+/**
+ * Lazy `BottomWithoutNew` variant for schema implementations that
+ * compute their public views on demand.
+ *
+ * **When to use**
+ *
+ * Use as the base for lazy schema interfaces that provide a specialized
+ * construct signature.
  *
  * **Details**
  *
  * The laziness is purely type-level; runtime behavior is unchanged.
- * `BottomLazy` keeps the structural operations inherited from `Bottom`, but
- * erases the expensive schema views to `unknown`. Concrete schema interfaces can
- * then redeclare the precise views they expose. This keeps wide schemas such as
- * `Struct` and `Union` cheaper when generic code reads a single view, while
- * preserving their exact public types.
+ * `BottomLazyWithoutNew` keeps the structural operations inherited from
+ * `BottomWithoutNew`, but erases the expensive schema views to
+ * `unknown`. Concrete schema interfaces can then redeclare the precise views
+ * they expose. This keeps wide schemas such as `Struct` and `Union` cheaper when
+ * generic code reads a single view, while preserving their exact public types.
  *
- * @see {@link Bottom} for the fully parameterized schema interface when every
+ * @see {@link BottomWithoutNew} for the fully parameterized schema interface when every
  * view must be supplied directly.
  *
  * @category utility types
  * @since 4.0.0
  */
-export interface BottomLazy<
+export interface BottomLazyWithoutNew<
   out Ast extends SchemaAST.AST,
   out Rebuild extends Top,
   in out TypeParameters extends ReadonlyArray<Constraint> = readonly [],
@@ -285,7 +342,7 @@ export interface BottomLazy<
   out EncodedMutability extends Mutability = "readonly",
   out EncodedOptionality extends Optionality = "required"
 > extends
-  Bottom<
+  BottomWithoutNew<
     unknown,
     unknown,
     unknown,
@@ -303,6 +360,50 @@ export interface BottomLazy<
     EncodedOptionality
   >
 {}
+
+/**
+ * Lazy `Bottom` variant for schemas that can be extended directly by TypeScript
+ * classes.
+ *
+ * **When to use**
+ *
+ * Use as the base for concrete lazy schema interfaces whose runtime values
+ * support `class ... extends schema`.
+ *
+ * **Details**
+ *
+ * Extends {@link BottomLazyWithoutNew} with a construct signature that accepts `never`.
+ * The signature enables class extension without making ordinary schemas
+ * directly constructible.
+ *
+ * @see {@link BottomLazyWithoutNew} for the lazy schema protocol without a construct signature
+ *
+ * @category utility types
+ * @since 4.0.0
+ */
+export interface BottomLazy<
+  out Ast extends SchemaAST.AST,
+  out Rebuild extends Top,
+  in out TypeParameters extends ReadonlyArray<Constraint> = readonly [],
+  out TypeMutability extends Mutability = "readonly",
+  out TypeOptionality extends Optionality = "required",
+  out TypeConstructorDefault extends ConstructorDefault = "no-default",
+  out EncodedMutability extends Mutability = "readonly",
+  out EncodedOptionality extends Optionality = "required"
+> extends
+  BottomLazyWithoutNew<
+    Ast,
+    Rebuild,
+    TypeParameters,
+    TypeMutability,
+    TypeOptionality,
+    TypeConstructorDefault,
+    EncodedMutability,
+    EncodedOptionality
+  >
+{
+  new(_: never): {}
+}
 
 /**
  * Type-level representation returned by {@link declareConstructor}.
@@ -2225,33 +2326,6 @@ export const encodeSync: <S extends ConstraintEncoder<unknown>>(
  * @since 3.10.0
  */
 export const make: <S extends Constraint>(ast: S["ast"], options?: object) => S = InternalSchema.make
-
-/**
- * Transforms a schema into a class that can be extended with `extends`. The
- * resulting class inherits the full schema API (e.g. `annotate`) and can define
- * static methods that reference `this`.
- *
- * **Example** (Wrapping a primitive schema)
- *
- * ```ts
- * import { Schema } from "effect"
- *
- * class MyString extends Schema.asClass(Schema.String) {
- *   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
- * }
- *
- * console.log(MyString.decodeUnknownSync("a"))
- * // "a"
- * ```
- *
- * @category constructors
- * @since 4.0.0
- */
-export function asClass<S extends Top>(schema: S): S & { new(_: never): {} } {
-  // oxlint-disable-next-line @typescript-eslint/no-extraneous-class
-  class Class {}
-  return Object.setPrototypeOf(Class, schema)
-}
 
 /**
  * Checks whether a value is a `Schema`.
@@ -6301,7 +6375,7 @@ export function TaggedUnion<const CasesByTag extends Record<string, Struct.Field
  * @since 4.0.0
  */
 export interface Opaque<Self, S extends Top, Brand> extends
-  BottomLazy<
+  BottomLazyWithoutNew<
     S["ast"],
     S["Rebuild"],
     S["~type.parameters"],
@@ -14209,17 +14283,18 @@ export const DateTimeZonedFromString: DateTimeZonedFromString = DateTimeZonedStr
  * @category models
  * @since 3.10.0
  */
-export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fields }, Inherited> extends
-  BottomLazy<
-    SchemaAST.Declaration,
-    decodeTo<declareConstructor<Self, S["Encoded"], readonly [S], S["Iso"]>, S>,
-    readonly [S],
-    S["~type.mutability"],
-    S["~type.optionality"],
-    S["~type.constructor.default"],
-    S["~encoded.mutability"],
-    S["~encoded.optionality"]
-  >
+export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fields }, Inherited>
+  extends
+    BottomLazyWithoutNew<
+      SchemaAST.Declaration,
+      decodeTo<declareConstructor<Self, S["Encoded"], readonly [S], S["Iso"]>, S>,
+      readonly [S],
+      S["~type.mutability"],
+      S["~type.optionality"],
+      S["~type.constructor.default"],
+      S["~encoded.mutability"],
+      S["~encoded.optionality"]
+    >
 {
   readonly "Type": Self
   readonly "Encoded": S["Encoded"]

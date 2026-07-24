@@ -1846,26 +1846,115 @@ describe("Schema", () => {
     })
   })
 
-  describe("asClass", () => {
-    it("preserves schema Type", () => {
-      class A extends Schema.asClass(Schema.String) {}
-      expect(Schema.revealCodec(A)).type.toBe<Schema.Codec<string, string, never, never>>()
-
-      class B extends Schema.asClass(Schema.Struct({ name: Schema.String })) {}
-      expect(Schema.revealCodec(B)).type.toBe<
-        Schema.Codec<{ readonly name: string }, { readonly name: string }, never, never>
+  describe("class extension", () => {
+    it("keeps protocol bases constructor-free", () => {
+      const bottomWithoutNew: Schema.BottomWithoutNew<
+        string,
+        string,
+        never,
+        never,
+        (typeof Schema.String)["ast"],
+        Schema.String
+      > = Schema.String
+      expect(bottomWithoutNew).type.not.toBeAssignableTo<
+        abstract new(...args: Array<any>) => unknown
       >()
+
+      const struct = Schema.Struct({ name: Schema.String })
+      const bottomLazyWithoutNew: Schema.BottomLazyWithoutNew<
+        (typeof struct)["ast"],
+        (typeof struct)["Rebuild"]
+      > = struct
+      expect(bottomLazyWithoutNew).type.not.toBeAssignableTo<
+        abstract new(...args: Array<any>) => unknown
+      >()
+    })
+
+    it("keeps class-compatible bases extendable", () => {
+      const bottom: Schema.Bottom<
+        string,
+        string,
+        never,
+        never,
+        (typeof Schema.String)["ast"],
+        Schema.String
+      > = Schema.String
+      class A extends bottom {}
+
+      const struct = Schema.Struct({ name: Schema.String })
+      const bottomLazy: Schema.BottomLazy<
+        (typeof struct)["ast"],
+        (typeof struct)["Rebuild"]
+      > = struct
+      class B extends bottomLazy {}
+
+      expect(Schema.revealCodec(A)).type.toBe<Schema.Codec<string>>()
+      expect(B).type.toBeAssignableTo<Schema.Top>()
+    })
+
+    it("keeps Opaque assignable to Top", () => {
+      class A extends Schema.Opaque<A>()(Schema.Struct({ name: Schema.String })) {}
+
+      expect(A).type.toBeAssignableTo<Schema.Top>()
+    })
+
+    it("keeps Schema.Class assignable to Top", () => {
+      class A extends Schema.Class<A>("A")({ name: Schema.String }) {}
+
+      expect(A).type.toBeAssignableTo<Schema.Top>()
+    })
+
+    it("preserves codec parameters", () => {
+      interface DecodingService {
+        readonly DecodingService: unique symbol
+      }
+      interface EncodingService {
+        readonly EncodingService: unique symbol
+      }
+
+      const schema = Schema.FiniteFromString.pipe(
+        Schema.middlewareDecoding((effect) =>
+          Effect.andThen(
+            Effect.context<DecodingService>(),
+            effect
+          )
+        ),
+        Schema.middlewareEncoding((effect) =>
+          Effect.andThen(
+            Effect.context<EncodingService>(),
+            effect
+          )
+        )
+      )
+
+      class A extends schema {}
+
+      expect(Schema.revealCodec(A)).type.toBe<
+        Schema.Codec<number, string, DecodingService, EncodingService>
+      >()
+    })
+
+    it("preserves Struct fields", () => {
+      class B extends Schema.Struct({ name: Schema.String }) {}
+
       expect(B.fields).type.toBe<{ readonly name: Schema.String }>()
     })
 
+    it("cannot be constructed", () => {
+      class A extends Schema.String {}
+
+      expect(A).type.not.toBeConstructableWith()
+      expect(A).type.not.toBeConstructableWith("a")
+    })
+
     it("annotate returns the original schema type", () => {
-      class A extends Schema.asClass(Schema.String) {}
+      class A extends Schema.String {}
 
       expect(A.annotate({})).type.toBe<Schema.String>()
     })
 
     it("should support static methods", () => {
-      class A extends Schema.asClass(Schema.FiniteFromString) {
+      class A extends Schema.FiniteFromString {
         static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
         static get encodeSync() {
           return Schema.encodeSync(this)
