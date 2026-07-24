@@ -1418,6 +1418,24 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(result, new Cause.TimeoutError())
       }))
+    it.effect("timeout interrupts the effect", () =>
+      Effect.gen(function*() {
+        let interrupted = false
+        const fiber = yield* Effect.never.pipe(
+          Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              interrupted = true
+            })
+          ),
+          Effect.timeout(10),
+          Effect.flip,
+          Effect.forkChild
+        )
+        yield* TestClock.adjust(10)
+        const result = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(result, new Cause.TimeoutError())
+        assert.isTrue(interrupted)
+      }))
   })
 
   describe("interruption", () => {
