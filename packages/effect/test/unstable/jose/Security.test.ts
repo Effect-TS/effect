@@ -214,5 +214,46 @@ describe("JOSE security remediations", () => {
         )
         assert.strictEqual(error.reason, "KeyManagementFailed")
       }).pipe(Effect.runPromise))
+
+    it("rejects a wrong-length CEK (typed error, not a defect)", () =>
+      Effect.gen(function*() {
+        // An attacker with the recipient's RSA public key can RSA-OAEP-encrypt
+        // a CEK of the wrong length. It must fail closed as DecryptionFailed,
+        // never reach AES importKey and crash as an unhandled defect.
+        const pair = yield* Effect.promise(() =>
+          crypto.subtle.generateKey(
+            { name: "RSA-OAEP", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-1" },
+            true,
+            ["encrypt", "decrypt"]
+          )
+        )
+        const b64 = (bytes: Uint8Array) =>
+          btoa(String.fromCharCode(...bytes)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
+        // A128GCM needs a 16-byte CEK; wrap a 20-byte one instead
+        const badCek = rnd(20)
+        const wrapped = new Uint8Array(
+          yield* Effect.promise(() => crypto.subtle.encrypt({ name: "RSA-OAEP" }, pair.publicKey, badCek))
+        )
+        const header = b64(new TextEncoder().encode(JSON.stringify({ alg: "RSA-OAEP", enc: "A128GCM" })))
+        const jwe = [header, b64(wrapped), b64(rnd(12)), b64(rnd(8)), b64(rnd(16))].join(".")
+        const error = yield* Effect.flip(Jwe.decrypt({ jwe, key: pair.privateKey }))
+        assert.strictEqual(error.reason, "DecryptionFailed")
+      }).pipe(Effect.runPromise))
+  })
+
+  describe("Jwk.RsaPrivateKey", () => {
+    it("preserves the CRT parameters of a full private key", () =>
+      Effect.gen(function*() {
+        const full = { kty: "RSA", n: "nnn", e: "AQAB", d: "ddd", p: "ppp", q: "qqq", dp: "dpv", dq: "dqv", qi: "qiv" }
+        const decoded = yield* Schema.decodeUnknownEffect(Jwk.RsaPrivateKey)(full)
+        assert.deepStrictEqual(decoded, full)
+      }).pipe(Effect.runPromise))
+
+    it("still decodes a d-only private key", () =>
+      Effect.gen(function*() {
+        const dOnly = { kty: "RSA", n: "nnn", e: "AQAB", d: "ddd" }
+        const decoded = yield* Schema.decodeUnknownEffect(Jwk.RsaPrivateKey)(dOnly)
+        assert.deepStrictEqual(decoded, dOnly)
+      }).pipe(Effect.runPromise))
   })
 })

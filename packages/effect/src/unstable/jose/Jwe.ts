@@ -675,6 +675,13 @@ export const decrypt = Effect.fnUntraced(function*(options: {
   const cek = yield* keyManagementDecrypt(header, options.key, encryptedKey, params.cekBytes, {
     maxPBES2Count: options.maxPBES2Count ?? defaultMaxPBES2Count
   })
+  // A key-management algorithm can yield a CEK of the wrong size — e.g. an
+  // attacker RSA-OAEP-encrypts an arbitrary-length key to the recipient's
+  // public key. Reject it before it reaches AES importKey in contentDecrypt,
+  // which would otherwise reject and surface as an unhandled defect.
+  if (cek.length !== params.cekBytes) {
+    return yield* new JweError({ reason: "DecryptionFailed" })
+  }
 
   const aad = textEncoder.encode(parts.protected)
   const plaintext = yield* contentDecrypt(
