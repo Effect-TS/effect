@@ -732,6 +732,28 @@ describe("Effect", () => {
           c: Result.succeed(true)
         })
       }))
+
+    it.effect("interrupts in-flight siblings when one member fails with concurrency", () =>
+      Effect.gen(function*() {
+        const interrupted: Array<string> = []
+        const track = (label: string) =>
+          Effect.never.pipe(
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted.push(label)
+              })
+            )
+          )
+        const fiber = yield* Effect.all([
+          track("a"),
+          Effect.fail("boom").pipe(Effect.delay(100)),
+          track("c")
+        ], { concurrency: "unbounded" }).pipe(Effect.forkChild)
+        yield* TestClock.adjust(100)
+        const exit = yield* Fiber.await(fiber)
+        assert.deepStrictEqual(exit, Exit.fail("boom"))
+        assert.deepStrictEqual(interrupted.sort(), ["a", "c"])
+      }))
   })
 
   describe("partition", () => {
@@ -1010,6 +1032,88 @@ describe("Effect", () => {
       // 100 doesn't start because 0 finishes the race first
       assert.deepStrictEqual(interrupted, [500, 300, 200])
     }))
+
+  describe("race", () => {
+    it.effect("interrupts the loser when the winner succeeds", () =>
+      Effect.gen(function*() {
+        const interrupted: Array<number> = []
+        const make = (ms: number) =>
+          Effect.succeed(ms).pipe(
+            Effect.delay(ms),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted.push(ms)
+              })
+            )
+          )
+        const fiber = yield* Effect.race(make(500), make(100)).pipe(Effect.forkChild)
+        yield* TestClock.adjust("500 millis")
+        const result = yield* Fiber.join(fiber)
+        assert.strictEqual(result, 100)
+        assert.deepStrictEqual(interrupted, [500])
+      }))
+
+    it.effect("a losing failure does not win or interrupt the other side", () =>
+      Effect.gen(function*() {
+        const interrupted: Array<number> = []
+        const fiber = yield* Effect.race(
+          Effect.fail("boom").pipe(Effect.delay(100)),
+          Effect.succeed(300).pipe(
+            Effect.delay(300),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted.push(300)
+              })
+            )
+          )
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust("300 millis")
+        const result = yield* Fiber.join(fiber)
+        assert.strictEqual(result, 300)
+        assert.deepStrictEqual(interrupted, [])
+      }))
+  })
+
+  describe("raceFirst", () => {
+    it.effect("interrupts the loser when the winner succeeds", () =>
+      Effect.gen(function*() {
+        const interrupted: Array<number> = []
+        const make = (ms: number) =>
+          Effect.succeed(ms).pipe(
+            Effect.delay(ms),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted.push(ms)
+              })
+            )
+          )
+        const fiber = yield* Effect.raceFirst(make(500), make(100)).pipe(Effect.forkChild)
+        yield* TestClock.adjust("500 millis")
+        const result = yield* Fiber.join(fiber)
+        assert.strictEqual(result, 100)
+        assert.deepStrictEqual(interrupted, [500])
+      }))
+
+    it.effect("interrupts the loser when the first completion is a failure", () =>
+      Effect.gen(function*() {
+        const interrupted: Array<number> = []
+        const fiber = yield* Effect.raceFirst(
+          Effect.succeed(500).pipe(
+            Effect.delay(500),
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted.push(500)
+              })
+            )
+          ),
+          Effect.fail("boom").pipe(Effect.delay(100))
+        ).pipe(Effect.exit, Effect.forkChild)
+        yield* TestClock.adjust("500 millis")
+        const result = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(result, Exit.fail("boom"))
+        assert.deepStrictEqual(interrupted, [500])
+      }))
+  })
 
   describe("repeat", () => {
     it.effect("is interruptible", () =>
@@ -1418,6 +1522,25 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(result, new Cause.TimeoutError())
       }))
+
+    it.effect("interrupts the timed-out effect", () =>
+      Effect.gen(function*() {
+        let interrupted = false
+        const fiber = yield* Effect.never.pipe(
+          Effect.onInterrupt(() =>
+            Effect.sync(() => {
+              interrupted = true
+            })
+          ),
+          Effect.timeout(10),
+          Effect.flip,
+          Effect.forkChild
+        )
+        yield* TestClock.adjust(10)
+        const result = yield* Fiber.join(fiber)
+        assert.deepStrictEqual(result, new Cause.TimeoutError())
+        assert.isTrue(interrupted)
+      }))
   })
 
   describe("interruption", () => {
@@ -1565,6 +1688,70 @@ describe("Effect", () => {
         }).pipe(Effect.forkChild({ startImmediately: true }))
         yield* Fiber.interrupt(fiber)
         assert.strictEqual(signal!.aborted, true)
+      }))
+
+    it.effect("callback cleanup effect runs on interrupt", () =>
+      Effect.gen(function*() {
+        let cleanedUp = false
+        const fiber = yield* Effect.callback<void>(() =>
+          Effect.sync(() => {
+            cleanedUp = true
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(cleanedUp)
+        assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+      }))
+
+    it.effect("uninterruptibleMask delivers a pending interrupt when restore re-enables interruptibility", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        const started = yield* Deferred.make<void>()
+        const resume = yield* Deferred.make<void>()
+        const fiber = yield* Effect.uninterruptibleMask((restore) =>
+          Effect.gen(function*() {
+            yield* Deferred.succeed(started, void 0)
+            yield* Deferred.await(resume)
+            events.push("masked")
+            return yield* restore(Effect.suspend(() => {
+              events.push("restored")
+              return Effect.never
+            }))
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Deferred.await(started)
+        fiber.interruptUnsafe()
+        // the masked region shields the fiber from the pending interrupt
+        assert.isUndefined(fiber.pollUnsafe())
+        yield* Deferred.succeed(resume, void 0)
+        yield* Effect.yieldNow
+        yield* Effect.yieldNow
+        const exit = fiber.pollUnsafe()
+        assert.isDefined(exit)
+        assert.isTrue(Exit.hasInterrupts(exit!))
+        // the pending interrupt is delivered as soon as restore re-enters the
+        // interruptible region, so the restored effect never runs
+        assert.deepStrictEqual(events, ["masked"])
+      }))
+
+    it.effect("uninterruptibleMask restore makes the region interruptible again", () =>
+      Effect.gen(function*() {
+        const events: Array<string> = []
+        const fiber = yield* Effect.uninterruptibleMask((restore) =>
+          Effect.gen(function*() {
+            events.push("masked")
+            return yield* restore(Effect.never.pipe(
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  events.push("interrupted")
+                })
+              )
+            ))
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+        assert.deepStrictEqual(events, ["masked", "interrupted"])
       }))
   })
 
@@ -1900,6 +2087,23 @@ describe("Effect", () => {
         assert.deepEqual(result, Exit.fail(ExampleError))
       }))
 
+    it.effect("acquireUseRelease runs release when the use phase is interrupted", () =>
+      Effect.gen(function*() {
+        let releaseExit: Exit.Exit<void> | undefined
+        const fiber = yield* Effect.acquireUseRelease(
+          Effect.succeed(123),
+          () => Effect.never,
+          (_, exit) =>
+            Effect.sync(() => {
+              releaseExit = exit
+            })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(Exit.hasInterrupts(fiber.pollUnsafe()!))
+        assert.isDefined(releaseExit)
+        assert.isTrue(Exit.hasInterrupts(releaseExit!))
+      }))
+
     it.effect("onResult - ensures that a cleanup function runs when an effect fails", () =>
       Effect.gen(function*() {
         let ref = false
@@ -1915,6 +2119,22 @@ describe("Effect", () => {
           Effect.ignore
         )
         assert.isTrue(ref)
+      }))
+
+    it.effect("onExit receives an interrupt exit when the effect is interrupted", () =>
+      Effect.gen(function*() {
+        let observed: Exit.Exit<void> | undefined
+        const fiber = yield* Effect.never.pipe(
+          Effect.onExit((exit) =>
+            Effect.sync(() => {
+              observed = exit
+            })
+          ),
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(fiber)
+        assert.isDefined(observed)
+        assert.isTrue(Exit.hasInterrupts(observed!))
       }))
   })
 
@@ -2234,6 +2454,25 @@ describe("Effect", () => {
         assert.deepStrictEqual(executionOrder, ["task2", "task1"])
       })
     })
+    it.effect("concurrent: true interrupts the other side when one side fails", () =>
+      Effect.gen(function*() {
+        let interrupted = false
+        const fiber = yield* Effect.zip(
+          Effect.never.pipe(
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted = true
+              })
+            )
+          ),
+          Effect.fail("boom").pipe(Effect.delay(10)),
+          { concurrent: true }
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(10)
+        const exit = yield* Fiber.await(fiber)
+        assert.deepStrictEqual(exit, Exit.fail("boom"))
+        assert.isTrue(interrupted)
+      }))
   })
 
   describe("zipWith", () => {
@@ -2273,6 +2512,26 @@ describe("Effect", () => {
         assert.deepStrictEqual(executionOrder, ["task2", "task1"])
       })
     })
+    it.effect("concurrent: true interrupts the other side when one side fails", () =>
+      Effect.gen(function*() {
+        let interrupted = false
+        const fiber = yield* Effect.zipWith(
+          Effect.never.pipe(
+            Effect.onInterrupt(() =>
+              Effect.sync(() => {
+                interrupted = true
+              })
+            )
+          ),
+          Effect.fail("boom").pipe(Effect.delay(10)),
+          (a, b) => [a, b] as const,
+          { concurrent: true }
+        ).pipe(Effect.forkChild)
+        yield* TestClock.adjust(10)
+        const exit = yield* Fiber.await(fiber)
+        assert.deepStrictEqual(exit, Exit.fail("boom"))
+        assert.isTrue(interrupted)
+      }))
   })
 
   describe("catchCauseFilter", () => {
