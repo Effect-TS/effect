@@ -239,6 +239,28 @@ describe("JOSE security remediations", () => {
         const error = yield* Effect.flip(Jwe.decrypt({ jwe, key: pair.privateKey }))
         assert.strictEqual(error.reason, "DecryptionFailed")
       }).pipe(Effect.runPromise))
+
+    it("returns a typed error (not a defect) when a dir key cannot be exported", () =>
+      Effect.gen(function*() {
+        // An attacker picks alg:"dir" but the recipient key is an RSA private
+        // key, which crypto.subtle.exportKey("raw", ...) rejects. That must fail
+        // closed as a typed KeyManagementFailed, never surface as a defect.
+        // Effect.flip only completes for a typed failure, so its success here
+        // proves the branch no longer dies.
+        const pair = yield* Effect.promise(() =>
+          crypto.subtle.generateKey(
+            { name: "RSA-OAEP", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+            true,
+            ["encrypt", "decrypt"]
+          )
+        )
+        const b64 = (bytes: Uint8Array) =>
+          btoa(String.fromCharCode(...bytes)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
+        const header = b64(new TextEncoder().encode(JSON.stringify({ alg: "dir", enc: "A128GCM" })))
+        const jwe = [header, "", b64(rnd(12)), b64(rnd(8)), b64(rnd(16))].join(".")
+        const error = yield* Effect.flip(Jwe.decrypt({ jwe, key: pair.privateKey }))
+        assert.strictEqual(error.reason, "KeyManagementFailed")
+      }).pipe(Effect.runPromise))
   })
 
   describe("Jwk.RsaPrivateKey", () => {

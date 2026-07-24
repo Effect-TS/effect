@@ -259,7 +259,10 @@ const contentDecrypt = Effect.fnUntraced(function*(
   aad: Uint8Array
 ) {
   if (params.kind === "gcm") {
-    const key = yield* Effect.promise(() => crypto.subtle.importKey("raw", u8(cek), "AES-GCM", false, ["decrypt"]))
+    const key = yield* Effect.tryPromise({
+      try: () => crypto.subtle.importKey("raw", u8(cek), "AES-GCM", false, ["decrypt"]),
+      catch: die("DecryptionFailed")
+    })
     const plaintext = yield* Effect.tryPromise({
       try: () =>
         crypto.subtle.decrypt(
@@ -275,14 +278,23 @@ const contentDecrypt = Effect.fnUntraced(function*(
   const macKey = cek.slice(0, params.macBytes)
   const encKey = cek.slice(params.macBytes)
   const macInput = concatBytes(aad, iv, ciphertext, uint64BE(aad.length * 8))
-  const hmacKey = yield* Effect.promise(() =>
-    crypto.subtle.importKey("raw", u8(macKey), { name: "HMAC", hash: params.hash }, false, ["sign"])
+  const hmacKey = yield* Effect.tryPromise({
+    try: () => crypto.subtle.importKey("raw", u8(macKey), { name: "HMAC", hash: params.hash }, false, ["sign"]),
+    catch: die("DecryptionFailed")
+  })
+  const mac = new Uint8Array(
+    yield* Effect.tryPromise({
+      try: () => crypto.subtle.sign("HMAC", hmacKey, u8(macInput)),
+      catch: die("DecryptionFailed")
+    })
   )
-  const mac = new Uint8Array(yield* Effect.promise(() => crypto.subtle.sign("HMAC", hmacKey, u8(macInput))))
   if (!timingSafeEqual(mac.slice(0, params.tagBytes), tag)) {
     return yield* new JweError({ reason: "DecryptionFailed" })
   }
-  const aesKey = yield* Effect.promise(() => crypto.subtle.importKey("raw", u8(encKey), "AES-CBC", false, ["decrypt"]))
+  const aesKey = yield* Effect.tryPromise({
+    try: () => crypto.subtle.importKey("raw", u8(encKey), "AES-CBC", false, ["decrypt"]),
+    catch: die("DecryptionFailed")
+  })
   const plaintext = yield* Effect.tryPromise({
     try: () => crypto.subtle.decrypt({ name: "AES-CBC", iv: u8(iv) }, aesKey, u8(ciphertext)),
     catch: die("DecryptionFailed")
@@ -337,7 +349,9 @@ const aesKwUnwrap = (kek: CryptoKey, wrapped: Uint8Array) =>
         crypto.subtle.unwrapKey("raw", u8(wrapped), kek, "AES-KW", { name: "HMAC", hash: "SHA-256" }, true, ["sign"]),
       catch: die("KeyManagementFailed")
     })
-    return new Uint8Array(yield* Effect.promise(() => crypto.subtle.exportKey("raw", cekKey)))
+    return new Uint8Array(
+      yield* Effect.tryPromise({ try: () => crypto.subtle.exportKey("raw", cekKey), catch: die("KeyManagementFailed") })
+    )
   })
 
 const ecKeyInfo = (key: CryptoKey) => {
@@ -473,7 +487,9 @@ const keyManagementDecrypt = Effect.fnUntraced(function*(
   const apv = header.apv === undefined ? new Uint8Array(0) : yield* decodeB64(header.apv)
   switch (alg) {
     case "dir": {
-      const cek = new Uint8Array(yield* Effect.promise(() => crypto.subtle.exportKey("raw", key)))
+      const cek = new Uint8Array(
+        yield* Effect.tryPromise({ try: () => crypto.subtle.exportKey("raw", key), catch: die("KeyManagementFailed") })
+      )
       if (cek.length !== cekBytes) return yield* new JweError({ reason: "KeyManagementFailed" })
       return cek
     }
@@ -530,9 +546,10 @@ const keyManagementDecrypt = Effect.fnUntraced(function*(
         return yield* concatKdf(sharedSecret, cekBytes * 8, header.enc, apu, apv)
       }
       const kekRaw = yield* concatKdf(sharedSecret, aesKwBits(alg), alg, apu, apv)
-      const kek = yield* Effect.promise(() =>
-        crypto.subtle.importKey("raw", u8(kekRaw), "AES-KW", false, ["wrapKey", "unwrapKey"])
-      )
+      const kek = yield* Effect.tryPromise({
+        try: () => crypto.subtle.importKey("raw", u8(kekRaw), "AES-KW", false, ["wrapKey", "unwrapKey"]),
+        catch: die("KeyManagementFailed")
+      })
       return yield* aesKwUnwrap(kek, encryptedKey)
     }
     case "PBES2-HS256+A128KW":
@@ -558,9 +575,10 @@ const keyManagementDecrypt = Effect.fnUntraced(function*(
           catch: die("KeyManagementFailed")
         })
       )
-      const kek = yield* Effect.promise(() =>
-        crypto.subtle.importKey("raw", u8(kekBits), "AES-KW", false, ["wrapKey", "unwrapKey"])
-      )
+      const kek = yield* Effect.tryPromise({
+        try: () => crypto.subtle.importKey("raw", u8(kekBits), "AES-KW", false, ["wrapKey", "unwrapKey"]),
+        catch: die("KeyManagementFailed")
+      })
       return yield* aesKwUnwrap(kek, encryptedKey)
     }
   }
