@@ -9721,7 +9721,7 @@ export const interruptWhen: {
 )
 
 /**
- * Stops a stream after the current element when an effect completes.
+ * Stops a stream after the current pull when an effect completes.
  *
  * **When to use**
  *
@@ -9734,8 +9734,10 @@ export const interruptWhen: {
  *
  * **Gotchas**
  *
- * This does not interrupt an in-progress pull. Use {@link interruptWhen} when
- * the stream should be interrupted immediately.
+ * This does not interrupt or truncate an in-progress pull. A pull may emit
+ * multiple elements in a single chunk, in which case the entire chunk is
+ * emitted. Use {@link interruptWhen} when the stream should be interrupted
+ * immediately.
  *
  * **Example** (Halting a stream after an effect completes)
  *

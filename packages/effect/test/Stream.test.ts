@@ -3421,6 +3421,28 @@ describe("Stream", () => {
   })
 
   describe("haltWhen", () => {
+    it.effect("halts after the current element in the documentation example", () =>
+      Effect.gen(function*() {
+        const halt = yield* Deferred.make<void>()
+        const values = yield* Stream.fromArray([1, 2, 3]).pipe(
+          Stream.tap((value) => value === 2 ? Deferred.succeed(halt, void 0) : Effect.void),
+          Stream.haltWhen(Deferred.await(halt)),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(values, [1, 2])
+      }))
+
+    it.effect("halts a synchronous upstream before the next chunk", () =>
+      Effect.gen(function*() {
+        const halt = yield* Deferred.make<void>()
+        const values = yield* Stream.fromArrays([1], [2], [3], [4]).pipe(
+          Stream.tap((value) => value === 2 ? Deferred.succeed(halt, void 0) : Effect.void),
+          Stream.haltWhen(Deferred.await(halt)),
+          Stream.runCollect
+        )
+        assert.deepStrictEqual(values, [1, 2])
+      }))
+
     it.effect("halts after the current element", () =>
       Effect.gen(function*() {
         const ref = yield* Ref.make(false)
