@@ -1093,6 +1093,53 @@ describe("Stream", () => {
         assert.strictEqual(yield* Ref.get(finalized), 2)
       }))
 
+    it.effect("releases a permit after a successful saturated pull", () =>
+      Effect.gen(function*() {
+        const gate = yield* Deferred.make<void>()
+        const outer = Stream.concat(
+          Stream.make(1, 2),
+          Stream.fromEffect(Deferred.succeed(gate, void 0).pipe(Effect.as(3)))
+        )
+        const result = yield* Stream.flatMap(
+          outer,
+          (n) => n === 3 ? Stream.make(3) : Stream.fromEffect(Deferred.await(gate).pipe(Effect.as(n))),
+          { concurrency: 2 }
+        ).pipe(Stream.runCollect)
+
+        assert.deepStrictEqual([...result].sort(), [1, 2, 3])
+      }))
+
+    it.effect("preserves an outer element when a permit arrives during a pull", () =>
+      Effect.gen(function*() {
+        const probing = yield* Deferred.make<void>()
+        const gate = yield* Deferred.make<void>()
+        const innerGate = yield* Deferred.make<void>()
+        const outer = Stream.concat(
+          Stream.make(1, 2),
+          Stream.fromEffect(
+            Deferred.succeed(probing, void 0).pipe(
+              Effect.andThen(Deferred.await(gate)),
+              Effect.as(3)
+            )
+          )
+        )
+        const fiber = yield* Stream.flatMap(
+          outer,
+          (n) => n === 3 ? Stream.make(3) : Stream.fromEffect(Deferred.await(innerGate).pipe(Effect.as(n))),
+          { concurrency: 2 }
+        ).pipe(
+          Stream.runCollect,
+          Effect.forkChild
+        )
+        yield* Deferred.await(probing)
+        yield* Deferred.succeed(innerGate, void 0)
+        for (let i = 0; i < 10; i++) yield* Effect.yieldNow
+        yield* Deferred.succeed(gate, void 0)
+
+        const result = yield* Fiber.join(fiber)
+        assert.deepStrictEqual([...result].sort(), [1, 2, 3])
+      }))
+
     it.effect(
       "fails promptly and interrupts slow inner streams when the outer stream fails",
       () => testOuterFailure("flatMap", "slow")

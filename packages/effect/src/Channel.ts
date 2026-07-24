@@ -6030,32 +6030,27 @@ export const mergeAll: {
         yield* Scope.addFinalizer(forkedScope, Queue.shutdown(queue))
 
         const pull = yield* toTransform(channels)(upstream, scope)
-        let pendingChannel: Pull.Success<typeof pull> | undefined
 
         yield* Effect.gen(function*() {
           while (true) {
+            let pullFiber: Fiber.Fiber<Pull.Success<typeof pull>, any> | undefined
             if (semaphore) {
-              const takePermit = semaphore.take(1)
               if (fibers.size < concurrencyN) {
-                yield* takePermit
+                yield* semaphore.take(1)
               } else {
+                pullFiber = yield* Effect.forkChild(pull)
                 yield* Effect.raceFirst(
-                  takePermit,
-                  Effect.uninterruptibleMask((restore) =>
-                    restore(pull).pipe(
-                      Effect.flatMap((channel) =>
-                        Effect.sync(() => {
-                          pendingChannel = channel
-                        })
-                      ),
-                      Effect.andThen(Effect.never)
-                    )
+                  semaphore.take(1),
+                  Effect.flatMap(
+                    Fiber.await(pullFiber),
+                    (exit) => Exit.isSuccess(exit) ? Effect.never : exit
                   )
                 )
               }
             }
-            const channel = pendingChannel ?? (yield* pull)
-            pendingChannel = undefined
+            const channel = pullFiber === undefined
+              ? yield* pull
+              : yield* Effect.flatten(Fiber.await(pullFiber))
             const childScope = Scope.forkUnsafe(forkedScope)
             const childPull = yield* toTransform(channel)(upstream, childScope)
 
