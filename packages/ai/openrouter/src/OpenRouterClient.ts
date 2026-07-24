@@ -44,14 +44,14 @@ export interface Service {
   readonly client: Generated.OpenRouterClient
 
   readonly createChatCompletion: (
-    options: typeof Generated.ChatGenerationParams.Encoded
+    options: typeof Generated.ChatRequest.Encoded
   ) => Effect.Effect<
     [body: typeof Generated.SendChatCompletionRequest200.Type, response: HttpClientResponse.HttpClientResponse],
     AiError.AiError
   >
 
   readonly createChatCompletionStream: (
-    options: Omit<typeof Generated.ChatGenerationParams.Encoded, "stream" | "stream_options">
+    options: Omit<typeof Generated.ChatRequest.Encoded, "stream" | "stream_options">
   ) => Effect.Effect<
     [
       response: HttpClientResponse.HttpClientResponse,
@@ -72,7 +72,7 @@ export interface Service {
  * @category models
  * @since 4.0.0
  */
-export type ChatStreamingResponseChunkData = typeof Generated.ChatStreamingResponseChunk.fields.data.Type
+export type ChatStreamingResponseChunkData = typeof Generated.ChatStreamingResponse.fields.data.Type
 
 // =============================================================================
 // Service Identifier
@@ -197,8 +197,18 @@ export const make = Effect.fnUntraced(
         Effect.catchTags({
           SendChatCompletionRequest400: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
           SendChatCompletionRequest401: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest402: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest403: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest404: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest408: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest413: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest422: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
           SendChatCompletionRequest429: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
           SendChatCompletionRequest500: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest502: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest503: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest524: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest529: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
           HttpClientError: (error) => Errors.mapHttpClientError(error, "createChatCompletion"),
           SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createChatCompletion"))
         })
@@ -346,7 +356,7 @@ export const layerConfig = (options?: {
 // Internal Utilities
 // =============================================================================
 
-const ChatStreamingResponseChunkDataFromString = Schema.fromJsonString(Generated.ChatStreamingResponseChunk.fields.data)
+const ChatStreamingResponseChunkDataFromString = Schema.fromJsonString(Generated.ChatStreamingResponse.fields.data)
 const decodeChatStreamingResponseChunkData = Schema.decodeUnknownEffect(ChatStreamingResponseChunkDataFromString)
 
 const decodeChatCompletionSseData = (

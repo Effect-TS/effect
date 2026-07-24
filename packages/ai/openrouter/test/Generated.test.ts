@@ -13,11 +13,13 @@ describe("Generated", () => {
         cache_discount: null,
         upstream_inference_cost: null,
         created_at: "2026-07-24T12:00:00Z",
+        data_region: "global",
         model: "openrouter/auto",
         app_id: null,
         streamed: null,
         cancelled: null,
         provider_name: null,
+        http_referer: null,
         latency: null,
         moderation_latency: null,
         generation_time: null,
@@ -29,18 +31,26 @@ describe("Generated", () => {
         native_tokens_completion_images: null,
         native_tokens_reasoning: null,
         native_tokens_cached: null,
+        num_fetches: null,
         num_media_prompt: null,
         num_input_audio_prompt: null,
         num_media_completion: null,
         num_search_results: null,
         origin: "https://openrouter.ai/",
+        preset_id: null,
         usage: 0.003294,
         is_byok: false,
         native_finish_reason: null,
         external_user: null,
         api_type: null,
+        request_id: null,
+        response_cache_source_id: null,
         router: null,
-        provider_responses: null
+        service_tier: null,
+        session_id: null,
+        provider_responses: null,
+        user_agent: null,
+        web_search_engine: null
       }
     }
 
@@ -60,6 +70,6 @@ describe("Generated", () => {
       }
     }
 
-    deepStrictEqual(Schema.decodeUnknownSync(Generated.ChatGenerationTokenUsage)(usage), usage)
+    deepStrictEqual(Schema.decodeUnknownSync(Generated.ChatUsage)(usage), usage)
   })
 })
