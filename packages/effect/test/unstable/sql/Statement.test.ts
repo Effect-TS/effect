@@ -6,11 +6,12 @@ describe("Statement", () => {
     const row = Object.create({ inherited: 1 })
     row.own = 2
 
-    const nested = Statement.defaultTransforms((key) => key)
-    const flat = Statement.defaultTransforms((key) => key, false)
+    const nested = Statement.defaultTransforms((key) => key.toUpperCase())
+    const flat = Statement.defaultTransforms((key) => key.toUpperCase(), false)
 
-    assert.deepStrictEqual(nested.object(row), { own: 2 })
-    assert.deepStrictEqual(nested.array([row]), [{ own: 2 }])
-    assert.deepStrictEqual(flat.array([row]), [{ own: 2 }])
+    assert.deepStrictEqual(nested.object(row), { OWN: 2 })
+    assert.deepStrictEqual(nested.array([row]), [{ OWN: 2 }])
+    assert.deepStrictEqual(nested.array([[row]]), [[{ OWN: 2 }]])
+    assert.deepStrictEqual(flat.array([row]), [{ OWN: 2 }])
   })
 })
