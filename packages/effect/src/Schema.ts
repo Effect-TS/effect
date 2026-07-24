@@ -6422,9 +6422,7 @@ export interface Opaque<Self, S extends Top, Brand> extends
  */
 export function Opaque<Self, Brand = {}>() {
   return <S extends Top>(schema: S): Opaque<Self, S, Brand> & Omit<S, keyof Top> => {
-    // oxlint-disable-next-line @typescript-eslint/no-extraneous-class
-    class Opaque {}
-    return Object.setPrototypeOf(Opaque, schema)
+    return schema as any
   }
 }
 

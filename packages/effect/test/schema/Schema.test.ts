@@ -5100,6 +5100,12 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
   })
 
   describe("Opaque", () => {
+    it("returns the original schema", () => {
+      const schema = Schema.Struct({ a: Schema.String })
+
+      strictEqual(Schema.Opaque<{ readonly a: string }>()(schema), schema)
+    })
+
     it("Struct", () => {
       class A extends Schema.Opaque<A>()(Schema.Struct({ a: Schema.String })) {}
 
