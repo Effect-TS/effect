@@ -242,7 +242,7 @@ const make = Effect.gen(function*() {
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
-  let shardLocksHealthy = true
+  // open while shard lock storage is healthy
   const shardLocksHealthyLatch = Latch.makeUnsafe(true)
 
   // the active shards are the ones that we have acquired the lock for
@@ -294,38 +294,59 @@ const make = Effect.gen(function*() {
 
     const releaseShardsMap = yield* FiberMap.make<ShardId>()
     let forcedShardReleaseRunning = false
-    const releaseShard = Effect.fnUntraced(
-      function*(shardId: ShardId) {
-        const fibers = Arr.empty<Fiber.Fiber<void>>()
-        const force = MutableHashSet.has(forceReleasingShards, shardId)
+    // Interrupt the shards' entities, wait for lock health, run the storage
+    // release, then clear the shards' bookkeeping.
+    const runShardRelease = Effect.fnUntraced(function*<E>(
+      shardIds: ReadonlyArray<ShardId>,
+      force: boolean,
+      release: Effect.Effect<void, E>
+    ) {
+      const fibers = Arr.empty<Fiber.Fiber<void>>()
+      for (const shardId of shardIds) {
         for (const state of entityManagers.values()) {
           if (state.status === "closed") continue
           fibers.push(yield* Effect.forkScoped(state.manager.interruptShard(shardId, { force })))
         }
-        yield* Fiber.joinAll(fibers)
-        yield* shardLocksHealthyLatch.await
-        yield* runnerStorage.release(selfAddress, shardId)
+      }
+      yield* Fiber.joinAll(fibers)
+      yield* shardLocksHealthyLatch.await
+      yield* release
+      for (const shardId of shardIds) {
         MutableHashSet.remove(releasingShards, shardId)
         MutableHashSet.remove(forceReleasingShards, shardId)
         yield* storage.unregisterShardReplyHandlers(shardId)
-      },
-      Effect.sandbox,
-      (effect, shardId) =>
+      }
+    })
+    const retryShardRelease =
+      (annotations: { readonly fiber: string; readonly shardId?: ShardId }) =>
+      <A, E, R>(effect: Effect.Effect<A, E, R>) =>
         effect.pipe(
+          Effect.sandbox,
           Effect.tapError((cause) =>
-            Effect.logDebug(`Could not release shard, retrying`, cause).pipe(
+            Effect.logDebug(`Could not release shards, retrying`, cause).pipe(
               Effect.annotateLogs({
                 module: "effect/cluster/Sharding",
-                fiber: "releaseShard",
                 runner: selfAddress,
-                shardId
+                ...annotations
               }),
               // Effect.eventually retries immediately, so space failures to
               // avoid hot-looping while storage is unavailable.
               Effect.andThen(Effect.sleep(50))
             )
           ),
-          Effect.eventually,
+          Effect.eventually
+        )
+    const releaseShard = Effect.fnUntraced(
+      function*(shardId: ShardId) {
+        yield* runShardRelease(
+          [shardId],
+          MutableHashSet.has(forceReleasingShards, shardId),
+          runnerStorage.release(selfAddress, shardId)
+        )
+      },
+      (effect, shardId) =>
+        effect.pipe(
+          retryShardRelease({ fiber: "releaseShard", shardId }),
           FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
         )
     )
@@ -335,37 +356,8 @@ const make = Effect.gen(function*() {
       }
       forcedShardReleaseRunning = true
       const shardIds = [...forceReleasingShards]
-      return Effect.gen(function*() {
-        const fibers = Arr.empty<Fiber.Fiber<void>>()
-        for (const shardId of shardIds) {
-          for (const state of entityManagers.values()) {
-            if (state.status === "closed") continue
-            fibers.push(yield* Effect.forkScoped(state.manager.interruptShard(shardId, { force: true })))
-          }
-        }
-        yield* Fiber.joinAll(fibers)
-        yield* shardLocksHealthyLatch.await
-        yield* runnerStorage.releaseAll(selfAddress)
-        for (const shardId of shardIds) {
-          MutableHashSet.remove(releasingShards, shardId)
-          MutableHashSet.remove(forceReleasingShards, shardId)
-          yield* storage.unregisterShardReplyHandlers(shardId)
-        }
-      }).pipe(
-        Effect.sandbox,
-        Effect.tapError((cause) =>
-          Effect.logDebug(`Could not release forced shards, retrying`, cause).pipe(
-            Effect.annotateLogs({
-              module: "effect/cluster/Sharding",
-              fiber: "releaseForcedShards",
-              runner: selfAddress
-            }),
-            // Effect.eventually retries immediately, so space failures to
-            // avoid hot-looping while storage is unavailable.
-            Effect.andThen(Effect.sleep(50))
-          )
-        ),
-        Effect.eventually,
+      return runShardRelease(shardIds, true, runnerStorage.releaseAll(selfAddress)).pipe(
+        retryShardRelease({ fiber: "releaseForcedShards" }),
         Effect.ensuring(Effect.sync(() => {
           forcedShardReleaseRunning = false
           activeShardsLatch.openUnsafe()
@@ -402,7 +394,7 @@ const make = Effect.gen(function*() {
           yield* releaseShards
         }
 
-        if (!shardLocksHealthy) {
+        if (!shardLocksHealthyLatch.isOpen()) {
           continue
         }
 
@@ -432,7 +424,7 @@ const make = Effect.gen(function*() {
         )
         for (const shardId of acquired) {
           if (
-            !shardLocksHealthy ||
+            !shardLocksHealthyLatch.isOpen() ||
             MutableHashSet.has(releasingShards, shardId) ||
             !MutableHashSet.has(selfShards, shardId)
           ) {
@@ -464,18 +456,9 @@ const make = Effect.gen(function*() {
 
     const markShardLocksUnhealthy = (cause: Cause.Cause<unknown>) =>
       Effect.suspend(() => {
-        if (!shardLocksHealthy) return Effect.void
+        if (!shardLocksHealthyLatch.closeUnsafe()) return Effect.void
 
-        shardLocksHealthy = false
-        shardLocksHealthyLatch.closeUnsafe()
-        const affectedShards = MutableHashSet.empty<ShardId>()
-        for (const shardId of acquiredShards) {
-          MutableHashSet.add(affectedShards, shardId)
-        }
-        for (const shardId of releasingShards) {
-          MutableHashSet.add(affectedShards, shardId)
-        }
-
+        const affectedShards = MutableHashSet.fromIterable([...acquiredShards, ...releasingShards])
         MutableHashSet.clear(selfShards)
         MutableHashSet.clear(acquiredShards)
         for (const shardId of affectedShards) {
@@ -504,10 +487,8 @@ const make = Effect.gen(function*() {
       })
 
     const markShardLocksHealthy = Effect.suspend(() => {
-      if (shardLocksHealthy) return Effect.void
+      if (!shardLocksHealthyLatch.openUnsafe()) return Effect.void
 
-      shardLocksHealthy = true
-      shardLocksHealthyLatch.openUnsafe()
       MutableHashSet.clear(selfShards)
       MutableHashMap.forEach(shardAssignments, (runner, shardId) => {
         if (isLocalRunner(runner)) {
@@ -558,7 +539,7 @@ const make = Effect.gen(function*() {
 
     // Refresh shard locks at the lease-safe interval, or probe storage while
     // lock ownership is uncertain.
-    yield* Effect.suspend(() => shardLocksHealthy ? refreshShardLocks : probeShardLocks).pipe(
+    yield* Effect.suspend(() => shardLocksHealthyLatch.isOpen() ? refreshShardLocks : probeShardLocks).pipe(
       Effect.repeat(Schedule.fixed(shardLockInterval)),
       Effect.forever,
       Effect.forkIn(shardingScope)
@@ -1105,7 +1086,7 @@ const make = Effect.gen(function*() {
             if (newAssignments) {
               const runner = newAssignments[i]
               MutableHashMap.set(shardAssignments, shard, runner)
-              if (shardLocksHealthy && isLocalRunner(runner)) {
+              if (shardLocksHealthyLatch.isOpen() && isLocalRunner(runner)) {
                 MutableHashSet.add(selfShards, shard)
               }
             } else {

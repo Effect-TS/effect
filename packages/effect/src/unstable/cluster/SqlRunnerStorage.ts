@@ -593,12 +593,12 @@ export const make = Effect.fnUntraced(function*(options: {
     const fiber = yield* Effect.forkIn(operation, layerScope, { startImmediately: true })
     return yield* Fiber.join(fiber).pipe(
       Effect.timeout(lockOperationInterval),
-      Effect.ensuring(
-        Fiber.interrupt(fiber).pipe(
+      Effect.ensuring(Effect.suspend(() =>
+        fiber.pollUnsafe() !== undefined ? Effect.void : Fiber.interrupt(fiber).pipe(
           Effect.forkIn(layerScope, { startImmediately: true }),
           Effect.asVoid
         )
-      ),
+      )),
       Effect.tap(() =>
         Effect.sync(() => {
           lockConnRebuildNeeded = true
