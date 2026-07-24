@@ -231,6 +231,113 @@ against the defined schema, ensuring that only `"yes"` or `"no"` responses are a
 declines to answer or the elicitation fails, a fallback value is provided—here, the default answer
 is `"no"`.
 
+## Client
+
+The `McpClient.ts` module provides an Effect-native MCP client. It performs the `initialize`/
+`notifications/initialized` handshake automatically, exposes the negotiated server info,
+capabilities, and instructions, and provides typed methods for calling tools, reading resources,
+listing prompts, and requesting completions.
+
+```typescript
+import { Effect } from "effect"
+import { McpClient } from "effect/unstable/ai"
+
+const program = Effect.gen(function*() {
+  const client = yield* McpClient.McpClient
+  console.log(client.serverInfo)
+
+  const tools = yield* McpClient.listTools()
+  console.log(tools)
+
+  const result = yield* McpClient.callTool({ name: "GreetTool", arguments: { name: "Ada" } })
+  console.log(result)
+})
+```
+
+`McpClient.layerStdio` spawns a child process and speaks newline-delimited JSON-RPC over its
+stdio, using the platform-agnostic `ChildProcessSpawner` service (provided, for example, by
+`NodeServices.layer` from `@effect/platform-node`):
+
+```typescript
+import { NodeServices } from "@effect/platform-node"
+import { Effect } from "effect"
+import { McpClient } from "effect/unstable/ai"
+
+const program = Effect.gen(function*() {
+  const tools = yield* McpClient.listTools()
+  console.log(tools)
+}).pipe(
+  Effect.provide(McpClient.layerStdio({
+    name: "Demo Client",
+    version: "1.0.0",
+    command: "node",
+    args: ["./server.js"]
+  })),
+  Effect.provide(NodeServices.layer)
+)
+```
+
+`McpClient.layerHttp` connects to a Streamable HTTP MCP server instead, given an `HttpClient` and
+a URL:
+
+```typescript
+import { Effect } from "effect"
+import { McpClient } from "effect/unstable/ai"
+import { FetchHttpClient } from "effect/unstable/http"
+
+const program = Effect.gen(function*() {
+  const tools = yield* McpClient.listTools()
+  console.log(tools)
+}).pipe(
+  Effect.provide(McpClient.layerHttp({
+    name: "Demo Client",
+    version: "1.0.0",
+    url: "http://localhost:3000/mcp"
+  })),
+  Effect.provide(FetchHttpClient.layer)
+)
+```
+
+### Host-side handlers
+
+A server can call back into the client to sample an LLM, list workspace roots, or elicit
+structured input from the user. Register handlers for these capabilities through the `handlers`
+option on `layer`, `layerStdio`, or `layerHttp`. The presence of each handler key determines the
+`ClientCapabilities` advertised during `initialize`.
+
+```typescript
+import { Effect } from "effect"
+import { McpClient } from "effect/unstable/ai"
+
+const ClientLayer = McpClient.layerStdio({
+  name: "Demo Client",
+  version: "1.0.0",
+  command: "node",
+  args: ["./server.js"],
+  handlers: {
+    elicitation: (params) =>
+      Effect.succeed({
+        action: "accept",
+        content: { answer: "yes" }
+      })
+  }
+})
+```
+
+In this example, whenever the connected server elicits structured input, the client immediately
+accepts with `{ answer: "yes" }`. A handler can also return `{ action: "decline" }` or
+`{ action: "cancel" }`, and can fail with an `McpSchema.McpError` to signal an RPC-level error back
+to the server.
+
+### Limitations
+
+`McpClient` does not open a standalone GET/SSE listener for the Streamable HTTP transport, so
+server-initiated requests and notifications are only observed while one of the client's own
+requests has an open response stream. Unsolicited pushes sent outside of any call (for example, a
+`notifications/tools/list_changed` sent while the client is otherwise idle) will be missed against
+servers that rely on the GET channel exclusively. `Last-Event-ID` resumability and the legacy
+HTTP+SSE (2024-11-05) transport are likewise not supported.
+
 ## Complete Working Example
 
 Here's a complete, copy/pastable MCP server example that combines all the concepts:
