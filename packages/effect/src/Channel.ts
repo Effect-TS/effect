@@ -6033,8 +6033,8 @@ export const mergeAll: {
 
         yield* Effect.gen(function*() {
           while (true) {
-            if (semaphore) yield* semaphore.take(1)
             const channel = yield* pull
+            if (semaphore) yield* semaphore.take(1)
             const childScope = Scope.forkUnsafe(forkedScope)
             const childPull = yield* toTransform(channel)(upstream, childScope)
 
@@ -6078,8 +6078,8 @@ export const mergeAll: {
             fibers.clear()
             doneLatch.openUnsafe()
             return Effect.uninterruptible(Effect.withFiber((parent) => {
-              // Signal every child before publishing the failure. The enclosing
-              // scope waits for their finalizers without delaying the queue.
+              // Signal every child before publishing the failure. The driver's
+              // interrupt-children middleware awaits them when the driver exits.
               for (const fiber of inFlight) {
                 fiber.interruptUnsafe(parent.id)
               }

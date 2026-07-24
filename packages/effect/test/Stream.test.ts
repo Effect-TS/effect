@@ -1069,10 +1069,29 @@ describe("Stream", () => {
     })
 
   describe("flatMap", () => {
-    it.effect(
-      "interrupts never-ending inner streams when the outer stream fails",
-      () => testOuterFailure("flatMap", "never")
-    )
+    it.effect("interrupts all inner streams when the outer fails at the concurrency limit", () =>
+      Effect.gen(function*() {
+        const latch = yield* Latch.make()
+        const finalized = yield* Ref.make(0)
+        const outer = Stream.concat(
+          Stream.make(1, 2),
+          Stream.flatMap(Stream.fromEffect(latch.await), () => Stream.fail("boom"))
+        )
+        const result = yield* Stream.flatMap(
+          outer,
+          () =>
+            Stream.flatMap(Stream.fromEffect(latch.open), () => Stream.never).pipe(
+              Stream.ensuring(Ref.update(finalized, (n) => n + 1))
+            ),
+          { concurrency: 2 }
+        ).pipe(
+          Stream.runDrain,
+          Effect.exit
+        )
+
+        assert.deepStrictEqual(result, Exit.fail("boom"))
+        assert.strictEqual(yield* Ref.get(finalized), 2)
+      }))
 
     it.effect(
       "fails promptly and interrupts slow inner streams when the outer stream fails",
