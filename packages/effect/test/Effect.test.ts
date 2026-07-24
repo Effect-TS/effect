@@ -1696,6 +1696,18 @@ describe("Effect", () => {
         assert.strictEqual(signal!.aborted, true)
       }))
 
+    it.effect("callback cleanup effect runs on interrupt", () =>
+      Effect.gen(function*() {
+        let cleanedUp = false
+        const fiber = yield* Effect.callback<void>((_resume) =>
+          Effect.sync(() => {
+            cleanedUp = true
+          })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(cleanedUp)
+      }))
+
     describe("uninterruptibleMask", () => {
       it.effect("defers a pending interrupt until the masked region completes", () =>
         Effect.gen(function*() {
