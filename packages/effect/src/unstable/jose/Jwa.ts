@@ -86,3 +86,99 @@ export const signatureParameters = Match.type<(typeof JwsAlgorithm)["Type"]>().p
   Match.when("PS512", () => ({ name: "RSA-PSS", saltLength: 64 }) as RsaPssParams),
   Match.exhaustive
 )
+
+/**
+ * JWE "alg" (key management) algorithm values as defined in RFC 7518 Section
+ * 4.1. These determine how the Content Encryption Key (CEK) is encrypted or
+ * derived. `RSA1_5` is intentionally omitted: the Web Crypto API does not
+ * implement RSAES-PKCS1-v1_5 encryption, and RFC 8725 discourages its use.
+ *
+ * @category JWE
+ * @since 4.0.0
+ */
+export const JweAlgorithm = Schema.Literals([
+  // Key Encryption with RSAES OAEP
+  "RSA-OAEP", // RSAES OAEP using default (SHA-1) parameters - Recommended-
+  "RSA-OAEP-256", // RSAES OAEP using SHA-256 and MGF1 with SHA-256 - Optional
+
+  // Key Wrapping with AES Key Wrap
+  "A128KW", // AES Key Wrap using 128-bit key - Recommended
+  "A192KW", // AES Key Wrap using 192-bit key - Optional
+  "A256KW", // AES Key Wrap using 256-bit key - Recommended
+
+  // Direct Encryption with a Shared Symmetric Key
+  "dir", // Direct use of a shared symmetric key - Recommended
+
+  // Key Agreement with ECDH-ES
+  "ECDH-ES", // ECDH-ES using Concat KDF, direct - Recommended+
+  "ECDH-ES+A128KW", // ECDH-ES using Concat KDF and CEK wrapped with A128KW - Recommended
+  "ECDH-ES+A192KW", // ECDH-ES using Concat KDF and CEK wrapped with A192KW - Optional
+  "ECDH-ES+A256KW", // ECDH-ES using Concat KDF and CEK wrapped with A256KW - Recommended
+
+  // Key Encryption with AES GCM
+  "A128GCMKW", // Key wrapping with AES GCM using 128-bit key - Optional
+  "A192GCMKW", // Key wrapping with AES GCM using 192-bit key - Optional
+  "A256GCMKW", // Key wrapping with AES GCM using 256-bit key - Optional
+
+  // Key Encryption with PBES2
+  "PBES2-HS256+A128KW", // PBES2 with HMAC SHA-256 and A128KW wrapping - Optional
+  "PBES2-HS384+A192KW", // PBES2 with HMAC SHA-384 and A192KW wrapping - Optional
+  "PBES2-HS512+A256KW" // PBES2 with HMAC SHA-512 and A256KW wrapping - Optional
+]).annotate({
+  title: "JWE Key Management Algorithm",
+  expected: "a JWE key management algorithm identifier string",
+  description: "Algorithm used to encrypt or determine the CEK as defined in RFC 7518 Section 4.1"
+})
+
+/**
+ * JWE "enc" (content encryption) algorithm values as defined in RFC 7518
+ * Section 5.1. These perform authenticated encryption on the plaintext.
+ *
+ * @category JWE
+ * @since 4.0.0
+ */
+export const JweEncryption = Schema.Literals([
+  // Authenticated Encryption with AES_CBC_HMAC_SHA2
+  "A128CBC-HS256", // AES 128 CBC + HMAC SHA-256 (32-byte CEK) - Required
+  "A192CBC-HS384", // AES 192 CBC + HMAC SHA-384 (48-byte CEK) - Optional
+  "A256CBC-HS512", // AES 256 CBC + HMAC SHA-512 (64-byte CEK) - Required
+
+  // Authenticated Encryption with AES GCM
+  "A128GCM", // AES GCM using 128-bit key - Recommended
+  "A192GCM", // AES GCM using 192-bit key - Optional
+  "A256GCM" // AES GCM using 256-bit key - Recommended
+]).annotate({
+  title: "JWE Content Encryption Algorithm",
+  expected: "a JWE content encryption algorithm identifier string",
+  description: "Authenticated encryption algorithm as defined in RFC 7518 Section 5.1"
+})
+
+/**
+ * Structural parameters for a JWE content encryption algorithm: the Content
+ * Encryption Key size, IV size, and — for the composite AES-CBC-HMAC family —
+ * the split key sizes, authentication tag size, and HMAC hash.
+ *
+ * @category JWE
+ * @since 4.0.0
+ */
+export const encryptionParameters = Match.type<(typeof JweEncryption)["Type"]>().pipe(
+  Match.when("A128GCM", () => ({ kind: "gcm", cekBytes: 16, ivBytes: 12 }) as const),
+  Match.when("A192GCM", () => ({ kind: "gcm", cekBytes: 24, ivBytes: 12 }) as const),
+  Match.when("A256GCM", () => ({ kind: "gcm", cekBytes: 32, ivBytes: 12 }) as const),
+  Match.when(
+    "A128CBC-HS256",
+    () =>
+      ({ kind: "cbc", cekBytes: 32, ivBytes: 16, macBytes: 16, encBytes: 16, tagBytes: 16, hash: "SHA-256" }) as const
+  ),
+  Match.when(
+    "A192CBC-HS384",
+    () =>
+      ({ kind: "cbc", cekBytes: 48, ivBytes: 16, macBytes: 24, encBytes: 24, tagBytes: 24, hash: "SHA-384" }) as const
+  ),
+  Match.when(
+    "A256CBC-HS512",
+    () =>
+      ({ kind: "cbc", cekBytes: 64, ivBytes: 16, macBytes: 32, encBytes: 32, tagBytes: 32, hash: "SHA-512" }) as const
+  ),
+  Match.exhaustive
+)

@@ -620,9 +620,13 @@ export function sign<
     Effect.forEach(
       privateKeys,
       Effect.fnUntraced(function*({ algorithm, header, key }) {
+        // RFC 7515 Section 4.1.11: the `crit` header lists the extension
+        // parameter names in use, so it is derived from the critical headers.
+        const critKeys = Object.keys(criticalHeaders as Record<string, unknown>)
         const protectedHeader = yield* encodeProtected({
           alg: algorithm as any,
           ...header,
+          ...(critKeys.length > 0 ? { crit: critKeys } : {}),
           ...criticalHeaders
         } as any)
         const signature = yield* Effect.promise(() =>

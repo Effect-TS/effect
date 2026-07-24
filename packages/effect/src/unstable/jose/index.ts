@@ -12,6 +12,11 @@ export * as Jwa from "./Jwa.ts"
 /**
  * @since 4.0.0
  */
+export * as Jwe from "./Jwe.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as Jwk from "./Jwk.ts"
 
 /**
