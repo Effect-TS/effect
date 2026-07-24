@@ -283,7 +283,7 @@ export class SocketOpenError extends Schema.ErrorClass<SocketOpenError>("effect/
  */
 export class SocketCloseError extends Schema.ErrorClass<SocketCloseError>("effect/socket/Socket/SocketCloseError")({
   _tag: Schema.tag("SocketCloseError"),
-  code: Schema.Number,
+  code: Schema.Int,
   closeReason: Schema.optional(Schema.String)
 }) {
   /**

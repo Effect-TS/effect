@@ -362,8 +362,8 @@ export class RateLimitExceeded extends Schema.ErrorClass<RateLimitExceeded>(
   _tag: Schema.tag("RateLimitExceeded"),
   retryAfter: Schema.DurationFromMillis,
   key: Schema.String,
-  limit: Schema.Number,
-  remaining: Schema.Number
+  limit: Schema.Finite,
+  remaining: Schema.Finite
 }) {
   /**
    * Public message used when the rate limiter rejects a request.

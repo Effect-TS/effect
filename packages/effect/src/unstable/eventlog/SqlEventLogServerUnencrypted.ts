@@ -461,7 +461,7 @@ const EntrySql = Schema.Struct({
 
 type EntrySql = Schema.Schema.Type<typeof EntrySql>
 
-const SqlNumber = Schema.Union([Schema.Number, Schema.NumberFromString])
+const SqlNumber = Schema.Union([Schema.Int, Schema.FiniteFromString.check(Schema.isInt())])
 
 const RemoteEntrySql = Schema.Struct({
   ...EntrySql.fields,
