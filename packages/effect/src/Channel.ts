@@ -6069,7 +6069,23 @@ export const mergeAll: {
             fibers.add(fiber)
           }
         }).pipe(
-          Effect.catchCause((cause) => doneLatch.whenOpen(Queue.failCause(queue, cause))),
+          Effect.catchCause((cause) => {
+            const halt = Pull.filterDone(cause)
+            if (Result.isSuccess(halt)) {
+              return doneLatch.whenOpen(Queue.failCause(queue, cause))
+            }
+            const inFlight = Arr.fromIterable(fibers)
+            fibers.clear()
+            doneLatch.openUnsafe()
+            return Effect.uninterruptible(Effect.withFiber((parent) => {
+              // Signal every child before publishing the failure. The enclosing
+              // scope waits for their finalizers without delaying the queue.
+              for (const fiber of inFlight) {
+                fiber.interruptUnsafe(parent.id)
+              }
+              return Queue.failCause(queue, cause)
+            }))
+          }),
           Effect.forkIn(forkedScope)
         )
 

@@ -1031,6 +1031,67 @@ describe("Stream", () => {
       }))
   })
 
+  const testOuterFailure = (
+    combinator: "flatMap" | "switchMap",
+    inner: "never" | "slow"
+  ) =>
+    Effect.gen(function*() {
+      const started = yield* Latch.make(false)
+      const failing = yield* Deferred.make<void>()
+      const finalized = yield* Ref.make(0)
+      const outer = Stream.concat(
+        Stream.make(1),
+        Stream.fromEffect(
+          started.await.pipe(
+            Effect.andThen(Deferred.succeed(failing, void 0)),
+            Effect.andThen(Effect.fail("boom"))
+          )
+        )
+      )
+      const makeInner = () => {
+        started.openUnsafe()
+        return (inner === "never" ? Stream.never : Stream.fromEffect(Effect.sleep(Duration.hours(1)))).pipe(
+          Stream.ensuring(Ref.update(finalized, (n) => n + 1))
+        )
+      }
+      const stream = combinator === "flatMap"
+        ? Stream.flatMap(outer, makeInner, { concurrency: 2 })
+        : Stream.switchMap(outer, makeInner)
+      const fiber = yield* stream.pipe(
+        Stream.runDrain,
+        Effect.forkChild
+      )
+      yield* Deferred.await(failing)
+
+      const result = yield* Fiber.await(fiber)
+      assert.deepStrictEqual(result, Exit.fail("boom"))
+      assert.strictEqual(yield* Ref.get(finalized), 1)
+    })
+
+  describe("flatMap", () => {
+    it.effect(
+      "interrupts never-ending inner streams when the outer stream fails",
+      () => testOuterFailure("flatMap", "never")
+    )
+
+    it.effect(
+      "fails promptly and interrupts slow inner streams when the outer stream fails",
+      () => testOuterFailure("flatMap", "slow")
+    )
+  })
+
+  describe("switchMap", () => {
+    it.effect(
+      "interrupts a never-ending inner stream when the outer stream fails",
+      () => testOuterFailure("switchMap", "never")
+    )
+
+    it.effect(
+      "fails promptly and interrupts a slow inner stream when the outer stream fails",
+      () => testOuterFailure("switchMap", "slow")
+    )
+  })
+
   it.effect.prop(
     "rechunk",
     {
