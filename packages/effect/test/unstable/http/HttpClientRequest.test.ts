@@ -128,6 +128,13 @@ describe("HttpClientRequest", () => {
       assertTrue(HttpClientRequest.isHttpClientRequest(request))
       strictEqual(request.headers["x-test"], "ok")
     })
+
+    it("supports the data-first overload", () => {
+      const request = HttpClientRequest.get("/")
+      const updated = HttpClientRequest.updateHeaders(request, Headers.set("X-Test", "ok"))
+
+      strictEqual(updated.headers["x-test"], "ok")
+    })
   })
 
   describe("hash", () => {
