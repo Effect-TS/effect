@@ -6041,16 +6041,13 @@ export const mergeAll: {
                 pullFiber = yield* Effect.forkChild(pull)
                 yield* Effect.raceFirst(
                   semaphore.take(1),
-                  Effect.flatMap(
-                    Fiber.await(pullFiber),
-                    (exit) => Exit.isSuccess(exit) ? Effect.never : exit
-                  )
+                  Effect.andThen(Fiber.join(pullFiber), Effect.never)
                 )
               }
             }
             const channel = pullFiber === undefined
               ? yield* pull
-              : yield* Effect.flatten(Fiber.await(pullFiber))
+              : yield* Fiber.join(pullFiber)
             const childScope = Scope.forkUnsafe(forkedScope)
             const childPull = yield* toTransform(channel)(upstream, childScope)
 
@@ -6092,7 +6089,6 @@ export const mergeAll: {
             }
             const inFlight = Arr.fromIterable(fibers)
             fibers.clear()
-            doneLatch.openUnsafe()
             return Effect.uninterruptible(Effect.withFiber((parent) => {
               // Signal every child before publishing the failure. The driver's
               // interrupt-children middleware awaits them when the driver exits.
