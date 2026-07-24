@@ -1986,6 +1986,21 @@ describe("Effect", () => {
         )
         assert.isTrue(ref)
       }))
+
+    it.effect("onExit - callback observes interrupt exit when the fiber is interrupted", () =>
+      Effect.gen(function*() {
+        let observedInterrupt = false
+        const fiber = yield* Effect.never.pipe(
+          Effect.onExit((exit) =>
+            Effect.sync(() => {
+              observedInterrupt = Exit.hasInterrupts(exit)
+            })
+          ),
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(observedInterrupt)
+      }))
   })
 
   describe("Effect.ignore", () => {
