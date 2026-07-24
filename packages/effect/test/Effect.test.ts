@@ -1533,6 +1533,29 @@ describe("Effect", () => {
         assert.isTrue(ref)
       }))
 
+    it.effect("acquireUseRelease release runs when use is interrupted", () =>
+      Effect.gen(function*() {
+        let acquired = false
+        let releaseExit: Exit.Exit<never> | undefined
+        const fiber = yield* Effect.acquireUseRelease(
+          Effect.sync(() => {
+            acquired = true
+            return 123
+          }),
+          () => Effect.never,
+          (resource, exit) =>
+            Effect.sync(() => {
+              assert.strictEqual(resource, 123)
+              releaseExit = exit
+            })
+        ).pipe(Effect.forkChild({ startImmediately: true }))
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(acquired)
+        assert.isDefined(releaseExit)
+        assert.isTrue(Exit.hasInterrupts(releaseExit!))
+        assert(Exit.hasInterrupts(fiber.pollUnsafe()!))
+      }))
+
     it.live("async can be uninterruptible", () =>
       Effect.gen(function*() {
         let ref = false
