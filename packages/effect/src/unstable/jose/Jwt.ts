@@ -215,11 +215,19 @@ export const verify = Effect.fnUntraced(function*(
     .filter((jwk) => hint.kid === undefined || jwk.kid === undefined || jwk.kid === hint.kid)
   if (candidates.length === 0) return yield* new JwtError({ reason: "UnknownKey" })
 
-  const publicKeys = yield* Effect.forEach(candidates, (jwk) =>
-    Effect.tryPromise({
-      try: () => crypto.subtle.importKey("jwk", jwk as JsonWebKey, Jwa.importParameters(hint.alg), false, ["verify"]),
-      catch: () => new JwtError({ reason: "UnknownKey" })
-    }))
+  // Import each candidate independently, skipping any key whose material is
+  // malformed rather than failing the whole verification — one bad key in an
+  // otherwise-valid JWK Set must not deny service to tokens signed by the
+  // good keys.
+  const imported = yield* Effect.forEach(
+    candidates,
+    (jwk) =>
+      Effect.tryPromise(() =>
+        crypto.subtle.importKey("jwk", jwk as JsonWebKey, Jwa.importParameters(hint.alg), false, ["verify"])
+      ).pipe(Effect.catch(() => Effect.succeed(null as CryptoKey | null)))
+  )
+  const publicKeys = imported.filter((key): key is CryptoKey => key !== null)
+  if (publicKeys.length === 0) return yield* new JwtError({ reason: "UnknownKey" })
 
   const result = yield* Jws.verify({ publicKeys, payload: ClaimsFromJson })(flattened).pipe(
     Effect.mapError((error) =>

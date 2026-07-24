@@ -43,6 +43,19 @@ describe("JOSE security remediations", () => {
         assert.strictEqual(verified.sub, "sub")
       }).pipe(Effect.runPromise))
 
+    it("verifies against a JWK Set containing a malformed key alongside the good one", () =>
+      Effect.gen(function*() {
+        const { privateJwk, publicJwk } = yield* Jwt.generateSigningKey()
+        const token = yield* Jwt.sign({ privateJwk, payload: claims })
+        // a compatible (ES256) but structurally broken key must be skipped, not fatal
+        const brokenKey = { ...publicJwk, x: "!!!not-base64!!!", kid: undefined }
+        const verified = yield* Jwt.verify(token, {
+          jwks: { keys: [brokenKey as typeof publicJwk, publicJwk] },
+          algorithms: ["ES256"]
+        })
+        assert.strictEqual(verified.sub, "sub")
+      }).pipe(Effect.runPromise))
+
     it("enforces the typ header when types is supplied", () =>
       Effect.gen(function*() {
         const { privateJwk, publicJwk } = yield* Jwt.generateSigningKey()
