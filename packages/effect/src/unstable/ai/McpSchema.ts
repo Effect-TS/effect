@@ -100,8 +100,8 @@ export const optional = <S extends Schema.Constraint>(
  */
 export const RequestId: Schema.Union<[
   typeof Schema.String,
-  typeof Schema.Number
-]> = Schema.Union([Schema.String, Schema.Number])
+  typeof Schema.Finite
+]> = Schema.Union([Schema.String, Schema.Finite])
 
 /**
  * Type represented by the JSON-RPC request identifier schema.
@@ -120,8 +120,8 @@ export type RequestId = typeof RequestId.Type
  */
 export const ProgressToken: Schema.Union<[
   typeof Schema.String,
-  typeof Schema.Number
-]> = Schema.Union([Schema.String, Schema.Number])
+  typeof Schema.Finite
+]> = Schema.Union([Schema.String, Schema.Finite])
 
 /**
  * Type represented by the MCP progress token schema.
@@ -299,7 +299,7 @@ export class Annotations extends Schema.Opaque<Annotations>()(Schema.Struct({
    * effectively required, while 0 means "least important," and indicates that
    * the data is entirely optional.
    */
-  priority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
+  priority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
 })) {}
 
 /**
@@ -449,7 +449,7 @@ export class McpErrorBase extends Schema.Class<McpErrorBase>(
   /**
    * The error type that occurred.
    */
-  code: Schema.Number,
+  code: Schema.Int,
   /**
    * A short description of the error. The message SHOULD be limited to a
    * concise single sentence.
@@ -797,11 +797,11 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
      * The progress thus far. This should increase every time progress is made,
      * even if the total is unknown.
      */
-    progress: optional(Schema.Number),
+    progress: optional(Schema.Finite),
     /**
      * Total number of items to process (or total progress required), if known.
      */
-    total: optional(Schema.Number),
+    total: optional(Schema.Finite),
     /**
      * An optional message describing the current progress.
      */
@@ -855,7 +855,7 @@ export class Resource extends Schema.Class<Resource>(
    * This can be used by Hosts to display file sizes and estimate context
    * window usage.
    */
-  size: optional(Schema.Number),
+  size: optional(Schema.Int),
   /**
    * Optional additional metadata for the client.
    *
@@ -1752,19 +1752,19 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
    * is not important, while a value of 1 means cost is the most important
    * factor.
    */
-  costPriority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
+  costPriority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
   /**
    * How much to prioritize sampling speed (latency) when selecting a model. A
    * value of 0 means speed is not important, while a value of 1 means speed is
    * the most important factor.
    */
-  speedPriority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
+  speedPriority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
   /**
    * How much to prioritize intelligence and capabilities when selecting a
    * model. A value of 0 means intelligence is not important, while a value of 1
    * means intelligence is the most important factor.
    */
-  intelligencePriority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
+  intelligencePriority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
 }) {}
 
 /**
@@ -1831,12 +1831,12 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
      * caller), to be attached to the prompt. The client MAY ignore this request.
      */
     includeContext: optional(Schema.Literals(["none", "thisServer", "allServers"])),
-    temperature: optional(Schema.Number),
+    temperature: optional(Schema.Finite),
     /**
      * The maximum number of tokens to sample, as requested by the server. The
      * client MAY choose to sample fewer tokens than requested.
      */
-    maxTokens: Schema.Number,
+    maxTokens: Schema.Int,
     stopSequences: optional(Schema.Array(Schema.String)),
     /**
      * Optional metadata to pass through to the LLM provider. The format of
@@ -1895,7 +1895,7 @@ export class CompleteResult extends Schema.Opaque<CompleteResult>()(Schema.Struc
      * The total number of completion options available. This can exceed the
      * number of values actually sent in the response.
      */
-    total: optional(Schema.Number),
+    total: optional(Schema.Int),
     /**
      * Indicates whether there are additional completion options beyond those
      * provided in the current response, even if the exact total is unknown.
