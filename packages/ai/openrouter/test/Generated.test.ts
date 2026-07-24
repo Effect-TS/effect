@@ -5,7 +5,7 @@ import { Schema } from "effect"
 
 describe("Generated", () => {
   it("decodes nullable generation statistics", () => {
-    const response = {
+    const response: Generated.GetGeneration200 = {
       data: {
         id: "gen-test",
         upstream_id: null,
