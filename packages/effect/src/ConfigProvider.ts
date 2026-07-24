@@ -850,8 +850,8 @@ function emptyStringAsMissing(value: string | undefined, preserveEmptyStrings: b
  * purely numeric names, the node is reported as an `Array`; otherwise as a
  * `Record`.
  *
- * The default environment merges `process.env` and `import.meta.env` (when
- * available). Override by passing `{ env: { ... } }`.
+ * The default environment reads `process.env` when available. For runtimes that
+ * expose environment variables elsewhere, pass `{ env: { ... } }`.
  *
  * Literal empty strings are treated as missing values when loaded as values by
  * default. Pass `{ preserveEmptyStrings: true }` to keep empty strings as
@@ -890,21 +890,12 @@ export function fromEnv(options?: {
   readonly preserveEmptyStrings?: boolean | undefined
 }): ConfigProvider {
   const env: Record<string, string | undefined> = options?.env ?? {
-    ...globalThis?.process?.env,
-    ...getImportMetaEnv()
+    ...globalThis?.process?.env
   }
   const preserveEmptyStrings = options?.preserveEmptyStrings === true
   const trie = buildEnvTrie(env)
 
   return make((path) => Effect.succeed(nodeAtEnv(trie, env, path, preserveEmptyStrings)))
-}
-
-function getImportMetaEnv(): Record<string, string> | undefined {
-  try {
-    return (import.meta as any)?.env
-  } catch {
-    return undefined
-  }
 }
 
 type EnvTrieNode = {

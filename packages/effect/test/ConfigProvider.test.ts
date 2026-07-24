@@ -1,6 +1,7 @@
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import { ConfigProvider, Effect, FileSystem, Layer, Path, PlatformError, Result } from "effect"
+import * as Fs from "node:fs"
 
 const notFound = (method: string): PlatformError.PlatformError =>
   PlatformError.systemError({
@@ -303,6 +304,30 @@ describe("ConfigProvider", () => {
           process.env[key] = previous
         }
       }
+    })
+
+    it("uses an explicit env over the default environment", async () => {
+      const key = "EFFECT_CONFIG_PROVIDER_TEST_DEFAULT_ENV"
+      const previous = process.env[key]
+      process.env[key] = "default"
+      try {
+        const provider = ConfigProvider.fromEnv({ env: { [key]: "explicit" } })
+        await assertSuccess(provider, [key], ConfigProvider.makeValue("explicit"))
+      } finally {
+        if (previous === undefined) {
+          delete process.env[key]
+        } else {
+          process.env[key] = previous
+        }
+      }
+    })
+
+    it("does not reference import.meta in the common ConfigProvider module", () => {
+      const sourcePath = Fs.existsSync("src/ConfigProvider.ts")
+        ? "src/ConfigProvider.ts"
+        : "packages/effect/src/ConfigProvider.ts"
+      const source = Fs.readFileSync(sourcePath, "utf8")
+      deepStrictEqual(source.includes("import.meta"), false)
     })
 
     it("env without an underscore", async () => {
