@@ -10,6 +10,7 @@ import {
   Exit,
   Fiber,
   type Filter,
+  Latch,
   Layer,
   Logger,
   type LogLevel,
@@ -1636,6 +1637,142 @@ describe("Effect", () => {
         yield* Fiber.interrupt(fiber)
         assert.strictEqual(signal!.aborted, true)
       }))
+
+    describe("uninterruptibleMask", () => {
+      it.effect("defers a pending interrupt until the masked region completes", () =>
+        Effect.gen(function*() {
+          const masked = yield* Latch.make()
+          const resume = yield* Latch.make()
+          const events: Array<string> = []
+
+          const child = yield* Effect.uninterruptibleMask(() =>
+            Effect.gen(function*() {
+              yield* masked.open
+              yield* resume.await
+              events.push("masked region completed")
+            })
+          ).pipe(Effect.forkChild({ startImmediately: true }))
+
+          yield* masked.await
+          events.push("masked")
+
+          yield* Effect.sync(() => {
+            child.interruptUnsafe(123)
+            events.push("interrupted")
+          })
+          assert.isUndefined(child.pollUnsafe())
+
+          yield* resume.open
+          events.push("resumed")
+          yield* Effect.yieldNow
+          yield* Effect.yieldNow
+
+          const exit = child.pollUnsafe()
+          if (exit === undefined) {
+            return assert.fail("fiber did not exit after the masked region completed")
+          }
+          assert.isTrue(Exit.hasInterrupts(exit))
+          if (exit._tag !== "Failure") {
+            return assert.fail("expected interrupted fiber to exit with failure")
+          }
+          assert.deepStrictEqual(Cause.interruptors(exit.cause), new Set([123]))
+          assert.deepStrictEqual(events, ["masked", "interrupted", "resumed", "masked region completed"])
+        }))
+
+      it.effect("delivers a pending interrupt when restore re-enables interruptibility", () =>
+        Effect.gen(function*() {
+          const masked = yield* Latch.make()
+          const resume = yield* Latch.make()
+          const events: Array<string> = []
+
+          const child = yield* Effect.uninterruptibleMask((restore) =>
+            Effect.gen(function*() {
+              yield* masked.open
+              yield* resume.await
+              // the pending interrupt is delivered at the restore boundary, so
+              // the restored effect never runs
+              return yield* restore(Effect.suspend(() => {
+                events.push("restored")
+                return Effect.never
+              }))
+            })
+          ).pipe(Effect.forkChild({ startImmediately: true }))
+
+          yield* masked.await
+          events.push("masked")
+
+          yield* Effect.sync(() => {
+            child.interruptUnsafe(123)
+            events.push("interrupted")
+          })
+          assert.isUndefined(child.pollUnsafe())
+
+          yield* resume.open
+          events.push("resumed")
+          yield* Effect.yieldNow
+          yield* Effect.yieldNow
+
+          const exit = child.pollUnsafe()
+          if (exit === undefined) {
+            return assert.fail("fiber did not exit after restore re-enabled interruptibility")
+          }
+          assert.isTrue(Exit.hasInterrupts(exit))
+          if (exit._tag !== "Failure") {
+            return assert.fail("expected interrupted fiber to exit with failure")
+          }
+          assert.deepStrictEqual(Cause.interruptors(exit.cause), new Set([123]))
+          assert.deepStrictEqual(events, ["masked", "interrupted", "resumed"])
+        }))
+
+      it.effect("region after a restored section stays uninterruptible", () =>
+        Effect.gen(function*() {
+          const afterRestore = yield* Latch.make()
+          const resume = yield* Latch.make()
+          const events: Array<string> = []
+
+          const child = yield* Effect.uninterruptibleMask((restore) =>
+            Effect.gen(function*() {
+              yield* restore(Effect.sync(() => {
+                events.push("restored section completed")
+              }))
+              yield* afterRestore.open
+              yield* resume.await
+              events.push("masked region completed")
+            })
+          ).pipe(Effect.forkChild({ startImmediately: true }))
+
+          yield* afterRestore.await
+          events.push("after restore")
+
+          yield* Effect.sync(() => {
+            child.interruptUnsafe(123)
+            events.push("interrupted")
+          })
+          assert.isUndefined(child.pollUnsafe())
+
+          yield* resume.open
+          events.push("resumed")
+          yield* Effect.yieldNow
+          yield* Effect.yieldNow
+
+          const exit = child.pollUnsafe()
+          if (exit === undefined) {
+            return assert.fail("fiber did not exit after the masked region completed")
+          }
+          assert.isTrue(Exit.hasInterrupts(exit))
+          if (exit._tag !== "Failure") {
+            return assert.fail("expected interrupted fiber to exit with failure")
+          }
+          assert.deepStrictEqual(Cause.interruptors(exit.cause), new Set([123]))
+          assert.deepStrictEqual(events, [
+            "restored section completed",
+            "after restore",
+            "interrupted",
+            "resumed",
+            "masked region completed"
+          ])
+        }))
+    })
   })
 
   describe("awaitAllChildren", () => {
