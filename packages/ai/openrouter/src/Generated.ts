@@ -2793,6 +2793,8 @@ export type ChatGenerationTokenUsage = {
   readonly "completion_tokens": number
   readonly "prompt_tokens": number
   readonly "total_tokens": number
+  readonly "cost"?: number | null
+  readonly "is_byok"?: boolean
   readonly "completion_tokens_details"?: {
     readonly "reasoning_tokens"?: number | null
     readonly "audio_tokens"?: number | null
@@ -2810,6 +2812,8 @@ export const ChatGenerationTokenUsage = Schema.Struct({
   "completion_tokens": Schema.Number.check(Schema.isFinite()),
   "prompt_tokens": Schema.Number.check(Schema.isFinite()),
   "total_tokens": Schema.Number.check(Schema.isFinite()),
+  "cost": Schema.optionalKey(Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null])),
+  "is_byok": Schema.optionalKey(Schema.Boolean),
   "completion_tokens_details": Schema.optionalKey(Schema.Union([
     Schema.Struct({
       "reasoning_tokens": Schema.optionalKey(Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null])),
@@ -7309,332 +7313,361 @@ export const GetGenerationParams = Schema.Struct({ "id": Schema.String.check(Sch
 export type GetGeneration200 = {
   readonly "data": {
     readonly "id": string
-    readonly "upstream_id": string
+    readonly "upstream_id": string | null
     readonly "total_cost": number
-    readonly "cache_discount": number
-    readonly "upstream_inference_cost": number
+    readonly "cache_discount": number | null
+    readonly "upstream_inference_cost": number | null
     readonly "created_at": string
     readonly "model": string
-    readonly "app_id": number
-    readonly "streamed": boolean
-    readonly "cancelled": boolean
-    readonly "provider_name": string
-    readonly "latency": number
-    readonly "moderation_latency": number
-    readonly "generation_time": number
-    readonly "finish_reason": string
-    readonly "tokens_prompt": number
-    readonly "tokens_completion": number
-    readonly "native_tokens_prompt": number
-    readonly "native_tokens_completion": number
-    readonly "native_tokens_completion_images": number
-    readonly "native_tokens_reasoning": number
-    readonly "native_tokens_cached": number
-    readonly "num_media_prompt": number
-    readonly "num_input_audio_prompt": number
-    readonly "num_media_completion": number
-    readonly "num_search_results": number
+    readonly "app_id": number | null
+    readonly "streamed": boolean | null
+    readonly "cancelled": boolean | null
+    readonly "provider_name": string | null
+    readonly "latency": number | null
+    readonly "moderation_latency": number | null
+    readonly "generation_time": number | null
+    readonly "finish_reason": string | null
+    readonly "tokens_prompt": number | null
+    readonly "tokens_completion": number | null
+    readonly "native_tokens_prompt": number | null
+    readonly "native_tokens_completion": number | null
+    readonly "native_tokens_completion_images": number | null
+    readonly "native_tokens_reasoning": number | null
+    readonly "native_tokens_cached": number | null
+    readonly "num_media_prompt": number | null
+    readonly "num_input_audio_prompt": number | null
+    readonly "num_media_completion": number | null
+    readonly "num_search_results": number | null
     readonly "origin": string
     readonly "usage": number
     readonly "is_byok": boolean
-    readonly "native_finish_reason": string
-    readonly "external_user": string
-    readonly "api_type": "completions" | "embeddings"
-    readonly "router": string
-    readonly "provider_responses": ReadonlyArray<
-      {
-        readonly "id"?: string
-        readonly "endpoint_id"?: string
-        readonly "model_permaslug"?: string
-        readonly "provider_name"?:
-          | "AnyScale"
-          | "Atoma"
-          | "Cent-ML"
-          | "CrofAI"
-          | "Enfer"
-          | "GoPomelo"
-          | "HuggingFace"
-          | "Hyperbolic 2"
-          | "InoCloud"
-          | "Kluster"
-          | "Lambda"
-          | "Lepton"
-          | "Lynn 2"
-          | "Lynn"
-          | "Mancer"
-          | "Meta"
-          | "Modal"
-          | "Nineteen"
-          | "OctoAI"
-          | "Recursal"
-          | "Reflection"
-          | "Replicate"
-          | "SambaNova 2"
-          | "SF Compute"
-          | "Targon"
-          | "Together 2"
-          | "Ubicloud"
-          | "01.AI"
-          | "AI21"
-          | "AionLabs"
-          | "Alibaba"
-          | "Ambient"
-          | "Amazon Bedrock"
-          | "Amazon Nova"
-          | "Anthropic"
-          | "Arcee AI"
-          | "AtlasCloud"
-          | "Avian"
-          | "Azure"
-          | "BaseTen"
-          | "BytePlus"
-          | "Black Forest Labs"
-          | "Cerebras"
-          | "Chutes"
-          | "Cirrascale"
-          | "Clarifai"
-          | "Cloudflare"
-          | "Cohere"
-          | "Crusoe"
-          | "DeepInfra"
-          | "DeepSeek"
-          | "Featherless"
-          | "Fireworks"
-          | "Friendli"
-          | "GMICloud"
-          | "Google"
-          | "Google AI Studio"
-          | "Groq"
-          | "Hyperbolic"
-          | "Inception"
-          | "Inceptron"
-          | "InferenceNet"
-          | "Infermatic"
-          | "Io Net"
-          | "Inflection"
-          | "Liquid"
-          | "Mara"
-          | "Mancer 2"
-          | "Minimax"
-          | "ModelRun"
-          | "Mistral"
-          | "Modular"
-          | "Moonshot AI"
-          | "Morph"
-          | "NCompass"
-          | "Nebius"
-          | "NextBit"
-          | "Novita"
-          | "Nvidia"
-          | "OpenAI"
-          | "OpenInference"
-          | "Parasail"
-          | "Perplexity"
-          | "Phala"
-          | "Relace"
-          | "SambaNova"
-          | "Seed"
-          | "SiliconFlow"
-          | "Sourceful"
-          | "StepFun"
-          | "Stealth"
-          | "StreamLake"
-          | "Switchpoint"
-          | "Together"
-          | "Upstage"
-          | "Venice"
-          | "WandB"
-          | "Xiaomi"
-          | "xAI"
-          | "Z.AI"
-          | "FakeProvider"
-        readonly "status": number
-        readonly "latency"?: number
-        readonly "is_byok"?: boolean
-      }
-    >
+    readonly "native_finish_reason": string | null
+    readonly "external_user": string | null
+    readonly "api_type": "completions" | "embeddings" | null
+    readonly "router": string | null
+    readonly "provider_responses":
+      | ReadonlyArray<
+        {
+          readonly "id"?: string
+          readonly "endpoint_id"?: string
+          readonly "model_permaslug"?: string
+          readonly "provider_name"?:
+            | "AnyScale"
+            | "Atoma"
+            | "Cent-ML"
+            | "CrofAI"
+            | "Enfer"
+            | "GoPomelo"
+            | "HuggingFace"
+            | "Hyperbolic 2"
+            | "InoCloud"
+            | "Kluster"
+            | "Lambda"
+            | "Lepton"
+            | "Lynn 2"
+            | "Lynn"
+            | "Mancer"
+            | "Meta"
+            | "Modal"
+            | "Nineteen"
+            | "OctoAI"
+            | "Recursal"
+            | "Reflection"
+            | "Replicate"
+            | "SambaNova 2"
+            | "SF Compute"
+            | "Targon"
+            | "Together 2"
+            | "Ubicloud"
+            | "01.AI"
+            | "AI21"
+            | "AionLabs"
+            | "Alibaba"
+            | "Ambient"
+            | "Amazon Bedrock"
+            | "Amazon Nova"
+            | "Anthropic"
+            | "Arcee AI"
+            | "AtlasCloud"
+            | "Avian"
+            | "Azure"
+            | "BaseTen"
+            | "BytePlus"
+            | "Black Forest Labs"
+            | "Cerebras"
+            | "Chutes"
+            | "Cirrascale"
+            | "Clarifai"
+            | "Cloudflare"
+            | "Cohere"
+            | "Crusoe"
+            | "DeepInfra"
+            | "DeepSeek"
+            | "Featherless"
+            | "Fireworks"
+            | "Friendli"
+            | "GMICloud"
+            | "Google"
+            | "Google AI Studio"
+            | "Groq"
+            | "Hyperbolic"
+            | "Inception"
+            | "Inceptron"
+            | "InferenceNet"
+            | "Infermatic"
+            | "Io Net"
+            | "Inflection"
+            | "Liquid"
+            | "Mara"
+            | "Mancer 2"
+            | "Minimax"
+            | "ModelRun"
+            | "Mistral"
+            | "Modular"
+            | "Moonshot AI"
+            | "Morph"
+            | "NCompass"
+            | "Nebius"
+            | "NextBit"
+            | "Novita"
+            | "Nvidia"
+            | "OpenAI"
+            | "OpenInference"
+            | "Parasail"
+            | "Perplexity"
+            | "Phala"
+            | "Relace"
+            | "SambaNova"
+            | "Seed"
+            | "SiliconFlow"
+            | "Sourceful"
+            | "StepFun"
+            | "Stealth"
+            | "StreamLake"
+            | "Switchpoint"
+            | "Together"
+            | "Upstage"
+            | "Venice"
+            | "WandB"
+            | "Xiaomi"
+            | "xAI"
+            | "Z.AI"
+            | "FakeProvider"
+          readonly "status": number
+          readonly "latency"?: number
+          readonly "is_byok"?: boolean
+        }
+      >
+      | null
   }
 }
 export const GetGeneration200 = Schema.Struct({
   "data": Schema.Struct({
     "id": Schema.String.annotate({ "description": "Unique identifier for the generation" }),
-    "upstream_id": Schema.String.annotate({ "description": "Upstream provider's identifier for this generation" }),
+    "upstream_id": Schema.Union([Schema.String, Schema.Null]).annotate({
+      "description": "Upstream provider's identifier for this generation"
+    }),
     "total_cost": Schema.Number.annotate({ "description": "Total cost of the generation in USD" }).check(
       Schema.isFinite()
     ),
-    "cache_discount": Schema.Number.annotate({ "description": "Discount applied due to caching" }).check(
-      Schema.isFinite()
-    ),
-    "upstream_inference_cost": Schema.Number.annotate({ "description": "Cost charged by the upstream provider" }).check(
-      Schema.isFinite()
-    ),
+    "cache_discount": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Discount applied due to caching"
+    }),
+    "upstream_inference_cost": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Cost charged by the upstream provider"
+    }),
     "created_at": Schema.String.annotate({ "description": "ISO 8601 timestamp of when the generation was created" }),
     "model": Schema.String.annotate({ "description": "Model used for the generation" }),
-    "app_id": Schema.Number.annotate({ "description": "ID of the app that made the request" }).check(Schema.isFinite()),
-    "streamed": Schema.Boolean.annotate({ "description": "Whether the response was streamed" }),
-    "cancelled": Schema.Boolean.annotate({ "description": "Whether the generation was cancelled" }),
-    "provider_name": Schema.String.annotate({ "description": "Name of the provider that served the request" }),
-    "latency": Schema.Number.annotate({ "description": "Total latency in milliseconds" }).check(Schema.isFinite()),
-    "moderation_latency": Schema.Number.annotate({ "description": "Moderation latency in milliseconds" }).check(
-      Schema.isFinite()
-    ),
-    "generation_time": Schema.Number.annotate({ "description": "Time taken for generation in milliseconds" }).check(
-      Schema.isFinite()
-    ),
-    "finish_reason": Schema.String.annotate({ "description": "Reason the generation finished" }),
-    "tokens_prompt": Schema.Number.annotate({ "description": "Number of tokens in the prompt" }).check(
-      Schema.isFinite()
-    ),
-    "tokens_completion": Schema.Number.annotate({ "description": "Number of tokens in the completion" }).check(
-      Schema.isFinite()
-    ),
-    "native_tokens_prompt": Schema.Number.annotate({ "description": "Native prompt tokens as reported by provider" })
-      .check(Schema.isFinite()),
-    "native_tokens_completion": Schema.Number.annotate({
+    "app_id": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "ID of the app that made the request"
+    }),
+    "streamed": Schema.Union([Schema.Boolean, Schema.Null]).annotate({
+      "description": "Whether the response was streamed"
+    }),
+    "cancelled": Schema.Union([Schema.Boolean, Schema.Null]).annotate({
+      "description": "Whether the generation was cancelled"
+    }),
+    "provider_name": Schema.Union([Schema.String, Schema.Null]).annotate({
+      "description": "Name of the provider that served the request"
+    }),
+    "latency": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Total latency in milliseconds"
+    }),
+    "moderation_latency": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Moderation latency in milliseconds"
+    }),
+    "generation_time": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Time taken for generation in milliseconds"
+    }),
+    "finish_reason": Schema.Union([Schema.String, Schema.Null]).annotate({
+      "description": "Reason the generation finished"
+    }),
+    "tokens_prompt": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Number of tokens in the prompt"
+    }),
+    "tokens_completion": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Number of tokens in the completion"
+    }),
+    "native_tokens_prompt": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Native prompt tokens as reported by provider"
+    }),
+    "native_tokens_completion": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
       "description": "Native completion tokens as reported by provider"
-    }).check(Schema.isFinite()),
-    "native_tokens_completion_images": Schema.Number.annotate({
+    }),
+    "native_tokens_completion_images": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
       "description": "Native completion image tokens as reported by provider"
-    }).check(Schema.isFinite()),
-    "native_tokens_reasoning": Schema.Number.annotate({
+    }),
+    "native_tokens_reasoning": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
       "description": "Native reasoning tokens as reported by provider"
-    }).check(Schema.isFinite()),
-    "native_tokens_cached": Schema.Number.annotate({ "description": "Native cached tokens as reported by provider" })
-      .check(Schema.isFinite()),
-    "num_media_prompt": Schema.Number.annotate({ "description": "Number of media items in the prompt" }).check(
-      Schema.isFinite()
-    ),
-    "num_input_audio_prompt": Schema.Number.annotate({ "description": "Number of audio inputs in the prompt" }).check(
-      Schema.isFinite()
-    ),
-    "num_media_completion": Schema.Number.annotate({ "description": "Number of media items in the completion" }).check(
-      Schema.isFinite()
-    ),
-    "num_search_results": Schema.Number.annotate({ "description": "Number of search results included" }).check(
-      Schema.isFinite()
-    ),
+    }),
+    "native_tokens_cached": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Native cached tokens as reported by provider"
+    }),
+    "num_media_prompt": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Number of media items in the prompt"
+    }),
+    "num_input_audio_prompt": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Number of audio inputs in the prompt"
+    }),
+    "num_media_completion": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Number of media items in the completion"
+    }),
+    "num_search_results": Schema.Union([Schema.Number.check(Schema.isFinite()), Schema.Null]).annotate({
+      "description": "Number of search results included"
+    }),
     "origin": Schema.String.annotate({ "description": "Origin URL of the request" }),
     "usage": Schema.Number.annotate({ "description": "Usage amount in USD" }).check(Schema.isFinite()),
     "is_byok": Schema.Boolean.annotate({ "description": "Whether this used bring-your-own-key" }),
-    "native_finish_reason": Schema.String.annotate({ "description": "Native finish reason as reported by provider" }),
-    "external_user": Schema.String.annotate({ "description": "External user identifier" }),
-    "api_type": Schema.Literals(["completions", "embeddings"]).annotate({
+    "native_finish_reason": Schema.Union([Schema.String, Schema.Null]).annotate({
+      "description": "Native finish reason as reported by provider"
+    }),
+    "external_user": Schema.Union([Schema.String, Schema.Null]).annotate({
+      "description": "External user identifier"
+    }),
+    "api_type": Schema.Union([Schema.Literals(["completions", "embeddings"]), Schema.Null]).annotate({
       "description": "Type of API used for the generation"
     }),
-    "router": Schema.String.annotate({ "description": "Router used for the request (e.g., openrouter/auto)" }),
-    "provider_responses": Schema.Array(Schema.Struct({
-      "id": Schema.optionalKey(Schema.String),
-      "endpoint_id": Schema.optionalKey(Schema.String),
-      "model_permaslug": Schema.optionalKey(Schema.String),
-      "provider_name": Schema.optionalKey(
-        Schema.Literals([
-          "AnyScale",
-          "Atoma",
-          "Cent-ML",
-          "CrofAI",
-          "Enfer",
-          "GoPomelo",
-          "HuggingFace",
-          "Hyperbolic 2",
-          "InoCloud",
-          "Kluster",
-          "Lambda",
-          "Lepton",
-          "Lynn 2",
-          "Lynn",
-          "Mancer",
-          "Meta",
-          "Modal",
-          "Nineteen",
-          "OctoAI",
-          "Recursal",
-          "Reflection",
-          "Replicate",
-          "SambaNova 2",
-          "SF Compute",
-          "Targon",
-          "Together 2",
-          "Ubicloud",
-          "01.AI",
-          "AI21",
-          "AionLabs",
-          "Alibaba",
-          "Ambient",
-          "Amazon Bedrock",
-          "Amazon Nova",
-          "Anthropic",
-          "Arcee AI",
-          "AtlasCloud",
-          "Avian",
-          "Azure",
-          "BaseTen",
-          "BytePlus",
-          "Black Forest Labs",
-          "Cerebras",
-          "Chutes",
-          "Cirrascale",
-          "Clarifai",
-          "Cloudflare",
-          "Cohere",
-          "Crusoe",
-          "DeepInfra",
-          "DeepSeek",
-          "Featherless",
-          "Fireworks",
-          "Friendli",
-          "GMICloud",
-          "Google",
-          "Google AI Studio",
-          "Groq",
-          "Hyperbolic",
-          "Inception",
-          "Inceptron",
-          "InferenceNet",
-          "Infermatic",
-          "Io Net",
-          "Inflection",
-          "Liquid",
-          "Mara",
-          "Mancer 2",
-          "Minimax",
-          "ModelRun",
-          "Mistral",
-          "Modular",
-          "Moonshot AI",
-          "Morph",
-          "NCompass",
-          "Nebius",
-          "NextBit",
-          "Novita",
-          "Nvidia",
-          "OpenAI",
-          "OpenInference",
-          "Parasail",
-          "Perplexity",
-          "Phala",
-          "Relace",
-          "SambaNova",
-          "Seed",
-          "SiliconFlow",
-          "Sourceful",
-          "StepFun",
-          "Stealth",
-          "StreamLake",
-          "Switchpoint",
-          "Together",
-          "Upstage",
-          "Venice",
-          "WandB",
-          "Xiaomi",
-          "xAI",
-          "Z.AI",
-          "FakeProvider"
-        ])
-      ),
-      "status": Schema.Number.check(Schema.isFinite()),
-      "latency": Schema.optionalKey(Schema.Number.check(Schema.isFinite())),
-      "is_byok": Schema.optionalKey(Schema.Boolean)
-    })).annotate({ "description": "List of provider responses for this generation, including fallback attempts" })
+    "router": Schema.Union([Schema.String, Schema.Null]).annotate({
+      "description": "Router used for the request (e.g., openrouter/auto)"
+    }),
+    "provider_responses": Schema.Union([
+      Schema.Array(Schema.Struct({
+        "id": Schema.optionalKey(Schema.String),
+        "endpoint_id": Schema.optionalKey(Schema.String),
+        "model_permaslug": Schema.optionalKey(Schema.String),
+        "provider_name": Schema.optionalKey(
+          Schema.Literals([
+            "AnyScale",
+            "Atoma",
+            "Cent-ML",
+            "CrofAI",
+            "Enfer",
+            "GoPomelo",
+            "HuggingFace",
+            "Hyperbolic 2",
+            "InoCloud",
+            "Kluster",
+            "Lambda",
+            "Lepton",
+            "Lynn 2",
+            "Lynn",
+            "Mancer",
+            "Meta",
+            "Modal",
+            "Nineteen",
+            "OctoAI",
+            "Recursal",
+            "Reflection",
+            "Replicate",
+            "SambaNova 2",
+            "SF Compute",
+            "Targon",
+            "Together 2",
+            "Ubicloud",
+            "01.AI",
+            "AI21",
+            "AionLabs",
+            "Alibaba",
+            "Ambient",
+            "Amazon Bedrock",
+            "Amazon Nova",
+            "Anthropic",
+            "Arcee AI",
+            "AtlasCloud",
+            "Avian",
+            "Azure",
+            "BaseTen",
+            "BytePlus",
+            "Black Forest Labs",
+            "Cerebras",
+            "Chutes",
+            "Cirrascale",
+            "Clarifai",
+            "Cloudflare",
+            "Cohere",
+            "Crusoe",
+            "DeepInfra",
+            "DeepSeek",
+            "Featherless",
+            "Fireworks",
+            "Friendli",
+            "GMICloud",
+            "Google",
+            "Google AI Studio",
+            "Groq",
+            "Hyperbolic",
+            "Inception",
+            "Inceptron",
+            "InferenceNet",
+            "Infermatic",
+            "Io Net",
+            "Inflection",
+            "Liquid",
+            "Mara",
+            "Mancer 2",
+            "Minimax",
+            "ModelRun",
+            "Mistral",
+            "Modular",
+            "Moonshot AI",
+            "Morph",
+            "NCompass",
+            "Nebius",
+            "NextBit",
+            "Novita",
+            "Nvidia",
+            "OpenAI",
+            "OpenInference",
+            "Parasail",
+            "Perplexity",
+            "Phala",
+            "Relace",
+            "SambaNova",
+            "Seed",
+            "SiliconFlow",
+            "Sourceful",
+            "StepFun",
+            "Stealth",
+            "StreamLake",
+            "Switchpoint",
+            "Together",
+            "Upstage",
+            "Venice",
+            "WandB",
+            "Xiaomi",
+            "xAI",
+            "Z.AI",
+            "FakeProvider"
+          ])
+        ),
+        "status": Schema.Number.check(Schema.isFinite()),
+        "latency": Schema.optionalKey(Schema.Number.check(Schema.isFinite())),
+        "is_byok": Schema.optionalKey(Schema.Boolean)
+      })),
+      Schema.Null
+    ]).annotate({
+      "description": "List of provider responses for this generation, including fallback attempts"
+    })
   }).annotate({ "description": "Generation data" })
 }).annotate({ "description": "Generation response" })
 export type GetGeneration401 = UnauthorizedResponse
