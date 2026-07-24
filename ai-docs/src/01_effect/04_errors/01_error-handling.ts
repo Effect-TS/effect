@@ -12,7 +12,7 @@ export class ParseError extends Schema.TaggedErrorClass<ParseError>()("ParseErro
 }) {}
 
 export class ReservedPortError extends Schema.TaggedErrorClass<ReservedPortError>()("ReservedPortError", {
-  port: Schema.Number
+  port: Schema.Int
 }) {}
 
 declare const loadPort: (input: string) => Effect.Effect<number, ParseError | ReservedPortError>
