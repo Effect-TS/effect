@@ -8236,6 +8236,30 @@ export interface Int extends Number {
 export const Int: Int = Number.check(isInt())
 
 /**
+ * Type-level representation of {@link Natural}.
+ *
+ * @category Number
+ * @since 4.0.0
+ */
+export interface Natural extends Int {
+  readonly "Rebuild": Natural
+}
+
+/**
+ * Schema for non-negative safe integers, including zero.
+ *
+ * **When to use**
+ *
+ * Use when you need a count, index, or size that cannot be negative.
+ *
+ * @see {@link Int} for safe integers that may be negative
+ *
+ * @category Number
+ * @since 4.0.0
+ */
+export const Natural: Natural = Int.check(isGreaterThanOrEqualTo(0))
+
+/**
  * Validates that a number is a 32-bit signed integer (range: -2,147,483,648 to
  * 2,147,483,647).
  *
@@ -9002,7 +9026,6 @@ export const isBetweenBigDecimal = makeIsBetween({
   formatter: (bd) => BigDecimal_.format(bd)
 })
 
-const CanonicalLength = Number.check(makeFilter<number>((value) => globalThis.Number.isInteger(value) && value >= 0))
 /**
  * Validates that a value has at least the specified length. Works with strings
  * and arrays.
@@ -9071,7 +9094,7 @@ export const isMinLengthReviver: SchemaRepresentation.FilterReviver<{
   readonly minLength: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinLength",
-  Struct({ minLength: CanonicalLength }),
+  Struct({ minLength: Natural }),
   ({ annotations, payload }) => isMinLength(payload.minLength, annotations)
 )
 
@@ -9157,7 +9180,7 @@ export const isMaxLengthReviver: SchemaRepresentation.FilterReviver<{
   readonly maxLength: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxLength",
-  Struct({ maxLength: CanonicalLength }),
+  Struct({ maxLength: Natural }),
   ({ annotations, payload }) => isMaxLength(payload.maxLength, annotations)
 )
 
@@ -9229,7 +9252,7 @@ export const isLengthBetweenReviver: SchemaRepresentation.FilterReviver<{
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLengthBetween",
-  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
+  Struct({ minimum: Natural, maximum: Natural }),
   ({ annotations, payload }) => isLengthBetween(payload.minimum, payload.maximum, annotations)
 )
 
@@ -9292,7 +9315,7 @@ export const isMinSizeReviver: SchemaRepresentation.FilterReviver<{
   readonly minSize: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinSize",
-  Struct({ minSize: CanonicalLength }),
+  Struct({ minSize: Natural }),
   ({ annotations, payload }) => isMinSize(payload.minSize, annotations)
 )
 
@@ -9355,7 +9378,7 @@ export const isMaxSizeReviver: SchemaRepresentation.FilterReviver<{
   readonly maxSize: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxSize",
-  Struct({ maxSize: CanonicalLength }),
+  Struct({ maxSize: Natural }),
   ({ annotations, payload }) => isMaxSize(payload.maxSize, annotations)
 )
 
@@ -9424,7 +9447,7 @@ export const isSizeBetweenReviver: SchemaRepresentation.FilterReviver<{
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isSizeBetween",
-  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
+  Struct({ minimum: Natural, maximum: Natural }),
   ({ annotations, payload }) => isSizeBetween(payload.minimum, payload.maximum, annotations)
 )
 
@@ -9487,7 +9510,7 @@ export const isMinPropertiesReviver: SchemaRepresentation.FilterReviver<{
   readonly minProperties: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinProperties",
-  Struct({ minProperties: CanonicalLength }),
+  Struct({ minProperties: Natural }),
   ({ annotations, payload }) => isMinProperties(payload.minProperties, annotations)
 )
 
@@ -9549,7 +9572,7 @@ export const isMaxPropertiesReviver: SchemaRepresentation.FilterReviver<{
   readonly maxProperties: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxProperties",
-  Struct({ maxProperties: CanonicalLength }),
+  Struct({ maxProperties: Natural }),
   ({ annotations, payload }) => isMaxProperties(payload.maxProperties, annotations)
 )
 
@@ -9618,7 +9641,7 @@ export const isPropertiesLengthBetweenReviver: SchemaRepresentation.FilterRevive
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isPropertiesLengthBetween",
-  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
+  Struct({ minimum: Natural, maximum: Natural }),
   ({ annotations, payload }) => isPropertiesLengthBetween(payload.minimum, payload.maximum, annotations)
 )
 

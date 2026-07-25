@@ -9329,6 +9329,34 @@ pointed message
     )
   })
 
+  it("Natural", async () => {
+    const schema = Schema.Natural
+    const asserts = new TestSchema.Asserts(schema)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+
+    const decoding = asserts.decoding()
+    await decoding.succeed(0)
+    await decoding.succeed(1)
+    await decoding.fail(
+      -1,
+      `Expected a value greater than or equal to 0, got -1`
+    )
+    await decoding.fail(
+      1.1,
+      `Expected an integer, got 1.1`
+    )
+
+    const encoding = asserts.encoding()
+    await encoding.succeed(0)
+    await encoding.fail(
+      -1,
+      `Expected a value greater than or equal to 0, got -1`
+    )
+  })
+
   it("Capitalize", async () => {
     const schema = Schema.String.pipe(
       Schema.decodeTo(
