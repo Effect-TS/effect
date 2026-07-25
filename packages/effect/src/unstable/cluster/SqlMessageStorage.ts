@@ -19,6 +19,7 @@
 import * as Arr from "../../Array.ts"
 import * as Crypto from "../../Crypto.ts"
 import * as Effect from "../../Effect.ts"
+import * as Encoding from "../../Encoding.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type * as PlatformError from "../../PlatformError.ts"
@@ -104,13 +105,7 @@ export const make: (options?: {
   // `primary_key` column for diagnostics.
   const encoder = new TextEncoder()
   const hashPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
-    Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), (bytes) => {
-      let hex = ""
-      for (let i = 0; i < bytes.length; i++) {
-        hex += bytes[i].toString(16).padStart(2, "0")
-      }
-      return hex
-    })
+    Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Encoding.encodeHex)
 
   // Rows written before `message_id` was hashed store the plaintext composed
   // key; the fallback reads below exist only for that transition and can be
@@ -307,12 +302,7 @@ export const make: (options?: {
       `.pipe(Effect.flatMap((rows) => {
         // inserted a new row
         if (rows.length > 0) return Effect.succeed([])
-        return sql`
-          SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-          FROM ${messagesTableSql} m
-          LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-          WHERE m.message_id = ${message_id}
-        `
+        return selectByMessageId(message_id)
       })),
     mysql: () => (row, message_id) =>
       Effect.flatMap(
@@ -321,12 +311,7 @@ export const make: (options?: {
           if (row.affectedRows > 0) {
             return Effect.succeed([])
           }
-          return sql`
-            SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-            FROM ${messagesTableSql} m
-            LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-            WHERE m.message_id = ${message_id}
-          `
+          return selectByMessageId(message_id)
         }
       ),
     mssql: () => (row, message_id) =>
@@ -368,12 +353,7 @@ export const make: (options?: {
           END as reply_sequence;
       `,
     orElse: () => (row, message_id) =>
-      sql`
-        SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        FROM ${messagesTableSql} m
-        LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.message_id = ${message_id}
-      `.pipe(
+      selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
         sql.withTransaction,
         Effect.retry({ times: 3 })
