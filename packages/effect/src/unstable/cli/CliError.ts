@@ -93,6 +93,7 @@ export type CliError =
   | UnknownSubcommand
   | ShowHelp
   | UserError
+  | ValidationError
 
 /**
  * Error thrown when an unrecognized option is encountered.
@@ -487,6 +488,34 @@ export class UserError extends Schema.TaggedErrorClass<UserError>(
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
+}
+
+/**
+ * Error thrown when a validation fails (e.g. excess positional arguments).
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export class ValidationError extends Schema.TaggedErrorClass<ValidationError>(
+  `${TypeId}/ValidationError`
+)("ValidationError", {
+  error: Schema.String
+}) {
+  /**
+   * Marks this value as a CLI parsing error for runtime guards.
+   *
+   * @since 4.0.0
+   */
+  readonly [TypeId] = TypeId
+
+  /**
+   * Retrieves the underlying error.
+   *
+   * @since 4.0.0
+   */
+  override get message() {
+    return this.error
+  }
 }
 
 /**
