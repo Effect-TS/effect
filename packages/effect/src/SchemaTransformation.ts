@@ -852,8 +852,8 @@ export const bigintFromString = new Transformation(
  *
  * **When to use**
  *
- * Use when you need a schema transformation to parse ISO 8601 date strings from
- * APIs or user input.
+ * Use when you need a schema transformation to parse date strings from APIs or
+ * user input.
  *
  * **Details**
  *

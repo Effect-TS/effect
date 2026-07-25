@@ -1897,9 +1897,11 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
       const decoding = asserts.decoding()
       await decoding.succeed("2021-01-01T00:00:00.000Z", new Date("2021-01-01T00:00:00.000Z"))
+      await decoding.fail("invalid", `Expected a valid Date, got Invalid Date`)
 
       const encoding = asserts.encoding()
       await encoding.succeed(new Date("2021-01-01T00:00:00.000Z"), "2021-01-01T00:00:00.000Z")
+      await encoding.fail(new Date(NaN), `Expected a valid Date, got Invalid Date`)
     })
 
     it("DateFromMillis", async () => {
@@ -1915,13 +1917,14 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await decoding.fail(Infinity, `Expected an integer, got Infinity`)
       await decoding.fail(-Infinity, `Expected an integer, got -Infinity`)
       await decoding.fail(null, `Expected number, got null`)
+      await decoding.fail(8640000000000001, `Expected a valid Date, got Invalid Date`)
 
       const encoding = asserts.encoding()
       await encoding.succeed(new Date(0), 0)
-      await encoding.fail(new Date("invalid"), `Expected an integer, got NaN`)
-      await encoding.fail(new Date(NaN), `Expected an integer, got NaN`)
-      await encoding.fail(new Date(Infinity), `Expected an integer, got NaN`)
-      await encoding.fail(new Date(-Infinity), `Expected an integer, got NaN`)
+      await encoding.fail(new Date("invalid"), `Expected a valid Date, got Invalid Date`)
+      await encoding.fail(new Date(NaN), `Expected a valid Date, got Invalid Date`)
+      await encoding.fail(new Date(Infinity), `Expected a valid Date, got Invalid Date`)
+      await encoding.fail(new Date(-Infinity), `Expected a valid Date, got Invalid Date`)
     })
 
     it("FiniteFromString", async () => {
@@ -4812,17 +4815,13 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
     const decoding = asserts.decoding()
     await decoding.succeed(new Date("2021-01-01"))
-    await decoding.fail(null, `Expected Date, got null`)
-    await decoding.fail(0, `Expected Date, got 0`)
-  })
+    await decoding.fail(new Date(NaN), `Expected a valid Date, got Invalid Date`)
+    await decoding.fail(null, `Expected a valid Date, got null`)
+    await decoding.fail(0, `Expected a valid Date, got 0`)
 
-  it("DateValid", async () => {
-    const schema = Schema.DateValid
-    const asserts = new TestSchema.Asserts(schema)
-
-    if (verifyGeneration) {
-      asserts.arbitrary().verifyGeneration()
-    }
+    const encoding = asserts.encoding()
+    await encoding.succeed(new Date("2021-01-01"))
+    await encoding.fail(new Date(NaN), `Expected a valid Date, got Invalid Date`)
   })
 
   it("DateTimeUtc", async () => {
@@ -4850,7 +4849,7 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
     const decoding = asserts.decoding()
     await decoding.succeed(new Date("2021-01-01T00:00:00.000Z"), DateTime.makeUnsafe("2021-01-01T00:00:00.000Z"))
-    await decoding.fail(new Date("invalid date"), `Expected a valid date, got Invalid Date`)
+    await decoding.fail(new Date("invalid date"), `Expected a valid Date, got Invalid Date`)
 
     const encoding = asserts.encoding()
     await encoding.succeed(DateTime.makeUnsafe("2021-01-01T00:00:00.000Z"), new Date("2021-01-01T00:00:00.000Z"))

@@ -1623,15 +1623,6 @@ describe("toCodeDocument", () => {
     })
 
     describe("checks", () => {
-      it("isDateValid", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isDateValid()) },
-          {
-            codes: makeCode(`Schema.Date.check(Schema.isDateValid())`, "globalThis.Date")
-          }
-        )
-      })
-
       it("isGreaterThanDate", () => {
         assertSchema(
           { schema: Schema.Date.check(Schema.isGreaterThanDate(new Date(0))) },

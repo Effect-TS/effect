@@ -8338,63 +8338,6 @@ function formatDateRuntime(date: globalThis.Date): string {
 }
 
 /**
- * Validates that a Date object represents a valid date (not an invalid date
- * like `new Date("invalid")`).
- *
- * **Details**
- *
- * JSON Schema:
- *
- * This check does not have a direct JSON Schema equivalent, as JSON Schema
- * validates date strings, not Date objects.
- *
- * Arbitrary:
- *
- * When generating test data with fast-check, this applies a `valid: true`
- * constraint to ensure generated Date objects are valid.
- *
- * @category Date checks
- * @since 4.0.0
- */
-export function isDateValid(annotations?: Annotations.Filter) {
-  return makeFilter<globalThis.Date>(
-    (date) => !isNaN(date.getTime()),
-    {
-      expected: "a valid date",
-      representation: {
-        id: "effect/schema/isDateValid",
-        payload: null
-      },
-      toCode: () => ({ runtime: "Schema.isDateValid()" }),
-      arbitrary: {
-        constraint: {
-          valid: true
-        }
-      },
-      ...annotations
-    }
-  )
-}
-
-/**
- * Reviver for persisted `isDateValid` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isDateValid}.
- *
- * @see {@link isDateValid} for creating the corresponding check
- *
- * @category Date checks
- * @since 4.0.0
- */
-export const isDateValidReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
-  "effect/schema/isDateValid",
-  Null,
-  ({ annotations }) => isDateValid(annotations)
-)
-
-/**
  * Validates that a Date is greater than the specified value (exclusive).
  *
  * **Details**
@@ -12079,25 +12022,16 @@ export const URLFromString: URLFromString = URLString.pipe(decodeTo(URL, SchemaT
  * @category Date
  * @since 4.0.0
  */
-export interface Date extends instanceOf<globalThis.Date> {
+export interface Date extends declare<globalThis.Date> {
   readonly "Rebuild": Date
 }
 
-type DateArbitraryConstraints = FastCheck.DateConstraints & {
-  readonly valid?: boolean | undefined
-}
-
 function dateArbitraryConstraints<T = globalThis.Date>(
-  constraint: Annotations.ToArbitrary.GenerationConstraint | undefined,
   ordered: Annotations.ToArbitrary.OrderedConstraint<T> | undefined,
-  base?: DateArbitraryConstraints | undefined,
+  base?: FastCheck.DateConstraints | undefined,
   toDate?: (value: T) => globalThis.Date
 ): FastCheck.DateConstraints {
   const out: FastCheck.DateConstraints = { ...base }
-  delete (out as any).valid
-  if (base?.valid || constraint?.valid) {
-    out.noInvalidDate = true
-  }
   if (ordered?.minimum !== undefined) {
     const minimum = toDate === undefined ? ordered.minimum as globalThis.Date : toDate(ordered.minimum)
     const nextMin = ordered.exclusiveMinimum ? new globalThis.Date(minimum.getTime() + 1) : minimum
@@ -12115,21 +12049,20 @@ function dateArbitraryConstraints<T = globalThis.Date>(
   return out
 }
 
-const DateString = String.annotate({ expected: "a string in ISO 8601 format that will be decoded as a Date" })
+const DateString = String.annotate({ expected: "a string that will be decoded as a Date" })
 
 /**
- * Schema for JavaScript `Date` objects.
+ * Schema for valid JavaScript `Date` objects.
  *
  * **When to use**
  *
- * Use to validate in-memory values that must already be JavaScript date
+ * Use to validate in-memory values that must already be valid JavaScript date
  * objects.
  *
  * **Details**
  *
- * This schema accepts any `Date` instance, including invalid dates. The default
- * JSON serializer encodes valid dates as ISO 8601 strings; invalid dates encode
- * as `"Invalid Date"`.
+ * This schema accepts `Date` instances whose timestamp is not `NaN`. The
+ * default JSON serializer encodes dates as ISO 8601 strings.
  *
  * **Example** (Defining a Date schema)
  *
@@ -12140,15 +12073,14 @@ const DateString = String.annotate({ expected: "a string in ISO 8601 format that
  * // => Date { 2024-01-01T00:00:00.000Z }
  * ```
  *
- * @see {@link DateValid} for accepting only valid Date instances
  * @see {@link DateFromString} for decoding strings into Date instances
  * @see {@link DateFromMillis} for decoding epoch milliseconds into Date instances
  *
  * @category Date
  * @since 4.0.0
  */
-export const Date: Date = instanceOf(
-  globalThis.Date,
+export const Date: Date = declare(
+  (input): input is globalThis.Date => input instanceof globalThis.Date && !globalThis.Number.isNaN(input.getTime()),
   {
     representation: {
       id: "effect/schema/Date",
@@ -12158,7 +12090,7 @@ export const Date: Date = instanceOf(
       runtime: `Schema.Date`,
       Type: `globalThis.Date`
     }),
-    expected: "Date",
+    expected: "a valid Date",
     toCodecJson: () =>
       link<globalThis.Date>()(
         DateString,
@@ -12166,8 +12098,8 @@ export const Date: Date = instanceOf(
       ),
     toArbitrary: () => (fc, ctx) =>
       fc.date(dateArbitraryConstraints(
-        ctx?.constraint,
-        ctx?.constraint?.ordered?.order === Order.Date ? ctx.constraint.ordered : undefined
+        ctx?.constraint?.ordered?.order === Order.Date ? ctx.constraint.ordered : undefined,
+        { noInvalidDate: true }
       ))
   }
 )
@@ -12213,17 +12145,13 @@ export interface DateFromString extends decodeTo<Date, String> {
  * The string is passed to JavaScript `Date` construction.
  *
  * Encoding:
- * A valid `Date` is encoded as an ISO string; an invalid `Date` is encoded as
- * `"Invalid Date"`.
+ * A `Date` is encoded as an ISO string.
  *
- * **Gotchas**
- *
- * Invalid date strings can decode to invalid `Date` instances.
+ * Invalid date strings fail decoding.
  *
  * @see {@link DateFromMillis} for decoding epoch milliseconds into Date instances
  * @see {@link DateTimeUtcFromString} for decoding date-time strings into UTC values
  * @see {@link Date} for accepting Date instances directly
- * @see {@link DateValid} for rejecting invalid Date instances
  *
  * @category Date
  * @since 3.10.0
@@ -12259,13 +12187,11 @@ export interface DateFromMillis extends decodeTo<Date, Int> {
  *
  * **Gotchas**
  *
- * JavaScript `Date` supports a narrower range than safe integers, so an
- * out-of-range integer can still decode to an invalid `Date`. Invalid `Date`
- * instances cannot be encoded because their timestamp is `NaN`.
+ * JavaScript `Date` supports a narrower range than safe integers, so integers
+ * outside the supported `Date` range fail decoding.
  *
  * @see {@link DateFromString} for decoding string-encoded dates
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
- * @see {@link DateValid} for rejecting invalid Date instances
  *
  * @category Date
  * @since 4.0.0
@@ -12273,29 +12199,6 @@ export interface DateFromMillis extends decodeTo<Date, Int> {
 export const DateFromMillis: DateFromMillis = Int.pipe(
   decodeTo(Date, SchemaTransformation.dateFromMillis)
 )
-
-/**
- * Type-level representation of {@link DateValid}.
- *
- * @category Date
- * @since 4.0.0
- */
-export interface DateValid extends Date {
-  readonly "Rebuild": DateValid
-}
-
-/**
- * Schema for **valid** JavaScript `Date` objects.
- *
- * **Details**
- *
- * This schema accepts `Date` instances but rejects invalid dates (such as `new
- * Date("invalid")`).
- *
- * @category Date
- * @since 4.0.0
- */
-export const DateValid: DateValid = Date.check(isDateValid())
 
 /**
  * Type-level representation of {@link Duration}.
@@ -13775,9 +13678,8 @@ export const DateTimeUtc: DateTimeUtc = declare(
       ),
     toArbitrary: () => (fc, ctx) =>
       fc.date(dateArbitraryConstraints(
-        ctx?.constraint,
         ctx?.constraint?.ordered?.order === DateTime.Order ? ctx.constraint.ordered : undefined,
-        { valid: true },
+        { noInvalidDate: true },
         DateTime.toDateUtc
       ))
         .map((date) => DateTime.fromDateUnsafe(date)),
@@ -13832,12 +13734,12 @@ export interface DateTimeUtcFromDate extends decodeTo<DateTimeUtc, Date> {
  * @see {@link DateTimeUtc} for validating values that are already `DateTime.Utc`
  * @see {@link DateTimeUtcFromString} for decoding date-time strings into UTC values
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
- * @see {@link DateValid} for validating Date instances without converting them
+ * @see {@link Date} for validating Date instances without converting them
  *
  * @category DateTime
  * @since 3.12.0
  */
-export const DateTimeUtcFromDate: DateTimeUtcFromDate = DateValid.pipe(
+export const DateTimeUtcFromDate: DateTimeUtcFromDate = Date.pipe(
   decodeTo(DateTimeUtc, {
     decode: SchemaGetter.dateTimeUtcFromInput(),
     encode: SchemaGetter.transform(DateTime.toDateUtc)
@@ -14235,12 +14137,11 @@ export const DateTimeZoned: DateTimeZoned = declare(
     toArbitrary: () => (fc, ctx) =>
       fc.tuple(
         fc.date(dateArbitraryConstraints(
-          ctx?.constraint,
           ctx?.constraint?.ordered?.order === DateTime.Order ? ctx.constraint.ordered : undefined,
           {
             max: new globalThis.Date(8640000000000000 - 14 * 60 * 60 * 1000),
             min: new globalThis.Date(-8640000000000000 + 14 * 60 * 60 * 1000),
-            valid: true
+            noInvalidDate: true
           },
           DateTime.toDateUtc
         )),
@@ -16566,7 +16467,7 @@ export declare namespace Annotations {
      * length for strings, array length for arrays, final own-property count for
      * objects, and final size/cardinality for sets, maps, hash collections, and
      * chunks. `patterns` are concatenated and used by string generators.
-     * `integer`, `noNaN`, `noInfinity`, `valid`, and `unique` are true when any
+     * `integer`, `noNaN`, `noInfinity`, and `unique` are true when any
      * contributing filter sets them. Range bounds live in `ordered` so ordered
      * values can share the same representation.
      *
@@ -16580,7 +16481,6 @@ export declare namespace Annotations {
       readonly integer?: boolean | undefined
       readonly noInfinity?: boolean | undefined
       readonly noNaN?: boolean | undefined
-      readonly valid?: boolean | undefined
       readonly unique?: boolean | undefined
       readonly ordered?: OrderedConstraint<any> | undefined
     }

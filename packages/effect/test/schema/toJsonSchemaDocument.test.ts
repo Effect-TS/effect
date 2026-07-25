@@ -540,15 +540,6 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
-    it("DateValid", () => {
-      const schema = Schema.DateValid
-      assertJsonSchemaDocument(schema, {
-        schema: {
-          "type": "string"
-        }
-      })
-    })
-
     it("URL", () => {
       const schema = Schema.URL
       assertJsonSchemaDocument(schema, {

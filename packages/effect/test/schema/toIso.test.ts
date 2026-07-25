@@ -15,7 +15,7 @@ import { describe, it } from "vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 class Value extends Schema.Class<Value, { readonly brand: unique symbol }>("Value")({
-  a: Schema.DateValid
+  a: Schema.Date
 }) {}
 
 function addOne(date: Date): Date {
