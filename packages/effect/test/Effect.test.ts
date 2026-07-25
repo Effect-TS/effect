@@ -182,27 +182,24 @@ describe("Effect", () => {
     assert.isTrue(release)
   })
 
-  it("Context.Service", () =>
+  it.effect("Context.Service", () =>
     ATag.pipe(
       Effect.tap((_) => Effect.sync(() => assert.strictEqual(_, "A"))),
-      Effect.provideService(ATag, "A"),
-      Effect.runPromise
+      Effect.provideService(ATag, "A")
     ))
 
   describe("fromOption", () => {
-    it("from a some", () =>
+    it.effect("from a some", () =>
       Option.some("A").pipe(
         Effect.fromOption,
-        Effect.tap((_) => Effect.sync(() => assert.strictEqual(_, "A"))),
-        Effect.runPromise
+        Effect.tap((_) => Effect.sync(() => assert.strictEqual(_, "A")))
       ))
 
-    it("from a none", () =>
+    it.effect("from a none", () =>
       Option.none().pipe(
         Effect.fromOption,
         Effect.flip,
-        Effect.tap((error) => Effect.sync(() => assert.ok(error instanceof Cause.NoSuchElementError))),
-        Effect.runPromise
+        Effect.tap((error) => Effect.sync(() => assert.ok(error instanceof Cause.NoSuchElementError)))
       ))
 
     it.effect("from a none with a custom error", () =>
@@ -244,19 +241,17 @@ describe("Effect", () => {
   })
 
   describe("fromResult", () => {
-    it("from a success", () =>
+    it.effect("from a success", () =>
       Result.succeed("A").pipe(
         Effect.fromResult,
-        Effect.tap((_) => Effect.sync(() => assert.strictEqual(_, "A"))),
-        Effect.runPromise
+        Effect.tap((_) => Effect.sync(() => assert.strictEqual(_, "A")))
       ))
 
-    it("from a failure", () =>
+    it.effect("from a failure", () =>
       Result.fail("error").pipe(
         Effect.fromResult,
         Effect.flip,
-        Effect.tap((error) => Effect.sync(() => assert.strictEqual(error, "error"))),
-        Effect.runPromise
+        Effect.tap((error) => Effect.sync(() => assert.strictEqual(error, "error")))
       ))
   })
 
@@ -470,23 +465,23 @@ describe("Effect", () => {
   })
 
   describe("forEach", () => {
-    it("sequential", () =>
+    it.effect("sequential", () =>
       Effect.gen(function*() {
         const results = yield* Effect.forEach([1, 2, 3], (_) => Effect.succeed(_))
         assert.deepStrictEqual(results, [1, 2, 3])
-      }).pipe(Effect.runPromise))
+      }))
 
-    it("unbounded", () =>
+    it.effect("unbounded", () =>
       Effect.gen(function*() {
         const results = yield* Effect.forEach([1, 2, 3], (_) => Effect.succeed(_), { concurrency: "unbounded" })
         assert.deepStrictEqual(results, [1, 2, 3])
-      }).pipe(Effect.runPromise))
+      }))
 
-    it("bounded", () =>
+    it.effect("bounded", () =>
       Effect.gen(function*() {
         const results = yield* Effect.forEach([1, 2, 3, 4, 5], (_) => Effect.succeed(_), { concurrency: 2 })
         assert.deepStrictEqual(results, [1, 2, 3, 4, 5])
-      }).pipe(Effect.runPromise))
+      }))
 
     it.effect("inherit unbounded", () =>
       Effect.gen(function*() {
@@ -617,21 +612,21 @@ describe("Effect", () => {
         assertExitDefect(exit!, defect)
       }))
 
-    it("length = 0", () =>
+    it.effect("length = 0", () =>
       Effect.gen(function*() {
         const results = yield* Effect.forEach([], (_) => Effect.succeed(_))
         assert.deepStrictEqual(results, [])
-      }).pipe(Effect.runPromise))
+      }))
 
-    it("string", () =>
+    it.effect("string", () =>
       Effect.gen(function*() {
         const results = yield* Effect.forEach("abc", (_) => Effect.succeed(_))
         assert.deepStrictEqual(results, ["a", "b", "c"])
-      }).pipe(Effect.runPromise))
+      }))
   })
 
   describe("all", () => {
-    it("tuple", () =>
+    it.effect("tuple", () =>
       Effect.gen(function*() {
         const results = (yield* Effect.all([
           Effect.succeed(1),
@@ -643,9 +638,9 @@ describe("Effect", () => {
           number
         ]
         assert.deepStrictEqual(results, [1, 2, 3])
-      }).pipe(Effect.runPromise))
+      }))
 
-    it("record", () =>
+    it.effect("record", () =>
       Effect.gen(function*() {
         const results = (yield* Effect.all({
           a: Effect.succeed(1),
@@ -661,7 +656,7 @@ describe("Effect", () => {
           b: "2",
           c: true
         })
-      }).pipe(Effect.runPromise))
+      }))
 
     it.effect("record discard", () =>
       Effect.gen(function*() {
@@ -961,7 +956,7 @@ describe("Effect", () => {
   })
 
   describe("acquireRelease", () => {
-    it("releases on interrupt", () =>
+    it.live("releases on interrupt", () =>
       Effect.gen(function*() {
         let release = false
         const fiber = yield* Effect.acquireRelease(
@@ -977,7 +972,7 @@ describe("Effect", () => {
         fiber.interruptUnsafe()
         yield* Fiber.await(fiber)
         assert.strictEqual(release, true)
-      }).pipe(Effect.runPromise))
+      }))
 
     it.effect("supports release dependencies", () =>
       Effect.gen(function*() {
