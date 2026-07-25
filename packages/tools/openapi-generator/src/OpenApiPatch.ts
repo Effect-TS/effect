@@ -132,7 +132,7 @@ export class JsonPatchApplicationError
   extends Schema.ErrorClass<JsonPatchApplicationError>("JsonPatchApplicationError")({
     _tag: Schema.tag("JsonPatchApplicationError"),
     source: Schema.String,
-    operationIndex: Schema.Int,
+    operationIndex: Schema.Natural,
     operation: Schema.String,
     path: Schema.String,
     reason: Schema.String

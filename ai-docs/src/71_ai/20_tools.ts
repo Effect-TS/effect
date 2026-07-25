@@ -34,7 +34,7 @@ const SearchProducts = Tool.make("SearchProducts", {
       // guidance.
       description: "The search query, e.g. 'wireless headphones'"
     }),
-    maxResults: Schema.Int.pipe(Schema.withDecodingDefault(Effect.succeed(10))).annotate({
+    maxResults: Schema.Natural.pipe(Schema.withDecodingDefault(Effect.succeed(10))).annotate({
       description: "The maximum number of results to return"
     })
   }),
@@ -57,7 +57,7 @@ const GetInventory = Tool.make("GetInventory", {
   }),
   success: Schema.Struct({
     productId: ProductId,
-    available: Schema.Int
+    available: Schema.Natural
   })
 })
 

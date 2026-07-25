@@ -461,17 +461,20 @@ const EntrySql = Schema.Struct({
 
 type EntrySql = Schema.Schema.Type<typeof EntrySql>
 
-const SqlNumber = Schema.Union([Schema.Int, Schema.FiniteFromString.check(Schema.isInt())])
+const SqlNatural = Schema.Union([
+  Schema.Natural,
+  Schema.FiniteFromString.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(0))
+])
 
 const RemoteEntrySql = Schema.Struct({
   ...EntrySql.fields,
-  sequence: SqlNumber
+  sequence: SqlNatural
 })
 
 type RemoteEntrySql = Schema.Schema.Type<typeof RemoteEntrySql>
 
 const StoreSequenceSql = Schema.Struct({
-  next_sequence: SqlNumber
+  next_sequence: SqlNatural
 })
 
 const SessionAuthBindingSql = Schema.Struct({
