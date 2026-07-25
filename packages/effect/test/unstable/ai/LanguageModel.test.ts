@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertDefined, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Effect, Latch, Option, Schema, Stream } from "effect"
+import { Effect, Fiber, Latch, Option, Ref, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import { AiError, LanguageModel, Prompt, Response, ResponseIdTracker, Tool, Toolkit } from "effect/unstable/ai"
 import * as TestUtils from "./utils.ts"
@@ -154,6 +154,191 @@ describe("LanguageModel", () => {
         strictEqual(parts[0]?.type, "tool-call")
         strictEqual(parts[1]?.type, "tool-result")
         strictEqual(parts[2]?.type, "finish")
+      }))
+
+    it("runs tool handlers sequentially with concurrency: 1", () =>
+      Effect.gen(function*() {
+        const active = yield* Ref.make(0)
+        const maxActive = yield* Ref.make(0)
+        const started = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Effect.gen(function*() {
+              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+              yield* Ref.update(maxActive, (n) => Math.max(n, current))
+              yield* started.open
+              yield* release.await
+              return { testSuccess: "test-success" }
+            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          concurrency: 1
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-1",
+                name: "MyTool",
+                params: { testParam: "test-1" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-2",
+                name: "MyTool",
+                params: { testParam: "test-2" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-3",
+                name: "MyTool",
+                params: { testParam: "test-3" }
+              }
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* started.await
+        strictEqual(yield* Ref.get(active), 1)
+        strictEqual(yield* Ref.get(maxActive), 1)
+
+        yield* release.open
+        yield* Fiber.join(fiber)
+
+        strictEqual(yield* Ref.get(active), 0)
+        strictEqual(yield* Ref.get(maxActive), 1)
+      }))
+
+    it("allows tool handler overlap up to a bounded concurrency", () =>
+      Effect.gen(function*() {
+        const active = yield* Ref.make(0)
+        const maxActive = yield* Ref.make(0)
+        const twoStarted = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const handlers = MyToolkit.toLayer({
+          MyTool: () =>
+            Effect.gen(function*() {
+              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+              yield* Ref.update(maxActive, (n) => Math.max(n, current))
+              if (current === 2) {
+                yield* twoStarted.open
+              }
+              yield* release.await
+              return { testSuccess: "test-success" }
+            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit,
+          concurrency: 2
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-1",
+                name: "MyTool",
+                params: { testParam: "test-1" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-2",
+                name: "MyTool",
+                params: { testParam: "test-2" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-3",
+                name: "MyTool",
+                params: { testParam: "test-3" }
+              }
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* twoStarted.await
+        strictEqual(yield* Ref.get(active), 2)
+        strictEqual(yield* Ref.get(maxActive), 2)
+
+        yield* release.open
+        yield* Fiber.join(fiber)
+
+        strictEqual(yield* Ref.get(active), 0)
+        strictEqual(yield* Ref.get(maxActive), 2)
+      }))
+
+    it("bounds needsApproval evaluation with the tool handler concurrency", () =>
+      Effect.gen(function*() {
+        const active = yield* Ref.make(0)
+        const maxActive = yield* Ref.make(0)
+        const started = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const tool = Tool.make("ApprovalConcurrencyTool", {
+          parameters: Schema.Struct({ input: Schema.String }),
+          success: Schema.Struct({ output: Schema.String }),
+          needsApproval: () =>
+            Effect.gen(function*() {
+              const current = yield* Ref.updateAndGet(active, (n) => n + 1)
+              yield* Ref.update(maxActive, (n) => Math.max(n, current))
+              yield* started.open
+              yield* release.await
+              return false
+            }).pipe(Effect.ensuring(Ref.update(active, (n) => n - 1)))
+        })
+        const toolkit = Toolkit.make(tool)
+        const handlers = toolkit.toLayer({
+          ApprovalConcurrencyTool: () => Effect.succeed({ output: "done" })
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit,
+          concurrency: 1
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-1",
+                name: "ApprovalConcurrencyTool",
+                params: { input: "test-1" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-2",
+                name: "ApprovalConcurrencyTool",
+                params: { input: "test-2" }
+              }
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* started.await
+        strictEqual(yield* Ref.get(active), 1)
+        strictEqual(yield* Ref.get(maxActive), 1)
+
+        yield* release.open
+        yield* Fiber.join(fiber)
+
+        strictEqual(yield* Ref.get(active), 0)
+        strictEqual(yield* Ref.get(maxActive), 1)
       }))
   })
 

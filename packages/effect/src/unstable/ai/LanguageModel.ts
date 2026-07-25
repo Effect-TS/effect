@@ -23,6 +23,7 @@ import * as Queue from "../../Queue.ts"
 import { CurrentConcurrency } from "../../References.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
+import * as Semaphore from "../../Semaphore.ts"
 import * as Sink from "../../Sink.ts"
 import * as Stream from "../../Stream.ts"
 import type { Span } from "../../Tracer.ts"
@@ -1007,6 +1008,8 @@ export const make: (params: {
   ) {
     const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
+    const concurrency = yield* resolveToolCallConcurrency(options.concurrency)
+    providerOptions.span.attribute("concurrency", concurrency)
 
     const generateWithNonIncrementalFallback = () => {
       const requestOptions: ProviderOptions = {
@@ -1124,7 +1127,7 @@ export const make: (params: {
       const approvedResults = yield* executeApprovedToolCalls(
         approved,
         toolkit,
-        options.concurrency
+        concurrency
       )
       const deniedResults = createDenialResults(denied)
       const preResolvedResults = [...approvedResults, ...deniedResults]
@@ -1192,7 +1195,7 @@ export const make: (params: {
       rawContent,
       toolkit,
       providerOptions.prompt.content,
-      options.concurrency
+      concurrency
     ).pipe(
       Stream.filter(
         (result) =>
@@ -1242,6 +1245,8 @@ export const make: (params: {
   ) {
     const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
+    const concurrency = yield* resolveToolCallConcurrency(options.concurrency)
+    providerOptions.span.attribute("concurrency", concurrency)
 
     const streamWithNonIncrementalFallback = () => {
       const requestOptions: ProviderOptions = {
@@ -1382,7 +1387,7 @@ export const make: (params: {
       const approvedResults = yield* executeApprovedToolCalls(
         pendingApproved,
         toolkit,
-        options.concurrency
+        concurrency
       )
       const deniedResults = createDenialResults(pendingDenied)
       const preResolvedResults = [...approvedResults, ...deniedResults]
@@ -1489,6 +1494,9 @@ export const make: (params: {
 
     // FiberSet to track concurrent tool call handlers
     const toolCallFibers = yield* FiberSet.make<void, AiError.AiError>()
+    const toolCallSemaphore = concurrency === "unbounded"
+      ? undefined
+      : yield* Semaphore.make(concurrency)
 
     // Helper function to handle tool calls with approval logic
     const handleToolCall = Effect.fnUntraced(function*(part: Response.ToolCallPartEncoded) {
@@ -1553,7 +1561,11 @@ export const make: (params: {
           // Fork tool call handlers - use the raw chunk for encoded params
           for (const part of chunk) {
             if (part.type === "tool-call" && part.providerExecuted !== true) {
-              yield* FiberSet.run(toolCallFibers, handleToolCall(part))
+              const effect = handleToolCall(part)
+              yield* FiberSet.run(
+                toolCallFibers,
+                toolCallSemaphore ? toolCallSemaphore.withPermit(effect) : effect
+              )
             }
           }
         })
@@ -1954,10 +1966,19 @@ const isApprovalNeeded = Effect.fnUntraced(function*<T extends Tool.Any>(
   return tool.needsApproval
 }, Effect.orElseSucceed(constFalse))
 
+type ResolvedConcurrency = Exclude<Concurrency, "inherit">
+
+const resolveToolCallConcurrency = (
+  concurrency: Concurrency | undefined
+): Effect.Effect<ResolvedConcurrency> =>
+  concurrency === "inherit"
+    ? Effect.service(CurrentConcurrency)
+    : Effect.succeed(concurrency ?? "unbounded")
+
 const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
   approvals: ReadonlyArray<ApprovalResult>,
   toolkit: Toolkit.WithHandler<Tools>,
-  concurrency: Concurrency | undefined
+  concurrency: ResolvedConcurrency
 ): Effect.Effect<
   Array<Prompt.ToolResultPart>,
   Tool.HandlerError<Tools[keyof Tools]> | AiError.AiError,
@@ -2007,14 +2028,8 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
     })
   })
 
-  return Effect.gen(function*() {
-    const resolveConcurrency = concurrency === "inherit"
-      ? yield* Effect.service(CurrentConcurrency)
-      : (concurrency ?? "unbounded")
-
-    return yield* Effect.forEach(approvals, executeTool, {
-      concurrency: resolveConcurrency
-    })
+  return Effect.forEach(approvals, executeTool, {
+    concurrency
   })
 }
 
@@ -2053,7 +2068,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
   content: ReadonlyArray<Response.AllPartsEncoded>,
   toolkit: Toolkit.WithHandler<Tools>,
   messages: ReadonlyArray<Prompt.Message>,
-  concurrency: Concurrency | undefined
+  concurrency: ResolvedConcurrency
 ): Stream.Stream<
   ToolResolutionResult<Tools>,
   Tool.HandlerError<Tools[keyof Tools]> | AiError.AiError,
@@ -2142,14 +2157,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
     }).pipe(Stream.unwrap)
   )
 
-  const resolveConcurrency = concurrency === "inherit"
-    ? Effect.service(CurrentConcurrency)
-    : Effect.succeed(concurrency ?? "unbounded")
-
-  return resolveConcurrency.pipe(
-    Effect.map((concurrency) => Stream.mergeAll(streams, { concurrency })),
-    Stream.unwrap
-  )
+  return Stream.mergeAll(streams, { concurrency })
 }
 
 // =============================================================================
