@@ -181,10 +181,34 @@ describe("Stream", () => {
           )
         )[Symbol.asyncIterator]()
 
-        const pending = iterator.next().catch(constVoid)
+        const pending = iterator.next()
         yield* Deferred.await(started)
         const result = yield* Effect.promise(() => iterator.return!(undefined))
-        yield* Effect.promise(() => pending)
+        const pendingResult = yield* Effect.promise(() => pending)
+
+        assert.deepStrictEqual(result, { done: true, value: undefined })
+        assert.deepStrictEqual(pendingResult, { done: true, value: undefined })
+        assert.isTrue(interrupted)
+      }))
+
+    it.effect("toAsyncIterable - return does not reject an unawaited in-flight next", () =>
+      Effect.gen(function*() {
+        let interrupted = false
+        const iterator = Stream.toAsyncIterable(
+          Stream.fromEffect(
+            Effect.never.pipe(
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  interrupted = true
+                })
+              )
+            )
+          )
+        )[Symbol.asyncIterator]()
+
+        iterator.next()
+        const result = yield* Effect.promise(() => iterator.return!(undefined))
+        yield* Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 
         assert.deepStrictEqual(result, { done: true, value: undefined })
         assert.isTrue(interrupted)
@@ -250,12 +274,13 @@ describe("Stream", () => {
         )[Symbol.asyncIterator]()
         const error = new Error("boom")
 
-        const pending = iterator.next().catch(constVoid)
+        const pending = iterator.next()
         yield* Deferred.await(started)
         const thrown = yield* Effect.promise(() => iterator.throw!(error).catch((error) => error))
-        yield* Effect.promise(() => pending)
+        const pendingResult = yield* Effect.promise(() => pending)
 
         assert.strictEqual(thrown, error)
+        assert.deepStrictEqual(pendingResult, { done: true, value: undefined })
         assert.isTrue(interrupted)
       }))
   })

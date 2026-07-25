@@ -11358,7 +11358,7 @@ export const toAsyncIterableWith: {
       }
       return {
         async next(): Promise<IteratorResult<A>> {
-          if (closed) return { done: true, value: undefined }
+          if (closed) return closePromise!
           if (currentIter) {
             const next = currentIter.next()
             if (!next.done) return next
@@ -11381,6 +11381,9 @@ export const toAsyncIterableWith: {
             return currentIter.next()
           } else if (Pull.isDoneCause(exit.cause)) {
             return close()
+          }
+          if (closed && Cause.hasInterruptsOnly(exit.cause)) {
+            return closePromise!
           }
           await close()
           throw Cause.squash(exit.cause)
