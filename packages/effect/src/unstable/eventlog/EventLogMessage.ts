@@ -225,6 +225,9 @@ export class ChunkedMessage
       }
       map.set(part.id, entry)
     }
+    if (entry.parts[index] !== undefined) {
+      return
+    }
     entry.parts[index] = part.data
     entry.count++
     entry.bytes += part.data.byteLength
