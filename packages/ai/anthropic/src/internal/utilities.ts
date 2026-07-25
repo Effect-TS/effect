@@ -1,5 +1,5 @@
-import type * as Response from "@effect/ai/Response"
 import * as Predicate from "effect/Predicate"
+import type * as Response from "effect/unstable/ai/Response"
 
 const finishReasonMap: Record<string, Response.FinishReason> = {
   end_turn: "stop",
@@ -15,7 +15,7 @@ export const resolveFinishReason = (
   finishReason: string,
   isJsonResponse: boolean = false
 ): Response.FinishReason => {
-  const reason = finishReasonMap[finishReason]
+  const reason = Object.hasOwn(finishReasonMap, finishReason) ? finishReasonMap[finishReason] : undefined
   if (Predicate.isUndefined(reason)) {
     return "unknown"
   }

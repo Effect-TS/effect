@@ -1,0 +1,39 @@
+name: Label Pull Requests
+
+on:
+  pull_request_target:
+    branches: [main, v3]
+    types: [opened, reopened, synchronize, edited]
+
+permissions: {}
+
+jobs:
+  label:
+    name: Label
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    timeout-minutes: 1
+    steps:
+      - name: Add Version Label
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const labels = {
+              main: "4.0",
+              v3: "3.0"
+            }
+            const label = labels[context.payload.pull_request.base.ref]
+            const issue = {
+              ...context.repo,
+              issue_number: context.payload.pull_request.number
+            }
+            const labelsToRemove = context.payload.pull_request.labels
+              .map(({ name }) => name)
+              .filter((name) => Object.values(labels).includes(name) && name !== label)
+
+            for (const name of labelsToRemove) {
+              await github.rest.issues.removeLabel({ ...issue, name })
+            }
+
+            await github.rest.issues.addLabels({ ...issue, labels: [label] })

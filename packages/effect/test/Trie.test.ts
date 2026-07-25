@@ -3,10 +3,11 @@ import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@e
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
+import * as Result from "effect/Result"
 import * as Trie from "effect/Trie"
 
 describe("Trie", () => {
-  it("toString", () => {
+  it("toString renders entries in iteration order", () => {
     const trie = pipe(
       Trie.empty<number>(),
       Trie.insert("a", 0),
@@ -15,23 +16,11 @@ describe("Trie", () => {
 
     strictEqual(
       String(trie),
-      `{
-  "_id": "Trie",
-  "values": [
-    [
-      "a",
-      0
-    ],
-    [
-      "b",
-      1
-    ]
-  ]
-}`
+      `Trie([["a",0],["b",1]])`
     )
   })
 
-  it("toJSON", () => {
+  it("toJSON renders tagged entries", () => {
     const trie = pipe(
       Trie.empty<number>(),
       Trie.insert("a", 0),
@@ -41,11 +30,11 @@ describe("Trie", () => {
     deepStrictEqual(trie.toJSON(), { _id: "Trie", values: [["a", 0], ["b", 1]] })
   })
 
-  it("inspect", () => {
+  it("inspect renders the JSON representation", () => {
     if (typeof window !== "undefined") {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // oxlint-disable-next-line @typescript-eslint/no-require-imports
     const { inspect } = require("node:util")
 
     const trie = pipe(
@@ -57,14 +46,14 @@ describe("Trie", () => {
     deepStrictEqual(inspect(trie), inspect({ _id: "Trie", values: [["a", 0], ["b", 1]] }))
   })
 
-  it("iterable empty", () => {
+  it("iterates no entries for an empty trie", () => {
     const trie = Trie.empty<string>()
 
     strictEqual(Trie.size(trie), 0)
     deepStrictEqual(Array.from(trie), [])
   })
 
-  it("insert", () => {
+  it("insert returns new tries and orders entries by key", () => {
     const trie1 = Trie.empty<number>().pipe(
       Trie.insert("call", 0)
     )
@@ -79,50 +68,50 @@ describe("Trie", () => {
     deepStrictEqual(Array.from(trie4), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
   })
 
-  it("fromIterable empty", () => {
+  it("fromIterable preserves an empty iterable", () => {
     const iterable: Array<[string, number]> = []
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), iterable)
   })
 
-  it("make", () => {
+  it("make builds a trie from entry pairs", () => {
     const trie = Trie.make(["ca", 0], ["me", 1])
     deepStrictEqual(Array.from(trie), [["ca", 0], ["me", 1]])
     strictEqual(Equal.equals(Trie.fromIterable([["ca", 0], ["me", 1]]), trie), true)
   })
 
-  it("fromIterable [1]", () => {
+  it("fromIterable builds the same trie as make", () => {
     const iterable: Array<[string, number]> = [["ca", 0], ["me", 1]]
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), iterable)
     strictEqual(Equal.equals(Trie.make(["ca", 0], ["me", 1]), trie), true)
   })
 
-  it("fromIterable [2]", () => {
+  it("fromIterable orders entries by key", () => {
     const iterable: Array<readonly [string, number]> = [["call", 0], ["me", 1], ["mind", 2], ["mid", 3]]
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
   })
 
-  it("fromIterable [3]", () => {
+  it("fromIterable preserves already sorted entries", () => {
     const iterable: Array<[string, number]> = [["a", 0], ["b", 1]]
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), iterable)
   })
 
-  it("fromIterable [4]", () => {
+  it("fromIterable accepts a single entry", () => {
     const iterable: Array<[string, number]> = [["a", 0]]
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), iterable)
   })
 
-  it("fromIterable [5]", () => {
+  it("fromIterable orders keys when one key is a prefix", () => {
     const iterable: Array<[string, number]> = [["shells", 0], ["she", 1]]
     const trie = Trie.fromIterable(iterable)
     deepStrictEqual(Array.from(trie), [["she", 1], ["shells", 0]])
   })
 
-  it("size", () => {
+  it("size counts stored keys", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("a", 0),
       Trie.insert("b", 1)
@@ -131,14 +120,14 @@ describe("Trie", () => {
     strictEqual(Trie.size(trie), 2)
   })
 
-  it("isEmpty", () => {
+  it("isEmpty distinguishes empty and populated tries", () => {
     const trie = Trie.empty<number>()
     const trie1 = trie.pipe(Trie.insert("ma", 0))
     strictEqual(Trie.isEmpty(trie), true)
     strictEqual(Trie.isEmpty(trie1), false)
   })
 
-  it("get [1]", () => {
+  it("get returns Some only for exact keys", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1),
@@ -155,7 +144,7 @@ describe("Trie", () => {
     assertNone(Trie.get(trie, "mea"))
   })
 
-  it("get [2]", () => {
+  it("get distinguishes complete keys from prefixes", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -168,7 +157,7 @@ describe("Trie", () => {
     assertSome(Trie.get(trie, "she"), 2)
   })
 
-  it("has", () => {
+  it("has returns true only for exact keys", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1),
@@ -185,15 +174,15 @@ describe("Trie", () => {
     strictEqual(Trie.has(trie, "mea"), false)
   })
 
-  it("unsafeGet", () => {
+  it("getUnsafe returns the value or throws when the key is missing", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1)
     )
-    throws(() => Trie.unsafeGet(trie, "mae"))
+    throws(() => Trie.getUnsafe(trie, "mae"))
   })
 
-  it("remove", () => {
+  it("remove deletes a key without mutating the original trie", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1),
@@ -213,7 +202,7 @@ describe("Trie", () => {
     deepStrictEqual(Array.from(trie2), [["me", 1], ["mid", 3], ["mind", 2]])
   })
 
-  it("keys", () => {
+  it("keys returns keys in sorted order", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("cab", 0),
       Trie.insert("abc", 1),
@@ -224,7 +213,7 @@ describe("Trie", () => {
     deepStrictEqual(result, ["abc", "bca", "cab"])
   })
 
-  it("keys alphabetical order", () => {
+  it("keys orders nested prefixes alphabetically", () => {
     const trie = Trie.make(
       ["abc", 0],
       ["bac", 0],
@@ -261,7 +250,7 @@ describe("Trie", () => {
     ])
   })
 
-  it("values", () => {
+  it("values follow key iteration order", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1),
@@ -272,7 +261,7 @@ describe("Trie", () => {
     deepStrictEqual(result, [2, 0, 1])
   })
 
-  it("entries", () => {
+  it("entries iterates key-value pairs in sorted order", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1)
@@ -282,7 +271,7 @@ describe("Trie", () => {
     deepStrictEqual(result, [["call", 0], ["me", 1]])
   })
 
-  it("toEntries", () => {
+  it("toEntries returns a sorted entry array", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("call", 0),
       Trie.insert("me", 1)
@@ -292,7 +281,7 @@ describe("Trie", () => {
     deepStrictEqual(result, [["call", 0], ["me", 1]])
   })
 
-  it("keysWithPrefix", () => {
+  it("keysWithPrefix returns matching keys in sorted order", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("she", 0),
       Trie.insert("shells", 1),
@@ -308,7 +297,7 @@ describe("Trie", () => {
     deepStrictEqual(result, ["she", "shells"])
   })
 
-  it("valuesWithPrefix", () => {
+  it("valuesWithPrefix returns matching values in key order", () => {
     const trie = pipe(
       Trie.empty<number>(),
       Trie.insert("shells", 0),
@@ -321,7 +310,7 @@ describe("Trie", () => {
     deepStrictEqual(result, [3, 0])
   })
 
-  it("entriesWithPrefix", () => {
+  it("entriesWithPrefix returns matching entries in key order", () => {
     const trie = pipe(
       Trie.empty<number>(),
       Trie.insert("shells", 0),
@@ -334,7 +323,7 @@ describe("Trie", () => {
     deepStrictEqual(result, [["she", 3], ["shells", 0]])
   })
 
-  it("toEntriesWithPrefix", () => {
+  it("toEntriesWithPrefix returns matching entries as an array", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -346,20 +335,20 @@ describe("Trie", () => {
     deepStrictEqual(result, [["she", 3], ["shells", 0]])
   })
 
-  it("longestPrefixOf", () => {
+  it("longestPrefixOf returns the longest stored key that prefixes the input", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
       Trie.insert("she", 2)
     )
 
-    deepStrictEqual(Trie.longestPrefixOf(trie, "sell"), Option.none())
-    deepStrictEqual(Trie.longestPrefixOf(trie, "sells"), Option.some(["sells", 1]))
-    deepStrictEqual(Trie.longestPrefixOf(trie, "shell"), Option.some(["she", 2]))
-    deepStrictEqual(Trie.longestPrefixOf(trie, "shellsort"), Option.some(["shells", 0]))
+    assertNone(Trie.longestPrefixOf(trie, "sell"))
+    assertSome(Trie.longestPrefixOf(trie, "sells"), ["sells", 1])
+    assertSome(Trie.longestPrefixOf(trie, "shell"), ["she", 2])
+    assertSome(Trie.longestPrefixOf(trie, "shellsort"), ["shells", 0])
   })
 
-  it("map", () => {
+  it("map transforms values and can use keys", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -382,7 +371,7 @@ describe("Trie", () => {
     strictEqual(Equal.equals(Trie.map(trie, (_, k) => k.length), trieMapK), true)
   })
 
-  it("filter", () => {
+  it("filter keeps entries by value or key", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -402,7 +391,7 @@ describe("Trie", () => {
     strictEqual(Equal.equals(Trie.filter(trie, (_, k) => k.length > 3), trieMapK), true)
   })
 
-  it("filterMap", () => {
+  it("filterMap keeps Result successes and can use keys", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -418,14 +407,14 @@ describe("Trie", () => {
       Trie.insert("sells", 1)
     )
 
-    strictEqual(Equal.equals(Trie.filterMap(trie, (v) => v > 1 ? Option.some(v) : Option.none()), trieMapV), true)
+    strictEqual(Equal.equals(Trie.filterMap(trie, (v) => v > 1 ? Result.succeed(v) : Result.failVoid), trieMapV), true)
     strictEqual(
-      Equal.equals(Trie.filterMap(trie, (v, k) => k.length > 3 ? Option.some(v) : Option.none()), trieMapK),
+      Equal.equals(Trie.filterMap(trie, (v, k) => k.length > 3 ? Result.succeed(v) : Result.failVoid), trieMapK),
       true
     )
   })
 
-  it("compact", () => {
+  it("compact keeps Some values", () => {
     const trie = Trie.empty<Option.Option<number>>().pipe(
       Trie.insert("shells", Option.some(0)),
       Trie.insert("sells", Option.none()),
@@ -440,7 +429,7 @@ describe("Trie", () => {
     strictEqual(Equal.equals(Trie.compact(trie), trieMapV), true)
   })
 
-  it("modify", () => {
+  it("modify updates an existing key and ignores a missing key", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -451,7 +440,7 @@ describe("Trie", () => {
     strictEqual(Equal.equals(trie.pipe(Trie.modify("me", (v) => v)), trie), true)
   })
 
-  it("removeMany", () => {
+  it("removeMany deletes all matching keys", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -464,7 +453,7 @@ describe("Trie", () => {
     )
   })
 
-  it("insertMany", () => {
+  it("insertMany inserts all entries", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -484,7 +473,7 @@ describe("Trie", () => {
     )
   })
 
-  it("reduce", () => {
+  it("reduce visits entries in key order", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
       Trie.insert("sells", 1),
@@ -526,7 +515,7 @@ describe("Trie", () => {
     strictEqual(value, 17)
   })
 
-  it("Equal.symbol", () => {
+  it("Equal compares tries by entries", () => {
     strictEqual(
       Equal.equals(Trie.empty<number>(), Trie.empty<number>()),
       true

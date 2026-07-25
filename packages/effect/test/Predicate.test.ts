@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
-import { assertFalse, assertTrue } from "@effect/vitest/utils"
 import { Function as Fun, pipe, Predicate } from "effect"
+import assert from "node:assert/strict"
 
 const isPositive: Predicate.Predicate<number> = (n) => n > 0
 const isNegative: Predicate.Predicate<number> = (n) => n < 0
@@ -15,328 +15,541 @@ type NonEmptyString = string & NonEmptyStringBrand
 
 const isNonEmptyString: Predicate.Refinement<string, NonEmptyString> = (s): s is NonEmptyString => s.length > 0
 
-describe("Predicate", () => {
-  it("compose", () => {
+describe("compose", () => {
+  it("composes refinements to narrow through both checks", () => {
     const refinement = pipe(isString, Predicate.compose(isNonEmptyString))
-    assertTrue(refinement("a"))
-    assertFalse(refinement(null))
-    assertFalse(refinement(""))
+
+    assert.equal(refinement("a"), true)
+    assert.equal(refinement(null), false)
+    assert.equal(refinement(""), false)
   })
 
-  it("mapInput", () => {
-    type A = {
-      readonly a: number
-    }
+  it("composes a refinement with a predicate", () => {
+    const isLong = (s: string) => s.length > 2
+    const refinement = Predicate.compose(isString, isLong)
+
+    assert.equal(refinement("abcd"), true)
+    assert.equal(refinement("a"), false)
+    assert.equal(refinement(1), false)
+  })
+})
+
+describe("mapInput", () => {
+  it("maps input before applying the predicate (curried)", () => {
+    type A = { readonly a: number }
     const predicate = pipe(
       isPositive,
       Predicate.mapInput((a: A) => a.a)
     )
-    assertFalse(predicate({ a: -1 }))
-    assertFalse(predicate({ a: 0 }))
-    assertTrue(predicate({ a: 1 }))
+
+    assert.equal(predicate({ a: -1 }), false)
+    assert.equal(predicate({ a: 0 }), false)
+    assert.equal(predicate({ a: 1 }), true)
   })
 
-  it("product", () => {
-    const product = Predicate.product
-    const p = product(isPositive, isNegative)
-    assertTrue(p([1, -1]))
-    assertFalse(p([1, 1]))
-    assertFalse(p([-1, -1]))
-    assertFalse(p([-1, 1]))
+  it("maps input before applying the predicate (uncurried)", () => {
+    type A = { readonly a: number }
+    const predicate = Predicate.mapInput(isPositive, (a: A) => a.a)
+
+    assert.equal(predicate({ a: -1 }), false)
+    assert.equal(predicate({ a: 0 }), false)
+    assert.equal(predicate({ a: 1 }), true)
+  })
+})
+
+describe("Tuple", () => {
+  it("returns true only when all element predicates succeed", () => {
+    const p = Predicate.Tuple([isPositive, isNegative])
+
+    assert.equal(p([1, -1]), true)
+    assert.equal(p([1, 1]), false)
+    assert.equal(p([-1, -1]), false)
+    assert.equal(p([-1, 1]), false)
   })
 
-  it("productMany", () => {
-    const productMany = Predicate.productMany
-    const p = productMany(isPositive, [isNegative])
-    assertTrue(p([1, -1]))
-    assertFalse(p([1, 1]))
-    assertFalse(p([-1, -1]))
-    assertFalse(p([-1, 1]))
+  it("stops checking after the first failing predicate", () => {
+    let calls = 0
+    const first = (_: number) => {
+      calls += 1
+      return false
+    }
+    const second = (_: number) => {
+      calls += 1
+      return true
+    }
+
+    const p = Predicate.Tuple([first, second])
+
+    assert.equal(p([1, 2]), false)
+    assert.equal(calls, 1)
+  })
+})
+
+describe("Struct", () => {
+  it("returns true only when all field predicates succeed", () => {
+    const p = Predicate.Struct({ a: isPositive, b: isNegative })
+
+    assert.equal(p({ a: 1, b: -1 }), true)
+    assert.equal(p({ a: 1, b: 1 }), false)
+    assert.equal(p({ a: -1, b: -1 }), false)
+    assert.equal(p({ a: -1, b: 1 }), false)
   })
 
-  it("tuple", () => {
-    const p = Predicate.tuple(isPositive, isNegative)
-    assertTrue(p([1, -1]))
-    assertFalse(p([1, 1]))
-    assertFalse(p([-1, -1]))
-    assertFalse(p([-1, 1]))
-  })
+  it("ignores extra keys and stops at first failing field", () => {
+    let calls = 0
+    const first = (_: number) => {
+      calls += 1
+      return false
+    }
+    const second = (_: string) => {
+      calls += 1
+      return true
+    }
 
-  it("struct", () => {
-    const p = Predicate.struct({ a: isPositive, b: isNegative })
-    assertTrue(p({ a: 1, b: -1 }))
-    assertFalse(p({ a: 1, b: 1 }))
-    assertFalse(p({ a: -1, b: -1 }))
-    assertFalse(p({ a: -1, b: 1 }))
-  })
+    const p = Predicate.Struct({ a: first, b: second })
 
-  it("all", () => {
-    const p = Predicate.all([isPositive, isNegative])
-    assertTrue(p([1]))
-    assertTrue(p([1, -1]))
-    assertFalse(p([1, 1]))
-    assertFalse(p([-1, -1]))
-    assertFalse(p([-1, 1]))
+    assert.equal(p({ a: 1, b: "ok", extra: true } as any), false)
+    assert.equal(calls, 1)
   })
+})
 
-  it("not", () => {
+describe("not", () => {
+  it("negates the underlying predicate", () => {
     const p = Predicate.not(isPositive)
-    assertFalse(p(1))
-    assertTrue(p(0))
-    assertTrue(p(-1))
-  })
 
-  it("or", () => {
+    assert.equal(p(1), false)
+    assert.equal(p(0), true)
+    assert.equal(p(-1), true)
+  })
+})
+
+describe("or", () => {
+  it("returns true when either predicate is true", () => {
     const p = pipe(isPositive, Predicate.or(isNegative))
-    assertTrue(p(-1))
-    assertTrue(p(1))
-    assertFalse(p(0))
-  })
 
-  it("and", () => {
+    assert.equal(p(-1), true)
+    assert.equal(p(1), true)
+    assert.equal(p(0), false)
+  })
+})
+
+describe("and", () => {
+  it("returns true only when both predicates are true", () => {
     const p = pipe(isPositive, Predicate.and(isLessThan2))
-    assertTrue(p(1))
-    assertFalse(p(-1))
-    assertFalse(p(3))
-  })
 
-  it("xor", () => {
-    assertFalse(pipe(Fun.constTrue, Predicate.xor(Fun.constTrue))(null)) // true xor true = false
-    assertTrue(pipe(Fun.constTrue, Predicate.xor(Fun.constFalse))(null)) // true xor false = true
-    assertTrue(pipe(Fun.constFalse, Predicate.xor(Fun.constTrue))(null)) // false xor true = true
-    assertFalse(pipe(Fun.constFalse, Predicate.xor(Fun.constFalse))(null)) // false xor false = false
+    assert.equal(p(1), true)
+    assert.equal(p(-1), false)
+    assert.equal(p(3), false)
   })
+})
 
-  it("eqv", () => {
-    assertTrue(pipe(Fun.constTrue, Predicate.eqv(Fun.constTrue))(null)) // true eqv true = true
-    assertFalse(pipe(Fun.constTrue, Predicate.eqv(Fun.constFalse))(null)) // true eqv false = false
-    assertFalse(pipe(Fun.constFalse, Predicate.eqv(Fun.constTrue))(null)) // false eqv true = false
-    assertTrue(pipe(Fun.constFalse, Predicate.eqv(Fun.constFalse))(null)) // false eqv false = true
+describe("xor", () => {
+  it("returns true only when exactly one predicate is true", () => {
+    assert.equal(pipe(Fun.constTrue, Predicate.xor(Fun.constTrue))(null), false)
+    assert.equal(pipe(Fun.constTrue, Predicate.xor(Fun.constFalse))(null), true)
+    assert.equal(pipe(Fun.constFalse, Predicate.xor(Fun.constTrue))(null), true)
+    assert.equal(pipe(Fun.constFalse, Predicate.xor(Fun.constFalse))(null), false)
   })
+})
 
-  it("implies", () => {
-    assertTrue(pipe(Fun.constTrue, Predicate.implies(Fun.constTrue))(null)) // true implies true = true
-    assertFalse(pipe(Fun.constTrue, Predicate.implies(Fun.constFalse))(null)) // true implies false = false
-    assertTrue(pipe(Fun.constFalse, Predicate.implies(Fun.constTrue))(null)) // false implies true = true
-    assertTrue(pipe(Fun.constFalse, Predicate.implies(Fun.constFalse))(null)) // false implies false = true
+describe("eqv", () => {
+  it("returns true when both predicates agree", () => {
+    assert.equal(pipe(Fun.constTrue, Predicate.eqv(Fun.constTrue))(null), true)
+    assert.equal(pipe(Fun.constTrue, Predicate.eqv(Fun.constFalse))(null), false)
+    assert.equal(pipe(Fun.constFalse, Predicate.eqv(Fun.constTrue))(null), false)
+    assert.equal(pipe(Fun.constFalse, Predicate.eqv(Fun.constFalse))(null), true)
   })
+})
 
-  it("nor", () => {
-    assertFalse(pipe(Fun.constTrue, Predicate.nor(Fun.constTrue))(null)) // true nor true = false
-    assertFalse(pipe(Fun.constTrue, Predicate.nor(Fun.constFalse))(null)) // true nor false = false
-    assertFalse(pipe(Fun.constFalse, Predicate.nor(Fun.constTrue))(null)) // false nor true = false
-    assertTrue(pipe(Fun.constFalse, Predicate.nor(Fun.constFalse))(null)) // false nor false = true
+describe("implies", () => {
+  it("returns true when antecedent is false or consequent is true", () => {
+    assert.equal(pipe(Fun.constTrue, Predicate.implies(Fun.constTrue))(null), true)
+    assert.equal(pipe(Fun.constTrue, Predicate.implies(Fun.constFalse))(null), false)
+    assert.equal(pipe(Fun.constFalse, Predicate.implies(Fun.constTrue))(null), true)
+    assert.equal(pipe(Fun.constFalse, Predicate.implies(Fun.constFalse))(null), true)
   })
+})
 
-  it("nand", () => {
-    assertFalse(pipe(Fun.constTrue, Predicate.nand(Fun.constTrue))(null)) // true nand true = false
-    assertTrue(pipe(Fun.constTrue, Predicate.nand(Fun.constFalse))(null)) // true nand false = true
-    assertTrue(pipe(Fun.constFalse, Predicate.nand(Fun.constTrue))(null)) // false nand true = true
-    assertTrue(pipe(Fun.constFalse, Predicate.nand(Fun.constFalse))(null)) // false nand false = true
+describe("nor", () => {
+  it("returns true only when both predicates are false", () => {
+    assert.equal(pipe(Fun.constTrue, Predicate.nor(Fun.constTrue))(null), false)
+    assert.equal(pipe(Fun.constTrue, Predicate.nor(Fun.constFalse))(null), false)
+    assert.equal(pipe(Fun.constFalse, Predicate.nor(Fun.constTrue))(null), false)
+    assert.equal(pipe(Fun.constFalse, Predicate.nor(Fun.constFalse))(null), true)
   })
+})
 
-  it("some", () => {
-    const predicate = Predicate.some([isPositive, isNegative])
-    assertFalse(predicate(0))
-    assertTrue(predicate(-1))
-    assertTrue(predicate(1))
+describe("nand", () => {
+  it("returns false only when both predicates are true", () => {
+    assert.equal(pipe(Fun.constTrue, Predicate.nand(Fun.constTrue))(null), false)
+    assert.equal(pipe(Fun.constTrue, Predicate.nand(Fun.constFalse))(null), true)
+    assert.equal(pipe(Fun.constFalse, Predicate.nand(Fun.constTrue))(null), true)
+    assert.equal(pipe(Fun.constFalse, Predicate.nand(Fun.constFalse))(null), true)
   })
+})
 
-  it("every", () => {
+describe("every", () => {
+  it("returns true when all predicates pass", () => {
     const predicate = Predicate.every([isPositive, isLessThan2])
-    assertFalse(predicate(0))
-    assertFalse(predicate(-2))
-    assertTrue(predicate(1))
+
+    assert.equal(predicate(1), true)
+    assert.equal(predicate(0), false)
+    assert.equal(predicate(-2), false)
   })
 
-  it("isTruthy", () => {
-    assertTrue(Predicate.isTruthy(true))
-    assertFalse(Predicate.isTruthy(false))
-    assertTrue(Predicate.isTruthy("a"))
-    assertFalse(Predicate.isTruthy(""))
-    assertTrue(Predicate.isTruthy(1))
-    assertFalse(Predicate.isTruthy(0))
-    assertTrue(Predicate.isTruthy(1n))
-    assertFalse(Predicate.isTruthy(0n))
+  it("returns true for empty collections", () => {
+    const predicate = Predicate.every([])
+
+    assert.equal(predicate(0), true)
+  })
+})
+
+describe("some", () => {
+  it("returns true when any predicate passes", () => {
+    const predicate = Predicate.some([isPositive, isNegative])
+
+    assert.equal(predicate(0), false)
+    assert.equal(predicate(-1), true)
+    assert.equal(predicate(1), true)
   })
 
-  it("isFunction", () => {
-    assertTrue(Predicate.isFunction(Predicate.isFunction))
-    assertFalse(Predicate.isFunction("function"))
-  })
+  it("returns false for empty collections", () => {
+    const predicate = Predicate.some([])
 
-  it("isUndefined", () => {
-    assertTrue(Predicate.isUndefined(undefined))
-    assertFalse(Predicate.isUndefined(null))
-    assertFalse(Predicate.isUndefined("undefined"))
+    assert.equal(predicate(0), false)
   })
+})
 
-  it("isNotUndefined", () => {
-    assertFalse(Predicate.isNotUndefined(undefined))
-    assertTrue(Predicate.isNotUndefined(null))
-    assertTrue(Predicate.isNotUndefined("undefined"))
+describe("isTruthy", () => {
+  it("uses JavaScript truthiness", () => {
+    assert.equal(Predicate.isTruthy(true), true)
+    assert.equal(Predicate.isTruthy(false), false)
+    assert.equal(Predicate.isTruthy("a"), true)
+    assert.equal(Predicate.isTruthy(""), false)
+    assert.equal(Predicate.isTruthy(1), true)
+    assert.equal(Predicate.isTruthy(0), false)
+    assert.equal(Predicate.isTruthy(1n), true)
+    assert.equal(Predicate.isTruthy(0n), false)
   })
+})
 
-  it("isNull", () => {
-    assertTrue(Predicate.isNull(null))
-    assertFalse(Predicate.isNull(undefined))
-    assertFalse(Predicate.isNull("null"))
+describe("isSet", () => {
+  it("detects Set instances", () => {
+    assert.equal(Predicate.isSet(new Set([1, 2])), true)
+    assert.equal(Predicate.isSet(new Set()), true)
+    assert.equal(Predicate.isSet({}), false)
+    assert.equal(Predicate.isSet(null), false)
+    assert.equal(Predicate.isSet(undefined), false)
   })
+})
 
-  it("isNotNull", () => {
-    assertFalse(Predicate.isNotNull(null))
-    assertTrue(Predicate.isNotNull(undefined))
-    assertTrue(Predicate.isNotNull("null"))
+describe("isMap", () => {
+  it("detects Map instances", () => {
+    assert.equal(Predicate.isMap(new Map()), true)
+    assert.equal(Predicate.isMap({}), false)
+    assert.equal(Predicate.isMap(null), false)
+    assert.equal(Predicate.isMap(undefined), false)
   })
+})
 
-  it("isNever", () => {
-    assertFalse(Predicate.isNever(null))
-    assertFalse(Predicate.isNever(undefined))
-    assertFalse(Predicate.isNever({}))
-    assertFalse(Predicate.isNever([]))
+describe("isString", () => {
+  it("detects string values", () => {
+    assert.equal(Predicate.isString("a"), true)
+    assert.equal(Predicate.isString(1), false)
+    assert.equal(Predicate.isString(new String("a")), false)
   })
+})
 
-  it("isUnknown", () => {
-    assertTrue(Predicate.isUnknown(null))
-    assertTrue(Predicate.isUnknown(undefined))
-    assertTrue(Predicate.isUnknown({}))
-    assertTrue(Predicate.isUnknown([]))
+describe("isNumber", () => {
+  it("detects number values", () => {
+    assert.equal(Predicate.isNumber(2), true)
+    assert.equal(Predicate.isNumber(Number.NaN), true)
+    assert.equal(Predicate.isNumber("2"), false)
   })
+})
 
-  it("isObject", () => {
-    assertTrue(Predicate.isObject({}))
-    assertTrue(Predicate.isObject([]))
-    assertTrue(Predicate.isObject(() => 1))
-    assertFalse(Predicate.isObject(null))
-    assertFalse(Predicate.isObject(undefined))
-    assertFalse(Predicate.isObject("a"))
-    assertFalse(Predicate.isObject(1))
-    assertFalse(Predicate.isObject(true))
-    assertFalse(Predicate.isObject(1n))
-    assertFalse(Predicate.isObject(Symbol.for("a")))
+describe("isBoolean", () => {
+  it("detects boolean values", () => {
+    assert.equal(Predicate.isBoolean(true), true)
+    assert.equal(Predicate.isBoolean(false), true)
+    assert.equal(Predicate.isBoolean("true"), false)
   })
+})
 
-  it("isSet", () => {
-    assertTrue(Predicate.isSet(new Set([1, 2])))
-    assertTrue(Predicate.isSet(new Set()))
-    assertFalse(Predicate.isSet({}))
-    assertFalse(Predicate.isSet(null))
-    assertFalse(Predicate.isSet(undefined))
+describe("isBigInt", () => {
+  it("detects bigint values", () => {
+    assert.equal(Predicate.isBigInt(1n), true)
+    assert.equal(Predicate.isBigInt(1), false)
   })
+})
 
-  it("isMap", () => {
-    assertTrue(Predicate.isMap(new Map()))
-    assertFalse(Predicate.isMap({}))
-    assertFalse(Predicate.isMap(null))
-    assertFalse(Predicate.isMap(undefined))
+describe("isSymbol", () => {
+  it("detects symbol values", () => {
+    assert.equal(Predicate.isSymbol(Symbol.for("a")), true)
+    assert.equal(Predicate.isSymbol("a"), false)
   })
+})
 
-  it("hasProperty", () => {
+describe("isPropertyKey", () => {
+  it("accepts strings, numbers, and symbols", () => {
+    assert.equal(Predicate.isPropertyKey("a"), true)
+    assert.equal(Predicate.isPropertyKey(1), true)
+    assert.equal(Predicate.isPropertyKey(Number.NaN), true)
+    assert.equal(Predicate.isPropertyKey(Symbol.for("a")), true)
+    assert.equal(Predicate.isPropertyKey(true), false)
+  })
+})
+
+describe("isFunction", () => {
+  it("detects callable values", () => {
+    assert.equal(Predicate.isFunction(Predicate.isFunction), true)
+    assert.equal(Predicate.isFunction("function"), false)
+  })
+})
+
+describe("isUndefined", () => {
+  it("detects undefined", () => {
+    assert.equal(Predicate.isUndefined(undefined), true)
+    assert.equal(Predicate.isUndefined(null), false)
+    assert.equal(Predicate.isUndefined("undefined"), false)
+  })
+})
+
+describe("isNotUndefined", () => {
+  it("filters out undefined", () => {
+    assert.equal(Predicate.isNotUndefined(undefined), false)
+    assert.equal(Predicate.isNotUndefined(null), true)
+    assert.equal(Predicate.isNotUndefined("undefined"), true)
+  })
+})
+
+describe("isNull", () => {
+  it("detects null", () => {
+    assert.equal(Predicate.isNull(null), true)
+    assert.equal(Predicate.isNull(undefined), false)
+    assert.equal(Predicate.isNull("null"), false)
+  })
+})
+
+describe("isNotNull", () => {
+  it("filters out null", () => {
+    assert.equal(Predicate.isNotNull(null), false)
+    assert.equal(Predicate.isNotNull(undefined), true)
+    assert.equal(Predicate.isNotNull("null"), true)
+  })
+})
+
+describe("isNullish", () => {
+  it("detects null and undefined", () => {
+    assert.equal(Predicate.isNullish(null), true)
+    assert.equal(Predicate.isNullish(undefined), true)
+    assert.equal(Predicate.isNullish({}), false)
+    assert.equal(Predicate.isNullish([]), false)
+  })
+})
+
+describe("isNotNullish", () => {
+  it("filters out null and undefined", () => {
+    assert.equal(Predicate.isNotNullish({}), true)
+    assert.equal(Predicate.isNotNullish([]), true)
+    assert.equal(Predicate.isNotNullish(null), false)
+    assert.equal(Predicate.isNotNullish(undefined), false)
+  })
+})
+
+describe("isNever", () => {
+  it("always returns false", () => {
+    assert.equal(Predicate.isNever(null), false)
+    assert.equal(Predicate.isNever(undefined), false)
+    assert.equal(Predicate.isNever({}), false)
+    assert.equal(Predicate.isNever([]), false)
+  })
+})
+
+describe("isUnknown", () => {
+  it("always returns true", () => {
+    assert.equal(Predicate.isUnknown(null), true)
+    assert.equal(Predicate.isUnknown(undefined), true)
+    assert.equal(Predicate.isUnknown({}), true)
+    assert.equal(Predicate.isUnknown([]), true)
+  })
+})
+
+describe("isObjectOrArray", () => {
+  it("accepts objects and arrays but not null", () => {
+    assert.equal(Predicate.isObjectOrArray({}), true)
+    assert.equal(Predicate.isObjectOrArray([]), true)
+    assert.equal(Predicate.isObjectOrArray(null), false)
+    assert.equal(Predicate.isObjectOrArray(() => {}), false)
+  })
+})
+
+describe("isObject", () => {
+  it("accepts objects but not arrays or functions", () => {
+    assert.equal(Predicate.isObject({}), true)
+    assert.equal(Predicate.isObject({ a: 1 }), true)
+    assert.equal(Predicate.isObject([]), false)
+    assert.equal(Predicate.isObject([1, 2, 3]), false)
+    assert.equal(Predicate.isObject(null), false)
+    assert.equal(Predicate.isObject(undefined), false)
+    assert.equal(Predicate.isObject(() => null), false)
+  })
+})
+
+describe("isReadonlyObject", () => {
+  it("behaves like isObject", () => {
+    assert.equal(Predicate.isReadonlyObject({}), true)
+    assert.equal(Predicate.isReadonlyObject({ a: 1 }), true)
+    assert.equal(Predicate.isReadonlyObject([]), false)
+    assert.equal(Predicate.isReadonlyObject([1, 2, 3]), false)
+    assert.equal(Predicate.isReadonlyObject(null), false)
+    assert.equal(Predicate.isReadonlyObject(undefined), false)
+  })
+})
+
+describe("isObjectKeyword", () => {
+  it("accepts objects, arrays, and functions", () => {
+    assert.equal(Predicate.isObjectKeyword({}), true)
+    assert.equal(Predicate.isObjectKeyword([]), true)
+    assert.equal(Predicate.isObjectKeyword(() => 1), true)
+    assert.equal(Predicate.isObjectKeyword(null), false)
+    assert.equal(Predicate.isObjectKeyword(undefined), false)
+    assert.equal(Predicate.isObjectKeyword("a"), false)
+    assert.equal(Predicate.isObjectKeyword(1), false)
+    assert.equal(Predicate.isObjectKeyword(true), false)
+    assert.equal(Predicate.isObjectKeyword(1n), false)
+    assert.equal(Predicate.isObjectKeyword(Symbol.for("a")), false)
+  })
+})
+
+describe("hasProperty", () => {
+  it("detects properties with string and symbol keys", () => {
     const a = Symbol.for("effect/test/a")
 
-    assertTrue(Predicate.hasProperty({ a: 1 }, "a"))
-    assertTrue(Predicate.hasProperty("a")({ a: 1 }))
-    assertTrue(Predicate.hasProperty({ [a]: 1 }, a))
-    assertTrue(Predicate.hasProperty(a)({ [a]: 1 }))
-
-    assertFalse(Predicate.hasProperty({}, "a"))
-    assertFalse(Predicate.hasProperty(null, "a"))
-    assertFalse(Predicate.hasProperty(undefined, "a"))
-    assertFalse(Predicate.hasProperty({}, "a"))
-    assertFalse(Predicate.hasProperty(() => {}, "a"))
-
-    assertFalse(Predicate.hasProperty({}, a))
-    assertFalse(Predicate.hasProperty(null, a))
-    assertFalse(Predicate.hasProperty(undefined, a))
-    assertFalse(Predicate.hasProperty({}, a))
-    assertFalse(Predicate.hasProperty(() => {}, a))
+    assert.equal(Predicate.hasProperty({ a: 1 }, "a"), true)
+    assert.equal(Predicate.hasProperty("a")({ a: 1 }), true)
+    assert.equal(Predicate.hasProperty({ [a]: 1 }, a), true)
+    assert.equal(Predicate.hasProperty(a)({ [a]: 1 }), true)
   })
 
-  it("isTagged", () => {
-    assertFalse(Predicate.isTagged(1, "a"))
-    assertFalse(Predicate.isTagged("", "a"))
-    assertFalse(Predicate.isTagged({}, "a"))
-    assertFalse(Predicate.isTagged("a")({}))
-    assertFalse(Predicate.isTagged({ a: "a" }, "a"))
-    assertTrue(Predicate.isTagged({ _tag: "a" }, "a"))
-    assertTrue(Predicate.isTagged("a")({ _tag: "a" }))
+  it("returns false when the key is missing or the value is not object-like", () => {
+    const a = Symbol.for("effect/test/a")
+
+    assert.equal(Predicate.hasProperty({}, "a"), false)
+    assert.equal(Predicate.hasProperty(null, "a"), false)
+    assert.equal(Predicate.hasProperty(undefined, "a"), false)
+    assert.equal(Predicate.hasProperty(() => {}, "a"), false)
+
+    assert.equal(Predicate.hasProperty({}, a), false)
+    assert.equal(Predicate.hasProperty(null, a), false)
+    assert.equal(Predicate.hasProperty(undefined, a), false)
+    assert.equal(Predicate.hasProperty(() => {}, a), false)
+  })
+})
+
+describe("isTagged", () => {
+  it("matches objects with the expected _tag", () => {
+    assert.equal(Predicate.isTagged(1, "a"), false)
+    assert.equal(Predicate.isTagged("", "a"), false)
+    assert.equal(Predicate.isTagged({}, "a"), false)
+    assert.equal(Predicate.isTagged("a")({}), false)
+    assert.equal(Predicate.isTagged({ a: "a" }, "a"), false)
+    assert.equal(Predicate.isTagged({ _tag: "a" }, "a"), true)
+    assert.equal(Predicate.isTagged("a")({ _tag: "a" }), true)
+  })
+})
+
+describe("isError", () => {
+  it("detects Error instances", () => {
+    assert.equal(Predicate.isError(new Error()), true)
+    assert.equal(Predicate.isError(null), false)
+    assert.equal(Predicate.isError({}), false)
+  })
+})
+
+describe("isUint8Array", () => {
+  it("detects Uint8Array instances", () => {
+    assert.equal(Predicate.isUint8Array(new Uint8Array()), true)
+    assert.equal(Predicate.isUint8Array(null), false)
+    assert.equal(Predicate.isUint8Array({}), false)
+  })
+})
+
+describe("isDate", () => {
+  it("detects Date instances", () => {
+    assert.equal(Predicate.isDate(new Date()), true)
+    assert.equal(Predicate.isDate(null), false)
+    assert.equal(Predicate.isDate({}), false)
+  })
+})
+
+describe("isIterable", () => {
+  it("detects iterable values including strings", () => {
+    assert.equal(Predicate.isIterable([]), true)
+    assert.equal(Predicate.isIterable(""), true)
+    assert.equal(Predicate.isIterable(new Set()), true)
+    assert.equal(Predicate.isIterable(new Map()), true)
+
+    assert.equal(Predicate.isIterable(null), false)
+    assert.equal(Predicate.isIterable({}), false)
+  })
+})
+
+describe("isPromise", () => {
+  it("detects promise-like values with then and catch", () => {
+    assert.equal(Predicate.isPromise(Promise.resolve("ok")), true)
+    /* oxlint-disable-next-line no-thenable */
+    assert.equal(Predicate.isPromise({ then: () => {}, catch: () => {} }), true)
+    /* oxlint-disable-next-line no-thenable */
+    assert.equal(Predicate.isPromise({ then: () => {} }), false)
+    assert.equal(Predicate.isPromise({}), false)
+  })
+})
+
+describe("isPromiseLike", () => {
+  it("detects thenables", () => {
+    assert.equal(Predicate.isPromiseLike(Promise.resolve("ok")), true)
+    /* oxlint-disable-next-line no-thenable */
+    assert.equal(Predicate.isPromiseLike({ then: () => {} }), true)
+    assert.equal(Predicate.isPromiseLike({}), false)
+    assert.equal(Predicate.isPromiseLike(null), false)
+  })
+})
+
+describe("isRegExp", () => {
+  it("detects RegExp instances", () => {
+    assert.equal(Predicate.isRegExp(/a/), true)
+    assert.equal(Predicate.isRegExp(null), false)
+    assert.equal(Predicate.isRegExp("a"), false)
+  })
+})
+
+describe("isTupleOf", () => {
+  it("checks for exact length", () => {
+    assert.equal(Predicate.isTupleOf([1, 2, 3], 3), true)
+    assert.equal(Predicate.isTupleOf([1, 2, 3], 4), false)
+    assert.equal(Predicate.isTupleOf([1, 2, 3], 2), false)
   })
 
-  it("isNullable", () => {
-    assertTrue(Predicate.isNullable(null))
-    assertTrue(Predicate.isNullable(undefined))
-    assertFalse(Predicate.isNullable({}))
-    assertFalse(Predicate.isNullable([]))
+  it("supports curried usage", () => {
+    const isPair = Predicate.isTupleOf(2)
+
+    assert.equal(isPair(["a", "b"]), true)
+    assert.equal(isPair(["a"]), false)
+  })
+})
+
+describe("isTupleOfAtLeast", () => {
+  it("checks for minimum length", () => {
+    assert.equal(Predicate.isTupleOfAtLeast([1, 2, 3], 3), true)
+    assert.equal(Predicate.isTupleOfAtLeast([1, 2, 3], 2), true)
+    assert.equal(Predicate.isTupleOfAtLeast([1, 2, 3], 4), false)
   })
 
-  it("isNotNullable", () => {
-    assertTrue(Predicate.isNotNullable({}))
-    assertTrue(Predicate.isNotNullable([]))
-    assertFalse(Predicate.isNotNullable(null))
-    assertFalse(Predicate.isNotNullable(undefined))
-  })
+  it("supports curried usage", () => {
+    const hasAtLeast2 = Predicate.isTupleOfAtLeast(2)
 
-  it("isError", () => {
-    assertTrue(Predicate.isError(new Error()))
-    assertFalse(Predicate.isError(null))
-    assertFalse(Predicate.isError({}))
-  })
-
-  it("isUint8Array", () => {
-    assertTrue(Predicate.isUint8Array(new Uint8Array()))
-    assertFalse(Predicate.isUint8Array(null))
-    assertFalse(Predicate.isUint8Array({}))
-  })
-
-  it("isDate", () => {
-    assertTrue(Predicate.isDate(new Date()))
-    assertFalse(Predicate.isDate(null))
-    assertFalse(Predicate.isDate({}))
-  })
-
-  it("isIterable", () => {
-    assertTrue(Predicate.isIterable([]))
-    assertTrue(Predicate.isIterable(new Set()))
-    assertFalse(Predicate.isIterable(null))
-    assertFalse(Predicate.isIterable({}))
-  })
-
-  it("isRecord", () => {
-    assertTrue(Predicate.isRecord({}))
-    assertTrue(Predicate.isRecord({ a: 1 }))
-
-    assertFalse(Predicate.isRecord([]))
-    assertFalse(Predicate.isRecord([1, 2, 3]))
-    assertFalse(Predicate.isRecord(null))
-    assertFalse(Predicate.isRecord(undefined))
-    assertFalse(Predicate.isRecord(() => null))
-  })
-
-  it("isReadonlyRecord", () => {
-    assertTrue(Predicate.isReadonlyRecord({}))
-    assertTrue(Predicate.isReadonlyRecord({ a: 1 }))
-
-    assertFalse(Predicate.isReadonlyRecord([]))
-    assertFalse(Predicate.isReadonlyRecord([1, 2, 3]))
-    assertFalse(Predicate.isReadonlyRecord(null))
-    assertFalse(Predicate.isReadonlyRecord(undefined))
-  })
-
-  it("isTupleOf", () => {
-    assertTrue(Predicate.isTupleOf([1, 2, 3], 3))
-    assertFalse(Predicate.isTupleOf([1, 2, 3], 4))
-    assertFalse(Predicate.isTupleOf([1, 2, 3], 2))
-  })
-
-  it("isTupleOfAtLeast", () => {
-    assertTrue(Predicate.isTupleOfAtLeast([1, 2, 3], 3))
-    assertTrue(Predicate.isTupleOfAtLeast([1, 2, 3], 2))
-    assertFalse(Predicate.isTupleOfAtLeast([1, 2, 3], 4))
-  })
-
-  it("isRegExp", () => {
-    assertTrue(Predicate.isRegExp(/a/))
-    assertFalse(Predicate.isRegExp(null))
-    assertFalse(Predicate.isRegExp("a"))
+    assert.equal(hasAtLeast2(["a", "b", "c"]), true)
+    assert.equal(hasAtLeast2(["a"]), false)
   })
 })

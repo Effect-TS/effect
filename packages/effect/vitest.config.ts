@@ -1,13 +1,11 @@
-import { mergeConfig, type ViteUserConfig } from "vitest/config"
-import shared from "../../vitest.shared.js"
+import { mergeConfig } from "vitest/config"
+import shared from "../../vitest.shared.ts"
 
-const config: ViteUserConfig = {
+const isDeno = process.versions.deno !== undefined
+
+export default mergeConfig(shared, {
   test: {
-    coverage: {
-      reporter: ["html"],
-      include: ["src/Schema.ts"]
-    }
+    // @see https://github.com/denoland/deno/issues/23882
+    exclude: (isDeno ? ["test/cluster/**"] : [])
   }
-}
-
-export default mergeConfig(shared, config)
+})

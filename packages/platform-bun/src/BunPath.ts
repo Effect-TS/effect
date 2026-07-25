@@ -1,25 +1,37 @@
 /**
- * @since 1.0.0
+ * Bun-backed layers for Effect's {@link Path} service.
+ *
+ * This module provides the `Path` service for Bun programs by reusing the
+ * shared Node-compatible path implementation. Provide one of these layers when
+ * Bun code should receive path operations from the Effect environment instead
+ * of importing runtime path helpers directly.
+ *
+ * @since 4.0.0
  */
-
 import * as NodePath from "@effect/platform-node-shared/NodePath"
-import type { Path } from "@effect/platform/Path"
-import type { Layer } from "effect/Layer"
+import type * as Layer from "effect/Layer"
+import type { Path } from "effect/Path"
 
 /**
- * @since 1.0.0
- * @category layer
+ * Layer that provides the default `Path` service for Bun using the shared Node path implementation.
+ *
+ * @category layers
+ * @since 4.0.0
  */
-export const layer: Layer<Path> = NodePath.layer
+export const layer: Layer.Layer<Path> = NodePath.layer
 
 /**
- * @since 1.0.0
- * @category layer
+ * Layer that provides the POSIX `Path` service for Bun using the shared Node path implementation.
+ *
+ * @category layers
+ * @since 4.0.0
  */
-export const layerPosix: Layer<Path> = NodePath.layerPosix
+export const layerPosix: Layer.Layer<Path> = NodePath.layerPosix
 
 /**
- * @since 1.0.0
- * @category layer
+ * Layer that provides the Win32 `Path` service for Bun using the shared Node path implementation.
+ *
+ * @category layers
+ * @since 4.0.0
  */
-export const layerWin32: Layer<Path> = NodePath.layerWin32
+export const layerWin32: Layer.Layer<Path> = NodePath.layerWin32

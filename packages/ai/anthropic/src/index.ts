@@ -1,29 +1,40 @@
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as AnthropicClient from "./AnthropicClient.js"
+
+// @barrel: Auto-generated exports. Do not edit manually.
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as AnthropicConfig from "./AnthropicConfig.js"
+export * as AnthropicClient from "./AnthropicClient.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as AnthropicLanguageModel from "./AnthropicLanguageModel.js"
+export * as AnthropicConfig from "./AnthropicConfig.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as AnthropicTokenizer from "./AnthropicTokenizer.js"
+export * as AnthropicError from "./AnthropicError.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as AnthropicTool from "./AnthropicTool.js"
+export * as AnthropicLanguageModel from "./AnthropicLanguageModel.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as Generated from "./Generated.js"
+export * as AnthropicTelemetry from "./AnthropicTelemetry.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as AnthropicTool from "./AnthropicTool.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as Generated from "./Generated.ts"

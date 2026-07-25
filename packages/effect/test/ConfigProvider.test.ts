@@ -1,943 +1,1010 @@
 import { describe, it } from "@effect/vitest"
-import { assertNone, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import {
-  Cause,
-  Chunk,
-  Config,
-  ConfigError,
-  ConfigProvider,
-  Effect,
-  Either,
-  Equal,
-  Exit,
-  HashMap,
-  HashSet,
-  LogLevel,
-  Option,
-  Secret
-} from "effect"
+import { deepStrictEqual } from "@effect/vitest/utils"
+import { ConfigProvider, Effect, FileSystem, Layer, Path, PlatformError, Result } from "effect"
 
-interface HostPort {
-  readonly host: string
-  readonly port: number
+async function assertSuccess(
+  provider: ConfigProvider.ConfigProvider,
+  path: ConfigProvider.Path,
+  expected: ConfigProvider.Node | undefined
+) {
+  const r = Effect.result(provider.load(path))
+  deepStrictEqual(await Effect.runPromise(r), Result.succeed(expected))
 }
 
-const hostPortConfig: Config.Config<HostPort> = Config.all({
-  host: Config.string("host"),
-  port: Config.integer("port")
-})
-
-interface HostPorts {
-  readonly hostPorts: ReadonlyArray<HostPort>
-}
-
-const hostPortsConfig: Config.Config<HostPorts> = Config.all({
-  hostPorts: Config.array(hostPortConfig, "hostPorts")
-})
-
-interface ServiceConfig {
-  readonly hostPort: HostPort
-  readonly timeout: number
-}
-
-const serviceConfigConfig: Config.Config<ServiceConfig> = Config.all({
-  hostPort: hostPortConfig.pipe(Config.nested("hostPort")),
-  timeout: Config.integer("timeout")
-})
-
-interface StockDay {
-  readonly date: Date
-  readonly open: number
-  readonly close: number
-  readonly low: number
-  readonly high: number
-  readonly volume: number
-}
-
-const stockDayConfig: Config.Config<StockDay> = Config.all({
-  date: Config.date("date"),
-  open: Config.number("open"),
-  close: Config.number("close"),
-  low: Config.number("low"),
-  high: Config.number("high"),
-  volume: Config.integer("volume")
-})
-
-interface SNP500 {
-  readonly stockDays: HashMap.HashMap<string, StockDay>
-}
-
-const snp500Config: Config.Config<SNP500> = Config.all({
-  stockDays: Config.hashMap(stockDayConfig)
-})
-
-interface WebScrapingTargets {
-  readonly targets: HashSet.HashSet<string>
-}
-
-const webScrapingTargetsConfig: Config.Config<WebScrapingTargets> = Config.all({
-  targets: Config.hashSet(Config.string(), "targets")
-})
-
-const webScrapingTargetsConfigWithDefault = Config.all({
-  targets: Config.chunk(Config.string()).pipe(
-    Config.withDefault(Chunk.make("https://effect.website2", "https://github.com/Effect-TS2"))
-  )
-})
-
-const provider = (map: Map<string, string>): ConfigProvider.ConfigProvider => {
-  return ConfigProvider.fromMap(map)
-}
+// async function assertFailure(
+//   provider: ConfigProvider.ConfigProvider,
+//   path: ConfigProvider.Path,
+//   expected: ConfigProvider.SourceError
+// ) {
+//   const r = Effect.result(provider.load(path))
+//   deepStrictEqual(await Effect.runPromise(r), Result.fail(expected))
+// }
 
 describe("ConfigProvider", () => {
-  it.effect("flat atoms", () =>
-    Effect.gen(function*() {
-      const map = new Map([["host", "localhost"], ["port", "8080"]])
-      const result = yield* provider(map).load(hostPortConfig)
-      deepStrictEqual(result, {
-        host: "localhost",
-        port: 8080
-      })
-    }))
+  it("orElse", async () => {
+    const provider1 = ConfigProvider.fromEnv({
+      env: {
+        "A": "value1"
+      }
+    })
+    const provider2 = ConfigProvider.fromEnv({
+      env: {
+        "B": "value2"
+      }
+    })
+    const provider = provider1.pipe(ConfigProvider.orElse(provider2))
+    await assertSuccess(provider, ["A"], ConfigProvider.makeValue("value1"))
+    await assertSuccess(provider, ["B"], ConfigProvider.makeValue("value2"))
+  })
 
-  it.effect("nested atoms", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["hostPort.host", "localhost"],
-        ["hostPort.port", "8080"],
-        ["timeout", "1000"]
-      ])
-      const result = yield* provider(map).load(serviceConfigConfig)
-      deepStrictEqual(result, {
-        hostPort: {
-          host: "localhost",
-          port: 8080
+  it("orElse does not fall back on SourceError", async () => {
+    const error = new ConfigProvider.SourceError({ message: "io down" })
+    const primary = ConfigProvider.make(() => Effect.fail(error))
+    const fallback = ConfigProvider.fromEnv({ env: { KEY: "fallback" } })
+    const provider = primary.pipe(ConfigProvider.orElse(fallback))
+    const r = await Effect.runPromise(Effect.result(provider.load(["KEY"])))
+    deepStrictEqual(r, Result.fail(error))
+  })
+
+  it("orElse applies each operand's transformations", async () => {
+    const primary = ConfigProvider.fromEnv({
+      env: {
+        "DATABASE_HOST": "from-env"
+      }
+    }).pipe(ConfigProvider.constantCase)
+    const fallback = ConfigProvider.fromEnv({
+      env: {
+        "APP_PORT": "3000"
+      }
+    }).pipe(ConfigProvider.nested("APP"))
+    const provider = primary.pipe(ConfigProvider.orElse(fallback))
+    await assertSuccess(provider, ["databaseHost"], ConfigProvider.makeValue("from-env"))
+    await assertSuccess(provider, ["PORT"], ConfigProvider.makeValue("3000"))
+  })
+
+  it("mapInput distributes over orElse", async () => {
+    const appendSuffix = ConfigProvider.mapInput((path) =>
+      path.map((seg) => typeof seg === "string" ? `${seg}_SUFFIX` : seg)
+    )
+    const primary = ConfigProvider.fromEnv({
+      env: {
+        "prefix_SUFFIX_KEY_SUFFIX": "primary"
+      }
+    }).pipe(ConfigProvider.nested("prefix"))
+    const fallback = ConfigProvider.fromEnv({
+      env: {
+        "fallback_SUFFIX_KEY_SUFFIX": "fallback",
+        "fallback_SUFFIX_OTHER_SUFFIX": "fallback"
+      }
+    }).pipe(ConfigProvider.nested("fallback"))
+    const provider = primary.pipe(ConfigProvider.orElse(fallback), appendSuffix)
+    await assertSuccess(provider, ["KEY"], ConfigProvider.makeValue("primary"))
+    await assertSuccess(provider, ["OTHER"], ConfigProvider.makeValue("fallback"))
+  })
+
+  it("nested distributes over orElse", async () => {
+    const primary = ConfigProvider.fromEnv({
+      env: {
+        "app_DATABASE_HOST": "primary"
+      }
+    }).pipe(ConfigProvider.constantCase)
+    const fallback = ConfigProvider.fromEnv({
+      env: {
+        "app_PORT": "fallback"
+      }
+    })
+    const provider = primary.pipe(ConfigProvider.orElse(fallback), ConfigProvider.nested("app"))
+    await assertSuccess(provider, ["databaseHost"], ConfigProvider.makeValue("primary"))
+    await assertSuccess(provider, ["PORT"], ConfigProvider.makeValue("fallback"))
+  })
+
+  it("orElse falls back when the primary env value is empty", async () => {
+    const primary = ConfigProvider.fromEnv({
+      env: {
+        "KEY": ""
+      }
+    })
+    const fallback = ConfigProvider.fromUnknown({ KEY: "fallback" })
+    const provider = primary.pipe(ConfigProvider.orElse(fallback))
+    await assertSuccess(provider, ["KEY"], ConfigProvider.makeValue("fallback"))
+  })
+
+  it("constantCase", async () => {
+    const provider = ConfigProvider.constantCase(ConfigProvider.fromEnv({
+      env: {
+        "CONSTANT_CASE": "value1"
+      }
+    }))
+    await assertSuccess(provider, ["constant.case"], ConfigProvider.makeValue("value1"))
+  })
+
+  it("constantCase uses config casing for numeric word groups", async () => {
+    const provider = ConfigProvider.constantCase(ConfigProvider.fromEnv({
+      env: {
+        "API_V2_XML": "value1",
+        "FIELD2_VALUE": "value2"
+      }
+    }))
+    await assertSuccess(provider, ["api-v2 xml"], ConfigProvider.makeValue("value1"))
+    await assertSuccess(provider, ["field2Value"], ConfigProvider.makeValue("value2"))
+  })
+
+  describe("mapInput", () => {
+    it("two mappings", async () => {
+      const appendA = ConfigProvider.mapInput((path) => path.map((sn) => typeof sn === "string" ? sn + "_A" : sn))
+      const appendB = ConfigProvider.mapInput((path) => path.map((sn) => typeof sn === "string" ? sn + "_B" : sn))
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          "KEY_A_B": "value"
+        }
+      }).pipe(appendA, appendB)
+      await assertSuccess(provider, ["KEY"], ConfigProvider.makeValue("value"))
+    })
+  })
+
+  describe("nested", () => {
+    it("should add a prefix to the path", async () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          "prefix_A": "value"
+        }
+      }).pipe(ConfigProvider.nested("prefix"))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue("value"))
+    })
+
+    it("constantCase + nested", async () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          "prefix_KEY_WITH_DOTS": "value"
+        }
+      }).pipe(ConfigProvider.constantCase, ConfigProvider.nested("prefix"))
+      await assertSuccess(provider, ["key.with.dots"], ConfigProvider.makeValue("value"))
+    })
+
+    it("nested + constantCase", async () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          "PREFIX_WITH_DOTS_KEY_WITH_DOTS": "value"
+        }
+      }).pipe(ConfigProvider.nested("prefix.with.dots"), ConfigProvider.constantCase)
+      await assertSuccess(provider, ["key.with.dots"], ConfigProvider.makeValue("value"))
+    })
+
+    it("multiple nested calls compose as wrappers", async () => {
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          "b_a_KEY": "value"
+        }
+      }).pipe(ConfigProvider.nested("a"), ConfigProvider.nested("b"))
+      await assertSuccess(provider, ["KEY"], ConfigProvider.makeValue("value"))
+    })
+
+    it("mapInput after nested transforms the full path", async () => {
+      const appendLeaf = ConfigProvider.mapInput((path) => [...path, "leaf"])
+      const provider = ConfigProvider.fromEnv({
+        env: {
+          "app_KEY_leaf": "value"
+        }
+      }).pipe(ConfigProvider.nested("app"), appendLeaf)
+      await assertSuccess(provider, ["KEY"], ConfigProvider.makeValue("value"))
+    })
+  })
+
+  describe("fromEnv", () => {
+    it("env without an underscore", async () => {
+      const env = { A: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("missing key returns undefined", async () => {
+      const env = { A: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+      await assertSuccess(provider, ["missing"], undefined)
+    })
+
+    it("does not read inherited environment properties", async () => {
+      const provider = ConfigProvider.fromEnv({ env: {} })
+      await assertSuccess(provider, ["constructor"], undefined)
+    })
+
+    it("does not traverse inherited trie properties", async () => {
+      delete (Object as any).children
+      const provider = ConfigProvider.fromEnv({ env: { constructor_X: "value" } })
+      const polluted = Object.hasOwn(Object, "children")
+      delete (Object as any).children
+
+      deepStrictEqual(polluted, false)
+      await assertSuccess(provider, ["constructor", "X"], ConfigProvider.makeValue("value"))
+    })
+
+    it("treats empty string values as missing while preserving structure by default", async () => {
+      const env = { A: "", B: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["A", "B"])))
+      await assertSuccess(provider, ["A"], undefined)
+      await assertSuccess(provider, ["B"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("preserves empty strings when requested", async () => {
+      const env = { A: "" }
+      const provider = ConfigProvider.fromEnv({ env, preserveEmptyStrings: true })
+
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["A"])))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue(""))
+    })
+
+    it("treats empty co-located record values as missing and preserves children", async () => {
+      const env = { A: "", A_B: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["B"])))
+      await assertSuccess(provider, ["A", "B"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("preserves empty co-located record values when requested", async () => {
+      const env = { A: "", A_B: "value1" }
+      const provider = ConfigProvider.fromEnv({ env, preserveEmptyStrings: true })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["B"]), ""))
+      await assertSuccess(provider, ["A", "B"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("treats empty co-located array values as missing and preserves children", async () => {
+      const env = { A: "", A_0: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeArray(1))
+      await assertSuccess(provider, ["A", 0], ConfigProvider.makeValue("value1"))
+    })
+
+    it("preserves empty array children structurally while treating their values as missing", async () => {
+      const env = { A_0: "", A_1: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeArray(2))
+      await assertSuccess(provider, ["A", 0], undefined)
+      await assertSuccess(provider, ["A", 1], ConfigProvider.makeValue("value1"))
+    })
+
+    it("direct lookup of a key containing underscores", async () => {
+      const env = { NODE_ENV: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+      await assertSuccess(provider, ["NODE_ENV"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("single underscore creates nesting", async () => {
+      const env = { NODE_ENV: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["NODE"], ConfigProvider.makeRecord(new Set(["ENV"])))
+      await assertSuccess(provider, ["NODE", "ENV"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("prefix can be both a value and a container", async () => {
+      const env = { NODE: "value1", NODE_ENV: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["NODE"], ConfigProvider.makeRecord(new Set(["ENV"]), "value1"))
+      await assertSuccess(provider, ["NODE", "ENV"], ConfigProvider.makeValue("value2"))
+      await assertSuccess(provider, ["NODE_ENV"], ConfigProvider.makeValue("value2"))
+    })
+
+    it("multiple nested children under the same prefix", async () => {
+      const env = { NODE: "value1", NODE_ENV: "value2", NODE_PATH: "value3" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["NODE"], ConfigProvider.makeRecord(new Set(["ENV", "PATH"]), "value1"))
+      await assertSuccess(provider, ["NODE", "ENV"], ConfigProvider.makeValue("value2"))
+      await assertSuccess(provider, ["NODE", "PATH"], ConfigProvider.makeValue("value3"))
+      await assertSuccess(provider, ["NODE_PATH"], ConfigProvider.makeValue("value3"))
+    })
+
+    it("nested depth > 2 works", async () => {
+      const env = { A_B_C: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["B"])))
+      await assertSuccess(provider, ["A", "B"], ConfigProvider.makeRecord(new Set(["C"])))
+      await assertSuccess(provider, ["A", "B", "C"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("array: dense numeric children yield an Array node", async () => {
+      const env = { A_0: "value1", A_1: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeArray(2))
+      await assertSuccess(provider, ["A", 0], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A", 1], ConfigProvider.makeValue("value2"))
+    })
+
+    it("array: non-dense numeric children still yield an Array node", async () => {
+      const env = { A: "root", A_0: "value1", A_2: "value3" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      // max index is 2 => length 3 (sparse is allowed)
+      await assertSuccess(provider, ["A"], ConfigProvider.makeArray(3, "root"))
+      await assertSuccess(provider, ["A", 0], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A", 1], undefined)
+      await assertSuccess(provider, ["A", 2], ConfigProvider.makeValue("value3"))
+    })
+
+    it("array: parent can have a co-located value", async () => {
+      const env = { A: "root", A_0: "value1", A_1: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeArray(2, "root"))
+      await assertSuccess(provider, ["A", 0], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A", 1], ConfigProvider.makeValue("value2"))
+    })
+
+    it("mixed children (numeric + non-numeric) yields Record", async () => {
+      const env = { A_0: "value1", A_B: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["0", "B"])))
+      await assertSuccess(provider, ["A", 0], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A", "B"], ConfigProvider.makeValue("value2"))
+    })
+
+    it("double underscore produces an empty segment (no special handling)", async () => {
+      const env = { A__B: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set([""])))
+      await assertSuccess(provider, ["A", ""], ConfigProvider.makeRecord(new Set(["B"])))
+      await assertSuccess(provider, ["A", "", "B"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A__B"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("empty segment node can be both a value and a container", async () => {
+      const env = { A_: "value1", A__B: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A", ""], ConfigProvider.makeRecord(new Set(["B"]), "value1"))
+      await assertSuccess(provider, ["A", "", "B"], ConfigProvider.makeValue("value2"))
+    })
+
+    it("leading underscore creates an empty first segment", async () => {
+      const env = { _A: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set([""])))
+      await assertSuccess(provider, [""], ConfigProvider.makeRecord(new Set(["A"])))
+      await assertSuccess(provider, ["", "A"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["_A"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("trailing underscore creates an empty last segment", async () => {
+      const env = { A_: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set([""])))
+      await assertSuccess(provider, ["A", ""], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A_"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("cannot descend past a leaf (A exists, but A_B does not)", async () => {
+      const env = { A: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A", "B"], undefined)
+      await assertSuccess(provider, ["A_B"], undefined)
+    })
+
+    it("direct lookup and nested lookup both work for the same env var", async () => {
+      const env = { A_B: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A_B"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["B"])))
+      await assertSuccess(provider, ["A", "B"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("prefix value is preserved when there are multiple nested children", async () => {
+      const env = { A: "root", A_B: "value1", A_C: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["B", "C"]), "root"))
+      await assertSuccess(provider, ["A", "B"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A", "C"], ConfigProvider.makeValue("value2"))
+    })
+
+    it("intermediate node can be both a value and a container (A_B and A_B_C)", async () => {
+      const env = { A_B: "value1", A_B_C: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A_B"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["B"])))
+      await assertSuccess(provider, ["A", "B"], ConfigProvider.makeRecord(new Set(["C"]), "value1"))
+      await assertSuccess(provider, ["A", "B", "C"], ConfigProvider.makeValue("value2"))
+    })
+
+    it("numeric index: string and number segments should resolve the same", async () => {
+      const env = { A_0: "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A", 0], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A", "0"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("array: leading-zero indices are not numeric, so it yields a Record", async () => {
+      const env = { A_01: "value1", A_1: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["01", "1"])))
+      await assertSuccess(provider, ["A", "01"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["A", 1], ConfigProvider.makeValue("value2"))
+    })
+
+    it("root path exposes top-level keys", async () => {
+      const env = { A: "value1", B_C: "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["A", "B"])))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["B"], ConfigProvider.makeRecord(new Set(["C"])))
+    })
+
+    it("underscore-only key creates empty segments", async () => {
+      const env = { "_": "value1" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["_"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set([""])))
+      await assertSuccess(provider, [""], ConfigProvider.makeRecord(new Set([""])))
+      await assertSuccess(provider, ["", ""], ConfigProvider.makeValue("value1"))
+    })
+
+    it("array: non-integer indices do not yield an Array node", async () => {
+      const env = { "A_-1": "value1", "A_1.5": "value2" }
+      const provider = ConfigProvider.fromEnv({ env })
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeRecord(new Set(["-1", "1.5"])))
+    })
+  })
+
+  describe("fromUnknown", () => {
+    const provider = ConfigProvider.fromUnknown({
+      string: "value1",
+      record: {
+        key1: "value2",
+        key2: {
+          key3: "value3"
+        }
+      },
+      array: ["value4", {
+        key4: "value5"
+      }, ["value6"]],
+      null: null,
+      number: 42,
+      boolean: true,
+      bigint: 0n,
+      undefined,
+      unknown: Symbol("unknown")
+    })
+
+    it("Root node", async () => {
+      await assertSuccess(
+        provider,
+        [],
+        ConfigProvider.makeRecord(
+          new Set(["string", "record", "array", "null", "number", "boolean", "bigint", "undefined", "unknown"])
+        )
+      )
+    })
+
+    it("Exact leaf resolution", async () => {
+      await assertSuccess(provider, ["string"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["record", "key1"], ConfigProvider.makeValue("value2"))
+      await assertSuccess(provider, ["array", 0], ConfigProvider.makeValue("value4"))
+      await assertSuccess(provider, ["array", 1, "key4"], ConfigProvider.makeValue("value5"))
+      await assertSuccess(provider, ["array", 2, 0], ConfigProvider.makeValue("value6"))
+    })
+
+    it("treats empty string leaves as missing by default", async () => {
+      const provider = ConfigProvider.fromUnknown({
+        a: "",
+        b: "value1",
+        record: {
+          key: ""
         },
-        timeout: 1000
+        array: [""]
       })
-    }))
 
-  it.effect("top-level list with same number of elements per key", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["hostPorts.host", "localhost,localhost,localhost"],
-        ["hostPorts.port", "8080,8080,8080"]
-      ])
-      const result = yield* provider(map).load(hostPortsConfig)
-      deepStrictEqual(result, {
-        hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["a", "b", "record", "array"])))
+      await assertSuccess(provider, ["a"], undefined)
+      await assertSuccess(provider, ["b"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["record"], ConfigProvider.makeRecord(new Set(["key"])))
+      await assertSuccess(provider, ["record", "key"], undefined)
+      await assertSuccess(provider, ["array"], ConfigProvider.makeArray(1))
+      await assertSuccess(provider, ["array", 0], undefined)
+    })
+
+    it("preserves empty string leaves when requested", async () => {
+      const provider = ConfigProvider.fromUnknown(
+        {
+          a: "",
+          array: [""]
+        },
+        { preserveEmptyStrings: true }
+      )
+
+      await assertSuccess(provider, ["a"], ConfigProvider.makeValue(""))
+      await assertSuccess(provider, ["array", 0], ConfigProvider.makeValue(""))
+    })
+
+    it("Object detection", async () => {
+      await assertSuccess(provider, ["record"], ConfigProvider.makeRecord(new Set(["key1", "key2"])))
+      await assertSuccess(provider, ["record", "key2"], ConfigProvider.makeRecord(new Set(["key3"])))
+    })
+
+    it("Array detection", async () => {
+      await assertSuccess(provider, ["array"], ConfigProvider.makeArray(3))
+      await assertSuccess(provider, ["array", 2], ConfigProvider.makeArray(1))
+    })
+
+    it("should return undefined on non-existing paths", async () => {
+      await assertSuccess(provider, ["string", "non-existing"], undefined)
+      await assertSuccess(provider, ["record", "non-existing"], undefined)
+      await assertSuccess(provider, ["array", 3, "non-existing"], undefined)
+    })
+
+    it("null values", async () => {
+      await assertSuccess(provider, ["null"], undefined)
+    })
+
+    it("number values", async () => {
+      await assertSuccess(provider, ["number"], ConfigProvider.makeValue("42"))
+    })
+
+    it("boolean values", async () => {
+      await assertSuccess(provider, ["boolean"], ConfigProvider.makeValue("true"))
+    })
+
+    it("bigint values", async () => {
+      await assertSuccess(provider, ["bigint"], ConfigProvider.makeValue("0"))
+    })
+
+    it("undefined values", async () => {
+      await assertSuccess(provider, ["undefined"], undefined)
+    })
+
+    it("unknown values", async () => {
+      await assertSuccess(provider, ["unknown"], ConfigProvider.makeValue("Symbol(unknown)"))
+    })
+  })
+
+  describe("fromDotEnvContents", () => {
+    it("comments are ignored", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+# comments are ignored
+API_URL=https://api.example.com
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["API"])))
+      await assertSuccess(provider, ["API_URL"], ConfigProvider.makeValue("https://api.example.com"))
+    })
+
+    it("export is allowed", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+export NODE_ENV=production
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["NODE"])))
+      await assertSuccess(provider, ["NODE_ENV"], ConfigProvider.makeValue("production"))
+    })
+
+    it("quoting is allowed", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+NODE_ENV="production"
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["NODE"])))
+      await assertSuccess(provider, ["NODE_ENV"], ConfigProvider.makeValue("production"))
+    })
+
+    it("objects are supported", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+OBJECT_key1=value1
+OBJECT_key2=value2
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["OBJECT"])))
+      await assertSuccess(provider, ["OBJECT"], ConfigProvider.makeRecord(new Set(["key1", "key2"])))
+      await assertSuccess(provider, ["OBJECT", "key1"], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["OBJECT", "key2"], ConfigProvider.makeValue("value2"))
+    })
+
+    it("treats empty string values as missing while preserving structure by default", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+A=
+B=value1
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["A", "B"])))
+      await assertSuccess(provider, ["A"], undefined)
+      await assertSuccess(provider, ["B"], ConfigProvider.makeValue("value1"))
+    })
+
+    it("preserves empty strings when requested", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `
+A=
+`,
+        { preserveEmptyStrings: true }
+      )
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["A"])))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue(""))
+    })
+
+    it("a node may be both leaf and object", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+OBJECT=value1
+OBJECT_key1=value2
+OBJECT_key2=value3
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["OBJECT"])))
+      await assertSuccess(provider, ["OBJECT"], ConfigProvider.makeRecord(new Set(["key1", "key2"]), "value1"))
+      await assertSuccess(provider, ["OBJECT", "key1"], ConfigProvider.makeValue("value2"))
+      await assertSuccess(provider, ["OBJECT", "key2"], ConfigProvider.makeValue("value3"))
+    })
+
+    it("a node may be both leaf and array", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+ARRAY=value1
+ARRAY_0=value2
+ARRAY_1=value3
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["ARRAY"])))
+      await assertSuccess(provider, ["ARRAY"], ConfigProvider.makeArray(2, "value1"))
+      await assertSuccess(provider, ["ARRAY", 0], ConfigProvider.makeValue("value2"))
+      await assertSuccess(provider, ["ARRAY", 1], ConfigProvider.makeValue("value3"))
+    })
+
+    it("arrays are supported", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+ARRAY_0=value1
+ARRAY_1=value2
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["ARRAY"])))
+      await assertSuccess(provider, ["ARRAY"], ConfigProvider.makeArray(2))
+      await assertSuccess(provider, ["ARRAY", 0], ConfigProvider.makeValue("value1"))
+      await assertSuccess(provider, ["ARRAY", 1], ConfigProvider.makeValue("value2"))
+    })
+
+    it("expansion of environment variables is off by default", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(`
+PASSWORD="value"
+DB_PASS=$PASSWORD
+`)
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["PASSWORD", "DB"])))
+      await assertSuccess(provider, ["PASSWORD"], ConfigProvider.makeValue("value"))
+      await assertSuccess(provider, ["DB_PASS"], ConfigProvider.makeValue("$PASSWORD"))
+    })
+
+    it("expansion of environment variables is supported", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `
+PASSWORD="value"
+DB_PASS=$PASSWORD
+`,
+        { expandVariables: true }
+      )
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["PASSWORD", "DB"])))
+      await assertSuccess(provider, ["PASSWORD"], ConfigProvider.makeValue("value"))
+      await assertSuccess(provider, ["DB_PASS"], ConfigProvider.makeValue("value"))
+    })
+
+    it("does not expand missing inherited variables", async () => {
+      const provider = ConfigProvider.fromDotEnvContents("VALUE=$constructor", {
+        expandVariables: true
       })
-    }))
+      await assertSuccess(provider, ["VALUE"], undefined)
+    })
+  })
 
-  it.effect("top-level missing list", () =>
-    Effect.gen(function*() {
-      const map = new Map()
-      const result = yield* Effect.exit(provider(map).load(hostPortsConfig))
-      assertTrue(Exit.isFailure(result))
-    }))
-
-  it.effect("simple map", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["name", "Sherlock Holmes"],
-        ["address", "221B Baker Street"]
-      ])
-      const result = yield* provider(map).load(Config.hashMap(Config.string()))
-      deepStrictEqual(
-        result,
-        HashMap.make(
-          ["name", "Sherlock Holmes"],
-          ["address", "221B Baker Street"]
-        )
-      )
-    }))
-
-  it.effect("top-level lists with multi-character sequence delimiters", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["hostPorts.host", "localhost///localhost///localhost"],
-        ["hostPorts.port", "8080///8080///8080"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map, { seqDelim: "///" }).load(hostPortsConfig)
-      deepStrictEqual(result, {
-        hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
-      })
-    }))
-
-  it.effect("top-level lists with special regex multi-character sequence delimiter", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["hostPorts.host", "localhost|||localhost|||localhost"],
-        ["hostPorts.port", "8080|||8080|||8080"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map, { seqDelim: "|||" }).load(hostPortsConfig)
-      deepStrictEqual(result, {
-        hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
-      })
-    }))
-
-  it.effect("top-level lists with special regex character sequence delimiter", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["hostPorts.host", "localhost*localhost*localhost"],
-        ["hostPorts.port", "8080*8080*8080"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map, { seqDelim: "*" }).load(hostPortsConfig)
-      deepStrictEqual(result, {
-        hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
-      })
-    }))
-
-  it.effect("top-level list with different number of elements per key fails", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["hostPorts.host", "localhost"],
-        ["hostPorts.port", "8080,8080,8080"]
-      ])
-      const result = yield* Effect.exit(provider(map).load(hostPortsConfig))
-      deepStrictEqual(
-        result,
-        Exit.fail(
-          ConfigError.MissingData(
-            ["hostPorts"],
-            "The element at index 1 in a sequence at path \"hostPorts\" was missing"
-          )
-        )
-      )
-    }))
-
-  it.effect("flat atoms of different types", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["date", "2022-10-28"],
-        ["open", "98.8"],
-        ["close", "150.0"],
-        ["low", "98.0"],
-        ["high", "151.5"],
-        ["volume", "100091990"]
-      ])
-      const result = yield* provider(map).load(stockDayConfig)
-      deepStrictEqual(result, {
-        date: new Date("2022-10-28"),
-        open: 98.8,
-        close: 150.0,
-        low: 98.0,
-        high: 151.5,
-        volume: 100091990
-      })
-    }))
-
-  it.effect("tables", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["Effect.date", "2022-10-28"],
-        ["Effect.open", "98.8"],
-        ["Effect.close", "150.0"],
-        ["Effect.low", "98.0"],
-        ["Effect.high", "151.5"],
-        ["Effect.volume", "100091990"]
-      ])
-      const result = yield* provider(map).load(snp500Config)
-      deepStrictEqual(result, {
-        stockDays: HashMap.make([
-          "Effect",
-          {
-            date: new Date("2022-10-28"),
-            open: 98.8,
-            close: 150.0,
-            low: 98.0,
-            high: 151.5,
-            volume: 100091990
-          }
-        ])
-      })
-    }))
-
-  it.effect("empty tables", () =>
-    Effect.gen(function*() {
-      const result = yield* provider(new Map()).load(snp500Config)
-      deepStrictEqual(result, { stockDays: HashMap.empty() })
-    }))
-
-  it.effect("collection of atoms", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["targets", "https://effect.website,https://github.com/Effect-TS"]
-      ])
-      const result = yield* provider(map).load(webScrapingTargetsConfig)
-      deepStrictEqual(result, {
-        targets: HashSet.make("https://effect.website", "https://github.com/Effect-TS")
-      })
-    }))
-
-  it.effect("collection of atoms falls back to default", () =>
-    Effect.gen(function*() {
-      const map = new Map()
-      const result = yield* provider(map).load(webScrapingTargetsConfigWithDefault)
-      deepStrictEqual(result, {
-        targets: Chunk.make("https://effect.website2", "https://github.com/Effect-TS2")
-      })
-    }))
-
-  it.effect("indexed - simple", () =>
-    Effect.gen(function*() {
-      const config = Config.array(Config.integer(), "id")
-      const map = new Map([
-        ["id[0]", "1"],
-        ["id[1]", "2"],
-        ["id[2]", "3"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      deepStrictEqual(result, [1, 2, 3])
-    }))
-
-  it.effect("indexed sequence - simple with list values", () =>
-    Effect.gen(function*() {
-      const config = Config.array(Config.array(Config.integer()), "id")
-      const map = new Map([
-        ["id[0]", "1, 2"],
-        ["id[1]", "3, 4"],
-        ["id[2]", "5, 6"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      deepStrictEqual(result, [[1, 2], [3, 4], [5, 6]])
-    }))
-
-  it.effect("indexed sequence - one product type", () =>
-    Effect.gen(function*() {
-      const config = Config.array(
-        Config.all({
-          age: Config.integer("age"),
-          id: Config.integer("id")
-        }),
-        "employees"
-      )
-      const map = new Map([
-        ["employees[0].age", "1"],
-        ["employees[0].id", "1"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      deepStrictEqual(result, [{ age: 1, id: 1 }])
-    }))
-
-  it.effect("indexed sequence - multiple product types", () =>
-    Effect.gen(function*() {
-      const config = Config.array(
-        Config.all({
-          age: Config.integer("age"),
-          id: Config.integer("id")
-        }),
-        "employees"
-      )
-      const map = new Map([
-        ["employees[0].age", "1"],
-        ["employees[0].id", "2"],
-        ["employees[1].age", "3"],
-        ["employees[1].id", "4"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      deepStrictEqual(result, [{ age: 1, id: 2 }, { age: 3, id: 4 }])
-    }))
-
-  it.effect("indexed sequence - multiple product types with missing fields", () =>
-    Effect.gen(function*() {
-      const config = Config.array(
-        Config.all({
-          age: Config.integer("age"),
-          id: Config.integer("id")
-        }),
-        "employees"
-      )
-      const map = new Map([
-        ["employees[0].age", "1"],
-        ["employees[0].id", "2"],
-        ["employees[1].age", "3"],
-        ["employees[1]", "4"]
-      ])
-      const result = yield* Effect.exit(ConfigProvider.fromMap(map).load(config))
-      assertTrue(
-        Exit.isFailure(result) &&
-          Cause.isFailType(result.effect_instruction_i0) &&
-          ConfigError.isMissingData(result.effect_instruction_i0.error) &&
-          // TODO: fix error message to not include `.[index]`
-          result.effect_instruction_i0.error.message === "Expected employees.[1].id to exist in the provided map" &&
-          Equal.equals(
-            Chunk.unsafeFromArray(result.effect_instruction_i0.error.path),
-            Chunk.make("employees", "[1]", "id")
-          )
-      )
-    }))
-
-  it.effect("indexed sequence - multiple product types with optional fields", () =>
-    Effect.gen(function*() {
-      const config = Config.array(
-        Config.all({
-          age: Config.option(Config.integer("age")),
-          id: Config.integer("id")
-        }),
-        "employees"
-      )
-      const map = new Map([
-        ["employees[0].age", "1"],
-        ["employees[0].id", "2"],
-        ["employees[1].id", "4"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      deepStrictEqual(result, [{ age: Option.some(1), id: 2 }, { age: Option.none(), id: 4 }])
-    }))
-
-  it.effect("indexed sequence - multiple product types with sequence fields", () =>
-    Effect.gen(function*() {
-      const config = Config.array(
-        Config.all({
-          refunds: Config.array(Config.integer(), "refunds"),
-          id: Config.integer("id")
-        }),
-        "employees"
-      )
-      const map = new Map([
-        ["employees[0].refunds", "1,2,3"],
-        ["employees[0].id", "0"],
-        ["employees[1].id", "1"],
-        ["employees[1].refunds", "4,5,6"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      deepStrictEqual(result, [{ refunds: [1, 2, 3], id: 0 }, { refunds: [4, 5, 6], id: 1 }])
-    }))
-
-  it.effect("indexed sequence - product type of indexed sequences with reusable config", () =>
-    Effect.gen(function*() {
-      const idAndAge = Config.all({
-        id: Config.integer("id"),
-        age: Config.integer("age")
-      })
-      const config = Config.all({
-        employees: Config.array(idAndAge, "employees"),
-        students: Config.array(idAndAge, "students")
-      })
-      const map = new Map([
-        ["employees[0].id", "0"],
-        ["employees[1].id", "1"],
-        ["employees[0].age", "10"],
-        ["employees[1].age", "11"],
-        ["students[0].id", "20"],
-        ["students[1].id", "30"],
-        ["students[0].age", "2"],
-        ["students[1].age", "3"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      deepStrictEqual(result, {
-        employees: [{ id: 0, age: 10 }, { id: 1, age: 11 }],
-        students: [{ id: 20, age: 2 }, { id: 30, age: 3 }]
-      })
-    }))
-
-  it.effect("indexed sequence - map of indexed sequences", () =>
-    Effect.gen(function*() {
-      const employee = Config.all({
-        age: Config.integer("age"),
-        id: Config.integer("id")
-      })
-      const config = Config.hashMap(Config.array(employee, "employees"), "departments")
-      const map = new Map([
-        ["departments.department1.employees[0].age", "10"],
-        ["departments.department1.employees[0].id", "0"],
-        ["departments.department1.employees[1].age", "20"],
-        ["departments.department1.employees[1].id", "1"],
-        ["departments.department2.employees[0].age", "10"],
-        ["departments.department2.employees[0].id", "0"],
-        ["departments.department2.employees[1].age", "20"],
-        ["departments.department2.employees[1].id", "1"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      const expectedEmployees = [{ age: 10, id: 0 }, { age: 20, id: 1 }]
-      deepStrictEqual(Array.from(result), [
-        ["department1", expectedEmployees],
-        ["department2", expectedEmployees]
-      ])
-    }))
-
-  it.effect("indexed sequence - map", () =>
-    Effect.gen(function*() {
-      const employee = Config.hashMap(Config.integer(), "details")
-      const config = Config.array(employee, "employees")
-      const map = new Map([
-        ["employees[0].details.age", "10"],
-        ["employees[0].details.id", "0"],
-        ["employees[1].details.age", "20"],
-        ["employees[1].details.id", "1"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      deepStrictEqual(result.map((table) => Array.from(table)), [
-        [["age", 10], ["id", 0]],
-        [["age", 20], ["id", 1]]
-      ])
-    }))
-
-  it.effect("indexed sequence - indexed sequences", () =>
-    Effect.gen(function*() {
-      const employee = Config.all({
-        age: Config.integer("age"),
-        id: Config.integer("id")
-      })
-      const department = Config.array(employee, "employees")
-      const config = Config.array(department, "departments")
-      const map = new Map([
-        ["departments[0].employees[0].age", "10"],
-        ["departments[0].employees[0].id", "0"],
-        ["departments[0].employees[1].age", "20"],
-        ["departments[0].employees[1].id", "1"],
-        ["departments[1].employees[0].age", "10"],
-        ["departments[1].employees[0].id", "0"],
-        ["departments[1].employees[1].age", "20"],
-        ["departments[1].employees[1].id", "1"]
-      ])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      const expectedEmployees = [{ age: 10, id: 0 }, { age: 20, id: 1 }]
-      deepStrictEqual(result, [expectedEmployees, expectedEmployees])
-    }))
-
-  it.effect("indexed sequence - multiple product types nested", () =>
-    Effect.gen(function*() {
-      const employee = Config.all({
-        age: Config.integer("age"),
-        id: Config.integer("id")
-      })
-      const config = Config.array(employee, "employees")
-      const map = new Map([
-        ["parent.child.employees[0].age", "1"],
-        ["parent.child.employees[0].id", "2"],
-        ["parent.child.employees[1].age", "3"],
-        ["parent.child.employees[1].id", "4"]
-      ])
-      const provider = ConfigProvider.fromMap(map).pipe(
-        ConfigProvider.nested("child"),
-        ConfigProvider.nested("parent")
-      )
-      const result = yield* provider.load(config)
-      deepStrictEqual(result, [{ age: 1, id: 2 }, { age: 3, id: 4 }])
-    }))
-
-  it.effect("indexed sequence - multiple product types unnested", () =>
-    Effect.gen(function*() {
-      const employee = Config.all({
-        age: Config.integer("age"),
-        id: Config.integer("id")
-      })
-      const config = Config.array(employee, "employees").pipe(
-        Config.nested("child"),
-        Config.nested("parent")
-      )
-      const map = new Map([
-        ["employees[0].age", "1"],
-        ["employees[0].id", "2"],
-        ["employees[1].age", "3"],
-        ["employees[1].id", "4"]
-      ])
-      const provider = ConfigProvider.fromMap(map).pipe(
-        ConfigProvider.unnested("parent"),
-        ConfigProvider.unnested("child")
-      )
-      const result = yield* provider.load(config)
-      deepStrictEqual(result, [{ age: 1, id: 2 }, { age: 3, id: 4 }])
-    }))
-
-  it.effect("logLevel", () =>
-    Effect.gen(function*() {
-      const config = Config.logLevel("level")
-      const map = new Map([["level", "ERROR"]])
-      const result = yield* ConfigProvider.fromMap(map).load(config)
-      strictEqual(result, LogLevel.Error)
-    }))
-
-  it.effect("accessing a non-existent key fails", () =>
-    Effect.gen(function*() {
-      const map = new Map([
-        ["k1.k3", "v"]
-      ])
-      const config = Config.string("k2").pipe(
-        Config.nested("k1")
-      )
-      const result = yield* Effect.exit(provider(map).load(config))
-      deepStrictEqual(
-        result,
-        Exit.fail(
-          ConfigError.MissingData(
-            ["k1", "k2"],
-            "Expected k1.k2 to exist in the provided map"
-          )
-        )
-      )
-    }))
-
-  it.effect("values are not split unless a sequence is expected", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["greeting", "Hello, World!"]]))
-      const result = yield* configProvider.load(Config.string("greeting"))
-      strictEqual(result, "Hello, World!")
-    }))
-
-  it.effect("constantCase", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["CONSTANT_CASE", "value"]])).pipe(
-        ConfigProvider.constantCase
-      )
-      const result = yield* configProvider.load(Config.string("constant.case"))
-      strictEqual(result, "value")
-    }))
-
-  it.effect("mapInputPath", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["KEY", "VALUE"]])).pipe(
-        ConfigProvider.mapInputPath((path) => path.toUpperCase())
-      )
-      const result = yield* configProvider.load(Config.string("key"))
-      strictEqual(result, "VALUE")
-    }))
-
-  it.effect("kebabCase", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["kebab-case", "value"]])).pipe(
-        ConfigProvider.kebabCase
-      )
-      const result = yield* configProvider.load(Config.string("kebabCase"))
-      strictEqual(result, "value")
-    }))
-
-  it.effect("lowerCase", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["lowercase", "value"]])).pipe(
-        ConfigProvider.lowerCase
-      )
-      const result = yield* configProvider.load(Config.string("lowerCase"))
-      strictEqual(result, "value")
-    }))
-
-  it.effect("nested", () =>
-    Effect.gen(function*() {
-      const configProvider1 = ConfigProvider.fromMap(new Map([["nested.key", "value"]]))
-      const config1 = Config.string("key").pipe(Config.nested("nested"))
-      const configProvider2 = ConfigProvider.fromMap(new Map([["nested.key", "value"]])).pipe(
-        ConfigProvider.nested("nested")
-      )
-      const config2 = Config.string("key")
-      const result1 = yield* configProvider1.load(config1)
-      const result2 = yield* configProvider2.load(config2)
-      strictEqual(result1, "value")
-      strictEqual(result2, "value")
-    }))
-
-  it.effect("nested - multiple layers of nesting", () =>
-    Effect.gen(function*() {
-      const configProvider1 = ConfigProvider.fromMap(new Map([["parent.child.key", "value"]]))
-      const config1 = Config.string("key").pipe(
-        Config.nested("child"),
-        Config.nested("parent")
-      )
-      const configProvider2 = ConfigProvider.fromMap(new Map([["parent.child.key", "value"]])).pipe(
-        ConfigProvider.nested("child"),
-        ConfigProvider.nested("parent")
-      )
-      const config2 = Config.string("key")
-      const result1 = yield* configProvider1.load(config1)
-      const result2 = yield* configProvider2.load(config2)
-      strictEqual(result1, "value")
-      strictEqual(result2, "value")
-    }))
-
-  it.effect("orElse - with flat data", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(
-        new Map([
-          ["key1", "value1"],
-          ["key4", "value41"]
-        ])
-      ).pipe(
-        ConfigProvider.orElse(() =>
-          ConfigProvider.fromMap(
-            new Map([
-              ["key2", "value2"],
-              ["key4", "value42"]
-            ])
-          )
-        )
-      )
-      const result1 = yield* configProvider.load(Config.string("key1"))
-      const result2 = yield* configProvider.load(Config.string("key2"))
-      const result31 = yield* configProvider.load(Config.option(Config.string("key3")))
-      const result32 = yield* Effect.either(configProvider.load(Config.string("key3")))
-      const result4 = yield* configProvider.load(Config.string("key4"))
-
-      strictEqual(result1, "value1")
-      strictEqual(result2, "value2")
-      assertNone(result31)
-      deepStrictEqual(
-        result32,
-        Either.left(ConfigError.Or(
-          ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map"),
-          ConfigError.MissingData(["key3"], "Expected key3 to exist in the provided map")
-        ))
-      )
-      strictEqual(result4, "value41")
-    }))
-
-  it.effect("orElse - with indexed sequences", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(
-        new Map([
-          ["parent1.child.employees[0].age", "1"],
-          ["parent1.child.employees[0].id", "2"],
-          ["parent1.child.employees[1].age", "3"],
-          ["parent1.child.employees[1].id", "4"]
-        ])
-      ).pipe(
-        ConfigProvider.orElse(() =>
-          ConfigProvider.fromMap(
-            new Map([
-              ["parent1.child.employees[2].age", "5"],
-              ["parent1.child.employees[2].id", "6"],
-              ["parent2.child.employees[0].age", "11"],
-              ["parent2.child.employees[0].id", "21"],
-              ["parent2.child.employees[1].age", "31"],
-              ["parent2.child.employees[1].id", "41"]
-            ])
-          )
+  describe("fromDotEnv", () => {
+    it("should load configuration from .env file", async () => {
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDotEnv().pipe(
+          Effect.provide(FileSystem.layerNoop({
+            readFileString: (path) =>
+              Effect.succeed(`PATH=${path}
+A=1`)
+          }))
         )
       )
 
-      const product = Config.zip(Config.integer("age"), Config.integer("id"))
-      const arrayConfig = Config.array(product, "employees")
-      const config1 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent1"))
-      const config2 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent2"))
+      await assertSuccess(provider, ["PATH"], ConfigProvider.makeValue(".env"))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue("1"))
+    })
 
-      const result1 = yield* configProvider.load(config1)
-      const result2 = yield* configProvider.load(config2)
-
-      deepStrictEqual(result1, [[1, 2], [3, 4], [5, 6]])
-      deepStrictEqual(result2, [[11, 21], [31, 41]])
-    }))
-
-  it.effect("orElse - with indexed sequences and each provider unnested", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(
-        new Map([
-          ["employees[0].age", "1"],
-          ["employees[0].id", "2"],
-          ["employees[1].age", "3"],
-          ["employees[1].id", "4"]
-        ])
-      ).pipe(
-        ConfigProvider.unnested("parent1"),
-        ConfigProvider.unnested("child"),
-        ConfigProvider.orElse(() =>
-          ConfigProvider.fromMap(
-            new Map([
-              ["employees[0].age", "11"],
-              ["employees[0].id", "21"],
-              ["employees[1].age", "31"],
-              ["employees[1].id", "41"]
-            ])
-          ).pipe(
-            ConfigProvider.unnested("parent2"),
-            ConfigProvider.unnested("child")
-          )
+    it("should support `path` option to specify the path to the .env file", async () => {
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDotEnv({ path: "custom.env" }).pipe(
+          Effect.provide(FileSystem.layerNoop({
+            readFileString: (path) =>
+              Effect.succeed(`CUSTOM_PATH=${path}
+A=1`)
+          }))
         )
       )
 
-      const product = Config.zip(Config.integer("age"), Config.integer("id"))
-      const arrayConfig = Config.array(product, "employees")
-      const config1 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent1"))
-      const config2 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent2"))
-      const config3 = arrayConfig.pipe(Config.nested("child"), Config.nested("parent3"))
+      await assertSuccess(provider, ["CUSTOM_PATH"], ConfigProvider.makeValue("custom.env"))
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue("1"))
+    })
 
-      const result1 = yield* configProvider.load(config1)
-      const result2 = yield* configProvider.load(config2)
-      const result3 = yield* Effect.either(configProvider.load(config3))
-
-      deepStrictEqual(result1, [[1, 2], [3, 4]])
-      deepStrictEqual(result2, [[11, 21], [31, 41]])
-      deepStrictEqual(
-        result3,
-        Either.left(ConfigError.And(
-          ConfigError.MissingData(
-            ["parent3", "child", "employees"],
-            "Expected parent1 to be in path in ConfigProvider#unnested"
-          ),
-          ConfigError.MissingData(
-            ["parent3", "child", "employees"],
-            "Expected parent2 to be in path in ConfigProvider#unnested"
-          )
-        ))
-      )
-    }))
-
-  it.effect("orElse - with index sequences and combined provider unnested", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(
-        new Map([
-          ["employees[0].age", "1"],
-          ["employees[0].id", "2"]
-        ])
-      ).pipe(
-        ConfigProvider.orElse(() =>
-          ConfigProvider.fromMap(
-            new Map([
-              ["employees[1].age", "3"],
-              ["employees[1].id", "4"]
-            ])
-          )
-        ),
-        ConfigProvider.unnested("parent1"),
-        ConfigProvider.unnested("child")
-      )
-
-      const product = Config.zip(Config.integer("age"), Config.integer("id"))
-      const arrayConfig = Config.array(product, "employees")
-      const config = arrayConfig.pipe(Config.nested("child"), Config.nested("parent1"))
-
-      const result = yield* configProvider.load(config)
-
-      deepStrictEqual(result, [[1, 2], [3, 4]])
-    }))
-
-  it.effect("secret", () =>
-    Effect.gen(function*() {
-      const value = "Hello, World!"
-      const configProvider = ConfigProvider.fromMap(new Map([["greeting", value]]))
-      const result = yield* configProvider.load(Config.secret("greeting"))
-      deepStrictEqual(result, Secret.make(value.split("").map((c) => c.charCodeAt(0))))
-    }))
-
-  it.effect("snakeCase", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["snake_case", "value"]])).pipe(
-        ConfigProvider.snakeCase
-      )
-      const result = yield* configProvider.load(Config.string("snakeCase"))
-      strictEqual(result, "value")
-    }))
-
-  it.effect("unnested", () =>
-    Effect.gen(function*() {
-      const configProvider1 = ConfigProvider.fromMap(new Map([["key", "value"]]))
-      const config1 = Config.string("key")
-      const configProvider2 = ConfigProvider.fromMap(new Map([["key", "value"]])).pipe(
-        ConfigProvider.unnested("nested")
-      )
-      const config2 = Config.string("key").pipe(Config.nested("nested"))
-      const result1 = yield* configProvider1.load(config1)
-      const result2 = yield* configProvider2.load(config2)
-      strictEqual(result1, "value")
-      strictEqual(result2, "value")
-    }))
-
-  it.effect("unnested - multiple layers of nesting", () =>
-    Effect.gen(function*() {
-      const configProvider1 = ConfigProvider.fromMap(new Map([["key", "value"]]))
-      const config1 = Config.string("key")
-      const configProvider2 = ConfigProvider.fromMap(new Map([["key", "value"]])).pipe(
-        ConfigProvider.unnested("parent"),
-        ConfigProvider.unnested("child")
-      )
-      const config2 = Config.string("key").pipe(
-        Config.nested("child"),
-        Config.nested("parent")
-      )
-      const result1 = yield* configProvider1.load(config1)
-      const result2 = yield* configProvider2.load(config2)
-      strictEqual(result1, "value")
-      strictEqual(result2, "value")
-    }))
-
-  it.effect("unnested - failure", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["key", "value"]])).pipe(
-        ConfigProvider.unnested("nested")
-      )
-      const config = Config.string("key")
-      const result = yield* Effect.exit(configProvider.load(config))
-      const error = ConfigError.MissingData(
-        ["key"],
-        "Expected nested to be in path in ConfigProvider#unnested"
-      )
-      deepStrictEqual(result, Exit.fail(error))
-    }))
-
-  it.effect("upperCase", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["UPPERCASE", "value"]])).pipe(
-        ConfigProvider.upperCase
-      )
-      const result = yield* configProvider.load(Config.string("upperCase"))
-      strictEqual(result, "value")
-    }))
-
-  it.effect("within", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(new Map([["nesting1.key1", "value1"], ["nesting2.KEY2", "value2"]]))
-        .pipe(
-          ConfigProvider.within(["nesting2"], ConfigProvider.mapInputPath((s) => s.toUpperCase()))
-        )
-      const config = Config.string("key1").pipe(
-        Config.nested("nesting1"),
-        Config.zip(
-          Config.string("key2").pipe(
-            Config.nested("nesting2")
-          )
+    it("should support `expandVariables` option", async () => {
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDotEnv({ expandVariables: true }).pipe(
+          Effect.provide(FileSystem.layerNoop({
+            readFileString: () =>
+              Effect.succeed(`PASSWORD=value
+DB_PASS=$PASSWORD`)
+          }))
         )
       )
-      const result = yield* configProvider.load(config)
-      deepStrictEqual(result, ["value1", "value2"])
-    }))
 
-  it.effect("within - multiple layers of nesting", () =>
-    Effect.gen(function*() {
-      const configProvider = ConfigProvider.fromMap(
-        new Map([["nesting1.key1", "value1"], ["nesting2.nesting3.KEY2", "value2"]])
-      ).pipe(
-        ConfigProvider.within(["nesting2", "nesting3"], ConfigProvider.mapInputPath((s) => s.toUpperCase()))
-      )
-      const config = Config.string("key1").pipe(
-        Config.nested("nesting1"),
-        Config.zip(
-          Config.string("key2").pipe(
-            Config.nested("nesting3"),
-            Config.nested("nesting2")
-          )
+      await assertSuccess(provider, ["DB_PASS"], ConfigProvider.makeValue("value"))
+    })
+
+    it("should treat empty string values as missing while preserving structure by default", async () => {
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDotEnv().pipe(
+          Effect.provide(FileSystem.layerNoop({
+            readFileString: () => Effect.succeed("A=")
+          }))
         )
       )
-      const result = yield* configProvider.load(config)
-      deepStrictEqual(result, ["value1", "value2"])
-    }))
 
-  it.effect("fromJson - should load configs from flat JSON", () =>
-    Effect.gen(function*() {
-      const result = yield* ConfigProvider.fromJson({
-        host: "localhost",
-        port: 8080
-      }).load(hostPortConfig)
-      deepStrictEqual(result, {
-        host: "localhost",
-        port: 8080
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["A"])))
+      await assertSuccess(provider, ["A"], undefined)
+    })
+
+    it("should support `preserveEmptyStrings` option", async () => {
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDotEnv({ preserveEmptyStrings: true }).pipe(
+          Effect.provide(FileSystem.layerNoop({
+            readFileString: () => Effect.succeed("A=")
+          }))
+        )
+      )
+
+      await assertSuccess(provider, ["A"], ConfigProvider.makeValue(""))
+    })
+  })
+
+  describe("fromDir", () => {
+    const provider = ConfigProvider.fromDir({ rootPath: "/" })
+    const files: Record<string, string> = {
+      "/secret": "keepitsafe\n",
+      "/SHOUTING": "value",
+      "/integer": "123",
+      "/nested/config": "hello"
+    }
+    const Fs = FileSystem.layerNoop({
+      readFileString(path) {
+        if (path in files) {
+          return Effect.succeed(files[path])
+        }
+        return Effect.fail(
+          PlatformError.systemError({
+            module: "FileSystem",
+            _tag: "NotFound",
+            method: "readFileString"
+          })
+        )
+      },
+      readDirectory(_path) {
+        // For the test, we only have files, no directories
+        return Effect.fail(
+          PlatformError.systemError({
+            module: "FileSystem",
+            _tag: "NotFound",
+            method: "readDirectory"
+          })
+        )
+      }
+    })
+    const Platform = Layer.mergeAll(Fs, Path.layer)
+    const SetLayer = ConfigProvider.layer(provider).pipe(
+      Layer.provide(Platform),
+      Layer.provide(ConfigProvider.layer(ConfigProvider.fromEnv({
+        env: { secret: "fail" }
+      })))
+    )
+    const AddLayer = ConfigProvider.layerAdd(provider).pipe(
+      Layer.provide(Platform),
+      Layer.provide(ConfigProvider.layer(ConfigProvider.fromEnv({
+        env: {
+          secret: "shh",
+          fallback: "value"
+        }
+      })))
+    )
+
+    it("reads config", async () => {
+      const result = await Effect.runPromise(
+        Effect.gen(function*() {
+          const provider = yield* ConfigProvider.ConfigProvider
+          const secret = yield* provider.load(["secret"])
+          const shouting = yield* provider.load(["SHOUTING"])
+          const integer = yield* provider.load(["integer"])
+          const nestedConfig = yield* provider.load(["nested", "config"])
+
+          return { secret, shouting, integer, nestedConfig }
+        }).pipe(Effect.provide(SetLayer))
+      )
+
+      deepStrictEqual(result.secret, ConfigProvider.makeValue("keepitsafe"))
+      deepStrictEqual(result.shouting, ConfigProvider.makeValue("value"))
+      deepStrictEqual(result.integer, ConfigProvider.makeValue("123"))
+      deepStrictEqual(result.nestedConfig, ConfigProvider.makeValue("hello"))
+
+      const fallback = await Effect.runPromise(
+        Effect.gen(function*() {
+          const provider = yield* ConfigProvider.ConfigProvider
+          return yield* provider.load(["fallback"])
+        }).pipe(Effect.provide(SetLayer))
+      )
+
+      deepStrictEqual(fallback, undefined)
+    })
+
+    it("orElse falls back when fromDir path is missing", async () => {
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDir({ rootPath: "/" }).pipe(
+          Effect.map((dir) => dir.pipe(ConfigProvider.orElse(ConfigProvider.fromEnv({ env: { fallback: "value" } })))),
+          Effect.provide(Platform)
+        )
+      )
+      await assertSuccess(provider, ["fallback"], ConfigProvider.makeValue("value"))
+    })
+
+    it("treats empty files as missing by default", async () => {
+      const Fs = FileSystem.layerNoop({
+        readFileString(path) {
+          return path === "/empty"
+            ? Effect.succeed("")
+            : Effect.fail(
+              PlatformError.systemError({
+                module: "FileSystem",
+                _tag: "NotFound",
+                method: "readFileString"
+              })
+            )
+        },
+        readDirectory(path) {
+          return path === "/"
+            ? Effect.succeed(["empty"])
+            : Effect.fail(
+              PlatformError.systemError({
+                module: "FileSystem",
+                _tag: "NotFound",
+                method: "readDirectory"
+              })
+            )
+        }
       })
-    }))
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDir({ rootPath: "/" }).pipe(Effect.provide(Layer.mergeAll(Fs, Path.layer)))
+      )
 
-  it.effect("fromJson - should load configs from nested JSON", () =>
-    Effect.gen(function*() {
-      const result = yield* ConfigProvider.fromJson({
-        hostPorts: [{
-          host: "localhost",
-          port: 8080
-        }, {
-          host: "localhost",
-          port: 8080
-        }, {
-          host: "localhost",
-          port: 8080
-        }]
-      }).load(hostPortsConfig)
-      deepStrictEqual(result, {
-        hostPorts: Array.from({ length: 3 }, () => ({ host: "localhost", port: 8080 }))
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["empty"])))
+      await assertSuccess(provider, ["empty"], undefined)
+    })
+
+    it("preserves empty files when requested", async () => {
+      const Fs = FileSystem.layerNoop({
+        readFileString(path) {
+          return path === "/empty"
+            ? Effect.succeed("\n")
+            : Effect.fail(
+              PlatformError.systemError({
+                module: "FileSystem",
+                _tag: "NotFound",
+                method: "readFileString"
+              })
+            )
+        },
+        readDirectory() {
+          return Effect.fail(
+            PlatformError.systemError({
+              module: "FileSystem",
+              _tag: "NotFound",
+              method: "readDirectory"
+            })
+          )
+        }
       })
-    }))
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDir({ rootPath: "/", preserveEmptyStrings: true }).pipe(
+          Effect.provide(Layer.mergeAll(Fs, Path.layer))
+        )
+      )
+
+      await assertSuccess(provider, ["empty"], ConfigProvider.makeValue(""))
+    })
+
+    it("orElse falls back when fromDir file is empty", async () => {
+      const Fs = FileSystem.layerNoop({
+        readFileString(path) {
+          return path === "/empty"
+            ? Effect.succeed("")
+            : Effect.fail(
+              PlatformError.systemError({
+                module: "FileSystem",
+                _tag: "NotFound",
+                method: "readFileString"
+              })
+            )
+        },
+        readDirectory() {
+          return Effect.fail(
+            PlatformError.systemError({
+              module: "FileSystem",
+              _tag: "NotFound",
+              method: "readDirectory"
+            })
+          )
+        }
+      })
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDir({ rootPath: "/" }).pipe(
+          Effect.map((dir) => dir.pipe(ConfigProvider.orElse(ConfigProvider.fromUnknown({ empty: "fallback" })))),
+          Effect.provide(Layer.mergeAll(Fs, Path.layer))
+        )
+      )
+
+      await assertSuccess(provider, ["empty"], ConfigProvider.makeValue("fallback"))
+    })
+
+    it("reads directory entries as a record", async () => {
+      const dirs: Record<string, ReadonlyArray<string>> = {
+        "/app": ["host", "port"]
+      }
+      const Fs = FileSystem.layerNoop({
+        readFileString() {
+          return Effect.fail(
+            PlatformError.systemError({
+              module: "FileSystem",
+              _tag: "NotFound",
+              method: "readFileString"
+            })
+          )
+        },
+        readDirectory(path) {
+          const entries = dirs[path]
+          return entries
+            ? Effect.succeed([...entries])
+            : Effect.fail(
+              PlatformError.systemError({
+                module: "FileSystem",
+                _tag: "NotFound",
+                method: "readDirectory"
+              })
+            )
+        }
+      })
+      const provider = await Effect.runPromise(
+        ConfigProvider.fromDir({ rootPath: "/" }).pipe(Effect.provide(Layer.mergeAll(Fs, Path.layer)))
+      )
+      await assertSuccess(provider, ["app"], ConfigProvider.makeRecord(new Set(["host", "port"])))
+    })
+
+    it("layerAdd uses fallback", async () => {
+      const result = await Effect.runPromise(
+        Effect.gen(function*() {
+          const provider = yield* ConfigProvider.ConfigProvider
+          const secret = yield* provider.load(["secret"])
+          const integer = yield* provider.load(["integer"])
+          const fallback = yield* provider.load(["fallback"])
+
+          return { secret, integer, fallback }
+        }).pipe(Effect.provide(AddLayer))
+      )
+
+      deepStrictEqual(result.secret, ConfigProvider.makeValue("shh"))
+      deepStrictEqual(result.integer, ConfigProvider.makeValue("123"))
+      deepStrictEqual(result.fallback, ConfigProvider.makeValue("value"))
+    })
+  })
 })

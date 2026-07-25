@@ -1,39 +1,18 @@
-import { describe, it } from "@effect/vitest"
-import { strictEqual } from "@effect/vitest/utils"
 import { Ordering } from "effect"
+import { deepStrictEqual } from "node:assert"
+import { describe, it } from "vitest"
 
 describe("Ordering", () => {
-  it("match", () => {
-    const f = Ordering.match({
-      onLessThan: () => "lt",
-      onEqual: () => "eq",
-      onGreaterThan: () => "gt"
-    })
-    strictEqual(f(-1), "lt")
-    strictEqual(f(0), "eq")
-    strictEqual(f(1), "gt")
-  })
+  it("Reducer", () => {
+    const R = Ordering.Reducer
 
-  it("reverse", () => {
-    strictEqual(Ordering.reverse(-1), 1)
-    strictEqual(Ordering.reverse(0), 0)
-    strictEqual(Ordering.reverse(1), -1)
-  })
-
-  it("combine", () => {
-    strictEqual(Ordering.combine(0, 0), 0)
-    strictEqual(Ordering.combine(0, 1), 1)
-    strictEqual(Ordering.combine(1, -1), 1)
-    strictEqual(Ordering.combine(-1, 1), -1)
-  })
-
-  it("combineMany", () => {
-    strictEqual(Ordering.combineMany(0, []), 0)
-    strictEqual(Ordering.combineMany(1, []), 1)
-    strictEqual(Ordering.combineMany(-1, []), -1)
-    strictEqual(Ordering.combineMany(0, [0, 0, 0]), 0)
-    strictEqual(Ordering.combineMany(0, [0, 0, 1]), 1)
-    strictEqual(Ordering.combineMany(1, [0, 0, -1]), 1)
-    strictEqual(Ordering.combineMany(-1, [0, 0, 1]), -1)
+    deepStrictEqual(R.combine(-1, 1), -1)
+    deepStrictEqual(R.combine(1, -1), 1)
+    deepStrictEqual(R.combine(1, 1), 1)
+    deepStrictEqual(R.combine(0, 0), 0)
+    deepStrictEqual(R.combine(0, 1), 1)
+    deepStrictEqual(R.combine(1, 0), 1)
+    deepStrictEqual(R.combine(0, -1), -1)
+    deepStrictEqual(R.combine(-1, 0), -1)
   })
 })

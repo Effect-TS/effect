@@ -1,477 +1,618 @@
-import { describe, it } from "@effect/vitest"
-import {
-  assertFalse,
-  assertNone,
-  assertSome,
-  assertTrue,
-  deepStrictEqual,
-  strictEqual,
-  throws
-} from "@effect/vitest/utils"
-import { Equal, Hash, HashMap as HM, Option, pipe } from "effect"
-
-class Key implements Equal.Equal {
-  constructor(readonly n: number) {}
-
-  [Hash.symbol](): number {
-    return Hash.hash(this.n)
-  }
-
-  [Equal.symbol](u: unknown): boolean {
-    return u instanceof Key && this.n === u.n
-  }
-}
-
-class Value implements Equal.Equal {
-  constructor(readonly s: string) {}
-
-  [Hash.symbol](): number {
-    return Hash.hash(this.s)
-  }
-
-  [Equal.symbol](u: unknown): boolean {
-    return u instanceof Value && this.s === u.s
-  }
-}
+import { Equal, Hash, HashMap, Option, Result } from "effect"
+import { FastCheck as fc } from "effect/testing"
+import { describe, expect, it } from "vitest"
 
 describe("HashMap", () => {
-  function key(n: number): Key {
-    return new Key(n)
-  }
+  describe("constructors", () => {
+    it("empty", () => {
+      const map = HashMap.empty<string, number>()
+      expect(HashMap.isEmpty(map)).toBe(true)
+      expect(HashMap.size(map)).toBe(0)
+    })
 
-  function value(s: string): Value {
-    return new Value(s)
-  }
+    it("make", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      expect(HashMap.size(map)).toBe(3)
+      expect(HashMap.get(map, "a")).toEqual(Option.some(1))
+      expect(HashMap.get(map, "b")).toEqual(Option.some(2))
+      expect(HashMap.get(map, "c")).toEqual(Option.some(3))
+    })
 
-  it("option", () => {
-    const map = HM.make([Option.some(1), 0], [Option.none(), 1])
-    assertTrue(pipe(map, HM.has(Option.none())))
-    assertTrue(pipe(map, HM.has(Option.some(1))))
-    assertFalse(pipe(map, HM.has(Option.some(2))))
+    it("fromIterable", () => {
+      const entries = [["a", 1], ["b", 2], ["c", 3]] as const
+      const map = HashMap.fromIterable(entries)
+      expect(HashMap.size(map)).toBe(3)
+      expect(HashMap.get(map, "a")).toEqual(Option.some(1))
+      expect(HashMap.get(map, "b")).toEqual(Option.some(2))
+      expect(HashMap.get(map, "c")).toEqual(Option.some(3))
+    })
   })
 
-  it("toString", () => {
-    const map = HM.make([0, "a"])
-    strictEqual(
-      String(map),
-      `{
-  "_id": "HashMap",
-  "values": [
-    [
-      0,
-      "a"
-    ]
-  ]
-}`
-    )
+  describe("basic operations", () => {
+    it("get - existing key", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      expect(HashMap.get(map, "a")).toEqual(Option.some(1))
+      expect(HashMap.get(map, "b")).toEqual(Option.some(2))
+    })
+
+    it("get - non-existing key", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      expect(HashMap.get(map, "c")).toEqual(Option.none())
+    })
+
+    it("has - existing key", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      expect(HashMap.has(map, "a")).toBe(true)
+      expect(HashMap.has(map, "b")).toBe(true)
+    })
+
+    it("has - non-existing key", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      expect(HashMap.has(map, "c")).toBe(false)
+    })
+
+    it("set - new key", () => {
+      const map1 = HashMap.make(["a", 1])
+      const map2 = HashMap.set(map1, "b", 2)
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.get(map2, "a")).toEqual(Option.some(1))
+      expect(HashMap.get(map2, "b")).toEqual(Option.some(2))
+      // Original should be unchanged
+      expect(HashMap.size(map1)).toBe(1)
+      expect(HashMap.has(map1, "b")).toBe(false)
+    })
+
+    it("set - existing key", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.set(map1, "a", 10)
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.get(map2, "a")).toEqual(Option.some(10))
+      expect(HashMap.get(map2, "b")).toEqual(Option.some(2))
+      // Original should be unchanged
+      expect(HashMap.get(map1, "a")).toEqual(Option.some(1))
+    })
+
+    it("remove - existing key", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      const map2 = HashMap.remove(map1, "b")
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.has(map2, "a")).toBe(true)
+      expect(HashMap.has(map2, "b")).toBe(false)
+      expect(HashMap.has(map2, "c")).toBe(true)
+      // Original should be unchanged
+      expect(HashMap.size(map1)).toBe(3)
+      expect(HashMap.has(map1, "b")).toBe(true)
+    })
+
+    it("remove - non-existing key", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.remove(map1, "c")
+      expect(map1).toBe(map2) // Should return same reference
+      expect(HashMap.size(map2)).toBe(2)
+    })
+
+    it("getUnsafe - existing key", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      expect(HashMap.getUnsafe(map, "a")).toBe(1)
+      expect(HashMap.getUnsafe(map, "b")).toBe(2)
+    })
+
+    it("getUnsafe - non-existing key", () => {
+      const map = HashMap.make(["a", 1])
+      expect(() => HashMap.getUnsafe(map, "b")).toThrow("HashMap.getUnsafe: key not found")
+    })
   })
 
-  it("toJSON", () => {
-    const map = HM.make([0, "a"])
-    deepStrictEqual(map.toJSON(), { _id: "HashMap", values: [[0, "a"]] })
+  describe("iterators and getters", () => {
+    it("keys", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      const keys = Array.from(HashMap.keys(map)).sort()
+      expect(keys).toEqual(["a", "b", "c"])
+    })
+
+    it("values", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      const values = Array.from(HashMap.values(map)).sort()
+      expect(values).toEqual([1, 2, 3])
+    })
+
+    it("toValues", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      const values = HashMap.toValues(map).sort()
+      expect(values).toEqual([1, 2, 3])
+    })
+
+    it("entries", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      const entries = Array.from(HashMap.entries(map)).sort(([a], [b]) => a.localeCompare(b))
+      expect(entries).toEqual([["a", 1], ["b", 2]])
+    })
+
+    it("toEntries", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      const entries = HashMap.toEntries(map).sort(([a], [b]) => a.localeCompare(b))
+      expect(entries).toEqual([["a", 1], ["b", 2]])
+    })
+
+    it("Symbol.iterator", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      const entries = Array.from(map).sort(([a], [b]) => a.localeCompare(b))
+      expect(entries).toEqual([["a", 1], ["b", 2]])
+    })
   })
 
-  it("inspect", () => {
-    if (typeof window === "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { inspect } = require("node:util")
-      const map = HM.make([0, "a"])
-      deepStrictEqual(inspect(map), inspect({ _id: "HashMap", values: [[0, "a"]] }))
-    }
+  describe("bulk operations", () => {
+    it("removeMany", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3], ["d", 4])
+      const map2 = HashMap.removeMany(map1, ["b", "d"])
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.has(map2, "a")).toBe(true)
+      expect(HashMap.has(map2, "b")).toBe(false)
+      expect(HashMap.has(map2, "c")).toBe(true)
+      expect(HashMap.has(map2, "d")).toBe(false)
+    })
+
+    it("setMany", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const newEntries = [["c", 3], ["d", 4], ["a", 10]] as const // "a" should be overwritten
+      const map2 = HashMap.setMany(map1, newEntries)
+
+      expect(HashMap.size(map2)).toBe(4)
+      expect(HashMap.get(map2, "a")).toEqual(Option.some(10)) // overwritten
+      expect(HashMap.get(map2, "b")).toEqual(Option.some(2)) // preserved
+      expect(HashMap.get(map2, "c")).toEqual(Option.some(3)) // new
+      expect(HashMap.get(map2, "d")).toEqual(Option.some(4)) // new
+    })
+
+    it("setMany - pipe syntax", () => {
+      const map1 = HashMap.empty<string, number>()
+      const map2 = HashMap.setMany([["x", 100], ["y", 200]])(map1)
+
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.get(map2, "x")).toEqual(Option.some(100))
+      expect(HashMap.get(map2, "y")).toEqual(Option.some(200))
+    })
+
+    it("setMany - different iterables", () => {
+      const map1 = HashMap.make(["existing", 1])
+
+      // Test with Map
+      const jsMap = new Map([["from-map", 2], ["another", 3]])
+      const map2 = HashMap.setMany(map1, jsMap)
+
+      expect(HashMap.size(map2)).toBe(3)
+      expect(HashMap.get(map2, "existing")).toEqual(Option.some(1))
+      expect(HashMap.get(map2, "from-map")).toEqual(Option.some(2))
+      expect(HashMap.get(map2, "another")).toEqual(Option.some(3))
+
+      // Test with Set of tuples
+      const setOfTuples = new Set([["from-set", 4]] as const)
+      const map3 = HashMap.setMany(map2, setOfTuples)
+
+      expect(HashMap.size(map3)).toBe(4)
+      expect(HashMap.get(map3, "from-set")).toEqual(Option.some(4))
+    })
+
+    it("union", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.make(["b", 20], ["c", 3])
+      const map3 = HashMap.union(map1, map2)
+      expect(HashMap.size(map3)).toBe(3)
+      expect(HashMap.get(map3, "a")).toEqual(Option.some(1))
+      expect(HashMap.get(map3, "b")).toEqual(Option.some(20)) // map2 wins
+      expect(HashMap.get(map3, "c")).toEqual(Option.some(3))
+    })
   })
 
-  it("has", () => {
-    const map = HM.make([key(0), value("a")])
+  describe("mapping operations", () => {
+    it("map", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      const map2 = HashMap.map(map1, (value, _key) => value * 2)
+      expect(HashMap.size(map2)).toBe(3)
+      expect(HashMap.get(map2, "a")).toEqual(Option.some(2))
+      expect(HashMap.get(map2, "b")).toEqual(Option.some(4))
+      expect(HashMap.get(map2, "c")).toEqual(Option.some(6))
+    })
 
-    assertTrue(HM.has(key(0))(map))
-    assertFalse(HM.has(key(1))(map))
+    it("flatMap", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.flatMap(map1, (value, key) => HashMap.make([key + "1", value], [key + "2", value * 2]))
+      expect(HashMap.size(map2)).toBe(4)
+      expect(HashMap.get(map2, "a1")).toEqual(Option.some(1))
+      expect(HashMap.get(map2, "a2")).toEqual(Option.some(2))
+      expect(HashMap.get(map2, "b1")).toEqual(Option.some(2))
+      expect(HashMap.get(map2, "b2")).toEqual(Option.some(4))
+    })
   })
 
-  it("hasHash", () => {
-    const map = HM.make([key(0), value("a")])
+  describe("filtering operations", () => {
+    it("filter", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3], ["d", 4])
+      const map2 = HashMap.filter(map1, (value) => value % 2 === 0)
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.has(map2, "a")).toBe(false)
+      expect(HashMap.has(map2, "b")).toBe(true)
+      expect(HashMap.has(map2, "c")).toBe(false)
+      expect(HashMap.has(map2, "d")).toBe(true)
+    })
 
-    assertTrue(HM.hasHash(key(0), Hash.hash(key(0)))(map))
-    assertFalse(HM.hasHash(key(1), Hash.hash(key(0)))(map))
-  })
-
-  it("hasBy", () => {
-    const map = HM.make([key(0), value("a")])
-
-    assertTrue(HM.hasBy(map, (v) => Equal.equals(v, value("a"))))
-    assertTrue(HM.hasBy(map, (_, k) => Equal.equals(k, key(0))))
-    assertTrue(pipe(map, HM.hasBy((v) => Equal.equals(v, value("a")))))
-    assertFalse(HM.hasBy(map, (v) => Equal.equals(v, value("b"))))
-    assertFalse(HM.hasBy(map, (_, k) => Equal.equals(k, key(1))))
-    assertFalse(pipe(map, HM.hasBy((v) => Equal.equals(v, value("b")))))
-  })
-
-  it("get", () => {
-    const map = HM.make([key(0), value("a")])
-
-    assertSome(HM.get(key(0))(map), value("a"))
-    assertNone(HM.get(key(1))(map))
-  })
-
-  it("getHash", () => {
-    const map = HM.make([key(0), value("a")])
-
-    assertSome(HM.getHash(key(0), Hash.hash(0))(map), value("a"))
-    assertNone(HM.getHash(key(1), Hash.hash(0))(map))
-  })
-
-  it("set", () => {
-    const map = pipe(HM.empty<Key, Value>(), HM.set(key(0), value("a")))
-
-    assertSome(HM.get(key(0))(map), value("a"))
-  })
-
-  it("mutation", () => {
-    let map: any = HM.empty()
-
-    assertFalse(map._editable)
-    map = HM.beginMutation(map)
-    assertTrue(map._editable)
-    map = HM.endMutation(map)
-    assertFalse(map._editable)
-  })
-
-  it("mutate", () => {
-    const map = HM.empty<number, string>()
-    const result = pipe(
-      map,
-      HM.mutate((map) => {
-        pipe(map, HM.set(0, "a"))
-      })
-    )
-
-    assertSome(HM.get(0)(result), "a")
-    assertNone(HM.get(1)(result))
-  })
-
-  it("flatMap", () => {
-    const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    const result1 = pipe(
-      map1,
-      HM.flatMap(({ s }) => {
-        const newKey = key(s.length)
-        const newValue = value(s)
-        return pipe(HM.empty<Key, Value>(), HM.set(newKey, newValue))
-      })
-    )
-
-    assertSome(HM.get(key(1))(result1), value("a"))
-    assertSome(HM.get(key(2))(result1), value("bb"))
-    assertNone(HM.get(key(3))(result1))
-
-    const map2 = HM.make([key(1), value("a")], [key(2), value("bb")])
-    const result2 = pipe(
-      map2,
-      HM.flatMap(({ s }, { n }) => {
-        const newKey = key(s.length + n)
-        const newValue = value(s)
-        return pipe(HM.empty<Key, Value>(), HM.set(newKey, newValue))
-      })
-    )
-
-    assertSome(HM.get(key(2))(result2), value("a"))
-    assertSome(HM.get(key(4))(result2), value("bb"))
-    assertNone(HM.get(key(6))(result2))
-  })
-
-  it("filterMap", () => {
-    const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    const result1 = pipe(
-      map1,
-      HM.filterMap(({ s }) => s.length > 1 ? Option.some(value(s)) : Option.none())
-    )
-
-    assertNone(HM.get(key(0))(result1))
-    assertSome(HM.get(key(1))(result1), value("bb"))
-
-    const map2 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    const result2 = pipe(
-      map2,
-      HM.filterMap((v, { n }) => n > 0 ? Option.some(v) : Option.none())
-    )
-
-    assertNone(HM.get(key(0))(result2))
-    assertSome(HM.get(key(1))(result2), value("bb"))
-  })
-
-  it("compact", () => {
-    const map = HM.make([0, Option.some("a")], [1, Option.none()])
-    const result = HM.compact(map)
-
-    strictEqual(HM.unsafeGet(0)(result), "a")
-    throws(() => HM.unsafeGet(1)(result))
-  })
-
-  it("filter", () => {
-    const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    const result1 = pipe(map1, HM.filter(({ s }) => s.length > 1))
-
-    assertNone(HM.get(key(0))(result1))
-    assertSome(HM.get(key(1))(result1), value("bb"))
-
-    const map2 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    const result2 = pipe(map2, HM.filter(({ s }, { n }) => n > 0 && s.length > 0))
-
-    assertNone(HM.get(key(0))(result2))
-    assertSome(HM.get(key(1))(result2), value("bb"))
-  })
-
-  it("forEach", () => {
-    const map1 = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result1: Array<string> = []
-    pipe(
-      map1,
-      HM.forEach((v) => {
-        result1.push(v.s)
-      })
-    )
-
-    deepStrictEqual(result1, ["a", "b"])
-
-    const map2 = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result2: Array<readonly [number, string]> = []
-    pipe(
-      map2,
-      HM.forEach(({ s }, { n }) => {
-        result2.push([n, s])
-      })
-    )
-
-    deepStrictEqual(result2, [[0, "a"], [1, "b"]])
-  })
-
-  it("isEmpty", () => {
-    assertTrue(HM.isEmpty(HM.make()))
-    assertFalse(HM.isEmpty(HM.make([key(0), value("a")])))
-  })
-
-  it("map", () => {
-    const map1 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    const result1 = pipe(map1, HM.map(({ s }) => s.length))
-
-    assertSome(HM.get(key(0))(result1), 1)
-    assertSome(HM.get(key(1))(result1), 2)
-    assertNone(HM.get(key(2))(result1))
-
-    const map2 = HM.make([key(0), value("a")], [key(1), value("bb")])
-    const result2 = pipe(map2, HM.map(({ s }, { n }) => n + s.length))
-
-    assertSome(HM.get(key(0))(result2), 1)
-    assertSome(HM.get(key(1))(result2), 3)
-    assertNone(HM.get(key(2))(result2))
-  })
-
-  it("modifyAt", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = pipe(
-      map,
-      HM.modifyAt(key(0), (maybe) =>
-        Option.isSome(maybe) ?
-          Option.some(value("test")) :
-          Option.none())
-    )
-
-    assertSome(HM.get(key(0))(result), value("test"))
-    assertSome(HM.get(key(1))(result), value("b"))
-    assertNone(HM.get(key(2))(result))
-
-    assertNone(
-      HM.get(key(0))(pipe(
-        map,
-        HM.modifyAt(key(0), (): Option.Option<Value> => Option.none())
-      ))
-    )
-  })
-
-  it("modifyHash", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = pipe(
-      map,
-      HM.modifyHash(key(0), Hash.hash(key(0)), (maybe) =>
-        Option.isSome(maybe) ?
-          Option.some(value("test")) :
-          Option.none())
-    )
-
-    assertSome(HM.get(key(0))(result), value("test"))
-    assertSome(HM.get(key(1))(result), value("b"))
-    assertNone(HM.get(key(2))(result))
-  })
-
-  it("some", () => {
-    const mapWith3LettersMax = HM.make([0, "a"], [1, "bb"], [3, "ccc"])
-
-    deepStrictEqual(HM.some(mapWith3LettersMax, (value) => value.length > 3), false)
-    deepStrictEqual(pipe(mapWith3LettersMax, HM.some((value) => value.length > 3)), false)
-
-    deepStrictEqual(HM.some(mapWith3LettersMax, (value) => value.length > 1), true)
-
-    deepStrictEqual(HM.some(mapWith3LettersMax, (value, key) => value.length > 1 && key === 0), false)
-
-    deepStrictEqual(HM.some(mapWith3LettersMax, (value, key) => value.length > 1 && key === 1), true)
-  })
-
-  it("every", () => {
-    const mapWith3LettersMax = HM.make([0, "a"], [1, "bb"], [3, "ccc"])
-
-    deepStrictEqual(HM.every(mapWith3LettersMax, (value) => value.length > 2), false)
-    deepStrictEqual(pipe(mapWith3LettersMax, HM.every((value) => value.length > 2)), false)
-
-    deepStrictEqual(HM.every(mapWith3LettersMax, (value) => value.length >= 1), true)
-
-    deepStrictEqual(HM.every(mapWith3LettersMax, (value, key) => value.length >= 1 && key === 0), false)
-
-    deepStrictEqual(HM.every(mapWith3LettersMax, (value, key) => value.length >= 1 && key >= 0), true)
-  })
-
-  it("reduce", () => {
-    const map1 = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result1 = pipe(map1, HM.reduce("", (acc, { s }) => acc.length > 0 ? `${acc},${s}` : s))
-
-    strictEqual(result1, "a,b")
-
-    const map2 = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result2 = pipe(
-      map2,
-      HM.reduce(
-        "",
-        (acc, { s }, { n }) => acc.length > 0 ? `${acc},${n}:${s}` : `${n}:${s}`
+    it("compact", () => {
+      const map1 = HashMap.make(
+        ["a", Option.some(1)],
+        ["b", Option.none()],
+        ["c", Option.some(3)]
       )
-    )
+      const map2 = HashMap.compact(map1)
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.get(map2, "a")).toEqual(Option.some(1))
+      expect(HashMap.has(map2, "b")).toBe(false)
+      expect(HashMap.get(map2, "c")).toEqual(Option.some(3))
+    })
 
-    strictEqual(result2, "0:a,1:b")
+    it("filterMap", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3], ["d", 4])
+      const map2 = HashMap.filterMap(map1, (value) => value % 2 === 0 ? Result.succeed(value * 2) : Result.failVoid)
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.get(map2, "b")).toEqual(Option.some(4))
+      expect(HashMap.get(map2, "d")).toEqual(Option.some(8))
+      expect(HashMap.has(map2, "a")).toBe(false)
+      expect(HashMap.has(map2, "c")).toBe(false)
+    })
+
+    it("filterMap - key argument", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3], ["d", 4])
+      const map2 = HashMap.filterMap(
+        map1,
+        (value, key) => key < "c" ? Result.succeed(`${key}:${value}`) : Result.failVoid
+      )
+
+      expect(HashMap.size(map2)).toBe(2)
+      expect(HashMap.get(map2, "a")).toEqual(Option.some("a:1"))
+      expect(HashMap.get(map2, "b")).toEqual(Option.some("b:2"))
+      expect(HashMap.has(map2, "c")).toBe(false)
+      expect(HashMap.has(map2, "d")).toBe(false)
+    })
   })
 
-  it("remove", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = pipe(map, HM.remove(key(0)))
+  describe("search operations", () => {
+    it("findFirst returns an entry matching both key and value", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      const result = HashMap.findFirst(map, (value) => value > 1)
+      expect(result).toEqual(Option.some(["c", 3]))
+    })
 
-    assertNone(HM.get(key(0))(result))
-    assertSome(HM.get(key(1))(result), value("b"))
+    it("findFirst - not found", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      const result = HashMap.findFirst(map, (value) => value > 5)
+      expect(result).toEqual(Option.none())
+    })
+
+    it("some", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      expect(HashMap.some(map, (value) => value > 2)).toBe(true)
+      expect(HashMap.some(map, (value) => value > 5)).toBe(false)
+    })
+
+    it("every", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      expect(HashMap.every(map, (value) => value > 0)).toBe(true)
+      expect(HashMap.every(map, (value) => value > 1)).toBe(false)
+    })
+
+    it("hasBy", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      expect(HashMap.hasBy(map, (value, key) => key === "b" && value === 2)).toBe(true)
+      expect(HashMap.hasBy(map, (value, key) => key === "b" && value === 5)).toBe(false)
+    })
   })
 
-  it("remove non existing key doesn't change the array", () => {
-    const map = HM.make([13, 95], [90, 4])
-    const result = pipe(map, HM.remove(75))
+  describe("modification operations", () => {
+    it("modifyAt - existing key", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.modifyAt(
+        map1,
+        "a",
+        (option) => Option.isSome(option) ? Option.some(option.value * 2) : Option.none()
+      )
+      expect(HashMap.get(map2, "a")).toEqual(Option.some(2))
+    })
 
-    deepStrictEqual(Array.from(HM.keySet(map)), Array.from(HM.keySet(result)))
+    it("modifyAt - non-existing key", () => {
+      const map1 = HashMap.make(["a", 1])
+      const map2 = HashMap.modifyAt(map1, "b", (option) => Option.isSome(option) ? option : Option.some(10))
+      expect(HashMap.get(map2, "b")).toEqual(Option.some(10))
+    })
+
+    it("modifyAt - remove via None", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.modifyAt(map1, "a", () => Option.none())
+      expect(HashMap.has(map2, "a")).toBe(false)
+      expect(HashMap.has(map2, "b")).toBe(true)
+    })
+
+    it("modify", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.modify(map1, "a", (value) => value * 3)
+      expect(HashMap.get(map2, "a")).toEqual(Option.some(3))
+      expect(HashMap.get(map2, "b")).toEqual(Option.some(2))
+    })
   })
 
-  it("removeMany", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = pipe(map, HM.removeMany([key(0), key(1)]))
+  describe("reduction operations", () => {
+    it("reduce", () => {
+      const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
+      const sum = HashMap.reduce(map, 0, (acc, value) => acc + value)
+      expect(sum).toBe(6)
+    })
 
-    assertFalse(HM.isEmpty(map))
-    assertTrue(HM.isEmpty(result))
+    it("forEach visits each key and value", () => {
+      const map = HashMap.make(["a", 1], ["b", 2])
+      const collected: Array<[string, number]> = []
+      HashMap.forEach(map, (value, key) => {
+        collected.push([key, value])
+      })
+      expect(collected.sort()).toEqual([["a", 1], ["b", 2]])
+    })
   })
 
-  it("size", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = HM.size(map)
+  describe("mutation helpers", () => {
+    it("mutate allows in-place modifications", () => {
+      const map1 = HashMap.make(["a", 1])
+      const map2 = HashMap.mutate(map1, (mutable) => {
+        HashMap.set(mutable, "b", 2)
+        HashMap.set(mutable, "c", 3)
+      })
+      // Original should be unchanged
+      expect(HashMap.size(map1)).toBe(1)
+      // Mutated map should have all entries
+      expect(HashMap.size(map2)).toBe(3)
+      expect(HashMap.get(map2, "a")).toEqual(Option.some(1))
+      expect(HashMap.get(map2, "b")).toEqual(Option.some(2))
+      expect(HashMap.get(map2, "c")).toEqual(Option.some(3))
+    })
 
-    strictEqual(result, 2)
+    it("beginMutation creates distinct mutable instance", () => {
+      const map1 = HashMap.make(["a", 1])
+      const mutable = HashMap.beginMutation(map1)
+
+      // Should be different instances
+      expect(map1).not.toBe(mutable)
+
+      // Mutations on mutable should not affect original
+      HashMap.set(mutable, "b", 2)
+      expect(HashMap.size(map1)).toBe(1)
+      expect(HashMap.size(mutable)).toBe(2)
+
+      // endMutation returns same instance
+      const immutable = HashMap.endMutation(mutable)
+      expect(mutable).toBe(immutable)
+    })
+
+    it("mutations are isolated from original", () => {
+      const original = HashMap.make(["a", 1], ["b", 2])
+      const mutated = HashMap.mutate(original, (m) => {
+        HashMap.set(m, "a", 100)
+        HashMap.remove(m, "b")
+        HashMap.set(m, "c", 3)
+      })
+
+      // Original unchanged
+      expect(HashMap.get(original, "a")).toEqual(Option.some(1))
+      expect(HashMap.get(original, "b")).toEqual(Option.some(2))
+      expect(HashMap.has(original, "c")).toBe(false)
+
+      // Mutated has changes
+      expect(HashMap.get(mutated, "a")).toEqual(Option.some(100))
+      expect(HashMap.has(mutated, "b")).toBe(false)
+      expect(HashMap.get(mutated, "c")).toEqual(Option.some(3))
+    })
   })
 
-  it("union", () => {
-    const map1 = HM.make([0, "a"], [1, "b"])
-    const map2 = HM.make(["foo", true], ["bar", false])
-    const result = HM.union(map2)(map1)
+  describe("equality and hashing", () => {
+    it("Equal.equals", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.make(["b", 2], ["a", 1]) // Different order
+      const map3 = HashMap.make(["a", 1], ["b", 3]) // Different value
 
-    assertSome(pipe(result, HM.get(0)), "a")
-    assertSome(pipe(result, HM.get(1)), "b")
-    assertSome(pipe(result, HM.get("foo")), true)
-    assertSome(pipe(result, HM.get("bar")), false)
+      expect(Equal.equals(map1, map2)).toBe(true)
+      expect(Equal.equals(map1, map3)).toBe(false)
+    })
+
+    it("Hash.hash", () => {
+      const map1 = HashMap.make(["a", 1], ["b", 2])
+      const map2 = HashMap.make(["b", 2], ["a", 1]) // Different order
+
+      expect(Hash.hash(map1)).toBe(Hash.hash(map2))
+    })
   })
 
-  it("modify", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = pipe(map, HM.modify(key(0), ({ s }) => value(`${s}-${s}`)))
+  describe("custom hash with Equal objects", () => {
+    class Person implements Equal.Equal {
+      constructor(readonly name: string, readonly age: number) {}
 
-    assertSome(HM.get(key(0))(result), value("a-a"))
-    assertSome(HM.get(key(1))(result), value("b"))
-    assertNone(HM.get(key(2))(result))
+      [Equal.symbol](that: Equal.Equal): boolean {
+        return that instanceof Person &&
+          this.name === that.name &&
+          this.age === that.age
+      }
 
-    assertNone(
-      HM.get(key(2))(pipe(map, HM.modify(key(2), ({ s }) => value(`${s}-${s}`))))
-    )
+      [Hash.symbol](): number {
+        return Hash.string(this.name) ^ Hash.number(this.age)
+      }
+    }
+
+    it("should work with Equal objects as keys", () => {
+      const person1 = new Person("Alice", 25)
+      const person2 = new Person("Alice", 25) // Same data, different instance
+      const person3 = new Person("Bob", 30)
+
+      const map = HashMap.make([person1, "value1"], [person3, "value3"])
+
+      // Should find value using structurally equal key
+      expect(HashMap.get(map, person2)).toEqual(Option.some("value1"))
+      expect(HashMap.has(map, person2)).toBe(true)
+
+      // Should work with set operation
+      const map2 = HashMap.set(map, person2, "updated")
+      expect(HashMap.get(map2, person1)).toEqual(Option.some("updated"))
+      expect(HashMap.size(map2)).toBe(2) // Should not increase size
+    })
   })
 
-  it("keys", () => {
-    const map = HM.make([0, "a"], [1, "b"])
-    const result = Array.from(HM.keys(map))
+  describe("regressions", () => {
+    class FixedHashKey implements Equal.Equal {
+      constructor(readonly id: string, readonly hash: number) {}
 
-    deepStrictEqual(result, [0, 1])
+      [Equal.symbol](that: Equal.Equal): boolean {
+        return that instanceof FixedHashKey && this.id === that.id
+      }
+
+      [Hash.symbol](): number {
+        return this.hash
+      }
+    }
+
+    it("keeps entries addressable when bit 31 is present in indexed leaf insert", () => {
+      const bit31Key = new FixedHashKey("bit31", 31)
+      const bit30Key = new FixedHashKey("bit30", 30)
+
+      let map = HashMap.empty<FixedHashKey, string>()
+      map = HashMap.set(map, bit31Key, "session1")
+      map = HashMap.set(map, bit30Key, "session2")
+
+      expect(HashMap.size(map)).toBe(2)
+      expect(HashMap.get(map, bit31Key)).toEqual(Option.some("session1"))
+      expect(HashMap.get(map, bit30Key)).toEqual(Option.some("session2"))
+    })
+
+    it("keeps entries addressable when mergeLeaves sees bit 31", () => {
+      const collisionA = new FixedHashKey("collisionA", 31)
+      const collisionB = new FixedHashKey("collisionB", 31)
+      const bit30Key = new FixedHashKey("bit30", 30)
+
+      let map = HashMap.empty<FixedHashKey, string>()
+      map = HashMap.set(map, collisionA, "a")
+      map = HashMap.set(map, collisionB, "b")
+      map = HashMap.set(map, bit30Key, "c")
+
+      expect(HashMap.size(map)).toBe(3)
+      expect(HashMap.get(map, collisionA)).toEqual(Option.some("a"))
+      expect(HashMap.get(map, collisionB)).toEqual(Option.some("b"))
+      expect(HashMap.get(map, bit30Key)).toEqual(Option.some("c"))
+    })
+
+    it("keeps all inserted entries addressable across random bit-31-heavy shapes", () => {
+      const entriesArbitrary = fc.array(fc.integer({ min: 0, max: 31 }), { minLength: 0, maxLength: 80 }).chain(
+        (hashes) => {
+          const allHashes = [31, 31, 30, ...hashes]
+          return fc.uniqueArray(fc.uuid(), { minLength: allHashes.length, maxLength: allHashes.length }).map((ids) =>
+            allHashes.map((hash, i) => ({ id: ids[i], hash }))
+          )
+        }
+      )
+
+      fc.assert(
+        fc.property(entriesArbitrary, (entries) => {
+          let map = HashMap.empty<FixedHashKey, string>()
+          const inserted: Array<readonly [FixedHashKey, string]> = []
+
+          for (const entry of entries) {
+            const key = new FixedHashKey(entry.id, entry.hash)
+            const value = `value-${entry.id}`
+            map = HashMap.set(map, key, value)
+            inserted.push([key, value])
+          }
+
+          expect(HashMap.size(map)).toBe(inserted.length)
+          for (const [key, value] of inserted) {
+            expect(HashMap.has(map, key)).toBe(true)
+            expect(HashMap.get(map, key)).toEqual(Option.some(value))
+          }
+        }),
+        { numRuns: 200 }
+      )
+    })
   })
 
-  it("keySet", () => {
-    const hashMap = HM.make(
-      [key(0), value("a")],
-      [key(1), value("b")],
-      [key(1), value("c")]
-    )
+  describe("type guards", () => {
+    it("isHashMap", () => {
+      const map = HashMap.make(["a", 1])
+      const notMap = { a: 1 }
 
-    const result = HM.keySet(hashMap)
-
-    deepStrictEqual([...result], [key(0), key(1)])
+      expect(HashMap.isHashMap(map)).toBe(true)
+      expect(HashMap.isHashMap(notMap)).toBe(false)
+      expect(HashMap.isHashMap(null)).toBe(false)
+      expect(HashMap.isHashMap(undefined)).toBe(false)
+    })
   })
 
-  it("values", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = Array.from(HM.values(map))
+  describe("stress tests", () => {
+    it("handles many inserts, lookups, and removals", () => {
+      let map = HashMap.empty<number, string>()
 
-    deepStrictEqual(result, [value("a"), value("b")])
-  })
+      // Add many entries
+      for (let i = 0; i < 1000; i++) {
+        map = HashMap.set(map, i, `value${i}`)
+      }
 
-  it("toValues", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = HM.toValues(map)
+      expect(HashMap.size(map)).toBe(1000)
 
-    deepStrictEqual(result, [value("a"), value("b")])
-  })
+      // Check random entries
+      for (let i = 0; i < 100; i++) {
+        const key = Math.floor(Math.random() * 1000)
+        expect(HashMap.get(map, key)).toEqual(Option.some(`value${key}`))
+      }
 
-  it("entries", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = Array.from(HM.entries(map))
+      // Remove half the entries
+      for (let i = 0; i < 500; i++) {
+        map = HashMap.remove(map, i)
+      }
 
-    deepStrictEqual(result, [[key(0), value("a")], [key(1), value("b")]])
-  })
+      expect(HashMap.size(map)).toBe(500)
 
-  it("toEntries", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("b")])
-    const result = HM.toEntries(map)
+      // Verify removals
+      for (let i = 0; i < 500; i++) {
+        expect(HashMap.has(map, i)).toBe(false)
+      }
+      for (let i = 500; i < 1000; i++) {
+        expect(HashMap.has(map, i)).toBe(true)
+      }
+    })
 
-    deepStrictEqual(result, [[key(0), value("a")], [key(1), value("b")]])
-  })
+    it("should handle hash collisions", () => {
+      // Create objects with same hash but different equality
+      class CollidingKey implements Equal.Equal {
+        constructor(readonly id: number) {}
 
-  it("pipe()", () => {
-    strictEqual(HM.empty().pipe(HM.set("key", "value")).pipe(HM.size), HM.make(["key", "value"]).pipe(HM.size))
-  })
+        [Equal.symbol](that: Equal.Equal): boolean {
+          return that instanceof CollidingKey && this.id === that.id
+        }
 
-  it("isHashMap", () => {
-    assertTrue(HM.isHashMap(HM.empty()))
-    assertFalse(HM.isHashMap(null))
-    assertFalse(HM.isHashMap({}))
-  })
+        [Hash.symbol](): number {
+          return 42 // Same hash for all instances
+        }
+      }
 
-  it("findFirst", () => {
-    const map = HM.make([key(0), value("a")], [key(1), value("bb")])
-    assertSome(HM.findFirst(map, (_v, k) => k.n === 0), [key(0), value("a")])
-    assertSome(HM.findFirst(map, (v, _k) => v.s === "bb"), [key(1), value("bb")])
-    assertNone(HM.findFirst(map, (v, k) => k.n === 0 && v.s === "bb"))
-  })
+      const key1 = new CollidingKey(1)
+      const key2 = new CollidingKey(2)
+      const key3 = new CollidingKey(3)
 
-  it("countBy", () => {
-    const map = HM.make([key(1), value("a")], [key(2), value("b")], [key(3), value("c")])
-    strictEqual(HM.countBy(map, (_v, k) => k.n % 2 === 1), 2)
-    strictEqual(HM.countBy(map, (v, k) => k.n % 2 === 1 && v.s === "a"), 1)
-    strictEqual(HM.countBy(map, (v, k) => k.n % 2 === 1 && v.s === "b"), 0)
+      let map = HashMap.empty<CollidingKey, string>()
+      map = HashMap.set(map, key1, "value1")
+      map = HashMap.set(map, key2, "value2")
+      map = HashMap.set(map, key3, "value3")
 
-    strictEqual(pipe(map, HM.countBy((_v, k) => k.n % 2 === 1)), 2)
-    strictEqual(pipe(map, HM.countBy((v, k) => k.n % 2 === 1 && v.s === "a")), 1)
-    strictEqual(pipe(map, HM.countBy((v, k) => k.n % 2 === 1 && v.s === "b")), 0)
+      expect(HashMap.size(map)).toBe(3)
+      expect(HashMap.get(map, key1)).toEqual(Option.some("value1"))
+      expect(HashMap.get(map, key2)).toEqual(Option.some("value2"))
+      expect(HashMap.get(map, key3)).toEqual(Option.some("value3"))
+
+      // Remove one
+      map = HashMap.remove(map, key2)
+      expect(HashMap.size(map)).toBe(2)
+      expect(HashMap.has(map, key1)).toBe(true)
+      expect(HashMap.has(map, key2)).toBe(false)
+      expect(HashMap.has(map, key3)).toBe(true)
+    })
   })
 })

@@ -5,5 +5,5 @@ const tpl = Fs.readFileSync("./scripts/version.template.txt").toString("utf8")
 
 Fs.writeFileSync(
   "packages/effect/src/internal/version.ts",
-  tpl.replace("VERSION", Package.version)
+  tpl.replace(/VERSION/g, Package.version)
 )

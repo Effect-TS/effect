@@ -6,7 +6,17 @@
   "access": "restricted",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["scratchpad"],
+  "ignore": [
+    "scratchpad",
+    "scripts"
+  ],
+  "privatePackages": false,
+  "fixed": [
+    [
+      "effect",
+      "@effect/*"
+    ]
+  ],
   "snapshot": {
     "useCalculatedVersion": false,
     "prereleaseTemplate": "{tag}-{commit}"

@@ -1,12 +1,14 @@
 import { describe, it } from "@effect/vitest"
-import { assertNone, assertRight, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { DateTime, Duration, Effect, Option, TestClock } from "effect"
+import { assertNone, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { DateTime, Duration, Effect, Option } from "effect"
+import { TestClock } from "effect/testing"
 
 const setTo2024NZ = TestClock.setTime(new Date("2023-12-31T11:00:00.000Z").getTime())
 const assertSomeIso = (value: Option.Option<DateTime.DateTime>, expected: string) => {
-  const iso = value.pipe(Option.map((value) => DateTime.formatIso(DateTime.toUtc(value))))
+  const iso = Option.map(value, (value) => DateTime.formatIso(DateTime.toUtc(value)))
   assertSome(iso, expected)
 }
+const isDeno = "Deno" in globalThis
 
 describe("DateTime", () => {
   describe("mutate", () => {
@@ -16,11 +18,11 @@ describe("DateTime", () => {
         const tomorrow = DateTime.mutate(now, (date) => {
           date.setUTCDate(date.getUTCDate() + 1)
         })
-        const diff = DateTime.distanceDurationEither(now, tomorrow)
-        assertRight(diff, Duration.decode("1 day"))
+        const diff = DateTime.distance(now, tomorrow)
+        deepStrictEqual(diff, Duration.fromInputUnsafe("1 day"))
       }))
 
-    it.effect("correctly preserves the time zone", () =>
+    it.effect("preserves the named zone when mutating across DST", () =>
       Effect.gen(function*() {
         yield* setTo2024NZ
         const now = yield* DateTime.nowInCurrentZone.pipe(
@@ -40,25 +42,25 @@ describe("DateTime", () => {
   })
 
   describe("add", () => {
-    it.effect("utc", () =>
+    it.effect("adds calendar days to a UTC DateTime", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.now
         const tomorrow = DateTime.add(now, { days: 1 })
-        const diff = DateTime.distanceDurationEither(now, tomorrow)
-        assertRight(diff, Duration.decode("1 day"))
+        const diff = DateTime.distance(now, tomorrow)
+        deepStrictEqual(diff, Duration.fromInputUnsafe("1 day"))
       }))
 
-    it("to month with less days", () => {
-      const jan = DateTime.unsafeMake({ year: 2023, month: 1, day: 31 })
+    it("clamps to the last valid day when changing months", () => {
+      const jan = DateTime.makeUnsafe({ year: 2023, month: 1, day: 31 })
       let feb = DateTime.add(jan, { months: 1 })
       strictEqual(feb.toJSON(), "2023-02-28T00:00:00.000Z")
 
-      const mar = DateTime.unsafeMake({ year: 2023, month: 3, day: 31 })
+      const mar = DateTime.makeUnsafe({ year: 2023, month: 3, day: 31 })
       feb = DateTime.subtract(mar, { months: 1 })
       strictEqual(feb.toJSON(), "2023-02-28T00:00:00.000Z")
     })
 
-    it.effect("correctly preserves the time zone", () =>
+    it.effect("preserves the named zone when adding calendar units across DST", () =>
       Effect.gen(function*() {
         yield* setTo2024NZ
         const now = yield* DateTime.nowInCurrentZone.pipe(
@@ -78,47 +80,48 @@ describe("DateTime", () => {
     it.effect("leap years", () =>
       Effect.gen(function*() {
         yield* setTo2024NZ
-        const now = yield* DateTime.make({ year: 2024, month: 2, day: 29 })
-        const future = DateTime.add(now, { years: 1 })
-        strictEqual(DateTime.formatIso(future), "2025-02-28T00:00:00.000Z")
+        const now = DateTime.make({ year: 2024, month: 2, day: 29 })
+        assertSomeIso(now, "2024-02-29T00:00:00.000Z")
+        const future = Option.map(now, (value) => DateTime.add(value, { years: 1 }))
+        assertSome(Option.map(future, DateTime.formatIso), "2025-02-28T00:00:00.000Z")
       }))
   })
 
   describe("endOf", () => {
     it("month", () => {
-      const mar = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const mar = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
       const end = DateTime.endOf(mar, "month")
       strictEqual(end.toJSON(), "2024-03-31T23:59:59.999Z")
     })
 
     it("feb leap year", () => {
-      const feb = DateTime.unsafeMake("2024-02-15T12:00:00.000Z")
+      const feb = DateTime.makeUnsafe("2024-02-15T12:00:00.000Z")
       const end = DateTime.endOf(feb, "month")
       strictEqual(end.toJSON(), "2024-02-29T23:59:59.999Z")
     })
 
     it("week", () => {
-      const start = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const start = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
       const end = DateTime.endOf(start, "week")
       strictEqual(end.toJSON(), "2024-03-16T23:59:59.999Z")
       strictEqual(DateTime.getPartUtc(end, "weekDay"), 6)
     })
 
     it("week last day", () => {
-      const start = DateTime.unsafeMake("2024-03-16T12:00:00.000Z")
+      const start = DateTime.makeUnsafe("2024-03-16T12:00:00.000Z")
       const end = DateTime.endOf(start, "week")
       strictEqual(end.toJSON(), "2024-03-16T23:59:59.999Z")
     })
 
     it("week with options", () => {
-      const start = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const start = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
       const end = DateTime.endOf(start, "week", {
         weekStartsOn: 1
       })
       strictEqual(end.toJSON(), "2024-03-17T23:59:59.999Z")
     })
 
-    it.effect("correctly preserves the time zone", () =>
+    it.effect("returns the zoned end of the month", () =>
       Effect.gen(function*() {
         yield* setTo2024NZ
         const now = yield* DateTime.nowInCurrentZone.pipe(
@@ -132,13 +135,13 @@ describe("DateTime", () => {
 
   describe("startOf", () => {
     it("month", () => {
-      const mar = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const mar = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
       const end = DateTime.startOf(mar, "month")
       strictEqual(end.toJSON(), "2024-03-01T00:00:00.000Z")
     })
 
     it("month duplicated", () => {
-      const mar = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const mar = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
       const end = DateTime.startOf(mar, "month").pipe(
         DateTime.startOf("month")
       )
@@ -146,26 +149,26 @@ describe("DateTime", () => {
     })
 
     it("feb leap year", () => {
-      const feb = DateTime.unsafeMake("2024-02-15T12:00:00.000Z")
+      const feb = DateTime.makeUnsafe("2024-02-15T12:00:00.000Z")
       const end = DateTime.startOf(feb, "month")
       strictEqual(end.toJSON(), "2024-02-01T00:00:00.000Z")
     })
 
     it("week", () => {
-      const start = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const start = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
       const end = DateTime.startOf(start, "week")
       strictEqual(end.toJSON(), "2024-03-10T00:00:00.000Z")
       strictEqual(DateTime.getPartUtc(end, "weekDay"), 0)
     })
 
     it("week first day", () => {
-      const start = DateTime.unsafeMake("2024-03-10T12:00:00.000Z")
+      const start = DateTime.makeUnsafe("2024-03-10T12:00:00.000Z")
       const end = DateTime.startOf(start, "week")
       strictEqual(end.toJSON(), "2024-03-10T00:00:00.000Z")
     })
 
     it("week with options", () => {
-      const start = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const start = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
       const end = DateTime.startOf(start, "week", {
         weekStartsOn: 1
       })
@@ -175,31 +178,31 @@ describe("DateTime", () => {
 
   describe("nearest", () => {
     it("month up", () => {
-      const mar = DateTime.unsafeMake("2024-03-16T12:00:00.000Z")
+      const mar = DateTime.makeUnsafe("2024-03-16T12:00:00.000Z")
       const end = DateTime.nearest(mar, "month")
       strictEqual(end.toJSON(), "2024-04-01T00:00:00.000Z")
     })
 
     it("month down", () => {
-      const mar = DateTime.unsafeMake("2024-03-16T11:00:00.000Z")
+      const mar = DateTime.makeUnsafe("2024-03-16T11:00:00.000Z")
       const end = DateTime.nearest(mar, "month")
       strictEqual(end.toJSON(), "2024-03-01T00:00:00.000Z")
     })
 
     it("second up", () => {
-      const mar = DateTime.unsafeMake("2024-03-20T12:00:00.500Z")
+      const mar = DateTime.makeUnsafe("2024-03-20T12:00:00.500Z")
       const end = DateTime.nearest(mar, "second")
       strictEqual(end.toJSON(), "2024-03-20T12:00:01.000Z")
     })
 
     it("second down", () => {
-      const mar = DateTime.unsafeMake("2024-03-20T12:00:00.400Z")
+      const mar = DateTime.makeUnsafe("2024-03-20T12:00:00.400Z")
       const end = DateTime.nearest(mar, "second")
       strictEqual(end.toJSON(), "2024-03-20T12:00:00.000Z")
     })
   })
 
-  describe("format", () => {
+  describe.skipIf(isDeno)("format", () => {
     it.effect("full", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.now
@@ -214,7 +217,7 @@ describe("DateTime", () => {
       }))
   })
 
-  describe("formatUtc", () => {
+  describe.skipIf(isDeno)("formatUtc", () => {
     it.effect("full", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.now
@@ -229,7 +232,7 @@ describe("DateTime", () => {
       }))
   })
 
-  describe("format zoned", () => {
+  describe.skipIf(isDeno)("format zoned", () => {
     it.effect("full", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.nowInCurrentZone.pipe(
@@ -245,7 +248,7 @@ describe("DateTime", () => {
         )
       }))
 
-    it.effect("long with offset", () =>
+    it.effect.skipIf(isDeno)("long with offset", () =>
       Effect.gen(function*() {
         const now = yield* DateTime.now
         const formatted = now.pipe(
@@ -262,7 +265,7 @@ describe("DateTime", () => {
 
   describe("fromParts", () => {
     it("partial", () => {
-      const date = DateTime.unsafeMake({
+      const date = DateTime.makeUnsafe({
         year: 2024,
         month: 12,
         day: 25
@@ -271,14 +274,14 @@ describe("DateTime", () => {
     })
 
     it("month is set correctly", () => {
-      const date = DateTime.unsafeMake({ year: 2024 })
+      const date = DateTime.makeUnsafe({ year: 2024 })
       strictEqual(date.toJSON(), "2024-01-01T00:00:00.000Z")
     })
   })
 
   describe("setPartsUtc", () => {
     it("partial", () => {
-      const date = DateTime.unsafeMake({
+      const date = DateTime.makeUnsafe({
         year: 2024,
         month: 12,
         day: 25
@@ -293,11 +296,11 @@ describe("DateTime", () => {
     })
 
     it("ignores time zones", () => {
-      const date = DateTime.unsafeMake({
+      const date = DateTime.makeUnsafe({
         year: 2024,
         month: 12,
         day: 25
-      }).pipe(DateTime.unsafeSetZoneNamed("Pacific/Auckland"))
+      }).pipe(DateTime.setZoneNamedUnsafe("Pacific/Auckland"))
       strictEqual(date.toJSON(), "2024-12-25T00:00:00.000Z")
 
       const updated = DateTime.setPartsUtc(date, {
@@ -310,7 +313,7 @@ describe("DateTime", () => {
 
   describe("setParts", () => {
     it("partial", () => {
-      const date = DateTime.unsafeMake({
+      const date = DateTime.makeUnsafe({
         year: 2024,
         month: 12,
         day: 25
@@ -325,17 +328,17 @@ describe("DateTime", () => {
     })
 
     it("accounts for time zone", () => {
-      const date = DateTime.unsafeMake({
+      const date = DateTime.makeUnsafe({
         year: 2024,
         month: 12,
         day: 25
-      }).pipe(DateTime.unsafeSetZoneNamed("Pacific/Auckland"))
+      }).pipe(DateTime.setZoneNamedUnsafe("Pacific/Auckland"))
       strictEqual(date.toJSON(), "2024-12-25T00:00:00.000Z")
 
       const updated = DateTime.setParts(date, {
         year: 2023,
         month: 6,
-        hours: 12
+        hour: 12
       })
       strictEqual(updated.toJSON(), "2023-06-25T00:00:00.000Z")
     })
@@ -343,7 +346,7 @@ describe("DateTime", () => {
 
   describe("formatIso", () => {
     it("full", () => {
-      const now = DateTime.unsafeMake("2024-03-15T12:00:00.000Z")
+      const now = DateTime.makeUnsafe("2024-03-15T12:00:00.000Z")
       strictEqual(DateTime.formatIso(now), "2024-03-15T12:00:00.000Z")
     })
   })
@@ -370,7 +373,7 @@ describe("DateTime", () => {
 
   describe("removeTime", () => {
     it("removes time", () => {
-      const dt = DateTime.unsafeMakeZoned("2024-01-01T01:00:00Z", {
+      const dt = DateTime.makeZonedUnsafe("2024-01-01T01:00:00Z", {
         timeZone: "Pacific/Auckland",
         adjustForTimeZone: true
       }).pipe(DateTime.removeTime)
@@ -379,63 +382,63 @@ describe("DateTime", () => {
   })
 
   describe("makeZonedFromString", () => {
-    it.effect("parses time + zone", () =>
+    it.effect("parses an instant with an offset and IANA zone", () =>
       Effect.gen(function*() {
-        const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00[Pacific/Auckland]")
-        strictEqual(dt.toJSON(), "2024-07-21T08:12:34.112Z")
+        const dt = DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00[Pacific/Auckland]")
+        assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T08:12:34.112Z")
       }))
 
-    it.effect("only offset", () =>
+    it.effect("parses an offset-only string as an Offset zone", () =>
       Effect.gen(function*() {
-        const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00")
-        strictEqual(dt.zone._tag, "Offset")
-        strictEqual(dt.toJSON(), "2024-07-21T08:12:34.112Z")
+        const dt = DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00")
+        assertSome(Option.map(dt, (value) => value.zone._tag), "Offset")
+        assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T08:12:34.112Z")
       }))
 
-    it.effect("only offset with 00:00", () =>
+    it.effect("parses a UTC offset-only string as an Offset zone", () =>
       Effect.gen(function*() {
-        const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+00:00")
-        strictEqual(dt.zone._tag, "Offset")
-        strictEqual(dt.toJSON(), "2024-07-21T20:12:34.112Z")
+        const dt = DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+00:00")
+        assertSome(Option.map(dt, (value) => value.zone._tag), "Offset")
+        assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T20:12:34.112Z")
       }))
 
-    it.effect("roundtrip", () =>
+    it.effect("roundtrips a bracketed IANA zone string", () =>
       Effect.gen(function*() {
-        const dt = yield* DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00[Pacific/Auckland]").pipe(
-          Option.map(DateTime.formatIsoZoned),
-          Option.flatMap(DateTime.makeZonedFromString)
+        const dt = Option.flatMap(
+          DateTime.makeZonedFromString("2024-07-21T20:12:34.112546348+12:00[Pacific/Auckland]"),
+          (d) => DateTime.makeZonedFromString(DateTime.formatIsoZoned(d))
         )
-        deepStrictEqual(dt.zone, DateTime.zoneUnsafeMakeNamed("Pacific/Auckland"))
-        strictEqual(dt.toJSON(), "2024-07-21T08:12:34.112Z")
+        assertSome(Option.map(dt, (value) => DateTime.zoneToString(value.zone)), "Pacific/Auckland")
+        assertSome(Option.map(dt, (value) => value.toJSON()), "2024-07-21T08:12:34.112Z")
       }))
   })
 
   it("parts equality", () => {
-    const d1 = DateTime.unsafeMake("2025-01-01")
-    const d2 = DateTime.unsafeMake("2025-01-01")
+    const d1 = DateTime.makeUnsafe("2025-01-01")
+    const d2 = DateTime.makeUnsafe("2025-01-01")
     deepStrictEqual(d1, d2)
     DateTime.toPartsUtc(d2)
     deepStrictEqual(d1, d2)
   })
 
   // doesnt work in CI
-  it.skip("unsafeMakeZoned no options", () => {
+  it.skip("makeZonedUnsafe no options", () => {
     const date = new Date("2024-07-21T20:12:34.112Z")
     ;(date as any).getTimezoneOffset = () => -60
-    const dt = DateTime.unsafeMakeZoned(date)
+    const dt = DateTime.makeZonedUnsafe(date)
     deepStrictEqual(dt.zone, DateTime.zoneMakeOffset(60 * 60 * 1000))
   })
 
   describe("toUtc", () => {
     it.effect("with a Utc", () =>
       Effect.gen(function*() {
-        const dt = DateTime.unsafeMake("2024-01-01T01:00:00Z")
+        const dt = DateTime.makeUnsafe("2024-01-01T01:00:00Z")
         strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
       }))
 
     it.effect("with a Zoned", () =>
       Effect.gen(function*() {
-        const dt = DateTime.unsafeMakeZoned("2024-01-01T01:00:00Z", {
+        const dt = DateTime.makeZonedUnsafe("2024-01-01T01:00:00Z", {
           timeZone: "Pacific/Auckland",
           adjustForTimeZone: true
         })
@@ -452,13 +455,25 @@ describe("DateTime", () => {
       }))
   })
 
-  describe("unsafeMake", () => {
+  describe("makeUnsafe", () => {
     it("treats strings without zone info as UTC", () => {
-      let dt = DateTime.unsafeMake("2024-01-01 01:00:00")
+      const dt = DateTime.makeUnsafe("2024-01-01 01:00:00")
       strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")
+    })
 
-      dt = DateTime.unsafeMake("2020-02-01T11:17:00+1100")
+    it("does not append Z to strings ending with Z", () => {
+      const dt = DateTime.makeUnsafe("2026-01-27T17:14:06.000Z")
+      strictEqual(dt.toJSON(), "2026-01-27T17:14:06.000Z")
+    })
+
+    it("does not append Z to strings with explicit offset", () => {
+      const dt = DateTime.makeUnsafe("2020-02-01T11:17:00+1100")
       strictEqual(dt.toJSON(), "2020-02-01T00:17:00.000Z")
+    })
+
+    it("does not append Z to strings containing GMT", () => {
+      const dt = DateTime.makeUnsafe("Tue, 27 Jan 2026 17:14:06 GMT")
+      strictEqual(dt.toJSON(), "2026-01-27T17:14:06.000Z")
     })
   })
 
@@ -472,7 +487,7 @@ describe("DateTime", () => {
       [
         {
           zone: "America/New_York",
-          time: { year: 2024, month: 3, day: 10, hours: 2 },
+          time: { year: 2024, month: 3, day: 10, hour: 2 },
           description: "America/New_York 02:00 gap time during leap year (2024)",
           expectedResults: {
             compatible: "2024-03-10T07:00:00.000Z",
@@ -483,7 +498,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2024, month: 11, day: 3, hours: 1, minutes: 30 },
+          time: { year: 2024, month: 11, day: 3, hour: 1, minute: 30 },
           description: "America/New_York 01:30 ambiguous time during leap year (2024)",
           expectedResults: {
             compatible: "2024-11-03T05:30:00.000Z",
@@ -494,7 +509,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 1 },
+          time: { year: 2025, month: 3, day: 9, hour: 1 },
           description: "America/New_York 01:00 before DST transition",
           expectedResults: {
             compatible: "2025-03-09T06:00:00.000Z",
@@ -505,7 +520,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 1, minutes: 59, seconds: 59 },
+          time: { year: 2025, month: 3, day: 9, hour: 1, minute: 59, second: 59 },
           description: "America/New_York 01:59:59 last second before DST gap",
           expectedResults: {
             compatible: "2025-03-09T06:59:59.000Z",
@@ -516,7 +531,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 2 },
+          time: { year: 2025, month: 3, day: 9, hour: 2 },
           description: "America/New_York 02:00 gap time (DST spring forward)",
           expectedResults: {
             compatible: "2025-03-09T07:00:00.000Z",
@@ -527,7 +542,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 15 },
+          time: { year: 2025, month: 3, day: 9, hour: 2, minute: 15 },
           description: "America/New_York 02:15 gap time (DST spring forward)",
           expectedResults: {
             compatible: "2025-03-09T07:15:00.000Z",
@@ -538,7 +553,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 30 },
+          time: { year: 2025, month: 3, day: 9, hour: 2, minute: 30 },
           description: "America/New_York 02:30 gap time (DST spring forward)",
           expectedResults: {
             compatible: "2025-03-09T07:30:00.000Z",
@@ -549,7 +564,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 2, minutes: 45 },
+          time: { year: 2025, month: 3, day: 9, hour: 2, minute: 45 },
           description: "America/New_York 02:45 gap time (DST spring forward)",
           expectedResults: {
             compatible: "2025-03-09T07:45:00.000Z",
@@ -560,7 +575,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 3, day: 9, hours: 3 },
+          time: { year: 2025, month: 3, day: 9, hour: 3 },
           description: "America/New_York 03:00 first valid time after DST gap",
           expectedResults: {
             compatible: "2025-03-09T07:00:00.000Z",
@@ -571,7 +586,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 11, day: 2, hours: 1, minutes: 0, seconds: 0 },
+          time: { year: 2025, month: 11, day: 2, hour: 1, minute: 0, second: 0 },
           description: "America/New_York 01:00:00 exact start of ambiguous period",
           expectedResults: {
             compatible: "2025-11-02T05:00:00.000Z",
@@ -582,7 +597,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 11, day: 2, hours: 1, minutes: 30 },
+          time: { year: 2025, month: 11, day: 2, hour: 1, minute: 30 },
           description: "America/New_York 01:30 ambiguous time (DST fall back)",
           expectedResults: {
             compatible: "2025-11-02T05:30:00.000Z",
@@ -593,7 +608,7 @@ describe("DateTime", () => {
         },
         {
           zone: "America/New_York",
-          time: { year: 2025, month: 11, day: 2, hours: 1, minutes: 59, seconds: 59 },
+          time: { year: 2025, month: 11, day: 2, hour: 1, minute: 59, second: 59 },
           description: "America/New_York 01:59:59 last second of ambiguous period",
           expectedResults: {
             compatible: "2025-11-02T05:59:59.000Z",
@@ -604,7 +619,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Asia/Kathmandu",
-          time: { year: 2025, month: 6, day: 15, hours: 12 },
+          time: { year: 2025, month: 6, day: 15, hour: 12 },
           description: "Asia/Kathmandu 12:00 unusual offset (UTC+05:45)",
           expectedResults: {
             compatible: "2025-06-15T06:15:00.000Z",
@@ -615,7 +630,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Australia/Melbourne",
-          time: { year: 2025, month: 10, day: 5, hours: 2 },
+          time: { year: 2025, month: 10, day: 5, hour: 2 },
           description: "Australia/Melbourne 02:00 gap time (DST starts, spring forward)",
           expectedResults: {
             compatible: "2025-10-04T16:00:00.000Z",
@@ -626,7 +641,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Australia/Sydney",
-          time: { year: 2025, month: 4, day: 6, hours: 1 },
+          time: { year: 2025, month: 4, day: 6, hour: 1 },
           description: "Australia/Sydney 01:00 normal timezone conversion",
           expectedResults: {
             compatible: "2025-04-05T14:00:00.000Z",
@@ -637,7 +652,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Australia/Sydney",
-          time: { year: 2025, month: 4, day: 6, hours: 2, minutes: 30 },
+          time: { year: 2025, month: 4, day: 6, hour: 2, minute: 30 },
           description: "Australia/Sydney 02:30 ambiguous time (DST ends, fall back)",
           expectedResults: {
             compatible: "2025-04-05T15:30:00.000Z",
@@ -648,7 +663,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Australia/Sydney",
-          time: { year: 2025, month: 10, day: 5, hours: 2, minutes: 30 },
+          time: { year: 2025, month: 10, day: 5, hour: 2, minute: 30 },
           description: "Australia/Sydney 02:30 gap time (DST starts, spring forward)",
           expectedResults: {
             compatible: "2025-10-04T16:30:00.000Z",
@@ -659,7 +674,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2024, month: 10, day: 27, hours: 3 },
+          time: { year: 2024, month: 10, day: 27, hour: 3 },
           description: "Europe/Athens 03:00 ambiguous time during leap year (2024)",
           expectedResults: {
             compatible: "2024-10-27T00:00:00.000Z",
@@ -670,7 +685,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 27, hours: 1 },
+          time: { year: 2025, month: 3, day: 27, hour: 1 },
           description: "Europe/Athens 01:00 normal time before DST",
           expectedResults: {
             compatible: "2025-03-26T23:00:00.000Z",
@@ -681,7 +696,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 1 },
+          time: { year: 2025, month: 3, day: 30, hour: 1 },
           description: "Europe/Athens 01:00 before DST transition (UTC+2)",
           expectedResults: {
             compatible: "2025-03-29T23:00:00.000Z",
@@ -692,7 +707,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 2, minutes: 30 },
+          time: { year: 2025, month: 3, day: 30, hour: 2, minute: 30 },
           description: "Europe/Athens 02:30 normal time before DST transition",
           expectedResults: {
             compatible: "2025-03-30T00:30:00.000Z",
@@ -703,7 +718,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 3 },
+          time: { year: 2025, month: 3, day: 30, hour: 3 },
           description: "Europe/Athens 03:00 gap time (DST spring forward)",
           expectedResults: {
             compatible: "2025-03-30T01:00:00.000Z",
@@ -714,7 +729,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 3, day: 30, hours: 4 },
+          time: { year: 2025, month: 3, day: 30, hour: 4 },
           description: "Europe/Athens 04:00 normal time after DST transition",
           expectedResults: {
             compatible: "2025-03-30T01:00:00.000Z",
@@ -725,7 +740,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/Athens",
-          time: { year: 2025, month: 10, day: 26, hours: 3 },
+          time: { year: 2025, month: 10, day: 26, hour: 3 },
           description: "Europe/Athens 03:00 ambiguous time (DST fall back)",
           expectedResults: {
             compatible: "2025-10-26T00:00:00.000Z",
@@ -736,7 +751,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/Berlin",
-          time: { year: 2025, month: 10, day: 26, hours: 2, minutes: 30 },
+          time: { year: 2025, month: 10, day: 26, hour: 2, minute: 30 },
           description: "Europe/Berlin 02:30 ambiguous time (DST fall back)",
           expectedResults: {
             compatible: "2025-10-26T00:30:00.000Z",
@@ -747,7 +762,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/London",
-          time: { year: 2024, month: 3, day: 31, hours: 1 },
+          time: { year: 2024, month: 3, day: 31, hour: 1 },
           description: "Europe/London 01:00 gap time during leap year (2024)",
           expectedResults: {
             compatible: "2024-03-31T01:00:00.000Z",
@@ -758,7 +773,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/London",
-          time: { year: 2025, month: 3, day: 29, hours: 1 },
+          time: { year: 2025, month: 3, day: 29, hour: 1 },
           description: "Europe/London 01:00 normal time day before DST",
           expectedResults: {
             compatible: "2025-03-29T01:00:00.000Z",
@@ -769,7 +784,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/London",
-          time: { year: 2025, month: 3, day: 30, hours: 1 },
+          time: { year: 2025, month: 3, day: 30, hour: 1 },
           description: "Europe/London 01:00 gap time (DST spring forward)",
           expectedResults: {
             compatible: "2025-03-30T01:00:00.000Z",
@@ -780,7 +795,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Europe/London",
-          time: { year: 2025, month: 10, day: 26, hours: 1, minutes: 30 },
+          time: { year: 2025, month: 10, day: 26, hour: 1, minute: 30 },
           description: "Europe/London 01:30 ambiguous time (DST fall back)",
           expectedResults: {
             compatible: "2025-10-26T00:30:00.000Z",
@@ -791,7 +806,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Auckland",
-          time: { year: 2025, month: 1, day: 15, hours: 12 },
+          time: { year: 2025, month: 1, day: 15, hour: 12 },
           description: "Pacific/Auckland 12:00 during DST period (NZDT, UTC+13)",
           expectedResults: {
             compatible: "2025-01-14T23:00:00.000Z",
@@ -802,7 +817,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Auckland",
-          time: { year: 2025, month: 4, day: 6, hours: 1, minutes: 59 },
+          time: { year: 2025, month: 4, day: 6, hour: 1, minute: 59 },
           description: "Pacific/Auckland 01:59 last minute before DST ends",
           expectedResults: {
             compatible: "2025-04-05T12:59:00.000Z",
@@ -813,7 +828,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Auckland",
-          time: { year: 2025, month: 4, day: 6, hours: 2, minutes: 30 },
+          time: { year: 2025, month: 4, day: 6, hour: 2, minute: 30 },
           description: "Pacific/Auckland 02:30 ambiguous time (DST ends, fall back)",
           expectedResults: {
             compatible: "2025-04-05T13:30:00.000Z",
@@ -824,7 +839,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Auckland",
-          time: { year: 2025, month: 4, day: 6, hours: 3 },
+          time: { year: 2025, month: 4, day: 6, hour: 3 },
           description: "Pacific/Auckland 03:00 normal time after DST ends",
           expectedResults: {
             compatible: "2025-04-05T15:00:00.000Z",
@@ -835,7 +850,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Auckland",
-          time: { year: 2025, month: 7, day: 15, hours: 12 },
+          time: { year: 2025, month: 7, day: 15, hour: 12 },
           description: "Pacific/Auckland 12:00 during standard time (NZST, UTC+12)",
           expectedResults: {
             compatible: "2025-07-15T00:00:00.000Z",
@@ -846,7 +861,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Auckland",
-          time: { year: 2025, month: 9, day: 28, hours: 1, minutes: 59, seconds: 59 },
+          time: { year: 2025, month: 9, day: 28, hour: 1, minute: 59, second: 59 },
           description: "Pacific/Auckland 01:59:59 last second before DST starts",
           expectedResults: {
             compatible: "2025-09-27T13:59:59.000Z",
@@ -857,7 +872,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Auckland",
-          time: { year: 2025, month: 9, day: 28, hours: 2, minutes: 30 },
+          time: { year: 2025, month: 9, day: 28, hour: 2, minute: 30 },
           description: "Pacific/Auckland 02:30 gap time (DST starts, spring forward)",
           expectedResults: {
             compatible: "2025-09-27T14:30:00.000Z",
@@ -868,7 +883,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Auckland",
-          time: { year: 2025, month: 9, day: 28, hours: 3 },
+          time: { year: 2025, month: 9, day: 28, hour: 3 },
           description: "Pacific/Auckland 03:00 first valid time after DST gap",
           expectedResults: {
             compatible: "2025-09-27T14:00:00.000Z",
@@ -879,7 +894,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Kiritimati",
-          time: { year: 2025, month: 6, day: 15, hours: 12 },
+          time: { year: 2025, month: 6, day: 15, hour: 12 },
           description: "Pacific/Kiritimati 12:00 extreme positive offset (UTC+14)",
           expectedResults: {
             compatible: "2025-06-14T22:00:00.000Z",
@@ -890,7 +905,7 @@ describe("DateTime", () => {
         },
         {
           zone: "Pacific/Marquesas",
-          time: { year: 2025, month: 6, day: 15, hours: 12 },
+          time: { year: 2025, month: 6, day: 15, hour: 12 },
           description: "Pacific/Marquesas 12:00 unusual negative offset (UTC-09:30)",
           expectedResults: {
             compatible: "2025-06-15T21:30:00.000Z",
@@ -913,7 +928,7 @@ describe("DateTime", () => {
           assertSomeIso(result, expectedResults[strategy])
         }
 
-        // Test default behavior ("compatible")
+        // Test default strategy
         const defaultResult = DateTime.makeZoned(time, {
           timeZone: zone,
           adjustForTimeZone: true

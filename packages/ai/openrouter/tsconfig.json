@@ -1,8 +1,10 @@
 {
+  "$schema": "http://json.schemastore.org/tsconfig",
   "extends": "../../../tsconfig.base.json",
-  "include": [],
+  "include": ["src"],
   "references": [
-    { "path": "tsconfig.src.json" },
-    { "path": "tsconfig.test.json" }
+    { "path": "../../effect" },
+    { "path": "../anthropic" },
+    { "path": "../openai" }
   ]
 }

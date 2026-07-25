@@ -1,177 +1,205 @@
-import type * as Cause from "../Cause.js"
-import type * as Effect from "../Effect.js"
-import { dual } from "../Function.js"
-import { hasProperty } from "../Predicate.js"
-import type * as Request from "../Request.js"
-import type * as Types from "../Types.js"
-import * as completedRequestMap from "./completedRequestMap.js"
-import * as core from "./core.js"
-import { StructuralPrototype } from "./effectable.js"
+import type { NonEmptyArray } from "../Array.ts"
+import * as Context from "../Context.ts"
+import type { Effect } from "../Effect.ts"
+import type { Exit } from "../Exit.ts"
+import type { Fiber } from "../Fiber.ts"
+import { dual } from "../Function.ts"
+import type * as Request from "../Request.ts"
+import { makeEntry } from "../Request.ts"
+import type { RequestResolver } from "../RequestResolver.ts"
+import { Scheduler } from "../Scheduler.ts"
+import { exitDie, isEffect } from "./core.ts"
+import * as effect from "./effect.ts"
 
 /** @internal */
-const RequestSymbolKey = "effect/Request"
-
-/** @internal */
-export const RequestTypeId: Request.RequestTypeId = Symbol.for(
-  RequestSymbolKey
-) as Request.RequestTypeId
-
-const requestVariance = {
-  /* c8 ignore next */
-  _E: (_: never) => _,
-  /* c8 ignore next */
-  _A: (_: never) => _
-}
-
-const RequestPrototype = {
-  ...StructuralPrototype,
-  [RequestTypeId]: requestVariance
-}
-
-/** @internal */
-export const isRequest = (u: unknown): u is Request.Request<unknown, unknown> => hasProperty(u, RequestTypeId)
-
-/** @internal */
-export const of = <R extends Request.Request<any, any>>(): Request.Request.Constructor<R> => (args) =>
-  Object.assign(Object.create(RequestPrototype), args)
-
-/** @internal */
-export const tagged = <R extends Request.Request<any, any> & { _tag: string }>(
-  tag: R["_tag"]
-): Request.Request.Constructor<R, "_tag"> =>
-(args) => {
-  const request = Object.assign(Object.create(RequestPrototype), args)
-  request._tag = tag
-  return request
-}
-
-/** @internal */
-export const Class: new<Success, Error, A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
-    : { readonly [P in keyof A as P extends keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
-) => Request.Request<Success, Error> & Readonly<A> = (function() {
-  function Class(this: any, args: any) {
-    if (args) {
-      Object.assign(this, args)
-    }
-  }
-  Class.prototype = RequestPrototype
-  return Class as any
-})()
-
-/** @internal */
-export const TaggedClass = <Tag extends string>(
-  tag: Tag
-): new<Success, Error, A extends Record<string, any>>(
-  args: Types.Equals<Omit<A, keyof Request.Request<unknown, unknown>>, {}> extends true ? void
-    : { readonly [P in keyof A as P extends "_tag" | keyof Request.Request<unknown, unknown> ? never : P]: A[P] }
-) => Request.Request<Success, Error> & Readonly<A> & { readonly _tag: Tag } => {
-  return class TaggedClass extends Class<any, any, any> {
-    readonly _tag = tag
-  } as any
-}
-
-/** @internal */
-export const complete = dual<
-  <A extends Request.Request<any, any>>(
-    result: Request.Request.Result<A>
-  ) => (self: A) => Effect.Effect<void>,
-  <A extends Request.Request<any, any>>(
+export const request: {
+  <A extends Request.Any, EX = never, RX = never>(
+    resolver: RequestResolver<A> | Effect<RequestResolver<A>, EX, RX>
+  ): (self: A) => Effect<
+    Request.Success<A>,
+    Request.Error<A> | EX,
+    Request.Services<A> | RX
+  >
+  <A extends Request.Any, EX = never, RX = never>(
     self: A,
-    result: Request.Request.Result<A>
-  ) => Effect.Effect<void>
->(2, (self, result) =>
-  core.fiberRefGetWith(
-    completedRequestMap.currentRequestMap,
-    (map) =>
-      core.sync(() => {
-        if (map.has(self)) {
-          const entry = map.get(self)!
-          if (!entry.state.completed) {
-            entry.state.completed = true
-            core.deferredUnsafeDone(entry.result, result)
-          }
-        }
+    resolver: RequestResolver<A> | Effect<RequestResolver<A>, EX, RX>
+  ): Effect<
+    Request.Success<A>,
+    Request.Error<A> | EX,
+    Request.Services<A> | RX
+  >
+} = dual(
+  2,
+  <A extends Request.Any, EX = never, RX = never>(
+    self: A,
+    resolver: RequestResolver<A> | Effect<RequestResolver<A>, EX, RX>
+  ): Effect<
+    Request.Success<A>,
+    Request.Error<A> | EX,
+    Request.Services<A> | RX
+  > => {
+    const withResolver = (resolver: RequestResolver<A>) =>
+      effect.callback<
+        Request.Success<A>,
+        Request.Error<A>,
+        Request.Services<A>
+      >((resume) => {
+        const entry = addEntry(resolver, self, resume, effect.getCurrentFiber()!)
+        return maybeRemoveEntry(resolver, entry)
       })
-  ))
-
-/** @internal */
-export const completeEffect = dual<
-  <A extends Request.Request<any, any>, R>(
-    effect: Effect.Effect<Request.Request.Success<A>, Request.Request.Error<A>, R>
-  ) => (self: A) => Effect.Effect<void, never, R>,
-  <A extends Request.Request<any, any>, R>(
-    self: A,
-    effect: Effect.Effect<Request.Request.Success<A>, Request.Request.Error<A>, R>
-  ) => Effect.Effect<void, never, R>
->(2, (self, effect) =>
-  core.matchEffect(effect, {
-    onFailure: (error) => complete(self, core.exitFail(error) as any),
-    onSuccess: (value) => complete(self, core.exitSucceed(value) as any)
-  }))
-
-/** @internal */
-export const fail = dual<
-  <A extends Request.Request<any, any>>(
-    error: Request.Request.Error<A>
-  ) => (self: A) => Effect.Effect<void>,
-  <A extends Request.Request<any, any>>(
-    self: A,
-    error: Request.Request.Error<A>
-  ) => Effect.Effect<void>
->(2, (self, error) => complete(self, core.exitFail(error) as any))
-
-/** @internal */
-export const failCause = dual<
-  <A extends Request.Request<any, any>>(
-    cause: Cause.Cause<Request.Request.Error<A>>
-  ) => (self: A) => Effect.Effect<void>,
-  <A extends Request.Request<any, any>>(
-    self: A,
-    cause: Cause.Cause<Request.Request.Error<A>>
-  ) => Effect.Effect<void>
->(2, (self, cause) => complete(self, core.exitFailCause(cause) as any))
-
-/** @internal */
-export const succeed = dual<
-  <A extends Request.Request<any, any>>(
-    value: Request.Request.Success<A>
-  ) => (self: A) => Effect.Effect<void>,
-  <A extends Request.Request<any, any>>(
-    self: A,
-    value: Request.Request.Success<A>
-  ) => Effect.Effect<void>
->(2, (self, value) => complete(self, core.exitSucceed(value) as any))
-
-/** @internal */
-export class Listeners {
-  count = 0
-  observers: Set<(count: number) => void> = new Set()
-  interrupted = false
-  addObserver(f: (count: number) => void): void {
-    this.observers.add(f)
+    return isEffect(resolver) ? effect.flatMap(resolver, withResolver) : withResolver(resolver)
   }
-  removeObserver(f: (count: number) => void): void {
-    this.observers.delete(f)
+)
+
+/** @internal */
+export const requestUnsafe = <A extends Request.Any>(
+  self: A,
+  options: {
+    readonly resolver: RequestResolver<A>
+    readonly onExit: (exit: Exit<Request.Success<A>, Request.Error<A>>) => void
+    readonly context: Context.Context<never>
   }
-  increment() {
-    this.count++
-    this.observers.forEach((f) => f(this.count))
+): () => void => {
+  const entry = addEntry(options.resolver, self, options.onExit, {
+    context: options.context,
+    currentScheduler: Context.get(options.context, Scheduler)
+  })
+  return () => removeEntryUnsafe(options.resolver, entry)
+}
+
+interface Batch {
+  key: unknown
+  resolver: RequestResolver<any>
+  map: Map<unknown, Batch>
+  readonly entrySet: Set<Request.Entry<any>>
+  readonly entries: Set<Request.Entry<any>>
+  readonly delayEffect: Effect<void>
+  readonly run: Effect<void, unknown>
+  fiber?: Fiber<void, unknown> | undefined
+}
+
+const batchPool: Array<Batch> = []
+const pendingBatches = new WeakMap<RequestResolver<any>, Map<unknown, Batch>>()
+
+const addEntry = <A extends Request.Any>(
+  resolver: RequestResolver<A>,
+  request: A,
+  resume: (exit: Exit<any, any>) => void,
+  fiber: {
+    readonly context: Context.Context<never>
+    readonly currentScheduler: Scheduler
+    readonly id?: number
   }
-  decrement() {
-    this.count--
-    this.observers.forEach((f) => f(this.count))
+) => {
+  let batchMap = pendingBatches.get(resolver)
+  if (!batchMap) {
+    batchMap = new Map<object, Batch>()
+    pendingBatches.set(resolver, batchMap)
+  }
+  let batch: Batch | undefined
+  let completed = false
+  const entry = makeEntry({
+    request,
+    context: fiber.context as any,
+    uninterruptible: false,
+    completeUnsafe(effect) {
+      if (completed) return
+      completed = true
+      resume(effect)
+      batch?.entrySet.delete(entry)
+    }
+  })
+  if (resolver.preCheck !== undefined && !resolver.preCheck(entry)) {
+    return entry
+  }
+  const key = resolver.batchKey(entry)
+  batch = batchMap.get(key)
+  if (!batch) {
+    if (batchPool.length > 0) {
+      batch = batchPool.pop()!
+      batch.key = key
+      batch.resolver = resolver
+      batch.map = batchMap
+    } else {
+      const newBatch: Batch = {
+        key,
+        resolver,
+        map: batchMap,
+        entrySet: new Set(),
+        entries: new Set(),
+        delayEffect: effect.flatMap(
+          effect.suspend(() => newBatch.resolver.delay),
+          (_) => runBatch(newBatch)
+        ) as Effect<void>,
+        run: effect.onExit(
+          effect.suspend(() =>
+            newBatch.resolver.runAll(Array.from(newBatch.entries) as NonEmptyArray<Request.Entry<any>>, newBatch.key)
+          ),
+          (exit) => {
+            for (const entry of newBatch.entrySet) {
+              entry.completeUnsafe(
+                exit._tag === "Success"
+                  ? exitDie(
+                    new Error("Effect.request: RequestResolver did not complete request", { cause: entry.request })
+                  )
+                  : exit
+              )
+            }
+            newBatch.entries.clear()
+            if (batchPool.length < 128) {
+              newBatch.entrySet.clear()
+              newBatch.key = undefined
+              newBatch.fiber = undefined
+              newBatch.resolver = undefined as any
+              newBatch.map = undefined as any
+              batchPool.push(newBatch)
+            }
+            return effect.void
+          }
+        )
+      }
+      batch = newBatch
+    }
+    batchMap.set(key, batch)
+    batch.fiber = effect.runForkWith(fiber.context)(batch.delayEffect, { scheduler: fiber.currentScheduler })
+  }
+
+  batch.entrySet.add(entry)
+  batch.entries.add(entry)
+  if (batch.resolver.collectWhile(batch.entries)) return entry
+
+  batch.fiber!.interruptUnsafe(fiber.id)
+  batch.fiber = effect.runForkWith(fiber.context)(runBatch(batch), { scheduler: fiber.currentScheduler })
+  return entry
+}
+
+const removeEntryUnsafe = <A extends Request.Any>(
+  resolver: RequestResolver<A>,
+  entry: Request.Entry<A>
+) => {
+  if (entry.uninterruptible) return
+  const batchMap = pendingBatches.get(resolver)
+  if (!batchMap) return
+  const key = resolver.batchKey(entry)
+  const batch = batchMap.get(key)
+  if (!batch) return
+
+  batch.entries.delete(entry)
+  batch.entrySet.delete(entry)
+
+  if (batch.entries.size === 0) {
+    batchMap.delete(key)
+    batch.fiber?.interruptUnsafe()
   }
 }
 
-/**
- * @internal
- */
-export const filterOutCompleted = <A extends Request.Request<any, any>>(requests: Array<A>) =>
-  core.fiberRefGetWith(
-    completedRequestMap.currentRequestMap,
-    (map) =>
-      core.succeed(
-        requests.filter((request) => !(map.get(request)?.state.completed === true))
-      )
-  )
+const maybeRemoveEntry = <A extends Request.Any>(
+  resolver: RequestResolver<A>,
+  entry: Request.Entry<A>
+) => effect.sync(() => removeEntryUnsafe(resolver, entry))
+
+function runBatch(batch: Batch) {
+  if (!batch.map.has(batch.key)) return effect.void
+  batch.map.delete(batch.key)
+  return batch.run
+}

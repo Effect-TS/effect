@@ -1,383 +1,432 @@
 /**
- * @since 2.0.0
+ * Helpers for turning an `Effect` program into a host application's main entry
+ * point. This module is the low-level layer used by platform adapters to run a
+ * main effect, observe its fiber, report unhandled failures, and translate the
+ * resulting `Exit` into an application or process exit code. It provides
+ * `makeRunMain`, the default teardown behavior, and error markers for custom
+ * exit codes and already-reported failures. Application code usually calls the
+ * platform-provided runner instead of using this module directly.
+ *
+ * @since 4.0.0
  */
-import type { Cause } from "./Cause.js"
-import type * as Context from "./Context.js"
-import type * as Effect from "./Effect.js"
-import type * as Exit from "./Exit.js"
-import type * as Fiber from "./Fiber.js"
-import type * as FiberId from "./FiberId.js"
-import type * as FiberRef from "./FiberRef.js"
-import type * as FiberRefs from "./FiberRefs.js"
-import type { Inspectable } from "./Inspectable.js"
-import * as internal from "./internal/runtime.js"
-import type { Pipeable } from "./Pipeable.js"
-import type * as RuntimeFlags from "./RuntimeFlags.js"
-import type { Scheduler } from "./Scheduler.js"
-import type { Scope } from "./Scope.js"
+import * as Cause from "effect/Cause"
+import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
+import { constVoid, dual } from "effect/Function"
+import type * as Fiber from "./Fiber.ts"
 
 /**
- * @since 2.0.0
+ * Represents a teardown function that handles program completion and determines the exit code.
+ *
+ * **When to use**
+ *
+ * Use when integrating {@link makeRunMain} with a host platform that needs to
+ * translate an Effect `Exit` into a process, worker, or application exit code.
+ *
+ * **Details**
+ *
+ * A teardown function is called when an Effect program completes, either
+ * successfully or with a failure. It determines the appropriate exit code and
+ * can perform cleanup before invoking the supplied `onExit` callback.
+ *
+ * **Example** (Customizing teardown behavior)
+ *
+ * ```ts
+ * import { Effect, Exit, Runtime } from "effect"
+ *
+ * // Custom teardown that logs completion status
+ * const customTeardown: Runtime.Teardown = (exit, onExit) => {
+ *   if (Exit.isSuccess(exit)) {
+ *     console.log("Program completed successfully with value:", exit.value)
+ *     onExit(0)
+ *   } else {
+ *     console.log("Program failed with cause:", exit.cause)
+ *     onExit(1)
+ *   }
+ * }
+ *
+ * // Use with makeRunMain
+ * const runMain = Runtime.makeRunMain(({ fiber, teardown }) => {
+ *   fiber.addObserver((exit) => {
+ *     teardown(exit, (code) => {
+ *       console.log(`Exiting with code: ${code}`)
+ *     })
+ *   })
+ * })
+ *
+ * const program = Effect.succeed("Hello, World!")
+ * runMain(program, { teardown: customTeardown })
+ * ```
+ *
  * @category models
+ * @since 4.0.0
  */
-export interface AsyncFiberException<out A, out E = never> {
-  readonly _tag: "AsyncFiberException"
-  readonly fiber: Fiber.RuntimeFiber<A, E>
+export interface Teardown {
+  <E, A>(exit: Exit.Exit<E, A>, onExit: (code: number) => void): void
 }
 
 /**
- * @since 2.0.0
- * @category models
+ * The default teardown function that determines exit codes from an Effect exit.
+ *
+ * **When to use**
+ *
+ * Use as the standard teardown for main programs with conventional process
+ * exit codes and support for {@link errorExitCode}.
+ *
+ * **Details**
+ *
+ * This teardown follows these exit-code rules:
+ *
+ * - `0` for successful completion.
+ * - `130` for interruption-only failures.
+ * - The squashed error's {@link errorExitCode} value for other failures when
+ *   present.
+ * - `1` for other failures.
+ *
+ * **Gotchas**
+ *
+ * The `130` code is used only when the Cause contains interruptions and no
+ * other failure reasons. Mixed causes use the squashed error path instead.
+ *
+ * **Example** (Referencing default teardown)
+ *
+ * ```ts
+ * import { Exit, Runtime } from "effect"
+ *
+ * const logExitCode = (exit: Exit.Exit<any, any>) => {
+ *   Runtime.defaultTeardown(exit, (code) => {
+ *     console.log(`Exit code: ${code}`)
+ *   })
+ * }
+ *
+ * logExitCode(Exit.succeed(42))
+ * // Output: Exit code: 0
+ *
+ * logExitCode(Exit.fail("error"))
+ * // Output: Exit code: 1
+ *
+ * logExitCode(Exit.interrupt(123))
+ * // Output: Exit code: 130
+ * ```
+ *
+ * @see {@link errorExitCode} for customizing failure exit codes
+ *
+ * @category running
+ * @since 4.0.0
  */
-export interface Cancel<out A, out E = never> {
-  (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined): void
+export const defaultTeardown: Teardown = <E, A>(
+  exit: Exit.Exit<E, A>,
+  onExit: (code: number) => void
+) => {
+  if (Exit.isSuccess(exit)) return onExit(0)
+  if (Cause.hasInterruptsOnly(exit.cause)) return onExit(130)
+  return onExit(getErrorExitCode(Cause.squash(exit.cause)))
 }
 
 /**
- * @since 2.0.0
- * @category models
- */
-export interface Runtime<in R> extends Pipeable {
-  /**
-   * The context used as initial for forks
-   */
-  readonly context: Context.Context<R>
-  /**
-   * The runtime flags used as initial for forks
-   */
-  readonly runtimeFlags: RuntimeFlags.RuntimeFlags
-  /**
-   * The fiber references used as initial for forks
-   */
-  readonly fiberRefs: FiberRefs.FiberRefs
-}
-
-/**
- * @since 3.12.0
- */
-export declare namespace Runtime {
-  /**
-   * @since 3.12.0
-   * @category Type Extractors
-   */
-  export type Context<T extends Runtime<never>> = [T] extends [Runtime<infer R>] ? R : never
-}
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface RunForkOptions {
-  readonly scheduler?: Scheduler | undefined
-  readonly updateRefs?: ((refs: FiberRefs.FiberRefs, fiberId: FiberId.Runtime) => FiberRefs.FiberRefs) | undefined
-  readonly immediate?: boolean
-  readonly scope?: Scope
-}
-
-/**
- * Executes the effect using the provided Scheduler or using the global
- * Scheduler if not provided
+ * Creates a platform-specific main program runner that handles Effect execution lifecycle.
  *
- * @since 2.0.0
- * @category execution
+ * **When to use**
+ *
+ * Use when building a runtime adapter for a host platform.
+ *
+ * **Details**
+ *
+ * The runner executes Effect programs as main entry points. The provided
+ * function receives a forked fiber and a teardown callback so it can install
+ * platform-specific signal handling, fiber observers, and final exit behavior.
+ *
+ * Most applications should use a platform-provided runner, such as
+ * `NodeRuntime.runMain`, rather than constructing one directly.
+ *
+ * `disableErrorReporting` disables the automatic log emitted for unreported
+ * non-interruption failures. It does not change exit-code calculation or the
+ * custom teardown callback.
+ *
+ * **Gotchas**
+ *
+ * The setup function is responsible for observing the fiber and eventually
+ * invoking teardown. `makeRunMain` also tries to keep the host process alive
+ * with a long interval while the main fiber is running; if the host blocks
+ * timers, the runner still starts but cannot use that keep-alive fallback.
+ *
+ * **Example** (Creating platform runners)
+ *
+ * ```ts
+ * import { Effect, Fiber, Runtime } from "effect"
+ *
+ * // Create a simple runner for a hypothetical platform
+ * const runMain = Runtime.makeRunMain(({ fiber, teardown }) => {
+ *   // Set up signal handling
+ *   const handleSignal = () => {
+ *     Effect.runSync(Fiber.interrupt(fiber))
+ *   }
+ *
+ *   // Add signal listeners (platform-specific)
+ *   // process.on('SIGINT', handleSignal)
+ *   // process.on('SIGTERM', handleSignal)
+ *
+ *   // Handle fiber completion
+ *   fiber.addObserver((exit) => {
+ *     teardown(exit, (code) => {
+ *       console.log(`Program finished with exit code: ${code}`)
+ *       // process.exit(code)
+ *     })
+ *   })
+ * })
+ *
+ * // Use the runner
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.log("Starting program")
+ *   yield* Effect.sleep(1000)
+ *   yield* Effect.log("Program completed")
+ *   return "success"
+ * })
+ *
+ * // Run with default options
+ * runMain(program)
+ *
+ * // Run with custom teardown
+ * runMain(program, {
+ *   teardown: (exit, onExit) => {
+ *     console.log("Custom teardown logic")
+ *     Runtime.defaultTeardown(exit, onExit)
+ *   }
+ * })
+ * ```
+ *
+ * @category running
+ * @since 4.0.0
  */
-export const runFork: {
-  <R>(
-    runtime: Runtime<R>
-  ): <A, E>(effect: Effect.Effect<A, E, R>, options?: RunForkOptions | undefined) => Fiber.RuntimeFiber<A, E>
-  <R, A, E>(
-    runtime: Runtime<R>,
-    effect: Effect.Effect<A, E, R>,
-    options?: RunForkOptions | undefined
-  ): Fiber.RuntimeFiber<A, E>
-} = internal.unsafeFork
+export const makeRunMain = (
+  f: <E, A>(
+    options: {
+      readonly fiber: Fiber.Fiber<A, E>
+      readonly teardown: Teardown
+    }
+  ) => void
+): {
+  (
+    options?: {
+      readonly disableErrorReporting?: boolean | undefined
+      readonly teardown?: Teardown | undefined
+    }
+  ): <E, A>(effect: Effect.Effect<A, E>) => void
+  <E, A>(
+    effect: Effect.Effect<A, E>,
+    options?: {
+      readonly disableErrorReporting?: boolean | undefined
+      readonly teardown?: Teardown | undefined
+    }
+  ): void
+} =>
+  dual((args) => Effect.isEffect(args[0]), (effect: Effect.Effect<any, any>, options?: {
+    readonly disableErrorReporting?: boolean | undefined
+    readonly teardown?: Teardown | undefined
+  }) => {
+    const fiber = options?.disableErrorReporting === true
+      ? Effect.runFork(effect)
+      : Effect.runFork(
+        Effect.tapCause(effect, (cause) => {
+          if (Cause.hasInterruptsOnly(cause)) return Effect.void
+          const isReported = getErrorReported(Cause.squash(cause))
+          return isReported ? Effect.logError(cause) : Effect.void
+        })
+      )
+    try {
+      const keepAlive = globalThis.setInterval(constVoid, 2_147_483_647)
+      fiber.addObserver(() => {
+        clearInterval(keepAlive)
+      })
+    } catch {}
+    const teardown = options?.teardown ?? defaultTeardown
+    return f({ fiber, teardown })
+  })
 
-/**
- * Executes the effect synchronously returning the exit.
- *
- * This method is effectful and should only be invoked at the edges of your
- * program.
- *
- * @since 2.0.0
- * @category execution
- */
-export const runSyncExit: {
-  <A, E, R>(runtime: Runtime<R>, effect: Effect.Effect<A, E, R>): Exit.Exit<A, E>
-  <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, E>
-} = internal.unsafeRunSyncExit
-
-/**
- * Executes the effect synchronously throwing in case of errors or async boundaries.
- *
- * This method is effectful and should only be invoked at the edges of your
- * program.
- *
- * @since 2.0.0
- * @category execution
- */
-export const runSync: {
-  <A, E, R>(runtime: Runtime<R>, effect: Effect.Effect<A, E, R>): A
-  <R>(runtime: Runtime<R>): <A, E>(effect: Effect.Effect<A, E, R>) => A
-} = internal.unsafeRunSync
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface RunCallbackOptions<in A, in E = never> extends RunForkOptions {
-  readonly onExit?: ((exit: Exit.Exit<A, E>) => void) | undefined
-}
-
-/**
- * Executes the effect asynchronously, eventually passing the exit value to
- * the specified callback.
- *
- * This method is effectful and should only be invoked at the edges of your
- * program.
- *
- * @since 2.0.0
- * @category execution
- */
-export const runCallback: {
-  <R>(
-    runtime: Runtime<R>
-  ): <A, E>(
-    effect: Effect.Effect<A, E, R>,
-    options?: RunCallbackOptions<A, E> | undefined
-  ) => (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined) => void
-  <R, A, E>(
-    runtime: Runtime<R>,
-    effect: Effect.Effect<A, E, R>,
-    options?: RunCallbackOptions<A, E> | undefined
-  ): (fiberId?: FiberId.FiberId, options?: RunCallbackOptions<A, E> | undefined) => void
-} = internal.unsafeRunCallback
-
-/**
- * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
- * with the value of the effect once the effect has been executed, or will be
- * rejected with the first error or exception throw by the effect.
- *
- * This method is effectful and should only be used at the edges of your
- * program.
- *
- * @since 2.0.0
- * @category execution
- */
-export const runPromise: {
-  <R>(
-    runtime: Runtime<R>
-  ): <A, E>(effect: Effect.Effect<A, E, R>, options?: { readonly signal?: AbortSignal } | undefined) => Promise<A>
-  <R, A, E>(
-    runtime: Runtime<R>,
-    effect: Effect.Effect<A, E, R>,
-    options?: { readonly signal?: AbortSignal } | undefined
-  ): Promise<A>
-} = internal.unsafeRunPromise
-
-/**
- * Runs the `Effect`, returning a JavaScript `Promise` that will be resolved
- * with the `Exit` state of the effect once the effect has been executed.
- *
- * This method is effectful and should only be used at the edges of your
- * program.
- *
- * @since 2.0.0
- * @category execution
- */
-export const runPromiseExit: {
-  <R>(
-    runtime: Runtime<R>
-  ): <A, E>(
-    effect: Effect.Effect<A, E, R>,
-    options?: { readonly signal?: AbortSignal } | undefined
-  ) => Promise<Exit.Exit<A, E>>
-  <R, A, E>(
-    runtime: Runtime<R>,
-    effect: Effect.Effect<A, E, R>,
-    options?: { readonly signal?: AbortSignal } | undefined
-  ): Promise<Exit.Exit<A, E>>
-} = internal.unsafeRunPromiseExit
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const defaultRuntime: Runtime<never> = internal.defaultRuntime
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const defaultRuntimeFlags: RuntimeFlags.RuntimeFlags = internal.defaultRuntimeFlags
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const make: <R>(
-  options: {
-    readonly context: Context.Context<R>
-    readonly runtimeFlags: RuntimeFlags.RuntimeFlags
-    readonly fiberRefs: FiberRefs.FiberRefs
+declare global {
+  interface Error {
+    readonly [errorExitCode]?: number
+    readonly [errorReported]?: boolean
   }
-) => Runtime<R> = internal.make
-
-/**
- * @since 2.0.0
- * @category symbols
- */
-export const FiberFailureId = Symbol.for("effect/Runtime/FiberFailure")
-/**
- * @since 2.0.0
- * @category symbols
- */
-export type FiberFailureId = typeof FiberFailureId
-
-/**
- * @since 2.0.0
- * @category symbols
- */
-export const FiberFailureCauseId: unique symbol = internal.FiberFailureCauseId
-
-/**
- * @since 2.0.0
- * @category exports
- */
-export type FiberFailureCauseId = typeof FiberFailureCauseId
-
-/**
- * @since 2.0.0
- * @category models
- */
-export interface FiberFailure extends Error, Inspectable {
-  readonly [FiberFailureId]: FiberFailureId
-  readonly [FiberFailureCauseId]: Cause<unknown>
 }
 
 /**
- * @since 2.0.0
- * @category guards
+ * Type-level key for the `Runtime.errorExitCode` marker.
+ *
+ * **When to use**
+ *
+ * Use to type properties keyed by `Runtime.errorExitCode` on custom error
+ * values.
+ *
+ * @category symbols
+ * @since 4.0.0
  */
-export const isAsyncFiberException: (u: unknown) => u is AsyncFiberException<unknown, unknown> =
-  internal.isAsyncFiberException
+export type errorExitCode = "~effect/Runtime/errorExitCode"
 
 /**
- * @since 2.0.0
- * @category guards
- */
-export const isFiberFailure: (u: unknown) => u is FiberFailure = internal.isFiberFailure
-
-/**
- * @since 2.0.0
- * @category constructors
- */
-export const makeFiberFailure: <E>(cause: Cause<E>) => FiberFailure = internal.fiberFailure
-
-/**
- * @since 2.0.0
- * @category runtime flags
- */
-export const updateRuntimeFlags: {
-  (f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): <R>(self: Runtime<R>) => Runtime<R>
-  <R>(self: Runtime<R>, f: (flags: RuntimeFlags.RuntimeFlags) => RuntimeFlags.RuntimeFlags): Runtime<R>
-} = internal.updateRuntimeFlags
-
-/**
- * @since 2.0.0
- * @category runtime flags
- */
-export const enableRuntimeFlag: {
-  (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
-  <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
-} = internal.enableRuntimeFlag
-
-/**
- * @since 2.0.0
- * @category runtime flags
- */
-export const disableRuntimeFlag: {
-  (flag: RuntimeFlags.RuntimeFlag): <R>(self: Runtime<R>) => Runtime<R>
-  <R>(self: Runtime<R>, flag: RuntimeFlags.RuntimeFlag): Runtime<R>
-} = internal.disableRuntimeFlag
-
-/**
- * @since 2.0.0
- * @category context
- */
-export const updateContext: {
-  <R, R2>(f: (context: Context.Context<R>) => Context.Context<R2>): (self: Runtime<R>) => Runtime<R2>
-  <R, R2>(self: Runtime<R>, f: (context: Context.Context<R>) => Context.Context<R2>): Runtime<R2>
-} = internal.updateContext
-
-/**
- * @since 2.0.0
- * @category context
- * @example
+ * Allows associating an exit code with an error for determining the process
+ * exit code on failure.
+ *
+ * **When to use**
+ *
+ * Use when error classes should map failures to a specific process exit code
+ * when handled by {@link defaultTeardown}.
+ *
+ * **Details**
+ *
+ * Attach this marker as a readonly property on an error object. When the main
+ * program fails, {@link defaultTeardown} squashes the Cause and reads the marker
+ * from the resulting error value.
+ *
+ * **Gotchas**
+ *
+ * The marker is read from the squashed failure value. If a Cause contains
+ * multiple failures, the selected squashed error determines the exit code.
+ *
+ * **Example** (Setting a process exit code)
+ *
  * ```ts
- * import { Context, Runtime } from "effect"
+ * import { Data, Effect, Runtime } from "effect"
+ * import { NodeRuntime } from "@effect/platform-node"
  *
- * class Name extends Context.Tag("Name")<Name, string>() {}
+ * class MyError extends Data.TaggedError("MyError") {
+ *   readonly [Runtime.errorExitCode] = 42
+ * }
  *
- * const runtime: Runtime.Runtime<Name> = Runtime.defaultRuntime.pipe(
- *   Runtime.provideService(Name, "John")
- * )
+ * // If the program fails with MyError, the process will exit with code 42
+ * NodeRuntime.runMain(Effect.fail(new MyError()))
  * ```
+ *
+ * @see {@link errorReported} for controlling automatic error logging
+ * @see {@link defaultTeardown} for the default failure exit-code rules that read this marker
+ * @see {@link getErrorExitCode} for reading the marker from unknown error values
+ *
+ * @category symbols
+ * @since 4.0.0
  */
-export const provideService: {
-  <I, S>(tag: Context.Tag<I, S>, service: S): <R>(self: Runtime<R>) => Runtime<I | R>
-  <R, I, S>(self: Runtime<R>, tag: Context.Tag<I, S>, service: S): Runtime<R | I>
-} = internal.provideService
+export const errorExitCode: errorExitCode = "~effect/Runtime/errorExitCode"
 
 /**
- * @since 2.0.0
- * @category fiber refs
+ * Reads the runtime exit-code marker from an unknown error value.
+ *
+ * **When to use**
+ *
+ * Use to read a custom failure exit code from an unknown error value, falling
+ * back to the default failure code.
+ *
+ * **Details**
+ *
+ * Returns the numeric `[Runtime.errorExitCode]` property when it is present on
+ * an object. Otherwise returns `1`, the default failure exit code used by
+ * `defaultTeardown`.
+ *
+ * **Gotchas**
+ *
+ * Non-object values, missing markers, and non-number marker values all return
+ * `1`.
+ *
+ * @see {@link errorExitCode} for the marker read by this function
+ *
+ * @category accessors
+ * @since 4.0.0
  */
-export const updateFiberRefs: {
-  (f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): <R>(self: Runtime<R>) => Runtime<R>
-  <R>(self: Runtime<R>, f: (fiberRefs: FiberRefs.FiberRefs) => FiberRefs.FiberRefs): Runtime<R>
-} = internal.updateFiberRefs
+export const getErrorExitCode = (u: unknown): number => {
+  if (typeof u === "object" && u !== null && errorExitCode in u) {
+    const code = u[errorExitCode]
+    if (typeof code === "number") {
+      return code
+    }
+  }
+  return 1
+}
 
 /**
- * @since 2.0.0
- * @category fiber refs
- * @example
+ * Type-level key for the `Runtime.errorReported` marker.
+ *
+ * **When to use**
+ *
+ * Use to type properties keyed by `Runtime.errorReported` on custom error
+ * values.
+ *
+ * @category symbols
+ * @since 4.0.0
+ */
+export type errorReported = "~effect/Runtime/errorReported"
+
+/**
+ * Defines the runtime marker that controls default `runMain` error logging for an error.
+ *
+ * **When to use**
+ *
+ * Use when you need error classes reported by application code to avoid being
+ * logged again by the default main runner.
+ *
+ * **Details**
+ *
+ * Set `[Runtime.errorReported]` to `false` on an error object to suppress the
+ * runtime log because the error has already been reported. Omitted or
+ * non-boolean values are treated as `true`, so failures are logged by default.
+ *
+ * **Gotchas**
+ *
+ * This marker controls only automatic error logging. It does not change the
+ * failure Cause or the process exit code.
+ * `makeRunMain` reads the marker from `Cause.squash(cause)`, so for causes
+ * with multiple failures, the squashed error determines whether default logging
+ * is suppressed.
+ *
+ * **Example** (Suppressing error reporting)
+ *
  * ```ts
- * import { Effect, FiberRef, Runtime } from "effect"
+ * import { Data, Effect, Runtime } from "effect"
+ * import { NodeRuntime } from "@effect/platform-node"
  *
- * const ref = FiberRef.unsafeMake(0)
+ * class MyError extends Data.TaggedError("MyError") {
+ *   readonly [Runtime.errorReported] = false
+ * }
  *
- * const updatedRuntime = Runtime.defaultRuntime.pipe(
- *   Runtime.setFiberRef(ref, 1)
- * )
- *
- * // returns 1
- * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
+ * // If the program fails with MyError, the process will exit with code 1 but
+ * // no error will be logged.
+ * NodeRuntime.runMain(Effect.fail(new MyError()))
  * ```
+ *
+ * @see {@link errorExitCode} for controlling failure exit codes
+ * @see {@link getErrorReported} for reading the marker from unknown error values
+ *
+ * @category symbols
+ * @since 4.0.0
  */
-export const setFiberRef: {
-  <A>(fiberRef: FiberRef.FiberRef<A>, value: A): <R>(self: Runtime<R>) => Runtime<R>
-  <R, A>(self: Runtime<R>, fiberRef: FiberRef.FiberRef<A>, value: A): Runtime<R>
-} = internal.setFiberRef
+export const errorReported: errorReported = "~effect/Runtime/errorReported"
 
 /**
- * @since 2.0.0
- * @category fiber refs
- * @example
- * ```ts
- * import { Effect, FiberRef, Runtime } from "effect"
+ * Reads the runtime error-reporting marker from an unknown error value.
  *
- * const ref = FiberRef.unsafeMake(0)
+ * **When to use**
  *
- * const updatedRuntime = Runtime.defaultRuntime.pipe(
- *   Runtime.setFiberRef(ref, 1),
- *   Runtime.deleteFiberRef(ref)
- * )
+ * Use to read whether an unknown error value should be treated as already
+ * reported by the default main runner.
  *
- * // returns 0
- * const result = Runtime.runSync(updatedRuntime)(FiberRef.get(ref))
- * ```
+ * **Details**
+ *
+ * Returns a boolean `[Runtime.errorReported]` property when it is present on an
+ * object. Otherwise returns `true`, so failures are logged by default.
+ *
+ * **Gotchas**
+ *
+ * Non-object values, missing markers, and non-boolean marker values all return
+ * `true`.
+ *
+ * @see {@link errorReported} for the marker read by this function
+ *
+ * @category accessors
+ * @since 4.0.0
  */
-export const deleteFiberRef: {
-  <A>(fiberRef: FiberRef.FiberRef<A>): <R>(self: Runtime<R>) => Runtime<R>
-  <R, A>(self: Runtime<R>, fiberRef: FiberRef.FiberRef<A>): Runtime<R>
-} = internal.deleteFiberRef
+export const getErrorReported = (u: unknown): boolean => {
+  if (typeof u === "object" && u !== null && errorReported in u) {
+    const isReported = u[errorReported]
+    if (typeof isReported === "boolean") {
+      return isReported
+    }
+  }
+  return true
+}

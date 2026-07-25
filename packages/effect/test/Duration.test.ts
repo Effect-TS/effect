@@ -11,120 +11,190 @@ import {
 import { Duration, Equal, pipe } from "effect"
 
 describe("Duration", () => {
-  it("decode", () => {
+  it("fromInputUnsafe", () => {
     const millis100 = Duration.millis(100)
-    assertTrue(Duration.decode(millis100) === millis100)
+    assertTrue(Duration.fromInputUnsafe(millis100) === millis100)
 
-    deepStrictEqual(Duration.decode(100), millis100)
+    deepStrictEqual(Duration.fromInputUnsafe(100), millis100)
 
-    deepStrictEqual(Duration.decode(10n), Duration.nanos(10n))
+    deepStrictEqual(Duration.fromInputUnsafe(10n), Duration.nanos(10n))
 
-    deepStrictEqual(Duration.decode("1 nano"), Duration.nanos(1n))
-    deepStrictEqual(Duration.decode("10 nanos"), Duration.nanos(10n))
-    deepStrictEqual(Duration.decode("1 micro"), Duration.micros(1n))
-    deepStrictEqual(Duration.decode("10 micros"), Duration.micros(10n))
-    deepStrictEqual(Duration.decode("1 milli"), Duration.millis(1))
-    deepStrictEqual(Duration.decode("10 millis"), Duration.millis(10))
-    deepStrictEqual(Duration.decode("1 second"), Duration.seconds(1))
-    deepStrictEqual(Duration.decode("10 seconds"), Duration.seconds(10))
-    deepStrictEqual(Duration.decode("1 minute"), Duration.minutes(1))
-    deepStrictEqual(Duration.decode("10 minutes"), Duration.minutes(10))
-    deepStrictEqual(Duration.decode("1 hour"), Duration.hours(1))
-    deepStrictEqual(Duration.decode("10 hours"), Duration.hours(10))
-    deepStrictEqual(Duration.decode("1 day"), Duration.days(1))
-    deepStrictEqual(Duration.decode("10 days"), Duration.days(10))
-    deepStrictEqual(Duration.decode("1 week"), Duration.weeks(1))
-    deepStrictEqual(Duration.decode("10 weeks"), Duration.weeks(10))
+    deepStrictEqual(Duration.fromInputUnsafe("1 nano"), Duration.nanos(1n))
+    deepStrictEqual(Duration.fromInputUnsafe("10 nanos"), Duration.nanos(10n))
+    deepStrictEqual(Duration.fromInputUnsafe("1.5 nanos"), Duration.nanos(2n))
+    deepStrictEqual(Duration.fromInputUnsafe("-1.5 nanos"), Duration.nanos(-2n))
+    deepStrictEqual(Duration.fromInputUnsafe("1 micro"), Duration.micros(1n))
+    deepStrictEqual(Duration.fromInputUnsafe("10 micros"), Duration.micros(10n))
+    deepStrictEqual(Duration.fromInputUnsafe("1.5 micros"), Duration.nanos(1500n))
+    deepStrictEqual(Duration.fromInputUnsafe("-1.5 micros"), Duration.nanos(-1500n))
+    deepStrictEqual(Duration.fromInputUnsafe("1 milli"), Duration.millis(1))
+    deepStrictEqual(Duration.fromInputUnsafe("10 millis"), Duration.millis(10))
+    deepStrictEqual(Duration.fromInputUnsafe("1 second"), Duration.seconds(1))
+    deepStrictEqual(Duration.fromInputUnsafe("10 seconds"), Duration.seconds(10))
+    deepStrictEqual(Duration.fromInputUnsafe("1 minute"), Duration.minutes(1))
+    deepStrictEqual(Duration.fromInputUnsafe("10 minutes"), Duration.minutes(10))
+    deepStrictEqual(Duration.fromInputUnsafe("1 hour"), Duration.hours(1))
+    deepStrictEqual(Duration.fromInputUnsafe("10 hours"), Duration.hours(10))
+    deepStrictEqual(Duration.fromInputUnsafe("1 day"), Duration.days(1))
+    deepStrictEqual(Duration.fromInputUnsafe("10 days"), Duration.days(10))
+    deepStrictEqual(Duration.fromInputUnsafe("1 week"), Duration.weeks(1))
+    deepStrictEqual(Duration.fromInputUnsafe("10 weeks"), Duration.weeks(10))
 
-    deepStrictEqual(Duration.decode("1.5 seconds"), Duration.seconds(1.5))
-    deepStrictEqual(Duration.decode("-1.5 seconds"), Duration.zero)
+    deepStrictEqual(Duration.fromInputUnsafe("1.5 seconds"), Duration.seconds(1.5))
+    deepStrictEqual(Duration.fromInputUnsafe("-1.5 seconds"), Duration.seconds(-1.5))
+    deepStrictEqual(Duration.fromInputUnsafe("Infinity"), Duration.infinity)
+    deepStrictEqual(Duration.fromInputUnsafe("-Infinity"), Duration.negativeInfinity)
 
-    deepStrictEqual(Duration.decode([500, 123456789]), Duration.nanos(500123456789n))
-    deepStrictEqual(Duration.decode([-500, 123456789]), Duration.zero)
-    deepStrictEqual(Duration.decode([Infinity, 0]), Duration.infinity)
-    deepStrictEqual(Duration.decode([-Infinity, 0]), Duration.zero)
-    deepStrictEqual(Duration.decode([NaN, 0]), Duration.zero)
-    deepStrictEqual(Duration.decode([0, Infinity]), Duration.infinity)
-    deepStrictEqual(Duration.decode([0, -Infinity]), Duration.zero)
-    deepStrictEqual(Duration.decode([0, NaN]), Duration.zero)
-    throws(() => Duration.decode("1.5 secs" as any), new Error("Invalid DurationInput"))
-    throws(() => Duration.decode(true as any), new Error("Invalid DurationInput"))
-    throws(() => Duration.decode({} as any), new Error("Invalid DurationInput"))
+    deepStrictEqual(Duration.fromInputUnsafe([500, 123456789]), Duration.nanos(500123456789n))
+    deepStrictEqual(Duration.fromInputUnsafe([-500, 123456789]), Duration.nanos(-500000000000n + 123456789n))
+    deepStrictEqual(Duration.fromInputUnsafe([0, 1.5]), Duration.nanos(2n))
+    deepStrictEqual(Duration.fromInputUnsafe([0, -1.5]), Duration.nanos(-2n))
+    deepStrictEqual(Duration.fromInputUnsafe([0.0000000005, 0.5]), Duration.nanos(1n))
+    deepStrictEqual(Duration.fromInputUnsafe([Infinity, 0]), Duration.infinity)
+    deepStrictEqual(Duration.fromInputUnsafe([-Infinity, 0]), Duration.negativeInfinity)
+    deepStrictEqual(Duration.fromInputUnsafe([NaN, 0]), Duration.zero)
+    deepStrictEqual(Duration.fromInputUnsafe([0, Infinity]), Duration.infinity)
+    deepStrictEqual(Duration.fromInputUnsafe([0, -Infinity]), Duration.negativeInfinity)
+    deepStrictEqual(Duration.fromInputUnsafe([0, NaN]), Duration.zero)
+
+    // object input
+    deepStrictEqual(Duration.fromInputUnsafe({}), Duration.zero)
+    deepStrictEqual(Duration.fromInputUnsafe({ hours: 2 }), Duration.hours(2))
+    deepStrictEqual(Duration.fromInputUnsafe({ weeks: 1 }), Duration.weeks(1))
+    deepStrictEqual(Duration.fromInputUnsafe({ days: 3 }), Duration.days(3))
+    deepStrictEqual(Duration.fromInputUnsafe({ minutes: 45 }), Duration.minutes(45))
+    deepStrictEqual(Duration.fromInputUnsafe({ seconds: 30 }), Duration.seconds(30))
+    deepStrictEqual(Duration.fromInputUnsafe({ milliseconds: 500 }), Duration.millis(500))
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ hours: 1, minutes: 30 }),
+      Duration.sum(Duration.hours(1), Duration.minutes(30))
+    )
+    deepStrictEqual(Duration.fromInputUnsafe({ hours: -1 }), Duration.hours(-1))
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ seconds: 1, nanoseconds: 500 }),
+      Duration.nanos(1_000_000_500n)
+    )
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ microseconds: 100 }),
+      Duration.micros(100n)
+    )
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ microseconds: -1.5 }),
+      Duration.nanos(-1500n)
+    )
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ nanoseconds: 1.5 }),
+      Duration.nanos(2n)
+    )
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ nanoseconds: -1.5 }),
+      Duration.nanos(-2n)
+    )
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ milliseconds: 0.0000005, nanoseconds: 0.5 }),
+      Duration.nanos(1n)
+    )
+    deepStrictEqual(
+      Duration.fromInputUnsafe({ days: 1, hours: 2, minutes: 30, seconds: 15 }),
+      Duration.sum(
+        Duration.sum(Duration.days(1), Duration.hours(2)),
+        Duration.sum(Duration.minutes(30), Duration.seconds(15))
+      )
+    )
   })
 
-  it("decodeUnknown", () => {
+  it("fromInput", () => {
     const millis100 = Duration.millis(100)
-    assertSome(Duration.decodeUnknown(millis100), millis100)
+    assertSome(Duration.fromInput(millis100), millis100)
 
-    assertSome(Duration.decodeUnknown(100), millis100)
+    assertSome(Duration.fromInput(100), millis100)
 
-    assertSome(Duration.decodeUnknown(10n), Duration.nanos(10n))
+    assertSome(Duration.fromInput(10n), Duration.nanos(10n))
 
-    assertSome(Duration.decodeUnknown("1 nano"), Duration.nanos(1n))
-    assertSome(Duration.decodeUnknown("10 nanos"), Duration.nanos(10n))
-    assertSome(Duration.decodeUnknown("1 micro"), Duration.micros(1n))
-    assertSome(Duration.decodeUnknown("10 micros"), Duration.micros(10n))
-    assertSome(Duration.decodeUnknown("1 milli"), Duration.millis(1))
-    assertSome(Duration.decodeUnknown("10 millis"), Duration.millis(10))
-    assertSome(Duration.decodeUnknown("1 second"), Duration.seconds(1))
-    assertSome(Duration.decodeUnknown("10 seconds"), Duration.seconds(10))
-    assertSome(Duration.decodeUnknown("1 minute"), Duration.minutes(1))
-    assertSome(Duration.decodeUnknown("10 minutes"), Duration.minutes(10))
-    assertSome(Duration.decodeUnknown("1 hour"), Duration.hours(1))
-    assertSome(Duration.decodeUnknown("10 hours"), Duration.hours(10))
-    assertSome(Duration.decodeUnknown("1 day"), Duration.days(1))
-    assertSome(Duration.decodeUnknown("10 days"), Duration.days(10))
-    assertSome(Duration.decodeUnknown("1 week"), Duration.weeks(1))
-    assertSome(Duration.decodeUnknown("10 weeks"), Duration.weeks(10))
+    assertSome(Duration.fromInput("1 nano"), Duration.nanos(1n))
+    assertSome(Duration.fromInput("10 nanos"), Duration.nanos(10n))
+    assertSome(Duration.fromInput("1 micro"), Duration.micros(1n))
+    assertSome(Duration.fromInput("10 micros"), Duration.micros(10n))
+    assertSome(Duration.fromInput("1 milli"), Duration.millis(1))
+    assertSome(Duration.fromInput("10 millis"), Duration.millis(10))
+    assertSome(Duration.fromInput("1 second"), Duration.seconds(1))
+    assertSome(Duration.fromInput("10 seconds"), Duration.seconds(10))
+    assertSome(Duration.fromInput("1 minute"), Duration.minutes(1))
+    assertSome(Duration.fromInput("10 minutes"), Duration.minutes(10))
+    assertSome(Duration.fromInput("1 hour"), Duration.hours(1))
+    assertSome(Duration.fromInput("10 hours"), Duration.hours(10))
+    assertSome(Duration.fromInput("1 day"), Duration.days(1))
+    assertSome(Duration.fromInput("10 days"), Duration.days(10))
+    assertSome(Duration.fromInput("1 week"), Duration.weeks(1))
+    assertSome(Duration.fromInput("10 weeks"), Duration.weeks(10))
 
-    assertSome(Duration.decodeUnknown("1.5 seconds"), Duration.seconds(1.5))
-    assertSome(Duration.decodeUnknown("-1.5 seconds"), Duration.zero)
+    assertSome(Duration.fromInput("1.5 seconds"), Duration.seconds(1.5))
+    assertSome(Duration.fromInput("-1.5 seconds"), Duration.seconds(-1.5))
+    assertSome(Duration.fromInput("Infinity"), Duration.infinity)
+    assertSome(Duration.fromInput("-Infinity"), Duration.negativeInfinity)
 
-    assertSome(Duration.decodeUnknown([500, 123456789]), Duration.nanos(500123456789n))
-    assertSome(Duration.decodeUnknown([-500, 123456789]), Duration.zero)
-    assertSome(Duration.decodeUnknown([Infinity, 0]), Duration.infinity)
-    assertSome(Duration.decodeUnknown([-Infinity, 0]), Duration.zero)
-    assertSome(Duration.decodeUnknown([NaN, 0]), Duration.zero)
-    assertSome(Duration.decodeUnknown([0, Infinity]), Duration.infinity)
-    assertSome(Duration.decodeUnknown([0, -Infinity]), Duration.zero)
-    assertSome(Duration.decodeUnknown([0, NaN]), Duration.zero)
-    assertNone(Duration.decodeUnknown("1.5 secs"))
-    assertNone(Duration.decodeUnknown(true))
-    assertNone(Duration.decodeUnknown({}))
+    assertSome(Duration.fromInput([500, 123456789]), Duration.nanos(500123456789n))
+    assertSome(Duration.fromInput([-500, 123456789]), Duration.nanos(-500000000000n + 123456789n))
+    assertSome(Duration.fromInput([Infinity, 0]), Duration.infinity)
+    assertSome(Duration.fromInput([-Infinity, 0]), Duration.negativeInfinity)
+    assertSome(Duration.fromInput([NaN, 0]), Duration.zero)
+    assertSome(Duration.fromInput([0, Infinity]), Duration.infinity)
+    assertSome(Duration.fromInput([0, -Infinity]), Duration.negativeInfinity)
+    assertSome(Duration.fromInput([0, NaN]), Duration.zero)
+
+    assertNone(Duration.fromInput("invalid" as any))
   })
 
   it("Order", () => {
+    // millis
     deepStrictEqual(Duration.Order(Duration.millis(1), Duration.millis(2)), -1)
     deepStrictEqual(Duration.Order(Duration.millis(2), Duration.millis(1)), 1)
     deepStrictEqual(Duration.Order(Duration.millis(2), Duration.millis(2)), 0)
+    deepStrictEqual(Duration.Order(Duration.millis(1), Duration.nanos(2_000_000n)), -1)
 
+    // nanos
     deepStrictEqual(Duration.Order(Duration.nanos(1n), Duration.nanos(2n)), -1)
     deepStrictEqual(Duration.Order(Duration.nanos(2n), Duration.nanos(1n)), 1)
     deepStrictEqual(Duration.Order(Duration.nanos(2n), Duration.nanos(2n)), 0)
+    deepStrictEqual(Duration.Order(Duration.nanos(2_000_000n), Duration.millis(1)), 1)
+
+    // infinity
+    deepStrictEqual(Duration.Order(Duration.infinity, Duration.infinity), 0)
+    deepStrictEqual(Duration.Order(Duration.infinity, Duration.millis(1)), 1)
+    deepStrictEqual(Duration.Order(Duration.infinity, Duration.nanos(1n)), 1)
+    deepStrictEqual(Duration.Order(Duration.millis(1), Duration.infinity), -1)
+    deepStrictEqual(Duration.Order(Duration.nanos(1n), Duration.infinity), -1)
   })
 
   it("Equivalence", () => {
-    deepStrictEqual(Duration.Equivalence(Duration.millis(1), Duration.millis(1)), true)
-    deepStrictEqual(Duration.Equivalence(Duration.millis(1), Duration.millis(2)), false)
-    deepStrictEqual(Duration.Equivalence(Duration.millis(1), Duration.millis(2)), false)
+    // millis
+    assertTrue(Duration.Equivalence(Duration.millis(1), Duration.millis(1)))
+    assertTrue(Duration.Equivalence(Duration.millis(1), Duration.nanos(1_000_000n)))
+    assertFalse(Duration.Equivalence(Duration.millis(1), Duration.millis(2)))
+    assertFalse(Duration.Equivalence(Duration.millis(1), Duration.millis(2)))
 
-    deepStrictEqual(Duration.Equivalence(Duration.nanos(1n), Duration.nanos(1n)), true)
-    deepStrictEqual(Duration.Equivalence(Duration.nanos(1n), Duration.nanos(2n)), false)
-    deepStrictEqual(Duration.Equivalence(Duration.nanos(1n), Duration.nanos(2n)), false)
+    // nanos
+    assertTrue(Duration.Equivalence(Duration.nanos(1n), Duration.nanos(1n)))
+    assertTrue(Duration.Equivalence(Duration.nanos(1_000_000n), Duration.millis(1)))
+    assertFalse(Duration.Equivalence(Duration.nanos(1n), Duration.nanos(2n)))
+    assertFalse(Duration.Equivalence(Duration.nanos(1n), Duration.nanos(2n)))
+
+    // infinity
+    assertTrue(Duration.Equivalence(Duration.infinity, Duration.infinity))
+    assertFalse(Duration.Equivalence(Duration.infinity, Duration.millis(1)))
+    assertFalse(Duration.Equivalence(Duration.infinity, Duration.nanos(1n)))
+    assertFalse(Duration.Equivalence(Duration.millis(1), Duration.infinity))
+    assertFalse(Duration.Equivalence(Duration.nanos(1n), Duration.infinity))
   })
 
   it("max", () => {
     deepStrictEqual(Duration.max(Duration.millis(1), Duration.millis(2)), Duration.millis(2))
     deepStrictEqual(Duration.max(Duration.minutes(1), Duration.millis(2)), Duration.minutes(1))
-
-    deepStrictEqual(Duration.max("1 minutes", "2 millis"), Duration.minutes(1))
   })
 
   it("min", () => {
     deepStrictEqual(Duration.min(Duration.millis(1), Duration.millis(2)), Duration.millis(1))
     deepStrictEqual(Duration.min(Duration.minutes(1), Duration.millis(2)), Duration.millis(2))
-
-    deepStrictEqual(Duration.min("1 minutes", "2 millis"), Duration.millis(2))
   })
 
   it("clamp", () => {
@@ -142,20 +212,10 @@ describe("Duration", () => {
       }),
       Duration.minutes(1.5)
     )
-
-    deepStrictEqual(
-      Duration.clamp("1 millis", {
-        minimum: "2 millis",
-        maximum: "3 millis"
-      }),
-      Duration.millis(2)
-    )
   })
 
   it("equals", () => {
     assertTrue(pipe(Duration.hours(1), Duration.equals(Duration.minutes(60))))
-    assertTrue(Duration.equals("2 seconds", "2 seconds"))
-    assertFalse(Duration.equals("2 seconds", "3 seconds"))
   })
 
   it("between", () => {
@@ -169,156 +229,190 @@ describe("Duration", () => {
         maximum: Duration.seconds(61)
       })
     )
-
-    assertTrue(Duration.between("1 minutes", {
-      minimum: "59 seconds",
-      maximum: "61 seconds"
-    }))
   })
 
   it("divide", () => {
+    // millis
     assertSome(Duration.divide(Duration.minutes(1), 2), Duration.seconds(30))
     assertSome(Duration.divide(Duration.seconds(1), 3), Duration.nanos(333333333n))
+    assertSome(Duration.divide(Duration.zero, 2), Duration.zero)
+    assertSome(Duration.divide(Duration.minutes(1), 0.5), Duration.minutes(2))
+    assertSome(Duration.divide(Duration.minutes(1), 1.5), Duration.seconds(40))
+
+    // nanos
     assertSome(Duration.divide(Duration.nanos(2n), 2), Duration.nanos(1n))
     assertSome(Duration.divide(Duration.nanos(1n), 3), Duration.zero)
+    assertNone(Duration.divide(Duration.nanos(1n), 0.5))
+    assertNone(Duration.divide(Duration.nanos(1n), 1.5))
+
+    // infinity
     assertSome(Duration.divide(Duration.infinity, 2), Duration.infinity)
-    assertSome(Duration.divide(Duration.zero, 2), Duration.zero)
+    assertSome(Duration.divide(Duration.infinity, -2), Duration.negativeInfinity)
+    assertSome(Duration.divide(Duration.negativeInfinity, -2), Duration.infinity)
+
+    // divide by zero
     assertNone(Duration.divide(Duration.minutes(1), 0))
     assertNone(Duration.divide(Duration.minutes(1), -0))
     assertNone(Duration.divide(Duration.nanos(1n), 0))
     assertNone(Duration.divide(Duration.nanos(1n), -0))
-    assertSome(Duration.divide(Duration.minutes(1), 0.5), Duration.minutes(2))
-    assertSome(Duration.divide(Duration.minutes(1), 1.5), Duration.seconds(40))
-    assertNone(Duration.divide(Duration.minutes(1), NaN))
-    assertNone(Duration.divide(Duration.nanos(1n), 0.5))
-    assertNone(Duration.divide(Duration.nanos(1n), 1.5))
-    assertNone(Duration.divide(Duration.nanos(1n), NaN))
 
-    assertSome(Duration.divide("1 minute", 2), Duration.seconds(30))
+    // bad by
+    assertNone(Duration.divide(Duration.minutes(1), NaN))
+    assertNone(Duration.divide(Duration.nanos(1n), NaN))
+    assertNone(Duration.divide(Duration.infinity, NaN))
+
+    assertNone(Duration.divide(Duration.minutes(1), Infinity))
+    assertNone(Duration.divide(Duration.nanos(1n), Infinity))
+    assertNone(Duration.divide(Duration.infinity, Infinity))
+
+    assertNone(Duration.divide(Duration.minutes(1), -Infinity))
+    assertNone(Duration.divide(Duration.nanos(1n), -Infinity))
+    assertNone(Duration.divide(Duration.infinity, -Infinity))
   })
 
-  it("unsafeDivide", () => {
-    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), 2), Duration.seconds(30))
-    deepStrictEqual(Duration.unsafeDivide(Duration.seconds(1), 3), Duration.nanos(333333333n))
-    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(2n), 2), Duration.nanos(1n))
-    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(1n), 3), Duration.zero)
-    deepStrictEqual(Duration.unsafeDivide(Duration.infinity, 2), Duration.infinity)
-    deepStrictEqual(Duration.unsafeDivide(Duration.zero, 2), Duration.zero)
-    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), 0), Duration.infinity)
-    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), -0), Duration.zero)
-    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(1n), 0), Duration.infinity)
-    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(1n), -0), Duration.zero)
-    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), 0.5), Duration.minutes(2))
-    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), 1.5), Duration.seconds(40))
-    deepStrictEqual(Duration.unsafeDivide(Duration.minutes(1), NaN), Duration.zero)
-    throws(() => Duration.unsafeDivide(Duration.nanos(1n), 0.5))
-    throws(() => Duration.unsafeDivide(Duration.nanos(1n), 1.5))
-    deepStrictEqual(Duration.unsafeDivide(Duration.nanos(1n), NaN), Duration.zero)
+  it("divideUnsafe", () => {
+    // millis
+    deepStrictEqual(Duration.divideUnsafe(Duration.minutes(1), 2), Duration.seconds(30))
+    deepStrictEqual(Duration.divideUnsafe(Duration.seconds(1), 3), Duration.nanos(333333333n))
+    deepStrictEqual(Duration.divideUnsafe(Duration.zero, 2), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.minutes(1), 0.5), Duration.minutes(2))
+    deepStrictEqual(Duration.divideUnsafe(Duration.minutes(1), 1.5), Duration.seconds(40))
 
-    deepStrictEqual(Duration.unsafeDivide("1 minute", 2), Duration.seconds(30))
+    // nanos
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(2n), 2), Duration.nanos(1n))
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), 3), Duration.zero)
+    throws(() => Duration.divideUnsafe(Duration.nanos(1n), 0.5))
+    throws(() => Duration.divideUnsafe(Duration.nanos(1n), 1.5))
+
+    // infinity
+    deepStrictEqual(Duration.divideUnsafe(Duration.infinity, 2), Duration.infinity)
+
+    // divide by zero (IEEE 754 sign rules)
+    deepStrictEqual(Duration.divideUnsafe(Duration.minutes(1), 0), Duration.infinity)
+    deepStrictEqual(Duration.divideUnsafe(Duration.minutes(1), -0), Duration.negativeInfinity)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), 0), Duration.infinity)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), -0), Duration.negativeInfinity)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(-1n), 0), Duration.negativeInfinity)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(-1n), -0), Duration.infinity)
+    deepStrictEqual(Duration.divideUnsafe(Duration.zero, 0), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.zero, -0), Duration.zero)
+
+    // bad by
+    deepStrictEqual(Duration.divideUnsafe(Duration.minutes(1), NaN), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), NaN), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.infinity, NaN), Duration.zero)
+
+    deepStrictEqual(Duration.divideUnsafe(Duration.minutes(1), Infinity), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), Infinity), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.infinity, Infinity), Duration.zero)
+
+    deepStrictEqual(Duration.divideUnsafe(Duration.minutes(1), -Infinity), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), -Infinity), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.infinity, -Infinity), Duration.zero)
   })
 
   it("times", () => {
     deepStrictEqual(Duration.times(Duration.seconds(1), 60), Duration.minutes(1))
     deepStrictEqual(Duration.times(Duration.nanos(2n), 10), Duration.nanos(20n))
-    deepStrictEqual(Duration.times(Duration.seconds(Infinity), 60), Duration.seconds(Infinity))
-
-    deepStrictEqual(Duration.times("1 seconds", 60), Duration.minutes(1))
+    deepStrictEqual(Duration.times(Duration.infinity, 60), Duration.infinity)
   })
 
   it("sum", () => {
+    // millis
     deepStrictEqual(Duration.sum(Duration.seconds(30), Duration.seconds(30)), Duration.minutes(1))
-    deepStrictEqual(Duration.sum(Duration.nanos(30n), Duration.nanos(30n)), Duration.nanos(60n))
-    deepStrictEqual(Duration.sum(Duration.seconds(Infinity), Duration.seconds(30)), Duration.seconds(Infinity))
-    deepStrictEqual(Duration.sum(Duration.seconds(30), Duration.seconds(Infinity)), Duration.seconds(Infinity))
 
-    deepStrictEqual(Duration.sum("30 seconds", "30 seconds"), Duration.minutes(1))
+    // nanos
+    deepStrictEqual(Duration.sum(Duration.nanos(30n), Duration.nanos(30n)), Duration.nanos(60n))
+
+    // infinity
+    deepStrictEqual(Duration.sum(Duration.infinity, Duration.seconds(30)), Duration.infinity)
+    deepStrictEqual(Duration.sum(Duration.seconds(30), Duration.infinity), Duration.infinity)
+    deepStrictEqual(Duration.sum(Duration.infinity, Duration.nanos(1n)), Duration.infinity)
+    deepStrictEqual(Duration.sum(Duration.nanos(1n), Duration.infinity), Duration.infinity)
+    deepStrictEqual(Duration.sum(Duration.infinity, Duration.infinity), Duration.infinity)
   })
 
   it("subtract", () => {
+    // millis
     deepStrictEqual(Duration.subtract(Duration.seconds(30), Duration.seconds(10)), Duration.seconds(20))
     deepStrictEqual(Duration.subtract(Duration.seconds(30), Duration.seconds(30)), Duration.zero)
+    deepStrictEqual(Duration.subtract(Duration.seconds(30), Duration.seconds(40)), Duration.seconds(-10))
+
+    // nanos
     deepStrictEqual(Duration.subtract(Duration.nanos(30n), Duration.nanos(10n)), Duration.nanos(20n))
     deepStrictEqual(Duration.subtract(Duration.nanos(30n), Duration.nanos(30n)), Duration.zero)
-    deepStrictEqual(Duration.subtract(Duration.seconds(Infinity), Duration.seconds(30)), Duration.seconds(Infinity))
-    deepStrictEqual(Duration.subtract(Duration.seconds(30), Duration.seconds(Infinity)), Duration.zero)
+    deepStrictEqual(Duration.subtract(Duration.nanos(30n), Duration.nanos(40n)), Duration.nanos(-10n))
 
-    deepStrictEqual(Duration.subtract("30 seconds", "10 seconds"), Duration.seconds(20))
+    // infinity
+    deepStrictEqual(Duration.subtract(Duration.infinity, Duration.seconds(30)), Duration.infinity)
+    deepStrictEqual(Duration.subtract(Duration.infinity, Duration.nanos(30n)), Duration.infinity)
+    deepStrictEqual(Duration.subtract(Duration.seconds(30), Duration.infinity), Duration.negativeInfinity)
+    deepStrictEqual(Duration.subtract(Duration.nanos(30n), Duration.infinity), Duration.negativeInfinity)
+    deepStrictEqual(Duration.subtract(Duration.infinity, Duration.infinity), Duration.zero)
+
+    // negativeInfinity
+    deepStrictEqual(Duration.subtract(Duration.infinity, Duration.negativeInfinity), Duration.infinity)
+    deepStrictEqual(Duration.subtract(Duration.negativeInfinity, Duration.infinity), Duration.negativeInfinity)
+    deepStrictEqual(Duration.subtract(Duration.negativeInfinity, Duration.negativeInfinity), Duration.zero)
+    deepStrictEqual(Duration.subtract(Duration.negativeInfinity, Duration.seconds(5)), Duration.negativeInfinity)
+    deepStrictEqual(Duration.subtract(Duration.seconds(5), Duration.negativeInfinity), Duration.infinity)
   })
 
-  it("greaterThan", () => {
-    assertTrue(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(20))))
-    assertFalse(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(30))))
-    assertFalse(pipe(Duration.seconds(30), Duration.greaterThan(Duration.seconds(60))))
+  it("isGreaterThan", () => {
+    assertTrue(pipe(Duration.seconds(30), Duration.isGreaterThan(Duration.seconds(20))))
+    assertFalse(pipe(Duration.seconds(30), Duration.isGreaterThan(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(30), Duration.isGreaterThan(Duration.seconds(60))))
 
-    assertTrue(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(20n))))
-    assertFalse(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(30n))))
-    assertFalse(pipe(Duration.nanos(30n), Duration.greaterThan(Duration.nanos(60n))))
+    assertTrue(pipe(Duration.nanos(30n), Duration.isGreaterThan(Duration.nanos(20n))))
+    assertFalse(pipe(Duration.nanos(30n), Duration.isGreaterThan(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(30n), Duration.isGreaterThan(Duration.nanos(60n))))
 
-    assertTrue(pipe(Duration.millis(1), Duration.greaterThan(Duration.nanos(1n))))
+    assertTrue(pipe(Duration.millis(1), Duration.isGreaterThan(Duration.nanos(1n))))
 
-    assertFalse(Duration.greaterThan("2 seconds", "2 seconds"))
-    assertTrue(Duration.greaterThan("3 seconds", "2 seconds"))
-    assertFalse(Duration.greaterThan("2 seconds", "3 seconds"))
+    assertTrue(pipe(Duration.infinity, Duration.isGreaterThan(Duration.seconds(20))))
+    assertFalse(pipe(Duration.seconds(-Infinity), Duration.isGreaterThan(Duration.infinity)))
+    assertFalse(pipe(Duration.nanos(1n), Duration.isGreaterThan(Duration.infinity)))
   })
 
-  it("greaterThan - Infinity", () => {
-    assertTrue(pipe(Duration.infinity, Duration.greaterThan(Duration.seconds(20))))
-    assertFalse(pipe(Duration.seconds(-Infinity), Duration.greaterThan(Duration.infinity)))
-    assertFalse(pipe(Duration.nanos(1n), Duration.greaterThan(Duration.infinity)))
+  it("isGreaterThanOrEqualTo", () => {
+    assertTrue(pipe(Duration.seconds(30), Duration.isGreaterThanOrEqualTo(Duration.seconds(20))))
+    assertTrue(pipe(Duration.seconds(30), Duration.isGreaterThanOrEqualTo(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(30), Duration.isGreaterThanOrEqualTo(Duration.seconds(60))))
+
+    assertTrue(pipe(Duration.nanos(30n), Duration.isGreaterThanOrEqualTo(Duration.nanos(20n))))
+    assertTrue(pipe(Duration.nanos(30n), Duration.isGreaterThanOrEqualTo(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(30n), Duration.isGreaterThanOrEqualTo(Duration.nanos(60n))))
   })
 
-  it("greaterThanOrEqualTo", () => {
-    assertTrue(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(20))))
-    assertTrue(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(30))))
-    assertFalse(pipe(Duration.seconds(30), Duration.greaterThanOrEqualTo(Duration.seconds(60))))
+  it("isLessThan", () => {
+    assertTrue(pipe(Duration.seconds(20), Duration.isLessThan(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(30), Duration.isLessThan(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(60), Duration.isLessThan(Duration.seconds(30))))
 
-    assertTrue(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(20n))))
-    assertTrue(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(30n))))
-    assertFalse(pipe(Duration.nanos(30n), Duration.greaterThanOrEqualTo(Duration.nanos(60n))))
+    assertTrue(pipe(Duration.nanos(20n), Duration.isLessThan(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(30n), Duration.isLessThan(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(60n), Duration.isLessThan(Duration.nanos(30n))))
 
-    assertTrue(Duration.greaterThanOrEqualTo("2 seconds", "2 seconds"))
-    assertTrue(Duration.greaterThanOrEqualTo("3 seconds", "2 seconds"))
-    assertFalse(Duration.greaterThanOrEqualTo("2 seconds", "3 seconds"))
+    assertTrue(pipe(Duration.nanos(1n), Duration.isLessThan(Duration.millis(1))))
   })
 
-  it("lessThan", () => {
-    assertTrue(pipe(Duration.seconds(20), Duration.lessThan(Duration.seconds(30))))
-    assertFalse(pipe(Duration.seconds(30), Duration.lessThan(Duration.seconds(30))))
-    assertFalse(pipe(Duration.seconds(60), Duration.lessThan(Duration.seconds(30))))
+  it("isLessThanOrEqualTo", () => {
+    assertTrue(pipe(Duration.seconds(20), Duration.isLessThanOrEqualTo(Duration.seconds(30))))
+    assertTrue(pipe(Duration.seconds(30), Duration.isLessThanOrEqualTo(Duration.seconds(30))))
+    assertFalse(pipe(Duration.seconds(60), Duration.isLessThanOrEqualTo(Duration.seconds(30))))
 
-    assertTrue(pipe(Duration.nanos(20n), Duration.lessThan(Duration.nanos(30n))))
-    assertFalse(pipe(Duration.nanos(30n), Duration.lessThan(Duration.nanos(30n))))
-    assertFalse(pipe(Duration.nanos(60n), Duration.lessThan(Duration.nanos(30n))))
-
-    assertTrue(pipe(Duration.nanos(1n), Duration.lessThan(Duration.millis(1))))
-
-    assertFalse(Duration.lessThan("2 seconds", "2 seconds"))
-    assertFalse(Duration.lessThan("3 seconds", "2 seconds"))
-    assertTrue(Duration.lessThan("2 seconds", "3 seconds"))
+    assertTrue(pipe(Duration.nanos(20n), Duration.isLessThanOrEqualTo(Duration.nanos(30n))))
+    assertTrue(pipe(Duration.nanos(30n), Duration.isLessThanOrEqualTo(Duration.nanos(30n))))
+    assertFalse(pipe(Duration.nanos(60n), Duration.isLessThanOrEqualTo(Duration.nanos(30n))))
   })
 
-  it("lessThanOrEqualTo", () => {
-    assertTrue(pipe(Duration.seconds(20), Duration.lessThanOrEqualTo(Duration.seconds(30))))
-    assertTrue(pipe(Duration.seconds(30), Duration.lessThanOrEqualTo(Duration.seconds(30))))
-    assertFalse(pipe(Duration.seconds(60), Duration.lessThanOrEqualTo(Duration.seconds(30))))
-
-    assertTrue(pipe(Duration.nanos(20n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
-    assertTrue(pipe(Duration.nanos(30n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
-    assertFalse(pipe(Duration.nanos(60n), Duration.lessThanOrEqualTo(Duration.nanos(30n))))
-
-    assertTrue(Duration.lessThanOrEqualTo("2 seconds", "2 seconds"))
-    assertFalse(Duration.lessThanOrEqualTo("3 seconds", "2 seconds"))
-    assertTrue(Duration.lessThanOrEqualTo("2 seconds", "3 seconds"))
-  })
-
-  it("String()", () => {
-    strictEqual(String(Duration.infinity), `Duration(Infinity)`)
-    strictEqual(String(Duration.nanos(10n)), `Duration(10ns)`)
-    strictEqual(String(Duration.millis(2)), `Duration(2ms)`)
-    strictEqual(String(Duration.millis(2.125)), `Duration(2ms 125000ns)`)
-    strictEqual(String(Duration.seconds(2)), `Duration(2s)`)
-    strictEqual(String(Duration.seconds(2.5)), `Duration(2s 500ms)`)
+  it("toString()", () => {
+    strictEqual(String(Duration.infinity), `Infinity`)
+    strictEqual(String(Duration.nanos(10n)), `10 nanos`)
+    strictEqual(String(Duration.millis(2)), `2 millis`)
+    strictEqual(String(Duration.millis(2.125)), `2125000 nanos`)
+    strictEqual(String(Duration.seconds(2)), `2000 millis`)
+    strictEqual(String(Duration.seconds(2.5)), `2500 millis`)
   })
 
   it("format", () => {
@@ -333,7 +427,7 @@ describe("Duration", () => {
     strictEqual(Duration.format(Duration.zero), `0`)
   })
 
-  it("format", () => {
+  it("parts", () => {
     deepStrictEqual(Duration.parts(Duration.infinity), {
       days: Infinity,
       hours: Infinity,
@@ -364,30 +458,17 @@ describe("Duration", () => {
 
   it("toJSON", () => {
     deepStrictEqual(Duration.seconds(2).toJSON(), { _id: "Duration", _tag: "Millis", millis: 2000 })
-  })
-
-  it("toJSON/ non-integer millis", () => {
-    deepStrictEqual(Duration.millis(1.5).toJSON(), { _id: "Duration", _tag: "Nanos", hrtime: [0, 1_500_000] })
-  })
-
-  it("toJSON/ nanos", () => {
-    deepStrictEqual(Duration.nanos(5n).toJSON(), { _id: "Duration", _tag: "Nanos", hrtime: [0, 5] })
-  })
-
-  it("toJSON/ infinity", () => {
+    deepStrictEqual(Duration.nanos(5n).toJSON(), { _id: "Duration", _tag: "Nanos", nanos: "5" })
+    deepStrictEqual(Duration.millis(1.5).toJSON(), { _id: "Duration", _tag: "Nanos", nanos: "1500000" })
     deepStrictEqual(Duration.infinity.toJSON(), { _id: "Duration", _tag: "Infinity" })
   })
 
   it(`inspect`, () => {
     if (typeof window === "undefined") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      // oxlint-disable-next-line @typescript-eslint/no-require-imports
       const { inspect } = require("node:util")
       deepStrictEqual(inspect(Duration.millis(1000)), inspect({ _id: "Duration", _tag: "Millis", millis: 1000 }))
     }
-  })
-
-  it("sum/ Infinity", () => {
-    deepStrictEqual(Duration.sum(Duration.seconds(1), Duration.infinity), Duration.infinity)
   })
 
   it(".pipe()", () => {
@@ -400,11 +481,7 @@ describe("Duration", () => {
   })
 
   it("zero", () => {
-    deepStrictEqual(Duration.zero.value, { _tag: "Millis", millis: 0 })
-  })
-
-  it("infinity", () => {
-    deepStrictEqual(Duration.infinity.value, { _tag: "Infinity" })
+    deepStrictEqual(Duration.sum(Duration.seconds(1), Duration.zero), Duration.seconds(1))
   })
 
   it("weeks", () => {
@@ -416,36 +493,29 @@ describe("Duration", () => {
     strictEqual(Duration.millis(1).pipe(Duration.toMillis), 1)
     strictEqual(Duration.nanos(1n).pipe(Duration.toMillis), 0.000001)
     strictEqual(Duration.infinity.pipe(Duration.toMillis), Infinity)
-
-    strictEqual(Duration.toMillis("1 millis"), 1)
   })
 
   it("toSeconds", () => {
     strictEqual(Duration.millis(1).pipe(Duration.toSeconds), 0.001)
     strictEqual(Duration.nanos(1n).pipe(Duration.toSeconds), 1e-9)
     strictEqual(Duration.infinity.pipe(Duration.toSeconds), Infinity)
-
-    strictEqual(Duration.toSeconds("1 seconds"), 1)
-    strictEqual(Duration.toSeconds("3 seconds"), 3)
-    strictEqual(Duration.toSeconds("3 minutes"), 180)
   })
 
   it("toNanos", () => {
     assertSome(Duration.nanos(1n).pipe(Duration.toNanos), 1n)
     assertNone(Duration.infinity.pipe(Duration.toNanos))
+    assertNone(Duration.negativeInfinity.pipe(Duration.toNanos))
     assertSome(Duration.millis(1.0005).pipe(Duration.toNanos), 1_000_500n)
     assertSome(Duration.millis(100).pipe(Duration.toNanos), 100_000_000n)
-
-    assertSome(Duration.toNanos("1 nanos"), 1n)
   })
 
-  it("unsafeToNanos", () => {
-    strictEqual(Duration.nanos(1n).pipe(Duration.unsafeToNanos), 1n)
-    throws(() => Duration.infinity.pipe(Duration.unsafeToNanos))
-    strictEqual(Duration.millis(1.0005).pipe(Duration.unsafeToNanos), 1_000_500n)
-    strictEqual(Duration.millis(100).pipe(Duration.unsafeToNanos), 100_000_000n)
-
-    strictEqual(Duration.unsafeToNanos("1 nanos"), 1n)
+  it("toNanosUnsafe", () => {
+    strictEqual(Duration.nanos(1n).pipe(Duration.toNanosUnsafe), 1n)
+    throws(() => Duration.infinity.pipe(Duration.toNanosUnsafe))
+    strictEqual(Duration.millis(1.0005).pipe(Duration.toNanosUnsafe), 1_000_500n)
+    strictEqual(Duration.millis(0.0000015).pipe(Duration.toNanosUnsafe), 2n)
+    strictEqual(Duration.millis(-0.0000015).pipe(Duration.toNanosUnsafe), -2n)
+    strictEqual(Duration.millis(100).pipe(Duration.toNanosUnsafe), 100_000_000n)
   })
 
   it("toHrTime", () => {
@@ -454,25 +524,106 @@ describe("Duration", () => {
     deepStrictEqual(Duration.nanos(1_000_000_001n).pipe(Duration.toHrTime), [1, 1])
     deepStrictEqual(Duration.millis(1001).pipe(Duration.toHrTime), [1, 1_000_000])
     deepStrictEqual(Duration.infinity.pipe(Duration.toHrTime), [Infinity, 0])
-
-    deepStrictEqual(Duration.toHrTime("1 millis"), [0, 1_000_000])
   })
 
-  it("floor is 0", () => {
-    deepStrictEqual(Duration.millis(-1), Duration.zero)
-    deepStrictEqual(Duration.nanos(-1n), Duration.zero)
+  it("negative values", () => {
+    // negative constructors produce negative durations
+    assertTrue(Duration.isNegative(Duration.millis(-1)))
+    assertTrue(Duration.isNegative(Duration.nanos(-1n)))
+    strictEqual(Duration.toMillis(Duration.millis(-1)), -1)
+    strictEqual(Duration.toNanosUnsafe(Duration.nanos(-1n)), -1n)
+
+    // isNegative / isPositive
+    assertTrue(Duration.isNegative(Duration.seconds(-5)))
+    assertFalse(Duration.isNegative(Duration.zero))
+    assertFalse(Duration.isNegative(Duration.seconds(5)))
+    assertFalse(Duration.isNegative(Duration.infinity))
+    assertTrue(Duration.isNegative(Duration.negativeInfinity))
+
+    assertTrue(Duration.isPositive(Duration.seconds(5)))
+    assertFalse(Duration.isPositive(Duration.zero))
+    assertFalse(Duration.isPositive(Duration.seconds(-5)))
+    assertTrue(Duration.isPositive(Duration.infinity))
+    assertFalse(Duration.isPositive(Duration.negativeInfinity))
+
+    // abs
+    deepStrictEqual(Duration.abs(Duration.seconds(-5)), Duration.seconds(5))
+    deepStrictEqual(Duration.abs(Duration.seconds(5)), Duration.seconds(5))
+    deepStrictEqual(Duration.abs(Duration.zero), Duration.zero)
+    deepStrictEqual(Duration.abs(Duration.negativeInfinity), Duration.infinity)
+    deepStrictEqual(Duration.abs(Duration.infinity), Duration.infinity)
+
+    // negate
+    deepStrictEqual(Duration.negate(Duration.seconds(5)), Duration.seconds(-5))
+    deepStrictEqual(Duration.negate(Duration.seconds(-5)), Duration.seconds(5))
+    deepStrictEqual(Duration.negate(Duration.zero), Duration.zero)
+    deepStrictEqual(Duration.negate(Duration.infinity), Duration.negativeInfinity)
+    deepStrictEqual(Duration.negate(Duration.negativeInfinity), Duration.infinity)
+
+    // negativeInfinity
+    assertFalse(Duration.isFinite(Duration.negativeInfinity))
+    assertFalse(Duration.isZero(Duration.negativeInfinity))
+    strictEqual(Duration.toMillis(Duration.negativeInfinity), -Infinity)
+    strictEqual(Duration.toSeconds(Duration.negativeInfinity), -Infinity)
+    deepStrictEqual(Duration.toHrTime(Duration.negativeInfinity), [-Infinity, 0])
+
+    // format
+    strictEqual(Duration.format(Duration.seconds(-5)), "-5s")
+    strictEqual(Duration.format(Duration.negativeInfinity), "-Infinity")
+
+    // Order with negatives
+    deepStrictEqual(Duration.Order(Duration.negativeInfinity, Duration.negativeInfinity), 0)
+    deepStrictEqual(Duration.Order(Duration.negativeInfinity, Duration.seconds(-5)), -1)
+    deepStrictEqual(Duration.Order(Duration.seconds(-5), Duration.negativeInfinity), 1)
+    deepStrictEqual(Duration.Order(Duration.negativeInfinity, Duration.infinity), -1)
+    deepStrictEqual(Duration.Order(Duration.infinity, Duration.negativeInfinity), 1)
+    deepStrictEqual(Duration.Order(Duration.seconds(-5), Duration.seconds(-3)), -1)
+    deepStrictEqual(Duration.Order(Duration.seconds(-3), Duration.seconds(-5)), 1)
+
+    // Equivalence with negatives
+    assertTrue(Duration.Equivalence(Duration.negativeInfinity, Duration.negativeInfinity))
+    assertFalse(Duration.Equivalence(Duration.negativeInfinity, Duration.infinity))
+
+    // sum with negativeInfinity
+    deepStrictEqual(Duration.sum(Duration.infinity, Duration.negativeInfinity), Duration.zero)
+    deepStrictEqual(Duration.sum(Duration.negativeInfinity, Duration.infinity), Duration.zero)
+    deepStrictEqual(Duration.sum(Duration.negativeInfinity, Duration.negativeInfinity), Duration.negativeInfinity)
+    deepStrictEqual(Duration.sum(Duration.negativeInfinity, Duration.seconds(5)), Duration.negativeInfinity)
+
+    // times with negatives
+    deepStrictEqual(Duration.times(Duration.infinity, -1), Duration.negativeInfinity)
+    deepStrictEqual(Duration.times(Duration.negativeInfinity, -1), Duration.infinity)
+    deepStrictEqual(Duration.times(Duration.infinity, 0), Duration.zero)
+    deepStrictEqual(Duration.times(Duration.seconds(5), -2), Duration.seconds(-10))
+
+    // parts with negative
+    deepStrictEqual(Duration.parts(Duration.negativeInfinity), {
+      days: -Infinity,
+      hours: -Infinity,
+      minutes: -Infinity,
+      seconds: -Infinity,
+      millis: -Infinity,
+      nanos: -Infinity
+    })
+
+    // toString with negatives
+    strictEqual(String(Duration.negativeInfinity), "-Infinity")
+    strictEqual(String(Duration.millis(-5)), "-5 millis")
+    strictEqual(String(Duration.nanos(-10n)), "-10 nanos")
+
+    // toJSON with negatives
+    deepStrictEqual(Duration.negativeInfinity.toJSON(), { _id: "Duration", _tag: "NegativeInfinity" })
   })
 
   it("match", () => {
     const match = Duration.match({
-      onMillis: () => "millis",
-      onNanos: () => "nanos"
+      onMillis: (millis) => `millis: ${millis}`,
+      onNanos: (nanos) => `nanos: ${nanos}`,
+      onInfinity: () => "infinity"
     })
-    strictEqual(match(Duration.decode("100 millis")), "millis")
-    strictEqual(match(Duration.decode("10 nanos")), "nanos")
-    strictEqual(match(Duration.decode(Infinity)), "millis")
-
-    strictEqual(match("100 millis"), "millis")
+    strictEqual(match(Duration.millis(100)), "millis: 100")
+    strictEqual(match(Duration.nanos(10n)), "nanos: 10")
+    strictEqual(match(Duration.infinity), "infinity")
   })
 
   it("isFinite", () => {
@@ -494,135 +645,35 @@ describe("Duration", () => {
     strictEqual(Duration.millis(60000).pipe(Duration.toMinutes), 1)
     strictEqual(Duration.nanos(60000000000n).pipe(Duration.toMinutes), 1)
     strictEqual(Duration.infinity.pipe(Duration.toMinutes), Infinity)
-
-    strictEqual(Duration.toMinutes("1 minute"), 1)
-    strictEqual(Duration.toMinutes("2 minutes"), 2)
-    strictEqual(Duration.toMinutes("1 hour"), 60)
   })
 
   it("toHours", () => {
     strictEqual(Duration.millis(3_600_000).pipe(Duration.toHours), 1)
     strictEqual(Duration.nanos(3_600_000_000_000n).pipe(Duration.toHours), 1)
     strictEqual(Duration.infinity.pipe(Duration.toHours), Infinity)
-
-    strictEqual(Duration.toHours("1 hour"), 1)
-    strictEqual(Duration.toHours("2 hours"), 2)
-    strictEqual(Duration.toHours("1 day"), 24)
   })
 
   it("toDays", () => {
     strictEqual(Duration.millis(86_400_000).pipe(Duration.toDays), 1)
     strictEqual(Duration.nanos(86_400_000_000_000n).pipe(Duration.toDays), 1)
     strictEqual(Duration.infinity.pipe(Duration.toDays), Infinity)
-
-    strictEqual(Duration.toDays("1 day"), 1)
-    strictEqual(Duration.toDays("2 days"), 2)
-    strictEqual(Duration.toDays("1 week"), 7)
   })
 
   it("toWeeks", () => {
     strictEqual(Duration.millis(604_800_000).pipe(Duration.toWeeks), 1)
     strictEqual(Duration.nanos(604_800_000_000_000n).pipe(Duration.toWeeks), 1)
     strictEqual(Duration.infinity.pipe(Duration.toWeeks), Infinity)
-
-    strictEqual(Duration.toWeeks("1 week"), 1)
-    strictEqual(Duration.toWeeks("2 weeks"), 2)
-    strictEqual(Duration.toWeeks("14 days"), 2)
   })
 
-  it("formatIso", () => {
-    assertSome(Duration.formatIso(Duration.zero), "PT0S")
-    assertSome(Duration.formatIso(Duration.seconds(2)), "PT2S")
-    assertSome(Duration.formatIso(Duration.minutes(5)), "PT5M")
-    assertSome(Duration.formatIso(Duration.hours(3)), "PT3H")
-    assertSome(Duration.formatIso(Duration.days(1)), "P1D")
-
-    assertSome(Duration.formatIso(Duration.minutes(90)), "PT1H30M")
-    assertSome(Duration.formatIso(Duration.hours(25)), "P1DT1H")
-    assertSome(Duration.formatIso(Duration.days(7)), "P1W")
-    assertSome(Duration.formatIso(Duration.days(10)), "P1W3D")
-
-    assertSome(Duration.formatIso(Duration.millis(1500)), "PT1.5S")
-    assertSome(Duration.formatIso(Duration.micros(1500n)), "PT0.0015S")
-    assertSome(Duration.formatIso(Duration.nanos(1500n)), "PT0.0000015S")
-
-    assertSome(
-      Duration.formatIso(
-        Duration.seconds(
-          365 * 24 * 60 * 60 + // 1 year
-            60 * 24 * 60 * 60 + // 2 months
-            3 * 24 * 60 * 60 + // 3 days
-            4 * 60 * 60 + // 4 hours
-            5 * 60 + // 5 minutes
-            6.789 // 6.789 seconds
-        )
-      ),
-      "P1Y2M3DT4H5M6.789S"
-    )
-
-    assertSome(
-      Duration.formatIso(
-        Duration.days(1).pipe(
-          Duration.sum(Duration.hours(2)),
-          Duration.sum(Duration.minutes(30))
-        )
-      ),
-      "P1DT2H30M"
-    )
-
-    assertSome(
-      Duration.formatIso(
-        Duration.hours(2).pipe(
-          Duration.sum(Duration.minutes(30)),
-          Duration.sum(Duration.millis(1500))
-        )
-      ),
-      "PT2H30M1.5S"
-    )
-
-    assertSome(Duration.formatIso("1 day"), "P1D")
-    assertSome(Duration.formatIso("90 minutes"), "PT1H30M")
-    assertSome(Duration.formatIso("1.5 seconds"), "PT1.5S")
-
-    assertNone(Duration.formatIso(Duration.infinity))
+  it("ReducerSum", () => {
+    deepStrictEqual(Duration.ReducerSum.combine(Duration.millis(1), Duration.millis(2)), Duration.millis(3))
   })
 
-  it("fromIso", () => {
-    assertSome(Duration.fromIso("P1D"), Duration.days(1))
-    assertSome(Duration.fromIso("PT1H"), Duration.hours(1))
-    assertSome(Duration.fromIso("PT1M"), Duration.minutes(1))
-    assertSome(Duration.fromIso("PT1.5S"), Duration.seconds(1.5))
-    assertSome(Duration.fromIso("P1Y"), Duration.days(365))
-    assertSome(Duration.fromIso("P1M"), Duration.days(30))
-    assertSome(Duration.fromIso("P1W"), Duration.days(7))
-    assertSome(Duration.fromIso("P1DT12H"), Duration.hours(36))
-    assertSome(
-      Duration.fromIso("P1Y2M3DT4H5M6.789S"),
-      Duration.seconds(
-        365 * 24 * 60 * 60 + // 1 year
-          60 * 24 * 60 * 60 + // 2 months
-          3 * 24 * 60 * 60 + // 3 days
-          4 * 60 * 60 + // 4 hours
-          5 * 60 + // 5 minutes
-          6.789 // 6.789 seconds
-      )
-    )
+  it("CombinerMax", () => {
+    deepStrictEqual(Duration.CombinerMax.combine(Duration.millis(1), Duration.millis(2)), Duration.millis(2))
+  })
 
-    assertNone(Duration.fromIso("1D"))
-    assertNone(Duration.fromIso("P1H"))
-    assertNone(Duration.fromIso("PT1D"))
-    assertNone(Duration.fromIso("P1.5D"))
-    assertNone(Duration.fromIso("P1.5Y"))
-    assertNone(Duration.fromIso("P1.5M"))
-    assertNone(Duration.fromIso("PT1.5H"))
-    assertNone(Duration.fromIso("PT1.5M"))
-    assertNone(Duration.fromIso("PDT1H"))
-    assertNone(Duration.fromIso("P1D2H"))
-    assertNone(Duration.fromIso("P"))
-    assertNone(Duration.fromIso("PT"))
-    assertNone(Duration.fromIso("random string"))
-    assertNone(Duration.fromIso("P1YT"))
-    assertNone(Duration.fromIso("P1S"))
-    assertNone(Duration.fromIso("P1DT1S1H"))
+  it("CombinerMin", () => {
+    deepStrictEqual(Duration.CombinerMin.combine(Duration.millis(1), Duration.millis(2)), Duration.millis(1))
   })
 })

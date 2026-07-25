@@ -1,17 +1,8 @@
 import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
-import {
-  Array as Arr,
-  Either,
-  FastCheck as fc,
-  identity,
-  Number as Num,
-  Option,
-  Order,
-  pipe,
-  type Predicate,
-  String as Str
-} from "effect"
+import { Array as Arr, Equivalence, Number as Num, Option, Order, type Predicate, Result, String as Str } from "effect"
+import { identity, pipe } from "effect/Function"
+import { FastCheck as fc } from "effect/testing"
 
 const symA = Symbol.for("a")
 const symB = Symbol.for("b")
@@ -159,6 +150,18 @@ describe("Array", () => {
       deepStrictEqual(pipe(new Set([2, 4]), Arr.takeWhile(f)), [2, 4])
     })
 
+    it("takeWhileFilter", () => {
+      const f: (n: number, i: number) => Result.Result<number, string> = (n, i) =>
+        n + i < 5 ? Result.succeed(n * 10) : Result.fail(`stop: ${n}`)
+
+      deepStrictEqual(Arr.takeWhileFilter([], f), [])
+      deepStrictEqual(Arr.takeWhileFilter([1, 2, 3], f), [10, 20])
+      deepStrictEqual(pipe([1, 2, 3], Arr.takeWhileFilter(f)), [10, 20])
+
+      deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.takeWhileFilter(f)), [10, 20])
+      deepStrictEqual(pipe([][Symbol.iterator](), Arr.takeWhileFilter(f)), [])
+    })
+
     it("span", () => {
       const f = Arr.span<number>((n) => n % 2 === 1)
       const assertSpan = (
@@ -179,6 +182,10 @@ describe("Array", () => {
       assertSpan(new Set(), Arr.empty(), Arr.empty())
       assertSpan(new Set([1, 3]), [1, 3], Arr.empty())
       assertSpan(new Set([2, 4]), Arr.empty(), [2, 4])
+
+      // iterator input
+      assertSpan([1, 3, 2, 4, 5][Symbol.iterator](), [1, 3], [2, 4, 5])
+      assertSpan([][Symbol.iterator](), Arr.empty(), Arr.empty())
     })
 
     it("splitWhere", () => {
@@ -272,6 +279,22 @@ describe("Array", () => {
       deepStrictEqual(f(new Set([-1, -2])), [-1, -2])
       deepStrictEqual(f(new Set([-1, 2])), [-1, 2])
       deepStrictEqual(f(new Set([1, -2, 3])), [-2, 3])
+
+      // iterator input
+      deepStrictEqual(f([1, -2, 3][Symbol.iterator]()), [-2, 3])
+      deepStrictEqual(f([][Symbol.iterator]()), [])
+    })
+
+    it("dropWhileFilter", () => {
+      const f: (n: number, i: number) => Result.Result<number, string> = (n, i) =>
+        n + i < 5 ? Result.succeed(n * 10) : Result.fail(`stop: ${n}`)
+
+      deepStrictEqual(Arr.dropWhileFilter([], f), [])
+      deepStrictEqual(Arr.dropWhileFilter([1, 2, 3], f), [3])
+      deepStrictEqual(pipe([1, 2, 3], Arr.dropWhileFilter(f)), [3])
+
+      deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.dropWhileFilter(f)), [3])
+      deepStrictEqual(pipe([][Symbol.iterator](), Arr.dropWhileFilter(f)), [])
     })
 
     it("findFirstIndex", () => {
@@ -425,55 +448,29 @@ describe("Array", () => {
     })
 
     it("replace", () => {
-      deepStrictEqual(pipe([1, 2, 3], Arr.replace(1, "a")), [1, "a", 3])
+      assertSome(pipe([1, 2, 3], Arr.replace(1, "a")), [1, "a", 3])
       // out of bound
-      deepStrictEqual(pipe([], Arr.replace(1, "a")), [])
-      deepStrictEqual(pipe([1, 2, 3], Arr.replace(-1, "a")), [1, 2, 3])
-      deepStrictEqual(pipe([1, 2, 3], Arr.replace(10, "a")), [1, 2, 3])
+      assertNone(pipe([], Arr.replace(1, "a")))
+      assertNone(pipe([1, 2, 3], Arr.replace(-1, "a")))
+      assertNone(pipe([1, 2, 3], Arr.replace(10, "a")))
 
-      deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.replace(1, "a")), [1, "a", 3])
+      assertSome(pipe(new Set([1, 2, 3]), Arr.replace(1, "a")), [1, "a", 3])
       // out of bound
-      deepStrictEqual(pipe(new Set([]), Arr.replace(1, "a")), [])
-      deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.replace(-1, "a")), [1, 2, 3])
-      deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.replace(10, "a")), [1, 2, 3])
-    })
-
-    it("replaceOption", () => {
-      assertSome(pipe([1, 2, 3], Arr.replaceOption(1, "a")), [1, "a", 3])
-      // out of bound
-      assertNone(pipe([], Arr.replaceOption(1, "a")))
-      assertNone(pipe([1, 2, 3], Arr.replaceOption(-1, "a")))
-      assertNone(pipe([1, 2, 3], Arr.replaceOption(10, "a")))
-
-      assertSome(pipe(new Set([1, 2, 3]), Arr.replaceOption(1, "a")), [1, "a", 3])
-      // out of bound
-      assertNone(pipe(new Set([]), Arr.replaceOption(1, "a")))
-      assertNone(pipe(new Set([1, 2, 3]), Arr.replaceOption(-1, "a")))
-      assertNone(pipe(new Set([1, 2, 3]), Arr.replaceOption(10, "a")))
+      assertNone(pipe(new Set([]), Arr.replace(1, "a")))
+      assertNone(pipe(new Set([1, 2, 3]), Arr.replace(-1, "a")))
+      assertNone(pipe(new Set([1, 2, 3]), Arr.replace(10, "a")))
     })
 
     it("modify", () => {
-      deepStrictEqual(pipe([1, 2, 3], Arr.modify(1, double)), [1, 4, 3])
+      assertSome(pipe([1, 2, 3], Arr.modify(1, double)), [1, 4, 3])
       // out of bound
-      deepStrictEqual(pipe([], Arr.modify(1, double)), [])
-      deepStrictEqual(pipe([1, 2, 3], Arr.modify(10, double)), [1, 2, 3])
+      assertNone(pipe([], Arr.modify(1, double)))
+      assertNone(pipe([1, 2, 3], Arr.modify(10, double)))
 
-      deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.modify(1, double)), [1, 4, 3])
+      assertSome(pipe(new Set([1, 2, 3]), Arr.modify(1, double)), [1, 4, 3])
       // out of bound
-      deepStrictEqual(pipe(new Set([]), Arr.modify(1, double)), [])
-      deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.modify(10, double)), [1, 2, 3])
-    })
-
-    it("modifyOption", () => {
-      assertSome(pipe([1, 2, 3], Arr.modifyOption(1, double)), [1, 4, 3])
-      // out of bound
-      assertNone(pipe([], Arr.modifyOption(1, double)))
-      assertNone(pipe([1, 2, 3], Arr.modifyOption(10, double)))
-
-      assertSome(pipe(new Set([1, 2, 3]), Arr.modifyOption(1, double)), [1, 4, 3])
-      // out of bound
-      assertNone(pipe(new Set([]), Arr.modifyOption(1, double)))
-      assertNone(pipe(new Set([1, 2, 3]), Arr.modifyOption(10, double)))
+      assertNone(pipe(new Set([]), Arr.modify(1, double)))
+      assertNone(pipe(new Set([1, 2, 3]), Arr.modify(10, double)))
     })
 
     it("remove", () => {
@@ -488,20 +485,6 @@ describe("Array", () => {
       deepStrictEqual(pipe(new Set([]), Arr.remove(0)), [])
       deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.remove(-1)), [1, 2, 3])
       deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.remove(10)), [1, 2, 3])
-    })
-
-    it("removeOption", () => {
-      assertSome(pipe([1, 2, 3], Arr.removeOption(0)), [2, 3])
-      // out of bound
-      assertNone(pipe([], Arr.removeOption(0)))
-      assertNone(pipe([1, 2, 3], Arr.removeOption(-1)))
-      assertNone(pipe([1, 2, 3], Arr.removeOption(10)))
-
-      assertSome(pipe(new Set([1, 2, 3]), Arr.removeOption(0)), [2, 3])
-      // out of bound
-      assertNone(pipe(new Set([]), Arr.removeOption(0)))
-      assertNone(pipe(new Set([1, 2, 3]), Arr.removeOption(-1)))
-      assertNone(pipe(new Set([1, 2, 3]), Arr.removeOption(10)))
     })
 
     it("reverse", () => {
@@ -604,6 +587,12 @@ describe("Array", () => {
       deepStrictEqual(Arr.rotate(2)(new Set([1, 2, 3, 4, 5])), [4, 5, 1, 2, 3])
       deepStrictEqual(Arr.rotate(-1)(new Set([1, 2, 3, 4, 5])), [2, 3, 4, 5, 1])
       deepStrictEqual(Arr.rotate(-2)(new Set([1, 2, 3, 4, 5])), [3, 4, 5, 1, 2])
+      deepStrictEqual(
+        Arr.rotate(1)((function*() {
+          yield* [1, 2, 3]
+        })()),
+        [3, 1, 2]
+      )
       // out of bounds
       deepStrictEqual(Arr.rotate(7)([1, 2, 3, 4, 5]), [4, 5, 1, 2, 3])
       deepStrictEqual(Arr.rotate(-7)([1, 2, 3, 4, 5]), [3, 4, 5, 1, 2])
@@ -612,7 +601,7 @@ describe("Array", () => {
     })
 
     it("containsWith", () => {
-      const contains = Arr.containsWith(Num.Equivalence)
+      const contains = Arr.containsWith(Equivalence.strictEqual<number>())
       deepStrictEqual(pipe([1, 2, 3], contains(2)), true)
       deepStrictEqual(pipe([1, 2, 3], contains(0)), false)
 
@@ -630,7 +619,7 @@ describe("Array", () => {
     })
 
     it("dedupeWith", () => {
-      const dedupe = Arr.dedupeWith(Num.Equivalence)
+      const dedupe = Arr.dedupeWith(Equivalence.strictEqual<number>())
       deepStrictEqual(dedupe([]), [])
       deepStrictEqual(dedupe([-0, -0]), [-0])
       deepStrictEqual(dedupe([0, -0]), [0])
@@ -643,7 +632,7 @@ describe("Array", () => {
     })
 
     it("dedupeAdjacentWith", () => {
-      const dedupeAdjacent = Arr.dedupeAdjacentWith(Num.Equivalence)
+      const dedupeAdjacent = Arr.dedupeAdjacentWith(Equivalence.strictEqual<number>())
       deepStrictEqual(dedupeAdjacent([]), [])
       deepStrictEqual(dedupeAdjacent([1, 2, 3]), [1, 2, 3])
       deepStrictEqual(dedupeAdjacent([1, 2, 2, 3, 3]), [1, 2, 3])
@@ -681,31 +670,31 @@ describe("Array", () => {
     })
   })
 
-  it("splitNonEmptyAt", () => {
-    deepStrictEqual(pipe(Arr.make(1, 2, 3, 4), Arr.splitNonEmptyAt(2)), [[1, 2], [3, 4]])
-    deepStrictEqual(pipe(Arr.make(1, 2, 3, 4), Arr.splitNonEmptyAt(10)), [[1, 2, 3, 4], []])
+  it("splitAtNonEmpty", () => {
+    deepStrictEqual(pipe(Arr.make(1, 2, 3, 4), Arr.splitAtNonEmpty(2)), [[1, 2], [3, 4]])
+    deepStrictEqual(pipe(Arr.make(1, 2, 3, 4), Arr.splitAtNonEmpty(10)), [[1, 2, 3, 4], []])
   })
 
-  describe("unsafeGet", () => {
+  describe("getUnsafe", () => {
     it("should throw on index out of bound", () => {
-      throws(() => pipe([], Arr.unsafeGet(100)), new Error("Index 100 out of bounds"))
+      throws(() => pipe([], Arr.getUnsafe(100)), new Error("Index out of bounds: 100"))
     })
   })
 
-  it("fromNullable", () => {
-    deepStrictEqual(Arr.fromNullable(undefined), [])
-    deepStrictEqual(Arr.fromNullable(null), [])
-    deepStrictEqual(Arr.fromNullable(1), [1])
+  it("fromNullishOr", () => {
+    deepStrictEqual(Arr.fromNullishOr(undefined), [])
+    deepStrictEqual(Arr.fromNullishOr(null), [])
+    deepStrictEqual(Arr.fromNullishOr(1), [1])
   })
 
-  it("liftNullable", () => {
-    const f = Arr.liftNullable((n: number) => (n > 0 ? n : null))
+  it("liftNullishOr", () => {
+    const f = Arr.liftNullishOr((n: number) => (n > 0 ? n : null))
     deepStrictEqual(f(1), [1])
     deepStrictEqual(f(-1), [])
   })
 
-  it("flatMapNullable", () => {
-    const f = Arr.flatMapNullable((n: number) => (n > 0 ? n : null))
+  it("flatMapNullishOr", () => {
+    const f = Arr.flatMapNullishOr((n: number) => (n > 0 ? n : null))
     deepStrictEqual(pipe([], f), [])
     deepStrictEqual(pipe([1], f), [1])
     deepStrictEqual(pipe([1, 2], f), [1, 2])
@@ -744,34 +733,34 @@ describe("Array", () => {
     ])
   })
 
-  it("modifyNonEmptyHead", () => {
+  it("modifyHeadNonEmpty", () => {
     const f = (s: string) => s + "!"
-    deepStrictEqual(pipe(["a"], Arr.modifyNonEmptyHead(f)), ["a!"])
-    deepStrictEqual(pipe(["a", "b"], Arr.modifyNonEmptyHead(f)), ["a!", "b"])
-    deepStrictEqual(pipe(["a", "b", "c"], Arr.modifyNonEmptyHead(f)), ["a!", "b", "c"])
+    deepStrictEqual(pipe(["a"], Arr.modifyHeadNonEmpty(f)), ["a!"])
+    deepStrictEqual(pipe(["a", "b"], Arr.modifyHeadNonEmpty(f)), ["a!", "b"])
+    deepStrictEqual(pipe(["a", "b", "c"], Arr.modifyHeadNonEmpty(f)), ["a!", "b", "c"])
   })
 
-  it("modifyNonEmptyLast", () => {
+  it("modifyLastNonEmpty", () => {
     const f = (s: string) => s + "!"
-    deepStrictEqual(pipe(["a"], Arr.modifyNonEmptyLast(f)), ["a!"])
-    deepStrictEqual(pipe(["a", "b"], Arr.modifyNonEmptyLast(f)), ["a", "b!"])
-    deepStrictEqual(pipe(["a", "b", "c"], Arr.modifyNonEmptyLast(f)), ["a", "b", "c!"])
+    deepStrictEqual(pipe(["a"], Arr.modifyLastNonEmpty(f)), ["a!"])
+    deepStrictEqual(pipe(["a", "b"], Arr.modifyLastNonEmpty(f)), ["a", "b!"])
+    deepStrictEqual(pipe(["a", "b", "c"], Arr.modifyLastNonEmpty(f)), ["a", "b", "c!"])
   })
 
-  it("setNonEmptyHead", () => {
-    deepStrictEqual(pipe(Arr.make("a"), Arr.setNonEmptyHead("d")), ["d"])
-    deepStrictEqual(pipe(Arr.make("a", "b"), Arr.setNonEmptyHead("d")), ["d", "b"])
-    deepStrictEqual(pipe(Arr.make("a", "b", "c"), Arr.setNonEmptyHead("d")), ["d", "b", "c"])
+  it("setHeadNonEmpty", () => {
+    deepStrictEqual(pipe(Arr.make("a"), Arr.setHeadNonEmpty("d")), ["d"])
+    deepStrictEqual(pipe(Arr.make("a", "b"), Arr.setHeadNonEmpty("d")), ["d", "b"])
+    deepStrictEqual(pipe(Arr.make("a", "b", "c"), Arr.setHeadNonEmpty("d")), ["d", "b", "c"])
   })
 
-  it("setNonEmptyLast", () => {
-    deepStrictEqual(pipe(Arr.make("a"), Arr.setNonEmptyLast("d")), ["d"])
-    deepStrictEqual(pipe(Arr.make("a", "b"), Arr.setNonEmptyLast("d")), ["a", "d"])
-    deepStrictEqual(pipe(Arr.make("a", "b", "c"), Arr.setNonEmptyLast("d")), ["a", "b", "d"])
+  it("setLastNonEmpty", () => {
+    deepStrictEqual(pipe(Arr.make("a"), Arr.setLastNonEmpty("d")), ["d"])
+    deepStrictEqual(pipe(Arr.make("a", "b"), Arr.setLastNonEmpty("d")), ["a", "d"])
+    deepStrictEqual(pipe(Arr.make("a", "b", "c"), Arr.setLastNonEmpty("d")), ["a", "b", "d"])
   })
 
-  it("liftEither", () => {
-    const f = Arr.liftEither((s: string) => s.length > 2 ? Either.right(s.length) : Either.left("e"))
+  it("liftResult", () => {
+    const f = Arr.liftResult((s: string) => s.length > 2 ? Result.succeed(s.length) : Result.fail("e"))
     deepStrictEqual(f("a"), [])
     deepStrictEqual(f("aaa"), [3])
   })
@@ -853,7 +842,7 @@ describe("Array", () => {
 
   it("separate", () => {
     deepStrictEqual(Arr.separate([]), [[], []])
-    deepStrictEqual(Arr.separate([Either.right(1), Either.left("e"), Either.left(2), Either.right(2)]), [
+    deepStrictEqual(Arr.separate([Result.succeed(1), Result.fail("e"), Result.fail(2), Result.succeed(2)]), [
       ["e", 2],
       [1, 2]
     ])
@@ -874,25 +863,27 @@ describe("Array", () => {
   })
 
   it("filterMap", () => {
-    const f = (n: number) => (n % 2 === 0 ? Option.none() : Option.some(n))
-    deepStrictEqual(pipe([1, 2, 3], Arr.filterMap(f)), [1, 3])
-    deepStrictEqual(pipe([], Arr.filterMap(f)), [])
-    const g = (n: number, i: number) => ((i + n) % 2 === 0 ? Option.none() : Option.some(n))
-    deepStrictEqual(pipe([1, 2, 4], Arr.filterMap(g)), [1, 2])
-    deepStrictEqual(pipe([], Arr.filterMap(g)), [])
+    const f: (n: number, i: number) => Result.Result<number, string> = (n, i) =>
+      n + i < 4 ? Result.succeed(n * 2) : Result.fail(`skip: ${n}`)
+
+    deepStrictEqual(Arr.filterMap([], f), [])
+    deepStrictEqual(Arr.filterMap([1, 2, 3], f), [2, 4])
+    deepStrictEqual(pipe([1, 2, 3], Arr.filterMap(f)), [2, 4])
+    deepStrictEqual(pipe(new Set([1, 2, 3]), Arr.filterMap(f)), [2, 4])
+    deepStrictEqual(pipe([1, 2, 3][Symbol.iterator](), Arr.filterMap(f)), [2, 4])
   })
 
-  it("partitionMap", () => {
-    deepStrictEqual(Arr.partitionMap([], identity), [[], []])
-    deepStrictEqual(Arr.partitionMap([Either.right(1), Either.left("a"), Either.right(2)], identity), [["a"], [1, 2]])
+  it("partition (identity)", () => {
+    deepStrictEqual(Arr.partition([], identity), [[], []])
+    deepStrictEqual(Arr.partition([Result.succeed(1), Result.fail("a"), Result.succeed(2)], identity), [["a"], [1, 2]])
   })
 
-  it("partition", () => {
-    deepStrictEqual(Arr.partition([], (n) => n > 2), [[], []])
-    deepStrictEqual(Arr.partition([1, 3], (n) => n > 2), [[1], [3]])
+  it("partition - transformed outputs", () => {
+    deepStrictEqual(Arr.partition([], (n) => n > 2 ? Result.succeed(n) : Result.fail(n)), [[], []])
+    deepStrictEqual(Arr.partition([1, 3], (n) => n > 2 ? Result.succeed(n) : Result.fail(n)), [[1], [3]])
 
-    deepStrictEqual(Arr.partition([], (n, i) => n + i > 2), [[], []])
-    deepStrictEqual(Arr.partition([1, 2], (n, i) => n + i > 2), [[1], [2]])
+    deepStrictEqual(Arr.partition([], (n, i) => n + i > 2 ? Result.succeed(n) : Result.fail(n)), [[], []])
+    deepStrictEqual(Arr.partition([1, 2], (n, i) => n + i > 2 ? Result.succeed(n) : Result.fail(n)), [[1], [2]])
   })
 
   it("reduce", () => {
@@ -919,8 +910,8 @@ describe("Array", () => {
     )
   })
 
-  it("getOrder", () => {
-    const O = Arr.getOrder(Str.Order)
+  it("makeOrder", () => {
+    const O = Arr.makeOrder(Str.Order)
     deepStrictEqual(O([], []), 0)
     deepStrictEqual(O(["a"], ["a"]), 0)
 
@@ -945,24 +936,24 @@ describe("Array", () => {
     deepStrictEqual(O(["b", "b"], ["b", "a"]), 1)
   })
 
-  it("isEmptyReadonlyArray", () => {
-    deepStrictEqual(Arr.isEmptyReadonlyArray([1, 2, 3]), false)
-    deepStrictEqual(Arr.isEmptyReadonlyArray([]), true)
+  it("isReadonlyArrayEmpty", () => {
+    deepStrictEqual(Arr.isReadonlyArrayEmpty([1, 2, 3]), false)
+    deepStrictEqual(Arr.isReadonlyArrayEmpty([]), true)
   })
 
-  it("isEmptyArray", () => {
-    deepStrictEqual(Arr.isEmptyArray([1, 2, 3]), false)
-    deepStrictEqual(Arr.isEmptyArray([]), true)
+  it("isArrayEmpty", () => {
+    deepStrictEqual(Arr.isArrayEmpty([1, 2, 3]), false)
+    deepStrictEqual(Arr.isArrayEmpty([]), true)
   })
 
-  it("isNonEmptyReadonlyArray", () => {
-    deepStrictEqual(Arr.isNonEmptyReadonlyArray([1, 2, 3]), true)
-    deepStrictEqual(Arr.isNonEmptyReadonlyArray([]), false)
+  it("isReadonlyArrayNonEmpty", () => {
+    deepStrictEqual(Arr.isReadonlyArrayNonEmpty([1, 2, 3]), true)
+    deepStrictEqual(Arr.isReadonlyArrayNonEmpty([]), false)
   })
 
-  it("isNonEmptyArray", () => {
-    deepStrictEqual(Arr.isNonEmptyArray([1, 2, 3]), true)
-    deepStrictEqual(Arr.isNonEmptyArray([]), false)
+  it("isArrayNonEmpty", () => {
+    deepStrictEqual(Arr.isArrayNonEmpty([1, 2, 3]), true)
+    deepStrictEqual(Arr.isArrayNonEmpty([]), false)
   })
 
   it("head", () => {
@@ -1009,10 +1000,10 @@ describe("Array", () => {
   })
 
   it("window", () => {
-    deepStrictEqual(Arr.window(2)([]), [])
-
-    deepStrictEqual(Arr.window(2)([1, 2, 3, 4, 5]), [[1, 2], [2, 3], [3, 4], [4, 5]])
-    deepStrictEqual(Arr.window(3)([1, 2, 3, 4, 5]), [[1, 2, 3], [2, 3, 4], [3, 4, 5]])
+    deepStrictEqual(Arr.window([], 0), [])
+    deepStrictEqual(Arr.window([], 2), [])
+    deepStrictEqual(Arr.window([1, 2, 3, 4, 5], 2), [[1, 2], [2, 3], [3, 4], [4, 5]])
+    deepStrictEqual(Arr.window([1, 2, 3, 4, 5], 3), [[1, 2, 3], [2, 3, 4], [3, 4, 5]])
 
     // n out of bounds
     deepStrictEqual(Arr.window([1, 2, 3, 4, 5], 6), [])
@@ -1038,7 +1029,7 @@ describe("Array", () => {
   })
 
   it("groupWith", () => {
-    const groupWith = Arr.groupWith(Num.Equivalence)
+    const groupWith = Arr.groupWith(Equivalence.strictEqual<number>())
     deepStrictEqual(groupWith([1, 2, 1, 1]), [[1], [2], [1, 1]])
     deepStrictEqual(groupWith([1, 2, 1, 1, 3]), [[1], [2], [1, 1], [3]])
   })
@@ -1244,32 +1235,34 @@ describe("Array", () => {
 
   it("unionWith", () => {
     const two: ReadonlyArray<number> = [1, 2]
-    deepStrictEqual(pipe(two, Arr.unionWith([3, 4], Num.Equivalence)), [1, 2, 3, 4])
-    deepStrictEqual(pipe(two, Arr.unionWith([2, 3], Num.Equivalence)), [1, 2, 3])
-    deepStrictEqual(pipe(two, Arr.unionWith([1, 2], Num.Equivalence)), [1, 2])
-    deepStrictEqual(pipe(two, Arr.unionWith(Arr.empty(), Num.Equivalence)), two)
-    deepStrictEqual(pipe(Arr.empty(), Arr.unionWith(two, Num.Equivalence)), two)
+    deepStrictEqual(pipe(two, Arr.unionWith([3, 4], Equivalence.strictEqual<number>())), [1, 2, 3, 4])
+    deepStrictEqual(pipe(two, Arr.unionWith([2, 3], Equivalence.strictEqual<number>())), [1, 2, 3])
+    deepStrictEqual(pipe(two, Arr.unionWith([1, 2], Equivalence.strictEqual<number>())), [1, 2])
+    deepStrictEqual(pipe(two, Arr.unionWith(Arr.empty(), Equivalence.strictEqual<number>())), two)
+    deepStrictEqual(pipe(Arr.empty(), Arr.unionWith(two, Equivalence.strictEqual<number>())), two)
     deepStrictEqual(
-      pipe(Arr.empty(), Arr.unionWith(Arr.empty(), Num.Equivalence)),
+      pipe(Arr.empty(), Arr.unionWith(Arr.empty(), Equivalence.strictEqual<number>())),
       Arr.empty()
     )
   })
 
   it("intersectionWith", () => {
-    const intersectionWith = Arr.intersectionWith(Num.Equivalence)
+    const intersectionWith = Arr.intersectionWith(Equivalence.strictEqual<number>())
     deepStrictEqual(pipe([1, 2], intersectionWith([3, 4])), [])
     deepStrictEqual(pipe([1, 2], intersectionWith([2, 3])), [2])
     deepStrictEqual(pipe([1, 2], intersectionWith([1, 2])), [1, 2])
+    // iterator input
     deepStrictEqual(pipe([1, 2], intersectionWith([3, 4][Symbol.iterator]())), [])
     deepStrictEqual(pipe([1, 2], intersectionWith([2, 3][Symbol.iterator]())), [2])
     deepStrictEqual(pipe([1, 2], intersectionWith([1, 2][Symbol.iterator]())), [1, 2])
   })
 
   it("differenceWith", () => {
-    const differenceWith = Arr.differenceWith(Num.Equivalence)
+    const differenceWith = Arr.differenceWith(Equivalence.strictEqual<number>())
     deepStrictEqual(pipe([1, 2], differenceWith([3, 4])), [1, 2])
     deepStrictEqual(pipe([1, 2], differenceWith([2, 3])), [1])
     deepStrictEqual(pipe([1, 2], differenceWith([1, 2])), [])
+    // iterator input
     deepStrictEqual(pipe([1, 2], differenceWith([3, 4][Symbol.iterator]())), [1, 2])
     deepStrictEqual(pipe([1, 2], differenceWith([2, 3][Symbol.iterator]())), [1])
     deepStrictEqual(pipe([1, 2], differenceWith([1, 2][Symbol.iterator]())), [])
@@ -1314,12 +1307,249 @@ describe("Array", () => {
       b: number
     }
     const arr: ReadonlyArray<X> = [{ a: "a", b: 2 }, { a: "b", b: 1 }]
-    deepStrictEqual(Arr.sortWith(arr, (x) => x.b, Order.number), [{ a: "b", b: 1 }, { a: "a", b: 2 }])
+    deepStrictEqual(Arr.sortWith(arr, (x) => x.b, Order.Number), [{ a: "b", b: 1 }, { a: "a", b: 2 }])
   })
 
   it("countBy", () => {
     deepStrictEqual(Arr.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0), 2)
     deepStrictEqual(pipe([1, 2, 3, 4, 5], Arr.countBy((n) => n % 2 === 0)), 2)
+  })
+
+  it("isArray", () => {
+    strictEqual(Arr.isArray([]), true)
+    strictEqual(Arr.isArray([1, 2, 3]), true)
+    strictEqual(Arr.isArray("hello"), false)
+    strictEqual(Arr.isArray(123), false)
+    strictEqual(Arr.isArray(null), false)
+    strictEqual(Arr.isArray(undefined), false)
+    strictEqual(Arr.isArray({}), false)
+    strictEqual(Arr.isArray(new Set([1, 2])), false)
+  })
+
+  it("fromRecord", () => {
+    deepStrictEqual(Arr.fromRecord({}), [])
+    const entries = Arr.fromRecord({ a: 1, b: 2 })
+    deepStrictEqual(entries.length, 2)
+    deepStrictEqual(entries.sort(([a], [b]) => a.localeCompare(b)), [["a", 1], ["b", 2]])
+  })
+
+  it("join", () => {
+    deepStrictEqual(Arr.join([], ","), "")
+    deepStrictEqual(Arr.join(["a"], ","), "a")
+    deepStrictEqual(Arr.join(["a", "b", "c"], ", "), "a, b, c")
+    deepStrictEqual(Arr.join(["a", "b", "c"], ""), "abc")
+    deepStrictEqual(pipe(["x", "y"], Arr.join("-")), "x-y")
+  })
+
+  it("mapAccum", () => {
+    deepStrictEqual(Arr.mapAccum([1, 2, 3], 0, (acc, n) => [acc + n, acc + n]), [6, [1, 3, 6]])
+    deepStrictEqual(Arr.mapAccum([], 10, (acc, n: number) => [acc + n, n]), [10, []])
+    deepStrictEqual(
+      pipe([1, 2, 3], Arr.mapAccum(0, (acc, n) => [acc + n, n * 2])),
+      [6, [2, 4, 6]]
+    )
+    deepStrictEqual(
+      Arr.mapAccum(["a", "b", "c"], "", (acc, s, i) => [acc + s, `${s}${i}`]),
+      ["abc", ["a0", "b1", "c2"]]
+    )
+  })
+
+  it("partition", () => {
+    const f: (n: number, i: number) => Result.Result<number, string> = (n, i) =>
+      n > 0 ? Result.succeed(n + i) : Result.fail(`negative: ${n}:${i}`)
+    deepStrictEqual(Arr.partition([], f), [[], []])
+    deepStrictEqual(Arr.partition([1, -2, 3, -4], f), [["negative: -2:1", "negative: -4:3"], [1, 5]])
+    deepStrictEqual(pipe([5, 10], Arr.partition(f)), [[], [5, 11]])
+    deepStrictEqual(pipe([-1, -2], Arr.partition(f)), [["negative: -1:0", "negative: -2:1"], []])
+    deepStrictEqual(pipe(new Set([1, -2, 3, -4]), Arr.partition(f)), [["negative: -2:1", "negative: -4:3"], [
+      1,
+      5
+    ]])
+    deepStrictEqual(pipe([1, -2, 3][Symbol.iterator](), Arr.partition(f)), [["negative: -2:1"], [1, 5]])
+  })
+
+  it("partition with typed pass/fail outputs", () => {
+    const items: Array<string | number> = [1, "a", 2, "b"]
+    deepStrictEqual(
+      Arr.partition(items, (x) => typeof x === "number" ? Result.succeed(x) : Result.fail(x)),
+      [["a", "b"], [1, 2]]
+    )
+  })
+
+  it("getFailures", () => {
+    deepStrictEqual(Arr.getFailures([]), [])
+    deepStrictEqual(
+      Arr.getFailures([Result.succeed(1), Result.fail("err"), Result.succeed(2)]),
+      ["err"]
+    )
+    deepStrictEqual(
+      Arr.getFailures([Result.fail("a"), Result.fail("b")]),
+      ["a", "b"]
+    )
+    deepStrictEqual(
+      Arr.getFailures([Result.succeed(1), Result.succeed(2)]),
+      []
+    )
+  })
+
+  it("getSuccesses", () => {
+    deepStrictEqual(Arr.getSuccesses([]), [])
+    deepStrictEqual(
+      Arr.getSuccesses([Result.succeed(1), Result.fail("err"), Result.succeed(2)]),
+      [1, 2]
+    )
+    deepStrictEqual(
+      Arr.getSuccesses([Result.fail("a"), Result.fail("b")]),
+      []
+    )
+    deepStrictEqual(
+      Arr.getSuccesses([Result.succeed(1), Result.succeed(2)]),
+      [1, 2]
+    )
+  })
+
+  it("dedupe", () => {
+    deepStrictEqual(Arr.dedupe([]), [])
+    deepStrictEqual(Arr.dedupe([1, 2, 1, 3, 2, 4]), [1, 2, 3, 4])
+    deepStrictEqual(Arr.dedupe([1, 2, 3]), [1, 2, 3])
+    deepStrictEqual(Arr.dedupe([1, 1, 1]), [1])
+    deepStrictEqual(Arr.dedupe(["a", "b", "a"]), ["a", "b"])
+  })
+
+  it("dedupeAdjacent", () => {
+    deepStrictEqual(Arr.dedupeAdjacent([]), [])
+    deepStrictEqual(Arr.dedupeAdjacent([1, 2, 3]), [1, 2, 3])
+    deepStrictEqual(Arr.dedupeAdjacent([1, 1, 2, 2, 3, 3]), [1, 2, 3])
+    deepStrictEqual(Arr.dedupeAdjacent([1, 2, 1]), [1, 2, 1])
+    deepStrictEqual(Arr.dedupeAdjacent([1, 1, 1]), [1])
+  })
+
+  it("group", () => {
+    deepStrictEqual(Arr.group([1, 1, 2, 2, 2, 3, 1]), [[1, 1], [2, 2, 2], [3], [1]])
+    deepStrictEqual(Arr.group([1]), [[1]])
+    deepStrictEqual(Arr.group(["a", "a", "b"]), [["a", "a"], ["b"]])
+  })
+
+  it("union", () => {
+    deepStrictEqual(Arr.union([1, 2], [2, 3]), [1, 2, 3])
+    deepStrictEqual(Arr.union([], [1, 2]), [1, 2])
+    deepStrictEqual(Arr.union([1, 2], []), [1, 2])
+    deepStrictEqual(Arr.union([], []), [])
+    deepStrictEqual(Arr.union([1, 2], [1, 2]), [1, 2])
+    deepStrictEqual(pipe([1, 2], Arr.union([3, 4])), [1, 2, 3, 4])
+  })
+
+  it("intersection", () => {
+    deepStrictEqual(Arr.intersection([1, 2, 3], [3, 4, 1]), [1, 3])
+    deepStrictEqual(Arr.intersection([1, 2], [3, 4]), [])
+    deepStrictEqual(Arr.intersection([1, 2], [1, 2]), [1, 2])
+    deepStrictEqual(Arr.intersection([], [1, 2]), [])
+    deepStrictEqual(Arr.intersection([1, 2], []), [])
+    deepStrictEqual(pipe([1, 2, 3], Arr.intersection([2, 3, 4])), [2, 3])
+  })
+
+  it("difference", () => {
+    deepStrictEqual(Arr.difference([1, 2, 3], [2, 3, 4]), [1])
+    deepStrictEqual(Arr.difference([1, 2], [1, 2]), [])
+    deepStrictEqual(Arr.difference([1, 2], []), [1, 2])
+    deepStrictEqual(Arr.difference([], [1, 2]), [])
+    deepStrictEqual(pipe([1, 2, 3], Arr.difference([3])), [1, 2])
+  })
+
+  it("cartesianWith", () => {
+    deepStrictEqual(
+      Arr.cartesianWith([1, 2], ["a", "b"], (n, s) => `${n}-${s}`),
+      ["1-a", "1-b", "2-a", "2-b"]
+    )
+    deepStrictEqual(Arr.cartesianWith([], ["a", "b"], (n: number, s) => `${n}-${s}`), [])
+    deepStrictEqual(Arr.cartesianWith([1, 2], [], (n, s: string) => `${n}-${s}`), [])
+    deepStrictEqual(
+      pipe([1], Arr.cartesianWith(["x"], (n, s) => `${n}${s}`)),
+      ["1x"]
+    )
+  })
+
+  it("cartesian", () => {
+    deepStrictEqual(Arr.cartesian([1, 2], ["a", "b"]), [
+      [1, "a"],
+      [1, "b"],
+      [2, "a"],
+      [2, "b"]
+    ])
+    deepStrictEqual(Arr.cartesian([], ["a"]), [])
+    deepStrictEqual(Arr.cartesian([1], []), [])
+    deepStrictEqual(Arr.cartesian([1], ["a"]), [[1, "a"]])
+    deepStrictEqual(pipe([1, 2], Arr.cartesian(["x"])), [[1, "x"], [2, "x"]])
+  })
+
+  it("makeEquivalence", () => {
+    const eq = Arr.makeEquivalence(Equivalence.strictEqual<number>())
+    strictEqual(eq([], []), true)
+    strictEqual(eq([1, 2, 3], [1, 2, 3]), true)
+    strictEqual(eq([1, 2], [1, 2, 3]), false)
+    strictEqual(eq([1, 2, 3], [1, 2]), false)
+    strictEqual(eq([1, 2, 3], [1, 3, 2]), false)
+    strictEqual(eq([1], [2]), false)
+  })
+
+  it("getReadonlyReducerConcat", () => {
+    const reducer = Arr.getReadonlyReducerConcat<number>()
+    deepStrictEqual(reducer.combine([1, 2], [3, 4]), [1, 2, 3, 4])
+    deepStrictEqual(reducer.combine([], [1, 2]), [1, 2])
+    deepStrictEqual(reducer.combine([1, 2], []), [1, 2])
+    deepStrictEqual(reducer.initialValue, [])
+  })
+
+  it("makeReducerConcat", () => {
+    const reducer = Arr.makeReducerConcat<string>()
+    deepStrictEqual(reducer.combine(["a"], ["b"]), ["a", "b"])
+    deepStrictEqual(reducer.initialValue, [])
+  })
+
+  it("allocate", () => {
+    deepStrictEqual(Arr.allocate(0).length, 0)
+    deepStrictEqual(Arr.allocate(3).length, 3)
+  })
+
+  describe("every - edge cases", () => {
+    it("returns true for empty array", () => {
+      strictEqual(Arr.every([], (_n: number) => false), true)
+    })
+    it("with index", () => {
+      strictEqual(Arr.every([0, 1, 2], (n, i) => n === i), true)
+      strictEqual(Arr.every([0, 1, 3], (n, i) => n === i), false)
+    })
+  })
+
+  describe("some - edge cases", () => {
+    it("returns false for empty array", () => {
+      strictEqual(Arr.some([], (_n: number) => true), false)
+    })
+    it("with index", () => {
+      strictEqual(Arr.some([10, 20, 2], (n, i) => n === i), true)
+      strictEqual(Arr.some([10, 20, 30], (n, i) => n === i), false)
+    })
+  })
+
+  describe("copy - edge cases", () => {
+    it("returns a new reference", () => {
+      const original = [1, 2, 3]
+      const copied = Arr.copy(original)
+      deepStrictEqual(copied, original)
+      strictEqual(copied !== original, true)
+    })
+  })
+
+  describe("unfold - edge cases", () => {
+    it("returns empty when seed produces Option.none", () => {
+      deepStrictEqual(Arr.unfold(0, () => Option.none()), [])
+    })
+  })
+
+  it("bindTo", () => {
+    deepStrictEqual(pipe([1, 2, 3], Arr.bindTo("a")), [{ a: 1 }, { a: 2 }, { a: 3 }])
+    deepStrictEqual(pipe([], Arr.bindTo("a")), [])
+    deepStrictEqual(Arr.bindTo([1], "x"), [{ x: 1 }])
   })
 
   it("Do notation", () => {

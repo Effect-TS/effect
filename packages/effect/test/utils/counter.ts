@@ -17,8 +17,8 @@ class CounterImpl implements Counter {
   acquire(): Effect.Effect<number, never, Scope.Scope> {
     return pipe(
       this.incrementAcquire(),
-      Effect.zipRight(Effect.addFinalizer(() => this.incrementRelease())),
-      Effect.zipRight(this.acquired()),
+      Effect.andThen(Effect.addFinalizer(() => this.incrementRelease())),
+      Effect.andThen(this.acquired()),
       Effect.uninterruptible
     )
   }

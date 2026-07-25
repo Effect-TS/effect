@@ -1,6 +1,6 @@
-import { Permissions } from "@effect/platform-browser"
+import * as Permissions from "@effect/platform-browser/Permissions"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import * as Effect from "effect/Effect"
 
 describe("Permissions", () => {
   it.effect("should be able to query permissions", () =>

@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node",
   "type": "module",
-  "version": "0.106.0",
+  "version": "4.0.0-beta.101",
   "license": "MIT",
   "description": "Platform specific implementations for the Node.js runtime",
   "homepage": "https://effect.website",
@@ -25,52 +25,57 @@
     "algebraic-data-types",
     "functional-programming"
   ],
-  "publishConfig": {
-    "access": "public",
-    "provenance": true,
-    "directory": "dist",
-    "linkDirectory": false
-  },
   "engines": {
     "node": ">=18.0.0"
   },
+  "sideEffects": [],
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
-    "./internal/*": null
+    "./internal/*": null,
+    "./*/index": null
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/index.js",
+      "./*": "./dist/*.js",
+      "./internal/*": null,
+      "./*/index": null
+    }
   },
   "scripts": {
-    "codegen": "build-utils prepare-v3",
-    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3",
-    "build-esm": "tsc -b tsconfig.build.json",
-    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
-    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "codegen": "effect-utils codegen",
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage"
   },
   "dependencies": {
     "@effect/platform-node-shared": "workspace:^",
-    "mime": "^3.0.0",
-    "undici": "^7.10.0",
-    "ws": "^8.18.2"
+    "mime": "^4.1.0",
+    "undici": "^8.7.0"
   },
   "peerDependencies": {
-    "@effect/cluster": "workspace:^",
-    "@effect/platform": "workspace:^",
-    "@effect/rpc": "workspace:^",
-    "@effect/sql": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "ioredis": "^5.7.0"
   },
   "devDependencies": {
-    "@effect/cluster": "workspace:^",
-    "@effect/platform": "workspace:^",
-    "@effect/rpc": "workspace:^",
-    "@effect/sql": "workspace:^",
-    "@types/mime": "^3.0.4",
-    "@types/ws": "^8.18.1",
-    "effect": "workspace:^",
-    "vitest-websocket-mock": "^0.5.0"
+    "@testcontainers/mysql": "^11.14.0",
+    "@testcontainers/postgresql": "^11.14.0",
+    "@testcontainers/redis": "^11.14.0",
+    "@types/node": "^26.1.1",
+    "effect": "workspace:^"
   }
 }

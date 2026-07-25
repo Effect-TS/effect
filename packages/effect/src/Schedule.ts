@@ -1,2129 +1,2062 @@
 /**
- * @since 2.0.0
- */
-import type * as Cause from "./Cause.js"
-import type * as Chunk from "./Chunk.js"
-import type * as Context from "./Context.js"
-import type * as Cron from "./Cron.js"
-import type * as DateTime from "./DateTime.js"
-import type * as Duration from "./Duration.js"
-import type * as Effect from "./Effect.js"
-import type * as Either from "./Either.js"
-import type { LazyArg } from "./Function.js"
-import * as internal from "./internal/schedule.js"
-import type * as Option from "./Option.js"
-import type { Pipeable } from "./Pipeable.js"
-import type { Predicate } from "./Predicate.js"
-import type * as Ref from "./Ref.js"
-import type * as ScheduleDecision from "./ScheduleDecision.js"
-import type * as Intervals from "./ScheduleIntervals.js"
-import type * as Types from "./Types.js"
-
-/**
- * @since 2.0.0
- * @category Symbols
- */
-export const ScheduleTypeId: unique symbol = internal.ScheduleTypeId
-
-/**
- * @since 2.0.0
- * @category Symbols
- */
-export type ScheduleTypeId = typeof ScheduleTypeId
-
-/**
- * @since 2.0.0
- * @category Symbols
- */
-export const ScheduleDriverTypeId: unique symbol = internal.ScheduleDriverTypeId
-
-/**
- * @since 2.0.0
- * @category Symbols
- */
-export type ScheduleDriverTypeId = typeof ScheduleDriverTypeId
-
-/**
- * A `Schedule<Out, In, R>` defines a recurring schedule, which consumes values
- * of type `In`, and which returns values of type `Out`.
+ * Describes policies for retrying, repeating, and pacing Effect programs.
  *
- * The `Schedule` type is structured as follows:
+ * A `Schedule<Output, Input, Error, Env>` is stepped with an input value. Each
+ * step either stops or produces an output together with the delay before the
+ * next step. Schedules are used by retry, repeat, stream, and channel APIs to
+ * decide when work should continue, how long to wait, and when to stop.
  *
- * ```ts skip-type-checking
- * //        ┌─── The type of output produced by the schedule
- * //        │   ┌─── The type of input consumed by the schedule
- * //        │   │     ┌─── Additional requirements for the schedule
- * //        ▼   ▼     ▼
- * Schedule<Out, In, Requirements>
+ * @since 2.0.0
+ */
+import type { NonEmptyReadonlyArray } from "./Array.ts"
+import * as Cause from "./Cause.ts"
+import * as Context from "./Context.ts"
+import * as Cron from "./Cron.ts"
+import type * as DateTime from "./DateTime.ts"
+import * as Duration from "./Duration.ts"
+import type { Effect } from "./Effect.ts"
+import { constant, dual, identity } from "./Function.ts"
+import { isEffect } from "./internal/core.ts"
+import * as effect from "./internal/effect.ts"
+import * as random from "./internal/random.ts"
+import { type Pipeable, pipeArguments } from "./Pipeable.ts"
+import { hasProperty } from "./Predicate.ts"
+import * as Pull from "./Pull.ts"
+import * as Result from "./Result.ts"
+import type { Contravariant, Covariant, Mutable, UnionToIntersection } from "./Types.ts"
+
+const TypeId = "~effect/Schedule"
+
+const randomNext: Effect<number> = random.Random.useSync((random) => random.nextDoubleUnsafe())
+
+/**
+ * A Schedule defines a strategy for repeating or retrying effects based on some policy.
+ *
+ * **Example** (Defining retry and repeat schedules)
+ *
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
+ *
+ * class NetworkError extends Data.TaggedError("NetworkError")<{
+ *   readonly attempt: number
+ * }> {}
+ *
+ * // Basic retry schedule - retry up to 3 times with exponential backoff
+ * const retrySchedule = Schedule.max([
+ *   Schedule.exponential("100 millis"),
+ *   Schedule.recurs(3)
+ * ])
+ *
+ * // Basic repeat schedule - repeat every 30 seconds forever
+ * const repeatSchedule: Schedule.Schedule<number, unknown, never> = Schedule
+ *   .spaced("30 seconds")
+ *
+ * const program = Effect.gen(function*() {
+ *   let attempts = 0
+ *
+ *   const result1 = yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempts++
+ *       if (attempts < 3) {
+ *         return yield* Effect.fail(new NetworkError({ attempt: attempts }))
+ *       }
+ *       return "Success"
+ *     }),
+ *     retrySchedule
+ *   )
+ *   console.log(result1) // "Success"
+ *
+ *   yield* Console.log("heartbeat").pipe(
+ *     Effect.repeat(repeatSchedule.pipe(Schedule.upTo({ times: 5 })))
+ *   )
+ * })
  * ```
  *
- * A schedule operates by consuming values of type `In` (such as errors in the
- * case of `Effect.retry`, or values in the case of `Effect.repeat`) and
- * producing values of type `Out`. It determines when to halt or continue the
- * execution based on input values and its internal state.
- *
- * The inclusion of a `Requirements` parameter allows the schedule to leverage
- * additional services or resources as needed.
- *
- * Schedules are defined as a possibly infinite set of intervals spread out over
- * time. Each interval defines a window in which recurrence is possible.
- *
- * When schedules are used to repeat or retry effects, the starting boundary of
- * each interval produced by a schedule is used as the moment when the effect
- * will be executed again.
- *
- * Schedules can be composed in different ways:
- *
- * - Union: Combines two schedules and recurs if either schedule wants to
- *   continue, using the shorter delay.
- * - Intersection: Combines two schedules and recurs only if both schedules want
- *   to continue, using the longer delay.
- * - Sequencing: Combines two schedules by running the first one fully, then
- *   switching to the second.
- *
- * In addition, schedule inputs and outputs can be transformed, filtered (to
- * terminate a schedule early in response to some input or output), and so
- * forth.
- *
- * A variety of other operators exist for transforming and combining schedules,
- * and the companion object for `Schedule` contains all common types of
- * schedules, both for performing retrying, as well as performing repetition.
- *
- * @category Model
+ * @category models
  * @since 2.0.0
  */
-export interface Schedule<out Out, in In = unknown, out R = never> extends Schedule.Variance<Out, In, R>, Pipeable {
-  /**
-   * Initial State
-   */
-  readonly initial: any
-  /**
-   * Schedule Step
-   */
-  step(
-    now: number,
-    input: In,
-    state: any
-  ): Effect.Effect<readonly [any, Out, ScheduleDecision.ScheduleDecision], never, R>
+export interface Schedule<out Output, in Input = unknown, out Error = never, out Env = never>
+  extends Schedule.Variance<Output, Input, Error, Env>, Pipeable
+{}
+
+/**
+ * Metadata provided to schedule functions containing timing and input information.
+ *
+ * @category metadata
+ * @since 4.0.0
+ */
+export interface InputMetadata<Input> {
+  readonly input: Input
+  readonly attempt: number
+  readonly start: number
+  readonly now: number
+  readonly elapsed: number
+  readonly elapsedSincePrevious: number
 }
 
 /**
+ * Extended metadata that includes both input metadata and the output value from the schedule.
+ *
+ * @category metadata
+ * @since 4.0.0
+ */
+export interface Metadata<Output = unknown, Input = unknown> extends InputMetadata<Input> {
+  readonly output: Output
+  readonly duration: Duration.Duration
+}
+
+/**
+ * Context reference containing metadata for the currently running schedule step.
+ *
+ * **Details**
+ *
+ * Repeat, retry, stream, and channel scheduling operations provide this service
+ * to effects run between schedule steps. The default value contains undefined
+ * input and output values, zero duration, and zeroed timing fields before any
+ * schedule step has produced metadata.
+ *
+ * @category metadata
+ * @since 4.0.0
+ */
+export const CurrentMetadata = Context.Reference<Metadata>("effect/Schedule/CurrentMetadata", {
+  defaultValue: constant({
+    input: undefined,
+    output: undefined,
+    duration: Duration.zero,
+    attempt: 0,
+    start: 0,
+    now: 0,
+    elapsed: 0,
+    elapsedSincePrevious: 0
+  })
+})
+
+/**
+ * The Schedule namespace contains types and utilities for working with schedules.
+ *
  * @since 2.0.0
  */
 export declare namespace Schedule {
   /**
+   * Variance interface that defines the type parameter relationships for Schedule.
+   *
+   * **Example** (Understanding schedule variance)
+   *
+   * ```ts
+   * import { Effect, Schedule } from "effect"
+   *
+   * // Understanding Schedule variance:
+   * // - Output: covariant (can be a subtype)
+   * // - Input: contravariant (can accept supertypes)
+   * // - Error: covariant (can be a subtype)
+   * // - Env: covariant (can be a subtype)
+   *
+   * // Schedule that produces strings, accepts any input
+   * const stringSchedule = Schedule.spaced("1 second").pipe(
+   *   Schedule.map(() => Effect.succeed("tick"))
+   * )
+   *
+   * // Schedule that only accepts Error inputs
+   * const errorSchedule = Schedule.exponential("100 millis").pipe(
+   *   Schedule.upTo({ times: 5 })
+   * )
+   *
+   * // Schedule requiring a service environment
+   * const serviceSchedule = Schedule.spaced("5 seconds")
+   * ```
+   *
+   * @category models
    * @since 2.0.0
-   * @category Models
    */
-  export interface Variance<out Out, in In, out R> {
-    readonly [ScheduleTypeId]: {
-      readonly _Out: Types.Covariant<Out>
-      readonly _In: Types.Contravariant<In>
-      readonly _R: Types.Covariant<R>
-    }
+  export interface Variance<out Output, in Input, out Error, out Env> {
+    readonly [TypeId]: VarianceStruct<Output, Input, Error, Env>
   }
 
   /**
-   * @since 2.0.0
+   * Type-level marker used by `Schedule.Variance` to record the variance of
+   * `Schedule` type parameters.
+   *
+   * **Details**
+   *
+   * This interface exists for TypeScript inference and assignability. Users
+   * normally do not construct or inspect it directly.
+   *
+   * @category models
+   * @since 4.0.0
    */
-  export interface DriverVariance<out Out, in In, out R> {
-    readonly [ScheduleDriverTypeId]: {
-      readonly _Out: Types.Covariant<Out>
-      readonly _In: Types.Contravariant<In>
-      readonly _R: Types.Covariant<R>
-    }
+  export interface VarianceStruct<out Output, in Input, out Error, out Env> {
+    readonly _Out: Covariant<Output>
+    readonly _In: Contravariant<Input>
+    readonly _Error: Covariant<Error>
+    readonly _Env: Covariant<Env>
   }
 }
 
 /**
- * @since 2.0.0
- * @category Models
+ * Extracts the output type from a `Schedule`.
+ *
+ * @category type extractors
+ * @since 4.0.0
  */
-export interface ScheduleDriver<out Out, in In = unknown, out R = never> extends Schedule.DriverVariance<Out, In, R> {
-  readonly state: Effect.Effect<unknown>
-  readonly iterationMeta: Ref.Ref<IterationMetadata>
-  readonly last: Effect.Effect<Out, Cause.NoSuchElementException>
-  readonly reset: Effect.Effect<void>
-  next(input: In): Effect.Effect<Out, Option.Option<never>, R>
+export type Output<S> = S extends Schedule<infer Output, any, any, any> ? Output : never
+
+/**
+ * Extracts the input type from a `Schedule`.
+ *
+ * @category type extractors
+ * @since 4.0.0
+ */
+export type Input<S> = S extends Schedule<any, infer Input, any, any> ? Input : never
+
+/**
+ * Extracts the error type from a `Schedule`.
+ *
+ * @category type extractors
+ * @since 4.0.0
+ */
+export type Error<S> = S extends Schedule<any, any, infer Error, any> ? Error : never
+
+/**
+ * Extracts the service requirements from a `Schedule`.
+ *
+ * @category type extractors
+ * @since 4.0.0
+ */
+export type Env<S> = S extends Schedule<any, any, any, infer Env> ? Env : never
+
+const ScheduleProto = {
+  [TypeId]: {
+    _Out: identity,
+    _In: identity,
+    _Env: identity
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
 }
 
 /**
- * Creates a new schedule with a custom state and step function.
+ * Type guard that checks if a value is a Schedule.
+ *
+ * **Example** (Checking for schedules)
+ *
+ * ```ts
+ * import { Schedule } from "effect"
+ *
+ * const schedule = Schedule.exponential("100 millis")
+ * const notSchedule = { foo: "bar" }
+ *
+ * console.log(Schedule.isSchedule(schedule)) // true
+ * console.log(Schedule.isSchedule(notSchedule)) // false
+ * console.log(Schedule.isSchedule(null)) // false
+ * console.log(Schedule.isSchedule(undefined)) // false
+ * ```
+ *
+ * @category guards
+ * @since 2.0.0
+ */
+export const isSchedule = (u: unknown): u is Schedule<unknown, never, unknown, unknown> => hasProperty(u, TypeId)
+
+/**
+ * Creates a Schedule from a step function that returns a Pull.
+ *
+ * **Example** (Creating a custom schedule from a step function)
+ *
+ * ```ts
+ * import { Cause, Duration, Effect, Schedule } from "effect"
+ *
+ * const schedule = Schedule.fromStep(Effect.sync(() => {
+ *   let count = 0
+ *
+ *   return (_now: number, _input: string) => {
+ *     if (count >= 3) {
+ *       return Cause.done(count)
+ *     }
+ *     return Effect.succeed([count++, Duration.millis(100)] as [number, Duration.Duration])
+ *   }
+ * }))
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromStep = <Input, Output, EnvX, Error, ErrorX, Env>(
+  step: Effect<
+    (now: number, input: Input) => Pull.Pull<[Output, Duration.Duration], ErrorX, Output, EnvX>,
+    Error,
+    Env
+  >
+): Schedule<Output, Input, Error | Pull.ExcludeDone<ErrorX>, Env | EnvX> => {
+  const self = Object.create(ScheduleProto)
+  self.step = step
+  return self
+}
+
+const metadataFn = () => {
+  let n = 0
+  let previous: number | undefined
+  let start: number | undefined
+  return <In>(now: number, input: In): InputMetadata<In> => {
+    if (start === undefined) start = now
+    const elapsed = now - start
+    const elapsedSincePrevious = previous === undefined ? 0 : now - previous
+    previous = now
+    return { input, attempt: ++n, start, now, elapsed, elapsedSincePrevious }
+  }
+}
+
+/**
+ * Creates a Schedule from a step function that receives metadata about the schedule's execution.
+ *
+ * **Example** (Creating a metadata-aware schedule)
+ *
+ * ```ts
+ * import { Cause, Duration, Effect, Schedule } from "effect"
+ *
+ * const firstThreeInputs = Schedule.fromStepWithMetadata(Effect.succeed((metadata: Schedule.InputMetadata<string>) => {
+ *   if (metadata.attempt > 3) {
+ *     return Cause.done("finished")
+ *   }
+ *
+ *   return Effect.succeed([
+ *     `attempt ${metadata.attempt}: ${metadata.input}`,
+ *     Duration.millis(250)
+ *   ] as [string, Duration.Duration])
+ * }))
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromStepWithMetadata = <Input, Output, EnvX, ErrorX, Error, Env>(
+  step: Effect<
+    (options: InputMetadata<Input>) => Pull.Pull<[Output, Duration.Duration], ErrorX, Output, EnvX>,
+    Error,
+    Env
+  >
+): Schedule<Output, Input, Error | Pull.ExcludeDone<ErrorX>, Env | EnvX> =>
+  fromStep(effect.map(step, (f) => {
+    const meta = metadataFn()
+    return (now, input) => f(meta(now, input))
+  }))
+
+/**
+ * Extracts the step function from a Schedule.
+ *
+ * **Example** (Extracting a schedule step function)
+ *
+ * ```ts
+ * import { Effect, Schedule } from "effect"
+ *
+ * // Extract step function from an existing schedule
+ * const schedule = Schedule.exponential("100 millis").pipe(Schedule.upTo({ times: 3 }))
+ *
+ * const program = Effect.gen(function*() {
+ *   const stepFn = yield* Schedule.toStep(schedule)
+ *
+ *   // Use the step function directly for custom logic. The timestamp is
+ *   // supplied by the caller, so tests can pass a deterministic value.
+ *   const now = 0
+ *   const result = yield* stepFn(now, "input")
+ *
+ *   console.log(`Step result: ${result}`)
+ * })
+ * ```
+ *
+ * @category destructors
+ * @since 4.0.0
+ */
+export const toStep = <Output, Input, Error, Env>(
+  schedule: Schedule<Output, Input, Error, Env>
+): Effect<
+  (now: number, input: Input) => Pull.Pull<[Output, Duration.Duration], Error, Output, Env>,
+  never,
+  Env
+> =>
+  effect.catchCause(
+    (schedule as any).step,
+    (cause) => effect.succeed(() => effect.failCause(cause) as any)
+  )
+
+/**
+ * Extracts a step function from a `Schedule` that sleeps for each computed
+ * delay and returns metadata for the completed step.
+ *
+ * **When to use**
+ *
+ * Use to drive a schedule manually while preserving the computed output,
+ * delay, input, attempt, and elapsed timing metadata for each step.
  *
  * **Details**
  *
- * This function constructs a `Schedule` by defining its initial state and a
- * step function, which determines how the schedule progresses over time. The
- * step function is called on each iteration with the current time, an input
- * value, and the schedule's current state. It returns the next state, an output
- * value, and a decision on whether the schedule should continue or stop.
+ * The returned step reads the current time from `Clock` when invoked, calls the
+ * schedule step with that timestamp and input, sleeps for the returned
+ * duration, and then yields `Metadata`.
  *
- * This function is useful for creating custom scheduling logic that goes beyond
- * predefined schedules like fixed intervals or exponential backoff. It allows
- * full control over how the schedule behaves at each step.
+ * @see {@link toStep} for manually supplying the timestamp and handling the returned delay yourself
+ * @see {@link toStepWithSleep} for the same automatic sleeping behavior when only the schedule output is needed
  *
- * @since 2.0.0
- * @category Constructors
+ * @category destructors
+ * @since 4.0.0
  */
-export const makeWithState: <S, In, Out, R = never>(
-  initial: S,
-  step: (
-    now: number,
-    input: In,
-    state: S
-  ) => Effect.Effect<readonly [S, Out, ScheduleDecision.ScheduleDecision], never, R>
-) => Schedule<Out, In, R> = internal.makeWithState
+export const toStepWithMetadata = <Output, Input, Error, Env>(
+  schedule: Schedule<Output, Input, Error, Env>
+): Effect<
+  (input: Input) => Pull.Pull<Metadata<Output, Input>, Error, Output, Env>,
+  never,
+  Env
+> =>
+  effect.clockWith((clock) =>
+    effect.map(
+      toStep(schedule),
+      (step) => {
+        const metaFn = metadataFn()
+        return (input) =>
+          effect.suspend(() => {
+            const now = clock.currentTimeMillisUnsafe()
+            return effect.flatMap(
+              step(now, input),
+              ([output, duration]) => {
+                const meta = metaFn(now, input) as Mutable<Metadata<Output, Input>>
+                meta.output = output
+                meta.duration = duration
+                return effect.as(effect.sleep(duration), meta)
+              }
+            )
+          })
+      }
+    )
+  )
 
 /**
- * Checks whether a given value is a `Schedule`.
+ * Extracts a step function from a Schedule that automatically handles sleep delays.
  *
- * @since 2.0.0
- * @category Guards
+ * **Example** (Extracting a sleeping step function)
+ *
+ * ```ts
+ * import { Effect, Schedule } from "effect"
+ *
+ * // Convert schedule to step function with automatic sleeping
+ * const schedule = Schedule.spaced("1 second").pipe(Schedule.upTo({ times: 3 }))
+ *
+ * const program = Effect.gen(function*() {
+ *   const stepWithSleep = yield* Schedule.toStepWithSleep(schedule)
+ *
+ *   // Each call will automatically sleep for the scheduled delay
+ *   console.log("Starting...")
+ *   const result1 = yield* stepWithSleep("first")
+ *   console.log(`First result: ${result1}`)
+ *
+ *   const result2 = yield* stepWithSleep("second")
+ *   console.log(`Second result: ${result2}`)
+ *
+ *   const result3 = yield* stepWithSleep("third")
+ *   console.log(`Third result: ${result3}`)
+ * })
+ * ```
+ *
+ * @category destructors
+ * @since 4.0.0
  */
-export const isSchedule: (u: unknown) => u is Schedule<unknown, never, unknown> = internal.isSchedule
+export const toStepWithSleep = <Output, Input, Error, Env>(
+  schedule: Schedule<Output, Input, Error, Env>
+): Effect<
+  (input: Input) => Pull.Pull<Output, Error, Output, Env>,
+  never,
+  Env
+> =>
+  effect.map(
+    toStepWithMetadata(schedule),
+    (step) => (input) => effect.map(step(input), (meta) => meta.output)
+  )
 
 /**
- * Adds a delay to every interval in a schedule.
+ * Returns a new `Schedule` that adds the delay computed by the specified
+ * effectful function to the next recurrence of the schedule.
  *
- * **Details**
+ * **Example** (Adding extra delay to a schedule)
  *
- * This function modifies a given schedule by applying an additional delay to
- * every interval it defines. The delay is determined by the provided function,
- * which takes the schedule's output and returns a delay duration.
+ * ```ts
+ * import { Console, Data, Duration, Effect, Schedule } from "effect"
  *
- * @see {@link addDelayEffect} If you need to compute the delay using an effectful function.
+ * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
  *
+ * // Add a deterministic extra delay based on the schedule metadata
+ * const delayedSchedule = Schedule.addDelay(
+ *   Schedule.exponential("100 millis").pipe(Schedule.upTo({ times: 5 })),
+ *   ({ output }) =>
+ *     Effect.succeed(Duration.millis(Duration.toMillis(output) * 0.25))
+ * )
+ *
+ * const repeatProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.succeed("delayed task"),
+ *     delayedSchedule.pipe(
+ *       Schedule.tap(({ output: delay }) =>
+ *         Console.log(`Base delay: ${delay}`)
+ *       )
+ *     )
+ *   )
+ * })
+ *
+ * // Add adaptive delay based on execution count
+ * const adaptiveSchedule = Schedule.addDelay(
+ *   Schedule.recurs(6),
+ *   ({ output: executionCount }) =>
+ *     // Increase delay as execution count grows
+ *     Effect.succeed(Duration.millis(executionCount * 200))
+ * )
+ *
+ * const adaptiveProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Adaptive delay task")
+ *       return "adaptive"
+ *     }),
+ *     adaptiveSchedule.pipe(
+ *       Schedule.tap(({ output: count }) =>
+ *         Console.log(`Execution ${count + 1} with adaptive delay`)
+ *       )
+ *     )
+ *   )
+ * })
+ *
+ * // Add effectful delay computation from deterministic service data
+ * const loadByExecution = [1, 3, 2, 4] as const
+ *
+ * const dynamicSchedule = Schedule.addDelay(
+ *   Schedule.spaced("1 second").pipe(Schedule.upTo({ times: 4 })),
+ *   ({ output: executionNumber }) => {
+ *     const load = loadByExecution[executionNumber] ?? 1
+ *     return Effect.succeed(Duration.millis(load * 100))
+ *   }
+ * )
+ *
+ * const dynamicProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Dynamic delay task")
+ *       return "dynamic"
+ *     }),
+ *     dynamicSchedule
+ *   )
+ * })
+ *
+ * // Combine with retry for progressive backoff
+ * const progressiveRetrySchedule = Schedule.addDelay(
+ *   Schedule.exponential("50 millis").pipe(Schedule.upTo({ times: 4 })),
+ *   () => Effect.succeed(Duration.millis(100)) // Fixed additional delay
+ * )
+ *
+ * const retryProgram = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   const result = yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       if (attempt < 5) {
+ *         return yield* Effect.fail(new RetryAttemptError({ message: `Attempt ${attempt} failed` }))
+ *       }
+ *       return `Success on attempt ${attempt}`
+ *     }),
+ *     progressiveRetrySchedule
+ *   )
+ *
+ *   yield* Console.log(`Final result: ${result}`)
+ * })
+ * ```
+ *
+ * @category delays & timeouts
  * @since 2.0.0
- * @category Timing & Delay
  */
 export const addDelay: {
-  <Out>(f: (out: Out) => Duration.DurationInput): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, f: (out: Out) => Duration.DurationInput): Schedule<Out, In, R>
-} = internal.addDelay
+  <Output, Input, Error2 = never, Env2 = never>(
+    f: (metadata: Metadata<Output, Input>) => Effect<Duration.Input, Error2, Env2>
+  ): <Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Output, Input, Error | Error2, Env | Env2>
+  <Output, Input, Error, Env, Error2 = never, Env2 = never>(
+    self: Schedule<Output, Input, Error, Env>,
+    f: (metadata: Metadata<Output, Input>) => Effect<Duration.Input, Error2, Env2>
+  ): Schedule<Output, Input, Error | Error2, Env | Env2>
+} = dual(2, <Output, Input, Error, Env, Error2 = never, Env2 = never>(
+  self: Schedule<Output, Input, Error, Env>,
+  f: (metadata: Metadata<Output, Input>) => Effect<Duration.Input, Error2, Env2>
+): Schedule<Output, Input, Error | Error2, Env | Env2> =>
+  modifyDelay(
+    self,
+    (metadata) => effect.map(f(metadata), (d) => Duration.sum(Duration.fromInputUnsafe(d), metadata.duration))
+  ))
 
 /**
- * Adds an effectfully computed delay to every interval in a schedule.
+ * Returns a schedule that runs `self` to completion, then runs `other`, and
+ * merges their outputs.
  *
- * **Details**
+ * **Example** (Sequencing quick and slow retries)
  *
- * This function modifies a given schedule by applying an additional delay to
- * each interval, where the delay is determined by an effectful function. The
- * function takes the schedule’s output and returns an effect that produces a
- * delay duration.
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
  *
- * @see {@link addDelay} If you need to compute the delay using a pure function.
+ * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
  *
+ * // First retry 3 times quickly, then switch to slower retries
+ * const quickRetries = Schedule.exponential("100 millis").pipe(
+ *   Schedule.upTo({ times: 3 })
+ * )
+ * const slowRetries = Schedule.exponential("1 second").pipe(
+ *   Schedule.upTo({ times: 2 })
+ * )
+ *
+ * const combinedRetries = Schedule.andThen(quickRetries, slowRetries)
+ *
+ * const program = Effect.gen(function*() {
+ *   let attempt = 0
+ *   yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       yield* Console.log(`Attempt ${attempt}`)
+ *       if (attempt < 6) {
+ *         return yield* Effect.fail(new RetryAttemptError({ message: `Failure ${attempt}` }))
+ *       }
+ *       return `Success on attempt ${attempt}`
+ *     }),
+ *     combinedRetries
+ *   )
+ * })
+ * ```
+ *
+ * @category sequencing
  * @since 2.0.0
- * @category Timing & Delay
- */
-export const addDelayEffect: {
-  <Out, R2>(
-    f: (out: Out) => Effect.Effect<Duration.DurationInput, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, R2>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out) => Effect.Effect<Duration.DurationInput, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.addDelayEffect
-
-/**
- * Runs two schedules sequentially, merging their outputs.
- *
- * **Details**
- *
- * This function executes two schedules one after the other. The first schedule
- * runs to completion, and then the second schedule begins execution. Unlike
- * {@link andThenEither}, this function merges the outputs instead of wrapping
- * them in `Either`, allowing both schedules to contribute their results
- * directly.
- *
- * This is useful when a workflow consists of two phases where the second phase
- * should start only after the first one has fully completed.
- *
- * @see {@link andThenEither} If you need to keep track of which schedule
- * produced each result.
- *
- * @since 2.0.0
- * @category Sequential Composition
  */
 export const andThen: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out2 | Out, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<Out | Out2, In & In2, R | R2>
-} = internal.andThen
+  <Output2, Input2, Error2, Env2>(
+    other: Schedule<Output2, Input2, Error2, Env2>
+  ): <Output, Input, Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Output | Output2, Input & Input2, Error | Error2, Env | Env2>
+  <Output, Input, Error, Env, Output2, Input2, Error2, Env2>(
+    self: Schedule<Output, Input, Error, Env>,
+    other: Schedule<Output2, Input2, Error2, Env2>
+  ): Schedule<Output | Output2, Input & Input2, Error | Error2, Env | Env2>
+} = dual(2, <Output, Input, Error, Env, Output2, Input2, Error2, Env2>(
+  self: Schedule<Output, Input, Error, Env>,
+  other: Schedule<Output2, Input2, Error2, Env2>
+): Schedule<Output | Output2, Input & Input2, Error | Error2, Env | Env2> =>
+  map(andThenResult(self, other), ({ output }) => effect.succeed(Result.merge(output))))
 
 /**
- * Runs two schedules sequentially, collecting results in an `Either`.
+ * Returns a schedule that runs `self` to completion, then runs `other`, and
+ * preserves which schedule produced each output.
  *
  * **Details**
  *
- * This function combines two schedules in sequence. The first schedule runs to
- * completion, and then the second schedule starts and runs to completion as
- * well. The outputs of both schedules are collected into an `Either` structure:
- * - `Either.Left` contains the output of the second schedule.
- * - `Either.Right` contains the output of the first schedule.
+ * The resulting schedule emits a `Result` to indicate which phase produced
+ * each output: outputs from `self` are emitted as `Failure`, and outputs from
+ * `other` are emitted as `Success`.
  *
- * This is useful when you need to switch from one schedule to another after the
- * first one finishes, while still keeping track of which schedule produced each
- * result.
+ * **Example** (Tracking sequential schedule phases)
  *
- * @see {@link andThen} If you need to merge the outputs of both schedules.
+ * ```ts
+ * import { Console, Effect, Result, Schedule } from "effect"
  *
- * @since 2.0.0
- * @category Sequential Composition
+ * // Track which phase of the schedule we're in
+ * const phaseTracker = Schedule.andThenResult(
+ *   Schedule.exponential("100 millis").pipe(Schedule.upTo({ times: 2 })),
+ *   Schedule.spaced("500 millis").pipe(Schedule.upTo({ times: 2 }))
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Task executed")
+ *       return "task-result"
+ *     }),
+ *     phaseTracker.pipe(
+ *       Schedule.tap(({ output: result }) =>
+ *         Result.match(result, {
+ *           onFailure: (phase1Output) => Console.log(`Phase 1: ${phase1Output}`),
+ *           onSuccess: (phase2Output) => Console.log(`Phase 2: ${phase2Output}`)
+ *         })
+ *       )
+ *     )
+ *   )
+ * })
+ * ```
+ *
+ * @category sequencing
+ * @since 4.0.0
  */
-export const andThenEither: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Either.Either<Out2, Out>, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<Either.Either<Out2, Out>, In & In2, R | R2>
-} = internal.andThenEither
+export const andThenResult: {
+  <Output2, Input2, Error2, Env2>(
+    other: Schedule<Output2, Input2, Error2, Env2>
+  ): <Output, Input, Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Result.Result<Output2, Output>, Input & Input2, Error | Error2, Env | Env2>
+  <Output, Input, Error, Env, Output2, Input2, Error2, Env2>(
+    self: Schedule<Output, Input, Error, Env>,
+    other: Schedule<Output2, Input2, Error2, Env2>
+  ): Schedule<Result.Result<Output2, Output>, Input & Input2, Error | Error2, Env | Env2>
+} = dual(2, <Output, Input, Error, Env, Output2, Input2, Error2, Env2>(
+  self: Schedule<Output, Input, Error, Env>,
+  other: Schedule<Output2, Input2, Error2, Env2>
+): Schedule<Result.Result<Output2, Output>, Input & Input2, Error | Error2, Env | Env2> =>
+  fromStep(effect.sync(() => {
+    let currentSide = 0
+    let currentStep:
+      | undefined
+      | ((now: number, input: Input & Input2) => Pull.Pull<
+        [Result.Result<Output2, Output>, Duration.Duration],
+        Error | Error2,
+        Result.Result<Output2, Output>,
+        Env | Env2
+      >)
+    const left = map(self, ({ output }) => Result.fail(output))
+    const right = map(other, ({ output }) => Result.succeed(output))
+    return function recur(
+      now,
+      input
+    ): Pull.Pull<
+      [Result.Result<Output2, Output>, Duration.Duration],
+      Error | Error2,
+      Result.Result<Output2, Output>,
+      Env | Env2
+    > {
+      if (currentStep) return currentStep(now, input)
+      return toStep<
+        Result.Result<Output2, Output>,
+        Input & Input2,
+        Error | Error2,
+        Env | Env2
+      >(currentSide === 0 ? left : right).pipe(
+        effect.flatMap((step) => {
+          currentSide++
+          if (currentSide === 1) {
+            currentStep = (now, input) =>
+              Pull.catchDone(step(now, input), (_) => {
+                currentStep = undefined
+                return recur(now, input)
+              })
+            return currentStep(now, input)
+          }
+          currentStep = step
+          return currentStep(now, input)
+        })
+      )
+    }
+  })))
 
 /**
- * Transforms a schedule to always produce a constant output.
+ * Combines schedules by recurring while all schedules want to recur, using the
+ * maximum delay between recurrences and outputting that maximum delay.
  *
- * **Details**
+ * **When to use**
  *
- * This function modifies a given schedule so that instead of returning its
- * computed outputs, it always returns a constant value.
+ * Use when a combined policy should continue only while every schedule still
+ * recurs, and should wait for the slowest schedule between recurrences.
  *
- * This is useful when you need a schedule for timing but don’t care about its
- * actual output, or when you want to standardize results across different
- * scheduling strategies.
+ * **Example** (Combining retry schedules by their maximum delay)
  *
- * @since 2.0.0
- * @category Mapping
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
+ *
+ * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
+ *
+ * const retrySchedule = Schedule.max([
+ *   Schedule.fixed("5 seconds"),
+ *   Schedule.exponential("5 seconds"),
+ *   Schedule.spaced("10 seconds")
+ * ])
+ *
+ * const program = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       yield* Console.log(`Retry attempt ${attempt}`)
+ *       if (attempt < 3) {
+ *         return yield* Effect.fail(new RetryAttemptError({ message: `Attempt ${attempt} failed` }))
+ *       }
+ *       return "success"
+ *     }),
+ *     retrySchedule.pipe(
+ *       Schedule.tap(({ output: duration }) =>
+ *         Console.log(`Waiting for the slowest schedule: ${duration}`)
+ *       )
+ *     )
+ *   )
+ * })
+ * ```
+ *
+ * @category combining
+ * @since 4.0.0
  */
-export const as: {
-  <Out2>(out: Out2): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R>
-  <Out, In, R, Out2>(self: Schedule<Out, In, R>, out: Out2): Schedule<Out2, In, R>
-} = internal.as
+export const max = <
+  const Schedules extends NonEmptyReadonlyArray<
+    Schedule<any, any, any, any>
+  >
+>(
+  schedules: Schedules
+): Schedule<
+  Duration.Duration,
+  UnionToIntersection<
+    Input<Schedules[number]>
+  >,
+  Error<Schedules[number]>,
+  Env<Schedules[number]>
+> =>
+  fromStep(effect.map(
+    effect.all(schedules.map(toStep)),
+    (steps) => (now, input) =>
+      effect.flatMap(
+        effect.forEach(steps, (step) =>
+          Pull.matchEffect(step(now, input as never), {
+            onSuccess: (result) => effect.succeed(result[1]),
+            onDone: () => effect.undefined,
+            onFailure: effect.failCause
+          })),
+        (results) => {
+          const duration = maxDuration(results)
+          if (duration === undefined) {
+            return Cause.done(Duration.zero)
+          }
+          return effect.succeed([duration, duration] as [Duration.Duration, Duration.Duration])
+        }
+      )
+  ))
+
+const maxDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Duration.Duration | undefined => {
+  let max = results[0]
+  for (let i = 1; i < results.length; i++) {
+    max = results[i] && max && Duration.max(max, results[i]!)
+    if (max === undefined) break
+  }
+
+  return max
+}
 
 /**
- * Transforms a schedule to always return `void` instead of its output.
+ * Returns a new `Schedule` that recurs on the specified `Cron` schedule and
+ * outputs the duration between recurrences.
  *
- * **Details**
+ * **Example** (Scheduling work with cron expressions)
  *
- * This function modifies a given schedule so that it no longer returns
- * meaningful output—each execution produces `void`. This is useful when the
- * schedule is used only for timing purposes and the actual output of the
- * schedule is irrelevant.
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
  *
- * The schedule still determines when executions should occur, but the results
- * are discarded.
+ * class ScheduledTaskError extends Data.TaggedError("ScheduledTaskError")<{ readonly message: string }> {}
  *
+ * // Run every minute
+ * const everyMinute = Schedule.cron("* * * * *")
+ *
+ * const minutelyProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Running minutely task")
+ *       return "minute"
+ *     }),
+ *     everyMinute.pipe(
+ *       Schedule.upTo({ times: 3 }), // Run only 3 times for demo
+ *       Schedule.tap(({ output: duration }) =>
+ *         Console.log(`Next execution in: ${duration}`)
+ *       )
+ *     )
+ *   )
+ * })
+ *
+ * // Run every day at 2:30 AM
+ * const dailyBackup = Schedule.cron("30 2 * * *")
+ *
+ * const backupProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Running daily backup...")
+ *       // Simulate backup process
+ *       yield* Effect.sleep("2 seconds")
+ *       yield* Console.log("Backup completed")
+ *       return "backup-done"
+ *     }),
+ *     dailyBackup.pipe(
+ *       Schedule.upTo({ times: 2 }) // Run 2 times for demo
+ *     )
+ *   )
+ * })
+ *
+ * // Run every Monday at 9:00 AM with timezone
+ * const weeklyReport = Schedule.cron("0 9 * * 1", "America/New_York")
+ *
+ * const reportProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Generating weekly report...")
+ *       const report = {
+ *         week: 42,
+ *         status: "ready" as const
+ *       }
+ *       yield* Console.log(`Report generated: ${JSON.stringify(report)}`)
+ *       return report
+ *     }),
+ *     weeklyReport.pipe(Schedule.upTo({ times: 1 }))
+ *   )
+ * })
+ *
+ * // Run every 15 minutes during business hours (9 AM - 5 PM)
+ * const businessHoursCheck = Schedule.cron("0,15,30,45 9-17 * * 1-5")
+ *
+ * const businessProgram = Effect.gen(function*() {
+ *   const statuses = ["healthy", "healthy", "degraded", "healthy"] as const
+ *   let index = 0
+ *
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Business hours health check...")
+ *       const status = statuses[index++]
+ *       yield* Console.log(`System status: ${status}`)
+ *       return status
+ *     }),
+ *     businessHoursCheck.pipe(
+ *       Schedule.upTo({ times: 4 }) // Demo with 4 checks
+ *     )
+ *   )
+ * })
+ *
+ * // Run on specific days of the month
+ * const monthlyInvoice = Schedule.cron("0 10 1,15 * *") // 1st and 15th at 10 AM
+ *
+ * const invoiceProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Processing monthly invoices...")
+ *       const invoiceCount = 72
+ *       yield* Console.log(`Processed ${invoiceCount} invoices`)
+ *       return { count: invoiceCount, batch: "2024-01-a" }
+ *     }),
+ *     monthlyInvoice.pipe(Schedule.upTo({ times: 1 }))
+ *   )
+ * })
+ *
+ * // Complex cron with error handling
+ * const complexCron = Schedule.cron("0 2,4,6 * * *").pipe(
+ *   Schedule.tap(({ output: duration }) =>
+ *     Console.log(`Scheduled to run again in ${duration}`)
+ *   )
+ * )
+ *
+ * const robustProgram = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       yield* Console.log("Complex scheduled task...")
+ *       if (attempt === 1) {
+ *         return yield* Effect.fail(new ScheduledTaskError({ message: "Scheduled task failed" }))
+ *       }
+ *       return "success"
+ *     }),
+ *     complexCron.pipe(Schedule.upTo({ times: 3 }))
+ *   ).pipe(
+ *     Effect.catch((error: unknown) =>
+ *       Console.log(`Cron task error: ${String(error)}`)
+ *     )
+ *   )
+ * })
+ * ```
+ *
+ * @category constructors
  * @since 2.0.0
- * @category Mapping
- */
-export const asVoid: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<void, In, R> = internal.asVoid
-
-// TODO(4.0): rename to `zip`?
-/**
- * Combines two schedules, preserving both their inputs and outputs.
- *
- * **Details**
- *
- * This function merges two schedules so that both their input types and output
- * types are retained. When executed, the resulting schedule will take inputs
- * from both original schedules and produce a tuple containing both outputs.
- *
- * It recurs if either schedule wants to continue, using the shorter delay.
- *
- * This is useful when you want to track multiple schedules simultaneously,
- * ensuring that both receive the same inputs and produce combined results.
- *
- * @since 2.0.0
- * @category Zipping
- */
-export const bothInOut: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], readonly [In, In2], R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<[Out, Out2], readonly [In, In2], R | R2>
-} = internal.bothInOut
-
-/**
- * Filters schedule executions based on a custom condition.
- *
- * **Details**
- *
- * This function modifies a schedule by applying a custom test function to each
- * input-output pair. The test function determines whether the schedule should
- * continue or stop. If the function returns `true`, the schedule proceeds as
- * usual; if it returns `false`, the schedule terminates.
- *
- * This is useful for conditional retries, custom stop conditions, or
- * dynamically controlling execution based on observed inputs and outputs.
- *
- * @see {@link checkEffect} If you need to use an effectful test function.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const check: {
-  <In, Out>(test: (input: In, output: Out) => boolean): <R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, test: (input: In, output: Out) => boolean): Schedule<Out, In, R>
-} = internal.check
-
-/**
- * Conditionally filters schedule executions using an effectful function.
- *
- * **Details**
- *
- * This function modifies a schedule by applying a custom effectful test
- * function to each input-output pair. The test function determines whether the
- * schedule should continue (`true`) or stop (`false`).
- *
- * This is useful when the decision to continue depends on external factors such
- * as database lookups, API calls, or other asynchronous computations.
- *
- * @see {@link check} If you need to use a pure test function.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const checkEffect: {
-  <In, Out, R2>(
-    test: (input: In, output: Out) => Effect.Effect<boolean, never, R2>
-  ): <R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, R2>(
-    self: Schedule<Out, In, R>,
-    test: (input: In, output: Out) => Effect.Effect<boolean, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.checkEffect
-
-/**
- * A schedule that collects all inputs into a `Chunk`.
- *
- * **Details**
- *
- * This function creates a schedule that never terminates and continuously
- * collects every input it receives into a `Chunk`. Each time the schedule runs,
- * it appends the new input to the collected list.
- *
- * This is useful when you need to track all received inputs over time, such as
- * logging user actions, recording retry attempts, or accumulating data for
- * later processing.
- *
- * @see {@link collectAllOutputs} If you need to collect outputs instead of
- * inputs.
- *
- * @since 2.0.0
- * @category Collecting
- */
-export const collectAllInputs: <A>() => Schedule<Chunk.Chunk<A>, A> = internal.collectAllInputs
-
-/**
- * Collects all outputs of a schedule into a `Chunk`.
- *
- * **Details**
- *
- * This function modifies a given schedule so that instead of returning
- * individual outputs, it accumulates them into a `Chunk`. The schedule
- * continues to run, appending each output to the collected list.
- *
- * This is useful when you need to track all results over time, such as logging
- * outputs, aggregating data, or keeping a history of previous values.
- *
- * @see {@link collectAllInputs} If you need to collect inputs instead of
- * outputs.
- *
- * @since 2.0.0
- * @category Collecting
- */
-export const collectAllOutputs: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Chunk.Chunk<Out>, In, R> =
-  internal.collectAllOutputs
-
-/**
- * Collects all inputs into a `Chunk` until a condition fails.
- *
- * **Details**
- *
- * This function creates a schedule that continuously collects inputs into a
- * `Chunk` until the given predicate function `f` evaluates to `false`. Once the
- * condition fails, the schedule stops.
- *
- * @since 2.0.0
- * @category Collecting
- */
-export const collectUntil: <A>(f: Predicate<A>) => Schedule<Chunk.Chunk<A>, A> = internal.collectUntil
-
-/**
- * Collects all inputs into a `Chunk` until an effectful condition fails.
- *
- * **Details**
- *
- * This function creates a schedule that continuously collects inputs into a
- * `Chunk` until the given effectful predicate `f` returns `false`. The
- * predicate runs as an effect, meaning it can involve asynchronous computations
- * like API calls, database lookups, or randomness.
- *
- * @since 2.0.0
- * @category Collecting
- */
-export const collectUntilEffect: <A, R>(
-  f: (a: A) => Effect.Effect<boolean, never, R>
-) => Schedule<Chunk.Chunk<A>, A, R> = internal.collectUntilEffect
-
-/**
- * Collects all inputs into a `Chunk` while a condition holds.
- *
- * **Details**
- *
- * This function creates a schedule that continuously collects inputs into a
- * `Chunk` while the given predicate function `f` evaluates to `true`. As soon
- * as the condition fails, the schedule stops.
- *
- * @since 2.0.0
- * @category Collecting
- */
-export const collectWhile: <A>(f: Predicate<A>) => Schedule<Chunk.Chunk<A>, A> = internal.collectWhile
-
-/**
- * Collects all inputs into a `Chunk` while an effectful condition holds.
- *
- * **Details**
- *
- * This function creates a schedule that continuously collects inputs into a
- * `Chunk` while the given effectful predicate `f` returns `true`. The predicate
- * returns an effect, meaning it can depend on external state, such as database
- * queries, API responses, or real-time user conditions.
- *
- * As soon as the effectful condition returns `false`, the schedule stops. This
- * is useful for dynamically controlled data collection, where stopping depends
- * on an external or asynchronous factor.
- *
- * @since 2.0.0
- * @category Collecting
- */
-export const collectWhileEffect: <A, R>(
-  f: (a: A) => Effect.Effect<boolean, never, R>
-) => Schedule<Chunk.Chunk<A>, A, R> = internal.collectWhileEffect
-
-/**
- * Chains two schedules, passing the output of the first as the input to the
- * second, while selecting the shorter delay between them.
- *
- * **Details**
- *
- * This function composes two schedules so that the output of the first schedule
- * becomes the input of the second schedule. The first schedule executes first,
- * and once it produces a result, the second schedule receives that result and
- * continues execution based on it.
- *
- * This is useful for building complex scheduling workflows where one schedule's
- * behavior determines how the next schedule behaves.
- *
- * @since 2.0.0
- * @category Composition
- */
-export const compose: {
-  <Out2, Out, R2>(that: Schedule<Out2, Out, R2>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R2 | R>
-  <Out, In, R, Out2, R2>(self: Schedule<Out, In, R>, that: Schedule<Out2, Out, R2>): Schedule<Out2, In, R | R2>
-} = internal.compose
-
-/**
- * Transforms the input type of a schedule.
- *
- * **Details**
- *
- * This function modifies a given schedule by applying a transformation function
- * to its inputs. Instead of directly receiving values of type `In`, the
- * schedule will now accept values of type `In2`, which are converted to `In`
- * using the provided mapping function `f`.
- *
- * This is useful when you have a schedule that expects a specific input type
- * but you need to adapt it to work with a different type.
- *
- * @see {@link mapInputEffect} If you need to use an effectful transformation function.
- *
- * @since 2.0.0
- * @category Mapping
- */
-export const mapInput: {
-  <In, In2>(f: (in2: In2) => In): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In2, R>
-  <Out, In, R, In2>(self: Schedule<Out, In, R>, f: (in2: In2) => In): Schedule<Out, In2, R>
-} = internal.mapInput
-
-/**
- * Transforms the input type of a schedule using an effectful function.
- *
- * **Details**
- *
- * This function modifies a schedule by applying an effectful transformation to
- * its inputs. Instead of directly receiving values of type `In`, the schedule
- * will now accept values of type `In2`, which are converted to `In` via an
- * effectful function `f`.
- *
- * This is useful when the input transformation involves external dependencies,
- * such as API calls, database lookups, or other asynchronous computations.
- *
- * @see {@link mapInput} If you need to use a pure transformation function.
- *
- * @since 2.0.0
- * @category Mapping
- */
-export const mapInputEffect: {
-  <In2, In, R2>(
-    f: (in2: In2) => Effect.Effect<In, never, R2>
-  ): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In2, R2 | R>
-  <Out, In, R, In2, R2>(
-    self: Schedule<Out, In, R>,
-    f: (in2: In2) => Effect.Effect<In, never, R2>
-  ): Schedule<Out, In2, R | R2>
-} = internal.mapInputEffect
-
-/**
- * Transforms the required context of a schedule.
- *
- * **Details**
- *
- * This function modifies a schedule by mapping its required context (`R`) into
- * a new context (`R0`) using the provided function `f`.
- *
- * This is useful when you need to adapt a schedule to work with a different
- * dependency environment without changing its core logic.
- *
- * @since 2.0.0
- * @category Mapping
- */
-export const mapInputContext: {
-  <R0, R>(
-    f: (env0: Context.Context<R0>) => Context.Context<R>
-  ): <Out, In>(self: Schedule<Out, In, R>) => Schedule<Out, In, R0>
-  <Out, In, R, R0>(
-    self: Schedule<Out, In, R>,
-    f: (env0: Context.Context<R0>) => Context.Context<R>
-  ): Schedule<Out, In, R0>
-} = internal.mapInputContext
-
-/**
- * A schedule that recurs indefinitely, counting the number of recurrences.
- *
- * **Details**
- *
- * This schedule never stops and simply counts how many times it has executed.
- * Each recurrence increases the count, starting from `0`.
- *
- * This is useful when tracking the number of attempts in retry policies,
- * measuring execution loops, or implementing infinite polling scenarios.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const count: Schedule<number> = internal.count
-
-/**
- * Creates a schedule that recurs based on a cron expression.
- *
- * **Details**
- *
- * This schedule automatically executes at intervals defined by a cron
- * expression. It triggers at the beginning of each matched interval and
- * produces timestamps representing the start and end of the cron window.
- *
- * The cron `expression` is validated lazily, meaning errors may only be
- * detected when the schedule is executed.
- *
- * @since 2.0.0
- * @category Cron
  */
 export const cron: {
-  (cron: Cron.Cron): Schedule<[number, number]>
-  (expression: string, tz?: DateTime.TimeZone | string): Schedule<[number, number]>
-} = internal.cron
-
-/**
- * Cron-like schedule that recurs at a specific second of each minute.
- *
- * **Details**
- *
- * This schedule triggers at the specified `second` of each minute,
- * starting at zero nanoseconds. It produces a count of executions
- * (0, 1, 2, ...). The `second` parameter is validated lazily, meaning
- * invalid values will only be caught at runtime.
- *
- * @since 2.0.0
- * @category Cron
- */
-export const secondOfMinute: (second: number) => Schedule<number> = internal.secondOfMinute
-
-/**
- * Creates a schedule that recurs every specified minute of each hour.
- *
- * **Details**
- *
- * This schedule triggers once per hour at the specified `minute`, starting
- * exactly at `minute:00` (zero seconds). The schedule produces a count of
- * executions (`0, 1, 2, ...`), representing how many times it has run.
- *
- * The `minute` parameter must be between `0` and `59`. It is validated lazily,
- * meaning an invalid value will cause errors only when the schedule is
- * executed.
- *
- * @since 2.0.0
- * @category Cron
- */
-export const minuteOfHour: (minute: number) => Schedule<number> = internal.minuteOfHour
-
-/**
- * Creates a schedule that recurs at a specific hour of each day.
- *
- * **Details**
- *
- * This schedule triggers once per day at the specified `hour`, starting at zero
- * minutes of that hour. The schedule produces a count of executions (`0, 1, 2,
- * ...`), indicating how many times it has been triggered.
- *
- * The `hour` parameter must be between `0` (midnight) and `23` (11 PM). It is
- * validated lazily, meaning an invalid value will cause errors only when the
- * schedule is executed.
- *
- * This is useful for scheduling daily recurring tasks at a fixed time, such as
- * running batch jobs or refreshing data.
- *
- * @since 2.0.0
- * @category Cron
- */
-export const hourOfDay: (hour: number) => Schedule<number> = internal.hourOfDay
-
-/**
- * Creates a schedule that recurs on a specific day of the month.
- *
- * **Details**
- *
- * This schedule triggers at midnight on the specified day of each month. It
- * will not execute in months that have fewer days than the given day. For
- * example, if the schedule is set to run on the 31st, it will not execute in
- * months with only 30 days.
- *
- * The schedule produces a count of executions, starting at 0 and incrementing
- * with each recurrence.
- *
- * The `day` parameter is validated lazily, meaning errors may only be detected
- * when the schedule is executed.
- *
- * @since 2.0.0
- * @category Cron
- */
-export const dayOfMonth: (day: number) => Schedule<number> = internal.dayOfMonth
-
-/**
- * Creates a schedule that recurs on a specific day of the week.
- *
- * **Details**
- *
- * This schedule triggers at midnight on the specified day of the week. The
- * `day` parameter follows the standard convention where `Monday = 1` and
- * `Sunday = 7`. The schedule produces a count of executions, starting at 0 and
- * incrementing with each recurrence.
- *
- * The `day` parameter is validated lazily, meaning errors may only be detected
- * when the schedule is executed.
- *
- * @since 2.0.0
- * @category Cron
- */
-export const dayOfWeek: (day: number) => Schedule<number> = internal.dayOfWeek
-
-/**
- * Modifies a schedule by adding a computed delay before each execution.
- *
- * **Details**
- *
- * This function adjusts an existing schedule by applying a transformation to
- * its delays. Instead of using the default interval, each delay is modified
- * using the provided function `f`, which takes the current delay and returns a
- * new delay.
- *
- * This is useful for dynamically adjusting wait times between executions, such
- * as introducing jitter, exponential backoff, or custom delay logic.
- *
- * @see {@link delayedEffect} If you need to compute the delay using an effectful function.
- *
- * @since 2.0.0
- * @category Timing & Delay
- */
-export const delayed: {
-  (
-    f: (duration: Duration.Duration) => Duration.DurationInput
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(
-    self: Schedule<Out, In, R>,
-    f: (duration: Duration.Duration) => Duration.DurationInput
-  ): Schedule<Out, In, R>
-} = internal.delayed
-
-/**
- * Modifies a schedule by adding an effectfully computed delay before each
- * execution.
- *
- * **Details**
- *
- * This function adjusts an existing schedule by introducing a delay that is
- * computed via an effect. Instead of using a fixed delay, each interval is
- * dynamically adjusted based on an effectful function `f`, which takes the
- * current delay and returns a new delay wrapped in an `Effect`.
- *
- * This is useful for adaptive scheduling where delays depend on external
- * factors, such as API calls, database queries, or dynamic system conditions.
- *
- * @see {@link delayed} If you need to compute the delay using a pure function.
- *
- * @since 2.0.0
- * @category Timing & Delay
- */
-export const delayedEffect: {
-  <R2>(
-    f: (duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, R2>(
-    self: Schedule<Out, In, R>,
-    f: (duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.delayedEffect
-
-/**
- * Uses the delays produced by a schedule to further delay its intervals.
- *
- * **Details**
- *
- * This function modifies a schedule by using its own output delays to control
- * its execution timing. Instead of executing immediately at each interval, the
- * schedule will be delayed by the duration it produces.
- *
- * @since 2.0.0
- * @category Timing & Delay
- */
-export const delayedSchedule: <In, R>(
-  schedule: Schedule<Duration.Duration, In, R>
-) => Schedule<Duration.Duration, In, R> = internal.delayedSchedule
-
-/**
- * Transforms a schedule to output the delay between each occurrence.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that instead of producing its
- * original output, it now returns the delay between each scheduled execution.
- *
- * @since 2.0.0
- * @category Monitoring
- */
-export const delays: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Duration.Duration, In, R> = internal.delays
-
-/**
- * Transforms both the input and output of a schedule.
- *
- * **Details**
- *
- * This function modifies an existing schedule by applying a transformation to
- * both its input values and its output values. The provided transformation
- * functions `onInput` and `onOutput` allow you to map the schedule to work with
- * a different input type while modifying its outputs as well.
- *
- * @see {@link mapBothEffect} If you need to use effectful transformation functions.
- *
- * @since 2.0.0
- * @category Mapping
- */
-export const mapBoth: {
-  <In2, In, Out, Out2>(
-    options: { readonly onInput: (in2: In2) => In; readonly onOutput: (out: Out) => Out2 }
-  ): <R>(self: Schedule<Out, In, R>) => Schedule<Out2, In2, R>
-  <Out, In, R, In2, Out2>(
-    self: Schedule<Out, In, R>,
-    options: { readonly onInput: (in2: In2) => In; readonly onOutput: (out: Out) => Out2 }
-  ): Schedule<Out2, In2, R>
-} = internal.mapBoth
-
-/**
- * Transforms both the input and output of a schedule using effectful
- * computations.
- *
- * **Details**
- *
- * This function modifies an existing schedule by applying effectful
- * transformations to both its input values and its output values. The provided
- * effectful functions `onInput` and `onOutput` allow you to transform inputs
- * and outputs using computations that may involve additional logic, resource
- * access, or side effects.
- *
- * @see {@link mapBoth} If you need to use pure transformation functions.
- *
- * @since 2.0.0
- * @category Mapping
- */
-export const mapBothEffect: {
-  <In2, In, R2, Out, R3, Out2>(
-    options: {
-      readonly onInput: (input: In2) => Effect.Effect<In, never, R2>
-      readonly onOutput: (out: Out) => Effect.Effect<Out2, never, R3>
+  (expression: Cron.Cron): Schedule<Duration.Duration, unknown, Cron.CronParseError>
+  (expression: string, tz?: string | DateTime.TimeZone): Schedule<Duration.Duration, unknown, Cron.CronParseError>
+} = (expression: string | Cron.Cron, tz?: string | DateTime.TimeZone) => {
+  const parsed = Cron.isCron(expression) ? Result.succeed(expression) : Cron.parse(expression, tz)
+  return fromStep(effect.map(effect.fromResult(parsed), (cron) => (now, _) => {
+    if (now === Number.POSITIVE_INFINITY) {
+      return Cause.done(Duration.zero)
     }
-  ): <R>(self: Schedule<Out, In, R>) => Schedule<Out2, In2, R2 | R3 | R>
-  <Out, In, R, In2, R2, Out2, R3>(
-    self: Schedule<Out, In, R>,
-    options: {
-      readonly onInput: (input: In2) => Effect.Effect<In, never, R2>
-      readonly onOutput: (out: Out) => Effect.Effect<Out2, never, R3>
+    return effect.sync(() => {
+      const next = Cron.next(cron, now).getTime()
+      const duration = Duration.millis(next - now)
+      return [duration, duration]
+    })
+  }))
+}
+
+/**
+ * Returns a schedule that recurs once after the specified duration.
+ *
+ * **When to use**
+ *
+ * Use when you need a schedule that recurs once after a fixed delay.
+ *
+ * **Details**
+ *
+ * The schedule outputs the configured duration for its first recurrence and
+ * then completes.
+ *
+ * **Example** (Recurring once after a duration)
+ *
+ * ```ts
+ * import { Console, Effect, Schedule } from "effect"
+ *
+ * const program = Effect.repeat(
+ *   Console.log("runs again after one second"),
+ *   Schedule.duration("1 second")
+ * )
+ * ```
+ *
+ * @see {@link during} for recurring until a duration has elapsed
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const duration = (durationInput: Duration.Input): Schedule<Duration.Duration> => {
+  const duration = Duration.fromInputUnsafe(durationInput)
+  return fromStepWithMetadata(effect.succeed((meta) =>
+    meta.attempt === 1
+      ? effect.succeed([duration, duration])
+      : Cause.done(Duration.zero)
+  ))
+}
+
+/**
+ * Returns a new `Schedule` that will always recur, but only during the
+ * specified `duration` of time.
+ *
+ * **When to use**
+ *
+ * Use to bound a repeating or retrying schedule by elapsed time.
+ *
+ * **Example** (Repeating work during a duration)
+ *
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
+ *
+ * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
+ *
+ * // Run a task for exactly 5 seconds, regardless of how many iterations
+ * const fiveSecondSchedule = Schedule.during("5 seconds")
+ *
+ * const timedProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Task executed inside the time window")
+ *       yield* Effect.sleep("500 millis") // Each task takes 500ms
+ *       return "task done"
+ *     }),
+ *     fiveSecondSchedule.pipe(
+ *       Schedule.tap(({ output: elapsedDuration }) =>
+ *         Console.log(`Total elapsed: ${elapsedDuration}`)
+ *       )
+ *     )
+ *   )
+ *
+ *   yield* Console.log("Time limit reached!")
+ * })
+ *
+ * // Combine with other schedules for time-bounded execution
+ * const timeAndCountLimited = Schedule.max([
+ *   Schedule.spaced("1 second"),
+ *   Schedule.during("10 seconds"), // Stop after 10 seconds OR
+ *   Schedule.recurs(15) // 15 attempts, whichever comes first
+ * ])
+ *
+ * // Burst execution within time window
+ * const burstWindow = Schedule.during("3 seconds")
+ *
+ * const burstProgram = Effect.gen(function*() {
+ *   yield* Console.log("Starting burst execution...")
+ *
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Burst task")
+ *       return "burst"
+ *     }),
+ *     burstWindow
+ *   )
+ *
+ *   yield* Console.log("Burst window completed")
+ * })
+ *
+ * // Timed retry window - retry for up to 30 seconds
+ * const timedRetry = Schedule.max([
+ *   Schedule.exponential("200 millis"),
+ *   Schedule.during("30 seconds")
+ * ])
+ *
+ * const retryProgram = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   const result = yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       yield* Console.log(`Retry attempt ${attempt}`)
+ *
+ *       if (attempt < 4) {
+ *         return yield* Effect.fail(new RetryAttemptError({ message: `Attempt ${attempt} failed` }))
+ *       }
+ *
+ *       return `Success on attempt ${attempt}`
+ *     }),
+ *     timedRetry
+ *   )
+ *
+ *   yield* Console.log(`Result: ${result}`)
+ * }).pipe(
+ *   Effect.catch((error: unknown) => Console.log(`Timed out: ${String(error)}`))
+ * )
+ * ```
+ *
+ * @see {@link duration} for one delayed recurrence
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const during = (duration: Duration.Input): Schedule<Duration.Duration> => {
+  const durationMillis = Duration.toMillis(duration)
+  return fromStepWithMetadata(
+    effect.succeed((meta) => {
+      const elapsed = Duration.millis(meta.elapsed)
+      return meta.elapsed > durationMillis
+        ? effect.succeed([elapsed, Duration.zero])
+        : Cause.done(elapsed)
+    })
+  )
+}
+
+/**
+ * Combines schedules by recurring while at least one schedule wants to recur,
+ * using the minimum delay between recurrences and outputting that minimum delay.
+ *
+ * **When to use**
+ *
+ * Use when a combined policy should continue while any schedule still recurs,
+ * and should wait for the fastest schedule between recurrences.
+ *
+ * **Example** (Combining retry schedules by their minimum delay)
+ *
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
+ *
+ * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
+ *
+ * const retrySchedule = Schedule.min([
+ *   Schedule.fixed("5 seconds"),
+ *   Schedule.exponential("5 seconds"),
+ *   Schedule.spaced("10 seconds")
+ * ])
+ *
+ * const program = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       yield* Console.log(`Retry attempt ${attempt}`)
+ *       if (attempt < 3) {
+ *         return yield* Effect.fail(new RetryAttemptError({ message: `Attempt ${attempt} failed` }))
+ *       }
+ *       return "success"
+ *     }),
+ *     retrySchedule.pipe(
+ *       Schedule.tap(({ output: duration }) =>
+ *         Console.log(`Waiting for the fastest schedule: ${duration}`)
+ *       )
+ *     )
+ *   )
+ * })
+ * ```
+ *
+ * @category combining
+ * @since 4.0.0
+ */
+export const min = <
+  const Schedules extends NonEmptyReadonlyArray<
+    Schedule<any, any, any, any>
+  >
+>(
+  schedules: Schedules
+): Schedule<
+  Duration.Duration,
+  UnionToIntersection<
+    Input<Schedules[number]>
+  >,
+  Error<Schedules[number]>,
+  Env<Schedules[number]>
+> =>
+  fromStep(effect.map(
+    effect.all(schedules.map(toStep)),
+    (steps) => (now, input) =>
+      effect.flatMap(
+        effect.forEach(steps, (step) =>
+          Pull.matchEffect(step(now, input as never), {
+            onSuccess: (result) => effect.succeed(result[1]),
+            onDone: () => effect.undefined,
+            onFailure: effect.failCause
+          })),
+        (results) => {
+          const duration = minDuration(results)
+          if (duration === undefined) {
+            return Cause.done(Duration.zero)
+          }
+          return effect.succeed([duration, duration] as [Duration.Duration, Duration.Duration])
+        }
+      )
+  ))
+
+const minDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Duration.Duration | undefined => {
+  let min: Duration.Duration | undefined = undefined
+  for (let i = 0; i < results.length; i++) {
+    const duration = results[i]
+    if (duration !== undefined) {
+      min = min === undefined ? duration : Duration.min(min, duration)
     }
-  ): Schedule<Out2, In2, R | R2 | R3>
-} = internal.mapBothEffect
+  }
+
+  return min
+}
 
 /**
- * Creates a driver to manually control the execution of a schedule.
+ * Schedule that always recurs, but will wait a certain amount between
+ * repetitions, given by `base * factor.pow(n)`, where `n` is the number of
+ * repetitions so far. Returns the current duration between recurrences.
  *
- * **Details**
+ * **Example** (Retrying with exponential backoff)
  *
- * This function returns a `ScheduleDriver`, which allows stepping through a
- * schedule manually while handling delays and sleeping appropriately. A driver
- * is useful when you need fine-grained control over how a schedule progresses,
- * rather than relying on automatic execution.
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
  *
- * The returned driver exposes methods for retrieving the current state,
- * executing the next step, and resetting the schedule when needed.
+ * class RetryFailure extends Data.TaggedError("RetryFailure")<{ readonly message: string }> {}
  *
+ * // Basic exponential backoff with default factor of 2
+ * const basicExponential = Schedule.exponential("100 millis")
+ * // Delays: 100ms, 200ms, 400ms, 800ms, 1600ms, ...
+ *
+ * // Custom exponential backoff with factor 1.5
+ * const gentleExponential = Schedule.exponential("200 millis", 1.5)
+ * // Delays: 200ms, 300ms, 450ms, 675ms, 1012ms, ...
+ *
+ * // Retry with exponential backoff (limited to 5 attempts)
+ * const retryPolicy = Schedule.max([
+ *   Schedule.exponential("50 millis"),
+ *   Schedule.recurs(5)
+ * ])
+ *
+ * const program = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   const result = yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       if (attempt < 4) {
+ *         yield* Console.log(`Attempt ${attempt} failed, retrying...`)
+ *         return yield* Effect.fail(new RetryFailure({ message: `Failure ${attempt}` }))
+ *       }
+ *       return `Success on attempt ${attempt}`
+ *     }),
+ *     retryPolicy
+ *   )
+ *
+ *   yield* Console.log(`Final result: ${result}`)
+ * })
+ *
+ * // Will retry with delays: 50ms, 100ms, 200ms before success
+ * ```
+ *
+ * @category constructors
  * @since 2.0.0
- * @category getter
  */
-export const driver: <Out, In, R>(
-  self: Schedule<Out, In, R>
-) => Effect.Effect<ScheduleDriver<Out, In, R>> = internal.driver
+export const exponential = (
+  base: Duration.Input,
+  factor: number = 2
+): Schedule<Duration.Duration> => {
+  const baseMillis = Duration.toMillis(Duration.fromInputUnsafe(base))
+  return fromStepWithMetadata(effect.succeed((meta) => {
+    const duration = Duration.millis(baseMillis * Math.pow(factor, meta.attempt - 1))
+    return effect.succeed([duration, duration])
+  }))
+}
 
-// TODO(4.0): remove?
 /**
- * Alias of {@link fromDelay}.
+ * Schedule that always recurs, increasing delays by summing the preceding
+ * two delays (similar to the Fibonacci sequence). Returns the current
+ * duration between recurrences.
  *
+ * **Example** (Retrying with Fibonacci backoff)
+ *
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
+ *
+ * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
+ *
+ * // Basic Fibonacci schedule starting with 100ms
+ * const fibSchedule = Schedule.fibonacci("100 millis")
+ * // Delays: 100ms, 100ms, 200ms, 300ms, 500ms, 800ms, 1300ms, ...
+ *
+ * // Retry with Fibonacci backoff for gradual increase
+ * const retryWithFib = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   const result = yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       yield* Console.log(`Attempt ${attempt}`)
+ *
+ *       if (attempt < 5) {
+ *         return yield* Effect.fail(new RetryAttemptError({ message: `Attempt ${attempt} failed` }))
+ *       }
+ *
+ *       return `Success on attempt ${attempt}`
+ *     }),
+ *     Schedule.max([
+ *       Schedule.fibonacci("50 millis"),
+ *       Schedule.recurs(6) // Maximum 6 retries
+ *     ]).pipe(
+ *       Schedule.tap(({ output: delay }) => Console.log(`Next retry in ${delay}`))
+ *     )
+ *   )
+ *
+ *   yield* Console.log(`Final result: ${result}`)
+ * })
+ *
+ * // Heartbeat with Fibonacci intervals (starts fast, gets slower)
+ * const adaptiveHeartbeat = Effect.gen(function*() {
+ *   yield* Console.log("Heartbeat")
+ *   return "pulse"
+ * }).pipe(
+ *   Effect.repeat(
+ *     Schedule.fibonacci("200 millis").pipe(
+ *       Schedule.upTo({ times: 8 }) // First 8 heartbeats
+ *     )
+ *   )
+ * )
+ *
+ * // Fibonacci vs exponential comparison
+ * const compareSchedules = Effect.gen(function*() {
+ *   yield* Console.log("=== Fibonacci Delays ===")
+ *   // 100ms, 100ms, 200ms, 300ms, 500ms, 800ms
+ *
+ *   yield* Console.log("=== Exponential Delays ===")
+ *   // 100ms, 200ms, 400ms, 800ms, 1600ms, 3200ms
+ *
+ *   // Fibonacci grows more slowly than exponential
+ * })
+ * ```
+ *
+ * @category constructors
  * @since 2.0.0
- * @category Constructors
  */
-export const duration: (duration: Duration.DurationInput) => Schedule<Duration.Duration> = internal.duration
-
-// TODO(4.0): remove?
-/**
- * Alias of {@link union}.
- *
- * @since 2.0.0
- * @category Alternatives
- */
-export const either: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<[Out, Out2], In & In2, R | R2>
-} = internal.either
-
-// TODO(4.0): remove?
-/**
- * Alias of {@link unionWith}.
- *
- * @since 2.0.0
- * @category Alternatives
- */
-export const eitherWith: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): Schedule<[Out, Out2], In & In2, R | R2>
-} = internal.eitherWith
+export const fibonacci = (one: Duration.Input): Schedule<Duration.Duration> => {
+  const oneMillis = Duration.toMillis(Duration.fromInputUnsafe(one))
+  return fromStep(effect.sync(() => {
+    let a = 0
+    let b = oneMillis
+    return constant(effect.sync(() => {
+      const next = a + b
+      a = b
+      b = next
+      const duration = Duration.millis(next)
+      return [duration, duration]
+    }))
+  }))
+}
 
 /**
- * Creates a schedule that tracks the total elapsed duration since it started.
+ * Returns a `Schedule` that recurs on the specified fixed `interval` and
+ * outputs the number of repetitions of the schedule so far.
  *
- * **Details**
+ * **When to use**
  *
- * This schedule executes continuously and returns the total time that has
- * passed since the first execution. The duration keeps increasing with each
- * step, providing a way to measure elapsed time.
+ * Use when recurrences should stay aligned to a regular cadence.
  *
- * This is useful for tracking execution time, monitoring delays, or
- * implementing logic based on how long a process has been running.
+ * **Gotchas**
  *
- * @since 2.0.0
- * @category Constructors
- */
-export const elapsed: Schedule<Duration.Duration> = internal.elapsed
-
-/**
- * Attaches a finalizer to a schedule that runs when the schedule completes.
- *
- * **Details**
- *
- * This function returns a new schedule that executes a given finalizer when the
- * schedule reaches completion. Unlike `Effect.ensuring`, this method does not
- * guarantee the finalizer will run in all cases. If the schedule never
- * initializes or is not driven to completion, the finalizer may not execute.
- * However, if the schedule decides not to continue, the finalizer will be
- * invoked.
- *
- * This is useful for cleaning up resources, logging, or executing other side
- * effects when a schedule completes.
- *
- * @since 2.0.0
- * @category Finalization
- */
-export const ensuring: {
-  <X>(finalizer: Effect.Effect<X, never, never>): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R, X>(self: Schedule<Out, In, R>, finalizer: Effect.Effect<X, never, never>): Schedule<Out, In, R>
-} = internal.ensuring
-
-/**
- * Creates a schedule that recurs indefinitely with exponentially increasing
- * delays.
- *
- * **Details**
- *
- * This schedule starts with an initial delay of `base` and increases the delay
- * exponentially on each repetition using the formula `base * factor^n`, where
- * `n` is the number of times the schedule has executed so far. If no `factor`
- * is provided, it defaults to `2`, causing the delay to double after each
- * execution.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const exponential: (
-  base: Duration.DurationInput,
-  factor?: number
-) => Schedule<Duration.Duration> = internal.exponential
-
-/**
- * Creates a schedule that recurs indefinitely with Fibonacci-based increasing
- * delays.
- *
- * **Details**
- *
- * This schedule starts with an initial delay of `one` and increases subsequent
- * delays by summing the two previous delays, following the Fibonacci sequence.
- * The delay pattern follows: `one, one, one + one, (one + one) + one, ...`,
- * resulting in `1s, 1s, 2s, 3s, 5s, 8s, 13s, ...` if `one = 1s`.
- *
- * This is useful for progressive backoff strategies, where delays grow
- * naturally over time without increasing as aggressively as an exponential
- * schedule.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const fibonacci: (one: Duration.DurationInput) => Schedule<Duration.Duration> = internal.fibonacci
-
-/**
- * Creates a schedule that recurs at a fixed interval.
- *
- * **Details**
- *
- * This schedule executes at regular, evenly spaced intervals, returning the
- * number of times it has run so far. If the action being executed takes longer
- * than the interval, the next execution will happen immediately to prevent
- * "pile-ups," ensuring that the schedule remains consistent without overlapping
- * executions.
+ * If the action run between recurrences takes longer than the interval, the
+ * next recurrence happens immediately, but missed intervals are not replayed.
  *
  * ```text
  * |-----interval-----|-----interval-----|-----interval-----|
  * |---------action--------||action|-----|action|-----------|
  * ```
  *
- * @see {@link spaced} If you need to run from the end of the last execution.
+ * **Example** (Repeating on fixed intervals)
  *
+ * ```ts
+ * import { Console, Effect, Schedule } from "effect"
+ *
+ * // Fixed interval schedule - recurs on a one-second cadence
+ * const everySecond = Schedule.fixed("1 second")
+ *
+ * // Health check that runs at fixed intervals
+ * const healthCheck = Effect.gen(function*() {
+ *   yield* Console.log("Health check")
+ *   yield* Effect.sleep("200 millis") // simulate health check work
+ *   return "healthy"
+ * }).pipe(
+ *   Effect.repeat(Schedule.fixed("2 seconds").pipe(Schedule.upTo({ times: 5 })))
+ * )
+ *
+ * // Difference between fixed and spaced:
+ * // - fixed: maintains constant rate regardless of action duration
+ * // - spaced: waits for the duration AFTER each action completes
+ *
+ * const longRunningTask = Effect.gen(function*() {
+ *   yield* Console.log("Task started")
+ *   yield* Effect.sleep("1.5 seconds") // Longer than interval
+ *   yield* Console.log("Task completed")
+ *   return "done"
+ * })
+ *
+ * // Fixed schedule: if task takes 1.5s but interval is 1s,
+ * // next execution happens immediately (no pile-up)
+ * const fixedSchedule = longRunningTask.pipe(
+ *   Effect.repeat(Schedule.fixed("1 second").pipe(Schedule.upTo({ times: 3 })))
+ * )
+ *
+ * // Comparing with spaced (waits 1s AFTER each task)
+ * const spacedSchedule = longRunningTask.pipe(
+ *   Effect.repeat(Schedule.spaced("1 second").pipe(Schedule.upTo({ times: 3 })))
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Console.log("=== Fixed Schedule Demo ===")
+ *   yield* fixedSchedule
+ *
+ *   yield* Console.log("=== Spaced Schedule Demo ===")
+ *   yield* spacedSchedule
+ * })
+ * ```
+ *
+ * @see {@link spaced} for delaying after each action completes
+ *
+ * @category constructors
  * @since 2.0.0
- * @category Constructors
  */
-export const fixed: (interval: Duration.DurationInput) => Schedule<number> = internal.fixed
+export const fixed = (interval: Duration.Input): Schedule<number> => {
+  const window = Duration.toMillis(Duration.fromInputUnsafe(interval))
+  return fromStepWithMetadata(effect.sync(() => {
+    let start = 0
+    let lastRun = 0
+    return (meta) =>
+      effect.sync(() => {
+        if (window === 0) {
+          return [meta.attempt - 1, Duration.zero] as const
+        }
+        if (meta.attempt === 1) {
+          start = meta.now
+          lastRun = meta.now + window
+          return [0, Duration.millis(window)] as const
+        }
+        const runningBehind = meta.now > (lastRun + window)
+        const boundary = window - ((meta.now - start) % window)
+        const delay = runningBehind ? 0 : boundary === 0 ? window : boundary
+        lastRun = runningBehind ? meta.now : meta.now + delay
+        return [meta.attempt - 1, Duration.millis(delay)] as const
+      })
+  }))
+}
 
 /**
- * Creates a schedule that recurs indefinitely, producing a count of
- * repetitions.
+ * Returns a new `Schedule` that maps each schedule decision to a new output
+ * using the full schedule metadata.
  *
  * **Details**
  *
- * This schedule runs indefinitely, returning an increasing count of executions
- * (`0, 1, 2, 3, ...`). Each step increments the count by one, allowing tracking
- * of how many times it has executed.
+ * The callback receives the schedule input, output, selected delay duration,
+ * current attempt, and elapsed timing information. Return either a plain value
+ * or an `Effect` that produces the new output.
  *
+ * **Example** (Mapping schedule outputs)
+ *
+ * ```ts
+ * import { Console, Effect, Schedule } from "effect"
+ *
+ * // Transform schedule output from number to string
+ * const countSchedule = Schedule.recurs(5).pipe(
+ *   Schedule.map(({ output: count }) => Effect.succeed(`Execution #${count + 1}`))
+ * )
+ *
+ * // Map schedule delays to human-readable format
+ * const readableDelays = Schedule.exponential("100 millis").pipe(
+ *   Schedule.map(({ output: delay }) => Effect.succeed(`Next retry in ${delay}`))
+ * )
+ *
+ * // Transform numeric output to structured data
+ * const structuredSchedule = Schedule.spaced("1 second").pipe(
+ *   Schedule.map(({ output: recurrence }) => Effect.succeed({
+ *     iteration: recurrence + 1,
+ *     phase: recurrence < 5 ? "warmup" as const : "steady" as const
+ *   }))
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   const results = yield* Effect.repeat(
+ *     Effect.succeed("task completed"),
+ *     structuredSchedule.pipe(
+ *       Schedule.upTo({ times: 8 }),
+ *       Schedule.tap(({ output: info }) =>
+ *         Console.log(
+ *           `${info.phase} phase - iteration ${info.iteration}`
+ *         )
+ *       )
+ *     )
+ *   )
+ *
+ *   yield* Console.log(`Completed iterations`)
+ * })
+ *
+ * // Map with effectful transformation
+ * const effectfulMap = Schedule.fixed("2 seconds").pipe(
+ *   Schedule.map(({ output: count }) =>
+ *     Effect.gen(function*() {
+ *       yield* Console.log(`Processing count: ${count}`)
+ *       return count * 10
+ *     })
+ *   )
+ * )
+ *
+ * // Use timing metadata in the mapped output
+ * const complexSchedule = Schedule.fibonacci("100 millis").pipe(
+ *   Schedule.map(({ output: delay, attempt }) =>
+ *     Effect.succeed(`Attempt ${attempt} delay: ${delay}`)
+ *   )
+ * )
+ * ```
+ *
+ * @category mapping
  * @since 2.0.0
- * @category Constructors
- */
-export const forever: Schedule<number> = internal.forever
-
-/**
- * Creates a schedule that recurs once after a specified duration.
- *
- * **Details**
- *
- * This schedule executes a single time after waiting for the given duration.
- * Once it has executed, it does not repeat.
- *
- * @see {@link fromDelays} If you need to create a schedule with multiple delays.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const fromDelay: (delay: Duration.DurationInput) => Schedule<Duration.Duration> = internal.fromDelay
-
-/**
- * Creates a schedule that recurs once for each specified duration, applying the
- * given delays sequentially.
- *
- * **Details**
- *
- * This schedule executes multiple times, each time waiting for the
- * corresponding duration from the provided list of delays. The first execution
- * waits for `delay`, the next for the second value in `delays`, and so on. Once
- * all delays have been used, the schedule stops executing.
- *
- * This is useful for defining a custom delay sequence that does not follow a
- * fixed pattern like exponential or Fibonacci backoff.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const fromDelays: (
-  delay: Duration.DurationInput,
-  ...delays: Array<Duration.DurationInput>
-) => Schedule<Duration.Duration> = internal.fromDelays
-
-/**
- * Creates a schedule that always recurs, transforming input values using the
- * specified function.
- *
- * **Details**
- *
- * This schedule continuously executes and applies the given function `f` to
- * each input value, producing a transformed output. The schedule itself does
- * not control delays or stopping conditions; it simply transforms the input
- * values as they are processed.
- *
- * This is useful when defining schedules that map inputs to outputs, allowing
- * dynamic transformations of incoming data.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const fromFunction: <A, B>(f: (a: A) => B) => Schedule<B, A> = internal.fromFunction
-
-/**
- * Creates a schedule that always recurs, passing inputs directly as outputs.
- *
- * **Details**
- *
- * This schedule runs indefinitely, returning each input value as its output
- * without modification. It effectively acts as a pass-through that simply
- * echoes its input values at each step.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const identity: <A>() => Schedule<A, A> = internal.identity
-
-/**
- * Transforms a schedule to pass through its inputs as outputs.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that it returns its input
- * values instead of its original output values. The schedule's timing remains
- * unchanged, but its outputs are replaced with whatever inputs it receives.
- *
- * @since 2.0.0
- */
-export const passthrough: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<In, In, R> = internal.passthrough
-
-/**
- * Combines two schedules, continuing only if both schedules want to continue,
- * using the longer delay.
- *
- * **Details**
- *
- * This function takes two schedules and creates a new schedule that only
- * continues execution if both schedules allow it. The interval between
- * recurrences is determined by the longer delay between the two schedules.
- *
- * The output of the resulting schedule is a tuple containing the outputs of
- * both schedules. The input type is the intersection of both schedules' input
- * types.
- *
- * This is useful when coordinating multiple scheduling conditions where
- * execution should proceed only when both schedules permit it.
- *
- * @see {@link intersectWith} If you need to use a custom merge function.
- *
- * @since 2.0.0
- * @category Composition
- */
-export const intersect: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<[Out, Out2], In & In2, R | R2>
-} = internal.intersect
-
-/**
- * Combines two schedules, continuing only if both want to continue, merging
- * intervals using a custom function.
- *
- * **Details**
- *
- * This function takes two schedules and creates a new schedule that only
- * continues execution if both schedules allow it. Instead of automatically
- * using the longer delay (like {@link intersect}), this function applies a
- * user-provided merge function `f` to determine the next interval between
- * executions.
- *
- * The output of the resulting schedule is a tuple containing the outputs of
- * both schedules, and the input type is the intersection of both schedules'
- * input types.
- *
- * @since 2.0.0
- * @category Composition
- */
-export const intersectWith: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): Schedule<[Out, Out2], In & In2, R | R2>
-} = internal.intersectWith
-
-/**
- * Returns a new schedule that randomly adjusts the interval size within a
- * range.
- *
- * **Details**
- *
- * This function modifies a schedule so that its delay between executions is
- * randomly varied within a range. By default, the delay is adjusted between
- * `80%` (`0.8 * interval`) and `120%` (`1.2 * interval`) of the original
- * interval size.
- *
- * This is useful for adding randomness to repeated executions, reducing
- * contention in distributed systems, and avoiding synchronized execution
- * patterns that can cause bottlenecks.
- *
- * @see {@link jitteredWith} If you need to specify custom min/max values.
- *
- * @since 2.0.0
- * @category Timing & Delay
- */
-export const jittered: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R> = internal.jittered
-
-/**
- * Returns a new schedule that randomly adjusts the interval size within a
- * user-defined range.
- *
- * **Details**
- *
- * This function modifies a schedule so that its delay between executions is
- * randomly varied within a specified range. Instead of using the default `0.8 -
- * 1.2` range like {@link jittered}, this function allows customizing the `min`
- * and `max` multipliers.
- *
- * The delay for each step will be adjusted within `min * original_interval` and
- * `max * original_interval`. If `min` and `max` are not provided, the defaults
- * are `0.8` and `1.2`, respectively.
- *
- * This is useful for introducing randomness into scheduling behavior while
- * having precise control over the jitter range.
- *
- * @since 2.0.0
- * @category Timing & Delay
- */
-export const jitteredWith: {
-  (
-    options: { min?: number | undefined; max?: number | undefined }
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(
-    self: Schedule<Out, In, R>,
-    options: { min?: number | undefined; max?: number | undefined }
-  ): Schedule<Out, In, R>
-} = internal.jitteredWith
-
-/**
- * Creates a schedule that recurs indefinitely, increasing the delay linearly.
- *
- * **Details**
- *
- * This schedule starts with an initial delay of `base` and increases the delay
- * on each recurrence in a linear fashion, following the formula:
- *
- * `delay = base * n`
- *
- * where `n` is the number of times the schedule has executed so far. This
- * results in increasing intervals between executions.
- *
- * This is useful for implementing linear backoff strategies where the wait time
- * between retries increases at a steady rate.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const linear: (base: Duration.DurationInput) => Schedule<Duration.Duration> = internal.linear
-
-/**
- * Returns a new schedule that transforms its output using the specified
- * function.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that its outputs are
- * transformed by the provided function `f`. The timing and recurrence behavior
- * of the schedule remain unchanged, but the values it produces are mapped to
- * new values.
- *
- * This is useful when composing schedules where you need to adjust the output
- * format or apply additional processing.
- *
- * @see {@link mapEffect} If you need to use an effectful transformation
- * function.
- *
- * @since 2.0.0
- * @category Mapping
  */
 export const map: {
-  <Out, Out2>(f: (out: Out) => Out2): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R>
-  <Out, In, R, Out2>(self: Schedule<Out, In, R>, f: (out: Out) => Out2): Schedule<Out2, In, R>
-} = internal.map
+  <Input, Output, Output2, Error2 = never, Env2 = never>(
+    f: (metadata: Metadata<Output, Input>) => Output2 | Effect<Output2, Error2, Env2>
+  ): <Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Output2, Input, Error | Error2, Env | Env2>
+  <Output, Input, Error, Env, Output2, Error2 = never, Env2 = never>(
+    self: Schedule<Output, Input, Error, Env>,
+    f: (metadata: Metadata<Output, Input>) => Output2 | Effect<Output2, Error2, Env2>
+  ): Schedule<Output2, Input, Error | Error2, Env | Env2>
+} = dual(2, <Output, Input, Error, Env, Output2, Error2 = never, Env2 = never>(
+  self: Schedule<Output, Input, Error, Env>,
+  f: (metadata: Metadata<Output, Input>) => Output2 | Effect<Output2, Error2, Env2>
+): Schedule<Output2, Input, Error | Error2, Env | Env2> =>
+  fromStep(effect.map(toStep(self), (step) => {
+    const meta = metadataFn()
+    return (now, input) =>
+      Pull.matchEffect(step(now, input), {
+        onSuccess: ([output, duration]) => {
+          const result = f({ ...meta(now, input), output, duration })
+          if (!isEffect(result)) return effect.succeed([result, duration] as [Output2, Duration.Duration])
+          return effect.map(result, (output) => [output, duration] as [Output2, Duration.Duration])
+        },
+        onFailure: effect.failCause<Error>,
+        onDone: (output) => {
+          const result = f({ ...meta(now, input), output, duration: Duration.zero })
+          if (!isEffect(result)) return Cause.done(result as Output2)
+          return effect.flatMap(result, Cause.done)
+        }
+      })
+  })))
 
 /**
- * Returns a new schedule that applies an effectful transformation to its
- * output.
+ * Returns a new `Schedule` that modifies the delay of the next recurrence
+ * of the schedule using the specified effectful function.
  *
- * **Details**
+ * **Example** (Modifying delays from schedule metadata)
  *
- * This function modifies an existing schedule by applying an effectful function
- * `f` to its output values. The timing and recurrence behavior of the schedule
- * remain unchanged, but each output is mapped to a new value within an
- * `Effect`.
+ * ```ts
+ * import { Console, Duration, Effect, Schedule } from "effect"
  *
- * This is useful when you need to perform side effects or asynchronous
- * transformations before passing the output forward.
+ * // Modify delays based on output - increase delay on high iteration counts
+ * const adaptiveDelay = Schedule.recurs(10).pipe(
+ *   Schedule.modifyDelay(({ output, duration }) => {
+ *     // Double the delay if we're seeing high iteration counts
+ *     return Effect.succeed(output > 5 ? Duration.times(duration, 2) : duration)
+ *   })
+ * )
  *
- * @see {@link map} If you need to use a pure transformation function.
+ * const program = Effect.gen(function*() {
+ *   let counter = 0
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       counter++
+ *       yield* Console.log(`Attempt ${counter}`)
+ *       return counter
+ *     }),
+ *     adaptiveDelay.pipe(Schedule.upTo({ times: 8 }))
+ *   )
+ * })
+ * ```
  *
+ * @category delays & timeouts
  * @since 2.0.0
- * @category Mapping
- */
-export const mapEffect: {
-  <Out, Out2, R2>(
-    f: (out: Out) => Effect.Effect<Out2, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In, R2 | R>
-  <Out, In, R, Out2, R2>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out) => Effect.Effect<Out2, never, R2>
-  ): Schedule<Out2, In, R | R2>
-} = internal.mapEffect
-
-/**
- * Returns a new schedule that modifies the delay between executions using a
- * custom function.
- *
- * **Details**
- *
- * This function transforms an existing schedule by applying `f` to modify the
- * delay before each execution. The function receives both the schedule's output
- * (`out`) and the originally computed delay (`duration`), and returns a new
- * adjusted delay.
- *
- * @see {@link modifyDelayEffect} If you need to use an effectful function.
- *
- * @since 2.0.0
- * @category Timing & Delay
  */
 export const modifyDelay: {
-  <Out>(
-    f: (out: Out, duration: Duration.Duration) => Duration.DurationInput
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out, duration: Duration.Duration) => Duration.DurationInput
-  ): Schedule<Out, In, R>
-} = internal.modifyDelay
+  <Output, Input, Error2 = never, Env2 = never>(
+    f: (
+      metadata: Metadata<Output, Input>
+    ) => Effect<Duration.Input, Error2, Env2>
+  ): <Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Output, Input, Error | Error2, Env | Env2>
+  <Output, Input, Error, Env, Error2 = never, Env2 = never>(
+    self: Schedule<Output, Input, Error, Env>,
+    f: (
+      metadata: Metadata<Output, Input>
+    ) => Effect<Duration.Input, Error2, Env2>
+  ): Schedule<Output, Input, Error | Error2, Env | Env2>
+} = dual(2, <Output, Input, Error, Env, Error2 = never, Env2 = never>(
+  self: Schedule<Output, Input, Error, Env>,
+  f: (
+    metadata: Metadata<Output, Input>
+  ) => Effect<Duration.Input, Error2, Env2>
+): Schedule<Output, Input, Error | Error2, Env | Env2> =>
+  fromStep(effect.map(toStep(self), (step) => {
+    const meta = metadataFn()
+    return (now, input) =>
+      effect.flatMap(
+        step(now, input),
+        ([output, duration]) =>
+          effect.map(f({ ...meta(now, input), output, duration }), (replacement) => [
+            output,
+            Duration.fromInputUnsafe(replacement)
+          ])
+      )
+  })))
 
 /**
- * Returns a new schedule that modifies the delay before execution using an
- * effectful function.
+ * Returns a new `Schedule` that randomly adjusts each recurrence delay.
+ *
+ * **When to use**
+ *
+ * Use to add random variation to an existing schedule's recurrence delays while
+ * preserving its output and completion behavior.
  *
  * **Details**
  *
- * This function takes an existing schedule and applies an effectful function
- * `f` to dynamically adjust the delay before each execution. The function
- * receives both the schedule's output (`out`) and the originally computed delay
- * (`duration`), returning a new adjusted delay wrapped in an `Effect`.
+ * Each recurrence delay is scaled by a random factor between `0.8` and `1.2`.
  *
- * @see {@link modifyDelay} If you need to use a pure function.
+ * @see {@link modifyDelay} for replacing recurrence delays with a custom effectful transformation
  *
+ * @category delays & timeouts
  * @since 2.0.0
- * @category Timing & Delay
  */
-export const modifyDelayEffect: {
-  <Out, R2>(
-    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, R2>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out, duration: Duration.Duration) => Effect.Effect<Duration.DurationInput, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.modifyDelayEffect
+export const jittered = <Output, Input, Error, Env>(
+  self: Schedule<Output, Input, Error, Env>
+): Schedule<Output, Input, Error, Env> =>
+  modifyDelay(self, ({ duration }) =>
+    effect.map(randomNext, (random) => {
+      const millis = Duration.toMillis(duration)
+      return Duration.millis(millis * 0.8 * (1 - random) + millis * 1.2 * random)
+    }))
 
 /**
- * Returns a new schedule that executes an effect every time the schedule makes
- * a decision.
+ * Returns a new `Schedule` that outputs the inputs of the specified schedule.
+ *
+ * **Example** (Passing inputs through as outputs)
+ *
+ * ```ts
+ * import { Console, Effect, Schedule } from "effect"
+ *
+ * // Create a schedule that outputs the inputs instead of original outputs
+ * const inputSchedule = Schedule.passthrough(
+ *   Schedule.exponential("100 millis").pipe(Schedule.upTo({ times: 3 }))
+ * )
+ *
+ * const program = Effect.gen(function*() {
+ *   let counter = 0
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       counter++
+ *       yield* Console.log(`Task ${counter} executed`)
+ *       return `result-${counter}`
+ *     }),
+ *     inputSchedule
+ *   )
+ * })
+ * ```
+ *
+ * @category mapping
+ * @since 2.0.0
+ */
+export const passthrough = <Output, Input, Error, Env>(
+  self: Schedule<Output, Input, Error, Env>
+): Schedule<Input, Input, Error, Env> =>
+  fromStep(effect.map(toStep(self), (step) => (now, input) =>
+    Pull.matchEffect(step(now, input), {
+      onSuccess: (result) => effect.succeed([input, result[1]]),
+      onFailure: effect.failCause,
+      onDone: () => Cause.done(input)
+    })))
+
+/**
+ * Returns a `Schedule` which can only be stepped the specified number of
+ * `times` before it terminates.
+ *
+ * **When to use**
+ *
+ * Use when you need a counter schedule with no additional delay.
+ *
+ * **Gotchas**
+ *
+ * `recurs(n)` counts schedule recurrences, not the first evaluation of the
+ * effect being repeated or retried. For retrying, this means one initial
+ * attempt plus at most `n` retries.
+ *
+ * **Example** (Limiting recurrences)
+ *
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
+ *
+ * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
+ *
+ * // Basic recurs - retry at most 3 times
+ * const maxThreeAttempts = Schedule.recurs(3)
+ *
+ * // Retry a failing operation at most 5 times
+ * const program = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   const result = yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       yield* Console.log(`Attempt ${attempt}`)
+ *
+ *       if (attempt < 4) {
+ *         return yield* Effect.fail(new RetryAttemptError({ message: `Attempt ${attempt} failed` }))
+ *       }
+ *
+ *       return `Success on attempt ${attempt}`
+ *     }),
+ *     Schedule.recurs(5) // Will retry up to 5 times
+ *   )
+ *
+ *   yield* Console.log(`Final result: ${result}`)
+ * })
+ *
+ * // Combining recurs with other schedules for sophisticated retry logic
+ * const complexRetry = Schedule.max([
+ *   Schedule.exponential("100 millis"),
+ *   Schedule.recurs(3) // At most 3 retries
+ * ])
+ *
+ * // Allow ten recurrences after the initial run
+ * const tenRecurrences = Effect.gen(function*() {
+ *   yield* Console.log("Executing task...")
+ *   return "completed"
+ * }).pipe(
+ *   Effect.repeat(Schedule.recurs(10))
+ * )
+ *
+ * // The schedule outputs the current recurrence count (0-based)
+ * const countingSchedule = Schedule.recurs(3).pipe(
+ *   Schedule.tap(({ output: count }) => Console.log(`Execution #${count + 1}`))
+ * )
+ * ```
+ *
+ * @see {@link upTo} for limiting an existing schedule
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const recurs = (times: number): Schedule<number> =>
+  while_(forever, ({ attempt }) => effect.succeed(attempt <= times))
+
+/**
+ * Returns a schedule that recurs continuously, each repetition spaced the
+ * specified duration from the last run.
+ *
+ * **When to use**
+ *
+ * Use when each delay should start after the previous action completes.
+ *
+ * **Example** (Repeating with fixed spacing)
+ *
+ * ```ts
+ * import { Console, Effect, Schedule } from "effect"
+ *
+ * // Basic spaced schedule - runs every 2 seconds
+ * const everyTwoSeconds = Schedule.spaced("2 seconds")
+ *
+ * // Heartbeat that runs indefinitely with fixed spacing
+ * const heartbeat = Effect.gen(function*() {
+ *   yield* Console.log("Heartbeat")
+ * }).pipe(
+ *   Effect.repeat(everyTwoSeconds)
+ * )
+ *
+ * // Limited repeat - run only 5 times with 1-second spacing
+ * const limitedTask = Effect.gen(function*() {
+ *   yield* Console.log("Executing scheduled task...")
+ *   yield* Effect.sleep("500 millis") // simulate work
+ *   return "Task completed"
+ * }).pipe(
+ *   Effect.repeat(
+ *     Schedule.spaced("1 second").pipe(Schedule.upTo({ times: 5 }))
+ *   )
+ * )
+ *
+ * // Simple spaced schedule with limited repetitions
+ * const limitedSpaced = Schedule.max([
+ *   Schedule.spaced("100 millis"),
+ *   Schedule.recurs(5) // at most 5 times
+ * ])
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Console.log("Starting spaced execution...")
+ *
+ *   yield* Effect.repeat(
+ *     Effect.succeed("work item"),
+ *     limitedSpaced
+ *   )
+ *
+ *   yield* Console.log("Completed executions")
+ * })
+ * ```
+ *
+ * @see {@link fixed} for recurrence aligned to a regular cadence
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const spaced = (duration: Duration.Input): Schedule<number> => {
+  const decoded = Duration.fromInputUnsafe(duration)
+  return fromStepWithMetadata(effect.succeed((meta) => effect.succeed([meta.attempt - 1, decoded])))
+}
+
+/**
+ * Returns a new `Schedule` that allows execution of an effectful function for
+ * every decision of the schedule, but does not alter the inputs and outputs of
+ * the schedule.
  *
  * **Details**
  *
- * This function enhances an existing schedule by running an effectful function
- * `f` whenever a scheduling decision is made. The function receives the current
- * schedule output (`out`) and the decision (`ScheduleDecision`), allowing
- * additional logic to be executed, such as logging, monitoring, or side
- * effects.
+ * The callback receives the full schedule metadata, including the input, output,
+ * computed delay duration, current attempt, and elapsed timing information.
  *
- * @since 2.0.0
+ * **Example** (Tapping schedule metadata)
+ *
+ * ```ts
+ * import { Console, Effect, Schedule } from "effect"
+ *
+ * const monitoredSchedule = Schedule.exponential("100 millis").pipe(
+ *   Schedule.upTo({ times: 5 }),
+ *   Schedule.tap((metadata) =>
+ *     Console.log(
+ *       `Attempt ${metadata.attempt} produced ${metadata.output} ` +
+ *         `after ${metadata.elapsed}ms; next delay is ${metadata.duration}`
+ *     )
+ *   )
+ * )
+ *
+ * const program = Effect.retry(
+ *   Effect.fail("transient error"),
+ *   monitoredSchedule
+ * )
+ * ```
+ *
+ * @category sequencing
+ * @since 4.0.0
  */
-export const onDecision: {
-  <Out, X, R2>(
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<X, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, X, R2>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out, decision: ScheduleDecision.ScheduleDecision) => Effect.Effect<X, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.onDecision
+export const tap: {
+  <Output, Input, X, Error2, Env2>(
+    f: (metadata: Metadata<Output, Input>) => Effect<X, Error2, Env2>
+  ): <Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Output, Input, Error | Error2, Env | Env2>
+  <Output, Input, Error, Env, X, Error2, Env2>(
+    self: Schedule<Output, Input, Error, Env>,
+    f: (metadata: Metadata<Output, Input>) => Effect<X, Error2, Env2>
+  ): Schedule<Output, Input, Error | Error2, Env | Env2>
+} = dual(2, <Output, Input, Error, Env, X, Error2, Env2>(
+  self: Schedule<Output, Input, Error, Env>,
+  f: (metadata: Metadata<Output, Input>) => Effect<X, Error2, Env2>
+): Schedule<Output, Input, Error | Error2, Env | Env2> =>
+  fromStep(effect.map(toStep(self), (step) => {
+    const meta = metadataFn()
+    return (now, input) =>
+      effect.tap(step(now, input), ([output, duration]) => f({ ...meta(now, input), output, duration }))
+  })))
 
 /**
- * A schedule that executes only once and then stops.
- *
- * **Details**
- *
- * This schedule triggers a single execution and then terminates. It does not
- * repeat or apply any additional logic.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const once: Schedule<void> = internal.once
-
-/**
- * Returns a new schedule with a provided context, eliminating the need for
- * external dependencies.
- *
- * **Details**
- *
- * This function supplies a required `context` to a schedule, allowing it to run
- * without requiring external dependencies. After calling this function, the
- * schedule can be used freely without needing to pass a context at execution
- * time.
- *
- * This is useful when working with schedules that rely on contextual
- * information, such as logging services, database connections, or configuration
- * settings.
- *
- * @since 2.0.0
- * @category Context
- */
-export const provideContext: {
-  <R>(context: Context.Context<R>): <Out, In>(self: Schedule<Out, In, R>) => Schedule<Out, In, never>
-  <Out, In, R>(self: Schedule<Out, In, R>, context: Context.Context<R>): Schedule<Out, In, never>
-} = internal.provideContext
-
-/**
- * Returns a new schedule with a single required service provided, eliminating
- * the need for external dependencies.
- *
- * **Details**
- *
- * This function supplies a single service dependency to a schedule, allowing it
- * to run without requiring that service externally. If a schedule depends on
- * multiple services, consider using `provideContext` instead.
- *
- * This is useful when working with schedules that require a specific service,
- * such as logging, metrics, or configuration retrieval.
- *
- * @since 2.0.0
- * @category Context
- */
-export const provideService: {
-  <I, S>(
-    tag: Context.Tag<I, S>,
-    service: Types.NoInfer<S>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, Exclude<R, I>>
-  <Out, In, R, I, S>(
-    self: Schedule<Out, In, R>,
-    tag: Context.Tag<I, S>,
-    service: Types.NoInfer<S>
-  ): Schedule<Out, In, Exclude<R, I>>
-} = internal.provideService
-
-/**
- * A schedule that recurs until the given predicate evaluates to true.
- *
- * **Details**
- *
- * This schedule will continue executing as long as the provided predicate `f`
- * returns `false` for the input value. Once `f` evaluates to `true`, the
- * schedule stops recurring.
- *
- * This is useful for defining schedules that should stop when a certain
- * condition is met, such as detecting a success state, reaching a threshold, or
- * avoiding unnecessary retries.
- *
- * @see {@link recurUntilEffect} If you need to use an effectful predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const recurUntil: <A>(f: Predicate<A>) => Schedule<A, A> = internal.recurUntil
-
-/**
- * A schedule that recurs until the given effectful predicate evaluates to true.
- *
- * **Details**
- *
- * This schedule continues executing as long as the provided effectful predicate
- * `f` returns `false`. Once `f` evaluates to `true`, the schedule stops
- * recurring. Unlike {@link recurUntil}, this function allows the stopping
- * condition to be computed asynchronously or based on external dependencies.
- *
- * This is useful when the stopping condition depends on an effectful
- * computation, such as checking a database, making an API call, or retrieving
- * system state dynamically.
- *
- * @see {@link recurUntil} If you need to use a pure predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const recurUntilEffect: <A, R>(f: (a: A) => Effect.Effect<boolean, never, R>) => Schedule<A, A, R> =
-  internal.recurUntilEffect
-
-/**
- * A schedule that recurs until the input value matches a partial function, then
- * maps the value.
- *
- * **Details**
- *
- * This schedule continues executing until the provided partial function `pf`
- * returns `Some(value)`. At that point, it stops and maps the resulting value
- * to an `Option<B>`. If `pf` returns `None`, the schedule continues.
- *
- * This is useful when defining schedules that should stop once a certain
- * condition is met and transform the final value before completion.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const recurUntilOption: <A, B>(pf: (a: A) => Option.Option<B>) => Schedule<Option.Option<B>, A> =
-  internal.recurUntilOption
-
-/**
- * A schedule that recurs until the specified duration has elapsed.
- *
- * **Details**
- *
- * This schedule continues executing for the given `duration`, after which it
- * stops. The schedule outputs the elapsed time on each recurrence.
- *
- * This is useful for limiting the duration of retries, enforcing time-based
- * constraints, or ensuring that an operation does not run indefinitely.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const recurUpTo: (duration: Duration.DurationInput) => Schedule<Duration.Duration> = internal.recurUpTo
-
-/**
- * A schedule that recurs as long as the given predicate evaluates to true.
- *
- * **Details*
- *
- * This schedule continues executing as long as the provided predicate `f`
- * returns `true` for the input value. Once `f` evaluates to `false`, the
- * schedule stops recurring.
- *
- * @see {@link recurWhileEffect} If you need to use an effectful predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const recurWhile: <A>(f: Predicate<A>) => Schedule<A, A> = internal.recurWhile
-
-/**
- * A schedule that recurs as long as the given effectful predicate evaluates to
- * true.
- *
- * **Details**
- *
- * This schedule continues executing as long as the provided effectful predicate
- * `f` returns `true`. Once `f` evaluates to `false`, the schedule stops
- * recurring. Unlike {@link recurWhile}, this function allows the condition to
- * be computed dynamically using an effectful computation.
- *
- * @see {@link recurWhile} If you need to use a pure predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const recurWhileEffect: <A, R>(f: (a: A) => Effect.Effect<boolean, never, R>) => Schedule<A, A, R> =
-  internal.recurWhileEffect
-
-/**
- * A schedule that recurs a fixed number of times before terminating.
- *
- * **Details**
- *
- * This schedule will continue executing until it has been stepped `n` times,
- * after which it will stop. The output of the schedule is the current count of
- * recurrences.
- *
- * @category Constructors
- * @since 2.0.0
- */
-export const recurs: (n: number) => Schedule<number> = internal.recurs
-
-/**
- * Returns a new schedule that folds over the outputs of this one.
- *
- * **Details**
- *
- * This schedule transforms the output by accumulating values over time using a
- * reducer function `f`. It starts with an initial value `zero` and updates it
- * each time the schedule produces an output.
- *
- * This is useful for tracking statistics, aggregating results, or summarizing
- * data across multiple executions.
- *
- * @see {@link reduceEffect} If you need to use an effectful reducer function.
- *
- * @since 2.0.0
- * @category Reducing
- */
-export const reduce: {
-  <Out, Z>(zero: Z, f: (z: Z, out: Out) => Z): <In, R>(self: Schedule<Out, In, R>) => Schedule<Z, In, R>
-  <Out, In, R, Z>(self: Schedule<Out, In, R>, zero: Z, f: (z: Z, out: Out) => Z): Schedule<Z, In, R>
-} = internal.reduce
-
-/**
- * Returns a new schedule that effectfully folds over the outputs of this one.
- *
- * **Details**
- *
- * This schedule accumulates outputs over time using an effectful reducer
- * function `f`. It starts with an initial value `zero` and updates it
- * asynchronously or based on external dependencies.
- *
- * This is useful for asynchronous state tracking, logging, external metrics
- * aggregation, or any scenario where accumulation needs to involve an effectful
- * computation.
- *
- * @see {@link reduce} If you need to use a pure reducer function.
- *
- * @since 2.0.0
- * @category Reducing
- */
-export const reduceEffect: {
-  <Z, Out, R2>(
-    zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Z, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Z, In, R2 | R>
-  <Out, In, R, Z, R2>(
-    self: Schedule<Out, In, R>,
-    zero: Z,
-    f: (z: Z, out: Out) => Effect.Effect<Z, never, R2>
-  ): Schedule<Z, In, R | R2>
-} = internal.reduceEffect
-
-// TODO(4.0): remove?
-/**
- * Alias of {@link forever}.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const repeatForever: Schedule<number> = internal.forever
-
-/**
- * Returns a new schedule that outputs the number of repetitions of this one.
- *
- * **Details**
- *
- * This schedule tracks how many times the given schedule has executed and
- * outputs the count instead of the original values. The first execution starts
- * at `0`, and the count increases with each recurrence.
- *
- * @since 2.0.0
- * @category Monitoring
- */
-export const repetitions: <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<number, In, R> = internal.repetitions
-
-/**
- * Returns a new schedule that automatically resets to its initial state after a
- * period of inactivity defined by `duration`.
- *
- * **Details**
- *
- * This function modifies a schedule so that if no inputs are received for the
- * specified `duration`, the schedule resets as if it were new.
- *
- * @see {@link resetWhen} If you need to reset based on output values.
- *
- * @since 2.0.0
- * @category State Management
- */
-export const resetAfter: {
-  (duration: Duration.DurationInput): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, duration: Duration.DurationInput): Schedule<Out, In, R>
-} = internal.resetAfter
-
-/**
- * Resets the schedule when the specified predicate on the schedule output
- * evaluates to `true`.
- *
- * **Details**
- *
- * This function modifies a schedule so that it resets to its initial state
- * whenever the provided predicate `f` returns `true` for an output value.
- *
- * @see {@link resetAfter} If you need to reset based on inactivity.
- *
- * @since 2.0.0
- * @category State Management
- */
-export const resetWhen: {
-  <Out>(f: Predicate<Out>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<Out>): Schedule<Out, In, R>
-} = internal.resetWhen
-
-/**
- * Runs a schedule using the provided inputs and collects all outputs.
- *
- * **Details**
- *
- * This function executes a given schedule with a sequence of input values and
- * accumulates all outputs into a `Chunk`. The schedule starts execution at the
- * specified `now` timestamp and proceeds according to its defined behavior.
- *
- * This is useful for batch processing, simulating execution, or testing
- * schedules with predefined input sequences.
- *
- * @since 2.0.0
- * @category Execution
- */
-export const run: {
-  <In>(
-    now: number,
-    input: Iterable<In>
-  ): <Out, R>(self: Schedule<Out, In, R>) => Effect.Effect<Chunk.Chunk<Out>, never, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, now: number, input: Iterable<In>): Effect.Effect<Chunk.Chunk<Out>, never, R>
-} = internal.run
-
-/**
- * Returns a schedule that recurs continuously, with each repetition
- * spaced by the specified `duration` from the last run.
- *
- * **Details**
- *
- * This schedule ensures that executions occur at a fixed interval,
- * maintaining a consistent delay between repetitions. The delay starts
- * from the end of the last execution, not from the schedule start time.
- *
- * @see {@link fixed} If you need to run at a fixed interval from the start.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const spaced: (duration: Duration.DurationInput) => Schedule<number> = internal.spaced
-
-/**
- * A schedule that does not recur and stops immediately.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const stop: Schedule<void> = internal.stop
-
-/**
- * Returns a schedule that recurs indefinitely, always producing the specified
- * constant value.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const succeed: <A>(value: A) => Schedule<A> = internal.succeed
-
-/**
- * Returns a schedule that recurs indefinitely, evaluating the given function to
- * produce a constant value.
- *
- * @category Constructors
- * @since 2.0.0
- */
-export const sync: <A>(evaluate: LazyArg<A>) => Schedule<A> = internal.sync
-
-/**
- * Returns a new schedule that runs the given effectful function for each input
- * before continuing execution.
- *
- * **Details**
- *
- * This function allows side effects to be performed on each input processed by
- * the schedule. It does not modify the schedule’s behavior but ensures that the
- * provided function `f` runs before each step.
- *
- * @since 2.0.0
- * @category Tapping
- */
-export const tapInput: {
-  <In2, X, R2>(
-    f: (input: In2) => Effect.Effect<X, never, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In & In2, R2 | R>
-  <Out, In, R, In2, X, R2>(
-    self: Schedule<Out, In, R>,
-    f: (input: In2) => Effect.Effect<X, never, R2>
-  ): Schedule<Out, In & In2, R | R2>
-} = internal.tapInput
-
-/**
- * Returns a new schedule that runs the given effectful function for each output
- * before continuing execution.
- *
- * **Details**
- *
- * This function allows side effects to be performed on each output produced by
- * the schedule. It does not modify the schedule’s behavior but ensures that the
- * provided function `f` runs after each step.
- *
- * @since 2.0.0
- * @category Tapping
- */
-export const tapOutput: {
-  <X, R2, Out>(
-    f: (out: Types.NoInfer<Out>) => Effect.Effect<X, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, X, R2>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out) => Effect.Effect<X, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.tapOutput
-
-/**
- * Creates a schedule that repeatedly applies a function to transform a state
- * value, producing a sequence of values.
- *
- * **Details**
- *
- * This function starts with an `initial` value and applies `f` recursively to
- * generate the next state at each step. The schedule continues indefinitely,
- * producing a stream of values by unfolding the state over time.
- *
- * @since 2.0.0
- * @category Constructors
- */
-export const unfold: <A>(initial: A, f: (a: A) => A) => Schedule<A> = internal.unfold
-
-/**
- * Combines two schedules, continuing execution as long as at least one of them
- * allows it, using the shorter delay.
- *
- * **Details**
- *
- * This function combines two schedules into a single schedule that executes in
- * parallel. If either schedule allows continuation, the merged schedule
- * continues. When both schedules produce delays, the schedule selects the
- * shorter delay to determine the next step.
- *
- * The output of the new schedule is a tuple containing the outputs of both
- * schedules. The input type is the intersection of both schedules' input types.
- *
- * This is useful for scenarios where multiple scheduling conditions should be
- * considered, ensuring execution proceeds if at least one schedule permits it.
- *
- * @see {@link unionWith} If you need to use a custom merge function.
- *
- * @since 2.0.0
- * @category Composition
- */
-export const union: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<[Out, Out2], In & In2, R | R2>
-} = internal.union
-
-/**
- * Combines two schedules, continuing execution as long as at least one of them
- * wants to continue, merging their intervals using a custom merge function.
- *
- * **Details**
- *
- * This function allows you to combine two schedules while defining how their
- * intervals should be merged. Unlike {@link union}, which simply selects the
- * shorter delay, this function lets you specify a custom merging strategy for
- * the schedules’ intervals.
- *
- * The merged schedule continues execution as long as at least one of the input
- * schedules allows it. The next interval is determined by applying the provided
- * merge function to the intervals of both schedules.
- *
- * The output of the resulting schedule is a tuple containing the outputs of
- * both schedules. The input type is the intersection of both schedules' input
- * types.
- *
- * @see {@link union} If you need to use the shorter delay.
- *
- * @since 2.0.0
- * @category Composition
- */
-export const unionWith: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<[Out, Out2], In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>,
-    f: (x: Intervals.Intervals, y: Intervals.Intervals) => Intervals.Intervals
-  ): Schedule<[Out, Out2], In & In2, R | R2>
-} = internal.unionWith
-
-/**
- * Returns a new schedule that stops execution when the given predicate on the
- * input evaluates to `true`.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that it continues executing
- * only while the provided predicate returns `false` for incoming inputs. Once
- * an input satisfies the condition, the schedule terminates immediately.
- *
- * @see {@link untilInputEffect} If you need to use an effectful predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const untilInput: {
-  <In>(f: Predicate<In>): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<In>): Schedule<Out, In, R>
-} = internal.untilInput
-
-/**
- * Returns a new schedule that stops execution when the given effectful
- * predicate on the input evaluates to `true`.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that it continues executing
- * only while the provided effectful predicate returns `false` for incoming
- * inputs. The predicate is an `Effect`, meaning it can involve asynchronous
- * computations or dependency-based logic.
- *
- * @see {@link untilInput} If you need to use a pure predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const untilInputEffect: {
-  <In, R2>(
-    f: (input: In) => Effect.Effect<boolean, never, R2>
-  ): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, R2>(
-    self: Schedule<Out, In, R>,
-    f: (input: In) => Effect.Effect<boolean, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.untilInputEffect
-
-/**
- * Returns a new schedule that stops execution when the given predicate on the
- * output evaluates to `true`.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that it only continues
- * executing while the given predicate returns false for its output values. Once
- * the predicate evaluates to `true`, execution stops.
- *
- * The output of the resulting schedule remains the same, but its duration is
- * now constrained by a stopping condition based on its own output.
- *
- * @see {@link untilOutputEffect} If you need to use an effectful predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const untilOutput: {
-  <Out>(f: Predicate<Out>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<Out>): Schedule<Out, In, R>
-} = internal.untilOutput
-
-/**
- * Returns a new schedule that stops execution when the given effectful
- * predicate on the output evaluates to `true`.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that it only continues
- * executing while the provided effectful predicate returns `false` for its
- * output values. Once the predicate returns `true`, execution stops.
- *
- * @see {@link untilOutput} If you need to use a pure predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const untilOutputEffect: {
-  <Out, R2>(
-    f: (out: Out) => Effect.Effect<boolean, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, R2>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out) => Effect.Effect<boolean, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.untilOutputEffect
-
-/**
- * Returns a new schedule that limits execution to a fixed duration.
- *
- * **Details**
- *
- * This function modifies an existing schedule to stop execution after a
- * specified duration has passed. The schedule continues as normal until the
- * duration is reached, at which point it stops automatically.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
+ * Returns a new `Schedule` that limits an existing schedule by elapsed
+ * duration, number of outputs, or both.
+ *
+ * **When to use**
+ *
+ * Use to bound an existing schedule while preserving its output and delay
+ * behavior. When both `duration` and `times` are specified, the schedule
+ * stops as soon as either limit is reached.
+ *
+ * **Gotchas**
+ *
+ * The `times` option limits schedule outputs. When used with repeat or retry,
+ * the effect is evaluated once before the schedule is stepped, so the total
+ * number of evaluations can be one greater than the configured number of
+ * outputs.
+ *
+ * The `duration` option is based on the elapsed time observed by the schedule
+ * step. Long-running effects can cause the duration limit to be detected on the
+ * following schedule step.
+ *
+ * **Example** (Limiting by duration and recurrence count)
+ *
+ * ```ts
+ * import { Console, Data, Effect, Schedule } from "effect"
+ *
+ * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
+ *
+ * // Limit an infinite schedule to five recurrences
+ * const limitedHeartbeat = Schedule.spaced("1 second").pipe(
+ *   Schedule.upTo({ times: 5 })
+ * )
+ *
+ * const heartbeatProgram = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Heartbeat")
+ *       return "pulse"
+ *     }),
+ *     limitedHeartbeat
+ *   )
+ *
+ *   yield* Console.log("Heartbeat sequence completed")
+ * })
+ *
+ * // Limit retry attempts by both count and elapsed time
+ * const limitedRetry = Schedule.exponential("100 millis").pipe(
+ *   Schedule.upTo({
+ *     duration: "5 seconds",
+ *     times: 3
+ *   })
+ * )
+ *
+ * const retryProgram = Effect.gen(function*() {
+ *   let attempt = 0
+ *
+ *   const result = yield* Effect.retry(
+ *     Effect.gen(function*() {
+ *       attempt++
+ *       yield* Console.log(`Attempt ${attempt}`)
+ *
+ *       if (attempt < 5) { // Will fail more than 3 times
+ *         return yield* Effect.fail(new RetryAttemptError({ message: `Attempt ${attempt} failed` }))
+ *       }
+ *
+ *       return `Success on attempt ${attempt}`
+ *     }),
+ *     limitedRetry
+ *   )
+ *
+ *   yield* Console.log(`Result: ${result}`)
+ * }).pipe(
+ *   Effect.catch((error: unknown) =>
+ *     Console.log(`Failed after limited retries: ${String(error)}`)
+ *   )
+ * )
+ *
+ * // Empty options leave the schedule unchanged
+ * const unchanged = Schedule.fixed("500 millis").pipe(
+ *   Schedule.upTo({})
+ * )
+ * ```
+ *
+ * @category filtering
+ * @since 4.0.0
  */
 export const upTo: {
-  (duration: Duration.DurationInput): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, duration: Duration.DurationInput): Schedule<Out, In, R>
-} = internal.upTo
+  (options: {
+    readonly duration?: Duration.Input | undefined
+    readonly times?: number | undefined
+  }): <Output, Input, Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Output, Input, Error, Env>
+  <Output, Input, Error, Env>(
+    self: Schedule<Output, Input, Error, Env>,
+    options: {
+      readonly duration?: Duration.Input | undefined
+      readonly times?: number | undefined
+    }
+  ): Schedule<Output, Input, Error, Env>
+} = dual(2, <Output, Input, Error, Env>(
+  self: Schedule<Output, Input, Error, Env>,
+  options: {
+    readonly duration?: Duration.Input | undefined
+    readonly times?: number | undefined
+  }
+): Schedule<Output, Input, Error, Env> => {
+  const duration = options.duration === undefined ? undefined : Duration.fromInputUnsafe(options.duration)
+  return while_(self, ({ attempt, elapsed }) =>
+    effect.succeed(
+      (options.times === undefined || attempt <= options.times) &&
+        (duration === undefined || Duration.isLessThanOrEqualTo(Duration.millis(elapsed), duration))
+    ))
+})
+
+const while_: {
+  <Input, Output, Error2 = never, Env2 = never>(
+    predicate: (
+      metadata: Metadata<Output, Input>
+    ) => boolean | Effect<boolean, Error2, Env2>
+  ): <Error, Env>(
+    self: Schedule<Output, Input, Error, Env>
+  ) => Schedule<Output, Input, Error | Error2, Env | Env2>
+  <Output, Input, Error, Env, Error2 = never, Env2 = never>(
+    self: Schedule<Output, Input, Error, Env>,
+    predicate: (
+      metadata: Metadata<Output, Input>
+    ) => boolean | Effect<boolean, Error2, Env2>
+  ): Schedule<Output, Input, Error | Error2, Env | Env2>
+} = dual(2, <Output, Input, Error, Env, Error2 = never, Env2 = never>(
+  self: Schedule<Output, Input, Error, Env>,
+  predicate: (
+    metadata: Metadata<Output, Input>
+  ) => boolean | Effect<boolean, Error2, Env2>
+): Schedule<Output, Input, Error | Error2, Env | Env2> =>
+  fromStep(effect.map(toStep(self), (step) => {
+    const meta = metadataFn()
+    return (now, input) =>
+      effect.flatMap(step(now, input), (result) => {
+        const [output, duration] = result
+        const eff = predicate({ ...meta(now, input), output, duration })
+        return effect.flatMap(
+          isEffect(eff) ? eff : effect.succeed(eff),
+          (check) => (check ? effect.succeed(result) : Cause.done(output))
+        )
+      })
+  })))
+
+export {
+  /**
+   * Returns a new schedule that continues while the predicate returns `true`.
+   *
+   * **When to use**
+   *
+   * Use to stop an existing schedule based on its full metadata, such as the
+   * current input, output, attempt, delay, or elapsed time.
+   *
+   * **Details**
+   *
+   * The predicate receives `Metadata`, may return `boolean` or an
+   * `Effect<boolean, ...>`, preserves the output and delay when it returns
+   * `true`, and stops the schedule when it returns `false`.
+   *
+   * @see {@link upTo} for stopping after a fixed number of schedule outputs
+   *
+   * @category filtering
+   * @since 4.0.0
+   */
+  while_ as while
+}
 
 /**
- * Returns a new schedule that continues execution as long as the given
- * predicate on the input is true.
+ * Schedule that divides the timeline to `interval`-long windows, and sleeps
+ * until the nearest window boundary every time it recurs.
  *
  * **Details**
  *
- * This function modifies an existing schedule so that it only continues
- * execution while a specified predicate holds true for its input. If the
- * predicate evaluates to `false` at any step, the schedule stops.
- *
- * @see {@link whileInputEffect} If you need to use an effectful predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const whileInput: {
-  <In>(f: Predicate<In>): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<In>): Schedule<Out, In, R>
-} = internal.whileInput
-
-/**
- * Returns a new schedule that continues execution for as long as the given
- * effectful predicate on the input evaluates to `true`.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that it only continues
- * execution while an effectful predicate holds true for its input. If the
- * predicate evaluates to `false` at any step, the schedule stops.
- *
- * @see {@link whileInput} If you need to use a pure predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const whileInputEffect: {
-  <In, R2>(
-    f: (input: In) => Effect.Effect<boolean, never, R2>
-  ): <Out, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, R2>(
-    self: Schedule<Out, In, R>,
-    f: (input: In) => Effect.Effect<boolean, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.whileInputEffect
-
-/**
- * Returns a new schedule that continues execution for as long as the given
- * predicate on the output evaluates to `true`.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that it only continues
- * execution while a provided condition holds true for its output. If the
- * predicate returns `false`, the schedule stops.
- *
- * @see {@link whileOutputEffect} If you need to use an effectful predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const whileOutput: {
-  <Out>(f: Predicate<Out>): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R>
-  <Out, In, R>(self: Schedule<Out, In, R>, f: Predicate<Out>): Schedule<Out, In, R>
-} = internal.whileOutput
-
-/**
- * Returns a new schedule that continues execution for as long as the given
- * effectful predicate on the output evaluates to `true`.
- *
- * **Details**
- *
- * This function modifies an existing schedule so that it only continues
- * execution while an effectful condition holds true for its output. If the
- * effectful predicate returns `false`, the schedule stops.
- *
- * @see {@link whileOutput} If you need to use a pure predicate.
- *
- * @since 2.0.0
- * @category Recurrence Conditions
- */
-export const whileOutputEffect: {
-  <Out, R2>(
-    f: (out: Out) => Effect.Effect<boolean, never, R2>
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In, R2 | R>
-  <Out, In, R, R2>(
-    self: Schedule<Out, In, R>,
-    f: (out: Out) => Effect.Effect<boolean, never, R2>
-  ): Schedule<Out, In, R | R2>
-} = internal.whileOutputEffect
-
-/**
- * Creates a schedule that divides time into fixed `interval`-long windows,
- * triggering execution at the start of each new window.
- *
- * **Details**
- *
- * This function produces a schedule that waits until the next time window
- * boundary before executing. Each window spans a fixed duration specified by
- * `interval`. If an action completes midway through a window, the schedule
- * waits until the next full window starts before proceeding.
- *
- * For example, `windowed(Duration.seconds(10))` would produce a schedule as
+ * For example, `Schedule.windowed("10 seconds")` would produce a schedule as
  * follows:
  *
  * ```text
@@ -2132,88 +2065,122 @@ export const whileOutputEffect: {
  * |action------|sleep---|act|-sleep|action----|
  * ```
  *
- * @since 2.0.0
- * @category Constructors
- */
-export const windowed: (interval: Duration.DurationInput) => Schedule<number> = internal.windowed
-
-/**
- * The same as {@link intersect} but ignores the right output.
+ * **Example** (Repeating on aligned windows)
  *
- * @since 2.0.0
- * @category Composition
- */
-export const zipLeft: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<Out, In & In2, R | R2>
-} = internal.zipLeft
-
-/**
- * The same as {@link intersect} but ignores the left output.
+ * ```ts
+ * import { Console, Effect, Schedule } from "effect"
  *
- * @since 2.0.0
- * @category Composition
- */
-export const zipRight: {
-  <Out2, In2, R2>(
-    that: Schedule<Out2, In2, R2>
-  ): <Out, In, R>(self: Schedule<Out, In, R>) => Schedule<Out2, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>
-  ): Schedule<Out2, In & In2, R | R2>
-} = internal.zipRight
-
-/**
- * Equivalent to {@link intersect} followed by {@link map}.
+ * // Execute tasks at regular intervals aligned to window boundaries
+ * const windowSchedule = Schedule.windowed("5 seconds")
  *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Window task executed")
+ *       return "window-task"
+ *     }),
+ *     windowSchedule.pipe(Schedule.upTo({ times: 4 }))
+ *   )
+ * })
+ * ```
+ *
+ * @category constructors
  * @since 2.0.0
- * @category Composition
  */
-export const zipWith: {
-  <Out2, In2, R2, Out, Out3>(
-    that: Schedule<Out2, In2, R2>,
-    f: (out: Out, out2: Out2) => Out3
-  ): <In, R>(self: Schedule<Out, In, R>) => Schedule<Out3, In & In2, R2 | R>
-  <Out, In, R, Out2, In2, R2, Out3>(
-    self: Schedule<Out, In, R>,
-    that: Schedule<Out2, In2, R2>,
-    f: (out: Out, out2: Out2) => Out3
-  ): Schedule<Out3, In & In2, R | R2>
-} = internal.zipWith
-
-/**
- * @since 3.15.0
- * @category models
- */
-export interface CurrentIterationMetadata {
-  readonly _: unique symbol
+export const windowed = (interval: Duration.Input): Schedule<number> => {
+  const window = Duration.toMillis(Duration.fromInputUnsafe(interval))
+  return fromStepWithMetadata(effect.succeed((meta) =>
+    effect.sync(() => [
+      meta.attempt - 1,
+      window === 0 ? Duration.zero : Duration.millis(window - (meta.elapsed % window))
+    ])
+  ))
 }
 
 /**
- * @since 3.15.0
- * @category models
+ * Returns a new `Schedule` that will recur forever.
+ *
+ * **Details**
+ *
+ * The output of the schedule is the current count of its repetitions thus far
+ * (i.e. `0, 1, 2, ...`).
+ *
+ * **Example** (Repeating forever)
+ *
+ * ```ts
+ * import { Console, Effect, Schedule } from "effect"
+ *
+ * // A schedule that runs forever with no delay
+ * const infiniteSchedule = Schedule.forever
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.repeat(
+ *     Effect.gen(function*() {
+ *       yield* Console.log("Running forever...")
+ *       return "continuous-task"
+ *     }),
+ *     infiniteSchedule.pipe(Schedule.upTo({ times: 5 })) // Limit for demo
+ *   )
+ * })
+ * ```
+ *
+ * @category constructors
+ * @since 2.0.0
  */
-export interface IterationMetadata {
-  readonly input: unknown
-  readonly output: unknown
-  readonly recurrence: number
-  readonly start: number
-  readonly now: number
-  readonly elapsed: Duration.Duration
-  readonly elapsedSincePrevious: Duration.Duration
+export const forever: Schedule<number> = spaced(Duration.zero)
+
+const constIdentity = fromStep(
+  effect.succeed((_now, input: unknown) => effect.succeed([input, Duration.zero] as [unknown, Duration.Duration]))
+)
+
+const identity_ = <A>(): Schedule<A, A> => constIdentity as Schedule<A, A>
+
+export {
+  /**
+   * Creates a schedule that always recurs, passing inputs directly as outputs.
+   *
+   * **When to use**
+   *
+   * Use when you need an infinite schedule that preserves input values as
+   * outputs.
+   *
+   * **Details**
+   *
+   * This schedule runs indefinitely, returning each input value as its output
+   * without modification. It effectively acts as a pass-through that simply
+   * echoes its input values at each step.
+   *
+   * @see {@link forever} for an infinite schedule that returns incrementing step counts
+   * @category constructors
+   * @since 2.0.0
+   */
+  identity_ as identity
 }
 
 /**
- * @since 3.15.0
- * @category models
+ * Sets the input type of the provided schedule without altering its behavior.
+ *
+ * **When to use**
+ *
+ * Use to adapt a schedule that does not depend on its input values.
+ *
+ * **Details**
+ *
+ * This helper is checked at compile time and does not change the schedule's
+ * runtime behavior.
+ *
+ * **Example** (Setting a schedule input type)
+ *
+ * ```ts
+ * import { Schedule } from "effect"
+ *
+ * const schedule = Schedule.recurs(3).pipe(
+ *   Schedule.setInputType<string>()
+ * )
+ * ```
+ *
+ * @category utility types
+ * @since 4.0.0
  */
-export const CurrentIterationMetadata: Context.Reference<
-  CurrentIterationMetadata,
-  IterationMetadata
-> = internal.CurrentIterationMetadata
+export const setInputType =
+  <T>() => <Output, Error, Env>(self: Schedule<Output, T, Error, Env>): Schedule<Output, T, Error, Env> => self

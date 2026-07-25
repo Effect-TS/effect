@@ -2,9 +2,9 @@ name: Check
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, next-minor, next-major]
+    branches: [main]
   push:
-    branches: [main, next-minor, next-major]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -13,52 +13,183 @@ concurrency:
 permissions: {}
 
 jobs:
-  types:
-    name: Types
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install dependencies
-        uses: ./.github/actions/setup
-      - run: pnpm check
-      - run: pnpm test-types --target '>=5.4'
-
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - run: pnpm circular
       - run: pnpm lint
-      - run: pnpm codegen
-      - name: Check for codegen changes
-        run: git diff --exit-code
+
+  types:
+    name: Types
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - run: pnpm check
+      - run: pnpm test-types --target '>=5.9'
+
+  build:
+    name: Build
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Set strip internals config
+        run: |
+          sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
+      - run: pnpm build
+
+  types-deno:
+    name: Types on Deno
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+        with:
+          deno-version: v2.8.3
+      - name: Set strip internals config
+        run: |
+          sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
+      - run: deno check .
+
+  bundle:
+    name: Bundle
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Clone base ref
+        uses: actions/checkout@v6
+        with:
+          path: base
+          ref: ${{ github.event.pull_request.base.ref }}
+      - name: Set strip internals config
+        run: |
+          sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
+          sed -i 's/"stripInternal": false/"stripInternal": true/' base/tsconfig.base.json
+      - name: Build
+        run: |
+          pnpm build &
+          cd base && pnpm install && pnpm build &
+          wait
+      - name: Compare bundle size
+        run: node ./packages/tools/bundle/src/bin.ts compare --base-dir base/packages/tools/bundle/fixtures
+      - name: Upload stats artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-stats
+          path: stats.txt
+          if-no-files-found: error
 
   test:
-    name: Test (${{ matrix.runtime }} ${{ matrix.shard }})
+    name: Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        shard: [1/4, 2/4, 3/4, 4/4]
-        # runtime: [Node, Bun] # TODO: Re-enable bun test suite after https://github.com/oven-sh/bun/issues/4145 is resolved
-        runtime: [Node]
+        shard: [1/2, 2/2]
+        runtime: [Node, Deno]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - name: Pre-pull test container images
+        run: |
+          docker pull testcontainers/ryuk:0.14.0 &
+          docker pull ghcr.io/tursodatabase/libsql-server:main &
+          docker pull postgres:alpine &
+          docker pull mysql:lts &
+          docker pull vitess/vttestserver:mysql80 &
+          docker pull redis:alpine &
+          wait
+
+      - name: Install dependencies
+        if: matrix.runtime == 'Node'
+        uses: ./.github/actions/setup
+      - name: Test
+        if: matrix.runtime == 'Node'
+        run: pnpm test --shard ${{ matrix.shard }}
+
+      - name: Install dependencies
+        if: matrix.runtime == 'Deno'
+        uses: ./.github/actions/setup
+        with:
+          deno-version: v2.8.3
+      - name: Test
+        if: matrix.runtime == 'Deno'
+        run: deno task test --shard ${{ matrix.shard }}
+
+  docgen:
+    name: Documentation Generation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
       - name: Install dependencies
         uses: ./.github/actions/setup
-      - uses: oven-sh/setup-bun@v1
-        if: matrix.runtime == 'Bun'
-        with:
-          bun-version: 1.0.25
-      - name: Test
-        run: pnpm vitest --shard ${{ matrix.shard }}
-        if: matrix.runtime == 'Node'
-      - name: Test
-        run: bun vitest --shard ${{ matrix.shard }}
-        if: matrix.runtime == 'Bun'
+      - name: Generate Documentation
+        run: pnpm docgen
+
+  ai-docgen:
+    name: AI Documentation Generation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Generate AI Documentation
+        run: pnpm ai-docgen
+      - name: Verify AI Documentation is up-to-date
+        run: |
+          if [ -n "$(git status --short)" ]; then
+            git status --short
+            echo "Run 'pnpm ai-docgen' and commit generated changes."
+            exit 1
+          fi
+
+  circular:
+    name: Circular Dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Check for circular dependencies
+        run: pnpm circular

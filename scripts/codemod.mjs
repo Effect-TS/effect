@@ -1,6 +1,9 @@
 // @ts-check
+// Runs the JSDoc placement codemod used before snapshot and release builds.
+// The transformer keeps exported API docs attached to nested signature/type
+// nodes that can otherwise lose their leading comments during doc generation.
 import * as Glob from "glob"
-import Jscodeshift from "jscodeshift/src/Runner.js"
+import * as Jscodeshift from "jscodeshift/src/Runner.js"
 import * as Path from "node:path"
 
 // Look up files in all workspace packages including those nested in

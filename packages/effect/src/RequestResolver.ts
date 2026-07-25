@@ -1,366 +1,1249 @@
 /**
- * @since 2.0.0
- */
-
-import type { NonEmptyArray } from "./Array.js"
-import * as Context from "./Context.js"
-import * as Effect from "./Effect.js"
-import type * as Either from "./Either.js"
-import type * as Equal from "./Equal.js"
-import type { FiberRef } from "./FiberRef.js"
-import * as core from "./internal/core.js"
-import * as internal from "./internal/dataSource.js"
-import type { Pipeable } from "./Pipeable.js"
-import type * as Request from "./Request.js"
-import type * as Types from "./Types.js"
-
-/**
- * @since 2.0.0
- * @category symbols
- */
-export const RequestResolverTypeId: unique symbol = core.RequestResolverTypeId
-
-/**
- * @since 2.0.0
- * @category symbols
- */
-export type RequestResolverTypeId = typeof RequestResolverTypeId
-
-/**
- * The `RequestResolver<A, R>` interface requires an environment `R` and handles
- * the execution of requests of type `A`.
+ * Resolves data requests made with `Effect.request`.
  *
- * Implementations must provide a `runAll` method, which processes a collection
- * of requests and produces an effect that fulfills these requests. Requests are
- * organized into a `Array<Array<A>>`, where the outer `Array` groups requests
- * into batches that are executed sequentially, and each inner `Array` contains
- * requests that can be executed in parallel. This structure allows
- * implementations to analyze all incoming requests collectively and optimize
- * query execution accordingly.
- *
- * Implementations are typically specialized for a subtype of `Request<A, E>`.
- * However, they are not strictly limited to these subtypes as long as they can
- * map any given request type to `Request<A, E>`. Implementations should inspect
- * the collection of requests to identify the needed information and execute the
- * corresponding queries. It is imperative that implementations resolve all the
- * requests they receive. Failing to do so will lead to a `QueryFailure` error
- * during query execution.
+ * A `Request` describes what a fiber needs, while a `RequestResolver` describes
+ * how to collect request entries, group them into batches, run backend work,
+ * and complete each waiting entry. This module includes constructors for common
+ * resolver shapes and tools for controlling batching, grouping, delays,
+ * tracing, caching, racing, hooks around resolver execution, and persistence.
  *
  * @since 2.0.0
+ */
+import type { NonEmptyArray } from "./Array.ts"
+import * as Arr from "./Array.ts"
+import * as Cache from "./Cache.ts"
+import * as Context from "./Context.ts"
+import type * as Duration from "./Duration.ts"
+import * as Effect from "./Effect.ts"
+import * as Exit from "./Exit.ts"
+import { constTrue, dual, identity } from "./Function.ts"
+import { exitFail, exitSucceed } from "./internal/core.ts"
+import * as effect from "./internal/effect.ts"
+import * as internal from "./internal/request.ts"
+import * as Iterable from "./Iterable.ts"
+import * as MutableHashMap from "./MutableHashMap.ts"
+import { type Pipeable, pipeArguments } from "./Pipeable.ts"
+import { hasProperty } from "./Predicate.ts"
+import type * as Request from "./Request.ts"
+import type * as Schema from "./Schema.ts"
+import type { Scope } from "./Scope.ts"
+import * as Tracer from "./Tracer.ts"
+import type * as Types from "./Types.ts"
+import type * as Persistable from "./unstable/persistence/Persistable.ts"
+import * as Persistence from "./unstable/persistence/Persistence.ts"
+
+const TypeId = "~effect/RequestResolver"
+
+/**
+ * A resolver that executes and completes batched `Request` entries.
+ *
+ * **Details**
+ *
+ * A resolver controls how requests are grouped, delayed, optionally
+ * pre-checked, and finally run. Its `runAll` method receives a non-empty batch
+ * of `Request.Entry` values for a single batch key and must complete every
+ * received entry, usually by calling `completeUnsafe` or one of the `Request`
+ * completion helpers.
+ *
+ * **Gotchas**
+ *
+ * If a resolver finishes without completing an entry, the waiting request fails
+ * because the resolver did not supply a result.
+ *
+ * **Example** (Defining a request resolver)
+ *
+ * ```ts
+ * import { Effect, Exit, RequestResolver } from "effect"
+ * import type { Request } from "effect"
+ *
+ * interface GetUserRequest extends Request.Request<string, Error> {
+ *   readonly _tag: "GetUserRequest"
+ *   readonly id: number
+ * }
+ *
+ * // In practice, you would typically use RequestResolver.make() instead
+ * const resolver = RequestResolver.make<GetUserRequest>((entries) =>
+ *   Effect.sync(() => {
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed(`User ${entry.request.id}`))
+ *     }
+ *   })
+ * )
+ * ```
+ *
  * @category models
+ * @since 2.0.0
  */
-export interface RequestResolver<in A, out R = never> extends RequestResolver.Variance<A, R>, Equal.Equal, Pipeable {
-  /**
-   * Execute a collection of requests. The outer `Array` represents batches
-   * of requests that must be performed sequentially. The inner `Array`
-   * represents a batch of requests that can be performed in parallel.
-   */
-  runAll(requests: Array<Array<Request.Entry<A>>>): Effect.Effect<void, never, R>
+export interface RequestResolver<in A extends Request.Any> extends RequestResolver.Variance<A>, Pipeable {
+  readonly delay: Effect.Effect<void>
 
   /**
-   * Identify the data source using the specific identifier
+   * Get a batch key for the given request.
    */
-  identified(...identifiers: Array<unknown>): RequestResolver<A, R>
+  batchKey(entry: Request.Entry<A>): unknown
+
+  /**
+   * An optional pre-check function that can be used to filter requests before
+   * they are added to a batch. If the function returns `false`, the request
+   * will not be processed.
+   */
+  readonly preCheck: ((entry: Request.Entry<A>) => boolean) | undefined
+
+  /**
+   * Should the resolver continue collecting requests? Otherwise, it will
+   * immediately execute the collected requests cutting the delay short.
+   */
+  collectWhile(entries: ReadonlySet<Request.Entry<A>>): boolean
+
+  /**
+   * Execute a collection of requests.
+   */
+  runAll(entries: NonEmptyArray<Request.Entry<A>>, key: unknown): Effect.Effect<void, Request.Error<A>>
 }
 
 /**
+ * Namespace containing type-level helpers associated with `RequestResolver`.
+ *
  * @since 2.0.0
  */
 export declare namespace RequestResolver {
   /**
-   * @since 2.0.0
+   * Variance marker carried by every `RequestResolver`.
+   *
+   * **Details**
+   *
+   * This marker preserves the request type accepted by the resolver for
+   * Effect's type-level machinery. Users normally do not implement it directly.
+   *
    * @category models
+   * @since 2.0.0
    */
-  export interface Variance<in A, out R> {
-    readonly [RequestResolverTypeId]: {
+  export interface Variance<in A> {
+    readonly [TypeId]: {
       readonly _A: Types.Contravariant<A>
-      readonly _R: Types.Covariant<R>
     }
   }
 }
 
-/**
- * @since 2.0.0
- * @category utils
- */
-export const contextFromEffect = <R, A extends Request.Request<any, any>>(self: RequestResolver<A, R>) =>
-  Effect.contextWith((_: Context.Context<R>) => provideContext(self, _))
-
-/**
- * @since 2.0.0
- * @category utils
- */
-export const contextFromServices =
-  <Services extends Array<Context.Tag<any, any>>>(...services: Services) =>
-  <R, A extends Request.Request<any, any>>(
-    self: RequestResolver<A, R>
-  ): Effect.Effect<
-    RequestResolver<A, Exclude<R, { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number]>>,
-    never,
-    { [k in keyof Services]: Effect.Effect.Context<Services[k]> }[number]
-  > => Effect.contextWith((_) => provideContext(self as any, Context.pick(...services)(_ as any)))
+const RequestResolverProto = {
+  [TypeId]: {
+    _A: identity,
+    _R: identity
+  },
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
+}
 
 /**
  * Returns `true` if the specified value is a `RequestResolver`, `false` otherwise.
  *
+ * **When to use**
+ *
+ * Use to narrow unknown values before passing them to APIs that require a
+ * `RequestResolver`.
+ *
+ * @see {@link RequestResolver} for the type narrowed by this guard
+ *
+ * @category guards
  * @since 2.0.0
- * @category refinements
  */
-export const isRequestResolver: (u: unknown) => u is RequestResolver<unknown, unknown> = core.isRequestResolver
+export const isRequestResolver = (u: unknown): u is RequestResolver<any> => hasProperty(u, TypeId)
 
 /**
- * Constructs a data source with the specified identifier and method to run
- * requests.
+ * Creates a request resolver with fine-grained
+ * control over its behavior.
  *
- * @since 2.0.0
+ * **When to use**
+ *
+ * Use when you need to supply the resolver batching primitives directly,
+ * including the batch key, optional pre-check, delay effect, collection cutoff,
+ * and batch runner.
+ *
+ * **Details**
+ *
+ * `batchKey` groups request entries, `delay` schedules batch execution,
+ * `collectWhile` can end collection early, and `runAll` receives a non-empty
+ * batch for one key.
+ *
+ * **Gotchas**
+ *
+ * Accepted entries must be completed. If `runAll` succeeds with incomplete
+ * entries, waiting requests fail. If `preCheck` returns `false`, the entry is
+ * not batched, so it must be completed or linked to another completion path.
+ *
+ * @see {@link make} for constructing a resolver from a batch runner
+ * @see {@link makeGrouped} for constructing a resolver that groups requests by key
+ *
  * @category constructors
+ * @since 4.0.0
  */
-export const make: <A, R>(
-  runAll: (requests: Array<Array<A>>) => Effect.Effect<void, never, R>
-) => RequestResolver<A, R> = internal.make
+export const makeWith = <A extends Request.Any>(options: {
+  readonly batchKey: (request: Request.Entry<A>) => unknown
+  readonly preCheck?: ((entry: Request.Entry<A>) => boolean) | undefined
+  readonly delay: Effect.Effect<void>
+  readonly collectWhile: (requests: ReadonlySet<Request.Entry<A>>) => boolean
+  readonly runAll: (entries: NonEmptyArray<Request.Entry<A>>, key: unknown) => Effect.Effect<void, Request.Error<A>>
+}): RequestResolver<A> => {
+  const self = Object.create(RequestResolverProto)
+  self.batchKey = options.batchKey
+  self.preCheck = options.preCheck
+  self.delay = options.delay
+  self.collectWhile = options.collectWhile
+  self.runAll = options.runAll
+  return self
+}
+
+const defaultKeyObject = {}
+const defaultKey = (_request: unknown): unknown => defaultKeyObject
 
 /**
- * Constructs a data source with the specified identifier and method to run
- * requests.
+ * Constructs a request resolver with the specified method to run requests.
  *
- * @since 2.0.0
+ * **Example** (Creating a request resolver)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * // Define a request type
+ * interface GetUserRequest extends Request.Request<string, Error> {
+ *   readonly _tag: "GetUserRequest"
+ *   readonly id: number
+ * }
+ * const GetUserRequest = Request.tagged<GetUserRequest>("GetUserRequest")
+ *
+ * // Create a resolver that handles the requests
+ * const UserResolver = RequestResolver.make<GetUserRequest>((entries) =>
+ *   Effect.sync(() => {
+ *     for (const entry of entries) {
+ *       // Complete each request with a result
+ *       entry.completeUnsafe(Exit.succeed(`User ${entry.request.id}`))
+ *     }
+ *   })
+ * )
+ *
+ * // Use the resolver to handle requests
+ * const getUserEffect = Effect.request(GetUserRequest({ id: 123 }), UserResolver)
+ * ```
+ *
  * @category constructors
+ * @since 2.0.0
  */
-export const makeWithEntry: <A, R>(
-  runAll: (requests: Array<Array<Request.Entry<A>>>) => Effect.Effect<void, never, R>
-) => RequestResolver<A, R> = internal.makeWithEntry
+export const make = <A extends Request.Any>(
+  runAll: (entries: NonEmptyArray<Request.Entry<A>>, key: unknown) => Effect.Effect<void, Request.Error<A>>
+): RequestResolver<A> =>
+  makeWith({
+    batchKey: defaultKey,
+    delay: Effect.yieldNow,
+    collectWhile: constTrue,
+    runAll
+  })
 
 /**
- * Constructs a data source from a function taking a collection of requests.
+ * Constructs a request resolver with the requests grouped by a calculated key.
  *
- * @since 2.0.0
+ * **Details**
+ *
+ * The key can use the Equal trait to determine if two keys are equal.
+ *
+ * **Example** (Grouping requests by key)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * interface GetUserByRole extends Request.Request<string, Error> {
+ *   readonly _tag: "GetUserByRole"
+ *   readonly role: string
+ *   readonly id: number
+ * }
+ * const GetUserByRole = Request.tagged<GetUserByRole>("GetUserByRole")
+ *
+ * // Group requests by role for efficient batch processing
+ * const UserByRoleResolver = RequestResolver.makeGrouped<GetUserByRole, string>({
+ *   key: ({ request }) => request.role,
+ *   resolver: (entries, role) =>
+ *     Effect.sync(() => {
+ *       console.log(`Processing ${entries.length} requests for role: ${role}`)
+ *       for (const entry of entries) {
+ *         entry.completeUnsafe(
+ *           Exit.succeed(`User ${entry.request.id} with role ${role}`)
+ *         )
+ *       }
+ *     })
+ * })
+ * ```
+ *
  * @category constructors
+ * @since 4.0.0
  */
-export const makeBatched: <A extends Request.Request<any, any>, R>(
-  run: (requests: NonEmptyArray<A>) => Effect.Effect<void, never, R>
-) => RequestResolver<A, R> = internal.makeBatched
+export const makeGrouped = <A extends Request.Any, K>(options: {
+  readonly key: (entry: Request.Entry<A>) => K
+  readonly resolver: (entries: NonEmptyArray<Request.Entry<A>>, key: K) => Effect.Effect<void, Request.Error<A>>
+}): RequestResolver<A> =>
+  makeWith({
+    batchKey: hashGroupKey(options.key),
+    delay: Effect.yieldNow,
+    collectWhile: constTrue,
+    runAll: options.resolver as any
+  })
+
+const hashGroupKey = <A, K>(get: (entry: Request.Entry<A>) => K) => {
+  const groupKeys = MutableHashMap.empty<K, K>()
+  return (entry: Request.Entry<A>): unknown => {
+    const key = get(entry)
+    const okey = MutableHashMap.get(groupKeys, key)
+    if (okey._tag === "Some") {
+      return okey.value
+    }
+    MutableHashMap.set(groupKeys, key, key)
+    return key
+  }
+}
 
 /**
- * A data source aspect that executes requests between two effects, `before`
- * and `after`, where the result of `before` can be used by `after`.
+ * Constructs a request resolver from a pure function.
  *
- * @since 2.0.0
- * @category combinators
- */
-export const around: {
-  <A2, R2, X, R3>(
-    before: Effect.Effect<A2, never, R2>,
-    after: (a: A2) => Effect.Effect<X, never, R3>
-  ): <A, R>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
-  <A, R, A2, R2, X, R3>(
-    self: RequestResolver<A, R>,
-    before: Effect.Effect<A2, never, R2>,
-    after: (a: A2) => Effect.Effect<X, never, R3>
-  ): RequestResolver<A, R | R2 | R3>
-} = internal.around
-
-/**
- * A data source aspect that executes requests between two effects, `before`
- * and `after`, where the result of `before` can be used by `after`.
+ * **Example** (Creating a resolver from a pure function)
  *
- * The `before` and `after` effects are provided with the requests being executed.
- *
- * @since 2.0.0
- * @category combinators
- * @example
  * ```ts
  * import { Effect, Request, RequestResolver } from "effect"
  *
- * interface GetUserById extends Request.Request<unknown> {
- *   readonly id: number
+ * interface GetSquareRequest extends Request.Request<number> {
+ *   readonly _tag: "GetSquareRequest"
+ *   readonly value: number
  * }
+ * const GetSquareRequest = Request.tagged<GetSquareRequest>("GetSquareRequest")
  *
- * const resolver = RequestResolver.fromFunction(
- *   (request: GetUserById) => ({ id: request.id, name: "John" })
+ * // Create a resolver from a pure function
+ * const SquareResolver = RequestResolver.fromFunction<GetSquareRequest>(
+ *   (entry) => entry.request.value * entry.request.value
  * )
  *
- * RequestResolver.aroundRequests(
- *   resolver,
- *   (requests) => Effect.log(`got ${requests.length} requests`),
- *   (requests, _) => Effect.log(`finised running ${requests.length} requests`)
+ * // Usage
+ * const getSquareEffect = Effect.request(
+ *   GetSquareRequest({ value: 5 }),
+ *   SquareResolver
  * )
+ * // Will resolve to 25
  * ```
- */
-export const aroundRequests: {
-  <A, A2, R2, X, R3>(
-    before: (requests: ReadonlyArray<Types.NoInfer<A>>) => Effect.Effect<A2, never, R2>,
-    after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
-  ): <R>(self: RequestResolver<A, R>) => RequestResolver<A, R2 | R3 | R>
-  <A, R, A2, R2, X, R3>(
-    self: RequestResolver<A, R>,
-    before: (requests: ReadonlyArray<Types.NoInfer<A>>) => Effect.Effect<A2, never, R2>,
-    after: (requests: ReadonlyArray<Types.NoInfer<A>>, _: A2) => Effect.Effect<X, never, R3>
-  ): RequestResolver<A, R | R2 | R3>
-} = internal.aroundRequests
-
-/**
- * Returns a data source that executes at most `n` requests in parallel.
  *
- * @since 2.0.0
- * @category combinators
- */
-export const batchN: {
-  (n: number): <A, R>(self: RequestResolver<A, R>) => RequestResolver<A, R>
-  <A, R>(self: RequestResolver<A, R>, n: number): RequestResolver<A, R>
-} = internal.batchN
-
-/**
- * Provides this data source with part of its required context.
- *
- * @since 2.0.0
- * @category context
- */
-export const mapInputContext: {
-  <R0, R>(
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A, R0>
-  <R, A extends Request.Request<any, any>, R0>(
-    self: RequestResolver<A, R>,
-    f: (context: Context.Context<R0>) => Context.Context<R>
-  ): RequestResolver<A, R0>
-} = internal.mapInputContext
-
-/**
- * Returns a new data source that executes requests of type `C` using the
- * specified function to transform `C` requests into requests that either this
- * data source or that data source can execute.
- *
- * @since 2.0.0
- * @category combinators
- */
-export const eitherWith: {
-  <A extends Request.Request<any, any>, R2, B extends Request.Request<any, any>, C extends Request.Request<any, any>>(
-    that: RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
-  ): <R>(self: RequestResolver<A, R>) => RequestResolver<C, R2 | R>
-  <
-    R,
-    A extends Request.Request<any, any>,
-    R2,
-    B extends Request.Request<any, any>,
-    C extends Request.Request<any, any>
-  >(
-    self: RequestResolver<A, R>,
-    that: RequestResolver<B, R2>,
-    f: (_: Request.Entry<C>) => Either.Either<Request.Entry<B>, Request.Entry<A>>
-  ): RequestResolver<C, R | R2>
-} = internal.eitherWith
-
-/**
- * Constructs a data source from a pure function.
- *
- * @since 2.0.0
  * @category constructors
+ * @since 2.0.0
  */
-export const fromFunction: <A extends Request.Request<any>>(
-  f: (request: A) => Request.Request.Success<A>
-) => RequestResolver<A> = internal.fromFunction
+export const fromFunction = <A extends Request.Any>(
+  f: (entry: Request.Entry<A>) => Request.Success<A>
+): RequestResolver<A> =>
+  make(
+    (entries) =>
+      Effect.sync(() => {
+        for (let i = 0; i < entries.length; i++) {
+          const entry = entries[i]
+          entry.completeUnsafe(exitSucceed(f(entry)))
+        }
+      })
+  )
 
 /**
- * Constructs a data source from a pure function that takes a list of requests
+ * Constructs a request resolver from a pure function that takes a list of requests
  * and returns a list of results of the same size. Each item in the result
  * list must correspond to the item at the same index in the request list.
  *
- * @since 2.0.0
- * @category constructors
- */
-export const fromFunctionBatched: <A extends Request.Request<any>>(
-  f: (chunk: NonEmptyArray<A>) => Iterable<Request.Request.Success<A>>
-) => RequestResolver<A> = internal.fromFunctionBatched
-
-/**
- * Constructs a data source from an effectual function.
+ * **Example** (Batching pure request handling)
  *
- * @since 2.0.0
+ * ```ts
+ * import { Effect, Request, RequestResolver } from "effect"
+ *
+ * interface GetDoubleRequest extends Request.Request<number> {
+ *   readonly _tag: "GetDoubleRequest"
+ *   readonly value: number
+ * }
+ * const GetDoubleRequest = Request.tagged<GetDoubleRequest>("GetDoubleRequest")
+ *
+ * // Create a resolver that processes multiple requests in a batch
+ * const DoubleResolver = RequestResolver.fromFunctionBatched<GetDoubleRequest>(
+ *   (entries) => entries.map((entry) => entry.request.value * 2)
+ * )
+ *
+ * // Usage with multiple requests
+ * const effects = [1, 2, 3].map((value) =>
+ *   Effect.request(GetDoubleRequest({ value }), DoubleResolver)
+ * )
+ * const batchedEffect = Effect.all(effects) // [2, 4, 6]
+ * ```
+ *
  * @category constructors
+ * @since 2.0.0
  */
-export const fromEffect: <R, A extends Request.Request<any, any>>(
-  f: (a: A) => Effect.Effect<Request.Request.Success<A>, Request.Request.Error<A>, R>
-) => RequestResolver<A, R> = internal.fromEffect
+export const fromFunctionBatched = <A extends Request.Any>(
+  f: (entries: NonEmptyArray<Request.Entry<A>>) => Iterable<Request.Success<A>>
+): RequestResolver<A> =>
+  make(
+    (entries) =>
+      Effect.sync(() => {
+        let i = 0
+        for (const result of f(entries)) {
+          const entry = entries[i++]
+          entry.completeUnsafe(exitSucceed(result))
+        }
+      })
+  )
 
 /**
- * Constructs a data source from a list of tags paired to functions, that takes
+ * Constructs a request resolver from an effectual function.
+ *
+ * **Example** (Creating a resolver from an effectful function)
+ *
+ * ```ts
+ * import { Effect, Request, RequestResolver } from "effect"
+ *
+ * interface GetUserFromAPIRequest extends Request.Request<string> {
+ *   readonly _tag: "GetUserFromAPIRequest"
+ *   readonly id: number
+ * }
+ * const GetUserFromAPIRequest = Request.tagged<GetUserFromAPIRequest>(
+ *   "GetUserFromAPIRequest"
+ * )
+ *
+ * // Create a resolver that uses effects (like HTTP calls)
+ * const UserAPIResolver = RequestResolver.fromEffect<GetUserFromAPIRequest>(
+ *   (entry) =>
+ *     Effect.gen(function*() {
+ *       // Simulate an API call
+ *       yield* Effect.sleep("100 millis")
+ *       // Just return the result without error handling for simplicity
+ *       return `User ${entry.request.id} from API`
+ *     })
+ * )
+ *
+ * // Usage
+ * const getUserEffect = Effect.request(
+ *   GetUserFromAPIRequest({ id: 123 }),
+ *   UserAPIResolver
+ * )
+ * ```
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const fromEffect = <A extends Request.Any>(
+  f: (entry: Request.Entry<A>) => Effect.Effect<Request.Success<A>, Request.Error<A>>
+): RequestResolver<A> => {
+  effect.interruptChildrenPatch() // ensure middleware is registered
+  return make((entries) =>
+    Effect.callback<void>((resume) => {
+      const parent = effect.getCurrentFiber()!
+      let done = 0
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i]
+        const fiber = effect.forkUnsafe(parent as any, f(entry), true)
+        fiber.addObserver((exit) => {
+          entry.completeUnsafe(exit)
+          done++
+          if (done === entries.length) {
+            resume(effect.void)
+          }
+        })
+      }
+    })
+  )
+}
+
+/**
+ * Constructs a request resolver from a list of tags paired to functions, that takes
  * a list of requests and returns a list of results of the same size. Each item
  * in the result list must correspond to the item at the same index in the
  * request list.
  *
- * @since 2.0.0
+ * **Example** (Handling tagged request batches)
+ *
+ * ```ts
+ * import { Effect, RequestResolver } from "effect"
+ * import type { Request } from "effect"
+ *
+ * interface GetUser extends Request.Request<string, Error> {
+ *   readonly _tag: "GetUser"
+ *   readonly id: number
+ * }
+ *
+ * interface GetPost extends Request.Request<string, Error> {
+ *   readonly _tag: "GetPost"
+ *   readonly id: number
+ * }
+ *
+ * type MyRequest = GetUser | GetPost
+ *
+ * // Create a resolver that handles different request types
+ * const MyResolver = RequestResolver.fromEffectTagged<MyRequest>()({
+ *   GetUser: (requests) =>
+ *     Effect.succeed(requests.map((req) => `User ${req.request.id}`)),
+ *   GetPost: (requests) =>
+ *     Effect.succeed(requests.map((req) => `Post ${req.request.id}`))
+ * })
+ * ```
+ *
  * @category constructors
+ * @since 2.0.0
  */
-export const fromEffectTagged: <A extends Request.Request<any, any> & { readonly _tag: string }>() => <
+export const fromEffectTagged = <A extends Request.Any & { readonly _tag: string }>() =>
+<
   Fns extends {
     readonly [Tag in A["_tag"]]: [Extract<A, { readonly _tag: Tag }>] extends [infer Req]
-      ? Req extends Request.Request<infer ReqA, infer ReqE>
-        ? (requests: Array<Req>) => Effect.Effect<Iterable<ReqA>, ReqE, any>
+      ? Req extends Request.Request<infer ReqA, infer ReqE, infer _ReqR> ?
+        (requests: Array<Request.Entry<Req>>) => Effect.Effect<Iterable<ReqA>, ReqE>
       : never
       : never
   }
 >(
   fns: Fns
-) => RequestResolver<A, ReturnType<Fns[keyof Fns]> extends Effect.Effect<infer _A, infer _E, infer R> ? R : never> =
-  internal.fromEffectTagged
+): RequestResolver<A> =>
+  make<A>(
+    (entries): Effect.Effect<void> => {
+      const grouped = new Map<A["_tag"], Array<Request.Entry<A>>>()
+      for (let i = 0, len = entries.length; i < len; i++) {
+        const group = grouped.get(entries[i].request._tag)
+        if (group) {
+          group.push(entries[i])
+        } else {
+          grouped.set(entries[i].request._tag, [entries[i]])
+        }
+      }
+      return Effect.forEach(
+        grouped,
+        ([tag, requests]) =>
+          Effect.matchCause((fns[tag] as any)(requests) as Effect.Effect<Array<any>, unknown, unknown>, {
+            onFailure: (cause) => {
+              for (let i = 0; i < requests.length; i++) {
+                const entry = requests[i]
+                entry.completeUnsafe(exitFail(cause) as any)
+              }
+            },
+            onSuccess: (res) => {
+              for (let i = 0; i < res.length; i++) {
+                const entry = requests[i]
+                entry.completeUnsafe(exitSucceed(res[i]) as any)
+              }
+            }
+          }),
+        { concurrency: "unbounded", discard: true }
+      ) as Effect.Effect<void>
+    }
+  ) as any
 
 /**
- * A data source that never executes requests.
+ * Sets the batch delay effect for this request resolver.
  *
- * @since 2.0.0
- * @category constructors
+ * **Example** (Setting an effectful batch delay)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * interface GetDataRequest extends Request.Request<string> {
+ *   readonly _tag: "GetDataRequest"
+ * }
+ * const GetDataRequest = Request.tagged<GetDataRequest>("GetDataRequest")
+ *
+ * const resolver = RequestResolver.make<GetDataRequest>((entries) =>
+ *   Effect.sync(() => {
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed("data"))
+ *     }
+ *   })
+ * )
+ *
+ * // Set a custom delay effect (e.g., with logging)
+ * const resolverWithCustomDelay = RequestResolver.setDelayEffect(
+ *   resolver,
+ *   Effect.gen(function*() {
+ *     yield* Effect.log("Waiting before processing batch...")
+ *     yield* Effect.sleep("50 millis")
+ *   })
+ * )
+ * ```
+ *
+ * @category delay
+ * @since 4.0.0
  */
-export const never: RequestResolver<never> = internal.never
+export const setDelayEffect: {
+  (delay: Effect.Effect<void>): <A extends Request.Any>(self: RequestResolver<A>) => RequestResolver<A>
+  <A extends Request.Any>(self: RequestResolver<A>, delay: Effect.Effect<void>): RequestResolver<A>
+} = dual(
+  2,
+  <A extends Request.Any>(self: RequestResolver<A>, delay: Effect.Effect<void>): RequestResolver<A> =>
+    makeWith({
+      ...self,
+      delay
+    })
+)
 
 /**
- * Provides this data source with its required context.
+ * Sets the batch delay window for this request resolver to the specified duration.
  *
- * @since 2.0.0
- * @category context
+ * **Example** (Setting a batch delay)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * interface GetDataRequest extends Request.Request<string> {
+ *   readonly _tag: "GetDataRequest"
+ * }
+ * const GetDataRequest = Request.tagged<GetDataRequest>("GetDataRequest")
+ *
+ * const resolver = RequestResolver.make<GetDataRequest>((entries) =>
+ *   Effect.sync(() => {
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed("data"))
+ *     }
+ *   })
+ * )
+ *
+ * // Add a 100ms delay to batch requests together
+ * const delayedResolver = RequestResolver.setDelay(resolver, "100 millis")
+ *
+ * // Can also use number for milliseconds
+ * const delayedResolver2 = RequestResolver.setDelay(resolver, 100)
+ * ```
+ *
+ * @category delay
+ * @since 4.0.0
  */
-export const provideContext: {
-  <R>(
-    context: Context.Context<R>
-  ): <A extends Request.Request<any, any>>(self: RequestResolver<A, R>) => RequestResolver<A>
-  <R, A extends Request.Request<any, any>>(
-    self: RequestResolver<A, R>,
-    context: Context.Context<R>
-  ): RequestResolver<A>
-} = internal.provideContext
+export const setDelay: {
+  (duration: Duration.Input): <A extends Request.Any>(self: RequestResolver<A>) => RequestResolver<A>
+  <A extends Request.Any>(self: RequestResolver<A>, duration: Duration.Input): RequestResolver<A>
+} = dual(
+  2,
+  <A extends Request.Any>(self: RequestResolver<A>, duration: Duration.Input): RequestResolver<A> =>
+    makeWith({
+      ...self,
+      delay: Effect.sleep(duration)
+    })
+)
 
 /**
- * Returns a new data source that executes requests by sending them to this
- * data source and that data source, returning the results from the first data
- * source to complete and safely interrupting the loser.
+ * Wraps request resolver execution between `before` and `after` effects.
  *
- * @since 2.0.0
+ * **Example** (Running effects around request resolution)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * interface GetDataRequest extends Request.Request<string> {
+ *   readonly _tag: "GetDataRequest"
+ * }
+ * const GetDataRequest = Request.tagged<GetDataRequest>("GetDataRequest")
+ *
+ * const resolver = RequestResolver.make<GetDataRequest>((entries) =>
+ *   Effect.sync(() => {
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed("data"))
+ *     }
+ *   })
+ * )
+ *
+ * // Add setup and cleanup around request execution
+ * const resolverWithAround = RequestResolver.around(
+ *   resolver,
+ *   (entries) =>
+ *     Effect.gen(function*() {
+ *       yield* Effect.log(`Starting batch of ${entries.length} requests`)
+ *       return entries.length
+ *     }),
+ *   (entries, initialSize) =>
+ *     Effect.gen(function*() {
+ *       yield* Effect.log(
+ *         `Batch completed with ${entries.length} requests (started with ${initialSize})`
+ *       )
+ *     })
+ * )
+ * ```
+ *
  * @category combinators
+ * @since 2.0.0
+ */
+export const around: {
+  <A extends Request.Any, A2, X>(
+    before: (entries: NonEmptyArray<Request.Entry<NoInfer<A>>>) => Effect.Effect<A2, Request.Error<A>>,
+    after: (entries: NonEmptyArray<Request.Entry<NoInfer<A>>>, a: A2) => Effect.Effect<X, Request.Error<A>>
+  ): (self: RequestResolver<A>) => RequestResolver<A>
+  <A extends Request.Any, A2, X>(
+    self: RequestResolver<A>,
+    before: (entries: NonEmptyArray<Request.Entry<NoInfer<A>>>) => Effect.Effect<A2, Request.Error<A>>,
+    after: (entries: NonEmptyArray<Request.Entry<NoInfer<A>>>, a: A2) => Effect.Effect<X, Request.Error<A>>
+  ): RequestResolver<A>
+} = dual(3, <A extends Request.Any, A2, X>(
+  self: RequestResolver<A>,
+  before: (entries: NonEmptyArray<Request.Entry<NoInfer<A>>>) => Effect.Effect<A2, Request.Error<A>>,
+  after: (entries: NonEmptyArray<Request.Entry<NoInfer<A>>>, a: A2) => Effect.Effect<X, Request.Error<A>>
+): RequestResolver<A> =>
+  makeWith({
+    ...self,
+    runAll: (entries, key) =>
+      Effect.acquireUseRelease(
+        before(entries),
+        () => self.runAll(entries, key),
+        (a) => after(entries, a)
+      )
+  }))
+
+/**
+ * Creates a request resolver that never executes requests.
+ *
+ * **When to use**
+ *
+ * Use as a resolver value for request types that are statically impossible and
+ * should never be issued.
+ *
+ * **Gotchas**
+ *
+ * If this resolver is used for an actual request, the request waits forever
+ * unless the fiber is interrupted.
+ *
+ * @see {@link make} for constructing a resolver that executes batches and completes request entries
+ *
+ * @category constructors
+ * @since 2.0.0
+ */
+export const never: RequestResolver<never> = make(() => Effect.never)
+
+/**
+ * Returns a request resolver that collects at most `n` requests into each
+ * batch.
+ *
+ * **Details**
+ *
+ * When more than `n` requests are waiting for the same resolver and batch key,
+ * the current batch is run and additional requests are collected into later
+ * batches.
+ *
+ * **Example** (Limiting parallel request batches)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * interface GetDataRequest extends Request.Request<string> {
+ *   readonly _tag: "GetDataRequest"
+ *   readonly id: number
+ * }
+ * const GetDataRequest = Request.tagged<GetDataRequest>("GetDataRequest")
+ *
+ * const resolver = RequestResolver.make<GetDataRequest>((entries) =>
+ *   Effect.sync(() => {
+ *     console.log(`Processing batch of ${entries.length} requests`)
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed(`data-${entry.request.id}`))
+ *     }
+ *   })
+ * )
+ *
+ * // Limit batches to maximum 5 requests
+ * const limitedResolver = RequestResolver.batchN(resolver, 5)
+ *
+ * // When more than 5 requests are made, they'll be split into multiple batches
+ * const requests = Array.from(
+ *   { length: 12 },
+ *   (_, i) => Effect.request(GetDataRequest({ id: i }), limitedResolver)
+ * )
+ * ```
+ *
+ * @category combinators
+ * @since 2.0.0
+ */
+export const batchN: {
+  (n: number): <A extends Request.Any>(self: RequestResolver<A>) => RequestResolver<A>
+  <A extends Request.Any>(self: RequestResolver<A>, n: number): RequestResolver<A>
+} = dual(2, <A extends Request.Any>(self: RequestResolver<A>, n: number): RequestResolver<A> =>
+  makeWith({
+    ...self,
+    collectWhile: (requests) => requests.size < n
+  }))
+
+/**
+ * Transforms a request resolver by grouping requests using the specified key
+ * function.
+ *
+ * **Example** (Grouping resolver requests)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * interface GetUserRequest extends Request.Request<string> {
+ *   readonly _tag: "GetUserRequest"
+ *   readonly userId: number
+ *   readonly department: string
+ * }
+ * const GetUserRequest = Request.tagged<GetUserRequest>("GetUserRequest")
+ *
+ * const resolver = RequestResolver.make<GetUserRequest>((entries) =>
+ *   Effect.sync(() => {
+ *     console.log(`Processing ${entries.length} users`)
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed(`User ${entry.request.userId}`))
+ *     }
+ *   })
+ * )
+ *
+ * // Group requests by department for more efficient processing
+ * const groupedResolver = RequestResolver.grouped(
+ *   resolver,
+ *   ({ request }) => request.department
+ * )
+ *
+ * // Requests for the same department will be batched together
+ * const requests = [
+ *   Effect.request(
+ *     GetUserRequest({ userId: 1, department: "Engineering" }),
+ *     groupedResolver
+ *   ),
+ *   Effect.request(
+ *     GetUserRequest({ userId: 2, department: "Engineering" }),
+ *     groupedResolver
+ *   ),
+ *   Effect.request(
+ *     GetUserRequest({ userId: 3, department: "Marketing" }),
+ *     groupedResolver
+ *   )
+ * ]
+ * ```
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const grouped: {
+  <A extends Request.Any, K>(f: (entry: Request.Entry<A>) => K): (self: RequestResolver<A>) => RequestResolver<A>
+  <A extends Request.Any, K>(self: RequestResolver<A>, f: (entry: Request.Entry<A>) => K): RequestResolver<A>
+} = dual(
+  2,
+  <A extends Request.Any, K>(self: RequestResolver<A>, f: (entry: Request.Entry<A>) => K): RequestResolver<A> =>
+    makeWith({
+      ...self,
+      batchKey: hashGroupKey(f)
+    })
+)
+
+/**
+ * Returns a request resolver that sends each batch to both resolvers and
+ * completes with the first resolver to finish.
+ *
+ * **Details**
+ *
+ * The losing resolver run is interrupted after the winning resolver completes
+ * the batch.
+ *
+ * **Example** (Racing request resolvers)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * interface GetDataRequest extends Request.Request<string> {
+ *   readonly _tag: "GetDataRequest"
+ *   readonly id: number
+ * }
+ * const GetDataRequest = Request.tagged<GetDataRequest>("GetDataRequest")
+ *
+ * // Fast resolver (simulating cache)
+ * const fastResolver = RequestResolver.make<GetDataRequest>((entries) =>
+ *   Effect.gen(function*() {
+ *     yield* Effect.sleep("10 millis")
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed(`fast-${entry.request.id}`))
+ *     }
+ *   })
+ * )
+ *
+ * // Slow resolver (simulating database)
+ * const slowResolver = RequestResolver.make<GetDataRequest>((entries) =>
+ *   Effect.gen(function*() {
+ *     yield* Effect.sleep("100 millis")
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed(`slow-${entry.request.id}`))
+ *     }
+ *   })
+ * )
+ *
+ * // Race resolvers - will use whichever completes first
+ * const racingResolver = RequestResolver.race(fastResolver, slowResolver)
+ * ```
+ *
+ * @category combinators
+ * @since 2.0.0
  */
 export const race: {
-  <A2 extends Request.Request<any, any>, R2>(
-    that: RequestResolver<A2, R2>
-  ): <A extends Request.Request<any, any>, R>(self: RequestResolver<A, R>) => RequestResolver<A2 | A, R2 | R>
-  <A extends Request.Request<any, any>, R, A2 extends Request.Request<any, any>, R2>(
-    self: RequestResolver<A, R>,
-    that: RequestResolver<A2, R2>
-  ): RequestResolver<A | A2, R | R2>
-} = internal.race
+  <A2 extends Request.Any>(
+    that: RequestResolver<A2>
+  ): <A extends Request.Any>(self: RequestResolver<A>) => RequestResolver<A2 & A>
+  <A extends Request.Any, A2 extends Request.Any>(
+    self: RequestResolver<A>,
+    that: RequestResolver<A2>
+  ): RequestResolver<A & A2>
+} = dual(2, <A extends Request.Any, A2 extends Request.Any>(
+  self: RequestResolver<A>,
+  that: RequestResolver<A2>
+): RequestResolver<A & A2> =>
+  make(
+    (requests, key) => effect.race(self.runAll(requests, key), that.runAll(requests, key))
+  ))
 
 /**
- * Returns a new data source with a localized FiberRef
+ * Adds a tracing span to the request resolver, which will also add any span
+ * links from the request's.
  *
- * @since 2.0.0
+ * **Example** (Adding a tracing span)
+ *
+ * ```ts
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ *
+ * interface GetDataRequest extends Request.Request<string> {
+ *   readonly _tag: "GetDataRequest"
+ *   readonly id: number
+ * }
+ * const GetDataRequest = Request.tagged<GetDataRequest>("GetDataRequest")
+ *
+ * const resolver = RequestResolver.make<GetDataRequest>((entries) =>
+ *   Effect.sync(() => {
+ *     for (const entry of entries) {
+ *       entry.completeUnsafe(Exit.succeed(`data-${entry.request.id}`))
+ *     }
+ *   })
+ * )
+ *
+ * // Add tracing span with custom name and attributes
+ * const tracedResolver = RequestResolver.withSpan(
+ *   resolver,
+ *   "user-data-resolver",
+ *   {
+ *     attributes: {
+ *       "resolver.type": "user-data",
+ *       "resolver.version": "1.0"
+ *     }
+ *   }
+ * )
+ *
+ * // Spans will automatically include batch size and request links
+ * const effect = Effect.request(GetDataRequest({ id: 123 }), tracedResolver)
+ * ```
+ *
  * @category combinators
+ * @since 4.0.0
  */
-export const locally: {
-  <A>(
-    self: FiberRef<A>,
-    value: A
-  ): <R, B extends Request.Request<any, any>>(use: RequestResolver<B, R>) => RequestResolver<B, R>
-  <R, B extends Request.Request<any, any>, A>(
-    use: RequestResolver<B, R>,
-    self: FiberRef<A>,
-    value: A
-  ): RequestResolver<B, R>
-} = core.resolverLocally
+export const withSpan: {
+  <A extends Request.Any>(
+    name: string,
+    options?: Tracer.SpanOptions | ((entries: NonEmptyArray<Request.Entry<A>>) => Tracer.SpanOptions) | undefined
+  ): (self: RequestResolver<A>) => RequestResolver<A>
+  <A extends Request.Any>(
+    self: RequestResolver<A>,
+    name: string,
+    options?: Tracer.SpanOptions | ((entries: NonEmptyArray<Request.Entry<A>>) => Tracer.SpanOptions) | undefined
+  ): RequestResolver<A>
+} = dual((args) => isRequestResolver(args[0]), <A extends Request.Any>(
+  self: RequestResolver<A>,
+  name: string,
+  options?: Tracer.SpanOptions | ((entries: NonEmptyArray<Request.Entry<A>>) => Tracer.SpanOptions) | undefined
+): RequestResolver<A> =>
+  makeWith({
+    ...self,
+    runAll: (entries, key) =>
+      Effect.suspend(() => {
+        const opts = typeof options === "function" ? options(entries) : options
+        const links = opts?.links ? opts.links.slice() : []
+        const seen = new Set<Tracer.AnySpan>()
+        for (const entry of entries) {
+          const span = Context.getOption(entry.context, Tracer.ParentSpan)
+          if (span._tag === "None" || seen.has(span.value)) continue
+          seen.add(span.value)
+          links.push({ span: span.value, attributes: {} })
+        }
+        return Effect.withSpan(self.runAll(entries, key), name, {
+          ...options,
+          links,
+          attributes: {
+            batchSize: entries.length,
+            ...opts?.attributes
+          }
+        })
+      })
+  }))
+
+/**
+ * Wraps a request resolver in a cache, allowing it to cache results up to a
+ * specified capacity and optional time-to-live.
+ *
+ * **When to use**
+ *
+ * Use to turn a request resolver into a first-class `Cache` when callers need
+ * cache lookup, refresh, invalidation, or inspection around request results.
+ *
+ * **Details**
+ *
+ * The request value is the cache key. Cache misses run the resolver via
+ * `Effect.request`, `timeToLive` receives the request `Exit` and the request,
+ * and `requireServicesAt` controls whether services are required at lookup time
+ * or construction time.
+ *
+ * **Gotchas**
+ *
+ * Cache hits depend on the request value's equality semantics.
+ *
+ * @see {@link withCache} for keeping caching behind a resolver used with `Effect.request`
+ * @see {@link persisted} for storing persistable request results outside process memory
+ * @see {@link Cache.Cache} for operations available on the returned cache
+ *
+ * @category caching
+ * @since 4.0.0
+ */
+export const asCache: {
+  <
+    A extends Request.Any,
+    ServiceMode extends "lookup" | "construction" = never
+  >(options: {
+    readonly capacity: number
+    readonly timeToLive?: ((exit: Request.Result<A>, request: A) => Duration.Input) | undefined
+    readonly requireServicesAt?: ServiceMode | undefined
+  }): (self: RequestResolver<A>) => Effect.Effect<
+    Cache.Cache<
+      A,
+      Request.Success<A>,
+      Request.Error<A>,
+      "construction" extends ServiceMode ? never : Request.Services<A>
+    >,
+    never,
+    "construction" extends ServiceMode ? Request.Services<A> : never
+  >
+  <
+    A extends Request.Any,
+    ServiceMode extends "lookup" | "construction" = never
+  >(self: RequestResolver<A>, options: {
+    readonly capacity: number
+    readonly timeToLive?: ((exit: Request.Result<A>, request: A) => Duration.Input) | undefined
+    readonly requireServicesAt?: ServiceMode | undefined
+  }): Effect.Effect<
+    Cache.Cache<
+      A,
+      Request.Success<A>,
+      Request.Error<A>,
+      "construction" extends ServiceMode ? never : Request.Services<A>
+    >,
+    never,
+    "construction" extends ServiceMode ? Request.Services<A> : never
+  >
+} = dual(2, <
+  A extends Request.Any,
+  ServiceMode extends "lookup" | "construction" = never
+>(self: RequestResolver<A>, options: {
+  readonly capacity: number
+  readonly timeToLive?: ((exit: Request.Result<A>, request: A) => Duration.Input) | undefined
+  readonly requireServicesAt?: ServiceMode | undefined
+}): Effect.Effect<
+  Cache.Cache<
+    A,
+    Request.Success<A>,
+    Request.Error<A>,
+    "construction" extends ServiceMode ? never : Request.Services<A>
+  >,
+  never,
+  "construction" extends ServiceMode ? Request.Services<A> : never
+> =>
+  Cache.makeWith((req: A) => internal.request(req, self), {
+    capacity: options.capacity,
+    timeToLive: options.timeToLive as any,
+    requireServicesAt: options.requireServicesAt ?? "lookup" as ServiceMode
+  }) as any)
+
+/**
+ * Adds a bounded in-memory cache to a request resolver.
+ *
+ * **When to use**
+ *
+ * Use to reuse completed results for repeated equal request values while still
+ * passing a `RequestResolver` to `Effect.request`.
+ *
+ * **Details**
+ *
+ * Running the returned effect creates the cache and returns a wrapped resolver.
+ * The cache stores completed success or failure results by request equality up
+ * to `capacity`. The `strategy` option controls eviction order and defaults to
+ * `"lru"`; `"fifo"` keeps insertion order.
+ *
+ * **Gotchas**
+ *
+ * Entries do not expire by time, and completed failures are cached the same as
+ * successes. Request equality controls cache hits.
+ *
+ * @see {@link asCache} for exposing the resolver as a `Cache` with time-to-live and service lookup controls
+ * @see {@link persisted} for backing persistable requests with the configured persistence store
+ *
+ * @category caching
+ * @since 4.0.0
+ */
+export const withCache: {
+  <A extends Request.Any>(options: {
+    readonly capacity: number
+    readonly strategy?: "lru" | "fifo" | undefined
+  }): (self: RequestResolver<A>) => Effect.Effect<RequestResolver<A>>
+  <A extends Request.Any>(self: RequestResolver<A>, options: {
+    readonly capacity: number
+    readonly strategy?: "lru" | "fifo" | undefined
+  }): Effect.Effect<RequestResolver<A>>
+} = dual(2, <A extends Request.Any>(self: RequestResolver<A>, options: {
+  readonly capacity: number
+  readonly strategy?: "lru" | "fifo" | undefined
+}): Effect.Effect<RequestResolver<A>> =>
+  Effect.sync(() => {
+    const strategy = options.strategy ?? "lru"
+    const cache = MutableHashMap.empty<A, {
+      readonly entry: Request.Entry<A>
+      exit: Request.Result<A> | undefined
+    }>()
+    return makeWith({
+      ...self,
+      runAll(entries, key) {
+        return Effect.onExit(self.runAll(entries, key), () => {
+          let toRemove = MutableHashMap.size(cache) - options.capacity
+          if (toRemove <= 0) return Effect.void
+          for (const k of MutableHashMap.keys(cache)) {
+            MutableHashMap.remove(cache, k)
+            toRemove--
+            if (toRemove <= 0) break
+          }
+          return Effect.void
+        })
+      },
+      preCheck(entry) {
+        const ocached = MutableHashMap.get(cache, entry.request)
+        if (ocached._tag === "None") {
+          const cached = { entry, exit: undefined as Request.Result<A> | undefined }
+          MutableHashMap.set(cache, entry.request, cached)
+          const prevComplete = entry.completeUnsafe
+          entry.completeUnsafe = function(exit) {
+            cached.exit = exit as any
+            prevComplete(exit)
+          }
+          return true
+        }
+        const cached = ocached.value
+        if (cached.exit) {
+          if (strategy === "lru") {
+            MutableHashMap.remove(cache, cached.entry.request)
+            MutableHashMap.set(cache, cached.entry.request, cached)
+          }
+          entry.completeUnsafe(cached.exit as any)
+        } else {
+          cached.entry.uninterruptible = true
+          const prevComplete = cached.entry.completeUnsafe
+          cached.entry.completeUnsafe = function(exit) {
+            prevComplete(exit)
+            entry.completeUnsafe(exit)
+          }
+        }
+        return false
+      }
+    })
+  }))
+
+/**
+ * Wraps a request resolver with persistent storage for persistable requests.
+ *
+ * **When to use**
+ *
+ * Use to keep a `RequestResolver` interface while reusing completed
+ * `Persistable` request results through a `Persistence` store.
+ *
+ * **Details**
+ *
+ * Cached results are loaded from the configured persistence store before
+ * running the underlying resolver. Missing entries are resolved normally and
+ * written back to the store. Entries marked stale by `staleWhileRevalidate`
+ * receive the stored result and are also resolved again so the refreshed result
+ * can be written back to the store. Creating the persisted resolver requires
+ * `Persistence.Persistence` and `Scope`.
+ *
+ * @see {@link withCache} for in-memory resolver caching that does not require persistable request values or a persistence store
+ * @see {@link asCache} for exposing resolver results through a `Cache` instead of returning another resolver
+ *
+ * @category Persistence
+ * @since 4.0.0
+ */
+export const persisted: {
+  <A extends Request.Request<any, Persistence.PersistenceError | Schema.SchemaError, any> & Persistable.Any>(
+    options: {
+      readonly storeId: string
+      readonly timeToLive?: ((exit: Request.Result<A>, request: A) => Duration.Input) | undefined
+      readonly staleWhileRevalidate?: ((exit: Request.Result<A>, request: A) => boolean) | undefined
+    }
+  ): (self: RequestResolver<A>) => Effect.Effect<
+    RequestResolver<A>,
+    never,
+    Persistence.Persistence | Scope
+  >
+  <
+    A extends Request.Request<any, Persistence.PersistenceError | Schema.SchemaError, any> & Persistable.Any
+  >(
+    self: RequestResolver<A>,
+    options: {
+      readonly storeId: string
+      readonly timeToLive?: ((exit: Request.Result<A>, request: A) => Duration.Input) | undefined
+      readonly staleWhileRevalidate?: ((exit: Request.Result<A>, request: A) => boolean) | undefined
+    }
+  ): Effect.Effect<
+    RequestResolver<A>,
+    never,
+    Persistence.Persistence | Scope
+  >
+} = dual(
+  2,
+  Effect.fnUntraced(function*<
+    A extends Request.Request<any, Persistence.PersistenceError | Schema.SchemaError, any> & Persistable.Any
+  >(
+    self: RequestResolver<A>,
+    options: {
+      readonly storeId: string
+      readonly timeToLive?: ((exit: Request.Result<A>, request: A) => Duration.Input) | undefined
+      readonly staleWhileRevalidate?: ((exit: Request.Result<A>, request: A) => boolean) | undefined
+    }
+  ) {
+    const store = yield* (yield* Persistence.Persistence).make(options as any)
+    return makeWith<A>({
+      ...self,
+      runAll: Effect.fnUntraced(function*(entries, key) {
+        const results = yield* (store.getMany(Iterable.map(entries, (_) => _.request)).pipe(
+          Effect.provideContext(entries[0].context)
+        ) as Effect.Effect<
+          Array<Exit.Exit<unknown, unknown> | undefined>,
+          Request.Error<A>
+        >)
+        const leftover: Array<Request.Entry<A>> = []
+        const toPersist = new Map<A, Request.Result<A>>()
+        for (let i = 0; i < results.length; i++) {
+          const entry = entries[i]
+          const exit = results[i]
+          if (
+            exit === undefined ||
+            (options.staleWhileRevalidate && options.staleWhileRevalidate(exit as any, entry.request))
+          ) {
+            const prevComplete = entry.completeUnsafe
+            entry.completeUnsafe = function(exit) {
+              toPersist.set(entry.request, exit as any)
+              prevComplete(exit)
+            }
+            leftover.push(entry)
+            if (exit === undefined) continue
+          }
+          entry.completeUnsafe(exit as any)
+        }
+        if (!Arr.isArrayNonEmpty(leftover)) {
+          return
+        }
+        yield* Effect.catchCause(self.runAll(leftover, key), (cause) => {
+          for (let i = 0; i < leftover.length; i++) {
+            const entry = leftover[i]
+            if (!toPersist.has(entry.request)) continue
+            entry.completeUnsafe(Exit.failCause(cause) as any)
+          }
+          return Effect.void
+        })
+        yield* (store.setMany(toPersist).pipe(
+          Effect.provideContext(entries[0].context)
+        ) as Effect.Effect<void, Request.Error<A>>)
+      })
+    })
+  })
+)

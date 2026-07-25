@@ -1,25 +1,13 @@
-import * as Either from "../Either.js"
-import { dual, identity } from "../Function.js"
-import type {
-  Case,
-  Matcher,
-  MatcherTypeId,
-  Not,
-  SafeRefinement,
-  TypeMatcher,
-  Types,
-  ValueMatcher,
-  When
-} from "../Match.js"
-import * as Option from "../Option.js"
-import { pipeArguments } from "../Pipeable.js"
-import type * as Predicate from "../Predicate.js"
-import type { Unify } from "../Unify.js"
+import { dual, identity } from "../Function.ts"
+import type { Case, Matcher, Not, SafeRefinement, TypeMatcher, Types, ValueMatcher, When } from "../Match.ts"
+import * as Option from "../Option.ts"
+import { pipeArguments } from "../Pipeable.ts"
+import type * as Predicate from "../Predicate.ts"
+import * as Result from "../Result.ts"
+import type { Unify } from "../Unify.ts"
 
 /** @internal */
-export const TypeId: MatcherTypeId = Symbol.for(
-  "@effect/matcher/Matcher"
-) as MatcherTypeId
+export const TypeId = "~effect/match/Match/Matcher"
 
 const TypeMatcherProto: Omit<TypeMatcher<any, any, any, any>, "cases"> = {
   [TypeId]: {
@@ -56,9 +44,7 @@ const ValueMatcherProto: Omit<
   [TypeId]: {
     _input: identity,
     _filters: identity,
-    _remaining: identity,
     _result: identity,
-    _provided: identity,
     _return: identity
   },
   _tag: "ValueMatcher",
@@ -66,19 +52,19 @@ const ValueMatcherProto: Omit<
     this: ValueMatcher<any, any, any, any, any>,
     _case: Case
   ): ValueMatcher<I, R, RA, A, Pr> {
-    if (this.value._tag === "Right") {
+    if (Result.isSuccess(this.value)) {
       return this
     }
 
     if (_case._tag === "When" && _case.guard(this.provided) === true) {
       return makeValueMatcher(
         this.provided,
-        Either.right(_case.evaluate(this.provided))
+        Result.succeed(_case.evaluate(this.provided))
       )
     } else if (_case._tag === "Not" && _case.guard(this.provided) === false) {
       return makeValueMatcher(
         this.provided,
-        Either.right(_case.evaluate(this.provided))
+        Result.succeed(_case.evaluate(this.provided))
       )
     }
 
@@ -91,7 +77,7 @@ const ValueMatcherProto: Omit<
 
 function makeValueMatcher<I, R, RA, A, Pr>(
   provided: Pr,
-  value: Either.Either<Pr, RA>
+  value: Result.Result<Pr, RA>
 ): ValueMatcher<I, R, RA, A, Pr> {
   const matcher = Object.create(ValueMatcherProto)
   matcher.provided = provided
@@ -208,7 +194,7 @@ export const type = <I>(): Matcher<
 /** @internal */
 export const value = <const I>(
   i: I
-): Matcher<I, Types.Without<never>, I, never, I> => makeValueMatcher(i, Either.left(i))
+): Matcher<I, Types.Without<never>, I, never, I> => makeValueMatcher(i, Result.fail(i))
 
 /** @internal */
 export const valueTags: {
@@ -410,7 +396,7 @@ export const discriminators = <D extends string>(field: D) =>
   fields: P
 ) => {
   const predicate = makeWhen(
-    (arg: any) => arg != null && arg[field] in fields,
+    (arg: any) => arg != null && Object.hasOwn(fields, arg[field]),
     (data: any) => (fields as any)[data[field]](data)
   )
 
@@ -535,27 +521,21 @@ export const instanceOf = <A extends abstract new(...args: any) => any>(
 ): SafeRefinement<InstanceType<A>, never> => ((u: unknown) => u instanceof constructor) as any
 
 /** @internal */
-export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
-  constructor: A
-) => SafeRefinement<InstanceType<A>, InstanceType<A>> = instanceOf
-
-/** @internal */
 export const orElse =
   <RA, Ret, F extends (_: RA) => Ret>(f: F) =>
   <I, R, A, Pr>(self: Matcher<I, R, RA, A, Pr, Ret>): [Pr] extends [never] ? (input: I) => Unify<ReturnType<F> | A>
     : Unify<ReturnType<F> | A> =>
   {
-    const result = either(self)
+    const toResult = result(self)
 
-    if (Either.isEither(result)) {
-      // @ts-expect-error
-      return result._tag === "Right" ? result.right : f(result.left)
+    if (Result.isResult(toResult)) {
+      return toResult._tag === "Success" ? toResult.success as any : f(toResult.failure) as any
     }
 
     // @ts-expect-error
     return (input: I) => {
-      const a = result(input)
-      return a._tag === "Right" ? a.right : f(a.left)
+      const a = toResult(input)
+      return Result.isSuccess(a) ? a.success : f(a.failure)
     }
   }
 
@@ -568,10 +548,10 @@ export const orElseAbsurd = <I, R, RA, A, Pr, Ret>(
   })(self)
 
 /** @internal */
-export const either: <I, F, R, A, Pr, Ret>(
+export const result: <I, F, R, A, Pr, Ret>(
   self: Matcher<I, F, R, A, Pr, Ret>
-) => [Pr] extends [never] ? (input: I) => Either.Either<Unify<A>, R>
-  : Either.Either<Unify<A>, R> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
+) => [Pr] extends [never] ? (input: I) => Result.Result<Unify<A>, R>
+  : Result.Result<Unify<A>, R> = (<I, R, RA, A>(self: Matcher<I, R, RA, A, I>) => {
     if (self._tag === "ValueMatcher") {
       return self.value
     }
@@ -579,26 +559,26 @@ export const either: <I, F, R, A, Pr, Ret>(
     const len = self.cases.length
     if (len === 1) {
       const _case = self.cases[0]
-      return (input: I): Either.Either<A, RA> => {
+      return (input: I): Result.Result<A, RA> => {
         if (_case._tag === "When" && _case.guard(input) === true) {
-          return Either.right(_case.evaluate(input))
+          return Result.succeed(_case.evaluate(input))
         } else if (_case._tag === "Not" && _case.guard(input) === false) {
-          return Either.right(_case.evaluate(input))
+          return Result.succeed(_case.evaluate(input))
         }
-        return Either.left(input as any)
+        return Result.fail(input as any)
       }
     }
-    return (input: I): Either.Either<A, RA> => {
+    return (input: I): Result.Result<A, RA> => {
       for (let i = 0; i < len; i++) {
         const _case = self.cases[i]
         if (_case._tag === "When" && _case.guard(input) === true) {
-          return Either.right(_case.evaluate(input))
+          return Result.succeed(_case.evaluate(input))
         } else if (_case._tag === "Not" && _case.guard(input) === false) {
-          return Either.right(_case.evaluate(input))
+          return Result.succeed(_case.evaluate(input))
         }
       }
 
-      return Either.left(input as any)
+      return Result.fail(input as any)
     }
   }) as any
 
@@ -607,21 +587,21 @@ export const option: <I, F, R, A, Pr, Ret>(
   self: Matcher<I, F, R, A, Pr, Ret>
 ) => [Pr] extends [never] ? (input: I) => Option.Option<Unify<A>>
   : Option.Option<Unify<A>> = (<I, A>(self: Matcher<I, any, any, A, I>) => {
-    const toEither = either(self)
-    if (Either.isEither(toEither)) {
-      return Either.match(toEither, {
-        onLeft: () => Option.none(),
-        onRight: Option.some
+    const toResult = result(self)
+    if (Result.isResult(toResult)) {
+      return Result.match(toResult, {
+        onFailure: () => Option.none(),
+        onSuccess: Option.some
       })
     }
     return (input: I): Option.Option<A> =>
-      Either.match((toEither as any)(input), {
-        onLeft: () => Option.none(),
-        onRight: Option.some as any
+      Result.match((toResult as any)(input), {
+        onFailure: () => Option.none(),
+        onSuccess: Option.some as any
       })
   }) as any
 
-const getExhaustiveAbsurdErrorMessage = "effect/Match/exhaustive: absurd"
+const getExhaustiveAbsurdErrorMessage = "effect/match/Match/exhaustive: absurd"
 
 /** @internal */
 export const exhaustive: <I, F, A, Pr, Ret>(
@@ -629,11 +609,11 @@ export const exhaustive: <I, F, A, Pr, Ret>(
 ) => [Pr] extends [never] ? (u: I) => Unify<A> : Unify<A> = (<I, F, A>(
   self: Matcher<I, F, never, A, I>
 ) => {
-  const toEither = either(self as any)
+  const toResult = result(self as any)
 
-  if (Either.isEither(toEither)) {
-    if (toEither._tag === "Right") {
-      return toEither.right
+  if (Result.isResult(toResult)) {
+    if (Result.isSuccess(toResult)) {
+      return toResult.success
     }
 
     throw new Error(getExhaustiveAbsurdErrorMessage)
@@ -641,10 +621,10 @@ export const exhaustive: <I, F, A, Pr, Ret>(
 
   return (u: I): A => {
     // @ts-expect-error
-    const result = toEither(u)
+    const result = toResult(u)
 
-    if (result._tag === "Right") {
-      return result.right as any
+    if (Result.isSuccess(result)) {
+      return result.success as any
     }
 
     throw new Error(getExhaustiveAbsurdErrorMessage)

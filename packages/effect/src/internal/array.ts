@@ -2,7 +2,7 @@
  * @since 2.0.0
  */
 
-import type { NonEmptyArray } from "../Array.js"
+import type { NonEmptyArray } from "../Array.ts"
 
 /** @internal */
-export const isNonEmptyArray = <A>(self: ReadonlyArray<A>): self is NonEmptyArray<A> => self.length > 0
+export const isArrayNonEmpty = <A>(self: ReadonlyArray<A>): self is NonEmptyArray<A> => self.length > 0

@@ -1,5 +1,5 @@
 diff --git a/dist/changesets-assemble-release-plan.cjs.js b/dist/changesets-assemble-release-plan.cjs.js
-index ae379dc5ba7ac6d40bd68c7029aca350bd92d88a..77433a695845105c041c78f7e8dd4a2622a56c0d 100644
+index e07ba6e793021b6cfdec898afca517e293386ddb..88d80a95fbe739996918ef4883601b4388926123 100644
 --- a/dist/changesets-assemble-release-plan.cjs.js
 +++ b/dist/changesets-assemble-release-plan.cjs.js
 @@ -215,7 +215,7 @@ function determineDependents({
@@ -12,7 +12,7 @@ index ae379dc5ba7ac6d40bd68c7029aca350bd92d88a..77433a695845105c041c78f7e8dd4a26
              switch (depType) {
                case "dependencies":
 diff --git a/dist/changesets-assemble-release-plan.esm.js b/dist/changesets-assemble-release-plan.esm.js
-index c183f2e9527403ccdab71a9ac8dfce8931caaac9..b3214ff3aa420455c09b4f72fdcbe351ee086923 100644
+index ea2be567403c4ef94a65f3218ccb683cf5cb4bc1..b62b66628d8887618b02ee35359faf70cbe685ad 100644
 --- a/dist/changesets-assemble-release-plan.esm.js
 +++ b/dist/changesets-assemble-release-plan.esm.js
 @@ -204,7 +204,7 @@ function determineDependents({

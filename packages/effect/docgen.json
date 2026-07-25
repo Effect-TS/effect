@@ -1,6 +1,6 @@
 {
   "$schema": "../../node_modules/@effect/docgen/schema.json",
-  "exclude": ["src/internal/**/*.ts"],
+  "exclude": ["src/internal/**/*.ts", "src/unstable/**/internal/**/*.ts", "src/schema/StandardSchema.ts"],
   "srcLink": "https://github.com/Effect-TS/effect/tree/main/packages/effect/src/",
   "examplesCompilerOptions": {
     "noEmit": true,
@@ -9,19 +9,29 @@
     "moduleResolution": "Bundler",
     "module": "ES2022",
     "target": "ES2022",
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "rewriteRelativeImportExtensions": true,
+    "allowImportingTsExtensions": true,
     "paths": {
       "effect": ["../../../effect/src/index.js"],
       "effect/*": ["../../../effect/src/*.js"],
-      "@effect/ai": ["../../../ai/ai/src/index.js"],
-      "@effect/platform": ["../../../platform/src/index.js"],
-      "@effect/platform/*": ["../../../platform/src/*.js"],
-      "@effect/printer": ["../../../printer/src/index.js"],
-      "@effect/printer/*": ["../../../printer/src/*.js"],
-      "@effect/printer-ansi": ["../../../printer-ansi/src/index.js"],
-      "@effect/printer-ansi/*": ["../../../printer-ansi/src/*.js"],
-      "@effect/typeclass": ["../../../typeclass/src/index.js"],
-      "@effect/typeclass/*": ["../../../typeclass/src/*.js"]
-    }
+      "@effect/platform-node": ["../../../platform-node/src/index.js"],
+      "@effect/platform-node/*": ["../../../platform-node/src/*.js"]
+    },
+    "plugins": [
+      {
+        "name": "@effect/language-service",
+        "includeSuggestionsInTsc": false,
+        "diagnosticSeverity": {
+          "unusedDirective": "off",
+          "floatingEffect": "off",
+          "multipleEffectProvide": "off",
+          "globalErrorInEffectFailure": "off",
+          "unknownInEffectCatch": "off",
+          "globalErrorInEffectCatch": "off",
+          "missingReturnYieldStar": "off"
+        }
+      }
+    ]
   }
 }

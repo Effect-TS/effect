@@ -1,33 +1,54 @@
 /**
- * @since 1.0.0
+ * Browser geolocation integration for Effect programs.
+ *
+ * This module defines a `Geolocation` service backed by
+ * `navigator.geolocation`. The service can read one current position or stream
+ * watched position updates with a sliding buffer. Browser callback failures are
+ * represented as `GeolocationError` values with `PositionUnavailable`,
+ * `PermissionDenied`, or `Timeout` reasons. The module also provides the
+ * browser-backed layer and a `watchPosition` accessor.
+ *
+ * @since 4.0.0
  */
-import { TypeIdError } from "@effect/platform/Error"
+import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
+import * as Data from "effect/Data"
 import * as Effect from "effect/Effect"
-import * as Either from "effect/Either"
-import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Queue from "effect/Queue"
 import * as Stream from "effect/Stream"
 
-/**
- * @since 1.0.0
- * @category type ids
- */
-export const TypeId: unique symbol = Symbol.for("@effect/platform-browser/Geolocation")
+const TypeId = "~@effect/platform-browser/Geolocation"
+const ErrorTypeId = "~@effect/platform-browser/Geolocation/GeolocationError"
 
 /**
- * @since 1.0.0
- * @category type ids
- */
-export type TypeId = typeof TypeId
-
-/**
- * @since 1.0.0
+ * Defines the service interface for browser geolocation, providing effects for the current position and streams of watched positions.
+ *
+ * **When to use**
+ *
+ * Use when browser code needs a typed Effect service for one-shot location
+ * reads or streamed location updates.
+ *
+ * **Details**
+ *
+ * `getCurrentPosition` returns one position effect. `watchPosition` returns a
+ * stream and accepts the browser `PositionOptions` plus an optional sliding
+ * `bufferSize`.
+ *
+ * **Gotchas**
+ *
+ * Browser permission prompts, denied permissions, timeouts, unavailable
+ * position data, secure-context restrictions, and policy restrictions are
+ * surfaced as `GeolocationError`.
+ *
+ * @see {@link GeolocationError} for represented browser geolocation failures
+ * @see {@link layer} for the browser-backed service implementation
+ *
  * @category models
+ * @since 4.0.0
  */
 export interface Geolocation {
-  readonly [TypeId]: TypeId
+  readonly [TypeId]: typeof TypeId
   readonly getCurrentPosition: (
     options?: PositionOptions | undefined
   ) => Effect.Effect<GeolocationPosition, GeolocationError>
@@ -41,37 +62,94 @@ export interface Geolocation {
 }
 
 /**
- * @since 1.0.0
- * @category tags
+ * Service tag for browser geolocation capabilities.
+ *
+ * **When to use**
+ *
+ * Use when you need to access or provide geolocation capabilities through
+ * Effect's context.
+ *
+ * @see {@link layer} for providing the browser-backed geolocation service
+ *
+ * @category services
+ * @since 4.0.0
  */
-export const Geolocation: Context.Tag<Geolocation, Geolocation> = Context.GenericTag<Geolocation>(
-  "@effect/platform-browser/Geolocation"
-)
+export const Geolocation: Context.Service<Geolocation, Geolocation> = Context.Service<Geolocation>(TypeId)
 
 /**
- * @since 1.0.0
- * @category type ids
- */
-export const ErrorTypeId: unique symbol = Symbol.for("@effect/platform-browser/Geolocation/GeolocationError")
-
-/**
- * @since 1.0.0
- * @category type ids
- */
-export type ErrorTypeId = typeof ErrorTypeId
-
-/**
- * @since 1.0.0
+ * Tagged error wrapping a browser geolocation failure reason.
+ *
  * @category errors
+ * @since 4.0.0
  */
-export class GeolocationError extends TypeIdError(ErrorTypeId, "GeolocationError")<{
-  readonly reason: "PositionUnavailable" | "PermissionDenied" | "Timeout"
-  readonly cause: unknown
+export class GeolocationError extends Data.TaggedError("GeolocationError")<{
+  readonly reason: GeolocationErrorReason
 }> {
-  get message() {
-    return this.reason
+  constructor(props: {
+    readonly reason: GeolocationErrorReason
+  }) {
+    super({
+      ...props,
+      cause: props.reason.cause
+    } as any)
+  }
+
+  readonly [ErrorTypeId] = ErrorTypeId
+
+  override get message(): string {
+    return this.reason.message
   }
 }
+
+/**
+ * Error reason for the browser geolocation `POSITION_UNAVAILABLE` failure.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class PositionUnavailable extends Data.TaggedError("PositionUnavailable")<{
+  readonly cause: unknown
+}> {
+  override get message(): string {
+    return this._tag
+  }
+}
+
+/**
+ * Error reason for the browser geolocation `PERMISSION_DENIED` failure.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class PermissionDenied extends Data.TaggedError("PermissionDenied")<{
+  readonly cause: unknown
+}> {
+  override get message(): string {
+    return this._tag
+  }
+}
+
+/**
+ * Error reason for the browser geolocation `TIMEOUT` failure.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class Timeout extends Data.TaggedError("Timeout")<{
+  readonly cause: unknown
+}> {
+  override get message(): string {
+    return this._tag
+  }
+}
+
+/**
+ * Union of browser geolocation error reasons represented by the service.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export type GeolocationErrorReason = PositionUnavailable | PermissionDenied | Timeout
 
 const makeQueue = (
   options:
@@ -80,17 +158,28 @@ const makeQueue = (
     }
     | undefined
 ) =>
-  Queue.sliding<Either.Either<GeolocationPosition, GeolocationError>>(options?.bufferSize ?? 16).pipe(
+  Queue.sliding<GeolocationPosition, GeolocationError>(options?.bufferSize ?? 16).pipe(
     Effect.tap((queue) =>
       Effect.acquireRelease(
         Effect.sync(() =>
           navigator.geolocation.watchPosition(
-            (position) => queue.unsafeOffer(Either.right(position)),
+            (position) => Queue.offerUnsafe(queue, position),
             (cause) => {
               if (cause.code === cause.PERMISSION_DENIED) {
-                queue.unsafeOffer(Either.left(new GeolocationError({ reason: "PermissionDenied", cause })))
+                const error = new GeolocationError({
+                  reason: new PermissionDenied({ cause })
+                })
+                Queue.failCauseUnsafe(queue, Cause.fail(error))
               } else if (cause.code === cause.TIMEOUT) {
-                queue.unsafeOffer(Either.left(new GeolocationError({ reason: "Timeout", cause })))
+                const error = new GeolocationError({
+                  reason: new Timeout({ cause })
+                })
+                Queue.failCauseUnsafe(queue, Cause.fail(error))
+              } else if (cause.code === cause.POSITION_UNAVAILABLE) {
+                const error = new GeolocationError({
+                  reason: new PositionUnavailable({ cause })
+                })
+                Queue.failCauseUnsafe(queue, Cause.fail(error))
               }
             },
             options
@@ -102,8 +191,10 @@ const makeQueue = (
   )
 
 /**
- * @since 1.0.0
+ * Layer that provides `Geolocation` using `navigator.geolocation`, with watched positions buffered in a sliding queue.
+ *
  * @category layers
+ * @since 4.0.0
  */
 export const layer: Layer.Layer<Geolocation> = Layer.succeed(
   Geolocation,
@@ -112,21 +203,22 @@ export const layer: Layer.Layer<Geolocation> = Layer.succeed(
     getCurrentPosition: (options) =>
       makeQueue(options).pipe(
         Effect.flatMap(Queue.take),
-        Effect.flatten,
         Effect.scoped
       ),
     watchPosition: (options) =>
       makeQueue(options).pipe(
         Effect.map(Stream.fromQueue),
-        Stream.unwrapScoped,
-        Stream.mapEffect(identity)
+        Stream.unwrap
       )
   })
 )
 
 /**
- * @since 1.0.0
+ * Reads geolocation positions from the `Geolocation` service as a stream, with
+ * an optional sliding buffer size.
+ *
  * @category accessors
+ * @since 4.0.0
  */
 export const watchPosition = (
   options?:
@@ -135,4 +227,7 @@ export const watchPosition = (
     }
     | undefined
 ): Stream.Stream<GeolocationPosition, GeolocationError, Geolocation> =>
-  Stream.unwrap(Effect.map(Geolocation, (geolocation) => geolocation.watchPosition(options)))
+  Stream.unwrap(Effect.map(
+    Effect.service(Geolocation),
+    (geolocation) => geolocation.watchPosition(options)
+  ))

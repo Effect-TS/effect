@@ -1,45 +1,116 @@
 /**
+ * The standard result of comparing two values. An `Ordering` is `-1` when the
+ * first value is less than the second, `0` when both values compare as equal,
+ * and `1` when the first value is greater than the second. This module also
+ * provides helpers for reversing an ordering, matching on the three cases, and
+ * combining ordered comparison results with a reducer.
+ *
  * @since 2.0.0
  */
-import type { LazyArg } from "./Function.js"
-import { dual } from "./Function.js"
+import type { LazyArg } from "./Function.ts"
+import { dual } from "./Function.ts"
+import * as Reducer_ from "./Reducer.ts"
 
 /**
- * @category model
+ * Represents the result of comparing two values.
+ *
+ * **When to use**
+ *
+ * Use to model a normalized comparison result that is exactly less than,
+ * equal to, or greater than.
+ *
+ * **Details**
+ *
+ * - `-1` indicates the first value is less than the second
+ * - `0` indicates the values are equal
+ * - `1` indicates the first value is greater than the second
+ *
+ * **Example** (Defining comparison results)
+ *
+ * ```ts
+ * import type { Ordering } from "effect"
+ *
+ * // Custom comparison function
+ * const compareNumbers = (a: number, b: number): Ordering.Ordering => {
+ *   if (a < b) return -1
+ *   if (a > b) return 1
+ *   return 0
+ * }
+ *
+ * console.log(compareNumbers(5, 10)) // -1 (5 < 10)
+ * console.log(compareNumbers(10, 5)) // 1 (10 > 5)
+ * console.log(compareNumbers(5, 5)) // 0 (5 == 5)
+ *
+ * // Using with string comparison
+ * const compareStrings = (a: string, b: string): Ordering.Ordering => {
+ *   return a.localeCompare(b) as Ordering.Ordering
+ * }
+ * ```
+ *
+ * @category models
  * @since 2.0.0
  */
 export type Ordering = -1 | 0 | 1
 
 /**
- * Inverts the ordering of the input `Ordering`.
+ * Reverses the ordering of the input Ordering.
+ * This is useful for creating descending sort orders from ascending ones.
  *
- * @example
+ * **When to use**
+ *
+ * Use to flip an ordering result when reversing sort direction or comparison
+ * priority.
+ *
+ * **Example** (Reversing comparison order)
+ *
  * ```ts
- * import * as assert from "node:assert"
- * import { reverse } from "effect/Ordering"
+ * import { Ordering } from "effect"
  *
- * assert.deepStrictEqual(reverse(1), -1)
- * assert.deepStrictEqual(reverse(-1), 1)
- * assert.deepStrictEqual(reverse(0), 0)
+ * // Basic reversal
+ * console.log(Ordering.reverse(1)) // -1 (greater becomes less)
+ * console.log(Ordering.reverse(-1)) // 1 (less becomes greater)
+ * console.log(Ordering.reverse(0)) // 0 (equal stays equal)
+ *
+ * // Creating descending sort from ascending comparison
+ * const compareNumbers = (a: number, b: number): Ordering.Ordering =>
+ *   a < b ? -1 : a > b ? 1 : 0
+ *
+ * const compareDescending = (a: number, b: number): Ordering.Ordering =>
+ *   Ordering.reverse(compareNumbers(a, b))
+ *
+ * const numbers = [3, 1, 4, 1, 5]
+ * numbers.sort(compareNumbers) // [1, 1, 3, 4, 5] (ascending)
+ * numbers.sort(compareDescending) // [5, 4, 3, 1, 1] (descending)
+ *
+ * // Useful for toggling sort direction
+ * const createSorter = (ascending: boolean) => (a: number, b: number) => {
+ *   const ordering = compareNumbers(a, b)
+ *   return ascending ? ordering : Ordering.reverse(ordering)
+ * }
  * ```
  *
+ * @category transforming
  * @since 2.0.0
  */
 export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 : 0)
 
 /**
- * Depending on the `Ordering` parameter given to it, returns a value produced by one of the 3 functions provided as parameters.
+ * Matches an `Ordering` value and returns the branch selected by that ordering.
  *
- * @example
+ * **When to use**
+ *
+ * Use to branch on the three possible comparison outcomes in one expression.
+ *
+ * **Example** (Pattern matching on orderings)
+ *
  * ```ts
+ * import { Function, Ordering } from "effect"
  * import * as assert from "node:assert"
- * import { Ordering } from "effect"
- * import { constant } from "effect/Function"
  *
  * const toMessage = Ordering.match({
- *   onLessThan: constant('less than'),
- *   onEqual: constant('equal'),
- *   onGreaterThan: constant('greater than')
+ *   onLessThan: Function.constant("less than"),
+ *   onEqual: Function.constant("equal"),
+ *   onGreaterThan: Function.constant("greater than")
  * })
  *
  * assert.deepStrictEqual(toMessage(-1), "less than")
@@ -76,36 +147,36 @@ export const match: {
 ): A | B | C => self === -1 ? onLessThan() : self === 0 ? onEqual() : onGreaterThan())
 
 /**
- * @category combining
- * @since 2.0.0
+ * Reducer for combining `Ordering`s.
+ *
+ * **When to use**
+ *
+ * Use to combine multiple comparison results in priority order, such as
+ * checking secondary criteria only when earlier criteria compare as equal.
+ *
+ * **Details**
+ *
+ * If any of the `Ordering`s is non-zero, the result is the first non-zero `Ordering`.
+ * If all the `Ordering`s are zero, the result is zero.
+ *
+ * **Gotchas**
+ *
+ * `combineAll` stops consuming the iterable as soon as it finds a non-zero
+ * `Ordering`.
+ *
+ * @category ordering
+ * @since 4.0.0
  */
-export const combine: {
-  (that: Ordering): (self: Ordering) => Ordering
-  (self: Ordering, that: Ordering): Ordering
-} = dual(2, (self: Ordering, that: Ordering): Ordering => self !== 0 ? self : that)
-
-/**
- * @category combining
- * @since 2.0.0
- */
-export const combineMany: {
-  (collection: Iterable<Ordering>): (self: Ordering) => Ordering
-  (self: Ordering, collection: Iterable<Ordering>): Ordering
-} = dual(2, (self: Ordering, collection: Iterable<Ordering>): Ordering => {
-  let ordering = self
-  if (ordering !== 0) {
+export const Reducer: Reducer_.Reducer<Ordering> = Reducer_.make<Ordering>(
+  (self, that) => self !== 0 ? self : that,
+  0,
+  (collection) => {
+    let ordering: Ordering = 0
+    for (ordering of collection) {
+      if (ordering !== 0) {
+        return ordering
+      }
+    }
     return ordering
   }
-  for (ordering of collection) {
-    if (ordering !== 0) {
-      return ordering
-    }
-  }
-  return ordering
-})
-
-/**
- * @category combining
- * @since 2.0.0
- */
-export const combineAll = (collection: Iterable<Ordering>): Ordering => combineMany(0, collection)
+)

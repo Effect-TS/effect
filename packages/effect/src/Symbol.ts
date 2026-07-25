@@ -1,29 +1,31 @@
 /**
+ * The `Symbol` module contains the runtime predicate for JavaScript primitive
+ * `symbol` values. It is most useful at boundaries where a value is `unknown`
+ * and must be narrowed before it can be used as a symbol key, identifier, or
+ * discriminant.
+ *
  * @since 2.0.0
  */
 
-import * as equivalence from "./Equivalence.js"
-import * as predicate from "./Predicate.js"
+import * as predicate from "./Predicate.ts"
 
 /**
- * Tests if a value is a `symbol`.
+ * Checks whether a value is a `symbol`.
  *
- * @example
+ * **When to use**
+ *
+ * Use to validate unknown input before treating it as a JavaScript `symbol`.
+ *
+ * **Example** (Checking for symbols)
+ *
  * ```ts
- * import * as assert from "node:assert"
- * import { Predicate } from "effect"
+ * import { Symbol } from "effect"
  *
- * assert.deepStrictEqual(Predicate.isSymbol(Symbol.for("a")), true)
- * assert.deepStrictEqual(Predicate.isSymbol("a"), false)
+ * console.log(Symbol.isSymbol(globalThis.Symbol.for("a"))) // true
+ * console.log(Symbol.isSymbol("a")) // false
  * ```
  *
  * @category guards
  * @since 2.0.0
  */
 export const isSymbol: (u: unknown) => u is symbol = predicate.isSymbol
-
-/**
- * @category instances
- * @since 2.0.0
- */
-export const Equivalence: equivalence.Equivalence<symbol> = equivalence.symbol

@@ -35,6 +35,11 @@ function value(c: number, d: number): Value {
 }
 
 describe("MutableHashMap", () => {
+  it("isMutableHashMap", () => {
+    assertTrue(HM.isMutableHashMap(HM.make([0, "a"], [1, "b"])))
+    assertFalse(HM.isMutableHashMap(new Map([[0, "a"]])))
+  })
+
   it("toString", () => {
     const map = HM.make(
       [0, "a"],
@@ -43,19 +48,7 @@ describe("MutableHashMap", () => {
 
     strictEqual(
       String(map),
-      `{
-  "_id": "MutableHashMap",
-  "values": [
-    [
-      0,
-      "a"
-    ],
-    [
-      1,
-      "b"
-    ]
-  ]
-}`
+      `MutableHashMap([[0,"a"],[1,"b"]])`
     )
   })
 
@@ -72,7 +65,7 @@ describe("MutableHashMap", () => {
     if (typeof window !== "undefined") {
       return
     }
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    // oxlint-disable-next-line @typescript-eslint/no-require-imports
     const { inspect } = require("node:util")
 
     const map = HM.make(
@@ -127,7 +120,7 @@ describe("MutableHashMap", () => {
     strictEqual(Array.from(map).length, 2)
   })
 
-  it("get", () => {
+  it("get returns the latest value for an equal key", () => {
     const map = pipe(
       HM.empty<Key, Value>(),
       HM.set(key(0, 0), value(0, 0)),
@@ -177,13 +170,13 @@ describe("MutableHashMap", () => {
       HM.set(key(1, 1), value(1, 1))
     )
 
-    deepStrictEqual(HM.keys(map), [
+    deepStrictEqual(Array.from(HM.keys(map)), [
       key(0, 0),
       key(1, 1)
     ])
   })
 
-  it("modifyAt", () => {
+  it("values", () => {
     const map = pipe(
       HM.empty<Key, Value>(),
       HM.set(key(0, 0), value(0, 0)),
@@ -226,7 +219,7 @@ describe("MutableHashMap", () => {
     strictEqual(HM.size(map), 2)
   })
 
-  it("remove", () => {
+  it("remove deletes an equal key in place", () => {
     const map = pipe(
       HM.empty<Key, Value>(),
       HM.set(key(0, 0), value(0, 0)),
@@ -255,7 +248,7 @@ describe("MutableHashMap", () => {
     )
   })
 
-  it("set", () => {
+  it("set overwrites equal keys without changing size", () => {
     const map = pipe(
       HM.empty<Key, Value>(),
       HM.set(key(0, 0), value(0, 0)),
@@ -284,7 +277,7 @@ describe("MutableHashMap", () => {
     strictEqual(HM.size(map), 2)
   })
 
-  it("modify", () => {
+  it("modify updates existing keys and ignores missing keys", () => {
     const map = pipe(
       HM.empty<Key, Value>(),
       HM.set(key(0, 0), value(0, 0)),

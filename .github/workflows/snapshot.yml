@@ -1,8 +1,14 @@
 name: Snapshot
 on:
+  push:
+    branches: [main]
   pull_request:
-    branches: [main, next-minor, next-major]
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions: {}
 
@@ -13,13 +19,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Install dependencies
         uses: ./.github/actions/setup
+      - name: Set strip internals config
+        run: |
+          sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
       - name: Run codemods
         run: pnpm codemod
       - name: Build package
         run: pnpm build
       - name: Create snapshot
         id: snapshot
-        run: pnpx pkg-pr-new@0.0.28 publish --pnpm --comment=off ./packages/* ./packages/ai/*
+        run: pnpx pkg-pr-new@0.0.78 publish --pnpm --comment=off ./packages/* ./packages/atom/* ./packages/ai/* ./packages/sql/* ./packages/tools/*

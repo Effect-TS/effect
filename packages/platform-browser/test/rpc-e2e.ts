@@ -1,1 +1,0 @@
-../../platform-node/test/rpc-e2e.ts

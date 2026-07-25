@@ -1,33 +1,71 @@
 /**
- * This module provides an implementation of the `Order` type class which is used to define a total ordering on some type `A`.
- * An order is defined by a relation `<=`, which obeys the following laws:
+ * Defines comparison functions for ordered values.
  *
- * - either `x <= y` or `y <= x` (totality)
- * - if `x <= y` and `y <= x`, then `x == y` (antisymmetry)
- * - if `x <= y` and `y <= z`, then `x <= z` (transitivity)
- *
- * The truth table for compare is defined as follows:
- *
- * | `x <= y` | `x >= y` | Ordering |                       |
- * | -------- | -------- | -------- | --------------------- |
- * | `true`   | `true`   | `0`      | corresponds to x == y |
- * | `true`   | `false`  | `< 0`    | corresponds to x < y  |
- * | `false`  | `true`   | `> 0`    | corresponds to x > y  |
+ * An `Order<A>` compares two `A` values and returns whether the first is less
+ * than, equal to, or greater than the second. Orders are used for sorting,
+ * choosing minimum or maximum values, checking ranges, and building ordered data
+ * structures. This module includes built-in orders, constructors for custom
+ * orders, tools for reversing and combining comparisons, tuple and struct
+ * helpers, comparison predicates, clamping, and reducer support.
  *
  * @since 2.0.0
  */
-import { dual } from "./Function.js"
-import type { TypeLambda } from "./HKT.js"
+import { dual } from "./Function.ts"
+import type { TypeLambda } from "./HKT.ts"
+import type { Ordering } from "./Ordering.ts"
+import * as Reducer from "./Reducer.ts"
 
 /**
+ * Represents a total ordering for values of type `A`.
+ *
+ * **When to use**
+ *
+ * Use when you need to define how values of a type are compared.
+ *
+ * **Details**
+ *
+ * An order returns `-1` when the first value is less than the second, `0` when
+ * the values are equal according to this ordering, and `1` when the first value
+ * is greater than the second. It must satisfy total ordering laws: totality,
+ * antisymmetry, and transitivity.
+ *
+ * **Example** (Defining a custom Order)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const byAge: Order.Order<{ name: string; age: number }> = (self, that) => {
+ *   if (self.age < that.age) return -1
+ *   if (self.age > that.age) return 1
+ *   return 0
+ * }
+ *
+ * const person1 = { name: "Alice", age: 30 }
+ * const person2 = { name: "Bob", age: 25 }
+ * console.log(byAge(person1, person2)) // 1
+ * ```
+ *
+ * @see {@link make} to create an order from a comparison function
+ * @see {@link Ordering} for the result type of comparisons
  * @category type class
  * @since 2.0.0
  */
 export interface Order<in A> {
-  (self: A, that: A): -1 | 0 | 1
+  (self: A, that: A): Ordering
 }
 
 /**
+ * Type lambda for the `Order` type class, used internally for higher-kinded type operations.
+ *
+ * **When to use**
+ *
+ * Use when you need to abstract over `Order` in higher-kinded type code.
+ *
+ * **Details**
+ *
+ * This is type-level only, has no runtime representation, and is used
+ * internally by the Effect type system.
+ *
  * @category type lambdas
  * @since 2.0.0
  */
@@ -36,44 +74,241 @@ export interface OrderTypeLambda extends TypeLambda {
 }
 
 /**
+ * Creates a new `Order` instance from a comparison function.
+ *
+ * **When to use**
+ *
+ * Use when you need a sorting rule not covered by the built-in orders or input
+ * mapping helpers, and you can provide a total comparison.
+ *
+ * **Details**
+ *
+ * Uses reference equality (`===`) as a shortcut: if `self === that`, it returns
+ * `0` without calling the comparison function. The comparison function should
+ * return `-1`, `0`, or `1`, and the returned order satisfies total ordering
+ * laws when the comparison function does.
+ *
+ * **Example** (Creating an Order)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const byAge = Order.make<{ name: string; age: number }>((self, that) => {
+ *   if (self.age < that.age) return -1
+ *   if (self.age > that.age) return 1
+ *   return 0
+ * })
+ *
+ * console.log(byAge({ name: "Alice", age: 30 }, { name: "Bob", age: 25 })) // 1
+ * console.log(byAge({ name: "Alice", age: 25 }, { name: "Bob", age: 30 })) // -1
+ * ```
+ *
+ * @see {@link mapInput} to transform an order by mapping the input type
+ * @see {@link combine} to combine multiple orders
  * @category constructors
  * @since 2.0.0
  */
-export const make = <A>(
+export function make<A>(
   compare: (self: A, that: A) => -1 | 0 | 1
-): Order<A> =>
-(self, that) => self === that ? 0 : compare(self, that)
+): Order<A> {
+  return (self, that) => self === that ? 0 : compare(self, that)
+}
 
 /**
+ * Order instance for strings that compares them lexicographically using JavaScript's `<` operator.
+ *
+ * **When to use**
+ *
+ * Use when you need lexicographic string ordering.
+ *
+ * **Details**
+ *
+ * Uses lexicographic dictionary ordering. The empty string is less than any
+ * non-empty string, and comparisons are case-sensitive.
+ *
+ * **Example** (Ordering strings)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * console.log(Order.String("apple", "banana")) // -1
+ * console.log(Order.String("banana", "apple")) // 1
+ * console.log(Order.String("apple", "apple")) // 0
+ * ```
+ *
+ * @see {@link mapInput} to compare objects by a string property
+ * @see {@link Struct} to combine with other orders for struct comparison
  * @category instances
- * @since 2.0.0
+ * @since 4.0.0
  */
-export const string: Order<string> = make((self, that) => self < that ? -1 : 1)
+export const String: Order<string> = make((self, that) => self < that ? -1 : 1)
 
 /**
+ * Order instance for numbers that compares them numerically.
+ *
+ * **When to use**
+ *
+ * Use when you need numeric ordering for numbers.
+ *
+ * **Details**
+ *
+ * `0` is considered equal to `-0`. All `NaN` values are considered equal to
+ * each other, and any `NaN` is considered less than any non-`NaN` number. All
+ * other values use standard numeric comparison.
+ *
+ * **Example** (Ordering numbers)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * console.log(Order.Number(1, 1)) // 0
+ * console.log(Order.Number(1, 2)) // -1
+ * console.log(Order.Number(2, 1)) // 1
+ *
+ * console.log(Order.Number(0, -0)) // 0
+ * console.log(Order.Number(NaN, 1)) // -1
+ * ```
+ *
+ * @see {@link mapInput} to compare objects by a number property
+ * @see {@link BigInt} for bigint comparisons
  * @category instances
- * @since 2.0.0
+ * @since 4.0.0
  */
-export const number: Order<number> = make((self, that) => self < that ? -1 : 1)
+export const Number: Order<number> = make((self, that) => {
+  if (globalThis.Number.isNaN(self) && globalThis.Number.isNaN(that)) return 0
+  if (globalThis.Number.isNaN(self)) return -1 // NaN < any number
+  if (globalThis.Number.isNaN(that)) return 1 // any number > NaN
+  return self < that ? -1 : 1
+})
 
 /**
+ * Order instance for booleans where `false` is considered less than `true`.
+ *
+ * **When to use**
+ *
+ * Use when you need boolean ordering where `false` comes before `true`.
+ *
+ * **Details**
+ *
+ * `false` is less than `true`, and equal values return `0`.
+ *
+ * **Example** (Ordering booleans)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * console.log(Order.Boolean(false, true)) // -1
+ * console.log(Order.Boolean(true, false)) // 1
+ * console.log(Order.Boolean(true, true)) // 0
+ * ```
+ *
+ * @see {@link mapInput} to compare objects by a boolean property
  * @category instances
- * @since 2.0.0
+ * @since 4.0.0
  */
-export const boolean: Order<boolean> = make((self, that) => self < that ? -1 : 1)
+export const Boolean: Order<boolean> = make((self, that) => self < that ? -1 : 1)
 
 /**
+ * Order instance for bigints that compares them numerically.
+ *
+ * **When to use**
+ *
+ * Use when you need numeric ordering for `bigint` values.
+ *
+ * **Details**
+ *
+ * Uses standard numeric comparison for bigint values and handles arbitrarily
+ * large integers.
+ *
+ * **Example** (Ordering BigInts)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * console.log(Order.BigInt(1n, 2n)) // -1
+ * console.log(Order.BigInt(2n, 1n)) // 1
+ * console.log(Order.BigInt(1n, 1n)) // 0
+ * ```
+ *
+ * @see {@link Number} for regular number comparisons
+ * @see {@link mapInput} to compare objects by a bigint property
  * @category instances
- * @since 2.0.0
+ * @since 4.0.0
  */
-export const bigint: Order<bigint> = make((self, that) => self < that ? -1 : 1)
+export const BigInt: Order<bigint> = make((self, that) => self < that ? -1 : 1)
 
 /**
- * @since 2.0.0
+ * Creates a new `Order` that reverses the comparison order of the input `Order`.
+ *
+ * **When to use**
+ *
+ * Use when you need the reverse of an existing order.
+ *
+ * **Details**
+ *
+ * Returns a new order that swaps the arguments before comparison. If the
+ * original order returns `-1`, the flipped order returns `1`, and vice versa.
+ * Equal comparisons remain `0`.
+ *
+ * **Example** (Reversing an Order)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const flip = Order.flip(Order.Number)
+ *
+ * console.log(flip(1, 2)) // 1
+ * console.log(flip(2, 1)) // -1
+ * console.log(flip(1, 1)) // 0
+ * ```
+ *
+ * @see {@link combine} to combine orders for multi-criteria comparison
+ * @category combinators
+ * @since 4.0.0
  */
-export const reverse = <A>(O: Order<A>): Order<A> => make((self, that) => O(that, self))
+export function flip<A>(O: Order<A>): Order<A> {
+  return make((self, that) => O(that, self))
+}
 
 /**
+ * Combines two `Order` instances to create a new `Order` that first compares using the first `Order`,
+ * and if the values are equal, then compares using the second `Order`.
+ *
+ * **When to use**
+ *
+ * Use when you need tie-breaking with exactly two orders.
+ *
+ * **Details**
+ *
+ * First applies the first order. If the result is non-zero, that result is
+ * returned; otherwise, the second order is applied. The result is the first
+ * non-zero comparison result, or `0` if both orders return `0`.
+ *
+ * **Example** (Combining two Orders)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const byAge = Order.mapInput(
+ *   Order.Number,
+ *   (person: { name: string; age: number }) => person.age
+ * )
+ * const byName = Order.mapInput(
+ *   Order.String,
+ *   (person: { name: string; age: number }) => person.name
+ * )
+ * const byAgeAndName = Order.combine(byAge, byName)
+ *
+ * const person1 = { name: "Alice", age: 30 }
+ * const person2 = { name: "Bob", age: 30 }
+ * const person3 = { name: "Charlie", age: 25 }
+ *
+ * console.log(byAgeAndName(person1, person2)) // -1 (Same age, Alice < Bob)
+ * console.log(byAgeAndName(person1, person3)) // 1 (Alice (30) > Charlie (25))
+ * ```
+ *
+ * @see {@link combineAll} to combine multiple orders from a collection
+ * @see {@link mapInput} to transform orders to work with different types
  * @category combining
  * @since 2.0.0
  */
@@ -90,18 +325,80 @@ export const combine: {
   }))
 
 /**
+ * Creates an `Order` that considers all values as equal.
+ *
+ * **When to use**
+ *
+ * Use when you need an order that treats all values as equal.
+ *
+ * **Details**
+ *
+ * Always returns `0` regardless of input values, making it useful as a neutral
+ * element in order composition.
+ *
+ * **Example** (Ordering with an always-equal Order)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const alwaysEqualOrder = Order.alwaysEqual<number>()
+ *
+ * console.log(alwaysEqualOrder(1, 2)) // 0
+ * console.log(alwaysEqualOrder(2, 1)) // 0
+ * console.log(alwaysEqualOrder(1, 1)) // 0
+ * ```
+ *
+ * @see {@link combine} to combine with other orders
+ * @category constructors
+ * @since 4.0.0
+ */
+export function alwaysEqual<A>(): Order<A> {
+  return make(() => 0)
+}
+
+/**
+ * Combines all `Order` instances in the provided collection into a single `Order`.
+ * The resulting `Order` compares using each `Order` in sequence until a non-zero result is found.
+ *
+ * **When to use**
+ *
+ * Use when you need tie-breaking across a variable number of orders.
+ *
+ * **Details**
+ *
+ * Applies orders in iteration order and short-circuits on the first non-zero
+ * result. It returns `0` only if all orders return `0`.
+ *
+ * **Example** (Combining multiple Orders)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const byAge = Order.mapInput(
+ *   Order.Number,
+ *   (person: { name: string; age: number }) => person.age
+ * )
+ * const byName = Order.mapInput(
+ *   Order.String,
+ *   (person: { name: string; age: number }) => person.name
+ * )
+ *
+ * const combinedOrder = Order.combineAll([byAge, byName])
+ *
+ * const person1 = { name: "Alice", age: 30 }
+ * const person2 = { name: "Bob", age: 30 }
+ *
+ * console.log(combinedOrder(person1, person2)) // -1 (Same age, Alice < Bob)
+ * ```
+ *
+ * @see {@link combine} to combine two orders
+ * @see {@link makeReducer} to create a reducer for combining orders
  * @category combining
  * @since 2.0.0
  */
-export const combineMany: {
-  <A>(collection: Iterable<Order<A>>): (self: Order<A>) => Order<A>
-  <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<A>
-} = dual(2, <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<A> =>
-  make((a1, a2) => {
-    let out = self(a1, a2)
-    if (out !== 0) {
-      return out
-    }
+export function combineAll<A>(collection: Iterable<Order<A>>): Order<A> {
+  return make((a1, a2) => {
+    let out: Ordering = 0
     for (const O of collection) {
       out = O(a1, a2)
       if (out !== 0) {
@@ -109,20 +406,38 @@ export const combineMany: {
       }
     }
     return out
-  }))
+  })
+}
 
 /**
- * @since 2.0.0
- */
-export const empty = <A>(): Order<A> => make(() => 0)
-
-/**
- * @category combining
- * @since 2.0.0
- */
-export const combineAll = <A>(collection: Iterable<Order<A>>): Order<A> => combineMany(empty(), collection)
-
-/**
+ * Transforms an `Order` on type `A` into an `Order` on type `B` by providing a function that
+ * maps values of type `B` to values of type `A`.
+ *
+ * **When to use**
+ *
+ * Use when you need to adapt an `Order` to compare a larger value by one
+ * derived property.
+ *
+ * **Details**
+ *
+ * Applies the mapping function to both values before comparison. The mapping
+ * function should be pure and not have side effects so the ordering properties
+ * of the original order are preserved.
+ *
+ * **Example** (Mapping Input)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const byLength = Order.mapInput(Order.Number, (s: string) => s.length)
+ *
+ * console.log(byLength("a", "bb")) // -1
+ * console.log(byLength("bb", "a")) // 1
+ * console.log(byLength("aa", "bb")) // 0
+ * ```
+ *
+ * @see {@link combine} to combine mapped orders for multi-criteria comparison
+ * @see {@link Struct} to create orders for structs with multiple fields
  * @category mapping
  * @since 2.0.0
  */
@@ -135,91 +450,86 @@ export const mapInput: {
 )
 
 /**
+ * Order instance for `Date` objects that compares them chronologically by their timestamp.
+ *
+ * **When to use**
+ *
+ * Use when you need chronological ordering for JavaScript date values.
+ *
+ * **Details**
+ *
+ * Compares dates by their underlying timestamp in milliseconds since the epoch.
+ * Earlier dates are less than later dates. Invalid dates are compared through
+ * their `getTime()` result.
+ *
+ * **Example** (Ordering Dates)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const date1 = new Date("2023-01-01")
+ * const date2 = new Date("2023-01-02")
+ *
+ * console.log(Order.Date(date1, date2)) // -1
+ * console.log(Order.Date(date2, date1)) // 1
+ * console.log(Order.Date(date1, date1)) // 0
+ * ```
+ *
+ * @see {@link mapInput} to compare objects by a date property
  * @category instances
  * @since 2.0.0
  */
-export const Date: Order<Date> = mapInput(number, (date) => date.getTime())
+export const Date: Order<Date> = mapInput(Number, (date) => date.getTime())
 
 /**
- * @category combining
- * @since 2.0.0
+ * Creates an `Order` for a tuple type based on orders for each element.
+ *
+ * **When to use**
+ *
+ * Use when you need fixed-length tuple ordering with per-position orders.
+ *
+ * **Details**
+ *
+ * Compares tuples element-by-element using the corresponding order and stops at
+ * the first non-zero comparison result. Tuples must have the same length as the
+ * order collection, and the result is `0` only if all elements are equal.
+ *
+ * **Example** (Ordering tuples)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const tupleOrder = Order.Tuple([Order.Number, Order.String])
+ *
+ * console.log(tupleOrder([1, "a"], [2, "b"])) // -1
+ * console.log(tupleOrder([1, "b"], [1, "a"])) // 1
+ * console.log(tupleOrder([1, "a"], [1, "a"])) // 0
+ * ```
+ *
+ * @see {@link Array} to compare arrays with length consideration
+ * @category combinators
+ * @since 4.0.0
  */
-export const product: {
-  <B>(that: Order<B>): <A>(self: Order<A>) => Order<readonly [A, B]> // readonly because invariant
-  <A, B>(self: Order<A>, that: Order<B>): Order<readonly [A, B]> // readonly because invariant
-} = dual(2, <A, B>(self: Order<A>, that: Order<B>): Order<readonly [A, B]> =>
-  make(([xa, xb], [ya, yb]) => {
-    const o = self(xa, ya)
-    return o !== 0 ? o : that(xb, yb)
-  }))
-
-/**
- * @category combining
- * @since 2.0.0
- */
-export const all = <A>(collection: Iterable<Order<A>>): Order<ReadonlyArray<A>> => {
-  return make((x, y) => {
-    const len = Math.min(x.length, y.length)
-    let collectionLength = 0
-    for (const O of collection) {
-      if (collectionLength >= len) {
-        break
-      }
-      const o = O(x[collectionLength], y[collectionLength])
+export function Tuple<const Elements extends ReadonlyArray<Order<any>>>(
+  elements: Elements
+): Order<{ readonly [I in keyof Elements]: [Elements[I]] extends [Order<infer A>] ? A : never }> {
+  return make((self, that) => {
+    const len = elements.length
+    for (let i = 0; i < len; i++) {
+      const o = elements[i](self[i], that[i])
       if (o !== 0) {
         return o
       }
-      collectionLength++
     }
     return 0
   })
 }
 
 /**
- * @category combining
- * @since 2.0.0
+ * @since 4.0.0
  */
-export const productMany: {
-  <A>(collection: Iterable<Order<A>>): (self: Order<A>) => Order<readonly [A, ...Array<A>]> // readonly because invariant
-  <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<readonly [A, ...Array<A>]> // readonly because invariant
-} = dual(2, <A>(self: Order<A>, collection: Iterable<Order<A>>): Order<readonly [A, ...Array<A>]> => {
-  const O = all(collection)
-  return make((x, y) => {
-    const o = self(x[0], y[0])
-    return o !== 0 ? o : O(x.slice(1), y.slice(1))
-  })
-})
-
-/**
- * Similar to `Promise.all` but operates on `Order`s.
- *
- * ```
- * [Order<A>, Order<B>, ...] -> Order<[A, B, ...]>
- * ```
- *
- * This function creates and returns a new `Order` for a tuple of values based on the given `Order`s for each element in the tuple.
- * The returned `Order` compares two tuples of the same type by applying the corresponding `Order` to each element in the tuple.
- * It is useful when you need to compare two tuples of the same type and you have a specific way of comparing each element
- * of the tuple.
- *
- * @category combinators
- * @since 2.0.0
- */
-export const tuple = <T extends ReadonlyArray<Order<any>>>(
-  ...elements: T
-): Order<Readonly<{ [I in keyof T]: [T[I]] extends [Order<infer A>] ? A : never }>> => all(elements) as any
-
-/**
- * This function creates and returns a new `Order` for an array of values based on a given `Order` for the elements of the array.
- * The returned `Order` compares two arrays by applying the given `Order` to each element in the arrays.
- * If all elements are equal, the arrays are then compared based on their length.
- * It is useful when you need to compare two arrays of the same type and you have a specific way of comparing each element of the array.
- *
- * @category combinators
- * @since 2.0.0
- */
-export const array = <A>(O: Order<A>): Order<ReadonlyArray<A>> =>
-  make((self, that) => {
+function Array_<A>(O: Order<A>): Order<ReadonlyArray<A>> {
+  return make((self, that) => {
     const aLen = self.length
     const bLen = that.length
     const len = Math.min(aLen, bLen)
@@ -229,19 +539,85 @@ export const array = <A>(O: Order<A>): Order<ReadonlyArray<A>> =>
         return o
       }
     }
-    return number(aLen, bLen)
+    return Number(aLen, bLen)
   })
+}
+
+export {
+  /**
+   * Creates an `Order` for arrays by applying the given `Order` to each element, then comparing by length if all elements are equal.
+   *
+   * **When to use**
+   *
+   * Use when you need lexicographic ordering for arrays of one element type.
+   *
+   * **Details**
+   *
+   * Compares arrays element-by-element using the provided order and stops at the
+   * first non-zero comparison result. If all elements are equal, shorter arrays
+   * are less than longer arrays. The result is `0` only if arrays have the same
+   * length and all elements are equal.
+   *
+   * **Example** (Ordering array elements)
+   *
+   * ```ts
+   * import { Order } from "effect"
+   *
+   * const arrayOrder = Order.Array(Order.Number)
+   *
+   * console.log(arrayOrder([1, 2], [1, 3])) // -1
+   * console.log(arrayOrder([1, 2], [1, 2, 3])) // -1 (shorter array is less)
+   * console.log(arrayOrder([1, 2, 3], [1, 2])) // 1 (longer array is greater)
+   * console.log(arrayOrder([1, 2], [1, 2])) // 0
+   * ```
+   *
+   * @see {@link Tuple} for type-safe tuple ordering
+   * @category combinators
+   * @since 4.0.0
+   */
+  Array_ as Array
+}
 
 /**
- * This function creates and returns a new `Order` for a struct of values based on the given `Order`s
- * for each property in the struct.
+ * Creates an `Order` for structs by applying the given `Order`s to each property in sequence.
  *
+ * **When to use**
+ *
+ * Use when you need multi-field ordering for objects with known properties.
+ *
+ * **Details**
+ *
+ * Compares structs field-by-field in the key order of the fields object and
+ * stops at the first non-zero comparison result. Field order matters: earlier
+ * fields take precedence. The result is `0` only if all fields are equal.
+ *
+ * **Example** (Ordering structs)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const personOrder = Order.Struct({
+ *   name: Order.String,
+ *   age: Order.Number
+ * })
+ *
+ * const person1 = { name: "Alice", age: 30 }
+ * const person2 = { name: "Bob", age: 25 }
+ * const person3 = { name: "Alice", age: 25 }
+ *
+ * console.log(personOrder(person1, person2)) // -1 (Alice < Bob)
+ * console.log(personOrder(person1, person3)) // 1 (same name, 30 > 25)
+ * console.log(personOrder(person1, person1)) // 0
+ * ```
+ *
+ * @see {@link combine} to combine orders manually
+ * @see {@link mapInput} to extract and compare by a single property
  * @category combinators
- * @since 2.0.0
+ * @since 4.0.0
  */
-export const struct = <R extends { readonly [x: string]: Order<any> }>(
+export function Struct<const R extends { readonly [x: string]: Order<any> }>(
   fields: R
-): Order<{ [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }> => {
+): Order<{ [K in keyof R]: [R[K]] extends [Order<infer A>] ? A : never }> {
   const keys = Object.keys(fields)
   return make((self, that) => {
     for (const key of keys) {
@@ -255,48 +631,170 @@ export const struct = <R extends { readonly [x: string]: Order<any> }>(
 }
 
 /**
- * Test whether one value is _strictly less than_ another.
+ * Checks whether one value is strictly less than another according to the given order.
  *
- * @since 2.0.0
+ * **When to use**
+ *
+ * Use when you need a boolean less-than predicate using an `Order`.
+ *
+ * **Details**
+ *
+ * Returns `true` if the order returns `-1`, meaning the first value is less
+ * than the second. Equal or greater values return `false`.
+ *
+ * **Example** (Checking less-than comparisons)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const isLessThanNumber = Order.isLessThan(Order.Number)
+ *
+ * console.log(isLessThanNumber(1, 2)) // true
+ * console.log(isLessThanNumber(2, 1)) // false
+ * console.log(isLessThanNumber(1, 1)) // false
+ * ```
+ *
+ * @see {@link isLessThanOrEqualTo} for non-strict less than or equal
+ * @see {@link isGreaterThan} for strict greater than
+ * @category predicates
+ * @since 4.0.0
  */
-export const lessThan = <A>(O: Order<A>): {
+export const isLessThan = <A>(O: Order<A>): {
   (that: A): (self: A) => boolean
   (self: A, that: A): boolean
 } => dual(2, (self: A, that: A) => O(self, that) === -1)
 
 /**
- * Test whether one value is _strictly greater than_ another.
+ * Checks whether one value is strictly greater than another according to the given order.
  *
- * @since 2.0.0
+ * **When to use**
+ *
+ * Use when you need a boolean greater-than predicate using an `Order`.
+ *
+ * **Details**
+ *
+ * Returns `true` if the order returns `1`, meaning the first value is greater
+ * than the second. Equal or lesser values return `false`.
+ *
+ * **Example** (Checking greater-than comparisons)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const isGreaterThanNumber = Order.isGreaterThan(Order.Number)
+ *
+ * console.log(isGreaterThanNumber(2, 1)) // true
+ * console.log(isGreaterThanNumber(1, 2)) // false
+ * console.log(isGreaterThanNumber(1, 1)) // false
+ * ```
+ *
+ * @see {@link isGreaterThanOrEqualTo} for non-strict greater than or equal
+ * @see {@link isLessThan} for strict less than
+ * @category predicates
+ * @since 4.0.0
  */
-export const greaterThan = <A>(O: Order<A>): {
+export const isGreaterThan = <A>(O: Order<A>): {
   (that: A): (self: A) => boolean
   (self: A, that: A): boolean
 } => dual(2, (self: A, that: A) => O(self, that) === 1)
 
 /**
- * Test whether one value is _non-strictly less than_ another.
+ * Checks whether one value is less than or equal to another according to the given order.
  *
- * @since 2.0.0
+ * **When to use**
+ *
+ * Use when you need a boolean less-than-or-equal predicate using an `Order`.
+ *
+ * **Details**
+ *
+ * Returns `true` if the order returns `-1` or `0`, and returns `false` only if
+ * the order returns `1`.
+ *
+ * **Example** (Checking less-than-or-equal comparisons)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const isLessThanOrEqualToNumber = Order.isLessThanOrEqualTo(Order.Number)
+ *
+ * console.log(isLessThanOrEqualToNumber(1, 2)) // true
+ * console.log(isLessThanOrEqualToNumber(1, 1)) // true
+ * console.log(isLessThanOrEqualToNumber(2, 1)) // false
+ * ```
+ *
+ * @see {@link isLessThan} for strict less than
+ * @see {@link isGreaterThan} for strict greater than
+ * @category predicates
+ * @since 4.0.0
  */
-export const lessThanOrEqualTo = <A>(O: Order<A>): {
+export const isLessThanOrEqualTo = <A>(O: Order<A>): {
   (that: A): (self: A) => boolean
   (self: A, that: A): boolean
 } => dual(2, (self: A, that: A) => O(self, that) !== 1)
 
 /**
- * Test whether one value is _non-strictly greater than_ another.
+ * Checks whether one value is greater than or equal to another according to the given order.
  *
- * @since 2.0.0
+ * **When to use**
+ *
+ * Use when you need a boolean greater-than-or-equal predicate using an
+ * `Order`.
+ *
+ * **Details**
+ *
+ * Returns `true` if the order returns `1` or `0`, and returns `false` only if
+ * the order returns `-1`.
+ *
+ * **Example** (Checking greater-than-or-equal comparisons)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const isGreaterThanOrEqualToNumber = Order.isGreaterThanOrEqualTo(Order.Number)
+ *
+ * console.log(isGreaterThanOrEqualToNumber(2, 1)) // true
+ * console.log(isGreaterThanOrEqualToNumber(1, 1)) // true
+ * console.log(isGreaterThanOrEqualToNumber(1, 2)) // false
+ * ```
+ *
+ * @see {@link isGreaterThan} for strict greater than
+ * @see {@link isLessThanOrEqualTo} for less than or equal
+ * @category predicates
+ * @since 4.0.0
  */
-export const greaterThanOrEqualTo = <A>(O: Order<A>): {
+export const isGreaterThanOrEqualTo = <A>(O: Order<A>): {
   (that: A): (self: A) => boolean
   (self: A, that: A): boolean
 } => dual(2, (self: A, that: A) => O(self, that) !== -1)
 
 /**
- * Take the minimum of two values. If they are considered equal, the first argument is chosen.
+ * Returns the minimum of two values according to the given order. If they are equal, returns the first argument.
  *
+ * **When to use**
+ *
+ * Use when you need to select the smaller of two values according to an
+ * `Order`.
+ *
+ * **Details**
+ *
+ * Returns the value that compares as less than or equal to the other value. If
+ * values are equal, the first argument is returned.
+ *
+ * **Example** (Selecting the minimum value)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const minNumber = Order.min(Order.Number)
+ *
+ * console.log(minNumber(1, 2)) // 1
+ * console.log(minNumber(2, 1)) // 1
+ * console.log(minNumber(1, 1)) // 1
+ * ```
+ *
+ * @see {@link max} for the maximum of two values
+ * @see {@link clamp} to clamp a value between min and max
+ * @category comparisons
  * @since 2.0.0
  */
 export const min = <A>(O: Order<A>): {
@@ -305,8 +803,33 @@ export const min = <A>(O: Order<A>): {
 } => dual(2, (self: A, that: A) => self === that || O(self, that) < 1 ? self : that)
 
 /**
- * Take the maximum of two values. If they are considered equal, the first argument is chosen.
+ * Returns the maximum of two values according to the given order. If they are equal, returns the first argument.
  *
+ * **When to use**
+ *
+ * Use when you need to select the larger of two values according to an
+ * `Order`.
+ *
+ * **Details**
+ *
+ * Returns the value that compares as greater than or equal to the other value.
+ * If values are equal, the first argument is returned.
+ *
+ * **Example** (Selecting the maximum value)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const maxNumber = Order.max(Order.Number)
+ *
+ * console.log(maxNumber(1, 2)) // 2
+ * console.log(maxNumber(2, 1)) // 2
+ * console.log(maxNumber(1, 1)) // 1
+ * ```
+ *
+ * @see {@link min} for the minimum of two values
+ * @see {@link clamp} to clamp a value between min and max
+ * @category comparisons
  * @since 2.0.0
  */
 export const max = <A>(O: Order<A>): {
@@ -315,20 +838,36 @@ export const max = <A>(O: Order<A>): {
 } => dual(2, (self: A, that: A) => self === that || O(self, that) > -1 ? self : that)
 
 /**
- * Clamp a value between a minimum and a maximum.
+ * Restricts a value between a minimum and a maximum according to the given order.
  *
- * @example
+ * **When to use**
+ *
+ * Use when you need to clamp a value to an inclusive range according to an
+ * `Order`.
+ *
+ * **Details**
+ *
+ * Returns the value itself when it is between minimum and maximum, inclusive.
+ * Values below the range return minimum, and values above the range return
+ * maximum. The minimum must be less than or equal to the maximum according to
+ * the order.
+ *
+ * **Example** (Clamping values)
+ *
  * ```ts
- * import * as assert from "node:assert"
- * import { Order, Number } from "effect"
+ * import { Order } from "effect"
  *
- * const clamp = Order.clamp(Number.Order)({ minimum: 1, maximum: 5 })
+ * const clamp = Order.clamp(Order.Number)({ minimum: 1, maximum: 5 })
  *
- * assert.equal(clamp(3), 3)
- * assert.equal(clamp(0), 1)
- * assert.equal(clamp(6), 5)
+ * console.log(clamp(3)) // 3
+ * console.log(clamp(0)) // 1
+ * console.log(clamp(6)) // 5
  * ```
  *
+ * @see {@link min} for the minimum of two values
+ * @see {@link max} for the maximum of two values
+ * @see {@link isBetween} to check if a value is within a range
+ * @category comparisons
  * @since 2.0.0
  */
 export const clamp = <A>(O: Order<A>): {
@@ -350,11 +889,41 @@ export const clamp = <A>(O: Order<A>): {
   )
 
 /**
- * Test whether a value is between a minimum and a maximum (inclusive).
+ * Checks whether a value is between a minimum and a maximum (inclusive) according to the given order.
  *
- * @since 2.0.0
+ * **When to use**
+ *
+ * Use when you need range checks that respect domain-specific ordering, such as
+ * dates, versions, or custom priorities, instead of JavaScript numeric
+ * comparison.
+ *
+ * **Details**
+ *
+ * Returns `true` when the value is greater than or equal to minimum and less
+ * than or equal to maximum. Values outside the range return `false`. Both
+ * bounds are inclusive.
+ *
+ * **Example** (Checking ranges)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const betweenNumber = Order.isBetween(Order.Number)
+ *
+ * console.log(betweenNumber(5, { minimum: 1, maximum: 10 })) // true
+ * console.log(betweenNumber(1, { minimum: 1, maximum: 10 })) // true
+ * console.log(betweenNumber(10, { minimum: 1, maximum: 10 })) // true
+ * console.log(betweenNumber(0, { minimum: 1, maximum: 10 })) // false
+ * console.log(betweenNumber(11, { minimum: 1, maximum: 10 })) // false
+ * ```
+ *
+ * @see {@link clamp} to clamp a value to a range
+ * @see {@link isLessThanOrEqualTo} for less than or equal check
+ * @see {@link isGreaterThanOrEqualTo} for greater than or equal check
+ * @category predicates
+ * @since 4.0.0
  */
-export const between = <A>(O: Order<A>): {
+export const isBetween = <A>(O: Order<A>): {
   (options: {
     minimum: A
     maximum: A
@@ -369,5 +938,45 @@ export const between = <A>(O: Order<A>): {
     (self: A, options: {
       minimum: A
       maximum: A
-    }): boolean => !lessThan(O)(self, options.minimum) && !greaterThan(O)(self, options.maximum)
+    }): boolean => !isLessThan(O)(self, options.minimum) && !isGreaterThan(O)(self, options.maximum)
   )
+
+/**
+ * Creates a `Reducer` for combining `Order` instances, useful for aggregating orders in collections.
+ *
+ * **When to use**
+ *
+ * Use when you need a reducer that combines orders.
+ *
+ * **Details**
+ *
+ * Returns a reducer that combines orders using `combine`, uses `alwaysEqual` as
+ * the identity element for empty collections, and uses `combineAll` for
+ * combining collections of orders. The reducer can be used with fold operations
+ * on collections.
+ *
+ * **Example** (Creating a Reducer)
+ *
+ * ```ts
+ * import { Order } from "effect"
+ *
+ * const reducer = Order.makeReducer<number>()
+ * const orders = [Order.Number, Order.flip(Order.Number)]
+ *
+ * const combined = reducer.combineAll(orders)
+ * console.log(combined(1, 2)) // -1 (uses first order)
+ * ```
+ *
+ * @see {@link combine} to combine two orders
+ * @see {@link combineAll} to combine multiple orders
+ * @see {@link Reducer} for reducing orders as a collection operation
+ * @category constructors
+ * @since 4.0.0
+ */
+export function makeReducer<A>() {
+  return Reducer.make<Order<A>>(
+    combine,
+    () => 0,
+    combineAll
+  )
+}

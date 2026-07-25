@@ -1,25 +1,40 @@
 /**
- * @since 1.0.0
+ * Node.js layers for Effect's `Path` service.
+ *
+ * This module provides the default, POSIX, and Windows variants of the
+ * platform-independent `Path` service by reusing the shared Node path
+ * implementation. The provided path services include Node file URL conversion
+ * behavior.
+ *
+ * @since 4.0.0
  */
-
 import * as NodePath from "@effect/platform-node-shared/NodePath"
-import type { Path } from "@effect/platform/Path"
-import type { Layer } from "effect/Layer"
+import type * as Layer from "effect/Layer"
+import type { Path } from "effect/Path"
 
 /**
- * @since 1.0.0
- * @category layer
+ * Provides the default Node `Path` service using the platform's `node:path`
+ * implementation.
+ *
+ * @category layers
+ * @since 4.0.0
  */
-export const layer: Layer<Path> = NodePath.layer
+export const layer: Layer.Layer<Path> = NodePath.layer
 
 /**
- * @since 1.0.0
- * @category layer
+ * Provides the `Path` service using Node's POSIX path implementation,
+ * regardless of the host platform.
+ *
+ * @category layers
+ * @since 4.0.0
  */
-export const layerPosix: Layer<Path> = NodePath.layerPosix
+export const layerPosix: Layer.Layer<Path> = NodePath.layerPosix
 
 /**
- * @since 1.0.0
- * @category layer
+ * Provides the `Path` service using Node's Windows path implementation,
+ * regardless of the host platform.
+ *
+ * @category layers
+ * @since 4.0.0
  */
-export const layerWin32: Layer<Path> = NodePath.layerWin32
+export const layerWin32: Layer.Layer<Path> = NodePath.layerWin32

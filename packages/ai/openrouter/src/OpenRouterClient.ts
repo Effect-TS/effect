@@ -1,372 +1,367 @@
 /**
- * @since 1.0.0
+ * The `OpenRouterClient` module provides an Effect service for calling
+ * OpenRouter's chat completions API. It wraps the generated OpenRouter HTTP
+ * client with Effect-native constructors, layers, authentication and optional
+ * site ranking headers, typed errors, and streaming support.
+ *
+ * @since 4.0.0
  */
-import * as AiError from "@effect/ai/AiError"
-import * as Sse from "@effect/experimental/Sse"
-import * as HttpBody from "@effect/platform/HttpBody"
-import * as HttpClient from "@effect/platform/HttpClient"
-import * as HttpClientRequest from "@effect/platform/HttpClientRequest"
-import * as Config from "effect/Config"
-import type { ConfigError } from "effect/ConfigError"
+import type * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Predicate from "effect/Predicate"
 import type * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import * as Generated from "./Generated.js"
-import { OpenRouterConfig } from "./OpenRouterConfig.js"
+import type * as AiError from "effect/unstable/ai/AiError"
+import * as Sse from "effect/unstable/encoding/Sse"
+import * as HttpBody from "effect/unstable/http/HttpBody"
+import * as HttpClient from "effect/unstable/http/HttpClient"
+import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
+import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
+import * as Generated from "./Generated.ts"
+import * as Errors from "./internal/errors.ts"
+import { OpenRouterConfig } from "./OpenRouterConfig.ts"
+
+// =============================================================================
+// Service Interface
+// =============================================================================
 
 /**
- * @since 1.0.0
- * @category Context
- */
-export class OpenRouterClient extends Context.Tag(
-  "@effect/ai-openrouter/OpenRouterClient"
-)<OpenRouterClient, Service>() {}
-
-/**
- * @since 1.0.0
- * @category Models
+ * The OpenRouter client service interface.
+ *
+ * **Details**
+ *
+ * Provides methods for interacting with OpenRouter's Chat Completions API,
+ * including both synchronous and streaming message creation.
+ *
+ * @category models
+ * @since 4.0.0
  */
 export interface Service {
-  /**
-   * The underlying HTTP client capable of communicating with the OpenRouter API.
-   *
-   * This client is pre-configured with authentication, base URL, and standard
-   * headers required for OpenRouter API communication. It provides direct access
-   * to the generated OpenRouter API client for operations not covered by the
-   * higher-level methods.
-   *
-   * Use this when you need to:
-   * - Access provider-specific API endpoints not available through the AI SDK
-   * - Implement custom request/response handling
-   * - Use OpenRouter API features not yet supported by the Effect AI abstractions
-   * - Perform batch operations or non-streaming requests
-   *
-   * The client automatically handles authentication and follows OpenRouter's
-   * API conventions for request formatting and error handling.
-   */
-  readonly client: Generated.Client
+  readonly client: Generated.OpenRouterClient
 
   readonly createChatCompletion: (
-    options: typeof Generated.ChatGenerationParams.Encoded
-  ) => Effect.Effect<Generated.ChatResponse, AiError.AiError>
+    options: typeof Generated.ChatRequest.Encoded
+  ) => Effect.Effect<
+    [body: typeof Generated.SendChatCompletionRequest200.Type, response: HttpClientResponse.HttpClientResponse],
+    AiError.AiError
+  >
 
   readonly createChatCompletionStream: (
-    options: Omit<typeof Generated.ChatGenerationParams.Encoded, "stream">
-  ) => Stream.Stream<ChatStreamingResponseChunk, AiError.AiError>
+    options: Omit<typeof Generated.ChatRequest.Encoded, "stream" | "stream_options">
+  ) => Effect.Effect<
+    [
+      response: HttpClientResponse.HttpClientResponse,
+      stream: Stream.Stream<ChatStreamingResponseChunkData, AiError.AiError>
+    ],
+    AiError.AiError
+  >
 }
 
 /**
- * @since 1.0.0
- * @category Constructors
+ * Decoded `data` payload from an OpenRouter chat completion streaming chunk.
+ *
+ * **Details**
+ *
+ * The payload contains streamed choices, model metadata, optional usage, and may
+ * include an OpenRouter error object for a streamed response.
+ *
+ * @category models
+ * @since 4.0.0
  */
-export const make: (options: {
-  readonly apiKey?: Redacted.Redacted | undefined
+export type ChatStreamingResponseChunkData = typeof Generated.ChatStreamingResponse.fields.data.Type
+
+// =============================================================================
+// Service Identifier
+// =============================================================================
+
+/**
+ * Service tag for the OpenRouter client.
+ *
+ * **When to use**
+ *
+ * Use when accessing or providing the OpenRouter client service through
+ * Effect's context.
+ *
+ * @see {@link make} for constructing an OpenRouter client effectfully
+ * @see {@link layer} for providing a client from explicit options
+ * @see {@link layerConfig} for providing a client from `Config`
+ *
+ * @category services
+ * @since 4.0.0
+ */
+export class OpenRouterClient extends Context.Service<
+  OpenRouterClient,
+  Service
+>()("@effect/ai-openrouter/OpenRouterClient") {}
+
+// =============================================================================
+// Options
+// =============================================================================
+
+/**
+ * Configuration for creating an OpenRouter client.
+ *
+ * @category options
+ * @since 4.0.0
+ */
+export type Options = {
+  readonly apiKey?: Redacted.Redacted<string> | undefined
+
   readonly apiUrl?: string | undefined
+
   /**
    * Optional URL of your site for rankings on `openrouter.ai`.
    */
-  readonly referrer?: string | undefined
+  readonly siteReferrer?: string | undefined
+
   /**
    * Optional title of your site for rankings on `openrouter.ai`.
    */
-  readonly title?: string | undefined
+  readonly siteTitle?: string | undefined
+
   /**
-   * A function to transform the underlying HTTP client before it's used to send
-   * API requests.
+   * Optional transformer for the underlying HTTP client.
    *
-   * This transformation function receives the configured HTTP client and returns
-   * a modified version. It's applied after all standard client configuration
-   * (authentication, base URL, headers) but before any requests are made.
+   * **When to use**
    *
-   * Use this for:
-   * - Adding custom middleware (logging, metrics, caching)
-   * - Modifying request/response processing behavior
-   * - Adding custom retry logic or error handling
-   * - Integrating with monitoring or debugging tools
-   * - Applying organization-specific HTTP client policies
-   *
-   * The transformation is applied once during client initialization and affects
-   * all subsequent API requests made through this client instance.
-   *
-   * Leave absent or set to `undefined` if no custom HTTP client behavior is
-   * needed.
+   * Use to add middleware, logging, or custom request/response handling.
    */
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}) => Effect.Effect<Service, never, HttpClient.HttpClient> = Effect.fnUntraced(function*(options) {
-  const httpClient = (yield* HttpClient.HttpClient).pipe(
-    HttpClient.mapRequest((request) =>
-      request.pipe(
-        HttpClientRequest.prependUrl(options.apiUrl ?? "https://openrouter.ai/api/v1"),
-        options.apiKey ? HttpClientRequest.bearerToken(options.apiKey) : identity,
-        options.referrer ? HttpClientRequest.setHeader("HTTP-Referer", options.referrer) : identity,
-        options.title ? HttpClientRequest.setHeader("X-Title", options.title) : identity,
-        HttpClientRequest.acceptJson
-      )
-    ),
-    options.transformClient ?? identity
-  )
+}
 
-  const httpClientOk = HttpClient.filterStatusOk(httpClient)
+// =============================================================================
+// Constructor
+// =============================================================================
 
-  const client = Generated.make(httpClient, {
-    transformClient: (client) =>
-      OpenRouterConfig.getOrUndefined.pipe(
-        Effect.map((config) => config?.transformClient ? config.transformClient(client) : client)
-      )
-  })
+/**
+ * Creates an OpenRouter client service from explicit options.
+ *
+ * **When to use**
+ *
+ * Use when you need the OpenRouter client service value inside an effect.
+ *
+ * **Details**
+ *
+ * The returned service uses the current `HttpClient`, prepends `apiUrl` or
+ * `https://openrouter.ai/api/v1`, adds the bearer token and optional
+ * `HTTP-Referer` and `X-Title` headers, accepts JSON responses, and applies
+ * `transformClient` when provided.
+ *
+ * **Gotchas**
+ *
+ * Scoped `OpenRouterConfig.withClientTransform` applies to generated client
+ * request methods. Streaming chat completion requests are sent directly by this
+ * module and do not read that scoped transform.
+ *
+ * @see {@link layer} for providing this client from explicit options
+ * @see {@link layerConfig} for loading client settings from `Config`
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = Effect.fnUntraced(
+  function*(options: Options): Effect.fn.Return<Service, never, HttpClient.HttpClient> {
+    const baseClient = yield* HttpClient.HttpClient
 
-  const streamRequest = <A, I, R>(
-    request: HttpClientRequest.HttpClientRequest,
-    schema: Schema.Schema<A, I, R>
-  ): Stream.Stream<A, AiError.AiError, R> => {
-    const decodeEvent = Schema.decode(Schema.parseJson(schema))
-    return httpClientOk.execute(request).pipe(
-      Effect.map((r) => r.stream),
-      Stream.unwrapScoped,
-      Stream.decodeText(),
-      Stream.pipeThroughChannel(Sse.makeChannel()),
-      Stream.takeWhile((event) => event.data !== "[DONE]"),
-      Stream.mapEffect((event) => decodeEvent(event.data)),
-      Stream.catchTags({
-        RequestError: (error) =>
-          AiError.HttpRequestError.fromRequestError({
-            module: "OpenRouterClient",
-            method: "streamRequest",
-            error
-          }),
-        ResponseError: (error) =>
-          AiError.HttpResponseError.fromResponseError({
-            module: "OpenRouterClient",
-            method: "streamRequest",
-            error
-          }),
-        ParseError: (error) =>
-          AiError.MalformedOutput.fromParseError({
-            module: "OpenRouterClient",
-            method: "streamRequest",
-            error
-          })
-      })
+    const httpClient = baseClient.pipe(
+      HttpClient.mapRequest((request) =>
+        request.pipe(
+          HttpClientRequest.prependUrl(options.apiUrl ?? "https://openrouter.ai/api/v1"),
+          options.apiKey ? HttpClientRequest.bearerToken(options.apiKey) : identity,
+          options.siteReferrer ? HttpClientRequest.setHeader("HTTP-Referer", options.siteReferrer) : identity,
+          options.siteTitle ? HttpClientRequest.setHeader("X-Title", options.siteTitle) : identity,
+          HttpClientRequest.acceptJson
+        )
+      ),
+      options.transformClient ?? identity
     )
-  }
 
-  const createChatCompletion: (
-    options: typeof Generated.ChatGenerationParams.Encoded
-  ) => Effect.Effect<Generated.ChatResponse, AiError.AiError> = Effect.fnUntraced(
-    function*(options) {
-      return yield* client.sendChatCompletionRequest(options).pipe(
-        Effect.catchTag("ChatError", (error) =>
-          new AiError.HttpResponseError({
-            module: "OpenRouterClient",
-            method: "createChatCompletion",
-            reason: "StatusCode",
-            request: {
-              hash: error.request.hash,
-              headers: error.request.headers,
-              method: error.request.method,
-              url: error.request.url,
-              urlParams: error.request.urlParams
-            },
-            response: {
-              headers: error.response.headers,
-              status: error.response.status
-            }
-          })),
-        Effect.catchTags({
-          RequestError: (error) =>
-            AiError.HttpRequestError.fromRequestError({
-              module: "OpenRouterClient",
-              method: "createChatCompletion",
-              error
-            }),
-          ResponseError: (error) =>
-            AiError.HttpResponseError.fromResponseError({
-              module: "OpenRouterClient",
-              method: "createChatCompletion",
-              error
-            }),
-          ParseError: (error) =>
-            AiError.MalformedOutput.fromParseError({
-              module: "OpenRouterClient",
-              method: "createChatCompletion",
-              error
-            })
-        })
-      )
-    }
-  )
+    const httpClientOk = HttpClient.filterStatusOk(httpClient)
 
-  const createChatCompletionStream = (
-    options: Omit<typeof Generated.ChatGenerationParams.Encoded, "stream">
-  ): Stream.Stream<ChatStreamingResponseChunk, AiError.AiError> => {
-    const request = HttpClientRequest.post("/chat/completions", {
-      body: HttpBody.unsafeJson({
-        ...options,
-        stream: true,
-        stream_options: { include_usage: true }
+    const client = Generated.make(httpClient, {
+      transformClient: Effect.fnUntraced(function*(client) {
+        const config = yield* OpenRouterConfig.getOrUndefined
+        if (Predicate.isNotUndefined(config?.transformClient)) {
+          return config.transformClient(client)
+        }
+        return client
       })
     })
-    return streamRequest(request, ChatStreamingResponseChunk)
+
+    const createChatCompletion: Service["createChatCompletion"] = (payload) =>
+      client.sendChatCompletionRequest({ payload, config: { includeResponse: true } }).pipe(
+        Effect.catchTags({
+          SendChatCompletionRequest400: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest401: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest402: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest403: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest404: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest408: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest413: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest422: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest429: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest500: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest502: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest503: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest524: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          SendChatCompletionRequest529: (error) => Effect.fail(Errors.mapClientError(error, "createChatCompletion")),
+          HttpClientError: (error) => Errors.mapHttpClientError(error, "createChatCompletion"),
+          SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createChatCompletion"))
+        })
+      )
+
+    const buildChatCompletionStream = (
+      response: HttpClientResponse.HttpClientResponse
+    ): [
+      HttpClientResponse.HttpClientResponse,
+      Stream.Stream<ChatStreamingResponseChunkData, AiError.AiError>
+    ] => {
+      const stream = response.stream.pipe(
+        Stream.decodeText(),
+        Stream.pipeThroughChannel(Sse.decode()),
+        Stream.mapEffect((event) => decodeChatCompletionSseData(event.data)),
+        Stream.takeWhile((data) => data !== "[DONE]"),
+        Stream.catchTags({
+          // TODO: handle SSE retries
+          Retry: (error) => Stream.die(error),
+          HttpClientError: (error) => Stream.fromEffect(Errors.mapHttpClientError(error, "createChatCompletionStream")),
+          SchemaError: (error) => Stream.fail(Errors.mapSchemaError(error, "createChatCompletionStream"))
+        })
+      ) as any
+      return [response, stream]
+    }
+
+    const createChatCompletionStream: Service["createChatCompletionStream"] = (payload) =>
+      httpClientOk.execute(
+        HttpClientRequest.post("/chat/completions", {
+          body: HttpBody.jsonUnsafe({
+            ...payload,
+            stream: true,
+            stream_options: { include_usage: true }
+          })
+        })
+      ).pipe(
+        Effect.map(buildChatCompletionStream),
+        Effect.catchTag(
+          "HttpClientError",
+          (error) => Errors.mapHttpClientError(error, "createChatCompletionStream")
+        )
+      )
+
+    return OpenRouterClient.of({
+      client,
+      createChatCompletion,
+      createChatCompletionStream
+    })
   }
+)
 
-  return OpenRouterClient.of({
-    client,
-    createChatCompletion,
-    createChatCompletionStream
-  })
-})
+// =============================================================================
+// Layers
+// =============================================================================
 
 /**
- * @since 1.0.0
- * @category Layers
+ * Creates a layer for the OpenRouter client with the given options.
+ *
+ * **When to use**
+ *
+ * Use when you already have the OpenRouter client options in code and want to
+ * provide `OpenRouterClient` as a layer.
+ *
+ * @see {@link make} for constructing the client service effectfully
+ * @see {@link layerConfig} for loading client settings from `Config`
+ *
+ * @category layers
+ * @since 4.0.0
  */
-export const layer = (options: {
-  readonly apiKey?: Redacted.Redacted | undefined
-  readonly apiUrl?: string | undefined
-  /**
-   * Optional URL of your site for rankings on `openrouter.ai`.
-   */
-  readonly referrer?: string | undefined
-  /**
-   * Optional title of your site for rankings on `openrouter.ai`.
-   */
-  readonly title?: string | undefined
-  /**
-   * A function to transform the underlying HTTP client before it's used to send
-   * API requests.
-   *
-   * This transformation function receives the configured HTTP client and returns
-   * a modified version. It's applied after all standard client configuration
-   * (authentication, base URL, headers) but before any requests are made.
-   *
-   * Use this for:
-   * - Adding custom middleware (logging, metrics, caching)
-   * - Modifying request/response processing behavior
-   * - Adding custom retry logic or error handling
-   * - Integrating with monitoring or debugging tools
-   * - Applying organization-specific HTTP client policies
-   *
-   * The transformation is applied once during client initialization and affects
-   * all subsequent API requests made through this client instance.
-   *
-   * Leave absent or set to `undefined` if no custom HTTP client behavior is
-   * needed.
-   */
-  readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}): Layer.Layer<OpenRouterClient, never, HttpClient.HttpClient> => Layer.effect(OpenRouterClient, make(options))
+export const layer = (options: Options): Layer.Layer<OpenRouterClient, never, HttpClient.HttpClient> =>
+  Layer.effect(OpenRouterClient, make(options))
 
 /**
- * @since 1.0.0
- * @category Layers
+ * Creates a layer for the OpenRouter client from provided `Config` values.
+ *
+ * **When to use**
+ *
+ * Use when you need client settings for OpenRouter to be read from Effect
+ * `Config` values while providing `OpenRouterClient` as a layer.
+ *
+ * **Details**
+ *
+ * Only config values supplied in `options` are loaded. Omitted fields are
+ * passed to `make` as `undefined`, and `transformClient` is forwarded as a
+ * plain option.
+ *
+ * @see {@link make} for constructing the client service effectfully
+ * @see {@link layer} for providing the client from already-resolved options
+ *
+ * @category layers
+ * @since 4.0.0
  */
-export const layerConfig = (options: {
-  readonly apiKey?: Config.Config<Redacted.Redacted> | undefined
+export const layerConfig = (options?: {
+  /**
+   * The config value to load for the API key.
+   */
+  readonly apiKey?: Config.Config<Redacted.Redacted<string> | undefined> | undefined
+
+  /**
+   * The config value to load for the API URL.
+   */
   readonly apiUrl?: Config.Config<string> | undefined
+
   /**
-   * Optional URL of your site for rankings on `openrouter.ai`.
+   * The config value to load for the site referrer URL.
    */
-  readonly referrer?: Config.Config<string> | undefined
+  readonly siteReferrer?: Config.Config<string> | undefined
+
   /**
-   * Optional title of your site for rankings on `openrouter.ai`.
+   * The config value to load for the site title.
    */
-  readonly title?: Config.Config<string> | undefined
+  readonly siteTitle?: Config.Config<string> | undefined
+
   /**
-   * A function to transform the underlying HTTP client before it's used to send
-   * API requests.
-   *
-   * This transformation function receives the configured HTTP client and returns
-   * a modified version. It's applied after all standard client configuration
-   * (authentication, base URL, headers) but before any requests are made.
-   *
-   * Use this for:
-   * - Adding custom middleware (logging, metrics, caching)
-   * - Modifying request/response processing behavior
-   * - Adding custom retry logic or error handling
-   * - Integrating with monitoring or debugging tools
-   * - Applying organization-specific HTTP client policies
-   *
-   * The transformation is applied once during client initialization and affects
-   * all subsequent API requests made through this client instance.
-   *
-   * Leave absent or set to `undefined` if no custom HTTP client behavior is
-   * needed.
+   * Optional transformer for the HTTP client.
    */
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}): Layer.Layer<OpenRouterClient, ConfigError, HttpClient.HttpClient> => {
-  const { transformClient, ...configs } = options
-  return Config.all(configs).pipe(
-    Effect.flatMap((configs) => make({ ...configs, transformClient })),
-    Layer.effect(OpenRouterClient)
+}): Layer.Layer<OpenRouterClient, Config.ConfigError, HttpClient.HttpClient> =>
+  Layer.effect(
+    OpenRouterClient,
+    Effect.gen(function*() {
+      const apiKey = Predicate.isNotUndefined(options?.apiKey)
+        ? yield* options.apiKey
+        : undefined
+      const apiUrl = Predicate.isNotUndefined(options?.apiUrl)
+        ? yield* options.apiUrl
+        : undefined
+      const siteReferrer = Predicate.isNotUndefined(options?.siteReferrer)
+        ? yield* options.siteReferrer
+        : undefined
+      const siteTitle = Predicate.isNotUndefined(options?.siteTitle)
+        ? yield* options.siteTitle
+        : undefined
+      return yield* make({
+        apiKey,
+        apiUrl,
+        siteReferrer,
+        siteTitle,
+        transformClient: options?.transformClient
+      })
+    })
   )
-}
 
-/**
- * @since 1.0.0
- * @category Schemas
- */
-export class ChatStreamingMessageToolCall extends Schema.Class<ChatStreamingMessageToolCall>(
-  "@effect/ai-openrouter/ChatStreamingMessageToolCall"
-)({
-  index: Schema.Number,
-  id: Schema.optionalWith(Schema.String, { nullable: true }),
-  type: Schema.optionalWith(Schema.Literal("function"), { nullable: true }),
-  function: Schema.Struct({
-    name: Schema.optionalWith(Schema.String, { nullable: true }),
-    arguments: Schema.optionalWith(Schema.String, { nullable: true })
-  })
-}) {}
+// =============================================================================
+// Internal Utilities
+// =============================================================================
 
-/**
- * @since 1.0.0
- * @category Schemas
- */
-export class ChatStreamingMessageChunk extends Schema.Class<ChatStreamingMessageChunk>(
-  "@effect/ai-openrouter/ChatStreamingMessageChunk"
-)({
-  role: Schema.optionalWith(Schema.Literal("assistant"), { nullable: true }),
-  content: Schema.optionalWith(Schema.String, { nullable: true }),
-  reasoning: Schema.optionalWith(Schema.String, { nullable: true }),
-  reasoning_details: Schema.optionalWith(Schema.Array(Generated.ReasoningDetail), { nullable: true }),
-  images: Schema.optionalWith(Schema.Array(Generated.ChatMessageContentItemImage), { nullable: true }),
-  refusal: Schema.optionalWith(Schema.String, { nullable: true }),
-  tool_calls: Schema.optionalWith(Schema.Array(ChatStreamingMessageToolCall), { nullable: true }),
-  annotations: Schema.optionalWith(Schema.Array(Generated.AnnotationDetail), { nullable: true })
-}) {}
+const ChatStreamingResponseChunkDataFromString = Schema.fromJsonString(Generated.ChatStreamingResponse.fields.data)
+const decodeChatStreamingResponseChunkData = Schema.decodeUnknownEffect(ChatStreamingResponseChunkDataFromString)
 
-/**
- * @since 1.0.0
- * @category Schemas
- */
-export class ChatStreamingChoice extends Schema.Class<ChatStreamingChoice>(
-  "@effect/ai-openrouter/ChatStreamingChoice"
-)({
-  index: Schema.Number,
-  delta: Schema.optionalWith(ChatStreamingMessageChunk, { nullable: true }),
-  finish_reason: Schema.optionalWith(Generated.ChatCompletionFinishReason, { nullable: true }),
-  native_finish_reason: Schema.optionalWith(Schema.String, { nullable: true }),
-  logprobs: Schema.optionalWith(Generated.ChatMessageTokenLogprobs, { nullable: true })
-}) {}
-
-/**
- * @since 1.0.0
- * @category Schemas
- */
-export class ChatStreamingResponseChunk extends Schema.Class<ChatStreamingResponseChunk>(
-  "@effect/ai-openrouter/ChatStreamingResponseChunk"
-)({
-  id: Schema.optionalWith(Schema.String, { nullable: true }),
-  model: Schema.optionalWith(
-    Schema.TemplateLiteral(Schema.String, Schema.Literal("/"), Schema.String),
-    { nullable: true }
-  ),
-  provider: Schema.optionalWith(Schema.String, { nullable: true }),
-  created: Schema.DateTimeUtcFromNumber,
-  choices: Schema.Array(ChatStreamingChoice),
-  error: Schema.optionalWith(Generated.ChatError.fields.error, { nullable: true }),
-  system_fingerprint: Schema.optionalWith(Schema.String, { nullable: true }),
-  usage: Schema.optionalWith(Generated.ChatGenerationTokenUsage, { nullable: true })
-}) {}
+const decodeChatCompletionSseData = (
+  data: string
+): Effect.Effect<ChatStreamingResponseChunkData | "[DONE]", Schema.SchemaError> =>
+  data === "[DONE]"
+    ? Effect.succeed(data)
+    : decodeChatStreamingResponseChunkData(data)

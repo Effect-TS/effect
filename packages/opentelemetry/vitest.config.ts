@@ -1,5 +1,5 @@
 import { mergeConfig, type ViteUserConfig } from "vitest/config"
-import shared from "../../vitest.shared.js"
+import shared from "../../vitest.shared.ts"
 
 const config: ViteUserConfig = {}
 

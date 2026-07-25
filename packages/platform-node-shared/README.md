@@ -1,6 +1,6 @@
 # `@effect/platform-node-shared`
 
-Provides shared utilities and abstractions used by the [`@effect/platform-node`](https://github.com/Effect-TS/effect/tree/main/packages/platform-node) package.
+Provides shared Node.js-compatible implementations used by the Effect Node.js and Bun platform packages.
 
 ## Documentation
 

@@ -1,54 +1,59 @@
-import { describe, it } from "@effect/vitest"
-import { strictEqual } from "@effect/vitest/utils"
-import { Duration, Effect, Either, identity, pipe, Ref, Resource, Schedule } from "effect"
-import * as TestClock from "effect/TestClock"
+import { assert, describe, it } from "@effect/vitest"
+import * as Duration from "effect/Duration"
+import * as Effect from "effect/Effect"
+import { identity, pipe } from "effect/Function"
+import * as Ref from "effect/Ref"
+import * as Resource from "effect/Resource"
+import * as Schedule from "effect/Schedule"
+import * as TestClock from "effect/testing/TestClock"
 
 describe("Resource", () => {
-  it.scoped("manual", () =>
+  it.effect("isResource", () =>
     Effect.gen(function*() {
-      const ref = yield* Ref.make(0)
-      const cached = yield* Resource.manual(Ref.get(ref))
-      const resul1 = yield* Resource.get(cached)
-      const result2 = yield* pipe(
-        Ref.set(ref, 1),
-        Effect.zipRight(Resource.refresh(cached)),
-        Effect.zipRight(Resource.get(cached))
-      )
-      strictEqual(resul1, 0)
-      strictEqual(result2, 1)
+      const resource = yield* Resource.manual(Effect.succeed(0))
+      assert.isTrue(Resource.isResource(resource))
+      assert.isFalse(Resource.isResource(new Set([0])))
     }))
-  it.scoped("auto", () =>
-    Effect.gen(function*() {
-      const ref = yield* Ref.make(0)
-      const cached = yield* Resource.auto(Ref.get(ref), Schedule.spaced(Duration.millis(4)))
-      const result1 = yield* Resource.get(cached)
-      const result2 = yield* pipe(
-        Ref.set(ref, 1),
-        Effect.zipRight(TestClock.adjust(Duration.millis(5))),
-        Effect.zipRight(Resource.get(cached))
-      )
-      strictEqual(result1, 0)
-      strictEqual(result2, 1)
-    }))
-  it.scopedLive("failed refresh doesn't affect cached value", () =>
-    Effect.gen(function*() {
-      const ref = yield* Ref.make<Either.Either<number, string>>(Either.right(0))
-      const cached = yield* Resource.auto(Effect.flatMap(Ref.get(ref), identity), Schedule.spaced(Duration.millis(4)))
-      const result1 = yield* Resource.get(cached)
-      const result2 = yield* pipe(
-        Ref.set(ref, Either.left("Uh oh!")),
-        Effect.zipRight(Effect.sleep(Duration.millis(5))),
-        Effect.zipRight(Resource.get(cached))
-      )
-      strictEqual(result1, 0)
-      strictEqual(result2, 0)
-    }))
-  it.scoped("subtype of Effect", () =>
-    Effect.gen(function*() {
-      const ref = yield* Ref.make(0)
-      const cached = yield* Resource.manual(ref)
-      const resul1 = yield* cached
 
-      strictEqual(resul1, 0)
+  it.effect("manual refresh updates the cached value", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(0)
+      const resource = yield* Resource.manual(Ref.get(ref))
+      const result1 = yield* Resource.get(resource)
+      const result2 = yield* pipe(
+        Ref.set(ref, 1),
+        Effect.andThen(Resource.refresh(resource)),
+        Effect.andThen(Resource.get(resource))
+      )
+      assert.strictEqual(result1, 0)
+      assert.strictEqual(result2, 1)
+    }))
+
+  it.effect("manual refresh releases the previous scoped acquisition", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make(0)
+      const resource = yield* Resource.auto(Ref.get(ref), Schedule.spaced(Duration.millis(4)))
+      const result1 = yield* Resource.get(resource)
+      const result2 = yield* pipe(
+        Ref.set(ref, 1),
+        Effect.andThen(TestClock.adjust(Duration.millis(5))),
+        Effect.andThen(Resource.get(resource))
+      )
+      assert.strictEqual(result1, 0)
+      assert.strictEqual(result2, 1)
+    }))
+
+  it.effect("failed refresh doesn't affect cached value", () =>
+    Effect.gen(function*() {
+      const ref = yield* Ref.make<Effect.Effect<number, string>>(Effect.succeed(0))
+      const resource = yield* Resource.auto(Effect.flatMap(Ref.get(ref), identity), Schedule.spaced(Duration.millis(4)))
+      const result1 = yield* Resource.get(resource)
+      const result2 = yield* pipe(
+        Ref.set(ref, Effect.fail("Uh oh!")),
+        Effect.andThen(TestClock.adjust(Duration.millis(5))),
+        Effect.andThen(Resource.get(resource))
+      )
+      assert.strictEqual(result1, 0)
+      assert.strictEqual(result2, 0)
     }))
 })

@@ -1,7 +1,7 @@
 {
   "name": "@effect/platform-node-shared",
   "type": "module",
-  "version": "0.59.0",
+  "version": "4.0.0-beta.101",
   "license": "MIT",
   "description": "Unified interfaces for common platform-specific services",
   "homepage": "https://effect.website",
@@ -23,50 +23,53 @@
     "algebraic-data-types",
     "functional-programming"
   ],
-  "publishConfig": {
-    "access": "public",
-    "provenance": true,
-    "directory": "dist",
-    "linkDirectory": false
-  },
   "engines": {
     "node": ">=18.0.0"
   },
+  "sideEffects": [],
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
-    "./internal/*": null
+    "./internal/*": null,
+    "./*/index": null
+  },
+  "files": [
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/index.js",
+      "./*": "./dist/*.js",
+      "./internal/*": null,
+      "./*/index": null
+    }
   },
   "scripts": {
-    "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v3",
-    "build-esm": "tsc -b tsconfig.build.json",
-    "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
-    "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
+    "codegen": "effect-utils codegen",
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage"
   },
-  "dependencies": {
-    "@parcel/watcher": "^2.5.1",
-    "multipasta": "^0.2.7",
-    "ws": "^8.18.2"
-  },
   "peerDependencies": {
-    "@effect/cluster": "workspace:^",
-    "@effect/platform": "workspace:^",
-    "@effect/rpc": "workspace:^",
-    "@effect/sql": "workspace:^",
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@effect/cluster": "workspace:^",
-    "@effect/platform": "workspace:^",
-    "@effect/rpc": "workspace:^",
-    "@effect/sql": "workspace:^",
-    "@types/tar": "^6.1.12",
-    "@types/ws": "^8.18.1",
+    "@types/node": "^26.1.1",
     "effect": "workspace:^",
-    "tar": "^6"
+    "tar": "^7.5.19"
+  },
+  "dependencies": {
+    "@types/ws": "^8.18.1",
+    "ws": "^8.21.0"
   }
 }

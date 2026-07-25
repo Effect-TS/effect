@@ -1,39 +1,55 @@
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as Generated from "./Generated.js"
+
+// @barrel: Auto-generated exports. Do not edit manually.
 
 /**
  * @since 1.0.0
  */
-export * as OpenAiClient from "./OpenAiClient.js"
+export * as Generated from "./Generated.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as OpenAiConfig from "./OpenAiConfig.js"
+export * as OpenAiClient from "./OpenAiClient.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as OpenAiEmbeddingModel from "./OpenAiEmbeddingModel.js"
+export * as OpenAiClientGenerated from "./OpenAiClientGenerated.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as OpenAiLanguageModel from "./OpenAiLanguageModel.js"
+export * as OpenAiConfig from "./OpenAiConfig.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as OpenAiTelemetry from "./OpenAiTelemetry.js"
+export * as OpenAiEmbeddingModel from "./OpenAiEmbeddingModel.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as OpenAiTokenizer from "./OpenAiTokenizer.js"
+export * as OpenAiError from "./OpenAiError.ts"
 
 /**
- * @since 1.0.0
+ * @since 4.0.0
  */
-export * as OpenAiTool from "./OpenAiTool.js"
+export * as OpenAiLanguageModel from "./OpenAiLanguageModel.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as OpenAiSchema from "./OpenAiSchema.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as OpenAiTelemetry from "./OpenAiTelemetry.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as OpenAiTool from "./OpenAiTool.ts"

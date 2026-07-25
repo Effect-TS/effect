@@ -1,19 +1,15 @@
-import * as Context from "../Context.js"
-import * as Duration from "../Duration.js"
-import type { Effect } from "../Effect.js"
-import * as Effectable from "../Effectable.js"
-import type { RuntimeFiber } from "../Fiber.js"
-import { identity } from "../Function.js"
-import type * as RcRef from "../RcRef.js"
-import * as Readable from "../Readable.js"
-import type * as Scope from "../Scope.js"
-import * as coreEffect from "./core-effect.js"
-import * as core from "./core.js"
-import * as circular from "./effect/circular.js"
-import * as fiberRuntime from "./fiberRuntime.js"
+import * as Context from "../Context.ts"
+import * as Duration from "../Duration.ts"
+import * as Effect from "../Effect.ts"
+import * as Exit from "../Exit.ts"
+import * as Fiber from "../Fiber.ts"
+import { identity } from "../Function.ts"
+import { pipeArguments } from "../Pipeable.ts"
+import type * as RcRef from "../RcRef.ts"
+import * as Scope from "../Scope.ts"
+import * as Semaphore from "../Semaphore.ts"
 
-/** @internal */
-export const TypeId: RcRef.TypeId = Symbol.for("effect/RcRef") as RcRef.TypeId
+const TypeId = "~effect/RcRef"
 
 type State<A> = State.Empty | State.Acquired<A> | State.Closed
 
@@ -25,9 +21,10 @@ declare namespace State {
   interface Acquired<A> {
     readonly _tag: "Acquired"
     readonly value: A
-    readonly scope: Scope.CloseableScope
-    fiber: RuntimeFiber<void, never> | undefined
+    readonly scope: Scope.Closeable
+    fiber: Fiber.Fiber<void, never> | undefined
     refCount: number
+    invalidated: boolean
   }
 
   interface Closed {
@@ -43,150 +40,150 @@ const variance: RcRef.RcRef.Variance<any, any> = {
   _E: identity
 }
 
-class RcRefImpl<A, E> extends Effectable.Class<A, E, Scope.Scope> implements RcRef.RcRef<A, E> {
+class RcRefImpl<A, E> implements RcRef.RcRef<A, E> {
   readonly [TypeId]: RcRef.RcRef.Variance<A, E> = variance
-  readonly [Readable.TypeId]: Readable.TypeId = Readable.TypeId
+
+  pipe() {
+    return pipeArguments(this, arguments)
+  }
 
   state: State<A> = stateEmpty
-  readonly semaphore = circular.unsafeMakeSemaphore(1)
+  readonly semaphore = Semaphore.makeUnsafe(1)
+  readonly acquire: Effect.Effect<A, E>
+  readonly context: Context.Context<never>
+  readonly scope: Scope.Scope
+  readonly idleTimeToLive: Duration.Duration | undefined
 
   constructor(
-    readonly acquire: Effect<A, E, Scope.Scope>,
-    readonly context: Context.Context<never>,
-    readonly scope: Scope.Scope,
-    readonly idleTimeToLive: Duration.Duration | undefined
+    acquire: Effect.Effect<A, E>,
+    context: Context.Context<never>,
+    scope: Scope.Scope,
+    idleTimeToLive: Duration.Duration | undefined
   ) {
-    super()
-    this.get = get(this)
-  }
-  readonly get: Effect<A, E, Scope.Scope>
-
-  commit() {
-    return this.get
+    this.acquire = acquire
+    this.context = context
+    this.scope = scope
+    this.idleTimeToLive = idleTimeToLive
   }
 }
 
 /** @internal */
 export const make = <A, E, R>(options: {
-  readonly acquire: Effect<A, E, R>
-  readonly idleTimeToLive?: Duration.DurationInput | undefined
+  readonly acquire: Effect.Effect<A, E, R>
+  readonly idleTimeToLive?: Duration.Input | undefined
 }) =>
-  core.withFiberRuntime<RcRef.RcRef<A, E>, never, R | Scope.Scope>((fiber) => {
-    const context = fiber.getFiberRef(core.currentContext) as Context.Context<R | Scope.Scope>
-    const scope = Context.get(context, fiberRuntime.scopeTag)
+  Effect.withFiber<RcRef.RcRef<A, E>, never, R | Scope.Scope>((fiber) => {
+    const context = fiber.context as Context.Context<R | Scope.Scope>
+    const scope = Context.get(context, Scope.Scope)
     const ref = new RcRefImpl<A, E>(
-      options.acquire as Effect<A, E, Scope.Scope>,
+      options.acquire as Effect.Effect<A, E>,
       context,
       scope,
-      options.idleTimeToLive ? Duration.decode(options.idleTimeToLive) : undefined
+      options.idleTimeToLive ? Duration.fromInputUnsafe(options.idleTimeToLive) : undefined
     )
-    return core.as(
-      scope.addFinalizer(() =>
-        ref.semaphore.withPermits(1)(core.suspend(() => {
-          const close = ref.state._tag === "Acquired"
-            ? core.scopeClose(ref.state.scope, core.exitVoid)
-            : core.void
-          ref.state = stateClosed
-          return close
-        }))
-      ),
+    return Effect.as(
+      Scope.addFinalizerExit(scope, () => {
+        const close = ref.state._tag === "Acquired"
+          ? Scope.close(ref.state.scope, Exit.void)
+          : Effect.void
+        ref.state = stateClosed
+        return close
+      }),
       ref
     )
   })
 
-/** @internal */
-export const get = <A, E>(
-  self_: RcRef.RcRef<A, E>
-): Effect<A, E, Scope.Scope> => {
-  const self = self_ as RcRefImpl<A, E>
-  const isInfinite = self.idleTimeToLive && !Duration.isFinite(self.idleTimeToLive)
-  return core.uninterruptibleMask((restore) =>
-    core.suspend(() => {
-      switch (self.state._tag) {
-        case "Closed": {
-          return core.interrupt
-        }
-        case "Acquired": {
-          self.state.refCount++
-          return self.state.fiber
-            ? core.as(core.interruptFiber(self.state.fiber), self.state)
-            : core.succeed(self.state)
-        }
-        case "Empty": {
-          return fiberRuntime.scopeMake().pipe(
-            coreEffect.bindTo("scope"),
-            coreEffect.bind("value", ({ scope }) =>
-              restore(core.fiberRefLocally(
-                self.acquire as Effect<A, E>,
-                core.currentContext,
-                Context.add(self.context, fiberRuntime.scopeTag, scope)
-              ))),
-            core.map(({ scope, value }) => {
-              const state: State.Acquired<A> = {
-                _tag: "Acquired",
-                value,
-                scope,
-                fiber: undefined,
-                refCount: 1
-              }
-              self.state = state
-              return state
-            })
-          )
-        }
+const getState = <A, E>(self: RcRefImpl<A, E>) =>
+  Effect.uninterruptibleMask((restore) => {
+    switch (self.state._tag) {
+      case "Closed": {
+        return Effect.interrupt
       }
-    })
-  ).pipe(
-    self.semaphore.withPermits(1),
-    coreEffect.bindTo("state"),
-    coreEffect.bind("scope", () => fiberRuntime.scopeTag),
-    core.tap(({ scope, state }) =>
-      scope.addFinalizer(() =>
-        core.suspend(() => {
-          state.refCount--
-          if (state.refCount > 0 || isInfinite) {
-            return core.void
-          }
-          if (self.idleTimeToLive === undefined) {
-            self.state = stateEmpty
-            return core.scopeClose(state.scope, core.exitVoid)
-          }
-          return coreEffect.sleep(self.idleTimeToLive).pipe(
-            core.interruptible,
-            core.zipRight(core.suspend(() => {
-              if (self.state._tag === "Acquired" && self.state.refCount === 0) {
-                self.state = stateEmpty
-                return core.scopeClose(state.scope, core.exitVoid)
-              }
-              return core.void
-            })),
-            fiberRuntime.ensuring(core.sync(() => {
-              state.fiber = undefined
-            })),
-            circular.forkIn(self.scope),
-            core.tap((fiber) => {
-              state.fiber = fiber
-            }),
-            self.semaphore.withPermits(1)
-          )
-        })
-      )
-    ),
-    core.map(({ state }) => state.value)
-  )
-}
+      case "Acquired": {
+        self.state.refCount++
+        return self.state.fiber
+          ? Effect.as(Fiber.interrupt(self.state.fiber), self.state)
+          : Effect.succeed(self.state)
+      }
+      case "Empty": {
+        const scope = Scope.makeUnsafe()
+        return self.semaphore.withPermits(1)(
+          restore(Effect.provideContext(
+            self.acquire as Effect.Effect<A, E>,
+            Context.add(self.context, Scope.Scope, scope)
+          )).pipe(Effect.map((value) => {
+            const state: State.Acquired<A> = {
+              _tag: "Acquired",
+              value,
+              scope,
+              fiber: undefined,
+              refCount: 1,
+              invalidated: false
+            }
+            self.state = state
+            return state
+          }))
+        )
+      }
+    }
+  })
+
+/** @internal */
+export const get = Effect.fnUntraced(function*<A, E>(
+  self_: RcRef.RcRef<A, E>
+) {
+  const self = self_ as RcRefImpl<A, E>
+  const state = yield* getState(self)
+  const scope = yield* Effect.scope
+  const isFinite = self.idleTimeToLive !== undefined && Duration.isFinite(self.idleTimeToLive)
+  yield* Scope.addFinalizerExit(scope, () => {
+    state.refCount--
+    if (state.refCount > 0) {
+      return Effect.void
+    }
+    if (self.idleTimeToLive === undefined) {
+      self.state = stateEmpty
+      return Scope.close(state.scope, Exit.void)
+    } else if (state.invalidated) {
+      return Scope.close(state.scope, Exit.void)
+    } else if (!isFinite) {
+      return Effect.void
+    }
+    state.fiber = Effect.sleep(self.idleTimeToLive).pipe(
+      Effect.flatMap(() => {
+        if (self.state._tag === "Acquired" && self.state.refCount === 0) {
+          self.state = stateEmpty
+          return Scope.close(state.scope, Exit.void)
+        }
+        return Effect.void
+      }),
+      Effect.ensuring(Effect.sync(() => {
+        state.fiber = undefined
+      })),
+      Effect.runForkWith(self.context),
+      Fiber.runIn(self.scope)
+    )
+    return Effect.void
+  })
+  return state.value
+})
 
 /** @internal */
 export const invalidate = <A, E>(
   self_: RcRef.RcRef<A, E>
-): Effect<void> => {
+): Effect.Effect<void> => {
   const self = self_ as RcRefImpl<A, E>
-  return core.uninterruptible(core.suspend(() => {
+  return Effect.uninterruptible(Effect.suspend(() => {
     if (self.state._tag !== "Acquired") {
-      return core.void
+      return Effect.void
     }
     const state = self.state
     self.state = stateEmpty
-    return state.scope.close(core.exitVoid)
+    state.invalidated = true
+    if (state.refCount > 0) {
+      return Effect.void
+    }
+    state.fiber?.interruptUnsafe()
+    return Scope.close(state.scope, Exit.void)
   }))
 }

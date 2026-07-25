@@ -1,2429 +1,796 @@
 # @effect/ai-openai
 
-## 0.39.2
+## 4.0.0-beta.101
 
 ### Patch Changes
 
-- [`49c5acd`](https://github.com/Effect-TS/effect/commit/49c5acd5932b3d3981353481664606097082ea2f) Thanks @mollyegibson! - Previously, setting `strict: false` on `OpenAiLanguageModel` config caused a 400 "Unknown parameter: 'strict'" response from the OpenAI Responses API, because the flag was spread into the top-level request body instead of being consumed only by the tool and response_format schema builders. The `strict` flag is now stripped from the request body while still controlling `strict` on tool schemas (`prepareTools`) and json_schema response formats (`prepareResponseFormat`).
+- [#6519](https://github.com/Effect-TS/effect/pull/6519) [`0e116a1`](https://github.com/Effect-TS/effect/commit/0e116a139c9d7af7c7e0ccbb7b5669926477370e) Thanks @tim-smart! - Preserve OpenAI Responses API cache write token usage in language model responses.
 
-## 0.39.1
+- Updated dependencies [[`731bea1`](https://github.com/Effect-TS/effect/commit/731bea19416755a904ff5e809413e5922785d0a4), [`731bea1`](https://github.com/Effect-TS/effect/commit/731bea19416755a904ff5e809413e5922785d0a4), [`731bea1`](https://github.com/Effect-TS/effect/commit/731bea19416755a904ff5e809413e5922785d0a4), [`731bea1`](https://github.com/Effect-TS/effect/commit/731bea19416755a904ff5e809413e5922785d0a4), [`731bea1`](https://github.com/Effect-TS/effect/commit/731bea19416755a904ff5e809413e5922785d0a4), [`b35ed29`](https://github.com/Effect-TS/effect/commit/b35ed2904f01536d303b21f288daf343cf740462), [`dd44624`](https://github.com/Effect-TS/effect/commit/dd446245736a0e88c807a02f03c21450bb9340fa), [`731bea1`](https://github.com/Effect-TS/effect/commit/731bea19416755a904ff5e809413e5922785d0a4), [`2bae1ac`](https://github.com/Effect-TS/effect/commit/2bae1accce9d3b72cf6d5aefc9b2161af6d88436)]:
+  - effect@4.0.0-beta.101
 
-### Patch Changes
-
-- [`47f0439`](https://github.com/Effect-TS/effect/commit/47f04399d317a1a5619de7dec5b23f6ad7255eca) Thanks @aayushbaluni! - fix(ai-openai): deduplicate response.output items to prevent invalid JSON concatenation
-
-- [#6187](https://github.com/Effect-TS/effect/pull/6187) [`b63fdb8`](https://github.com/Effect-TS/effect/commit/b63fdb8783a606077ac80d263b4e09b57cdab476) Thanks @alex-dixon! - Change 'in-memory' to 'in_memory' in prompt cache enums
-
-- [#6174](https://github.com/Effect-TS/effect/pull/6174) [`739f077`](https://github.com/Effect-TS/effect/commit/739f077d1cdfb63d26d4744abd59822231866dac) Thanks @mollyegibson! - Make 'strict' mode configurable for tool definitions passed to the OpenAI model
-
-- Updated dependencies [[`f99048e`](https://github.com/Effect-TS/effect/commit/f99048e9f4b89ce1afe31e1827dee5d751ddaa5b)]:
-  - effect@3.21.1
-
-## 0.39.0
+## 4.0.0-beta.100
 
 ### Patch Changes
 
-- Updated dependencies [[`f7bb09b`](https://github.com/Effect-TS/effect/commit/f7bb09b022f195d1f2b3c23d49e74b011ec5d109), [`bd7552a`](https://github.com/Effect-TS/effect/commit/bd7552a19cc0ed575507ac6cc0879a57e24ebd31), [`ad1a7eb`](https://github.com/Effect-TS/effect/commit/ad1a7eb7f6bebaf91c80be2443ac0439226d0098), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb), [`0d32048`](https://github.com/Effect-TS/effect/commit/0d32048f9836e2b23a6ba3ec5f43f0a000bb92fb)]:
-  - effect@3.21.0
-  - @effect/ai@0.35.0
-  - @effect/experimental@0.60.0
-  - @effect/platform@0.96.0
+- Updated dependencies [[`c1288dd`](https://github.com/Effect-TS/effect/commit/c1288dd1a52a2811ab7df57fc4ce236c6be4c745), [`2b58a3d`](https://github.com/Effect-TS/effect/commit/2b58a3dab6bc99776dddaf76e27d811e0f47f3d8), [`6dc83f2`](https://github.com/Effect-TS/effect/commit/6dc83f26ddf20d48db28cf761dd8f3716e5273fb), [`c1e2fe0`](https://github.com/Effect-TS/effect/commit/c1e2fe0cf93564f4d919e3998874c3e70b0cf30f), [`f3fbae8`](https://github.com/Effect-TS/effect/commit/f3fbae8d7bae0d77cb4f35a1598b26c58e3bf94d), [`e000f80`](https://github.com/Effect-TS/effect/commit/e000f80fd55bcd8edc699fdbf4cd109004f4f754), [`f4ee765`](https://github.com/Effect-TS/effect/commit/f4ee7655ee052cf9ba726fd602bb87c89c7c62a9), [`510b55f`](https://github.com/Effect-TS/effect/commit/510b55f3e21750685dbfd5f476a130c1c5af9dbd), [`31d3fc4`](https://github.com/Effect-TS/effect/commit/31d3fc4327c50867bb8d881fa7353aeb03ea2826), [`875e618`](https://github.com/Effect-TS/effect/commit/875e618c3764a7b817ac863d0af86924449528f2), [`688d46a`](https://github.com/Effect-TS/effect/commit/688d46afd0ef923d983ad3d7385f52f217b28d70), [`6ff5023`](https://github.com/Effect-TS/effect/commit/6ff502363b9840a5a5ee0a24bc6cae734ac3a3eb), [`c0333e7`](https://github.com/Effect-TS/effect/commit/c0333e7f755f42ddcca7051e029da8b4eed527bf), [`06e7e8c`](https://github.com/Effect-TS/effect/commit/06e7e8c66015ee318f871b9d2218dee82df2b108), [`eb9b102`](https://github.com/Effect-TS/effect/commit/eb9b10256c8558881b441c2fef833b7037174400), [`8b155da`](https://github.com/Effect-TS/effect/commit/8b155da06e0740c354ec562957a45ab65eb4573b), [`3a87335`](https://github.com/Effect-TS/effect/commit/3a8733564c5db35271aa20564ed0d344daa2a79f)]:
+  - effect@4.0.0-beta.100
 
-## 0.38.0
+## 4.0.0-beta.99
 
 ### Patch Changes
 
-- Updated dependencies [[`fc82e81`](https://github.com/Effect-TS/effect/commit/fc82e81448bd9136a37580139ce46a2c61b11b54), [`82996bc`](https://github.com/Effect-TS/effect/commit/82996bce8debffcb44feb98bb862cf2662bd56b7), [`4d97a61`](https://github.com/Effect-TS/effect/commit/4d97a61a15b9dd6a0eece65b8f0c035e16d42ada), [`f6b0960`](https://github.com/Effect-TS/effect/commit/f6b0960bf3184109920dfed16ee7dfd7d67bc0f2), [`8798a84`](https://github.com/Effect-TS/effect/commit/8798a843218e6c0c0d3a8eee83360880e370b4da)]:
-  - effect@3.20.0
-  - @effect/ai@0.34.0
-  - @effect/experimental@0.59.0
-  - @effect/platform@0.95.0
+- Updated dependencies [[`8ce4795`](https://github.com/Effect-TS/effect/commit/8ce4795ccbaebca4292757db568c005a992546a4), [`80b539f`](https://github.com/Effect-TS/effect/commit/80b539f8aba68f478c75c35c2b4140c4ffc4fada), [`88a54cc`](https://github.com/Effect-TS/effect/commit/88a54cc341006e3ebcb13482c618f62a680ce199), [`e6e6dba`](https://github.com/Effect-TS/effect/commit/e6e6dba6e9d86e7c2ad27dcedf289db76a19697f), [`bfb203e`](https://github.com/Effect-TS/effect/commit/bfb203e95aa439f731acad37fc3a9a831a190f1c), [`2e9a34a`](https://github.com/Effect-TS/effect/commit/2e9a34ac2bece4f3a206160480c991e3841dc67a), [`55d4eb3`](https://github.com/Effect-TS/effect/commit/55d4eb34f2c64d54f6a25a305b5c5438ebd7934e), [`bddb010`](https://github.com/Effect-TS/effect/commit/bddb010eac3d4436cb094edbbee7460c5440c162), [`a328835`](https://github.com/Effect-TS/effect/commit/a328835e50d76bc96648a1c1550456e8c9f81210), [`5560d05`](https://github.com/Effect-TS/effect/commit/5560d05aa6abdd29466d9c3412cc5e648b0adbde), [`8f6e3ad`](https://github.com/Effect-TS/effect/commit/8f6e3adb185b16e8820b98c509b308086f7ff1af), [`46997fa`](https://github.com/Effect-TS/effect/commit/46997fa60401f5e3c93daa4b61f7df8e31caaab4), [`9e6e12d`](https://github.com/Effect-TS/effect/commit/9e6e12d75c118cd265496f2880490d1f33a5c8bf), [`3394b93`](https://github.com/Effect-TS/effect/commit/3394b93d97d6f24fc38670641d1490289ffca7f1), [`febeabc`](https://github.com/Effect-TS/effect/commit/febeabc3f7c31094da000a23edeaabfe2ab00a38), [`54161c9`](https://github.com/Effect-TS/effect/commit/54161c98f6f3569e0c31842f54e6a257f9421c4c), [`385f7a4`](https://github.com/Effect-TS/effect/commit/385f7a4ee4a7359928597ea56d151dbaf5eb5802), [`7eea4d0`](https://github.com/Effect-TS/effect/commit/7eea4d0b73ec554915d7066a71f46326ce2ba45f), [`7543afe`](https://github.com/Effect-TS/effect/commit/7543afea6f4d97d1f1ad876224323838a48daadd), [`44b9cf3`](https://github.com/Effect-TS/effect/commit/44b9cf3d240d726997b4bbcd0ede48e074d3c456), [`7eea4d0`](https://github.com/Effect-TS/effect/commit/7eea4d0b73ec554915d7066a71f46326ce2ba45f), [`0a8aa6a`](https://github.com/Effect-TS/effect/commit/0a8aa6acb90a72b91c24d17133c950e4cacd8abd), [`c8d9fcf`](https://github.com/Effect-TS/effect/commit/c8d9fcf7b030f7c474effbab2764ce7aee1c7209), [`9ca7f9a`](https://github.com/Effect-TS/effect/commit/9ca7f9a69363e4485645966d5a93b8f9597c5206), [`e7aca89`](https://github.com/Effect-TS/effect/commit/e7aca894bb32fbb785b5830837e6061c415a6015), [`55d7560`](https://github.com/Effect-TS/effect/commit/55d75609b8acf8a1b54c1b1c7fbbb65ec741aa3e), [`f809189`](https://github.com/Effect-TS/effect/commit/f809189ddf6b6011ba43a9901baaa734e315da2a), [`88a54cc`](https://github.com/Effect-TS/effect/commit/88a54cc341006e3ebcb13482c618f62a680ce199), [`0ebdbe7`](https://github.com/Effect-TS/effect/commit/0ebdbe74463dc84385956d0b1e8c2b79ebab5400), [`7517d09`](https://github.com/Effect-TS/effect/commit/7517d09f12a0b183a81bd425962c4e280a68b05d), [`212493b`](https://github.com/Effect-TS/effect/commit/212493b9a1eb98cd1ef6959c707a2e5784a5ae91), [`88a54cc`](https://github.com/Effect-TS/effect/commit/88a54cc341006e3ebcb13482c618f62a680ce199), [`80ea8cb`](https://github.com/Effect-TS/effect/commit/80ea8cb9222ca73f564c8267ab2f82966fea027a), [`8df19f4`](https://github.com/Effect-TS/effect/commit/8df19f4fe81d90cc33ace88b9a77e5534f82d604)]:
+  - effect@4.0.0-beta.99
 
-## 0.37.2
+## 4.0.0-beta.98
 
 ### Patch Changes
 
-- [#5949](https://github.com/Effect-TS/effect/pull/5949) [`577f839`](https://github.com/Effect-TS/effect/commit/577f839e00bc74bccb96444e53b9d710310b50e3) Thanks @thewilkybarkid! - Ensure OpenAI headers are redacted
+- Updated dependencies [[`989603b`](https://github.com/Effect-TS/effect-smol/commit/989603b60ab1197b64acf214208e0d370cd1f842), [`214c458`](https://github.com/Effect-TS/effect-smol/commit/214c458084bb6995d543cd37d1055f24be3d454e), [`a037273`](https://github.com/Effect-TS/effect-smol/commit/a0372736ac34796969b051bbba4717d7983f1ebe), [`97fdaa9`](https://github.com/Effect-TS/effect-smol/commit/97fdaa9c1f522c65e579365d314a07878e2b904f), [`b24d248`](https://github.com/Effect-TS/effect-smol/commit/b24d248c8df44222ce642087cde2bd859a2dc709), [`19c222c`](https://github.com/Effect-TS/effect-smol/commit/19c222cac2353a3d7b7733caecb00556fffe9a5c), [`eec85dd`](https://github.com/Effect-TS/effect-smol/commit/eec85ddba09ea326fd268ee33eeffd47e50d4671), [`0082f4f`](https://github.com/Effect-TS/effect-smol/commit/0082f4f74fb139fd578f87f0a790e845133983dc), [`8849052`](https://github.com/Effect-TS/effect-smol/commit/884905232d1e9a365e046d8dde27bf9c5707f57f), [`c15e16a`](https://github.com/Effect-TS/effect-smol/commit/c15e16ad130d1fbde25d912b7ac55995066cb35b), [`01d00a3`](https://github.com/Effect-TS/effect-smol/commit/01d00a3abfbf1f37996cdbe738ea5137c646cdd7), [`8bd4589`](https://github.com/Effect-TS/effect-smol/commit/8bd458975a1b3a8ed042eccf317b93d28ded91e7), [`0082f4f`](https://github.com/Effect-TS/effect-smol/commit/0082f4f74fb139fd578f87f0a790e845133983dc), [`6e08428`](https://github.com/Effect-TS/effect-smol/commit/6e08428d980501b856f846ad3f3f0e4ea46e7786), [`388dcf9`](https://github.com/Effect-TS/effect-smol/commit/388dcf953f65d317547f34d40e6443c5f264205f), [`2b7ce2b`](https://github.com/Effect-TS/effect-smol/commit/2b7ce2b513e7ec2a77822f1116dc6ffb6ba93f4e), [`87bea7e`](https://github.com/Effect-TS/effect-smol/commit/87bea7e16259246f3bcdf565446394751abca953), [`ce38dc3`](https://github.com/Effect-TS/effect-smol/commit/ce38dc33bda805a684432cca071f4dc3c6b9a1ba), [`a807cd1`](https://github.com/Effect-TS/effect-smol/commit/a807cd170341deca8a1cfb52c4222585f2431bb9), [`fd8a356`](https://github.com/Effect-TS/effect-smol/commit/fd8a356f06a8c9ce4e7e0a13fc4021c178ed31de), [`c2a5edc`](https://github.com/Effect-TS/effect-smol/commit/c2a5edc3abd31ad5bc123362bc1213e03e4095c3), [`5946da3`](https://github.com/Effect-TS/effect-smol/commit/5946da3804a1be5e752b05b96bd058cdba50a1bf), [`4ae0c5f`](https://github.com/Effect-TS/effect-smol/commit/4ae0c5ffcbe6c56ddfcb05c639112a079483539e), [`5b2a0bc`](https://github.com/Effect-TS/effect-smol/commit/5b2a0bceea3a28a33a58555210c90a415dc74a76), [`72ac585`](https://github.com/Effect-TS/effect-smol/commit/72ac585884befde6af9208da738699a93f1bae79), [`5e8c1b8`](https://github.com/Effect-TS/effect-smol/commit/5e8c1b82bfafa121311f987a49ab75395e3647a7), [`0f9c078`](https://github.com/Effect-TS/effect-smol/commit/0f9c07841b04183f485ee6e6458de73b290b09f5)]:
+  - effect@4.0.0-beta.98
 
-## 0.37.1
-
-### Patch Changes
-
-- [#5938](https://github.com/Effect-TS/effect/pull/5938) [`72f61be`](https://github.com/Effect-TS/effect/commit/72f61be280fdda98eb3835b3d559d6d5031699dc) Thanks @tensor2077! - Fix streaming decode: response.output_item.added may emit web_search_call without action (when status="in_progress").
-
-- Updated dependencies [[`65e9e35`](https://github.com/Effect-TS/effect/commit/65e9e35157cbdfb40826ddad34555c4ebcf7c0b0), [`ee69cd7`](https://github.com/Effect-TS/effect/commit/ee69cd796feb3d8d1046f52edd8950404cd4ed0e), [`488d6e8`](https://github.com/Effect-TS/effect/commit/488d6e870eda3dfc137f4940bb69416f61ed8fe3), [`ba9e790`](https://github.com/Effect-TS/effect/commit/ba9e7908a80a55f24217c88af4f7d89a4f7bc0e4)]:
-  - @effect/platform@0.94.1
-  - effect@3.19.14
-  - @effect/ai@0.33.1
-
-## 0.37.0
-
-### Patch Changes
-
-- Updated dependencies [[`77eeb86`](https://github.com/Effect-TS/effect/commit/77eeb86ddf208e51ec25932af83d52d3b4700371), [`ff7053f`](https://github.com/Effect-TS/effect/commit/ff7053f6d8508567b6145239f97aacc5773b0c53), [`287c32c`](https://github.com/Effect-TS/effect/commit/287c32c9f10da8e96f2b9ef8424316189d9ad4b3)]:
-  - effect@3.19.13
-  - @effect/platform@0.94.0
-  - @effect/ai@0.33.0
-  - @effect/experimental@0.58.0
-
-## 0.36.0
-
-### Minor Changes
-
-- [#5850](https://github.com/Effect-TS/effect/pull/5850) [`1ddd4e4`](https://github.com/Effect-TS/effect/commit/1ddd4e477a9677fb3820f80450a378d3550d31a7) Thanks @IMax153! - Update the generated OpenAI schema definitions
-
-### Patch Changes
-
-- Updated dependencies [[`96c9537`](https://github.com/Effect-TS/effect/commit/96c9537f73a87a651c348488bdce7efbfd8360d1)]:
-  - @effect/experimental@0.57.10
-
-## 0.35.0
-
-### Patch Changes
-
-- Updated dependencies [[`3c15d5f`](https://github.com/Effect-TS/effect/commit/3c15d5f99fb8d8470a00c5a33d9ba3cac89dfe4c), [`3863fa8`](https://github.com/Effect-TS/effect/commit/3863fa89f61e63e5529fd961e37333bddf7db64a), [`2a03c76`](https://github.com/Effect-TS/effect/commit/2a03c76c2781ca7e9e228e838eab2eb0d0795b1d), [`24a1685`](https://github.com/Effect-TS/effect/commit/24a1685c70a9ed157468650f95a5c3da3f2c2433)]:
-  - effect@3.19.0
-  - @effect/platform@0.93.0
-  - @effect/ai@0.32.0
-  - @effect/experimental@0.57.0
-
-## 0.34.0
-
-### Minor Changes
-
-- [#5621](https://github.com/Effect-TS/effect/pull/5621) [`4c3bdfb`](https://github.com/Effect-TS/effect/commit/4c3bdfbcbc2dcd7ecd6321df3e4a504af19de825) Thanks @IMax153! - Remove `Either` / `EitherEncoded` from tool call results.
-
-  Specifically, the encoding of tool call results as an `Either` / `EitherEncoded` has been removed and is replaced by encoding the tool call success / failure directly into the `result` property.
-
-  To allow type-safe discrimination between a tool call result which was a success vs. one that was a failure, an `isFailure` property has also been added to the `"tool-result"` part. If `isFailure` is `true`, then the tool call handler result was an error.
-
-  ```ts
-  import * as AnthropicClient from "@effect/ai-anthropic/AnthropicClient"
-  import * as AnthropicLanguageModel from "@effect/ai-anthropic/AnthropicLanguageModel"
-  import * as LanguageModel from "@effect/ai/LanguageModel"
-  import * as Tool from "@effect/ai/Tool"
-  import * as Toolkit from "@effect/ai/Toolkit"
-  import * as NodeHttpClient from "@effect/platform-node/NodeHttpClient"
-  import { Config, Effect, Layer, Schema, Stream } from "effect"
-
-  const Claude = AnthropicLanguageModel.model("claude-4-sonnet-20250514")
-
-  const MyTool = Tool.make("MyTool", {
-    description: "An example of a tool with success and failure types",
-    failureMode: "return", // Return errors in the response
-    parameters: { bar: Schema.Number },
-    success: Schema.Number,
-    failure: Schema.Struct({ reason: Schema.Literal("reason-1", "reason-2") })
-  })
-
-  const MyToolkit = Toolkit.make(MyTool)
-
-  const MyToolkitLayer = MyToolkit.toLayer({
-    MyTool: () => Effect.succeed(42)
-  })
-
-  const program = LanguageModel.streamText({
-    prompt: "Tell me about the meaning of life",
-    toolkit: MyToolkit
-  }).pipe(
-    Stream.runForEach((part) => {
-      if (part.type === "tool-result" && part.name === "MyTool") {
-        // The `isFailure` property can be used to discriminate whether the result
-        // of a tool call is a success or a failure
-        if (part.isFailure) {
-          part.result
-          //   ^? { readonly reason: "reason-1" | "reason-2"; }
-        } else {
-          part.result
-          //   ^? number
-        }
-      }
-      return Effect.void
-    }),
-    Effect.provide(Claude)
-  )
-
-  const Anthropic = AnthropicClient.layerConfig({
-    apiKey: Config.redacted("ANTHROPIC_API_KEY")
-  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
-
-  program.pipe(Effect.provide([Anthropic, MyToolkitLayer]), Effect.runPromise)
-  ```
-
-### Patch Changes
-
-- Updated dependencies [[`4c3bdfb`](https://github.com/Effect-TS/effect/commit/4c3bdfbcbc2dcd7ecd6321df3e4a504af19de825)]:
-  - @effect/ai@0.31.0
-
-## 0.33.0
-
-### Minor Changes
-
-- [#5614](https://github.com/Effect-TS/effect/pull/5614) [`c63e658`](https://github.com/Effect-TS/effect/commit/c63e6582244fbb50d31650c4b4ea0660fe194652) Thanks @IMax153! - Previously, tool call handler errors were _always_ raised as an expected error in the Effect `E` channel at the point of execution of the tool call handler (i.e. when a `generate*` method is invoked on a `LanguageModel`).
-
-  With this PR, the end user now has control over whether tool call handler errors should be raised as an Effect error, or returned by the SDK to allow, for example, sending that error information to another application.
-
-  ### Tool Call Specification
-
-  The `Tool.make` and `Tool.providerDefined` constructors now take an extra optional parameter called `failureMode`, which can be set to either `"error"` or `"return"`.
-
-  ```ts
-  import { Tool } from "@effect/ai"
-  import { Schema } from "effect"
-
-  const MyTool = Tool.make("MyTool", {
-    description: "My special tool",
-    failureMode: "return" // "error" (default) or "return"
-    parameters: {
-      myParam: Schema.String
-    },
-    success: Schema.Struct({
-      mySuccess: Schema.String
-    }),
-    failure: Schema.Struct({
-      myFailure: Schema.String
-    })
-  })
-
-  ```
-
-  The semantics of `failureMode` are as follows:
-  - If set to `"error"` (the default), errors that occur during tool call handler execution will be returned in the error channel of the calling effect
-  - If set to `"return"`, errors that occur during tool call handler execution will be captured and returned as part of the tool call result
-
-  ### Response - Tool Result Parts
-
-  The `result` field of a `"tool-result"` part of a large language model provider response is now represented as an `Either`.
-  - If the `result` is a `Left`, the `result` will be the `failure` specified in the tool call specification
-  - If the `result` is a `Right`, the `result` will be the `success` specified in the tool call specification
-
-  This is only relevant if the end user sets `failureMode` to `"return"`. If set to `"error"` (the default), then the `result` property will always be a `Right` with the successful result of the tool call handler.
-
-  Similarly the `encodedResult` field of a `"tool-result"` part will be represented as an `EitherEncoded`, where:
-  - `{ _tag: "Left", left: <failure> }` represents a tool call handler failure
-  - `{ _tag: "Right", right: <success> }` represents a tool call handler success
-
-  ### Prompt - Tool Result Parts
-
-  The `result` field of a `"tool-result"` part of a prompt will now only accept an `EitherEncoded` as specified above.
-
-### Patch Changes
-
-- Updated dependencies [[`6ae2f5d`](https://github.com/Effect-TS/effect/commit/6ae2f5da45a9ed9832605eca12b3e2bf2e2a1a67), [`c63e658`](https://github.com/Effect-TS/effect/commit/c63e6582244fbb50d31650c4b4ea0660fe194652)]:
-  - effect@3.18.4
-  - @effect/ai@0.30.0
-
-## 0.32.1
-
-### Patch Changes
-
-- [#5601](https://github.com/Effect-TS/effect/pull/5601) [`8048b44`](https://github.com/Effect-TS/effect/commit/8048b443170f0a24873dc1f1043e8ab9ee111435) Thanks @janglad! - Fix FilePart validation always returning an MalformedInput error
-
-## 0.32.0
-
-### Patch Changes
-
-- Updated dependencies [[`1c6ab74`](https://github.com/Effect-TS/effect/commit/1c6ab74b314b2b6df8bb1b1a0cb9527ceda0e3fa), [`70fe803`](https://github.com/Effect-TS/effect/commit/70fe803469db3355ffbf8359b52c351f1c2dc137), [`c296e32`](https://github.com/Effect-TS/effect/commit/c296e32554143b84ae8987046984e1cf1852417c), [`a098ddf`](https://github.com/Effect-TS/effect/commit/a098ddfc551f5aa0a7c36f9b4928372a64d4d9f2), [`f8b93ac`](https://github.com/Effect-TS/effect/commit/f8b93ac6446efd3dd790778b0fc71d299a38f272)]:
-  - effect@3.18.0
-  - @effect/ai@0.29.0
-  - @effect/platform@0.92.0
-  - @effect/experimental@0.56.0
-
-## 0.31.1
-
-### Patch Changes
-
-- [#5554](https://github.com/Effect-TS/effect/pull/5554) [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a) Thanks @IMax153! - Improve the information available to the user following a model response error
-
-- Updated dependencies [[`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a), [`800ab2e`](https://github.com/Effect-TS/effect/commit/800ab2e6d983ed424deb10aebee720cfc666df7a)]:
-  - @effect/ai@0.28.2
-
-## 0.31.0
-
-### Patch Changes
-
-- Updated dependencies [[`d4d86a8`](https://github.com/Effect-TS/effect/commit/d4d86a81f02b94e09fce8004ce2c5369c505ca5a)]:
-  - @effect/platform@0.91.0
-  - @effect/ai@0.28.0
-  - @effect/experimental@0.55.0
-
-## 0.30.2
-
-### Patch Changes
-
-- [#5545](https://github.com/Effect-TS/effect/pull/5545) [`f71a731`](https://github.com/Effect-TS/effect/commit/f71a7319c52ae2a66f1266d8777d8de94e7db3cb) Thanks @timurrakhimzhan! - fixed message shape of tool call result being sent to openai for tool call result
-
-## 0.30.1
-
-### Patch Changes
-
-- [#5521](https://github.com/Effect-TS/effect/pull/5521) [`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80) Thanks @IMax153! - Fix provider metadata and parse tool call parameters safely
-
-- Updated dependencies [[`fa49bc8`](https://github.com/Effect-TS/effect/commit/fa49bc86b14599300d106f306ceaf82a79121b80)]:
-  - @effect/ai@0.27.1
-
-## 0.30.0
-
-### Minor Changes
-
-- [#5469](https://github.com/Effect-TS/effect/pull/5469) [`42b914a`](https://github.com/Effect-TS/effect/commit/42b914a0e8750350ce17d434afaec7d655ddf4b7) Thanks @IMax153! - Refactor the Effect AI SDK and associated provider packages
-
-  This pull request contains a complete refactor of the base Effect AI SDK package
-  as well as the associated provider integration packages to improve flexibility
-  and enhance ergonomics. Major changes are outlined below.
-
-  ## Modules
-
-  All modules in the base Effect AI SDK have had the leading `Ai` prefix dropped
-  from their name (except for the `AiError` module).
-
-  For example, the `AiLanguageModel` module is now the `LanguageModel` module.
-
-  In addition, the `AiInput` module has been renamed to the `Prompt` module.
-
-  ## Prompts
-
-  The `Prompt` module has been completely redesigned with flexibility in mind.
-
-  The `Prompt` module now supports building a prompt using either the constructors
-  exposed from the `Prompt` module, or using raw prompt content parts / messages,
-  which should be familiar to those coming from other AI SDKs.
-
-  In addition, the `system` option has been removed from all `LanguageModel` methods
-  and must now be provided as part of the prompt.
-
-  **Prompt Constructors**
-
-  ```ts
-  import { LanguageModel, Prompt } from "@effect/ai"
-
-  const textPart = Prompt.makePart("text", {
-    text: "What is machine learning?"
-  })
-
-  const userMessage = Prompt.makeMessage("user", {
-    content: [textPart]
-  })
-
-  const systemMessage = Prompt.makeMessage("system", {
-    content: "You are an expert in machine learning"
-  })
-
-  const program = LanguageModel.generateText({
-    prompt: Prompt.fromMessages([systemMessage, userMessage])
-  })
-  ```
-
-  **Raw Prompt Input**
-
-  ```ts
-  import { LanguageModel } from "@effect/ai"
-
-  const program = LanguageModel.generateText({
-    prompt: [
-      { role: "system", content: "You are an expert in machine learning" },
-      {
-        role: "user",
-        content: [{ type: "text", text: "What is machine learning?" }]
-      }
-    ]
-  })
-  ```
-
-  **NOTE**: Providing a plain string as a prompt is still supported, and will be converted
-  internally into a user message with a single text content part.
-
-  ### Provider-Specific Options
-
-  To support specification of provider-specific options when interacting with large
-  language model providers, support has been added for adding provider-specific
-  options to the parts of a `Prompt`.
-
-  ```ts
-  import { LanguageModel } from "@effect/ai"
-  import { AnthropicLanguageModel } from "@effect/ai-anthropic"
-
-  const Claude = AnthropicLanguageModel.model("claude-sonnet-4-20250514")
-
-  const program = LanguageModel.generateText({
-    prompt: [
-      {
-        role: "user",
-        content: [{ type: "text", text: "What is machine learning?" }],
-        options: {
-          anthropic: { cacheControl: { type: "ephemeral", ttl: "1h" } }
-        }
-      }
-    ]
-  }).pipe(Effect.provide(Claude))
-  ```
-
-  ## Responses
-
-  The `Response` module has also been completely redesigned to support a wider
-  variety of response parts, particularly when streaming.
-
-  ### Streaming Responses
-
-  When streaming text via the `LanguageModel.streamText` method, you will now
-  receive a stream of content parts instead of a stream of responses, which should
-  make it much simpler to filter down the stream to the parts you are interested in.
-
-  In addition, additional content parts will be present in the stream to allow you to track,
-  for example, when a text content part starts / ends.
-
-  ### Tool Calls / Tool Call Results
-
-  The decoded parts of a `Response` (as returned by the methods of `LanguageModel`)
-  are now fully type-safe on tool calls / tool call results. Filtering the content parts of a
-  response to tool calls will narrow the type of the tool call `params` based on the tool
-  `name`. Similarly, filtering the response to tool call results will narrow the type of the
-  tool call `result` based on the tool `name`.
-
-  ```ts
-  import { LanguageModel, Tool, Toolkit } from "@effect/ai"
-  import { Effect, Schema } from "effect"
-
-  const DadJokeTool = Tool.make("DadJokeTool", {
-    parameters: { topic: Schema.String },
-    success: Schema.Struct({ joke: Schema.String })
-  })
-
-  const FooTool = Tool.make("FooTool", {
-    parameters: { foo: Schema.Number },
-    success: Schema.Struct({ bar: Schema.Boolean })
-  })
-
-  const MyToolkit = Toolkit.make(DadJokeTool, FooTool)
-
-  const program = Effect.gen(function* () {
-    const response = yield* LanguageModel.generateText({
-      prompt: "Tell me a dad joke",
-      toolkit: MyToolkit
-    })
-
-    for (const toolCall of response.toolCalls) {
-      if (toolCall.name === "DadJokeTool") {
-        //         ^? "DadJokeTool" | "FooTool"
-        toolCall.params
-        //       ^? { readonly topic: string }
-      }
-    }
-
-    for (const toolResult of response.toolResults) {
-      if (toolResult.name === "DadJokeTool") {
-        //           ^? "DadJokeTool" | "FooTool"
-        toolResult.result
-        //         ^? { readonly joke: string }
-      }
-    }
-  })
-  ```
-
-  ### Provider Metadata
-
-  As with provider-specific options, provider-specific metadata is now returned as
-  part of the response from the large language model provider.
-
-  ```ts
-  import { LanguageModel } from "@effect/ai"
-  import { AnthropicLanguageModel } from "@effect/ai-anthropic"
-  import { Effect } from "effect"
-
-  const Claude = AnthropicLanguageModel.model("claude-4-sonnet-20250514")
-
-  const program = Effect.gen(function* () {
-    const response = yield* LanguageModel.generateText({
-      prompt: "What is the meaning of life?"
-    })
-
-    for (const part of response.content) {
-      // When metadata **is not** defined for a content part, accessing the
-      // provider's key on the part's metadata will return an untyped record
-      if (part.type === "text") {
-        const metadata = part.metadata.anthropic
-        //    ^? { readonly [x: string]: unknown } | undefined
-      }
-      // When metadata **is** defined for a content part, accessing the
-      // provider's key on the part's metadata will return typed metadata
-      if (part.type === "reasoning") {
-        const metadata = part.metadata.anthropic
-        //    ^? AnthropicReasoningInfo | undefined
-      }
-    }
-  }).pipe(Effect.provide(Claude))
-  ```
-
-  ## Tool Calls
-
-  The `Tool` module has been enhanced to support provider-defined tools (e.g.
-  web search, computer use, etc.). Large language model providers which support
-  calling their own tools now have a separate module present in their provider
-  integration packages which contain definitions for their tools.
-
-  These provider-defined tools can be included alongside user-defined tools in
-  existing `Toolkit`s. Provider-defined tools that require a user-space handler
-  will be raise a type error in the associated `Toolkit` layer if no such handler
-  is defined.
-
-  ```ts
-  import { LanguageModel, Tool, Toolkit } from "@effect/ai"
-  import { AnthropicTool } from "@effect/ai-anthropic"
-  import { Schema } from "effect"
-
-  const DadJokeTool = Tool.make("DadJokeTool", {
-    parameters: { topic: Schema.String },
-    success: Schema.Struct({ joke: Schema.String })
-  })
-
-  const MyToolkit = Toolkit.make(
-    DadJokeTool,
-    AnthropicTool.WebSearch_20250305({ max_uses: 1 })
-  )
-
-  const program = LanguageModel.generateText({
-    prompt: "Search the web for a dad joke",
-    toolkit: MyToolkit
-  })
-  ```
-
-  ## AiError
-
-  The `AiError` type has been refactored into a union of different error types
-  which can be raised by the Effect AI SDK. The goal of defining separate error
-  types is to allow providing the end-user with more granular information about
-  the error that occurred.
-
-  For now, the following errors have been defined. More error types may be added
-  over time based upon necessity / use case.
-
-  ```ts
-  type AiError =
-    | HttpRequestError,
-    | HttpResponseError,
-    | MalformedInput,
-    | MalformedOutput,
-    | UnknownError
-  ```
-
-### Patch Changes
-
-- Updated dependencies [[`42b914a`](https://github.com/Effect-TS/effect/commit/42b914a0e8750350ce17d434afaec7d655ddf4b7)]:
-  - @effect/ai@0.27.0
-
-## 0.29.1
-
-### Patch Changes
-
-- [#5450](https://github.com/Effect-TS/effect/pull/5450) [`e7aa8c2`](https://github.com/Effect-TS/effect/commit/e7aa8c2bf95bd36294e4549afbface1aac0fe879) Thanks @IMax153! - Ensure that the verbose json transcription schema is tried before the standard json schema
-
-## 0.29.0
+## 4.0.0-beta.97
 
 ### Patch Changes
 
 - Updated dependencies []:
-  - @effect/ai@0.26.0
-  - @effect/experimental@0.54.6
+  - effect@4.0.0-beta.97
 
-## 0.28.2
-
-### Patch Changes
-
-- [#5361](https://github.com/Effect-TS/effect/pull/5361) [`292a7c5`](https://github.com/Effect-TS/effect/commit/292a7c54050e3d06a203130f3545207ec5ac633d) Thanks @IMax153! - Add support for new options related to OpenAi GPT-5
-
-- Updated dependencies [[`292a7c5`](https://github.com/Effect-TS/effect/commit/292a7c54050e3d06a203130f3545207ec5ac633d)]:
-  - @effect/ai@0.25.2
-
-## 0.28.1
+## 4.0.0-beta.96
 
 ### Patch Changes
 
-- [#5314](https://github.com/Effect-TS/effect/pull/5314) [`a656185`](https://github.com/Effect-TS/effect/commit/a656185b967fc51632f42b5081ab78e4e41752bd) Thanks @dmaretskyi! - Allow `completion_tokens_details` field to be missing in the generation response for compatibility with Ollama and LMStudio
+- Updated dependencies [[`1503f45`](https://github.com/Effect-TS/effect-smol/commit/1503f45cb5bb2a74f4705252ec505a1f0ade7e62), [`57fe793`](https://github.com/Effect-TS/effect-smol/commit/57fe79316ffbc380b30626a168981fb26ae97459), [`0c2f78f`](https://github.com/Effect-TS/effect-smol/commit/0c2f78f695ec474e1ff5474da183577975e418f5), [`0c2f78f`](https://github.com/Effect-TS/effect-smol/commit/0c2f78f695ec474e1ff5474da183577975e418f5), [`0c2f78f`](https://github.com/Effect-TS/effect-smol/commit/0c2f78f695ec474e1ff5474da183577975e418f5), [`97f29df`](https://github.com/Effect-TS/effect-smol/commit/97f29df457f7ffd07cfb4b379315c12c086af805)]:
+  - effect@4.0.0-beta.96
 
-## 0.28.0
-
-### Patch Changes
-
-- Updated dependencies [[`5a0f4f1`](https://github.com/Effect-TS/effect/commit/5a0f4f176687a39d9fa46bb894bb7ac3175b0e87)]:
-  - effect@3.17.1
-  - @effect/ai@0.25.0
-  - @effect/experimental@0.54.0
-
-## 0.27.0
+## 4.0.0-beta.95
 
 ### Patch Changes
 
-- Updated dependencies [[`7813640`](https://github.com/Effect-TS/effect/commit/7813640279d9e3a3e7fc0a29bfb5c6d5fb3c270f)]:
-  - @effect/platform@0.90.0
-  - @effect/ai@0.24.0
-  - @effect/experimental@0.54.0
+- Updated dependencies [[`a482442`](https://github.com/Effect-TS/effect-smol/commit/a482442abdeb490e9652b854ec3495e4aa7273e7), [`fbefa85`](https://github.com/Effect-TS/effect-smol/commit/fbefa850fab2f0a302c20614496aeaaa2a8b5590), [`0b4a32f`](https://github.com/Effect-TS/effect-smol/commit/0b4a32f4260f0d8500942a133001b0d349328102), [`18a49e1`](https://github.com/Effect-TS/effect-smol/commit/18a49e1786679456258002ff9397faf02f678c2d), [`266cb90`](https://github.com/Effect-TS/effect-smol/commit/266cb90bb2c17aabc40563c32db334f09ba3d74b), [`912f095`](https://github.com/Effect-TS/effect-smol/commit/912f095a34572bbd3cedf6edb27878443e3e4a95), [`a6718f9`](https://github.com/Effect-TS/effect-smol/commit/a6718f9e00a15ca903b0732da46116cbf3d6aca7), [`bef5154`](https://github.com/Effect-TS/effect-smol/commit/bef51540a243aa2f872a00c01d0cd58b7a769baa), [`18e0564`](https://github.com/Effect-TS/effect-smol/commit/18e0564bd0f8ebbdfcaf1e2c21529948e9e4a81d), [`fb50f14`](https://github.com/Effect-TS/effect-smol/commit/fb50f14fc3657c1973785aa5b72ecf0b0d28e0b2)]:
+  - effect@4.0.0-beta.95
 
-## 0.26.1
+## 4.0.0-beta.94
 
 ### Patch Changes
 
-- [#5251](https://github.com/Effect-TS/effect/pull/5251) [`eb197b2`](https://github.com/Effect-TS/effect/commit/eb197b2cca3debdd17da77715311e1849aaa5d05) Thanks @IMax153! - Add `"scale"` as an option for the OpenAI `service_tier` field
+- Updated dependencies [[`95a0e9b`](https://github.com/Effect-TS/effect-smol/commit/95a0e9bb62797af0e81c9998773405f248f218c5), [`a0a3490`](https://github.com/Effect-TS/effect-smol/commit/a0a3490bbce765f199d8e077aceac504f0462e63), [`f11ce73`](https://github.com/Effect-TS/effect-smol/commit/f11ce73af60823754dc24194f4ffc561b9ea1c2d), [`ff30b6e`](https://github.com/Effect-TS/effect-smol/commit/ff30b6e7c2c63ffc56a4c5818d6d86b01b5ad528), [`1caab3c`](https://github.com/Effect-TS/effect-smol/commit/1caab3cc30f626efbf15e59d74f539a487e5c85c), [`aa80c47`](https://github.com/Effect-TS/effect-smol/commit/aa80c4775a04db87553e5568764cab7e32a72814), [`c2ae4fc`](https://github.com/Effect-TS/effect-smol/commit/c2ae4fce2f03a4cd1861c2b1179da7df656e662d), [`a0a3490`](https://github.com/Effect-TS/effect-smol/commit/a0a3490bbce765f199d8e077aceac504f0462e63)]:
+  - effect@4.0.0-beta.94
 
-## 0.26.0
-
-### Patch Changes
-
-- Updated dependencies [[`40c3c87`](https://github.com/Effect-TS/effect/commit/40c3c875f724264312b43002859c82bed9ad0df9), [`ed2c74a`](https://github.com/Effect-TS/effect/commit/ed2c74ae8fa4ea0dd06ea84a3e58cd32e6916104), [`073a1b8`](https://github.com/Effect-TS/effect/commit/073a1b8be5dbfa87454393ee7346f5bc36a4fd63), [`f382e99`](https://github.com/Effect-TS/effect/commit/f382e99e409838a879246250fc3994b9bf5b3c2c), [`e8c7ba5`](https://github.com/Effect-TS/effect/commit/e8c7ba5fd3eb0c3ae3039fc24c09d69391987989), [`7e10415`](https://github.com/Effect-TS/effect/commit/7e1041599ade25103428703f5d2dfd7378a09636), [`e9bdece`](https://github.com/Effect-TS/effect/commit/e9bdececdc24f60a246be5055eca71a0d49ea7f2), [`8d95eb0`](https://github.com/Effect-TS/effect/commit/8d95eb0356b1d1736204836c275d201a547d208d)]:
-  - effect@3.17.0
-  - @effect/ai@0.23.0
-  - @effect/experimental@0.53.0
-  - @effect/platform@0.89.0
-
-## 0.25.3
+## 4.0.0-beta.93
 
 ### Patch Changes
 
-- [#5227](https://github.com/Effect-TS/effect/pull/5227) [`c639456`](https://github.com/Effect-TS/effect/commit/c6394569196c073c00887caba8882bbc40ce708f) Thanks @IMax153! - Update the generated openapi specification for OpenAI
+- Updated dependencies [[`00652fe`](https://github.com/Effect-TS/effect-smol/commit/00652fe95c18f87208e91343eb8bf218faa2f677), [`6c58167`](https://github.com/Effect-TS/effect-smol/commit/6c5816746eaf91d2a3c7c899c5720809fa230ae3), [`2bc5415`](https://github.com/Effect-TS/effect-smol/commit/2bc541501a7ef89e542d7cb98e96beb53cd205cc), [`e11cccc`](https://github.com/Effect-TS/effect-smol/commit/e11cccc7d5fe631abccc7d6e3bd296938de0fa2e), [`ba7e77e`](https://github.com/Effect-TS/effect-smol/commit/ba7e77e046b8641a3a4e9750bb88ca4a1d063d3f), [`5713ee7`](https://github.com/Effect-TS/effect-smol/commit/5713ee7edbc3054efde407b2286bbfd45bbc6e1c)]:
+  - effect@4.0.0-beta.93
 
-## 0.25.2
-
-### Patch Changes
-
-- Updated dependencies [[`f5dfabf`](https://github.com/Effect-TS/effect/commit/f5dfabf51ba481a4468c1509c537314978ef6cec), [`17a5ea8`](https://github.com/Effect-TS/effect/commit/17a5ea8fa29785fe6e4c9480f2a2e9c8c59f3f38), [`d25f22b`](https://github.com/Effect-TS/effect/commit/d25f22be7598abe977caf6cdac3b0dd78b438c48)]:
-  - effect@3.16.14
-  - @effect/platform@0.88.1
-  - @effect/experimental@0.52.1
-  - @effect/ai@0.22.1
-
-## 0.25.1
+## 4.0.0-beta.92
 
 ### Patch Changes
 
-- [#5209](https://github.com/Effect-TS/effect/pull/5209) [`3deaa66`](https://github.com/Effect-TS/effect/commit/3deaa66e022e361a2036ce6bfc9d76f77d9cc948) Thanks @tim-smart! - fix ai layerConfig regression, to allow for conditional Config variables
+- Updated dependencies [[`affdc13`](https://github.com/Effect-TS/effect-smol/commit/affdc139045cc325dce321a84a580fdc1b2da7b9)]:
+  - effect@4.0.0-beta.92
 
-## 0.25.0
-
-### Patch Changes
-
-- Updated dependencies [[`27206d7`](https://github.com/Effect-TS/effect/commit/27206d7f0558d7fe28de57bf54f1d0cc83acc92e), [`dbabf5e`](https://github.com/Effect-TS/effect/commit/dbabf5e76fa63b050d2b6c466713c7dc59f07d3c)]:
-  - @effect/platform@0.88.0
-  - @effect/ai@0.22.0
-  - @effect/experimental@0.52.0
-
-## 0.24.17
+## 4.0.0-beta.91
 
 ### Patch Changes
 
-- Updated dependencies [[`c1c05a8`](https://github.com/Effect-TS/effect/commit/c1c05a8242fb5df7445b4a12387a60eac7726eb7), [`81fe4a2`](https://github.com/Effect-TS/effect/commit/81fe4a2c81d5e30e180a60e68c52016a27b350db)]:
-  - effect@3.16.13
-  - @effect/ai@0.21.17
-  - @effect/experimental@0.51.14
-  - @effect/platform@0.87.13
+- Updated dependencies [[`b135b25`](https://github.com/Effect-TS/effect-smol/commit/b135b2517fca9e7839734ace3699a7dfa75b9075), [`aaa21a3`](https://github.com/Effect-TS/effect-smol/commit/aaa21a369a171c600db294f2a4f640583043e150), [`3475ee6`](https://github.com/Effect-TS/effect-smol/commit/3475ee6c2bda6b05c6d7a12ce30c8bb840b5b1a6)]:
+  - effect@4.0.0-beta.91
 
-## 0.24.16
+## 4.0.0-beta.90
 
 ### Patch Changes
 
-- [#5186](https://github.com/Effect-TS/effect/pull/5186) [`e5692ab`](https://github.com/Effect-TS/effect/commit/e5692ab2be157b885f449ffb5c5f022eca04a59e) Thanks @IMax153! - Do not use `Config.Wrap` for AI provider `layerConfig`
+- Updated dependencies [[`d237fdf`](https://github.com/Effect-TS/effect-smol/commit/d237fdf726481f76eb52a6196e111b24122bc3d5)]:
+  - effect@4.0.0-beta.90
 
-- Updated dependencies [[`32ba77a`](https://github.com/Effect-TS/effect/commit/32ba77ae304d2161362a73e8b61965332626cf2d), [`d5e25b2`](https://github.com/Effect-TS/effect/commit/d5e25b237f05670ee42b386cb40b2cb448fc11d7)]:
-  - @effect/platform@0.87.12
-  - @effect/ai@0.21.16
-  - @effect/experimental@0.51.13
-
-## 0.24.15
+## 4.0.0-beta.89
 
 ### Patch Changes
 
-- Updated dependencies [[`001392b`](https://github.com/Effect-TS/effect/commit/001392ba8bfcad101bb034348a7415012fb12f72), [`7bfb099`](https://github.com/Effect-TS/effect/commit/7bfb099cb5528511b8d63045c4fbb4dc9cb18528)]:
-  - @effect/platform@0.87.11
-  - @effect/ai@0.21.15
-  - @effect/experimental@0.51.12
+- Updated dependencies [[`b7d46ab`](https://github.com/Effect-TS/effect-smol/commit/b7d46ab7e1a29d8711817bab583c9febf48a0dad), [`7777e15`](https://github.com/Effect-TS/effect-smol/commit/7777e1540fd3680dd8346723cffec812b9384669), [`5376197`](https://github.com/Effect-TS/effect-smol/commit/5376197ca8e50358a41b1fd3cec27bd1ec680ec6)]:
+  - effect@4.0.0-beta.89
 
-## 0.24.14
+## 4.0.0-beta.88
 
 ### Patch Changes
 
-- Updated dependencies [[`678318d`](https://github.com/Effect-TS/effect/commit/678318d2e88233156b006acda56c2d138ee3ffa0), [`678318d`](https://github.com/Effect-TS/effect/commit/678318d2e88233156b006acda56c2d138ee3ffa0)]:
-  - @effect/platform@0.87.10
-  - @effect/ai@0.21.14
-  - @effect/experimental@0.51.11
+- Updated dependencies [[`911f1b8`](https://github.com/Effect-TS/effect-smol/commit/911f1b84790ce42b3a70c95b33e6f6fd9e74de8b), [`8beeeea`](https://github.com/Effect-TS/effect-smol/commit/8beeeea52879d8613a39468848f01c3092bd54d4), [`c306fcf`](https://github.com/Effect-TS/effect-smol/commit/c306fcfeb1ef38455156932a1faf49292b1318da)]:
+  - effect@4.0.0-beta.88
 
-## 0.24.13
+## 4.0.0-beta.87
 
 ### Patch Changes
 
-- Updated dependencies [[`54514a2`](https://github.com/Effect-TS/effect/commit/54514a2f53166de27ad7e756dbf12194691fd4af)]:
-  - @effect/platform@0.87.9
-  - @effect/ai@0.21.13
-  - @effect/experimental@0.51.10
+- Updated dependencies [[`5a0c1a4`](https://github.com/Effect-TS/effect-smol/commit/5a0c1a4faee5707b5cc35e646ff1ffdad70f1956), [`1eea2ea`](https://github.com/Effect-TS/effect-smol/commit/1eea2ea3795ba47316b82b1ac8d4612c0ba389ed)]:
+  - effect@4.0.0-beta.87
 
-## 0.24.12
+## 4.0.0-beta.86
 
 ### Patch Changes
 
-- Updated dependencies [[`4ce4f82`](https://github.com/Effect-TS/effect/commit/4ce4f824f6fdef492be1d35c05a490ffce518c89)]:
-  - @effect/platform@0.87.8
-  - @effect/experimental@0.51.9
-  - @effect/ai@0.21.12
+- Updated dependencies [[`0b5795a`](https://github.com/Effect-TS/effect-smol/commit/0b5795a0ab4395e8f15955d8d96f2303084bfc64), [`3e3a859`](https://github.com/Effect-TS/effect-smol/commit/3e3a859ec6351a9e0d31674aabbd48fcefabb12e), [`7dbec24`](https://github.com/Effect-TS/effect-smol/commit/7dbec240dbf3bca599a20c486632abce694ef5ab), [`d8c00a1`](https://github.com/Effect-TS/effect-smol/commit/d8c00a171ac7141e8adc08c332d1162d9a9d56fc), [`85b6317`](https://github.com/Effect-TS/effect-smol/commit/85b631701e935866f2762bd595237aa718370cd9), [`6d0fda0`](https://github.com/Effect-TS/effect-smol/commit/6d0fda0d0cbdfffc523c89c57dfdb1608f84fb12), [`108a933`](https://github.com/Effect-TS/effect-smol/commit/108a9335ff8571928197e5847a09c28ac83d6f46), [`7e1f455`](https://github.com/Effect-TS/effect-smol/commit/7e1f455fab5005d769b939c91e519d450f802cf9), [`46b3e79`](https://github.com/Effect-TS/effect-smol/commit/46b3e79944cfdae7901eb148135c85b7eb39834e)]:
+  - effect@4.0.0-beta.86
 
-## 0.24.11
+## 4.0.0-beta.85
 
 ### Patch Changes
 
-- [#5029](https://github.com/Effect-TS/effect/pull/5029) [`d92d12a`](https://github.com/Effect-TS/effect/commit/d92d12acb6097a4fa6c9c918faa3cd5c3fb6c778) Thanks @IMax153! - Cleanup AiLanguageModel construction and finish basic support for gemini
+- Updated dependencies [[`328d97c`](https://github.com/Effect-TS/effect-smol/commit/328d97cc53c0dcb89077a5623e35b095eaa59a8c), [`8441836`](https://github.com/Effect-TS/effect-smol/commit/8441836e6dde70e8ae2126be9cefe9b45798b134), [`074e436`](https://github.com/Effect-TS/effect-smol/commit/074e4361091289104cb0ab6959dc3b0ea7794a6a), [`c1dfd60`](https://github.com/Effect-TS/effect-smol/commit/c1dfd60663eb13a58916f3712d877499943b628a), [`2ba316b`](https://github.com/Effect-TS/effect-smol/commit/2ba316bd15fcbf1c50626500d44a2c9b3bec19f5), [`7ce7344`](https://github.com/Effect-TS/effect-smol/commit/7ce7344c41056c79e2ee19ee6a9346c0f1d227c1)]:
+  - effect@4.0.0-beta.85
 
-- Updated dependencies [[`d92d12a`](https://github.com/Effect-TS/effect/commit/d92d12acb6097a4fa6c9c918faa3cd5c3fb6c778), [`25ca0cf`](https://github.com/Effect-TS/effect/commit/25ca0cf141139cd44ff53081b1c877f8f3ab5e41), [`d92d12a`](https://github.com/Effect-TS/effect/commit/d92d12acb6097a4fa6c9c918faa3cd5c3fb6c778)]:
-  - @effect/ai@0.21.11
-
-## 0.24.10
+## 4.0.0-beta.84
 
 ### Patch Changes
 
-- Updated dependencies [[`a9b617f`](https://github.com/Effect-TS/effect/commit/a9b617f125171ed76cd79ab46d7a924daf3b0e70), [`7e26e86`](https://github.com/Effect-TS/effect/commit/7e26e86524abcc93713d6ad7eee486638c98f7c2)]:
-  - @effect/platform@0.87.7
-  - @effect/ai@0.21.10
-  - @effect/experimental@0.51.8
+- Updated dependencies [[`87f52ba`](https://github.com/Effect-TS/effect-smol/commit/87f52ba16c4370ffa3f84bf8e53038e1419c284e), [`b8ee07f`](https://github.com/Effect-TS/effect-smol/commit/b8ee07ffda8903b5ec2e45a786ddcba59f128fda), [`867c0d7`](https://github.com/Effect-TS/effect-smol/commit/867c0d70a09079b040260d45a1e92ff04dbfbf2f), [`b93bc6c`](https://github.com/Effect-TS/effect-smol/commit/b93bc6c9cb27b909a41d094c97c4f9d25bbc6d6b), [`57d387f`](https://github.com/Effect-TS/effect-smol/commit/57d387f92c30ab63e15e3e641f0a903b65886610), [`bacca41`](https://github.com/Effect-TS/effect-smol/commit/bacca4141c2400effae1eabfdb36c89a459cf246), [`0f8ac79`](https://github.com/Effect-TS/effect-smol/commit/0f8ac7959d29ed68c68ce25aabd6bf0cb7e63ecc), [`25b4482`](https://github.com/Effect-TS/effect-smol/commit/25b448270c01317703f25107e1480d4cd0246d9a), [`9cf3a25`](https://github.com/Effect-TS/effect-smol/commit/9cf3a25c66b0c44a52be9829870c44517ea52db2), [`8def767`](https://github.com/Effect-TS/effect-smol/commit/8def7674b1787f91035298cda4d122937e87ef72)]:
+  - effect@4.0.0-beta.84
 
-## 0.24.9
+## 4.0.0-beta.83
 
 ### Patch Changes
 
-- Updated dependencies [[`030ac21`](https://github.com/Effect-TS/effect/commit/030ac217eac167d345a095bff26d9c95827fa64c), [`905da99`](https://github.com/Effect-TS/effect/commit/905da996aad665057b4ca6dba1a4af44fb8835bd), [`aaae9b1`](https://github.com/Effect-TS/effect/commit/aaae9b10345ab5f867b08e1c6eb21685cfc2b078)]:
-  - @effect/ai@0.21.9
-  - effect@3.16.12
-  - @effect/experimental@0.51.7
-  - @effect/platform@0.87.6
+- Updated dependencies [[`1f2e8ce`](https://github.com/Effect-TS/effect-smol/commit/1f2e8ceef09e0a791c850ed2ade01f97089596f9)]:
+  - effect@4.0.0-beta.83
 
-## 0.24.8
+## 4.0.0-beta.82
 
 ### Patch Changes
 
-- Updated dependencies [[`96c1292`](https://github.com/Effect-TS/effect/commit/96c129262835410b311a51d0bf7f58b8f6fc9a12)]:
-  - @effect/experimental@0.51.6
-  - @effect/ai@0.21.8
+- Updated dependencies [[`193690b`](https://github.com/Effect-TS/effect-smol/commit/193690b642ea802bbed40d663bd677251bbe9dc3)]:
+  - effect@4.0.0-beta.82
 
-## 0.24.7
-
-### Patch Changes
-
-- Updated dependencies [[`2fd8676`](https://github.com/Effect-TS/effect/commit/2fd8676c803cd40000dfc3231f5daecaa0e0ebd2)]:
-  - @effect/platform@0.87.5
-  - @effect/ai@0.21.7
-  - @effect/experimental@0.51.5
-
-## 0.24.6
+## 4.0.0-beta.81
 
 ### Patch Changes
 
-- Updated dependencies [[`e82a4fd`](https://github.com/Effect-TS/effect/commit/e82a4fd60f6528d08cef1a4aba0abe0d3ba741ad)]:
-  - @effect/platform@0.87.4
-  - @effect/ai@0.21.6
-  - @effect/experimental@0.51.4
+- Updated dependencies [[`93cb4f8`](https://github.com/Effect-TS/effect-smol/commit/93cb4f8fbfb9e07cb9dc86ce6b155fd1f8167914), [`60341d9`](https://github.com/Effect-TS/effect-smol/commit/60341d9ca744d0473ce3fab621ca9bd225af3a39), [`1105ab5`](https://github.com/Effect-TS/effect-smol/commit/1105ab56cb724212f7ea7b431396ce82e8fd0484), [`4500fbf`](https://github.com/Effect-TS/effect-smol/commit/4500fbfe00763d8a72af6e5d6c5988e8bd4ade36)]:
+  - effect@4.0.0-beta.81
 
-## 0.24.5
+## 4.0.0-beta.80
 
 ### Patch Changes
 
-- Updated dependencies [[`1b6e396`](https://github.com/Effect-TS/effect/commit/1b6e396d699f3cbbc56b68f99055cf746529bb9e)]:
-  - @effect/platform@0.87.3
-  - @effect/ai@0.21.5
-  - @effect/experimental@0.51.3
+- Updated dependencies [[`d944330`](https://github.com/Effect-TS/effect-smol/commit/d94433090ee03f426d43e13b883abae4494e55e6), [`f48659f`](https://github.com/Effect-TS/effect-smol/commit/f48659fdcc84930ebc1e5b45b540c0f973389182), [`7652aaa`](https://github.com/Effect-TS/effect-smol/commit/7652aaa3bdbc39f241fe58b54b9a43b713e22e12), [`98630b7`](https://github.com/Effect-TS/effect-smol/commit/98630b7c8f679c352ba6796636c85688fa009d8d), [`90ae23c`](https://github.com/Effect-TS/effect-smol/commit/90ae23cf07284da5e1bcd9dffa882e85df7e617b)]:
+  - effect@4.0.0-beta.80
 
-## 0.24.4
+## 4.0.0-beta.79
 
 ### Patch Changes
 
-- Updated dependencies [[`4fea68c`](https://github.com/Effect-TS/effect/commit/4fea68ca7a25a3c39a1ab68b3885534513ab0c81), [`b927954`](https://github.com/Effect-TS/effect/commit/b9279543cf5688dd8a577af80456959c615217d0), [`99590a6`](https://github.com/Effect-TS/effect/commit/99590a6ca9128eb1ede265b6670b655311995614), [`6c3e24c`](https://github.com/Effect-TS/effect/commit/6c3e24c2308f7d4a29b8f4270ab81bca22ac6bb4)]:
-  - @effect/platform@0.87.2
-  - effect@3.16.11
-  - @effect/ai@0.21.4
-  - @effect/experimental@0.51.2
+- Updated dependencies [[`b9704dc`](https://github.com/Effect-TS/effect-smol/commit/b9704dc9de9f1649ad502371014fe869b69a49a3), [`a207113`](https://github.com/Effect-TS/effect-smol/commit/a207113f66837bb54416926718a9a7d66774d079), [`5e9b9e2`](https://github.com/Effect-TS/effect-smol/commit/5e9b9e217b164ebfd4a002dd4380b3b1563200c3), [`7c128ae`](https://github.com/Effect-TS/effect-smol/commit/7c128aef458a1e2d224712e51c483c9badad1d44), [`0ada457`](https://github.com/Effect-TS/effect-smol/commit/0ada457c0513d8d908254ab77ebb7d29d2b523d6), [`d7cc5a2`](https://github.com/Effect-TS/effect-smol/commit/d7cc5a2bede3de10943aa0c6bdb4f26836a91efd), [`aad63be`](https://github.com/Effect-TS/effect-smol/commit/aad63becf65e0a6b076e94f8973be7bbe7fbd46f), [`09809f6`](https://github.com/Effect-TS/effect-smol/commit/09809f60f19ec98232f98b33e33e02ecb7e4fbd6), [`2fddda5`](https://github.com/Effect-TS/effect-smol/commit/2fddda5311929f46b61e503f0ade4fc749e8c77d), [`5f21768`](https://github.com/Effect-TS/effect-smol/commit/5f2176833399757c4500d8875b7f2fba0393de75), [`f27003e`](https://github.com/Effect-TS/effect-smol/commit/f27003e00524ff83f20dd9909f62b2f8795efe03)]:
+  - effect@4.0.0-beta.79
 
-## 0.24.3
+## 4.0.0-beta.78
 
 ### Patch Changes
 
-- Updated dependencies [[`faad30e`](https://github.com/Effect-TS/effect/commit/faad30ec8742916be59f9db642d0fc98225b636c)]:
-  - effect@3.16.10
-  - @effect/ai@0.21.3
-  - @effect/experimental@0.51.1
-  - @effect/platform@0.87.1
+- Updated dependencies [[`7836b8e`](https://github.com/Effect-TS/effect-smol/commit/7836b8eb8bb0f3e04cdf554ee070caccf74f00c1), [`35d49a3`](https://github.com/Effect-TS/effect-smol/commit/35d49a3a09bdba6b513de87ddcead9e61a1042ba), [`4093258`](https://github.com/Effect-TS/effect-smol/commit/40932580e65bafab5f23c5f14b520cb411d0b2cd)]:
+  - effect@4.0.0-beta.78
 
-## 0.24.2
+## 4.0.0-beta.77
 
 ### Patch Changes
+
+- Updated dependencies [[`6e9a5ca`](https://github.com/Effect-TS/effect-smol/commit/6e9a5ca62a61156fd67b2518ad3ab14ac0d25f23), [`302f398`](https://github.com/Effect-TS/effect-smol/commit/302f3984ce206e35d86ddd99d3b72be144850a51)]:
+  - effect@4.0.0-beta.77
+
+## 4.0.0-beta.76
+
+### Patch Changes
+
+- Updated dependencies [[`016108a`](https://github.com/Effect-TS/effect-smol/commit/016108a472af7048ddbbfd05f233e67529fafe12), [`95c03d2`](https://github.com/Effect-TS/effect-smol/commit/95c03d2c55930668c215b5a41c23cf7742fead84), [`07299a3`](https://github.com/Effect-TS/effect-smol/commit/07299a33c09fd52faa9810d30835a2622c752386)]:
+  - effect@4.0.0-beta.76
+
+## 4.0.0-beta.75
+
+### Patch Changes
+
+- [#2312](https://github.com/Effect-TS/effect-smol/pull/2312) [`ad4b535`](https://github.com/Effect-TS/effect-smol/commit/ad4b535e17f94ce35261829d5a3675f0a7808b4e) Thanks @gcanti! - Validate `Schema.StructWithRest` fixed fields against rest index signatures at the type level so schemas cannot be constructed with incompatible decoded, encoded, or make shapes. This keeps `StructWithRest` types sound and updates the generated OpenAI conversation-items request schema to keep accepting arbitrary additional fields under the stricter validation.
+
+- Updated dependencies [[`81b187c`](https://github.com/Effect-TS/effect-smol/commit/81b187c17a0d8817b58232826939154010ae49d7), [`ad4b535`](https://github.com/Effect-TS/effect-smol/commit/ad4b535e17f94ce35261829d5a3675f0a7808b4e), [`a29c2e7`](https://github.com/Effect-TS/effect-smol/commit/a29c2e7e3570920156702671d6f3367cd0195f6c), [`1fdd9ae`](https://github.com/Effect-TS/effect-smol/commit/1fdd9aeed92b6bb70987c862e7f6f66ead0339b3), [`1fdd9ae`](https://github.com/Effect-TS/effect-smol/commit/1fdd9aeed92b6bb70987c862e7f6f66ead0339b3), [`ffea4ec`](https://github.com/Effect-TS/effect-smol/commit/ffea4ecf2925f6a4c9fd13079d47584cbf2bed00), [`4255c9b`](https://github.com/Effect-TS/effect-smol/commit/4255c9ba78bb98c7838fbe9dccdd8465e9da5427)]:
+  - effect@4.0.0-beta.75
+
+## 4.0.0-beta.74
+
+### Patch Changes
+
+- Updated dependencies [[`b1fc6a4`](https://github.com/Effect-TS/effect-smol/commit/b1fc6a4b4d0ca7fa9fd162799ae17c86f2f7ee8e)]:
+  - effect@4.0.0-beta.74
+
+## 4.0.0-beta.73
+
+### Patch Changes
+
+- Updated dependencies [[`361ca30`](https://github.com/Effect-TS/effect-smol/commit/361ca30eb6e134feece547d6e00f82be4cb23f75), [`b9598c6`](https://github.com/Effect-TS/effect-smol/commit/b9598c6a209e75bfdb87ee3b024ecd1e3923ff6e)]:
+  - effect@4.0.0-beta.73
+
+## 4.0.0-beta.72
+
+### Patch Changes
+
+- [#2280](https://github.com/Effect-TS/effect-smol/pull/2280) [`fa07f9e`](https://github.com/Effect-TS/effect-smol/commit/fa07f9e7138bde3e9404aa91c22b41e273aba091) Thanks @tim-smart! - improve openai websocket error status
+
+- Updated dependencies [[`73e67d1`](https://github.com/Effect-TS/effect-smol/commit/73e67d119a84d697773eaecb4865c6a71eb1a9cb), [`01d71ec`](https://github.com/Effect-TS/effect-smol/commit/01d71ec5a75f3c2747a8d3b1ad9701d1e27b7ce5), [`fcd707e`](https://github.com/Effect-TS/effect-smol/commit/fcd707e091a16e1b35343c901cc4052274e32239)]:
+  - effect@4.0.0-beta.72
+
+## 4.0.0-beta.71
+
+### Patch Changes
+
+- [#2279](https://github.com/Effect-TS/effect-smol/pull/2279) [`1fab4ac`](https://github.com/Effect-TS/effect-smol/commit/1fab4acc63818dece3a0e732b1a71843f0759f21) Thanks @tim-smart! - handle missing output array in openai responses
+
+- Updated dependencies [[`d8ac76b`](https://github.com/Effect-TS/effect-smol/commit/d8ac76b5bad458c42cebe8a0c1b3843f955ac293), [`2c3c00a`](https://github.com/Effect-TS/effect-smol/commit/2c3c00af6faba7b7d422af26a7a2bbc35636d230), [`3751e7c`](https://github.com/Effect-TS/effect-smol/commit/3751e7cf353e7a54cd692c37401207d9afba1e63), [`fc5f25b`](https://github.com/Effect-TS/effect-smol/commit/fc5f25b03ada5fc2431987768a74d3d3e75ca485), [`7ccced4`](https://github.com/Effect-TS/effect-smol/commit/7ccced42867c14c013b01160b3d292f14c05bd04), [`a2e1fe5`](https://github.com/Effect-TS/effect-smol/commit/a2e1fe5835c98c8ee4393a091b1d11b75126e349), [`4a4a36b`](https://github.com/Effect-TS/effect-smol/commit/4a4a36b10e6e616cad07584a43908f6a7e07e618), [`d350292`](https://github.com/Effect-TS/effect-smol/commit/d3502922b4740fa9d745797cbc3775cb67839b6d), [`730afb6`](https://github.com/Effect-TS/effect-smol/commit/730afb66696adf9bd5a328cbca29df9c05968771), [`df1b008`](https://github.com/Effect-TS/effect-smol/commit/df1b008f370f414c2a67a7b8139ef747af8e5fba), [`6d469d5`](https://github.com/Effect-TS/effect-smol/commit/6d469d567a7c41d7e5343bdee21d45b07b0e8190)]:
+  - effect@4.0.0-beta.71
+
+## 4.0.0-beta.70
+
+### Patch Changes
+
+- [#2224](https://github.com/Effect-TS/effect-smol/pull/2224) [`74d8f37`](https://github.com/Effect-TS/effect-smol/commit/74d8f37a05ce755ff09cff48f992cb80ce9e4769) Thanks @aniravi24! - Fix `OpenAIFile` schema decode failure on responses where `expires_at` and `status_details` are returned as literal `null`. The OpenAI files endpoint returns `null` (not omitted) for these fields when no expiration / status detail applies (e.g. uploads with `purpose: "user_data"`), but the upstream OpenAPI spec marks them only as optional. Codegen patches widen both fields to allow `null`, which now decodes cleanly via `OpenAiClient.createFile`, `retrieveFile`, `listFiles`, and any other endpoint returning the `OpenAIFile` shape.
+
+- Updated dependencies [[`af7782d`](https://github.com/Effect-TS/effect-smol/commit/af7782d3008d08b043f3a3f261516001514b2b4e), [`7212d70`](https://github.com/Effect-TS/effect-smol/commit/7212d701a3eee7b3553ff502e2c066126e52e839)]:
+  - effect@4.0.0-beta.70
+
+## 4.0.0-beta.69
+
+### Patch Changes
+
+- Updated dependencies [[`70ea04a`](https://github.com/Effect-TS/effect-smol/commit/70ea04aa96a2a7859d738d414e1f0e3ed081a27a), [`d0ea8b0`](https://github.com/Effect-TS/effect-smol/commit/d0ea8b03f7d73ae076c1db12666141e480d11178), [`a57674b`](https://github.com/Effect-TS/effect-smol/commit/a57674b64845e9e75a456cf907bfdcb858859118), [`59aa334`](https://github.com/Effect-TS/effect-smol/commit/59aa334fbd0a504dda3c36f6d2ef1be7449b4b8b), [`8f4208e`](https://github.com/Effect-TS/effect-smol/commit/8f4208ee83bc7bdaa6793b5429847b45aab72470)]:
+  - effect@4.0.0-beta.69
+
+## 4.0.0-beta.68
+
+### Patch Changes
+
+- Updated dependencies [[`af8267f`](https://github.com/Effect-TS/effect-smol/commit/af8267f2f3588c3fb611e9286f6f933f29ce1217), [`0176eaf`](https://github.com/Effect-TS/effect-smol/commit/0176eaf3ecd7c1b99a10268f2af02d7e8ce161e5), [`0176eaf`](https://github.com/Effect-TS/effect-smol/commit/0176eaf3ecd7c1b99a10268f2af02d7e8ce161e5), [`f136bb7`](https://github.com/Effect-TS/effect-smol/commit/f136bb763048cbc6b17edd26496dba3e2415b9fa), [`6f38f07`](https://github.com/Effect-TS/effect-smol/commit/6f38f07d5941a211b251383aaab0f4f55e8a6557), [`aec9c40`](https://github.com/Effect-TS/effect-smol/commit/aec9c401a53db227f18bf5e0c84db7130ad862d6)]:
+  - effect@4.0.0-beta.68
+
+## 4.0.0-beta.67
+
+### Patch Changes
+
+- Updated dependencies [[`a42ef66`](https://github.com/Effect-TS/effect-smol/commit/a42ef6632abbddfa820995ae310ccc84ae8d9b6f), [`35594f8`](https://github.com/Effect-TS/effect-smol/commit/35594f811cafe471acd490114b103a1f8392c8d8), [`8bddd62`](https://github.com/Effect-TS/effect-smol/commit/8bddd628cb623f9533d345082583ff51cead6836), [`4be4c8d`](https://github.com/Effect-TS/effect-smol/commit/4be4c8d60862aa963869ee2ed9ffa048ffac0527), [`0c9d3ab`](https://github.com/Effect-TS/effect-smol/commit/0c9d3ab43eb721a370ed8306260cbac218c27e87), [`b156acc`](https://github.com/Effect-TS/effect-smol/commit/b156accd2691b4a051f823affdece7c39923ce85), [`d16c034`](https://github.com/Effect-TS/effect-smol/commit/d16c03434ee3e6dcd3bfc82b65d99e881d89025b), [`b559d68`](https://github.com/Effect-TS/effect-smol/commit/b559d68845f848a10153395778f035682d399075), [`a3de5d9`](https://github.com/Effect-TS/effect-smol/commit/a3de5d9215e5cc4a62e2666efbd7c1bf595eb84f), [`7e6c12e`](https://github.com/Effect-TS/effect-smol/commit/7e6c12ec9b3a5945f6c26e272cc8f6390541ad3e), [`098167a`](https://github.com/Effect-TS/effect-smol/commit/098167a220fe07da6f14455818733ab1b269c9dd)]:
+  - effect@4.0.0-beta.67
+
+## 4.0.0-beta.66
+
+### Patch Changes
+
+- Updated dependencies [[`ca2498e`](https://github.com/Effect-TS/effect-smol/commit/ca2498e702ac2d83fb7187707b7eb069bdb261a2), [`cd7d1fb`](https://github.com/Effect-TS/effect-smol/commit/cd7d1fba7e2e2c5ac3ad64e1be433440a5bda436), [`19a7033`](https://github.com/Effect-TS/effect-smol/commit/19a703367ec817cffc41d152da9b594827408e2b), [`33d26b4`](https://github.com/Effect-TS/effect-smol/commit/33d26b4210b2e974f146a71e7eed962f8ce00900), [`856766b`](https://github.com/Effect-TS/effect-smol/commit/856766b2c506aaed6d2df1d63bf3a5b1b062e1d4), [`079c7df`](https://github.com/Effect-TS/effect-smol/commit/079c7df82559bb9ce10a86dffb85d25e6ce07dc3)]:
+  - effect@4.0.0-beta.66
+
+## 4.0.0-beta.65
+
+### Patch Changes
+
+- Updated dependencies [[`6f11454`](https://github.com/Effect-TS/effect-smol/commit/6f11454a9b6c3bd00f6b35fd7af14a2f2d63a0a2)]:
+  - effect@4.0.0-beta.65
+
+## 4.0.0-beta.64
+
+### Patch Changes
+
+- Updated dependencies [[`7d4877a`](https://github.com/Effect-TS/effect-smol/commit/7d4877a1929cdb690280ea254326c04f2ec97ea5)]:
+  - effect@4.0.0-beta.64
+
+## 4.0.0-beta.63
+
+### Patch Changes
+
+- [#2133](https://github.com/Effect-TS/effect-smol/pull/2133) [`5be0aaa`](https://github.com/Effect-TS/effect-smol/commit/5be0aaad694c9eb943a710eb4f896bc4c3fcae99) Thanks @Zelys-DFKH! - Fix `OpenAiLanguageModel` leaking library-only config fields (`fileIdPrefixes`, `strictJsonSchema`) into request body, causing OpenAI 400 errors.
+
+- Updated dependencies [[`7f927ff`](https://github.com/Effect-TS/effect-smol/commit/7f927ffb7a9801dcfc4096c29e369d13d65cd0ac), [`a696b3e`](https://github.com/Effect-TS/effect-smol/commit/a696b3e83a8504cdbe261a18c10a1cc0619ae102)]:
+  - effect@4.0.0-beta.63
+
+## 4.0.0-beta.62
+
+### Patch Changes
+
+- Updated dependencies [[`4ab4b90`](https://github.com/Effect-TS/effect-smol/commit/4ab4b9007dc27a52ffabc6fcb37c96eeec795bf7)]:
+  - effect@4.0.0-beta.62
+
+## 4.0.0-beta.61
+
+### Patch Changes
+
+- Updated dependencies [[`50790af`](https://github.com/Effect-TS/effect-smol/commit/50790af9b190c38d10fb0723837d49b66432638f), [`71f7c3d`](https://github.com/Effect-TS/effect-smol/commit/71f7c3df997deda92c84146d569696dab3bd645c), [`aae8797`](https://github.com/Effect-TS/effect-smol/commit/aae8797b9cb383be0c182dd58d03d787c354238b)]:
+  - effect@4.0.0-beta.61
+
+## 4.0.0-beta.60
+
+### Patch Changes
+
+- Updated dependencies [[`f69d567`](https://github.com/Effect-TS/effect-smol/commit/f69d5675dcff9f4137295752baf066b7153fdc09), [`7909c95`](https://github.com/Effect-TS/effect-smol/commit/7909c954b8f6244a35a4b429f8dd0dff45dad620), [`bbb4dcc`](https://github.com/Effect-TS/effect-smol/commit/bbb4dcc6c406b83a416b4ad3541cc02037c420e4), [`7af2207`](https://github.com/Effect-TS/effect-smol/commit/7af2207901eabf3132c1b7010a69b3899c06fbbe), [`848b40a`](https://github.com/Effect-TS/effect-smol/commit/848b40a4bd4bf54a5098617d50c33c88eee8270a)]:
+  - effect@4.0.0-beta.60
+
+## 4.0.0-beta.59
+
+### Patch Changes
+
+- [#2101](https://github.com/Effect-TS/effect-smol/pull/2101) [`953edef`](https://github.com/Effect-TS/effect-smol/commit/953edef2e1ade369e530017d64391281ef22f28f) Thanks @tim-smart! - don't omit reasoning from openai config
+
+- Updated dependencies [[`56837ea`](https://github.com/Effect-TS/effect-smol/commit/56837ea2a338395b35550641374e9e589bd8b71d)]:
+  - effect@4.0.0-beta.59
+
+## 4.0.0-beta.58
+
+### Patch Changes
+
+- Updated dependencies [[`11993d4`](https://github.com/Effect-TS/effect-smol/commit/11993d4934c66f5dc611b8bbf553f01d501ef8f7), [`96c8b22`](https://github.com/Effect-TS/effect-smol/commit/96c8b22c2057ccddbf10ed269d7697f22119b3ec), [`96c8b22`](https://github.com/Effect-TS/effect-smol/commit/96c8b22c2057ccddbf10ed269d7697f22119b3ec)]:
+  - effect@4.0.0-beta.58
+
+## 4.0.0-beta.57
+
+### Patch Changes
+
+- Updated dependencies [[`a971f5c`](https://github.com/Effect-TS/effect-smol/commit/a971f5cbd92dfe4274420bf0966595eb35531060), [`8e110c5`](https://github.com/Effect-TS/effect-smol/commit/8e110c5f02a429ccc43a91df8678e402138c0851)]:
+  - effect@4.0.0-beta.57
+
+## 4.0.0-beta.56
+
+### Patch Changes
+
+- [#1933](https://github.com/Effect-TS/effect-smol/pull/1933) [`c5a7327`](https://github.com/Effect-TS/effect-smol/commit/c5a732746690185b8bb7935d0cf26a5ef21658e4) Thanks @IMax153! - Accept both `in-memory` and `in_memory` for OpenAI `prompt_cache_retention` schema fields.
+
+- [#1933](https://github.com/Effect-TS/effect-smol/pull/1933) [`c5a7327`](https://github.com/Effect-TS/effect-smol/commit/c5a732746690185b8bb7935d0cf26a5ef21658e4) Thanks @IMax153! - Fix OpenAI MCP tool call handling to keep the canonical `OpenAiMcp` tool name across response and stream paths, including approval flows.
 
 - Updated dependencies []:
-  - @effect/ai@0.21.2
-  - @effect/experimental@0.51.0
+  - effect@4.0.0-beta.56
 
-## 0.24.1
-
-### Patch Changes
-
-- Updated dependencies [[`f667373`](https://github.com/Effect-TS/effect/commit/f667373da3471f1e907366780f8c3ea7f52cc5c8)]:
-  - @effect/ai@0.21.1
-  - @effect/experimental@0.51.0
-
-## 0.24.0
+## 4.0.0-beta.55
 
 ### Patch Changes
 
-- Updated dependencies [[`b5bac9a`](https://github.com/Effect-TS/effect/commit/b5bac9ac2913fcd11b02322624f03b544eef53ba)]:
-  - @effect/platform@0.87.0
-  - @effect/ai@0.21.0
-  - @effect/experimental@0.51.0
+- Updated dependencies [[`42cc744`](https://github.com/Effect-TS/effect-smol/commit/42cc744570968deb365fb46d47b53d3277050c93), [`04855ce`](https://github.com/Effect-TS/effect-smol/commit/04855ceeca4d40c55a5750dd9893b691f8ea741a)]:
+  - effect@4.0.0-beta.55
 
-## 0.23.0
+## 4.0.0-beta.54
 
 ### Patch Changes
 
-- Updated dependencies [[`5137c70`](https://github.com/Effect-TS/effect/commit/5137c703461d8d3b363c112140a6e7f798241d07), [`c23d25c`](https://github.com/Effect-TS/effect/commit/c23d25c3e7c541f1f63b28484d8c461d86c67e99), [`5137c70`](https://github.com/Effect-TS/effect/commit/5137c703461d8d3b363c112140a6e7f798241d07), [`5137c70`](https://github.com/Effect-TS/effect/commit/5137c703461d8d3b363c112140a6e7f798241d07)]:
-  - effect@3.16.9
-  - @effect/platform@0.86.0
-  - @effect/ai@0.20.0
-  - @effect/experimental@0.50.0
+- Updated dependencies [[`e4b74f9`](https://github.com/Effect-TS/effect-smol/commit/e4b74f9c01a0e9b6cd58416de4af3a26d51da7c8), [`4c72808`](https://github.com/Effect-TS/effect-smol/commit/4c728081851c66dacf889a816535671bc841ae96)]:
+  - effect@4.0.0-beta.54
 
-## 0.22.4
+## 4.0.0-beta.53
 
 ### Patch Changes
 
-- Updated dependencies [[`a8d99b2`](https://github.com/Effect-TS/effect/commit/a8d99b2ec2f55d9aa6e7d00a5138e80380716877)]:
-  - @effect/ai@0.19.4
-  - @effect/experimental@0.49.2
+- [#2060](https://github.com/Effect-TS/effect-smol/pull/2060) [`aef2b1c`](https://github.com/Effect-TS/effect-smol/commit/aef2b1c0130a61a430f116465e4c200c51bcd9e2) Thanks @tim-smart! - add back openai reasoning types
 
-## 0.22.3
+- Updated dependencies [[`0768509`](https://github.com/Effect-TS/effect-smol/commit/07685094e931af07d104165195826a535b55fa7e), [`476aede`](https://github.com/Effect-TS/effect-smol/commit/476aede69c6efa06b5781ca5eb3e3b128ca29141), [`4f79c54`](https://github.com/Effect-TS/effect-smol/commit/4f79c542e7b508c235ff485d862cc8b29a8260c5), [`4be6a7c`](https://github.com/Effect-TS/effect-smol/commit/4be6a7cf35dab2a01d652f56dd35f0358c5a7e88), [`88927eb`](https://github.com/Effect-TS/effect-smol/commit/88927ebb896162cdba103b36553280b58e0facac)]:
+  - effect@4.0.0-beta.53
 
-### Patch Changes
-
-- Updated dependencies [[`914a191`](https://github.com/Effect-TS/effect/commit/914a191e7cb6341a3d0e965bccd27c336cf22e44)]:
-  - @effect/platform@0.85.2
-  - @effect/ai@0.19.3
-  - @effect/experimental@0.49.2
-
-## 0.22.2
-
-### Patch Changes
-
-- Updated dependencies []:
-  - @effect/ai@0.19.2
-  - @effect/experimental@0.49.1
-
-## 0.22.1
-
-### Patch Changes
-
-- Updated dependencies [[`8cb98d5`](https://github.com/Effect-TS/effect/commit/8cb98d53e68330228287ce2a2e0d8a4c86bcab3b), [`db2dd3c`](https://github.com/Effect-TS/effect/commit/db2dd3c3a8a77d791eae19e66153527e1cde4e6e)]:
-  - effect@3.16.8
-  - @effect/ai@0.19.1
-  - @effect/experimental@0.49.1
-  - @effect/platform@0.85.1
-
-## 0.22.0
-
-### Patch Changes
-
-- Updated dependencies [[`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e), [`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e), [`93687dd`](https://github.com/Effect-TS/effect/commit/93687ddbb25ce3b324cd2b83d2ccff225e97307e)]:
-  - @effect/platform@0.85.0
-  - @effect/ai@0.19.0
-  - @effect/experimental@0.49.0
-
-## 0.21.16
-
-### Patch Changes
-
-- Updated dependencies [[`daed158`](https://github.com/Effect-TS/effect/commit/daed158f2cf00175633284f075cf611c52aa2a1c)]:
-  - @effect/ai@0.18.16
-
-## 0.21.15
-
-### Patch Changes
-
-- Updated dependencies [[`c315989`](https://github.com/Effect-TS/effect/commit/c315989cade6c2a5c9cb157ad85f56b492675add)]:
-  - @effect/ai@0.18.15
-
-## 0.21.14
-
-### Patch Changes
-
-- Updated dependencies [[`1bb0d8a`](https://github.com/Effect-TS/effect/commit/1bb0d8ab96782e99434356266b38251554ea0294), [`cbac1ac`](https://github.com/Effect-TS/effect/commit/cbac1ac61a4e15ad15828563b39eef412bcee66e), [`dd4d380`](https://github.com/Effect-TS/effect/commit/dd4d3802f714d59171b1e9226a7babf9723ea952)]:
-  - effect@3.16.7
-  - @effect/ai@0.18.14
-  - @effect/experimental@0.48.12
-  - @effect/platform@0.84.11
-
-## 0.21.13
-
-### Patch Changes
-
-- Updated dependencies [[`a5f7595`](https://github.com/Effect-TS/effect/commit/a5f75956ef9a15a83c416517ef493f0ee2f5ee8a), [`a02470c`](https://github.com/Effect-TS/effect/commit/a02470c75579e91525a25adb3f21b3650d042fdd), [`aa3a819`](https://github.com/Effect-TS/effect/commit/aa3a819707c15dd39b6d9ae4b4293bd87b74e175), [`bf369b2`](https://github.com/Effect-TS/effect/commit/bf369b2902a0e0b195d957c18b9efd180942cf8b), [`f891d45`](https://github.com/Effect-TS/effect/commit/f891d45adffdafd3f94a2eca23faa354e3a409a8)]:
-  - effect@3.16.6
-  - @effect/ai@0.18.13
-  - @effect/platform@0.84.10
-  - @effect/experimental@0.48.11
-
-## 0.21.12
-
-### Patch Changes
-
-- Updated dependencies [[`bf418ef`](https://github.com/Effect-TS/effect/commit/bf418ef14a0f2ec965535793d5cea8fa8ba177ac)]:
-  - effect@3.16.5
-  - @effect/ai@0.18.12
-  - @effect/experimental@0.48.10
-  - @effect/platform@0.84.9
-
-## 0.21.11
-
-### Patch Changes
-
-- Updated dependencies [[`2dc5f93`](https://github.com/Effect-TS/effect/commit/2dc5f932f89d260e2f6139c9b89e0548d11d94c2)]:
-  - @effect/ai@0.18.11
-  - @effect/experimental@0.48.9
-
-## 0.21.10
-
-### Patch Changes
-
-- Updated dependencies [[`8b9db77`](https://github.com/Effect-TS/effect/commit/8b9db7742846af0f58fd8e8b7acb7f4f5ff487ec)]:
-  - @effect/platform@0.84.8
-  - @effect/experimental@0.48.9
-  - @effect/ai@0.18.10
-
-## 0.21.9
-
-### Patch Changes
-
-- Updated dependencies [[`74ab9a0`](https://github.com/Effect-TS/effect/commit/74ab9a0a9e16d6e019369d256e1e24175c8bc3f3), [`770008e`](https://github.com/Effect-TS/effect/commit/770008eca3aad2899a2ed951236e575793294b28)]:
-  - effect@3.16.4
-  - @effect/ai@0.18.9
-  - @effect/experimental@0.48.8
-  - @effect/platform@0.84.7
-
-## 0.21.8
-
-### Patch Changes
-
-- Updated dependencies [[`a2d57c9`](https://github.com/Effect-TS/effect/commit/a2d57c9ac596445009ca12859b78e00e5d89b936)]:
-  - @effect/experimental@0.48.7
-  - @effect/ai@0.18.8
-
-## 0.21.7
-
-### Patch Changes
-
-- Updated dependencies [[`ceea77a`](https://github.com/Effect-TS/effect/commit/ceea77a13055f145520f763e3fce5b8ff15d728f)]:
-  - @effect/platform@0.84.6
-  - @effect/ai@0.18.7
-  - @effect/experimental@0.48.6
-
-## 0.21.6
-
-### Patch Changes
-
-- Updated dependencies [[`85f54ed`](https://github.com/Effect-TS/effect/commit/85f54ed1ecf2f191de8c907247066e3631b5d7e1), [`ec52c6a`](https://github.com/Effect-TS/effect/commit/ec52c6a2211e76972462b15b9d5a9d6d56761b7a)]:
-  - @effect/ai@0.18.6
-  - @effect/platform@0.84.5
-  - @effect/experimental@0.48.5
-
-## 0.21.5
-
-### Patch Changes
-
-- Updated dependencies [[`4ddb28d`](https://github.com/Effect-TS/effect/commit/4ddb28d230d572735fe34539c1c59005d4932d8a)]:
-  - @effect/ai@0.18.5
-
-## 0.21.4
-
-### Patch Changes
-
-- Updated dependencies [[`87722fc`](https://github.com/Effect-TS/effect/commit/87722fce693a9b49284bbddbf82d30714c688261), [`36217ee`](https://github.com/Effect-TS/effect/commit/36217eeb1337edd9ac3f9a635b80a6385d22ae8f)]:
-  - effect@3.16.3
-  - @effect/ai@0.18.4
-  - @effect/experimental@0.48.4
-  - @effect/platform@0.84.4
-
-## 0.21.3
-
-### Patch Changes
-
-- Updated dependencies [[`52c88c4`](https://github.com/Effect-TS/effect/commit/52c88c4b7d20ea819b9f2efaf112d03de0a4627b), [`ab7684f`](https://github.com/Effect-TS/effect/commit/ab7684f1c2a0671bf091f255d220e3a4cc7f528e)]:
-  - @effect/ai@0.18.3
-  - @effect/platform@0.84.3
-  - @effect/experimental@0.48.3
-
-## 0.21.2
-
-### Patch Changes
-
-- Updated dependencies [[`0ddf148`](https://github.com/Effect-TS/effect/commit/0ddf148a247aa87af043d276b8453a714a400897)]:
-  - effect@3.16.2
-  - @effect/ai@0.18.2
-  - @effect/experimental@0.48.2
-  - @effect/platform@0.84.2
-
-## 0.21.1
-
-### Patch Changes
-
-- Updated dependencies [[`71174d0`](https://github.com/Effect-TS/effect/commit/71174d09691314a9b6b66189e456fd21e3eb6543), [`d615e6e`](https://github.com/Effect-TS/effect/commit/d615e6e5b944f6fd5e627e31752c7ca7e4e1c17d)]:
-  - @effect/platform@0.84.1
-  - effect@3.16.1
-  - @effect/ai@0.18.1
-  - @effect/experimental@0.48.1
-
-## 0.21.0
+## 4.0.0-beta.52
 
 ### Minor Changes
 
-- [#4891](https://github.com/Effect-TS/effect/pull/4891) [`0552674`](https://github.com/Effect-TS/effect/commit/055267461a3076b06dea896258f4bb2154211fcb) Thanks @IMax153! - Make `AiModel` a plain `Layer` and remove `AiPlan` in favor of `ExecutionPlan`
-
-  This release substantially simplifies and improves the ergonomics of using `AiModel` for various providers. With these changes, an `AiModel` now returns a plain `Layer` which can be used to provide services to a program that interacts with large language models.
-
-  **Before**
-
-  ```ts
-  import { AiLanguageModel } from "@effect/ai"
-  import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
-  import { NodeHttpClient } from "@effect/platform-node"
-  import { Config, Console, Effect, Layer } from "effect"
+- [#2059](https://github.com/Effect-TS/effect-smol/pull/2059) [`6f73f92`](https://github.com/Effect-TS/effect-smol/commit/6f73f92291733dc1e970e222e63aba865183a072) Thanks @tim-smart! - Add a new public `OpenAiSchema` module with minimal local schemas for responses, streaming SSE events (including unknown-event fallback), and embeddings.
 
-  // Produces an `AiModel<AiLanguageModel, OpenAiClient>`
-  const Gpt4o = OpenAiLanguageModel.model("gpt-4o")
-
-  // Generate a dad joke
-  const getDadJoke = AiLanguageModel.generateText({
-    prompt: "Tell me a dad joke"
-  })
-
-  const program = Effect.gen(function* () {
-    // Build the `AiModel` into a `Provider`
-    const gpt4o = yield* Gpt4o
-    // Use the built `AiModel` to run the program
-    const response = yield* gpt4o.use(getDadJoke)
-    // Log the response
-    yield* Console.log(response.text)
-  })
-
-  const OpenAi = OpenAiClient.layerConfig({
-    apiKey: Config.redacted("OPENAI_API_KEY")
-  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
-
-  program.pipe(Effect.provide(OpenAi), Effect.runPromise)
-  ```
-
-  **After**
-
-  ```ts
-  import { AiLanguageModel } from "@effect/ai"
-  import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
-  import { NodeHttpClient } from "@effect/platform-node"
-  import { Config, Console, Effect, Layer } from "effect"
-
-  // Produces a `Layer<AiLanguageModel, never, OpenAiClient>`
-  const Gpt4o = OpenAiLanguageModel.model("gpt-4o")
-
-  const program = Effect.gen(function*() {
-    // Generate a dad joke
-    const response = yield* AiLanguageModel.generateText({
-      prompt: "Tell me a dad joke"
-    })
-    // Log the response
-    yield* Console.log(response.text)
-  ).pipe(Effect.provide(Gpt4o))
-
-  const OpenAi = OpenAiClient.layerConfig({
-    apiKey: Config.redacted("OPENAI_API_KEY")
-  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
-
-  program.pipe(
-    Effect.provide(OpenAi),
-    Effect.runPromise
-  )
-  ```
-
-  In addition, `AiModel` can be `yield*`'ed to produce a layer with no requirements.
-
-  This shifts the requirements of building the layer into the calling effect, which is particularly useful for creating AI-powered services.
-
-  ```ts
-  import { AiLanguageModel } from "@effect/ai"
-  import { OpenAiLanguageModel } from "@effect/ai-openai"
-  import { Effect } from "effect"
-
-  class DadJokes extends Effect.Service<DadJokes>()("DadJokes", {
-    effect: Effect.gen(function* () {
-      // Yielding the model will return a layer with no requirements
-      //
-      //      ┌─── Layer<AiLanguageModel>
-      //      ▼
-      const model = yield* OpenAiLanguageModel.model("gpt-4o")
-
-      const getDadJoke = AiLanguageModel.generateText({
-        prompt: "Generate a dad joke"
-      }).pipe(Effect.provide(model))
-
-      return { getDadJoke } as const
-    })
-  }) {}
-
-  // The requirements are lifted into the service constructor
-  //
-  //          ┌─── Layer<DadJokes, never, OpenAiClient>
-  //          ▼
-  DadJokes.Default
-  ```
-
-### Patch Changes
-
-- Updated dependencies [[`ee0bd5d`](https://github.com/Effect-TS/effect/commit/ee0bd5d24864752c54cb359f67a67dd903971ec4), [`5189800`](https://github.com/Effect-TS/effect/commit/51898004e11766b8cf6d95e960b636f6d5db79ec), [`58bfeaa`](https://github.com/Effect-TS/effect/commit/58bfeaa64ded8c88f772b184311c0c0dbac10960), [`194d748`](https://github.com/Effect-TS/effect/commit/194d7486943f56f3267ef415395ac220a4b3e634), [`0552674`](https://github.com/Effect-TS/effect/commit/055267461a3076b06dea896258f4bb2154211fcb), [`918c9ea`](https://github.com/Effect-TS/effect/commit/918c9ea1a57facb154f0fb26792021f337054dee), [`9198e6f`](https://github.com/Effect-TS/effect/commit/9198e6fcc1a3ff4fefb3363004de558d8de01f40), [`2a370bf`](https://github.com/Effect-TS/effect/commit/2a370bf625fdeede5659721468eb0d527e403279), [`58ccb91`](https://github.com/Effect-TS/effect/commit/58ccb91328c8df5d49808b673738bc09df355201), [`fd47834`](https://github.com/Effect-TS/effect/commit/fd478348203fa89462b0a1d067ce4de034353df4)]:
-  - effect@3.16.0
-  - @effect/ai@0.18.0
-  - @effect/experimental@0.48.0
-  - @effect/platform@0.84.0
-
-## 0.20.0
-
-### Patch Changes
-
-- Updated dependencies [[`5522520`](https://github.com/Effect-TS/effect/commit/55225206ab9af0ad60b1c0654690a8a096d625cd), [`cc5bb2b`](https://github.com/Effect-TS/effect/commit/cc5bb2b918a9450a975f702dabcea891bda382cb)]:
-  - @effect/platform@0.83.0
-  - effect@3.15.5
-  - @effect/ai@0.17.0
-  - @effect/experimental@0.47.0
-
-## 0.19.9
-
-### Patch Changes
-
-- Updated dependencies [[`0617b9d`](https://github.com/Effect-TS/effect/commit/0617b9dc365f1963b36949ad7f9023ab6eb94524)]:
-  - @effect/platform@0.82.8
-  - @effect/ai@0.16.9
-  - @effect/experimental@0.46.8
-
-## 0.19.8
-
-### Patch Changes
-
-- Updated dependencies [[`f570554`](https://github.com/Effect-TS/effect/commit/f57055459524587b041340577dad85476bb35f81), [`78047e8`](https://github.com/Effect-TS/effect/commit/78047e8dfc8005b66f87afe50bb95981fea51561), [`c20b95a`](https://github.com/Effect-TS/effect/commit/c20b95a99ffe452b4774c844d397a905f713b6d6), [`94ada43`](https://github.com/Effect-TS/effect/commit/94ada430928d5685bdbef513e87562c20774a3a2)]:
-  - effect@3.15.4
-  - @effect/platform@0.82.7
-  - @effect/ai@0.16.8
-  - @effect/experimental@0.46.7
-
-## 0.19.7
-
-### Patch Changes
-
-- [#4914](https://github.com/Effect-TS/effect/pull/4914) [`eef6052`](https://github.com/Effect-TS/effect/commit/eef605278e41b3b0a2218ac799f907f7a97db91c) Thanks @IMax153! - Fix an issue where passing a file input part when using OpenAI would always result in an error
-
-- Updated dependencies [[`618903b`](https://github.com/Effect-TS/effect/commit/618903ba9ae96e2bfe6ee31f61c4359b915f2a36)]:
-  - @effect/platform@0.82.6
-  - @effect/ai@0.16.7
-  - @effect/experimental@0.46.6
-
-## 0.19.6
-
-### Patch Changes
-
-- Updated dependencies [[`7764a07`](https://github.com/Effect-TS/effect/commit/7764a07d960c60df81f14e1dc949518f4bbe494a), [`4577f54`](https://github.com/Effect-TS/effect/commit/4577f548d67273e576cdde423bdd34a4b910766a), [`30a0d9c`](https://github.com/Effect-TS/effect/commit/30a0d9cb51c84290d51b1361d72ff5cee33c13c7)]:
-  - @effect/platform@0.82.5
-  - effect@3.15.3
-  - @effect/ai@0.16.6
-  - @effect/experimental@0.46.5
-
-## 0.19.5
-
-### Patch Changes
-
-- Updated dependencies [[`d45e8a8`](https://github.com/Effect-TS/effect/commit/d45e8a8ac8227192f504e39e6d04fdcf4fb1d225), [`d13b68e`](https://github.com/Effect-TS/effect/commit/d13b68e3a9456d0bfee9bca8273a7b44a9c69087)]:
-  - @effect/platform@0.82.4
-  - @effect/ai@0.16.5
-  - @effect/experimental@0.46.4
-
-## 0.19.4
-
-### Patch Changes
-
-- Updated dependencies [[`b8722b8`](https://github.com/Effect-TS/effect/commit/b8722b817e2306fe8c8245f3f9e32d85b824b961), [`a328f4b`](https://github.com/Effect-TS/effect/commit/a328f4b4fe717dd53e5b04a30f387433c32f7328)]:
-  - effect@3.15.2
-  - @effect/platform@0.82.3
-  - @effect/ai@0.16.4
-  - @effect/experimental@0.46.3
-
-## 0.19.3
-
-### Patch Changes
-
-- [#4880](https://github.com/Effect-TS/effect/pull/4880) [`b86c1fc`](https://github.com/Effect-TS/effect/commit/b86c1fc63b70e6536c691a0fde718f5f276abc7c) Thanks @IMax153! - Ensure that multiple tool calls are handled properly
-
-- [#4878](https://github.com/Effect-TS/effect/pull/4878) [`8b32eb5`](https://github.com/Effect-TS/effect/commit/8b32eb5f1267b012a261170c4fb704806e80ddea) Thanks @IMax153! - Ensure that `AiResponse.finishReason` is set properly when streaming responses from OpenAi
-
-- Updated dependencies [[`739a3d4`](https://github.com/Effect-TS/effect/commit/739a3d4a4565915fe2e690003f4f9085cb4422fc)]:
-  - @effect/platform@0.82.2
-  - @effect/ai@0.16.3
-  - @effect/experimental@0.46.2
-
-## 0.19.2
-
-### Patch Changes
-
-- Updated dependencies [[`787ce70`](https://github.com/Effect-TS/effect/commit/787ce7042e35b657963473c6efe47752868cd811), [`1269641`](https://github.com/Effect-TS/effect/commit/1269641a99ae43069f7648ff79ffe8729b54b348), [`1269641`](https://github.com/Effect-TS/effect/commit/1269641a99ae43069f7648ff79ffe8729b54b348)]:
-  - effect@3.15.1
-  - @effect/ai@0.16.2
-  - @effect/experimental@0.46.1
-  - @effect/platform@0.82.1
-
-## 0.19.1
-
-### Patch Changes
-
-- Updated dependencies [[`cb3c30f`](https://github.com/Effect-TS/effect/commit/cb3c30f540a83dafcd6d841375073b5e069fa417)]:
-  - @effect/ai@0.16.1
-  - @effect/experimental@0.46.0
-
-## 0.19.0
-
-### Patch Changes
-
-- Updated dependencies [[`c654595`](https://github.com/Effect-TS/effect/commit/c65459587b51da140b78098e81fdbfece65d53e2), [`d9f5dea`](https://github.com/Effect-TS/effect/commit/d9f5deae0f02f5de2b9fcb1cca8b142ba4bc2bba), [`49aa723`](https://github.com/Effect-TS/effect/commit/49aa7236a15e13f818c86edbca08c4af67c8dfaf), [`74c14d0`](https://github.com/Effect-TS/effect/commit/74c14d01d0cb48cf517a1b6e29a373a96ed0ff5b), [`e4f49b6`](https://github.com/Effect-TS/effect/commit/e4f49b66857e01b74ab6a9a0bc7132f44cd04cbb), [`6f02224`](https://github.com/Effect-TS/effect/commit/6f02224b3fc46a682ad2defb1a260841956c6780), [`1dcfd41`](https://github.com/Effect-TS/effect/commit/1dcfd41ff96abd706901293a00c1893cb29dd8fd), [`b21ab16`](https://github.com/Effect-TS/effect/commit/b21ab16b6f773e7ec4369db4e752c35e719f7870), [`fcf1822`](https://github.com/Effect-TS/effect/commit/fcf1822f98fcda60351d64e9d2c2c13563d7e6db), [`0061dd1`](https://github.com/Effect-TS/effect/commit/0061dd140740165e91569a684cce27a77b23229e), [`8421e6e`](https://github.com/Effect-TS/effect/commit/8421e6e49332bca8f96f482dfd48680e238b3a89), [`a9b3fb7`](https://github.com/Effect-TS/effect/commit/a9b3fb78abcfdb525318a956fd02fcadeb56143e), [`fa10f56`](https://github.com/Effect-TS/effect/commit/fa10f56b96bd9af070ba99ebc3279aa93954261e)]:
-  - effect@3.15.0
-  - @effect/platform@0.82.0
-  - @effect/ai@0.16.0
-  - @effect/experimental@0.46.0
-
-## 0.18.0
-
-### Minor Changes
-
-- [#4766](https://github.com/Effect-TS/effect/pull/4766) [`a4d42c5`](https://github.com/Effect-TS/effect/commit/a4d42c55669eff56963d06323d155a5bf3082a70) Thanks @IMax153! - Refactor `@effect/ai-openai` to align with changes to `@effect/ai`
-
-### Patch Changes
-
-- Updated dependencies [[`a4d42c5`](https://github.com/Effect-TS/effect/commit/a4d42c55669eff56963d06323d155a5bf3082a70)]:
-  - @effect/ai@0.15.0
-  - @effect/experimental@0.45.1
-
-## 0.17.1
-
-### Patch Changes
-
-- Updated dependencies [[`24a9ebb`](https://github.com/Effect-TS/effect/commit/24a9ebbb5af598f0bfd6ecc45307e528043fe011)]:
-  - effect@3.14.22
-  - @effect/ai@0.14.1
-  - @effect/experimental@0.45.1
-  - @effect/platform@0.81.1
-
-## 0.17.0
-
-### Patch Changes
-
-- Updated dependencies [[`672920f`](https://github.com/Effect-TS/effect/commit/672920f85da8abd5f9d4ad85e29248a2aca57ed8)]:
-  - @effect/platform@0.81.0
-  - @effect/ai@0.14.0
-  - @effect/experimental@0.45.0
-
-## 0.16.22
-
-### Patch Changes
-
-- Updated dependencies [[`2f3b7d4`](https://github.com/Effect-TS/effect/commit/2f3b7d4e1fa1ef8790b0ca4da22eb88872ee31df)]:
-  - effect@3.14.21
-  - @effect/ai@0.13.21
-  - @effect/experimental@0.44.21
-  - @effect/platform@0.80.21
-
-## 0.16.21
-
-### Patch Changes
-
-- Updated dependencies [[`17e2f30`](https://github.com/Effect-TS/effect/commit/17e2f3091408cf0fca9414d4af3bdf7b2765b378)]:
-  - effect@3.14.20
-  - @effect/ai@0.13.20
-  - @effect/experimental@0.44.20
-  - @effect/platform@0.80.20
-
-## 0.16.20
-
-### Patch Changes
-
-- Updated dependencies [[`056a910`](https://github.com/Effect-TS/effect/commit/056a910d0a0b8b00b0dc9df4a070466b2b5c2f6c), [`e25e7bb`](https://github.com/Effect-TS/effect/commit/e25e7bbc1797733916f48f501425d9f2ef310d9f), [`3273d57`](https://github.com/Effect-TS/effect/commit/3273d572c2b3175a842677f19efeea4cd65ab016)]:
-  - effect@3.14.19
-  - @effect/platform@0.80.19
-  - @effect/ai@0.13.19
-  - @effect/experimental@0.44.19
-
-## 0.16.19
-
-### Patch Changes
-
-- Updated dependencies [[`b1164d4`](https://github.com/Effect-TS/effect/commit/b1164d49a1dfdf299e9971367b6fc6be4df0ddff)]:
-  - effect@3.14.18
-  - @effect/ai@0.13.18
-  - @effect/experimental@0.44.18
-  - @effect/platform@0.80.18
-
-## 0.16.18
-
-### Patch Changes
-
-- Updated dependencies [[`0b54681`](https://github.com/Effect-TS/effect/commit/0b54681cd89245e211d8f49272be0f1bf2f81813), [`41a59d5`](https://github.com/Effect-TS/effect/commit/41a59d5916a296b12b0d5ead9e859e05f40b4cce)]:
-  - effect@3.14.17
-  - @effect/ai@0.13.17
-  - @effect/experimental@0.44.17
-  - @effect/platform@0.80.17
-
-## 0.16.17
-
-### Patch Changes
-
-- Updated dependencies [[`ee14444`](https://github.com/Effect-TS/effect/commit/ee144441021ec77039e43396eaf90714687bb495), [`f1c8583`](https://github.com/Effect-TS/effect/commit/f1c8583f8c3ea9415f813795ca2940a897c9ba9a)]:
-  - effect@3.14.16
-  - @effect/platform@0.80.16
-  - @effect/ai@0.13.16
-  - @effect/experimental@0.44.16
-
-## 0.16.16
-
-### Patch Changes
-
-- Updated dependencies [[`239cc99`](https://github.com/Effect-TS/effect/commit/239cc995ce645946210a3c3d2cb52bd3547c0687), [`8b6c947`](https://github.com/Effect-TS/effect/commit/8b6c947eaa8e45a67ecb3c37d45cd27f3e41d165), [`c50a63b`](https://github.com/Effect-TS/effect/commit/c50a63bbecb9f560b9cae349c447eed877d1b9b6)]:
-  - effect@3.14.15
-  - @effect/ai@0.13.15
-  - @effect/experimental@0.44.15
-  - @effect/platform@0.80.15
-
-## 0.16.15
-
-### Patch Changes
-
-- Updated dependencies [[`6ed8d15`](https://github.com/Effect-TS/effect/commit/6ed8d1589beb181d30abc79afebdaabc1d101538)]:
-  - effect@3.14.14
-  - @effect/ai@0.13.14
-  - @effect/experimental@0.44.14
-  - @effect/platform@0.80.14
-
-## 0.16.14
-
-### Patch Changes
-
-- Updated dependencies [[`ee77788`](https://github.com/Effect-TS/effect/commit/ee77788747e7ebbde6bfa88256cde49dbbad3608), [`5fce6ba`](https://github.com/Effect-TS/effect/commit/5fce6ba19c3cc63cc0104e737e581ad989dedbf0), [`570e45f`](https://github.com/Effect-TS/effect/commit/570e45f8cb936e42ec48f67f21bb2b7252f36c0c)]:
-  - effect@3.14.13
-  - @effect/ai@0.13.13
-  - @effect/experimental@0.44.13
-  - @effect/platform@0.80.13
-
-## 0.16.13
-
-### Patch Changes
-
-- Updated dependencies [[`c2ad9ee`](https://github.com/Effect-TS/effect/commit/c2ad9ee9f3c4c743390edf35ed9e85a20be33811), [`9c68654`](https://github.com/Effect-TS/effect/commit/9c686542b6eb3ea188cb70673ef2e41223633e89)]:
-  - effect@3.14.12
-  - @effect/ai@0.13.12
-  - @effect/experimental@0.44.12
-  - @effect/platform@0.80.12
-
-## 0.16.12
-
-### Patch Changes
-
-- Updated dependencies [[`e536127`](https://github.com/Effect-TS/effect/commit/e536127c1e6f2fb3a542c73ae919435a629a346b)]:
-  - effect@3.14.11
-  - @effect/ai@0.13.11
-  - @effect/experimental@0.44.11
-  - @effect/platform@0.80.11
-
-## 0.16.11
-
-### Patch Changes
-
-- Updated dependencies [[`bc7efa3`](https://github.com/Effect-TS/effect/commit/bc7efa3b031bb25e1ed3c8f2d3fb5e8da166cadc)]:
-  - effect@3.14.10
-  - @effect/ai@0.13.10
-  - @effect/experimental@0.44.10
-  - @effect/platform@0.80.10
-
-## 0.16.10
-
-### Patch Changes
-
-- Updated dependencies [[`d78249f`](https://github.com/Effect-TS/effect/commit/d78249f0b67f63cf4baf806ff090cba33293daf0)]:
-  - effect@3.14.9
-  - @effect/ai@0.13.9
-  - @effect/experimental@0.44.9
-  - @effect/platform@0.80.9
-
-## 0.16.9
-
-### Patch Changes
-
-- Updated dependencies [[`b3a2d32`](https://github.com/Effect-TS/effect/commit/b3a2d32772e6f7f20eacf2e18128e99324c4d378)]:
-  - effect@3.14.8
-  - @effect/ai@0.13.8
-  - @effect/experimental@0.44.8
-  - @effect/platform@0.80.8
-
-## 0.16.8
-
-### Patch Changes
-
-- Updated dependencies [[`b542a4b`](https://github.com/Effect-TS/effect/commit/b542a4bf195be0c9af1523e1ba96c953decc4d25)]:
-  - effect@3.14.7
-  - @effect/ai@0.13.7
-  - @effect/experimental@0.44.7
-  - @effect/platform@0.80.7
-
-## 0.16.7
-
-### Patch Changes
-
-- Updated dependencies [[`47618c1`](https://github.com/Effect-TS/effect/commit/47618c1ad84ebcc5a51133a3fff5aa5012d49d45), [`6077882`](https://github.com/Effect-TS/effect/commit/60778824a4794336c33807801f813f8751d1c7e4)]:
-  - effect@3.14.6
-  - @effect/ai@0.13.6
-  - @effect/experimental@0.44.6
-  - @effect/platform@0.80.6
-
-## 0.16.6
-
-### Patch Changes
-
-- [#4630](https://github.com/Effect-TS/effect/pull/4630) [`3ed0b56`](https://github.com/Effect-TS/effect/commit/3ed0b56ae69c20c4bd82dc9c0280b56768dfdd2a) Thanks @mattrossman! - Handle arbitrary length StreamChunkPart in OpenAiClient
-
-- [#4638](https://github.com/Effect-TS/effect/pull/4638) [`d46d2c6`](https://github.com/Effect-TS/effect/commit/d46d2c6f4084dfc45c8cc78da0e89b92aeedf261) Thanks @IMax153! - Manually fix schema for `CreateChatCompletionResponse.logprobs` until https://github.com/openai/openai-openapi/issues/433 is addressed
-
-- Updated dependencies [[`40dbfef`](https://github.com/Effect-TS/effect/commit/40dbfeff239b6e567706752114f31b2fce7de4e3), [`85fba81`](https://github.com/Effect-TS/effect/commit/85fba815ac07eb13d4227a69ac76a18e4b94df18), [`5a5ebdd`](https://github.com/Effect-TS/effect/commit/5a5ebdddfaddd259538b4599a6676281faca778e)]:
-  - effect@3.14.5
-  - @effect/platform@0.80.5
-  - @effect/ai@0.13.5
-  - @effect/experimental@0.44.5
-
-## 0.16.5
-
-### Patch Changes
-
-- Updated dependencies [[`e4ba2c6`](https://github.com/Effect-TS/effect/commit/e4ba2c66a878e81b5e295d6d49aaf724b80a28ef)]:
-  - effect@3.14.4
-  - @effect/ai@0.13.4
-  - @effect/experimental@0.44.4
-  - @effect/platform@0.80.4
-
-## 0.16.4
-
-### Patch Changes
-
-- Updated dependencies [[`37aa8e1`](https://github.com/Effect-TS/effect/commit/37aa8e137725a902e70cd1e468ea98b873aa5056), [`34f03d6`](https://github.com/Effect-TS/effect/commit/34f03d66875f21f266f102223a03cd14c2ed6ea6)]:
-  - effect@3.14.3
-  - @effect/ai@0.13.3
-  - @effect/experimental@0.44.3
-  - @effect/platform@0.80.3
-
-## 0.16.3
-
-### Patch Changes
-
-- Updated dependencies [[`f87991b`](https://github.com/Effect-TS/effect/commit/f87991b6d8a2edfaf90b01cebda4b466992ae865), [`f87991b`](https://github.com/Effect-TS/effect/commit/f87991b6d8a2edfaf90b01cebda4b466992ae865), [`0a3e3e1`](https://github.com/Effect-TS/effect/commit/0a3e3e18eea5e0d1882f1a6c906198e6ef226a41)]:
-  - effect@3.14.2
-  - @effect/ai@0.13.2
-  - @effect/experimental@0.44.2
-  - @effect/platform@0.80.2
-
-## 0.16.2
-
-### Patch Changes
-
-- [#4624](https://github.com/Effect-TS/effect/pull/4624) [`9517601`](https://github.com/Effect-TS/effect/commit/9517601586318b70849963aeeec5adff8118d2dd) Thanks @IMax153! - Upgrade the version of gpt-tokenizer to be compatible with new models
-
-## 0.16.1
-
-### Patch Changes
-
-- Updated dependencies [[`4a274fe`](https://github.com/Effect-TS/effect/commit/4a274fe9f623182b6b902827e0e83bd89ca3b05c)]:
-  - effect@3.14.1
-  - @effect/ai@0.13.1
-  - @effect/experimental@0.44.1
-  - @effect/platform@0.80.1
-
-## 0.16.0
-
-### Patch Changes
-
-- Updated dependencies [[`1f47e4e`](https://github.com/Effect-TS/effect/commit/1f47e4e12546ab691b29bfb7b5128bb17b93baa5), [`26dd75f`](https://github.com/Effect-TS/effect/commit/26dd75f276a0d8a63eab313bd5a167d5072c9780), [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce), [`3131f8f`](https://github.com/Effect-TS/effect/commit/3131f8fd12ba9eb31b90fa2f42bf88b12309133c), [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce), [`04dff2d`](https://github.com/Effect-TS/effect/commit/04dff2d01ac68c260f29a6d4743381825c353c86), [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce), [`c7fac0c`](https://github.com/Effect-TS/effect/commit/c7fac0cd7eadcd5cc0c3a987051c5b57ad271638), [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce), [`ffaa3f3`](https://github.com/Effect-TS/effect/commit/ffaa3f3969df26610fcc02ad537340641d44e803), [`ab957c1`](https://github.com/Effect-TS/effect/commit/ab957c1fee714868f56c7ab4e802b9d449e9b666), [`35db9ce`](https://github.com/Effect-TS/effect/commit/35db9ce228f1416c8abacc6dc9c36fbd0f33ef0f), [`aba2d1d`](https://github.com/Effect-TS/effect/commit/aba2d1d831ea149481bd4dd755528c0afa8239ce), [`cf77ea9`](https://github.com/Effect-TS/effect/commit/cf77ea9ab4fc89e66a43f682a9926ccdee6c57ed), [`26dd75f`](https://github.com/Effect-TS/effect/commit/26dd75f276a0d8a63eab313bd5a167d5072c9780), [`baaab60`](https://github.com/Effect-TS/effect/commit/baaab60b737f35dfab8e4a21bce28a195d19e899)]:
-  - effect@3.14.0
-  - @effect/experimental@0.44.0
-  - @effect/platform@0.80.0
-  - @effect/ai@0.13.0
-
-## 0.15.4
-
-### Patch Changes
-
-- [#4592](https://github.com/Effect-TS/effect/pull/4592) [`5662363`](https://github.com/Effect-TS/effect/commit/566236361e270e575ef1cbf308ad1967c82a362c) Thanks @tim-smart! - update generated ai clients
-
-- Updated dependencies [[`5662363`](https://github.com/Effect-TS/effect/commit/566236361e270e575ef1cbf308ad1967c82a362c), [`5f1fd15`](https://github.com/Effect-TS/effect/commit/5f1fd15308ab154791580059b89877d19a2055c2), [`8bb1460`](https://github.com/Effect-TS/effect/commit/8bb1460c824f66f0f25ebd899c5e74e388089c37)]:
-  - @effect/platform@0.79.4
-  - @effect/ai@0.12.4
-  - @effect/experimental@0.43.4
-
-## 0.15.3
-
-### Patch Changes
-
-- Updated dependencies [[`0c4803f`](https://github.com/Effect-TS/effect/commit/0c4803fcc69262d11a97ce49d0e9b4288df0651f), [`6f65ac4`](https://github.com/Effect-TS/effect/commit/6f65ac4eac1489cd6ea390e18b0908670722adad)]:
-  - effect@3.13.12
-  - @effect/ai@0.12.3
-  - @effect/experimental@0.43.3
-  - @effect/platform@0.79.3
-
-## 0.15.2
-
 ### Patch Changes
 
-- Updated dependencies [[`fad8cca`](https://github.com/Effect-TS/effect/commit/fad8cca9bbfcc2eaeb44b97c15dbe0a1eda75315), [`4296293`](https://github.com/Effect-TS/effect/commit/4296293049414d0cf2d915a26c552b09f946b9a0), [`9c241ab`](https://github.com/Effect-TS/effect/commit/9c241abe47ccf7a5257b98a4a64a63054a12741d), [`082b0c1`](https://github.com/Effect-TS/effect/commit/082b0c1b9f4252bcdd69608f2e4a9226f953ac3f), [`be12983`](https://github.com/Effect-TS/effect/commit/be12983bc7e7537b41cd8910fc4eb7d1da56ab07), [`de88127`](https://github.com/Effect-TS/effect/commit/de88127a5a5906ccece98af74787b5ae0e65e431)]:
-  - effect@3.13.11
-  - @effect/ai@0.12.2
-  - @effect/experimental@0.43.2
-  - @effect/platform@0.79.2
+- [#2059](https://github.com/Effect-TS/effect-smol/pull/2059) [`6f73f92`](https://github.com/Effect-TS/effect-smol/commit/6f73f92291733dc1e970e222e63aba865183a072) Thanks @tim-smart! - Add a new `OpenAiClientGenerated` module that exposes the generated OpenAI client as a dedicated context service with `make`, `layer`, and `layerConfig` constructors. This provides a compatibility path for direct generated-client access while preserving existing auth, base URL, header, and `OpenAiConfig.transformClient` wiring.
 
-## 0.15.1
+- [#2059](https://github.com/Effect-TS/effect-smol/pull/2059) [`6f73f92`](https://github.com/Effect-TS/effect-smol/commit/6f73f92291733dc1e970e222e63aba865183a072) Thanks @tim-smart! - Refactor `OpenAiClient` to the handwritten minimal-schema path so `client` now exposes the configured `HttpClient`, `createResponse` / `createResponseStream` / `createEmbedding` use `OpenAiSchema` request-response types, and websocket mode no longer depends on generated-client internals.
 
-### Patch Changes
-
-- Updated dependencies [[`527c964`](https://github.com/Effect-TS/effect/commit/527c9645229f5be9714a7e60a38a9e753c4bbfb1)]:
-  - effect@3.13.10
-  - @effect/ai@0.12.1
-  - @effect/experimental@0.43.1
-  - @effect/platform@0.79.1
-
-## 0.15.0
-
-### Patch Changes
-
-- Updated dependencies [[`88fe129`](https://github.com/Effect-TS/effect/commit/88fe12923740765c0335a6e6203fdcc6a463edca), [`d630249`](https://github.com/Effect-TS/effect/commit/d630249426113088abe8b382db4f14d80f2160c2), [`2976e52`](https://github.com/Effect-TS/effect/commit/2976e52538d9dc9ffdcbc84d4ac748cff9305971)]:
-  - @effect/platform@0.79.0
-  - effect@3.13.9
-  - @effect/experimental@0.43.0
-  - @effect/ai@0.12.0
-
-## 0.14.1
-
-### Patch Changes
-
-- Updated dependencies [[`c65d336`](https://github.com/Effect-TS/effect/commit/c65d3362d07ec815ff3b46278314e8a31706ddc2), [`22d2ebb`](https://github.com/Effect-TS/effect/commit/22d2ebb4b11f5a44351a4736e65da391a3b647d0)]:
-  - effect@3.13.8
-  - @effect/ai@0.11.1
-  - @effect/experimental@0.42.1
-  - @effect/platform@0.78.1
-
-## 0.14.0
-
-### Patch Changes
-
-- Updated dependencies [[`c5bcf53`](https://github.com/Effect-TS/effect/commit/c5bcf53b7cb49dacffdd2a6cd8eb48cc452b417e)]:
-  - @effect/platform@0.78.0
-  - @effect/ai@0.11.0
-  - @effect/experimental@0.42.0
-
-## 0.13.7
-
-### Patch Changes
-
-- Updated dependencies [[`840cc73`](https://github.com/Effect-TS/effect/commit/840cc7329908db7ca693ef47b07d4f845c29cadd), [`9bf8a74`](https://github.com/Effect-TS/effect/commit/9bf8a74b967f18d931743dd5196af326c9118e9c), [`87ba23c`](https://github.com/Effect-TS/effect/commit/87ba23c41c193503ed0c612b0d32d0b253794c64), [`f910880`](https://github.com/Effect-TS/effect/commit/f91088069057f3b4529753f5bc5532b028d726df), [`0d01480`](https://github.com/Effect-TS/effect/commit/0d014803e4f688f74386a80abd65485e1a319244), [`a95108a`](https://github.com/Effect-TS/effect/commit/a95108acac7f25fc5e1c0dcdf16bcc638dca5c00)]:
-  - @effect/platform@0.77.7
-  - effect@3.13.7
-  - @effect/ai@0.10.7
-  - @effect/experimental@0.41.7
-
-## 0.13.6
-
-### Patch Changes
-
-- Updated dependencies [[`3154ce4`](https://github.com/Effect-TS/effect/commit/3154ce4692fa18b804982158d3c4c8a8a5fae386)]:
-  - effect@3.13.6
-  - @effect/ai@0.10.6
-  - @effect/experimental@0.41.6
-  - @effect/platform@0.77.6
-
-## 0.13.5
-
-### Patch Changes
-
-- Updated dependencies [[`3d6d323`](https://github.com/Effect-TS/effect/commit/3d6d323c2a1028f3caba45453187b9374bac2c36), [`367bb35`](https://github.com/Effect-TS/effect/commit/367bb35f4c2a254e1fb211d96db2474a7aed9020), [`6cf11c3`](https://github.com/Effect-TS/effect/commit/6cf11c3a75773ceec2877c85ddc760f381f0866d), [`a0acec8`](https://github.com/Effect-TS/effect/commit/a0acec851f72e19466363d24b9cc218acd00006a), [`975c20e`](https://github.com/Effect-TS/effect/commit/975c20e446186e9bb975f77e7c6ac7b248f7b5f6)]:
-  - @effect/ai@0.10.5
-  - effect@3.13.5
-  - @effect/experimental@0.41.5
-  - @effect/platform@0.77.5
-
-## 0.13.4
-
-### Patch Changes
-
-- Updated dependencies [[`e0746f9`](https://github.com/Effect-TS/effect/commit/e0746f9aa398b69c6542e375910683bf17f49f46), [`17d9e89`](https://github.com/Effect-TS/effect/commit/17d9e89f9851663bdbb6c1e685601d97806114a4)]:
-  - @effect/platform@0.77.4
-  - effect@3.13.4
-  - @effect/ai@0.10.4
-  - @effect/experimental@0.41.4
-
-## 0.13.3
-
-### Patch Changes
-
-- [#4504](https://github.com/Effect-TS/effect/pull/4504) [`a67a8a1`](https://github.com/Effect-TS/effect/commit/a67a8a1a4979fb7a039a060d067d805879da4d4b) Thanks @IMax153! - Introduce `AiModel` and `AiPlan` for describing retry / fallback logic between
-  models and providers
-
-  For example, the following program builds an `AiPlan` which will attempt to use
-  OpenAi's chat completions API, and if after three attempts the operation
-  is still failing, the plan will fallback to utilizing Anthropic's messages API
-  to resolve the request.
-
-  ```ts
-  import { AiPlan, Completions } from "@effect/ai"
-  import { AnthropicClient, AnthropicCompletions } from "@effect/ai-anthropic"
-  import { OpenAiClient, OpenAiCompletions } from "@effect/ai-openai"
-  import { NodeHttpClient, NodeRuntime } from "@effect/platform-node"
-  import { Config, Console, Effect, Layer } from "effect"
-
-  // Create Anthropic client
-  const Anthropic = AnthropicClient.layerConfig({
-    apiKey: Config.redacted("ANTHROPIC_API_KEY")
-  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
-
-  // Create OpenAi client
-  const OpenAi = OpenAiClient.layerConfig({
-    apiKey: Config.redacted("OPENAI_API_KEY")
-  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
-
-  // Create a plan of request execution
-  const Plan = AiPlan.fromModel(OpenAiCompletions.model("gpt-4o-mini"), {
-    attempts: 3
-  }).pipe(
-    AiPlan.withFallback({
-      model: AnthropicCompletions.model("claude-3-5-haiku-latest")
-    })
-  )
-
-  const program = Effect.gen(function* () {
-    // Build the plan of execution
-    const plan = yield* Plan
-
-    // Create a program which uses the services provided by the plan
-    const getDadJoke = Effect.gen(function* () {
-      const completions = yield* Completions.Completions
-      const response = yield* completions.create("Tell me a dad joke")
-      yield* Console.log(response.text)
-    })
-
-    // Provide the plan to whichever programs need it
-    yield* plan.provide(getDadJoke)
-  })
-
-  program.pipe(Effect.provide([Anthropic, OpenAi]), NodeRuntime.runMain)
-  ```
-
-- Updated dependencies [[`cc5588d`](https://github.com/Effect-TS/effect/commit/cc5588df07f9103513547cb429ce041b9436a8bd), [`623c8cd`](https://github.com/Effect-TS/effect/commit/623c8cd053ed6ee3d353aaa8778d484670fca2bb), [`00b4eb1`](https://github.com/Effect-TS/effect/commit/00b4eb1ece12a16e222e6220965bb4024d6752ac), [`f2aee98`](https://github.com/Effect-TS/effect/commit/f2aee989b0a600900ce83e7f460d02908620c80f), [`fb798eb`](https://github.com/Effect-TS/effect/commit/fb798eb9061f1191badc017d1aa649360254da20), [`2251b15`](https://github.com/Effect-TS/effect/commit/2251b1528810bb695b37ce388b653cec0c5bf80c), [`2e15c1e`](https://github.com/Effect-TS/effect/commit/2e15c1e33648add0b29fe274fbcb7294b7515085), [`a4979db`](https://github.com/Effect-TS/effect/commit/a4979db021aef16e731be64df196b72088fc4376), [`b74255a`](https://github.com/Effect-TS/effect/commit/b74255a304ad49d60bedb1a260fd697f370af27a), [`d7f6a5c`](https://github.com/Effect-TS/effect/commit/d7f6a5c7d26c1963dcd864ca62360d20d08c7b49), [`9dd8979`](https://github.com/Effect-TS/effect/commit/9dd8979e940915b1cc1b1f264f3d019c77a65a02), [`477b488`](https://github.com/Effect-TS/effect/commit/477b488284f47c5469d7fba3e4065fb7e3b6556e), [`10932cb`](https://github.com/Effect-TS/effect/commit/10932cbf58fc721ada631cebec42f773ce96d3cc), [`9f6c784`](https://github.com/Effect-TS/effect/commit/9f6c78468b3b5e9ebfc38ffdfb70702901ee977b), [`2c639ec`](https://github.com/Effect-TS/effect/commit/2c639ecee332de4266e36022c989c35ae4e02105), [`886aaa8`](https://github.com/Effect-TS/effect/commit/886aaa81e06dfd3cd9391e8ea987d8cd5ada1124), [`a67a8a1`](https://github.com/Effect-TS/effect/commit/a67a8a1a4979fb7a039a060d067d805879da4d4b)]:
-  - effect@3.13.3
-  - @effect/ai@0.10.3
-  - @effect/experimental@0.41.3
-  - @effect/platform@0.77.3
-
-## 0.13.2
-
-### Patch Changes
-
-- Updated dependencies [[`31be72a`](https://github.com/Effect-TS/effect/commit/31be72ada118cb84a942e67b1663263f8db74a9f), [`3e7ce97`](https://github.com/Effect-TS/effect/commit/3e7ce97f8a41756a039cf635d0b3d9a75d781097), [`31be72a`](https://github.com/Effect-TS/effect/commit/31be72ada118cb84a942e67b1663263f8db74a9f)]:
-  - effect@3.13.2
-  - @effect/platform@0.77.2
-  - @effect/ai@0.10.2
-  - @effect/experimental@0.41.2
-
-## 0.13.1
-
-### Patch Changes
-
-- [#4446](https://github.com/Effect-TS/effect/pull/4446) [`9375c28`](https://github.com/Effect-TS/effect/commit/9375c28ca808325577da6c67cc92af25931027c8) Thanks @IMax153! - Add Anthropic AI provider integration
-
-- Updated dependencies [[`b56a211`](https://github.com/Effect-TS/effect/commit/b56a2110569fd0ec0b57ac137743e926d49f51cc), [`9375c28`](https://github.com/Effect-TS/effect/commit/9375c28ca808325577da6c67cc92af25931027c8)]:
-  - effect@3.13.1
-  - @effect/ai@0.10.1
-  - @effect/experimental@0.41.1
-  - @effect/platform@0.77.1
-
-## 0.13.0
-
-### Patch Changes
-
-- Updated dependencies [[`8baef83`](https://github.com/Effect-TS/effect/commit/8baef83e7ff0b7bc0738b680e1ef013065386cff), [`655bfe2`](https://github.com/Effect-TS/effect/commit/655bfe29e44cc3f0fb9b4e53038f50b891c188df), [`d90cbc2`](https://github.com/Effect-TS/effect/commit/d90cbc274e2742d18671fe65aa4764c057eb6cba), [`75632bd`](https://github.com/Effect-TS/effect/commit/75632bd44b8025101d652ccbaeef898c7086c91c), [`c874a2e`](https://github.com/Effect-TS/effect/commit/c874a2e4b17e9d71904ca8375bb77b020975cb1d), [`bf865e5`](https://github.com/Effect-TS/effect/commit/bf865e5833f77fd8f6c06944ca9d507b54488301), [`f98b2b7`](https://github.com/Effect-TS/effect/commit/f98b2b7592cf20f9d85313e7f1e964cb65878138), [`de8ce92`](https://github.com/Effect-TS/effect/commit/de8ce924923eaa4e1b761a97eb45ec967389f3d5), [`cf8b2dd`](https://github.com/Effect-TS/effect/commit/cf8b2dd112f8e092ed99d78fd728db0f91c29050), [`db426a5`](https://github.com/Effect-TS/effect/commit/db426a5fb41ab84d18e3c8753a7329b4de544245), [`6862444`](https://github.com/Effect-TS/effect/commit/6862444094906ad4f2cb077ff3b9cc0b73880c8c), [`5fc8a90`](https://github.com/Effect-TS/effect/commit/5fc8a90ba46a5fd9f3b643f0b5aeadc69d717339), [`546a492`](https://github.com/Effect-TS/effect/commit/546a492e60eb2b8b048a489a474b934ea0877005), [`65c4796`](https://github.com/Effect-TS/effect/commit/65c47966ce39055f02cf5c808daabb3ea6442b0b), [`9760fdc`](https://github.com/Effect-TS/effect/commit/9760fdc37bdaef9da8b150e46b86ddfbe2ad9221), [`5b471e7`](https://github.com/Effect-TS/effect/commit/5b471e7d4317e8ee5d72bbbd3e0c9775160949ab), [`4f810cc`](https://github.com/Effect-TS/effect/commit/4f810cc2770e9f1f266851d2cb6257112c12af49)]:
-  - effect@3.13.0
-  - @effect/ai@0.10.0
-  - @effect/experimental@0.41.0
-  - @effect/platform@0.77.0
-
-## 0.12.1
-
-### Patch Changes
-
-- Updated dependencies [[`4018eae`](https://github.com/Effect-TS/effect/commit/4018eaed2733241676ddb8c52416f463a8c32e35), [`543d36d`](https://github.com/Effect-TS/effect/commit/543d36d1a11452560b01ab966a82529ad5fee8c9), [`c407726`](https://github.com/Effect-TS/effect/commit/c407726f79df4a567a9631cddd8effaa16b3535d), [`f70a65a`](https://github.com/Effect-TS/effect/commit/f70a65ac80c6635d80b12beaf4d32a9cc59fa143), [`ba409f6`](https://github.com/Effect-TS/effect/commit/ba409f69c41aeaa29e475c0630735726eaf4dbac), [`3d2e356`](https://github.com/Effect-TS/effect/commit/3d2e3565e8a43d1bdb5daee8db3b90f56d71d859)]:
-  - effect@3.12.12
-  - @effect/platform@0.76.1
-  - @effect/ai@0.9.1
-  - @effect/experimental@0.40.1
-
-## 0.12.0
-
-### Patch Changes
-
-- Updated dependencies [[`b6a032f`](https://github.com/Effect-TS/effect/commit/b6a032f07bffa020a848c813881879395134fa20), [`42ddd5f`](https://github.com/Effect-TS/effect/commit/42ddd5f144ce9f9d94a036679ebbd626446d37f5), [`2fe447c`](https://github.com/Effect-TS/effect/commit/2fe447c6354d334f9c591b8a8481818f5f0e797e), [`2473ad5`](https://github.com/Effect-TS/effect/commit/2473ad5cf23582e3a41338091fa526ffe611288d)]:
-  - effect@3.12.11
-  - @effect/platform@0.76.0
-  - @effect/ai@0.9.0
-  - @effect/experimental@0.40.0
-
-## 0.11.5
-
-### Patch Changes
-
-- [#4418](https://github.com/Effect-TS/effect/pull/4418) [`cdc82e4`](https://github.com/Effect-TS/effect/commit/cdc82e4ae880bf54cf35e5a68d8103840f49001b) Thanks @IMax153! - Support per-request HTTP client transformations in the OpenAi AI integration package.
-
-  For example:
-
-  ```ts
-  import { Completions } from "@effect/ai"
-  import {
-    OpenAiClient,
-    OpenAiCompletions,
-    OpenAiConfig
-  } from "@effect/ai-openai"
-  import { HttpClient, HttpClientRequest } from "@effect/platform"
-  import { NodeHttpClient } from "@effect/platform-node"
-  import { Config, Effect, Layer } from "effect"
-
-  const OpenAi = OpenAiClient.layerConfig({
-    apiKey: Config.redacted("OPENAI_API_KEY")
-  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
-
-  const Gpt4oCompletions = OpenAiCompletions.layer({
-    model: "gpt-4o"
-  }).pipe(Layer.provide(OpenAi))
-
-  const program = Effect.gen(function* () {
-    const completions = yield* Completions.Completions
-
-    yield* completions.create("Tell me a dad joke").pipe(
-      // Per-request HTTP client transforms which are only applied if
-      // the OpenAi provider is in use
-      OpenAiConfig.withClientTransform(
-        HttpClient.mapRequest(
-          HttpClientRequest.setHeader("x-dad-jokes", "are-awesome")
-        )
-      )
-    )
-  })
-
-  program.pipe(Effect.provide(Gpt4oCompletions), Effect.runPromise)
-  ```
-
-## 0.11.4
-
-### Patch Changes
-
-- Updated dependencies [[`e30f132`](https://github.com/Effect-TS/effect/commit/e30f132c336c9d0760bad39f82a55c7ce5159eb7), [`33fa667`](https://github.com/Effect-TS/effect/commit/33fa667c2623be1026e1ccee91bd44f73b09020a), [`87f5f28`](https://github.com/Effect-TS/effect/commit/87f5f2842e4196cb88d13f10f443ff0567e82832), [`7d57ecd`](https://github.com/Effect-TS/effect/commit/7d57ecdaf5da2345ebbf9c22df50317578bde0f5), [`4dbd170`](https://github.com/Effect-TS/effect/commit/4dbd170538e8fb7a36aa7c469c6f93b6c7000091)]:
-  - effect@3.12.10
-  - @effect/platform@0.75.4
-  - @effect/ai@0.8.4
-  - @effect/experimental@0.39.4
-
-## 0.11.3
-
-### Patch Changes
-
-- Updated dependencies [[`1b4a4e9`](https://github.com/Effect-TS/effect/commit/1b4a4e904ef5227ec7d9114d4e417eca19eed940)]:
-  - effect@3.12.9
-  - @effect/ai@0.8.3
-  - @effect/experimental@0.39.3
-  - @effect/platform@0.75.3
-
-## 0.11.2
-
-### Patch Changes
-
-- [#4389](https://github.com/Effect-TS/effect/pull/4389) [`f089470`](https://github.com/Effect-TS/effect/commit/f0894708e9d591b70eccf3a50ae91ac6e0f6d6e3) Thanks @IMax153! - Add support for [GenAI telemetry annotations](https://opentelemetry.io/docs/specs/semconv/attributes-registry/gen-ai/).
-
-- [#4368](https://github.com/Effect-TS/effect/pull/4368) [`a0c85e6`](https://github.com/Effect-TS/effect/commit/a0c85e6601fd3e10d08085969f7453b7b517347b) Thanks @IMax153! - Support creation of embeddings from the AI integration packages.
-
-  For example, the following program will create an OpenAI `Embeddings` service
-  that will aggregate all embedding requests received within a `500` millisecond
-  window into a single batch.
-
-  ```ts
-  import { Embeddings } from "@effect/ai"
-  import { OpenAiClient, OpenAiEmbeddings } from "@effect/ai-openai"
-  import { NodeHttpClient } from "@effect/platform-node"
-  import { Config, Effect, Layer } from "effect"
-
-  // Create the OpenAI client
-  const OpenAi = OpenAiClient.layerConfig({
-    apiKey: Config.redacted("OPENAI_API_KEY")
-  }).pipe(Layer.provide(NodeHttpClient.layerUndici))
-
-  // Create an embeddings service for the `text-embedding-3-large` model
-  const TextEmbeddingsLarge = OpenAiEmbeddings.layerDataLoader({
-    model: "text-embedding-3-large",
-    window: "500 millis",
-    maxBatchSize: 2048
-  }).pipe(Layer.provide(OpenAi))
+  Also migrate OpenAI language and embedding model request-response typing to `OpenAiSchema` and make embedding decoding explicitly reject non-vector (string/base64) payloads with `InvalidOutputError`.
 
-  // Use the generic `Embeddings` service interface in your program
-  const program = Effect.gen(function* () {
-    const embeddings = yield* Embeddings.Embeddings
-    const result = yield* embeddings.embed("The input to embed")
-  })
+- Updated dependencies [[`8e04bfc`](https://github.com/Effect-TS/effect-smol/commit/8e04bfc95554b74eac205d67a20388e056b21499), [`cf3a311`](https://github.com/Effect-TS/effect-smol/commit/cf3a311d863a8abb818840c3b80f847e621c43c1), [`8e04bfc`](https://github.com/Effect-TS/effect-smol/commit/8e04bfc95554b74eac205d67a20388e056b21499), [`131fdd5`](https://github.com/Effect-TS/effect-smol/commit/131fdd5b1f26531e265fe1a08f002002f47c276e)]:
+  - effect@4.0.0-beta.52
 
-  // Provide the specific implementation to use
-  program.pipe(Effect.provide(TextEmbeddingsLarge), Effect.runPromise)
-  ```
+## 4.0.0-beta.51
 
-- Updated dependencies [[`f5e3b1b`](https://github.com/Effect-TS/effect/commit/f5e3b1bcdf24b440251ce8425d750353cf022e96), [`59b3cfb`](https://github.com/Effect-TS/effect/commit/59b3cfbbd5713dd9475998e95fad5534c0b21466), [`766113c`](https://github.com/Effect-TS/effect/commit/766113c0ea3512cdb887650ead8ba314236e22ee), [`fcf3b7c`](https://github.com/Effect-TS/effect/commit/fcf3b7cc07a28635a5b53243b01cdeb6592dab3c), [`bb05fb8`](https://github.com/Effect-TS/effect/commit/bb05fb83457355b1ca567228a9e041edfb6fd85d), [`712277f`](https://github.com/Effect-TS/effect/commit/712277f949052a24b46e4aa234063a6abf395c90), [`f269122`](https://github.com/Effect-TS/effect/commit/f269122508693b111142994dd48698ddc75f3d69), [`8f6006a`](https://github.com/Effect-TS/effect/commit/8f6006a610fb6d6c7b8d14209a7323338a8964ff), [`f089470`](https://github.com/Effect-TS/effect/commit/f0894708e9d591b70eccf3a50ae91ac6e0f6d6e3), [`c45b559`](https://github.com/Effect-TS/effect/commit/c45b5592b5fd1189a5c932cfe05bd7d5f6d68508), [`430c846`](https://github.com/Effect-TS/effect/commit/430c846cbac05b187e3d24ac8dfee0cf22506f7c), [`7b03057`](https://github.com/Effect-TS/effect/commit/7b03057507d2dab5e6793beb9c578dedaaeb15fe), [`a9c94c8`](https://github.com/Effect-TS/effect/commit/a9c94c807755610831211a686d2fad849ab38eb4), [`107e6f0`](https://github.com/Effect-TS/effect/commit/107e6f0557a1e2d3b0dce25d62fa1e2601521752), [`c9175ae`](https://github.com/Effect-TS/effect/commit/c9175aef41cb1e3b689d0ac0a4f53d8107376b58), [`65c11b9`](https://github.com/Effect-TS/effect/commit/65c11b9266ec9447c31c26fe3ed35c73bd3b81fd), [`e386d2f`](https://github.com/Effect-TS/effect/commit/e386d2f1b3ab3ac2c14ee76de11f5963d32a3df4), [`9172efb`](https://github.com/Effect-TS/effect/commit/9172efba98bc6a82353e6ec2af61ac08f038ba64), [`a0c85e6`](https://github.com/Effect-TS/effect/commit/a0c85e6601fd3e10d08085969f7453b7b517347b)]:
-  - @effect/ai@0.8.2
-  - @effect/platform@0.75.2
-  - effect@3.12.8
-  - @effect/experimental@0.39.2
-
-## 0.11.1
-
-### Patch Changes
-
-- Updated dependencies [[`8dff1d1`](https://github.com/Effect-TS/effect/commit/8dff1d1bff76cdba643cad7f0bf864300f08bc61)]:
-  - effect@3.12.7
-  - @effect/ai@0.8.1
-  - @effect/experimental@0.39.1
-  - @effect/platform@0.75.1
-
-## 0.11.0
-
-### Patch Changes
-
-- [#4316](https://github.com/Effect-TS/effect/pull/4316) [`5c5612f`](https://github.com/Effect-TS/effect/commit/5c5612fa9472cde547ad182664e7173403ef0511) Thanks @IMax153! - Allow configuring OpenAI API URL and API key in OpenAI client constructor
-
-- Updated dependencies [[`5e43ce5`](https://github.com/Effect-TS/effect/commit/5e43ce50bae116865906112e7f88d390739d778b), [`289c13b`](https://github.com/Effect-TS/effect/commit/289c13b38e8e35b214d46d385d05dead176c87cd), [`76eb7d0`](https://github.com/Effect-TS/effect/commit/76eb7d0fbce3c009c8f77e84c178cb15bbed9709), [`8b4e75d`](https://github.com/Effect-TS/effect/commit/8b4e75d35daea807c447ca760948a717aa66bb52), [`fc5e0f0`](https://github.com/Effect-TS/effect/commit/fc5e0f0d357a0051cfa01c1ede83ffdd3cb41ab1), [`004fd2b`](https://github.com/Effect-TS/effect/commit/004fd2bbd1459e64fb1b57f02eeb791ca5ea1ea5), [`b2a31be`](https://github.com/Effect-TS/effect/commit/b2a31be85c35d891351ce4f9a2cc93ece0c257f6), [`5514d05`](https://github.com/Effect-TS/effect/commit/5514d05b5cd586ff5868b8bd41c959e95e6c33cd), [`bf5f0ae`](https://github.com/Effect-TS/effect/commit/bf5f0ae9daa0170471678e22585e8ec14ce667bb), [`3b19bcf`](https://github.com/Effect-TS/effect/commit/3b19bcfd3aaadb6c9253428622df524537c8e626), [`b064b3b`](https://github.com/Effect-TS/effect/commit/b064b3b293615fd268cc5a5647d0981eb67750b8), [`eb264ed`](https://github.com/Effect-TS/effect/commit/eb264ed8a6e8c92a9dc7006f766c6ca2e5d29e03), [`289c13b`](https://github.com/Effect-TS/effect/commit/289c13b38e8e35b214d46d385d05dead176c87cd), [`f474678`](https://github.com/Effect-TS/effect/commit/f474678bf10b8f1c80e3dc096ddc7ecf20b2b23e), [`ee187d0`](https://github.com/Effect-TS/effect/commit/ee187d098007a402844c94d04f0cd8f07695377a)]:
-  - @effect/experimental@0.39.0
-  - @effect/platform@0.75.0
-  - @effect/ai@0.8.0
-  - effect@3.12.6
-
-## 0.10.0
-
-### Patch Changes
-
-- Updated dependencies [[`bd0d489`](https://github.com/Effect-TS/effect/commit/bd0d4892b098bc4c589444af9f50259c2c02ec0f), [`a8b0ddb`](https://github.com/Effect-TS/effect/commit/a8b0ddb84710054799fc8f57485b95d00093ada1), [`8653072`](https://github.com/Effect-TS/effect/commit/86530720d7a03e118d2c5a8bf5a997cee7e7f3d6), [`507d546`](https://github.com/Effect-TS/effect/commit/507d546bd49db31000425fb5da88c434e4291bea), [`a8b0ddb`](https://github.com/Effect-TS/effect/commit/a8b0ddb84710054799fc8f57485b95d00093ada1), [`8db239b`](https://github.com/Effect-TS/effect/commit/8db239b9c869a3707f6566b9d9dbdf53c4df03fc), [`84a0911`](https://github.com/Effect-TS/effect/commit/84a091181634c3a022c94234cec7764a3aeef1be), [`84a0911`](https://github.com/Effect-TS/effect/commit/84a091181634c3a022c94234cec7764a3aeef1be), [`3179a9f`](https://github.com/Effect-TS/effect/commit/3179a9f65d23369a6a9a1f80f7750566dd28df22), [`6cb9b76`](https://github.com/Effect-TS/effect/commit/6cb9b766396d0b2ed995cf26957359713efd202e), [`1fcbe55`](https://github.com/Effect-TS/effect/commit/1fcbe55345042d8468f6a98c84081bd00b6bcf5a), [`bd0d489`](https://github.com/Effect-TS/effect/commit/bd0d4892b098bc4c589444af9f50259c2c02ec0f), [`d9a63d9`](https://github.com/Effect-TS/effect/commit/d9a63d9d385653865954cac895065360d54cc56b), [`6cb9b76`](https://github.com/Effect-TS/effect/commit/6cb9b766396d0b2ed995cf26957359713efd202e)]:
-  - @effect/experimental@0.38.0
-  - effect@3.12.5
-  - @effect/platform@0.74.0
-  - @effect/ai@0.7.0
-
-## 0.9.1
-
-### Patch Changes
-
-- Updated dependencies [[`5b50ea4`](https://github.com/Effect-TS/effect/commit/5b50ea4a10cf9acd51f9624b2474d9d5ded74019), [`c170a68`](https://github.com/Effect-TS/effect/commit/c170a68b6266100774461fcd6c0e0fabb60112f2), [`a66c2eb`](https://github.com/Effect-TS/effect/commit/a66c2eb473245092cd41f04c2eb2b7b02cf53718), [`c9e5e1b`](https://github.com/Effect-TS/effect/commit/c9e5e1be17c0c84d3d4e2abc3c60215cdb56bbbe), [`7b3d58d`](https://github.com/Effect-TS/effect/commit/7b3d58d7aec2152ec282460871d3e9de45ed254d)]:
-  - effect@3.12.4
-  - @effect/platform@0.73.1
-  - @effect/ai@0.6.1
-  - @effect/experimental@0.37.1
-
-## 0.9.0
-
-### Patch Changes
-
-- Updated dependencies [[`d7dac48`](https://github.com/Effect-TS/effect/commit/d7dac48a477cdfeec509dbe9f33fce6a1b02b63d), [`c110032`](https://github.com/Effect-TS/effect/commit/c110032322450a8824ba38ae24335a538cd2ce9a), [`1d7fd2b`](https://github.com/Effect-TS/effect/commit/1d7fd2b7ee8eeecc912d27adf76ed897db236dc5), [`1d7fd2b`](https://github.com/Effect-TS/effect/commit/1d7fd2b7ee8eeecc912d27adf76ed897db236dc5), [`23ac740`](https://github.com/Effect-TS/effect/commit/23ac740c7dd4610b7d265c2071b88b0968419e9a), [`8cd7319`](https://github.com/Effect-TS/effect/commit/8cd7319b6568bfc7a30ca16c104d189e37eac3a0)]:
-  - effect@3.12.3
-  - @effect/platform@0.73.0
-  - @effect/ai@0.6.0
-  - @effect/experimental@0.37.0
-
-## 0.8.2
-
-### Patch Changes
-
-- Updated dependencies [[`734af82`](https://github.com/Effect-TS/effect/commit/734af82138e78b9c57a8355b1c6b80e80d38b222), [`b63c780`](https://github.com/Effect-TS/effect/commit/b63c78010893101520448ddda7019c487cf7eedd), [`212e784`](https://github.com/Effect-TS/effect/commit/212e78475f527147ec27c090bd13f789f55add7a), [`f852cb0`](https://github.com/Effect-TS/effect/commit/f852cb02040ea2f165e9b449615b8b1366add5d5), [`7276ae2`](https://github.com/Effect-TS/effect/commit/7276ae21062896adbb7508ac5b2dece95316322f), [`212e784`](https://github.com/Effect-TS/effect/commit/212e78475f527147ec27c090bd13f789f55add7a), [`212e784`](https://github.com/Effect-TS/effect/commit/212e78475f527147ec27c090bd13f789f55add7a), [`212e784`](https://github.com/Effect-TS/effect/commit/212e78475f527147ec27c090bd13f789f55add7a), [`c640d77`](https://github.com/Effect-TS/effect/commit/c640d77b33ad417876f4e8ffe8574ee6cbe5607f), [`0def088`](https://github.com/Effect-TS/effect/commit/0def0887cfdb6755729a64dfd52b3b9f46b0576c)]:
-  - effect@3.12.2
-  - @effect/platform@0.72.2
-  - @effect/ai@0.5.2
-  - @effect/experimental@0.36.2
-
-## 0.8.1
-
-### Patch Changes
-
-- Updated dependencies [[`302b57d`](https://github.com/Effect-TS/effect/commit/302b57d2cbf9b9ccc17450945aeebfb33cfe8d43), [`0988083`](https://github.com/Effect-TS/effect/commit/0988083d4594938590df5a287e5b27d38526dd07), [`8b46be6`](https://github.com/Effect-TS/effect/commit/8b46be6a3b8160362ab5ea9171c5e6932505125c), [`bfe8027`](https://github.com/Effect-TS/effect/commit/bfe802734b450a4b4ee069d1125dd37995db2bff), [`16dd657`](https://github.com/Effect-TS/effect/commit/16dd657033d8afac2ffea567b3c8bb27c9b249b6), [`39db211`](https://github.com/Effect-TS/effect/commit/39db211414e90c8db8fdad7dc8ce5b4661bcfaef)]:
-  - effect@3.12.1
-  - @effect/ai@0.5.1
-  - @effect/experimental@0.36.1
-  - @effect/platform@0.72.1
-
-## 0.8.0
-
-### Patch Changes
-
-- Updated dependencies [[`abb22a4`](https://github.com/Effect-TS/effect/commit/abb22a429b9c52c31e84856294f175d2064a9b4d), [`f369a89`](https://github.com/Effect-TS/effect/commit/f369a89e98bc682969803b9304adaf4557bb36c2), [`642376c`](https://github.com/Effect-TS/effect/commit/642376c63fd7d78754db991631a4d50a5dc79aa3), [`3d2b7a7`](https://github.com/Effect-TS/effect/commit/3d2b7a7e942a7157afae5b1cdbc6f3fef116428e), [`ef64c6f`](https://github.com/Effect-TS/effect/commit/ef64c6fec0d47da573c04230dde9ea729366d871), [`73f9c6f`](https://github.com/Effect-TS/effect/commit/73f9c6f2ff091512cf904cc54ab59965b86e87c8), [`17cb451`](https://github.com/Effect-TS/effect/commit/17cb4514590e8a86263f7aed009f24da8a237342), [`d801820`](https://github.com/Effect-TS/effect/commit/d80182060c2ee945d7e0e4728812abf9465a0d6a), [`e1eeb2d`](https://github.com/Effect-TS/effect/commit/e1eeb2d7064b3870041dab142f3057970699bbf1), [`c11f3a6`](https://github.com/Effect-TS/effect/commit/c11f3a60a05c3b5fc8e7ce90136728154dc505b0), [`618f7e0`](https://github.com/Effect-TS/effect/commit/618f7e092a1011e5090dca1e69b5e9285689654b), [`c0ba834`](https://github.com/Effect-TS/effect/commit/c0ba834d1995cf5a8b250e4780fd43f3e3881151), [`e1eeb2d`](https://github.com/Effect-TS/effect/commit/e1eeb2d7064b3870041dab142f3057970699bbf1)]:
-  - effect@3.12.0
-  - @effect/platform@0.72.0
-  - @effect/ai@0.5.0
-  - @effect/experimental@0.36.0
-
-## 0.7.3
-
-### Patch Changes
-
-- Updated dependencies [[`39457d4`](https://github.com/Effect-TS/effect/commit/39457d4897d9bc7df8af5c05d352866bbeae82eb), [`a475cc2`](https://github.com/Effect-TS/effect/commit/a475cc25fd7c9f26b27a8e98f8fbe43cc9e6ee3e), [`199214e`](https://github.com/Effect-TS/effect/commit/199214e21c616d8a0ccd7ed5f92e944e6c580193), [`b3c160d`](https://github.com/Effect-TS/effect/commit/b3c160d7a1fdfc2d3fb2440530f1ab80efc65133)]:
-  - effect@3.11.10
-  - @effect/ai@0.4.8
-  - @effect/experimental@0.35.3
-  - @effect/platform@0.71.7
-
-## 0.7.2
-
-### Patch Changes
-
-- Updated dependencies [[`1c08a0b`](https://github.com/Effect-TS/effect/commit/1c08a0b8505badcffb4d9cade5a746ea90c9557e), [`1ce703b`](https://github.com/Effect-TS/effect/commit/1ce703b041bbd7560c5c437c9b9be48f027937fd), [`1ce703b`](https://github.com/Effect-TS/effect/commit/1ce703b041bbd7560c5c437c9b9be48f027937fd)]:
-  - effect@3.11.9
-  - @effect/ai@0.4.7
-  - @effect/experimental@0.35.2
-  - @effect/platform@0.71.6
-
-## 0.7.1
-
-### Patch Changes
-
-- Updated dependencies [[`05d71f8`](https://github.com/Effect-TS/effect/commit/05d71f85622305705d8316817694a09762e60865), [`e66b920`](https://github.com/Effect-TS/effect/commit/e66b9205f25ab425d30640886eb3fb2c4715bc26)]:
-  - @effect/platform@0.71.5
-  - @effect/ai@0.4.6
-  - @effect/experimental@0.35.1
-
-## 0.7.0
-
-### Patch Changes
-
-- Updated dependencies [[`909181a`](https://github.com/Effect-TS/effect/commit/909181a9ce9052a80432ccf52187e0723004bf7f), [`909181a`](https://github.com/Effect-TS/effect/commit/909181a9ce9052a80432ccf52187e0723004bf7f), [`1a6b52d`](https://github.com/Effect-TS/effect/commit/1a6b52dcf020d36e38a7bc90b648152cf5a8ccba)]:
-  - @effect/platform@0.71.4
-  - effect@3.11.8
-  - @effect/ai@0.4.5
-  - @effect/experimental@0.35.0
-
-## 0.6.4
-
-### Patch Changes
-
-- Updated dependencies [[`6984508`](https://github.com/Effect-TS/effect/commit/6984508c87f1bd91213b44c19b25ab5e2dcc1ce0), [`883639c`](https://github.com/Effect-TS/effect/commit/883639cc8ce47757f1cd39439391a8028c0812fe)]:
-  - @effect/platform@0.71.3
-  - @effect/ai@0.4.4
-  - @effect/experimental@0.34.3
-
-## 0.6.3
-
-### Patch Changes
-
-- Updated dependencies [[`1237ae8`](https://github.com/Effect-TS/effect/commit/1237ae847f6f0ff57eb7dcb4723ae6f5073fb925)]:
-  - @effect/ai@0.4.3
-
-## 0.6.2
-
 ### Patch Changes
 
-- Updated dependencies [[`2408616`](https://github.com/Effect-TS/effect/commit/24086163b60b09cc6d0885bd565ef080dcbe866b), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`8d978c5`](https://github.com/Effect-TS/effect/commit/8d978c53f6fcc98d9d645ecba3e4b55d4297dd36), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e), [`cec0b4d`](https://github.com/Effect-TS/effect/commit/cec0b4d152ef660be2ccdb0927255f2471436e6e)]:
-  - effect@3.11.7
-  - @effect/platform@0.71.2
-  - @effect/ai@0.4.2
-  - @effect/experimental@0.34.2
+- Updated dependencies [[`778d2af`](https://github.com/Effect-TS/effect-smol/commit/778d2afe9b5154bc1f9abae46d93ea7e54c87344), [`4e24dcf`](https://github.com/Effect-TS/effect-smol/commit/4e24dcf75037f65eebc1eb68623bc7cbf9d5512a), [`4b1c015`](https://github.com/Effect-TS/effect-smol/commit/4b1c0150e9bdb5559ed32d250deb66e17b4240c7), [`454f8ad`](https://github.com/Effect-TS/effect-smol/commit/454f8adad822929c3ef60f8280d0987226b049fd), [`6754a0c`](https://github.com/Effect-TS/effect-smol/commit/6754a0cd18626b06805a079cc5265525a5eb7d27), [`90f7fd5`](https://github.com/Effect-TS/effect-smol/commit/90f7fd5243871b30980964135db4512b8119fa82), [`d7e1519`](https://github.com/Effect-TS/effect-smol/commit/d7e151974934201fd93fa4c8a1192ee9a5d965a0), [`72a8122`](https://github.com/Effect-TS/effect-smol/commit/72a81228e09782bae512f7d041bbfbc78bc668d0)]:
+  - effect@4.0.0-beta.51
 
-## 0.6.1
+## 4.0.0-beta.50
 
 ### Patch Changes
 
-- Updated dependencies [[`1d3df5b`](https://github.com/Effect-TS/effect/commit/1d3df5bc4324e88a392c348db35fd9d029c7b25e)]:
-  - @effect/platform@0.71.1
-  - @effect/ai@0.4.1
-  - @effect/experimental@0.34.1
+- Updated dependencies [[`07be594`](https://github.com/Effect-TS/effect-smol/commit/07be594825de60f8e1b2102d21dbb9b8fc63b414), [`ae02433`](https://github.com/Effect-TS/effect-smol/commit/ae02433103ce28f53a0c9bfb4a44e75773289b7b)]:
+  - effect@4.0.0-beta.50
 
-## 0.6.0
+## 4.0.0-beta.49
 
 ### Patch Changes
 
-- Updated dependencies [[`662d1ce`](https://github.com/Effect-TS/effect/commit/662d1ce6fb7da384a95888d5b2bb5605bdf3208d), [`c99a0f3`](https://github.com/Effect-TS/effect/commit/c99a0f376d049d3793ed33e146d9873b8a5e5b78), [`11fc401`](https://github.com/Effect-TS/effect/commit/11fc401f436f99bf4be95f56d50b0e4bdfe5edea), [`c99a0f3`](https://github.com/Effect-TS/effect/commit/c99a0f376d049d3793ed33e146d9873b8a5e5b78), [`31c62d8`](https://github.com/Effect-TS/effect/commit/31c62d83cbdcf9850a8b5331faa239601c60f78a)]:
-  - effect@3.11.6
-  - @effect/platform@0.71.0
-  - @effect/ai@0.4.0
-  - @effect/experimental@0.34.0
+- Updated dependencies [[`7d87873`](https://github.com/Effect-TS/effect-smol/commit/7d8787340ff549370f6f2a88b612e9ebbfd6ba45), [`c2f6f90`](https://github.com/Effect-TS/effect-smol/commit/c2f6f901b200a6e515b4f02c93ce8005b7bbf1c5), [`216f13c`](https://github.com/Effect-TS/effect-smol/commit/216f13c1fce454a21b489bb915714a17e791a1ac)]:
+  - effect@4.0.0-beta.49
 
-## 0.5.7
+## 4.0.0-beta.48
 
 ### Patch Changes
 
-- Updated dependencies [[`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`ef70ffc`](https://github.com/Effect-TS/effect/commit/ef70ffc417ec035ede40c62b7316e447cc7c1932), [`22905cf`](https://github.com/Effect-TS/effect/commit/22905cf5addfb1ff3d2a6135c52036be958ae911), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`1e59e4f`](https://github.com/Effect-TS/effect/commit/1e59e4fd778da18296812a2a32f36ca8ae50f60d), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`8d914e5`](https://github.com/Effect-TS/effect/commit/8d914e504e7a22d0ea628e8af265ee450ff9530f), [`03bb00f`](https://github.com/Effect-TS/effect/commit/03bb00faa74f9e168a54a8cc0828a664fbb1ab05), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`14e1149`](https://github.com/Effect-TS/effect/commit/14e1149f1af5a022f06eb8c2e4ba9fec17fe7426), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8), [`9f5a6f7`](https://github.com/Effect-TS/effect/commit/9f5a6f701bf7ba31adccd1f1bcfa8ab5614c9be8)]:
-  - effect@3.11.5
-  - @effect/experimental@0.33.7
-  - @effect/platform@0.70.7
-  - @effect/ai@0.3.7
+- Updated dependencies [[`4da56ec`](https://github.com/Effect-TS/effect-smol/commit/4da56ecff129b2da40137ffede23a73cc4e532d8), [`a5e6f77`](https://github.com/Effect-TS/effect-smol/commit/a5e6f774bab195cf50ecdc818240765f69a3bf4a), [`f1ba5b8`](https://github.com/Effect-TS/effect-smol/commit/f1ba5b8584d325a541156928cecf041b37fd5070), [`f1ba5b8`](https://github.com/Effect-TS/effect-smol/commit/f1ba5b8584d325a541156928cecf041b37fd5070)]:
+  - effect@4.0.0-beta.48
 
-## 0.5.6
+## 4.0.0-beta.47
 
 ### Patch Changes
 
-- Updated dependencies [[`9a5b8e3`](https://github.com/Effect-TS/effect/commit/9a5b8e36d184bd4967a88752cb6e755e1be263af)]:
-  - @effect/platform@0.70.6
-  - @effect/ai@0.3.6
-  - @effect/experimental@0.33.6
+- Updated dependencies [[`c584726`](https://github.com/Effect-TS/effect-smol/commit/c58472674e750e6938df955044eab88feda95e45), [`86a91a4`](https://github.com/Effect-TS/effect-smol/commit/86a91a4f0c59286dfa9393232d8020dea70ed4db), [`131caf9`](https://github.com/Effect-TS/effect-smol/commit/131caf9525151a0cb29803a8f1dffa0f4f479d12), [`c3615c8`](https://github.com/Effect-TS/effect-smol/commit/c3615c88379b9daf252df0db72c6ac5a20326406)]:
+  - effect@4.0.0-beta.47
 
-## 0.5.5
+## 4.0.0-beta.46
 
 ### Patch Changes
 
-- Updated dependencies [[`415f4c9`](https://github.com/Effect-TS/effect/commit/415f4c98321868531727a83cbaad70164f5e4c40), [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f), [`518b258`](https://github.com/Effect-TS/effect/commit/518b258a8a67ecd332a9252c35cc060f8368dee2), [`6e323a3`](https://github.com/Effect-TS/effect/commit/6e323a36faaee46b328c8e3cf60a76b3aff9907f)]:
-  - @effect/platform@0.70.5
-  - effect@3.11.4
-  - @effect/experimental@0.33.5
-  - @effect/ai@0.3.5
+- Updated dependencies [[`3a30b9e`](https://github.com/Effect-TS/effect-smol/commit/3a30b9e2ec2bd8b8193e1aa139f6878a07e3f5ee)]:
+  - effect@4.0.0-beta.46
 
-## 0.5.4
+## 4.0.0-beta.45
 
 ### Patch Changes
 
-- Updated dependencies [[`90906f7`](https://github.com/Effect-TS/effect/commit/90906f7f154b12c7182e8f39e3c55ef3937db857), [`3862cd3`](https://github.com/Effect-TS/effect/commit/3862cd3c7f6a542ed65fb81255b3bd696ce2f567), [`3862cd3`](https://github.com/Effect-TS/effect/commit/3862cd3c7f6a542ed65fb81255b3bd696ce2f567), [`343b6aa`](https://github.com/Effect-TS/effect/commit/343b6aa6ac4a74276bfc7c63ccbf4a1d72bc1bed), [`afba339`](https://github.com/Effect-TS/effect/commit/afba339adc11dad56b5a3b7ca94487e58f34d613)]:
-  - effect@3.11.3
-  - @effect/ai@0.3.4
-  - @effect/experimental@0.33.4
-  - @effect/platform@0.70.4
+- Updated dependencies [[`5c3af6d`](https://github.com/Effect-TS/effect-smol/commit/5c3af6d554f60be34f8fc21d598d9a298ae11beb)]:
+  - effect@4.0.0-beta.45
 
-## 0.5.3
+## 4.0.0-beta.44
 
 ### Patch Changes
-
-- [#4071](https://github.com/Effect-TS/effect/pull/4071) [`da3a607`](https://github.com/Effect-TS/effect/commit/da3a607bea16d4f08c5937cadfde0447c4123f40) Thanks @tim-smart! - use openai response_format for structured completions
 
-- Updated dependencies [[`7044730`](https://github.com/Effect-TS/effect/commit/70447306be1aeeb7d87c230b2a96ec87b993ede9), [`da3a607`](https://github.com/Effect-TS/effect/commit/da3a607bea16d4f08c5937cadfde0447c4123f40)]:
-  - @effect/platform@0.70.3
-  - @effect/ai@0.3.3
-  - @effect/experimental@0.33.3
-
-## 0.5.2
-
-### Patch Changes
+- [#1961](https://github.com/Effect-TS/effect-smol/pull/1961) [`7bb5dce`](https://github.com/Effect-TS/effect-smol/commit/7bb5dce60e1d904ef049a0287dec2b2e6113c970) Thanks @IMax153! - Rename the `ServiceMap` module to `Context` across exports, docs, and tests.
 
-- Updated dependencies [[`01cee56`](https://github.com/Effect-TS/effect/commit/01cee560b58d94b24cc20e98083251b73e658b41), [`c2249ea`](https://github.com/Effect-TS/effect/commit/c2249ea13fd98ab7d9aa628787931356d8ec2860), [`1358aa5`](https://github.com/Effect-TS/effect/commit/1358aa5326eaa85ef13ee8d1fed0b4a4288ed3eb), [`1de3fe7`](https://github.com/Effect-TS/effect/commit/1de3fe7d1cbafd6391eaa38c2300b99e332cc2aa)]:
-  - effect@3.11.2
-  - @effect/platform@0.70.2
-  - @effect/ai@0.3.2
-  - @effect/experimental@0.33.2
+- Updated dependencies [[`e3f0621`](https://github.com/Effect-TS/effect-smol/commit/e3f0621454c3f5d11070d30619da27c9232cadc1), [`5b476ab`](https://github.com/Effect-TS/effect-smol/commit/5b476abc0bd7e9bb59135ea1bcad2e4936227ced), [`6b40e5a`](https://github.com/Effect-TS/effect-smol/commit/6b40e5a4a6bd2087c15a3d7374d25057fdedfa16), [`7bb5dce`](https://github.com/Effect-TS/effect-smol/commit/7bb5dce60e1d904ef049a0287dec2b2e6113c970), [`3b09fb3`](https://github.com/Effect-TS/effect-smol/commit/3b09fb31c40c2802b01f21c23bcdd1fe7fb0aa82), [`2370410`](https://github.com/Effect-TS/effect-smol/commit/237041062e5af4594d32db91597e34e70a632877), [`dabc272`](https://github.com/Effect-TS/effect-smol/commit/dabc272444a700eb629c07ba3e77671a841ca86e), [`08b63c3`](https://github.com/Effect-TS/effect-smol/commit/08b63c3df11bd35c9fd6090dbd166287fdc40664), [`dfff04c`](https://github.com/Effect-TS/effect-smol/commit/dfff04c4c2b1d352dfad83992a6dce1280c85cf9), [`9baed9e`](https://github.com/Effect-TS/effect-smol/commit/9baed9e17e84702e6e480fcef6f86404f9e24be9), [`7846792`](https://github.com/Effect-TS/effect-smol/commit/7846792adc7e1631d62d26d657bd7ba6139f369b), [`1556a24`](https://github.com/Effect-TS/effect-smol/commit/1556a247623636b7ebe438fb56d77f1a7bf957bb), [`7c11bc2`](https://github.com/Effect-TS/effect-smol/commit/7c11bc292ab8e46252fe8f7576fb685917bfb8b5), [`b5ea591`](https://github.com/Effect-TS/effect-smol/commit/b5ea5913ec1d45d0dd12a327b9dd966bda2f6d02), [`0853afa`](https://github.com/Effect-TS/effect-smol/commit/0853afaeb1633b2d7f8b66893bd01c3aa1ef2c22), [`ac845f3`](https://github.com/Effect-TS/effect-smol/commit/ac845f3ab40e0b8719576e7f9bc16ea2e0e02cd4), [`b80c462`](https://github.com/Effect-TS/effect-smol/commit/b80c46247480f47bb64fc480fab48a3f37bc8888), [`b3f535d`](https://github.com/Effect-TS/effect-smol/commit/b3f535d9a7ac13b5fb984c29f93561c57a081ff0), [`6fe2e93`](https://github.com/Effect-TS/effect-smol/commit/6fe2e93cc2f1b173ef89651d74b6a5d2626b3226), [`cda8004`](https://github.com/Effect-TS/effect-smol/commit/cda800451c1ffbdddfc08415aed7b2d91e0412ee), [`8335477`](https://github.com/Effect-TS/effect-smol/commit/8335477a8a936a24b5f3ee6203c1b268bd1bfc3c), [`8c836f9`](https://github.com/Effect-TS/effect-smol/commit/8c836f99ab1e896b9580a71d67773625baff2eaf), [`718ff6f`](https://github.com/Effect-TS/effect-smol/commit/718ff6fe3e3d3820cefd67d2bff1b2224fe08060), [`7eed84f`](https://github.com/Effect-TS/effect-smol/commit/7eed84fc33c5781a6fb11bf4fd189d424902ebd4), [`5df46fe`](https://github.com/Effect-TS/effect-smol/commit/5df46fe2f654d59ab5fc1578f4fc27fa40368ef9), [`82dd0f2`](https://github.com/Effect-TS/effect-smol/commit/82dd0f26c6442b07143762ef7bc33742d3978dd6), [`03ae41e`](https://github.com/Effect-TS/effect-smol/commit/03ae41e7304cffac9f18feea22b73468feafc43a), [`4677a0a`](https://github.com/Effect-TS/effect-smol/commit/4677a0a58f95eea38a211efcd3f345f237a9e44a), [`87e1fc8`](https://github.com/Effect-TS/effect-smol/commit/87e1fc8b67e4901d75f567b2fecc3841ab762cc4), [`c1af1b7`](https://github.com/Effect-TS/effect-smol/commit/c1af1b756f63291e9c0298cf95c98a6920a0c2a0), [`7bb5dce`](https://github.com/Effect-TS/effect-smol/commit/7bb5dce60e1d904ef049a0287dec2b2e6113c970), [`c8a877b`](https://github.com/Effect-TS/effect-smol/commit/c8a877b53e8f29616335719e5dd1c3992dddf780), [`7da961a`](https://github.com/Effect-TS/effect-smol/commit/7da961ae4916229d2246699a5d3b20e5b2dd2020)]:
+  - effect@4.0.0-beta.44
 
-## 0.5.1
+## 4.0.0-beta.43
 
 ### Patch Changes
 
-- Updated dependencies [[`dd8a2d8`](https://github.com/Effect-TS/effect/commit/dd8a2d8e80d33b16719fc69361eaedf0b59d4620), [`a71bfef`](https://github.com/Effect-TS/effect/commit/a71bfef46f5061bb2502a61a333638a987b62273)]:
-  - effect@3.11.1
-  - @effect/ai@0.3.1
-  - @effect/experimental@0.33.1
-  - @effect/platform@0.70.1
+- [#1905](https://github.com/Effect-TS/effect-smol/pull/1905) [`fc1444d`](https://github.com/Effect-TS/effect-smol/commit/fc1444df6fb7223ed228650c5c927b1df54a8757) Thanks @tim-smart! - openai ws tweaks
 
-## 0.5.0
+- Updated dependencies [[`2ae33d0`](https://github.com/Effect-TS/effect-smol/commit/2ae33d050914915f7cb9c25ab0a020901e08d596), [`979811a`](https://github.com/Effect-TS/effect-smol/commit/979811a4c3f7ed21ed18ef560c49fb7f5569e80e), [`eb7dbef`](https://github.com/Effect-TS/effect-smol/commit/eb7dbeffa883386ad912815e62c0820cac1fdf8e), [`cf50eb4`](https://github.com/Effect-TS/effect-smol/commit/cf50eb49cb04706dae5185f624708117c413dee8), [`1d046fe`](https://github.com/Effect-TS/effect-smol/commit/1d046fe484560e23f3e22cb23eec6433f8f1fa02)]:
+  - effect@4.0.0-beta.43
 
-### Patch Changes
-
-- Updated dependencies [[`147434b`](https://github.com/Effect-TS/effect/commit/147434b03d5e1fd692dd9f126e5ab0910f3b76d3), [`6e69493`](https://github.com/Effect-TS/effect/commit/6e694930048bbaf98110f35f41566aeb9752d471), [`147434b`](https://github.com/Effect-TS/effect/commit/147434b03d5e1fd692dd9f126e5ab0910f3b76d3), [`5eff3f6`](https://github.com/Effect-TS/effect/commit/5eff3f6fa3aae7e86948a62cbfd63b8d6c3bdf92), [`d9fe79b`](https://github.com/Effect-TS/effect/commit/d9fe79bb5a3fe105d8e7a3bc2922a8ad936a5d10), [`251d189`](https://github.com/Effect-TS/effect/commit/251d189420bbba71990574e91098c499065f9a9b), [`5a259f3`](https://github.com/Effect-TS/effect/commit/5a259f3711b4369f55d885b568bdb21136155261), [`b4ce4ea`](https://github.com/Effect-TS/effect/commit/b4ce4ea7fd514a7e572f2dcd879c98f334981b0e), [`15fcc5a`](https://github.com/Effect-TS/effect/commit/15fcc5a0ea4bbf40ab48fa6a04fdda74f76f4c07), [`9bc9a47`](https://github.com/Effect-TS/effect/commit/9bc9a476800dc645903c888a68bb1d3baa3383c6), [`aadb8a4`](https://github.com/Effect-TS/effect/commit/aadb8a48d2cba197c06ec9996505510e48e4e5cb), [`1e2747c`](https://github.com/Effect-TS/effect/commit/1e2747c63a4820d1459cbbc88c71212983bd68bd), [`9264162`](https://github.com/Effect-TS/effect/commit/9264162a82783a651776fb7b87604564a63e7070), [`e0b9b09`](https://github.com/Effect-TS/effect/commit/e0b9b09e70c386b2da17d1f0a15b0511861c89e8), [`c36f3b9`](https://github.com/Effect-TS/effect/commit/c36f3b95df5ce9d71b66f22f26ce12eda8d3e848), [`672bde5`](https://github.com/Effect-TS/effect/commit/672bde5bec51c7d6f9862828e6a654cb2cb6f93d), [`aadb8a4`](https://github.com/Effect-TS/effect/commit/aadb8a48d2cba197c06ec9996505510e48e4e5cb)]:
-  - effect@3.11.0
-  - @effect/platform@0.70.0
-  - @effect/ai@0.3.0
-  - @effect/experimental@0.33.0
-
-## 0.4.17
+## 4.0.0-beta.42
 
 ### Patch Changes
 
-- Updated dependencies [[`3069614`](https://github.com/Effect-TS/effect/commit/30696149271129fc618f6f2ccd1d8f2f6c0f9cd7), [`09a5e52`](https://github.com/Effect-TS/effect/commit/09a5e522fd9b221f05d85b1d1c8a740d4973c302)]:
-  - effect@3.10.20
-  - @effect/ai@0.2.32
-  - @effect/experimental@0.32.17
-  - @effect/platform@0.69.32
+- [#1859](https://github.com/Effect-TS/effect-smol/pull/1859) [`a4809db`](https://github.com/Effect-TS/effect-smol/commit/a4809db80f65601d37ccafc13d773e55909c4e98) Thanks @lloydrichards! - add dynamic tooling for openai and openai-compact language models
 
-## 0.4.16
+- [#1890](https://github.com/Effect-TS/effect-smol/pull/1890) [`4549175`](https://github.com/Effect-TS/effect-smol/commit/454917547e8c305707f0777f4efac7adaa924f00) Thanks @tim-smart! - reset openai websocket on error
 
-### Patch Changes
+- Updated dependencies [[`924e216`](https://github.com/Effect-TS/effect-smol/commit/924e216caa7e0bbf22e994a0cd2ce8b1f0f0b3ee), [`80e7f0c`](https://github.com/Effect-TS/effect-smol/commit/80e7f0cd9116e811e97b0ce30a77a8d1ecd072aa), [`f8328bf`](https://github.com/Effect-TS/effect-smol/commit/f8328bf0314da3dc7f31d314f94a5840e8d5217f), [`66d1c06`](https://github.com/Effect-TS/effect-smol/commit/66d1c06039079129707a230f7ad8c676439d7133), [`bee800b`](https://github.com/Effect-TS/effect-smol/commit/bee800bf285192a01bec72a7b7b51bc1159434e6), [`8930441`](https://github.com/Effect-TS/effect-smol/commit/8930441dee6f94c59c583d18d3ebd677cf1f2623)]:
+  - effect@4.0.0-beta.42
 
-- Updated dependencies [[`e6d4a37`](https://github.com/Effect-TS/effect/commit/e6d4a37c1d7e657b5ea44063a1cf586808228fe5)]:
-  - @effect/platform@0.69.31
-  - @effect/experimental@0.32.16
-  - @effect/ai@0.2.31
+## 4.0.0-beta.41
 
-## 0.4.15
-
 ### Patch Changes
-
-- Updated dependencies [[`5e17400`](https://github.com/Effect-TS/effect/commit/5e1740017cb97026e7f583c5fe71847c606df388)]:
-  - @effect/experimental@0.32.15
 
-## 0.4.14
+- [#1887](https://github.com/Effect-TS/effect-smol/pull/1887) [`f291344`](https://github.com/Effect-TS/effect-smol/commit/f2913443d99146a6b36d8437e50b94f7c03c1284) Thanks @tim-smart! - make defects a retryable network error in websocket mode
 
-### Patch Changes
+- Updated dependencies [[`36f5c21`](https://github.com/Effect-TS/effect-smol/commit/36f5c2174d31ab42c4598bf81f178f40d0802283), [`d8ce758`](https://github.com/Effect-TS/effect-smol/commit/d8ce758669d6297ae932ac3251d83e7b49b22f30), [`11aab4c`](https://github.com/Effect-TS/effect-smol/commit/11aab4c6d37d5691adafc2d33da1a631b28ce814), [`3bc1efb`](https://github.com/Effect-TS/effect-smol/commit/3bc1efb53dd75b4a40de46f1f80c7f8a7d50af86), [`70e724e`](https://github.com/Effect-TS/effect-smol/commit/70e724e604604d4be1061cd8da0d360494998c84), [`738dee7`](https://github.com/Effect-TS/effect-smol/commit/738dee7edfd70af82dc4d2376db3a8ebe603eb48), [`2111963`](https://github.com/Effect-TS/effect-smol/commit/2111963f19b4c28c800664a8fac9590c1321885f), [`198a553`](https://github.com/Effect-TS/effect-smol/commit/198a553d9ce45f6a00bfc4d65ed0640669602d95)]:
+  - effect@4.0.0-beta.41
 
-- Updated dependencies [[`270f199`](https://github.com/Effect-TS/effect/commit/270f199b31810fd643e4c22818698adcbdb5d396)]:
-  - @effect/platform@0.69.30
-  - @effect/experimental@0.32.14
-  - @effect/ai@0.2.30
+## 4.0.0-beta.40
 
-## 0.4.13
-
 ### Patch Changes
 
-- Updated dependencies [[`e9dfea3`](https://github.com/Effect-TS/effect/commit/e9dfea3f394444ebd8929e5cfe05ce740cf84d6e), [`24cc35e`](https://github.com/Effect-TS/effect/commit/24cc35e26d6ed4a076470bc687ffd99cc50991b3)]:
-  - @effect/experimental@0.32.13
-  - @effect/platform@0.69.29
-  - @effect/ai@0.2.29
+- Updated dependencies [[`f62860f`](https://github.com/Effect-TS/effect-smol/commit/f62860f0e5e45978fabf7256ae620a13152a772a), [`973f281`](https://github.com/Effect-TS/effect-smol/commit/973f2812529aadc1cc54598b2039799fa72b80f8)]:
+  - effect@4.0.0-beta.40
 
-## 0.4.12
+## 4.0.0-beta.39
 
 ### Patch Changes
 
-- Updated dependencies [[`edd72be`](https://github.com/Effect-TS/effect/commit/edd72be57b904d60c9cbffc2537901821a9da537), [`a3e2771`](https://github.com/Effect-TS/effect/commit/a3e277170a1f7cf61fd629acb60304c7e81d9498), [`944025b`](https://github.com/Effect-TS/effect/commit/944025bc5ce139f4a85846aa689bf30ec06a8ec1), [`54addee`](https://github.com/Effect-TS/effect/commit/54addee438a644bf010646c52042c7b89c5fc0a7), [`a9e00e4`](https://github.com/Effect-TS/effect/commit/a9e00e43f0b5dd22c1f9d5b78be6383daea09c20)]:
-  - @effect/platform@0.69.28
-  - @effect/experimental@0.32.12
-  - effect@3.10.19
-  - @effect/ai@0.2.28
+- Updated dependencies [[`f91fd3d`](https://github.com/Effect-TS/effect-smol/commit/f91fd3db39fe5628439fd175fba201a65a1aa9d0), [`edaae9d`](https://github.com/Effect-TS/effect-smol/commit/edaae9d65f464f941d7eddd723cd33d324f4b071), [`b47db0b`](https://github.com/Effect-TS/effect-smol/commit/b47db0bd5802064b6a24b3ea27c6ff2e0520d513), [`82d3c8e`](https://github.com/Effect-TS/effect-smol/commit/82d3c8e4f3f49b00df611b25aa6f8f74ec21b59b), [`7c22b31`](https://github.com/Effect-TS/effect-smol/commit/7c22b315d198dcbf44ae8cdb8b37879e1c9e3996)]:
+  - effect@4.0.0-beta.39
 
-## 0.4.11
+## 4.0.0-beta.38
 
 ### Patch Changes
 
-- Updated dependencies [[`af409cf`](https://github.com/Effect-TS/effect/commit/af409cf1d2ff973be11cc079ea373eaeedca25de), [`beaccae`](https://github.com/Effect-TS/effect/commit/beaccae2d15931e9fe475fb50a0b3638243fe3f7)]:
-  - effect@3.10.18
-  - @effect/platform@0.69.27
-  - @effect/ai@0.2.27
-  - @effect/experimental@0.32.11
+- Updated dependencies [[`f4dbe5b`](https://github.com/Effect-TS/effect-smol/commit/f4dbe5b26b9c2d33fae024bf44afbdf8541792cd), [`a71a607`](https://github.com/Effect-TS/effect-smol/commit/a71a607c89fb6669a12a562c2c23be81dfbe1adb), [`66a0494`](https://github.com/Effect-TS/effect-smol/commit/66a0494ed75cd12f2721dcbb1d8a072e3d9e14b6), [`5ef7218`](https://github.com/Effect-TS/effect-smol/commit/5ef7218fc559d57301fe929b8a0cab4033f4f1fd), [`472d260`](https://github.com/Effect-TS/effect-smol/commit/472d260655bc311fba5c2c6e23bb77d8f7e36ba0)]:
+  - effect@4.0.0-beta.38
 
-## 0.4.10
+## 4.0.0-beta.37
 
 ### Patch Changes
 
-- Updated dependencies [[`c963886`](https://github.com/Effect-TS/effect/commit/c963886d5817986fcbd6bfa4ddf50aca8b6c8184), [`42c4ce6`](https://github.com/Effect-TS/effect/commit/42c4ce6f8d8c7d847e97757650a8ad9419a829d7)]:
-  - @effect/platform@0.69.26
-  - effect@3.10.17
-  - @effect/ai@0.2.26
-  - @effect/experimental@0.32.10
+- Updated dependencies [[`f7a0b71`](https://github.com/Effect-TS/effect-smol/commit/f7a0b711da8fdd645597dee29cacc5619c6afcf2), [`1e223c3`](https://github.com/Effect-TS/effect-smol/commit/1e223c30ccf835dfbb21284535d78549efaeca80), [`53740f4`](https://github.com/Effect-TS/effect-smol/commit/53740f47aa76d114b7d535649fb50efc54a09608), [`8c7cf89`](https://github.com/Effect-TS/effect-smol/commit/8c7cf89f719e580cbce1bf6c24e6996f1992a0a6), [`b6b81a9`](https://github.com/Effect-TS/effect-smol/commit/b6b81a940eaafcbc792d25413d6c02c707de31b2), [`8f4c1f9`](https://github.com/Effect-TS/effect-smol/commit/8f4c1f97ed60f8810b0b327b50117ffb2d8260d4), [`f2479f9`](https://github.com/Effect-TS/effect-smol/commit/f2479f9d3113b1f012db17a3852b4e28f478cf9c), [`c919921`](https://github.com/Effect-TS/effect-smol/commit/c9199217fad65529421d2cf95ecfff41257090fd), [`7af90c2`](https://github.com/Effect-TS/effect-smol/commit/7af90c2e3c99038eafa39650433839523790e2fe), [`f3be185`](https://github.com/Effect-TS/effect-smol/commit/f3be18569e5ca57c25eabf00df3ca601ebab43c7)]:
+  - effect@4.0.0-beta.37
 
-## 0.4.9
+## 4.0.0-beta.36
 
 ### Patch Changes
-
-- Updated dependencies [[`320557a`](https://github.com/Effect-TS/effect/commit/320557ab18d13c5e22fc7dc0d2a157eae461012f), [`4dca30c`](https://github.com/Effect-TS/effect/commit/4dca30cfcdafe4542e236489f71d6f171a5b4e38), [`1d99867`](https://github.com/Effect-TS/effect/commit/1d998671be3cd11043f232822e91dd8c98fccfa9), [`6dae414`](https://github.com/Effect-TS/effect/commit/6dae4147991a97ec14a99289bd25fadae7541e8d), [`6b0d737`](https://github.com/Effect-TS/effect/commit/6b0d737078bf63b97891e6bc47affc04b28f9cf7), [`d8356aa`](https://github.com/Effect-TS/effect/commit/d8356aad428a0c2290db52380220f81d9ec94232), [`7b93dd6`](https://github.com/Effect-TS/effect/commit/7b93dd622e2ab79c7072d79d0d9611e446202201)]:
-  - @effect/platform@0.69.25
-  - effect@3.10.16
-  - @effect/ai@0.2.25
-  - @effect/experimental@0.32.9
 
-## 0.4.8
+- [#1807](https://github.com/Effect-TS/effect-smol/pull/1807) [`1bbd4d9`](https://github.com/Effect-TS/effect-smol/commit/1bbd4d9d617e683a7f338ddd40d11f5838c722bd) Thanks @tim-smart! - Handle streamed OpenAI function calls from `response.function_call_arguments.done` so tool calls are emitted even when `response.output_item.done` is missing.
 
-### Patch Changes
+- [#1809](https://github.com/Effect-TS/effect-smol/pull/1809) [`126db2e`](https://github.com/Effect-TS/effect-smol/commit/126db2e38774c8ef4934321a70d39428ed4491ed) Thanks @tim-smart! - Fix OpenAI reasoning stream state handling so out-of-order reasoning summary events do not crash when prior reasoning item state is missing.
 
-- [#3949](https://github.com/Effect-TS/effect/pull/3949) [`52c4b89`](https://github.com/Effect-TS/effect/commit/52c4b89da69fa88a0fb2debe038c009c19b34573) Thanks @tim-smart! - add transformClient option to OpenAiClient layer
+- Updated dependencies [[`60fcbcc`](https://github.com/Effect-TS/effect-smol/commit/60fcbcc43d09471e8f7e0969955d99dcefc5be81), [`0a60837`](https://github.com/Effect-TS/effect-smol/commit/0a6083713124440e630030375bab367e8d7df24e), [`49164d2`](https://github.com/Effect-TS/effect-smol/commit/49164d2c20a8d21b66514992c4a15d8521f6b36e), [`334b6e4`](https://github.com/Effect-TS/effect-smol/commit/334b6e4f76fe11941b516d61f57e268bc31f0ca6), [`5700695`](https://github.com/Effect-TS/effect-smol/commit/5700695f76ae6da6b94c9c87d4dd2b8054fb829b), [`f8f4456`](https://github.com/Effect-TS/effect-smol/commit/f8f445644f3aa7ec093cab7445198a62ba18a480), [`969d24f`](https://github.com/Effect-TS/effect-smol/commit/969d24fdfa48c4838e811983848d9cb4e9b3b12c), [`851eda0`](https://github.com/Effect-TS/effect-smol/commit/851eda0533946e39bacaaf581896320d7a4f3e8c), [`8059c1c`](https://github.com/Effect-TS/effect-smol/commit/8059c1c3eba9a90af7cd889ea261bcb8fff0c185), [`6f83295`](https://github.com/Effect-TS/effect-smol/commit/6f8329546a73eaddc7cb5e85ea8e37e73fbfb611), [`65f7f57`](https://github.com/Effect-TS/effect-smol/commit/65f7f5737575fed668987462c96d29a446707c32), [`e7fabd2`](https://github.com/Effect-TS/effect-smol/commit/e7fabd2265db690eae5cfc9b83730c84699aef61), [`89c3e98`](https://github.com/Effect-TS/effect-smol/commit/89c3e985401eb38f33a3ae21a94ad27de3c1d28b), [`53794ab`](https://github.com/Effect-TS/effect-smol/commit/53794ab7af30aa5c5004ecf53659fafbe4b10542)]:
+  - effect@4.0.0-beta.36
 
-- Updated dependencies [[`3cc6514`](https://github.com/Effect-TS/effect/commit/3cc6514d2dd64e010cb760cc29bfce98c349bb10)]:
-  - @effect/platform@0.69.24
-  - @effect/ai@0.2.24
-  - @effect/experimental@0.32.8
+## 4.0.0-beta.35
 
-## 0.4.7
-
 ### Patch Changes
-
-- Updated dependencies [[`3aff4d3`](https://github.com/Effect-TS/effect/commit/3aff4d38837c213bb2987973dc4b98febb9f92d2)]:
-  - @effect/platform@0.69.23
-  - @effect/ai@0.2.23
-  - @effect/experimental@0.32.7
 
-## 0.4.6
+- [#1776](https://github.com/Effect-TS/effect-smol/pull/1776) [`f5e553d`](https://github.com/Effect-TS/effect-smol/commit/f5e553d133b8e0a303f6c82624d2fec4ab8043da) Thanks @tim-smart! - improve openai socket errors
 
-### Patch Changes
+- Updated dependencies [[`9252b43`](https://github.com/Effect-TS/effect-smol/commit/9252b43560f507709c2985abcf52a7837b23ddf8), [`7daf387`](https://github.com/Effect-TS/effect-smol/commit/7daf3870a656882a488a60f67881e6808c8f4d04), [`e1664a3`](https://github.com/Effect-TS/effect-smol/commit/e1664a38bc31ef4ceb4e9324c7226e1e99bf9c07), [`fdaa6e0`](https://github.com/Effect-TS/effect-smol/commit/fdaa6e0a41b6b6605438fa8557441792135380a2), [`19aa47e`](https://github.com/Effect-TS/effect-smol/commit/19aa47ef7b470e427620edca8970dd9cdd551216), [`c667dad`](https://github.com/Effect-TS/effect-smol/commit/c667dad07777b860e4764a3ba9a6cc41c236cd98), [`764d150`](https://github.com/Effect-TS/effect-smol/commit/764d1501bc5026b60fc8aef6cb02a5a87c762801), [`3c27098`](https://github.com/Effect-TS/effect-smol/commit/3c27098b5685a63db2c2eff654a250c94d3fcfa7)]:
+  - effect@4.0.0-beta.35
 
-- Updated dependencies [[`8398b32`](https://github.com/Effect-TS/effect/commit/8398b3208242a88239d4449910b7baf923cfe3b6), [`4e9e256`](https://github.com/Effect-TS/effect/commit/4e9e256e9f0b4a9e9b202d3bb703b5a4622e75cb), [`72e55b7`](https://github.com/Effect-TS/effect/commit/72e55b7c610784fcebdbadc592c876e23e76a986)]:
-  - effect@3.10.15
-  - @effect/experimental@0.32.6
-  - @effect/ai@0.2.22
-  - @effect/platform@0.69.22
+## 4.0.0-beta.34
 
-## 0.4.5
-
 ### Patch Changes
-
-- Updated dependencies [[`f983946`](https://github.com/Effect-TS/effect/commit/f9839467b4cad6e788297764ef9f9f0b9fd203f9), [`2d8a750`](https://github.com/Effect-TS/effect/commit/2d8a75081eb83a0a81f817fdf6f428369c5064ab)]:
-  - effect@3.10.14
-  - @effect/ai@0.2.21
-  - @effect/experimental@0.32.5
-  - @effect/platform@0.69.21
 
-## 0.4.4
+- [#1759](https://github.com/Effect-TS/effect-smol/pull/1759) [`8feecd2`](https://github.com/Effect-TS/effect-smol/commit/8feecd24158f254ca0571a1ddb554b560ed3177d) Thanks @tim-smart! - Ensure OpenAiSocket sends a `{"type":"response.cancel"}` websocket event when a response stream is interrupted.
 
-### Patch Changes
+- [#1764](https://github.com/Effect-TS/effect-smol/pull/1764) [`342fc4b`](https://github.com/Effect-TS/effect-smol/commit/342fc4b051739e32e7977159f26ff9541eda664f) Thanks @tim-smart! - Add unstable EmbeddingModel support across core and OpenAI providers.
+  - Add the unstable EmbeddingModel module API surface in `effect`, including service, request, response, and provider types.
+  - Implement the unstable EmbeddingModel runtime constructor in `effect`, with `RequestResolver` batching, `embed` / `embedMany` spans, provider error propagation, deterministic ordering, and empty-input `embedMany` fast-path behavior.
+  - Add and align EmbeddingModel behavior tests in `effect` for embedding usage, batching, ordering, and error handling.
+  - Add `OpenAiEmbeddingModel` in `@effect/ai-openai`, including model / make / layer constructors, config overrides, and provider output index validation with deterministic reordering.
+  - Add OpenAI-compatible EmbeddingModel provider support in `@effect/ai-openai-compat`, including config overrides, layer constructors, and output index validation.
 
-- [#3916](https://github.com/Effect-TS/effect/pull/3916) [`72b0272`](https://github.com/Effect-TS/effect/commit/72b02726d62000756577464273c0dd0876cbe0b5) Thanks @tim-smart! - use effect/JSONSchema for effect/ai & allow http client transforms
+- [#1771](https://github.com/Effect-TS/effect-smol/pull/1771) [`00add69`](https://github.com/Effect-TS/effect-smol/commit/00add69b59551e9df34772eb927638b093f6d71e) Thanks @tim-smart! - Add `EmbeddingModel.ModelDimensions` and require dimensions in embedding provider `model` constructors.
 
-- Updated dependencies [[`72b0272`](https://github.com/Effect-TS/effect/commit/72b02726d62000756577464273c0dd0876cbe0b5), [`995bbdf`](https://github.com/Effect-TS/effect/commit/995bbdffea2e332f203cd5b474cd6a1c77dfa6ae)]:
-  - @effect/ai@0.2.20
-  - effect@3.10.13
-  - @effect/experimental@0.32.4
-  - @effect/platform@0.69.20
+- [#1765](https://github.com/Effect-TS/effect-smol/pull/1765) [`f4e2aba`](https://github.com/Effect-TS/effect-smol/commit/f4e2aba01b76d1e3059b297e3cc942284dfeafb2) Thanks @tim-smart! - retry incremental prompt on invalid request
 
-## 0.4.3
-
-### Patch Changes
+- [#1760](https://github.com/Effect-TS/effect-smol/pull/1760) [`273f4c6`](https://github.com/Effect-TS/effect-smol/commit/273f4c6517f5adc4994734a46698c52015890d1a) Thanks @tim-smart! - handle openai ws error events
 
-- Updated dependencies [[`eb8c52d`](https://github.com/Effect-TS/effect/commit/eb8c52d8b4c5e067ebf0a81eb742f5822e6439b5)]:
-  - @effect/platform@0.69.19
-  - @effect/experimental@0.32.3
-  - @effect/ai@0.2.19
+- Updated dependencies [[`f2f75ee`](https://github.com/Effect-TS/effect-smol/commit/f2f75ee564bce1cd95f5189c7bdeeed4f92dacb1), [`342fc4b`](https://github.com/Effect-TS/effect-smol/commit/342fc4b051739e32e7977159f26ff9541eda664f), [`5d704ee`](https://github.com/Effect-TS/effect-smol/commit/5d704ee10d20e8eb107e34bb8a21feb5aa4a7685), [`00add69`](https://github.com/Effect-TS/effect-smol/commit/00add69b59551e9df34772eb927638b093f6d71e), [`58217d3`](https://github.com/Effect-TS/effect-smol/commit/58217d318a7d716ccd707cce0f41573946939c28), [`f4e2aba`](https://github.com/Effect-TS/effect-smol/commit/f4e2aba01b76d1e3059b297e3cc942284dfeafb2), [`e3b44b6`](https://github.com/Effect-TS/effect-smol/commit/e3b44b6a2af9ee21dc5c1e928f0c20af857fa7a9), [`e1472b7`](https://github.com/Effect-TS/effect-smol/commit/e1472b7525c5d57a48bdec2353c3b742f7f916c0), [`7686320`](https://github.com/Effect-TS/effect-smol/commit/7686320cd123fa352b5c3d076fb18a3cac0a9bba)]:
+  - effect@4.0.0-beta.34
 
-## 0.4.2
+## 4.0.0-beta.33
 
 ### Patch Changes
 
-- Updated dependencies [[`a0584ec`](https://github.com/Effect-TS/effect/commit/a0584ece92ed784bfb139e9c5a699f02d1e71c2d), [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6), [`dd14efe`](https://github.com/Effect-TS/effect/commit/dd14efe0ace255f571273aae876adea96267d7e6)]:
-  - @effect/platform@0.69.18
-  - effect@3.10.12
-  - @effect/ai@0.2.18
-  - @effect/experimental@0.32.2
+- [#1638](https://github.com/Effect-TS/effect-smol/pull/1638) [`e198fea`](https://github.com/Effect-TS/effect-smol/commit/e198fea76c89a36c6f05ea7b7d11d222cf5a240c) Thanks @tim-smart! - add OpenAiClient.withWebSocketMode
 
-## 0.4.1
+- Updated dependencies [[`571447d`](https://github.com/Effect-TS/effect-smol/commit/571447da67334449f8ae3d6ecb3d77ea4e0c4295)]:
+  - effect@4.0.0-beta.33
 
-### Patch Changes
-
-- Updated dependencies [[`5eef499`](https://github.com/Effect-TS/effect/commit/5eef4998b6ccb7a5404d9e4fef85e57fa35fbb8a), [`8240b1c`](https://github.com/Effect-TS/effect/commit/8240b1c10d45312fc863cb679b1a1e8441af0c1a), [`5eef499`](https://github.com/Effect-TS/effect/commit/5eef4998b6ccb7a5404d9e4fef85e57fa35fbb8a)]:
-  - effect@3.10.11
-  - @effect/platform@0.69.17
-  - @effect/ai@0.2.17
-  - @effect/experimental@0.32.1
-
-## 0.4.0
+## 4.0.0-beta.32
 
 ### Patch Changes
 
-- Updated dependencies [[`12b3275`](https://github.com/Effect-TS/effect/commit/12b32753afbf252d156ff613f9e88662b160a7e5)]:
-  - @effect/experimental@0.32.0
+- Updated dependencies [[`bf8fff8`](https://github.com/Effect-TS/effect-smol/commit/bf8fff8a5f54b6df74cb7bbb42346fe9ba52435a), [`1af3ef3`](https://github.com/Effect-TS/effect-smol/commit/1af3ef3e3ca7fd417d0fc15f8ca8fe207eba4f74), [`27fea0f`](https://github.com/Effect-TS/effect-smol/commit/27fea0f66910de5905f40fd63f8ddbb6f7ac5aba), [`2ad6c1b`](https://github.com/Effect-TS/effect-smol/commit/2ad6c1b2c85a3a0fe351e3d56636a75eb76b4b4e), [`398ac3e`](https://github.com/Effect-TS/effect-smol/commit/398ac3e01cb75efce0e4e2913d1450cf65866732), [`51fe22f`](https://github.com/Effect-TS/effect-smol/commit/51fe22f3266e417b6c541aaed4b75d246fac91e7), [`4605db6`](https://github.com/Effect-TS/effect-smol/commit/4605db69cfacddbdbf1525865ddfde135158090c), [`f4de1b0`](https://github.com/Effect-TS/effect-smol/commit/f4de1b087c998d0bad1d9468f70b7d16c13b9f6f), [`60214f2`](https://github.com/Effect-TS/effect-smol/commit/60214f2080b2aeb091f691140eb20acb741691c3), [`c4b8b0f`](https://github.com/Effect-TS/effect-smol/commit/c4b8b0ffa8efb47c4cd7578a8943d6868509373f), [`6d9393a`](https://github.com/Effect-TS/effect-smol/commit/6d9393a0770a18722d23340e77f15455de341245), [`6de4efe`](https://github.com/Effect-TS/effect-smol/commit/6de4efe463c783614ceb0c094d77a336a899cbe0), [`4f969d1`](https://github.com/Effect-TS/effect-smol/commit/4f969d1563ba755ffa116c8ae409bb3436bd881d), [`6cc67c8`](https://github.com/Effect-TS/effect-smol/commit/6cc67c855e054ee3f3ac3485dca5f7805e79e8fb), [`8531a22`](https://github.com/Effect-TS/effect-smol/commit/8531a22ffbb52e11a030b09f358cafbfdf5edff7), [`b226760`](https://github.com/Effect-TS/effect-smol/commit/b22676067617f15c00722a3a63fd7c2c172c3d45), [`47a51ab`](https://github.com/Effect-TS/effect-smol/commit/47a51aba0ecdf3ef478bfa28a498bca188399bd4), [`1521d02`](https://github.com/Effect-TS/effect-smol/commit/1521d02e1f19f1d795edaaf862c1a1031d9c755e)]:
+  - effect@4.0.0-beta.32
 
-## 0.3.0
+## 4.0.0-beta.31
 
 ### Patch Changes
 
-- Updated dependencies [[`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`cd720ae`](https://github.com/Effect-TS/effect/commit/cd720aedf7f2571edec0843d6a633e84e4832b28), [`b631f40`](https://github.com/Effect-TS/effect/commit/b631f40abbe649b2a089764585b5c39f6a695ac6), [`7d89650`](https://github.com/Effect-TS/effect/commit/7d8965036cd2ea435c8441ffec3345488baebf85)]:
-  - @effect/experimental@0.31.0
-  - effect@3.10.10
-  - @effect/platform@0.69.16
-  - @effect/ai@0.2.16
+- Updated dependencies [[`5a84853`](https://github.com/Effect-TS/effect-smol/commit/5a8485397b7f321ae021640c1999821143659462), [`6f23f0e`](https://github.com/Effect-TS/effect-smol/commit/6f23f0ed4cba573cd9395c2e582f582fe7271544), [`654aaec`](https://github.com/Effect-TS/effect-smol/commit/654aaec593305521b65dd042c204d761cc6e8c28), [`2958a42`](https://github.com/Effect-TS/effect-smol/commit/2958a42078966a8713a98f00485ab36484d5eccf), [`95d27a2`](https://github.com/Effect-TS/effect-smol/commit/95d27a239ed5147302605ab0b3147a056541b0c7), [`0fbaea8`](https://github.com/Effect-TS/effect-smol/commit/0fbaea8f9555a8044cec31a770394db613fc78e2), [`21d5d5e`](https://github.com/Effect-TS/effect-smol/commit/21d5d5e0439fd4d9bb6e508377215b1087555d45), [`5a84853`](https://github.com/Effect-TS/effect-smol/commit/5a8485397b7f321ae021640c1999821143659462), [`6e49959`](https://github.com/Effect-TS/effect-smol/commit/6e499590357a104c81779b3176cd3f84e4f91064), [`8f5805d`](https://github.com/Effect-TS/effect-smol/commit/8f5805dbdd0d1bc0ff0727cc398c8d80e544edee), [`990df2c`](https://github.com/Effect-TS/effect-smol/commit/990df2c3ceeb32e659acc10cc9485617f7b3c423)]:
+  - effect@4.0.0-beta.31
 
-## 0.2.16
+## 4.0.0-beta.30
 
 ### Patch Changes
 
-- Updated dependencies [[`8a30e1d`](https://github.com/Effect-TS/effect/commit/8a30e1dfa3a7103bf5414fc6a7fca3088d8c8c00)]:
-  - @effect/platform@0.69.15
-  - @effect/experimental@0.30.16
-  - @effect/ai@0.2.15
-
-## 0.2.15
-
-### Patch Changes
+- [#1679](https://github.com/Effect-TS/effect-smol/pull/1679) [`d440fd4`](https://github.com/Effect-TS/effect-smol/commit/d440fd4e79f5943998249f5e67fb42505bd20228) Thanks @tim-smart! - Add support for OpenAI `keepalive` response stream events.
 
-- Updated dependencies [[`a123e80`](https://github.com/Effect-TS/effect/commit/a123e80f111a625428a5b5622b7f55ee1073566b), [`bd5fcd3`](https://github.com/Effect-TS/effect/commit/bd5fcd3e6b603b1e505af90d6a00627c8eca6d41), [`0289d3b`](https://github.com/Effect-TS/effect/commit/0289d3b6391031d00329365bab9791b355031fe3), [`7386b71`](https://github.com/Effect-TS/effect/commit/7386b710e5be570e17f468928a6ed19d549a3e12), [`07c493a`](https://github.com/Effect-TS/effect/commit/07c493a598e096c7810cd06def8cfa43493c46b1), [`257ab1b`](https://github.com/Effect-TS/effect/commit/257ab1b539fa6e930b7ae2583a188376372200d7), [`4211a23`](https://github.com/Effect-TS/effect/commit/4211a2355bb3af3f0e756e2aae9d293379f25662)]:
-  - effect@3.10.9
-  - @effect/platform@0.69.14
-  - @effect/experimental@0.30.15
-  - @effect/ai@0.2.14
+- Updated dependencies [[`c88e5b7`](https://github.com/Effect-TS/effect-smol/commit/c88e5b723ff09da4edaef6ce14d927ca01104a32), [`947d0e4`](https://github.com/Effect-TS/effect-smol/commit/947d0e4268ba5c4020ead380aa80812c7342408f), [`7517908`](https://github.com/Effect-TS/effect-smol/commit/75179085d159b88a1ab0bce70669d76dcf0d79a4), [`a49ecd5`](https://github.com/Effect-TS/effect-smol/commit/a49ecd5a183d7e7d33f47ff95e9d2dea5a12ead5), [`6993e33`](https://github.com/Effect-TS/effect-smol/commit/6993e3329122c834c20bacea72d8678232f4f103), [`514f2a2`](https://github.com/Effect-TS/effect-smol/commit/514f2a2ae54580fcacdbe2ea2196a83a852d0748), [`3214b47`](https://github.com/Effect-TS/effect-smol/commit/3214b47676de2d33fddc5fecfc2d226e6e83cc7b), [`95ec5ed`](https://github.com/Effect-TS/effect-smol/commit/95ec5ed345de77c893049e182d37a37cf164a268)]:
+  - effect@4.0.0-beta.30
 
-## 0.2.14
+## 4.0.0-beta.29
 
 ### Patch Changes
 
-- Updated dependencies [[`6f86821`](https://github.com/Effect-TS/effect/commit/6f8682184ac7a7e8eec61c93b028af034c2c7254), [`68b5c9e`](https://github.com/Effect-TS/effect/commit/68b5c9e44f34192cef26e1cadda5e661a027df41), [`9c9928d`](https://github.com/Effect-TS/effect/commit/9c9928dfeacd9ac33dc37eb0ca3d7d8c39175ada), [`6306e66`](https://github.com/Effect-TS/effect/commit/6306e6656092b350d4ede5746da6f245ec9f7e07), [`361c7f3`](https://github.com/Effect-TS/effect/commit/361c7f39a2c10ede9324847c3d3ba192a6f9b20a)]:
-  - @effect/experimental@0.30.14
-  - effect@3.10.8
-  - @effect/ai@0.2.13
-  - @effect/platform@0.69.13
+- Updated dependencies [[`9d93adb`](https://github.com/Effect-TS/effect-smol/commit/9d93adb1c1795d1978391b30d7d2972c88052662), [`b52721c`](https://github.com/Effect-TS/effect-smol/commit/b52721cf0d11a567722b060c8536e3bdd4161f07), [`a891c7b`](https://github.com/Effect-TS/effect-smol/commit/a891c7b12f415b2287613dd4b91a09dfd38ef30d), [`ef26cdf`](https://github.com/Effect-TS/effect-smol/commit/ef26cdfb65d9955fc7e161629191930c2cc2c63f), [`82fd3ed`](https://github.com/Effect-TS/effect-smol/commit/82fd3ed922063ee5a34f96f3993c15c7515e4f67)]:
+  - effect@4.0.0-beta.29
 
-## 0.2.13
+## 4.0.0-beta.28
 
 ### Patch Changes
 
-- Updated dependencies [[`33f5b9f`](https://github.com/Effect-TS/effect/commit/33f5b9ffaebea4f1bd0e391b44c41fb6230e743a), [`50f0281`](https://github.com/Effect-TS/effect/commit/50f0281b0d2116726b8927a6217622d5f394f3e4)]:
-  - effect@3.10.7
-  - @effect/ai@0.2.12
-  - @effect/experimental@0.30.13
-  - @effect/platform@0.69.12
+- Updated dependencies [[`ff533f2`](https://github.com/Effect-TS/effect-smol/commit/ff533f203cd06302ad08032a27e01269b4a2d4c6), [`dc803ee`](https://github.com/Effect-TS/effect-smol/commit/dc803ee52ebd3e9f931118f0dfcb804542847556), [`d660b1c`](https://github.com/Effect-TS/effect-smol/commit/d660b1c99cb93d4f79715e91c7a4486801c0eefa), [`93a05e3`](https://github.com/Effect-TS/effect-smol/commit/93a05e3eaa624058b162aedd66aad70102837270), [`2a65cf6`](https://github.com/Effect-TS/effect-smol/commit/2a65cf6fd81ef63d944e6fb51f058d439bf4a834), [`a561a40`](https://github.com/Effect-TS/effect-smol/commit/a561a40cc41c548c2cf3153aca065ee92ee8aa57), [`29cd24d`](https://github.com/Effect-TS/effect-smol/commit/29cd24d1fe78480a72eeb38a90281ffddc0530bc), [`662a8e6`](https://github.com/Effect-TS/effect-smol/commit/662a8e6857dac64a7cd13bd8df4b0674654622f8), [`d2b52ba`](https://github.com/Effect-TS/effect-smol/commit/d2b52bae5b9336cf59729fbdcc4d7f09512b0cbf), [`407c3b4`](https://github.com/Effect-TS/effect-smol/commit/407c3b43a5d1414558e0e33b6f1fc0e6a6d489cc), [`42bc7ce`](https://github.com/Effect-TS/effect-smol/commit/42bc7ce5480f6f2953c39f8cb5c850d61df6f5a2), [`e741322`](https://github.com/Effect-TS/effect-smol/commit/e74132226cbfee24234311c7c1c13e6b7391384e), [`5c75fa8`](https://github.com/Effect-TS/effect-smol/commit/5c75fa8fb71163bc4c035ba1a215574dfd4badfc), [`747177b`](https://github.com/Effect-TS/effect-smol/commit/747177b0602f12d4461a843e953dfdffbeb0a429), [`326cd48`](https://github.com/Effect-TS/effect-smol/commit/326cd4828bce573fe985f35152155464bf4c5a70), [`627e922`](https://github.com/Effect-TS/effect-smol/commit/627e922b8d1e9521eae5e1caa5d667ad00b1619a), [`662287e`](https://github.com/Effect-TS/effect-smol/commit/662287e9abc76c941ccc2ee330aa07904d571341)]:
+  - effect@4.0.0-beta.28
 
-## 0.2.12
+## 4.0.0-beta.27
 
 ### Patch Changes
 
-- Updated dependencies [[`ce1c21f`](https://github.com/Effect-TS/effect/commit/ce1c21ffc11902ac9ab453a51904207859d38552), [`81ddd45`](https://github.com/Effect-TS/effect/commit/81ddd45fc074b98206fafab416d9a5a28b31e07a)]:
-  - effect@3.10.6
-  - @effect/platform@0.69.11
-  - @effect/ai@0.2.11
-  - @effect/experimental@0.30.12
+- Updated dependencies [[`903a839`](https://github.com/Effect-TS/effect-smol/commit/903a839e94239e6ec4568315af28e405bcad95f4), [`91a0168`](https://github.com/Effect-TS/effect-smol/commit/91a016836680a6669308ecf464d3584bcc4ae1b7), [`c890f9a`](https://github.com/Effect-TS/effect-smol/commit/c890f9a1b3a989ed22528bd5a43326342e05b142), [`1e985f2`](https://github.com/Effect-TS/effect-smol/commit/1e985f237d250b51b91de22dde77160c1e778ce7)]:
+  - effect@4.0.0-beta.27
 
-## 0.2.11
+## 4.0.0-beta.26
 
 ### Patch Changes
 
-- [#3854](https://github.com/Effect-TS/effect/pull/3854) [`b521577`](https://github.com/Effect-TS/effect/commit/b521577501370e34b0672cc7a69291c7e8670c6f) Thanks @tim-smart! - update OpenAI schemas
+- Updated dependencies [[`fb21462`](https://github.com/Effect-TS/effect-smol/commit/fb21462642cdd5b1bada92f3eba18ae20445be42), [`2ed26b1`](https://github.com/Effect-TS/effect-smol/commit/2ed26b139805700e3df39efaa768ff01565e5c86), [`e832a57`](https://github.com/Effect-TS/effect-smol/commit/e832a57b570fe38f010c1fd99bceac5a325a9e07), [`7f01be7`](https://github.com/Effect-TS/effect-smol/commit/7f01be7f8db363d4b2e88e6b5571e96bb815786f), [`e965143`](https://github.com/Effect-TS/effect-smol/commit/e9651431e114479e6becf8ca7b1ed99ac7e91ccc), [`b9b80f1`](https://github.com/Effect-TS/effect-smol/commit/b9b80f1f15e152ceef0a727d150b7dc230abae99), [`98252aa`](https://github.com/Effect-TS/effect-smol/commit/98252aa0c0b17fc73fbdad65d0a1104965f9fc0f), [`56fbd94`](https://github.com/Effect-TS/effect-smol/commit/56fbd94311ad19a05001ad649d9e34ab00c74541), [`3faa109`](https://github.com/Effect-TS/effect-smol/commit/3faa109b7d093fbf14ad410d3e11d663f16e28f1), [`692ecfe`](https://github.com/Effect-TS/effect-smol/commit/692ecfed99fe58056b7a5afe001f4fcd1a61c446), [`1e70b72`](https://github.com/Effect-TS/effect-smol/commit/1e70b72d0b210474d0e96a15a5cfc279eae37e0c), [`ecf0782`](https://github.com/Effect-TS/effect-smol/commit/ecf07829ef2dfc01d8943c96c4fe9c1b44b97926)]:
+  - effect@4.0.0-beta.26
 
-- Updated dependencies [[`3a6d757`](https://github.com/Effect-TS/effect/commit/3a6d757badeebe00d8ef4d67530d073c8264dcfa), [`59d813a`](https://github.com/Effect-TS/effect/commit/59d813aa4973d1115cfc70cc3667508335f49693)]:
-  - effect@3.10.5
-  - @effect/ai@0.2.10
-  - @effect/experimental@0.30.11
-  - @effect/platform@0.69.10
+## 4.0.0-beta.25
 
-## 0.2.10
-
 ### Patch Changes
 
-- Updated dependencies [[`2367708`](https://github.com/Effect-TS/effect/commit/2367708be449f9526a2047e321302d7bfb16f18e)]:
-  - @effect/platform@0.69.9
-  - effect@3.10.4
-  - @effect/ai@0.2.9
-  - @effect/experimental@0.30.10
+- Updated dependencies [[`fa17bb5`](https://github.com/Effect-TS/effect-smol/commit/fa17bb5be9f2533d01e11322b14804c7dec43714), [`f46e5b5`](https://github.com/Effect-TS/effect-smol/commit/f46e5b5ca2a918ee4d9270167e79db223077c96f), [`ce4767c`](https://github.com/Effect-TS/effect-smol/commit/ce4767cadcacc6ce8ff4c3a0d0fbc82ede655f63), [`c830a8b`](https://github.com/Effect-TS/effect-smol/commit/c830a8b6c292a6528d7f9318759d34800b00372d)]:
+  - effect@4.0.0-beta.25
 
-## 0.2.9
+## 4.0.0-beta.24
 
 ### Patch Changes
 
-- Updated dependencies [[`522f7c5`](https://github.com/Effect-TS/effect/commit/522f7c518a5acfb55ef96d6796869f002cc3eaf8)]:
-  - @effect/platform@0.69.8
-  - @effect/ai@0.2.8
-  - @effect/experimental@0.30.9
+- Updated dependencies [[`a909e1c`](https://github.com/Effect-TS/effect-smol/commit/a909e1c1ac2bc707527f5073776e3e7d239688d9), [`8814a4e`](https://github.com/Effect-TS/effect-smol/commit/8814a4ef78d67144d27689370af10099ea210399), [`3f942c5`](https://github.com/Effect-TS/effect-smol/commit/3f942c51cefa7b2ffa7c49e8c8a2c887570ba4c0), [`774ed59`](https://github.com/Effect-TS/effect-smol/commit/774ed59c52b2ab578bbb897c4f551f812231e1d2), [`f54b8d3`](https://github.com/Effect-TS/effect-smol/commit/f54b8d398fedad1815fd1f4c49814ab938cfc385)]:
+  - effect@4.0.0-beta.24
 
-## 0.2.8
+## 4.0.0-beta.23
 
 ### Patch Changes
 
-- Updated dependencies [[`690d6c5`](https://github.com/Effect-TS/effect/commit/690d6c54d2145adb0af545c447db7d4755bf3c6b), [`b9423d8`](https://github.com/Effect-TS/effect/commit/b9423d8bf8181a2389fdbce1e3c14ac6fe8d54f5), [`279fe3a`](https://github.com/Effect-TS/effect/commit/279fe3a7168fe84e520c2cc88ba189a15f03a2bc)]:
-  - @effect/platform@0.69.7
-  - effect@3.10.3
-  - @effect/ai@0.2.7
-  - @effect/experimental@0.30.8
+- Updated dependencies [[`5c73c41`](https://github.com/Effect-TS/effect-smol/commit/5c73c41b69eaeab80fcd62c9bfda490b446d1966)]:
+  - effect@4.0.0-beta.23
 
-## 0.2.7
+## 4.0.0-beta.22
 
 ### Patch Changes
 
-- Updated dependencies [[`714e119`](https://github.com/Effect-TS/effect/commit/714e11945e45e5a2554ee058e6c43f82a8e309cf), [`c1afd55`](https://github.com/Effect-TS/effect/commit/c1afd55c54e61f9c432823d21b3d016f79160a37), [`42cd72a`](https://github.com/Effect-TS/effect/commit/42cd72a44ca9593e4d81fbb50e8111625fd0fb81)]:
-  - effect@3.10.2
-  - @effect/platform@0.69.6
-  - @effect/ai@0.2.6
-  - @effect/experimental@0.30.7
+- Updated dependencies [[`0874332`](https://github.com/Effect-TS/effect-smol/commit/0874332f7c81118b06ac2eb105e0710211631479), [`c592dcd`](https://github.com/Effect-TS/effect-smol/commit/c592dcde0697e322065c8f418c0480ef910cb183), [`1dbe28d`](https://github.com/Effect-TS/effect-smol/commit/1dbe28dac8299cd3e218c9768450cfd173b5e294), [`564d730`](https://github.com/Effect-TS/effect-smol/commit/564d730b6bbf38dd8548a3b046e7a693b28699a4), [`3cfadc4`](https://github.com/Effect-TS/effect-smol/commit/3cfadc458b070c6cba6c5674b72a059f1e49118b), [`6634fd0`](https://github.com/Effect-TS/effect-smol/commit/6634fd07da067d80b8261fb2959d1a952b9e412e), [`d10dabe`](https://github.com/Effect-TS/effect-smol/commit/d10dabeb7af9a368f995829cd36ad08167cd8f95), [`f82f549`](https://github.com/Effect-TS/effect-smol/commit/f82f549a09e950e9d4987f279a800f4d953f0939), [`78a3382`](https://github.com/Effect-TS/effect-smol/commit/78a3382ddfbe034408f7480fa794733d9e82147b)]:
+  - effect@4.0.0-beta.22
 
-## 0.2.6
+## 4.0.0-beta.21
 
 ### Patch Changes
 
-- Updated dependencies [[`9604d6b`](https://github.com/Effect-TS/effect/commit/9604d6b616435103dafea8b53637a9d1450b4750), [`9604d6b`](https://github.com/Effect-TS/effect/commit/9604d6b616435103dafea8b53637a9d1450b4750)]:
-  - @effect/experimental@0.30.6
-  - effect@3.10.1
-  - @effect/ai@0.2.5
-  - @effect/platform@0.69.5
+- Updated dependencies [[`e691909`](https://github.com/Effect-TS/effect-smol/commit/e691909495ccb162ea7bfa351dd74632b99997cb), [`d5f413f`](https://github.com/Effect-TS/effect-smol/commit/d5f413f3c8fc57f2413cc5649c2003d6d4e5a6d7), [`139d152`](https://github.com/Effect-TS/effect-smol/commit/139d152941e562a073b5be12e8d66c8a4d4a8a57), [`947e3d4`](https://github.com/Effect-TS/effect-smol/commit/947e3d436ab8a017efda9b29be523efd1ca8df28), [`84b2cce`](https://github.com/Effect-TS/effect-smol/commit/84b2ccefe2aa3a7413b86738a4dc33cdb311ca55), [`7f5305e`](https://github.com/Effect-TS/effect-smol/commit/7f5305e69f5a33309e77b08a576edb25d7daaee2), [`9e6fd84`](https://github.com/Effect-TS/effect-smol/commit/9e6fd8471c93a3c643929151a3bdb62cb9c0ca0e), [`fdb8a4b`](https://github.com/Effect-TS/effect-smol/commit/fdb8a4b172721fbefe98bd5aa6fe4f0efd1da3eb), [`0f986ef`](https://github.com/Effect-TS/effect-smol/commit/0f986ef22f196fe091a7afdbd179485a7d888882), [`9355fc0`](https://github.com/Effect-TS/effect-smol/commit/9355fc0ffb5b7382146a5aed9eea83974b10d007)]:
+  - effect@4.0.0-beta.21
 
-## 0.2.5
+## 4.0.0-beta.20
 
 ### Patch Changes
 
-- Updated dependencies [[`c86b1d7`](https://github.com/Effect-TS/effect/commit/c86b1d7cd47b66df190ef9775a475467c1abdbd6)]:
-  - @effect/platform@0.69.4
-  - @effect/ai@0.2.4
-  - @effect/experimental@0.30.5
+- [#1529](https://github.com/Effect-TS/effect-smol/pull/1529) [`e542c94`](https://github.com/Effect-TS/effect-smol/commit/e542c942bee4729138b02222f4421220a90a57d8) Thanks @tim-smart! - Add dedicated AiError metadata interfaces per reason so provider packages can safely augment metadata without conflicting module declarations.
 
-## 0.2.4
-
-### Patch Changes
+- [#1528](https://github.com/Effect-TS/effect-smol/pull/1528) [`6f4ebd1`](https://github.com/Effect-TS/effect-smol/commit/6f4ebd193c2595983394127dd808601b75430d34) Thanks @tim-smart! - Add `Model.ModelName` and provide it from AI model constructors.
 
-- Updated dependencies [[`d5fba63`](https://github.com/Effect-TS/effect/commit/d5fba6391e1005e374aa0238f13edfbd65848313), [`1eb2c30`](https://github.com/Effect-TS/effect/commit/1eb2c30ba064398db5790e376dedcfad55b7b005), [`02d413e`](https://github.com/Effect-TS/effect/commit/02d413e7b6bc1c64885969c37cc3e4e690c94d7d)]:
-  - @effect/platform@0.69.3
-  - @effect/ai@0.2.3
-  - @effect/experimental@0.30.4
+- Updated dependencies [[`842a624`](https://github.com/Effect-TS/effect-smol/commit/842a624f79d5e1407460b0ef3ab27d14d48ccf74), [`4785eef`](https://github.com/Effect-TS/effect-smol/commit/4785eef5d7cf1edb96ef2509aed2ba4d1edf3862), [`8fac95b`](https://github.com/Effect-TS/effect-smol/commit/8fac95bd9e0338b7a82da8da579c1ac22afa045c), [`12ee8e2`](https://github.com/Effect-TS/effect-smol/commit/12ee8e27df7eb393d83a5e403390d0cfc82ca732), [`e542c94`](https://github.com/Effect-TS/effect-smol/commit/e542c942bee4729138b02222f4421220a90a57d8), [`8fac95b`](https://github.com/Effect-TS/effect-smol/commit/8fac95bd9e0338b7a82da8da579c1ac22afa045c), [`6f4ebd1`](https://github.com/Effect-TS/effect-smol/commit/6f4ebd193c2595983394127dd808601b75430d34), [`989d1cc`](https://github.com/Effect-TS/effect-smol/commit/989d1cca936fce0cc459057825ba40e3f5ef3827)]:
+  - effect@4.0.0-beta.20
 
-## 0.2.3
+## 4.0.0-beta.19
 
 ### Patch Changes
 
-- Updated dependencies [[`e7afc47`](https://github.com/Effect-TS/effect/commit/e7afc47ce83e381c3f4aed2b2974e3b3d86a2340)]:
-  - @effect/platform@0.69.2
-  - @effect/ai@0.2.2
-  - @effect/experimental@0.30.3
-
-## 0.2.2
-
-### Patch Changes
+- [#1522](https://github.com/Effect-TS/effect-smol/pull/1522) [`19984c2`](https://github.com/Effect-TS/effect-smol/commit/19984c2c1b23ef06d69f9bbd4c4ad992a03c6860) Thanks @IMax153! - Fix missing `yield*` in `OpenAiLanguageModel.prepareResponseFormat`
 
 - Updated dependencies []:
-  - @effect/experimental@0.30.2
+  - effect@4.0.0-beta.19
 
-## 0.2.1
-
-### Patch Changes
-
-- Updated dependencies [[`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8), [`7564f56`](https://github.com/Effect-TS/effect/commit/7564f56bb2844cf39d2b0d2d9e93cf9b2205e9a8)]:
-  - @effect/platform@0.69.1
-  - @effect/ai@0.2.1
-  - @effect/experimental@0.30.1
-
-## 0.2.0
+## 4.0.0-beta.18
 
 ### Patch Changes
 
-- Updated dependencies [[`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf), [`6d9de6b`](https://github.com/Effect-TS/effect/commit/6d9de6b871c5c08e6509a4e830c3d74758faa198), [`4a01828`](https://github.com/Effect-TS/effect/commit/4a01828b66d6213e9bbe18979c893b13f7bb29bf), [`c79c4c1`](https://github.com/Effect-TS/effect/commit/c79c4c178390fe61ff6dda88c9e058862349343a), [`38d30f0`](https://github.com/Effect-TS/effect/commit/38d30f08b8da62f9c3e308b9250738cb8d17bdb5), [`5821ce3`](https://github.com/Effect-TS/effect/commit/5821ce3455b47d25e0a40cae6ce22af9db5fa556)]:
-  - effect@3.10.0
-  - @effect/platform@0.69.0
-  - @effect/experimental@0.30.0
-  - @effect/ai@0.2.0
+- [#1520](https://github.com/Effect-TS/effect-smol/pull/1520) [`725260b`](https://github.com/Effect-TS/effect-smol/commit/725260b53f5142d6af7a93a2f9f464f974eda92d) Thanks @IMax153! - Ensure that OpenAI JSON schemas for tool calls and structured outputs are properly transformed
 
-## 0.1.4
+- Updated dependencies [[`01e31fd`](https://github.com/Effect-TS/effect-smol/commit/01e31fdf8e5206849d23cbafd23a346f2f177ab8), [`0890aab`](https://github.com/Effect-TS/effect-smol/commit/0890aab15ed9c5ba52c383a72fdc6a444d7504d5), [`725260b`](https://github.com/Effect-TS/effect-smol/commit/725260b53f5142d6af7a93a2f9f464f974eda92d)]:
+  - effect@4.0.0-beta.18
 
-### Patch Changes
-
-- Updated dependencies [[`382556f`](https://github.com/Effect-TS/effect/commit/382556f8930780c0634de681077706113a8c8239), [`97cb014`](https://github.com/Effect-TS/effect/commit/97cb0145114b2cd2f378e98f6c4ff5bf2c1865f5)]:
-  - @effect/schema@0.75.5
-  - @effect/ai@0.1.4
-  - @effect/experimental@0.29.6
-  - @effect/platform@0.68.6
-
-## 0.1.3
+## 4.0.0-beta.17
 
 ### Patch Changes
 
-- Updated dependencies [[`2036402`](https://github.com/Effect-TS/effect/commit/20364020b8b75a684791aa93d90626758023e9e9)]:
-  - @effect/platform@0.68.5
-  - @effect/ai@0.1.3
-  - @effect/experimental@0.29.5
+- Updated dependencies [[`8f59c32`](https://github.com/Effect-TS/effect-smol/commit/8f59c32922597a48392744f7203e284866747781)]:
+  - effect@4.0.0-beta.17
 
-## 0.1.2
+## 4.0.0-beta.16
 
 ### Patch Changes
 
-- Updated dependencies [[`1b1ef29`](https://github.com/Effect-TS/effect/commit/1b1ef29ae302322f69dc938f9337aa97b4c63266)]:
-  - @effect/platform@0.68.4
-  - @effect/ai@0.1.2
-  - @effect/experimental@0.29.4
+- Updated dependencies [[`bf9096c`](https://github.com/Effect-TS/effect-smol/commit/bf9096c52a7d8791d93d232739e523eb84f6625a), [`29f81ca`](https://github.com/Effect-TS/effect-smol/commit/29f81ca07c67dba265804b140a7487fb15a5fc6b), [`68eb28c`](https://github.com/Effect-TS/effect-smol/commit/68eb28c2b0fc67a9f6204ade9bd16c5b37803bfb)]:
+  - effect@4.0.0-beta.16
 
-## 0.1.1
+## 4.0.0-beta.15
 
 ### Patch Changes
 
-- Updated dependencies [[`61a99b2`](https://github.com/Effect-TS/effect/commit/61a99b2bf9d757870ef0c2ec9d4c877cdd364a3d), [`8c33087`](https://github.com/Effect-TS/effect/commit/8c330879425e80bed2f65e407cd59e991f0d7bec)]:
-  - effect@3.9.2
-  - @effect/platform@0.68.3
-  - @effect/ai@0.1.1
-  - @effect/experimental@0.29.3
-  - @effect/schema@0.75.4
+- [#1502](https://github.com/Effect-TS/effect-smol/pull/1502) [`285b7e6`](https://github.com/Effect-TS/effect-smol/commit/285b7e667167566d5788367d5155b19c79f1bf22) Thanks @tim-smart! - allow undefined for ai config
 
-## 0.1.0
+- Updated dependencies [[`24ae609`](https://github.com/Effect-TS/effect-smol/commit/24ae60995d2fd7d621be356cdfdfd328c79639ba), [`0e3c059`](https://github.com/Effect-TS/effect-smol/commit/0e3c059987caa55ebd0c134f7c7b147c639c328e), [`e843b0a`](https://github.com/Effect-TS/effect-smol/commit/e843b0a7d7e7b600a0b3bd477f24e2e4cd26bc8b), [`f4389a2`](https://github.com/Effect-TS/effect-smol/commit/f4389a2cca3c5bbf00d69779f52ce41255f15a28), [`5b73de0`](https://github.com/Effect-TS/effect-smol/commit/5b73de095b3402d0c5c74092ace6ce18ebfad566), [`595d2d6`](https://github.com/Effect-TS/effect-smol/commit/595d2d6e7d50419f3532bd39266191532ace38f2)]:
+  - effect@4.0.0-beta.15
 
-### Minor Changes
-
-- [#3631](https://github.com/Effect-TS/effect/pull/3631) [`bd160a4`](https://github.com/Effect-TS/effect/commit/bd160a4f714b0f1cb5867e458fd70f9131b060d6) Thanks @tim-smart! - add @effect/ai packages
-
-  Experimental modules for working with LLMs, currently only from OpenAI.
+## 4.0.0-beta.14
 
 ### Patch Changes
 
-- Updated dependencies [[`bd160a4`](https://github.com/Effect-TS/effect/commit/bd160a4f714b0f1cb5867e458fd70f9131b060d6), [`bd160a4`](https://github.com/Effect-TS/effect/commit/bd160a4f714b0f1cb5867e458fd70f9131b060d6), [`360ec14`](https://github.com/Effect-TS/effect/commit/360ec14dd4102c526aef7433a8881ad4d9beab75)]:
-  - @effect/experimental@0.29.2
-  - @effect/ai@0.1.0
-  - @effect/schema@0.75.3
-  - @effect/platform@0.68.2
+- Updated dependencies [[`c414700`](https://github.com/Effect-TS/effect-smol/commit/c414700ef1932e4b67d0102856de417336912350), [`a30c969`](https://github.com/Effect-TS/effect-smol/commit/a30c9699c0d736cf3952041e45d508b7d58907a9)]:
+  - effect@4.0.0-beta.14
+
+## 4.0.0-beta.13
+
+### Patch Changes
+
+- Updated dependencies [[`368f4c3`](https://github.com/Effect-TS/effect-smol/commit/368f4c363dd117e6f5a19ad77b161176cfd29fdd), [`db8a579`](https://github.com/Effect-TS/effect-smol/commit/db8a579e93e93ff73b1e60712732e03b597b916b), [`668b703`](https://github.com/Effect-TS/effect-smol/commit/668b70337e9ddbb0d1ae2282a95c282ce404e562), [`d40e76b`](https://github.com/Effect-TS/effect-smol/commit/d40e76b973543979e60e04a6baca04a8c65bdfc2), [`6e18cf8`](https://github.com/Effect-TS/effect-smol/commit/6e18cf883e9905ca718a6697b6a2a4bbd42739aa), [`86062e8`](https://github.com/Effect-TS/effect-smol/commit/86062e8a0c61bca5412fc40d2cf151d676901f08), [`c27ce75`](https://github.com/Effect-TS/effect-smol/commit/c27ce75d34c74dcfc6dba1bf77f1ce88f410a0de), [`e2d4fbf`](https://github.com/Effect-TS/effect-smol/commit/e2d4fbfeeda6a5d2a4c5aeb0501d8240c248b9eb), [`114ab42`](https://github.com/Effect-TS/effect-smol/commit/114ab42ad0edc590d29169675a493e0e915aa58f), [`484caec`](https://github.com/Effect-TS/effect-smol/commit/484caec47cccac8b86db2910742e406dfc7173ab)]:
+  - effect@4.0.0-beta.13
+
+## 4.0.0-beta.12
+
+### Patch Changes
+
+- Updated dependencies [[`70a74e8`](https://github.com/Effect-TS/effect-smol/commit/70a74e88a8767c9d4acdb9e5f25aec9a33588d07), [`b5b6e10`](https://github.com/Effect-TS/effect-smol/commit/b5b6e10621d54bf8c9857fec0d647ced78ecd857), [`f5ce5a9`](https://github.com/Effect-TS/effect-smol/commit/f5ce5a915359c6ebf254079e1da23cab6cde34fb), [`a29eb70`](https://github.com/Effect-TS/effect-smol/commit/a29eb702ffe3fc58bd28c4d7857298cd65d73668), [`c7b36e5`](https://github.com/Effect-TS/effect-smol/commit/c7b36e541a23e9a00f64e25b23851e51a37dfce5), [`9381d6d`](https://github.com/Effect-TS/effect-smol/commit/9381d6d4d9d819a81a46e56d0364c76e92a4fbca), [`88439f1`](https://github.com/Effect-TS/effect-smol/commit/88439f13ca13549f3e4822c48c4f019c14fc2bcc), [`e35307d`](https://github.com/Effect-TS/effect-smol/commit/e35307dbeb8eb26a9923f958b894a8eaaf259bf2), [`c7df4bc`](https://github.com/Effect-TS/effect-smol/commit/c7df4bce34009474c63d62a807abfdafb76971eb), [`accaf3b`](https://github.com/Effect-TS/effect-smol/commit/accaf3be7ac8da36e2334c509c23b8c9e88ea160), [`3e1c270`](https://github.com/Effect-TS/effect-smol/commit/3e1c2707bbdf67720af1509642b8ced195790882), [`6cd81f7`](https://github.com/Effect-TS/effect-smol/commit/6cd81f73baad86f5bbfa455a55d75cde71e9611a), [`f222da3`](https://github.com/Effect-TS/effect-smol/commit/f222da3cdb44554f3324c2c52d0d005ee575053e), [`61f901d`](https://github.com/Effect-TS/effect-smol/commit/61f901d830005b66e22d1de889fda132aeea97cd)]:
+  - effect@4.0.0-beta.12
+
+## 4.0.0-beta.11
+
+### Patch Changes
+
+- Updated dependencies [[`88659ed`](https://github.com/Effect-TS/effect-smol/commit/88659edb26e3623d557dccfe914c2c949672da16), [`f2915e8`](https://github.com/Effect-TS/effect-smol/commit/f2915e8e2efe80d50c281e53f297b9701d6dc199), [`eb71ace`](https://github.com/Effect-TS/effect-smol/commit/eb71acebbe0f228e4920278013beee3b67d62310), [`2a16999`](https://github.com/Effect-TS/effect-smol/commit/2a169996c7513d377ac47adbfd68e1490457135c), [`d42dd52`](https://github.com/Effect-TS/effect-smol/commit/d42dd52f11203f8e749fb5d3ecf7153e4a5a6814), [`339adaf`](https://github.com/Effect-TS/effect-smol/commit/339adaf850a62a892adebcb208c2d9dddf3b97b3), [`de19645`](https://github.com/Effect-TS/effect-smol/commit/de1964526d01102dd1cb99c8cfdd3e8df1f49ef1), [`9b1dc3b`](https://github.com/Effect-TS/effect-smol/commit/9b1dc3bcf2a1b68d0a67e3465db5ad01a1a56997), [`e4cb2f5`](https://github.com/Effect-TS/effect-smol/commit/e4cb2f55b30f4771ec1bf613ced36d6d96464dd5), [`8bced95`](https://github.com/Effect-TS/effect-smol/commit/8bced954ecb35d4489197a57b0efe927e7d75f49), [`9431420`](https://github.com/Effect-TS/effect-smol/commit/94314207c8019918200fbcb97aec992219f801f0), [`948dca2`](https://github.com/Effect-TS/effect-smol/commit/948dca22e4f672ba7a6db57f9899272bec7c08b8), [`d18e327`](https://github.com/Effect-TS/effect-smol/commit/d18e32765a2665e31ffb31e746bf983fcfac34c5), [`ab512f7`](https://github.com/Effect-TS/effect-smol/commit/ab512f7be1c0e6b359da921e22cd4944e4c57d3e)]:
+  - effect@4.0.0-beta.11
+
+## 4.0.0-beta.10
+
+### Patch Changes
+
+- Updated dependencies [[`371acab`](https://github.com/Effect-TS/effect-smol/commit/371acabb58d56f3a7a5e3e33d3d5fdc9f5573c74), [`856d774`](https://github.com/Effect-TS/effect-smol/commit/856d7741f1e296dd5048c6ff2b44b95d023e6ae4), [`b9e9202`](https://github.com/Effect-TS/effect-smol/commit/b9e92023c38caa322975d77cfe83e2d34ac9305a), [`1d1a974`](https://github.com/Effect-TS/effect-smol/commit/1d1a974bd280c81bff5d4505491cda03ba7a3f36), [`6bfe2a6`](https://github.com/Effect-TS/effect-smol/commit/6bfe2a659bc6335db75709931f405da45301cba2), [`b12c811`](https://github.com/Effect-TS/effect-smol/commit/b12c81157be287b1649c210616a244b50ec094d2), [`d17d98a`](https://github.com/Effect-TS/effect-smol/commit/d17d98ad78e2b44d95ef434adab79ac3c35e75ab), [`68c3c7c`](https://github.com/Effect-TS/effect-smol/commit/68c3c7cb1e06ed94fa5c4c123a234b4ccbfdecd8)]:
+  - effect@4.0.0-beta.10
+
+## 4.0.0-beta.9
+
+### Patch Changes
+
+- Updated dependencies [[`3386557`](https://github.com/Effect-TS/effect-smol/commit/338655731564a7be9f8859dedbf4d5bcac6eb350), [`b6666e3`](https://github.com/Effect-TS/effect-smol/commit/b6666e3cf6bd44ba1a8704e65c256c30359cb422)]:
+  - effect@4.0.0-beta.9
+
+## 4.0.0-beta.8
+
+### Patch Changes
+
+- [#1354](https://github.com/Effect-TS/effect-smol/pull/1354) [`b94962c`](https://github.com/Effect-TS/effect-smol/commit/b94962c249d46cf96cdf2e41188dc9feda41536a) Thanks @IMax153! - Fix the generated schemas for ai providers
+
+- Updated dependencies [[`246e672`](https://github.com/Effect-TS/effect-smol/commit/246e672dbbd7848d60e0c78fd66671b2f10b3752), [`807dec0`](https://github.com/Effect-TS/effect-smol/commit/807dec03801b4c58a6d00c237b6d98d6386911df)]:
+  - effect@4.0.0-beta.8
+
+## 4.0.0-beta.7
+
+### Patch Changes
+
+- Updated dependencies [[`a2bda6d`](https://github.com/Effect-TS/effect-smol/commit/a2bda6d4ef6de9d9b0c53ae2df5434f778d6161a), [`1f95a2b`](https://github.com/Effect-TS/effect-smol/commit/1f95a2b5aa9524bb38f4437f4691a664bf463ca1), [`a8d5e79`](https://github.com/Effect-TS/effect-smol/commit/a8d5e792fec201a83af0eb92fc79928d055125fd), [`a5386ba`](https://github.com/Effect-TS/effect-smol/commit/a5386ba67005dff697d45a45398f398773f58dcf), [`a5386ba`](https://github.com/Effect-TS/effect-smol/commit/a5386ba67005dff697d45a45398f398773f58dcf), [`06d8a03`](https://github.com/Effect-TS/effect-smol/commit/06d8a0391631e6130e3ab25227e59817852e227f), [`8caac76`](https://github.com/Effect-TS/effect-smol/commit/8caac76a35821edfe03c75dab5eb056e8fc05430), [`8caac76`](https://github.com/Effect-TS/effect-smol/commit/8caac76a35821edfe03c75dab5eb056e8fc05430), [`f9e883e`](https://github.com/Effect-TS/effect-smol/commit/f9e883e266fbda870336ee62f46b7ac85ba3de6e), [`8caac76`](https://github.com/Effect-TS/effect-smol/commit/8caac76a35821edfe03c75dab5eb056e8fc05430)]:
+  - effect@4.0.0-beta.7
+
+## 4.0.0-beta.6
+
+### Patch Changes
+
+- Updated dependencies [[`3247da2`](https://github.com/Effect-TS/effect-smol/commit/3247da28331f345f68be5dbd2974a7e03d300fe1), [`f205705`](https://github.com/Effect-TS/effect-smol/commit/f2057050dbd034b8c186be2d40c3d03ee63a5a3b), [`f35022c`](https://github.com/Effect-TS/effect-smol/commit/f35022c212e4111527e1bb43f360a67b2b49fa85), [`8622721`](https://github.com/Effect-TS/effect-smol/commit/86227217b02d43680a3c6f3c21731b1d852c91f5), [`fc660ab`](https://github.com/Effect-TS/effect-smol/commit/fc660ab8b5ebae38b8d6b96cbf2f9b880cc09253), [`f37dc33`](https://github.com/Effect-TS/effect-smol/commit/f37dc335f64622fa9ce8d6d1d5dd8fc3f260257b), [`3662f32`](https://github.com/Effect-TS/effect-smol/commit/3662f328fcfa3b2fa01ffa79da40e12e93fcede8), [`a7d436f`](https://github.com/Effect-TS/effect-smol/commit/a7d436f438dcd7f49b9485e4e95a4511f31fad7d), [`6856a41`](https://github.com/Effect-TS/effect-smol/commit/6856a415d7eddd9d73d60919e976f1d071421be4), [`8c417d0`](https://github.com/Effect-TS/effect-smol/commit/8c417d03475e5e12d00dca0c4781d0af7e66b86c), [`5419570`](https://github.com/Effect-TS/effect-smol/commit/5419570ba47ce882a3a10882707b46f66e464906), [`449c5ed`](https://github.com/Effect-TS/effect-smol/commit/449c5ed5318e8a874e730420bcf52918fa2ec80f), [`4b5ec12`](https://github.com/Effect-TS/effect-smol/commit/4b5ec12f87f95f2a3cd8fe4d5b26c6eb0529381a), [`df87937`](https://github.com/Effect-TS/effect-smol/commit/df879375fc3b169c43f9c434b3775e12b80dffe4), [`5dbfca8`](https://github.com/Effect-TS/effect-smol/commit/5dbfca8d1dbb6d18d1605d4f8562e99c86e2ff11), [`e629497`](https://github.com/Effect-TS/effect-smol/commit/e6294973d55597ab6b6deca6babbe1e946b2c91d), [`981c991`](https://github.com/Effect-TS/effect-smol/commit/981c991cd78db34def815d5754379d737157f005), [`1ca2ed6`](https://github.com/Effect-TS/effect-smol/commit/1ca2ed67301a5dc40ae0ed94346b99f26fd22bbe), [`45722bd`](https://github.com/Effect-TS/effect-smol/commit/45722bde974458311f11ad237711363a10ec6894), [`eb2a85e`](https://github.com/Effect-TS/effect-smol/commit/eb2a85ed4dc162b2535d304799333a5a20477fd0)]:
+  - effect@4.0.0-beta.6
+
+## 4.0.0-beta.5
+
+### Patch Changes
+
+- Updated dependencies [[`f6e133e`](https://github.com/Effect-TS/effect-smol/commit/f6e133e9a16b32317bd09ff08c12b97a0ae44600), [`e3893cc`](https://github.com/Effect-TS/effect-smol/commit/e3893ccf2632338c7d8e745f639dcd825a9d42f8), [`a88e206`](https://github.com/Effect-TS/effect-smol/commit/a88e206e44dc66ca5a2b45bedc797877c5dbb083), [`e3893cc`](https://github.com/Effect-TS/effect-smol/commit/e3893ccf2632338c7d8e745f639dcd825a9d42f8)]:
+  - effect@4.0.0-beta.5
+
+## 4.0.0-beta.4
+
+### Patch Changes
+
+- Updated dependencies [[`c5a18ef`](https://github.com/Effect-TS/effect-smol/commit/c5a18ef44171e3880bf983faee74529908974b32), [`bc6b885`](https://github.com/Effect-TS/effect-smol/commit/bc6b885b94d887a200657c0775dfa874dc15bc0c)]:
+  - effect@4.0.0-beta.4
+
+## 4.0.0-beta.3
+
+### Patch Changes
+
+- Updated dependencies [[`3a0cf36`](https://github.com/Effect-TS/effect-smol/commit/3a0cf36eff106ba48d74e133c1598cd40613e530), [`c4da328`](https://github.com/Effect-TS/effect-smol/commit/c4da328d32fad1d61e0e538f5d371edf61521d7e)]:
+  - effect@4.0.0-beta.3
+
+## 4.0.0-beta.2
+
+### Patch Changes
+
+- Updated dependencies [[`a22ce73`](https://github.com/Effect-TS/effect-smol/commit/a22ce73b2bd9305b7ba665694d2255c0e6d5a8d0), [`ebdabf7`](https://github.com/Effect-TS/effect-smol/commit/ebdabf79ff4e62c8384aa8cf9a8d2787d536ee78), [`8f663bb`](https://github.com/Effect-TS/effect-smol/commit/8f663bb121021bf12bd264e8ae385187cb7a5dae)]:
+  - effect@4.0.0-beta.2
+
+## 4.0.0-beta.1
+
+### Patch Changes
+
+- Updated dependencies [[`0fecf70`](https://github.com/Effect-TS/effect-smol/commit/0fecf70048057623eed7c584a06671773a2b1743), [`709569e`](https://github.com/Effect-TS/effect-smol/commit/709569ed76bead9ebb0670599e4d890a07ca5a43)]:
+  - effect@4.0.0-beta.1
+
+## 4.0.0-beta.0
+
+### Major Changes
+
+- [#1183](https://github.com/Effect-TS/effect-smol/pull/1183) [`be642ab`](https://github.com/Effect-TS/effect-smol/commit/be642ab1b3b4cd49e53c9732d7aba1b367fddd66) Thanks @tim-smart! - v4 beta
+
+### Patch Changes
+
+- Updated dependencies [[`be642ab`](https://github.com/Effect-TS/effect-smol/commit/be642ab1b3b4cd49e53c9732d7aba1b367fddd66)]:
+  - effect@4.0.0-beta.0

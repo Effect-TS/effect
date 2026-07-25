@@ -1,53 +1,100 @@
 /**
- * @since 1.0.0
+ * Bun HTTP and WebSocket layers for Effect Cluster runners.
+ *
+ * `layerHttpServer` provides the Bun HTTP server used by cluster runners. The
+ * main `layer` builds a sharding layer for HTTP or WebSocket transport,
+ * choosing serialization, runner health checks, runner storage, message
+ * storage, and optional client-only mode from the supplied options.
+ *
+ * @since 4.0.0
  */
-import * as HttpRunner from "@effect/cluster/HttpRunner"
-import * as MessageStorage from "@effect/cluster/MessageStorage"
-import * as RunnerHealth from "@effect/cluster/RunnerHealth"
-import * as Runners from "@effect/cluster/Runners"
-import * as RunnerStorage from "@effect/cluster/RunnerStorage"
-import type { Sharding } from "@effect/cluster/Sharding"
-import * as ShardingConfig from "@effect/cluster/ShardingConfig"
-import * as SqlMessageStorage from "@effect/cluster/SqlMessageStorage"
-import * as SqlRunnerStorage from "@effect/cluster/SqlRunnerStorage"
-import type * as Etag from "@effect/platform/Etag"
-import * as FetchHttpClient from "@effect/platform/FetchHttpClient"
-import type { HttpPlatform } from "@effect/platform/HttpPlatform"
-import type { HttpServer } from "@effect/platform/HttpServer"
-import type { ServeError } from "@effect/platform/HttpServerError"
-import * as RpcSerialization from "@effect/rpc/RpcSerialization"
-import type { SqlClient } from "@effect/sql/SqlClient"
-import type { ConfigError } from "effect/ConfigError"
+import type * as Config from "effect/Config"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
-import type { BunContext } from "./BunContext.js"
-import * as BunHttpServer from "./BunHttpServer.js"
-import * as BunSocket from "./BunSocket.js"
+import * as HttpRunner from "effect/unstable/cluster/HttpRunner"
+import * as MessageStorage from "effect/unstable/cluster/MessageStorage"
+import * as RunnerHealth from "effect/unstable/cluster/RunnerHealth"
+import * as Runners from "effect/unstable/cluster/Runners"
+import * as RunnerStorage from "effect/unstable/cluster/RunnerStorage"
+import type { Sharding } from "effect/unstable/cluster/Sharding"
+import * as ShardingConfig from "effect/unstable/cluster/ShardingConfig"
+import * as SqlMessageStorage from "effect/unstable/cluster/SqlMessageStorage"
+import * as SqlRunnerStorage from "effect/unstable/cluster/SqlRunnerStorage"
+import type * as Etag from "effect/unstable/http/Etag"
+import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
+import type { HttpPlatform } from "effect/unstable/http/HttpPlatform"
+import type { HttpServer } from "effect/unstable/http/HttpServer"
+import type { ServeError } from "effect/unstable/http/HttpServerError"
+import * as RpcSerialization from "effect/unstable/rpc/RpcSerialization"
+import type { SqlClient } from "effect/unstable/sql/SqlClient"
+import { layerK8sHttpClient } from "./BunClusterSocket.ts"
+import * as BunFileSystem from "./BunFileSystem.ts"
+import * as BunHttpServer from "./BunHttpServer.ts"
+import type { BunServices } from "./BunServices.ts"
+import * as BunSocket from "./BunSocket.ts"
+
+export {
+  /**
+   * Layer that provides a Kubernetes HTTP client for runner health checks.
+   *
+   * @category re-exports
+   * @since 4.0.0
+   */
+  layerK8sHttpClient
+}
 
 /**
- * @since 1.0.0
- * @category Layers
+ * Layer that provides a Bun HTTP server for cluster runners.
+ *
+ * @category layers
+ * @since 4.0.0
  */
 export const layerHttpServer: Layer.Layer<
   | HttpPlatform
   | Etag.Generator
-  | BunContext
+  | BunServices
   | HttpServer,
   ServeError,
   ShardingConfig.ShardingConfig
 > = Effect.gen(function*() {
   const config = yield* ShardingConfig.ShardingConfig
   const listenAddress = Option.orElse(config.runnerListenAddress, () => config.runnerAddress)
-  if (listenAddress._tag === "None") {
+  if (Option.isNone(listenAddress)) {
     return yield* Effect.die("BunClusterHttp.layerHttpServer: ShardingConfig.runnerAddress is None")
   }
   return BunHttpServer.layer(listenAddress.value)
-}).pipe(Layer.unwrapEffect)
+}).pipe(Layer.unwrap)
 
 /**
- * @since 1.0.0
- * @category Layers
+ * Creates Bun cluster layers for HTTP or WebSocket transport, configuring serialization, storage, runner health, and optional client-only mode.
+ *
+ * **When to use**
+ *
+ * Use to install the complete Bun HTTP or WebSocket cluster layer, including
+ * client-only cluster access when a process should connect without serving
+ * runner RPCs.
+ *
+ * **Details**
+ *
+ * `serialization` defaults to MessagePack, `runnerHealth` defaults to ping
+ * checks, SQL-backed storage is used by default, and `shardingConfig` is
+ * overlaid on environment-loaded sharding configuration. `local` storage uses
+ * no-op message storage plus in-memory runner storage, while `byo` leaves both
+ * message and runner storage for the caller to provide.
+ *
+ * **Gotchas**
+ *
+ * `clientOnly` does not start the HTTP server or receive shard assignments.
+ * Non-client-only mode listens with `runnerListenAddress` when present, falling
+ * back to `runnerAddress`. HTTP and WebSocket runner RPCs use the default
+ * `HttpRunner` route.
+ *
+ * @see {@link layerHttpServer} for the server layer used by non-client-only transports
+ * @see {@link layerK8sHttpClient} for Kubernetes runner health support
+ *
+ * @category layers
+ * @since 4.0.0
  */
 export const layer = <
   const ClientOnly extends boolean = false,
@@ -57,17 +104,22 @@ export const layer = <
   readonly serialization?: "msgpack" | "ndjson" | undefined
   readonly clientOnly?: ClientOnly | undefined
   readonly storage?: Storage | undefined
-  readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined
+  readonly runnerHealth?: "ping" | "k8s" | undefined
+  readonly runnerHealthK8s?: {
+    readonly namespace?: string | undefined
+    readonly labelSelector?: string | undefined
+  } | undefined
+  readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
 }): ClientOnly extends true ? Layer.Layer<
     Sharding | Runners.Runners | ("byo" extends Storage ? never : MessageStorage.MessageStorage),
-    ConfigError,
+    Config.ConfigError,
     "local" extends Storage ? never
       : "byo" extends Storage ? (MessageStorage.MessageStorage | RunnerStorage.RunnerStorage)
       : SqlClient
   > :
   Layer.Layer<
     Sharding | Runners.Runners | MessageStorage.MessageStorage,
-    ServeError | ConfigError,
+    ServeError | Config.ConfigError,
     "local" extends Storage ? never
       : "byo" extends Storage ? (MessageStorage.MessageStorage | RunnerStorage.RunnerStorage)
       : SqlClient
@@ -85,11 +137,10 @@ export const layer = <
 
   const runnerHealth: Layer.Layer<any, any, any> = options?.clientOnly
     ? Layer.empty as any
-    // TODO: when bun supports adding custom CA certificates
-    // : options?.runnerHealth === "k8s"
-    // ? RunnerHealth.layerK8s().pipe(
-    //   Layer.provide([NodeFileSystem.layer, layerHttpClientK8s])
-    // )
+    : options?.runnerHealth === "k8s"
+    ? RunnerHealth.layerK8s(options.runnerHealthK8s).pipe(
+      Layer.provide([BunFileSystem.layer, layerK8sHttpClient])
+    )
     : RunnerHealth.layerPing.pipe(
       Layer.provide(Runners.layerRpc),
       Layer.provide(

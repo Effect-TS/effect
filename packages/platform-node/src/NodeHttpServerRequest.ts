@@ -1,20 +1,33 @@
 /**
- * @since 1.0.0
+ * Accessors for the Node.js objects behind an Effect HTTP server request.
+ *
+ * `toIncomingMessage` returns the underlying Node `http.IncomingMessage`.
+ * `toServerResponse` returns the underlying Node `http.ServerResponse`,
+ * evaluating the stored response thunk when the response was created lazily.
+ *
+ * @since 4.0.0
  */
-import type * as ServerRequest from "@effect/platform/HttpServerRequest"
+import type { HttpServerRequest } from "effect/unstable/http/HttpServerRequest"
 import type * as Http from "node:http"
-import * as internal from "./internal/httpServer.js"
 
 /**
- * @category conversions
- * @since 1.0.0
+ * Returns the underlying Node `IncomingMessage` for a platform Node
+ * `HttpServerRequest`.
+ *
+ * @category accessors
+ * @since 4.0.0
  */
-export const toIncomingMessage: (self: ServerRequest.HttpServerRequest) => Http.IncomingMessage =
-  internal.toIncomingMessage
+export const toIncomingMessage = (self: HttpServerRequest): Http.IncomingMessage => self.source as any
 
 /**
- * @category conversions
- * @since 1.0.0
+ * Returns the underlying Node `ServerResponse` for a platform Node
+ * `HttpServerRequest`, evaluating the stored response thunk when the response
+ * was created lazily.
+ *
+ * @category accessors
+ * @since 4.0.0
  */
-export const toServerResponse: (self: ServerRequest.HttpServerRequest) => Http.ServerResponse =
-  internal.toServerResponse
+export const toServerResponse = (self: HttpServerRequest): Http.ServerResponse => {
+  const res = (self as any).response
+  return typeof res === "function" ? res() : res
+}

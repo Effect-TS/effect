@@ -1,4 +1,3 @@
-import { describe, it } from "@effect/vitest"
 import {
   assertFalse,
   assertNone,
@@ -8,11 +7,35 @@ import {
   strictEqual,
   throws
 } from "@effect/vitest/utils"
-import { Chunk, Either, Equal, Hash, Number as N, Option, pipe, String as S } from "effect"
+import { Chunk, Equal, Equivalence, Hash, Number, Number as Num, Option, pipe, Result, String as Str } from "effect"
+import { describe, it } from "vitest"
 
 const gt2 = (n: number): boolean => n > 2
 
 describe("Option", () => {
+  it("makeReducer", () => {
+    const R = Option.makeReducer(Number.ReducerSum)
+
+    deepStrictEqual(R.combine(Option.some(1), Option.some(2)), Option.some(3))
+    deepStrictEqual(R.combine(Option.some(1), Option.none()), Option.some(1))
+    deepStrictEqual(R.combine(Option.none(), Option.some(2)), Option.some(2))
+    deepStrictEqual(R.combine(Option.none(), Option.none()), Option.none())
+  })
+
+  it("makeReducerFailFast", () => {
+    const R = Option.makeReducerFailFast(Number.ReducerSum)
+
+    deepStrictEqual(R.combine(Option.some(1), Option.some(2)), Option.some(3))
+    deepStrictEqual(R.combine(Option.some(1), Option.none()), Option.none())
+    deepStrictEqual(R.combine(Option.none(), Option.some(2)), Option.none())
+    deepStrictEqual(R.combine(Option.none(), Option.none()), Option.none())
+
+    deepStrictEqual(R.combine(Option.none(), R.initialValue), Option.none())
+    deepStrictEqual(R.combine(R.initialValue, Option.none()), Option.none())
+    deepStrictEqual(R.combine(Option.some(1), R.initialValue), Option.some(1))
+    deepStrictEqual(R.combine(R.initialValue, Option.some(1)), Option.some(1))
+  })
+
   it("gen", () => {
     const a = Option.gen(function*() {
       const x = yield* Option.some(1)
@@ -41,13 +64,6 @@ describe("Option", () => {
     const g = Option.gen({ ctx: "testContext" as const }, function*() {
       return yield* Option.some(this.ctx)
     })
-    // TODO(4.0) remove this test
-    // test adapter
-    const h = Option.gen(function*($) {
-      const x = yield* $(Option.some(1))
-      const y = yield* $(Option.some(2))
-      return x + y
-    })
 
     assertSome(a, 3)
     assertSome(b, 10)
@@ -56,39 +72,20 @@ describe("Option", () => {
     assertNone(e)
     assertNone(f)
     assertSome(g, "testContext")
-    assertSome(h, 3)
   })
 
   it("toString", () => {
     strictEqual(
       String(Option.none()),
-      `{
-  "_id": "Option",
-  "_tag": "None"
-}`
+      `none()`
     )
     strictEqual(
       String(Option.some(1)),
-      `{
-  "_id": "Option",
-  "_tag": "Some",
-  "value": 1
-}`
+      `some(1)`
     )
     strictEqual(
       String(Option.some(Chunk.make(1, 2, 3))),
-      `{
-  "_id": "Option",
-  "_tag": "Some",
-  "value": {
-    "_id": "Chunk",
-    "values": [
-      1,
-      2,
-      3
-    ]
-  }
-}`
+      `some(Chunk([1,2,3]))`
     )
   })
 
@@ -107,26 +104,26 @@ describe("Option", () => {
     deepStrictEqual(inspect(Option.some(1)), inspect({ _id: "Option", _tag: "Some", value: 1 }))
   })
 
-  it("Equal", () => {
+  it("verify structural equality", () => {
     assertTrue(Equal.equals(Option.some(1), Option.some(1)))
     assertFalse(Equal.equals(Option.some(1), Option.some(2)))
     assertTrue(Equal.equals(Option.none(), Option.none()))
   })
 
-  it("Hash", () => {
+  it("verify hash equality", () => {
     strictEqual(Hash.hash(Option.some(1)), Hash.hash(Option.some(1)))
     strictEqual(Hash.hash(Option.some(1)) === Hash.hash(Option.some(2)), false)
     strictEqual(Hash.hash(Option.none()), Hash.hash(Option.none()))
   })
 
-  it("getRight", () => {
-    assertSome(Option.getRight(Either.right(1)), 1)
-    assertNone(Option.getRight(Either.left("a")))
+  it("getSuccess", () => {
+    assertSome(Option.getSuccess(Result.succeed(1)), 1)
+    assertNone(Option.getSuccess(Result.fail("a")))
   })
 
-  it("getLeft", () => {
-    assertNone(Option.getLeft(Either.right(1)))
-    assertSome(Option.getLeft(Either.left("a")), "a")
+  it("getFailure", () => {
+    assertNone(Option.getFailure(Result.succeed(1)))
+    assertSome(Option.getFailure(Result.fail("a")), "a")
   })
 
   it("toRefinement", () => {
@@ -150,7 +147,7 @@ describe("Option", () => {
   it("isOption", () => {
     assertTrue(pipe(Option.some(1), Option.isOption))
     assertTrue(pipe(Option.none(), Option.isOption))
-    assertFalse(pipe(Either.right(1), Option.isOption))
+    assertFalse(pipe(Result.succeed(1), Option.isOption))
   })
 
   it("firstSomeOf", () => {
@@ -166,11 +163,11 @@ describe("Option", () => {
     )
   })
 
-  it("orElseEither", () => {
-    assertSome(pipe(Option.some(1), Option.orElseEither(() => Option.some(2))), Either.left(1))
-    assertSome(pipe(Option.some(1), Option.orElseEither(() => Option.none())), Either.left(1))
-    assertSome(pipe(Option.none(), Option.orElseEither(() => Option.some(2))), Either.right(2))
-    assertNone(pipe(Option.none(), Option.orElseEither(() => Option.none())))
+  it("orElseResult", () => {
+    assertSome(pipe(Option.some(1), Option.orElseResult(() => Option.some(2))), Result.fail(1))
+    assertSome(pipe(Option.some(1), Option.orElseResult(() => Option.none())), Result.fail(1))
+    assertSome(pipe(Option.none(), Option.orElseResult(() => Option.some(2))), Result.succeed(2))
+    assertNone(pipe(Option.none(), Option.orElseResult(() => Option.none())))
   })
 
   it("orElseSome", () => {
@@ -258,14 +255,14 @@ describe("Option", () => {
   })
 
   it("partitionMap", () => {
-    const f = (n: number) => (gt2(n) ? Either.right(n + 1) : Either.left(n - 1))
+    const f = (n: number) => (gt2(n) ? Result.succeed(n + 1) : Result.fail(n - 1))
     deepStrictEqual(pipe(Option.none(), Option.partitionMap(f)), [Option.none(), Option.none()])
     deepStrictEqual(pipe(Option.some(1), Option.partitionMap(f)), [Option.some(0), Option.none()])
     deepStrictEqual(pipe(Option.some(3), Option.partitionMap(f)), [Option.none(), Option.some(4)])
   })
 
   it("filterMap", () => {
-    const f = (n: number) => (gt2(n) ? Option.some(n + 1) : Option.none())
+    const f = (n: number) => (gt2(n) ? Result.succeed(n + 1) : Result.failVoid)
     assertNone(pipe(Option.none(), Option.filterMap(f)))
     assertNone(pipe(Option.some(1), Option.filterMap(f)))
     assertSome(pipe(Option.some(3), Option.filterMap(f)), 4)
@@ -294,8 +291,8 @@ describe("Option", () => {
     strictEqual(Option.getOrUndefined(Option.some(1)), 1)
   })
 
-  it("getOrder", () => {
-    const OS = Option.getOrder(S.Order)
+  it("makeOrder", () => {
+    const OS = Option.makeOrder(Str.Order)
     strictEqual(OS(Option.none(), Option.none()), 0)
     strictEqual(OS(Option.some("a"), Option.none()), 1)
     strictEqual(OS(Option.none(), Option.some("a")), -1)
@@ -304,7 +301,7 @@ describe("Option", () => {
     strictEqual(OS(Option.some("b"), Option.some("a")), 1)
   })
 
-  it("flatMapNullable", () => {
+  it("flatMapNullishOr", () => {
     interface X {
       readonly a?: {
         readonly b?: {
@@ -319,35 +316,35 @@ describe("Option", () => {
     const x3: X = { a: { b: { c: { d: 1 } } } }
     assertNone(
       pipe(
-        Option.fromNullable(x1.a),
-        Option.flatMapNullable((x) => x.b),
-        Option.flatMapNullable((x) => x.c),
-        Option.flatMapNullable((x) => x.d)
+        Option.fromNullishOr(x1.a),
+        Option.flatMapNullishOr((x) => x.b),
+        Option.flatMapNullishOr((x) => x.c),
+        Option.flatMapNullishOr((x) => x.d)
       )
     )
     assertNone(
       pipe(
-        Option.fromNullable(x2.a),
-        Option.flatMapNullable((x) => x.b),
-        Option.flatMapNullable((x) => x.c),
-        Option.flatMapNullable((x) => x.d)
+        Option.fromNullishOr(x2.a),
+        Option.flatMapNullishOr((x) => x.b),
+        Option.flatMapNullishOr((x) => x.c),
+        Option.flatMapNullishOr((x) => x.d)
       )
     )
     assertSome(
       pipe(
-        Option.fromNullable(x3.a),
-        Option.flatMapNullable((x) => x.b),
-        Option.flatMapNullable((x) => x.c),
-        Option.flatMapNullable((x) => x.d)
+        Option.fromNullishOr(x3.a),
+        Option.flatMapNullishOr((x) => x.b),
+        Option.flatMapNullishOr((x) => x.c),
+        Option.flatMapNullishOr((x) => x.d)
       ),
       1
     )
   })
 
-  it("fromNullable", () => {
-    assertSome(Option.fromNullable(2), 2)
-    assertNone(Option.fromNullable(null))
-    assertNone(Option.fromNullable(undefined))
+  it("fromNullishOr", () => {
+    assertSome(Option.fromNullishOr(2), 2)
+    assertNone(Option.fromNullishOr(null))
+    assertNone(Option.fromNullishOr(undefined))
   })
 
   it("liftPredicate", () => {
@@ -397,8 +394,8 @@ describe("Option", () => {
     assertTrue(pipe(Option.some(2), Option.exists(predicate)))
   })
 
-  it("liftNullable", () => {
-    const f = Option.liftNullable((n: number) => (n > 0 ? n : null))
+  it("liftNullishOr", () => {
+    const f = Option.liftNullishOr((n: number) => (n > 0 ? n : null))
     assertSome(f(1), 1)
     assertNone(f(-1))
   })
@@ -416,7 +413,7 @@ describe("Option", () => {
     assertSome(Option.tap(Option.some(1), (n) => Option.some(n * 2)), 1)
   })
 
-  it("guard", () => {
+  it("filter keeps Do notation records only when the predicate passes", () => {
     assertSome(
       pipe(
         Option.Do,
@@ -442,28 +439,15 @@ describe("Option", () => {
     assertSome(pipe(Option.some(1), Option.zipWith(Option.some(2), (a, b) => a + b)), 3)
   })
 
-  it("ap", () => {
-    assertNone(
-      pipe(Option.some((a: number) => (b: number) => a + b), Option.ap(Option.none()), Option.ap(Option.some(2)))
-    )
-    assertNone(
-      pipe(Option.some((a: number) => (b: number) => a + b), Option.ap(Option.some(1)), Option.ap(Option.none()))
-    )
-    assertSome(
-      pipe(Option.some((a: number) => (b: number) => a + b), Option.ap(Option.some(1)), Option.ap(Option.some(2))),
-      3
-    )
-  })
-
   it("reduceCompact", () => {
-    const sumCompact = Option.reduceCompact(0, N.sum)
+    const sumCompact = Option.reduceCompact(0, Num.sum)
     strictEqual(sumCompact([]), 0)
     strictEqual(sumCompact([Option.some(2), Option.some(3)]), 5)
     strictEqual(sumCompact([Option.some(2), Option.none(), Option.some(3)]), 5)
   })
 
-  it("getEquivalence", () => {
-    const isEquivalent = Option.getEquivalence(N.Equivalence)
+  it("makeEquivalence", () => {
+    const isEquivalent = Option.makeEquivalence(Equivalence.strictEqual<number>())
     assertTrue(isEquivalent(Option.none(), Option.none()))
     assertFalse(isEquivalent(Option.none(), Option.some(1)))
     assertFalse(isEquivalent(Option.some(1), Option.none()))
@@ -472,26 +456,28 @@ describe("Option", () => {
     assertTrue(isEquivalent(Option.some(2), Option.some(2)))
   })
 
-  it("all/ tuple", () => {
-    assertSome(Option.all([]), [])
-    assertSome(Option.all([Option.some(1), Option.some("hello")]), [1, "hello"])
-    assertNone(Option.all([Option.some(1), Option.none()]))
-  })
+  describe("all", () => {
+    it("tuple", () => {
+      assertSome(Option.all([]), [])
+      assertSome(Option.all([Option.some(1), Option.some("hello")]), [1, "hello"])
+      assertNone(Option.all([Option.some(1), Option.none()]))
+    })
 
-  it("all/ iterable", () => {
-    assertSome(Option.all([]), [])
-    assertNone(Option.all([Option.none()]))
-    assertSome(Option.all([Option.some(1), Option.some(2)]), [1, 2])
-    assertSome(Option.all(new Set([Option.some(1), Option.some(2)])), [1, 2])
-    assertNone(Option.all([Option.some(1), Option.none()]))
-  })
+    it("iterable", () => {
+      assertSome(Option.all([]), [])
+      assertNone(Option.all([Option.none()]))
+      assertSome(Option.all([Option.some(1), Option.some(2)]), [1, 2])
+      assertSome(Option.all(new Set([Option.some(1), Option.some(2)])), [1, 2])
+      assertNone(Option.all([Option.some(1), Option.none()]))
+    })
 
-  it("all/ struct", () => {
-    assertSome(
-      Option.all({ a: Option.some(1), b: Option.some("hello") }),
-      { a: 1, b: "hello" }
-    )
-    assertNone(Option.all({ a: Option.some(1), b: Option.none() }))
+    it("struct", () => {
+      assertSome(
+        Option.all({ a: Option.some(1), b: Option.some("hello") }),
+        { a: 1, b: "hello" }
+      )
+      assertNone(Option.all({ a: Option.some(1), b: Option.none() }))
+    })
   })
 
   it(".pipe()", () => {
@@ -574,13 +560,5 @@ describe("Option", () => {
   it("asVoid", () => {
     assertNone(Option.none().pipe(Option.asVoid))
     assertSome(Option.some(1).pipe(Option.asVoid), undefined)
-  })
-
-  it("[internal] mergeWith", () => {
-    const mergeWith = Option.mergeWith(N.sum)
-    assertNone(mergeWith(Option.none(), Option.none()))
-    assertSome(mergeWith(Option.some(1), Option.none()), 1)
-    assertSome(mergeWith(Option.none(), Option.some(2)), 2)
-    assertSome(mergeWith(Option.some(1), Option.some(2)), 3)
   })
 })
