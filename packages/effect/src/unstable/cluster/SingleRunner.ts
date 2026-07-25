@@ -44,7 +44,7 @@ import * as SqlRunnerStorage from "./SqlRunnerStorage.ts"
  *
  * - Even when `runnerStorage` is `"memory"`, message storage remains
  *   SQL-backed, so callers must still provide `SqlClient` and `Crypto.Crypto`
- *   (used to hash message deduplication keys).
+ *   (used to hash over-length message deduplication keys).
  * - Runner communication and runner health are no-op services, so this layer is
  *   for single-process use rather than multi-runner coordination.
  *

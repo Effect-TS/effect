@@ -8,10 +8,10 @@
  * storage constructor, layers, migrations, optional table prefixes, and the row
  * mapping needed by encoded message storage.
  *
- * Request deduplication keys are hashed with the `Crypto` service before they
- * are written to the unique `message_id` column, so composed keys of any
- * length are supported. The key's components remain readable via the
- * `entity_type`, `entity_id`, `tag`, and `payload` columns.
+ * Request deduplication keys that exceed the 255-character `message_id`
+ * column are hashed with the `Crypto` service before they are written, so
+ * composed keys of any length are supported; shorter keys are stored as
+ * plaintext, byte-compatible with rows written by previous versions.
  *
  * @since 4.0.0
  */
@@ -96,33 +96,26 @@ export const make: (options?: {
   // The composed primary key (`entityType/entityId/tag/id`) can legally exceed
   // the 255-character `message_id` column: entity_type(150) + entity_id(255) +
   // tag(50) alone total 458 characters before the RPC primary key is appended.
-  // `message_id` therefore stores a SHA-256 digest of the composed key: 256
-  // bits keeps the collision probability negligible (birthday bound 2^128),
-  // and the 64-character hex encoding fits every dialect's indexable column
-  // width. The digest never contains "/" while legacy plaintext keys always
-  // do, so the two encodings cannot collide and legacy rows can be matched
-  // with a dual-read fallback. The key's components remain readable via the
-  // entity_type, entity_id, tag, and payload columns.
+  // Keys that fit are stored as-is, keeping `message_id` byte-compatible with
+  // rows written by previous versions; longer keys are stored as a SHA-256
+  // digest (64 hex characters, collision probability negligible at a 2^128
+  // birthday bound). Digests never contain "/" while composed keys always do,
+  // so the two encodings cannot collide.
   const encoder = new TextEncoder()
-  const hashPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
-    Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Encoding.encodeHex)
+  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
+    primaryKey.length <= 255
+      ? Effect.succeed(primaryKey)
+      : Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Encoding.encodeHex)
 
-  // Rows written before `message_id` was hashed store the plaintext composed
-  // key; the fallback reads below exist only for that transition and can be
-  // removed in a future release. On the width-enforcing dialects keys longer
-  // than the column's 255-character limit can never exist as legacy rows, so
-  // the fallback read is skipped for them — but sqlite declares `message_id`
-  // as TEXT and does not enforce VARCHAR widths, so legacy rows there can
-  // hold keys of any length. (MySQL's `INSERT IGNORE` truncated over-long
-  // legacy keys to a 255-character prefix; those rows were already corrupt
-  // for deduplication purposes pre-digest and are deliberately not matched.)
   const messageIdEnforcesWidth = sql.onDialectOrElse({
     mssql: () => true,
     mysql: () => true,
     pg: () => true,
     orElse: () => false
   })
-  const mayHaveLegacyRow = (primaryKey: string): boolean => !messageIdEnforcesWidth || primaryKey.length <= 255
+  // sqlite's TEXT message_id column stored over-length plaintext keys before
+  // digests were introduced; those legacy rows need a plaintext fallback read
+  const mayHaveLegacyRow = (primaryKey: string): boolean => !messageIdEnforcesWidth && primaryKey.length > 255
 
   const envelopeToRow = (
     envelope: Envelope.Encoded,
@@ -441,7 +434,7 @@ export const make: (options?: {
       Effect.suspend(() => {
         let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | PlatformError.PlatformError>
         if (primaryKey !== null) {
-          insert = Effect.flatMap(hashPrimaryKey(primaryKey), (messageId) => {
+          insert = Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) => {
             const row = envelopeToRow(envelope, messageId, deliverAt)
             if (!mayHaveLegacyRow(primaryKey)) {
               return insertEnvelope(row, messageId)
@@ -533,7 +526,7 @@ export const make: (options?: {
     ),
 
     requestIdForPrimaryKey: (primaryKey) =>
-      hashPrimaryKey(primaryKey).pipe(
+      messageIdForPrimaryKey(primaryKey).pipe(
         Effect.flatMap((messageId) =>
           sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
         ),
@@ -699,7 +692,7 @@ export const make: (options?: {
  * The layer runs the SQL migrations through `make`, provides `MessageStorage`,
  * and supplies `Snowflake.layerGenerator` internally. Callers still provide
  * `SqlClient`, `ShardingConfig`, and `Crypto.Crypto`, which is used to hash
- * message deduplication keys before they are stored in the fixed-width
+ * message deduplication keys that would overflow the fixed-width
  * `message_id` column.
  *
  * **Gotchas**

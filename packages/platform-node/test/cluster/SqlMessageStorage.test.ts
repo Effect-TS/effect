@@ -177,7 +177,7 @@ describe("SqlMessageStorage", () => {
           expect(rows[0].message_id).toMatch(/^[0-9a-f]{64}$/)
         }))
 
-      it.effect("detects duplicates for legacy plaintext rows", () =>
+      it.effect("keeps primary keys within the column width as plaintext", () =>
         Effect.gen(function*() {
           yield* truncate
 
@@ -189,11 +189,12 @@ describe("SqlMessageStorage", () => {
           })
           yield* storage.saveRequest(request)
 
-          // simulate a row written before message_id values were hashed
+          // rows written by previous versions store the plaintext composed
+          // key, so short keys must stay byte-identical to keep deduplicating
           const plaintext = Envelope.primaryKey(request.envelope)!
-          yield* sql`UPDATE cluster_messages SET message_id = ${plaintext} WHERE id = ${
-            String(request.envelope.requestId)
-          }`
+          const rows = yield* sql<{ message_id: string }>`SELECT message_id FROM cluster_messages`
+          expect(rows).toHaveLength(1)
+          expect(rows[0].message_id).toEqual(plaintext)
 
           const result = yield* storage.saveRequest(
             yield* makeRequest({
