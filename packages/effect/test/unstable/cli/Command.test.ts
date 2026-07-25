@@ -722,6 +722,34 @@ describe("Command", () => {
         const result = yield* Effect.flip(Cli.run(["test-failing", "--input", "test"]))
         assert.strictEqual(result, "Handler error")
       }).pipe(Effect.provide(TestLayer)))
+    it.effect("should fail with UnrecognizedArgument when excess positional arguments are provided to a command with no arguments", () =>
+      Effect.gen(function*() {
+        const command = Command.make("test", {}, () => Effect.void)
+        const runCommand = Command.runWith(command, { version: "1.0.0" })
+        const error = yield* Effect.flip(runCommand(["bogus1", "bogus2"]))
+        assert.strictEqual((error as any)._tag, "UnrecognizedArgument")
+        assert.isTrue(String((error as any).error).includes("Excess arguments: bogus1, bogus2"))
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should fail with UnrecognizedArgument when excess positional arguments are provided to a command with fixed arguments", () =>
+      Effect.gen(function*() {
+        const command = Command.make("test", {
+          arg1: Argument.string("arg1")
+        }, () => Effect.void)
+        const runCommand = Command.runWith(command, { version: "1.0.0" })
+        const error = yield* Effect.flip(runCommand(["valid", "bogus1", "bogus2"]))
+        assert.strictEqual((error as any)._tag, "UnrecognizedArgument")
+        assert.isTrue(String((error as any).error).includes("Excess arguments: bogus1, bogus2"))
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should not fail with UnrecognizedArgument when a command has variadic arguments", () =>
+      Effect.gen(function*() {
+        const command = Command.make("test", {
+          args: Argument.string("args").pipe(Argument.repeated)
+        }, () => Effect.void)
+        const runCommand = Command.runWith(command, { version: "1.0.0" })
+        yield* runCommand(["valid1", "valid2", "valid3"])
+      }).pipe(Effect.provide(TestLayer)))
   })
 
   describe("withSubcommands", () => {
