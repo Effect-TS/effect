@@ -1031,6 +1031,139 @@ describe("Stream", () => {
       }))
   })
 
+  const testOuterFailure = (
+    combinator: "flatMap" | "switchMap",
+    inner: "never" | "slow"
+  ) =>
+    Effect.gen(function*() {
+      const started = yield* Latch.make(false)
+      const failing = yield* Deferred.make<void>()
+      const finalized = yield* Ref.make(0)
+      const outer = Stream.concat(
+        Stream.make(1),
+        Stream.fromEffect(
+          started.await.pipe(
+            Effect.andThen(Deferred.succeed(failing, void 0)),
+            Effect.andThen(Effect.fail("boom"))
+          )
+        )
+      )
+      const makeInner = () => {
+        started.openUnsafe()
+        return (inner === "never" ? Stream.never : Stream.fromEffect(Effect.sleep(Duration.hours(1)))).pipe(
+          Stream.ensuring(Ref.update(finalized, (n) => n + 1))
+        )
+      }
+      const stream = combinator === "flatMap"
+        ? Stream.flatMap(outer, makeInner, { concurrency: 2 })
+        : Stream.switchMap(outer, makeInner)
+      const fiber = yield* stream.pipe(
+        Stream.runDrain,
+        Effect.forkChild
+      )
+      yield* Deferred.await(failing)
+
+      const result = yield* Fiber.await(fiber)
+      assert.deepStrictEqual(result, Exit.fail("boom"))
+      assert.strictEqual(yield* Ref.get(finalized), 1)
+    })
+
+  describe("flatMap", () => {
+    it.effect("interrupts all inner streams when the outer fails at the concurrency limit", () =>
+      Effect.gen(function*() {
+        const latch = yield* Latch.make()
+        const finalized = yield* Ref.make(0)
+        const outer = Stream.concat(
+          Stream.make(1, 2),
+          Stream.flatMap(Stream.fromEffect(latch.await), () => Stream.fail("boom"))
+        )
+        const result = yield* Stream.flatMap(
+          outer,
+          () =>
+            Stream.flatMap(Stream.fromEffect(latch.open), () => Stream.never).pipe(
+              Stream.ensuring(Ref.update(finalized, (n) => n + 1))
+            ),
+          { concurrency: 2 }
+        ).pipe(
+          Stream.runDrain,
+          Effect.exit
+        )
+
+        assert.deepStrictEqual(result, Exit.fail("boom"))
+        assert.strictEqual(yield* Ref.get(finalized), 2)
+      }))
+
+    it.effect("releases a permit after a successful saturated pull", () =>
+      Effect.gen(function*() {
+        const gate = yield* Deferred.make<void>()
+        const outer = Stream.concat(
+          Stream.make(1, 2),
+          Stream.fromEffect(Deferred.succeed(gate, void 0).pipe(Effect.as(3)))
+        )
+        const result = yield* Stream.flatMap(
+          outer,
+          (n) => n === 3 ? Stream.make(3) : Stream.fromEffect(Deferred.await(gate).pipe(Effect.as(n))),
+          { concurrency: 2 }
+        ).pipe(Stream.runCollect)
+
+        assert.deepStrictEqual([...result].sort(), [1, 2, 3])
+      }))
+
+    it.effect("preserves an outer element when a permit arrives during a pull", () =>
+      Effect.gen(function*() {
+        const probing = yield* Deferred.make<void>()
+        const gate = yield* Deferred.make<void>()
+        const innerGate = yield* Deferred.make<void>()
+        const innerCompleted = yield* Deferred.make<void>()
+        const outer = Stream.concat(
+          Stream.make(1, 2),
+          Stream.fromEffect(
+            Deferred.succeed(probing, void 0).pipe(
+              Effect.andThen(Deferred.await(gate)),
+              Effect.as(3)
+            )
+          )
+        )
+        const fiber = yield* Stream.flatMap(
+          outer,
+          (n) =>
+            n === 3
+              ? Stream.make(3)
+              : Stream.fromEffect(Deferred.await(innerGate).pipe(Effect.as(n))).pipe(
+                Stream.ensuring(Deferred.succeed(innerCompleted, void 0))
+              ),
+          { concurrency: 2 }
+        ).pipe(
+          Stream.runCollect,
+          Effect.forkChild
+        )
+        yield* Deferred.await(probing)
+        yield* Deferred.succeed(innerGate, void 0)
+        yield* Deferred.await(innerCompleted)
+        yield* Deferred.succeed(gate, void 0)
+
+        const result = yield* Fiber.join(fiber)
+        assert.deepStrictEqual([...result].sort(), [1, 2, 3])
+      }))
+
+    it.effect(
+      "fails promptly and interrupts slow inner streams when the outer stream fails",
+      () => testOuterFailure("flatMap", "slow")
+    )
+  })
+
+  describe("switchMap", () => {
+    it.effect(
+      "interrupts a never-ending inner stream when the outer stream fails",
+      () => testOuterFailure("switchMap", "never")
+    )
+
+    it.effect(
+      "fails promptly and interrupts a slow inner stream when the outer stream fails",
+      () => testOuterFailure("switchMap", "slow")
+    )
+  })
+
   it.effect.prop(
     "rechunk",
     {
