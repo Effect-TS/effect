@@ -347,6 +347,15 @@ describe("Metric", () => {
   })
 
   describe("Histogram", () => {
+    it.effect("reports the maximum for negative-only observations", () =>
+      Effect.gen(function*() {
+        const histogram = Metric.histogram(nextId(), { boundaries: [-10, -5, 0] })
+        yield* Metric.update(histogram, -10)
+        yield* Metric.update(histogram, -5)
+        const result = yield* Metric.value(histogram)
+        assert.strictEqual(result.max, -5)
+      }))
+
     it.effect("custom observe with value", () =>
       Effect.gen(function*() {
         const id = nextId()
@@ -403,6 +412,19 @@ describe("Metric", () => {
   })
 
   describe("Summary", () => {
+    it.effect("reports the maximum for negative-only observations", () =>
+      Effect.gen(function*() {
+        const summary = Metric.summary(nextId(), {
+          maxAge: "1 minute",
+          maxSize: 10,
+          quantiles: [0.5]
+        })
+        yield* Metric.update(summary, -10)
+        yield* Metric.update(summary, -5)
+        const result = yield* Metric.value(summary)
+        assert.strictEqual(result.max, -5)
+      }))
+
     it.effect("custom observe with value", () =>
       Effect.gen(function*() {
         const id = nextId()
