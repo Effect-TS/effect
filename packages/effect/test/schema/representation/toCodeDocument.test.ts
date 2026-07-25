@@ -628,7 +628,7 @@ describe("toCodeDocument", () => {
           })
         },
         {
-          codes: makeCode(`Schema.Enum(_Enum)`, `typeof _Enum`),
+          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
@@ -646,7 +646,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `typeof _Enum`
+            `_Enum`
           ),
           artifacts: [{
             _tag: "Enum",
@@ -666,7 +666,7 @@ describe("toCodeDocument", () => {
           })
         },
         {
-          codes: makeCode(`Schema.Enum(_Enum)`, `typeof _Enum`),
+          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
@@ -684,7 +684,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `typeof _Enum`
+            `_Enum`
           ),
           artifacts: [{
             _tag: "Enum",
@@ -704,7 +704,7 @@ describe("toCodeDocument", () => {
           })
         },
         {
-          codes: makeCode(`Schema.Enum(_Enum)`, `typeof _Enum`),
+          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
@@ -722,7 +722,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `typeof _Enum`
+            `_Enum`
           ),
           artifacts: [{
             _tag: "Enum",
