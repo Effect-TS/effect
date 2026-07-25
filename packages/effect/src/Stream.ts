@@ -11341,11 +11341,9 @@ export const toAsyncIterableWith: {
       let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> | undefined
       let currentIter: Iterator<A> | undefined
       let currentFiber: Fiber.Fiber<Arr.NonEmptyReadonlyArray<A>, E | Cause.Done<void>> | undefined
-      let closed = false
       let closePromise: Promise<IteratorResult<A>> | undefined
       const close = (exit: Exit.Exit<unknown, unknown>): Promise<IteratorResult<A>> => {
         if (closePromise) return closePromise
-        closed = true
         const fiber = currentFiber
         closePromise = runPromise(Effect.as(
           Effect.andThen(
@@ -11365,7 +11363,7 @@ export const toAsyncIterableWith: {
       }
       return {
         async next(): Promise<IteratorResult<A>> {
-          if (closed) return closePromise!
+          if (closePromise) return closePromise
           if (currentIter) {
             const next = currentIter.next()
             if (!next.done) return next
@@ -11389,8 +11387,8 @@ export const toAsyncIterableWith: {
           } else if (Pull.isDoneCause(exit.cause)) {
             return close(Exit.void)
           }
-          if (closed && Cause.hasInterruptsOnly(exit.cause)) {
-            return closePromise!
+          if (closePromise && Cause.hasInterruptsOnly(exit.cause)) {
+            return closePromise
           }
           await closeAndReportError(exit)
           throw Cause.squash(exit.cause)
