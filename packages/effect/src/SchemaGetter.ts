@@ -1554,7 +1554,7 @@ export function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): Gette
  * // Getter<TreeObject<string | Blob>, FormData>
  * ```
  *
- * @see {@link encodeFormData} for the inverse operation
+ * @see {@link encodeFormData} for the corresponding encoder
  * @see {@link makeTreeRecord} for the underlying bracket-path parser
  * @see {@link decodeURLSearchParams} for the URLSearchParams variant
  *
@@ -1592,7 +1592,7 @@ const collectFormDataEntries = collectBracketPathEntries((value): value is strin
  * // Getter<FormData, unknown>
  * ```
  *
- * @see {@link decodeFormData} for the inverse operation
+ * @see {@link decodeFormData} for the corresponding decoder
  * @see {@link collectBracketPathEntries} for the underlying flattener
  * @see {@link encodeURLSearchParams} for the URLSearchParams variant
  *
@@ -1635,7 +1635,7 @@ export function encodeFormData(): Getter<FormData, unknown> {
  * // Getter<TreeObject<string>, URLSearchParams>
  * ```
  *
- * @see {@link encodeURLSearchParams} for the inverse operation
+ * @see {@link encodeURLSearchParams} for the corresponding encoder
  * @see {@link makeTreeRecord} for the underlying bracket-path parser
  * @see {@link decodeFormData} for the FormData variant
  *
@@ -1670,7 +1670,7 @@ const collectURLSearchParamsEntries = collectBracketPathEntries(Predicate.isStri
  * // Getter<URLSearchParams, unknown>
  * ```
  *
- * @see {@link decodeURLSearchParams} for the inverse operation
+ * @see {@link decodeURLSearchParams} for the corresponding decoder
  * @see {@link collectBracketPathEntries} for the underlying flattener
  * @see {@link encodeFormData} for the FormData variant
  *
@@ -1704,20 +1704,6 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
     .map((part) => (INDEX_REGEXP.test(part) ? globalThis.Number(part) : part))
 }
 
-function getOrCreateContainer(
-  self: any,
-  key: PropertyKey,
-  shouldBeArray: boolean
-): any {
-  const current = Object.hasOwn(self, key) ? self[key] : undefined
-  if (current !== undefined) {
-    return current
-  }
-  const container = shouldBeArray ? [] : {}
-  InternalRecord.assignProperty(self, key, container)
-  return container
-}
-
 /**
  * Builds a nested tree object from a list of bracket-path entries.
  *
@@ -1740,6 +1726,10 @@ function getOrCreateContainer(
  *   - `"foo[]"` → append to array `foo`
  *   - `""` → real empty key
  * - Duplicate keys for the same path are merged into arrays.
+ * - If a structural path conflicts with a previous leaf or a different container
+ *   type, the later structural path replaces the conflicting value.
+ * - The notation has no escaping for `.`, `[` or `]`, so keys containing these
+ *   delimiters cannot be round-tripped without changing their structure.
  *
  * **Example** (Building a tree from bracket paths)
  *
@@ -1754,7 +1744,7 @@ function getOrCreateContainer(
  * // { user: { name: "Alice", tags: ["admin", "editor"] } }
  * ```
  *
- * @see {@link collectBracketPathEntries} for the inverse operation (tree to flat entries)
+ * @see {@link collectBracketPathEntries} for flattening trees into bracket-path entries
  * @see {@link decodeFormData} for a higher-level FormData decoder
  * @see {@link decodeURLSearchParams} for a higher-level URLSearchParams decoder
  *
@@ -1765,6 +1755,19 @@ export function makeTreeRecord<A>(
   bracketPathEntries: ReadonlyArray<readonly [bracketPath: string, value: A]>
 ): Schema.TreeRecord<A> {
   const out: any = {}
+  const containers = new WeakSet<object>()
+
+  function getOrCreateContainer(self: any, key: PropertyKey, shouldBeArray: boolean): any {
+    const current = Object.hasOwn(self, key) ? self[key] : undefined
+    if (containers.has(current) && Array.isArray(current) === shouldBeArray) {
+      return current
+    }
+    const container = shouldBeArray ? [] : {}
+    containers.add(container)
+    InternalRecord.assignProperty(self, key, container)
+    return container
+  }
+
   bracketPathEntries.forEach(([key, value]) => {
     const tokens = bracketPathToTokens(key)
     let cur: any = out
@@ -1815,7 +1818,6 @@ export function makeTreeRecord<A>(
  *
  * **Details**
  *
- * - This is the inverse of {@link makeTreeRecord}.
  * - Takes a nested object and produces flat `[bracketPath, value]` pairs suitable for
  *   `FormData` or `URLSearchParams`.
  * - Returns a curried function: first call provides the leaf type guard, second call provides the object.
@@ -1823,6 +1825,8 @@ export function makeTreeRecord<A>(
  * - If all elements of an array are leaves, encodes them as multiple entries with the same key
  *   (e.g. `tags=a&tags=b`). Otherwise uses indexed bracket paths (e.g. `items[0]`, `items[1]`).
  * - Non-leaf values that aren't objects or arrays are silently skipped.
+ * - Empty arrays and objects produce no entries, and path delimiters in property
+ *   names are not escaped. The resulting format is therefore lossy.
  *
  * **Example** (Flattening an object to bracket paths)
  *
@@ -1834,7 +1838,7 @@ export function makeTreeRecord<A>(
  * // [["user[name]", "Alice"], ["user[tags]", "admin"], ["user[tags]", "editor"]]
  * ```
  *
- * @see {@link makeTreeRecord} for the inverse operation (flat entries to tree)
+ * @see {@link makeTreeRecord} for building trees from bracket-path entries
  * @see {@link encodeFormData} for a higher-level FormData encoder
  * @see {@link encodeURLSearchParams} for a higher-level URLSearchParams encoder
  *

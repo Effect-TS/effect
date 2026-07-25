@@ -31,6 +31,47 @@ describe("SchemaGetter", () => {
   })
 
   describe("makeTreeRecord", () => {
+    it("replaces conflicting leaf values with containers", () => {
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a", "x"],
+          ["a[b]", "y"]
+        ]),
+        { a: { b: "y" } }
+      )
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a", "x"],
+          ["a[0]", "y"]
+        ]),
+        { a: ["y"] }
+      )
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a", Object.freeze({ value: "x" })],
+          ["a[b]", { value: "y" }]
+        ]),
+        { a: { b: { value: "y" } } }
+      )
+    })
+
+    it("replaces conflicting object and array containers", () => {
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a[b]", "x"],
+          ["a[0]", "y"]
+        ]),
+        { a: ["y"] }
+      )
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a[0]", "x"],
+          ["a[b]", "y"]
+        ]),
+        { a: { b: "y" } }
+      )
+    })
+
     it("reinitializes own undefined values before descending", () => {
       deepStrictEqual(
         SchemaGetter.makeTreeRecord([
