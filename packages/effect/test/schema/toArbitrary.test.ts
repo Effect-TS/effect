@@ -1414,6 +1414,12 @@ describe("Arbitrary generation", () => {
       verifyGeneration(Schema.String.check(Schema.isEndsWith("a")))
     })
 
+    it("literal string checks with regexp syntax", () => {
+      verifyGeneration(Schema.String.check(Schema.isStartsWith("a.b")))
+      verifyGeneration(Schema.String.check(Schema.isEndsWith("a+b")))
+      verifyGeneration(Schema.String.check(Schema.isIncludes("[")))
+    })
+
     it("Number", () => {
       verifyGeneration(Schema.Number)
     })
