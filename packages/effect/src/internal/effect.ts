@@ -5516,9 +5516,6 @@ const succeedFalse = succeed(false)
 
 class Latch implements _Latch.Latch {
   waiters: Array<(_: Effect.Effect<void>) => void> = []
-  // waiters snapshotted at open/release time, awaiting the scheduled flush.
-  // Waiters that register after a subsequent close stay in `waiters` and are
-  // not resumed by a stale flush.
   scheduled: Array<(_: Effect.Effect<void>) => void> | undefined = undefined
   private _isOpen: boolean
 
