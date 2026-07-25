@@ -12781,7 +12781,7 @@ export const File: File = instanceOf(globalThis.File, {
         data: String.check(isBase64()),
         type: String,
         name: String,
-        lastModified: Number
+        lastModified: Int
       }),
       SchemaTransformation.transformOrFail({
         decode: (e) =>
@@ -13865,7 +13865,7 @@ export const DateTimeUtcFromString: DateTimeUtcFromString = String.annotate({
  * @category DateTime
  * @since 4.0.0
  */
-export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>, Number> {
+export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>, Int> {
   readonly "Rebuild": DateTimeUtcFromMillis
 }
 
@@ -13887,7 +13887,7 @@ export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>
  * @category DateTime
  * @since 4.0.0
  */
-export const DateTimeUtcFromMillis: DateTimeUtcFromMillis = Number.pipe(
+export const DateTimeUtcFromMillis: DateTimeUtcFromMillis = Int.pipe(
   decodeTo(DateTimeUtc, {
     decode: SchemaGetter.dateTimeUtcFromInput(),
     encode: SchemaGetter.transform(DateTime.toEpochMillis)
@@ -13931,7 +13931,7 @@ export const TimeZoneOffset: TimeZoneOffset = declare(
     expected: "DateTime.TimeZone.Offset",
     toCodecJson: () =>
       link<DateTime.TimeZone.Offset>()(
-        Number,
+        Int,
         SchemaTransformation.timeZoneOffsetFromNumber
       ),
     toArbitrary: () => (fc) =>

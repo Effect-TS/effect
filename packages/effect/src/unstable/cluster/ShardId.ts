@@ -49,7 +49,7 @@ export const ShardId = S.declare(isShardId, {
     S.link<ShardId>()(
       S.Struct({
         group: S.String,
-        id: S.Number
+        id: S.Int
       }),
       {
         decode: SchemaGetter.transform(({ group, id }) => make(group, id)),
