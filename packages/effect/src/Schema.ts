@@ -52,6 +52,7 @@ import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Record_ from "./Record.ts"
 import * as Redacted_ from "./Redacted.ts"
+import * as RegExp_ from "./RegExp.ts"
 import * as Result_ from "./Result.ts"
 import * as Scheduler from "./Scheduler.ts"
 import * as SchemaAST from "./SchemaAST.ts"
@@ -7176,17 +7177,15 @@ export const isBase64UrlReviver: SchemaRepresentation.FilterReviver<null> = Inte
  *
  * **Details**
  *
- * Notes:
- * The JSON Schema and arbitrary metadata are built from `^${startsWith}` without
- * escaping regexp metacharacters. If the prefix contains regexp syntax, generated
- * patterns may not be equivalent to the runtime `startsWith` check.
+ * RegExp metacharacters in the prefix are escaped in JSON Schema and arbitrary
+ * metadata so that the generated patterns retain literal `startsWith` semantics.
  *
  * @category String checks
  * @since 4.0.0
  */
 export function isStartsWith(startsWith: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(startsWith)
-  const regExp = new globalThis.RegExp(`^${startsWith}`)
+  const regExp = new globalThis.RegExp(`^${RegExp_.escape(startsWith)}`)
   return makeFilter(
     (s: string) => s.startsWith(startsWith),
     {
@@ -7199,7 +7198,7 @@ export function isStartsWith(startsWith: string, annotations?: Annotations.Filte
       toCode: () => ({ runtime: `Schema.isStartsWith(${format(startsWith)})` }),
       arbitrary: {
         constraint: {
-          patterns: [`^${startsWith}`]
+          patterns: [regExp.source]
         }
       },
       ...annotations
@@ -7232,17 +7231,15 @@ export const isStartsWithReviver: SchemaRepresentation.FilterReviver<{
  *
  * **Details**
  *
- * Notes:
- * The JSON Schema and arbitrary metadata are built from `${endsWith}$` without
- * escaping regexp metacharacters. If the suffix contains regexp syntax, generated
- * patterns may not be equivalent to the runtime `endsWith` check.
+ * RegExp metacharacters in the suffix are escaped in JSON Schema and arbitrary
+ * metadata so that the generated patterns retain literal `endsWith` semantics.
  *
  * @category String checks
  * @since 4.0.0
  */
 export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(endsWith)
-  const regExp = new globalThis.RegExp(`${endsWith}$`)
+  const regExp = new globalThis.RegExp(`${RegExp_.escape(endsWith)}$`)
   return makeFilter(
     (s: string) => s.endsWith(endsWith),
     {
@@ -7255,7 +7252,7 @@ export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
       toCode: () => ({ runtime: `Schema.isEndsWith(${format(endsWith)})` }),
       arbitrary: {
         constraint: {
-          patterns: [`${endsWith}$`]
+          patterns: [regExp.source]
         }
       },
       ...annotations
@@ -7288,17 +7285,16 @@ export const isEndsWithReviver: SchemaRepresentation.FilterReviver<{
  *
  * **Details**
  *
- * Notes:
- * The JSON Schema and arbitrary metadata use the substring as a raw regexp
- * pattern. If the substring contains regexp syntax, generated patterns may not be
- * equivalent to the runtime `includes` check.
+ * RegExp metacharacters in the substring are escaped in JSON Schema and
+ * arbitrary metadata so that the generated patterns retain literal `includes`
+ * semantics.
  *
  * @category String checks
  * @since 4.0.0
  */
 export function isIncludes(includes: string, annotations?: Annotations.Filter) {
   const formatted = JSON.stringify(includes)
-  const regExp = new globalThis.RegExp(includes)
+  const regExp = new globalThis.RegExp(RegExp_.escape(includes))
   return makeFilter(
     (s: string) => s.includes(includes),
     {
@@ -7311,7 +7307,7 @@ export function isIncludes(includes: string, annotations?: Annotations.Filter) {
       toCode: () => ({ runtime: `Schema.isIncludes(${format(includes)})` }),
       arbitrary: {
         constraint: {
-          patterns: [includes]
+          patterns: [regExp.source]
         }
       },
       ...annotations
