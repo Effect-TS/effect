@@ -2459,7 +2459,7 @@ function getCandidateTypes(ast: AST): ReadonlyArray<Type> {
     case "Objects":
       return ast.propertySignatures.length || ast.indexSignatures.length
         ? ["object"]
-        : ["object", "array"]
+        : ["string", "number", "boolean", "symbol", "bigint", "object", "array", "function"]
     case "Enum":
       return Array.from(new Set(ast.enums.map(([, v]) => typeof v)))
     case "Literal":

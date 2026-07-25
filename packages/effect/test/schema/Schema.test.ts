@@ -4271,15 +4271,26 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await decoding.fail("a", `Expected exactly one member to match the input "a"`)
     })
 
-    it("{} & Literal", async () => {
+    it("Struct({}) preserves its semantics in a union", async () => {
       const schema = Schema.Union([
         Schema.Struct({}),
-        Schema.Literal("a")
+        Schema.Null
       ])
       const asserts = new TestSchema.Asserts(schema)
 
       const decoding = asserts.decoding()
+      const symbol = Symbol()
+      const fn = () => {}
+      await decoding.succeed("a")
+      await decoding.succeed(1)
+      await decoding.succeed(true)
+      await decoding.succeed(symbol)
+      await decoding.succeed(1n)
+      await decoding.succeed(fn)
+      await decoding.succeed({})
       await decoding.succeed([])
+      await decoding.succeed(null)
+      await decoding.fail(undefined, `Expected object | array | null, got undefined`)
     })
 
     describe("should exclude members based on failed sentinels", () => {
