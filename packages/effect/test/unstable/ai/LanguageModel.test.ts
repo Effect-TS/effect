@@ -286,6 +286,58 @@ describe("LanguageModel", () => {
         strictEqual(yield* Ref.get(maxActive), 2)
       }))
 
+    it.effect("provides tool call IDs to concurrent identical tool handlers", () =>
+      Effect.gen(function*() {
+        const toolCallIds = yield* Ref.make<Array<string>>([])
+        const twoStarted = yield* Latch.make()
+        const release = yield* Latch.make()
+
+        const handlers = MyToolkit.toLayer({
+          MyTool: (_, context) =>
+            Effect.gen(function*() {
+              const toolCallId = context.toolCallId
+              assertDefined(toolCallId)
+              const ids = yield* Ref.updateAndGet(toolCallIds, (ids) => [...ids, toolCallId])
+              if (ids.length === 2) {
+                yield* twoStarted.open
+              }
+              yield* release.await
+              return { testSuccess: "test-success" }
+            })
+        })
+
+        const fiber = yield* LanguageModel.streamText({
+          prompt: [],
+          toolkit: MyToolkit
+        }).pipe(
+          Stream.runDrain,
+          TestUtils.withLanguageModel({
+            streamText: [
+              {
+                type: "tool-call",
+                id: "tool-1",
+                name: "MyTool",
+                params: { testParam: "identical" }
+              },
+              {
+                type: "tool-call",
+                id: "tool-2",
+                name: "MyTool",
+                params: { testParam: "identical" }
+              }
+            ]
+          }),
+          Effect.provide(handlers),
+          Effect.forkScoped
+        )
+
+        yield* twoStarted.await
+        deepStrictEqual((yield* Ref.get(toolCallIds)).sort(), ["tool-1", "tool-2"])
+
+        yield* release.open
+        yield* Fiber.join(fiber)
+      }))
+
     it.effect("bounds needsApproval evaluation with the tool handler concurrency", () =>
       Effect.gen(function*() {
         const active = yield* Ref.make(0)

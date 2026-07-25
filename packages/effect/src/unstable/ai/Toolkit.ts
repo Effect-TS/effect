@@ -107,6 +107,10 @@ export interface Toolkit<in out Tools extends Record<string, Tool.Any>> extends
  */
 export interface HandlerContext<Tool extends Tool.Any> {
   /**
+   * The unique identifier of the tool call, when available.
+   */
+  readonly toolCallId?: string | undefined
+  /**
    * Emit a preliminary result during long-running tool calls.
    *
    * **Details**
@@ -200,7 +204,11 @@ export interface WithHandler<in out Tools extends Record<string, Tool.Any>> {
     /**
      * Parameters to pass to the tool handler.
      */
-    params: Tool.Parameters<Tools[Name]>
+    params: Tool.Parameters<Tools[Name]>,
+    /**
+     * The unique identifier of the tool call.
+     */
+    toolCallId?: string
   ) => Effect.Effect<
     Stream.Stream<
       Tool.HandlerResult<Tools[Name]>,
@@ -258,7 +266,7 @@ const Proto = {
         return schemas
       }
 
-      const handle = Effect.fnUntraced(function*(name: string, params: unknown) {
+      const handle = Effect.fnUntraced(function*(name: string, params: unknown, toolCallId?: string) {
         const tool = Object.hasOwn(tools, name) ? tools[name] : undefined
 
         yield* Effect.annotateCurrentSpan({
@@ -303,6 +311,7 @@ const Proto = {
           readonly preliminary: boolean
         }, Cause.Done>()
         const context: HandlerContext<any> = {
+          toolCallId,
           preliminary: (result) =>
             Effect.asVoid(Queue.offer(queue, {
               result,
