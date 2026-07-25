@@ -13,6 +13,7 @@
 import * as Arr from "../../Array.ts"
 import * as Cause from "../../Cause.ts"
 import * as Context from "../../Context.ts"
+import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
@@ -342,6 +343,11 @@ interface Session {
   readonly protocol: McpProtocol.ProtocolAdapter
 }
 
+class McpClientKey extends Data.Class<{
+  readonly clientId: number
+  readonly protocolVersion: string
+}> {}
+
 class McpProtocolState extends Context.Service<McpProtocolState, {
   readonly clientSessions: Map<string, Session>
   readonly protocolRegistry: McpProtocolRegistry.ProtocolRegistry<McpProtocol.ProtocolAdapter>
@@ -412,10 +418,8 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   }))
 
   const clients = yield* RcMap.make({
-    lookup: Effect.fnUntraced(function*(key: string) {
-      const separator = key.indexOf("\0")
-      const clientId = Number(key.slice(0, separator))
-      const selectedProtocol = protocolRegistry.select(key.slice(separator + 1))
+    lookup: Effect.fnUntraced(function*(key: McpClientKey) {
+      const selectedProtocol = protocolRegistry.select(key.protocolVersion)
       let write!: (message: RpcMessage.FromServerEncoded) => Effect.Effect<void>
       const client = yield* RpcClient.make(selectedProtocol.serverRequestRpcs, {
         spanPrefix: "McpServer/Client"
@@ -428,7 +432,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
             return {
               send(id, request, _transferables) {
                 cid = id
-                return protocol.send(clientId, {
+                return protocol.send(key.clientId, {
                   ...request,
                   headers: undefined,
                   traceId: undefined,
@@ -471,7 +475,13 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         clientId: client.id,
         protocolVersion: selectedProtocol.protocolVersion,
         initializePayload: session?.initializePayload ?? payload as typeof Initialize.payloadSchema.Type,
-        getClient: RcMap.get(clients, `${client.id}\0${selectedProtocol.protocolVersion}`).pipe(
+        getClient: RcMap.get(
+          clients,
+          new McpClientKey({
+            clientId: client.id,
+            protocolVersion: selectedProtocol.protocolVersion
+          })
+        ).pipe(
           Effect.map(({ client }) => client)
         )
       })
@@ -571,7 +581,10 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           case "Defect":
             return RcMap.get(
               clients,
-              `${clientId}\0${getProtocolForClient(clientProtocols, clientId, protocolRegistry).protocolVersion}`
+              new McpClientKey({
+                clientId,
+                protocolVersion: getProtocolForClient(clientProtocols, clientId, protocolRegistry).protocolVersion
+              })
             ).pipe(
               Effect.flatMap(({ write }) => write(request)),
               Effect.scoped
