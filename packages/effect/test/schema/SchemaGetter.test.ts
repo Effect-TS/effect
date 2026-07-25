@@ -1,6 +1,5 @@
-import { assert } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Option, Result, SchemaGetter } from "effect"
-import { describe, it } from "vitest"
 import { assertSome, deepStrictEqual } from "../utils/assert.ts"
 
 function makeAsserts<T, E>(getter: SchemaGetter.Getter<T, E>) {
@@ -16,6 +15,12 @@ function makeAsserts<T, E>(getter: SchemaGetter.Getter<T, E>) {
 }
 
 describe("SchemaGetter", () => {
+  it.effect("stringifyJson fails when JSON.stringify returns undefined", () =>
+    SchemaGetter.stringifyJson().run(Option.some(undefined), {}).pipe(
+      Effect.flip,
+      Effect.asVoid
+    ))
+
   it("map", () => {
     const getter = SchemaGetter.succeed(1).map((t) => t + 1)
     const result = Effect.runSync(getter.run(Option.some(1), {}))

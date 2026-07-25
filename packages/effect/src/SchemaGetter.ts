@@ -1015,13 +1015,10 @@ type StringifyJsonOptions = {
  * **Details**
  *
  * - Skips `None` inputs.
- * - On thrown stringify failures, such as circular references, fails with
+ * - If `JSON.stringify` throws or returns `undefined`, fails with
  *   `SchemaIssue.InvalidValue`.
  * - Supports optional `replacer` and `space` options, matching
  *   `JSON.stringify`.
- * - If `JSON.stringify` returns `undefined`, such as for `undefined`,
- *   functions, symbols, or a replacer that removes the root value, that
- *   `undefined` result is returned rather than converted into an `Issue`.
  *
  * **Example** (Stringifying JSON)
  *
@@ -1040,7 +1037,13 @@ type StringifyJsonOptions = {
 export function stringifyJson(options?: StringifyJsonOptions): Getter<string, unknown> {
   return onSome((input) =>
     Effect.try({
-      try: () => Option.some(JSON.stringify(input, options?.replacer, options?.space)),
+      try: () => {
+        const output = JSON.stringify(input, options?.replacer, options?.space)
+        if (output === undefined) {
+          throw new TypeError("Value cannot be represented as JSON")
+        }
+        return Option.some(output)
+      },
       catch: (e) => new SchemaIssue.InvalidValue(Option.some(input), { message: globalThis.String(e) })
     })
   )
