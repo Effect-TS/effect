@@ -624,7 +624,7 @@ export function revealBottom<S extends Top>(
  * ```ts
  * import { Schema } from "effect"
  *
- * const Age = Schema.Number.pipe(
+ * const Age = Schema.Natural.pipe(
  *   Schema.annotate({
  *     title: "Age",
  *     description: "A non-negative integer representing age in years"
@@ -1232,7 +1232,7 @@ function makeStandardResult<A>(exit: Exit_.Exit<StandardSchemaV1.Result<A>>): St
  * // Create a standard schema from a regular schema
  * const PersonSchema = Schema.Struct({
  *   name: Schema.NonEmptyString,
- *   age: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 150 }))
+ *   age: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 150 }))
  * })
  *
  * const standardSchema = Schema.toStandardSchemaV1(PersonSchema, {
@@ -5078,7 +5078,7 @@ export function suspend<S extends Constraint>(f: () => S): suspend<S> {
  * ```ts
  * import { Schema } from "effect"
  *
- * const AgeSchema = Schema.Number.pipe(
+ * const AgeSchema = Schema.Finite.pipe(
  *   Schema.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(120))
  * )
  * ```
