@@ -4032,7 +4032,7 @@ class PersonWithEmail extends Person {
 **Example** (Extending Data.Error)
 
 ```ts
-import { Data, Effect, identity, Schema, SchemaTransformation, SchemaUtils } from "effect"
+import { Data, Effect, identity, Schema, SchemaTransformation } from "effect"
 
 const Props = Schema.Struct({
   message: Schema.String
@@ -4078,9 +4078,6 @@ const schema = Schema.instanceOf(Err, {
     json: () => Schema.link<Err>()(Props, transformation)
   }
 }).pipe(Schema.encodeTo(Props, transformation))
-
-// built-in helper?
-const builtIn = SchemaUtils.getNativeClassSchema(Err, { encoding: Props })
 ```
 
 ### Class API
