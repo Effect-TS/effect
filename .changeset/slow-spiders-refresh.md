@@ -9,4 +9,6 @@ recovers. After recovery, assigned shards are reacquired through the normal lock
 path and start fresh entity instances, once the forced release of the previously
 held locks has completed. Every failing lock operation keeps scheduling a
 rebuild of the reserved connection, so a replacement connection that is also
-unresponsive is rebuilt again instead of wedging the runner.
+unresponsive is rebuilt again instead of wedging the runner. Rebuilds are
+themselves bounded, so a connection release that never completes cannot block
+every later rebuild.

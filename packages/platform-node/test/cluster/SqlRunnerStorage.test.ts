@@ -160,6 +160,57 @@ describe("SqlRunnerStorage", () => {
       ).toEqual(shards)
     }).pipe(Effect.provide(layer))
   }, 60_000)
+
+  it.effect("rebuilds the reserved connection when releasing the previous one hangs", () => {
+    const partitioned = makePartitionState()
+    const layer = StorageLive.pipe(
+      Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
+      Layer.provide(ShardingConfig.layer({
+        shardLockDisableAdvisory: true,
+        shardLockExpiration: 1000,
+        shardLockRefreshInterval: 100
+      }))
+    )
+
+    return Effect.gen(function*() {
+      const storage = yield* RunnerStorage.RunnerStorage
+      const runner = Runner.make({
+        address: runnerAddress1,
+        groups: ["default"],
+        weight: 1
+      })
+      const shards = [ShardId.make("default", 1)]
+
+      yield* storage.register(runner, true)
+      yield* storage.acquire(runnerAddress1, shards)
+
+      // the connection wedges and the driver never releases it back to the
+      // pool, so the rebuild stalls closing the previous scope
+      partitioned.current = true
+      partitioned.blockRelease = true
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* Effect.sleep(150).pipe(TestClock.withLive)
+
+      // the stalled release must not disable further rebuilds
+      partitioned.current = false
+      const reserved = partitioned.reservedConnections
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* waitUntil(() => partitioned.reservedConnections > reserved)
+
+      expect(
+        yield* storage.refresh(runnerAddress1, shards).pipe(
+          Effect.retry({ times: 5, schedule: Schedule.spaced(20) }),
+          TestClock.withLive
+        )
+      ).toEqual(shards)
+    }).pipe(
+      // let the stalled release finish so the layer can be torn down
+      Effect.ensuring(Effect.sync(() => {
+        partitioned.blockRelease = false
+      })),
+      Effect.provide(layer)
+    )
+  }, 60_000)
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
@@ -238,6 +289,7 @@ const runnerAddress1 = RunnerAddress.make("localhost", 1234)
 
 interface PartitionState {
   current: boolean
+  blockRelease: boolean
   activeQueries: number
   maxActiveQueries: number
   interruptedQueries: number
@@ -248,6 +300,7 @@ interface PartitionState {
 
 const makePartitionState = (): PartitionState => ({
   current: false,
+  blockRelease: false,
   activeQueries: 0,
   maxActiveQueries: 0,
   interruptedQueries: 0,
@@ -321,10 +374,24 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
       client = new Proxy(sql, {
         get(target, property, receiver) {
           if (property === "reserve") {
-            return Effect.map(target.reserve, (connection) => {
-              partitioned.reservedConnections++
-              return wrapConnection(connection)
-            })
+            return Effect.andThen(
+              // simulates a driver that stalls uninterruptibly while tearing
+              // down a reserved connection, so closing its scope cannot be
+              // interrupted
+              Effect.addFinalizer(() =>
+                Effect.uninterruptible(Effect.suspend(function waitForRelease(): Effect.Effect<void> {
+                  if (!partitioned.blockRelease) return Effect.void
+                  return Effect.andThen(
+                    Effect.promise(() => new Promise<void>((resolve) => setTimeout(resolve, 5))),
+                    waitForRelease
+                  )
+                }))
+              ),
+              Effect.map(target.reserve, (connection) => {
+                partitioned.reservedConnections++
+                return wrapConnection(connection)
+              })
+            )
           }
           if (property === "withoutTransforms") {
             return () => client

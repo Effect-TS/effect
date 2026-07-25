@@ -121,6 +121,25 @@ export const make = Effect.fnUntraced(function*(options: {
     orElse: () => undefined
   })
   const lockConn = acquireLockConn && (yield* ResourceRef.from(layerScope, acquireLockConn))
+
+  // `Effect.timeout` waits for the timed-out effect to finish interrupting, so
+  // an operation stuck in an uninterruptible region (such as a scope finalizer
+  // releasing an unresponsive connection) can outlive its deadline. Fork the
+  // operation and timeout the join instead, leaving stalled cleanup to finish
+  // detached in the layer scope.
+  const withDeadline = Effect.fnUntraced(function*<A, E, R>(operation: Effect.Effect<A, E, R>) {
+    const fiber = yield* Effect.forkIn(operation, layerScope, { startImmediately: true })
+    return yield* Fiber.join(fiber).pipe(
+      Effect.timeout(lockOperationInterval),
+      Effect.ensuring(Effect.suspend(() =>
+        fiber.pollUnsafe() !== undefined ? Effect.void : Fiber.interrupt(fiber).pipe(
+          Effect.forkIn(layerScope, { startImmediately: true }),
+          Effect.asVoid
+        )
+      ))
+    )
+  })
+
   let lockConnRebuilding = false
   // Incremented every time the reserved connection is replaced, so failures
   // from operations that ran on an already replaced connection do not trigger
@@ -134,8 +153,11 @@ export const make = Effect.fnUntraced(function*(options: {
       lockConn.state.current._tag === "Closed"
     ) return Effect.void
     lockConnRebuilding = true
-    return lockConn.rebuildUnsafe().pipe(
-      Effect.timeout(lockOperationInterval),
+    // The rebuild starts by closing the previous scope, releasing the
+    // unresponsive connection back to the pool. Bound it with `withDeadline`
+    // so a release that never completes cannot leave `lockConnRebuilding` set
+    // forever, which would disable every subsequent rebuild.
+    return withDeadline(lockConn.rebuildUnsafe()).pipe(
       Effect.exit,
       Effect.tap((exit) =>
         Effect.sync(() => {
@@ -598,21 +620,8 @@ export const make = Effect.fnUntraced(function*(options: {
       `.pipe(execWithLockConnValues, Effect.map((rows) => rows.map((row) => row[0] as string)))
   })
 
-  const withLockOperationDeadline = Effect.fnUntraced(function*<A, E, R>(operation: Effect.Effect<A, E, R>) {
-    // Effect.timeout waits for the timed-out effect to finish interrupting.
-    // Timeout the join so unresponsive SQL cleanup cannot extend the deadline.
-    const fiber = yield* Effect.forkIn(operation, layerScope, { startImmediately: true })
-    return yield* Fiber.join(fiber).pipe(
-      Effect.timeout(lockOperationInterval),
-      Effect.ensuring(Effect.suspend(() =>
-        fiber.pollUnsafe() !== undefined ? Effect.void : Fiber.interrupt(fiber).pipe(
-          Effect.forkIn(layerScope, { startImmediately: true }),
-          Effect.asVoid
-        )
-      )),
-      onErrorRebuildLockConn
-    )
-  })
+  const withLockOperationDeadline = <A, E, R>(operation: Effect.Effect<A, E, R>) =>
+    onErrorRebuildLockConn(withDeadline(operation))
 
   const releaseShard = sql.onDialectOrElse({
     pg: () => {
