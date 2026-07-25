@@ -161,6 +161,103 @@ describe("Stream", () => {
         )
         assert.deepStrictEqual(seen, [1, 2, 3])
       }))
+
+    it.effect("toAsyncIterable - return interrupts an in-flight pull", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        let interrupted = false
+        const iterator = Stream.toAsyncIterable(
+          Stream.fromEffect(
+            Effect.andThen(
+              Deferred.succeed(started, void 0),
+              Effect.never
+            ).pipe(
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  interrupted = true
+                })
+              )
+            )
+          )
+        )[Symbol.asyncIterator]()
+
+        const pending = iterator.next().catch(constVoid)
+        yield* Deferred.await(started)
+        const result = yield* Effect.promise(() => iterator.return!(undefined))
+        yield* Effect.promise(() => pending)
+
+        assert.deepStrictEqual(result, { done: true, value: undefined })
+        assert.isTrue(interrupted)
+      }))
+
+    it.effect("toAsyncIterable - early for await exit interrupts the producer", () =>
+      Effect.gen(function*() {
+        let interrupted = false
+        const iterable = Stream.toAsyncIterable(
+          Stream.callback<number>((queue) =>
+            Effect.andThen(
+              Queue.offer(queue, 1),
+              Effect.never
+            ).pipe(
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  interrupted = true
+                })
+              )
+            )
+          )
+        )
+
+        yield* Effect.promise(async () => {
+          for await (const _ of iterable) {
+            break
+          }
+        })
+
+        assert.isTrue(interrupted)
+      }))
+
+    it.effect("toAsyncIterable - return is idempotent without an in-flight pull", () =>
+      Effect.gen(function*() {
+        const iterator = Stream.toAsyncIterable(Stream.make(1))[Symbol.asyncIterator]()
+
+        const first = yield* Effect.promise(() => iterator.return!(undefined))
+        const second = yield* Effect.promise(() => iterator.return!(undefined))
+        const next = yield* Effect.promise(() => iterator.next())
+
+        assert.deepStrictEqual(first, { done: true, value: undefined })
+        assert.deepStrictEqual(second, { done: true, value: undefined })
+        assert.deepStrictEqual(next, { done: true, value: undefined })
+      }))
+
+    it.effect("toAsyncIterable - throw interrupts an in-flight pull", () =>
+      Effect.gen(function*() {
+        const started = yield* Deferred.make<void>()
+        let interrupted = false
+        const iterator = Stream.toAsyncIterable(
+          Stream.fromEffect(
+            Effect.andThen(
+              Deferred.succeed(started, void 0),
+              Effect.never
+            ).pipe(
+              Effect.onInterrupt(() =>
+                Effect.sync(() => {
+                  interrupted = true
+                })
+              )
+            )
+          )
+        )[Symbol.asyncIterator]()
+        const error = new Error("boom")
+
+        const pending = iterator.next().catch(constVoid)
+        yield* Deferred.await(started)
+        const thrown = yield* Effect.promise(() => iterator.throw!(error).catch((error) => error))
+        yield* Effect.promise(() => pending)
+
+        assert.strictEqual(thrown, error)
+        assert.isTrue(interrupted)
+      }))
   })
 
   describe("constructors", () => {

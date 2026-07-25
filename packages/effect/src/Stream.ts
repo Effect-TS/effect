@@ -11336,32 +11336,61 @@ export const toAsyncIterableWith: {
   ): AsyncIterable<A> => ({
     [Symbol.asyncIterator]() {
       const runPromise = Effect.runPromiseWith(context)
-      const runPromiseExit = Effect.runPromiseExitWith(context)
+      const runFork = Effect.runForkWith(context)
       const scope = Scope.makeUnsafe()
       let pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E, void, R> | undefined
       let currentIter: Iterator<A> | undefined
+      let currentFiber: Fiber.Fiber<Arr.NonEmptyReadonlyArray<A>, E | Cause.Done<void>> | undefined
+      let closed = false
+      let closePromise: Promise<IteratorResult<A>> | undefined
+      const close = (): Promise<IteratorResult<A>> => {
+        if (closePromise) return closePromise
+        closed = true
+        const fiber = currentFiber
+        closePromise = runPromise(Effect.as(
+          Effect.andThen(
+            fiber ? Fiber.interrupt(fiber) : Effect.void,
+            Scope.close(scope, Exit.void)
+          ),
+          { done: true, value: undefined }
+        ))
+        return closePromise
+      }
       return {
         async next(): Promise<IteratorResult<A>> {
+          if (closed) return { done: true, value: undefined }
           if (currentIter) {
             const next = currentIter.next()
             if (!next.done) return next
             currentIter = undefined
           }
-          pull ??= await runPromise(Channel.toPullScoped(self.channel, scope))
-          const exit = await runPromiseExit(pull)
+          const fiber = runFork(
+            pull ??
+              Effect.flatMap(Channel.toPullScoped(self.channel, scope), (nextPull) => {
+                pull = nextPull
+                return nextPull
+              })
+          )
+          currentFiber = fiber
+          const exit = await runPromise(Fiber.await(fiber))
+          if (currentFiber === fiber) {
+            currentFiber = undefined
+          }
           if (Exit.isSuccess(exit)) {
             currentIter = exit.value[Symbol.iterator]()
             return currentIter.next()
           } else if (Pull.isDoneCause(exit.cause)) {
-            return { done: true, value: undefined }
+            return close()
           }
+          await close()
           throw Cause.squash(exit.cause)
         },
-        return(_) {
-          return runPromise(Effect.as(
-            Scope.close(scope, Exit.void),
-            { done: true, value: undefined }
-          ))
+        return() {
+          return close()
+        },
+        async throw(error) {
+          await close()
+          throw error
         }
       }
     }
