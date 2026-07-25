@@ -1,13 +1,21 @@
-import { NodeFileSystem } from "@effect/platform-node"
+import { NodeCrypto, NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
-import { Message, MessageStorage, ShardingConfig, Snowflake, SqlMessageStorage } from "effect/unstable/cluster"
+import {
+  Envelope,
+  Message,
+  MessageStorage,
+  ShardingConfig,
+  Snowflake,
+  SqlMessageStorage
+} from "effect/unstable/cluster"
 import { SqlClient } from "effect/unstable/sql"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import {
+  LongKeyRpc,
   makeAckChunk,
   makeChunkReply,
   makeReply,
@@ -18,7 +26,7 @@ import {
 
 const StorageLive = SqlMessageStorage.layer.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
-  Layer.provide(ShardingConfig.layerDefaults)
+  Layer.provide([ShardingConfig.layerDefaults, NodeCrypto.layer])
 )
 
 const truncate = Effect.gen(function*() {
@@ -133,6 +141,78 @@ describe("SqlMessageStorage", () => {
             })
           )
           expect(result._tag).toEqual("Duplicate")
+        }))
+
+      it.effect("hashes primary keys longer than the message_id column", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const longId = "long-key-".repeat(50)
+          const request = yield* makeRequest({
+            rpc: LongKeyRpc,
+            payload: LongKeyRpc.payloadSchema.make({ id: longId })
+          })
+          const result = yield* storage.saveRequest(request)
+          expect(result._tag).toEqual("Success")
+
+          const duplicate = yield* storage.saveRequest(
+            yield* makeRequest({
+              rpc: LongKeyRpc,
+              payload: LongKeyRpc.payloadSchema.make({ id: longId })
+            })
+          )
+          expect(duplicate._tag).toEqual("Duplicate")
+
+          const requestId = yield* storage.requestIdForPrimaryKey({
+            address: request.envelope.address,
+            tag: request.envelope.tag,
+            id: longId
+          })
+          expect(requestId).toEqual(Option.some(request.envelope.requestId))
+
+          const sql = yield* SqlClient.SqlClient
+          const rows = yield* sql<
+            { message_id: string; primary_key: string }
+          >`SELECT message_id, primary_key FROM cluster_messages`
+          expect(rows).toHaveLength(1)
+          expect(rows[0].message_id).toMatch(/^[0-9a-f]{64}$/)
+          expect(rows[0].primary_key).toEqual(Envelope.primaryKey(request.envelope))
+        }))
+
+      it.effect("detects duplicates for legacy plaintext rows", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const sql = yield* SqlClient.SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest({
+            rpc: PrimaryKeyTest,
+            payload: PrimaryKeyTest.payloadSchema.make({ id: 456 })
+          })
+          yield* storage.saveRequest(request)
+
+          // simulate a row written before message_id values were hashed
+          const plaintext = Envelope.primaryKey(request.envelope)!
+          yield* sql`UPDATE cluster_messages SET message_id = ${plaintext} WHERE id = ${
+            String(request.envelope.requestId)
+          }`
+
+          const result = yield* storage.saveRequest(
+            yield* makeRequest({
+              rpc: PrimaryKeyTest,
+              payload: PrimaryKeyTest.payloadSchema.make({ id: 456 })
+            })
+          )
+          assert(result._tag === "Duplicate")
+          expect(result.originalId).toEqual(request.envelope.requestId)
+
+          const requestId = yield* storage.requestIdForPrimaryKey({
+            address: request.envelope.address,
+            tag: request.envelope.tag,
+            id: "456"
+          })
+          expect(requestId).toEqual(Option.some(request.envelope.requestId))
         }))
 
       it.effect("unprocessedMessages", () =>

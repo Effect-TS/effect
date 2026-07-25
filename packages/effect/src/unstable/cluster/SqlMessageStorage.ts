@@ -8,13 +8,20 @@
  * storage constructor, layers, migrations, optional table prefixes, and the row
  * mapping needed by encoded message storage.
  *
+ * Request deduplication keys are hashed with the `Crypto` service before they
+ * are written to the unique `message_id` column, so composed keys of any
+ * length are supported; the plaintext key is stored in the non-unique
+ * `primary_key` column for diagnostics.
+ *
  * @since 4.0.0
  */
 // eslint-disable effect/no-bigint-literals
 import * as Arr from "../../Array.ts"
+import * as Crypto from "../../Crypto.ts"
 import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
+import type * as PlatformError from "../../PlatformError.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Migrator from "../sql/Migrator.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
@@ -61,9 +68,10 @@ export const make: (options?: {
 }) => Effect.Effect<
   MessageStorage.MessageStorage["Service"],
   never,
-  SqlClient.SqlClient | Snowflake.Generator
+  SqlClient.SqlClient | Snowflake.Generator | Crypto.Crypto
 > = Effect.fnUntraced(function*(options) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+  const crypto = yield* Crypto.Crypto
   const prefix = options?.prefix ?? "cluster"
   const table = (name: string) => `${prefix}_${name}`
 
@@ -84,9 +92,35 @@ export const make: (options?: {
   const repliesTable = table("replies")
   const repliesTableSql = sql(repliesTable)
 
+  // The composed primary key (`entityType/entityId/tag/id`) can legally exceed
+  // the 255-character `message_id` column: entity_type(150) + entity_id(255) +
+  // tag(50) alone total 458 characters before the RPC primary key is appended.
+  // `message_id` therefore stores a SHA-256 digest of the composed key: 256
+  // bits keeps the collision probability negligible (birthday bound 2^128),
+  // and the 64-character hex encoding fits every dialect's indexable column
+  // width. The digest never contains "/" while legacy plaintext keys always
+  // do, so the two encodings cannot collide and legacy rows can be matched
+  // with a dual-read fallback. The plaintext is kept in the non-unique
+  // `primary_key` column for diagnostics.
+  const encoder = new TextEncoder()
+  const hashPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
+    Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), (bytes) => {
+      let hex = ""
+      for (let i = 0; i < bytes.length; i++) {
+        hex += bytes[i].toString(16).padStart(2, "0")
+      }
+      return hex
+    })
+
+  // Rows written before `message_id` was hashed store the plaintext composed
+  // key. Keys longer than the column's 255-character limit can never exist as
+  // legacy rows, so the fallback read is skipped for them.
+  const mayHaveLegacyRow = (primaryKey: string): boolean => primaryKey.length <= 255
+
   const envelopeToRow = (
     envelope: Envelope.Encoded,
     message_id: string | null,
+    primary_key: string | null,
     deliver_at: number | null
   ): MessageRow => {
     switch (envelope._tag) {
@@ -94,6 +128,7 @@ export const make: (options?: {
         return {
           id: envelope.requestId,
           message_id,
+          primary_key,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
@@ -118,6 +153,7 @@ export const make: (options?: {
         return {
           id: envelope.id,
           message_id,
+          primary_key,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
@@ -136,6 +172,7 @@ export const make: (options?: {
         return {
           id: envelope.id,
           message_id,
+          primary_key,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
@@ -237,6 +274,14 @@ export const make: (options?: {
 
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
+
+  const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
+    sql`
+      SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+      FROM ${messagesTableSql} m
+      LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+      WHERE m.message_id = ${message_id}
+    `
 
   const insertEnvelope: (
     row: MessageRow,
@@ -406,18 +451,30 @@ export const make: (options?: {
   return yield* MessageStorage.makeEncoded({
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
-        const row = envelopeToRow(envelope, primaryKey, deliverAt)
-        let insert = primaryKey
-          ? insertEnvelope(row, primaryKey)
-          : Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
-        if (envelope._tag === "AckChunk") {
-          insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
-            Effect.andThen(
-              sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
-            ),
-            Effect.andThen(insert),
-            sql.withTransaction
-          )
+        let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | PlatformError.PlatformError>
+        if (primaryKey !== null) {
+          insert = Effect.flatMap(hashPrimaryKey(primaryKey), (messageId) => {
+            const row = envelopeToRow(envelope, messageId, primaryKey, deliverAt)
+            if (!mayHaveLegacyRow(primaryKey)) {
+              return insertEnvelope(row, messageId)
+            }
+            return Effect.flatMap(
+              selectByMessageId(primaryKey),
+              (rows) => rows.length > 0 ? Effect.succeed(rows) : insertEnvelope(row, messageId)
+            )
+          })
+        } else {
+          const row = envelopeToRow(envelope, null, null, deliverAt)
+          insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
+          if (envelope._tag === "AckChunk") {
+            insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
+              Effect.andThen(
+                sql`UPDATE ${messagesTableSql} SET processed = ${sqlTrue} WHERE processed = ${sqlFalse} AND request_id = ${envelope.requestId} AND kind = ${messageKindAckChunk}`
+              ),
+              Effect.andThen(insert),
+              sql.withTransaction
+            )
+          }
         }
         return insert.pipe(
           Effect.map((rows) => {
@@ -488,7 +545,15 @@ export const make: (options?: {
     ),
 
     requestIdForPrimaryKey: (primaryKey) =>
-      sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`.pipe(
+      hashPrimaryKey(primaryKey).pipe(
+        Effect.flatMap((messageId) =>
+          sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
+        ),
+        Effect.flatMap((rows) =>
+          rows.length === 0 && mayHaveLegacyRow(primaryKey)
+            ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
+            : Effect.succeed(rows)
+        ),
         Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]?.id), Snowflake.Snowflake)),
         Effect.provideService(SqlClient.SafeIntegers, true),
         PersistenceError.refail,
@@ -645,7 +710,9 @@ export const make: (options?: {
  *
  * The layer runs the SQL migrations through `make`, provides `MessageStorage`,
  * and supplies `Snowflake.layerGenerator` internally. Callers still provide
- * `SqlClient` and `ShardingConfig`.
+ * `SqlClient`, `ShardingConfig`, and `Crypto.Crypto`, which is used to hash
+ * message deduplication keys before they are stored in the fixed-width
+ * `message_id` column.
  *
  * **Gotchas**
  *
@@ -662,7 +729,7 @@ export const make: (options?: {
 export const layer: Layer.Layer<
   MessageStorage.MessageStorage,
   never,
-  SqlClient.SqlClient | ShardingConfig
+  SqlClient.SqlClient | ShardingConfig | Crypto.Crypto
 > = Layer.effect(MessageStorage.MessageStorage, make()).pipe(
   Layer.provide(Snowflake.layerGenerator)
 )
@@ -675,7 +742,7 @@ export const layer: Layer.Layer<
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
-}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig> =>
+}): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig | Crypto.Crypto> =>
   Layer.effect(MessageStorage.MessageStorage, make(options)).pipe(
     Layer.provide(Snowflake.layerGenerator)
   )
@@ -977,6 +1044,35 @@ const migrations = (options?: {
           // sqlite
           Effect.void
       })
+    }),
+    "0003_message_id_digest": Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const messagesTableSql = sql(messagesTable)
+
+      // `message_id` now stores a SHA-256 digest of the composed primary key.
+      // Add a nullable, non-unique plaintext `primary_key` column for
+      // diagnostics; it is never indexed, so it cannot hit dialect
+      // index-length limits.
+      yield* sql.onDialectOrElse({
+        mssql: () =>
+          sql`
+            IF COL_LENGTH(N'${messagesTableSql}', 'primary_key') IS NULL
+            ALTER TABLE ${messagesTableSql} ADD primary_key VARCHAR(MAX);
+          `,
+        mysql: () =>
+          sql`
+            ALTER TABLE ${messagesTableSql} ADD COLUMN primary_key TEXT;
+          `.unprepared.pipe(Effect.ignore),
+        pg: () =>
+          sql`
+            ALTER TABLE ${messagesTableSql} ADD COLUMN IF NOT EXISTS primary_key TEXT;
+          `,
+        orElse: () =>
+          // sqlite
+          sql`
+            ALTER TABLE ${messagesTableSql} ADD COLUMN primary_key TEXT;
+          `
+      })
     })
   })
 }
@@ -1011,6 +1107,7 @@ const replyFromRow = (row: ReplyRow): Reply.Encoded =>
 type MessageRow = {
   readonly id: string | bigint
   readonly message_id: string | null
+  readonly primary_key: string | null
   readonly shard_id: string
   readonly entity_type: string
   readonly entity_id: string
