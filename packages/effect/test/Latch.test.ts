@@ -32,6 +32,66 @@ describe("Latch", () => {
       assert.isTrue(latch.isOpen())
     }))
 
+  it.effect("open then close does not resume waiters registered after close", () =>
+    Effect.gen(function*() {
+      const latch = Latch.makeUnsafe(false)
+      const before = yield* Effect.forkChild(
+        Latch.await(latch),
+        { startImmediately: true }
+      )
+
+      yield* latch.open
+      yield* latch.close
+      const after = yield* Effect.forkChild(
+        Latch.await(latch),
+        { startImmediately: true }
+      )
+
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+
+      assert.isDefined(before.pollUnsafe())
+      assert.isUndefined(after.pollUnsafe())
+    }))
+
+  it.effect("release while a flush is pending covers the new waiters", () =>
+    Effect.gen(function*() {
+      const latch = yield* Latch.make(false)
+      const tasks: Array<() => void> = []
+      const scheduler: Scheduler.Scheduler = {
+        executionMode: "async",
+        makeDispatcher() {
+          return {
+            scheduleTask(task, _priority) {
+              tasks.push(task)
+            },
+            flush() {
+            }
+          }
+        },
+        shouldYield: () => false
+      }
+
+      const first = yield* Effect.forkChild(
+        Latch.await(latch),
+        { startImmediately: true }
+      )
+      yield* latch.release.pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+      assert.lengthOf(tasks, 1)
+
+      const second = yield* Effect.forkChild(
+        Latch.await(latch),
+        { startImmediately: true }
+      )
+      yield* latch.release.pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
+      assert.lengthOf(tasks, 1)
+
+      tasks.shift()!()
+      yield* Fiber.join(first)
+      yield* Fiber.join(second)
+      assert.isFalse(latch.isOpen())
+    }))
+
   it.effect("await is interruptible and cleans up interrupted waiters", () =>
     Effect.gen(function*() {
       const latch = yield* Latch.make(false)
