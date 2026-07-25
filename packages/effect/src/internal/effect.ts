@@ -5550,9 +5550,12 @@ class Latch implements _Latch.Latch {
     }
   }
   private flushWaiters() {
-    this.flushScheduled()
+    // swap both arrays out before any resume runs: a resumed waiter can
+    // reentrantly close the latch and register new waiters, which must not
+    // be drained by this flush
     const waiters = this.waiters
     this.waiters = []
+    this.flushScheduled()
     for (let i = 0; i < waiters.length; i++) {
       waiters[i](exitVoid)
     }
