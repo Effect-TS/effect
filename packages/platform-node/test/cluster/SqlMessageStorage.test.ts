@@ -215,6 +215,48 @@ describe("SqlMessageStorage", () => {
           expect(requestId).toEqual(Option.some(request.envelope.requestId))
         }))
 
+      if (label === "sqlite") {
+        // sqlite's TEXT message_id column stored over-long plaintext keys
+        // before hashing, so the legacy fallback must also cover keys longer
+        // than the 255-character limit of the width-enforcing dialects
+        it.effect("detects duplicates for legacy long-key plaintext rows", () =>
+          Effect.gen(function*() {
+            yield* truncate
+
+            const sql = yield* SqlClient.SqlClient
+            const storage = yield* MessageStorage.MessageStorage
+            const longId = "legacy-long-key-".repeat(30)
+            const request = yield* makeRequest({
+              rpc: LongKeyRpc,
+              payload: LongKeyRpc.payloadSchema.make({ id: longId })
+            })
+            yield* storage.saveRequest(request)
+
+            // simulate a row written before message_id values were hashed
+            const plaintext = Envelope.primaryKey(request.envelope)!
+            expect(plaintext.length).toBeGreaterThan(255)
+            yield* sql`UPDATE cluster_messages SET message_id = ${plaintext} WHERE id = ${
+              String(request.envelope.requestId)
+            }`
+
+            const result = yield* storage.saveRequest(
+              yield* makeRequest({
+                rpc: LongKeyRpc,
+                payload: LongKeyRpc.payloadSchema.make({ id: longId })
+              })
+            )
+            assert(result._tag === "Duplicate")
+            expect(result.originalId).toEqual(request.envelope.requestId)
+
+            const requestId = yield* storage.requestIdForPrimaryKey({
+              address: request.envelope.address,
+              tag: request.envelope.tag,
+              id: longId
+            })
+            expect(requestId).toEqual(Option.some(request.envelope.requestId))
+          }))
+      }
+
       it.effect("unprocessedMessages", () =>
         Effect.gen(function*() {
           yield* truncate

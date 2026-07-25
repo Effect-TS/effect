@@ -113,9 +113,21 @@ export const make: (options?: {
     })
 
   // Rows written before `message_id` was hashed store the plaintext composed
-  // key. Keys longer than the column's 255-character limit can never exist as
-  // legacy rows, so the fallback read is skipped for them.
-  const mayHaveLegacyRow = (primaryKey: string): boolean => primaryKey.length <= 255
+  // key; the fallback reads below exist only for that transition and can be
+  // removed in a future release. On the width-enforcing dialects keys longer
+  // than the column's 255-character limit can never exist as legacy rows, so
+  // the fallback read is skipped for them — but sqlite declares `message_id`
+  // as TEXT and does not enforce VARCHAR widths, so legacy rows there can
+  // hold keys of any length. (MySQL's `INSERT IGNORE` truncated over-long
+  // legacy keys to a 255-character prefix; those rows were already corrupt
+  // for deduplication purposes pre-digest and are deliberately not matched.)
+  const messageIdEnforcesWidth = sql.onDialectOrElse({
+    mssql: () => true,
+    mysql: () => true,
+    pg: () => true,
+    orElse: () => false
+  })
+  const mayHaveLegacyRow = (primaryKey: string): boolean => !messageIdEnforcesWidth || primaryKey.length <= 255
 
   const envelopeToRow = (
     envelope: Envelope.Encoded,
