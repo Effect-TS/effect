@@ -3,6 +3,7 @@ import { constVoid } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as References from "effect/References"
+import * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpServer from "effect/unstable/ai/McpServer"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 
@@ -19,6 +20,7 @@ export const makeServerLayer = (options: {
     name: options.name,
     version: options.version ?? "1.0.0",
     path: "/mcp",
+    protocols: [McpProtocol.v2025_06_18],
     extensions: options.extensions
   }).pipe(
     Layer.provideMerge(Layer.succeed(

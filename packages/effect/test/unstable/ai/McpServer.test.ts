@@ -1,9 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Queue from "effect/Queue"
 import * as Schema from "effect/Schema"
+import * as Sink from "effect/Sink"
+import * as Stdio from "effect/Stdio"
+import * as Stream from "effect/Stream"
 import * as AiError from "effect/unstable/ai/AiError"
+import * as InternalMcpProtocol from "effect/unstable/ai/internal/mcpProtocol"
+import * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
 import * as Tool from "effect/unstable/ai/Tool"
@@ -13,6 +20,7 @@ import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
+import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import { makeServerLayer, makeWebHandler } from "./McpServer/utils.ts"
 
@@ -129,8 +137,81 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
   return content.text
 }
 
+const makeTestProtocol = (protocolVersion: string, field: "a" | "b") => {
+  const Ping = Rpc.make("ping", {
+    payload: Schema.Struct({
+      [field]: field === "a" ? Schema.String : Schema.Number
+    }),
+    success: Schema.Struct({})
+  })
+  return InternalMcpProtocol.make({
+    protocolVersion,
+    clientRpcs: McpSchema.ClientRpcs.omit("ping").add(Ping),
+    clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
+    serverRequestRpcs: McpSchema.ServerRequestRpcs,
+    serverNotificationRpcs: McpSchema.ServerNotificationRpcs
+  })
+}
+
+const makeRawHttpServer = (
+  protocols: ReadonlyArray<InternalMcpProtocol.AnyProtocolAdapter>
+) =>
+  Effect.gen(function*() {
+    const serverLayer = McpServer.layerHttp({
+      name: "TestServer",
+      version: "1.0.0",
+      path: "/mcp",
+      protocols: protocols as unknown as [
+        McpProtocol.ProtocolAdapter,
+        ...Array<McpProtocol.ProtocolAdapter>
+      ]
+    })
+    const { dispose, handler } = HttpRouter.toWebHandler(serverLayer, { disableLogger: true })
+    yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
+
+    const request = (
+      body: unknown,
+      sessionId?: string
+    ) =>
+      Effect.promise(() =>
+        handler(
+          new Request("http://localhost/mcp", {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              ...(sessionId ? { "mcp-session-id": sessionId } : {})
+            },
+            body: JSON.stringify(body)
+          })
+        )
+      )
+
+    const initialize = Effect.fnUntraced(function*(protocolVersion: string, id: number) {
+      const response = yield* request({
+        jsonrpc: "2.0",
+        id,
+        method: "initialize",
+        params: {
+          protocolVersion,
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
+        }
+      })
+      const sessionId = response.headers.get("mcp-session-id")
+      if (sessionId === null) {
+        return yield* Effect.die("MCP initialize response did not include a session id")
+      }
+      return { response, sessionId }
+    })
+
+    return { initialize, request }
+  })
+
 describe("McpServer", () => {
-  it.effect("replays MCP session and negotiated protocol headers after initialize", () =>
+  it.effect("should replay the negotiated protocol header when a session is initialized", () =>
     Effect.gen(function*() {
       const { client, responses } = yield* makeTestClient
 
@@ -146,11 +227,11 @@ describe("McpServer", () => {
       yield* client.ping({})
 
       strictEqual(responses.length, 2)
-      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-03-26")
-      strictEqual(responses[1].headers.get("Mcp-Protocol-Version"), "2025-03-26")
+      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
+      strictEqual(responses[1].headers.get("Mcp-Protocol-Version"), "2025-06-18")
     }))
 
-  it.effect("returns 404 when a non-initialize request omits the MCP session id", () =>
+  it.effect("should return 404 when a non-initialize request omits the MCP session id", () =>
     Effect.gen(function*() {
       const { httpClient } = yield* makeTestClient
 
@@ -161,7 +242,6 @@ describe("McpServer", () => {
 
       strictEqual(response.status, 404)
     }))
-
   describe("registerToolkit", () => {
     it.effect("returns concise parameter-validation errors without invoking the handler", () =>
       Effect.gen(function*() {
@@ -357,13 +437,156 @@ describe("McpServer", () => {
       )
       strictEqual(absentVersionResponse.status, 200)
 
-      for (const protocolVersion of ["2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]) {
+      for (const protocolVersion of ["2025-03-26", "2024-11-05", "2024-10-07"]) {
         const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
           HttpClientRequest.bodyJsonUnsafe(pingBody),
           HttpClientRequest.setHeader("Mcp-Protocol-Version", protocolVersion),
           httpClient.execute
         )
-        strictEqual(response.status, 200)
+        strictEqual(response.status, 400)
       }
+
+      const declaredVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.bodyJsonUnsafe(pingBody),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "2025-06-18"),
+        httpClient.execute
+      )
+      strictEqual(declaredVersionResponse.status, 200)
     }))
+  describe("protocol selection", () => {
+    for (const offeredVersion of ["2025-03-26", "2024-11-05", "2024-10-07"]) {
+      it.effect(`should select June when ${offeredVersion} is offered`, () =>
+        Effect.gen(function*() {
+          const { client, responses } = yield* makeTestClient
+
+          const result = yield* client.initialize({
+            protocolVersion: offeredVersion,
+            capabilities: {},
+            clientInfo: {
+              name: "TestClient",
+              version: "1.0.0"
+            }
+          })
+
+          strictEqual(result.protocolVersion, "2025-06-18")
+          strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
+        }))
+    }
+
+    it.effect("should decode with the pinned adapter when sessions use incompatible schemas", () =>
+      Effect.gen(function*() {
+        const protocolA = makeTestProtocol("test-a", "a")
+        const protocolB = makeTestProtocol("test-b", "b")
+        const { initialize, request } = yield* makeRawHttpServer([protocolA, protocolB])
+        const sessionA = yield* initialize("test-a", 1)
+        const sessionB = yield* initialize("test-b", 2)
+
+        const wrongForA = yield* request({
+          jsonrpc: "2.0",
+          id: 3,
+          method: "ping",
+          params: { b: 1 }
+        }, sessionA.sessionId)
+        const validForA = yield* request({
+          jsonrpc: "2.0",
+          id: 4,
+          method: "ping",
+          params: { a: "selected" }
+        }, sessionA.sessionId)
+        const validForB = yield* request({
+          jsonrpc: "2.0",
+          id: 5,
+          method: "ping",
+          params: { b: 1 }
+        }, sessionB.sessionId)
+
+        const invalidBody = (yield* Effect.promise(() => wrongForA.json())) as Record<string, unknown>
+        const validABody = (yield* Effect.promise(() => validForA.json())) as Record<string, unknown>
+        const validBBody = (yield* Effect.promise(() => validForB.json())) as Record<string, unknown>
+        assert.property(invalidBody, "error")
+        assert.deepStrictEqual(validABody, { jsonrpc: "2.0", id: 4, result: {} })
+        assert.deepStrictEqual(validBBody, { jsonrpc: "2.0", id: 5, result: {} })
+      }))
+  })
+
+  describe("stdio", () => {
+    it.effect("should preserve the June wire transcript when requests use stdio", () =>
+      Effect.gen(function*() {
+        const stdin = yield* Queue.unbounded<Uint8Array>()
+        const stdout = yield* Queue.unbounded<string | Uint8Array>()
+        const encoder = new TextEncoder()
+        const decoder = new TextDecoder()
+        const stdioLayer = Stdio.layerTest({
+          stdin: Stream.fromQueue(stdin),
+          stdout: () => Sink.forEach((chunk) => Queue.offer(stdout, chunk))
+        })
+
+        const ready = yield* Deferred.make<void>()
+        yield* Effect.gen(function*() {
+          yield* Layer.build(
+            McpServer.layerStdio({
+              name: "TestServer",
+              version: "1.0.0",
+              protocols: [McpProtocol.v2025_06_18]
+            }).pipe(Layer.provide(stdioLayer))
+          )
+          yield* Deferred.succeed(ready, undefined)
+          return yield* Effect.never
+        }).pipe(
+          Effect.scoped,
+          Effect.forkScoped
+        )
+        yield* Deferred.await(ready)
+
+        const write = (message: unknown) => Queue.offer(stdin, encoder.encode(`${JSON.stringify(message)}\n`))
+        const read = Effect.fnUntraced(function*() {
+          const chunk = yield* Queue.take(stdout)
+          const frame = typeof chunk === "string" ? chunk : decoder.decode(chunk)
+          assert.strictEqual(frame.endsWith("\n"), true)
+          return JSON.parse(frame)
+        })
+
+        yield* write({
+          jsonrpc: "2.0",
+          id: 0,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-06-18",
+            capabilities: {},
+            clientInfo: {
+              name: "TestClient",
+              version: "1.0.0"
+            }
+          }
+        })
+
+        assert.deepStrictEqual(yield* read(), {
+          jsonrpc: "2.0",
+          id: 0,
+          result: {
+            protocolVersion: "2025-06-18",
+            capabilities: {
+              completions: {}
+            },
+            serverInfo: {
+              name: "TestServer",
+              version: "1.0.0"
+            }
+          }
+        })
+
+        yield* write({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "ping",
+          params: {}
+        })
+
+        assert.deepStrictEqual(yield* read(), {
+          jsonrpc: "2.0",
+          id: 1,
+          result: {}
+        })
+      }))
+  })
 })
