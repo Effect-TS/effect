@@ -1339,7 +1339,7 @@ export function url(name?: string) {
  *
  * **Details**
  *
- * Shortcut for `Config.schema(Schema.DateValid, name)`.
+ * Shortcut for `Config.schema(Schema.Date, name)`.
  *
  * **Gotchas**
  *
@@ -1361,7 +1361,7 @@ export function url(name?: string) {
  * @since 2.0.0
  */
 export function date(name?: string) {
-  return schema(Schema.DateValid, name)
+  return schema(Schema.Date, name)
 }
 
 /**

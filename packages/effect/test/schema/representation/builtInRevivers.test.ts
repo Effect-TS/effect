@@ -543,18 +543,6 @@ function date(millis: number): Date {
 const epoch = "1970-01-01T00:00:00.000Z"
 
 describe("SchemaRepresentation built-in Date revivers", () => {
-  it("revives isDateValid", () => {
-    assertFilterReviver({
-      schema: Schema.Any.check(Schema.isDateValid()),
-      id: "effect/schema/isDateValid",
-      payload: null,
-      reviver: Schema.isDateValidReviver,
-      valid: date(0),
-      invalid: date(Number.NaN),
-      hasToJsonSchema: false
-    })
-  })
-
   it("revives isGreaterThanDate", () => {
     assertFilterReviver({
       schema: Schema.Any.check(Schema.isGreaterThanDate(date(0))),

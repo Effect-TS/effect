@@ -132,8 +132,7 @@ const combiner: Combiner.Combiner<any> = Struct.makeCombiner({
   noInfinity: or,
   noNaN: or,
   patterns: concat,
-  unique: or,
-  valid: or
+  unique: or
 }, {
   omitKeyWhen: Predicate.isUndefined
 })

@@ -145,7 +145,7 @@ describe("Primitive", () => {
         ]))
 
       it.effect("should fail for invalid values", () =>
-        expectInvalidValues(Primitive.date, ["not-a-date"], [`Expected a valid date, got Invalid Date`]))
+        expectInvalidValues(Primitive.date, ["not-a-date"], [`Expected a valid Date, got Invalid Date`]))
 
       it("should have correct _tag", () => {
         assert.strictEqual(Primitive.date._tag, "Date")

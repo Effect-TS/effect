@@ -244,9 +244,8 @@ Schema.BigInt.check(isNonPositive)
 
 ## Dates
 
-The `Schema.Date` schema matches `Date` objects (even invalid dates).
-
-If you want to validate only valid dates, use `Schema.DateValid` instead.
+The `Schema.Date` schema matches valid `Date` objects and rejects invalid dates
+such as `new Date(NaN)`.
 
 ## Template literals
 
