@@ -1114,6 +1114,7 @@ describe("Stream", () => {
         const probing = yield* Deferred.make<void>()
         const gate = yield* Deferred.make<void>()
         const innerGate = yield* Deferred.make<void>()
+        const innerCompleted = yield* Deferred.make<void>()
         const outer = Stream.concat(
           Stream.make(1, 2),
           Stream.fromEffect(
@@ -1125,7 +1126,12 @@ describe("Stream", () => {
         )
         const fiber = yield* Stream.flatMap(
           outer,
-          (n) => n === 3 ? Stream.make(3) : Stream.fromEffect(Deferred.await(innerGate).pipe(Effect.as(n))),
+          (n) =>
+            n === 3
+              ? Stream.make(3)
+              : Stream.fromEffect(Deferred.await(innerGate).pipe(Effect.as(n))).pipe(
+                Stream.ensuring(Deferred.succeed(innerCompleted, void 0))
+              ),
           { concurrency: 2 }
         ).pipe(
           Stream.runCollect,
@@ -1133,7 +1139,7 @@ describe("Stream", () => {
         )
         yield* Deferred.await(probing)
         yield* Deferred.succeed(innerGate, void 0)
-        for (let i = 0; i < 10; i++) yield* Effect.yieldNow
+        yield* Deferred.await(innerCompleted)
         yield* Deferred.succeed(gate, void 0)
 
         const result = yield* Fiber.join(fiber)
