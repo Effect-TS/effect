@@ -156,7 +156,7 @@ describe("LanguageModel", () => {
         strictEqual(parts[2]?.type, "finish")
       }))
 
-    it("runs tool handlers sequentially with concurrency: 1", () =>
+    it.effect("runs tool handlers sequentially with concurrency: 1", () =>
       Effect.gen(function*() {
         const active = yield* Ref.make(0)
         const maxActive = yield* Ref.make(0)
@@ -217,7 +217,7 @@ describe("LanguageModel", () => {
         strictEqual(yield* Ref.get(maxActive), 1)
       }))
 
-    it("allows tool handler overlap up to a bounded concurrency", () =>
+    it.effect("allows tool handler overlap up to a bounded concurrency", () =>
       Effect.gen(function*() {
         const active = yield* Ref.make(0)
         const maxActive = yield* Ref.make(0)
@@ -280,7 +280,7 @@ describe("LanguageModel", () => {
         strictEqual(yield* Ref.get(maxActive), 2)
       }))
 
-    it("bounds needsApproval evaluation with the tool handler concurrency", () =>
+    it.effect("bounds needsApproval evaluation with the tool handler concurrency", () =>
       Effect.gen(function*() {
         const active = yield* Ref.make(0)
         const maxActive = yield* Ref.make(0)
