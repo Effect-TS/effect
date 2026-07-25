@@ -274,6 +274,13 @@ export interface Tool<
   readonly needsApproval?: boolean | NeedsApprovalFunction<any> | undefined
 
   /**
+   * Set whether user approval is required before executing this tool.
+   */
+  setNeedsApproval(
+    needsApproval: NeedsApproval<Config["parameters"]>
+  ): Tool<Name, Config, Requirements>
+
+  /**
    * Adds a _request-level_ dependency which must be provided before the tool
    * call handler can be executed.
    *
@@ -1050,6 +1057,9 @@ const Proto = {
   },
   setFailure(this: Any, failureSchema: Schema.Constraint) {
     return clone(this, { failureSchema })
+  },
+  setNeedsApproval(this: Any, needsApproval: NeedsApproval<any>) {
+    return clone(this, { needsApproval })
   },
   annotate<I, S>(this: Any, tag: Context.Key<I, S>, value: S) {
     return clone(this, { annotations: Context.add(this.annotations, tag, value) })
