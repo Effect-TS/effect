@@ -2900,13 +2900,10 @@ describe("Stream", () => {
           assertExitFailure(result, Cause.fail("boom"))
         }))
 
-      // Note: This test is skipped because with sequential pulling (matching zipWith behavior),
-      // when the left stream ends, we don't pull from the right stream, so errors after
-      // the left stream ends are not encountered. This is correct behavior.
-      it.skip("error propagation from right stream", () =>
+      it.effect("error propagation from right stream", () =>
         Effect.gen(function*() {
           const result = yield* Stream.zipWithArray(
-            Stream.make(1, 2, 3),
+            Stream.fromArrays([1, 2, 3], [4]),
             Stream.make("a", "b").pipe(Stream.concat(Stream.fail("boom"))),
             (left, right) => {
               const minLength = Math.min(left.length, right.length)
