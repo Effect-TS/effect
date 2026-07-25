@@ -172,12 +172,9 @@ describe("SqlMessageStorage", () => {
           expect(requestId).toEqual(Option.some(request.envelope.requestId))
 
           const sql = yield* SqlClient.SqlClient
-          const rows = yield* sql<
-            { message_id: string; primary_key: string }
-          >`SELECT message_id, primary_key FROM cluster_messages`
+          const rows = yield* sql<{ message_id: string }>`SELECT message_id FROM cluster_messages`
           expect(rows).toHaveLength(1)
           expect(rows[0].message_id).toMatch(/^[0-9a-f]{64}$/)
-          expect(rows[0].primary_key).toEqual(Envelope.primaryKey(request.envelope))
         }))
 
       it.effect("detects duplicates for legacy plaintext rows", () =>

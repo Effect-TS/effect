@@ -10,8 +10,8 @@
  *
  * Request deduplication keys are hashed with the `Crypto` service before they
  * are written to the unique `message_id` column, so composed keys of any
- * length are supported; the plaintext key is stored in the non-unique
- * `primary_key` column for diagnostics.
+ * length are supported. The key's components remain readable via the
+ * `entity_type`, `entity_id`, `tag`, and `payload` columns.
  *
  * @since 4.0.0
  */
@@ -101,8 +101,8 @@ export const make: (options?: {
   // and the 64-character hex encoding fits every dialect's indexable column
   // width. The digest never contains "/" while legacy plaintext keys always
   // do, so the two encodings cannot collide and legacy rows can be matched
-  // with a dual-read fallback. The plaintext is kept in the non-unique
-  // `primary_key` column for diagnostics.
+  // with a dual-read fallback. The key's components remain readable via the
+  // entity_type, entity_id, tag, and payload columns.
   const encoder = new TextEncoder()
   const hashPrimaryKey = (primaryKey: string): Effect.Effect<string, PlatformError.PlatformError> =>
     Effect.map(crypto.digest("SHA-256", encoder.encode(primaryKey)), Encoding.encodeHex)
@@ -127,7 +127,6 @@ export const make: (options?: {
   const envelopeToRow = (
     envelope: Envelope.Encoded,
     message_id: string | null,
-    primary_key: string | null,
     deliver_at: number | null
   ): MessageRow => {
     switch (envelope._tag) {
@@ -135,7 +134,6 @@ export const make: (options?: {
         return {
           id: envelope.requestId,
           message_id,
-          primary_key,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
@@ -160,7 +158,6 @@ export const make: (options?: {
         return {
           id: envelope.id,
           message_id,
-          primary_key,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
@@ -179,7 +176,6 @@ export const make: (options?: {
         return {
           id: envelope.id,
           message_id,
-          primary_key,
           shard_id: ShardId.toString(envelope.address.shardId),
           entity_type: envelope.address.entityType,
           entity_id: envelope.address.entityId,
@@ -446,7 +442,7 @@ export const make: (options?: {
         let insert: Effect.Effect<ReadonlyArray<Row>, SqlError | PlatformError.PlatformError>
         if (primaryKey !== null) {
           insert = Effect.flatMap(hashPrimaryKey(primaryKey), (messageId) => {
-            const row = envelopeToRow(envelope, messageId, primaryKey, deliverAt)
+            const row = envelopeToRow(envelope, messageId, deliverAt)
             if (!mayHaveLegacyRow(primaryKey)) {
               return insertEnvelope(row, messageId)
             }
@@ -456,7 +452,7 @@ export const make: (options?: {
             )
           })
         } else {
-          const row = envelopeToRow(envelope, null, null, deliverAt)
+          const row = envelopeToRow(envelope, null, deliverAt)
           insert = Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
           if (envelope._tag === "AckChunk") {
             insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
@@ -1036,35 +1032,6 @@ const migrations = (options?: {
           // sqlite
           Effect.void
       })
-    }),
-    "0003_message_id_digest": Effect.gen(function*() {
-      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
-      const messagesTableSql = sql(messagesTable)
-
-      // `message_id` now stores a SHA-256 digest of the composed primary key.
-      // Add a nullable, non-unique plaintext `primary_key` column for
-      // diagnostics; it is never indexed, so it cannot hit dialect
-      // index-length limits.
-      yield* sql.onDialectOrElse({
-        mssql: () =>
-          sql`
-            IF COL_LENGTH(N'${messagesTableSql}', 'primary_key') IS NULL
-            ALTER TABLE ${messagesTableSql} ADD primary_key VARCHAR(MAX);
-          `,
-        mysql: () =>
-          sql`
-            ALTER TABLE ${messagesTableSql} ADD COLUMN primary_key TEXT;
-          `.unprepared.pipe(Effect.ignore),
-        pg: () =>
-          sql`
-            ALTER TABLE ${messagesTableSql} ADD COLUMN IF NOT EXISTS primary_key TEXT;
-          `,
-        orElse: () =>
-          // sqlite
-          sql`
-            ALTER TABLE ${messagesTableSql} ADD COLUMN primary_key TEXT;
-          `
-      })
     })
   })
 }
@@ -1099,7 +1066,6 @@ const replyFromRow = (row: ReplyRow): Reply.Encoded =>
 type MessageRow = {
   readonly id: string | bigint
   readonly message_id: string | null
-  readonly primary_key: string | null
   readonly shard_id: string
   readonly entity_type: string
   readonly entity_id: string
