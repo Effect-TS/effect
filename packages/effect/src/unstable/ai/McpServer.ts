@@ -39,6 +39,7 @@ import type * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMessage from "../rpc/RpcMessage.ts"
 import * as RpcSerialization from "../rpc/RpcSerialization.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
+import * as AiError from "./AiError.ts"
 import {
   CallToolResult,
   ClientNotificationRpcs,
@@ -664,6 +665,14 @@ export const layerHttp = (options: {
     Layer.provide(RpcSerialization.layerJsonRpc())
   )
 
+const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
+
+const toolErrorResult = (message: string): CallToolResult =>
+  new CallToolResult({
+    isError: true,
+    content: [{ type: "text", text: message }]
+  })
+
 /**
  * Registers a `Toolkit` with the `McpServer`.
  *
@@ -689,6 +698,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
   for (const tool of Object.values(built.tools)) {
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
+    const isDeclaredFailure = Schema.is(tool.failureSchema)
     const mcpTool = new McpTool({
       name: tool.name,
       description: Tool.getDescription(tool),
@@ -709,32 +719,41 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       tool: mcpTool,
       annotations,
       handle(payload) {
-        return built.handle(tool.name as any, payload).pipe(
+        return built.handle(tool.name as keyof Tools, payload).pipe(
           Stream.unwrap,
           Stream.run(Sink.last()),
           Effect.flatMap(Effect.fromOption),
-          Effect.provideContext(services as Context.Context<any>),
-          Effect.matchCause({
-            onFailure: (cause) =>
-              new CallToolResult({
-                isError: true,
-                content: [{
-                  type: "text",
-                  text: Cause.pretty(cause)
-                }]
-              }),
-            onSuccess: (result: any) =>
-              new CallToolResult({
-                isError: false,
-                structuredContent: typeof result.encodedResult === "object" ? result.encodedResult : undefined,
-                content: [{
-                  type: "text",
-                  text: JSON.stringify(result.encodedResult)
-                }]
-              })
+          Effect.provideContext(
+            services as Context.Context<Tool.HandlerServices<Tools[keyof Tools]>>
+          ),
+          Effect.map((result) =>
+            new CallToolResult({
+              isError: false,
+              structuredContent: typeof result.encodedResult === "object" ? result.encodedResult : undefined,
+              content: [{
+                type: "text",
+                text: JSON.stringify(result.encodedResult)
+              }]
+            })
+          ),
+          Effect.catchIf(AiError.isAiError, (error) =>
+            Effect.fail(error).pipe(
+              Effect.catchReason(
+                "AiError",
+                "ToolParameterValidationError",
+                (reason) => Effect.succeed(toolErrorResult(reason.message))
+              ),
+              Effect.catchTag("AiError", () => Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE)))
+            )),
+          Effect.catch((failure) => {
+            const message = isDeclaredFailure(failure) && failure instanceof Error
+              ? failure.message
+              : INTERNAL_TOOL_ERROR_MESSAGE
+            return Effect.succeed(toolErrorResult(message))
           }),
+          Effect.catchCause(() => Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))),
           Effect.tapCause(Effect.log)
-        ) as any
+        )
       }
     })
   }
