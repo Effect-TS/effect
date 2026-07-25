@@ -350,6 +350,11 @@ const make = Effect.gen(function*() {
           FiberMap.run(releaseShardsMap, shardId, { onlyIfMissing: true })
         )
     )
+    // The forced release ends with `runnerStorage.releaseAll`, which drops
+    // every lock held by this runner. Shards must not be reacquired through the
+    // normal path while it is pending, otherwise the bulk release wipes a lock
+    // the runner already considers acquired.
+    const forcedShardReleasePending = () => forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) > 0
     const releaseForcedShards = Effect.suspend(() => {
       if (forcedShardReleaseRunning || MutableHashSet.size(forceReleasingShards) === 0) {
         return Effect.void
@@ -389,12 +394,18 @@ const make = Effect.gen(function*() {
           MutableHashSet.add(releasingShards, shardId)
         }
 
-        if (MutableHashSet.size(releasingShards) > 0) {
+        if (MutableHashSet.size(releasingShards) > 0 || MutableHashSet.size(forceReleasingShards) > 0) {
           yield* Effect.forkIn(syncSingletons, shardingScope)
           yield* releaseShards
         }
 
         if (!shardLocksHealthyLatch.isOpen()) {
+          continue
+        }
+
+        // Wait for the pending bulk release before reacquiring, so it cannot
+        // drop a lock acquired here. `releaseForcedShards` reopens the latch.
+        if (forcedShardReleasePending()) {
           continue
         }
 
@@ -422,9 +433,13 @@ const make = Effect.gen(function*() {
           Effect.ignore,
           Effect.timeoutOption(shardLockInterval)
         )
+        // A forced release can start while `acquire` is in flight, so re-check
+        // it here as well as before acquiring.
+        const forcedReleasePending = forcedShardReleasePending()
         for (const shardId of acquired) {
           if (
             !shardLocksHealthyLatch.isOpen() ||
+            forcedReleasePending ||
             MutableHashSet.has(releasingShards, shardId) ||
             !MutableHashSet.has(selfShards, shardId)
           ) {

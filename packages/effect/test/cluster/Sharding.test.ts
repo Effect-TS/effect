@@ -11,7 +11,7 @@ import {
   RunnerHealth,
   Runners,
   RunnerStorage,
-  type ShardId,
+  ShardId,
   Sharding,
   ShardingConfig,
   Snowflake
@@ -591,14 +591,7 @@ describe.concurrent("Sharding", () => {
 describe("Sharding shard lock failover", () => {
   it.effect("interrupts entities and reacquires shards after lock storage recovers", () =>
     Effect.gen(function*() {
-      const storageState: FailoverStorageState = {
-        blackholed: false,
-        assignSelf: true,
-        runner: undefined,
-        acquireCalls: [],
-        refreshCalls: [],
-        releaseCalls: []
-      }
+      const storageState = makeFailoverStorageState()
       const runnerStorage = Layer.effect(
         RunnerStorage.RunnerStorage,
         Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
@@ -676,7 +669,7 @@ describe("Sharding shard lock failover", () => {
         }
 
         assert.isAbove(storageState.acquireCalls.length, acquireCount)
-        assert(storageState.acquireCalls.at(-1)!.some((shard) => shard.id === shardId.id))
+        assert(storageState.acquireCalls.at(-1)!.shards.some((shard) => shard.id === shardId.id))
         assert.deepStrictEqual(yield* client.GetUserVolatile({ id: 2 }), new User({ id: 2, name: "User 2" }))
         assert.strictEqual(Queue.sizeUnsafe(entityState.envelopes), 2)
       }).pipe(Effect.provide(layer), Effect.scoped)
@@ -684,14 +677,7 @@ describe("Sharding shard lock failover", () => {
 
   it.effect("keeps the graceful timeout for normal shard reassignment", () =>
     Effect.gen(function*() {
-      const storageState: FailoverStorageState = {
-        blackholed: false,
-        assignSelf: true,
-        runner: undefined,
-        acquireCalls: [],
-        refreshCalls: [],
-        releaseCalls: []
-      }
+      const storageState = makeFailoverStorageState()
       const runnerStorage = Layer.effect(
         RunnerStorage.RunnerStorage,
         Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
@@ -752,26 +738,132 @@ describe("Sharding shard lock failover", () => {
         assert.strictEqual(storageState.releaseCalls.length, 1)
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
+
+  it.effect("does not acquire shards while a forced release is pending", () =>
+    Effect.gen(function*() {
+      const shardsPerGroup = 4
+      const storageState = makeFailoverStorageState({
+        otherRunnerHealthy: true,
+        releaseAllDuration: 500
+      })
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup,
+        shardLockExpiration: 300,
+        shardLockRefreshInterval: 1000,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 10,
+        refreshAssignmentsInterval: 10,
+        sendRetryInterval: 10
+      })
+      const layer = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provideMerge(TestEntityState.layer),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const allShards = Array.makeBy(shardsPerGroup, (i) => ShardId.make("default", i + 1))
+        const ownedCount = () => allShards.filter((shardId) => sharding.hasShardId(shardId)).length
+
+        // the other runner holds part of the ring, so this runner starts with a
+        // strict subset of the shards
+        while (ownedCount() === 0) {
+          yield* TestClock.adjust(10)
+        }
+        assert.isBelow(ownedCount(), shardsPerGroup)
+        while (!storageState.refreshCalls.some((call) => call.shards.length > 0)) {
+          yield* TestClock.adjust(100)
+        }
+
+        const acquiresBeforeOutage = storageState.acquireCalls.length
+        storageState.blackholed = true
+        yield* TestClock.adjust(201)
+        assert.strictEqual(ownedCount(), 0)
+
+        // the other runner's shards are reassigned to this runner during the
+        // outage, so they are not part of the forced release set
+        storageState.otherRunnerHealthy = false
+        yield* TestClock.adjust(100)
+        assert.strictEqual(storageState.releaseAllCalls.length, 0)
+
+        // recovery runs the forced release, which stays in flight for
+        // `releaseAllDuration`
+        storageState.blackholed = false
+        while (storageState.releaseAllCalls.length === 0) {
+          yield* TestClock.adjust(10)
+        }
+        while (!storageState.releaseAllCalls[0].completed) {
+          yield* TestClock.adjust(10)
+        }
+        // keep shutdown from blocking on the finalizer release
+        storageState.releaseAllDuration = 0
+
+        while (ownedCount() < shardsPerGroup) {
+          yield* TestClock.adjust(10)
+        }
+
+        // `releaseAll` drops every lock held by this runner, so nothing may be
+        // acquired before it has completed
+        assert.strictEqual(storageState.releaseAllCalls.length, 1)
+        assert(
+          storageState.acquireCalls
+            .slice(acquiresBeforeOutage)
+            .every((call) => call.completedReleaseAlls > 0)
+        )
+      }).pipe(Effect.provide(layer), Effect.scoped)
+    }))
 })
 
 interface FailoverStorageState {
   blackholed: boolean
   assignSelf: boolean
+  otherRunnerHealthy: boolean
+  /** Test clock duration `releaseAll` stays in flight for. */
+  releaseAllDuration: number
   runner: Runner.Runner | undefined
-  readonly acquireCalls: Array<Array<ShardId.ShardId>>
+  readonly acquireCalls: Array<{
+    readonly shards: Array<ShardId.ShardId>
+    readonly completedReleaseAlls: number
+  }>
   readonly refreshCalls: Array<{
     readonly at: number
     readonly shards: Array<ShardId.ShardId>
   }>
   readonly releaseCalls: Array<ShardId.ShardId>
+  readonly releaseAllCalls: Array<{ completed: boolean }>
 }
+
+const makeFailoverStorageState = (
+  overrides?: Partial<FailoverStorageState>
+): FailoverStorageState => ({
+  blackholed: false,
+  assignSelf: true,
+  otherRunnerHealthy: false,
+  releaseAllDuration: 0,
+  runner: undefined,
+  acquireCalls: [],
+  refreshCalls: [],
+  releaseCalls: [],
+  releaseAllCalls: [],
+  ...overrides
+})
 
 const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
   RunnerStorage.RunnerStorage.of({
     getRunners: Effect.sync(() => {
       if (!state.runner) return []
-      if (state.assignSelf) return [[state.runner, true]]
-      return [[state.runner, false], [otherRunner, true]]
+      if (!state.assignSelf) return [[state.runner, false], [otherRunner, true]]
+      return state.otherRunnerHealthy ? [[state.runner, true], [otherRunner, true]] : [[state.runner, true]]
     }),
     register: (runner) =>
       Effect.sync(() => {
@@ -783,7 +875,10 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
     acquire: (_address, shardIds) =>
       Effect.sync(() => {
         const shards = globalThis.Array.from(shardIds)
-        state.acquireCalls.push(shards)
+        state.acquireCalls.push({
+          shards,
+          completedReleaseAlls: state.releaseAllCalls.filter((call) => call.completed).length
+        })
         return shards
       }),
     refresh: (_address, shardIds) =>
@@ -799,7 +894,17 @@ const makeFailoverStorage = (state: FailoverStorageState, clock: Clock.Clock) =>
       Effect.sync(() => {
         state.releaseCalls.push(shardId)
       }),
-    releaseAll: () => Effect.void
+    releaseAll: () =>
+      Effect.suspend(() => {
+        const call = { completed: false }
+        state.releaseAllCalls.push(call)
+        return Effect.andThen(
+          Effect.sleep(state.releaseAllDuration),
+          Effect.sync(() => {
+            call.completed = true
+          })
+        )
+      })
   })
 
 const otherRunner = Runner.make({
