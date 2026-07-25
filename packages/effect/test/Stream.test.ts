@@ -4,6 +4,7 @@ import { assertExitFailure, assertSuccess, assertTrue, deepStrictEqual, strictEq
 import {
   Array,
   Cause,
+  Channel,
   Clock,
   Context,
   Data,
@@ -22,6 +23,7 @@ import {
   References,
   Result,
   Schedule,
+  Scope,
   Sink,
   Stream,
   String as Str
@@ -134,6 +136,19 @@ describe("Stream", () => {
   })
 
   describe("destructors", () => {
+    const withScopeFinalizer = <A, E, R>(
+      self: Stream.Stream<A, E, R>,
+      finalizer: (exit: Exit.Exit<unknown, unknown>) => Effect.Effect<unknown>
+    ): Stream.Stream<A, E, R> =>
+      Stream.fromChannel(
+        Channel.fromTransform((upstream, scope) =>
+          Effect.andThen(
+            Scope.addFinalizerExit(scope, finalizer),
+            Channel.toTransform(Stream.toChannel(self))(upstream, scope)
+          )
+        )
+      )
+
     it.effect("runForEachWhile continues across chunk boundaries", () =>
       Effect.gen(function*() {
         const seen: Array<number> = []
@@ -252,6 +267,89 @@ describe("Stream", () => {
         assert.deepStrictEqual(first, { done: true, value: undefined })
         assert.deepStrictEqual(second, { done: true, value: undefined })
         assert.deepStrictEqual(next, { done: true, value: undefined })
+      }))
+
+    it.effect("toAsyncIterable - natural completion closes the scope with a successful exit", () =>
+      Effect.gen(function*() {
+        const finalizerExits: Array<Exit.Exit<unknown, unknown>> = []
+        const stream = withScopeFinalizer(
+          Stream.make(1, 2),
+          (exit) =>
+            Effect.sync(() => {
+              finalizerExits.push(exit)
+            })
+        )
+        const values = yield* Effect.promise(async () => {
+          const values: Array<number> = []
+          for await (const value of Stream.toAsyncIterable(stream)) {
+            values.push(value)
+          }
+          return values
+        })
+
+        assert.deepStrictEqual(values, [1, 2])
+        assert.deepStrictEqual(finalizerExits, [Exit.void])
+      }))
+
+    it.effect("toAsyncIterable - stream failure is forwarded to the scope", () =>
+      Effect.gen(function*() {
+        const streamError = new Error("stream failure")
+        const finalizerError = new Error("finalizer failure")
+        const finalizerExits: Array<Exit.Exit<unknown, unknown>> = []
+        const capturedLogs: Array<unknown> = []
+        const testLogger = Logger.make<unknown, void>((options) => {
+          capturedLogs.push(options.message)
+        })
+        const stream = withScopeFinalizer(
+          Stream.fail(streamError),
+          (exit) =>
+            Effect.andThen(
+              Effect.sync(() => {
+                finalizerExits.push(exit)
+              }),
+              Effect.die(finalizerError)
+            )
+        )
+
+        const thrown = yield* Effect.gen(function*() {
+          const iterable = yield* Stream.toAsyncIterableEffect(stream)
+          return yield* Effect.promise(() => iterable[Symbol.asyncIterator]().next().catch((error) => error))
+        }).pipe(Effect.withLogger(testLogger))
+
+        assert.strictEqual(thrown, streamError)
+        assert.deepStrictEqual(finalizerExits, [Exit.fail(streamError)])
+        assert.strictEqual(capturedLogs.length, 1)
+      }))
+
+    it.effect("toAsyncIterable - throw forwards a failure exit and preserves its error", () =>
+      Effect.gen(function*() {
+        const thrownError = new Error("thrown failure")
+        const finalizerError = new Error("finalizer failure")
+        const finalizerExits: Array<Exit.Exit<unknown, unknown>> = []
+        const capturedLogs: Array<unknown> = []
+        const testLogger = Logger.make<unknown, void>((options) => {
+          capturedLogs.push(options.message)
+        })
+        const stream = withScopeFinalizer(
+          Stream.make(1),
+          (exit) =>
+            Effect.andThen(
+              Effect.sync(() => {
+                finalizerExits.push(exit)
+              }),
+              Effect.die(finalizerError)
+            )
+        )
+
+        const thrown = yield* Effect.gen(function*() {
+          const iterator = (yield* Stream.toAsyncIterableEffect(stream))[Symbol.asyncIterator]()
+          yield* Effect.promise(() => iterator.next())
+          return yield* Effect.promise(() => iterator.throw!(thrownError).catch((error) => error))
+        }).pipe(Effect.withLogger(testLogger))
+
+        assert.strictEqual(thrown, thrownError)
+        assert.deepStrictEqual(finalizerExits, [Exit.die(thrownError)])
+        assert.strictEqual(capturedLogs.length, 1)
       }))
 
     it.effect("toAsyncIterable - throw interrupts an in-flight pull", () =>

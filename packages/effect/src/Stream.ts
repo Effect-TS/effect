@@ -11343,18 +11343,25 @@ export const toAsyncIterableWith: {
       let currentFiber: Fiber.Fiber<Arr.NonEmptyReadonlyArray<A>, E | Cause.Done<void>> | undefined
       let closed = false
       let closePromise: Promise<IteratorResult<A>> | undefined
-      const close = (): Promise<IteratorResult<A>> => {
+      const close = (exit: Exit.Exit<unknown, unknown>): Promise<IteratorResult<A>> => {
         if (closePromise) return closePromise
         closed = true
         const fiber = currentFiber
         closePromise = runPromise(Effect.as(
           Effect.andThen(
             fiber ? Fiber.interrupt(fiber) : Effect.void,
-            Scope.close(scope, Exit.void)
+            Scope.close(scope, exit)
           ),
           { done: true, value: undefined }
         ))
         return closePromise
+      }
+      const closeAndReportError = async (exit: Exit.Exit<unknown, unknown>): Promise<void> => {
+        try {
+          await close(exit)
+        } catch (error) {
+          await runPromise(Effect.logError("Suppressed error while closing Stream async iterator", error))
+        }
       }
       return {
         async next(): Promise<IteratorResult<A>> {
@@ -11380,19 +11387,19 @@ export const toAsyncIterableWith: {
             currentIter = exit.value[Symbol.iterator]()
             return currentIter.next()
           } else if (Pull.isDoneCause(exit.cause)) {
-            return close()
+            return close(Exit.void)
           }
           if (closed && Cause.hasInterruptsOnly(exit.cause)) {
             return closePromise!
           }
-          await close()
+          await closeAndReportError(exit)
           throw Cause.squash(exit.cause)
         },
         return() {
-          return close()
+          return close(Exit.void)
         },
         async throw(error) {
-          await close()
+          await closeAndReportError(Exit.die(error))
           throw error
         }
       }
