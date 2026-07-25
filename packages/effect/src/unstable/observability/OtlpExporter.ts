@@ -139,6 +139,7 @@ export const make: (
 
   yield* Effect.sleep(exportInterval).pipe(
     Effect.andThen(FiberSet.run(exportFibers, runExport)),
+    Effect.flatMap(Fiber.await),
     Effect.forever,
     Effect.forkIn(scope)
   )

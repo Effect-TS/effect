@@ -94,6 +94,33 @@ describe("OtlpExporter", () => {
       yield* Fiber.join(closeFiber)
     }))
 
+  it.effect("waits for each periodic export before starting the next interval", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const { httpClient, releases, started } = yield* makeControlledHttpClient(3)
+      const exporter = yield* makeExporter(httpClient, {
+        exportInterval: "1 second",
+        maxBatchSize: "disabled"
+      }).pipe(Scope.provide(scope))
+
+      exporter.push({ value: 1 })
+      yield* TestClock.adjust("1 second")
+      yield* Deferred.await(started[0])
+
+      yield* TestClock.adjust("1 second")
+      assert.isFalse(yield* Deferred.isDone(started[1]))
+
+      yield* Deferred.succeed(releases[0], undefined)
+      yield* TestClock.adjust("1 second")
+      yield* Deferred.await(started[1])
+
+      const closeFiber = yield* Effect.forkChild(Scope.close(scope, Exit.void))
+      yield* Deferred.await(started[2])
+      yield* Deferred.succeed(releases[1], undefined)
+      yield* Deferred.succeed(releases[2], undefined)
+      yield* Fiber.join(closeFiber)
+    }))
+
   it.effect("allows an in-flight batch export to finish during shutdown", () =>
     Effect.gen(function*() {
       const scope = yield* Scope.make()
