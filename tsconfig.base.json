@@ -35,7 +35,6 @@
       "name": "@effect/language-service",
       "namespaceImportPackages": ["effect", "@effect/*"],
       "diagnosticSeverity": {
-        "schemaNumber": "error",
         "globalErrorInEffectFailure": "off" // TODO: Check if we should fix the warnings this reports
       },
       "includeSuggestionsInTsc": false,
