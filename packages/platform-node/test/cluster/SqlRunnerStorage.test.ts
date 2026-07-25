@@ -11,7 +11,7 @@ import {
   ShardingConfig,
   SqlRunnerStorage
 } from "effect/unstable/cluster"
-import { SqlClient, type SqlConnection } from "effect/unstable/sql"
+import { SqlClient, type SqlConnection, SqlError } from "effect/unstable/sql"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 
@@ -19,12 +19,7 @@ const StorageLive = SqlRunnerStorage.layer
 
 describe("SqlRunnerStorage", () => {
   it.effect("bounds shard lock operations and rebuilds an unresponsive reserved connection", () => {
-    const partitioned: PartitionState = {
-      current: false,
-      activeQueries: 0,
-      maxActiveQueries: 0,
-      interruptedQueries: 0
-    }
+    const partitioned = makePartitionState()
     const layer = StorageLive.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, true)),
       Layer.provide(ShardingConfig.layer({
@@ -84,12 +79,7 @@ describe("SqlRunnerStorage", () => {
   }, 60_000)
 
   it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
-    const partitioned: PartitionState = {
-      current: false,
-      activeQueries: 0,
-      maxActiveQueries: 0,
-      interruptedQueries: 0
-    }
+    const partitioned = makePartitionState()
     const layer = StorageLive.pipe(
       Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
       Layer.provide(ShardingConfig.layer({
@@ -123,6 +113,51 @@ describe("SqlRunnerStorage", () => {
       ).toEqual(shards)
       assert.isAtLeast(partitioned.interruptedQueries, 1)
       assert.isAtMost(partitioned.maxActiveQueries, 1)
+    }).pipe(Effect.provide(layer))
+  }, 60_000)
+
+  it.effect("rebuilds the reserved connection again when a rebuilt connection stops responding", () => {
+    const partitioned = makePartitionState()
+    const layer = StorageLive.pipe(
+      Layer.provideMerge(blackholeReservedConnection(partitioned, false)),
+      Layer.provide(ShardingConfig.layer({
+        shardLockExpiration: 1000,
+        shardLockRefreshInterval: 100
+      }))
+    )
+
+    return Effect.gen(function*() {
+      const storage = yield* RunnerStorage.RunnerStorage
+      const runner = Runner.make({
+        address: runnerAddress1,
+        groups: ["default"],
+        weight: 1
+      })
+      const shards = [ShardId.make("default", 1)]
+
+      yield* storage.register(runner, true)
+      yield* storage.acquire(runnerAddress1, shards)
+
+      // a failing lock operation rebuilds the reserved connection
+      partitioned.failNextQueries = 1
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* waitUntil(() => partitioned.usableConnections === 2)
+
+      // the rebuilt connection then wedges, without any lock operation
+      // succeeding in between - a further rebuild still has to be attempted
+      const reserved = partitioned.reservedConnections
+      partitioned.current = true
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
+      partitioned.current = false
+      yield* waitUntil(() => partitioned.reservedConnections > reserved)
+
+      expect(
+        yield* storage.refresh(runnerAddress1, shards).pipe(
+          Effect.retry({ times: 5, schedule: Schedule.spaced(20) }),
+          TestClock.withLive
+        )
+      ).toEqual(shards)
     }).pipe(Effect.provide(layer))
   }, 60_000)
   ;([
@@ -206,7 +241,33 @@ interface PartitionState {
   activeQueries: number
   maxActiveQueries: number
   interruptedQueries: number
+  failNextQueries: number
+  reservedConnections: number
+  usableConnections: number
 }
+
+const makePartitionState = (): PartitionState => ({
+  current: false,
+  activeQueries: 0,
+  maxActiveQueries: 0,
+  interruptedQueries: 0,
+  failNextQueries: 0,
+  reservedConnections: 0,
+  usableConnections: 0
+})
+
+const waitUntil = Effect.fnUntraced(
+  function*(predicate: () => boolean) {
+    while (!predicate()) {
+      yield* Effect.sleep(20)
+    }
+  },
+  Effect.timeoutOrElse({
+    duration: 10_000,
+    orElse: () => Effect.die("timed out waiting for condition")
+  }),
+  TestClock.withLive
+)
 
 const blackholeReservedConnection = (partitioned: PartitionState, resumePending: boolean) =>
   Layer.effect(
@@ -214,8 +275,17 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
     Effect.gen(function*() {
       const sql = yield* SqlClient.SqlClient
       const wrapConnection = (connection: SqlConnection.Connection): SqlConnection.Connection => {
-        const execute = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-          Effect.suspend(() => {
+        let usable = false
+        const execute = <A, E extends SqlError.SqlError, R>(effect: Effect.Effect<A, E, R>) =>
+          Effect.suspend((): Effect.Effect<A, E | SqlError.SqlError, R> => {
+            if (partitioned.failNextQueries > 0) {
+              partitioned.failNextQueries--
+              return Effect.fail(
+                new SqlError.SqlError({
+                  reason: new SqlError.ConnectionError({ cause: new Error("connection lost") })
+                })
+              )
+            }
             partitioned.activeQueries++
             partitioned.maxActiveQueries = Math.max(partitioned.maxActiveQueries, partitioned.activeQueries)
             return Effect.suspend(function waitForConnection(): Effect.Effect<A, E, R> {
@@ -229,6 +299,10 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
                   partitioned.activeQueries--
                   if (Exit.hasInterrupts(exit)) {
                     partitioned.interruptedQueries++
+                  }
+                  if (Exit.isSuccess(exit) && !usable) {
+                    usable = true
+                    partitioned.usableConnections++
                   }
                 })
               )
@@ -247,7 +321,10 @@ const blackholeReservedConnection = (partitioned: PartitionState, resumePending:
       client = new Proxy(sql, {
         get(target, property, receiver) {
           if (property === "reserve") {
-            return Effect.map(target.reserve, wrapConnection)
+            return Effect.map(target.reserve, (connection) => {
+              partitioned.reservedConnections++
+              return wrapConnection(connection)
+            })
           }
           if (property === "withoutTransforms") {
             return () => client

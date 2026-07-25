@@ -122,12 +122,15 @@ export const make = Effect.fnUntraced(function*(options: {
   })
   const lockConn = acquireLockConn && (yield* ResourceRef.from(layerScope, acquireLockConn))
   let lockConnRebuilding = false
-  let lockConnRebuildNeeded = true
-  const rebuildLockConn = () => {
+  // Incremented every time the reserved connection is replaced, so failures
+  // from operations that ran on an already replaced connection do not trigger
+  // another rebuild.
+  let lockConnGeneration = 0
+  const rebuildLockConn = (generation: number) => {
     if (
       !lockConn ||
       lockConnRebuilding ||
-      !lockConnRebuildNeeded ||
+      generation !== lockConnGeneration ||
       lockConn.state.current._tag === "Closed"
     ) return Effect.void
     lockConnRebuilding = true
@@ -137,7 +140,7 @@ export const make = Effect.fnUntraced(function*(options: {
       Effect.tap((exit) =>
         Effect.sync(() => {
           if (Exit.isSuccess(exit) && lockConn.state.current._tag === "Acquired") {
-            lockConnRebuildNeeded = false
+            lockConnGeneration++
           }
         })
       ),
@@ -148,6 +151,14 @@ export const make = Effect.fnUntraced(function*(options: {
       Effect.asVoid
     )
   }
+  // Rebuild the reserved connection when `effect` fails on it. Failures keep
+  // scheduling rebuilds, so a rebuilt connection that is also unresponsive is
+  // replaced again.
+  const onErrorRebuildLockConn = <A, E, R>(effect: Effect.Effect<A, E, R>): Effect.Effect<A, E, R> =>
+    Effect.suspend(() => {
+      const generation = lockConnGeneration
+      return Effect.onError(effect, () => rebuildLockConn(generation))
+    })
 
   const runnersTable = table("runners")
   const runnersTableSql = sql(runnersTable)
@@ -327,7 +338,7 @@ export const make = Effect.fnUntraced(function*(options: {
     const [query, params] = effect.compile()
     return lockConn.await.pipe(
       Effect.flatMap(([conn]) => conn.executeRaw(query, params)),
-      Effect.onError(rebuildLockConn)
+      onErrorRebuildLockConn
     )
   }
   const execWithLockConnUnprepared = <A>(
@@ -337,7 +348,7 @@ export const make = Effect.fnUntraced(function*(options: {
     const [query, params] = effect.compile()
     return lockConn.await.pipe(
       Effect.flatMap(([conn]) => conn.executeUnprepared(query, params, undefined)),
-      Effect.onError(rebuildLockConn)
+      onErrorRebuildLockConn
     )
   }
   const execWithLockConnValues = <A>(
@@ -347,7 +358,7 @@ export const make = Effect.fnUntraced(function*(options: {
     const [query, params] = effect.compile()
     return lockConn.await.pipe(
       Effect.flatMap(([conn]) => conn.executeValues(query, params)),
-      Effect.onError(rebuildLockConn)
+      onErrorRebuildLockConn
     )
   }
 
@@ -394,7 +405,7 @@ export const make = Effect.fnUntraced(function*(options: {
           }
         }
         return acquiredShardIds
-      }, Effect.onError(rebuildLockConn))
+      }, onErrorRebuildLockConn)
     },
 
     mysql: () => {
@@ -438,7 +449,7 @@ export const make = Effect.fnUntraced(function*(options: {
           }
         }
         return acquiredShardIds
-      }, Effect.onError(rebuildLockConn))
+      }, onErrorRebuildLockConn)
     },
 
     mssql: () => (address: string, shardIds: ReadonlyArray<string>) => {
@@ -599,12 +610,7 @@ export const make = Effect.fnUntraced(function*(options: {
           Effect.asVoid
         )
       )),
-      Effect.tap(() =>
-        Effect.sync(() => {
-          lockConnRebuildNeeded = true
-        })
-      ),
-      Effect.onError(rebuildLockConn)
+      onErrorRebuildLockConn
     )
   })
 
@@ -629,7 +635,7 @@ export const make = Effect.fnUntraced(function*(options: {
           const [conn] = yield* lockConn!.await
           yield* conn.executeRaw(`SELECT pg_advisory_unlock_all()`, [])
         },
-        Effect.onError(rebuildLockConn),
+        onErrorRebuildLockConn,
         Effect.asVoid
       )
     },
@@ -651,7 +657,7 @@ export const make = Effect.fnUntraced(function*(options: {
             if (takenLocks.length === 0 || takenLocks[0][0] !== pid) return
           }
         },
-        Effect.onError(rebuildLockConn),
+        onErrorRebuildLockConn,
         Effect.asVoid
       )
     },
