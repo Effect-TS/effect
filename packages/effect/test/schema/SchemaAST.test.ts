@@ -96,6 +96,9 @@ describe("SchemaAST", () => {
     strictEqual(SchemaAST.isStringTree({ a: { b: "c" } }), true)
     strictEqual(SchemaAST.isStringTree({ a: ["b", { c: "d" }] }), true)
     strictEqual(SchemaAST.isStringTree({ a: { b: 1 } }), false)
+    // DAG
+    const shared = { value: "a" }
+    strictEqual(SchemaAST.isStringTree({ left: shared, right: shared }), true)
     // circular reference
     const circular: Record<string, unknown> = {}
     circular.self = circular
