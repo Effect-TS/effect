@@ -2,11 +2,11 @@
  * Defines structured errors for the unstable CLI parser and runner.
  *
  * CLI errors describe problems such as unknown or duplicate flags, missing
- * flags or arguments, invalid values, unknown subcommands, user handler
- * failures, and requests to show command help. This module includes the
- * `CliError` union, the `isCliError` guard, schema-backed error classes with
- * display messages, and the `NonShowHelpErrors` union used when parse or
- * validation errors should be shown with help output.
+ * flags or arguments, unexpected positional arguments, invalid values, unknown
+ * subcommands, user handler failures, and requests to show command help. This
+ * module includes the `CliError` union, the `isCliError` guard, schema-backed
+ * error classes with display messages, and the `NonShowHelpErrors` union used
+ * when parse or validation errors should be shown with help output.
  *
  * @since 4.0.0
  */
@@ -89,6 +89,7 @@ export type CliError =
   | DuplicateOption
   | MissingOption
   | MissingArgument
+  | UnexpectedArgument
   | InvalidValue
   | UnknownSubcommand
   | ShowHelp
@@ -308,6 +309,49 @@ export class MissingArgument extends Schema.TaggedErrorClass<MissingArgument>(
 }
 
 /**
+ * Error thrown when positional arguments remain after a command has parsed all
+ * of its parameters.
+ *
+ * **Example** (Reporting unexpected arguments)
+ *
+ * ```ts
+ * import { CliError } from "effect/unstable/cli"
+ *
+ * const error = new CliError.UnexpectedArgument({
+ *   arguments: ["extra.txt"]
+ * })
+ *
+ * console.log(error.message)
+ * // "Unexpected positional argument: \"extra.txt\""
+ * ```
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export class UnexpectedArgument extends Schema.TaggedErrorClass<UnexpectedArgument>(
+  `${TypeId}/UnexpectedArgument`
+)("UnexpectedArgument", {
+  arguments: Schema.Array(Schema.String)
+}) {
+  /**
+   * Marks this value as an unexpected CLI argument error for runtime guards.
+   *
+   * @since 4.0.0
+   */
+  readonly [TypeId] = TypeId
+
+  /**
+   * Formats the unexpected positional arguments for display.
+   *
+   * @since 4.0.0
+   */
+  override get message() {
+    const label = this.arguments.length === 1 ? "argument" : "arguments"
+    return `Unexpected positional ${label}: ${this.arguments.map((value) => JSON.stringify(value)).join(", ")}`
+  }
+}
+
+/**
  * Error thrown when an option or argument value is invalid.
  *
  * **Example** (Creating invalid value errors)
@@ -506,6 +550,7 @@ export const NonShowHelpErrors: Schema.Union<
     typeof DuplicateOption,
     typeof MissingOption,
     typeof MissingArgument,
+    typeof UnexpectedArgument,
     typeof InvalidValue,
     typeof UnknownSubcommand,
     typeof UserError
@@ -515,6 +560,7 @@ export const NonShowHelpErrors: Schema.Union<
   DuplicateOption,
   MissingOption,
   MissingArgument,
+  UnexpectedArgument,
   InvalidValue,
   UnknownSubcommand,
   UserError
