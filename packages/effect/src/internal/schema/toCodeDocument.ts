@@ -465,7 +465,7 @@ export function toCodeDocument(
             `typeof ${identifier}`
           )
         })
-        return makeCode(`Schema.Enum(${identifier})`, `typeof ${identifier}`)
+        return makeCode(`Schema.Enum(${identifier})`, identifier)
       }
       case "TemplateLiteral": {
         const parts = representation.parts.map((part, index) => recur(part, [...path, "parts", index], false))
