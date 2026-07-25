@@ -1010,7 +1010,7 @@ export const Schema = <
     {
       expected: "AsyncResult",
       toCodec([value, cause]) {
-        const Success = Schema_.TaggedStruct("Success", { value, waiting: Schema_.Boolean, timestamp: Schema_.Number })
+        const Success = Schema_.TaggedStruct("Success", { value, waiting: Schema_.Boolean, timestamp: Schema_.Int })
         return Schema_.link<AsyncResult<A["Encoded"], E["Encoded"]>>()(
           Schema_.Union([
             Schema_.TaggedStruct("Initial", { waiting: Schema_.Boolean }),

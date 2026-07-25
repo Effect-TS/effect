@@ -2172,7 +2172,7 @@ export const HttpRequestDetails = Schema.Struct({
  * @since 4.0.0
  */
 export const HttpResponseDetails = Schema.Struct({
-  status: Schema.Number,
+  status: Schema.Int,
   headers: Schema.Record(
     Schema.String,
     Schema.Union([
@@ -2368,19 +2368,19 @@ export class Usage extends Schema.Class<Usage>("effect/ai/AiResponse/Usage")({
     /**
      * The number of non-cached input (i.e. prompt) tokens used.
      */
-    uncached: Schema.optional(Schema.Number),
+    uncached: Schema.optional(Schema.Int),
     /**
      * The total of number of input (i.e. prompt) tokens used.
      */
-    total: Schema.optional(Schema.Number),
+    total: Schema.optional(Schema.Int),
     /**
      * The number of cached input (i.e. prompt) tokens read.
      */
-    cacheRead: Schema.optional(Schema.Number),
+    cacheRead: Schema.optional(Schema.Int),
     /**
      * The number of cached input (i.e. prompt) tokens written.
      */
-    cacheWrite: Schema.optional(Schema.Number)
+    cacheWrite: Schema.optional(Schema.Int)
   }),
   /**
    * Information about the output (i.e. response) tokens used.
@@ -2389,15 +2389,15 @@ export class Usage extends Schema.Class<Usage>("effect/ai/AiResponse/Usage")({
     /**
      * The total of number of output (i.e. response) tokens used.
      */
-    total: Schema.optional(Schema.Number),
+    total: Schema.optional(Schema.Int),
     /**
      * The number of text tokens used.
      */
-    text: Schema.optional(Schema.Number),
+    text: Schema.optional(Schema.Int),
     /**
      * The number of reasoning tokens used.
      */
-    reasoning: Schema.optional(Schema.Number)
+    reasoning: Schema.optional(Schema.Int)
   })
 }) {}
 

@@ -13,7 +13,7 @@ import { Effect, Schema } from "effect"
 // The static `Type` and `Encoded` members are available when you need
 // the decoded or encoded TypeScript representation.
 export class User extends Schema.Class<User>("path/to/module/User")({
-  id: Schema.Number,
+  id: Schema.Int,
   name: Schema.NonEmptyString,
   email: Schema.String,
   role: Schema.Literals(["admin", "member"])

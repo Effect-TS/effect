@@ -646,7 +646,7 @@ const makeSocket = Effect.gen(function*() {
 
 const ErrorEvent = Schema.Struct({
   type: Schema.Literal("error"),
-  status: Schema.Number.pipe(
+  status: Schema.Int.pipe(
     Schema.withDecodingDefault(Effect.succeed(500))
   ),
   error: Schema.Struct({

@@ -46,7 +46,7 @@ export interface EncryptedRemoteEntry extends Schema.Schema.Type<typeof Encrypte
  * @since 4.0.0
  */
 export const EncryptedRemoteEntry = Schema.Struct({
-  sequence: Schema.Number,
+  sequence: Schema.Natural,
   iv: Transferable.Uint8Array,
   entryId: EntryId,
   encryptedEntry: Transferable.Uint8Array

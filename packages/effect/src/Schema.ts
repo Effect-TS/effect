@@ -624,7 +624,7 @@ export function revealBottom<S extends Top>(
  * ```ts
  * import { Schema } from "effect"
  *
- * const Age = Schema.Number.pipe(
+ * const Age = Schema.Natural.pipe(
  *   Schema.annotate({
  *     title: "Age",
  *     description: "A non-negative integer representing age in years"
@@ -1232,7 +1232,7 @@ function makeStandardResult<A>(exit: Exit_.Exit<StandardSchemaV1.Result<A>>): St
  * // Create a standard schema from a regular schema
  * const PersonSchema = Schema.Struct({
  *   name: Schema.NonEmptyString,
- *   age: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 150 }))
+ *   age: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 150 }))
  * })
  *
  * const standardSchema = Schema.toStandardSchemaV1(PersonSchema, {
@@ -5078,7 +5078,7 @@ export function suspend<S extends Constraint>(f: () => S): suspend<S> {
  * ```ts
  * import { Schema } from "effect"
  *
- * const AgeSchema = Schema.Number.pipe(
+ * const AgeSchema = Schema.Finite.pipe(
  *   Schema.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(120))
  * )
  * ```
@@ -8218,6 +8218,48 @@ export const isIntReviver: SchemaRepresentation.FilterReviver<null> = InternalSc
 )
 
 /**
+ * Type-level representation of {@link Int}.
+ *
+ * @category Number
+ * @since 3.10.0
+ */
+export interface Int extends Number {
+  readonly "Rebuild": Int
+}
+
+/**
+ * Schema for integers, rejecting `NaN`, `Infinity`, and `-Infinity`.
+ *
+ * @category Number
+ * @since 3.10.0
+ */
+export const Int: Int = Number.check(isInt())
+
+/**
+ * Type-level representation of {@link Natural}.
+ *
+ * @category Number
+ * @since 4.0.0
+ */
+export interface Natural extends Int {
+  readonly "Rebuild": Natural
+}
+
+/**
+ * Schema for non-negative safe integers, including zero.
+ *
+ * **When to use**
+ *
+ * Use when you need a count, index, or size that cannot be negative.
+ *
+ * @see {@link Int} for safe integers that may be negative
+ *
+ * @category Number
+ * @since 4.0.0
+ */
+export const Natural: Natural = Int.check(isGreaterThanOrEqualTo(0))
+
+/**
  * Validates that a number is a 32-bit signed integer (range: -2,147,483,648 to
  * 2,147,483,647).
  *
@@ -8984,7 +9026,6 @@ export const isBetweenBigDecimal = makeIsBetween({
   formatter: (bd) => BigDecimal_.format(bd)
 })
 
-const CanonicalLength = Number.check(makeFilter<number>((value) => globalThis.Number.isInteger(value) && value >= 0))
 /**
  * Validates that a value has at least the specified length. Works with strings
  * and arrays.
@@ -9053,7 +9094,7 @@ export const isMinLengthReviver: SchemaRepresentation.FilterReviver<{
   readonly minLength: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinLength",
-  Struct({ minLength: CanonicalLength }),
+  Struct({ minLength: Natural }),
   ({ annotations, payload }) => isMinLength(payload.minLength, annotations)
 )
 
@@ -9139,7 +9180,7 @@ export const isMaxLengthReviver: SchemaRepresentation.FilterReviver<{
   readonly maxLength: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxLength",
-  Struct({ maxLength: CanonicalLength }),
+  Struct({ maxLength: Natural }),
   ({ annotations, payload }) => isMaxLength(payload.maxLength, annotations)
 )
 
@@ -9211,7 +9252,7 @@ export const isLengthBetweenReviver: SchemaRepresentation.FilterReviver<{
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isLengthBetween",
-  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
+  Struct({ minimum: Natural, maximum: Natural }),
   ({ annotations, payload }) => isLengthBetween(payload.minimum, payload.maximum, annotations)
 )
 
@@ -9274,7 +9315,7 @@ export const isMinSizeReviver: SchemaRepresentation.FilterReviver<{
   readonly minSize: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinSize",
-  Struct({ minSize: CanonicalLength }),
+  Struct({ minSize: Natural }),
   ({ annotations, payload }) => isMinSize(payload.minSize, annotations)
 )
 
@@ -9337,7 +9378,7 @@ export const isMaxSizeReviver: SchemaRepresentation.FilterReviver<{
   readonly maxSize: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxSize",
-  Struct({ maxSize: CanonicalLength }),
+  Struct({ maxSize: Natural }),
   ({ annotations, payload }) => isMaxSize(payload.maxSize, annotations)
 )
 
@@ -9406,7 +9447,7 @@ export const isSizeBetweenReviver: SchemaRepresentation.FilterReviver<{
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isSizeBetween",
-  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
+  Struct({ minimum: Natural, maximum: Natural }),
   ({ annotations, payload }) => isSizeBetween(payload.minimum, payload.maximum, annotations)
 )
 
@@ -9469,7 +9510,7 @@ export const isMinPropertiesReviver: SchemaRepresentation.FilterReviver<{
   readonly minProperties: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMinProperties",
-  Struct({ minProperties: CanonicalLength }),
+  Struct({ minProperties: Natural }),
   ({ annotations, payload }) => isMinProperties(payload.minProperties, annotations)
 )
 
@@ -9531,7 +9572,7 @@ export const isMaxPropertiesReviver: SchemaRepresentation.FilterReviver<{
   readonly maxProperties: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isMaxProperties",
-  Struct({ maxProperties: CanonicalLength }),
+  Struct({ maxProperties: Natural }),
   ({ annotations, payload }) => isMaxProperties(payload.maxProperties, annotations)
 )
 
@@ -9600,7 +9641,7 @@ export const isPropertiesLengthBetweenReviver: SchemaRepresentation.FilterRevive
   readonly maximum: number
 }> = InternalSchema.makeFilterReviver(
   "effect/schema/isPropertiesLengthBetween",
-  Struct({ minimum: CanonicalLength, maximum: CanonicalLength }),
+  Struct({ minimum: Natural, maximum: Natural }),
   ({ annotations, payload }) => isPropertiesLengthBetween(payload.minimum, payload.maximum, annotations)
 )
 
@@ -12195,7 +12236,7 @@ export const DateFromString: DateFromString = DateString.pipe(decodeTo(Date, Sch
  * @category Date
  * @since 4.0.0
  */
-export interface DateFromMillis extends decodeTo<Date, Number> {
+export interface DateFromMillis extends decodeTo<Date, Int> {
   readonly "Rebuild": DateFromMillis
 }
 
@@ -12210,23 +12251,26 @@ export interface DateFromMillis extends decodeTo<Date, Number> {
  * **Details**
  *
  * Decoding:
- * A number of milliseconds since the Unix epoch is decoded as a `Date`.
+ * A safe integer number of milliseconds since the Unix epoch is decoded as a
+ * `Date`.
  *
  * Encoding:
  * A `Date` is encoded as its millisecond timestamp.
  *
  * **Gotchas**
  *
- * This schema accepts any number, including `NaN`, `Infinity`, and `-Infinity`.
- * Those values decode to invalid `Date` instances.
+ * JavaScript `Date` supports a narrower range than safe integers, so an
+ * out-of-range integer can still decode to an invalid `Date`. Invalid `Date`
+ * instances cannot be encoded because their timestamp is `NaN`.
  *
  * @see {@link DateFromString} for decoding string-encoded dates
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
+ * @see {@link DateValid} for rejecting invalid Date instances
  *
  * @category Date
  * @since 4.0.0
  */
-export const DateFromMillis: DateFromMillis = Number.pipe(
+export const DateFromMillis: DateFromMillis = Int.pipe(
   decodeTo(Date, SchemaTransformation.dateFromMillis)
 )
 
@@ -12402,26 +12446,24 @@ export interface DurationFromNanos extends decodeTo<Duration, BigInt> {
   readonly "Rebuild": DurationFromNanos
 }
 
-const bigint0 = globalThis.BigInt(0)
-
 /**
- * Schema that decodes a non-negative `bigint` into a
- * `Duration`, treating the bigint as nanoseconds.
+ * Schema that decodes a `bigint` into a `Duration`, treating the bigint as
+ * nanoseconds.
  *
  * **Details**
  *
  * Decoding:
- * A non-negative `bigint` representing nanoseconds is decoded as a `Duration`.
+ * A `bigint` representing nanoseconds is decoded as a `Duration`.
  *
  * Encoding:
- * Finite durations are encoded as a non-negative `bigint` number of nanoseconds.
- * Encoding fails when the duration cannot be represented as nanoseconds, such as
- * `Duration.infinity`.
+ * Finite durations are encoded as a `bigint` number of nanoseconds. Encoding
+ * fails when the duration cannot be represented as nanoseconds, such as
+ * `Duration.infinity` or `Duration.negativeInfinity`.
  *
  * @category Duration
  * @since 3.10.0
  */
-export const DurationFromNanos: DurationFromNanos = BigInt.check(isGreaterThanOrEqualToBigInt(bigint0)).pipe(
+export const DurationFromNanos: DurationFromNanos = BigInt.pipe(
   decodeTo(Duration, SchemaTransformation.durationFromNanos)
 )
 
@@ -12436,24 +12478,25 @@ export interface DurationFromMillis extends decodeTo<Duration, Number> {
 }
 
 /**
- * Schema that decodes a non-negative (possibly infinite)
- * integer into a `Duration`, treating the integer value as the duration in
+ * Schema that decodes a number into a `Duration`, treating the number as
  * milliseconds.
  *
  * **Details**
  *
  * Decoding:
- * - A non-negative (possibly infinite) integer representing milliseconds is
- *   decoded as a `Duration`
+ * - A finite or infinite number is decoded as a `Duration`
  *
  * Encoding:
- * - A `Duration` is encoded to a non-negative (possibly infinite) integer
- *   representing milliseconds
+ * - A `Duration` is encoded to a finite or infinite number of milliseconds
+ *
+ * **Gotchas**
+ *
+ * `NaN` is decoded as `Duration.zero`, matching `Duration.millis`.
  *
  * @category Duration
  * @since 3.10.0
  */
-export const DurationFromMillis: DurationFromMillis = Number.check(isGreaterThanOrEqualTo(0)).pipe(
+export const DurationFromMillis: DurationFromMillis = Number.pipe(
   decodeTo(Duration, SchemaTransformation.durationFromMillis)
 )
 
@@ -12781,7 +12824,7 @@ export const File: File = instanceOf(globalThis.File, {
         data: String.check(isBase64()),
         type: String,
         name: String,
-        lastModified: Number
+        lastModified: Int
       }),
       SchemaTransformation.transformOrFail({
         decode: (e) =>
@@ -13169,30 +13212,12 @@ export function fromURLSearchParams<S extends Constraint>(schema: S): fromURLSea
 }
 
 /**
- * Type-level representation of {@link Int}.
- *
- * @category Number
- * @since 3.10.0
- */
-export interface Int extends Number {
-  readonly "Rebuild": Int
-}
-
-/**
- * Schema for integers, rejecting `NaN`, `Infinity`, and `-Infinity`.
- *
- * @category Number
- * @since 3.10.0
- */
-export const Int: Int = Number.check(isInt())
-
-/**
  * Type-level representation of {@link NumberFromString}.
  *
  * @category Number
  * @since 3.10.0
  */
-export interface NumberFromString extends decodeTo<Finite, String> {
+export interface NumberFromString extends decodeTo<Number, String> {
   readonly "Rebuild": NumberFromString
 }
 
@@ -13865,7 +13890,7 @@ export const DateTimeUtcFromString: DateTimeUtcFromString = String.annotate({
  * @category DateTime
  * @since 4.0.0
  */
-export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>, Number> {
+export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>, Int> {
   readonly "Rebuild": DateTimeUtcFromMillis
 }
 
@@ -13887,7 +13912,7 @@ export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>
  * @category DateTime
  * @since 4.0.0
  */
-export const DateTimeUtcFromMillis: DateTimeUtcFromMillis = Number.pipe(
+export const DateTimeUtcFromMillis: DateTimeUtcFromMillis = Int.pipe(
   decodeTo(DateTimeUtc, {
     decode: SchemaGetter.dateTimeUtcFromInput(),
     encode: SchemaGetter.transform(DateTime.toEpochMillis)
@@ -13931,7 +13956,7 @@ export const TimeZoneOffset: TimeZoneOffset = declare(
     expected: "DateTime.TimeZone.Offset",
     toCodecJson: () =>
       link<DateTime.TimeZone.Offset>()(
-        Number,
+        Int,
         SchemaTransformation.timeZoneOffsetFromNumber
       ),
     toArbitrary: () => (fc) =>

@@ -537,7 +537,7 @@ describe("SchemaRepresentation built-in BigInt revivers", () => {
 })
 
 function date(millis: number): Date {
-  return Schema.decodeUnknownSync(Schema.DateFromMillis)(millis)
+  return new globalThis.Date(millis)
 }
 
 const epoch = "1970-01-01T00:00:00.000Z"
