@@ -1,56 +1,15 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
-import { constVoid } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Logger from "effect/Logger"
-import * as References from "effect/References"
 import * as Schema from "effect/Schema"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
 import * as Tool from "effect/unstable/ai/Tool"
 import * as Toolkit from "effect/unstable/ai/Toolkit"
-import * as HttpRouter from "effect/unstable/http/HttpRouter"
+import { makeRawHttpHarness, makeServerLayer } from "./utils.ts"
 
-const noopLogger = Logger.make(constVoid)
-
-const makeServerLayer = (options?: {
-  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
-}) =>
-  McpServer.layerHttp({
-    name: "LifecycleServer",
-    version: "1.0.0",
-    path: "/mcp",
-    extensions: options?.extensions
-  }).pipe(
-    Layer.provideMerge(Layer.succeed(
-      References.CurrentLoggers,
-      new Set([noopLogger])
-    ))
-  )
-
-const makeHarness = Effect.fnUntraced(function*(
-  serverLayer: Layer.Layer<unknown, never, HttpRouter.HttpRouter> = makeServerLayer()
-) {
-  const { dispose, handler } = HttpRouter.toWebHandler(serverLayer, { disableLogger: true })
-  yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
-
-  const post = (body: unknown, headers?: HeadersInit) =>
-    Effect.promise(() =>
-      handler(
-        new Request("http://localhost/mcp", {
-          method: "POST",
-          headers: {
-            accept: "application/json, text/event-stream",
-            "content-type": "application/json",
-            ...headers
-          },
-          body: JSON.stringify(body)
-        })
-      )
-    )
-
-  return { post } as const
-})
+const ServerLayer = makeServerLayer({ name: "LifecycleServer" })
+const makeHarness = makeRawHttpHarness(ServerLayer)
 
 const initializeRequest = (protocolVersion: string, id = 1) => ({
   jsonrpc: "2.0",
@@ -130,6 +89,7 @@ const FeaturesServerLayer = Layer.mergeAll(
   })
 ).pipe(
   Layer.provide(makeServerLayer({
+    name: "LifecycleServer",
     extensions: { "example/lifecycle": { enabled: true } }
   }))
 )
@@ -141,7 +101,7 @@ describe("McpServer initialization", () => {
         describe("1.1 Initialization", () => {
           it.effect("requires initialize to be the first request", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness()
+              const { post } = yield* makeHarness
               const response = yield* post(pingRequest)
 
               assert.isAtLeast(response.status, 400)
@@ -149,7 +109,7 @@ describe("McpServer initialization", () => {
 
           it.effect("rejects initialized notifications before initialize", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness()
+              const { post } = yield* makeHarness
               const response = yield* post(initializedNotification)
 
               assert.isAtLeast(response.status, 400)
@@ -157,7 +117,7 @@ describe("McpServer initialization", () => {
 
           it.effect("requires protocolVersion, capabilities, and clientInfo", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness()
+              const { post } = yield* makeHarness
               const invalidParams = [
                 {
                   capabilities: {},
@@ -191,7 +151,7 @@ describe("McpServer initialization", () => {
 
           it.effect("returns server capabilities and implementation information", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness()
+              const { post } = yield* makeHarness
               const { message, response } = yield* initialize(post, "2025-11-25")
 
               assert.strictEqual(response.status, 200)
@@ -208,7 +168,7 @@ describe("McpServer initialization", () => {
 
           it.effect("accepts initialized after a successful initialize response", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness()
+              const { post } = yield* makeHarness
               const initialized = yield* initialize(post, "2025-11-25")
               const sessionId = initialized.response.headers.get("Mcp-Session-Id")
               assert.isNotNull(sessionId)
@@ -226,7 +186,7 @@ describe("McpServer initialization", () => {
         describe("1.1.1 Version Negotiation", () => {
           it.effect("echoes every requested version supported by the server", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness()
+              const { post } = yield* makeHarness
               const supportedVersions = ["2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]
 
               for (let i = 0; i < supportedVersions.length; i++) {
@@ -238,7 +198,7 @@ describe("McpServer initialization", () => {
 
           it.effect("negotiates an unsupported requested version to the latest supported version", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness()
+              const { post } = yield* makeHarness
               const { message } = yield* initialize(post, "2025-11-25")
 
               assert.strictEqual(message.result.protocolVersion, "2025-06-18")
@@ -248,7 +208,7 @@ describe("McpServer initialization", () => {
         describe("1.1.2 Capability Negotiation", () => {
           it.effect("advertises the capabilities provided by the server", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness(FeaturesServerLayer)
+              const { post } = yield* makeRawHttpHarness(FeaturesServerLayer)
               const { message } = yield* initialize(post, "2025-11-25")
 
               assert.deepStrictEqual(message.result.capabilities, {
@@ -264,7 +224,7 @@ describe("McpServer initialization", () => {
         describe("1.2 Operation", () => {
           it.effect("continues to use the version negotiated during initialization", () =>
             Effect.gen(function*() {
-              const { post } = yield* makeHarness()
+              const { post } = yield* makeHarness
               const initialized = yield* initialize(post, "2025-03-26")
               const sessionId = initialized.response.headers.get("Mcp-Session-Id")
               assert.isNotNull(sessionId)
@@ -280,7 +240,7 @@ describe("McpServer initialization", () => {
       describe("3. Error Handling", () => {
         it.effect("handles protocol version mismatch through version negotiation", () =>
           Effect.gen(function*() {
-            const { post } = yield* makeHarness()
+            const { post } = yield* makeHarness
             const { message } = yield* initialize(post, "invalid-version")
 
             assert.strictEqual(message.result.protocolVersion, "2025-06-18")

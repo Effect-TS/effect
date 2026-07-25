@@ -1,10 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
-import { constVoid } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Logger from "effect/Logger"
-import * as References from "effect/References"
 import * as Schema from "effect/Schema"
 import * as AiError from "effect/unstable/ai/AiError"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
@@ -17,6 +14,7 @@ import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
+import { makeServerLayer, makeWebHandler } from "./McpServer/utils.ts"
 
 const OptionalStringTool = Tool.make("OptionalStringTool", {
   parameters: Schema.Struct({ signature: Schema.optional(Schema.String) }),
@@ -48,18 +46,7 @@ const testToolkitHandlers = TestToolkit.of({
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
 
-const noopLogger = Logger.make(constVoid)
-
-const TestServerLayer = McpServer.layerHttp({
-  name: "TestServer",
-  version: "1.0.0",
-  path: "/mcp"
-}).pipe(
-  Layer.provideMerge(Layer.succeed(
-    References.CurrentLoggers,
-    new Set([noopLogger])
-  ))
-)
+const TestServerLayer = makeServerLayer({ name: "TestServer" })
 
 const initializePayload = {
   protocolVersion: "2025-06-18",
@@ -84,9 +71,7 @@ const makeTestClientWith = Effect.fnUntraced(function*<A>(
   } | undefined
 ) {
   const responses: Array<Response> = []
-  const appLayer = options?.routerLayer ? Layer.merge(serverLayer, options.routerLayer) : serverLayer
-  const { handler, dispose } = HttpRouter.toWebHandler(appLayer, { disableLogger: true })
-  yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
+  const handler = yield* makeWebHandler(serverLayer, options)
 
   let sessionId: string | null = null
   const customFetch: typeof fetch = async (input, init) => {
