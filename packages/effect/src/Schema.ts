@@ -12446,26 +12446,24 @@ export interface DurationFromNanos extends decodeTo<Duration, BigInt> {
   readonly "Rebuild": DurationFromNanos
 }
 
-const bigint0 = globalThis.BigInt(0)
-
 /**
- * Schema that decodes a non-negative `bigint` into a
- * `Duration`, treating the bigint as nanoseconds.
+ * Schema that decodes a `bigint` into a `Duration`, treating the bigint as
+ * nanoseconds.
  *
  * **Details**
  *
  * Decoding:
- * A non-negative `bigint` representing nanoseconds is decoded as a `Duration`.
+ * A `bigint` representing nanoseconds is decoded as a `Duration`.
  *
  * Encoding:
- * Finite durations are encoded as a non-negative `bigint` number of nanoseconds.
- * Encoding fails when the duration cannot be represented as nanoseconds, such as
- * `Duration.infinity`.
+ * Finite durations are encoded as a `bigint` number of nanoseconds. Encoding
+ * fails when the duration cannot be represented as nanoseconds, such as
+ * `Duration.infinity` or `Duration.negativeInfinity`.
  *
  * @category Duration
  * @since 3.10.0
  */
-export const DurationFromNanos: DurationFromNanos = BigInt.check(isGreaterThanOrEqualToBigInt(bigint0)).pipe(
+export const DurationFromNanos: DurationFromNanos = BigInt.pipe(
   decodeTo(Duration, SchemaTransformation.durationFromNanos)
 )
 
@@ -12480,24 +12478,25 @@ export interface DurationFromMillis extends decodeTo<Duration, Number> {
 }
 
 /**
- * Schema that decodes a non-negative (possibly infinite)
- * integer into a `Duration`, treating the integer value as the duration in
+ * Schema that decodes a number into a `Duration`, treating the number as
  * milliseconds.
  *
  * **Details**
  *
  * Decoding:
- * - A non-negative (possibly infinite) integer representing milliseconds is
- *   decoded as a `Duration`
+ * - A finite or infinite number is decoded as a `Duration`
  *
  * Encoding:
- * - A `Duration` is encoded to a non-negative (possibly infinite) integer
- *   representing milliseconds
+ * - A `Duration` is encoded to a finite or infinite number of milliseconds
+ *
+ * **Gotchas**
+ *
+ * `NaN` is decoded as `Duration.zero`, matching `Duration.millis`.
  *
  * @category Duration
  * @since 3.10.0
  */
-export const DurationFromMillis: DurationFromMillis = Number.check(isGreaterThanOrEqualTo(0)).pipe(
+export const DurationFromMillis: DurationFromMillis = Number.pipe(
   decodeTo(Duration, SchemaTransformation.durationFromMillis)
 )
 
@@ -13218,7 +13217,7 @@ export function fromURLSearchParams<S extends Constraint>(schema: S): fromURLSea
  * @category Number
  * @since 3.10.0
  */
-export interface NumberFromString extends decodeTo<Finite, String> {
+export interface NumberFromString extends decodeTo<Number, String> {
   readonly "Rebuild": NumberFromString
 }
 

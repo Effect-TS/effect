@@ -5182,11 +5182,14 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
     const decoding = asserts.decoding()
     await decoding.succeed(0n, Duration.zero)
     await decoding.succeed(1000n, Duration.nanos(1000n))
+    await decoding.succeed(-1000n, Duration.nanos(-1000n))
 
     const encoding = asserts.encoding()
     await encoding.succeed(Duration.millis(5), 5_000_000n)
     await encoding.succeed(Duration.nanos(5000n), 5000n)
+    await encoding.succeed(Duration.nanos(-5000n), -5000n)
     await encoding.fail(Duration.infinity, "Unable to encode Infinity into a bigint")
+    await encoding.fail(Duration.negativeInfinity, "Unable to encode -Infinity into a bigint")
   })
 
   it("DurationFromMillis", async () => {
@@ -5199,16 +5202,19 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
     const decoding = asserts.decoding()
     await decoding.succeed(Infinity, Duration.infinity)
+    await decoding.succeed(-Infinity, Duration.negativeInfinity)
     await decoding.succeed(0, Duration.millis(0))
+    await decoding.succeed(-1, Duration.millis(-1))
     await decoding.succeed(1000, Duration.seconds(1))
     await decoding.succeed(60 * 1000, Duration.minutes(1))
     await decoding.succeed(0.1, Duration.millis(0.1))
-    await decoding.fail(-1, "Expected a value greater than or equal to 0, got -1")
-    await decoding.fail(NaN, "Expected a value greater than or equal to 0, got NaN")
+    await decoding.succeed(NaN, Duration.zero)
 
     const encoding = asserts.encoding()
     await encoding.succeed(Duration.infinity, Infinity)
+    await encoding.succeed(Duration.negativeInfinity, -Infinity)
     await encoding.succeed(Duration.millis(NaN), 0)
+    await encoding.succeed(Duration.millis(-1), -1)
     await encoding.succeed(Duration.seconds(5), 5000)
     await encoding.succeed(Duration.millis(5000), 5000)
     await encoding.succeed(Duration.millis(0.1), 0.1)
