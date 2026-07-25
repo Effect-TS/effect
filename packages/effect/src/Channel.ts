@@ -6087,16 +6087,7 @@ export const mergeAll: {
             if (Result.isSuccess(halt)) {
               return doneLatch.whenOpen(Queue.failCause(queue, cause))
             }
-            const inFlight = Arr.fromIterable(fibers)
-            fibers.clear()
-            return Effect.uninterruptible(Effect.withFiber((parent) => {
-              // Signal every child before publishing the failure. The driver's
-              // interrupt-children middleware awaits them when the driver exits.
-              for (const fiber of inFlight) {
-                fiber.interruptUnsafe(parent.id)
-              }
-              return Queue.failCause(queue, cause)
-            }))
+            return Queue.failCause(queue, cause)
           }),
           Effect.forkIn(forkedScope)
         )
