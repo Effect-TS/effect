@@ -1911,17 +1911,17 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
       const decoding = asserts.decoding()
       await decoding.succeed(0, new Date(0))
-      assertTrue(Schema.decodeSync(schema)(NaN) instanceof Date)
-      assertTrue(Schema.decodeSync(schema)(Infinity) instanceof Date)
-      assertTrue(Schema.decodeSync(schema)(-Infinity) instanceof Date)
+      await decoding.fail(NaN, `Expected an integer, got NaN`)
+      await decoding.fail(Infinity, `Expected an integer, got Infinity`)
+      await decoding.fail(-Infinity, `Expected an integer, got -Infinity`)
       await decoding.fail(null, `Expected number, got null`)
 
       const encoding = asserts.encoding()
       await encoding.succeed(new Date(0), 0)
-      strictEqual(Schema.encodeSync(schema)(new Date("invalid")), NaN)
-      strictEqual(Schema.encodeSync(schema)(new Date(NaN)), NaN)
-      strictEqual(Schema.encodeSync(schema)(new Date(Infinity)), NaN)
-      strictEqual(Schema.encodeSync(schema)(new Date(-Infinity)), NaN)
+      await encoding.fail(new Date("invalid"), `Expected an integer, got NaN`)
+      await encoding.fail(new Date(NaN), `Expected an integer, got NaN`)
+      await encoding.fail(new Date(Infinity), `Expected an integer, got NaN`)
+      await encoding.fail(new Date(-Infinity), `Expected an integer, got NaN`)
     })
 
     it("FiniteFromString", async () => {

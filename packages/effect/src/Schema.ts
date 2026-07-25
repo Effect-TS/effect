@@ -8218,6 +8218,24 @@ export const isIntReviver: SchemaRepresentation.FilterReviver<null> = InternalSc
 )
 
 /**
+ * Type-level representation of {@link Int}.
+ *
+ * @category Number
+ * @since 3.10.0
+ */
+export interface Int extends Number {
+  readonly "Rebuild": Int
+}
+
+/**
+ * Schema for integers, rejecting `NaN`, `Infinity`, and `-Infinity`.
+ *
+ * @category Number
+ * @since 3.10.0
+ */
+export const Int: Int = Number.check(isInt())
+
+/**
  * Validates that a number is a 32-bit signed integer (range: -2,147,483,648 to
  * 2,147,483,647).
  *
@@ -12195,7 +12213,7 @@ export const DateFromString: DateFromString = DateString.pipe(decodeTo(Date, Sch
  * @category Date
  * @since 4.0.0
  */
-export interface DateFromMillis extends decodeTo<Date, Number> {
+export interface DateFromMillis extends decodeTo<Date, Int> {
   readonly "Rebuild": DateFromMillis
 }
 
@@ -12210,23 +12228,26 @@ export interface DateFromMillis extends decodeTo<Date, Number> {
  * **Details**
  *
  * Decoding:
- * A number of milliseconds since the Unix epoch is decoded as a `Date`.
+ * A safe integer number of milliseconds since the Unix epoch is decoded as a
+ * `Date`.
  *
  * Encoding:
  * A `Date` is encoded as its millisecond timestamp.
  *
  * **Gotchas**
  *
- * This schema accepts any number, including `NaN`, `Infinity`, and `-Infinity`.
- * Those values decode to invalid `Date` instances.
+ * JavaScript `Date` supports a narrower range than safe integers, so an
+ * out-of-range integer can still decode to an invalid `Date`. Invalid `Date`
+ * instances cannot be encoded because their timestamp is `NaN`.
  *
  * @see {@link DateFromString} for decoding string-encoded dates
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
+ * @see {@link DateValid} for rejecting invalid Date instances
  *
  * @category Date
  * @since 4.0.0
  */
-export const DateFromMillis: DateFromMillis = Number.pipe(
+export const DateFromMillis: DateFromMillis = Int.pipe(
   decodeTo(Date, SchemaTransformation.dateFromMillis)
 )
 
@@ -13167,24 +13188,6 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
 export function fromURLSearchParams<S extends Constraint>(schema: S): fromURLSearchParams<S> {
   return URLSearchParams.pipe(decodeTo(schema, SchemaTransformation.fromURLSearchParams))
 }
-
-/**
- * Type-level representation of {@link Int}.
- *
- * @category Number
- * @since 3.10.0
- */
-export interface Int extends Number {
-  readonly "Rebuild": Int
-}
-
-/**
- * Schema for integers, rejecting `NaN`, `Infinity`, and `-Infinity`.
- *
- * @category Number
- * @since 3.10.0
- */
-export const Int: Int = Number.check(isInt())
 
 /**
  * Type-level representation of {@link NumberFromString}.
