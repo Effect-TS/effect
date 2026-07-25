@@ -61,10 +61,12 @@ describe("TestClock", () => {
       assert.strictEqual(testClock.currentTimeNanosUnsafe(), 199023438000000n)
     }))
 
-  it.effect("layer - can adjust when provided without an ambient Scope", () =>
+  // `it.effect` and `it.live` provide an ambient Scope, defeating the #2244 regression guard.
+  it("layer - can adjust when provided without an ambient Scope", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust("1 second")
     }).pipe(
-      Effect.provide(TestClock.layer({}))
+      Effect.provide(TestClock.layer({})),
+      Effect.runPromise
     ))
 })

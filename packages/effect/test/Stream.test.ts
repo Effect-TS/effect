@@ -2900,6 +2900,7 @@ describe("Stream", () => {
           assertExitFailure(result, Cause.fail("boom"))
         }))
 
+      // Keep the left stream alive: once either side ends, later errors from the other side are not observed.
       it.effect("error propagation from right stream", () =>
         Effect.gen(function*() {
           const result = yield* Stream.zipWithArray(
