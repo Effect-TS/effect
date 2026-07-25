@@ -18,7 +18,7 @@ describe("SchemaGetter", () => {
   it.effect("stringifyJson fails when JSON.stringify returns undefined", () =>
     SchemaGetter.stringifyJson().run(Option.some(undefined), {}).pipe(
       Effect.flip,
-      Effect.asVoid
+      Effect.map((issue) => assert.strictEqual(issue._tag, "InvalidValue"))
     ))
 
   it("map", () => {
