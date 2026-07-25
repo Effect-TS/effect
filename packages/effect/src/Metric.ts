@@ -1913,7 +1913,7 @@ class HistogramMetric extends Metric$<number, HistogramState> {
     let count = 0
     let sum = 0
     let min = Number.MAX_VALUE
-    let max = Number.MIN_VALUE
+    let max = -Number.MAX_VALUE
 
     Arr.map(Arr.sort(bounds, Order.Number), (n, i) => {
       boundaries[i] = n
@@ -2000,7 +2000,7 @@ class SummaryMetric extends Metric$<readonly [value: number, timestamp: number],
     let count = 0
     let sum = 0
     let min = Number.MAX_VALUE
-    let max = Number.MIN_VALUE
+    let max = -Number.MAX_VALUE
 
     const snapshot = (now: number): ReadonlyArray<[number, number | undefined]> => {
       const builder: Array<number> = []
