@@ -1,6 +1,11 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
-import { Effect, Layer, Schema } from "effect"
+import * as Effect from "effect/Effect"
+import { constVoid } from "effect/Function"
+import * as Layer from "effect/Layer"
+import * as Logger from "effect/Logger"
+import * as References from "effect/References"
+import * as Schema from "effect/Schema"
 import * as AiError from "effect/unstable/ai/AiError"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
@@ -43,11 +48,15 @@ const testToolkitHandlers = TestToolkit.of({
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
 
+const noopLogger = Logger.make(constVoid)
+
 const TestServerLayer = McpServer.layerHttp({
   name: "TestServer",
   version: "1.0.0",
   path: "/mcp"
-})
+}).pipe(
+  Layer.provideMerge(Layer.succeed(References.CurrentLoggers, new Set([noopLogger])))
+)
 
 const makeTestClientWith = Effect.fnUntraced(function*<A>(
   serverLayer: Layer.Layer<A, never, HttpRouter.HttpRouter>
@@ -208,7 +217,6 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         const text = toolResultText(result)
         assert.strictEqual(text, "Public failure")
-        assert.isFalse(/\n {4}at /.test(text))
       }))
 
     it.effect("returns a generic message for non-validation AiError failures", () =>
@@ -223,8 +231,6 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         const text = toolResultText(result)
         assert.strictEqual(text, INTERNAL_TOOL_ERROR_MESSAGE)
-        assert.isFalse(/RateLimitError/.test(text))
-        assert.isFalse(/\n {4}at /.test(text))
       }))
 
     it.effect("returns a generic message for handler defects", () =>
@@ -239,8 +245,6 @@ describe("McpServer", () => {
         assert.strictEqual(result.isError, true)
         const text = toolResultText(result)
         assert.strictEqual(text, INTERNAL_TOOL_ERROR_MESSAGE)
-        assert.isFalse(/private defect details/.test(text))
-        assert.isFalse(/\n {4}at /.test(text))
       }))
 
     it.effect("keeps unknown tools as protocol errors", () =>

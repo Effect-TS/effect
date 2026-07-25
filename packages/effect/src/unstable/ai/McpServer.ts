@@ -736,23 +736,23 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
               }]
             })
           ),
-          Effect.catchIf(AiError.isAiError, (error) =>
-            Effect.fail(error).pipe(
-              Effect.catchReason(
-                "AiError",
-                "ToolParameterValidationError",
-                (reason) => Effect.succeed(toolErrorResult(reason.message))
-              ),
-              Effect.catchTag("AiError", () => Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE)))
-            )),
-          Effect.catch((failure) => {
-            const message = isDeclaredFailure(failure) && failure instanceof Error
-              ? failure.message
-              : INTERNAL_TOOL_ERROR_MESSAGE
-            return Effect.succeed(toolErrorResult(message))
+          Effect.tapCause(Effect.logError),
+          Effect.catch((error) => {
+            if (AiError.isAiError(error)) {
+              const reason = (error as AiError.AiError).reason
+              return reason._tag === "ToolParameterValidationError"
+                ? Effect.succeed(toolErrorResult(reason.message))
+                : Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
+            }
+            if (isDeclaredFailure(error)) {
+              const message = error instanceof Error
+                ? error.message
+                : INTERNAL_TOOL_ERROR_MESSAGE
+              return Effect.succeed(toolErrorResult(message))
+            }
+            return Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
           }),
-          Effect.catchCause(() => Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))),
-          Effect.tapCause(Effect.log)
+          Effect.catchDefect(() => Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE)))
         )
       }
     })
