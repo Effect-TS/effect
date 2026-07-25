@@ -1,7 +1,11 @@
 import type * as Cause from "effect/Cause"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
+import * as Schema from "effect/Schema"
 import { McpProtocol, McpSchema, McpServer } from "effect/unstable/ai"
+import * as McpProtocolInternal from "effect/unstable/ai/internal/mcpProtocol"
+import * as Rpc from "effect/unstable/rpc/Rpc"
+import * as RpcGroup from "effect/unstable/rpc/RpcGroup"
 import { describe, expect, it } from "tstyche"
 
 const serverOptions = {
@@ -42,6 +46,25 @@ describe("McpServer", () => {
         name: "TestServer",
         version: "1.0.0",
         protocols: ["2025-06-18"] as const
+      })
+    })
+
+    it("should require client notification RPCs to be included in the complete client RPC group", () => {
+      const Request = Rpc.make("request", {
+        payload: Schema.Struct({}),
+        success: Schema.Struct({})
+      })
+      const Notification = Rpc.make("notification", {
+        payload: Schema.Struct({}),
+        success: Schema.Struct({})
+      })
+
+      expect(McpProtocolInternal.make).type.not.toBeCallableWith({
+        protocolVersion: "test",
+        clientRpcs: RpcGroup.make(Request),
+        clientNotificationRpcs: RpcGroup.make(Notification),
+        serverRequestRpcs: RpcGroup.make(),
+        serverNotificationRpcs: RpcGroup.make()
       })
     })
 

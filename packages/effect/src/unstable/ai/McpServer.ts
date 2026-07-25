@@ -334,8 +334,8 @@ export class McpServer extends Context.Service<McpServer, {
   static readonly layer: Layer.Layer<McpServer | McpServerClient> = Layer.effect(McpServer)(McpServer.make) as any
 }
 
-const mcpSessionIdHeader = "mcp-session-id"
-const mcpProtocolVersionHeader = "mcp-protocol-version"
+const MCP_SESSION_ID_HEADER = "mcp-session-id"
+const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 
 interface Session {
   readonly initializePayload: typeof Initialize.payloadSchema.Type
@@ -524,7 +524,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
                   Effect.succeed(
                     HttpServerResponse.setHeader(
                       res,
-                      mcpProtocolVersionHeader,
+                      MCP_PROTOCOL_VERSION_HEADER,
                       session.protocol.protocolVersion
                     )
                   ))
@@ -583,6 +583,15 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   yield* Queue.take(server.notificationsQueue).pipe(
     Effect.flatMap(Effect.fnUntraced(function*(request) {
       const clientIds = yield* patchedProtocol.clientIds
+      for (const clientId of clientProtocols.keys()) {
+        if (!clientIds.has(clientId)) {
+          clientProtocols.delete(clientId)
+          // HTTP client IDs are request-scoped; their UUID sessions outlive them.
+          if (!isHttp) {
+            clientSessions.delete(`client:${clientId}`)
+          }
+        }
+      }
       for (const clientId of server.initializedClients.keys()) {
         if (!clientIds.has(clientId)) {
           server.initializedClients.delete(clientId)
@@ -596,7 +605,9 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         if (!rpc) {
           continue
         }
-        const encoded = yield* Schema.encodeUnknownEffect(rpc.payloadSchema)(request.payload)
+        const encoded = yield* Schema.encodeUnknownEffect(
+          Schema.toCodecJson(rpc.payloadSchema)
+        )(request.payload)
         // TODO: Extend RpcServer.Protocol's outbound message contract with server-originated
         // notifications so MCP does not need to treat this notification as an RPC response.
         const message: RpcMessage.RequestEncoded = {
@@ -801,7 +812,7 @@ const layerMcpProtocolHttp = (options: {
     const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect
     const router = yield* HttpRouter.HttpRouter
     yield* router.add("POST", options.path, (request) => {
-      const protocolVersion = request.headers[mcpProtocolVersionHeader]
+      const protocolVersion = request.headers[MCP_PROTOCOL_VERSION_HEADER]
       if (
         protocolVersion !== undefined &&
         !state.protocolRegistry.protocols.some((protocol) => protocol.protocolVersion === protocolVersion)
@@ -1484,14 +1495,14 @@ const layerHandlers = (serverInfo: {
               }
               if (httpRequest) {
                 const sessionId = crypto.randomUUID()
-                options.clientSessions.set(sessionId, session)
+                options.clientSessions.set(`session:${sessionId}`, session)
                 appendPreResponseHandlerUnsafe(httpRequest, (_req, res) =>
                   Effect.succeed(HttpServerResponse.setHeaders(res, {
-                    [mcpSessionIdHeader]: sessionId,
-                    [mcpProtocolVersionHeader]: selectedProtocol.protocolVersion
+                    [MCP_SESSION_ID_HEADER]: sessionId,
+                    [MCP_PROTOCOL_VERSION_HEADER]: selectedProtocol.protocolVersion
                   })))
               } else {
-                options.clientSessions.set(String(client.id), session)
+                options.clientSessions.set(`client:${client.id}`, session)
               }
               return Effect.succeed({
                 capabilities,
@@ -1667,11 +1678,11 @@ const getClientSession = (
   clientId: number,
   headers: Headers.Headers
 ) => {
-  const sessionId = headers[mcpSessionIdHeader]
+  const sessionId = headers[MCP_SESSION_ID_HEADER]
   if (sessionId === undefined) {
-    return sessions.get(String(clientId))
+    return sessions.get(`client:${clientId}`)
   }
-  return sessions.get(sessionId)
+  return sessions.get(`session:${sessionId}`)
 }
 
 const getOfferedProtocolVersion = (payload: unknown): string =>

@@ -14,7 +14,7 @@ export interface AnyProtocolAdapter {
 export interface ProtocolAdapter<
   out Version extends string = string,
   ClientRpcs extends Rpc.Any = Rpc.Any,
-  ClientNotificationRpcs extends Rpc.Any = Rpc.Any,
+  ClientNotificationRpcs extends ClientRpcs = ClientRpcs,
   ServerRequestRpcs extends Rpc.Any = Rpc.Any,
   ServerNotificationRpcs extends Rpc.Any = Rpc.Any
 > extends AnyProtocolAdapter {
@@ -29,7 +29,7 @@ export interface ProtocolAdapter<
 export const make = <
   const Version extends string,
   ClientRpcs extends Rpc.Any,
-  ClientNotificationRpcs extends Rpc.Any,
+  ClientNotificationRpcs extends ClientRpcs,
   ServerRequestRpcs extends Rpc.Any,
   ServerNotificationRpcs extends Rpc.Any
 >(options: {
