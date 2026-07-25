@@ -1,0 +1,23 @@
+{
+  "$schema": "./packages/tools/docgen/schema.json",
+  "workspace": true,
+  "frontend": "source",
+  "projectHomepage": "https://effect.website",
+  "packageHomepages": {
+    "@effect/atom-solid": "https://effect-ts.github.io/effect/docs/atom-solid"
+  },
+  "srcLink": "https://github.com/Effect-TS/effect/tree/main/",
+  "outDir": "docs",
+  "theme": "mikearnaldi/just-the-docs",
+  "enableSearch": true,
+  "enforceDescriptions": false,
+  "enforceExamples": false,
+  "enforceVersion": true,
+  "exclude": [
+    "packages/ai/*/src/Generated.ts",
+    "packages/**/src/internal/**/*.ts",
+    "packages/effect/src/unstable/**/internal/**/*.ts",
+    "packages/effect/src/schema/StandardSchema.ts",
+    "packages/tools/openapi-generator/src/**/*.ts"
+  ]
+}

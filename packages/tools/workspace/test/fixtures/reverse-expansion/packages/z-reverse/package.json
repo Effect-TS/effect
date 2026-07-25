@@ -1,0 +1,60 @@
+{
+  "name": "reverse-package",
+  "type": "module",
+  "version": "1.0.0",
+  "exports": {
+    "./normal-only": "./code/normal-only.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      "./variants/*": {
+        "import": "./build/esm/*.mjs",
+        "require": [null, "./build/cjs/*.js"]
+      },
+      "./mjs-exact": "./build/exact.mjs",
+      "./import-default": {
+        "import": "./build/esm/item.mjs",
+        "default": "./build/cjs/item.js"
+      },
+      "./node-default": {
+        "node": "./build/exact.mjs",
+        "default": "./build/missing.js"
+      },
+      "./node-before-import": {
+        "node": "./build/exact.mjs",
+        "import": "./build/esm/item.mjs"
+      },
+      "./custom": {
+        "custom": "./build/exact.mjs",
+        "default": "./build/query.js"
+      },
+      "./nested/private/*": null,
+      "./nested/special/*": { "custom": "./build/elsewhere/*.js" },
+      "./nested/*": "./build/nested/*.js",
+      "./extensions/*": "./build/extensions/*.js",
+      "./different/*": "./build/modules/*.js",
+      "./copy/*": "./build/repeat/*/copy-*.js",
+      "./declaration/*": "./build/declarations/*.js",
+      "./empty/*": "./build/empty/*.js",
+      "./encoded": "./build/encoded%2ejs",
+      "./no-star/*": "./build/fixed.js",
+      "./resource-*": "./build/assets/*.css",
+      "./ambiguous": "./build/ambiguous.js",
+      "./missing": "./build/missing.js",
+      "./outside-root": "./outside-root.js",
+      "./query": "./build/query.js?raw#fragment",
+      "./query-pattern/*": "./build/query-pattern/*.js?raw#fragment",
+      "./package.json": "./package.json",
+      "./exact": "./build/exact.js",
+      "./typed": {
+        "types": "./build/exact.d.ts",
+        "import": "./build/exact.js"
+      },
+      "./typed/*": {
+        "types": "./build/types/*.d.ts",
+        "import": "./build/esm/*.mjs"
+      },
+      ".": "./README.md"
+    }
+  }
+}

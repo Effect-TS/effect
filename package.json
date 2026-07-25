@@ -21,7 +21,7 @@
     "jsdocs": "effect-jsdocs",
     "lint": "pnpm jsdocs && oxlint -f unix && dprint check",
     "lint-fix": "pnpm jsdocs && oxlint --fix && dprint fmt",
-    "docgen": "pnpm --recursive --filter \"./packages/**/*\" exec docgen && node scripts/docs.mjs",
+    "docgen": "node scripts/docgen.mjs",
     "ai-docgen": "effect-ai-docgen ai-docs/src -o LLMS.md",
     "ai-docgen:watch": "pnpm ai-docgen --watch",
     "test-types": "tstyche --target '>=5.9'",

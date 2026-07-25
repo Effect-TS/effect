@@ -1,0 +1,11 @@
+{
+  "name": "encapsulated-package",
+  "version": "1.0.0",
+  "main": "./dist/main.js",
+  "exports": {
+    ".": {
+      "import": "./dist/only.js",
+      "require": "./dist/main.js"
+    }
+  }
+}

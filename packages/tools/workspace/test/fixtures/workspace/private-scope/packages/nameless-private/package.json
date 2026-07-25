@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "exports": {
+    ".": 42
+  }
+}

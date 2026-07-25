@@ -14,6 +14,7 @@ import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import * as Result from "effect/Result"
 import * as Schema from "effect/Schema"
+import * as NodePath from "node:path"
 import * as tsconfck from "tsconfck"
 import * as Domain from "./Domain.ts"
 import { DocgenError } from "./Domain.ts"
@@ -72,16 +73,30 @@ export const ConfigurationSchema = Schema.Struct({
     description: "Whether or not @since tags for each module export should be required.",
     default: true
   })),
-  tscExecutable: Schema.optional(Schema.String.annotate({
-    description:
-      "The path to the TypeScript compiler executable that docgen should use when invoking the compiler programmatically.",
-    default: "tsc"
+  generateDocs: Schema.optional(Schema.Boolean.annotate({
+    description: "Whether docgen should generate Markdown documentation.",
+    default: true
   })),
-  runExamples: Schema.optional(Schema.Boolean.annotate({
-    description:
-      "Whether or not docgen should attempt to run example code snippets and include the output in the generated documentation.",
+  generateExamples: Schema.optional(Schema.Boolean.annotate({
+    description: "Whether docgen should generate extracted TypeScript example modules.",
+    default: true
+  })),
+  frontend: Schema.optional(
+    Schema.Literals(["source", "declaration"]).annotate({
+      description: "The deterministic TypeScript input frontend.",
+      default: "source"
+    })
+  ),
+  workspace: Schema.optional(Schema.Boolean.annotate({
+    description: "Whether to generate documentation for the publishable packages in the current workspace.",
     default: false
   })),
+  packageHomepages: Schema.optional(
+    Schema.Record(Schema.String, Schema.String).annotate({
+      description: "Package-specific homepage overrides used during workspace generation.",
+      default: {}
+    })
+  ),
   exclude: Schema.optional(
     Schema.Array(Schema.String).annotate({
       description: "An array of glob strings specifying files that should be excluded from the documentation.",
@@ -90,10 +105,6 @@ export const ConfigurationSchema = Schema.Struct({
   ),
   parseCompilerOptions: Schema.optional(compilerOptionsSchema.annotate({
     description: "tsconfig for parsing options (or path to a tsconfig)",
-    default: {}
-  })),
-  examplesCompilerOptions: Schema.optional(compilerOptionsSchema.annotate({
-    description: "tsconfig for the examples options (or path to a tsconfig)",
     default: {}
   }))
 }).annotate({ identifier: "ConfigurationSchema" })
@@ -113,11 +124,13 @@ export interface ConfigurationShape {
   readonly enforceDescriptions: boolean
   readonly enforceExamples: boolean
   readonly enforceVersion: boolean
-  readonly tscExecutable: string
-  readonly runExamples: boolean
+  readonly generateDocs: boolean
+  readonly generateExamples: boolean
+  readonly frontend: "source" | "declaration"
+  readonly workspace: boolean
+  readonly packageHomepages: Readonly<Record<string, string>>
   readonly exclude: ReadonlyArray<string>
   readonly parseCompilerOptions: Record<string, unknown>
-  readonly examplesCompilerOptions: Record<string, unknown>
 }
 
 /**
@@ -244,6 +257,11 @@ const resolveCompilerOptions = (
 
 const JsonRecordSchema = Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown))
 
+const WorkspacePackageJsonSchema = Schema.Struct({
+  name: Schema.optional(Schema.String),
+  homepage: Schema.optional(Schema.String)
+})
+
 const PackageJsonSchema = Schema.Struct({
   name: Schema.String,
   homepage: Schema.String
@@ -260,10 +278,11 @@ export const load = (args: {
   readonly enforceDescriptions: boolean
   readonly enforceExamples: boolean
   readonly enforceVersion: boolean
-  readonly runExamples: boolean
+  readonly generateDocs: boolean
+  readonly generateExamples: boolean
+  readonly frontend: "source" | "declaration"
   readonly exclude: ReadonlyArray<string>
   readonly parseCompilerOptions: Option.Option<string | Record<string, unknown>>
-  readonly examplesCompilerOptions: Option.Option<string | Record<string, unknown>>
 }) =>
   Effect.gen(function*() {
     // Extract the requisite services
@@ -271,18 +290,30 @@ export const load = (args: {
     const cwd = yield* process.cwd
     const path = yield* Path.Path
 
+    // Read the root configuration before package metadata because workspace
+    // roots are not required to be publishable packages.
+    const configPath = path.join(cwd, CONFIG_FILE_NAME)
+    const config = yield* readDocgenConfig(configPath)
+    const workspace = config.pipe(
+      Option.flatMapNullishOr((config) => config.workspace),
+      Option.getOrElse(() => false)
+    )
+
     // Read and parse the required fields from the `package.json`
     const packageJsonPath = path.join(cwd, PACKAGE_JSON_FILE_NAME)
-    const packageJson = yield* validateJsonFile(PackageJsonSchema, packageJsonPath)
-    const projectName = packageJson.name
-    const projectHomepage = Option.getOrElse(args.projectHomepage, () => packageJson.homepage)
-    const srcLink = Option.getOrElse(args.srcLink, () => `${projectHomepage}/blob/main/src/`)
+    const packageJson = yield* validateJsonFile(
+      workspace || args.frontend === "declaration" ? WorkspacePackageJsonSchema : PackageJsonSchema,
+      packageJsonPath
+    )
+    const projectName = packageJson.name ?? "Workspace"
+    const projectHomepage = Option.getOrElse(args.projectHomepage, () => packageJson.homepage ?? "")
+    const srcLink = Option.getOrElse(
+      args.srcLink,
+      () => `${projectHomepage}/blob/main/${workspace || args.frontend === "declaration" ? "" : "src/"}`
+    )
 
     // Read the `docgen.json` configuration file to gain access to the TypeScript
     // configuration options
-    const configPath = path.join(cwd, CONFIG_FILE_NAME)
-    const config = yield* readDocgenConfig(configPath)
-
     // Resolve the excluded files
     const exclude = yield* Array.match(args.exclude, {
       onEmpty: () =>
@@ -300,36 +331,24 @@ export const load = (args: {
     })
 
     // Resolve the TypeScript configuration options
-    const examplesCompilerOptions = yield* resolveCompilerOptions(
-      "examplesCompilerOptions",
-      args.examplesCompilerOptions,
-      Option.flatMap(config, (config) => Option.fromNullishOr(config.examplesCompilerOptions))
-    )
     const parseCompilerOptions = yield* resolveCompilerOptions(
       "parseCompilerOptions",
       args.parseCompilerOptions,
       Option.flatMap(config, (config) => Option.fromNullishOr(config.parseCompilerOptions))
     )
 
-    const srcDir = config.pipe(
-      Option.flatMapNullishOr((config) => config.srcDir),
-      Option.getOrElse(() => args.srcDir)
+    const packageHomepages = config.pipe(
+      Option.flatMapNullishOr((config) => config.packageHomepages),
+      Option.getOrElse(() => ({}))
     )
 
-    const outDir = config.pipe(
-      Option.flatMapNullishOr((config) => config.outDir),
-      Option.getOrElse(() => args.outDir)
-    )
-
-    const runExamples = config.pipe(
-      Option.flatMapNullishOr((config) => config.runExamples),
-      Option.getOrElse(() => args.runExamples)
-    )
-
-    const tscExecutable = config.pipe(
-      Option.flatMapNullishOr((config) => config.tscExecutable),
-      Option.getOrElse(() => "tsc")
-    )
+    const workspaceRelative = (value: string): string => {
+      if (!workspace || !path.isAbsolute(value)) return value
+      const relative = path.relative(cwd, value)
+      return relative === ".." || relative.startsWith(`..${path.sep}`) ? value : relative
+    }
+    const srcDir = workspaceRelative(args.srcDir)
+    const outDir = workspaceRelative(args.outDir)
 
     return Configuration.of({
       ...args,
@@ -339,12 +358,26 @@ export const load = (args: {
       projectHomepage,
       srcLink,
       exclude,
-      examplesCompilerOptions,
       parseCompilerOptions,
-      runExamples,
-      tscExecutable
+      workspace,
+      packageHomepages
     })
   })
+
+/** @internal */
+export const forPackage = (
+  config: ConfigurationShape,
+  pkg: { readonly name: string; readonly root: string },
+  _workspaceRoot: string
+): ConfigurationShape => {
+  return Configuration.of({
+    ...config,
+    projectName: pkg.name,
+    projectHomepage: config.packageHomepages[pkg.name] ?? config.projectHomepage,
+    outDir: NodePath.resolve(pkg.root, config.outDir),
+    exclude: []
+  })
+}
 
 /** @internal */
 export const configProviderLayer = Layer.effect(ConfigProvider.ConfigProvider)(Effect.gen(function*() {

@@ -9,7 +9,6 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Order from "effect/Order"
 import * as String from "effect/String"
-import type * as Parser from "./Parser.ts"
 
 /**
  * @category model
@@ -85,7 +84,7 @@ export class Doc {
  * @since 0.6.0
  */
 export class Module {
-  readonly source: Parser.SourceShape
+  readonly source: Source
   readonly name: string
   readonly doc: Doc
   readonly path: Array.NonEmptyReadonlyArray<string>
@@ -97,7 +96,7 @@ export class Module {
   readonly exports: ReadonlyArray<Export>
   readonly namespaces: ReadonlyArray<Namespace>
   constructor(
-    source: Parser.SourceShape,
+    source: Source,
     name: string,
     doc: Doc,
     path: Array.NonEmptyReadonlyArray<string>,
@@ -120,6 +119,33 @@ export class Module {
     this.constants = constants
     this.exports = exports
     this.namespaces = namespaces
+  }
+}
+
+/**
+ * Source information retained by the semantic documentation model.
+ *
+ * @category models
+ * @since 0.6.0
+ */
+export class Source {
+  readonly filePath: string
+  readonly content: string
+  readonly sourcePath: string | undefined
+  readonly specifiers: Array.NonEmptyReadonlyArray<string> | undefined
+  readonly packageName: string | undefined
+  constructor(options: {
+    readonly filePath: string
+    readonly content: string
+    readonly sourcePath?: string | undefined
+    readonly specifiers?: Array.NonEmptyReadonlyArray<string> | undefined
+    readonly packageName?: string | undefined
+  }) {
+    this.filePath = options.filePath
+    this.content = options.content
+    this.sourcePath = options.sourcePath
+    this.specifiers = options.specifiers
+    this.packageName = options.packageName
   }
 }
 
@@ -163,6 +189,24 @@ export class Interface extends DocEntry {
 export interface Position {
   readonly line: number
   readonly column: number
+  readonly source?: SourceLocation | undefined
+}
+
+/**
+ * Original and analyzed location provenance for a semantic declaration.
+ *
+ * @category models
+ * @since 0.6.0
+ */
+export interface SourceLocation {
+  readonly path: string
+  readonly line: number
+  readonly column: number
+  readonly content: string
+  readonly analyzedPath: string
+  readonly analyzedLine: number
+  readonly analyzedColumn: number
+  readonly mapped: boolean
 }
 
 /**
@@ -281,6 +325,36 @@ export class File {
 }
 
 /**
+ * A source file selected from a package's public workspace surface.
+ *
+ * @category model
+ * @since 0.6.0
+ */
+export class SourceFile {
+  readonly path: string
+  readonly modulePath: Array.NonEmptyReadonlyArray<string>
+  readonly specifiers: Array.NonEmptyReadonlyArray<string>
+  readonly sourcePath: string | undefined
+  readonly packageName: string | undefined
+  readonly mapPosition: ((position: Position) => Position) | undefined
+  constructor(
+    path: string,
+    modulePath: Array.NonEmptyReadonlyArray<string>,
+    specifiers: Array.NonEmptyReadonlyArray<string>,
+    sourcePath?: string,
+    packageName?: string,
+    mapPosition?: (position: Position) => Position
+  ) {
+    this.path = path
+    this.modulePath = modulePath
+    this.specifiers = specifiers
+    this.sourcePath = sourcePath
+    this.packageName = packageName
+    this.mapPosition = mapPosition
+  }
+}
+
+/**
  * @category symbol
  * @since 0.6.0
  */
@@ -303,15 +377,23 @@ export class DocgenError extends Data.TaggedError("DocgenError")<{
 /**
  * Represents a handle to the currently executing process.
  *
- * @category service
+ * @category model
  * @since 0.6.0
  */
-export class Process extends Context.Service<Process, {
+export interface ProcessShape {
   readonly cwd: Effect.Effect<string>
   readonly platform: Effect.Effect<NodeJS.Platform>
   readonly argv: Effect.Effect<Array<string>>
   readonly env: Effect.Effect<Record<string, string>>
-}>()("@effect/docgen/Process") {
+}
+
+/**
+ * Represents a handle to the currently executing process.
+ *
+ * @category service
+ * @since 0.6.0
+ */
+export class Process extends Context.Service<Process, ProcessShape>()("@effect/docgen/Process") {
   static readonly layer = Layer.succeed(Process, {
     cwd: Effect.sync(() => process.cwd()),
     platform: Effect.sync(() => process.platform),

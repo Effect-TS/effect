@@ -1,0 +1,6 @@
+{
+  "name": "invalid-node-fields",
+  "version": "1.0.0",
+  "type": "typescript",
+  "main": 42
+}

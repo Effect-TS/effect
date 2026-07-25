@@ -1,0 +1,10 @@
+{
+  "name": "override-package",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/source.js",
+  "publishConfig": {
+    "type": "commonjs",
+    "main": "./dist/published.js"
+  }
+}

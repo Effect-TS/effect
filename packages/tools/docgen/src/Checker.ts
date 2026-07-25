@@ -3,19 +3,23 @@
  */
 import { codeFrameColumns } from "@babel/code-frame"
 import * as Array from "effect/Array"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Configuration from "./Configuration.ts"
 import type * as Domain from "./Domain.ts"
-import * as Parser from "./Parser.ts"
+
+/** @internal */
+export class Source extends Context.Service<Source, Domain.Source>()("@effect/docgen/Checker/Source") {}
 
 const makeError = (
-  source: Parser.SourceShape,
+  source: Domain.Source,
   position: Domain.Position,
   message: (filePath: string, frame: string) => string
 ) => {
-  const location = { start: position }
-  const frame = codeFrameColumns(source.sourceFile.getFullText(), location)
-  return [message(source.sourceFile.getFilePath(), frame)]
+  const preferred = position.source
+  const location = { start: preferred ?? position }
+  const frame = codeFrameColumns(preferred?.content ?? source.content, location)
+  return [message(preferred?.path ?? source.filePath, frame)]
 }
 
 type Entry = {
@@ -27,7 +31,7 @@ function checkEntry(model: Entry, options: {
   readonly enforceVersion: boolean
 }) {
   return Effect.gen(function*() {
-    const source = yield* Parser.Source
+    const source = yield* Source
     const config = yield* Configuration.Configuration
 
     let errors: Array<string> = []
@@ -155,7 +159,7 @@ export function checkTypeAliases(models: ReadonlyArray<Domain.TypeAlias>) {
 
 function checkNamespace(
   model: Domain.Namespace
-): Effect.Effect<Array<string>, never, Parser.Source | Configuration.Configuration> {
+): Effect.Effect<Array<string>, never, Source | Configuration.Configuration> {
   return Effect.gen(function*() {
     const docErrors = yield* checkEntry(model, {
       enforceVersion: true
@@ -208,7 +212,7 @@ export function checkModule(module: Domain.Module) {
       namespacesErrors,
       exportsErrors
     ])
-  }).pipe(Effect.provideService(Parser.Source, module.source))
+  }).pipe(Effect.provideService(Source, module.source))
 }
 
 /**

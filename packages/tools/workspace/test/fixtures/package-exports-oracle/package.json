@@ -1,0 +1,26 @@
+{
+  "name": "oracle-package",
+  "type": "module",
+  "exports": {
+    ".": {
+      "custom": "./custom.js",
+      "default": "./default.js"
+    },
+    "./exact": "./exact.js",
+    "./import-default": {
+      "import": "./import.js",
+      "default": "./require.cjs"
+    },
+    "./node-default": {
+      "node": "./node.js",
+      "default": "./unreachable.js"
+    },
+    "./node-before-import": {
+      "node": "./node.js",
+      "import": "./import.js"
+    },
+    "./feature/*": "./broad/*.js",
+    "./feature/private/*": null,
+    "./feature/special/*": "./special/*.js"
+  }
+}

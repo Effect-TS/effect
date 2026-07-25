@@ -1,0 +1,14 @@
+{
+  "name": "publish-null",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "publishConfig": {
+    "type": null,
+    "main": null,
+    "exports": null
+  }
+}

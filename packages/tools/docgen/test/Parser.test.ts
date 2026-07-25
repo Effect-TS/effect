@@ -5,6 +5,7 @@ import * as Printer from "@effect/docgen/Printer"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Exit, Predicate } from "effect"
 import * as Path from "effect/Path"
+import { fileURLToPath } from "node:url"
 import * as ast from "ts-morph"
 
 let testCounter = 0
@@ -25,11 +26,13 @@ const defaultConfig: Configuration.ConfigurationShape = {
   enforceDescriptions: false,
   enforceExamples: false,
   enforceVersion: true,
-  runExamples: false,
-  tscExecutable: "tsc",
+  generateDocs: true,
+  generateExamples: true,
+  frontend: "source",
+  workspace: false,
+  packageHomepages: {},
   exclude: [],
-  parseCompilerOptions: {},
-  examplesCompilerOptions: {}
+  parseCompilerOptions: {}
 }
 
 const makeSourcefile = (source: string | ast.SourceFile) => {
@@ -74,6 +77,11 @@ const expectMarkdown = Effect.fnUntraced(function*<E>(
   expected: string,
   config?: Partial<Configuration.ConfigurationShape>
 ) {
+  const source = makeSource(sourceText)
+  const semanticSource = new Domain.Source({
+    filePath: source.sourceFile.getFilePath(),
+    content: source.sourceFile.getFullText()
+  })
   const exit = yield* Effect.exit(eff.pipe(
     Effect.flatMap((printableOr) => {
       if (isModule(printableOr)) {
@@ -81,7 +89,8 @@ const expectMarkdown = Effect.fnUntraced(function*<E>(
       }
       return print(printableOr)
     }),
-    Effect.provideService(Parser.Source, makeSource(sourceText)),
+    Effect.provideService(Parser.Source, source),
+    Effect.provideService(Printer.Source, semanticSource),
     Effect.provideService(Configuration.Configuration, { ...defaultConfig, ...config }),
     Effect.provide(Path.layer)
   ))
@@ -1740,9 +1749,47 @@ Since v1.0.0`
   })
 
   describe("parseFile", () => {
+    it.effect("parses workspace sources with identical module paths in one project", () =>
+      Effect.gen(function*() {
+        const fixture = fileURLToPath(new URL("fixtures/workspace/packages", import.meta.url))
+        const files = [
+          new Domain.SourceFile(
+            `${fixture}/example/src/index.ts`,
+            ["src", "index.ts"],
+            ["@effect/example"],
+            "packages/example/src/index.ts",
+            "@effect/example"
+          ),
+          new Domain.SourceFile(
+            `${fixture}/second/src/index.ts`,
+            ["src", "index.ts"],
+            ["@effect/second"],
+            "packages/second/src/index.ts",
+            "@effect/second"
+          )
+        ]
+        const modules = yield* Parser.parseFiles(files).pipe(
+          Effect.provideService(Configuration.Configuration, defaultConfig),
+          Effect.provideService(
+            Domain.Process,
+            Domain.Process.of({
+              cwd: Effect.succeed(fixture),
+              platform: Effect.succeed(process.platform),
+              argv: Effect.succeed([]),
+              env: Effect.succeed({})
+            })
+          )
+        )
+
+        assert.deepStrictEqual(modules.map((module) => module.source.packageName).sort(), [
+          "@effect/example",
+          "@effect/second"
+        ])
+      }))
+
     it.effect("should not parse a non-existent file", () =>
       Effect.gen(function*() {
-        const file = new Domain.File("non-existent.ts", "")
+        const file = new Domain.SourceFile("non-existent.ts", ["non-existent.ts"], ["non-existent.ts"])
         const project = new ast.Project({ useInMemoryFileSystem: true })
 
         assert.deepStrictEqual(

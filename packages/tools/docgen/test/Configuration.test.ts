@@ -103,6 +103,38 @@ const testCliFor = (
 }
 
 describe("Configuration", () => {
+  it.effect("parses validation and repeatable workspace filters", () => {
+    const command = CLI.docgenCommand.pipe(
+      Command.withHandler(({ packages, paths, validate }) =>
+        Effect.sync(() => {
+          assert.strictEqual(validate, true)
+          assert.deepStrictEqual(packages, ["effect", "sql"])
+          assert.deepStrictEqual(paths, ["Array.ts"])
+        })
+      ),
+      Command.provideEffect(Configuration.Configuration, CLI.loadConfiguration)
+    )
+    return Command.runWith(command, { version: "v1.0.0" })([
+      "--validate",
+      "--package",
+      "effect",
+      "--package",
+      "sql",
+      "--path",
+      "Array.ts"
+    ]).pipe(Effect.provide(makeTestLive()))
+  })
+
+  it.effect("uses a repository-root source link in workspace mode", () => {
+    const program = Effect.gen(function*() {
+      const config = yield* Configuration.Configuration
+      assert.strictEqual(config.srcLink, "homepage/blob/main/")
+    })
+    return testCliFor(program)([]).pipe(
+      Effect.provide(makeTestLive().pipe(Layer.provide(makeDocgenJson({ workspace: true }))))
+    )
+  })
+
   it.effect("should use the default configuration if no configuration is provided", () => {
     const program = Effect.gen(function*() {
       const config = yield* Configuration.Configuration
@@ -117,11 +149,13 @@ describe("Configuration", () => {
         enforceDescriptions: false,
         enforceExamples: false,
         enforceVersion: true,
-        runExamples: false,
-        tscExecutable: "tsc",
+        generateDocs: true,
+        generateExamples: true,
+        frontend: "source",
+        workspace: false,
+        packageHomepages: {},
         exclude: [],
-        parseCompilerOptions: Configuration.defaultCompilerOptions,
-        examplesCompilerOptions: Configuration.defaultCompilerOptions
+        parseCompilerOptions: Configuration.defaultCompilerOptions
       })
     })
     return testCliFor(program)([]).pipe(Effect.provide(makeTestLive()))
@@ -150,11 +184,13 @@ describe("Configuration", () => {
         enforceDescriptions: false,
         enforceExamples: false,
         enforceVersion: true,
-        runExamples: false,
-        tscExecutable: "tsc",
+        generateDocs: true,
+        generateExamples: true,
+        frontend: "source",
+        workspace: false,
+        packageHomepages: {},
         exclude: [],
-        parseCompilerOptions,
-        examplesCompilerOptions: Configuration.defaultCompilerOptions
+        parseCompilerOptions
       })
     })
     return testCliFor(program)([]).pipe(
@@ -225,35 +261,42 @@ describe("Configuration", () => {
     )
   })
 
-  it.effect("automatic negative flags override true environment configuration", () => {
+  it.effect("projection opt-outs override true environment configuration", () => {
     const program = Effect.gen(function*() {
       const config = yield* Configuration.Configuration
-      assert.isFalse(config.enforceDescriptions)
-      assert.isFalse(config.enforceExamples)
-      assert.isFalse(config.runExamples)
+      assert.isFalse(config.generateDocs)
+      assert.isFalse(config.generateExamples)
     })
     return testCliFor(program)([
-      "--no-enforce-descriptions",
-      "--no-enforce-examples",
-      "--no-run-examples"
+      "--no-docs",
+      "--no-examples"
     ]).pipe(Effect.provide(makeTestLive({
-      DOCGEN_ENFORCE_DESCRIPTIONS: "true",
-      DOCGEN_ENFORCE_EXAMPLES: "true",
-      DOCGEN_RUN_EXAMPLES: "true"
+      DOCGEN_GENERATE_DOCS: "true",
+      DOCGEN_GENERATE_EXAMPLES: "true"
     })))
   })
 
-  it.effect("docgen.json retains its later runExamples precedence", () => {
+  it.effect("projection configuration is retained without CLI opt-outs", () => {
     const program = Effect.gen(function*() {
       const config = yield* Configuration.Configuration
-      assert.isTrue(config.runExamples)
+      assert.isFalse(config.generateExamples)
     })
-    return testCliFor(program)(["--no-run-examples"]).pipe(
+    return testCliFor(program)([]).pipe(
       Effect.provide(
-        makeTestLive({ DOCGEN_RUN_EXAMPLES: "true" }).pipe(
-          Layer.provide(makeDocgenJson({ runExamples: true }))
+        makeTestLive().pipe(
+          Layer.provide(makeDocgenJson({ generateExamples: false }))
         )
       )
+    )
+  })
+
+  it.effect("CLI directory flags override docgen.json", () => {
+    const program = Effect.gen(function*() {
+      const config = yield* Configuration.Configuration
+      assert.strictEqual(config.outDir, "from-cli")
+    })
+    return testCliFor(program)(["--out", "from-cli"]).pipe(
+      Effect.provide(makeTestLive().pipe(Layer.provide(makeDocgenJson({ workspace: true, outDir: "from-file" }))))
     )
   })
 
@@ -277,22 +320,16 @@ describe("Configuration", () => {
     const program = Effect.gen(function*() {
       const config = yield* Configuration.Configuration
       assert.deepStrictEqual(config.parseCompilerOptions, { strict: false })
-      assert.deepStrictEqual(config.examplesCompilerOptions, { module: "ESNext" })
     })
     return testCliFor(program)([
       "--parse-compiler-options",
-      "{\"strict\":false}",
-      "--examples-compiler-options",
-      "{\"module\":\"ESNext\"}"
+      "{\"strict\":false}"
     ]).pipe(Effect.provide(makeTestLive()))
   })
 
   it.effect("rejects both compiler option forms for the same category", () =>
     Effect.gen(function*() {
-      const cases = [
-        ["--parse-tsconfig-file", "--parse-compiler-options"],
-        ["--examples-tsconfig-file", "--examples-compiler-options"]
-      ] as const
+      const cases = [["--parse-tsconfig-file", "--parse-compiler-options"]] as const
       for (const [fileFlag, inlineFlag] of cases) {
         const result = yield* Effect.result(
           testCliFor(Effect.void)([fileFlag, existingFile, inlineFlag, "{}"]).pipe(
@@ -311,7 +348,7 @@ describe("Configuration", () => {
 
   it.effect("rejects non-record inline compiler options", () =>
     Effect.gen(function*() {
-      for (const flag of ["--parse-compiler-options", "--examples-compiler-options"]) {
+      for (const flag of ["--parse-compiler-options"]) {
         for (const value of ["null", "[]", "1", "\"text\""]) {
           const result = yield* Effect.result(
             testCliFor(Effect.void)([flag, value]).pipe(Effect.provide(makeTestLive()))

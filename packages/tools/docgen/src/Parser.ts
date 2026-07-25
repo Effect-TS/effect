@@ -7,7 +7,6 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Option from "effect/Option"
-import * as Path from "effect/Path"
 import * as Record from "effect/Record"
 import * as String from "effect/String"
 import * as ast from "ts-morph"
@@ -21,6 +20,10 @@ import * as Domain from "./Domain.ts"
 export interface SourceShape {
   readonly path: Array.NonEmptyReadonlyArray<string>
   readonly sourceFile: ast.SourceFile
+  readonly sourcePath?: string | undefined
+  readonly specifiers?: Array.NonEmptyReadonlyArray<string>
+  readonly packageName?: string | undefined
+  readonly mapPosition?: ((position: Domain.Position) => Domain.Position) | undefined
 }
 
 /** @internal */
@@ -174,7 +177,7 @@ const parsePosition = (node: ast.Node): Effect.Effect<Domain.Position, never, So
     const source = yield* Source
     const startPos = node.getStart()
     const position = source.sourceFile.getLineAndColumnAtPos(startPos)
-    return position
+    return source.mapPosition?.(position) ?? position
   })
 }
 
@@ -208,9 +211,7 @@ const parseFunctionVariableDeclaration = (vd: ast.VariableDeclaration) =>
     const name = vd.getName()
     const type = parseType(vd)
     const signature = `declare const ${name}: ${type}`
-    const startPos = vd.getStart()
-    const source = yield* Source
-    const position = source.sourceFile.getLineAndColumnAtPos(startPos)
+    const position = yield* parsePosition(vd)
     return [
       new Domain.Function(
         name ?? "",
@@ -234,11 +235,10 @@ const getFunctionDeclarations = Effect.gen(function*() {
         if (isVariableDeclarationList(vd.getParent())) {
           const vs: any = vd.getParent().getParent()
           if (isVariableStatement(vs)) {
-            return vs.isExported() &&
-              Option.fromNullishOr(vd.getInitializer()).pipe(
-                Option.filter((expr) => ast.Node.isFunctionLikeDeclaration(expr)),
-                Option.isSome
-              )
+            const initializer = vd.getInitializer()
+            return vs.isExported() && (initializer === undefined
+              ? source.sourceFile.isDeclarationFile() && vd.getType().getCallSignatures().length > 0
+              : ast.Node.isFunctionLikeDeclaration(initializer))
           }
         }
         return false
@@ -336,11 +336,10 @@ export const parseConstants = Effect.gen(function*() {
         if (isVariableDeclarationList(vd.getParent())) {
           const vs: any = vd.getParent().getParent()
           if (isVariableStatement(vs)) {
-            return vs.isExported() &&
-              Option.fromNullishOr(vd.getInitializer()).pipe(
-                Option.filter((expr) => !ast.Node.isFunctionLikeDeclaration(expr)),
-                Option.isSome
-              )
+            const initializer = vd.getInitializer()
+            return vs.isExported() && (initializer === undefined
+              ? source.sourceFile.isDeclarationFile() && vd.getType().getCallSignatures().length === 0
+              : !ast.Node.isFunctionLikeDeclaration(initializer))
           }
         }
         return false
@@ -635,7 +634,13 @@ export const parseModule = Effect.gen(function*() {
   const namespaces = yield* parseNamespaces
   const name = source.sourceFile.getBaseName()
   return new Domain.Module(
-    source,
+    new Domain.Source({
+      filePath: source.sourceFile.getFilePath(),
+      content: source.sourceFile.getFullText(),
+      sourcePath: source.sourcePath,
+      specifiers: source.specifiers,
+      packageName: source.packageName
+    }),
     name,
     doc,
     source.path,
@@ -654,19 +659,24 @@ export const parseModule = Effect.gen(function*() {
  */
 export const parseFile =
   (project: ast.Project) =>
-  (file: Domain.File): Effect.Effect<Domain.Module, Array<string>, Configuration.Configuration | Path.Path> => {
+  (file: Domain.SourceFile): Effect.Effect<Domain.Module, Array<string>, Configuration.Configuration> => {
     return Effect.gen(function*() {
-      const path = yield* Path.Path
       const sourceFile = project.getSourceFile(file.path)
-      const filePath = file.path.split(path.sep)
-      if (sourceFile !== undefined && Array.isArrayNonEmpty(filePath)) {
-        return yield* Effect.provideService(parseModule, Source, { sourceFile, path: filePath })
+      if (sourceFile !== undefined) {
+        return yield* Effect.provideService(parseModule, Source, {
+          sourceFile,
+          path: file.modulePath,
+          sourcePath: file.sourcePath,
+          specifiers: file.specifiers,
+          packageName: file.packageName,
+          mapPosition: file.mapPosition
+        })
       }
       return yield* Effect.fail([`Unable to locate file: ${file.path}`])
     })
   }
 
-const createProject = (files: ReadonlyArray<Domain.File>) =>
+const createProject = (files: ReadonlyArray<Domain.SourceFile>) =>
   Effect.gen(function*() {
     const config = yield* Configuration.Configuration
     const process = yield* Domain.Process
@@ -698,7 +708,7 @@ const createProject = (files: ReadonlyArray<Domain.File>) =>
  * @category parsers
  * @since 0.6.0
  */
-export const parseFiles = (files: ReadonlyArray<Domain.File>) =>
+export const parseFiles = (files: ReadonlyArray<Domain.SourceFile>) =>
   createProject(files).pipe(
     Effect.flatMap((project) =>
       pipe(

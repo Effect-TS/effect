@@ -1,0 +1,11 @@
+{
+  "name": "@scope/reverse",
+  "type": "module",
+  "version": "1.0.0",
+  "publishConfig": {
+    "exports": {
+      "./z": "./build/z.js",
+      ".": "./build/index.js"
+    }
+  }
+}

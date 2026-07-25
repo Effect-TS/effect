@@ -1,0 +1,5 @@
+{
+  "name": "private-package",
+  "private": true,
+  "exports": null
+}

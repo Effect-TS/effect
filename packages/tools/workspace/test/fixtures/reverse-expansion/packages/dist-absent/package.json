@@ -1,0 +1,11 @@
+{
+  "name": "dist-absent",
+  "type": "module",
+  "version": "1.0.0",
+  "publishConfig": {
+    "exports": {
+      ".": "./build/index.js",
+      "./decoy": "./build/decoy.js"
+    }
+  }
+}

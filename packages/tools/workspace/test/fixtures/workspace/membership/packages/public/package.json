@@ -1,0 +1,12 @@
+{
+  "name": "public-package",
+  "version": "1.0.0",
+  "exports": {
+    "./source-only": "./src/source-only.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      "./published": "./dist/published.js"
+    }
+  }
+}

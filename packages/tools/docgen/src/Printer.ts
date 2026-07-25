@@ -2,6 +2,7 @@
  * @since 0.6.0
  */
 import * as Array from "effect/Array"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Order from "effect/Order"
@@ -10,7 +11,9 @@ import * as String from "effect/String"
 import * as Prettier from "prettier"
 import * as Configuration from "./Configuration.ts"
 import type * as Domain from "./Domain.ts"
-import * as Parser from "./Parser.ts"
+
+/** @internal */
+export class Source extends Context.Service<Source, Domain.Source>()("@effect/docgen/Printer/Source") {}
 
 /** @internal */
 export type Printable =
@@ -140,9 +143,13 @@ const printOptionalSourceLink = (position?: Domain.Position) => {
       return ""
     }
     const config = yield* Configuration.Configuration
-    const source = yield* Parser.Source
-    const name = source.sourceFile.getBaseName()
-    return `\n\n[Source](${config.srcLink}${name}#L${position.line})`
+    const source = yield* Source
+    const preferred = position.source
+    let sourcePath = preferred?.path ?? source.sourcePath ?? source.filePath.split(/[\\/]/).at(-1) ?? source.filePath
+    if (!config.workspace && sourcePath.startsWith(`${config.srcDir}/`)) {
+      sourcePath = sourcePath.slice(config.srcDir.length + 1)
+    }
+    return `\n\n[Source](${config.srcLink}${sourcePath}#L${preferred?.line ?? position.line})`
   })
 }
 
@@ -245,7 +252,7 @@ const printTypeAlias = (model: Domain.TypeAlias, indentation: number) => {
 const printNamespace = (
   model: Domain.Namespace,
   indentation: number
-): Effect.Effect<string, never, Configuration.Configuration | Parser.Source> => {
+): Effect.Effect<string, never, Configuration.Configuration | Source> => {
   return Effect.gen(function*() {
     const header = yield* printModel(model.name, model.doc, {
       position: model.position,
@@ -344,7 +351,7 @@ export const printModule = (module: Domain.Module) => {
     return `${description}
 
 <!-- toc -->${content}`
-  }).pipe(Effect.provideService(Parser.Source, module.source))
+  }).pipe(Effect.provideService(Source, module.source))
 }
 
 const defaultPrettierOptions: Prettier.Options = {

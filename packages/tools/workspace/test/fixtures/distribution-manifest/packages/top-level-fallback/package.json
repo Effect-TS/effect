@@ -1,0 +1,15 @@
+{
+  "name": "top-level-fallback",
+  "version": "1.0.0",
+  "type": "commonjs",
+  "main": "./dist/index.cjs",
+  "exports": null,
+  "imports": {
+    "#source": "./src/index.ts"
+  },
+  "publishConfig": {
+    "imports": {
+      "#published": "./dist/index.cjs"
+    }
+  }
+}

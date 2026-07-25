@@ -1,5 +1,6 @@
 import * as Checker from "@effect/docgen/Checker"
 import * as Configuration from "@effect/docgen/Configuration"
+import * as Domain from "@effect/docgen/Domain"
 import * as Parser from "@effect/docgen/Parser"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Predicate } from "effect"
@@ -22,11 +23,13 @@ const defaultConfig: Configuration.ConfigurationShape = {
   enforceDescriptions: false,
   enforceExamples: false,
   enforceVersion: true,
-  runExamples: false,
-  tscExecutable: "tsc",
+  generateDocs: true,
+  generateExamples: true,
+  frontend: "source",
+  workspace: false,
+  packageHomepages: {},
   exclude: [],
-  parseCompilerOptions: {},
-  examplesCompilerOptions: {}
+  parseCompilerOptions: {}
 }
 
 const makeSourcefile = (source: string | ast.SourceFile) => {
@@ -54,13 +57,19 @@ const expectFailure = <A>(
   config: Partial<Configuration.ConfigurationShape>,
   sourceText: string,
   parser: Effect.Effect<A, never, Parser.Source | Configuration.Configuration | Path.Path>,
-  checker: (a: A) => Effect.Effect<Array<string>, never, Configuration.Configuration | Parser.Source>,
+  checker: (a: A) => Effect.Effect<Array<string>, never, Configuration.Configuration | Checker.Source>,
   failure: ReadonlyArray<string>
 ) => {
   return Effect.gen(function*() {
+    const source = makeSource(sourceText)
+    const semanticSource = new Domain.Source({
+      filePath: source.sourceFile.getFilePath(),
+      content: source.sourceFile.getFullText()
+    })
     const actual = yield* Effect.exit(parser.pipe(
       Effect.flatMap(checker),
-      Effect.provideService(Parser.Source, makeSource(sourceText)),
+      Effect.provideService(Parser.Source, source),
+      Effect.provideService(Checker.Source, semanticSource),
       Effect.provideService(Configuration.Configuration, { ...defaultConfig, ...config }),
       Effect.provide(Path.layer)
     ))

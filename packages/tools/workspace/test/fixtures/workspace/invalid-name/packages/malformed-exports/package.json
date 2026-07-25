@@ -1,0 +1,8 @@
+{
+  "name": "malformed-exports",
+  "version": "1.0.0",
+  "exports": {
+    ".": "./index.js",
+    "default": "./fallback.js"
+  }
+}

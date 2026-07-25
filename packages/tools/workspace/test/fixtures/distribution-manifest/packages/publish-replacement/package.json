@@ -1,0 +1,23 @@
+{
+  "name": "publish-replacement",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/source.js",
+  "types": "./dist/source.d.ts",
+  "exports": {
+    "./source": "./dist/source.js",
+    "./shared": "./dist/source-shared.js"
+  },
+  "imports": {
+    "#source": "./dist/source.js"
+  },
+  "publishConfig": {
+    "type": "commonjs",
+    "main": "./dist/published.cjs",
+    "types": "./dist/published.d.cts",
+    "exports": {
+      "./published": "./dist/published.cjs"
+    },
+    "imports": null
+  }
+}

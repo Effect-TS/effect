@@ -51,15 +51,36 @@
           "description": "Whether or not @since tags for each module export should be required.",
           "default": true
         },
-        "tscExecutable": {
-          "type": "string",
-          "description": "The path to the TypeScript compiler executable that docgen should use when invoking the compiler programmatically.",
-          "default": "tsc"
-        },
-        "runExamples": {
+        "generateDocs": {
           "type": "boolean",
-          "description": "Whether or not docgen should attempt to run example code snippets and include the output in the generated documentation.",
+          "description": "Whether docgen should generate Markdown documentation.",
+          "default": true
+        },
+        "generateExamples": {
+          "type": "boolean",
+          "description": "Whether docgen should generate extracted TypeScript example modules.",
+          "default": true
+        },
+        "frontend": {
+          "type": "string",
+          "enum": ["source", "declaration"],
+          "description": "The deterministic TypeScript input frontend.",
+          "default": "source"
+        },
+        "workspace": {
+          "type": "boolean",
+          "description": "Whether to generate documentation for the publishable packages in the current workspace.",
           "default": false
+        },
+        "packageHomepages": {
+          "type": "object",
+          "required": [],
+          "properties": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Package-specific homepage overrides used during workspace generation.",
+          "default": {}
         },
         "exclude": {
           "type": "array",
@@ -85,24 +106,6 @@
             }
           ],
           "description": "tsconfig for parsing options (or path to a tsconfig)",
-          "default": {}
-        },
-        "examplesCompilerOptions": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "object",
-              "required": [],
-              "properties": {},
-              "additionalProperties": {
-                "$id": "/schemas/unknown",
-                "title": "unknown"
-              }
-            }
-          ],
-          "description": "tsconfig for the examples options (or path to a tsconfig)",
           "default": {}
         }
       },

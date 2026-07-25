@@ -1,0 +1,5 @@
+{
+  "name": "main-mjs-package",
+  "version": "1.0.0",
+  "main": "./dist/index.mjs"
+}

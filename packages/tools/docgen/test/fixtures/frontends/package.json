@@ -1,0 +1,17 @@
+{
+  "name": "frontend-fixture",
+  "version": "1.0.0",
+  "homepage": "https://example.com",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/missing.js"
+      }
+    }
+  }
+}

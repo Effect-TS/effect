@@ -31,12 +31,12 @@ const srcLink = Flag.string("srcLink").pipe(
 )
 
 const srcDir = Flag.directory("src", { mustExist: true }).pipe(
-  Flag.withFallbackConfig(Config.string("src").pipe(Config.withDefault("src"))),
+  Flag.withFallbackConfig(Config.string("srcDir").pipe(Config.withDefault("src"))),
   Flag.withDescription("The directory in which docgen will search for TypeScript files to parse")
 )
 
 const outDir = Flag.directory("out").pipe(
-  Flag.withFallbackConfig(Config.string("out").pipe(Config.withDefault("docs"))),
+  Flag.withFallbackConfig(Config.string("outDir").pipe(Config.withDefault("docs"))),
   Flag.withDescription("The directory to which docgen will generate its output markdown documents")
 )
 
@@ -78,9 +78,24 @@ const enforceVersionAlias = Flag.boolean("enforce-version").pipe(
   Flag.optional
 )
 
-const runExamples = Flag.boolean("run-examples").pipe(
-  Flag.withDescription("Whether or not to execute examples discovered in the TypeScript source files"),
+const noDocs = Flag.boolean("no-docs").pipe(
+  Flag.withDescription("Disable Markdown documentation generation"),
   Flag.optional
+)
+
+const noExamples = Flag.boolean("no-examples").pipe(
+  Flag.withDescription("Disable extracted TypeScript example generation"),
+  Flag.optional
+)
+
+const json = Flag.file("json").pipe(
+  Flag.withDescription("Write the renderer-independent semantic model to a JSON file"),
+  Flag.optional
+)
+
+const frontend = Flag.choice("frontend", ["source", "declaration"]).pipe(
+  Flag.withFallbackConfig(Config.literals(["source", "declaration"], "frontend").pipe(Config.withDefault("source"))),
+  Flag.withDescription("Select the source or declaration analysis frontend")
 )
 
 const exclude = Flag.string("exclude").pipe(
@@ -124,15 +139,19 @@ const parseCompilerOptionsInline = parseCompilerOptionsFlag(
   "The TypeScript compiler options to use for parsing source files"
 ).pipe(Flag.optional)
 
-const examplesCompilerOptionsFile = Flag.file("examples-tsconfig-file", { mustExist: true }).pipe(
-  Flag.withDescription("The TypeScript TSConfig file to use for examples"),
-  Flag.optional
+const validate = Flag.boolean("validate").pipe(
+  Flag.withDescription("Validate documentation without rendering or writing generated output")
 )
 
-const examplesCompilerOptionsInline = parseCompilerOptionsFlag(
-  "examples-compiler-options",
-  "The TypeScript compiler options to use for examples"
-).pipe(Flag.optional)
+const packages = Flag.string("package").pipe(
+  Flag.withDescription("Validate packages whose documentation slug contains this value (repeatable)"),
+  Flag.atMost(Number.MAX_SAFE_INTEGER)
+)
+
+const paths = Flag.string("path").pipe(
+  Flag.withDescription("Validate workspace-relative source paths containing this value (repeatable)"),
+  Flag.atMost(Number.MAX_SAFE_INTEGER)
+)
 
 const options = {
   projectHomepage,
@@ -146,12 +165,16 @@ const options = {
   enforceExamples,
   noEnforceVersion,
   enforceVersionAlias,
-  runExamples,
+  noDocs,
+  noExamples,
+  json,
+  frontend,
   exclude,
   parseCompilerOptionsFile,
   parseCompilerOptionsInline,
-  examplesCompilerOptionsFile,
-  examplesCompilerOptionsInline
+  validate,
+  packages,
+  paths
 }
 
 /** @internal */
@@ -168,26 +191,25 @@ export const loadConfiguration = Effect.fnUntraced(function*(
     enforceExamples,
     enforceVersionAlias,
     noEnforceVersion,
-    runExamples,
-    examplesCompilerOptionsFile,
-    examplesCompilerOptionsInline,
+    noDocs,
+    noExamples,
+    json: _json,
     parseCompilerOptionsFile,
     parseCompilerOptionsInline,
+    validate: _validate,
+    packages: _packages,
+    paths: _paths,
     ...config
   } = args
+  void _validate
+  void _packages
+  void _paths
+  void _json
   if (Option.isSome(parseCompilerOptionsFile) && Option.isSome(parseCompilerOptionsInline)) {
     return yield* new CliError.InvalidValue({
       option: "parse-compiler-options",
       value: JSON.stringify(parseCompilerOptionsInline.value),
       expected: "only one of --parse-tsconfig-file or --parse-compiler-options",
-      kind: "flag"
-    })
-  }
-  if (Option.isSome(examplesCompilerOptionsFile) && Option.isSome(examplesCompilerOptionsInline)) {
-    return yield* new CliError.InvalidValue({
-      option: "examples-compiler-options",
-      value: JSON.stringify(examplesCompilerOptionsInline.value),
-      expected: "only one of --examples-tsconfig-file or --examples-compiler-options",
       kind: "flag"
     })
   }
@@ -199,7 +221,8 @@ export const loadConfiguration = Effect.fnUntraced(function*(
     Effect.orElseSucceed(() => false)
   )
   const configuredEnforceVersion = yield* Config.boolean("enforceVersion").pipe(Effect.orElseSucceed(() => true))
-  const configuredRunExamples = yield* Config.boolean("runExamples").pipe(Effect.orElseSucceed(() => false))
+  const configuredGenerateDocs = yield* Config.boolean("generateDocs").pipe(Effect.orElseSucceed(() => true))
+  const configuredGenerateExamples = yield* Config.boolean("generateExamples").pipe(Effect.orElseSucceed(() => true))
   return yield* Configuration.load({
     ...config,
     enableSearch: Option.match(disableSearch, {
@@ -212,19 +235,32 @@ export const loadConfiguration = Effect.fnUntraced(function*(
       onNone: () => Option.getOrElse(enforceVersionAlias, () => configuredEnforceVersion),
       onSome: (disabled) => !disabled
     }),
-    runExamples: Option.getOrElse(runExamples, () => configuredRunExamples),
-    parseCompilerOptions: Option.orElse(parseCompilerOptionsFile, () => parseCompilerOptionsInline),
-    examplesCompilerOptions: Option.orElse(examplesCompilerOptionsFile, () => examplesCompilerOptionsInline)
+    generateDocs: Option.match(noDocs, {
+      onNone: () => configuredGenerateDocs,
+      onSome: (disabled) => !disabled
+    }),
+    generateExamples: Option.match(noExamples, {
+      onNone: () => configuredGenerateExamples,
+      onSome: (disabled) => !disabled
+    }),
+    parseCompilerOptions: Option.orElse(parseCompilerOptionsFile, () => parseCompilerOptionsInline)
   })
 })
 
 const command = docgenCommand.pipe(
-  Command.withHandler(() =>
-    Effect.scoped(Core.program).pipe(
+  Command.withHandler(({ json, packages, paths, validate }) =>
+    Effect.scoped(Core.program({
+      jsonFile: Option.getOrUndefined(json),
+      packages,
+      paths,
+      validateOnly: validate
+    })).pipe(
       Effect.catchTag("DocgenError", (error) =>
         Effect.gen(function*() {
           const config = yield* Configuration.Configuration
-          return yield* new Domain.DocgenError({ message: `[${config.projectName}] ${error.message}` })
+          return yield* new Domain.DocgenError({
+            message: config.workspace ? error.message : `[${config.projectName}] ${error.message}`
+          })
         }))
     )
   ),
