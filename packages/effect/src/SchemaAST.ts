@@ -3682,7 +3682,7 @@ export const STRING_PATTERN = "[\\s\\S]*?"
 
 const isStringFiniteRegExp = new globalThis.RegExp(`^${FINITE_PATTERN}$`)
 
-const isStringNumberRegExp = new globalThis.RegExp(`(?:${FINITE_PATTERN}|Infinity|-Infinity|NaN)`)
+const isStringNumberRegExp = new globalThis.RegExp(`^(?:${FINITE_PATTERN}|Infinity|-Infinity|NaN)$`)
 
 /** @internal */
 export function isStringFinite(annotations?: Schema.Annotations.Filter) {

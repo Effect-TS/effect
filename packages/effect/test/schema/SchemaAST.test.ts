@@ -414,7 +414,7 @@ describe("SchemaAST", () => {
     })
 
     it("Number", () => {
-      const input = { "1": 1, "1.5": 2, "-2": 3, a: 4, NaN: 5 }
+      const input = { "1": 1, "1.5": 2, "-2": 3, a: 4, NaN: 5, x1: 6, "1x": 7 }
       deepStrictEqual(SchemaAST.getIndexSignatureKeys(input, Schema.Number.ast, SchemaAST.defaultParseOptions), [
         "1",
         "1.5",
