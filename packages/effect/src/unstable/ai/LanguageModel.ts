@@ -1520,7 +1520,7 @@ export const make: (params: {
         return
       }
 
-      yield* toolkit.handle(part.name, part.params as any).pipe(
+      yield* toolkit.handle(part.name, part.params as any, part.id).pipe(
         Stream.unwrap,
         Stream.runForEach((result) => {
           const toolResultPart = Response.makePart("tool-result", {
@@ -2006,7 +2006,8 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
 
     const resultStream = yield* toolkit.handle(
       toolCall.name,
-      toolCall.params as any
+      toolCall.params as any,
+      approval.toolCallId
     )
 
     const terminalResult = yield* resultStream.pipe(
@@ -2116,7 +2117,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
       }
 
       if (approvedToolCallIds.has(toolCall.id)) {
-        return toolkit.handle(toolCall.name, toolCall.params as any).pipe(
+        return toolkit.handle(toolCall.name, toolCall.params as any, toolCall.id).pipe(
           Stream.unwrap,
           Stream.map(
             (result) =>
@@ -2142,7 +2143,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
         )
       }
 
-      return toolkit.handle(toolCall.name, toolCall.params as any).pipe(
+      return toolkit.handle(toolCall.name, toolCall.params as any, toolCall.id).pipe(
         Stream.unwrap,
         Stream.map(
           (result) =>
