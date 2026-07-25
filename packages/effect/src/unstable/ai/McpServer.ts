@@ -341,8 +341,22 @@ const SUPPORTED_PROTOCOL_VERSIONS = [
   "2024-11-05",
   "2024-10-07"
 ]
-const mcpSessionIdHeader = "mcp-session-id"
-const mcpProtocolVersionHeader = "mcp-protocol-version"
+const MCP_SESSION_ID_HEADER = "mcp-session-id"
+const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
+
+class McpProtocolState extends Context.Service<McpProtocolState, {
+  readonly clientSessions: Map<string, typeof Initialize.payloadSchema.Type>
+  readonly latestProtocolVersion: string
+  readonly supportedProtocolVersions: ReadonlySet<string>
+}>()("effect/ai/McpServer/McpProtocolState") {}
+
+const makeMcpProtocolState = (): McpProtocolState["Service"] => ({
+  clientSessions: new Map(),
+  latestProtocolVersion: LATEST_PROTOCOL_VERSION,
+  supportedProtocolVersions: new Set(SUPPORTED_PROTOCOL_VERSIONS)
+})
+
+const layerMcpProtocolState = Layer.sync(McpProtocolState, makeMcpProtocolState)
 
 /**
  * Runs an MCP server over the current `RpcServer.Protocol`.
@@ -367,12 +381,19 @@ export const run: (options: {
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
+  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
 }) {
+  const protocolState = Option.getOrElse(
+    yield* Effect.serviceOption(McpProtocolState),
+    makeMcpProtocolState
+  )
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
   const isHttp = Option.isSome(yield* Effect.serviceOption(HttpRouter.HttpRouter))
-  const clientSessions = new Map<string, typeof Initialize.payloadSchema.Type>()
-  const handlers = yield* Layer.build(layerHandlers(options, { clientSessions }))
+  const clientSessions = protocolState.clientSessions
+  const handlers = yield* Layer.build(layerHandlers(options)).pipe(
+    Effect.provideService(McpProtocolState, protocolState)
+  )
 
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(clientId: number) {
@@ -440,24 +461,49 @@ export const run: (options: {
     ...protocol,
     run: (f) =>
       protocol.run((clientId, request_) => {
-        const request = request_ as any as
+        const fiber = Fiber.getCurrent()!
+        const request = request_ as unknown as
           | RpcMessage.FromServerEncoded
           | RpcMessage.FromClientEncoded
+        const httpRequest = isHttp
+          ? Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
+          : undefined
+        if (httpRequest !== undefined && request._tag !== "Eof") {
+          appendPreResponseHandlerUnsafe(httpRequest, (_, response) =>
+            Effect.succeed(
+              response.status === 200 &&
+                response.body._tag === "Uint8Array" &&
+                response.body.contentLength === 0
+                ? HttpServerResponse.empty({
+                  headers: Headers.remove(response.headers, "content-type"),
+                  status: 202
+                })
+                : response
+            ))
+        }
         switch (request._tag) {
           case "Request": {
-            if (isHttp) {
-              const fiber = Fiber.getCurrent()!
-              const httpRequest = Context.getUnsafe(fiber.context, HttpServerRequest.HttpServerRequest)
+            if (httpRequest !== undefined) {
               const client = getInitializedClient(clientSessions, clientId, httpRequest.headers)
               if (client) {
                 appendPreResponseHandlerUnsafe(httpRequest, (_, res) =>
                   Effect.succeed(
-                    HttpServerResponse.setHeader(res, mcpProtocolVersionHeader, client.protocolVersion)
+                    HttpServerResponse.setHeader(res, MCP_PROTOCOL_VERSION_HEADER, client.protocolVersion)
                   ))
               }
             }
             const rpc = ClientNotificationRpcs.requests.get(request.tag)
             if (rpc) {
+              const headers = Headers.fromInput(request.headers)
+              if (!getInitializedClient(clientSessions, clientId, headers)) {
+                if (httpRequest !== undefined) {
+                  appendPreResponseHandlerUnsafe(
+                    httpRequest,
+                    () => Effect.succeed(HttpServerResponse.empty({ status: 404 }))
+                  )
+                }
+                return Effect.void
+              }
               if (request.tag === "notifications/cancelled") {
                 return f(clientId, {
                   _tag: "Interrupt",
@@ -470,7 +516,7 @@ export const run: (options: {
                   rpc,
                   requestId: RpcMessage.RequestId(request.id),
                   client: new Rpc.ServerClient(clientId),
-                  headers: Headers.fromInput(request.headers)
+                  headers
                 }) as any as Effect.Effect<void>
                 : Effect.void
             }
@@ -563,6 +609,15 @@ export const layer = (options: {
   readonly version: string
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
 }): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol> =>
+  layerWithProtocolState(options).pipe(
+    Layer.provide(layerMcpProtocolState)
+  )
+
+const layerWithProtocolState = (options: {
+  readonly name: string
+  readonly version: string
+  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
+}): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol | McpProtocolState> =>
   Layer.effectDiscard(Effect.forkScoped(run(options))).pipe(
     Layer.provideMerge(McpServer.layer)
   )
@@ -636,8 +691,7 @@ export const layerStdio = (options: {
   )
 
 /**
- * Registers an HTTP POST JSON-RPC route at `options.path` on the current
- * `HttpRouter`.
+ * Registers a Streamable HTTP MCP endpoint at `options.path`.
  *
  * **When to use**
  *
@@ -645,8 +699,9 @@ export const layerStdio = (options: {
  *
  * **Details**
  *
- * This layer composes `layer(options)`, `RpcServer.layerProtocolHttp(options)`,
- * and `RpcSerialization.layerJsonRpc()`.
+ * POST serves JSON-RPC and accepted notification-only requests return `202`.
+ * Unsupported protocol versions return `400`; methods without MCP handlers
+ * return `405`.
  *
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
@@ -659,11 +714,48 @@ export const layerHttp = (options: {
   readonly version: string
   readonly path: HttpRouter.PathInput
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
-}): Layer.Layer<McpServer | McpServerClient, never, HttpRouter.HttpRouter> =>
-  layer(options).pipe(
-    Layer.provide(RpcServer.layerProtocolHttp(options)),
+}): Layer.Layer<McpServer | McpServerClient, never, HttpRouter.HttpRouter> => {
+  const protocolState = layerMcpProtocolState
+  const methodNotAllowedResponse = HttpServerResponse.empty({
+    status: 405,
+    headers: { allow: "POST" }
+  })
+  const routes = Layer.mergeAll(
+    HttpRouter.add("GET", options.path, methodNotAllowedResponse),
+    HttpRouter.add("PUT", options.path, methodNotAllowedResponse),
+    HttpRouter.add("PATCH", options.path, methodNotAllowedResponse),
+    HttpRouter.add("DELETE", options.path, methodNotAllowedResponse)
+  )
+  return Layer.merge(layerWithProtocolState(options), routes).pipe(
+    Layer.provide(layerMcpProtocolHttp(options)),
+    Layer.provide(protocolState),
     Layer.provide(RpcSerialization.layerJsonRpc())
   )
+}
+
+const layerMcpProtocolHttp = (options: {
+  readonly path: HttpRouter.PathInput
+}): Layer.Layer<
+  RpcServer.Protocol,
+  never,
+  McpProtocolState | RpcSerialization.RpcSerialization | HttpRouter.HttpRouter
+> =>
+  Layer.effect(RpcServer.Protocol)(Effect.gen(function*() {
+    const state = yield* McpProtocolState
+    const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect
+    const router = yield* HttpRouter.HttpRouter
+    yield* router.add("POST", options.path, (request) => {
+      const protocolVersion = request.headers[MCP_PROTOCOL_VERSION_HEADER]
+      if (
+        protocolVersion !== undefined &&
+        !state.supportedProtocolVersions.has(protocolVersion)
+      ) {
+        return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
+      }
+      return httpEffect
+    })
+    return protocol
+  }))
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
 
@@ -1294,21 +1386,21 @@ const layerHandlers = (serverInfo: {
   readonly name: string
   readonly version: string
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
-}, options: {
-  readonly clientSessions: Map<string, typeof Initialize.payloadSchema.Type>
 }) =>
   ClientRpcs.toLayer(
     Effect.gen(function*() {
       const server = yield* McpServer
+      const protocolState = yield* McpProtocolState
+      const clientSessions = protocolState.clientSessions
       let currentLogLevel = yield* CurrentLogLevel
 
       return ClientRpcs.of({
         // Requests
         ping: () => Effect.succeed({}),
         initialize(params, { client }) {
-          const requestedVersion = SUPPORTED_PROTOCOL_VERSIONS.includes(params.protocolVersion)
+          const requestedVersion = protocolState.supportedProtocolVersions.has(params.protocolVersion)
             ? params.protocolVersion
-            : LATEST_PROTOCOL_VERSION
+            : protocolState.latestProtocolVersion
           if (requestedVersion !== params.protocolVersion) {
             params = {
               ...params,
@@ -1337,14 +1429,14 @@ const layerHandlers = (serverInfo: {
             const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
             if (httpRequest) {
               const sessionId = crypto.randomUUID()
-              options.clientSessions.set(sessionId, params)
+              clientSessions.set(sessionId, params)
               appendPreResponseHandlerUnsafe(httpRequest, (_req, res) =>
                 Effect.succeed(HttpServerResponse.setHeaders(res, {
-                  [mcpSessionIdHeader]: sessionId,
-                  [mcpProtocolVersionHeader]: requestedVersion
+                  [MCP_SESSION_ID_HEADER]: sessionId,
+                  [MCP_PROTOCOL_VERSION_HEADER]: requestedVersion
                 })))
             } else {
-              options.clientSessions.set(String(client.id), params)
+              clientSessions.set(String(client.id), params)
             }
             return Effect.succeed({
               capabilities,
@@ -1386,12 +1478,12 @@ const layerHandlers = (serverInfo: {
           ),
         "prompts/list": (_, { client, headers }) =>
           Effect.sync(() => {
-            const initialized = getInitializedClient(options.clientSessions, client.id, headers)
+            const initialized = getInitializedClient(clientSessions, client.id, headers)
             return new ListPromptsResult({ prompts: filterByClient(initialized, server.prompts, "prompt") })
           }),
         "resources/list": (_, { client, headers }) =>
           Effect.sync(() => {
-            const initialized = getInitializedClient(options.clientSessions, client.id, headers)
+            const initialized = getInitializedClient(clientSessions, client.id, headers)
             return new ListResourcesResult({ resources: filterByClient(initialized, server.resources, "resource") })
           }),
         "resources/read": ({ uri }) =>
@@ -1404,7 +1496,7 @@ const layerHandlers = (serverInfo: {
           InternalError.notImplemented,
         "resources/templates/list": (_, { client, headers }) =>
           Effect.sync(() => {
-            const initialized = getInitializedClient(options.clientSessions, client.id, headers)
+            const initialized = getInitializedClient(clientSessions, client.id, headers)
             return new ListResourceTemplatesResult({
               resourceTemplates: filterByClient(initialized, server.resourceTemplates, "template")
             })
@@ -1415,7 +1507,7 @@ const layerHandlers = (serverInfo: {
           ),
         "tools/list": (_, { client, headers }) =>
           Effect.sync(() => {
-            const initialized = getInitializedClient(options.clientSessions, client.id, headers)
+            const initialized = getInitializedClient(clientSessions, client.id, headers)
             return new ListToolsResult({
               tools: filterByClient(initialized, server.tools, "tool")
             })
@@ -1423,7 +1515,10 @@ const layerHandlers = (serverInfo: {
 
         // Notifications
         "notifications/cancelled": (_) => Effect.void,
-        "notifications/initialized": (_) => Effect.void,
+        "notifications/initialized": (_, { client }) =>
+          Effect.sync(() => {
+            server.initializedClients.add(client.id)
+          }),
         "notifications/progress": (_) => Effect.void,
         "notifications/roots/list_changed": (_) => Effect.void
       })
@@ -1481,7 +1576,7 @@ const getInitializedClient = (
   clientId: number,
   headers: Headers.Headers
 ) => {
-  const sessionId = headers[mcpSessionIdHeader]
+  const sessionId = headers[MCP_SESSION_ID_HEADER]
   if (sessionId === undefined) {
     return sessions.get(String(clientId))
   }

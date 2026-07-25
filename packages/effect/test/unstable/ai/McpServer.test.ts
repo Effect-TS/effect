@@ -1,10 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
 import * as Effect from "effect/Effect"
-import { constVoid } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Logger from "effect/Logger"
-import * as References from "effect/References"
 import * as Schema from "effect/Schema"
 import * as AiError from "effect/unstable/ai/AiError"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
@@ -17,6 +14,7 @@ import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
+import { makeServerLayer, makeWebHandler } from "./McpServer/utils.ts"
 
 const OptionalStringTool = Tool.make("OptionalStringTool", {
   parameters: Schema.Struct({ signature: Schema.optional(Schema.String) }),
@@ -48,22 +46,32 @@ const testToolkitHandlers = TestToolkit.of({
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
 
-const noopLogger = Logger.make(constVoid)
+const TestServerLayer = makeServerLayer({ name: "TestServer" })
 
-const TestServerLayer = McpServer.layerHttp({
-  name: "TestServer",
-  version: "1.0.0",
-  path: "/mcp"
-}).pipe(
-  Layer.provideMerge(Layer.succeed(References.CurrentLoggers, new Set([noopLogger])))
-)
+const initializePayload = {
+  protocolVersion: "2025-06-18",
+  capabilities: {},
+  clientInfo: {
+    name: "TestClient",
+    version: "1.0.0"
+  }
+}
+
+const pingBody = {
+  jsonrpc: "2.0",
+  method: "ping",
+  params: {},
+  id: 0
+}
 
 const makeTestClientWith = Effect.fnUntraced(function*<A>(
-  serverLayer: Layer.Layer<A, never, HttpRouter.HttpRouter>
+  serverLayer: Layer.Layer<A, never, HttpRouter.HttpRouter>,
+  options?: {
+    readonly routerLayer?: Layer.Layer<never, never, HttpRouter.HttpRouter> | undefined
+  } | undefined
 ) {
   const responses: Array<Response> = []
-  const { handler, dispose } = HttpRouter.toWebHandler(serverLayer, { disableLogger: true })
-  yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
+  const handler = yield* makeWebHandler(serverLayer, options)
 
   let sessionId: string | null = null
   const customFetch: typeof fetch = async (input, init) => {
@@ -72,7 +80,7 @@ const makeTestClientWith = Effect.fnUntraced(function*<A>(
       request.headers.set("Mcp-Session-Id", sessionId)
     }
     const response = await handler(request)
-    sessionId = response.headers.get("Mcp-Session-Id")
+    sessionId = response.headers.get("Mcp-Session-Id") ?? sessionId
     responses.push(response.clone())
     return response
   }
@@ -93,6 +101,10 @@ const makeTestClientWith = Effect.fnUntraced(function*<A>(
 })
 
 const makeTestClient = makeTestClientWith(TestServerLayer)
+
+const makeRouterTestClient = (
+  router: Layer.Layer<never, never, HttpRouter.HttpRouter>
+) => makeTestClientWith(TestServerLayer, { routerLayer: router })
 
 const makeToolkitTestClient = Effect.fnUntraced(function*(handlers: TestToolkitHandlers = testToolkitHandlers) {
   const serverLayer = McpServer.toolkit(TestToolkit).pipe(
@@ -123,7 +135,7 @@ describe("McpServer", () => {
       const { client, responses } = yield* makeTestClient
 
       yield* client.initialize({
-        protocolVersion: "9999-01-01",
+        protocolVersion: "2025-03-26",
         capabilities: {},
         clientInfo: {
           name: "TestClient",
@@ -134,14 +146,15 @@ describe("McpServer", () => {
       yield* client.ping({})
 
       strictEqual(responses.length, 2)
-      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
+      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-03-26")
+      strictEqual(responses[1].headers.get("Mcp-Protocol-Version"), "2025-03-26")
     }))
 
   it.effect("returns 404 when a non-initialize request omits the MCP session id", () =>
     Effect.gen(function*() {
       const { httpClient } = yield* makeTestClient
 
-      const response = yield* HttpClientRequest.post("http://locahost/mcp").pipe(
+      const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", method: "ping", params: {}, id: 0 }),
         httpClient.execute
       )
@@ -261,4 +274,96 @@ describe("McpServer", () => {
         assert.strictEqual(error.message, "Tool 'UnknownTool' not found")
       }))
   })
+
+  it.effect("rejects unsupported HTTP methods without disturbing an initialized session", () =>
+    Effect.gen(function*() {
+      const { client, httpClient } = yield* makeTestClient
+
+      yield* client.initialize(initializePayload)
+
+      for (const method of ["GET", "PUT", "PATCH", "DELETE", "HEAD"] as const) {
+        const response = yield* HttpClientRequest.make(method)("http://localhost/mcp").pipe(
+          httpClient.execute
+        )
+        strictEqual(response.status, 405)
+        strictEqual(response.headers["allow"], "POST")
+      }
+
+      yield* client.ping({})
+    }))
+
+  it.effect("returns an empty 202 for notifications and responses and remains successful for request POSTs", () =>
+    Effect.gen(function*() {
+      const { client, httpClient } = yield* makeRouterTestClient(HttpRouter.cors())
+
+      yield* client.initialize(initializePayload)
+
+      const notificationResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.bodyJsonUnsafe({
+          jsonrpc: "2.0",
+          method: "notifications/initialized",
+          params: {}
+        }),
+        httpClient.execute
+      )
+      strictEqual(notificationResponse.status, 202)
+      strictEqual(yield* notificationResponse.text, "")
+      strictEqual(notificationResponse.headers["content-type"], undefined)
+      strictEqual(notificationResponse.headers["access-control-allow-origin"], "*")
+      strictEqual(notificationResponse.headers["mcp-protocol-version"], "2025-06-18")
+
+      const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, result: {} }),
+        httpClient.execute
+      )
+      strictEqual(responseOnly.status, 202)
+      strictEqual(yield* responseOnly.text, "")
+
+      const pingResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.bodyJsonUnsafe(pingBody),
+        httpClient.execute
+      )
+      strictEqual(pingResponse.status, 200)
+      const pingResponseBody = yield* pingResponse.text
+      strictEqual(pingResponseBody.length > 0, true)
+    }))
+
+  it.effect("validates supplied protocol versions on POST", () =>
+    Effect.gen(function*() {
+      const { client, httpClient } = yield* makeRouterTestClient(HttpRouter.cors())
+
+      yield* client.initialize(initializePayload)
+
+      const unsupportedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.bodyJsonUnsafe(pingBody),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        httpClient.execute
+      )
+      strictEqual(unsupportedResponse.status, 400)
+      strictEqual(yield* unsupportedResponse.text, "")
+      strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
+
+      const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, result: {} }),
+        HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
+        httpClient.execute
+      )
+      strictEqual(responseOnly.status, 400)
+      strictEqual(yield* responseOnly.text, "")
+
+      const absentVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.bodyJsonUnsafe(pingBody),
+        httpClient.execute
+      )
+      strictEqual(absentVersionResponse.status, 200)
+
+      for (const protocolVersion of ["2025-06-18", "2025-03-26", "2024-11-05", "2024-10-07"]) {
+        const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+          HttpClientRequest.bodyJsonUnsafe(pingBody),
+          HttpClientRequest.setHeader("Mcp-Protocol-Version", protocolVersion),
+          httpClient.execute
+        )
+        strictEqual(response.status, 200)
+      }
+    }))
 })
