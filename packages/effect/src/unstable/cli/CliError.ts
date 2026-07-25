@@ -93,7 +93,7 @@ export type CliError =
   | UnknownSubcommand
   | ShowHelp
   | UserError
-  | ValidationError
+  | UnrecognizedArgument
 
 /**
  * Error thrown when an unrecognized option is encountered.
@@ -491,14 +491,14 @@ export class UserError extends Schema.TaggedErrorClass<UserError>(
 }
 
 /**
- * Error thrown when a validation fails (e.g. excess positional arguments).
+ * Error thrown when an unrecognized argument is encountered.
  *
  * @category models
  * @since 4.0.0
  */
-export class ValidationError extends Schema.TaggedErrorClass<ValidationError>(
-  `${TypeId}/ValidationError`
-)("ValidationError", {
+export class UnrecognizedArgument extends Schema.TaggedErrorClass<UnrecognizedArgument>(
+  `${TypeId}/UnrecognizedArgument`
+)("UnrecognizedArgument", {
   error: Schema.String
 }) {
   /**
@@ -537,6 +537,7 @@ export const NonShowHelpErrors: Schema.Union<
     typeof MissingArgument,
     typeof InvalidValue,
     typeof UnknownSubcommand,
+    typeof UnrecognizedArgument,
     typeof UserError
   ]
 > = Schema.Union([
@@ -546,6 +547,7 @@ export const NonShowHelpErrors: Schema.Union<
   MissingArgument,
   InvalidValue,
   UnknownSubcommand,
+  UnrecognizedArgument,
   UserError
 ])
 

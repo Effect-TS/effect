@@ -292,7 +292,7 @@ const parseParams: (parsedArgs: Param.ParsedArgs, params: ReadonlyArray<Param.An
   }
 
   if (currentArguments.length > 0) {
-    return yield* new CliError.ValidationError({
+    return yield* new CliError.UnrecognizedArgument({
       error: `Excess arguments: ${currentArguments.join(", ")}`
     })
   }
