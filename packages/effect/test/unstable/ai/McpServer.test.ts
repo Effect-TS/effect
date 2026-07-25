@@ -150,7 +150,7 @@ describe("McpServer", () => {
       const { client, responses } = yield* makeTestClient
 
       yield* client.initialize({
-        protocolVersion: "9999-01-01",
+        protocolVersion: "2025-03-26",
         capabilities: {},
         clientInfo: {
           name: "TestClient",
@@ -161,8 +161,8 @@ describe("McpServer", () => {
       yield* client.ping({})
 
       strictEqual(responses.length, 2)
-      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
-      strictEqual(responses[1].headers.get("Mcp-Protocol-Version"), "2025-06-18")
+      strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-03-26")
+      strictEqual(responses[1].headers.get("Mcp-Protocol-Version"), "2025-03-26")
     }))
 
   it.effect("returns 404 when a non-initialize request omits the MCP session id", () =>
@@ -345,7 +345,7 @@ describe("McpServer", () => {
 
   it.effect("validates supplied protocol versions on POST", () =>
     Effect.gen(function*() {
-      const { client, httpClient } = yield* makeTestClient
+      const { client, httpClient } = yield* makeRouterTestClient(HttpRouter.cors())
 
       yield* client.initialize(initializePayload)
 
@@ -356,6 +356,7 @@ describe("McpServer", () => {
       )
       strictEqual(unsupportedResponse.status, 400)
       strictEqual(yield* unsupportedResponse.text, "")
+      strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
 
       const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
         HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, result: {} }),
