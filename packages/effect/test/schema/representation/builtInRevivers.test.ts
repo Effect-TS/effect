@@ -519,21 +519,6 @@ describe("SchemaRepresentation built-in BigInt revivers", () => {
       }
     )
   })
-
-  it("rejects non-canonical decimal payloads", () => {
-    const json = SchemaRepresentation.toJson(
-      SchemaRepresentation.toRepresentation(Schema.BigInt.check(Schema.isGreaterThanBigInt(1n)).ast)
-    ) as any
-    json.representation.checks[0].representation.payload.exclusiveMinimum = "01"
-
-    throws(
-      () =>
-        SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(json), {
-          revivers: [Schema.isGreaterThanBigIntReviver]
-        }),
-      `Invalid representation payload for effect/schema/isGreaterThanBigInt\n  at ["representation"]["checks"][0]["representation"]["payload"]`
-    )
-  })
 })
 
 function date(millis: number): Date {

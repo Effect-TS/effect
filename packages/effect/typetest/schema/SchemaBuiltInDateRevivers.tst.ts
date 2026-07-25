@@ -13,12 +13,12 @@ describe("Schema built-in Date revivers", () => {
 
     expect(revivers).type.toBe<ReadonlyArray<SchemaRepresentation.AnyReviver>>()
     expect(Schema.isGreaterThanDateReviver).type.toBe<
-      SchemaRepresentation.FilterReviver<{ readonly exclusiveMinimum: string }>
+      SchemaRepresentation.FilterReviver<{ readonly exclusiveMinimum: globalThis.Date }>
     >()
     expect(Schema.isBetweenDateReviver).type.toBe<
       SchemaRepresentation.FilterReviver<{
-        readonly minimum: string
-        readonly maximum: string
+        readonly minimum: globalThis.Date
+        readonly maximum: globalThis.Date
         readonly exclusiveMinimum?: true | undefined
         readonly exclusiveMaximum?: true | undefined
       }>

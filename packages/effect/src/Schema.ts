@@ -7831,6 +7831,13 @@ export function makeIsMultipleOf<T>(options: {
   }
 }
 
+function encodeNumberPayload(number: number): number {
+  if (!globalThis.Number.isFinite(number)) {
+    throw new globalThis.RangeError(`Expected a finite number, got ${format(number)}`)
+  }
+  return number
+}
+
 /**
  * Validates that a number is greater than the specified value (exclusive).
  *
@@ -7854,7 +7861,7 @@ export const isGreaterThan = makeIsGreaterThan({
   annotate: (exclusiveMinimum) => ({
     representation: {
       id: "effect/schema/isGreaterThan",
-      payload: { exclusiveMinimum }
+      payload: { exclusiveMinimum: encodeNumberPayload(exclusiveMinimum) }
     },
     toJsonSchema: () => ({ exclusiveMinimum }),
     toCode: () => ({ runtime: `Schema.isGreaterThan(${format(exclusiveMinimum)})` })
@@ -7904,7 +7911,7 @@ export const isGreaterThanOrEqualTo = makeIsGreaterThanOrEqualTo({
   annotate: (minimum) => ({
     representation: {
       id: "effect/schema/isGreaterThanOrEqualTo",
-      payload: { minimum }
+      payload: { minimum: encodeNumberPayload(minimum) }
     },
     toJsonSchema: () => ({ minimum }),
     toCode: () => ({ runtime: `Schema.isGreaterThanOrEqualTo(${format(minimum)})` })
@@ -7954,7 +7961,7 @@ export const isLessThan = makeIsLessThan({
   annotate: (exclusiveMaximum) => ({
     representation: {
       id: "effect/schema/isLessThan",
-      payload: { exclusiveMaximum }
+      payload: { exclusiveMaximum: encodeNumberPayload(exclusiveMaximum) }
     },
     toJsonSchema: () => ({ exclusiveMaximum }),
     toCode: () => ({ runtime: `Schema.isLessThan(${format(exclusiveMaximum)})` })
@@ -8004,7 +8011,7 @@ export const isLessThanOrEqualTo = makeIsLessThanOrEqualTo({
   annotate: (maximum) => ({
     representation: {
       id: "effect/schema/isLessThanOrEqualTo",
-      payload: { maximum }
+      payload: { maximum: encodeNumberPayload(maximum) }
     },
     toJsonSchema: () => ({ maximum }),
     toCode: () => ({ runtime: `Schema.isLessThanOrEqualTo(${format(maximum)})` })
@@ -8058,8 +8065,8 @@ export const isBetween = makeIsBetween({
     const exclusiveMinimum = options.exclusiveMinimum ? true : undefined
     const exclusiveMaximum = options.exclusiveMaximum ? true : undefined
     const payload = {
-      minimum: options.minimum,
-      maximum: options.maximum,
+      minimum: encodeNumberPayload(options.minimum),
+      maximum: encodeNumberPayload(options.maximum),
       ...(exclusiveMinimum && { exclusiveMinimum }),
       ...(exclusiveMaximum && { exclusiveMaximum })
     }
@@ -8323,14 +8330,11 @@ export function isUint32(annotations?: Annotations.Filter) {
   )
 }
 
-const CanonicalDatePayload = String.check(
-  makeFilter<string>((value) => {
-    const date = new globalThis.Date(value)
-    return !globalThis.Number.isNaN(date.getTime()) && date.toISOString() === value
-  })
-)
-function encodeDatePayload(date: globalThis.Date): string | number {
-  return globalThis.Number.isNaN(date.getTime()) ? globalThis.Number.NaN : date.toISOString()
+function encodeDatePayload(date: globalThis.Date): string {
+  if (globalThis.Number.isNaN(date.getTime())) {
+    throw new globalThis.RangeError(`Expected a valid Date, got ${format(date)}`)
+  }
+  return date.toISOString()
 }
 
 function formatDateRuntime(date: globalThis.Date): string {
@@ -8365,26 +8369,6 @@ export const isGreaterThanDate = makeIsGreaterThan({
     }
   }
 })
-
-/**
- * Reviver for persisted `isGreaterThanDate` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isGreaterThanDate}.
- *
- * @see {@link isGreaterThanDate} for creating the corresponding check
- *
- * @category Date checks
- * @since 4.0.0
- */
-export const isGreaterThanDateReviver: SchemaRepresentation.FilterReviver<{
-  readonly exclusiveMinimum: string
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isGreaterThanDate",
-  Struct({ exclusiveMinimum: CanonicalDatePayload }),
-  ({ annotations, payload }) => isGreaterThanDate(new globalThis.Date(payload.exclusiveMinimum), annotations)
-)
 
 /**
  * Validates that a Date is greater than or equal to the specified date
@@ -8422,26 +8406,6 @@ export const isGreaterThanOrEqualToDate = makeIsGreaterThanOrEqualTo({
 })
 
 /**
- * Reviver for persisted `isGreaterThanOrEqualToDate` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isGreaterThanOrEqualToDate}.
- *
- * @see {@link isGreaterThanOrEqualToDate} for creating the corresponding check
- *
- * @category Date checks
- * @since 4.0.0
- */
-export const isGreaterThanOrEqualToDateReviver: SchemaRepresentation.FilterReviver<{
-  readonly minimum: string
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isGreaterThanOrEqualToDate",
-  Struct({ minimum: CanonicalDatePayload }),
-  ({ annotations, payload }) => isGreaterThanOrEqualToDate(new globalThis.Date(payload.minimum), annotations)
-)
-
-/**
  * Validates that a Date is less than the specified value (exclusive).
  *
  * **Details**
@@ -8469,26 +8433,6 @@ export const isLessThanDate = makeIsLessThan({
     }
   }
 })
-
-/**
- * Reviver for persisted `isLessThanDate` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isLessThanDate}.
- *
- * @see {@link isLessThanDate} for creating the corresponding check
- *
- * @category Date checks
- * @since 4.0.0
- */
-export const isLessThanDateReviver: SchemaRepresentation.FilterReviver<{
-  readonly exclusiveMaximum: string
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isLessThanDate",
-  Struct({ exclusiveMaximum: CanonicalDatePayload }),
-  ({ annotations, payload }) => isLessThanDate(new globalThis.Date(payload.exclusiveMaximum), annotations)
-)
 
 /**
  * Validates that a Date is less than or equal to the specified date
@@ -8524,26 +8468,6 @@ export const isLessThanOrEqualToDate = makeIsLessThanOrEqualTo({
     }
   }
 })
-
-/**
- * Reviver for persisted `isLessThanOrEqualToDate` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isLessThanOrEqualToDate}.
- *
- * @see {@link isLessThanOrEqualToDate} for creating the corresponding check
- *
- * @category Date checks
- * @since 4.0.0
- */
-export const isLessThanOrEqualToDateReviver: SchemaRepresentation.FilterReviver<{
-  readonly maximum: string
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isLessThanOrEqualToDate",
-  Struct({ maximum: CanonicalDatePayload }),
-  ({ annotations, payload }) => isLessThanOrEqualToDate(new globalThis.Date(payload.maximum), annotations)
-)
 
 /**
  * Validates that a Date is within a specified range. The range boundaries can
@@ -8592,46 +8516,6 @@ export const isBetweenDate = makeIsBetween({
 })
 
 /**
- * Reviver for persisted `isBetweenDate` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isBetweenDate}.
- *
- * @see {@link isBetweenDate} for creating the corresponding check
- *
- * @category Date checks
- * @since 4.0.0
- */
-export const isBetweenDateReviver: SchemaRepresentation.FilterReviver<{
-  readonly minimum: string
-  readonly maximum: string
-  readonly exclusiveMinimum?: true | undefined
-  readonly exclusiveMaximum?: true | undefined
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isBetweenDate",
-  Struct({
-    minimum: CanonicalDatePayload,
-    maximum: CanonicalDatePayload,
-    exclusiveMinimum: optional(Literal(true)),
-    exclusiveMaximum: optional(Literal(true))
-  }),
-  ({ annotations, payload }) =>
-    isBetweenDate(
-      {
-        minimum: new globalThis.Date(payload.minimum),
-        maximum: new globalThis.Date(payload.maximum),
-        exclusiveMinimum: payload.exclusiveMinimum,
-        exclusiveMaximum: payload.exclusiveMaximum
-      },
-      annotations
-    )
-)
-
-const CanonicalBigIntPayload = String.check(
-  makeFilter<string>((value) => /^(?:0|-?[1-9]\d*)$/.test(value))
-)
-/**
  * Validates that a BigInt is greater than the specified value (exclusive).
  *
  * **Details**
@@ -8659,26 +8543,6 @@ export const isGreaterThanBigInt = makeIsGreaterThan({
     }
   }
 })
-
-/**
- * Reviver for persisted `isGreaterThanBigInt` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isGreaterThanBigInt}.
- *
- * @see {@link isGreaterThanBigInt} for creating the corresponding check
- *
- * @category BigInt checks
- * @since 4.0.0
- */
-export const isGreaterThanBigIntReviver: SchemaRepresentation.FilterReviver<{
-  readonly exclusiveMinimum: string
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isGreaterThanBigInt",
-  Struct({ exclusiveMinimum: CanonicalBigIntPayload }),
-  ({ annotations, payload }) => isGreaterThanBigInt(globalThis.BigInt(payload.exclusiveMinimum), annotations)
-)
 
 /**
  * Validates that a BigInt is greater than or equal to the specified value
@@ -8711,26 +8575,6 @@ export const isGreaterThanOrEqualToBigInt = makeIsGreaterThanOrEqualTo({
 })
 
 /**
- * Reviver for persisted `isGreaterThanOrEqualToBigInt` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isGreaterThanOrEqualToBigInt}.
- *
- * @see {@link isGreaterThanOrEqualToBigInt} for creating the corresponding check
- *
- * @category BigInt checks
- * @since 4.0.0
- */
-export const isGreaterThanOrEqualToBigIntReviver: SchemaRepresentation.FilterReviver<{
-  readonly minimum: string
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isGreaterThanOrEqualToBigInt",
-  Struct({ minimum: CanonicalBigIntPayload }),
-  ({ annotations, payload }) => isGreaterThanOrEqualToBigInt(globalThis.BigInt(payload.minimum), annotations)
-)
-
-/**
  * Validates that a BigInt is less than the specified value (exclusive).
  *
  * **Details**
@@ -8758,26 +8602,6 @@ export const isLessThanBigInt = makeIsLessThan({
     }
   }
 })
-
-/**
- * Reviver for persisted `isLessThanBigInt` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isLessThanBigInt}.
- *
- * @see {@link isLessThanBigInt} for creating the corresponding check
- *
- * @category BigInt checks
- * @since 4.0.0
- */
-export const isLessThanBigIntReviver: SchemaRepresentation.FilterReviver<{
-  readonly exclusiveMaximum: string
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isLessThanBigInt",
-  Struct({ exclusiveMaximum: CanonicalBigIntPayload }),
-  ({ annotations, payload }) => isLessThanBigInt(globalThis.BigInt(payload.exclusiveMaximum), annotations)
-)
 
 /**
  * Validates that a BigInt is less than or equal to the specified value
@@ -8808,26 +8632,6 @@ export const isLessThanOrEqualToBigInt = makeIsLessThanOrEqualTo({
     }
   }
 })
-
-/**
- * Reviver for persisted `isLessThanOrEqualToBigInt` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isLessThanOrEqualToBigInt}.
- *
- * @see {@link isLessThanOrEqualToBigInt} for creating the corresponding check
- *
- * @category BigInt checks
- * @since 4.0.0
- */
-export const isLessThanOrEqualToBigIntReviver: SchemaRepresentation.FilterReviver<{
-  readonly maximum: string
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isLessThanOrEqualToBigInt",
-  Struct({ maximum: CanonicalBigIntPayload }),
-  ({ annotations, payload }) => isLessThanOrEqualToBigInt(globalThis.BigInt(payload.maximum), annotations)
-)
 
 /**
  * Validates that a BigInt is within a specified range. The range boundaries can
@@ -8869,43 +8673,6 @@ export const isBetweenBigInt = makeIsBetween({
     }
   }
 })
-
-/**
- * Reviver for persisted `isBetweenBigInt` checks.
- *
- * **When to use**
- *
- * Use when reconstructing documents that may contain checks created by {@link isBetweenBigInt}.
- *
- * @see {@link isBetweenBigInt} for creating the corresponding check
- *
- * @category BigInt checks
- * @since 4.0.0
- */
-export const isBetweenBigIntReviver: SchemaRepresentation.FilterReviver<{
-  readonly minimum: string
-  readonly maximum: string
-  readonly exclusiveMinimum?: true | undefined
-  readonly exclusiveMaximum?: true | undefined
-}> = InternalSchema.makeFilterReviver(
-  "effect/schema/isBetweenBigInt",
-  Struct({
-    minimum: CanonicalBigIntPayload,
-    maximum: CanonicalBigIntPayload,
-    exclusiveMinimum: optional(Literal(true)),
-    exclusiveMaximum: optional(Literal(true))
-  }),
-  ({ annotations, payload }) =>
-    isBetweenBigInt(
-      {
-        minimum: globalThis.BigInt(payload.minimum),
-        maximum: globalThis.BigInt(payload.maximum),
-        exclusiveMinimum: payload.exclusiveMinimum,
-        exclusiveMaximum: payload.exclusiveMaximum
-      },
-      annotations
-    )
-)
 
 /**
  * Validates that a BigDecimal is greater than the specified value (exclusive).
@@ -15751,6 +15518,222 @@ function onSerializerArrayFromSingle(ast: SchemaAST.AST): SchemaAST.AST {
     ? ast.recur(toCodecArrayFromSingleTop)
     : ast
 }
+
+/**
+ * Reviver for persisted `isGreaterThanDate` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isGreaterThanDate}.
+ *
+ * @see {@link isGreaterThanDate} for creating the corresponding check
+ *
+ * @category Date checks
+ * @since 4.0.0
+ */
+export const isGreaterThanDateReviver: SchemaRepresentation.FilterReviver<{
+  readonly exclusiveMinimum: globalThis.Date
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isGreaterThanDate",
+  Struct({ exclusiveMinimum: Date }),
+  ({ annotations, payload }) => isGreaterThanDate(payload.exclusiveMinimum, annotations)
+)
+
+/**
+ * Reviver for persisted `isGreaterThanOrEqualToDate` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isGreaterThanOrEqualToDate}.
+ *
+ * @see {@link isGreaterThanOrEqualToDate} for creating the corresponding check
+ *
+ * @category Date checks
+ * @since 4.0.0
+ */
+export const isGreaterThanOrEqualToDateReviver: SchemaRepresentation.FilterReviver<{
+  readonly minimum: globalThis.Date
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isGreaterThanOrEqualToDate",
+  Struct({ minimum: Date }),
+  ({ annotations, payload }) => isGreaterThanOrEqualToDate(payload.minimum, annotations)
+)
+
+/**
+ * Reviver for persisted `isLessThanDate` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isLessThanDate}.
+ *
+ * @see {@link isLessThanDate} for creating the corresponding check
+ *
+ * @category Date checks
+ * @since 4.0.0
+ */
+export const isLessThanDateReviver: SchemaRepresentation.FilterReviver<{
+  readonly exclusiveMaximum: globalThis.Date
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isLessThanDate",
+  Struct({ exclusiveMaximum: Date }),
+  ({ annotations, payload }) => isLessThanDate(payload.exclusiveMaximum, annotations)
+)
+
+/**
+ * Reviver for persisted `isLessThanOrEqualToDate` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isLessThanOrEqualToDate}.
+ *
+ * @see {@link isLessThanOrEqualToDate} for creating the corresponding check
+ *
+ * @category Date checks
+ * @since 4.0.0
+ */
+export const isLessThanOrEqualToDateReviver: SchemaRepresentation.FilterReviver<{
+  readonly maximum: globalThis.Date
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isLessThanOrEqualToDate",
+  Struct({ maximum: Date }),
+  ({ annotations, payload }) => isLessThanOrEqualToDate(payload.maximum, annotations)
+)
+
+/**
+ * Reviver for persisted `isBetweenDate` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isBetweenDate}.
+ *
+ * @see {@link isBetweenDate} for creating the corresponding check
+ *
+ * @category Date checks
+ * @since 4.0.0
+ */
+export const isBetweenDateReviver: SchemaRepresentation.FilterReviver<{
+  readonly minimum: globalThis.Date
+  readonly maximum: globalThis.Date
+  readonly exclusiveMinimum?: true | undefined
+  readonly exclusiveMaximum?: true | undefined
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isBetweenDate",
+  Struct({
+    minimum: Date,
+    maximum: Date,
+    exclusiveMinimum: optional(Literal(true)),
+    exclusiveMaximum: optional(Literal(true))
+  }),
+  ({ annotations, payload }) => isBetweenDate(payload, annotations)
+)
+
+/**
+ * Reviver for persisted `isGreaterThanBigInt` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isGreaterThanBigInt}.
+ *
+ * @see {@link isGreaterThanBigInt} for creating the corresponding check
+ *
+ * @category BigInt checks
+ * @since 4.0.0
+ */
+export const isGreaterThanBigIntReviver: SchemaRepresentation.FilterReviver<{
+  readonly exclusiveMinimum: bigint
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isGreaterThanBigInt",
+  Struct({ exclusiveMinimum: BigInt }),
+  ({ annotations, payload }) => isGreaterThanBigInt(payload.exclusiveMinimum, annotations)
+)
+
+/**
+ * Reviver for persisted `isGreaterThanOrEqualToBigInt` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isGreaterThanOrEqualToBigInt}.
+ *
+ * @see {@link isGreaterThanOrEqualToBigInt} for creating the corresponding check
+ *
+ * @category BigInt checks
+ * @since 4.0.0
+ */
+export const isGreaterThanOrEqualToBigIntReviver: SchemaRepresentation.FilterReviver<{
+  readonly minimum: bigint
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isGreaterThanOrEqualToBigInt",
+  Struct({ minimum: BigInt }),
+  ({ annotations, payload }) => isGreaterThanOrEqualToBigInt(payload.minimum, annotations)
+)
+
+/**
+ * Reviver for persisted `isLessThanBigInt` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isLessThanBigInt}.
+ *
+ * @see {@link isLessThanBigInt} for creating the corresponding check
+ *
+ * @category BigInt checks
+ * @since 4.0.0
+ */
+export const isLessThanBigIntReviver: SchemaRepresentation.FilterReviver<{
+  readonly exclusiveMaximum: bigint
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isLessThanBigInt",
+  Struct({ exclusiveMaximum: BigInt }),
+  ({ annotations, payload }) => isLessThanBigInt(payload.exclusiveMaximum, annotations)
+)
+
+/**
+ * Reviver for persisted `isLessThanOrEqualToBigInt` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isLessThanOrEqualToBigInt}.
+ *
+ * @see {@link isLessThanOrEqualToBigInt} for creating the corresponding check
+ *
+ * @category BigInt checks
+ * @since 4.0.0
+ */
+export const isLessThanOrEqualToBigIntReviver: SchemaRepresentation.FilterReviver<{
+  readonly maximum: bigint
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isLessThanOrEqualToBigInt",
+  Struct({ maximum: BigInt }),
+  ({ annotations, payload }) => isLessThanOrEqualToBigInt(payload.maximum, annotations)
+)
+
+/**
+ * Reviver for persisted `isBetweenBigInt` checks.
+ *
+ * **When to use**
+ *
+ * Use when reconstructing documents that may contain checks created by {@link isBetweenBigInt}.
+ *
+ * @see {@link isBetweenBigInt} for creating the corresponding check
+ *
+ * @category BigInt checks
+ * @since 4.0.0
+ */
+export const isBetweenBigIntReviver: SchemaRepresentation.FilterReviver<{
+  readonly minimum: bigint
+  readonly maximum: bigint
+  readonly exclusiveMinimum?: true | undefined
+  readonly exclusiveMaximum?: true | undefined
+}> = InternalSchema.makeFilterReviver(
+  "effect/schema/isBetweenBigInt",
+  Struct({
+    minimum: BigInt,
+    maximum: BigInt,
+    exclusiveMinimum: optional(Literal(true)),
+    exclusiveMaximum: optional(Literal(true))
+  }),
+  ({ annotations, payload }) => isBetweenBigInt(payload, annotations)
+)
 
 // -----------------------------------------------------------------------------
 // Optic APIs
