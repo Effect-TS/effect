@@ -67,6 +67,9 @@ export type AggregationTemporality = "cumulative" | "delta"
  * **Details**
  *
  * The exporter snapshots registered Effect metrics on the configured interval, serializes them with the selected aggregation temporality, and flushes during scope finalization up to `shutdownTimeout`.
+ * Manual flushing also triggers a snapshot. With delta temporality, each
+ * snapshot advances the previous-export state, so frequent flushes narrow the
+ * delta aggregation windows.
  *
  * @category constructors
  * @since 4.0.0

@@ -59,6 +59,31 @@ const policy = Schedule.forever.pipe(
  * @since 4.0.0
  */
 export interface Flusher {
+  /**
+   * Drains all registered exporters concurrently and cannot fail.
+   *
+   * **Details**
+   *
+   * There is no built-in timeout; use `Effect.timeoutOption` to bound the
+   * operation. Exporters in their 60-second `disabledUntil` window are skipped.
+   *
+   * **Example** (Flushing from a Cloudflare Worker)
+   *
+   * ```ts
+   * import { Effect, ManagedRuntime } from "effect"
+   * import { OtlpExporter, OtlpTracer } from "effect/unstable/observability"
+   *
+   * const layer = OtlpTracer.layerFromConfig()
+   * const runtime = ManagedRuntime.make(layer)
+   *
+   * // In the request handler:
+   * ctx.waitUntil(
+   *   runtime.runPromise(
+   *     Effect.flatMap(OtlpExporter.Flusher, (flusher) => flusher.flush)
+   *   )
+   * )
+   * ```
+   */
   readonly flush: Effect.Effect<void>
   readonly register: (run: Effect.Effect<void>) => Effect.Effect<void, never, Scope.Scope>
 }
