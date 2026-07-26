@@ -2099,24 +2099,32 @@ export class Objects extends Base {
     // ---------------------------------------------
     // handle empty struct
     // ---------------------------------------------
-    if (ast.propertySignatures.length === 0 && ast.indexSignatures.length === 0) {
+    if (ast.propertySignatures.length === 0 && indexCount === 0) {
       return fromRefinement(ast, Predicate.isNotNullish)
     }
 
-    const parseIndexes = indexCount > 0 ?
+    const indexes = indexCount > 0 ?
+      ast.indexSignatures.map((is) => ({
+        is,
+        parserKey: recur(parameterFromPropertyKey(is.parameter)),
+        parserValue: recur(is.type),
+        merge: is.merge?.decode
+      })) :
+      undefined
+
+    const parseIndexes = indexes ?
       iterateEager<{
         readonly oinput: Option.Option<unknown>
         readonly input: Record<PropertyKey, unknown>
         readonly options: ParseOptions
         readonly out: Record<PropertyKey, unknown>
         issues: Array<SchemaIssue.Issue> | undefined
-      }, [key: PropertyKey, is: IndexSignature]>()({
+      }, [key: PropertyKey, index: NonNullable<typeof indexes>[number]]>()({
         onItem: Effect.fnUntracedEager(function*(
           s,
-          [key, is]
+          [key, index]
         ) {
-          const parserKey = recur(parameterFromPropertyKey(is.parameter))
-          const effKey = parserKey(Option.some(key), s.options)
+          const effKey = index.parserKey(Option.some(key), s.options)
           const exitKey = (effectIsExit(effKey) ? effKey : yield* Effect.exit(effKey)) as Exit.Exit<
             Option.Option<PropertyKey>,
             SchemaIssue.Issue
@@ -2128,8 +2136,7 @@ export class Objects extends Base {
           }
 
           const value: Option.Option<unknown> = Option.some(s.input[key])
-          const parserValue = recur(is.type)
-          const effValue = parserValue(value, s.options)
+          const effValue = index.parserValue(value, s.options)
           const exitValue = effectIsExit(effValue) ? effValue : yield* Effect.exit(effValue)
           if (exitValue._tag === "Failure") {
             const eff = wrapPropertyKeyIssue(s, ast, key, exitValue)
@@ -2141,8 +2148,8 @@ export class Objects extends Base {
               return
             }
             const v2 = exitValue.value.value
-            if (is.merge && is.merge.decode && Object.hasOwn(s.out, k2)) {
-              const [k, v] = is.merge.decode.combine([k2, s.out[k2]], [k2, v2])
+            if (index.merge && Object.hasOwn(s.out, k2)) {
+              const [k, v] = index.merge.combine([k2, s.out[k2]], [k2, v2])
               InternalRecord.assignProperty(s.out, k, v)
             } else {
               InternalRecord.assignProperty(s.out, k2, v2)
@@ -2219,13 +2226,14 @@ export class Objects extends Base {
       // handle index signatures
       // ---------------------------------------------
       if (parseIndexes) {
-        const keyPairs = Arr.empty<[PropertyKey, IndexSignature]>()
+        const indexParsers = indexes!
+        const keyPairs = Arr.empty<[PropertyKey, (typeof indexParsers)[number]]>()
         for (let i = 0; i < indexCount; i++) {
-          const is = ast.indexSignatures[i]
-          const keys = getIndexSignatureKeys(input, is.parameter, options)
+          const index = indexParsers[i]
+          const keys = getIndexSignatureKeys(input, index.is.parameter, options)
           for (let j = 0; j < keys.length; j++) {
             const key = keys[j]
-            keyPairs.push([key, is])
+            keyPairs.push([key, index])
           }
         }
         const eff = parseIndexes(state, keyPairs, concurrency)

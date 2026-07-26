@@ -16,6 +16,12 @@ const makeValibotSchema = () =>
 const makeZodSchema = () =>
   z.object(Object.fromEntries(Array.from({ length: size }, (_, index) => [`field${index}`, z.string()])))
 
+const makeEffectRecordSchema = () => Schema.Record(Schema.String, Schema.String)
+
+const makeValibotRecordSchema = () => v.record(v.string(), v.string())
+
+const makeZodRecordSchema = () => z.record(z.string(), z.string())
+
 export const effectSchemaCreationObject32 = () => ({
   run: makeEffectSchema,
   validate: (schema) => assert.equal(schema.ast._tag, "Objects")
@@ -43,5 +49,20 @@ export const valibotFirstDecodeObject32 = () => ({
 
 export const zodFirstDecodeObject32 = () => ({
   run: () => makeZodSchema().safeParse(input, { jitless: true }),
+  validate: (result) => assert.equal(result.success, true)
+})
+
+export const effectFirstDecodeRecord32 = () => ({
+  run: () => SchemaParser.decodeUnknownExit(makeEffectRecordSchema())(input),
+  validate: (result) => assert.equal(result._tag, "Success")
+})
+
+export const valibotFirstDecodeRecord32 = () => ({
+  run: () => v.safeParse(makeValibotRecordSchema(), input),
+  validate: (result) => assert.equal(result.success, true)
+})
+
+export const zodFirstDecodeRecord32 = () => ({
+  run: () => makeZodRecordSchema().safeParse(input, { jitless: true }),
   validate: (result) => assert.equal(result.success, true)
 })

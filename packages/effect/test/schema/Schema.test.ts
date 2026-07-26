@@ -3713,6 +3713,21 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await encoding.fail(null, "Expected object, got null")
     })
 
+    it("recursive values stay lazy", async () => {
+      interface Recursive {
+        readonly [key: string]: Recursive
+      }
+      const schema: Schema.Codec<Recursive> = Schema.Record(
+        Schema.String,
+        Schema.suspend((): Schema.Codec<Recursive> => schema)
+      )
+      const asserts = new TestSchema.Asserts(schema)
+
+      const input = { a: { b: {} } }
+      await asserts.decoding().succeed(input)
+      await asserts.encoding().succeed(input)
+    })
+
     it("Record(String, optionalKey(Number)) should throw", async () => {
       throws(
         () => Schema.Record(Schema.String, Schema.optionalKey(Schema.Number)),

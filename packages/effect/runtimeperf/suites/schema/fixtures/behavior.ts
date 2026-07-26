@@ -1,5 +1,6 @@
 import * as Schema from "effect/Schema"
 import * as SchemaParser from "effect/SchemaParser"
+import * as SchemaTransformation from "effect/SchemaTransformation"
 import assert from "node:assert/strict"
 
 const decodeCase = (schema, input, success, options) => () => {
@@ -37,6 +38,20 @@ export const checksInvalidLast = decodeCase(checkedString, "runtime-perf", false
 export const transformationDecodeValid = decodeParserCase(Schema.FiniteFromString, "123", true)
 export const transformationDecodeInvalid = decodeParserCase(Schema.FiniteFromString, "invalid", false)
 export const transformationEncodeValid = encodeParserCase(Schema.FiniteFromString, 123, true)
+
+const transformedKeyRecord = Schema.Record(
+  Schema.String.pipe(Schema.decode(SchemaTransformation.snakeToCamel())),
+  Schema.String
+)
+const transformedKeyRecordInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field_${index}_value`, `value${index}`])
+)
+
+export const transformedKeyRecordValid = decodeParserCase(
+  transformedKeyRecord,
+  transformedKeyRecordInput,
+  true
+)
 
 const optionalStruct = Schema.Struct({
   required: Schema.String,

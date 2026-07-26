@@ -381,6 +381,36 @@
               "size": 32
             },
             {
+              "name": "record-1-valid-effect",
+              "export": "effectRecord1Valid",
+              "scenario": "record-1-valid",
+              "implementation": "effect",
+              "family": "records",
+              "astTags": ["Objects"],
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "record-1-valid-valibot",
+              "export": "valibotRecord1Valid",
+              "scenario": "record-1-valid",
+              "implementation": "valibot",
+              "family": "records",
+              "astTags": [],
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "record-1-valid-zod4",
+              "export": "zodRecord1Valid",
+              "scenario": "record-1-valid",
+              "implementation": "zod4",
+              "family": "records",
+              "astTags": [],
+              "path": "valid",
+              "size": 1
+            },
+            {
               "name": "record-32-valid-effect",
               "export": "effectRecord32Valid",
               "scenario": "record-32-valid",
@@ -716,6 +746,15 @@
               "size": 1
             },
             {
+              "name": "record-32-transformed-keys-valid",
+              "export": "transformedKeyRecordValid",
+              "scenario": "record-32-transformed-keys-valid",
+              "family": "records",
+              "astTags": ["Objects", "String"],
+              "path": "valid",
+              "size": 32
+            },
+            {
               "name": "optional-valid",
               "export": "optionalValid",
               "scenario": "optional-valid",
@@ -925,6 +964,29 @@
               "name": "first-decode-object-32-zod4",
               "export": "zodFirstDecodeObject32",
               "scenario": "first-decode-object-32",
+              "implementation": "zod4",
+              "operation": "first-decode",
+              "astTags": []
+            },
+            {
+              "name": "first-decode-record-32-effect",
+              "export": "effectFirstDecodeRecord32",
+              "scenario": "first-decode-record-32",
+              "implementation": "effect",
+              "operation": "first-decode"
+            },
+            {
+              "name": "first-decode-record-32-valibot",
+              "export": "valibotFirstDecodeRecord32",
+              "scenario": "first-decode-record-32",
+              "implementation": "valibot",
+              "operation": "first-decode",
+              "astTags": []
+            },
+            {
+              "name": "first-decode-record-32-zod4",
+              "export": "zodFirstDecodeRecord32",
+              "scenario": "first-decode-record-32",
               "implementation": "zod4",
               "operation": "first-decode",
               "astTags": []

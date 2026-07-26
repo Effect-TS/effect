@@ -95,11 +95,19 @@ export const effectArray32InvalidLast = effectCase(effectArray32, array32Invalid
 export const valibotArray32InvalidLast = valibotCase(valibotArray32, array32InvalidLast, false)
 export const zodArray32InvalidLast = zodCase(zodArray32, array32InvalidLast, false)
 
+const record1 = makeObjectInput(1)
 const record32 = makeObjectInput(32)
 const record32InvalidLast = makeInvalidLastObjectInput(32)
+const effectRecord1 = Schema.Record(Schema.String, Schema.String)
+const valibotRecord1 = v.record(v.string(), v.string())
+const zodRecord1 = z.record(z.string(), z.string())
 const effectRecord32 = Schema.Record(Schema.String, Schema.String)
 const valibotRecord32 = v.record(v.string(), v.string())
 const zodRecord32 = z.record(z.string(), z.string())
+
+export const effectRecord1Valid = effectCase(effectRecord1, record1, true)
+export const valibotRecord1Valid = valibotCase(valibotRecord1, record1, true)
+export const zodRecord1Valid = zodCase(zodRecord1, record1, true)
 
 export const effectRecord32Valid = effectCase(effectRecord32, record32, true)
 export const valibotRecord32Valid = valibotCase(valibotRecord32, record32, true)
