@@ -2,6 +2,7 @@
   "name": "@effect/api-diff",
   "version": "0.0.0",
   "private": true,
+  "homepage": "https://effect.website",
   "type": "module",
   "exports": {
     ".": "./src/Cli.ts",
