@@ -14735,7 +14735,7 @@ export function toFormatter<S extends Constraint>(schema: S, options?: {
         const types = SchemaAST.toType(ast).types
         const getCandidates = (t: any) => SchemaAST.getCandidates(t, types)
         const compiled = new Map(
-          types.map((candidate) => [candidate, [SchemaParser._is(candidate), recur(candidate)] as const] as const)
+          types.map((candidate, i) => [candidate, [SchemaParser._is(candidate), recur(ast.types[i])] as const] as const)
         )
         return (t) => {
           const candidates = getCandidates(t)

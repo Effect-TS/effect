@@ -378,6 +378,19 @@ describe("toEquivalence", () => {
     assertFalse(equivalence({ value: "a" }, { value: "b" }))
   })
 
+  it("preserves Union member equivalence annotations", () => {
+    const member = Schema.String.pipe(
+      Schema.flip,
+      Schema.check(Schema.makeFilter(() => true)),
+      Schema.flip,
+      Schema.overrideToEquivalence(() => Equivalence.make((a, b) => a[0] === b[0]))
+    )
+    const equivalence = Schema.toEquivalence(Schema.Union([member, Schema.Number]))
+
+    assertTrue(equivalence("ab", "ac"))
+    assertFalse(equivalence("ab", "bc"))
+  })
+
   it("Date", () => {
     const schema = Schema.Date
     const equivalence = Schema.toEquivalence(schema)

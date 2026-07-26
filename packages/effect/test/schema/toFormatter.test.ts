@@ -183,6 +183,32 @@ describe("toFormatter", () => {
     strictEqual(format({ value: "a" }), "formatted:a")
   })
 
+  it("preserves Union member formatter annotations", () => {
+    const member = Schema.String.pipe(
+      Schema.flip,
+      Schema.check(Schema.makeFilter(() => true)),
+      Schema.flip,
+      Schema.overrideToFormatter(() => (s) => s.toUpperCase())
+    )
+    const format = Schema.toFormatter(Schema.Union([member, Schema.Number]))
+
+    strictEqual(format("a"), "A")
+  })
+
+  it("preserves Union member encoding metadata for onBefore", () => {
+    const member = Schema.String.pipe(
+      Schema.decode({
+        decode: SchemaGetter.transform((s) => s),
+        encode: SchemaGetter.transform((s) => s)
+      })
+    )
+    const format = Schema.toFormatter(Schema.Union([member, Schema.Number]), {
+      onBefore: (ast) => ast.encoding ? () => "transformed" : undefined
+    })
+
+    strictEqual(format("a"), "transformed")
+  })
+
   describe("Tuple", () => {
     it("empty", () => {
       const format = Schema.toFormatter(Schema.Tuple([]))
