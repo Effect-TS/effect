@@ -1028,16 +1028,17 @@ const recur = memoize(
         return parser(ou, options)
       }
     }
+    let encodingParsers: ReadonlyArray<Parser> | undefined
     return (ou, options) => {
       if (astOptions) {
         options = { ...options, ...astOptions }
       }
       let srou: Effect.Effect<Option.Option<unknown>, SchemaIssue.Issue, unknown> | undefined
       if (links) {
+        encodingParsers ??= links.map((link) => recur(link.to))
         for (let i = len - 1; i >= 0; i--) {
           const link = links[i]
-          const to = link.to
-          const parser = recur(to)
+          const parser = encodingParsers[i]
           srou = srou ? Effect.flatMapEager(srou, (ou) => parser(ou, options)) : parser(ou, options)
           if (link.transformation._tag === "Transformation") {
             const getter = link.transformation.decode

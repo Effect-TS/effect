@@ -1,5 +1,6 @@
 import * as Schema from "effect/Schema"
 import * as SchemaParser from "effect/SchemaParser"
+import * as SchemaTransformation from "effect/SchemaTransformation"
 import assert from "node:assert/strict"
 import { Type } from "typebox"
 import * as TypeBoxValue from "typebox/value"
@@ -28,6 +29,16 @@ const makeValibotRecordSchema = () => v.record(v.string(), v.string())
 const makeZodRecordSchema = () => z.record(z.string(), z.string())
 
 const makeTypeboxRecordSchema = () => Type.Record(Type.String(), Type.String())
+
+const makeEffectEncodingChain = (size) => {
+  let schema = Schema.FiniteFromString
+  for (let i = 1; i < size; i++) {
+    schema = Schema.String.pipe(
+      Schema.decodeTo(schema, SchemaTransformation.passthrough())
+    )
+  }
+  return schema
+}
 
 export const effectSchemaCreationObject32 = () => ({
   run: makeEffectSchema,
@@ -87,4 +98,12 @@ export const zodFirstDecodeRecord32 = () => ({
 export const typeboxFirstDecodeRecord32 = () => ({
   run: () => TypeBoxValue.Errors(makeTypeboxRecordSchema(), input),
   validate: (errors) => assert.equal(errors.length, 0)
+})
+
+export const effectFirstDecodeEncodingChain8 = () => ({
+  run: () => SchemaParser.decodeUnknownExit(makeEffectEncodingChain(8))("123"),
+  validate: (result) => {
+    assert.equal(result._tag, "Success")
+    assert.equal(result.value, 123)
+  }
 })

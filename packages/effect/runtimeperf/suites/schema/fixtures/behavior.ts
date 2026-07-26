@@ -39,6 +39,22 @@ export const transformationDecodeValid = decodeParserCase(Schema.FiniteFromStrin
 export const transformationDecodeInvalid = decodeParserCase(Schema.FiniteFromString, "invalid", false)
 export const transformationEncodeValid = encodeParserCase(Schema.FiniteFromString, 123, true)
 
+const makeEncodingChain = (size) => {
+  let schema = Schema.FiniteFromString
+  for (let i = 1; i < size; i++) {
+    schema = Schema.String.pipe(
+      Schema.decodeTo(schema, SchemaTransformation.passthrough())
+    )
+  }
+  return schema
+}
+
+const encodingChain8 = makeEncodingChain(8)
+
+export const encodingChain8DecodeValid = decodeParserCase(encodingChain8, "123", true)
+export const encodingChain8DecodeInvalid = decodeParserCase(encodingChain8, "invalid", false)
+export const encodingChain8EncodeValid = encodeParserCase(encodingChain8, 123, true)
+
 const transformedKeyRecord = Schema.Record(
   Schema.String.pipe(Schema.decode(SchemaTransformation.snakeToCamel())),
   Schema.String

@@ -885,6 +885,34 @@
               "size": 1
             },
             {
+              "name": "encoding-chain-8-decode-valid",
+              "export": "encodingChain8DecodeValid",
+              "scenario": "encoding-chain-8-decode-valid",
+              "family": "transformation",
+              "astTags": ["String", "Number"],
+              "path": "valid",
+              "size": 8
+            },
+            {
+              "name": "encoding-chain-8-decode-invalid",
+              "export": "encodingChain8DecodeInvalid",
+              "scenario": "encoding-chain-8-decode-invalid",
+              "family": "transformation",
+              "astTags": ["String", "Number"],
+              "path": "invalid",
+              "size": 8
+            },
+            {
+              "name": "encoding-chain-8-encode-valid",
+              "export": "encodingChain8EncodeValid",
+              "scenario": "encoding-chain-8-encode-valid",
+              "family": "transformation",
+              "astTags": ["String", "Number"],
+              "operation": "encode",
+              "path": "valid",
+              "size": 8
+            },
+            {
               "name": "record-32-transformed-keys-valid",
               "export": "transformedKeyRecordValid",
               "scenario": "record-32-transformed-keys-valid",
@@ -1129,6 +1157,15 @@
               "implementation": "zod4",
               "operation": "first-decode",
               "astTags": []
+            },
+            {
+              "name": "first-decode-encoding-chain-8-effect",
+              "export": "effectFirstDecodeEncodingChain8",
+              "scenario": "first-decode-encoding-chain-8",
+              "implementation": "effect",
+              "operation": "first-decode",
+              "astTags": ["String", "Number"],
+              "size": 8
             }
           ]
         },
