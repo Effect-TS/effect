@@ -60,5 +60,5 @@ export class SchemaError extends Data.TaggedError("SchemaError")<{
  * @since 4.0.0
  */
 export function isSchemaError(u: unknown): u is SchemaError {
-  return Predicate.hasProperty(u, TypeId)
+  return Predicate.hasProperty(u, TypeId) && u[TypeId] === TypeId
 }
