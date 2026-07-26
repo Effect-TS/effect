@@ -68,7 +68,9 @@ const runCommand =
                   ],
                   cwd: Option.getOrElse(command.cwd, constUndefined),
                   shell: command.shell,
-                  env: { ...process.env, ...Object.fromEntries(command.env) },
+                  env: command.extendEnv
+                    ? { ...process.env, ...Object.fromEntries(command.env) }
+                    : Object.fromEntries(command.env),
                   detached: process.platform !== "win32"
                 })
                 handle.on("error", (err) => {
