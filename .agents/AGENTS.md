@@ -116,9 +116,10 @@ Read `.patterns/effect.md` before changing Effect code. In particular:
 
 Read `.patterns/testing.md` before writing or changing tests.
 
-- Run only the tests covering the files you changed: `pnpm test --run <path/to/file.test.ts>`.
-  Narrow further with `-t "<test name>"`, or scope to a package with
-  `pnpm --filter <package> exec vitest run`.
+- Run only the tests covering the files you changed.
+- From the repository root, run an affected package with `pnpm --filter effect test --run` only when package-wide coverage is necessary.
+- Prefer a single test file, using a path relative to the package: `pnpm --filter effect test --run test/Option.test.ts`.
+  Replace the package name and test path with those covering your changed files, and narrow further with `-t "<test name>"` when useful.
 - Test files are located in `packages/*/test/`.
 - Main Effect library tests are in `packages/effect/test/`.
 - Use `it.effect` for Effect-returning tests.
