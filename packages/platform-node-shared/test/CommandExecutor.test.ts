@@ -328,11 +328,12 @@ describe("Command", () => {
 
   it("should delegate env to all commands", () => {
     const env = { key: "value" }
+    const environment = { ...env, omitted: undefined }
     const command = pipe(
       Command.make("cat"),
       Command.pipeTo(Command.make("sort")),
       Command.pipeTo(Command.make("head", "-2")),
-      Command.env(env, { extendEnv: false })
+      Command.env(environment, { extendEnv: false })
     )
     const commands = Command.flatten(command)
     const envs = commands.map((command) => Object.fromEntries(command.env))

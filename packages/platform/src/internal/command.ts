@@ -48,7 +48,7 @@ export const env: {
         extendEnv: options?.extendEnv ?? self.extendEnv,
         env: HashMap.union(
           self.env,
-          HashMap.fromIterable(Object.entries(environment).filter(([v]) => v !== undefined))
+          HashMap.fromIterable(Object.entries(environment).filter(([, value]) => value !== undefined))
         ) as HashMap.HashMap<string, string>
       })
     }
