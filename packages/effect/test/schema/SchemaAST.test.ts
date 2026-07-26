@@ -70,6 +70,17 @@ describe("SchemaAST", () => {
     strictEqual(SchemaAST.isJson(deeper), true)
   })
 
+  it("isJson is stack safe", () => {
+    let valid: unknown = null
+    let invalid: unknown = undefined
+    for (let i = 0; i < 25_000; i++) {
+      valid = [valid]
+      invalid = [invalid]
+    }
+    strictEqual(SchemaAST.isJson(valid), true)
+    strictEqual(SchemaAST.isJson(invalid), false)
+  })
+
   it("Schema.toCodecJson rejects non-JSON objects", () => {
     const encode = Schema.encodeUnknownExit(Schema.toCodecJson(Schema.Unknown))
     strictEqual(encode(new Map([["a", 1]]))._tag, "Failure")
@@ -88,10 +99,22 @@ describe("SchemaAST", () => {
     strictEqual(SchemaAST.isStringTree(["a"]), true)
     strictEqual(SchemaAST.isStringTree(["a", undefined]), true)
     strictEqual(SchemaAST.isStringTree(["a", 1]), false)
+    strictEqual(SchemaAST.isStringTree(new Array(1)), true)
+    const sparseWithInheritedValue = new Array(1)
+    const arrayPrototype = Object.create(Array.prototype)
+    arrayPrototype[0] = 1
+    Object.setPrototypeOf(sparseWithInheritedValue, arrayPrototype)
+    strictEqual(SchemaAST.isStringTree(sparseWithInheritedValue), false)
     strictEqual(SchemaAST.isStringTree({}), true)
     strictEqual(SchemaAST.isStringTree({ a: "b" }), true)
     strictEqual(SchemaAST.isStringTree({ a: undefined }), true)
     strictEqual(SchemaAST.isStringTree({ a: "b", c: 1 }), false)
+    strictEqual(SchemaAST.isStringTree(new Map([["a", "b"]])), false)
+    strictEqual(SchemaAST.isStringTree(new Date(0)), false)
+    class A {
+      readonly a = "a"
+    }
+    strictEqual(SchemaAST.isStringTree(new A()), false)
     // nested
     strictEqual(SchemaAST.isStringTree({ a: { b: "c" } }), true)
     strictEqual(SchemaAST.isStringTree({ a: ["b", { c: "d" }] }), true)
@@ -103,6 +126,17 @@ describe("SchemaAST", () => {
     const circular: Record<string, unknown> = {}
     circular.self = circular
     strictEqual(SchemaAST.isStringTree(circular), false)
+  })
+
+  it("isStringTree is stack safe", () => {
+    let valid: unknown = "value"
+    let invalid: unknown = 1
+    for (let i = 0; i < 25_000; i++) {
+      valid = { value: valid }
+      invalid = { value: invalid }
+    }
+    strictEqual(SchemaAST.isStringTree(valid), true)
+    strictEqual(SchemaAST.isStringTree(invalid), false)
   })
 
   describe("toType", () => {
