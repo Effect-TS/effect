@@ -195,7 +195,7 @@ export class Transformation<in out T, in out E, RD = never, RE = never> {
  * @since 4.0.0
  */
 export function isTransformation(u: unknown): u is Transformation<any, any, unknown, unknown> {
-  return Predicate.hasProperty(u, TypeId)
+  return Predicate.hasProperty(u, TypeId) && u[TypeId] === TypeId
 }
 
 /**
