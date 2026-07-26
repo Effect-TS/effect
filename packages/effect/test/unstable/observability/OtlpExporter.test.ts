@@ -37,7 +37,10 @@ const makeExporter = (httpClient: HttpClient.HttpClient) =>
     maxBatchSize: 1,
     body: () => HttpBody.empty,
     shutdownTimeout: "1 second"
-  }).pipe(Effect.provideService(HttpClient.HttpClient, httpClient))
+  }).pipe(
+    Effect.provideService(HttpClient.HttpClient, httpClient),
+    Effect.provide(OtlpExporter.layerFlusher)
+  )
 
 const yieldNowN = (times: number) =>
   Effect.forEach(Array.from({ length: times }), () => Effect.yieldNow, { discard: true })
