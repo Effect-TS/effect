@@ -4,6 +4,11 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import { Message, MessageStorage, ShardingConfig, Snowflake, SqlMessageStorage } from "effect/unstable/cluster"
+import {
+  SQL_IDENTIFIER_MAX_LENGTH,
+  storageObjectName,
+  storageTableName
+} from "effect/unstable/cluster/internal/sqlIdentifier"
 import { SqlClient } from "effect/unstable/sql"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
@@ -210,6 +215,72 @@ describe("SqlMessageStorage", () => {
           expect(messages).toHaveLength(0)
         }))
     })
+  })
+
+  it.layer(
+    SqlMessageStorage.layerWith({
+      prefix: "p".repeat(80),
+      limitIdentifiers: true
+    }).pipe(
+      Layer.provideMerge(Snowflake.layerGenerator),
+      Layer.provide(ShardingConfig.layerDefaults),
+      Layer.provideMerge(Layer.orDie(PgContainer.layerClient))
+    ),
+    { timeout: 120000 }
+  )("pg long identifiers", (it) => {
+    it.effect("creates truncated table and index names and stores messages", () =>
+      Effect.gen(function*() {
+        const sql = yield* SqlClient.SqlClient
+        const prefix = "p".repeat(80)
+        const messagesTable = storageTableName(prefix, "messages", true)
+        const indexes = [
+          storageObjectName(prefix, "messages", "shard_idx", true),
+          storageObjectName(prefix, "messages", "request_id_idx", true),
+          storageObjectName(prefix, "replies", "request_lookup_idx", true)
+        ]
+
+        assert.isTrue(messagesTable.length <= SQL_IDENTIFIER_MAX_LENGTH)
+        for (const name of indexes) {
+          assert.isTrue(name.length <= SQL_IDENTIFIER_MAX_LENGTH)
+        }
+
+        const tables = yield* sql<{ tablename: string }>`
+          SELECT tablename FROM pg_tables
+          WHERE schemaname = 'public'
+            AND tablename IN ${
+          sql.in([
+            messagesTable,
+            storageTableName(prefix, "migrations", true),
+            storageTableName(prefix, "replies", true)
+          ])
+        }
+          ORDER BY tablename
+        `
+        assert.deepStrictEqual(
+          tables.map((row) => row.tablename).sort(),
+          [
+            messagesTable,
+            storageTableName(prefix, "migrations", true),
+            storageTableName(prefix, "replies", true)
+          ].sort()
+        )
+
+        const indexRows = yield* sql<{ indexname: string }>`
+          SELECT indexname FROM pg_indexes
+          WHERE schemaname = 'public'
+            AND indexname IN ${sql.in(indexes)}
+        `
+        assert.deepStrictEqual(indexRows.map((row) => row.indexname).sort(), [...indexes].sort())
+
+        const storage = yield* MessageStorage.MessageStorage
+        const request = yield* makeRequest({ payload: { id: 1 } })
+        const result = yield* storage.saveRequest(request)
+        assert.strictEqual(result._tag, "Success")
+        assert.strictEqual(
+          (yield* storage.unprocessedMessages([request.envelope.address.shardId])).length,
+          1
+        )
+      }))
   })
 })
 

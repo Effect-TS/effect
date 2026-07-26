@@ -22,6 +22,7 @@ import type { Row } from "../sql/SqlConnection.ts"
 import { isSqlError, type SqlError } from "../sql/SqlError.ts"
 import { PersistenceError } from "./ClusterError.ts"
 import type * as Envelope from "./Envelope.ts"
+import { storageObjectName, storageTableName } from "./internal/sqlIdentifier.ts"
 import * as MessageStorage from "./MessageStorage.ts"
 import { SaveResultEncoded } from "./MessageStorage.ts"
 import type * as Reply from "./Reply.ts"
@@ -45,6 +46,12 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  * The optional `prefix` controls the table names for messages, replies, and
  * migrations; when omitted, `cluster` is used.
  *
+ * Set `limitIdentifiers` when using long table prefixes. Without it, names are
+ * used as-is (including lengths that Postgres may silently truncate). Enabling
+ * the flag hash-suffixes identifiers longer than 63 characters so table and
+ * index names stay unique — restart / migrate carefully if existing truncated
+ * names are already in the database.
+ *
  * **Gotchas**
  *
  * Changing `prefix` after deployment points the runtime at a different set of
@@ -58,6 +65,7 @@ const withTracerDisabled = Effect.withTracerEnabled(false)
  */
 export const make: (options?: {
   readonly prefix?: string | undefined
+  readonly limitIdentifiers?: boolean | undefined
 }) => Effect.Effect<
   MessageStorage.MessageStorage["Service"],
   never,
@@ -65,7 +73,8 @@ export const make: (options?: {
 > = Effect.fnUntraced(function*(options) {
   const sql = (yield* SqlClient.SqlClient).withoutTransforms()
   const prefix = options?.prefix ?? "cluster"
-  const table = (name: string) => `${prefix}_${name}`
+  const limitIdentifiers = options?.limitIdentifiers === true
+  const table = (name: string) => storageTableName(prefix, name, limitIdentifiers)
 
   yield* Effect.orDie(
     Migrator.make({})({
@@ -675,6 +684,7 @@ export const layer: Layer.Layer<
  */
 export const layerWith = (options: {
   readonly prefix?: string | undefined
+  readonly limitIdentifiers?: boolean | undefined
 }): Layer.Layer<MessageStorage.MessageStorage, never, SqlClient.SqlClient | ShardingConfig> =>
   Layer.effect(MessageStorage.MessageStorage, make(options)).pipe(
     Layer.provide(Snowflake.layerGenerator)
@@ -686,9 +696,13 @@ export const layerWith = (options: {
 
 const migrations = (options?: {
   readonly prefix?: string | undefined
+  readonly limitIdentifiers?: boolean | undefined
 }) => {
   const prefix = options?.prefix ?? "cluster"
-  const table = (name: string) => `${prefix}_${name}`
+  const limitIdentifiers = options?.limitIdentifiers === true
+  const table = (name: string) => storageTableName(prefix, name, limitIdentifiers)
+  const objectName = (tableName: string, suffix: string) =>
+    storageObjectName(prefix, tableName, suffix, limitIdentifiers)
   const messagesTable = table("messages")
   const repliesTable = table("replies")
 
@@ -804,8 +818,8 @@ const migrations = (options?: {
       })
 
       // Add message indexes optimized for the specific query patterns
-      const shardLookupIndex = `${messagesTable}_shard_idx`
-      const requestIdLookupIndex = `${messagesTable}_request_id_idx`
+      const shardLookupIndex = objectName("messages", "shard_idx")
+      const requestIdLookupIndex = objectName("messages", "request_id_idx")
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
@@ -869,8 +883,8 @@ const migrations = (options?: {
               payload TEXT NOT NULL,
               sequence INT,
               acked BIT NOT NULL DEFAULT 0,
-              CONSTRAINT ${sql(repliesTable + "_one_exit")} UNIQUE (request_id, kind),
-              CONSTRAINT ${sql(repliesTable + "_sequence")} UNIQUE (request_id, sequence)
+              CONSTRAINT ${sql(objectName("replies", "one_exit"))} UNIQUE (request_id, kind),
+              CONSTRAINT ${sql(objectName("replies", "sequence"))} UNIQUE (request_id, sequence)
             )
           `,
         mysql: () =>
@@ -919,7 +933,7 @@ const migrations = (options?: {
       })
 
       // Add reply indexes optimized for request_id lookups
-      const replyLookupIndex = `${repliesTable}_request_lookup_idx`
+      const replyLookupIndex = objectName("replies", "request_lookup_idx")
       yield* sql.onDialectOrElse({
         mssql: () =>
           sql`
