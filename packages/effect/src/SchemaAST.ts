@@ -3911,9 +3911,9 @@ export const resolveDescription: (ast: AST) => string | undefined = InternalAnno
 
 type TreeFrame = {
   readonly value: object
-  readonly keys: ReadonlyArray<string> | undefined
+  // Object keys or an array length snapshot.
+  readonly keys: ReadonlyArray<string> | number
   index: number
-  readonly length: number
 }
 
 function isJsonLeaf(u: unknown): boolean {
@@ -3958,29 +3958,25 @@ function isTree(u: unknown, isLeaf: (u: unknown) => boolean): boolean {
         cache.set(value, false)
         stack.push({
           value,
-          keys: isArray ? undefined : Object.keys(value),
-          index: 0,
-          // Snapshot the length so getters cannot extend the traversal.
-          length: isArray ? value.length : 0
+          keys: isArray ? value.length : Object.keys(value),
+          index: 0
         })
       }
     }
 
     while (stack.length > 0) {
       const frame = stack[stack.length - 1]
-      if (frame.keys !== undefined) {
-        if (frame.index < frame.keys.length) {
-          u = (frame.value as Record<string, unknown>)[frame.keys[frame.index++]]
-          continue outer
-        }
-      } else {
-        const value = frame.value as ReadonlyArray<unknown>
-        if (frame.index < frame.length) {
+      const keys = frame.keys
+      if (typeof keys === "number") {
+        if (frame.index < keys) {
           // A sparse slot is read as `undefined`; the leaf predicate determines
           // whether that is valid for the current tree.
-          u = value[frame.index++]
+          u = (frame.value as ReadonlyArray<unknown>)[frame.index++]
           continue outer
         }
+      } else if (frame.index < keys.length) {
+        u = (frame.value as Record<string, unknown>)[keys[frame.index++]]
+        continue outer
       }
       cache.set(frame.value, true)
       stack.pop()
