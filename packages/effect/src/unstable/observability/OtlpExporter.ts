@@ -129,7 +129,8 @@ export const make: (
     scope,
     Effect.suspend(() => {
       if (disabledUntil !== undefined) return Effect.void
-      return Fiber.awaitAll([...exportFibers, runExportFork(runExport)])
+      runExportFork(runExport)
+      return FiberSet.awaitEmpty(exportFibers)
     }).pipe(
       Effect.ignore,
       Effect.interruptible,
