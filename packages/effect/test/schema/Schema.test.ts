@@ -6030,6 +6030,27 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       deepStrictEqual(schema.parts, parts)
     })
 
+    it("preserves greedy segmentation at repeated literal anchors", async () => {
+      const schema = Schema.TemplateLiteralParser([Schema.String, ":", Schema.String])
+      const decoding = new TestSchema.Asserts(schema).decoding()
+
+      await decoding.succeed("a:b:c", ["a:b", ":", "c"])
+    })
+
+    it("backtracks from an invalid literal anchor", async () => {
+      const schema = Schema.TemplateLiteralParser([Schema.String, ":", Schema.NonEmptyString, "x"])
+      const decoding = new TestSchema.Asserts(schema).decoding()
+
+      await decoding.succeed("a:b:x", ["a", ":", "b:", "x"])
+    })
+
+    it("backtracks across an empty literal anchor", async () => {
+      const schema = Schema.TemplateLiteralParser([Schema.String, "", Schema.NonEmptyString])
+      const decoding = new TestSchema.Asserts(schema).decoding()
+
+      await decoding.succeed("a", ["", "", "a"])
+    })
+
     it(`NonEmptyString + String`, async () => {
       const schema = Schema.TemplateLiteralParser([Schema.NonEmptyString, Schema.String])
       const asserts = new TestSchema.Asserts(schema)
