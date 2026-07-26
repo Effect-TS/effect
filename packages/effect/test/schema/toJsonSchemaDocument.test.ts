@@ -540,15 +540,6 @@ describe("toJsonSchemaDocument", () => {
       })
     })
 
-    it("DateValid", () => {
-      const schema = Schema.DateValid
-      assertJsonSchemaDocument(schema, {
-        schema: {
-          "type": "string"
-        }
-      })
-    })
-
     it("URL", () => {
       const schema = Schema.URL
       assertJsonSchemaDocument(schema, {
@@ -1110,6 +1101,23 @@ describe("toJsonSchemaDocument", () => {
             ]
           }
         })
+      })
+
+      it("escapes regexp syntax in literal string checks", () => {
+        for (
+          const [check, pattern] of [
+            [Schema.isStartsWith("a.b"), "^a\\.b"],
+            [Schema.isEndsWith("a+b"), "a\\+b$"],
+            [Schema.isIncludes("["), "\\["]
+          ] as const
+        ) {
+          assertJsonSchemaDocument(Schema.String.check(check), {
+            schema: {
+              "type": "string",
+              "allOf": [{ pattern }]
+            }
+          })
+        }
       })
 
       it("isTrimmed", () => {

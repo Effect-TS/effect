@@ -53,7 +53,7 @@ const TypeId = "~effect/SchemaIssue/Issue"
  * @since 4.0.0
  */
 export function isIssue(u: unknown): u is Issue {
-  return hasProperty(u, TypeId)
+  return hasProperty(u, TypeId) && u[TypeId] === TypeId
 }
 
 /**

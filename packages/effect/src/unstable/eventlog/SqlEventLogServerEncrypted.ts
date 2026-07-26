@@ -269,7 +269,7 @@ export const makeStorage = (options?: {
   }).pipe(withTracerDisabled)
 
 const EncryptedRemoteEntrySql = Schema.Struct({
-  sequence: Schema.Number,
+  sequence: Schema.Natural,
   iv: Schema.Uint8Array,
   entry_id: EntryId,
   encrypted_entry: Schema.Uint8Array

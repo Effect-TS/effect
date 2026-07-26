@@ -1,21 +1,9 @@
-import {
-  Cause,
-  Data,
-  Exit,
-  HashMap,
-  Option,
-  Predicate,
-  Record,
-  Result,
-  Schema,
-  SchemaTransformation,
-  SchemaUtils
-} from "effect"
+import { Cause, Exit, HashMap, Option, Predicate, Record, Result, Schema, SchemaTransformation } from "effect"
 import { describe, it } from "vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 class Value extends Schema.Class<Value, { readonly brand: unique symbol }>("Value")({
-  a: Schema.DateValid
+  a: Schema.Date
 }) {}
 
 function addOne(date: Date): Date {
@@ -373,22 +361,6 @@ describe("Optic generation", () => {
         HashMap.toEntries(modify(HashMap.make(["a", Value.make({ a: new Date(0) })]))),
         HashMap.toEntries(HashMap.make(["a", Value.make({ a: new Date(1) })]))
       )
-    })
-
-    it("getNativeClassSchema", () => {
-      const Props = Schema.Struct({
-        message: Schema.String
-      })
-      class Err extends Data.Error<typeof Props.Type> {
-        constructor(props: typeof Props.Type) {
-          super(Props.make(props))
-        }
-      }
-      const schema = SchemaUtils.getNativeClassSchema(Err, { encoding: Props })
-      const optic = Schema.toIso(schema)
-      const modify = optic.modify((e) => new Err({ message: e.message + "!" }))
-
-      deepStrictEqual(modify(new Err({ message: "a" })), new Err({ message: "a!" }))
     })
   })
 })

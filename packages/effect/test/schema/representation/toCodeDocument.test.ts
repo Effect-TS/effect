@@ -1,6 +1,6 @@
 import { JsonSchema, Schema, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
-import { deepStrictEqual, throws } from "../../utils/assert.ts"
+import { assertTrue, deepStrictEqual, strictEqual, throws } from "../../utils/assert.ts"
 
 type Category = {
   readonly name: string
@@ -89,6 +89,7 @@ describe("toCodeDocument", () => {
   }
 
   const makeCode = SchemaRepresentation.makeCode
+  const templateType = (...types: ReadonlyArray<string>) => `\`${types.map((type) => `\${${type}}`).join("")}\``
 
   describe("Declaration", () => {
     it("declaration without a toCode annotation", () => {
@@ -627,7 +628,7 @@ describe("toCodeDocument", () => {
           })
         },
         {
-          codes: makeCode(`Schema.Enum(_Enum)`, `typeof _Enum`),
+          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
@@ -645,7 +646,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `typeof _Enum`
+            `_Enum`
           ),
           artifacts: [{
             _tag: "Enum",
@@ -665,7 +666,7 @@ describe("toCodeDocument", () => {
           })
         },
         {
-          codes: makeCode(`Schema.Enum(_Enum)`, `typeof _Enum`),
+          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
@@ -683,7 +684,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `typeof _Enum`
+            `_Enum`
           ),
           artifacts: [{
             _tag: "Enum",
@@ -703,7 +704,7 @@ describe("toCodeDocument", () => {
           })
         },
         {
-          codes: makeCode(`Schema.Enum(_Enum)`, `typeof _Enum`),
+          codes: makeCode(`Schema.Enum(_Enum)`, `_Enum`),
           artifacts: [{
             _tag: "Enum",
             identifier: "_Enum",
@@ -721,7 +722,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.Enum(_Enum).annotate({ "description": "a" })`,
-            `typeof _Enum`
+            `_Enum`
           ),
           artifacts: [{
             _tag: "Enum",
@@ -747,7 +748,7 @@ describe("toCodeDocument", () => {
       assertSchema(
         { schema: Schema.TemplateLiteral([Schema.Literal("a")]) },
         {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal("a")])`, "`a`")
+          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal("a")])`, templateType(`"a"`))
         }
       )
     })
@@ -756,7 +757,7 @@ describe("toCodeDocument", () => {
       assertSchema(
         { schema: Schema.TemplateLiteral([Schema.Literal(1)]) },
         {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal(1)])`, "`1`")
+          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal(1)])`, templateType("1"))
         }
       )
     })
@@ -765,7 +766,7 @@ describe("toCodeDocument", () => {
       assertSchema(
         { schema: Schema.TemplateLiteral([Schema.Literal(1n)]) },
         {
-          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal(1n)])`, "`1`")
+          codes: makeCode(`Schema.TemplateLiteral([Schema.Literal(1n)])`, templateType("1n"))
         }
       )
     })
@@ -776,7 +777,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literal("a"), Schema.Literal("b"), Schema.Literal("c")])`,
-            "`abc`"
+            templateType(`"a"`, `"b"`, `"c"`)
           )
         }
       )
@@ -788,7 +789,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literal("a b"), Schema.String])`,
-            "`a b${string}`"
+            templateType(`"a b"`, "string")
           )
         }
       )
@@ -797,10 +798,19 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literal("\\n"), Schema.String])`,
-            "`\n${string}`"
+            templateType(`"\\n"`, "string")
           )
         }
       )
+
+      for (const literal of ["`", "${number}", "\\"]) {
+        const code = SchemaRepresentation.toCodeDocument(
+          SchemaRepresentation.toRepresentations([
+            Schema.TemplateLiteral([Schema.Literal(literal)]).ast
+          ])
+        ).codes[0]
+        strictEqual(code.Type, templateType(JSON.stringify(literal)))
+      }
     })
 
     it("only schemas", () => {
@@ -839,7 +849,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.String, Schema.Literal("a")])`,
-            "`${string}a`"
+            templateType("string", `"a"`)
           )
         }
       )
@@ -848,7 +858,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Number, Schema.Literal("a")])`,
-            "`${number}a`"
+            templateType("number", `"a"`)
           )
         }
       )
@@ -857,7 +867,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.BigInt, Schema.Literal("a")])`,
-            "`${bigint}a`"
+            templateType("bigint", `"a"`)
           )
         }
       )
@@ -869,7 +879,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literal("a"), Schema.String])`,
-            "`a${string}`"
+            templateType(`"a"`, "string")
           )
         }
       )
@@ -878,7 +888,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literal("a"), Schema.Number])`,
-            "`a${number}`"
+            templateType(`"a"`, "number")
           )
         }
       )
@@ -887,7 +897,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literal("a"), Schema.BigInt])`,
-            "`a${bigint}`"
+            templateType(`"a"`, "bigint")
           )
         }
       )
@@ -899,7 +909,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.String, Schema.Literal("-"), Schema.Number])`,
-            "`${string}-${number}`"
+            templateType("string", `"-"`, "number")
           )
         }
       )
@@ -912,7 +922,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.String, Schema.Literal("-"), Schema.Number]).annotate({ "description": "ad" })`,
-            "`${string}-${number}`"
+            templateType("string", `"-"`, "number")
           )
         }
       )
@@ -929,7 +939,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literal("a"), Schema.TemplateLiteral([Schema.String, Schema.Literals(["-", "+"]), Schema.Number])])`,
-            "`a${string}-${number}` | `a${string}+${number}`"
+            templateType(`"a"`, templateType("string", `"-" | "+"`, "number"))
           )
         }
       )
@@ -943,7 +953,7 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literal("a"), Schema.Union([Schema.String, Schema.Number])])`,
-            "`a${string}` | `a${number}`"
+            templateType(`"a"`, "string | number")
           )
         }
       )
@@ -957,10 +967,39 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literals(["a", "b"]), Schema.String])`,
-            "`a${string}` | `b${string}`"
+            templateType(`"a" | "b"`, "string")
           )
         }
       )
+    })
+
+    it("uses the encoded type of branded parts", () => {
+      const schema = Schema.TemplateLiteral([
+        Schema.String.pipe(Schema.brand("StringPart")),
+        Schema.Union([
+          Schema.Number.pipe(Schema.brand("NumberPart")),
+          Schema.String.pipe(Schema.brand("OtherStringPart"))
+        ])
+      ])
+      const code = SchemaRepresentation.toCodeDocument(
+        SchemaRepresentation.toRepresentations([schema.ast])
+      ).codes[0]
+
+      strictEqual(
+        code.runtime,
+        `Schema.TemplateLiteral([Schema.String.pipe(Schema.brand("StringPart")), Schema.Union([Schema.Number.pipe(Schema.brand("NumberPart")), Schema.String.pipe(Schema.brand("OtherStringPart"))])])`
+      )
+      strictEqual(code.Type, templateType("string", "number | string"))
+    })
+
+    it("resolves the encoded type of branded references", () => {
+      const part = Schema.String.pipe(Schema.brand("Part")).annotate({ identifier: "Part" })
+      const code = SchemaRepresentation.toCodeDocument(
+        SchemaRepresentation.toRepresentations([Schema.TemplateLiteral([part]).ast])
+      ).codes[0]
+
+      strictEqual(code.runtime, "Schema.TemplateLiteral([Part])")
+      strictEqual(code.Type, templateType("string"))
     })
 
     it("multiple unions", () => {
@@ -975,10 +1014,21 @@ describe("toCodeDocument", () => {
         {
           codes: makeCode(
             `Schema.TemplateLiteral([Schema.Literals(["a", "b"]), Schema.String, Schema.Union([Schema.Number, Schema.BigInt])])`,
-            "`a${string}${number}` | `a${string}${bigint}` | `b${string}${number}` | `b${string}${bigint}`"
+            templateType(`"a" | "b"`, "string", "number | bigint")
           )
         }
       )
+    })
+
+    it("does not expand combinations of unions", () => {
+      const part = Schema.Literals(["a", "b"])
+      const schema = Schema.TemplateLiteral(Array.from({ length: 20 }, () => part))
+      const Type = SchemaRepresentation.toCodeDocument(
+        SchemaRepresentation.toRepresentations([schema.ast])
+      ).codes[0].Type
+
+      strictEqual(Type, templateType(...Array.from({ length: 20 }, () => `"a" | "b"`)))
+      assertTrue(Type.length < 500)
     })
   })
 
@@ -1623,15 +1673,6 @@ describe("toCodeDocument", () => {
     })
 
     describe("checks", () => {
-      it("isDateValid", () => {
-        assertSchema(
-          { schema: Schema.Date.check(Schema.isDateValid()) },
-          {
-            codes: makeCode(`Schema.Date.check(Schema.isDateValid())`, "globalThis.Date")
-          }
-        )
-      })
-
       it("isGreaterThanDate", () => {
         assertSchema(
           { schema: Schema.Date.check(Schema.isGreaterThanDate(new Date(0))) },

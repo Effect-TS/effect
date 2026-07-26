@@ -195,7 +195,7 @@ export class Transformation<in out T, in out E, RD = never, RE = never> {
  * @since 4.0.0
  */
 export function isTransformation(u: unknown): u is Transformation<any, any, unknown, unknown> {
-  return Predicate.hasProperty(u, TypeId)
+  return Predicate.hasProperty(u, TypeId) && u[TypeId] === TypeId
 }
 
 /**
@@ -852,8 +852,8 @@ export const bigintFromString = new Transformation(
  *
  * **When to use**
  *
- * Use when you need a schema transformation to parse ISO 8601 date strings from
- * APIs or user input.
+ * Use when you need a schema transformation to parse date strings from APIs or
+ * user input.
  *
  * **Details**
  *

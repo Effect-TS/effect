@@ -80,31 +80,6 @@ function isSimpleLiveLiteral(
     representation.annotations === undefined
 }
 
-function toTypeParts(parts: ReadonlyArray<SchemaRepresentation.Representation>): ReadonlyArray<string> {
-  let out = [""]
-  for (const part of parts) out = out.flatMap((prefix) => toTypePart(part).map((suffix) => prefix + suffix))
-  return out
-}
-
-function toTypePart(part: SchemaRepresentation.Representation): ReadonlyArray<string> {
-  switch (part._tag) {
-    case "Literal":
-      return [globalThis.String(part.literal)]
-    case "String":
-      return ["${string}"]
-    case "Number":
-      return ["${number}"]
-    case "BigInt":
-      return ["${bigint}"]
-    case "TemplateLiteral":
-      return toTypeParts(part.parts)
-    case "Union":
-      return part.types.flatMap(toTypePart)
-    default:
-      return []
-  }
-}
-
 /** @internal */
 export interface TopologicalSort {
   readonly nonRecursives: ReadonlyArray<{
@@ -398,7 +373,8 @@ export function toCodeDocument(
 
   function recur(
     representation: SchemaRepresentation.Representation,
-    path: Path
+    path: Path,
+    includeTypeBrands: boolean = true
   ): SchemaRepresentation.Code {
     if (representation._tag === "Reference") {
       if (!Object.hasOwn(document.references, representation.$ref)) {
@@ -411,14 +387,18 @@ export function toCodeDocument(
       ) {
         return makeCode(`Schema.suspend((): Schema.Codec<${identifier}> => ${identifier})`, identifier)
       }
-      return makeCode(identifier, identifier)
+      const Type = includeTypeBrands
+        ? identifier
+        : recur(document.references[representation.$ref], ["references", representation.$ref], false).Type
+      return makeCode(identifier, Type)
     }
-    return applyNode(on(representation, path), representation, path)
+    return applyNode(on(representation, path, includeTypeBrands), representation, path, includeTypeBrands)
   }
 
   function on(
     representation: Exclude<SchemaRepresentation.Representation, SchemaRepresentation.Reference>,
-    path: Path
+    path: Path,
+    includeTypeBrands: boolean
   ): SchemaRepresentation.Code {
     switch (representation._tag) {
       case "Declaration": {
@@ -485,11 +465,11 @@ export function toCodeDocument(
             `typeof ${identifier}`
           )
         })
-        return makeCode(`Schema.Enum(${identifier})`, `typeof ${identifier}`)
+        return makeCode(`Schema.Enum(${identifier})`, identifier)
       }
       case "TemplateLiteral": {
-        const parts = representation.parts.map((part, index) => recur(part, [...path, "parts", index]))
-        const Type = toTypeParts(representation.parts).map((part) => `\`${part}\``).join(" | ")
+        const parts = representation.parts.map((part, index) => recur(part, [...path, "parts", index], false))
+        const Type = `\`${parts.map((part) => `\${${part.Type}}`).join("")}\``
         return makeCode(`Schema.TemplateLiteral([${parts.map((part) => part.runtime).join(", ")}])`, Type)
       }
       case "Arrays": {
@@ -578,7 +558,9 @@ export function toCodeDocument(
             ? makeCode(`Schema.Literal(${literals[0]})`, literals[0])
             : makeCode(`Schema.Literals([${literals.join(", ")}])`, literals.join(" | "))
         }
-        const types = representation.types.map((type, index) => recur(type, [...path, "types", index]))
+        const types = representation.types.map((type, index) =>
+          recur(type, [...path, "types", index], includeTypeBrands)
+        )
         const mode = representation.mode === "anyOf" ? "" : `, { mode: "oneOf" }`
         return makeCode(
           `Schema.Union([${types.map((type) => type.runtime).join(", ")}]${mode})`,

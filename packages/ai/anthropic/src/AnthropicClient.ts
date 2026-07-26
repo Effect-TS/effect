@@ -194,6 +194,11 @@ const RedactedAnthropicHeaders = {
   AnthropicApiKey: "x-api-key"
 }
 
+const withRedactedHeaders = Effect.updateService(
+  Headers.CurrentRedactedNames,
+  Array.appendAll(Object.values(RedactedAnthropicHeaders))
+)
+
 /**
  * Creates an Anthropic client service with the given options.
  *
@@ -276,7 +281,8 @@ export const make = Effect.fnUntraced(
           BetaMessagesPost4XX: (error) => Effect.fail(Errors.mapClientError(error, "createMessage")),
           HttpClientError: (error) => Errors.mapHttpClientError(error, "createMessage"),
           SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createMessage"))
-        })
+        }),
+        withRedactedHeaders
       )
 
     const PingEvent = Schema.Struct({
@@ -329,7 +335,8 @@ export const make = Effect.fnUntraced(
         Effect.catchTag(
           "HttpClientError",
           (error) => Errors.mapHttpClientError(error, "createMessageStream")
-        )
+        ),
+        withRedactedHeaders
       )
     }
 
@@ -340,10 +347,7 @@ export const make = Effect.fnUntraced(
       createMessageStream
     })
   },
-  Effect.updateService(
-    Headers.CurrentRedactedNames,
-    Array.appendAll(Object.values(RedactedAnthropicHeaders))
-  )
+  withRedactedHeaders
 )
 
 // =============================================================================

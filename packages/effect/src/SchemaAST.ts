@@ -2459,7 +2459,7 @@ function getCandidateTypes(ast: AST): ReadonlyArray<Type> {
     case "Objects":
       return ast.propertySignatures.length || ast.indexSignatures.length
         ? ["object"]
-        : ["object", "array"]
+        : ["string", "number", "boolean", "symbol", "bigint", "object", "array", "function"]
     case "Enum":
       return Array.from(new Set(ast.enums.map(([, v]) => typeof v)))
     case "Literal":
@@ -3595,12 +3595,21 @@ function segmentTemplateLiteralParts(
   input: string,
   options: ParseOptions
 ): Array<string> | undefined {
+  const literals = parts.map((part) => part._tag === "Literal" ? globalThis.String(part.literal) : undefined)
+  if (literals.some((literal) => literal !== undefined && !input.includes(literal))) return undefined
+
+  const minimumLengths = new Array<number>(parts.length + 1)
+  minimumLengths[parts.length] = 0
+  for (let i = parts.length - 1; i >= 0; i--) {
+    minimumLengths[i] = minimumLengths[i + 1] + (literals[i]?.length ?? 0)
+  }
+  if (minimumLengths[0] > input.length) return undefined
+
   const out = new Array<string>(parts.length)
-  const failures = new Set<string>()
+  const failures = parts.map(() => new Set<number>())
   function go(i: number, pos: number): boolean {
     if (i === parts.length) return pos === input.length
-    const key = `${i}/${pos}`
-    if (failures.has(key)) return false
+    if (failures[i].has(pos)) return false
     const part = parts[i]
     if (i === parts.length - 1) {
       const s = input.slice(pos)
@@ -3609,21 +3618,27 @@ function segmentTemplateLiteralParts(
         return true
       }
     } else if (part._tag === "Literal") {
-      const s = globalThis.String(part.literal)
+      const s = literals[i]!
       if (input.startsWith(s, pos) && go(i + 1, pos + s.length)) {
         out[i] = s
         return true
       }
     } else {
-      for (let end = input.length; end >= pos; end--) {
+      const maximumEnd = input.length - minimumLengths[i + 1]
+      // Splits preceding a literal only need to consider occurrences of that literal.
+      const anchor = literals[i + 1]
+      let end = anchor === undefined ? maximumEnd : input.lastIndexOf(anchor, maximumEnd)
+      while (end >= pos) {
         const s = input.slice(pos, end)
         if (part.matchPart(s, options) !== undefined && go(i + 1, end)) {
           out[i] = s
           return true
         }
+        if (end === 0) break
+        end = anchor === undefined ? end - 1 : input.lastIndexOf(anchor, end - 1)
       }
     }
-    failures.add(key)
+    failures[i].add(pos)
     return false
   }
   return go(0, 0) ? out : undefined
@@ -3682,7 +3697,7 @@ export const STRING_PATTERN = "[\\s\\S]*?"
 
 const isStringFiniteRegExp = new globalThis.RegExp(`^${FINITE_PATTERN}$`)
 
-const isStringNumberRegExp = new globalThis.RegExp(`(?:${FINITE_PATTERN}|Infinity|-Infinity|NaN)`)
+const isStringNumberRegExp = new globalThis.RegExp(`^(?:${FINITE_PATTERN}|Infinity|-Infinity|NaN)$`)
 
 /** @internal */
 export function isStringFinite(annotations?: Schema.Annotations.Filter) {
@@ -3909,6 +3924,82 @@ export const resolveTitle: (ast: AST) => string | undefined = InternalAnnotation
  */
 export const resolveDescription: (ast: AST) => string | undefined = InternalAnnotations.resolveDescription
 
+type TreeFrame = {
+  readonly value: object
+  // Object keys or an array length snapshot.
+  readonly keys: ReadonlyArray<string> | number
+  index: number
+}
+
+function isJsonLeaf(u: unknown): boolean {
+  return u === null || typeof u === "string" || typeof u === "boolean" ||
+    typeof u === "number" && globalThis.Number.isFinite(u)
+}
+
+function isStringTreeLeaf(u: unknown): boolean {
+  return u === undefined || typeof u === "string"
+}
+
+function isTree(u: unknown, isLeaf: (u: unknown) => boolean): boolean {
+  const cache = new WeakMap<object, boolean>()
+  const stack: Array<TreeFrame> = []
+  outer: while (true) {
+    if (typeof u !== "object" || u === null) {
+      if (!isLeaf(u)) {
+        return false
+      }
+    } else {
+      const value = u
+      const cached = cache.get(value)
+      // `false` marks a node on the current path, while `true` marks a fully
+      // validated node that can be safely reused by a DAG.
+      if (cached === false) {
+        return false
+      }
+      if (cached === undefined) {
+        const isArray = Array.isArray(value)
+        if (!isArray) {
+          const prototype = Object.getPrototypeOf(value)
+          // A plain object from another realm has a different Object.prototype,
+          // but that prototype still has a null prototype.
+          if (
+            prototype !== null &&
+            prototype !== Object.prototype &&
+            Object.getPrototypeOf(prototype) !== null
+          ) {
+            return false
+          }
+        }
+        cache.set(value, false)
+        stack.push({
+          value,
+          keys: isArray ? value.length : Object.keys(value),
+          index: 0
+        })
+      }
+    }
+
+    while (stack.length > 0) {
+      const frame = stack[stack.length - 1]
+      const keys = frame.keys
+      if (typeof keys === "number") {
+        if (frame.index < keys) {
+          // A sparse slot is read as `undefined`; the leaf predicate determines
+          // whether that is valid for the current tree.
+          u = (frame.value as ReadonlyArray<unknown>)[frame.index++]
+          continue outer
+        }
+      } else if (frame.index < keys.length) {
+        u = (frame.value as Record<string, unknown>)[keys[frame.index++]]
+        continue outer
+      }
+      cache.set(frame.value, true)
+      stack.pop()
+    }
+    return true
+  }
+}
+
 /**
  * Returns true if the value is a JSON value.
  *
@@ -3917,59 +4008,7 @@ export const resolveDescription: (ast: AST) => string | undefined = InternalAnno
  * @internal
  */
 export function isJson(u: unknown): u is Schema.Json {
-  // `onPath` is the current recursion stack: nodes between the root and the
-  // one being visited. A hit here means we looped back to an ancestor — a
-  // real cycle, not a DAG — so the value is not JSON.
-  const onPath = new Set<unknown>()
-  // `validated` memoizes subtrees we've already fully checked. Without it, a
-  // diamond-shaped DAG (same node reached through multiple parents) would be
-  // re-traversed once per parent, which is exponential in the nesting depth.
-  const validated = new Set<unknown>()
-  return recur(u)
-
-  function recur(u: unknown): boolean {
-    if (u === null || typeof u === "string" || typeof u === "boolean") {
-      return true
-    }
-    if (typeof u === "number") {
-      return globalThis.Number.isFinite(u)
-    }
-    if (typeof u !== "object" || u === undefined) {
-      return false
-    }
-    if (onPath.has(u)) {
-      return false
-    }
-    if (validated.has(u)) {
-      return true
-    }
-    const isArray = Array.isArray(u)
-    if (!isArray) {
-      const prototype = Object.getPrototypeOf(u)
-      if (prototype !== null && Object.getPrototypeOf(prototype) !== null) {
-        return false
-      }
-    }
-    onPath.add(u)
-    let ok = true
-    if (isArray) {
-      for (let index = 0; index < u.length; index++) {
-        if (!Object.hasOwn(u, index) || !recur(u[index])) {
-          ok = false
-          break
-        }
-      }
-    } else {
-      ok = Object.keys(u).every((key) => recur((u as Record<string, unknown>)[key]))
-    }
-    // Pop on exit so siblings reaching the same node via a different path
-    // don't see it as an ancestor (that would reject valid DAGs).
-    onPath.delete(u)
-    if (ok) {
-      validated.add(u)
-    }
-    return ok
-  }
+  return isTree(u, isJsonLeaf)
 }
 
 /** @internal */
@@ -4022,25 +4061,7 @@ export const objectKeywordToJson = new Link(
  * @internal
  */
 export function isStringTree(u: unknown): u is Schema.StringTree {
-  const seen = new Set<unknown>()
-  return recur(u)
-
-  function recur(u: unknown): boolean {
-    if (u === undefined || typeof u === "string") {
-      return true
-    }
-    if (typeof u !== "object" || u === null) {
-      return false
-    }
-    if (seen.has(u)) {
-      return false
-    }
-    seen.add(u)
-    if (Array.isArray(u)) {
-      return u.every(recur)
-    }
-    return Object.keys(u).every((key) => recur((u as Record<string, unknown>)[key]))
-  }
+  return isTree(u, isStringTreeLeaf)
 }
 
 const StringTree = new Declaration(

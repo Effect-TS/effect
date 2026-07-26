@@ -244,9 +244,8 @@ Schema.BigInt.check(isNonPositive)
 
 ## Dates
 
-The `Schema.Date` schema matches `Date` objects (even invalid dates).
-
-If you want to validate only valid dates, use `Schema.DateValid` instead.
+The `Schema.Date` schema matches valid `Date` objects and rejects invalid dates
+such as `new Date(NaN)`.
 
 ## Template literals
 
@@ -4033,7 +4032,7 @@ class PersonWithEmail extends Person {
 **Example** (Extending Data.Error)
 
 ```ts
-import { Data, Effect, identity, Schema, SchemaTransformation, SchemaUtils } from "effect"
+import { Data, Effect, identity, Schema, SchemaTransformation } from "effect"
 
 const Props = Schema.Struct({
   message: Schema.String
@@ -4079,9 +4078,6 @@ const schema = Schema.instanceOf(Err, {
     json: () => Schema.link<Err>()(Props, transformation)
   }
 }).pipe(Schema.encodeTo(Props, transformation))
-
-// built-in helper?
-const builtIn = SchemaUtils.getNativeClassSchema(Err, { encoding: Props })
 ```
 
 ### Class API

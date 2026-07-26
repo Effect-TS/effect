@@ -575,8 +575,8 @@ export const classifySqliteError = (
  */
 export class ResultLengthMismatch
   extends Schema.TaggedErrorClass<ResultLengthMismatch>("effect/sql/ResultLengthMismatch")("ResultLengthMismatch", {
-    expected: Schema.Number,
-    actual: Schema.Number
+    expected: Schema.Natural,
+    actual: Schema.Natural
   })
 {
   /**

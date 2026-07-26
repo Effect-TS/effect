@@ -345,7 +345,7 @@ export class Entry extends Schema.Class<Entry>("effect/eventlog/EventJournal/Ent
  * @since 4.0.0
  */
 export class RemoteEntry extends Schema.Class<RemoteEntry>("effect/eventlog/EventJournal/RemoteEntry")({
-  remoteSequence: Schema.Number,
+  remoteSequence: Schema.Natural,
   entry: Entry
 }) {}
 

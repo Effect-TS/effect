@@ -28,7 +28,7 @@ const TypeId = "~effect/cluster/RunnerAddress"
  */
 export class RunnerAddress extends Schema.Class<RunnerAddress>(TypeId)({
   host: Schema.String,
-  port: Schema.Number
+  port: Schema.Int
 }) {
   /**
    * Marks this value as a cluster runner address for runtime guards.

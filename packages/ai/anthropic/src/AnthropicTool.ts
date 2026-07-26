@@ -483,7 +483,7 @@ export const CodeExecution_20250825 = Tool.providerDefined({
  * @category computer use
  * @since 4.0.0
  */
-export const Coordinate = Schema.Tuple([Schema.Number, Schema.Number])
+export const Coordinate = Schema.Tuple([Schema.Int, Schema.Int])
 /**
  * An `[x, y]` screen coordinate in pixels.
  *
@@ -512,7 +512,7 @@ export type Coordinate = typeof Coordinate.Type
  * @category computer use
  * @since 4.0.0
  */
-export const Region = Schema.Tuple([Schema.Number, Schema.Number, Schema.Number, Schema.Number])
+export const Region = Schema.Tuple([Schema.Int, Schema.Int, Schema.Int, Schema.Int])
 /**
  * An `[x1, y1, x2, y2]` screen region in pixels, from top-left to bottom-right.
  *
@@ -569,19 +569,19 @@ const ComputerUse_20241022_Args = Schema.Struct({
   /**
    * The width of the display being controlled by the model in pixels.
    */
-  displayWidthPx: Schema.Number,
+  displayWidthPx: Schema.Int,
 
   /**
    * The height of the display being controlled by the model in pixels.
    */
-  displayHeightPx: Schema.Number,
+  displayHeightPx: Schema.Int,
 
   /**
    * The display number to control (only relevant for X11 environments). If
    * specified, the tool will be provided a display number in the tool
    * definition.
    */
-  displayNumber: Schema.optional(Schema.Number)
+  displayNumber: Schema.optional(Schema.Int)
 })
 
 const ComputerUse_20251124_Args = Schema.Struct({
@@ -873,7 +873,7 @@ export const ComputerUseHoldKeyAction = Schema.Struct({
   /**
    * The number of seconds to hold the key.
    */
-  duration: Schema.Number
+  duration: Schema.Finite
 })
 /**
  * Computer-use action payload for holding a key for a specified duration.
@@ -1085,7 +1085,7 @@ export type ComputerUseRightClickAction = typeof ComputerUseRightClickAction.Typ
  * **Gotchas**
  *
  * `coordinate` only checks a two-number tuple, and `scroll_amount` is only
- * `Schema.Number`.
+ * `Schema.Int`.
  *
  * @see {@link ComputerUse_20250124} for the tool version that accepts this action
  * @see {@link ScrollDirection} for the accepted direction literals
@@ -1107,7 +1107,7 @@ export const ComputerUseScrollAction = Schema.Struct({
   /**
    * The amount to scroll (in pixels or scroll units).
    */
-  scroll_amount: Schema.Number
+  scroll_amount: Schema.Int
 })
 /**
  * Computer-use action payload for scrolling by a specified amount in a specified direction, optionally from a coordinate.
@@ -1173,8 +1173,8 @@ export type ComputerUseTripleClickAction = typeof ComputerUseTripleClickAction.T
  *
  * **Gotchas**
  *
- * `duration` is only `Schema.Number`; it is not constrained to positive or
- * finite values.
+ * `duration` is only `Schema.Finite`; it is not constrained to positive
+ * values.
  *
  * @see {@link ComputerUseHoldKeyAction} for another duration-based computer-use action
  * @see {@link ComputerUse_20250124} for the tool version that accepts this action
@@ -1187,7 +1187,7 @@ export const ComputerUseWaitAction = Schema.Struct({
   /**
    * The number of seconds to wait.
    */
-  duration: Schema.Number
+  duration: Schema.Finite
 })
 /**
  * Computer-use action payload for pausing for a specified duration.
@@ -1383,7 +1383,7 @@ export const ComputerUse_20251124 = Tool.providerDefined({
  * @category memory
  * @since 4.0.0
  */
-export const ViewRange = Schema.Tuple([Schema.Number, Schema.Number])
+export const ViewRange = Schema.Tuple([Schema.Int, Schema.Int])
 /**
  * A `[start, end]` 1-indexed line range for viewing file contents, using `-1` as the end value to read through the end of the file.
  *
@@ -1478,7 +1478,7 @@ export const MemoryInsertCommand = Schema.Struct({
   /**
    * The line at which the text should be inserted.
    */
-  insert_line: Schema.Number,
+  insert_line: Schema.Int,
   /**
    * The text to insert.
    */
@@ -1804,7 +1804,7 @@ export const TextEditorInsertCommand = Schema.Struct({
   /**
    * The line number after which to insert (0 = beginning, 1-indexed).
    */
-  insert_line: Schema.Number,
+  insert_line: Schema.Int,
   /**
    * The text to insert.
    */
@@ -1879,7 +1879,7 @@ const TextEditor_StrReplaceBasedEdit_Args = Schema.Struct({
    * Maximum number of characters to return when viewing large files.
    * When a file exceeds this limit, it will be truncated.
    */
-  max_characters: Schema.optional(Schema.Number)
+  max_characters: Schema.optional(Schema.Int)
 })
 
 // -----------------------------------------------------------------------------
@@ -2080,7 +2080,7 @@ export const WebSearch_20250305_Args = Schema.Struct({
   /**
    * Maximum number of searches allowed per API request.
    */
-  maxUses: Schema.optional(Schema.Number),
+  maxUses: Schema.optional(Schema.Int),
   /**
    * Restrict search results to only these domains.
    *
@@ -2263,7 +2263,7 @@ export const WebFetch_20250910_Args = Schema.Struct({
   /**
    * Maximum number of fetches allowed per API request.
    */
-  maxUses: Schema.optional(Schema.Number),
+  maxUses: Schema.optional(Schema.Int),
   /**
    * Restrict fetches to only these domains.
    *
@@ -2283,7 +2283,7 @@ export const WebFetch_20250910_Args = Schema.Struct({
   /**
    * Maximum content length in tokens.
    */
-  maxContentTokens: Schema.optional(Schema.Number)
+  maxContentTokens: Schema.optional(Schema.Int)
 })
 /**
  * Configuration arguments for the Anthropic web fetch tool, including usage limits, domain filters, citation settings, and token limits.

@@ -11,7 +11,7 @@ import * as Array from "effect/Array"
 import type * as Config from "effect/Config"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
-import { identity, pipe } from "effect/Function"
+import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Redacted from "effect/Redacted"
 import * as Schema from "effect/Schema"
@@ -99,9 +99,14 @@ export type Options = {
 }
 
 const RedactedOpenAiHeaders = {
-  OpenAiOrganization: "OpenAI-Organization",
-  OpenAiProject: "OpenAI-Project"
+  OpenAiOrganization: "openai-organization",
+  OpenAiProject: "openai-project"
 }
+
+const withRedactedHeaders = Effect.updateService(
+  Headers.CurrentRedactedNames,
+  Array.appendAll(Object.values(RedactedOpenAiHeaders))
+)
 
 /**
  * Constructs an OpenAI-compatible client service from explicit options.
@@ -175,24 +180,27 @@ export const make = Effect.fnUntraced(
       [body: CreateResponse200, response: HttpClientResponse.HttpClientResponse],
       AiError.AiError
     > =>
-      Effect.flatMap(resolveHttpClient, (client) =>
-        pipe(
-          HttpClientRequest.post("/chat/completions"),
-          HttpClientRequest.bodyJsonUnsafe(payload),
-          HttpClient.filterStatusOk(client).execute,
-          Effect.flatMap((response) =>
-            Effect.map(decodeResponse(response), (
-              body
-            ): [CreateResponse200, HttpClientResponse.HttpClientResponse] => [
-              body,
-              response
-            ])
-          ),
-          Effect.catchTags({
-            HttpClientError: (error) => Errors.mapHttpClientError(error, "createResponse"),
-            SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createResponse"))
-          })
-        ))
+      resolveHttpClient.pipe(
+        Effect.flatMap((client) =>
+          HttpClientRequest.post("/chat/completions").pipe(
+            HttpClientRequest.bodyJsonUnsafe(payload),
+            HttpClient.filterStatusOk(client).execute,
+            Effect.flatMap((response) =>
+              Effect.map(decodeResponse(response), (
+                body
+              ): [CreateResponse200, HttpClientResponse.HttpClientResponse] => [
+                body,
+                response
+              ])
+            ),
+            Effect.catchTags({
+              HttpClientError: (error) => Errors.mapHttpClientError(error, "createResponse"),
+              SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createResponse"))
+            })
+          )
+        ),
+        withRedactedHeaders
+      )
 
     const buildResponseStream = (
       response: HttpClientResponse.HttpClientResponse
@@ -217,40 +225,46 @@ export const make = Effect.fnUntraced(
     }
 
     const createResponseStream: Service["createResponseStream"] = (payload) =>
-      Effect.flatMap(resolveHttpClient, (client) =>
-        pipe(
-          HttpClientRequest.post("/chat/completions"),
-          HttpClientRequest.bodyJsonUnsafe({
-            ...payload,
-            stream: true,
-            stream_options: {
-              include_usage: true
-            }
-          }),
-          HttpClient.filterStatusOk(client).execute,
-          Effect.map(buildResponseStream),
-          Effect.catchTag(
-            "HttpClientError",
-            (error) => Errors.mapHttpClientError(error, "createResponseStream")
+      resolveHttpClient.pipe(
+        Effect.flatMap((client) =>
+          HttpClientRequest.post("/chat/completions").pipe(
+            HttpClientRequest.bodyJsonUnsafe({
+              ...payload,
+              stream: true,
+              stream_options: {
+                include_usage: true
+              }
+            }),
+            HttpClient.filterStatusOk(client).execute,
+            Effect.map(buildResponseStream),
+            Effect.catchTag(
+              "HttpClientError",
+              (error) => Errors.mapHttpClientError(error, "createResponseStream")
+            )
           )
-        ))
+        ),
+        withRedactedHeaders
+      )
 
     const decodeEmbedding = HttpClientResponse.schemaBodyJson(CreateEmbeddingResponseSchema)
 
     const createEmbedding = (
       payload: CreateEmbeddingRequestJson
     ): Effect.Effect<CreateEmbedding200, AiError.AiError> =>
-      Effect.flatMap(resolveHttpClient, (client) =>
-        pipe(
-          HttpClientRequest.post("/embeddings"),
-          HttpClientRequest.bodyJsonUnsafe(payload),
-          HttpClient.filterStatusOk(client).execute,
-          Effect.flatMap(decodeEmbedding),
-          Effect.catchTags({
-            HttpClientError: (error) => Errors.mapHttpClientError(error, "createEmbedding"),
-            SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createEmbedding"))
-          })
-        ))
+      resolveHttpClient.pipe(
+        Effect.flatMap((client) =>
+          HttpClientRequest.post("/embeddings").pipe(
+            HttpClientRequest.bodyJsonUnsafe(payload),
+            HttpClient.filterStatusOk(client).execute,
+            Effect.flatMap(decodeEmbedding),
+            Effect.catchTags({
+              HttpClientError: (error) => Errors.mapHttpClientError(error, "createEmbedding"),
+              SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createEmbedding"))
+            })
+          )
+        ),
+        withRedactedHeaders
+      )
 
     return OpenAiClient.of({
       client: httpClient,
@@ -259,10 +273,7 @@ export const make = Effect.fnUntraced(
       createEmbedding
     })
   },
-  Effect.updateService(
-    Headers.CurrentRedactedNames,
-    Array.appendAll(Object.values(RedactedOpenAiHeaders))
-  )
+  withRedactedHeaders
 )
 
 /**
@@ -1056,8 +1067,8 @@ export type CreateResponse200 = ChatCompletionResponse
 export type CreateResponse200Sse = ChatCompletionStreamEvent
 
 const EmbeddingSchema = Schema.Struct({
-  embedding: Schema.Union([Schema.Array(Schema.Number), Schema.String]),
-  index: Schema.Number,
+  embedding: Schema.Union([Schema.Array(Schema.Finite), Schema.String]),
+  index: Schema.Int,
   object: Schema.optionalKey(Schema.String)
 })
 
@@ -1066,8 +1077,8 @@ const CreateEmbeddingResponseSchema = Schema.Struct({
   model: Schema.String,
   object: Schema.optionalKey(Schema.Literal("list")),
   usage: Schema.optionalKey(Schema.Struct({
-    prompt_tokens: Schema.Number,
-    total_tokens: Schema.Number
+    prompt_tokens: Schema.Int,
+    total_tokens: Schema.Int
   }))
 })
 
@@ -1086,14 +1097,14 @@ const ChatCompletionToolFunctionDelta = Schema.Struct({
 
 const ChatCompletionToolCall = Schema.Struct({
   id: Schema.optionalKey(Schema.String),
-  index: Schema.optionalKey(Schema.Number),
+  index: Schema.optionalKey(Schema.Int),
   type: Schema.optionalKey(Schema.String),
   function: Schema.optionalKey(ChatCompletionToolFunction)
 })
 
 const ChatCompletionToolCallDelta = Schema.Struct({
   id: Schema.optionalKey(Schema.String),
-  index: Schema.optionalKey(Schema.Number),
+  index: Schema.optionalKey(Schema.Int),
   type: Schema.optionalKey(Schema.String),
   function: Schema.optionalKey(ChatCompletionToolFunctionDelta)
 })
@@ -1115,16 +1126,16 @@ const ChatCompletionDelta = Schema.Struct({
 })
 
 const ChatCompletionChoice = Schema.Struct({
-  index: Schema.Number,
+  index: Schema.Int,
   finish_reason: Schema.optionalKey(Schema.NullOr(Schema.String)),
   message: Schema.optionalKey(ChatCompletionMessage),
   delta: Schema.optionalKey(ChatCompletionDelta)
 })
 
 const ChatCompletionUsage = Schema.Struct({
-  prompt_tokens: Schema.Number,
-  completion_tokens: Schema.Number,
-  total_tokens: Schema.Number,
+  prompt_tokens: Schema.Int,
+  completion_tokens: Schema.Int,
+  total_tokens: Schema.Int,
   prompt_tokens_details: Schema.optionalKey(Schema.Any),
   completion_tokens_details: Schema.optionalKey(Schema.Any)
 })
@@ -1132,7 +1143,7 @@ const ChatCompletionUsage = Schema.Struct({
 const ChatCompletionResponse = Schema.Struct({
   id: Schema.String,
   model: Schema.String,
-  created: Schema.Number,
+  created: Schema.Int,
   choices: Schema.Array(ChatCompletionChoice),
   usage: Schema.optionalKey(Schema.NullOr(ChatCompletionUsage)),
   service_tier: Schema.optionalKey(Schema.String)
@@ -1141,7 +1152,7 @@ const ChatCompletionResponse = Schema.Struct({
 const ChatCompletionChunk = Schema.Struct({
   id: Schema.String,
   model: Schema.String,
-  created: Schema.Number,
+  created: Schema.Int,
   choices: Schema.Array(ChatCompletionChoice),
   usage: Schema.optionalKey(Schema.NullOr(ChatCompletionUsage)),
   service_tier: Schema.optionalKey(Schema.String)

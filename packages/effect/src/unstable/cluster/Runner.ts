@@ -29,7 +29,7 @@ const TypeId = "~effect/cluster/Runner"
 export class Runner extends Schema.Class<Runner>(TypeId)({
   address: RunnerAddress,
   groups: Schema.Array(Schema.String),
-  weight: Schema.Number
+  weight: Schema.Finite
 }) {
   /**
    * Formatter for rendering runner values consistently.

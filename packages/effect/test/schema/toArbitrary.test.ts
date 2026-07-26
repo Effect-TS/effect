@@ -1154,10 +1154,6 @@ describe("Arbitrary generation", () => {
       })))
     })
 
-    it("DateValid", () => {
-      verifyGeneration(Schema.DateValid)
-    })
-
     it("isGreaterThanOrEqualToBigInt", () => {
       verifyGeneration(Schema.BigInt.check(Schema.isGreaterThanOrEqualToBigInt(BigInt(0))))
     })
@@ -1221,7 +1217,7 @@ describe("Arbitrary generation", () => {
 
     it("non-natural Date order", () => {
       const order = Order.flip(Order.Date)
-      verifyGeneration(Schema.DateValid.check(Schema.makeIsGreaterThan({ order })(new Date(0))))
+      verifyGeneration(Schema.Date.check(Schema.makeIsGreaterThan({ order })(new Date(0))))
     })
 
     it("non-natural BigInt order", () => {
@@ -1418,6 +1414,12 @@ describe("Arbitrary generation", () => {
       verifyGeneration(Schema.String.check(Schema.isEndsWith("a")))
     })
 
+    it("literal string checks with regexp syntax", () => {
+      verifyGeneration(Schema.String.check(Schema.isStartsWith("a.b")))
+      verifyGeneration(Schema.String.check(Schema.isEndsWith("a+b")))
+      verifyGeneration(Schema.String.check(Schema.isIncludes("[")))
+    })
+
     it("Number", () => {
       verifyGeneration(Schema.Number)
     })
@@ -1530,17 +1532,9 @@ describe("Arbitrary generation", () => {
       })))
     })
 
-    it("isValidDate", () => {
-      verifyGeneration(Schema.Date.check(Schema.isDateValid()))
-    })
-
-    it("isValidDate & isGreaterThanOrEqualToDate", () => {
-      verifyGeneration(Schema.Date.check(Schema.isDateValid(), Schema.isGreaterThanOrEqualToDate(new Date(0))))
-    })
-
     it("Date with non-natural order", () => {
       const order = Order.flip(Order.Date)
-      verifyGeneration(Schema.DateValid.check(Schema.makeIsGreaterThan({ order })(new Date(0))))
+      verifyGeneration(Schema.Date.check(Schema.makeIsGreaterThan({ order })(new Date(0))))
     })
 
     it("isGreaterThanOrEqualToBigInt", () => {

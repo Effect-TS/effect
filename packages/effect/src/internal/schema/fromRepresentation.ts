@@ -41,7 +41,10 @@ function makeReviverMap(
     if (out.has(reviver.id)) {
       throw errorWithPath(`Duplicate reviver for ${reviver.id}`, ["revivers", index, "id"])
     }
-    out.set(reviver.id, reviver)
+    out.set(reviver.id, {
+      ...reviver,
+      payloadSchema: Schema.toCodecJson(reviver.payloadSchema)
+    })
   }
 
   return out

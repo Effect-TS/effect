@@ -307,9 +307,9 @@ export interface UnknownErrorMetadata extends ProviderMetadata {}
  * @since 4.0.0
  */
 export const UsageInfo = Schema.Struct({
-  promptTokens: Schema.optional(Schema.Number),
-  completionTokens: Schema.optional(Schema.Number),
-  totalTokens: Schema.optional(Schema.Number)
+  promptTokens: Schema.optional(Schema.Int),
+  completionTokens: Schema.optional(Schema.Int),
+  totalTokens: Schema.optional(Schema.Int)
 }).annotate({ identifier: "UsageInfo" })
 
 /**

@@ -73,6 +73,7 @@ describe("Schema", () => {
 
       assertTrue(error instanceof Error)
       assertTrue(Schema.isSchemaError(error))
+      assertFalse(Schema.isSchemaError({ "~effect/SchemaError/SchemaError": false }))
       strictEqual(error._tag, "SchemaError")
       strictEqual(error.name, "SchemaError")
       strictEqual(error.issue, result.failure)
@@ -1897,9 +1898,11 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
       const decoding = asserts.decoding()
       await decoding.succeed("2021-01-01T00:00:00.000Z", new Date("2021-01-01T00:00:00.000Z"))
+      await decoding.fail("invalid", `Expected a valid Date, got Invalid Date`)
 
       const encoding = asserts.encoding()
       await encoding.succeed(new Date("2021-01-01T00:00:00.000Z"), "2021-01-01T00:00:00.000Z")
+      await encoding.fail(new Date(NaN), `Expected a valid Date, got Invalid Date`)
     })
 
     it("DateFromMillis", async () => {
@@ -1911,17 +1914,18 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
       const decoding = asserts.decoding()
       await decoding.succeed(0, new Date(0))
-      assertTrue(Schema.decodeSync(schema)(NaN) instanceof Date)
-      assertTrue(Schema.decodeSync(schema)(Infinity) instanceof Date)
-      assertTrue(Schema.decodeSync(schema)(-Infinity) instanceof Date)
+      await decoding.fail(NaN, `Expected an integer, got NaN`)
+      await decoding.fail(Infinity, `Expected an integer, got Infinity`)
+      await decoding.fail(-Infinity, `Expected an integer, got -Infinity`)
       await decoding.fail(null, `Expected number, got null`)
+      await decoding.fail(8640000000000001, `Expected a valid Date, got Invalid Date`)
 
       const encoding = asserts.encoding()
       await encoding.succeed(new Date(0), 0)
-      strictEqual(Schema.encodeSync(schema)(new Date("invalid")), NaN)
-      strictEqual(Schema.encodeSync(schema)(new Date(NaN)), NaN)
-      strictEqual(Schema.encodeSync(schema)(new Date(Infinity)), NaN)
-      strictEqual(Schema.encodeSync(schema)(new Date(-Infinity)), NaN)
+      await encoding.fail(new Date("invalid"), `Expected a valid Date, got Invalid Date`)
+      await encoding.fail(new Date(NaN), `Expected a valid Date, got Invalid Date`)
+      await encoding.fail(new Date(Infinity), `Expected a valid Date, got Invalid Date`)
+      await encoding.fail(new Date(-Infinity), `Expected a valid Date, got Invalid Date`)
     })
 
     it("FiniteFromString", async () => {
@@ -4268,15 +4272,26 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await decoding.fail("a", `Expected exactly one member to match the input "a"`)
     })
 
-    it("{} & Literal", async () => {
+    it("Struct({}) preserves its semantics in a union", async () => {
       const schema = Schema.Union([
         Schema.Struct({}),
-        Schema.Literal("a")
+        Schema.Null
       ])
       const asserts = new TestSchema.Asserts(schema)
 
       const decoding = asserts.decoding()
+      const symbol = Symbol()
+      const fn = () => {}
+      await decoding.succeed("a")
+      await decoding.succeed(1)
+      await decoding.succeed(true)
+      await decoding.succeed(symbol)
+      await decoding.succeed(1n)
+      await decoding.succeed(fn)
+      await decoding.succeed({})
       await decoding.succeed([])
+      await decoding.succeed(null)
+      await decoding.fail(undefined, `Expected object | array | null, got undefined`)
     })
 
     describe("should exclude members based on failed sentinels", () => {
@@ -4812,17 +4827,13 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
     const decoding = asserts.decoding()
     await decoding.succeed(new Date("2021-01-01"))
-    await decoding.fail(null, `Expected Date, got null`)
-    await decoding.fail(0, `Expected Date, got 0`)
-  })
+    await decoding.fail(new Date(NaN), `Expected a valid Date, got Invalid Date`)
+    await decoding.fail(null, `Expected a valid Date, got null`)
+    await decoding.fail(0, `Expected a valid Date, got 0`)
 
-  it("DateValid", async () => {
-    const schema = Schema.DateValid
-    const asserts = new TestSchema.Asserts(schema)
-
-    if (verifyGeneration) {
-      asserts.arbitrary().verifyGeneration()
-    }
+    const encoding = asserts.encoding()
+    await encoding.succeed(new Date("2021-01-01"))
+    await encoding.fail(new Date(NaN), `Expected a valid Date, got Invalid Date`)
   })
 
   it("DateTimeUtc", async () => {
@@ -4850,7 +4861,7 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
     const decoding = asserts.decoding()
     await decoding.succeed(new Date("2021-01-01T00:00:00.000Z"), DateTime.makeUnsafe("2021-01-01T00:00:00.000Z"))
-    await decoding.fail(new Date("invalid date"), `Expected a valid date, got Invalid Date`)
+    await decoding.fail(new Date("invalid date"), `Expected a valid Date, got Invalid Date`)
 
     const encoding = asserts.encoding()
     await encoding.succeed(DateTime.makeUnsafe("2021-01-01T00:00:00.000Z"), new Date("2021-01-01T00:00:00.000Z"))
@@ -5182,11 +5193,14 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
     const decoding = asserts.decoding()
     await decoding.succeed(0n, Duration.zero)
     await decoding.succeed(1000n, Duration.nanos(1000n))
+    await decoding.succeed(-1000n, Duration.nanos(-1000n))
 
     const encoding = asserts.encoding()
     await encoding.succeed(Duration.millis(5), 5_000_000n)
     await encoding.succeed(Duration.nanos(5000n), 5000n)
+    await encoding.succeed(Duration.nanos(-5000n), -5000n)
     await encoding.fail(Duration.infinity, "Unable to encode Infinity into a bigint")
+    await encoding.fail(Duration.negativeInfinity, "Unable to encode -Infinity into a bigint")
   })
 
   it("DurationFromMillis", async () => {
@@ -5199,16 +5213,19 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
     const decoding = asserts.decoding()
     await decoding.succeed(Infinity, Duration.infinity)
+    await decoding.succeed(-Infinity, Duration.negativeInfinity)
     await decoding.succeed(0, Duration.millis(0))
+    await decoding.succeed(-1, Duration.millis(-1))
     await decoding.succeed(1000, Duration.seconds(1))
     await decoding.succeed(60 * 1000, Duration.minutes(1))
     await decoding.succeed(0.1, Duration.millis(0.1))
-    await decoding.fail(-1, "Expected a value greater than or equal to 0, got -1")
-    await decoding.fail(NaN, "Expected a value greater than or equal to 0, got NaN")
+    await decoding.succeed(NaN, Duration.zero)
 
     const encoding = asserts.encoding()
     await encoding.succeed(Duration.infinity, Infinity)
+    await encoding.succeed(Duration.negativeInfinity, -Infinity)
     await encoding.succeed(Duration.millis(NaN), 0)
+    await encoding.succeed(Duration.millis(-1), -1)
     await encoding.succeed(Duration.seconds(5), 5000)
     await encoding.succeed(Duration.millis(5000), 5000)
     await encoding.succeed(Duration.millis(0.1), 0.1)
@@ -6012,6 +6029,27 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       const parts = ["a", Schema.String] as const
       const schema = Schema.TemplateLiteralParser(parts)
       deepStrictEqual(schema.parts, parts)
+    })
+
+    it("preserves greedy segmentation at repeated literal anchors", async () => {
+      const schema = Schema.TemplateLiteralParser([Schema.String, ":", Schema.String])
+      const decoding = new TestSchema.Asserts(schema).decoding()
+
+      await decoding.succeed("a:b:c", ["a:b", ":", "c"])
+    })
+
+    it("backtracks from an invalid literal anchor", async () => {
+      const schema = Schema.TemplateLiteralParser([Schema.String, ":", Schema.NonEmptyString, "x"])
+      const decoding = new TestSchema.Asserts(schema).decoding()
+
+      await decoding.succeed("a:b:x", ["a", ":", "b:", "x"])
+    })
+
+    it("backtracks across an empty literal anchor", async () => {
+      const schema = Schema.TemplateLiteralParser([Schema.String, "", Schema.NonEmptyString])
+      const decoding = new TestSchema.Asserts(schema).decoding()
+
+      await decoding.succeed("a", ["", "", "a"])
     })
 
     it(`NonEmptyString + String`, async () => {
@@ -9326,6 +9364,34 @@ pointed message
     await encoding.fail(
       1.1,
       `Expected an integer, got 1.1`
+    )
+  })
+
+  it("Natural", async () => {
+    const schema = Schema.Natural
+    const asserts = new TestSchema.Asserts(schema)
+
+    if (verifyGeneration) {
+      asserts.arbitrary().verifyGeneration()
+    }
+
+    const decoding = asserts.decoding()
+    await decoding.succeed(0)
+    await decoding.succeed(1)
+    await decoding.fail(
+      -1,
+      `Expected a value greater than or equal to 0, got -1`
+    )
+    await decoding.fail(
+      1.1,
+      `Expected an integer, got 1.1`
+    )
+
+    const encoding = asserts.encoding()
+    await encoding.succeed(0)
+    await encoding.fail(
+      -1,
+      `Expected a value greater than or equal to 0, got -1`
     )
   })
 

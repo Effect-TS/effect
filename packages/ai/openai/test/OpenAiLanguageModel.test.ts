@@ -46,7 +46,10 @@ describe("OpenAiLanguageModel", () => {
 
             const systemMessage = body.input.find((m: any) => m.role === "system")
             assert.isDefined(systemMessage)
-            strictEqual(systemMessage.content, "You are a helpful assistant")
+            deepStrictEqual(systemMessage.content, [{
+              type: "input_text",
+              text: "You are a helpful assistant"
+            }])
           }).pipe(Effect.provide(makeTestLayer())))
 
         it.effect("uses developer role for reasoning models", () =>
@@ -63,7 +66,10 @@ describe("OpenAiLanguageModel", () => {
 
             const devMessage = body.input.find((m: any) => m.role === "developer")
             assert.isDefined(devMessage)
-            strictEqual(devMessage.content, "You are a helpful assistant")
+            deepStrictEqual(devMessage.content, [{
+              type: "input_text",
+              text: "You are a helpful assistant"
+            }])
           }).pipe(Effect.provide(makeTestLayer({ body: { model: "o1" } }))))
 
         it.effect("uses developer role for gpt-5 models", () =>
