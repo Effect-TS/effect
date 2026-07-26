@@ -32,15 +32,23 @@ type MetricDataWithInstrumentDescriptor = MetricData & {
 
 /** @internal */
 export class MetricProducerImpl implements MetricProducer {
-  readonly resource: Resources.Resource
+  constructor(readonly resource: Resources.Resource) {}
+
+  startTimes = new Map<string, HrTime>()
+
   readonly readers: Array<MetricReader> = []
   private warnedConflictingTemporalities = false
 
-  constructor(resource: Resources.Resource) {
-    this.resource = resource
+  addReaders(readers: ReadonlyArray<MetricReader>) {
+    for (const reader of readers) this.readers.push(reader)
   }
 
-  startTimes = new Map<string, HrTime>()
+  removeReaders(readers: ReadonlyArray<MetricReader>) {
+    for (const reader of readers) {
+      const index = this.readers.indexOf(reader)
+      if (index !== -1) this.readers.splice(index, 1)
+    }
+  }
 
   startTimeFor(name: string, hrTime: HrTime) {
     if (this.startTimes.has(name)) {
@@ -50,14 +58,21 @@ export class MetricProducerImpl implements MetricProducer {
     return hrTime
   }
 
-  private temporalityFor(descriptorType: InstrumentType): AggregationTemporality {
+  /**
+   * Resolves the `AggregationTemporality` for an instrument type by asking the
+   * registered readers for their preference. Must be called with the type of the
+   * descriptor the data point is actually emitted under -- temporality selectors
+   * are per instrument type, so e.g. a summary's `_count`/`_sum` (emitted as
+   * `COUNTER`) can resolve differently to the summary itself (`UP_DOWN_COUNTER`).
+   */
+  private temporalityFor(instrumentType: InstrumentType): AggregationTemporality {
     if (this.readers.length === 0) {
       return AggregationTemporality.CUMULATIVE
     }
-    const selected = this.readers[0].selectAggregationTemporality(descriptorType)
+    const selected = this.readers[0].selectAggregationTemporality(instrumentType)
     if (
       this.readers.length > 1 &&
-      this.readers.some((r) => r.selectAggregationTemporality(descriptorType) !== selected)
+      this.readers.some((r) => r.selectAggregationTemporality(instrumentType) !== selected)
     ) {
       if (!this.warnedConflictingTemporalities) {
         this.warnedConflictingTemporalities = true
@@ -88,7 +103,6 @@ export class MetricProducerImpl implements MetricProducer {
       })
       const descriptor = descriptorFromKey(metricKey, attributes)
       const startTime = this.startTimeFor(descriptor.name, hrTimeNow)
-      const temporality = this.temporalityFor(descriptor.type)
 
       if (MetricState.isCounterState(metricState)) {
         const dataPoint: DataPoint<number> = {
@@ -104,7 +118,7 @@ export class MetricProducerImpl implements MetricProducer {
             dataPointType: DataPointType.SUM,
             descriptor,
             isMonotonic: descriptor.type === InstrumentType.COUNTER,
-            aggregationTemporality: temporality,
+            aggregationTemporality: this.temporalityFor(descriptor.type),
             dataPoints: [dataPoint]
           })
         }
@@ -121,7 +135,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.GAUGE,
             descriptor,
-            aggregationTemporality: temporality,
+            aggregationTemporality: this.temporalityFor(descriptor.type),
             dataPoints: [dataPoint]
           })
         }
@@ -160,7 +174,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.HISTOGRAM,
             descriptor,
-            aggregationTemporality: temporality,
+            aggregationTemporality: this.temporalityFor(descriptor.type),
             dataPoints: [dataPoint]
           })
         }
@@ -184,7 +198,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.SUM,
             descriptor: descriptorFromKey(metricKey, attributes),
-            aggregationTemporality: temporality,
+            aggregationTemporality: this.temporalityFor(descriptor.type),
             isMonotonic: true,
             dataPoints
           })
@@ -232,7 +246,7 @@ export class MetricProducerImpl implements MetricProducer {
           addMetricData({
             dataPointType: DataPointType.SUM,
             descriptor: descriptorFromKey(metricKey, attributes, "quantiles"),
-            aggregationTemporality: temporality,
+            aggregationTemporality: this.temporalityFor(descriptor.type),
             isMonotonic: false,
             dataPoints
           })
@@ -244,7 +258,7 @@ export class MetricProducerImpl implements MetricProducer {
               type: InstrumentType.COUNTER,
               valueType: ValueType.INT
             },
-            aggregationTemporality: temporality,
+            aggregationTemporality: this.temporalityFor(InstrumentType.COUNTER),
             isMonotonic: true,
             dataPoints: [countDataPoint]
           })
@@ -256,7 +270,7 @@ export class MetricProducerImpl implements MetricProducer {
               type: InstrumentType.COUNTER,
               valueType: ValueType.DOUBLE
             },
-            aggregationTemporality: temporality,
+            aggregationTemporality: this.temporalityFor(InstrumentType.COUNTER),
             isMonotonic: true,
             dataPoints: [sumDataPoint]
           })
@@ -334,8 +348,11 @@ export const registerProducer = (
     Effect.sync(() => {
       const reader = metricReader()
       const readers: Array<MetricReader> = Array.isArray(reader) ? reader : [reader] as any
+      // `collect` needs the readers to resolve their preferred temporality, but the
+      // `MetricProducer` interface only hands the producer to the reader, not the
+      // reverse -- so record them here. `self` may be a user-supplied producer.
       if (self instanceof MetricProducerImpl) {
-        for (const r of readers) self.readers.push(r)
+        self.addReaders(readers)
       }
       readers.forEach((reader) => reader.setMetricProducer(self))
       return readers
@@ -348,7 +365,12 @@ export const registerProducer = (
       ).pipe(
         Effect.ignoreLogged,
         Effect.interruptible,
-        Effect.timeoutOption(options?.shutdownTimeout ?? 3000)
+        Effect.timeoutOption(options?.shutdownTimeout ?? 3000),
+        Effect.ensuring(Effect.sync(() => {
+          if (self instanceof MetricProducerImpl) {
+            self.removeReaders(readers)
+          }
+        }))
       )
   )
 
