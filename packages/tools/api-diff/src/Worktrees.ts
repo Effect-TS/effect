@@ -194,10 +194,12 @@ export class Worktrees extends Context.Service<Worktrees, {
                       })
                   )
                 )
-                const encoded = yield* Effect.try({
-                  try: () => JSON.stringify(snapshot),
-                  catch: () => undefined
-                })
+                let encoded: string | undefined
+                try {
+                  encoded = JSON.stringify(snapshot)
+                } catch {
+                  encoded = undefined
+                }
                 if (encoded !== undefined) {
                   yield* fs.makeDirectory(path.dirname(cacheLocation), { recursive: true })
                   yield* fs.writeFileString(cacheLocation, encoded).pipe(

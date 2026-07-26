@@ -10,6 +10,8 @@ export interface MigrationAnnotation {
   readonly example?: string | undefined
 }
 
+const compareStrings = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0
+
 const parseAnnotation = (id: string, value: unknown, file: string): MigrationAnnotation => {
   if (
     typeof value !== "object" || value === null ||
@@ -36,7 +38,7 @@ const loadAnnotationsInternal = Effect.fnUntraced(function*(directory: string) {
   const annotations = new Map<string, MigrationAnnotation>()
   const files = (yield* fs.readDirectory(directory))
     .filter((file) => file.endsWith(".yaml") || file.endsWith(".yml"))
-    .sort((left, right) => left.localeCompare(right))
+    .sort(compareStrings)
   for (const file of files) {
     const source = yield* fs.readFileString(path.join(directory, file))
     const document = yield* Effect.try({
@@ -46,7 +48,7 @@ const loadAnnotationsInternal = Effect.fnUntraced(function*(directory: string) {
     if (typeof document !== "object" || document === null || Array.isArray(document)) {
       return yield* new ApiDiffError({ message: `Annotation file ${file} must contain an object` })
     }
-    for (const [id, value] of Object.entries(document).sort(([left], [right]) => left.localeCompare(right))) {
+    for (const [id, value] of Object.entries(document).sort(([left], [right]) => compareStrings(left, right))) {
       if (annotations.has(id)) {
         return yield* new ApiDiffError({ message: `Duplicate annotation id ${id}` })
       }

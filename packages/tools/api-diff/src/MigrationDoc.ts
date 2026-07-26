@@ -21,6 +21,8 @@ const breakingClassifications = new Set<ChangeClassification>([
 
 const stableApiId = (id: string): string => id.replace(/#(?:type|value)$/, "")
 
+const compareStrings = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0
+
 const isBreakingChange = (change: ApiChange): boolean => {
   if (change.classification !== "parameter-added") {
     return breakingClassifications.has(change.classification)
@@ -77,7 +79,7 @@ const migrationEntries = (diff: ApiDiff): ReadonlyArray<MigrationEntry> => {
       detailed: breaking || rename === undefined
     })
   }
-  return entries.sort((left, right) => left.module.localeCompare(right.module) || left.id.localeCompare(right.id))
+  return entries.sort((left, right) => compareStrings(left.module, right.module) || compareStrings(left.id, right.id))
 }
 
 const codeBlock = (label: string, source: string | undefined): ReadonlyArray<string> =>
