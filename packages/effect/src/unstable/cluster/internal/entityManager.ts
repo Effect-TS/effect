@@ -141,7 +141,6 @@ export const make = Effect.fnUntraced(function*<
       closed: Latch.makeUnsafe(),
       force: Latch.makeUnsafe()
     }
-    serverCloseLatches.set(address, closeLatches)
 
     // on shutdown, reset the storage for the entity
     yield* Scope.addFinalizerExit(
@@ -394,6 +393,8 @@ export const make = Effect.fnUntraced(function*<
         )
       })
     )
+    // Do not make shard interruption wait for an entity that is still building.
+    serverCloseLatches.set(address, closeLatches)
     activeServers.set(address.entityId, state)
 
     return state

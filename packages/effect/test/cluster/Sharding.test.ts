@@ -739,6 +739,74 @@ describe("Sharding shard lock failover", () => {
       }).pipe(Effect.provide(layer), Effect.scoped)
     }))
 
+  it.effect("does not wait for entity construction before a forced shard release", () =>
+    Effect.gen(function*() {
+      const storageState = makeFailoverStorageState()
+      const runnerStorage = Layer.effect(
+        RunnerStorage.RunnerStorage,
+        Effect.map(Clock.Clock, (clock) => makeFailoverStorage(storageState, clock))
+      )
+      const config = ShardingConfig.layer({
+        runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+        shardsPerGroup: 1,
+        shardLockExpiration: 300,
+        shardLockRefreshInterval: 1000,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 10,
+        refreshAssignmentsInterval: 10,
+        sendRetryInterval: 10
+      })
+      const layer = TestEntityNoState.pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(runnerStorage),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provideMerge(TestEntityState.layer),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide([MessageStorage.layerMemory, Snowflake.layerGenerator]),
+        Layer.provide(config)
+      )
+
+      yield* Effect.gen(function*() {
+        const sharding = yield* Sharding.Sharding
+        const entityState = yield* TestEntityState
+        const makeClient = yield* TestEntity.client
+        const client = makeClient("1")
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+
+        while (!sharding.hasShardId(shardId)) {
+          yield* TestClock.adjust(10)
+        }
+        while (!storageState.refreshCalls.some((call) => call.shards.length > 0)) {
+          yield* TestClock.adjust(100)
+        }
+
+        yield* Effect.gen(function*() {
+          entityState.buildLatch.closeUnsafe()
+          const entityFiber = yield* client.GetUserVolatile({ id: 1 }).pipe(
+            Effect.forkChild({ startImmediately: true })
+          )
+          while (entityState.layerBuilds.current === 0) {
+            yield* TestClock.adjust(1)
+          }
+
+          storageState.blackholed = true
+          yield* TestClock.adjust(201)
+          assert.isFalse(sharding.hasShardId(shardId))
+
+          storageState.blackholed = false
+          yield* TestClock.adjust(1000)
+
+          assert.strictEqual(storageState.releaseAllCalls.length, 1)
+          entityState.buildLatch.openUnsafe()
+          yield* TestClock.adjust(1)
+          yield* Fiber.interrupt(entityFiber)
+        }).pipe(Effect.ensuring(entityState.buildLatch.open))
+      }).pipe(
+        Effect.provide(layer),
+        Effect.scoped
+      )
+    }))
+
   it.effect("does not acquire shards while a forced release is pending", () =>
     Effect.gen(function*() {
       const shardsPerGroup = 4
