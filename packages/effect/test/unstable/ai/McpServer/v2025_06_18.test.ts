@@ -35,7 +35,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   describe("Utilities", () => {
     describe("Progress", () => {
       it.effect("SCHEMA accepts the optional progress message", () =>
-        Effect.f(function*() {
+        Effect.gen(function*() {
           const test = yield* McpConformanceTest
           const initialized = yield* test.initialize()
           yield* test.notifyInitialized(initialized)

@@ -1,40 +1,141 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
+import * as Effect from "effect/Effect"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
-import type { TestLayer } from "./McpConformanceTest.ts"
+import { McpConformanceTest, type TestLayer } from "./McpConformanceTest.ts"
 
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Utilities", () => {
       describe("Ping", () => {
         // https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/ping
-        it.skip("MUST responds to a client ping with an empty result", () => {})
-        it.skip("MAY can send a ping to an initialized client", () => {})
-        it.skip("SCENARIO keeps ping failures isolated to the unresponsive peer", () => {})
+        it.effect("MUST respond to a client ping with an empty result", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformanceTest
+            const initialized = yield* test.initialize()
+            yield* test.notifyInitialized(initialized)
+
+            const response = yield* test.ping(initialized, { id: 42 })
+            const message = yield* test.decodeResult(response)
+
+            assert.strictEqual(response.status, 200)
+            assert.strictEqual(message.id, 42)
+            assert.deepStrictEqual(message.result, {})
+          }))
       })
 
       describe("Cancellation", () => {
         // https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/cancellation
-        it.skip("MUST accepts a cancellation notification for an in-flight request", () => {})
-        it.skip("MUST uses the original request identifier in a cancellation notification", () => {})
-        it.skip("MUST does not send a response to a cancellation notification", () => {})
-        it.skip("SHOULD stops work on the cancelled request", () => {})
-        it.skip("MUST does not return a successful response after cancellation", () => {})
-        it.skip("MUST ignores cancellation for an unknown request identifier", () => {})
-        it.skip("MUST ignores cancellation for an already completed request", () => {})
-        it.skip("SCENARIO does not cancel unrelated concurrent requests", () => {})
-        it.skip("MUST does not send cancellation notifications for initialize", () => {})
+        it.effect("MUST not send a response to a cancellation notification", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformanceTest
+            const initialized = yield* test.initialize()
+            yield* test.notifyInitialized(initialized)
+
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              method: "notifications/cancelled",
+              params: {
+                requestId: "unknown-request",
+                reason: "No longer needed"
+              }
+            })
+
+            assert.strictEqual(response.status, 202)
+            assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          }))
+        // HARNESS: Requires a deterministically gated in-flight request and an
+        // observable server response stream.
+        it.skip("SHOULD stop work and suppress the response after cancellation", () => {})
+        it.effect("SHOULD ignore cancellation for an unknown request identifier", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformanceTest
+            const initialized = yield* test.initialize()
+            yield* test.notifyInitialized(initialized)
+
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              method: "notifications/cancelled",
+              params: { requestId: 999 }
+            })
+
+            assert.strictEqual(response.status, 202)
+            assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          }))
+        it.effect("SHOULD ignore cancellation for an already completed request identifier", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformanceTest
+            const initialized = yield* test.initialize()
+            yield* test.notifyInitialized(initialized)
+            yield* test.ping(initialized, { id: 11 })
+
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              method: "notifications/cancelled",
+              params: { requestId: 11 }
+            })
+
+            assert.strictEqual(response.status, 202)
+            assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          }))
       })
 
       describe("Progress", () => {
         // https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/progress
-        it.skip("MUST accepts string progress tokens", () => {})
-        it.skip("MUST accepts numeric progress tokens", () => {})
-        it.skip("MUST echoes the requested token in progress notifications", () => {})
-        it.skip("MUST associates progress notifications with only the originating request", () => {})
-        it.skip("MUST does not emit progress when the request omitted a progress token", () => {})
-        it.skip("MUST reports non-decreasing progress values", () => {})
-        it.skip("SCHEMA preserves the optional total and message", () => {})
-        it.skip("MUST does not reuse an active progress token for another request", () => {})
+        it.effect("MUST accept string progress tokens", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformanceTest
+            const initialized = yield* test.initialize()
+            yield* test.notifyInitialized(initialized)
+
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              method: "notifications/progress",
+              params: {
+                progressToken: "task-1",
+                progress: 1
+              }
+            })
+
+            assert.strictEqual(response.status, 202)
+            assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          }))
+        it.effect("MUST accept numeric progress tokens", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformanceTest
+            const initialized = yield* test.initialize()
+            yield* test.notifyInitialized(initialized)
+
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              method: "notifications/progress",
+              params: {
+                progressToken: 12,
+                progress: 1
+              }
+            })
+
+            assert.strictEqual(response.status, 202)
+            assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          }))
+        it.effect("SCHEMA accepts the optional total", () =>
+          Effect.gen(function*() {
+            const test = yield* McpConformanceTest
+            const initialized = yield* test.initialize()
+            yield* test.notifyInitialized(initialized)
+
+            const response = yield* test.send(initialized, {
+              jsonrpc: "2.0",
+              method: "notifications/progress",
+              params: {
+                progressToken: "task-with-total",
+                progress: 1,
+                total: 2
+              }
+            })
+
+            assert.strictEqual(response.status, 202)
+            assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          }))
       })
     })
   })
