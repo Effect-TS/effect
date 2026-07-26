@@ -4,7 +4,7 @@
 
 Base: `v3` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `main` (`5101e92c9c149c153423f43dd7a94f6194653c06`)
+Head: `main` (`9b16adb8f9f607d1a5b74c2ac125d437e2c23c98`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -25310,7 +25310,7 @@ export declare class ActivityItem extends ActivityItem_base { }
 **After**
 
 ```ts
-export type ActivityItem = { readonly "date": string; readonly "model": string; readonly "model_permaslug": string; readonly "endpoint_id": string; readonly "provider_name": string; readonly "usage": number; readonly "byok_usage_inference": number; readonly "requests": number; readonly "prompt_tokens": number; readonly "completion_tokens": number; readonly "reasoning_tokens": number; };
+export type ActivityItem = { readonly "byok_usage_inference": number; readonly "completion_tokens": number; readonly "date": string; readonly "endpoint_id": string; readonly "model": string; readonly "model_permaslug": string; readonly "prompt_tokens": number; readonly "provider_name": string; readonly "reasoning_tokens": number; readonly "requests": number; readonly "usage": number; };
 ```
 
 #### `@effect/ai-openrouter/Generated#AnnotationDetail`
@@ -25331,12 +25331,6 @@ TODO: needs guidance
 
 ```ts
 export declare class AnthropicMessagesRequest extends AnthropicMessagesRequest_base { }
-```
-
-**After**
-
-```ts
-export type AnthropicMessagesRequest = { readonly "model": string; readonly "max_tokens": number; readonly "messages": ReadonlyArray<OpenRouterAnthropicMessageParam>; readonly "system"?: string | ReadonlyArray<{ readonly "type": "text"; readonly "text": string; readonly "citations"?: ReadonlyArray<{ readonly "type": "char_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_char_index": number; readonly "end_char_index": number; } | { readonly "type": "page_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_page_number": number; readonly "end_page_number": number; } | { readonly "type": "content_block_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_block_index": number; readonly "end_block_index": number; } | { readonly "type": "web_search_result_location"; readonly "cited_text": string; readonly "encrypted_index": string; readonly "title": string; readonly "url": string; } | { readonly "type": "search_result_location"; readonly "cited_text": string; readonly "search_result_index": number; readonly "source": string; readonly "title": string; readonly "start_block_index": number; readonly "end_block_index": number; }>; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; }>; readonly "metadata"?: { readonly "user_id"?: string; }; readonly "stop_sequences"?: ReadonlyArray<string>; readonly "stream"?: boolean; readonly "temperature"?: number; readonly "top_p"?: number; readonly "top_k"?: number; readonly "tools"?: ReadonlyArray<{ readonly "name": string; readonly "description"?: string; readonly "input_schema": { readonly "type": "object"; readonly "properties"?: unknown; readonly "required"?: ReadonlyArray<string>; }; readonly "type"?: "custom"; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "bash_20250124"; readonly "name": "bash"; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "text_editor_20250124"; readonly "name": "str_replace_editor"; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "web_search_20250305"; readonly "name": "web_search"; readonly "allowed_domains"?: ReadonlyArray<string>; readonly "blocked_domains"?: ReadonlyArray<string>; readonly "max_uses"?: number; readonly "user_location"?: { readonly "type": "approximate"; readonly "city"?: string; readonly "country"?: string; readonly "region"?: string; readonly "timezone"?: string; }; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; }>; readonly "tool_choice"?: { readonly "type": "auto"; readonly "disable_parallel_tool_use"?: boolean; } | { readonly "type": "any"; readonly "disable_parallel_tool_use"?: boolean; } | { readonly "type": "none"; } | { readonly "type": "tool"; readonly "name": string; readonly "disable_parallel_tool_use"?: boolean; }; readonly "thinking"?: { readonly "type": "enabled"; readonly "budget_tokens": number; } | { readonly "type": "disabled"; } | { readonly "type": "adaptive"; }; readonly "service_tier"?: "auto" | "standard_only"; readonly "provider"?: { readonly "allow_fallbacks"?: boolean; readonly "require_parameters"?: boolean; readonly "data_collection"?: DataCollection; readonly "zdr"?: boolean; readonly "enforce_distillable_text"?: boolean; readonly "order"?: ReadonlyArray<ProviderName | string>; readonly "only"?: ReadonlyArray<ProviderName | string>; readonly "ignore"?: ReadonlyArray<ProviderName | string>; readonly "quantizations"?: ReadonlyArray<Quantization>; readonly "sort"?: "price" | "price" | "throughput" | "throughput" | "latency" | "latency"; readonly "max_price"?: { readonly "prompt"?: BigNumberUnion; readonly "completion"?: string; readonly "image"?: string; readonly "audio"?: string; readonly "request"?: string; }; readonly "preferred_min_throughput"?: PreferredMinThroughput; readonly "preferred_max_latency"?: PreferredMaxLatency; }; readonly "plugins"?: ReadonlyArray<{ readonly "id": "auto-router"; readonly "enabled"?: boolean; readonly "allowed_models"?: ReadonlyArray<string>; } | { readonly "id": "moderation"; } | { readonly "id": "web"; readonly "enabled"?: boolean; readonly "max_results"?: number; readonly "search_prompt"?: string; readonly "engine"?: WebSearchEngine; } | { readonly "id": "file-parser"; readonly "enabled"?: boolean; readonly "pdf"?: PDFParserOptions; } | { readonly "id": "response-healing"; readonly "enabled"?: boolean; }>; readonly "route"?: "fallback" | "sort"; readonly "user"?: string; readonly "session_id"?: string; readonly "trace"?: { readonly "trace_id"?: string; readonly "trace_name"?: string; readonly "span_name"?: string; readonly "generation_name"?: string; readonly "parent_span_id"?: string; }; readonly "models"?: ReadonlyArray<string>; readonly "output_config"?: AnthropicOutputConfig; };
 ```
 
 #### `@effect/ai-openrouter/Generated#AnthropicMessagesRequestProviderSort`
@@ -25399,12 +25393,6 @@ TODO: needs guidance
 export declare class AnthropicMessagesResponse extends AnthropicMessagesResponse_base { }
 ```
 
-**After**
-
-```ts
-export type AnthropicMessagesResponse = { readonly "id": string; readonly "type": "message"; readonly "role": "assistant"; readonly "content": ReadonlyArray<{ readonly "type": "text"; readonly "text": string; readonly "citations": ReadonlyArray<{ readonly "type": "char_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_char_index": number; readonly "end_char_index": number; readonly "file_id": string; } | { readonly "type": "page_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_page_number": number; readonly "end_page_number": number; readonly "file_id": string; } | { readonly "type": "content_block_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_block_index": number; readonly "end_block_index": number; readonly "file_id": string; } | { readonly "type": "web_search_result_location"; readonly "cited_text": string; readonly "encrypted_index": string; readonly "title": string; readonly "url": string; } | { readonly "type": "search_result_location"; readonly "cited_text": string; readonly "search_result_index": number; readonly "source": string; readonly "title": string; readonly "start_block_index": number; readonly "end_block_index": number; }>; } | { readonly "type": "tool_use"; readonly "id": string; readonly "name": string; readonly "input"?: unknown; } | { readonly "type": "thinking"; readonly "thinking": string; readonly "signature": string; } | { readonly "type": "redacted_thinking"; readonly "data": string; } | { readonly "type": "server_tool_use"; readonly "id": string; readonly "name": "web_search"; readonly "input"?: unknown; } | { readonly "type": "web_search_tool_result"; readonly "tool_use_id": string; readonly "content": ReadonlyArray<{ readonly "type": "web_search_result"; readonly "encrypted_content": string; readonly "page_age": string; readonly "title": string; readonly "url": string; }> | { readonly "type": "web_search_tool_result_error"; readonly "error_code": "invalid_tool_input" | "unavailable" | "max_uses_exceeded" | "too_many_requests" | "query_too_long"; }; }>; readonly "model": string; readonly "stop_reason": "end_turn" | "max_tokens" | "stop_sequence" | "tool_use" | "pause_turn" | "refusal"; readonly "stop_sequence": string; readonly "usage": { readonly "input_tokens": number; readonly "output_tokens": number; readonly "cache_creation_input_tokens": number; readonly "cache_read_input_tokens": number; readonly "cache_creation": { readonly "ephemeral_5m_input_tokens": number; readonly "ephemeral_1h_input_tokens": number; }; readonly "inference_geo": string; readonly "server_tool_use": { readonly "web_search_requests": number; }; readonly "service_tier": "standard" | "priority" | "batch"; }; };
-```
-
 #### `@effect/ai-openrouter/Generated#AnthropicMessagesResponseRole`
 
 TODO: needs guidance
@@ -25455,12 +25443,6 @@ TODO: needs guidance
 export declare class AssistantMessage extends AssistantMessage_base { }
 ```
 
-**After**
-
-```ts
-export type AssistantMessage = { readonly "role": "assistant"; readonly "content"?: string | ReadonlyArray<ChatMessageContentItem> | null; readonly "name"?: string; readonly "tool_calls"?: ReadonlyArray<ChatMessageToolCall>; readonly "refusal"?: string | null; readonly "reasoning"?: string | null; readonly "reasoning_details"?: ReadonlyArray<__schema20>; readonly "images"?: ReadonlyArray<{ readonly "type": "image_url"; readonly "image_url": { readonly "url": string; }; }> | null; readonly "annotations"?: ReadonlyArray<{ readonly "type": "url_citation"; readonly "url_citation": { readonly "url": string; readonly "title"?: string; readonly "start_index"?: number; readonly "end_index"?: number; readonly "content"?: string; }; } | { readonly "type": "file_annotation"; readonly "file_annotation": { readonly "file_id": string; readonly "quote"?: string; }; } | { readonly "type": "file"; readonly "file": { readonly "hash": string; readonly "name": string; readonly "content"?: ReadonlyArray<{ readonly "type": string; readonly "text"?: string; }>; }; }> | null; };
-```
-
 #### `@effect/ai-openrouter/Generated#BadGatewayResponse`
 
 TODO: needs guidance
@@ -25474,7 +25456,7 @@ export declare class BadGatewayResponse extends BadGatewayResponse_base { }
 **After**
 
 ```ts
-export type BadGatewayResponse = { readonly "error": BadGatewayResponseErrorData; readonly "user_id"?: string; };
+export type BadGatewayResponse = { readonly "error": BadGatewayResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#BadGatewayResponseErrorData`
@@ -25490,7 +25472,7 @@ export declare class BadGatewayResponseErrorData extends BadGatewayResponseError
 **After**
 
 ```ts
-export type BadGatewayResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type BadGatewayResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#BadRequestResponse`
@@ -25506,7 +25488,7 @@ export declare class BadRequestResponse extends BadRequestResponse_base { }
 **After**
 
 ```ts
-export type BadRequestResponse = { readonly "error": BadRequestResponseErrorData; readonly "user_id"?: string; };
+export type BadRequestResponse = { readonly "error": BadRequestResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#BadRequestResponseErrorData`
@@ -25522,7 +25504,7 @@ export declare class BadRequestResponseErrorData extends BadRequestResponseError
 **After**
 
 ```ts
-export type BadRequestResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type BadRequestResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#BigNumberUnion`
@@ -25533,12 +25515,6 @@ TODO: needs guidance
 
 ```ts
 export declare class BigNumberUnion extends S.String { }
-```
-
-**After**
-
-```ts
-export type BigNumberUnion = string;
 ```
 
 #### `@effect/ai-openrouter/Generated#BulkAssignKeysToGuardrail200`
@@ -25554,7 +25530,7 @@ export declare class BulkAssignKeysToGuardrail200 extends BulkAssignKeysToGuardr
 **After**
 
 ```ts
-export type BulkAssignKeysToGuardrail200 = { readonly "assigned_count": number; };
+export type BulkAssignKeysToGuardrail200 = BulkAssignKeysResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#BulkAssignKeysToGuardrailRequest`
@@ -25580,7 +25556,7 @@ export declare class BulkAssignMembersToGuardrail200 extends BulkAssignMembersTo
 **After**
 
 ```ts
-export type BulkAssignMembersToGuardrail200 = { readonly "assigned_count": number; };
+export type BulkAssignMembersToGuardrail200 = BulkAssignMembersResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#BulkAssignMembersToGuardrailRequest`
@@ -25606,7 +25582,7 @@ export declare class BulkUnassignKeysFromGuardrail200 extends BulkUnassignKeysFr
 **After**
 
 ```ts
-export type BulkUnassignKeysFromGuardrail200 = { readonly "unassigned_count": number; };
+export type BulkUnassignKeysFromGuardrail200 = BulkUnassignKeysResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#BulkUnassignKeysFromGuardrailRequest`
@@ -25632,7 +25608,7 @@ export declare class BulkUnassignMembersFromGuardrail200 extends BulkUnassignMem
 **After**
 
 ```ts
-export type BulkUnassignMembersFromGuardrail200 = { readonly "unassigned_count": number; };
+export type BulkUnassignMembersFromGuardrail200 = BulkUnassignMembersResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#BulkUnassignMembersFromGuardrailRequest`
@@ -25665,12 +25641,6 @@ TODO: needs guidance
 export declare class ChatCompletionFinishReason extends ChatCompletionFinishReason_base { }
 ```
 
-**After**
-
-```ts
-export type ChatCompletionFinishReason = "tool_calls" | "stop" | "length" | "content_filter" | "error";
-```
-
 #### `@effect/ai-openrouter/Generated#ChatError`
 
 TODO: needs guidance
@@ -25681,12 +25651,6 @@ TODO: needs guidance
 export declare class ChatError extends ChatError_base { }
 ```
 
-**After**
-
-```ts
-export type ChatError = { readonly "error": { readonly "code": string | number | null; readonly "message": string; readonly "param"?: string | null; readonly "type"?: string | null; }; };
-```
-
 #### `@effect/ai-openrouter/Generated#ChatGenerationParams`
 
 TODO: needs guidance
@@ -25695,12 +25659,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ChatGenerationParams extends ChatGenerationParams_base { }
-```
-
-**After**
-
-```ts
-export type ChatGenerationParams = { readonly "provider"?: { readonly "allow_fallbacks"?: boolean | null; readonly "require_parameters"?: boolean | null; readonly "data_collection"?: "deny" | "allow" | null; readonly "zdr"?: boolean | null; readonly "enforce_distillable_text"?: boolean | null; readonly "order"?: __schema5 | null; readonly "only"?: __schema5 | null; readonly "ignore"?: __schema5 | null; readonly "quantizations"?: ReadonlyArray<"int4" | "int8" | "fp4" | "fp6" | "fp8" | "fp16" | "bf16" | "fp32" | "unknown"> | null; readonly "sort"?: ProviderSortUnion | null; readonly "max_price"?: { readonly "prompt"?: __schema11 | ModelName | __schema13; readonly "completion"?: __schema11 | ModelName | __schema13; readonly "image"?: __schema14; readonly "audio"?: __schema14; readonly "request"?: __schema14; }; readonly "preferred_min_throughput"?: number | { readonly "p50"?: number | null; readonly "p75"?: number | null; readonly "p90"?: number | null; readonly "p99"?: number | null; } | null; readonly "preferred_max_latency"?: number | { readonly "p50"?: number | null; readonly "p75"?: number | null; readonly "p90"?: number | null; readonly "p99"?: number | null; } | null; } | null; readonly "plugins"?: ReadonlyArray<{ readonly "id": "auto-router"; readonly "enabled"?: boolean; readonly "allowed_models"?: ReadonlyArray<string>; } | { readonly "id": "moderation"; } | { readonly "id": "web"; readonly "enabled"?: boolean; readonly "max_results"?: number; readonly "search_prompt"?: string; readonly "engine"?: "native" | "exa"; } | { readonly "id": "file-parser"; readonly "enabled"?: boolean; readonly "pdf"?: { readonly "engine"?: "mistral-ocr" | "pdf-text" | "native"; }; } | { readonly "id": "response-healing"; readonly "enabled"?: boolean; }>; readonly "route"?: "fallback" | "sort" | null; readonly "user"?: string; readonly "session_id"?: string; readonly "trace"?: { readonly "trace_id"?: string; readonly "trace_name"?: string; readonly "span_name"?: string; readonly "generation_name"?: string; readonly "parent_span_id"?: string; }; readonly "messages": ReadonlyArray<Message>; readonly "model"?: ModelName; readonly "models"?: ReadonlyArray<ModelName>; readonly "frequency_penalty"?: number | null; readonly "logit_bias"?: {} | null; readonly "logprobs"?: boolean | null; readonly "top_logprobs"?: number | null; readonly "max_completion_tokens"?: number | null; readonly "max_tokens"?: number | null; readonly "metadata"?: {}; readonly "presence_penalty"?: number | null; readonly "reasoning"?: { readonly "effort"?: "xhigh" | "high" | "medium" | "low" | "minimal" | "none" | null; readonly "summary"?: ReasoningSummaryVerbosity | null; }; readonly "response_format"?: { readonly "type": "text"; } | { readonly "type": "json_object"; } | ResponseFormatJSONSchema | ResponseFormatTextGrammar | { readonly "type": "python"; }; readonly "seed"?: number | null; readonly "stop"?: string | ReadonlyArray<ModelName> | null; readonly "stream"?: boolean; readonly "stream_options"?: ChatStreamOptions | null; readonly "temperature"?: number | null; readonly "parallel_tool_calls"?: boolean | null; readonly "tool_choice"?: ToolChoiceOption; readonly "tools"?: ReadonlyArray<ToolDefinitionJson>; readonly "top_p"?: number | null; readonly "debug"?: { readonly "echo_upstream_body"?: boolean; }; readonly "image_config"?: {}; readonly "modalities"?: ReadonlyArray<"text" | "image">; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ChatGenerationParamsProviderEnumDataCollectionEnum`
@@ -25743,12 +25701,6 @@ TODO: needs guidance
 export declare class ChatGenerationTokenUsage extends ChatGenerationTokenUsage_base { }
 ```
 
-**After**
-
-```ts
-export type ChatGenerationTokenUsage = { readonly "completion_tokens": number; readonly "prompt_tokens": number; readonly "total_tokens": number; readonly "completion_tokens_details"?: { readonly "reasoning_tokens"?: number | null; readonly "audio_tokens"?: number | null; readonly "accepted_prediction_tokens"?: number | null; readonly "rejected_prediction_tokens"?: number | null; } | null; readonly "prompt_tokens_details"?: { readonly "cached_tokens"?: number; readonly "cache_write_tokens"?: number; readonly "audio_tokens"?: number; readonly "video_tokens"?: number; } | null; };
-```
-
 #### `@effect/ai-openrouter/Generated#ChatMessageContentItem`
 
 TODO: needs guidance
@@ -25757,12 +25709,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ChatMessageContentItem extends ChatMessageContentItem_base { }
-```
-
-**After**
-
-```ts
-export type ChatMessageContentItem = ChatMessageContentItemText | ChatMessageContentItemImage | ChatMessageContentItemAudio | ChatMessageContentItemVideo;
 ```
 
 #### `@effect/ai-openrouter/Generated#ChatMessageContentItemAudio`
@@ -25775,12 +25721,6 @@ TODO: needs guidance
 export declare class ChatMessageContentItemAudio extends ChatMessageContentItemAudio_base { }
 ```
 
-**After**
-
-```ts
-export type ChatMessageContentItemAudio = { readonly "type": "input_audio"; readonly "input_audio": { readonly "data": string; readonly "format": string; }; };
-```
-
 #### `@effect/ai-openrouter/Generated#ChatMessageContentItemCacheControl`
 
 TODO: needs guidance
@@ -25789,12 +25729,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ChatMessageContentItemCacheControl extends ChatMessageContentItemCacheControl_base { }
-```
-
-**After**
-
-```ts
-export type ChatMessageContentItemCacheControl = { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ChatMessageContentItemCacheControlTtl`
@@ -25817,12 +25751,6 @@ TODO: needs guidance
 export declare class ChatMessageContentItemImage extends ChatMessageContentItemImage_base { }
 ```
 
-**After**
-
-```ts
-export type ChatMessageContentItemImage = { readonly "type": "image_url"; readonly "image_url": { readonly "url": string; readonly "detail"?: "auto" | "low" | "high"; }; };
-```
-
 #### `@effect/ai-openrouter/Generated#ChatMessageContentItemImageImageUrlDetail`
 
 TODO: needs guidance
@@ -25843,12 +25771,6 @@ TODO: needs guidance
 export declare class ChatMessageContentItemText extends ChatMessageContentItemText_base { }
 ```
 
-**After**
-
-```ts
-export type ChatMessageContentItemText = { readonly "type": "text"; readonly "text": string; readonly "cache_control"?: ChatMessageContentItemCacheControl; };
-```
-
 #### `@effect/ai-openrouter/Generated#ChatMessageContentItemVideo`
 
 TODO: needs guidance
@@ -25857,12 +25779,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ChatMessageContentItemVideo extends ChatMessageContentItemVideo_base { }
-```
-
-**After**
-
-```ts
-export type ChatMessageContentItemVideo = { readonly "type": "input_video"; readonly "video_url": { readonly "url": string; }; } | { readonly "type": "video_url"; readonly "video_url": { readonly "url": string; }; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ChatMessageTokenLogprob`
@@ -25875,12 +25791,6 @@ TODO: needs guidance
 export declare class ChatMessageTokenLogprob extends ChatMessageTokenLogprob_base { }
 ```
 
-**After**
-
-```ts
-export type ChatMessageTokenLogprob = { readonly "token": string; readonly "logprob": number; readonly "bytes": ReadonlyArray<number> | null; readonly "top_logprobs": ReadonlyArray<{ readonly "token": string; readonly "logprob": number; readonly "bytes": ReadonlyArray<number> | null; }>; };
-```
-
 #### `@effect/ai-openrouter/Generated#ChatMessageTokenLogprobs`
 
 TODO: needs guidance
@@ -25891,12 +25801,6 @@ TODO: needs guidance
 export declare class ChatMessageTokenLogprobs extends ChatMessageTokenLogprobs_base { }
 ```
 
-**After**
-
-```ts
-export type ChatMessageTokenLogprobs = { readonly "content": ReadonlyArray<ChatMessageTokenLogprob> | null; readonly "refusal": ReadonlyArray<ChatMessageTokenLogprob> | null; };
-```
-
 #### `@effect/ai-openrouter/Generated#ChatMessageToolCall`
 
 TODO: needs guidance
@@ -25905,12 +25809,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ChatMessageToolCall extends ChatMessageToolCall_base { }
-```
-
-**After**
-
-```ts
-export type ChatMessageToolCall = { readonly "id": string; readonly "type": "function"; readonly "function": { readonly "name": string; readonly "arguments": string; }; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ChatResponse`
@@ -25933,12 +25831,6 @@ TODO: needs guidance
 export declare class ChatResponseChoice extends ChatResponseChoice_base { }
 ```
 
-**After**
-
-```ts
-export type ChatResponseChoice = { readonly "finish_reason": __schema26; readonly "index": number; readonly "message": AssistantMessage; readonly "logprobs"?: ChatMessageTokenLogprobs | null; };
-```
-
 #### `@effect/ai-openrouter/Generated#ChatStreamOptions`
 
 TODO: needs guidance
@@ -25952,7 +25844,7 @@ export declare class ChatStreamOptions extends ChatStreamOptions_base { }
 **After**
 
 ```ts
-export type ChatStreamOptions = { readonly "include_usage"?: boolean; };
+export type ChatStreamOptions = Objects_6 | null;
 ```
 
 - `@effect/ai-openrouter/Generated#Client` -> `@effect/ai-openrouter/Generated#OpenRouterClient`: TODO: needs guidance
@@ -26042,7 +25934,7 @@ export declare class CreateAuthKeysCode200 extends CreateAuthKeysCode200_base { 
 **After**
 
 ```ts
-export type CreateAuthKeysCode200 = { readonly "data": { readonly "id": string; readonly "app_id": number; readonly "created_at": string; }; };
+export type CreateAuthKeysCode200 = { readonly "data": { readonly "app_id": number; readonly "created_at": string; readonly "id": string; }; };
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateAuthKeysCodeRequest`
@@ -26075,12 +25967,6 @@ TODO: needs guidance
 export declare class CreateChargeRequest extends CreateChargeRequest_base { }
 ```
 
-**After**
-
-```ts
-export type CreateChargeRequest = { readonly "amount": number; readonly "sender": string; readonly "chain_id": 1 | 137 | 8453; };
-```
-
 #### `@effect/ai-openrouter/Generated#CreateChargeRequestChainId`
 
 TODO: needs guidance
@@ -26101,12 +25987,6 @@ TODO: needs guidance
 export declare class CreateCoinbaseCharge200 extends CreateCoinbaseCharge200_base { }
 ```
 
-**After**
-
-```ts
-export type CreateCoinbaseCharge200 = { readonly "data": { readonly "id": string; readonly "created_at": string; readonly "expires_at": string; readonly "web3_data": { readonly "transfer_intent": { readonly "call_data": { readonly "deadline": string; readonly "fee_amount": string; readonly "id": string; readonly "operator": string; readonly "prefix": string; readonly "recipient": string; readonly "recipient_amount": string; readonly "recipient_currency": string; readonly "refund_destination": string; readonly "signature": string; }; readonly "metadata": { readonly "chain_id": number; readonly "contract_address": string; readonly "sender": string; }; }; }; }; };
-```
-
 #### `@effect/ai-openrouter/Generated#CreateEmbeddings200`
 
 TODO: needs guidance
@@ -26120,7 +26000,7 @@ export declare class CreateEmbeddings200 extends CreateEmbeddings200_base { }
 **After**
 
 ```ts
-export type CreateEmbeddings200 = { readonly "id"?: string; readonly "object": "list"; readonly "data": ReadonlyArray<{ readonly "object": "embedding"; readonly "embedding": ReadonlyArray<number> | string; readonly "index"?: number; }>; readonly "model": string; readonly "usage"?: { readonly "prompt_tokens": number; readonly "total_tokens": number; readonly "cost"?: number; }; };
+export type CreateEmbeddings200 = { readonly "data": ReadonlyArray<{ readonly "embedding": ReadonlyArray<number> | string; readonly "index"?: number; readonly "object": "embedding"; }>; readonly "id"?: string; readonly "model": string; readonly "object": "list"; readonly "usage"?: { readonly "cost"?: number; readonly "cost_details"?: CostDetails; readonly "is_byok"?: boolean; readonly "prompt_tokens": number; readonly "prompt_tokens_details"?: { readonly "audio_tokens"?: number; readonly "file_tokens"?: number; readonly "image_tokens"?: number; readonly "text_tokens"?: number; readonly "video_tokens"?: number; }; readonly "total_tokens": number; }; };
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateEmbeddings200Object`
@@ -26166,7 +26046,7 @@ export declare class CreateGuardrail201 extends CreateGuardrail201_base { }
 **After**
 
 ```ts
-export type CreateGuardrail201 = { readonly "data": { readonly "id": string; readonly "name": string; readonly "description"?: string; readonly "limit_usd"?: number; readonly "reset_interval"?: "daily" | "weekly" | "monthly"; readonly "allowed_providers"?: ReadonlyArray<string>; readonly "allowed_models"?: ReadonlyArray<string>; readonly "enforce_zdr"?: boolean; readonly "created_at": string; readonly "updated_at"?: string; }; };
+export type CreateGuardrail201 = CreateGuardrailResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateGuardrail201DataResetInterval`
@@ -26187,6 +26067,12 @@ TODO: needs guidance
 
 ```ts
 export declare class CreateGuardrailRequest extends CreateGuardrailRequest_base { }
+```
+
+**After**
+
+```ts
+export type CreateGuardrailRequest = { readonly "allowed_models"?: ReadonlyArray<string> | null; readonly "allowed_providers"?: ReadonlyArray<string> | null; readonly "content_filter_builtins"?: ReadonlyArray<ContentFilterBuiltinEntryInput> | null; readonly "content_filters"?: ReadonlyArray<ContentFilterEntry> | null; readonly "description"?: string | null; readonly "enforce_zdr"?: boolean | null; readonly "enforce_zdr_anthropic"?: boolean | null; readonly "enforce_zdr_google"?: boolean | null; readonly "enforce_zdr_openai"?: boolean | null; readonly "enforce_zdr_other"?: boolean | null; readonly "enforce_zdr_xai"?: boolean | null; readonly "ignored_models"?: ReadonlyArray<string> | null; readonly "ignored_providers"?: ReadonlyArray<string> | null; readonly "limit_usd"?: number | null; readonly "name": string; readonly "reset_interval"?: GuardrailInterval; readonly "workspace_id"?: string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateGuardrailRequestResetInterval`
@@ -26212,7 +26098,7 @@ export declare class CreateKeys201 extends CreateKeys201_base { }
 **After**
 
 ```ts
-export type CreateKeys201 = { readonly "data": { readonly "hash": string; readonly "name": string; readonly "label": string; readonly "disabled": boolean; readonly "limit": number; readonly "limit_remaining": number; readonly "limit_reset": string; readonly "include_byok_in_limit": boolean; readonly "usage": number; readonly "usage_daily": number; readonly "usage_weekly": number; readonly "usage_monthly": number; readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_weekly": number; readonly "byok_usage_monthly": number; readonly "created_at": string; readonly "updated_at": string; readonly "expires_at"?: string; }; readonly "key": string; };
+export type CreateKeys201 = { readonly "data": { readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_monthly": number; readonly "byok_usage_weekly": number; readonly "created_at": string; readonly "creator_user_id": string | null; readonly "disabled": boolean; readonly "expires_at"?: string | null; readonly "hash": string; readonly "include_byok_in_limit": boolean; readonly "label": string; readonly "limit": number | null; readonly "limit_remaining": number | null; readonly "limit_reset": string | null; readonly "name": string; readonly "updated_at": string | null; readonly "usage": number; readonly "usage_daily": number; readonly "usage_monthly": number; readonly "usage_weekly": number; readonly "workspace_id": string; }; readonly "key": string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateKeysRequest`
@@ -26248,7 +26134,7 @@ export declare class CreateMessages400 extends CreateMessages400_base { }
 **After**
 
 ```ts
-export type CreateMessages400 = { readonly "type": "error"; readonly "error": { readonly "type": string; readonly "message": string; }; };
+export type CreateMessages400 = MessagesErrorResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateMessages400Type`
@@ -26274,7 +26160,7 @@ export declare class CreateMessages401 extends CreateMessages401_base { }
 **After**
 
 ```ts
-export type CreateMessages401 = { readonly "type": "error"; readonly "error": { readonly "type": string; readonly "message": string; }; };
+export type CreateMessages401 = MessagesErrorResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateMessages401Type`
@@ -26300,7 +26186,7 @@ export declare class CreateMessages403 extends CreateMessages403_base { }
 **After**
 
 ```ts
-export type CreateMessages403 = { readonly "type": "error"; readonly "error": { readonly "type": string; readonly "message": string; }; };
+export type CreateMessages403 = ForbiddenResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateMessages403Type`
@@ -26326,7 +26212,7 @@ export declare class CreateMessages404 extends CreateMessages404_base { }
 **After**
 
 ```ts
-export type CreateMessages404 = { readonly "type": "error"; readonly "error": { readonly "type": string; readonly "message": string; }; };
+export type CreateMessages404 = MessagesErrorResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateMessages404Type`
@@ -26352,7 +26238,7 @@ export declare class CreateMessages429 extends CreateMessages429_base { }
 **After**
 
 ```ts
-export type CreateMessages429 = { readonly "type": "error"; readonly "error": { readonly "type": string; readonly "message": string; }; };
+export type CreateMessages429 = MessagesErrorResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateMessages429Type`
@@ -26378,7 +26264,7 @@ export declare class CreateMessages500 extends CreateMessages500_base { }
 **After**
 
 ```ts
-export type CreateMessages500 = { readonly "type": "error"; readonly "error": { readonly "type": string; readonly "message": string; }; };
+export type CreateMessages500 = MessagesErrorResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateMessages500Type`
@@ -26404,7 +26290,7 @@ export declare class CreateMessages503 extends CreateMessages503_base { }
 **After**
 
 ```ts
-export type CreateMessages503 = { readonly "type": "error"; readonly "error": { readonly "type": string; readonly "message": string; }; };
+export type CreateMessages503 = MessagesErrorResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateMessages503Type`
@@ -26430,7 +26316,7 @@ export declare class CreateMessages529 extends CreateMessages529_base { }
 **After**
 
 ```ts
-export type CreateMessages529 = { readonly "type": "error"; readonly "error": { readonly "type": string; readonly "message": string; }; };
+export type CreateMessages529 = MessagesErrorResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#CreateMessages529Type`
@@ -26453,12 +26339,6 @@ TODO: needs guidance
 export declare class DataCollection extends DataCollection_base { }
 ```
 
-**After**
-
-```ts
-export type DataCollection = "deny" | "allow";
-```
-
 #### `@effect/ai-openrouter/Generated#DefaultParameters`
 
 TODO: needs guidance
@@ -26472,7 +26352,7 @@ export declare class DefaultParameters extends DefaultParameters_base { }
 **After**
 
 ```ts
-export type DefaultParameters = { readonly "temperature"?: number; readonly "top_p"?: number; readonly "frequency_penalty"?: number; };
+export type DefaultParameters = { readonly "frequency_penalty"?: number | null; readonly "presence_penalty"?: number | null; readonly "repetition_penalty"?: number | null; readonly "temperature"?: number | null; readonly "top_k"?: number | null; readonly "top_p"?: number | null; } | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#DeleteGuardrail200`
@@ -26488,7 +26368,7 @@ export declare class DeleteGuardrail200 extends DeleteGuardrail200_base { }
 **After**
 
 ```ts
-export type DeleteGuardrail200 = { readonly "deleted": true; };
+export type DeleteGuardrail200 = DeleteGuardrailResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#DeleteKeys200`
@@ -26520,7 +26400,7 @@ export declare class EdgeNetworkTimeoutResponse extends EdgeNetworkTimeoutRespon
 **After**
 
 ```ts
-export type EdgeNetworkTimeoutResponse = { readonly "error": EdgeNetworkTimeoutResponseErrorData; readonly "user_id"?: string; };
+export type EdgeNetworkTimeoutResponse = { readonly "error": EdgeNetworkTimeoutResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#EdgeNetworkTimeoutResponseErrorData`
@@ -26536,7 +26416,7 @@ export declare class EdgeNetworkTimeoutResponseErrorData extends EdgeNetworkTime
 **After**
 
 ```ts
-export type EdgeNetworkTimeoutResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type EdgeNetworkTimeoutResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#EndpointStatus`
@@ -26568,7 +26448,7 @@ export declare class ExchangeAuthCodeForAPIKey200 extends ExchangeAuthCodeForAPI
 **After**
 
 ```ts
-export type ExchangeAuthCodeForAPIKey200 = { readonly "key": string; readonly "user_id": string; };
+export type ExchangeAuthCodeForAPIKey200 = { readonly "key": string; readonly "user_id": string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ExchangeAuthCodeForAPIKeyRequest`
@@ -26614,7 +26494,7 @@ export declare class FileCitation extends FileCitation_base { }
 **After**
 
 ```ts
-export type FileCitation = { readonly "type": "file_citation"; readonly "file_id": string; readonly "filename": string; readonly "index": number; };
+export type FileCitation = { readonly "file_id": string; readonly "filename": string; readonly "index": number; readonly "type": "file_citation"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#FileCitationType`
@@ -26640,7 +26520,7 @@ export declare class FilePath extends FilePath_base { }
 **After**
 
 ```ts
-export type FilePath = { readonly "type": "file_path"; readonly "file_id": string; readonly "index": number; };
+export type FilePath = { readonly "file_id": string; readonly "index": number; readonly "type": "file_path"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#FilePathType`
@@ -26666,7 +26546,7 @@ export declare class ForbiddenResponse extends ForbiddenResponse_base { }
 **After**
 
 ```ts
-export type ForbiddenResponse = { readonly "error": ForbiddenResponseErrorData; readonly "user_id"?: string; };
+export type ForbiddenResponse = { readonly "error": ForbiddenResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ForbiddenResponseErrorData`
@@ -26682,7 +26562,7 @@ export declare class ForbiddenResponseErrorData extends ForbiddenResponseErrorDa
 **After**
 
 ```ts
-export type ForbiddenResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type ForbiddenResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#GetCredits200`
@@ -26714,7 +26594,7 @@ export declare class GetCurrentKey200 extends GetCurrentKey200_base { }
 **After**
 
 ```ts
-export type GetCurrentKey200 = { readonly "data": { readonly "label": string; readonly "limit": number; readonly "usage": number; readonly "usage_daily": number; readonly "usage_weekly": number; readonly "usage_monthly": number; readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_weekly": number; readonly "byok_usage_monthly": number; readonly "is_free_tier": boolean; readonly "is_management_key": boolean; readonly "is_provisioning_key": boolean; readonly "limit_remaining": number; readonly "limit_reset": string; readonly "include_byok_in_limit": boolean; readonly "expires_at"?: string; readonly "rate_limit": { readonly "requests": number; readonly "interval": string; readonly "note": string; }; }; };
+export type GetCurrentKey200 = { readonly "data": { readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_monthly": number; readonly "byok_usage_weekly": number; readonly "creator_user_id": string | null; readonly "expires_at"?: string | null; readonly "include_byok_in_limit": boolean; readonly "is_free_tier": boolean; readonly "is_management_key": boolean; readonly "is_provisioning_key": boolean; readonly "label": string; readonly "limit": number | null; readonly "limit_remaining": number | null; readonly "limit_reset": string | null; readonly "rate_limit": { readonly "interval": string; readonly "note": string; readonly "requests": number; }; readonly "usage": number; readonly "usage_daily": number; readonly "usage_monthly": number; readonly "usage_weekly": number; }; };
 ```
 
 #### `@effect/ai-openrouter/Generated#GetGeneration200`
@@ -26730,7 +26610,7 @@ export declare class GetGeneration200 extends GetGeneration200_base { }
 **After**
 
 ```ts
-export type GetGeneration200 = { readonly "data": { readonly "id": string; readonly "upstream_id": string; readonly "total_cost": number; readonly "cache_discount": number; readonly "upstream_inference_cost": number; readonly "created_at": string; readonly "model": string; readonly "app_id": number; readonly "streamed": boolean; readonly "cancelled": boolean; readonly "provider_name": string; readonly "latency": number; readonly "moderation_latency": number; readonly "generation_time": number; readonly "finish_reason": string; readonly "tokens_prompt": number; readonly "tokens_completion": number; readonly "native_tokens_prompt": number; readonly "native_tokens_completion": number; readonly "native_tokens_completion_images": number; readonly "native_tokens_reasoning": number; readonly "native_tokens_cached": number; readonly "num_media_prompt": number; readonly "num_input_audio_prompt": number; readonly "num_media_completion": number; readonly "num_search_results": number; readonly "origin": string; readonly "usage": number; readonly "is_byok": boolean; readonly "native_finish_reason": string; readonly "external_user": string; readonly "api_type": "completions" | "embeddings"; readonly "router": string; readonly "provider_responses": ReadonlyArray<{ readonly "id"?: string; readonly "endpoint_id"?: string; readonly "model_permaslug"?: string; readonly "provider_name"?: "AnyScale" | "Atoma" | "Cent-ML" | "CrofAI" | "Enfer" | "GoPomelo" | "HuggingFace" | "Hyperbolic 2" | "InoCloud" | "Kluster" | "Lambda" | "Lepton" | "Lynn 2" | "Lynn" | "Mancer" | "Meta" | "Modal" | "Nineteen" | "OctoAI" | "Recursal" | "Reflection" | "Replicate" | "SambaNova 2" | "SF Compute" | "Targon" | "Together 2" | "Ubicloud" | "01.AI" | "AI21" | "AionLabs" | "Alibaba" | "Ambient" | "Amazon Bedrock" | "Amazon Nova" | "Anthropic" | "Arcee AI" | "AtlasCloud" | "Avian" | "Azure" | "BaseTen" | "BytePlus" | "Black Forest Labs" | "Cerebras" | "Chutes" | "Cirrascale" | "Clarifai" | "Cloudflare" | "Cohere" | "Crusoe" | "DeepInfra" | "DeepSeek" | "Featherless" | "Fireworks" | "Friendli" | "GMICloud" | "Google" | "Google AI Studio" | "Groq" | "Hyperbolic" | "Inception" | "Inceptron" | "InferenceNet" | "Infermatic" | "Io Net" | "Inflection" | "Liquid" | "Mara" | "Mancer 2" | "Minimax" | "ModelRun" | "Mistral" | "Modular" | "Moonshot AI" | "Morph" | "NCompass" | "Nebius" | "NextBit" | "Novita" | "Nvidia" | "OpenAI" | "OpenInference" | "Parasail" | "Perplexity" | "Phala" | "Relace" | "SambaNova" | "Seed" | "SiliconFlow" | "Sourceful" | "StepFun" | "Stealth" | "StreamLake" | "Switchpoint" | "Together" | "Upstage" | "Venice" | "WandB" | "Xiaomi" | "xAI" | "Z.AI" | "FakeProvider"; readonly "status": number; readonly "latency"?: number; readonly "is_byok"?: boolean; }>; }; };
+export type GetGeneration200 = GenerationResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#GetGeneration200DataApiType`
@@ -26756,7 +26636,7 @@ export declare class GetGenerationParams extends GetGenerationParams_base { }
 **After**
 
 ```ts
-export type GetGenerationParams = { readonly "id": string; };
+export type GetGenerationParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "id": string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#GetGuardrail200`
@@ -26772,7 +26652,7 @@ export declare class GetGuardrail200 extends GetGuardrail200_base { }
 **After**
 
 ```ts
-export type GetGuardrail200 = { readonly "data": { readonly "id": string; readonly "name": string; readonly "description"?: string; readonly "limit_usd"?: number; readonly "reset_interval"?: "daily" | "weekly" | "monthly"; readonly "allowed_providers"?: ReadonlyArray<string>; readonly "allowed_models"?: ReadonlyArray<string>; readonly "enforce_zdr"?: boolean; readonly "created_at": string; readonly "updated_at"?: string; }; };
+export type GetGuardrail200 = GetGuardrailResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#GetGuardrail200DataResetInterval`
@@ -26798,7 +26678,7 @@ export declare class GetKey200 extends GetKey200_base { }
 **After**
 
 ```ts
-export type GetKey200 = { readonly "data": { readonly "hash": string; readonly "name": string; readonly "label": string; readonly "disabled": boolean; readonly "limit": number; readonly "limit_remaining": number; readonly "limit_reset": string; readonly "include_byok_in_limit": boolean; readonly "usage": number; readonly "usage_daily": number; readonly "usage_weekly": number; readonly "usage_monthly": number; readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_weekly": number; readonly "byok_usage_monthly": number; readonly "created_at": string; readonly "updated_at": string; readonly "expires_at"?: string; }; };
+export type GetKey200 = { readonly "data": { readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_monthly": number; readonly "byok_usage_weekly": number; readonly "created_at": string; readonly "creator_user_id": string | null; readonly "disabled": boolean; readonly "expires_at"?: string | null; readonly "hash": string; readonly "include_byok_in_limit": boolean; readonly "label": string; readonly "limit": number | null; readonly "limit_remaining": number | null; readonly "limit_reset": string | null; readonly "name": string; readonly "updated_at": string | null; readonly "usage": number; readonly "usage_daily": number; readonly "usage_monthly": number; readonly "usage_weekly": number; readonly "workspace_id": string; }; };
 ```
 
 #### `@effect/ai-openrouter/Generated#GetModelsParams`
@@ -26814,7 +26694,7 @@ export declare class GetModelsParams extends GetModelsParams_base { }
 **After**
 
 ```ts
-export type GetModelsParams = { readonly "category"?: "programming" | "roleplay" | "marketing" | "marketing/seo" | "technology" | "science" | "translation" | "legal" | "finance" | "health" | "trivia" | "academia"; readonly "supported_parameters"?: string; };
+export type GetModelsParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "offset"?: number | null; readonly "limit"?: number; readonly "category"?: "programming" | "roleplay" | "marketing" | "marketing/seo" | "technology" | "science" | "translation" | "legal" | "finance" | "health" | "trivia" | "academia"; readonly "supported_parameters"?: string; readonly "output_modalities"?: string; readonly "sort"?: "most-popular" | "newest" | "top-weekly" | "pricing-low-to-high" | "pricing-high-to-low" | "context-high-to-low" | "throughput-high-to-low" | "latency-low-to-high" | "intelligence-high-to-low" | "coding-high-to-low" | "agentic-high-to-low" | "design-arena-elo-high-to-low"; readonly "q"?: string; readonly "input_modalities"?: string; readonly "context"?: number; readonly "min_price"?: number | null; readonly "max_price"?: number | null; readonly "arch"?: string; readonly "model_authors"?: string; readonly "providers"?: string; readonly "distillable"?: "true" | "false"; readonly "zdr"?: "true"; readonly "region"?: "eu"; readonly "min_output_price"?: number | null; readonly "max_output_price"?: number | null; readonly "min_age_days"?: number | null; readonly "max_age_days"?: number | null; readonly "min_intelligence_index"?: number | null; readonly "max_intelligence_index"?: number | null; readonly "min_coding_index"?: number | null; readonly "max_coding_index"?: number | null; readonly "min_agentic_index"?: number | null; readonly "max_agentic_index"?: number | null; readonly "min_tool_success_rate"?: number | null; readonly "max_tool_success_rate"?: number | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#GetModelsParamsCategory`
@@ -26840,7 +26720,7 @@ export declare class GetUserActivity200 extends GetUserActivity200_base { }
 **After**
 
 ```ts
-export type GetUserActivity200 = { readonly "data": ReadonlyArray<ActivityItem>; };
+export type GetUserActivity200 = ActivityResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#GetUserActivityParams`
@@ -26856,7 +26736,7 @@ export declare class GetUserActivityParams extends GetUserActivityParams_base { 
 **After**
 
 ```ts
-export type GetUserActivityParams = { readonly "date"?: string; };
+export type GetUserActivityParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "date"?: string; readonly "api_key_hash"?: string; readonly "user_id"?: string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ImageGenerationStatus`
@@ -26904,7 +26784,7 @@ export declare class InternalServerResponse extends InternalServerResponse_base 
 **After**
 
 ```ts
-export type InternalServerResponse = { readonly "error": InternalServerResponseErrorData; readonly "user_id"?: string; };
+export type InternalServerResponse = { readonly "error": InternalServerResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#InternalServerResponseErrorData`
@@ -26920,7 +26800,7 @@ export declare class InternalServerResponseErrorData extends InternalServerRespo
 **After**
 
 ```ts
-export type InternalServerResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type InternalServerResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#JSONSchemaConfig`
@@ -26931,12 +26811,6 @@ TODO: needs guidance
 
 ```ts
 export declare class JSONSchemaConfig extends JSONSchemaConfig_base { }
-```
-
-**After**
-
-```ts
-export type JSONSchemaConfig = { readonly "name": string; readonly "description"?: string; readonly "schema"?: {}; readonly "strict"?: boolean | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#List200`
@@ -26952,7 +26826,7 @@ export declare class List200 extends List200_base { }
 **After**
 
 ```ts
-export type List200 = { readonly "data": ReadonlyArray<{ readonly "hash": string; readonly "name": string; readonly "label": string; readonly "disabled": boolean; readonly "limit": number; readonly "limit_remaining": number; readonly "limit_reset": string; readonly "include_byok_in_limit": boolean; readonly "usage": number; readonly "usage_daily": number; readonly "usage_weekly": number; readonly "usage_monthly": number; readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_weekly": number; readonly "byok_usage_monthly": number; readonly "created_at": string; readonly "updated_at": string; readonly "expires_at"?: string; }>; };
+export type List200 = { readonly "data": ReadonlyArray<{ readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_monthly": number; readonly "byok_usage_weekly": number; readonly "created_at": string; readonly "creator_user_id": string | null; readonly "disabled": boolean; readonly "expires_at"?: string | null; readonly "hash": string; readonly "include_byok_in_limit": boolean; readonly "label": string; readonly "limit": number | null; readonly "limit_remaining": number | null; readonly "limit_reset": string | null; readonly "name": string; readonly "updated_at": string | null; readonly "usage": number; readonly "usage_daily": number; readonly "usage_monthly": number; readonly "usage_weekly": number; readonly "workspace_id": string; }>; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ListEndpoints200`
@@ -26984,7 +26858,7 @@ export declare class ListEndpointsResponse extends ListEndpointsResponse_base { 
 **After**
 
 ```ts
-export type ListEndpointsResponse = { readonly "id": string; readonly "name": string; readonly "created": number; readonly "description": string; readonly "architecture": { readonly "tokenizer": "Router" | "Media" | "Other" | "GPT" | "Claude" | "Gemini" | "Grok" | "Cohere" | "Nova" | "Qwen" | "Yi" | "DeepSeek" | "Mistral" | "Llama2" | "Llama3" | "Llama4" | "PaLM" | "RWKV" | "Qwen3"; readonly "instruct_type": "none" | "airoboros" | "alpaca" | "alpaca-modif" | "chatml" | "claude" | "code-llama" | "gemma" | "llama2" | "llama3" | "mistral" | "nemotron" | "neural" | "openchat" | "phi3" | "rwkv" | "vicuna" | "zephyr" | "deepseek-r1" | "deepseek-v3.1" | "qwq" | "qwen3"; readonly "modality": string; readonly "input_modalities": ReadonlyArray<"text" | "image" | "file" | "audio" | "video">; readonly "output_modalities": ReadonlyArray<"text" | "image" | "embeddings" | "audio">; }; readonly "endpoints": ReadonlyArray<PublicEndpoint>; };
+export type ListEndpointsResponse = { readonly "architecture": { readonly "input_modalities": ReadonlyArray<"text" | "image" | "file" | "audio" | "video">; readonly "instruct_type": "none" | "airoboros" | "alpaca" | "alpaca-modif" | "chatml" | "claude" | "code-llama" | "gemma" | "llama2" | "llama3" | "mistral" | "nemotron" | "neural" | "openchat" | "phi3" | "rwkv" | "vicuna" | "zephyr" | "deepseek-r1" | "deepseek-v3.1" | "qwq" | "qwen3" | null; readonly "modality": string | null; readonly "output_modalities": ReadonlyArray<"text" | "image" | "embeddings" | "audio" | "video" | "rerank" | "speech" | "transcription">; readonly "tokenizer": "Router" | "Media" | "Other" | "GPT" | "Claude" | "Gemini" | "Gemma" | "Grok" | "Cohere" | "Nova" | "Qwen" | "Yi" | "DeepSeek" | "Mistral" | "Llama2" | "Llama3" | "Llama4" | "PaLM" | "RWKV" | "Qwen3"; }; readonly "created": number; readonly "description": string; readonly "endpoints": ReadonlyArray<PublicEndpoint>; readonly "id": string; readonly "name": string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ListEndpointsResponseArchitecture`
@@ -27036,7 +26910,7 @@ export declare class ListGuardrailKeyAssignments200 extends ListGuardrailKeyAssi
 **After**
 
 ```ts
-export type ListGuardrailKeyAssignments200 = { readonly "data": ReadonlyArray<{ readonly "id": string; readonly "key_hash": string; readonly "guardrail_id": string; readonly "key_name": string; readonly "key_label": string; readonly "assigned_by": string; readonly "created_at": string; }>; readonly "total_count": number; };
+export type ListGuardrailKeyAssignments200 = ListKeyAssignmentsResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#ListGuardrailKeyAssignmentsParams`
@@ -27052,7 +26926,7 @@ export declare class ListGuardrailKeyAssignmentsParams extends ListGuardrailKeyA
 **After**
 
 ```ts
-export type ListGuardrailKeyAssignmentsParams = { readonly "offset"?: string; readonly "limit"?: string; };
+export type ListGuardrailKeyAssignmentsParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "offset"?: number | null; readonly "limit"?: number; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ListGuardrailMemberAssignments200`
@@ -27068,7 +26942,7 @@ export declare class ListGuardrailMemberAssignments200 extends ListGuardrailMemb
 **After**
 
 ```ts
-export type ListGuardrailMemberAssignments200 = { readonly "data": ReadonlyArray<{ readonly "id": string; readonly "user_id": string; readonly "organization_id": string; readonly "guardrail_id": string; readonly "assigned_by": string; readonly "created_at": string; }>; readonly "total_count": number; };
+export type ListGuardrailMemberAssignments200 = ListMemberAssignmentsResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#ListGuardrailMemberAssignmentsParams`
@@ -27084,7 +26958,7 @@ export declare class ListGuardrailMemberAssignmentsParams extends ListGuardrailM
 **After**
 
 ```ts
-export type ListGuardrailMemberAssignmentsParams = { readonly "offset"?: string; readonly "limit"?: string; };
+export type ListGuardrailMemberAssignmentsParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "offset"?: number | null; readonly "limit"?: number; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ListGuardrails200`
@@ -27100,7 +26974,7 @@ export declare class ListGuardrails200 extends ListGuardrails200_base { }
 **After**
 
 ```ts
-export type ListGuardrails200 = { readonly "data": ReadonlyArray<{ readonly "id": string; readonly "name": string; readonly "description"?: string; readonly "limit_usd"?: number; readonly "reset_interval"?: "daily" | "weekly" | "monthly"; readonly "allowed_providers"?: ReadonlyArray<string>; readonly "allowed_models"?: ReadonlyArray<string>; readonly "enforce_zdr"?: boolean; readonly "created_at": string; readonly "updated_at"?: string; }>; readonly "total_count": number; };
+export type ListGuardrails200 = ListGuardrailsResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#ListGuardrailsParams`
@@ -27116,7 +26990,7 @@ export declare class ListGuardrailsParams extends ListGuardrailsParams_base { }
 **After**
 
 ```ts
-export type ListGuardrailsParams = { readonly "offset"?: string; readonly "limit"?: string; };
+export type ListGuardrailsParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "offset"?: number | null; readonly "limit"?: number; readonly "workspace_id"?: string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ListKeyAssignments200`
@@ -27132,7 +27006,7 @@ export declare class ListKeyAssignments200 extends ListKeyAssignments200_base { 
 **After**
 
 ```ts
-export type ListKeyAssignments200 = { readonly "data": ReadonlyArray<{ readonly "id": string; readonly "key_hash": string; readonly "guardrail_id": string; readonly "key_name": string; readonly "key_label": string; readonly "assigned_by": string; readonly "created_at": string; }>; readonly "total_count": number; };
+export type ListKeyAssignments200 = ListKeyAssignmentsResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#ListKeyAssignmentsParams`
@@ -27148,7 +27022,7 @@ export declare class ListKeyAssignmentsParams extends ListKeyAssignmentsParams_b
 **After**
 
 ```ts
-export type ListKeyAssignmentsParams = { readonly "offset"?: string; readonly "limit"?: string; };
+export type ListKeyAssignmentsParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "offset"?: number | null; readonly "limit"?: number; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ListMemberAssignments200`
@@ -27164,7 +27038,7 @@ export declare class ListMemberAssignments200 extends ListMemberAssignments200_b
 **After**
 
 ```ts
-export type ListMemberAssignments200 = { readonly "data": ReadonlyArray<{ readonly "id": string; readonly "user_id": string; readonly "organization_id": string; readonly "guardrail_id": string; readonly "assigned_by": string; readonly "created_at": string; }>; readonly "total_count": number; };
+export type ListMemberAssignments200 = ListMemberAssignmentsResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#ListMemberAssignmentsParams`
@@ -27180,7 +27054,7 @@ export declare class ListMemberAssignmentsParams extends ListMemberAssignmentsPa
 **After**
 
 ```ts
-export type ListMemberAssignmentsParams = { readonly "offset"?: string; readonly "limit"?: string; };
+export type ListMemberAssignmentsParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "offset"?: number | null; readonly "limit"?: number; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ListParams`
@@ -27196,7 +27070,7 @@ export declare class ListParams extends ListParams_base { }
 **After**
 
 ```ts
-export type ListParams = { readonly "include_disabled"?: string; readonly "offset"?: string; };
+export type ListParams = { readonly "HTTP-Referer"?: string; readonly "X-OpenRouter-Title"?: string; readonly "X-OpenRouter-Categories"?: string; readonly "include_disabled"?: boolean; readonly "offset"?: number | null; readonly "workspace_id"?: string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ListProviders200`
@@ -27212,7 +27086,7 @@ export declare class ListProviders200 extends ListProviders200_base { }
 **After**
 
 ```ts
-export type ListProviders200 = { readonly "data": ReadonlyArray<{ readonly "name": string; readonly "slug": string; readonly "privacy_policy_url": string; readonly "terms_of_service_url"?: string; readonly "status_page_url"?: string; }>; };
+export type ListProviders200 = { readonly "data": ReadonlyArray<{ readonly "datacenters"?: ReadonlyArray<"AD" | "AE" | "AF" | "AG" | "AI" | "AL" | "AM" | "AO" | "AQ" | "AR" | "AS" | "AT" | "AU" | "AW" | "AX" | "AZ" | "BA" | "BB" | "BD" | "BE" | "BF" | "BG" | "BH" | "BI" | "BJ" | "BL" | "BM" | "BN" | "BO" | "BQ" | "BR" | "BS" | "BT" | "BV" | "BW" | "BY" | "BZ" | "CA" | "CC" | "CD" | "CF" | "CG" | "CH" | "CI" | "CK" | "CL" | "CM" | "CN" | "CO" | "CR" | "CU" | "CV" | "CW" | "CX" | "CY" | "CZ" | "DE" | "DJ" | "DK" | "DM" | "DO" | "DZ" | "EC" | "EE" | "EG" | "EH" | "ER" | "ES" | "ET" | "FI" | "FJ" | "FK" | "FM" | "FO" | "FR" | "GA" | "GB" | "GD" | "GE" | "GF" | "GG" | "GH" | "GI" | "GL" | "GM" | "GN" | "GP" | "GQ" | "GR" | "GS" | "GT" | "GU" | "GW" | "GY" | "HK" | "HM" | "HN" | "HR" | "HT" | "HU" | "ID" | "IE" | "IL" | "IM" | "IN" | "IO" | "IQ" | "IR" | "IS" | "IT" | "JE" | "JM" | "JO" | "JP" | "KE" | "KG" | "KH" | "KI" | "KM" | "KN" | "KP" | "KR" | "KW" | "KY" | "KZ" | "LA" | "LB" | "LC" | "LI" | "LK" | "LR" | "LS" | "LT" | "LU" | "LV" | "LY" | "MA" | "MC" | "MD" | "ME" | "MF" | "MG" | "MH" | "MK" | "ML" | "MM" | "MN" | "MO" | "MP" | "MQ" | "MR" | "MS" | "MT" | "MU" | "MV" | "MW" | "MX" | "MY" | "MZ" | "NA" | "NC" | "NE" | "NF" | "NG" | "NI" | "NL" | "NO" | "NP" | "NR" | "NU" | "NZ" | "OM" | "PA" | "PE" | "PF" | "PG" | "PH" | "PK" | "PL" | "PM" | "PN" | "PR" | "PS" | "PT" | "PW" | "PY" | "QA" | "RE" | "RO" | "RS" | "RU" | "RW" | "SA" | "SB" | "SC" | "SD" | "SE" | "SG" | "SH" | "SI" | "SJ" | "SK" | "SL" | "SM" | "SN" | "SO" | "SR" | "SS" | "ST" | "SV" | "SX" | "SY" | "SZ" | "TC" | "TD" | "TF" | "TG" | "TH" | "TJ" | "TK" | "TL" | "TM" | "TN" | "TO" | "TR" | "TT" | "TV" | "TW" | "TZ" | "UA" | "UG" | "UM" | "US" | "UY" | "UZ" | "VA" | "VC" | "VE" | "VG" | "VI" | "VN" | "VU" | "WF" | "WS" | "YE" | "YT" | "ZA" | "ZM" | "ZW"> | null; readonly "headquarters"?: "AD" | "AE" | "AF" | "AG" | "AI" | "AL" | "AM" | "AO" | "AQ" | "AR" | "AS" | "AT" | "AU" | "AW" | "AX" | "AZ" | "BA" | "BB" | "BD" | "BE" | "BF" | "BG" | "BH" | "BI" | "BJ" | "BL" | "BM" | "BN" | "BO" | "BQ" | "BR" | "BS" | "BT" | "BV" | "BW" | "BY" | "BZ" | "CA" | "CC" | "CD" | "CF" | "CG" | "CH" | "CI" | "CK" | "CL" | "CM" | "CN" | "CO" | "CR" | "CU" | "CV" | "CW" | "CX" | "CY" | "CZ" | "DE" | "DJ" | "DK" | "DM" | "DO" | "DZ" | "EC" | "EE" | "EG" | "EH" | "ER" | "ES" | "ET" | "FI" | "FJ" | "FK" | "FM" | "FO" | "FR" | "GA" | "GB" | "GD" | "GE" | "GF" | "GG" | "GH" | "GI" | "GL" | "GM" | "GN" | "GP" | "GQ" | "GR" | "GS" | "GT" | "GU" | "GW" | "GY" | "HK" | "HM" | "HN" | "HR" | "HT" | "HU" | "ID" | "IE" | "IL" | "IM" | "IN" | "IO" | "IQ" | "IR" | "IS" | "IT" | "JE" | "JM" | "JO" | "JP" | "KE" | "KG" | "KH" | "KI" | "KM" | "KN" | "KP" | "KR" | "KW" | "KY" | "KZ" | "LA" | "LB" | "LC" | "LI" | "LK" | "LR" | "LS" | "LT" | "LU" | "LV" | "LY" | "MA" | "MC" | "MD" | "ME" | "MF" | "MG" | "MH" | "MK" | "ML" | "MM" | "MN" | "MO" | "MP" | "MQ" | "MR" | "MS" | "MT" | "MU" | "MV" | "MW" | "MX" | "MY" | "MZ" | "NA" | "NC" | "NE" | "NF" | "NG" | "NI" | "NL" | "NO" | "NP" | "NR" | "NU" | "NZ" | "OM" | "PA" | "PE" | "PF" | "PG" | "PH" | "PK" | "PL" | "PM" | "PN" | "PR" | "PS" | "PT" | "PW" | "PY" | "QA" | "RE" | "RO" | "RS" | "RU" | "RW" | "SA" | "SB" | "SC" | "SD" | "SE" | "SG" | "SH" | "SI" | "SJ" | "SK" | "SL" | "SM" | "SN" | "SO" | "SR" | "SS" | "ST" | "SV" | "SX" | "SY" | "SZ" | "TC" | "TD" | "TF" | "TG" | "TH" | "TJ" | "TK" | "TL" | "TM" | "TN" | "TO" | "TR" | "TT" | "TV" | "TW" | "TZ" | "UA" | "UG" | "UM" | "US" | "UY" | "UZ" | "VA" | "VC" | "VE" | "VG" | "VI" | "VN" | "VU" | "WF" | "WS" | "YE" | "YT" | "ZA" | "ZM" | "ZW" | null; readonly "name": string; readonly "privacy_policy_url": string | null; readonly "slug": string; readonly "status_page_url"?: string | null; readonly "terms_of_service_url"?: string | null; }>; };
 ```
 
 #### `@effect/ai-openrouter/Generated#make`
@@ -27241,12 +27115,6 @@ TODO: needs guidance
 export declare class Message extends Message_base { }
 ```
 
-**After**
-
-```ts
-export type Message = SystemMessage | UserMessage | DeveloperMessage | AssistantMessage | ToolResponseMessage;
-```
-
 #### `@effect/ai-openrouter/Generated#Model`
 
 TODO: needs guidance
@@ -27260,7 +27128,7 @@ export declare class Model extends Model_base { }
 **After**
 
 ```ts
-export type Model = { readonly "id": string; readonly "canonical_slug": string; readonly "hugging_face_id"?: string; readonly "name": string; readonly "created": number; readonly "description"?: string; readonly "pricing": PublicPricing; readonly "context_length": number; readonly "architecture": ModelArchitecture; readonly "top_provider": TopProviderInfo; readonly "per_request_limits": PerRequestLimits; readonly "supported_parameters": ReadonlyArray<Parameter>; readonly "default_parameters": DefaultParameters; readonly "expiration_date"?: string; };
+export type Model = { readonly "architecture": ModelArchitecture; readonly "benchmarks"?: ModelBenchmarks; readonly "canonical_slug": string; readonly "context_length": number | null; readonly "created": number; readonly "default_parameters": DefaultParameters; readonly "description"?: string; readonly "expiration_date"?: string | null; readonly "hugging_face_id"?: string | null; readonly "id": string; readonly "knowledge_cutoff"?: string | null; readonly "links": ModelLinks; readonly "name": string; readonly "per_request_limits": PerRequestLimits; readonly "pricing": PublicPricing; readonly "reasoning"?: ModelReasoning; readonly "supported_parameters": ReadonlyArray<Parameter>; readonly "supported_voices": ReadonlyArray<string> | null; readonly "top_provider": TopProviderInfo; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ModelArchitecture`
@@ -27276,7 +27144,7 @@ export declare class ModelArchitecture extends ModelArchitecture_base { }
 **After**
 
 ```ts
-export type ModelArchitecture = { readonly "tokenizer"?: ModelGroup; readonly "instruct_type"?: "none" | "airoboros" | "alpaca" | "alpaca-modif" | "chatml" | "claude" | "code-llama" | "gemma" | "llama2" | "llama3" | "mistral" | "nemotron" | "neural" | "openchat" | "phi3" | "rwkv" | "vicuna" | "zephyr" | "deepseek-r1" | "deepseek-v3.1" | "qwq" | "qwen3"; readonly "modality": string; readonly "input_modalities": ReadonlyArray<InputModality>; readonly "output_modalities": ReadonlyArray<OutputModality>; };
+export type ModelArchitecture = { readonly "input_modalities": ReadonlyArray<InputModality>; readonly "instruct_type"?: InstructType; readonly "modality": string | null; readonly "output_modalities": ReadonlyArray<OutputModality>; readonly "tokenizer"?: ModelGroup; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ModelArchitectureInstructType`
@@ -27302,7 +27170,7 @@ export declare class ModelGroup extends ModelGroup_base { }
 **After**
 
 ```ts
-export type ModelGroup = "Router" | "Media" | "Other" | "GPT" | "Claude" | "Gemini" | "Grok" | "Cohere" | "Nova" | "Qwen" | "Yi" | "DeepSeek" | "Mistral" | "Llama2" | "Llama3" | "Llama4" | "PaLM" | "RWKV" | "Qwen3";
+export type ModelGroup = "Router" | "Media" | "Other" | "GPT" | "Claude" | "Gemini" | "Gemma" | "Grok" | "Cohere" | "Nova" | "Qwen" | "Yi" | "DeepSeek" | "Mistral" | "Llama2" | "Llama3" | "Llama4" | "PaLM" | "RWKV" | "Qwen3";
 ```
 
 #### `@effect/ai-openrouter/Generated#ModelName`
@@ -27350,7 +27218,7 @@ export declare class ModelsListResponse extends ModelsListResponse_base { }
 **After**
 
 ```ts
-export type ModelsListResponse = { readonly "data": ModelsListResponseData; };
+export type ModelsListResponse = { readonly "data": ModelsListResponseData; readonly "links": { readonly "next": string | null; }; readonly "total_count": number; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ModelsListResponseData`
@@ -27379,12 +27247,6 @@ TODO: needs guidance
 export declare class NamedToolChoice extends NamedToolChoice_base { }
 ```
 
-**After**
-
-```ts
-export type NamedToolChoice = { readonly "type": "function"; readonly "function": { readonly "name": string; }; };
-```
-
 #### `@effect/ai-openrouter/Generated#NotFoundResponse`
 
 TODO: needs guidance
@@ -27398,7 +27260,7 @@ export declare class NotFoundResponse extends NotFoundResponse_base { }
 **After**
 
 ```ts
-export type NotFoundResponse = { readonly "error": NotFoundResponseErrorData; readonly "user_id"?: string; };
+export type NotFoundResponse = { readonly "error": NotFoundResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#NotFoundResponseErrorData`
@@ -27414,7 +27276,7 @@ export declare class NotFoundResponseErrorData extends NotFoundResponseErrorData
 **After**
 
 ```ts
-export type NotFoundResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type NotFoundResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesAnnotation`
@@ -27443,12 +27305,6 @@ TODO: needs guidance
 export declare class OpenAIResponsesIncludable extends OpenAIResponsesIncludable_base { }
 ```
 
-**After**
-
-```ts
-export type OpenAIResponsesIncludable = "file_search_call.results" | "message.input_image.image_url" | "computer_call_output.output.image_url" | "reasoning.encrypted_content" | "code_interpreter_call.outputs";
-```
-
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesIncompleteDetails`
 
 TODO: needs guidance
@@ -27457,12 +27313,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenAIResponsesIncompleteDetails extends OpenAIResponsesIncompleteDetails_base { }
-```
-
-**After**
-
-```ts
-export type OpenAIResponsesIncompleteDetails = { readonly "reason"?: "max_output_tokens" | "content_filter"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesIncompleteDetailsReason`
@@ -27485,12 +27335,6 @@ TODO: needs guidance
 export declare class OpenAIResponsesInput extends OpenAIResponsesInput_base { }
 ```
 
-**After**
-
-```ts
-export type OpenAIResponsesInput = string | ReadonlyArray<{ readonly "type"?: "message"; readonly "role": "user" | "system" | "assistant" | "developer"; readonly "content": ReadonlyArray<ResponseInputText | ResponseInputImage | ResponseInputFile | ResponseInputAudio> | string; } | { readonly "id": string; readonly "type"?: "message"; readonly "role": "user" | "system" | "developer"; readonly "content": ReadonlyArray<ResponseInputText | ResponseInputImage | ResponseInputFile | ResponseInputAudio>; } | { readonly "type": "function_call_output"; readonly "id"?: string; readonly "call_id": string; readonly "output": string; readonly "status"?: ToolCallStatus; } | { readonly "type": "function_call"; readonly "call_id": string; readonly "name": string; readonly "arguments": string; readonly "id"?: string; readonly "status"?: ToolCallStatus; } | OutputItemImageGenerationCall | OutputMessage> | unknown;
-```
-
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesPrompt`
 
 TODO: needs guidance
@@ -27499,12 +27343,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenAIResponsesPrompt extends OpenAIResponsesPrompt_base { }
-```
-
-**After**
-
-```ts
-export type OpenAIResponsesPrompt = { readonly "id": string; readonly "variables"?: {}; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesReasoningConfig`
@@ -27517,12 +27355,6 @@ TODO: needs guidance
 export declare class OpenAIResponsesReasoningConfig extends OpenAIResponsesReasoningConfig_base { }
 ```
 
-**After**
-
-```ts
-export type OpenAIResponsesReasoningConfig = { readonly "effort"?: OpenAIResponsesReasoningEffort; readonly "summary"?: ReasoningSummaryVerbosity; };
-```
-
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesReasoningEffort`
 
 TODO: needs guidance
@@ -27531,12 +27363,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenAIResponsesReasoningEffort extends OpenAIResponsesReasoningEffort_base { }
-```
-
-**After**
-
-```ts
-export type OpenAIResponsesReasoningEffort = "xhigh" | "high" | "medium" | "low" | "minimal" | "none";
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesRefusalContent`
@@ -27552,7 +27378,7 @@ export declare class OpenAIResponsesRefusalContent extends OpenAIResponsesRefusa
 **After**
 
 ```ts
-export type OpenAIResponsesRefusalContent = { readonly "type": "refusal"; readonly "refusal": string; };
+export type OpenAIResponsesRefusalContent = { readonly "refusal": string; readonly "type": "refusal"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesRefusalContentType`
@@ -27591,12 +27417,6 @@ TODO: needs guidance
 export declare class OpenAIResponsesServiceTier extends OpenAIResponsesServiceTier_base { }
 ```
 
-**After**
-
-```ts
-export type OpenAIResponsesServiceTier = "auto" | "default" | "flex" | "priority" | "scale";
-```
-
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesToolChoice`
 
 TODO: needs guidance
@@ -27610,7 +27430,7 @@ export declare class OpenAIResponsesToolChoice extends OpenAIResponsesToolChoice
 **After**
 
 ```ts
-export type OpenAIResponsesToolChoice = "auto" | "none" | "required" | { readonly "type": "function"; readonly "name": string; } | { readonly "type": "web_search_preview_2025_03_11" | "web_search_preview"; };
+export type OpenAIResponsesToolChoice = "auto" | "none" | "required" | Objects_11 | Objects_12 | ToolChoiceAllowed | Objects_13 | Objects_14;
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesToolChoiceEnum`
@@ -27656,7 +27476,7 @@ export declare class OpenAIResponsesTruncation extends OpenAIResponsesTruncation
 **After**
 
 ```ts
-export type OpenAIResponsesTruncation = "auto" | "disabled";
+export type OpenAIResponsesTruncation = "auto" | "disabled" | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenAIResponsesUsage`
@@ -27672,7 +27492,7 @@ export declare class OpenAIResponsesUsage extends OpenAIResponsesUsage_base { }
 **After**
 
 ```ts
-export type OpenAIResponsesUsage = { readonly "input_tokens": number; readonly "input_tokens_details": { readonly "cached_tokens": number; }; readonly "output_tokens": number; readonly "output_tokens_details": { readonly "reasoning_tokens": number; }; readonly "total_tokens": number; };
+export type OpenAIResponsesUsage = { readonly "input_tokens": number; readonly "input_tokens_details": Objects_15; readonly "output_tokens": number; readonly "output_tokens_details": Objects_16; readonly "total_tokens": number; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenResponsesEasyInputMessage`
@@ -27683,12 +27503,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenResponsesEasyInputMessage extends OpenResponsesEasyInputMessage_base { }
-```
-
-**After**
-
-```ts
-export type OpenResponsesEasyInputMessage = { readonly "type"?: "message"; readonly "role": "user" | "system" | "assistant" | "developer"; readonly "content": ReadonlyArray<ResponseInputText | { readonly "type": "input_image"; readonly "detail": "auto" | "high" | "low"; readonly "image_url"?: string; } | ResponseInputFile | ResponseInputAudio | ResponseInputVideo> | string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenResponsesEasyInputMessageRoleEnum`
@@ -27721,12 +27535,6 @@ TODO: needs guidance
 export declare class OpenResponsesFunctionCallOutput extends OpenResponsesFunctionCallOutput_base { }
 ```
 
-**After**
-
-```ts
-export type OpenResponsesFunctionCallOutput = { readonly "type": "function_call_output"; readonly "id"?: string; readonly "call_id": string; readonly "output": string; readonly "status"?: ToolCallStatus; };
-```
-
 #### `@effect/ai-openrouter/Generated#OpenResponsesFunctionCallOutputType`
 
 TODO: needs guidance
@@ -27745,12 +27553,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenResponsesFunctionToolCall extends OpenResponsesFunctionToolCall_base { }
-```
-
-**After**
-
-```ts
-export type OpenResponsesFunctionToolCall = { readonly "type": "function_call"; readonly "call_id": string; readonly "name": string; readonly "arguments": string; readonly "id": string; readonly "status"?: ToolCallStatus; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenResponsesFunctionToolCallType`
@@ -27773,12 +27575,6 @@ TODO: needs guidance
 export declare class OpenResponsesInput extends OpenResponsesInput_base { }
 ```
 
-**After**
-
-```ts
-export type OpenResponsesInput = string | ReadonlyArray<OpenResponsesReasoning | OpenResponsesEasyInputMessage | OpenResponsesInputMessageItem | OpenResponsesFunctionToolCall | OpenResponsesFunctionCallOutput | ResponsesOutputMessage | ResponsesOutputItemReasoning | ResponsesOutputItemFunctionCall | ResponsesWebSearchCallOutput | ResponsesOutputItemFileSearchCall | ResponsesImageGenerationCall>;
-```
-
 #### `@effect/ai-openrouter/Generated#OpenResponsesInputMessageItem`
 
 TODO: needs guidance
@@ -27787,12 +27583,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenResponsesInputMessageItem extends OpenResponsesInputMessageItem_base { }
-```
-
-**After**
-
-```ts
-export type OpenResponsesInputMessageItem = { readonly "id"?: string; readonly "type"?: "message"; readonly "role": "user" | "system" | "developer"; readonly "content": ReadonlyArray<ResponseInputText | { readonly "type": "input_image"; readonly "detail": "auto" | "high" | "low"; readonly "image_url"?: string; } | ResponseInputFile | ResponseInputAudio | ResponseInputVideo>; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenResponsesInputMessageItemRoleEnum`
@@ -27825,12 +27615,6 @@ TODO: needs guidance
 export declare class OpenResponsesNonStreamingResponse extends OpenResponsesNonStreamingResponse_base { }
 ```
 
-**After**
-
-```ts
-export type OpenResponsesNonStreamingResponse = { readonly "id": string; readonly "object": "response"; readonly "created_at": number; readonly "model": string; readonly "status": OpenAIResponsesResponseStatus; readonly "completed_at": number; readonly "output": ReadonlyArray<{ readonly "id": string; readonly "role": "assistant"; readonly "type": "message"; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "content": ReadonlyArray<{ readonly "type": "output_text"; readonly "text": string; readonly "annotations"?: ReadonlyArray<{ readonly "type": "file_citation"; readonly "file_id": string; readonly "filename": string; readonly "index": number; } | { readonly "type": never; readonly "url": string; readonly "title": string; readonly "start_index": number; readonly "end_index": number; readonly "file_id": string; readonly "filename": string; readonly "index": number; } | { readonly "type": never; readonly "file_id": string; readonly "index": number; readonly "filename": string; } | { readonly "type": never; readonly "file_id": string; readonly "filename": string; readonly "index": number; readonly "url": string; readonly "title": string; readonly "start_index": number; readonly "end_index": number; } | { readonly "type": "url_citation"; readonly "url": string; readonly "title": string; readonly "start_index": number; readonly "end_index": number; } | { readonly "type": never; readonly "file_id": string; readonly "index": number; readonly "url": string; readonly "title": string; readonly "start_index": number; readonly "end_index": number; } | { readonly "type": never; readonly "file_id": string; readonly "filename": string; readonly "index": number; } | { readonly "type": never; readonly "url": string; readonly "title": string; readonly "start_index": number; readonly "end_index": number; readonly "file_id": string; readonly "index": number; } | { readonly "type": "file_path"; readonly "file_id": string; readonly "index": number; }>; readonly "logprobs"?: ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; readonly "top_logprobs": ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; }>; }>; } | { readonly "type": never; readonly "refusal": string; readonly "text": string; readonly "annotations"?: ReadonlyArray<OpenAIResponsesAnnotation>; readonly "logprobs"?: ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; readonly "top_logprobs": ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; }>; }>; } | { readonly "type": never; readonly "text": string; readonly "annotations"?: ReadonlyArray<OpenAIResponsesAnnotation>; readonly "logprobs"?: ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; readonly "top_logprobs": ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; }>; }>; readonly "refusal": string; } | { readonly "type": "refusal"; readonly "refusal": string; }>; } | { readonly "type": never; readonly "id": string; readonly "content": ReadonlyArray<{ readonly "type": never; readonly "text": string; readonly "annotations"?: ReadonlyArray<OpenAIResponsesAnnotation>; readonly "logprobs"?: ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; readonly "top_logprobs": ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; }>; }>; } | { readonly "type": never; readonly "refusal": string; readonly "text": string; }>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "signature"?: string; readonly "format"?: "unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1"; readonly "role": "assistant"; } | { readonly "type": never; readonly "id": string; readonly "name": string; readonly "arguments": string; readonly "call_id": string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "role": "assistant"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; } | { readonly "type": never; readonly "id": string; readonly "status": "completed" | "in_progress"; readonly "role": "assistant"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; } | { readonly "type": never; readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": "completed" | "in_progress"; readonly "role": "assistant"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; } | { readonly "type": never; readonly "id": string; readonly "result"?: string; readonly "status": "in_progress" | "completed"; readonly "role": "assistant"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; } | { readonly "id": string; readonly "role": "assistant"; readonly "type": never; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "content": ReadonlyArray<{ readonly "type": never; readonly "text": string; readonly "annotations"?: ReadonlyArray<OpenAIResponsesAnnotation>; readonly "logprobs"?: ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; readonly "top_logprobs": ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; }>; }>; } | { readonly "type": never; readonly "refusal": string; readonly "text": string; }>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; } | { readonly "type": "reasoning"; readonly "id": string; readonly "content"?: ReadonlyArray<{ readonly "type": "reasoning_text"; readonly "text": string; }>; readonly "summary": ReadonlyArray<{ readonly "type": "summary_text"; readonly "text": string; }>; readonly "encrypted_content"?: string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "signature"?: string; readonly "format"?: "unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1"; } | { readonly "type": never; readonly "id": string; readonly "name": string; readonly "arguments": string; readonly "call_id": string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; } | { readonly "type": never; readonly "id": string; readonly "status": "completed" | "in_progress"; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; } | { readonly "type": never; readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": "completed" | "in_progress"; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; } | { readonly "type": never; readonly "id": string; readonly "result"?: string; readonly "status": "in_progress" | "completed"; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; } | { readonly "id": string; readonly "role": "assistant"; readonly "type": never; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; readonly "name": string; readonly "arguments": string; readonly "call_id": string; } | { readonly "type": never; readonly "id": string; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "signature"?: string; readonly "format"?: "unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1"; readonly "name": string; readonly "arguments": string; readonly "call_id": string; } | { readonly "type": "function_call"; readonly "id"?: string; readonly "name": string; readonly "arguments": string; readonly "call_id": string; readonly "status"?: "completed" | "incomplete" | "in_progress"; } | { readonly "type": never; readonly "id": string; readonly "status": "completed" | "in_progress"; readonly "name": string; readonly "arguments": string; readonly "call_id": string; } | { readonly "type": never; readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": "completed" | "in_progress"; readonly "name": string; readonly "arguments": string; readonly "call_id": string; } | { readonly "type": never; readonly "id": string; readonly "result"?: string; readonly "status": "in_progress" | "completed"; readonly "name": string; readonly "arguments": string; readonly "call_id": string; } | { readonly "id": string; readonly "role": "assistant"; readonly "type": never; readonly "status": "completed" | "in_progress"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; } | { readonly "type": never; readonly "id": string; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; readonly "status": "completed" | "in_progress"; readonly "signature"?: string; readonly "format"?: "unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1"; } | { readonly "type": never; readonly "id": string; readonly "name": string; readonly "arguments": string; readonly "call_id": string; readonly "status": "completed" | "in_progress"; } | { readonly "type": "web_search_call"; readonly "id": string; readonly "status": "completed" | "searching" | "in_progress" | "failed"; } | { readonly "type": never; readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": "completed" | "searching" | "in_progress" | "failed"; } | { readonly "type": never; readonly "id": string; readonly "result"?: string; readonly "status": "in_progress" | "completed" | "failed"; } | { readonly "id": string; readonly "role": "assistant"; readonly "type": never; readonly "status": "completed" | "in_progress"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; readonly "queries": ReadonlyArray<string>; } | { readonly "type": never; readonly "id": string; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; readonly "status": "completed" | "in_progress"; readonly "signature"?: string; readonly "format"?: "unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1"; readonly "queries": ReadonlyArray<string>; } | { readonly "type": never; readonly "id": string; readonly "name": string; readonly "arguments": string; readonly "call_id": string; readonly "status": "completed" | "in_progress"; readonly "queries": ReadonlyArray<string>; } | { readonly "type": never; readonly "id": string; readonly "status": "completed" | "searching" | "in_progress" | "failed"; readonly "queries": ReadonlyArray<string>; } | { readonly "type": "file_search_call"; readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": "completed" | "searching" | "in_progress" | "failed"; } | { readonly "type": never; readonly "id": string; readonly "result"?: string; readonly "status": "in_progress" | "completed" | "failed"; readonly "queries": ReadonlyArray<string>; } | { readonly "id": string; readonly "role": "assistant"; readonly "type": never; readonly "status": "completed" | "in_progress"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; readonly "result"?: string; } | { readonly "type": never; readonly "id": string; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; readonly "status": "completed" | "in_progress"; readonly "signature"?: string; readonly "format"?: "unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1"; readonly "result"?: string; } | { readonly "type": never; readonly "id": string; readonly "name": string; readonly "arguments": string; readonly "call_id": string; readonly "status": "completed" | "in_progress"; readonly "result"?: string; } | { readonly "type": never; readonly "id": string; readonly "status": "completed" | "in_progress" | "failed"; readonly "result"?: string; } | { readonly "type": never; readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": "completed" | "in_progress" | "failed"; readonly "result"?: string; } | { readonly "type": "image_generation_call"; readonly "id": string; readonly "result"?: string; readonly "status": "in_progress" | "completed" | "generating" | "failed"; }>; readonly "user"?: string; readonly "output_text"?: string; readonly "prompt_cache_key"?: string; readonly "safety_identifier"?: string; readonly "error": ResponsesErrorField; readonly "incomplete_details": OpenAIResponsesIncompleteDetails; readonly "usage"?: { readonly "input_tokens": number; readonly "input_tokens_details": { readonly "cached_tokens": number; }; readonly "output_tokens": number; readonly "output_tokens_details": { readonly "reasoning_tokens": number; }; readonly "total_tokens": number; readonly "cost"?: number; readonly "is_byok"?: boolean; readonly "cost_details"?: { readonly "upstream_inference_cost"?: number; readonly "upstream_inference_input_cost": number; readonly "upstream_inference_output_cost": number; }; }; readonly "max_tool_calls"?: number; readonly "top_logprobs"?: number; readonly "max_output_tokens"?: number; readonly "temperature": number; readonly "top_p": number; readonly "presence_penalty": number; readonly "frequency_penalty": number; readonly "instructions": OpenAIResponsesInput; readonly "metadata": OpenResponsesRequestMetadata; readonly "tools": ReadonlyArray<{ readonly "type": "function"; readonly "name": string; readonly "description"?: string; readonly "strict"?: boolean; readonly "parameters": {}; } | OpenResponsesWebSearchPreviewTool | OpenResponsesWebSearchPreview20250311Tool | OpenResponsesWebSearchTool | OpenResponsesWebSearch20250826Tool>; readonly "tool_choice": OpenAIResponsesToolChoice; readonly "parallel_tool_calls": boolean; readonly "prompt"?: OpenAIResponsesPrompt; readonly "background"?: boolean; readonly "previous_response_id"?: string; readonly "reasoning"?: OpenAIResponsesReasoningConfig; readonly "service_tier"?: OpenAIResponsesServiceTier; readonly "store"?: boolean; readonly "truncation"?: OpenAIResponsesTruncation; readonly "text"?: ResponseTextConfig; };
-```
-
 #### `@effect/ai-openrouter/Generated#OpenResponsesNonStreamingResponseObject`
 
 TODO: needs guidance
@@ -27851,12 +27635,6 @@ TODO: needs guidance
 export declare class OpenResponsesReasoning extends OpenResponsesReasoning_base { }
 ```
 
-**After**
-
-```ts
-export type OpenResponsesReasoning = { readonly "type": "reasoning"; readonly "id": string; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "signature"?: string; readonly "format"?: "unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1"; };
-```
-
 #### `@effect/ai-openrouter/Generated#OpenResponsesReasoningConfig`
 
 TODO: needs guidance
@@ -27865,12 +27643,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenResponsesReasoningConfig extends OpenResponsesReasoningConfig_base { }
-```
-
-**After**
-
-```ts
-export type OpenResponsesReasoningConfig = { readonly "effort"?: OpenAIResponsesReasoningEffort; readonly "summary"?: ReasoningSummaryVerbosity; readonly "max_tokens"?: number; readonly "enabled"?: boolean; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenResponsesReasoningFormat`
@@ -27913,12 +27685,6 @@ TODO: needs guidance
 export declare class OpenResponsesRequest extends OpenResponsesRequest_base { }
 ```
 
-**After**
-
-```ts
-export type OpenResponsesRequest = { readonly "input"?: OpenResponsesInput; readonly "instructions"?: string; readonly "metadata"?: OpenResponsesRequestMetadata; readonly "tools"?: ReadonlyArray<{ readonly "type": "function"; readonly "name": string; readonly "description"?: string; readonly "strict"?: boolean; readonly "parameters": {}; } | OpenResponsesWebSearchPreviewTool | OpenResponsesWebSearchPreview20250311Tool | OpenResponsesWebSearchTool | OpenResponsesWebSearch20250826Tool>; readonly "tool_choice"?: OpenAIResponsesToolChoice; readonly "parallel_tool_calls"?: boolean; readonly "model"?: string; readonly "models"?: ReadonlyArray<string>; readonly "text"?: OpenResponsesResponseText; readonly "reasoning"?: OpenResponsesReasoningConfig; readonly "max_output_tokens"?: number; readonly "temperature"?: number; readonly "top_p"?: number; readonly "top_logprobs"?: number; readonly "max_tool_calls"?: number; readonly "presence_penalty"?: number; readonly "frequency_penalty"?: number; readonly "top_k"?: number; readonly "image_config"?: {}; readonly "modalities"?: ReadonlyArray<ResponsesOutputModality>; readonly "prompt_cache_key"?: string; readonly "previous_response_id"?: string; readonly "prompt"?: OpenAIResponsesPrompt; readonly "include"?: ReadonlyArray<OpenAIResponsesIncludable>; readonly "background"?: boolean; readonly "safety_identifier"?: string; readonly "store"?: false; readonly "service_tier"?: "auto"; readonly "truncation"?: "auto" | "disabled"; readonly "stream"?: boolean; readonly "provider"?: { readonly "allow_fallbacks"?: boolean; readonly "require_parameters"?: boolean; readonly "data_collection"?: DataCollection; readonly "zdr"?: boolean; readonly "enforce_distillable_text"?: boolean; readonly "order"?: ReadonlyArray<ProviderName | string>; readonly "only"?: ReadonlyArray<ProviderName | string>; readonly "ignore"?: ReadonlyArray<ProviderName | string>; readonly "quantizations"?: ReadonlyArray<Quantization>; readonly "sort"?: ProviderSort | ProviderSortConfig | unknown; readonly "max_price"?: { readonly "prompt"?: BigNumberUnion; readonly "completion"?: string; readonly "image"?: string; readonly "audio"?: string; readonly "request"?: string; }; readonly "preferred_min_throughput"?: PreferredMinThroughput; readonly "preferred_max_latency"?: PreferredMaxLatency; }; readonly "plugins"?: ReadonlyArray<{ readonly "id": "auto-router"; readonly "enabled"?: boolean; readonly "allowed_models"?: ReadonlyArray<string>; } | { readonly "id": "moderation"; } | { readonly "id": "web"; readonly "enabled"?: boolean; readonly "max_results"?: number; readonly "search_prompt"?: string; readonly "engine"?: WebSearchEngine; } | { readonly "id": "file-parser"; readonly "enabled"?: boolean; readonly "pdf"?: PDFParserOptions; } | { readonly "id": "response-healing"; readonly "enabled"?: boolean; }>; readonly "route"?: "fallback" | "sort"; readonly "user"?: string; readonly "session_id"?: string; readonly "trace"?: { readonly "trace_id"?: string; readonly "trace_name"?: string; readonly "span_name"?: string; readonly "generation_name"?: string; readonly "parent_span_id"?: string; }; };
-```
-
 #### `@effect/ai-openrouter/Generated#OpenResponsesRequestMetadata`
 
 TODO: needs guidance
@@ -27927,12 +27693,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenResponsesRequestMetadata extends OpenResponsesRequestMetadata_base { }
-```
-
-**After**
-
-```ts
-export type OpenResponsesRequestMetadata = {};
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenResponsesRequestRoute`
@@ -27985,12 +27745,6 @@ TODO: needs guidance
 export declare class OpenResponsesResponseText extends OpenResponsesResponseText_base { }
 ```
 
-**After**
-
-```ts
-export type OpenResponsesResponseText = { readonly "format"?: ResponseFormatTextConfig; readonly "verbosity"?: "high" | "low" | "medium"; };
-```
-
 #### `@effect/ai-openrouter/Generated#OpenResponsesResponseTextVerbosity`
 
 TODO: needs guidance
@@ -28009,12 +27763,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenResponsesWebSearch20250826Tool extends OpenResponsesWebSearch20250826Tool_base { }
-```
-
-**After**
-
-```ts
-export type OpenResponsesWebSearch20250826Tool = { readonly "type": "web_search_2025_08_26"; readonly "filters"?: { readonly "allowed_domains"?: ReadonlyArray<string>; }; readonly "search_context_size"?: ResponsesSearchContextSize; readonly "user_location"?: ResponsesWebSearchUserLocation; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenResponsesWebSearch20250826ToolType`
@@ -28037,12 +27785,6 @@ TODO: needs guidance
 export declare class OpenResponsesWebSearchPreview20250311Tool extends OpenResponsesWebSearchPreview20250311Tool_base { }
 ```
 
-**After**
-
-```ts
-export type OpenResponsesWebSearchPreview20250311Tool = { readonly "type": "web_search_preview_2025_03_11"; readonly "search_context_size"?: ResponsesSearchContextSize; readonly "user_location"?: WebSearchPreviewToolUserLocation; };
-```
-
 #### `@effect/ai-openrouter/Generated#OpenResponsesWebSearchPreview20250311ToolType`
 
 TODO: needs guidance
@@ -28061,12 +27803,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenResponsesWebSearchPreviewTool extends OpenResponsesWebSearchPreviewTool_base { }
-```
-
-**After**
-
-```ts
-export type OpenResponsesWebSearchPreviewTool = { readonly "type": "web_search_preview"; readonly "search_context_size"?: ResponsesSearchContextSize; readonly "user_location"?: WebSearchPreviewToolUserLocation; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenResponsesWebSearchPreviewToolType`
@@ -28089,12 +27825,6 @@ TODO: needs guidance
 export declare class OpenResponsesWebSearchTool extends OpenResponsesWebSearchTool_base { }
 ```
 
-**After**
-
-```ts
-export type OpenResponsesWebSearchTool = { readonly "type": "web_search"; readonly "filters"?: { readonly "allowed_domains"?: ReadonlyArray<string>; }; readonly "search_context_size"?: ResponsesSearchContextSize; readonly "user_location"?: ResponsesWebSearchUserLocation; };
-```
-
 #### `@effect/ai-openrouter/Generated#OpenResponsesWebSearchToolType`
 
 TODO: needs guidance
@@ -28113,12 +27843,6 @@ TODO: needs guidance
 
 ```ts
 export declare class OpenRouterAnthropicMessageParam extends OpenRouterAnthropicMessageParam_base { }
-```
-
-**After**
-
-```ts
-export type OpenRouterAnthropicMessageParam = { readonly "role": "user" | "assistant"; readonly "content": string | ReadonlyArray<{ readonly "type": "text"; readonly "text": string; readonly "citations"?: ReadonlyArray<{ readonly "type": "char_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_char_index": number; readonly "end_char_index": number; } | { readonly "type": "page_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_page_number": number; readonly "end_page_number": number; } | { readonly "type": "content_block_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_block_index": number; readonly "end_block_index": number; } | { readonly "type": "web_search_result_location"; readonly "cited_text": string; readonly "encrypted_index": string; readonly "title": string; readonly "url": string; } | { readonly "type": "search_result_location"; readonly "cited_text": string; readonly "search_result_index": number; readonly "source": string; readonly "title": string; readonly "start_block_index": number; readonly "end_block_index": number; }>; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "image"; readonly "source": { readonly "type": "base64"; readonly "media_type": "image/jpeg" | "image/png" | "image/gif" | "image/webp"; readonly "data": string; } | { readonly "type": "url"; readonly "url": string; }; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "document"; readonly "source": { readonly "type": "base64"; readonly "media_type": "application/pdf"; readonly "data": string; } | { readonly "type": "text"; readonly "media_type": "text/plain"; readonly "data": string; } | { readonly "type": "content"; readonly "content": string | ReadonlyArray<{ readonly "type": "text"; readonly "text": string; readonly "citations"?: ReadonlyArray<{ readonly "type": "char_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_char_index": number; readonly "end_char_index": number; } | { readonly "type": "page_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_page_number": number; readonly "end_page_number": number; } | { readonly "type": "content_block_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_block_index": number; readonly "end_block_index": number; } | { readonly "type": "web_search_result_location"; readonly "cited_text": string; readonly "encrypted_index": string; readonly "title": string; readonly "url": string; } | { readonly "type": "search_result_location"; readonly "cited_text": string; readonly "search_result_index": number; readonly "source": string; readonly "title": string; readonly "start_block_index": number; readonly "end_block_index": number; }>; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "image"; readonly "source": { readonly "type": "base64"; readonly "media_type": "image/jpeg" | "image/png" | "image/gif" | "image/webp"; readonly "data": string; } | { readonly "type": "url"; readonly "url": string; }; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; }>; } | { readonly "type": "url"; readonly "url": string; }; readonly "citations"?: { readonly "enabled"?: boolean; }; readonly "context"?: string; readonly "title"?: string; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "tool_use"; readonly "id": string; readonly "name": string; readonly "input"?: unknown; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "tool_result"; readonly "tool_use_id": string; readonly "content"?: string | ReadonlyArray<{ readonly "type": "text"; readonly "text": string; readonly "citations"?: ReadonlyArray<{ readonly "type": "char_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_char_index": number; readonly "end_char_index": number; } | { readonly "type": "page_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_page_number": number; readonly "end_page_number": number; } | { readonly "type": "content_block_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_block_index": number; readonly "end_block_index": number; } | { readonly "type": "web_search_result_location"; readonly "cited_text": string; readonly "encrypted_index": string; readonly "title": string; readonly "url": string; } | { readonly "type": "search_result_location"; readonly "cited_text": string; readonly "search_result_index": number; readonly "source": string; readonly "title": string; readonly "start_block_index": number; readonly "end_block_index": number; }>; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "image"; readonly "source": { readonly "type": "base64"; readonly "media_type": "image/jpeg" | "image/png" | "image/gif" | "image/webp"; readonly "data": string; } | { readonly "type": "url"; readonly "url": string; }; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; }>; readonly "is_error"?: boolean; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "thinking"; readonly "thinking": string; readonly "signature": string; } | { readonly "type": "redacted_thinking"; readonly "data": string; } | { readonly "type": "server_tool_use"; readonly "id": string; readonly "name": "web_search"; readonly "input"?: unknown; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "web_search_tool_result"; readonly "tool_use_id": string; readonly "content": ReadonlyArray<{ readonly "type": "web_search_result"; readonly "encrypted_content": string; readonly "title": string; readonly "url": string; readonly "page_age"?: string; }> | { readonly "type": "web_search_tool_result_error"; readonly "error_code": "invalid_tool_input" | "unavailable" | "max_uses_exceeded" | "too_many_requests" | "query_too_long"; }; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; } | { readonly "type": "search_result"; readonly "source": string; readonly "title": string; readonly "content": ReadonlyArray<{ readonly "type": "text"; readonly "text": string; readonly "citations"?: ReadonlyArray<{ readonly "type": "char_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_char_index": number; readonly "end_char_index": number; } | { readonly "type": "page_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_page_number": number; readonly "end_page_number": number; } | { readonly "type": "content_block_location"; readonly "cited_text": string; readonly "document_index": number; readonly "document_title": string; readonly "start_block_index": number; readonly "end_block_index": number; } | { readonly "type": "web_search_result_location"; readonly "cited_text": string; readonly "encrypted_index": string; readonly "title": string; readonly "url": string; } | { readonly "type": "search_result_location"; readonly "cited_text": string; readonly "search_result_index": number; readonly "source": string; readonly "title": string; readonly "start_block_index": number; readonly "end_block_index": number; }>; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; }>; readonly "citations"?: { readonly "enabled"?: boolean; }; readonly "cache_control"?: { readonly "type": "ephemeral"; readonly "ttl"?: "5m" | "1h"; }; }>; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OpenRouterAnthropicMessageParamRole`
@@ -28144,7 +27868,7 @@ export declare class OutputItemFileSearchCall extends OutputItemFileSearchCall_b
 **After**
 
 ```ts
-export type OutputItemFileSearchCall = { readonly "type": "file_search_call"; readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": WebSearchStatus; };
+export type OutputItemFileSearchCall = { readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": WebSearchStatus; readonly "type": "file_search_call"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OutputItemFileSearchCallType`
@@ -28170,7 +27894,7 @@ export declare class OutputItemFunctionCall extends OutputItemFunctionCall_base 
 **After**
 
 ```ts
-export type OutputItemFunctionCall = { readonly "type": "function_call"; readonly "id"?: string; readonly "name": string; readonly "arguments": string; readonly "call_id": string; readonly "status"?: "completed" | "incomplete" | "in_progress"; };
+export type OutputItemFunctionCall = { readonly "arguments": string; readonly "call_id": string; readonly "id"?: string; readonly "name": string; readonly "namespace"?: string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "type": "function_call"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OutputItemFunctionCallStatusEnum`
@@ -28206,7 +27930,7 @@ export declare class OutputItemImageGenerationCall extends OutputItemImageGenera
 **After**
 
 ```ts
-export type OutputItemImageGenerationCall = { readonly "type": "image_generation_call"; readonly "id": string; readonly "result"?: string; readonly "status": ImageGenerationStatus; };
+export type OutputItemImageGenerationCall = { readonly "id": string; readonly "result"?: string | null; readonly "status": ImageGenerationStatus; readonly "type": "image_generation_call"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OutputItemImageGenerationCallType`
@@ -28232,7 +27956,7 @@ export declare class OutputItemReasoning extends OutputItemReasoning_base { }
 **After**
 
 ```ts
-export type OutputItemReasoning = { readonly "type": "reasoning"; readonly "id": string; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; readonly "status"?: "completed" | "incomplete" | "in_progress"; };
+export type OutputItemReasoning = { readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "encrypted_content"?: string | null; readonly "id": string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "type": "reasoning"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OutputItemReasoningStatusEnum`
@@ -28268,7 +27992,7 @@ export declare class OutputItemWebSearchCall extends OutputItemWebSearchCall_bas
 **After**
 
 ```ts
-export type OutputItemWebSearchCall = { readonly "type": "web_search_call"; readonly "id": string; readonly "status": WebSearchStatus; };
+export type OutputItemWebSearchCall = { readonly "action"?: { readonly "queries"?: ReadonlyArray<string>; readonly "query": string; readonly "sources"?: ReadonlyArray<WebSearchSource>; readonly "type": "search"; } | { readonly "type": "open_page"; readonly "url"?: string | null; } | { readonly "pattern": string; readonly "type": "find_in_page"; readonly "url": string; }; readonly "id": string; readonly "status": WebSearchStatus; readonly "type": "web_search_call"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OutputItemWebSearchCallType`
@@ -28294,7 +28018,7 @@ export declare class OutputMessage extends OutputMessage_base { }
 **After**
 
 ```ts
-export type OutputMessage = { readonly "id": string; readonly "role": "assistant"; readonly "type": "message"; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; };
+export type OutputMessage = { readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; readonly "id": string; readonly "phase"?: "commentary" | "final_answer" | null; readonly "role": "assistant"; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "type": "message"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#OutputMessageRole`
@@ -28340,7 +28064,7 @@ export declare class OutputModality extends OutputModality_base { }
 **After**
 
 ```ts
-export type OutputModality = "text" | "image" | "embeddings" | "audio";
+export type OutputModality = "text" | "image" | "embeddings" | "audio" | "video" | "rerank" | "speech" | "transcription";
 ```
 
 #### `@effect/ai-openrouter/Generated#Parameter`
@@ -28356,7 +28080,7 @@ export declare class Parameter extends Parameter_base { }
 **After**
 
 ```ts
-export type Parameter = "temperature" | "top_p" | "top_k" | "min_p" | "top_a" | "frequency_penalty" | "presence_penalty" | "repetition_penalty" | "max_tokens" | "logit_bias" | "logprobs" | "top_logprobs" | "seed" | "response_format" | "structured_outputs" | "stop" | "tools" | "tool_choice" | "parallel_tool_calls" | "include_reasoning" | "reasoning" | "reasoning_effort" | "web_search_options" | "verbosity";
+export type Parameter = "temperature" | "top_p" | "top_k" | "min_p" | "top_a" | "frequency_penalty" | "presence_penalty" | "repetition_penalty" | "max_tokens" | "max_completion_tokens" | "logit_bias" | "logprobs" | "top_logprobs" | "prediction" | "seed" | "response_format" | "structured_outputs" | "stop" | "tools" | "tool_choice" | "parallel_tool_calls" | "include_reasoning" | "reasoning" | "reasoning_effort" | "web_search_options" | "verbosity";
 ```
 
 #### `@effect/ai-openrouter/Generated#PayloadTooLargeResponse`
@@ -28372,7 +28096,7 @@ export declare class PayloadTooLargeResponse extends PayloadTooLargeResponse_bas
 **After**
 
 ```ts
-export type PayloadTooLargeResponse = { readonly "error": PayloadTooLargeResponseErrorData; readonly "user_id"?: string; };
+export type PayloadTooLargeResponse = { readonly "error": PayloadTooLargeResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#PayloadTooLargeResponseErrorData`
@@ -28388,7 +28112,7 @@ export declare class PayloadTooLargeResponseErrorData extends PayloadTooLargeRes
 **After**
 
 ```ts
-export type PayloadTooLargeResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type PayloadTooLargeResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#PaymentRequiredResponse`
@@ -28404,7 +28128,7 @@ export declare class PaymentRequiredResponse extends PaymentRequiredResponse_bas
 **After**
 
 ```ts
-export type PaymentRequiredResponse = { readonly "error": PaymentRequiredResponseErrorData; readonly "user_id"?: string; };
+export type PaymentRequiredResponse = { readonly "error": PaymentRequiredResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#PaymentRequiredResponseErrorData`
@@ -28420,7 +28144,7 @@ export declare class PaymentRequiredResponseErrorData extends PaymentRequiredRes
 **After**
 
 ```ts
-export type PaymentRequiredResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type PaymentRequiredResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#PDFParserEngine`
@@ -28436,7 +28160,7 @@ export declare class PDFParserEngine extends PDFParserEngine_base { }
 **After**
 
 ```ts
-export type PDFParserEngine = "mistral-ocr" | "pdf-text" | "native";
+export type PDFParserEngine = "mistral-ocr" | "native" | "cloudflare-ai" | "pdf-text";
 ```
 
 #### `@effect/ai-openrouter/Generated#PDFParserOptions`
@@ -28468,7 +28192,7 @@ export declare class PercentileLatencyCutoffs extends PercentileLatencyCutoffs_b
 **After**
 
 ```ts
-export type PercentileLatencyCutoffs = { readonly "p50"?: number; readonly "p75"?: number; readonly "p90"?: number; readonly "p99"?: number; };
+export type PercentileLatencyCutoffs = { readonly "p50"?: number | null; readonly "p75"?: number | null; readonly "p90"?: number | null; readonly "p99"?: number | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#PercentileStats`
@@ -28484,7 +28208,7 @@ export declare class PercentileStats extends PercentileStats_base { }
 **After**
 
 ```ts
-export type PercentileStats = { readonly "p50": number; readonly "p75": number; readonly "p90": number; readonly "p99": number; };
+export type PercentileStats = { readonly "p50": number; readonly "p75": number; readonly "p90": number; readonly "p99": number; readonly [x: string]: Schema.Json; } | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#PercentileThroughputCutoffs`
@@ -28500,7 +28224,7 @@ export declare class PercentileThroughputCutoffs extends PercentileThroughputCut
 **After**
 
 ```ts
-export type PercentileThroughputCutoffs = { readonly "p50"?: number; readonly "p75"?: number; readonly "p90"?: number; readonly "p99"?: number; };
+export type PercentileThroughputCutoffs = { readonly "p50"?: number | null; readonly "p75"?: number | null; readonly "p90"?: number | null; readonly "p99"?: number | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#PerRequestLimits`
@@ -28516,7 +28240,7 @@ export declare class PerRequestLimits extends PerRequestLimits_base { }
 **After**
 
 ```ts
-export type PerRequestLimits = { readonly "prompt_tokens": number; readonly "completion_tokens": number; };
+export type PerRequestLimits = { readonly "completion_tokens": number; readonly "prompt_tokens": number; readonly [x: string]: Schema.Json; } | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#PreferredMaxLatency`
@@ -28532,7 +28256,7 @@ export declare class PreferredMaxLatency extends PreferredMaxLatency_base { }
 **After**
 
 ```ts
-export type PreferredMaxLatency = number | PercentileLatencyCutoffs | unknown;
+export type PreferredMaxLatency = number | PercentileLatencyCutoffs | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#PreferredMinThroughput`
@@ -28548,7 +28272,7 @@ export declare class PreferredMinThroughput extends PreferredMinThroughput_base 
 **After**
 
 ```ts
-export type PreferredMinThroughput = number | PercentileThroughputCutoffs | unknown;
+export type PreferredMinThroughput = number | PercentileThroughputCutoffs | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#ProviderName`
@@ -28564,7 +28288,7 @@ export declare class ProviderName extends ProviderName_base { }
 **After**
 
 ```ts
-export type ProviderName = "AI21" | "AionLabs" | "Alibaba" | "Ambient" | "Amazon Bedrock" | "Amazon Nova" | "Anthropic" | "Arcee AI" | "AtlasCloud" | "Avian" | "Azure" | "BaseTen" | "BytePlus" | "Black Forest Labs" | "Cerebras" | "Chutes" | "Cirrascale" | "Clarifai" | "Cloudflare" | "Cohere" | "Crusoe" | "DeepInfra" | "DeepSeek" | "Featherless" | "Fireworks" | "Friendli" | "GMICloud" | "Google" | "Google AI Studio" | "Groq" | "Hyperbolic" | "Inception" | "Inceptron" | "InferenceNet" | "Infermatic" | "Io Net" | "Inflection" | "Liquid" | "Mara" | "Mancer 2" | "Minimax" | "ModelRun" | "Mistral" | "Modular" | "Moonshot AI" | "Morph" | "NCompass" | "Nebius" | "NextBit" | "Novita" | "Nvidia" | "OpenAI" | "OpenInference" | "Parasail" | "Perplexity" | "Phala" | "Relace" | "SambaNova" | "Seed" | "SiliconFlow" | "Sourceful" | "StepFun" | "Stealth" | "StreamLake" | "Switchpoint" | "Together" | "Upstage" | "Venice" | "WandB" | "Xiaomi" | "xAI" | "Z.AI" | "FakeProvider";
+export type ProviderName = "AkashML" | "AI21" | "AionLabs" | "Alibaba" | "Ambient" | "Baidu" | "Amazon Bedrock" | "Amazon Nova" | "Anthropic" | "Arcee AI" | "AtlasCloud" | "Avian" | "Azure" | "BaseTen" | "BytePlus" | "Black Forest Labs" | "Cerebras" | "Chutes" | "Cirrascale" | "Clarifai" | "Cloudflare" | "Cohere" | "CoreWeave" | "Crucible" | "Crusoe" | "Darkbloom" | "Decart" | "Deepgram" | "DeepInfra" | "DeepSeek" | "DekaLLM" | "DigitalOcean" | "Featherless" | "Fireworks" | "Fish Audio" | "Friendli" | "GMICloud" | "Google" | "Google AI Studio" | "Groq" | "HeyGen" | "Inception" | "Inceptron" | "InferenceNet" | "Ionstream" | "Infermatic" | "Io Net" | "Inferact vLLM" | "Inflection" | "Liquid" | "Mara" | "Mancer 2" | "Meta" | "Minimax" | "ModelRun" | "Mistral" | "Modular" | "Moonshot AI" | "Morph" | "NCompass" | "Nebius" | "Nex AGI" | "NextBit" | "Novita" | "Nvidia" | "OpenAI" | "OpenInference" | "Parasail" | "Poolside" | "Perceptron" | "Perplexity" | "Phala" | "Recraft" | "Reka" | "Relace" | "Sail Research" | "Sakana AI" | "SambaNova" | "Seed" | "SiliconFlow" | "Sourceful" | "StepFun" | "Stealth" | "StreamLake" | "Switchpoint" | "Tencent" | "Tenstorrent" | "Together" | "Upstage" | "Venice" | "Wafer" | "WandB" | "Quiver" | "Krea" | "Runway" | "Xiaomi" | "xAI" | "Z.AI" | "FakeProvider";
 ```
 
 #### `@effect/ai-openrouter/Generated#ProviderOverloadedResponse`
@@ -28580,7 +28304,7 @@ export declare class ProviderOverloadedResponse extends ProviderOverloadedRespon
 **After**
 
 ```ts
-export type ProviderOverloadedResponse = { readonly "error": ProviderOverloadedResponseErrorData; readonly "user_id"?: string; };
+export type ProviderOverloadedResponse = { readonly "error": ProviderOverloadedResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ProviderOverloadedResponseErrorData`
@@ -28596,7 +28320,7 @@ export declare class ProviderOverloadedResponseErrorData extends ProviderOverloa
 **After**
 
 ```ts
-export type ProviderOverloadedResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type ProviderOverloadedResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ProviderPreferences`
@@ -28612,7 +28336,7 @@ export declare class ProviderPreferences extends ProviderPreferences_base { }
 **After**
 
 ```ts
-export type ProviderPreferences = { readonly "allow_fallbacks"?: boolean; readonly "require_parameters"?: boolean; readonly "data_collection"?: DataCollection; readonly "zdr"?: boolean; readonly "enforce_distillable_text"?: boolean; readonly "order"?: ReadonlyArray<ProviderName | string>; readonly "only"?: ReadonlyArray<ProviderName | string>; readonly "ignore"?: ReadonlyArray<ProviderName | string>; readonly "quantizations"?: ReadonlyArray<Quantization>; readonly "sort"?: "price" | "price" | "throughput" | "throughput" | "latency" | "latency"; readonly "max_price"?: { readonly "prompt"?: BigNumberUnion; readonly "completion"?: string; readonly "image"?: string; readonly "audio"?: string; readonly "request"?: string; }; readonly "preferred_min_throughput"?: PreferredMinThroughput; readonly "preferred_max_latency"?: PreferredMaxLatency; };
+export type ProviderPreferences = Objects_148 | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#ProviderPreferencesSort`
@@ -28638,7 +28362,7 @@ export declare class ProviderSort extends ProviderSort_base { }
 **After**
 
 ```ts
-export type ProviderSort = "price" | "throughput" | "latency";
+export type ProviderSort = "price" | "throughput" | "latency" | "exacto";
 ```
 
 #### `@effect/ai-openrouter/Generated#ProviderSortConfig`
@@ -28654,7 +28378,7 @@ export declare class ProviderSortConfig extends ProviderSortConfig_base { }
 **After**
 
 ```ts
-export type ProviderSortConfig = { readonly "by"?: ProviderSort | null; readonly "partition"?: "model" | "none" | null; };
+export type ProviderSortConfig = { readonly "by"?: "price" | "throughput" | "latency" | "exacto" | null; readonly "partition"?: "model" | "none" | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ProviderSortConfigPartitionEnum`
@@ -28677,12 +28401,6 @@ TODO: needs guidance
 export declare class ProviderSortUnion extends ProviderSortUnion_base { }
 ```
 
-**After**
-
-```ts
-export type ProviderSortUnion = ProviderSort | ProviderSortConfig;
-```
-
 #### `@effect/ai-openrouter/Generated#PublicEndpoint`
 
 TODO: needs guidance
@@ -28696,7 +28414,7 @@ export declare class PublicEndpoint extends PublicEndpoint_base { }
 **After**
 
 ```ts
-export type PublicEndpoint = { readonly "name": string; readonly "model_id": string; readonly "model_name": string; readonly "context_length": number; readonly "pricing": { readonly "prompt": string; readonly "completion": string; readonly "request"?: string; readonly "image"?: string; readonly "image_token"?: string; readonly "image_output"?: string; readonly "audio"?: string; readonly "audio_output"?: string; readonly "input_audio_cache"?: string; readonly "web_search"?: string; readonly "internal_reasoning"?: string; readonly "input_cache_read"?: string; readonly "input_cache_write"?: string; readonly "discount"?: number; }; readonly "provider_name": ProviderName; readonly "tag": string; readonly "quantization": "int4" | "int8" | "fp4" | "fp6" | "fp8" | "fp16" | "bf16" | "fp32" | "unknown"; readonly "max_completion_tokens": number; readonly "max_prompt_tokens": number; readonly "supported_parameters": ReadonlyArray<Parameter>; readonly "status"?: EndpointStatus; readonly "uptime_last_30m": number; readonly "supports_implicit_caching": boolean; readonly "latency_last_30m": PercentileStats; readonly "throughput_last_30m": { readonly "p50": number; readonly "p75": number; readonly "p90": number; readonly "p99": number; }; };
+export type PublicEndpoint = { readonly "context_length": number; readonly "latency_last_30m": PercentileStats; readonly "max_completion_tokens": number | null; readonly "max_prompt_tokens": number | null; readonly "model_id": string; readonly "model_name": string; readonly "name": string; readonly "pricing": { readonly "audio"?: string; readonly "audio_output"?: string; readonly "completion": string; readonly "discount"?: number; readonly "image"?: string; readonly "image_output"?: string; readonly "image_token"?: string; readonly "input_audio_cache"?: string; readonly "input_cache_read"?: string; readonly "input_cache_write"?: string; readonly "input_cache_write_1h"?: string; readonly "internal_reasoning"?: string; readonly "overrides"?: ReadonlyArray<PricingOverride>; readonly "prompt": string; readonly "request"?: string; readonly "web_search"?: string; }; readonly "provider_name": ProviderName; readonly "quantization": Quantization | null; readonly "status"?: EndpointStatus; readonly "supported_parameters": ReadonlyArray<Parameter>; readonly "supports_implicit_caching": boolean; readonly "tag": string; readonly "throughput_last_30m": PercentileStats; readonly "uptime_last_1d": number | null; readonly "uptime_last_30m": number | null; readonly "uptime_last_5m": number | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#PublicEndpointQuantization`
@@ -28742,7 +28460,7 @@ export declare class PublicPricing extends PublicPricing_base { }
 **After**
 
 ```ts
-export type PublicPricing = { readonly "prompt": string; readonly "completion": string; readonly "request"?: string; readonly "image"?: string; readonly "image_token"?: string; readonly "image_output"?: string; readonly "audio"?: string; readonly "audio_output"?: string; readonly "input_audio_cache"?: string; readonly "web_search"?: string; readonly "internal_reasoning"?: string; readonly "input_cache_read"?: string; readonly "input_cache_write"?: string; readonly "discount"?: number; };
+export type PublicPricing = { readonly "audio"?: string; readonly "audio_output"?: string; readonly "completion": string; readonly "discount"?: number; readonly "image"?: string; readonly "image_output"?: string; readonly "image_token"?: string; readonly "input_audio_cache"?: string; readonly "input_cache_read"?: string; readonly "input_cache_write"?: string; readonly "input_cache_write_1h"?: string; readonly "internal_reasoning"?: string; readonly "overrides"?: ReadonlyArray<PricingOverride>; readonly "prompt": string; readonly "request"?: string; readonly "web_search"?: string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#Quantization`
@@ -28781,6 +28499,12 @@ TODO: needs guidance
 export declare class ReasoningDetailEncrypted extends ReasoningDetailEncrypted_base { }
 ```
 
+**After**
+
+```ts
+export type ReasoningDetailEncrypted = { readonly "data": string; readonly "format"?: ReasoningFormat; readonly "id"?: string | null; readonly "index"?: number; readonly "type": "reasoning.encrypted"; };
+```
+
 #### `@effect/ai-openrouter/Generated#ReasoningDetailSummary`
 
 TODO: needs guidance
@@ -28791,6 +28515,12 @@ TODO: needs guidance
 export declare class ReasoningDetailSummary extends ReasoningDetailSummary_base { }
 ```
 
+**After**
+
+```ts
+export type ReasoningDetailSummary = { readonly "format"?: ReasoningFormat; readonly "id"?: string | null; readonly "index"?: number; readonly "summary": string; readonly "type": "reasoning.summary"; };
+```
+
 #### `@effect/ai-openrouter/Generated#ReasoningDetailText`
 
 TODO: needs guidance
@@ -28799,6 +28529,12 @@ TODO: needs guidance
 
 ```ts
 export declare class ReasoningDetailText extends ReasoningDetailText_base { }
+```
+
+**After**
+
+```ts
+export type ReasoningDetailText = { readonly "format"?: ReasoningFormat; readonly "id"?: string | null; readonly "index"?: number; readonly "signature"?: string | null; readonly "text"?: string | null; readonly "type": "reasoning.text"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ReasoningSummaryText`
@@ -28814,7 +28550,7 @@ export declare class ReasoningSummaryText extends ReasoningSummaryText_base { }
 **After**
 
 ```ts
-export type ReasoningSummaryText = { readonly "type": "summary_text"; readonly "text": string; };
+export type ReasoningSummaryText = { readonly "text": string; readonly "type": "summary_text"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ReasoningSummaryTextType`
@@ -28840,7 +28576,7 @@ export declare class ReasoningSummaryVerbosity extends ReasoningSummaryVerbosity
 **After**
 
 ```ts
-export type ReasoningSummaryVerbosity = "auto" | "concise" | "detailed";
+export type ReasoningSummaryVerbosity = "auto" | "concise" | "detailed" | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#ReasoningTextContent`
@@ -28856,7 +28592,7 @@ export declare class ReasoningTextContent extends ReasoningTextContent_base { }
 **After**
 
 ```ts
-export type ReasoningTextContent = { readonly "type": "reasoning_text"; readonly "text": string; };
+export type ReasoningTextContent = { readonly "text": string; readonly "type": "reasoning_text"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ReasoningTextContentType`
@@ -28882,7 +28618,7 @@ export declare class RequestTimeoutResponse extends RequestTimeoutResponse_base 
 **After**
 
 ```ts
-export type RequestTimeoutResponse = { readonly "error": RequestTimeoutResponseErrorData; readonly "user_id"?: string; };
+export type RequestTimeoutResponse = { readonly "error": RequestTimeoutResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#RequestTimeoutResponseErrorData`
@@ -28898,7 +28634,7 @@ export declare class RequestTimeoutResponseErrorData extends RequestTimeoutRespo
 **After**
 
 ```ts
-export type RequestTimeoutResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type RequestTimeoutResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponseFormatJSONSchema`
@@ -28911,12 +28647,6 @@ TODO: needs guidance
 export declare class ResponseFormatJSONSchema extends ResponseFormatJSONSchema_base { }
 ```
 
-**After**
-
-```ts
-export type ResponseFormatJSONSchema = { readonly "type": "json_schema"; readonly "json_schema": JSONSchemaConfig; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponseFormatTextConfig`
 
 TODO: needs guidance
@@ -28925,12 +28655,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponseFormatTextConfig extends ResponseFormatTextConfig_base { }
-```
-
-**After**
-
-```ts
-export type ResponseFormatTextConfig = ResponsesFormatText | ResponsesFormatJSONObject | ResponsesFormatTextJSONSchemaConfig;
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponseFormatTextGrammar`
@@ -28943,12 +28667,6 @@ TODO: needs guidance
 export declare class ResponseFormatTextGrammar extends ResponseFormatTextGrammar_base { }
 ```
 
-**After**
-
-```ts
-export type ResponseFormatTextGrammar = { readonly "type": "grammar"; readonly "grammar": string; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponseInputAudio`
 
 TODO: needs guidance
@@ -28957,12 +28675,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponseInputAudio extends ResponseInputAudio_base { }
-```
-
-**After**
-
-```ts
-export type ResponseInputAudio = { readonly "type": "input_audio"; readonly "input_audio": { readonly "data": string; readonly "format": "mp3" | "wav"; }; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponseInputAudioInputAudioFormat`
@@ -28995,12 +28707,6 @@ TODO: needs guidance
 export declare class ResponseInputFile extends ResponseInputFile_base { }
 ```
 
-**After**
-
-```ts
-export type ResponseInputFile = { readonly "type": "input_file"; readonly "file_id"?: string; readonly "file_data"?: string; readonly "filename"?: string; readonly "file_url"?: string; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponseInputFileType`
 
 TODO: needs guidance
@@ -29019,12 +28725,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponseInputImage extends ResponseInputImage_base { }
-```
-
-**After**
-
-```ts
-export type ResponseInputImage = { readonly "type": "input_image"; readonly "detail": "auto" | "high" | "low"; readonly "image_url"?: string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponseInputImageDetail`
@@ -29057,12 +28757,6 @@ TODO: needs guidance
 export declare class ResponseInputText extends ResponseInputText_base { }
 ```
 
-**After**
-
-```ts
-export type ResponseInputText = { readonly "type": "input_text"; readonly "text": string; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponseInputTextType`
 
 TODO: needs guidance
@@ -29081,12 +28775,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponseInputVideo extends ResponseInputVideo_base { }
-```
-
-**After**
-
-```ts
-export type ResponseInputVideo = { readonly "type": "input_video"; readonly "video_url": string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponseInputVideoType`
@@ -29112,7 +28800,7 @@ export declare class ResponseOutputText extends ResponseOutputText_base { }
 **After**
 
 ```ts
-export type ResponseOutputText = { readonly "type": "output_text"; readonly "text": string; readonly "annotations"?: ReadonlyArray<OpenAIResponsesAnnotation>; readonly "logprobs"?: ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; readonly "top_logprobs": ReadonlyArray<{ readonly "token": string; readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; }>; }>; };
+export type ResponseOutputText = { readonly "annotations"?: ReadonlyArray<OpenAIResponsesAnnotation>; readonly "logprobs"?: ReadonlyArray<{ readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; readonly "token": string; readonly "top_logprobs": ReadonlyArray<{ readonly "bytes": ReadonlyArray<number>; readonly "logprob": number; readonly "token": string; }>; }>; readonly "text": string; readonly "type": "output_text"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponseOutputTextType`
@@ -29138,7 +28826,7 @@ export declare class ResponsesErrorField extends ResponsesErrorField_base { }
 **After**
 
 ```ts
-export type ResponsesErrorField = { readonly "code": "server_error" | "rate_limit_exceeded" | "invalid_prompt" | "vector_store_timeout" | "invalid_image" | "invalid_image_format" | "invalid_base64_image" | "invalid_image_url" | "image_too_large" | "image_too_small" | "image_parse_error" | "image_content_policy_violation" | "invalid_image_mode" | "image_file_too_large" | "unsupported_image_media_type" | "empty_image_file" | "failed_to_download_image" | "image_file_not_found"; readonly "message": string; };
+export type ResponsesErrorField = { readonly "code": "server_error" | "rate_limit_exceeded" | "invalid_prompt" | "vector_store_timeout" | "invalid_image" | "invalid_image_format" | "invalid_base64_image" | "invalid_image_url" | "image_too_large" | "image_too_small" | "image_parse_error" | "image_content_policy_violation" | "invalid_image_mode" | "image_file_too_large" | "unsupported_image_media_type" | "empty_image_file" | "failed_to_download_image" | "image_file_not_found" | "bio_policy"; readonly "message": string; readonly [x: string]: Schema.Json; } | null;
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponsesErrorFieldCode`
@@ -29161,12 +28849,6 @@ TODO: needs guidance
 export declare class ResponsesFormatJSONObject extends ResponsesFormatJSONObject_base { }
 ```
 
-**After**
-
-```ts
-export type ResponsesFormatJSONObject = { readonly "type": "json_object"; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponsesFormatJSONObjectType`
 
 TODO: needs guidance
@@ -29187,12 +28869,6 @@ TODO: needs guidance
 export declare class ResponsesFormatText extends ResponsesFormatText_base { }
 ```
 
-**After**
-
-```ts
-export type ResponsesFormatText = { readonly "type": "text"; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponsesFormatTextJSONSchemaConfig`
 
 TODO: needs guidance
@@ -29201,12 +28877,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponsesFormatTextJSONSchemaConfig extends ResponsesFormatTextJSONSchemaConfig_base { }
-```
-
-**After**
-
-```ts
-export type ResponsesFormatTextJSONSchemaConfig = { readonly "type": "json_schema"; readonly "name": string; readonly "description"?: string; readonly "strict"?: boolean; readonly "schema": {}; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponsesFormatTextJSONSchemaConfigType`
@@ -29239,12 +28909,6 @@ TODO: needs guidance
 export declare class ResponsesImageGenerationCall extends ResponsesImageGenerationCall_base { }
 ```
 
-**After**
-
-```ts
-export type ResponsesImageGenerationCall = { readonly "type": "image_generation_call"; readonly "id": string; readonly "result"?: string; readonly "status": ImageGenerationStatus; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponsesImageGenerationCallType`
 
 TODO: needs guidance
@@ -29265,12 +28929,6 @@ TODO: needs guidance
 export declare class ResponsesOutputItemFileSearchCall extends ResponsesOutputItemFileSearchCall_base { }
 ```
 
-**After**
-
-```ts
-export type ResponsesOutputItemFileSearchCall = { readonly "type": "file_search_call"; readonly "id": string; readonly "queries": ReadonlyArray<string>; readonly "status": WebSearchStatus; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponsesOutputItemFileSearchCallType`
 
 TODO: needs guidance
@@ -29289,12 +28947,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponsesOutputItemFunctionCall extends ResponsesOutputItemFunctionCall_base { }
-```
-
-**After**
-
-```ts
-export type ResponsesOutputItemFunctionCall = { readonly "type": "function_call"; readonly "id"?: string; readonly "name": string; readonly "arguments": string; readonly "call_id": string; readonly "status"?: "completed" | "incomplete" | "in_progress"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponsesOutputItemFunctionCallStatusEnum`
@@ -29325,12 +28977,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponsesOutputItemReasoning extends ResponsesOutputItemReasoning_base { }
-```
-
-**After**
-
-```ts
-export type ResponsesOutputItemReasoning = { readonly "type": "reasoning"; readonly "id": string; readonly "content"?: ReadonlyArray<ReasoningTextContent>; readonly "summary": ReadonlyArray<ReasoningSummaryText>; readonly "encrypted_content"?: string; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "signature"?: string; readonly "format"?: "unknown" | "openai-responses-v1" | "azure-openai-responses-v1" | "xai-responses-v1" | "anthropic-claude-v1" | "google-gemini-v1"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponsesOutputItemReasoningFormat`
@@ -29373,12 +29019,6 @@ TODO: needs guidance
 export declare class ResponsesOutputMessage extends ResponsesOutputMessage_base { }
 ```
 
-**After**
-
-```ts
-export type ResponsesOutputMessage = { readonly "id": string; readonly "role": "assistant"; readonly "type": "message"; readonly "status"?: "completed" | "incomplete" | "in_progress"; readonly "content": ReadonlyArray<ResponseOutputText | OpenAIResponsesRefusalContent>; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponsesOutputMessageRole`
 
 TODO: needs guidance
@@ -29419,12 +29059,6 @@ TODO: needs guidance
 export declare class ResponsesOutputModality extends ResponsesOutputModality_base { }
 ```
 
-**After**
-
-```ts
-export type ResponsesOutputModality = "text" | "image";
-```
-
 #### `@effect/ai-openrouter/Generated#ResponsesSearchContextSize`
 
 TODO: needs guidance
@@ -29435,12 +29069,6 @@ TODO: needs guidance
 export declare class ResponsesSearchContextSize extends ResponsesSearchContextSize_base { }
 ```
 
-**After**
-
-```ts
-export type ResponsesSearchContextSize = "low" | "medium" | "high";
-```
-
 #### `@effect/ai-openrouter/Generated#ResponsesWebSearchCallOutput`
 
 TODO: needs guidance
@@ -29449,12 +29077,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponsesWebSearchCallOutput extends ResponsesWebSearchCallOutput_base { }
-```
-
-**After**
-
-```ts
-export type ResponsesWebSearchCallOutput = { readonly "type": "web_search_call"; readonly "id": string; readonly "status": WebSearchStatus; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponsesWebSearchCallOutputType`
@@ -29477,12 +29099,6 @@ TODO: needs guidance
 export declare class ResponsesWebSearchUserLocation extends ResponsesWebSearchUserLocation_base { }
 ```
 
-**After**
-
-```ts
-export type ResponsesWebSearchUserLocation = { readonly "type"?: "approximate"; readonly "city"?: string; readonly "country"?: string; readonly "region"?: string; readonly "timezone"?: string; };
-```
-
 #### `@effect/ai-openrouter/Generated#ResponsesWebSearchUserLocationType`
 
 TODO: needs guidance
@@ -29501,12 +29117,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ResponseTextConfig extends ResponseTextConfig_base { }
-```
-
-**After**
-
-```ts
-export type ResponseTextConfig = { readonly "format"?: ResponseFormatTextConfig; readonly "verbosity"?: "high" | "low" | "medium"; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ResponseTextConfigVerbosity`
@@ -29612,7 +29222,7 @@ export declare class ServiceUnavailableResponse extends ServiceUnavailableRespon
 **After**
 
 ```ts
-export type ServiceUnavailableResponse = { readonly "error": ServiceUnavailableResponseErrorData; readonly "user_id"?: string; };
+export type ServiceUnavailableResponse = { readonly "error": ServiceUnavailableResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ServiceUnavailableResponseErrorData`
@@ -29628,7 +29238,7 @@ export declare class ServiceUnavailableResponseErrorData extends ServiceUnavaila
 **After**
 
 ```ts
-export type ServiceUnavailableResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type ServiceUnavailableResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#SystemMessage`
@@ -29639,12 +29249,6 @@ TODO: needs guidance
 
 ```ts
 export declare class SystemMessage extends SystemMessage_base { }
-```
-
-**After**
-
-```ts
-export type SystemMessage = { readonly "role": "system"; readonly "content": string | ReadonlyArray<ChatMessageContentItemText>; readonly "name"?: string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#ToolCallStatus`
@@ -29673,12 +29277,6 @@ TODO: needs guidance
 export declare class ToolChoiceOption extends ToolChoiceOption_base { }
 ```
 
-**After**
-
-```ts
-export type ToolChoiceOption = "none" | "auto" | "required" | NamedToolChoice;
-```
-
 #### `@effect/ai-openrouter/Generated#ToolDefinitionJson`
 
 TODO: needs guidance
@@ -29689,12 +29287,6 @@ TODO: needs guidance
 export declare class ToolDefinitionJson extends ToolDefinitionJson_base { }
 ```
 
-**After**
-
-```ts
-export type ToolDefinitionJson = { readonly "type": "function"; readonly "function": { readonly "name": string; readonly "description"?: string; readonly "parameters"?: {}; readonly "strict"?: boolean | null; }; readonly "cache_control"?: ChatMessageContentItemCacheControl; };
-```
-
 #### `@effect/ai-openrouter/Generated#ToolResponseMessage`
 
 TODO: needs guidance
@@ -29703,12 +29295,6 @@ TODO: needs guidance
 
 ```ts
 export declare class ToolResponseMessage extends ToolResponseMessage_base { }
-```
-
-**After**
-
-```ts
-export type ToolResponseMessage = { readonly "role": "tool"; readonly "content": string | ReadonlyArray<ChatMessageContentItem>; readonly "tool_call_id": string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#TooManyRequestsResponse`
@@ -29724,7 +29310,7 @@ export declare class TooManyRequestsResponse extends TooManyRequestsResponse_bas
 **After**
 
 ```ts
-export type TooManyRequestsResponse = { readonly "error": TooManyRequestsResponseErrorData; readonly "user_id"?: string; };
+export type TooManyRequestsResponse = { readonly "error": TooManyRequestsResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#TooManyRequestsResponseErrorData`
@@ -29740,7 +29326,7 @@ export declare class TooManyRequestsResponseErrorData extends TooManyRequestsRes
 **After**
 
 ```ts
-export type TooManyRequestsResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type TooManyRequestsResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#TopProviderInfo`
@@ -29756,7 +29342,7 @@ export declare class TopProviderInfo extends TopProviderInfo_base { }
 **After**
 
 ```ts
-export type TopProviderInfo = { readonly "context_length"?: number; readonly "max_completion_tokens"?: number; readonly "is_moderated": boolean; };
+export type TopProviderInfo = { readonly "context_length"?: number | null; readonly "is_moderated": boolean; readonly "max_completion_tokens"?: number | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#UnauthorizedResponse`
@@ -29772,7 +29358,7 @@ export declare class UnauthorizedResponse extends UnauthorizedResponse_base { }
 **After**
 
 ```ts
-export type UnauthorizedResponse = { readonly "error": UnauthorizedResponseErrorData; readonly "user_id"?: string; };
+export type UnauthorizedResponse = { readonly "error": UnauthorizedResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#UnauthorizedResponseErrorData`
@@ -29788,7 +29374,7 @@ export declare class UnauthorizedResponseErrorData extends UnauthorizedResponseE
 **After**
 
 ```ts
-export type UnauthorizedResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type UnauthorizedResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#UnprocessableEntityResponse`
@@ -29804,7 +29390,7 @@ export declare class UnprocessableEntityResponse extends UnprocessableEntityResp
 **After**
 
 ```ts
-export type UnprocessableEntityResponse = { readonly "error": UnprocessableEntityResponseErrorData; readonly "user_id"?: string; };
+export type UnprocessableEntityResponse = { readonly "error": UnprocessableEntityResponseErrorData; readonly "openrouter_metadata"?: { readonly [x: string]: Schema.Json; } | null; readonly "user_id"?: string | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#UnprocessableEntityResponseErrorData`
@@ -29820,7 +29406,7 @@ export declare class UnprocessableEntityResponseErrorData extends UnprocessableE
 **After**
 
 ```ts
-export type UnprocessableEntityResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: {}; };
+export type UnprocessableEntityResponseErrorData = { readonly "code": number; readonly "message": string; readonly "metadata"?: { readonly [x: string]: Schema.Json; } | null; };
 ```
 
 #### `@effect/ai-openrouter/Generated#UpdateGuardrail200`
@@ -29836,7 +29422,7 @@ export declare class UpdateGuardrail200 extends UpdateGuardrail200_base { }
 **After**
 
 ```ts
-export type UpdateGuardrail200 = { readonly "data": { readonly "id": string; readonly "name": string; readonly "description"?: string; readonly "limit_usd"?: number; readonly "reset_interval"?: "daily" | "weekly" | "monthly"; readonly "allowed_providers"?: ReadonlyArray<string>; readonly "allowed_models"?: ReadonlyArray<string>; readonly "enforce_zdr"?: boolean; readonly "created_at": string; readonly "updated_at"?: string; }; };
+export type UpdateGuardrail200 = UpdateGuardrailResponse;
 ```
 
 #### `@effect/ai-openrouter/Generated#UpdateGuardrail200DataResetInterval`
@@ -29857,6 +29443,12 @@ TODO: needs guidance
 
 ```ts
 export declare class UpdateGuardrailRequest extends UpdateGuardrailRequest_base { }
+```
+
+**After**
+
+```ts
+export type UpdateGuardrailRequest = { readonly "allowed_models"?: ReadonlyArray<string> | null; readonly "allowed_providers"?: ReadonlyArray<string> | null; readonly "content_filter_builtins"?: ReadonlyArray<ContentFilterBuiltinEntryInput> | null; readonly "content_filters"?: ReadonlyArray<ContentFilterEntry> | null; readonly "description"?: string | null; readonly "enforce_zdr"?: boolean | null; readonly "enforce_zdr_anthropic"?: boolean | null; readonly "enforce_zdr_google"?: boolean | null; readonly "enforce_zdr_openai"?: boolean | null; readonly "enforce_zdr_other"?: boolean | null; readonly "enforce_zdr_xai"?: boolean | null; readonly "ignored_models"?: ReadonlyArray<string> | null; readonly "ignored_providers"?: ReadonlyArray<string> | null; readonly "limit_usd"?: number | null; readonly "name"?: string; readonly "reset_interval"?: GuardrailInterval; };
 ```
 
 #### `@effect/ai-openrouter/Generated#UpdateGuardrailRequestResetInterval`
@@ -29882,7 +29474,7 @@ export declare class UpdateKeys200 extends UpdateKeys200_base { }
 **After**
 
 ```ts
-export type UpdateKeys200 = { readonly "data": { readonly "hash": string; readonly "name": string; readonly "label": string; readonly "disabled": boolean; readonly "limit": number; readonly "limit_remaining": number; readonly "limit_reset": string; readonly "include_byok_in_limit": boolean; readonly "usage": number; readonly "usage_daily": number; readonly "usage_weekly": number; readonly "usage_monthly": number; readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_weekly": number; readonly "byok_usage_monthly": number; readonly "created_at": string; readonly "updated_at": string; readonly "expires_at"?: string; }; };
+export type UpdateKeys200 = { readonly "data": { readonly "byok_usage": number; readonly "byok_usage_daily": number; readonly "byok_usage_monthly": number; readonly "byok_usage_weekly": number; readonly "created_at": string; readonly "creator_user_id": string | null; readonly "disabled": boolean; readonly "expires_at"?: string | null; readonly "hash": string; readonly "include_byok_in_limit": boolean; readonly "label": string; readonly "limit": number | null; readonly "limit_remaining": number | null; readonly "limit_reset": string | null; readonly "name": string; readonly "updated_at": string | null; readonly "usage": number; readonly "usage_daily": number; readonly "usage_monthly": number; readonly "usage_weekly": number; readonly "workspace_id": string; }; };
 ```
 
 #### `@effect/ai-openrouter/Generated#UpdateKeysRequest`
@@ -29918,7 +29510,7 @@ export declare class URLCitation extends URLCitation_base { }
 **After**
 
 ```ts
-export type URLCitation = { readonly "type": "url_citation"; readonly "url": string; readonly "title": string; readonly "start_index": number; readonly "end_index": number; };
+export type URLCitation = { readonly "content"?: string; readonly "end_index": number; readonly "start_index": number; readonly "title": string; readonly "type": "url_citation"; readonly "url": string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#URLCitationAnnotationDetail`
@@ -29951,12 +29543,6 @@ TODO: needs guidance
 export declare class UserMessage extends UserMessage_base { }
 ```
 
-**After**
-
-```ts
-export type UserMessage = { readonly "role": "user"; readonly "content": string | ReadonlyArray<ChatMessageContentItem>; readonly "name"?: string; };
-```
-
 #### `@effect/ai-openrouter/Generated#WebSearchEngine`
 
 TODO: needs guidance
@@ -29970,7 +29556,7 @@ export declare class WebSearchEngine extends WebSearchEngine_base { }
 **After**
 
 ```ts
-export type WebSearchEngine = "native" | "exa";
+export type WebSearchEngine = "native" | "exa" | "firecrawl" | "parallel" | "perplexity";
 ```
 
 #### `@effect/ai-openrouter/Generated#WebSearchPreviewToolUserLocation`
@@ -29981,12 +29567,6 @@ TODO: needs guidance
 
 ```ts
 export declare class WebSearchPreviewToolUserLocation extends WebSearchPreviewToolUserLocation_base { }
-```
-
-**After**
-
-```ts
-export type WebSearchPreviewToolUserLocation = { readonly "type": "approximate"; readonly "city"?: string; readonly "country"?: string; readonly "region"?: string; readonly "timezone"?: string; };
 ```
 
 #### `@effect/ai-openrouter/Generated#WebSearchPreviewToolUserLocationType`
@@ -30070,7 +29650,7 @@ export interface Service { readonly client: Generated.Client; readonly createCha
 **After**
 
 ```ts
-export interface Service { readonly client: Generated.OpenRouterClient; readonly createChatCompletion: (options: typeof Generated.ChatGenerationParams.Encoded) => Effect.Effect<[ body: typeof Generated.SendChatCompletionRequest200.Type, response: HttpClientResponse.HttpClientResponse ], AiError.AiError>; readonly createChatCompletionStream: (options: Omit<typeof Generated.ChatGenerationParams.Encoded, "stream" | "stream_options">) => Effect.Effect<[ response: HttpClientResponse.HttpClientResponse, stream: Stream.Stream<ChatStreamingResponseChunkData, AiError.AiError> ], AiError.AiError>; }
+export interface Service { readonly client: Generated.OpenRouterClient; readonly createChatCompletion: (options: typeof Generated.ChatRequest.Encoded) => Effect.Effect<[ body: typeof Generated.SendChatCompletionRequest200.Type, response: HttpClientResponse.HttpClientResponse ], AiError.AiError>; readonly createChatCompletionStream: (options: Omit<typeof Generated.ChatRequest.Encoded, "stream" | "stream_options">) => Effect.Effect<[ response: HttpClientResponse.HttpClientResponse, stream: Stream.Stream<ChatStreamingResponseChunkData, AiError.AiError> ], AiError.AiError>; }
 ```
 
 ### `@effect/ai-openrouter/OpenRouterConfig`
@@ -33517,16 +33097,6 @@ TODO: needs guidance
 
 ```ts
 export interface Repeated { readonly _tag: "Repeated"; readonly usage: Usage; }
-```
-
-#### `@effect/cli/Usage#Usage`
-
-TODO: needs guidance
-
-**Before**
-
-```ts
-export type Usage = Empty | Mixed | Named | Optional | Repeated | Alternation | Concat;
 ```
 
 ### `@effect/cli/ValidationError`
@@ -61103,6 +60673,16 @@ TODO: needs guidance
 withClockScoped: <C extends Clock.Clock>(clock: C) => Effect<void, never, Scope.Scope>
 ```
 
+#### `effect/Effect#withConcurrency`
+
+TODO: needs guidance
+
+**Before**
+
+```ts
+withConcurrency: { (concurrency: number | "unbounded"): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>; <A, E, R>(self: Effect<A, E, R>, concurrency: number | "unbounded"): Effect<A, E, R>; }
+```
+
 #### `effect/Effect#withConfigProvider`
 
 TODO: needs guidance
@@ -66638,7 +66218,7 @@ export interface ManagedRuntime<in R, out ER> extends Effect.Effect<Runtime.Runt
 
 ```ts
 export declare namespace ManagedRuntime { type Services<T extends ManagedRuntime<never, any>> = [T] extends [ManagedRuntime<infer R, infer _E>] ? R : never; type Error<T extends ManagedRuntime<never, any>> = [T] extends [ManagedRuntime<infer _R, infer E>] ? E : never; }
-export interface ManagedRuntime<in R, out ER> { readonly [TypeId]: typeof TypeId; readonly memoMap: Layer.MemoMap; readonly contextEffect: Effect.Effect<Context.Context<R>, ER>; readonly context: () => Promise<Context.Context<R>>; readonly scope: Scope.Closeable; cachedContext: Context.Context<R> | undefined; readonly runFork: <A, E>(self: Effect.Effect<A, E, R>, options?: Effect.RunOptions) => Fiber.Fiber<A, E | ER>; readonly runSyncExit: <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, ER | E>; readonly runSync: <A, E>(effect: Effect.Effect<A, E, R>) => A; readonly runCallback: <A, E>(effect: Effect.Effect<A, E, R>, options?: (Effect.RunOptions & { readonly onExit: (exit: Exit.Exit<A, E | ER>) => void; }) | undefined) => (interruptor?: number | undefined) => void; readonly runPromise: <A, E>(effect: Effect.Effect<A, E, R>, options?: Effect.RunOptions) => Promise<A>; readonly runPromiseExit: <A, E>(effect: Effect.Effect<A, E, R>, options?: Effect.RunOptions) => Promise<Exit.Exit<A, ER | E>>; readonly dispose: () => Promise<void>; readonly disposeEffect: Effect.Effect<void, never, never>; }
+export interface ManagedRuntime<in R, out ER> { readonly [TypeId]: typeof TypeId; readonly memoMap: Layer.MemoMap; readonly contextEffect: Effect.Effect<Context.Context<R>, ER>; readonly context: () => Promise<Context.Context<R>>; readonly scope: Scope.Closeable; cachedContext: Context.Context<R> | undefined; readonly runFork: <A, E>(self: Effect.Effect<A, E, R>, options?: Effect.RunOptions) => Fiber.Fiber<A, E | ER>; readonly runSyncExit: <A, E>(effect: Effect.Effect<A, E, R>) => Exit.Exit<A, ER | E>; readonly runSync: <A, E>(effect: Effect.Effect<A, E, R>) => A; readonly runCallback: <A, E>(effect: Effect.Effect<A, E, R>, options?: (Effect.RunOptions & { readonly onExit: (exit: Exit.Exit<A, E | ER>) => void; }) | undefined) => (interruptor?: number | undefined) => void; readonly runPromise: <A, E>(effect: Effect.Effect<A, E, R>, options?: Effect.RunOptions) => Promise<A>; readonly runPromiseExit: <A, E>(effect: Effect.Effect<A, E, R>, options?: Effect.RunOptions) => Promise<Exit.Exit<A, ER | E>>; readonly dispose: () => Promise<void>; readonly [Symbol.asyncDispose]: () => Promise<void>; readonly disposeEffect: Effect.Effect<void, never, never>; }
 ```
 
 #### `effect/ManagedRuntime#ManagedRuntime.Context`
@@ -75717,7 +75297,7 @@ export declare namespace Annotations { interface Doc<A> extends AST.Annotations 
 **After**
 
 ```ts
-export declare namespace Annotations { interface Annotations { readonly [x: string]: unknown; } interface Augment extends Annotations { readonly expected?: string | undefined; readonly title?: string | undefined; readonly description?: string | undefined; readonly documentation?: string | undefined; readonly readOnly?: boolean | undefined; readonly writeOnly?: boolean | undefined; readonly format?: string | undefined; readonly contentEncoding?: string | undefined; readonly contentMediaType?: string | undefined; readonly contentSchema?: Json | undefined; } interface Documentation<T> extends Augment { readonly default?: T | undefined; readonly examples?: ReadonlyArray<T> | undefined; } interface Key<T> extends Documentation<T> { readonly messageMissingKey?: string | undefined; } interface Bottom<T, TypeParameters extends ReadonlyArray<Constraint>> extends Documentation<T> { readonly message?: string | undefined; readonly messageUnexpectedKey?: string | undefined; readonly identifier?: string | undefined; readonly parseOptions?: SchemaAST.ParseOptions | undefined; readonly brands?: ReadonlyArray<string> | undefined; readonly toArbitrary?: ToArbitrary.Declaration<T, TypeParameters> | undefined; } namespace TypeParameters { type Type<TypeParameters extends ReadonlyArray<Constraint>> = { readonly [K in keyof TypeParameters]: Codec<TypeParameters[K]["Type"]>; }; type Encoded<TypeParameters extends ReadonlyArray<Constraint>> = { readonly [K in keyof TypeParameters]: Codec<TypeParameters[K]["Encoded"]>; }; } interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint> = readonly []> extends Bottom<T, TypeParameters> { readonly representation?: SchemaRepresentation.RepresentationAnnotation | undefined; readonly toCodec?: ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link) | undefined; readonly toCodecJson?: ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined) | undefined; readonly toCodecStringTree?: ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined) | undefined; readonly toCodecIso?: ((typeParameters: TypeParameters.Type<TypeParameters>) => SchemaAST.Link) | undefined; readonly toArbitrary?: ToArbitrary.Declaration<T, TypeParameters> | undefined; readonly toEquivalence?: ToEquivalence.Declaration<T, TypeParameters> | undefined; readonly toFormatter?: ToFormatter.Declaration<T, TypeParameters> | undefined; readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined; readonly "~sentinels"?: ReadonlyArray<SchemaAST.Sentinel> | undefined; } interface Filter extends Augment { readonly representation?: SchemaRepresentation.CheckRepresentationAnnotation<SchemaAST.AST> | undefined; readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined; readonly toCode?: SchemaRepresentation.Generation.Check | undefined; readonly message?: string | undefined; readonly identifier?: string | undefined; readonly arbitrary?: ToArbitrary.Filter | undefined; readonly "~structural"?: boolean | undefined; } namespace ToArbitrary { interface Filter { readonly constraint?: GenerationConstraint | undefined; readonly candidate?: Candidate | undefined; } interface Candidate { readonly weight?: number | undefined; readonly make: (fc: typeof FastCheck, context: Context) => FastCheck.Arbitrary<unknown> | undefined; } interface OrderedConstraint<T> { readonly order: Order.Order<T>; readonly minimum?: T | undefined; readonly exclusiveMinimum?: boolean | undefined; readonly maximum?: T | undefined; readonly exclusiveMaximum?: boolean | undefined; } interface GenerationConstraint { readonly minLength?: number | undefined; readonly maxLength?: number | undefined; readonly patterns?: readonly [string, ...Array<string>]; readonly integer?: boolean | undefined; readonly noInfinity?: boolean | undefined; readonly noNaN?: boolean | undefined; readonly valid?: boolean | undefined; readonly unique?: boolean | undefined; readonly ordered?: OrderedConstraint<any> | undefined; } interface Recursion { readonly maxDepth: number; readonly depthIdentifier: FastCheck.DepthIdentifier | string; } interface Context { readonly constraint?: ToArbitrary.GenerationConstraint | undefined; readonly recursion?: ToArbitrary.Recursion | undefined; } interface TypeParameter<T> { readonly arbitrary: FastCheck.Arbitrary<T>; readonly terminal: FastCheck.Arbitrary<T> | undefined; } interface Derivation<T> { readonly arbitrary: FastCheck.Arbitrary<T>; readonly terminal?: FastCheck.Arbitrary<T> | undefined; } type Output<T> = FastCheck.Arbitrary<T> | Derivation<T>; interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint>> { (typeParameters: { readonly [K in keyof TypeParameters]: TypeParameter<TypeParameters[K]["Type"]>; }): (fc: typeof FastCheck, context: Context) => Output<T>; } interface WithReport<A> { readonly value: A; readonly report: Report; } interface Report { readonly warnings: ReadonlyArray<Warning>; } type Warning = OpaqueFilterWarning; interface OpaqueFilterWarning { readonly _tag: "OpaqueFilter"; readonly path: ReadonlyArray<PropertyKey>; readonly description?: string | undefined; } } namespace ToFormatter { interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint>> { (typeParameters: { readonly [K in keyof TypeParameters]: Formatter<TypeParameters[K]["Type"]>; }): Formatter<T>; } } namespace ToEquivalence { interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint>> { (typeParameters: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]["Type"]>; }): Equivalence.Equivalence<T>; } } interface Issue extends Annotations { readonly message?: string | undefined; } }
+export declare namespace Annotations { interface Annotations { readonly [x: string]: unknown; } interface Augment extends Annotations { readonly expected?: string | undefined; readonly title?: string | undefined; readonly description?: string | undefined; readonly documentation?: string | undefined; readonly readOnly?: boolean | undefined; readonly writeOnly?: boolean | undefined; readonly format?: string | undefined; readonly contentEncoding?: string | undefined; readonly contentMediaType?: string | undefined; readonly contentSchema?: Json | undefined; } interface Documentation<T> extends Augment { readonly default?: T | undefined; readonly examples?: ReadonlyArray<T> | undefined; } interface Key<T> extends Documentation<T> { readonly messageMissingKey?: string | undefined; } interface Bottom<T, TypeParameters extends ReadonlyArray<Constraint>> extends Documentation<T> { readonly message?: string | undefined; readonly messageUnexpectedKey?: string | undefined; readonly identifier?: string | undefined; readonly parseOptions?: SchemaAST.ParseOptions | undefined; readonly brands?: ReadonlyArray<string> | undefined; readonly toArbitrary?: ToArbitrary.Declaration<T, TypeParameters> | undefined; } namespace TypeParameters { type Type<TypeParameters extends ReadonlyArray<Constraint>> = { readonly [K in keyof TypeParameters]: Codec<TypeParameters[K]["Type"]>; }; type Encoded<TypeParameters extends ReadonlyArray<Constraint>> = { readonly [K in keyof TypeParameters]: Codec<TypeParameters[K]["Encoded"]>; }; } interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint> = readonly []> extends Bottom<T, TypeParameters> { readonly representation?: SchemaRepresentation.RepresentationAnnotation | undefined; readonly toCodec?: ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link) | undefined; readonly toCodecJson?: ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined) | undefined; readonly toCodecStringTree?: ((typeParameters: TypeParameters.Encoded<TypeParameters>) => SchemaAST.Link | undefined) | undefined; readonly toCodecIso?: ((typeParameters: TypeParameters.Type<TypeParameters>) => SchemaAST.Link) | undefined; readonly toArbitrary?: ToArbitrary.Declaration<T, TypeParameters> | undefined; readonly toEquivalence?: ToEquivalence.Declaration<T, TypeParameters> | undefined; readonly toFormatter?: ToFormatter.Declaration<T, TypeParameters> | undefined; readonly toCode?: SchemaRepresentation.Generation.Declaration | undefined; readonly "~sentinels"?: ReadonlyArray<SchemaAST.Sentinel> | undefined; } interface Filter extends Augment { readonly representation?: SchemaRepresentation.CheckRepresentationAnnotation<SchemaAST.AST> | undefined; readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined; readonly toCode?: SchemaRepresentation.Generation.Check | undefined; readonly message?: string | undefined; readonly identifier?: string | undefined; readonly arbitrary?: ToArbitrary.Filter | undefined; readonly "~structural"?: boolean | undefined; } namespace ToArbitrary { interface Filter { readonly constraint?: GenerationConstraint | undefined; readonly candidate?: Candidate | undefined; } interface Candidate { readonly weight?: number | undefined; readonly make: (fc: typeof FastCheck, context: Context) => FastCheck.Arbitrary<unknown> | undefined; } interface OrderedConstraint<T> { readonly order: Order.Order<T>; readonly minimum?: T | undefined; readonly exclusiveMinimum?: boolean | undefined; readonly maximum?: T | undefined; readonly exclusiveMaximum?: boolean | undefined; } interface GenerationConstraint { readonly minLength?: number | undefined; readonly maxLength?: number | undefined; readonly patterns?: readonly [string, ...Array<string>]; readonly integer?: boolean | undefined; readonly noInfinity?: boolean | undefined; readonly noNaN?: boolean | undefined; readonly unique?: boolean | undefined; readonly ordered?: OrderedConstraint<any> | undefined; } interface Recursion { readonly maxDepth: number; readonly depthIdentifier: FastCheck.DepthIdentifier | string; } interface Context { readonly constraint?: ToArbitrary.GenerationConstraint | undefined; readonly recursion?: ToArbitrary.Recursion | undefined; } interface TypeParameter<T> { readonly arbitrary: FastCheck.Arbitrary<T>; readonly terminal: FastCheck.Arbitrary<T> | undefined; } interface Derivation<T> { readonly arbitrary: FastCheck.Arbitrary<T>; readonly terminal?: FastCheck.Arbitrary<T> | undefined; } type Output<T> = FastCheck.Arbitrary<T> | Derivation<T>; interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint>> { (typeParameters: { readonly [K in keyof TypeParameters]: TypeParameter<TypeParameters[K]["Type"]>; }): (fc: typeof FastCheck, context: Context) => Output<T>; } interface WithReport<A> { readonly value: A; readonly report: Report; } interface Report { readonly warnings: ReadonlyArray<Warning>; } type Warning = OpaqueFilterWarning; interface OpaqueFilterWarning { readonly _tag: "OpaqueFilter"; readonly path: ReadonlyArray<PropertyKey>; readonly description?: string | undefined; } } namespace ToFormatter { interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint>> { (typeParameters: { readonly [K in keyof TypeParameters]: Formatter<TypeParameters[K]["Type"]>; }): Formatter<T>; } } namespace ToEquivalence { interface Declaration<T, TypeParameters extends ReadonlyArray<Constraint>> { (typeParameters: { readonly [K in keyof TypeParameters]: Equivalence.Equivalence<TypeParameters[K]["Type"]>; }): Equivalence.Equivalence<T>; } } interface Issue extends Annotations { readonly message?: string | undefined; } }
 namespace Annotations { interface Augment { readonly httpApiStatus?: number | undefined; } }
 ```
 
@@ -76204,7 +75784,7 @@ export interface Class<Self, Fields extends Struct.Fields, I, R, C, Inherited, P
 **After**
 
 ```ts
-export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fields; }, Inherited> extends BottomLazy<SchemaAST.Declaration, decodeTo<declareConstructor<Self, S["Encoded"], readonly [S], S["Iso"]>, S>, readonly [S], S["~type.mutability"], S["~type.optionality"], S["~type.constructor.default"], S["~encoded.mutability"], S["~encoded.optionality"]> { readonly "Type": Self; readonly "Encoded": S["Encoded"]; readonly "DecodingServices": S["DecodingServices"]; readonly "EncodingServices": S["EncodingServices"]; readonly "~type.make.in": RequiredKeys<S["~type.make.in"]> extends never ? void | S["~type.make.in"] : S["~type.make.in"]; readonly "~type.make": Self; readonly "Iso": S["Iso"]; new (...args: {} extends S["~type.make.in"] ? [props?: S["~type.make.in"], options?: MakeOptions] : [props: S["~type.make.in"], options?: MakeOptions]): S["Type"] & Inherited; readonly identifier: string; readonly fields: S["fields"]; mapFields<To extends Struct.Fields>(f: (fields: S["fields"]) => To, options?: { readonly unsafePreserveChecks?: boolean | undefined; } | undefined): Struct<Simplify<Readonly<To>>>; extend<Extended = never, Static = {}, Brand = {}>(identifier: string): { <NewFields extends Struct.Fields>(fields: NewFields, annotations?: Annotations.Declaration<Extended, readonly [Struct<Simplify<Assign<S["fields"], NewFields>>>]>): [Extended] extends [never] ? MissingSelfGeneric<"Base.extend"> : InheritStaticMembers<Class<Extended, Struct<Simplify<Assign<S["fields"], NewFields>>>, Self & Brand>, Static>; <Extension extends Struct<Struct.Fields>>(schema: Extension, annotations?: Annotations.Declaration<Extended, readonly [Struct<Simplify<Assign<S["fields"], Extension["fields"]>>>]>): [Extended] extends [never] ? MissingSelfGeneric<"Base.extend"> : InheritStaticMembers<Class<Extended, Struct<Simplify<Assign<S["fields"], Extension["fields"]>>>, Self & Brand>, Static>; }; }
+export interface Class<Self, S extends Constraint & { readonly fields: Struct.Fields; }, Inherited> extends BottomLazyWithoutNew<SchemaAST.Declaration, decodeTo<declareConstructor<Self, S["Encoded"], readonly [S], S["Iso"]>, S>, readonly [S], S["~type.mutability"], S["~type.optionality"], S["~type.constructor.default"], S["~encoded.mutability"], S["~encoded.optionality"]> { readonly "Type": Self; readonly "Encoded": S["Encoded"]; readonly "DecodingServices": S["DecodingServices"]; readonly "EncodingServices": S["EncodingServices"]; readonly "~type.make.in": RequiredKeys<S["~type.make.in"]> extends never ? void | S["~type.make.in"] : S["~type.make.in"]; readonly "~type.make": Self; readonly "Iso": S["Iso"]; new (...args: {} extends S["~type.make.in"] ? [props?: S["~type.make.in"], options?: MakeOptions] : [props: S["~type.make.in"], options?: MakeOptions]): S["Type"] & Inherited; readonly identifier: string; readonly fields: S["fields"]; mapFields<To extends Struct.Fields>(f: (fields: S["fields"]) => To, options?: { readonly unsafePreserveChecks?: boolean | undefined; } | undefined): Struct<Simplify<Readonly<To>>>; extend<Extended = never, Static = {}, Brand = {}>(identifier: string): { <NewFields extends Struct.Fields>(fields: NewFields, annotations?: Annotations.Declaration<Extended, readonly [Struct<Simplify<Assign<S["fields"], NewFields>>>]>): [Extended] extends [never] ? MissingSelfGeneric<"Base.extend"> : InheritStaticMembers<Class<Extended, Struct<Simplify<Assign<S["fields"], NewFields>>>, Self & Brand>, Static>; <Extension extends Struct<Struct.Fields>>(schema: Extension, annotations?: Annotations.Declaration<Extended, readonly [Struct<Simplify<Assign<S["fields"], Extension["fields"]>>>]>): [Extended] extends [never] ? MissingSelfGeneric<"Base.extend"> : InheritStaticMembers<Class<Extended, Struct<Simplify<Assign<S["fields"], Extension["fields"]>>>, Self & Brand>, Static>; }; }
 ```
 
 #### `effect/Schema#Config`
@@ -76250,7 +75830,7 @@ declare class Date$ extends Date$_base { }
 **After**
 
 ```ts
-export interface Date extends instanceOf<globalThis.Date> { readonly "Rebuild": Date; }
+export interface Date extends declare<globalThis.Date> { readonly "Rebuild": Date; }
 ```
 
 - `effect/Schema#DateFromNumber` -> `effect/Schema#SchemaError`: TODO: needs guidance
@@ -78315,7 +77895,7 @@ export declare class NumberFromString extends NumberFromString_base { }
 **After**
 
 ```ts
-export interface NumberFromString extends decodeTo<Finite, String> { readonly "Rebuild": NumberFromString; }
+export interface NumberFromString extends decodeTo<Number, String> { readonly "Rebuild": NumberFromString; }
 ```
 
 #### `effect/Schema#Object`
@@ -89220,6 +88800,22 @@ export interface TupleTypeLambda extends TypeLambda { readonly type: [this["Out1
 ```
 
 ### `effect/Types`
+
+#### `effect/Types#Concurrency`
+
+TODO: needs guidance
+
+**Before**
+
+```ts
+export type Concurrency = number | "unbounded" | "inherit";
+```
+
+**After**
+
+```ts
+export type Concurrency = number | "unbounded";
+```
 
 #### `effect/Types#Contravariant`
 

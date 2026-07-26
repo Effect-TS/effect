@@ -8,7 +8,7 @@ import * as Stream from "effect/Stream"
 import * as ChildProcess from "effect/unstable/process/ChildProcess"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
 import { ApiDiffError } from "./Error.ts"
-import { decodeJson, prettyJson } from "./Json.ts"
+import { decodeJson } from "./Json.ts"
 import type { ApiSnapshot } from "./Model.ts"
 import { snapshotCacheKey, Snapshotter } from "./Snapshot.ts"
 
@@ -194,15 +194,21 @@ export class Worktrees extends Context.Service<Worktrees, {
                       })
                   )
                 )
-                yield* fs.makeDirectory(path.dirname(cacheLocation), { recursive: true })
-                yield* fs.writeFileString(cacheLocation, prettyJson(snapshot)).pipe(
-                  Effect.mapError((cause) =>
-                    new ApiDiffError({
-                      message: `Could not cache the ${options.name} API snapshot`,
-                      cause
-                    })
+                const encoded = yield* Effect.try({
+                  try: () => JSON.stringify(snapshot),
+                  catch: () => undefined
+                })
+                if (encoded !== undefined) {
+                  yield* fs.makeDirectory(path.dirname(cacheLocation), { recursive: true })
+                  yield* fs.writeFileString(cacheLocation, encoded).pipe(
+                    Effect.mapError((cause) =>
+                      new ApiDiffError({
+                        message: `Could not cache the ${options.name} API snapshot`,
+                        cause
+                      })
+                    )
                   )
-                )
+                }
                 return snapshot
               }),
             () => removeWorktree(options.repoRoot, worktree)

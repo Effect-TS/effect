@@ -64,7 +64,11 @@ export class ApiDiff extends Context.Service<ApiDiff, {
         }
 
         const baseSha = yield* worktrees.resolveRef(repoRoot, options.baseRef)
-        const headSha = yield* worktrees.resolveRef(repoRoot, options.headRef)
+        const headSha = yield* (options.headRef === "main"
+          ? worktrees.resolveRef(repoRoot, "origin/main").pipe(
+            Effect.catch(() => worktrees.resolveRef(repoRoot, options.headRef))
+          )
+          : worktrees.resolveRef(repoRoot, options.headRef))
         const toolRoot = path.join(repoRoot, "tmp", "api-diff")
         const cacheRoot = path.join(toolRoot, "cache")
         const worktreesRoot = path.join(toolRoot, "worktrees")

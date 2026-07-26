@@ -98,7 +98,7 @@ it.effect("writes the migration document with default refs", () =>
 
     const source = yield* fs.readFileString(document)
     assert(source.includes(`Base: \`v3\` (\`${"v3".repeat(40).slice(0, 40)}\`)`))
-    assert(source.includes(`Head: \`main\` (\`${"main".repeat(40).slice(0, 40)}\`)`))
+    assert(source.includes(`Head: \`main\` (\`${"origin/main".repeat(40).slice(0, 40)}\`)`))
     assert(source.includes("## Import Map\n\nKeep this map."))
     assert(source.includes("## API Reference"))
   }).pipe(Effect.provide(MainLayer)))
