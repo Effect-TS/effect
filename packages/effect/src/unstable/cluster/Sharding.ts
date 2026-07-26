@@ -20,6 +20,7 @@ import * as Effect from "../../Effect.ts"
 import * as Equal from "../../Equal.ts"
 import type * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
+import * as FiberHandle from "../../FiberHandle.ts"
 import * as FiberMap from "../../FiberMap.ts"
 import { constant, flow } from "../../Function.ts"
 import * as HashRing from "../../HashRing.ts"
@@ -473,6 +474,15 @@ const make = Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
       yield* Effect.addFinalizer(() => Effect.logDebug("Shutting down"))
 
+      // A single replaceable timer that re-opens the storage read latch when the
+      // next scheduled message becomes deliverable. Re-derived from storage after
+      // every read, so a missed or failed wake only delays delivery until the
+      // next poll interval.
+      const storageWakeHandle = yield* FiberHandle.make()
+      // Keep discovery separate so replacing a stale lookup does not cancel the
+      // last successfully armed deadline.
+      const storageWakeDiscoveryHandle = yield* FiberHandle.make()
+
       let index = 0
       let messages: Array<Message.Incoming<any>> = []
       const removableNotifications = new Set<PendingNotification>()
@@ -556,6 +566,26 @@ const make = Effect.gen(function*() {
         }
       )
 
+      const rediscoverStorageWake = Effect.suspend(() => storage.nextDeliverAt(acquiredShards)).pipe(
+        Effect.flatMap(Option.match({
+          onNone: () => FiberHandle.clear(storageWakeHandle),
+          onSome: (delay) => {
+            if (Duration.isLessThanOrEqualTo(delay, Duration.zero)) {
+              return FiberHandle.clear(storageWakeHandle).pipe(
+                Effect.andThen(storageReadLatch.open),
+                Effect.asVoid
+              )
+            }
+            return storageReadLatch.open.pipe(
+              Effect.delay(delay),
+              FiberHandle.run(storageWakeHandle),
+              Effect.asVoid
+            )
+          }
+        })),
+        Effect.catchCause((cause) => Effect.logDebug("Could not read the next scheduled delivery time", cause))
+      )
+
       while (true) {
         // wait for the next poll interval, or if we get notified of a change
         yield* storageReadLatch.await
@@ -574,6 +604,7 @@ const make = Effect.gen(function*() {
           pendingNotifications.forEach((entry) => removableNotifications.add(entry))
         }
 
+        yield* FiberHandle.run(storageWakeDiscoveryHandle, rediscoverStorageWake)
         messages = yield* storage.unprocessedMessages(acquiredShards)
         index = 0
         yield* processMessages

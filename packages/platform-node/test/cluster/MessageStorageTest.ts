@@ -2,6 +2,7 @@ import { describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import {
+  DeliverAt,
   EntityAddress,
   EntityId,
   EntityType,
@@ -101,6 +102,7 @@ export const GetUserRpc = Rpc.make("GetUser", {
 export const makeRequest = Effect.fnUntraced(function*(options?: {
   readonly rpc?: Rpc.AnyWithProps
   readonly payload?: any
+  readonly shardId?: ShardId.ShardId
 }) {
   const snowflake = yield* Snowflake.Generator
   const rpc = options?.rpc ?? GetUserRpc
@@ -108,7 +110,7 @@ export const makeRequest = Effect.fnUntraced(function*(options?: {
     envelope: Envelope.makeRequest<any>({
       requestId: snowflake.nextUnsafe(),
       address: EntityAddress.make({
-        shardId: ShardId.make("default", 1),
+        shardId: options?.shardId ?? ShardId.make("default", 1),
         entityType: EntityType.make("test"),
         entityId: EntityId.make("1")
       }),
@@ -134,6 +136,19 @@ export class PrimaryKeyTest extends Rpc.make("PrimaryKeyTest", {
     id: Schema.Number
   },
   primaryKey: (value) => value.id.toString()
+}) {}
+
+export class ScheduledPayload extends Schema.Class<ScheduledPayload>("ScheduledPayload")({
+  id: Schema.Number,
+  deliverAt: Schema.DateTimeUtcFromMillis
+}) {
+  [DeliverAt.symbol]() {
+    return this.deliverAt
+  }
+}
+
+export class ScheduledRpc extends Rpc.make("ScheduledRpc", {
+  payload: ScheduledPayload
 }) {}
 
 export class StreamRpc extends Rpc.make("StreamTest", {

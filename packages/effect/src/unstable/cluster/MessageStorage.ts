@@ -14,6 +14,7 @@ import * as Arr from "../../Array.ts"
 import { Clock } from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Data from "../../Data.ts"
+import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import { constFalse, identity } from "../../Function.ts"
@@ -142,6 +143,17 @@ export class MessageStorage extends Context.Service<MessageStorage, {
   readonly unprocessedMessagesById: <R extends Rpc.Any>(
     messageIds: Iterable<Snowflake.Snowflake>
   ) => Effect.Effect<Array<Message.Incoming<R>>, PersistenceError>
+
+  /**
+   * Retrieves the delay until the earliest scheduled message for the
+   * specified shards becomes deliverable.
+   *
+   * The delay must measure when this implementation's `unprocessedMessages`
+   * predicate will consider the message due.
+   */
+  readonly nextDeliverAt: (
+    shardIds: Iterable<ShardId.ShardId>
+  ) => Effect.Effect<Option.Option<Duration.Duration>, PersistenceError>
 
   /**
    * Reset the mailbox state for the provided shards.
@@ -374,6 +386,18 @@ export type Encoded = {
     }>,
     PersistenceError
   >
+
+  /**
+   * Retrieves the earliest `deliverAt` of the scheduled messages for the
+   * given shards that is later than `now`.
+   *
+   * The returned time must use the same clock domain as this implementation's
+   * `unprocessedMessages` eligibility predicate.
+   */
+  readonly nextDeliverAt: (
+    shardIds: Arr.NonEmptyArray<string>,
+    now: number
+  ) => Effect.Effect<Option.Option<number>, PersistenceError>
 
   /**
    * Reset the mailbox state for the provided address.
@@ -651,6 +675,18 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         (messages) => decodeMessages(storage, messages)
       )
     },
+    nextDeliverAt(shardIds) {
+      const shards = Array.from(shardIds, (id) => id.toString())
+      if (!Arr.isArrayNonEmpty(shards)) return Effect.succeedNone
+      return Effect.suspend(() => encoded.nextDeliverAt(shards, clock.currentTimeMillisUnsafe())).pipe(
+        Effect.map((next) =>
+          Option.map(
+            next,
+            (deliverAt) => Duration.max(Duration.millis(deliverAt - clock.currentTimeMillisUnsafe()), Duration.zero)
+          )
+        )
+      )
+    },
     resetAddress: encoded.resetAddress,
     clearAddress: encoded.clearAddress,
     resetShards: (shardIds) => {
@@ -779,6 +815,7 @@ export const noop: MessageStorage["Service"] = Effect.runSync(make({
   requestIdForPrimaryKey: () => Effect.succeedNone,
   unprocessedMessages: () => Effect.succeed([]),
   unprocessedMessagesById: () => Effect.succeed([]),
+  nextDeliverAt: () => Effect.succeedNone,
   resetAddress: () => Effect.void,
   clearAddress: () => Effect.void,
   resetShards: () => Effect.void,
@@ -849,7 +886,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
         }
         if (envelope._tag === "Request") {
           const entry = requests.get(envelope.requestId)
-          if (entry?.deliverAt && entry.deliverAt > now) {
+          if (entry?.deliverAt != null && entry.deliverAt > now) {
             continue
           }
           messages.push({
@@ -967,7 +1004,7 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             }
             if (envelope._tag === "Request") {
               const entry = requests.get(envelope.requestId)!
-              if (entry.deliverAt && entry.deliverAt > now) {
+              if (entry.deliverAt != null && entry.deliverAt > now) {
                 continue
               }
               messages.push({
@@ -991,6 +1028,19 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
             envelopeIds.add(String(id))
           }
           return unprocessedWith((envelope) => envelopeIds.has(envelope.requestId))
+        }),
+      nextDeliverAt: (shardIds, now) =>
+        Effect.sync(() => {
+          let min: number | undefined
+          for (const envelope of unprocessed) {
+            if (envelope._tag !== "Request") continue
+            const shardId = ShardId.make(envelope.address.shardId.group, envelope.address.shardId.id)
+            if (!shardIds.includes(shardId.toString())) continue
+            const entry = requests.get(envelope.requestId)
+            if (entry?.deliverAt == null || entry.deliverAt <= now) continue
+            if (min === undefined || entry.deliverAt < min) min = entry.deliverAt
+          }
+          return min === undefined ? Option.none() : Option.some(min)
         }),
       resetAddress: () => Effect.void,
       clearAddress: (address) =>
