@@ -92,6 +92,27 @@ describe("Latch", () => {
       assert.isFalse(latch.isOpen())
     }))
 
+  it.effect("release does not resume waiters registered after the release", () =>
+    Effect.gen(function*() {
+      const latch = yield* Latch.make(false)
+      const covered = yield* Effect.forkChild(
+        Latch.await(latch),
+        { startImmediately: true }
+      )
+
+      yield* latch.release
+      const late = yield* Effect.forkChild(
+        Latch.await(latch),
+        { startImmediately: true }
+      )
+
+      yield* Effect.yieldNow
+      yield* Effect.yieldNow
+
+      assert.isDefined(covered.pollUnsafe())
+      assert.isUndefined(late.pollUnsafe())
+    }))
+
   it.effect("openUnsafe does not resume waiters registered after a reentrant close", () =>
     Effect.gen(function*() {
       const latch = Latch.makeUnsafe(false)
