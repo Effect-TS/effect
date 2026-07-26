@@ -125,52 +125,6 @@ export {
 }
 
 /**
- * Context reference for controlling the current concurrency limit. Can be set to "unbounded"
- * for unlimited concurrency or a specific number to limit concurrent operations.
- *
- * **When to use**
- *
- * Use to configure the default concurrency limit for operations that read
- * concurrency from the current context.
- *
- * **Example** (Setting current concurrency)
- *
- * ```ts
- * import { Effect, References } from "effect"
- *
- * const limitConcurrency = Effect.gen(function*() {
- *   // Get current setting
- *   const current = yield* References.CurrentConcurrency
- *   console.log(current) // "unbounded" (default)
- *
- *   // Run with limited concurrency
- *   yield* Effect.provideService(
- *     Effect.gen(function*() {
- *       const limited = yield* References.CurrentConcurrency
- *       console.log(limited) // 10
- *     }),
- *     References.CurrentConcurrency,
- *     10
- *   )
- *
- *   // Run with unlimited concurrency
- *   yield* Effect.provideService(
- *     Effect.gen(function*() {
- *       const unlimited = yield* References.CurrentConcurrency
- *       console.log(unlimited) // "unbounded"
- *     }),
- *     References.CurrentConcurrency,
- *     "unbounded"
- *   )
- * })
- * ```
- *
- * @category references
- * @since 4.0.0
- */
-export const CurrentConcurrency: Context.Reference<number | "unbounded"> = references.CurrentConcurrency
-
-/**
  * Context reference for managing log annotations that are automatically added to all log entries.
  * These annotations provide contextual metadata that appears in every log message.
  *

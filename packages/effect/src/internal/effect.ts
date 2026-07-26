@@ -85,7 +85,6 @@ import * as doNotation from "./doNotation.ts"
 import * as InternalMetric from "./metric.ts"
 import * as InternalRecord from "./record.ts"
 import {
-  CurrentConcurrency,
   CurrentErrorReporters,
   CurrentLogAnnotations,
   CurrentLogLevel,
@@ -2248,17 +2247,6 @@ export const provideServiceEffect: {
   ): Effect.Effect<A, E | E2, Exclude<R, I> | R2> =>
     flatMap(acquire, (implementation) => provideService(self, service, implementation))
 )
-
-/** @internal */
-export const withConcurrency: {
-  (
-    concurrency: "unbounded" | number
-  ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>
-  <A, E, R>(
-    self: Effect.Effect<A, E, R>,
-    concurrency: "unbounded" | number
-  ): Effect.Effect<A, E, R>
-} = provideService(CurrentConcurrency)
 
 // ----------------------------------------------------------------------------
 // zipping
@@ -4642,10 +4630,8 @@ export const forEach: {
     readonly discard?: boolean | undefined
   }
 ): Effect.Effect<any, E, R> =>
-  withFiber((parent) => {
-    const concurrencyOption = options?.concurrency === "inherit"
-      ? parent.getRef(CurrentConcurrency)
-      : (options?.concurrency ?? 1)
+  suspend(() => {
+    const concurrencyOption = options?.concurrency ?? 1
     const concurrency = concurrencyOption === "unbounded"
       ? Number.POSITIVE_INFINITY
       : Math.max(1, concurrencyOption)

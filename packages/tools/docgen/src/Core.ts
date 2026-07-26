@@ -69,7 +69,7 @@ const readSourceFiles = Effect.gen(function*() {
     Effect.map(
       fs.readFileString(path),
       (content) => new Domain.File(path, content, false)
-    ), { concurrency: "inherit" })
+    ), { concurrency: "unbounded" })
 })
 
 /**

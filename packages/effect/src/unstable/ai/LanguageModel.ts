@@ -20,7 +20,6 @@ import type * as JsonSchema from "../../JsonSchema.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
-import { CurrentConcurrency } from "../../References.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as Semaphore from "../../Semaphore.ts"
@@ -1008,7 +1007,7 @@ export const make: (params: {
   ) {
     const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
-    const concurrency = yield* resolveToolCallConcurrency(options.concurrency)
+    const concurrency = options.concurrency ?? "unbounded"
     providerOptions.span.attribute("concurrency", concurrency)
 
     const generateWithNonIncrementalFallback = () => {
@@ -1245,7 +1244,7 @@ export const make: (params: {
   ) {
     const tracker = Option.getOrUndefined(yield* Effect.serviceOption(ResponseIdTracker.ResponseIdTracker))
     const toolChoice = options.toolChoice ?? "auto"
-    const concurrency = yield* resolveToolCallConcurrency(options.concurrency)
+    const concurrency = options.concurrency ?? "unbounded"
     providerOptions.span.attribute("concurrency", concurrency)
 
     const streamWithNonIncrementalFallback = () => {
@@ -1966,19 +1965,10 @@ const isApprovalNeeded = Effect.fnUntraced(function*<T extends Tool.Any>(
   return tool.needsApproval
 }, Effect.orElseSucceed(constFalse))
 
-type ResolvedConcurrency = Exclude<Concurrency, "inherit">
-
-const resolveToolCallConcurrency = (
-  concurrency: Concurrency | undefined
-): Effect.Effect<ResolvedConcurrency> =>
-  concurrency === "inherit"
-    ? Effect.service(CurrentConcurrency)
-    : Effect.succeed(concurrency ?? "unbounded")
-
 const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
   approvals: ReadonlyArray<ApprovalResult>,
   toolkit: Toolkit.WithHandler<Tools>,
-  concurrency: ResolvedConcurrency
+  concurrency: Concurrency
 ): Effect.Effect<
   Array<Prompt.ToolResultPart>,
   Tool.HandlerError<Tools[keyof Tools]> | AiError.AiError,
@@ -2069,7 +2059,7 @@ const resolveToolCalls = <Tools extends Record<string, Tool.Any>>(
   content: ReadonlyArray<Response.AllPartsEncoded>,
   toolkit: Toolkit.WithHandler<Tools>,
   messages: ReadonlyArray<Prompt.Message>,
-  concurrency: ResolvedConcurrency
+  concurrency: Concurrency
 ): Stream.Stream<
   ToolResolutionResult<Tools>,
   Tool.HandlerError<Tools[keyof Tools]> | AiError.AiError,
