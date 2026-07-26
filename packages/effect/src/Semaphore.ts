@@ -118,9 +118,11 @@ export interface Semaphore {
   ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Option.Option<A>, E, R>
 
   /**
-   * Acquires the specified number of permits and returns the resulting
-   * available permits, suspending the task if they are not yet available.
-   * Concurrent pending `take` calls are processed in a first-in, first-out manner.
+   * Acquires the specified number of permits and returns the acquired permit
+   * count, suspending the task if they are not yet available. Pending `take`
+   * calls are scanned in registration order, but a request is served only when
+   * enough permits are available, so a smaller later request may overtake a
+   * larger earlier request.
    *
    * **When to use**
    *

@@ -67,6 +67,9 @@ export type AggregationTemporality = "cumulative" | "delta"
  * **Details**
  *
  * The exporter snapshots registered Effect metrics on the configured interval, serializes them with the selected aggregation temporality, and flushes during scope finalization up to `shutdownTimeout`.
+ * Manual flushing also triggers a snapshot. With delta temporality, each
+ * snapshot advances the previous-export state, so frequent flushes narrow the
+ * delta aggregation windows.
  *
  * @category constructors
  * @since 4.0.0
@@ -85,7 +88,7 @@ export const make: (options: {
 }) => Effect.Effect<
   void,
   never,
-  HttpClient.HttpClient | OtlpSerialization | Scope.Scope
+  Exporter.Flusher | HttpClient.HttpClient | OtlpSerialization | Scope.Scope
 > = Effect.fnUntraced(function*(options) {
   const clock = yield* Clock
   const serialization = yield* OtlpSerialization
@@ -464,7 +467,8 @@ export const layer = (options: {
   readonly exportInterval?: Duration.Input | undefined
   readonly shutdownTimeout?: Duration.Input | undefined
   readonly temporality?: AggregationTemporality | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization> => Layer.effectDiscard(make(options))
+}): Layer.Layer<Exporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization> =>
+  Layer.effectDiscard(make(options)).pipe(Layer.provideMerge(Exporter.layerFlusher))
 
 /**
  * Creates an OTLP metrics layer from OpenTelemetry configuration.
@@ -479,7 +483,7 @@ export const layerFromConfig = (options?: {
     readonly attributes?: Record<string, unknown>
   } | undefined
   readonly headers?: Headers.Input | undefined
-}): Layer.Layer<never, never, HttpClient.HttpClient | OtlpSerialization> =>
+}): Layer.Layer<Exporter.Flusher, never, HttpClient.HttpClient | OtlpSerialization> =>
   Effect.gen(function*() {
     const { disabled, endpoint, exporters } = yield* Config.all({
       disabled: Config.boolean("OTEL_SDK_DISABLED").pipe(Config.withDefault(false)),
@@ -487,7 +491,7 @@ export const layerFromConfig = (options?: {
       exporters: OtlpEnv.exporters("METRICS")
     })
     if (disabled || !endpoint || !exporters.includes("otlp")) {
-      return Layer.empty
+      return Exporter.layerFlusher
     }
 
     const { baseTimeout, metricsTimeout, exportTimeout, exportInterval, temporalityPreference } = yield* Config.all({
