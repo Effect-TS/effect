@@ -23,7 +23,7 @@ const renderChange = (change: ApiChange, level = 4): ReadonlyArray<string> => [
 ]
 
 const orderedGroups = [
-  ["Renames and moves", new Set(["module-moved", "module-split", "module-consolidated", "api-moved", "api-renamed"])],
+  ["Renames and moves", new Set(["api-moved", "api-renamed"])],
   ["Removals", new Set(["package-removed", "module-removed", "api-removed"])],
   ["Additions", new Set(["package-added", "module-added", "api-added"])],
   [
@@ -46,8 +46,7 @@ const orderedGroups = [
       "heritage-changed",
       "union-member-changed",
       "intersection-member-changed",
-      "structural-change",
-      "unsupported"
+      "structural-change"
     ])
   ],
   ["Documentation changes", new Set(["documentation-changed"])]
@@ -63,7 +62,12 @@ export const renderMarkdownReport = (diff: ApiDiff): string => {
   const moduleCounts = new Map<string, number>()
   for (const change of diff.changes) {
     const id = change.headApiId ?? change.baseApiId
-    const module = id?.split("#")[0] ?? "<package>"
+    const delta = change.delta as {
+      readonly packageName?: string
+      readonly from?: string
+      readonly to?: ReadonlyArray<string>
+    } | undefined
+    const module = id?.split("#")[0] ?? delta?.packageName ?? delta?.from ?? delta?.to?.[0] ?? "<package>"
     moduleCounts.set(module, (moduleCounts.get(module) ?? 0) + 1)
   }
   const lines: Array<string> = [

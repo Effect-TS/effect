@@ -1,5 +1,5 @@
 import { diffSnapshots } from "@effect/api-diff/Diff"
-import type { ApiEntity, ApiSnapshot, DeclarationModel } from "@effect/api-diff/Model"
+import type { ApiDiff, ApiEntity, ApiSnapshot, DeclarationModel } from "@effect/api-diff/Model"
 import { renderMarkdownReport } from "@effect/api-diff/Report"
 import { assert, describe, it } from "@effect/vitest"
 
@@ -186,5 +186,34 @@ describe("snapshot diff", () => {
       snapshot("b", [after])
     )
     assert(diff.changes.some((change) => change.classification === "parameter-reordered"))
+  })
+
+  it("groups package and module changes by their delta names", () => {
+    const report = renderMarkdownReport(
+      {
+        version: 1,
+        base: { ref: "a", sha: "a".repeat(40) },
+        head: { ref: "b", sha: "b".repeat(40) },
+        changes: [
+          {
+            id: "package-removed",
+            classification: "package-removed",
+            confidence: 1,
+            delta: { packageName: "@effect/old" },
+            authoritative: true
+          },
+          {
+            id: "module-added",
+            classification: "module-added",
+            confidence: 1,
+            delta: { to: ["effect/New"] },
+            authoritative: true
+          }
+        ]
+      } satisfies ApiDiff
+    )
+    assert(report.includes("| @effect/old | @effect/old | 1 |"))
+    assert(report.includes("| stable | effect/New | 1 |"))
+    assert(!report.includes("<package>"))
   })
 })

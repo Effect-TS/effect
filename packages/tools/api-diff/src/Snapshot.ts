@@ -77,7 +77,7 @@ const referenceResolution = (name: ts.EntityName, context: SerializationContext)
   if (symbol === undefined) {
     return { unresolved: true }
   }
-  if (symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+  if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
     symbol = context.checker.getAliasedSymbol(symbol)
   }
   const declaration = symbol?.declarations?.[0]

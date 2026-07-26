@@ -467,10 +467,6 @@ export const diffSnapshots = (base: ApiSnapshot, head: ApiSnapshot): ApiDiff => 
 
   const changes = [...moduleChanges(base, head)]
   for (const match of matches) {
-    const movement = movementChange(match)
-    if (movement !== undefined) {
-      changes.push(movement)
-    }
     changes.push(...classifyStructure(match))
   }
   for (const match of suggestedMatches) {

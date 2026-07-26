@@ -109,9 +109,6 @@ export type ChangeClassification =
   | "package-removed"
   | "module-added"
   | "module-removed"
-  | "module-moved"
-  | "module-split"
-  | "module-consolidated"
   | "api-added"
   | "api-removed"
   | "api-moved"
@@ -135,7 +132,6 @@ export type ChangeClassification =
   | "intersection-member-changed"
   | "documentation-changed"
   | "structural-change"
-  | "unsupported"
 
 export interface ApiChange {
   readonly id: string

@@ -4,19 +4,16 @@ import * as Flag from "effect/unstable/cli/Flag"
 import { ApiDiff, type ApiDiffOptions } from "./ApiDiff.ts"
 
 const baseRef = Flag.string("base-ref").pipe(
-  Flag.withDescription("Explicit base Git ref"),
-  Flag.optional
+  Flag.withDescription("Explicit base Git ref")
 )
 
 const headRef = Flag.string("head-ref").pipe(
-  Flag.withDescription("Explicit head Git ref"),
-  Flag.optional
+  Flag.withDescription("Explicit head Git ref")
 )
 
 const output = Flag.string("output").pipe(
   Flag.withMetavar("DIRECTORY"),
-  Flag.withDescription("Report output directory"),
-  Flag.optional
+  Flag.withDescription("Report output directory")
 )
 
 const runApiDiff = Effect.fnUntraced(function*(options: ApiDiffOptions) {

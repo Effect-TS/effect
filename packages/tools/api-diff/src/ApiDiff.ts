@@ -3,7 +3,6 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Path from "effect/Path"
 import { diffSnapshots } from "./Diff.ts"
 import { ApiDiffError } from "./Error.ts"
@@ -12,9 +11,9 @@ import { renderMarkdownReport } from "./Report.ts"
 import { Worktrees } from "./Worktrees.ts"
 
 export interface ApiDiffOptions {
-  readonly baseRef: Option.Option<string>
-  readonly headRef: Option.Option<string>
-  readonly output: Option.Option<string>
+  readonly baseRef: string
+  readonly headRef: string
+  readonly output: string
 }
 
 export class ApiDiff extends Context.Service<ApiDiff, {
@@ -52,26 +51,20 @@ export class ApiDiff extends Context.Service<ApiDiff, {
       const runInternal = Effect.fnUntraced(function*(options: ApiDiffOptions) {
         const repoRoot = yield* findRepoRoot()
 
-        if (Option.isNone(options.baseRef) || Option.isNone(options.headRef) || Option.isNone(options.output)) {
-          return yield* new ApiDiffError({
-            message: "--base-ref, --head-ref, and --output are required for comparison"
-          })
-        }
-
-        const baseSha = yield* worktrees.resolveRef(repoRoot, options.baseRef.value)
-        const headSha = yield* worktrees.resolveRef(repoRoot, options.headRef.value)
+        const baseSha = yield* worktrees.resolveRef(repoRoot, options.baseRef)
+        const headSha = yield* worktrees.resolveRef(repoRoot, options.headRef)
         const toolRoot = path.join(repoRoot, "tmp", "api-diff")
         const cacheRoot = path.join(toolRoot, "cache")
         const worktreesRoot = path.join(toolRoot, "worktrees")
         yield* Console.log(
-          `Base ${options.baseRef.value}: ${baseSha}\nHead ${options.headRef.value}: ${headSha}`
+          `Base ${options.baseRef}: ${baseSha}\nHead ${options.headRef}: ${headSha}`
         )
         const base = yield* worktrees.prepareSnapshot({
           repoRoot,
           cacheRoot,
           worktreesRoot,
           name: "base",
-          ref: options.baseRef.value,
+          ref: options.baseRef,
           sha: baseSha
         })
         const head = yield* worktrees.prepareSnapshot({
@@ -79,10 +72,10 @@ export class ApiDiff extends Context.Service<ApiDiff, {
           cacheRoot,
           worktreesRoot,
           name: "head",
-          ref: options.headRef.value,
+          ref: options.headRef,
           sha: headSha
         })
-        const output = absolute(repoRoot, options.output.value)
+        const output = absolute(repoRoot, options.output)
         const diff = diffSnapshots(base, head)
         const report = renderMarkdownReport(diff)
 
@@ -92,9 +85,6 @@ export class ApiDiff extends Context.Service<ApiDiff, {
         yield* fs.writeFileString(path.join(output, "diff.json"), prettyJson(diff))
         yield* fs.writeFileString(path.join(output, "report.md"), report)
         yield* Console.log(`Wrote ${path.relative(repoRoot, output)} (${diff.changes.length} changes)`)
-        if (report.length === 0) {
-          return yield* new ApiDiffError({ message: "Generated Markdown report is empty" })
-        }
       })
 
       const run = (options: ApiDiffOptions): Effect.Effect<void, ApiDiffError> =>
