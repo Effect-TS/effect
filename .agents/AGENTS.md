@@ -83,12 +83,16 @@ Use the narrowest validation that still covers the change:
 
 | Change type                      | Validation                                                                         |
 | -------------------------------- | ---------------------------------------------------------------------------------- |
-| Code changes                     | `pnpm lint-fix`, targeted `pnpm test <test_file.ts>`, `pnpm check`                 |
-| Tests-only changes               | `pnpm lint-fix`, targeted `pnpm test <test_file.ts>`, `pnpm check`                 |
+| Code changes                     | `pnpm lint-fix`, targeted `pnpm test --run <test_file.ts>`, `pnpm check`           |
+| Tests-only changes               | `pnpm lint-fix`, targeted `pnpm test --run <test_file.ts>`, `pnpm check`           |
 | Type-level/API type changes      | Targeted `pnpm test-types <filename>`, plus `pnpm check` when source types changed |
 | JSDoc text/category/link changes | `pnpm lint`                                                                        |
 | JSDoc example changes            | `pnpm lint`; from the changed package directory, run `pnpm docgen`                 |
 | Docs-only changes                | `pnpm lint-fix`; no tests required unless examples or code changed                 |
+
+Never run the whole test suite. A bare `pnpm test` runs every package in watch mode and will not
+exit; always pass `--run` and the specific test files covering your change. CI runs the full suite
+on push, so leave that to CI.
 
 ## Bundle Size Preview
 
@@ -112,6 +116,10 @@ Read `.patterns/effect.md` before changing Effect code. In particular:
 
 Read `.patterns/testing.md` before writing or changing tests.
 
+- Run only the tests covering the files you changed.
+- From the repository root, run an affected package with `pnpm --filter effect test --run` only when package-wide coverage is necessary.
+- Prefer a single test file, using a path relative to the package: `pnpm --filter effect test --run test/Option.test.ts`.
+  Replace the package name and test path with those covering your changed files, and narrow further with `-t "<test name>"` when useful.
 - Test files are located in `packages/*/test/`.
 - Main Effect library tests are in `packages/effect/test/`.
 - Use `it.effect` for Effect-returning tests.
