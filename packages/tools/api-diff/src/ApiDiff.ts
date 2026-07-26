@@ -4,16 +4,25 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
+import { loadAnnotations } from "./Annotations.ts"
 import { diffSnapshots } from "./Diff.ts"
 import { ApiDiffError } from "./Error.ts"
 import { prettyJson } from "./Json.ts"
+import {
+  extractImportMapSections,
+  renderMigrationDocument,
+  renderMissingAnnotations,
+  unannotatedApiIds
+} from "./MigrationDoc.ts"
 import { renderMarkdownReport } from "./Report.ts"
 import { Worktrees } from "./Worktrees.ts"
 
 export interface ApiDiffOptions {
   readonly baseRef: string
   readonly headRef: string
-  readonly output: string
+  readonly output?: string | undefined
+  readonly writeDoc?: string | undefined
+  readonly check: boolean
 }
 
 export class ApiDiff extends Context.Service<ApiDiff, {
@@ -50,6 +59,9 @@ export class ApiDiff extends Context.Service<ApiDiff, {
 
       const runInternal = Effect.fnUntraced(function*(options: ApiDiffOptions) {
         const repoRoot = yield* findRepoRoot()
+        if (options.output === undefined && options.writeDoc === undefined && !options.check) {
+          return yield* new ApiDiffError({ message: "Specify --output, --write-doc, or --check" })
+        }
 
         const baseSha = yield* worktrees.resolveRef(repoRoot, options.baseRef)
         const headSha = yield* worktrees.resolveRef(repoRoot, options.headRef)
@@ -75,16 +87,39 @@ export class ApiDiff extends Context.Service<ApiDiff, {
           ref: options.headRef,
           sha: headSha
         })
-        const output = absolute(repoRoot, options.output)
         const diff = diffSnapshots(base, head)
-        const report = renderMarkdownReport(diff)
 
-        yield* fs.makeDirectory(output, { recursive: true })
-        yield* fs.writeFileString(path.join(output, "base.snapshot.json"), prettyJson(base))
-        yield* fs.writeFileString(path.join(output, "head.snapshot.json"), prettyJson(head))
-        yield* fs.writeFileString(path.join(output, "diff.json"), prettyJson(diff))
-        yield* fs.writeFileString(path.join(output, "report.md"), report)
-        yield* Console.log(`Wrote ${path.relative(repoRoot, output)} (${diff.changes.length} changes)`)
+        if (options.output !== undefined) {
+          const output = absolute(repoRoot, options.output)
+          yield* fs.makeDirectory(output, { recursive: true })
+          yield* fs.writeFileString(path.join(output, "base.snapshot.json"), prettyJson(base))
+          yield* fs.writeFileString(path.join(output, "head.snapshot.json"), prettyJson(head))
+          yield* fs.writeFileString(path.join(output, "diff.json"), prettyJson(diff))
+          yield* fs.writeFileString(path.join(output, "report.md"), renderMarkdownReport(diff))
+          yield* Console.log(`Wrote ${path.relative(repoRoot, output)} (${diff.changes.length} changes)`)
+        }
+
+        if (options.writeDoc !== undefined || options.check) {
+          const annotations = yield* loadAnnotations(path.join(repoRoot, "migration", "annotations")).pipe(
+            Effect.provideService(FileSystem.FileSystem, fs),
+            Effect.provideService(Path.Path, path)
+          )
+          if (options.writeDoc !== undefined) {
+            const documentPath = absolute(repoRoot, options.writeDoc)
+            const existing = (yield* fs.exists(documentPath)) ? yield* fs.readFileString(documentPath) : ""
+            const document = renderMigrationDocument(diff, annotations, extractImportMapSections(existing))
+            yield* fs.makeDirectory(path.dirname(documentPath), { recursive: true })
+            yield* fs.writeFileString(documentPath, document)
+            yield* Console.log(`Wrote ${path.relative(repoRoot, documentPath)} (${diff.changes.length} changes)`)
+          }
+          if (options.check) {
+            const missing = unannotatedApiIds(diff, annotations)
+            yield* Console.log(renderMissingAnnotations(diff, annotations).trimEnd())
+            if (missing.size > 0) {
+              return yield* new ApiDiffError({ message: `${missing.size} modules need migration guidance` })
+            }
+          }
+        }
       })
 
       const run = (options: ApiDiffOptions): Effect.Effect<void, ApiDiffError> =>

@@ -27,6 +27,25 @@ The command writes:
 - `diff.json`
 - `report.md`
 
+Generate the agent-facing v3-to-v4 migration reference from a fresh diff and
+the YAML files in `migration/annotations`:
+
+```sh
+pnpm api-diff --write-doc migration/v3-to-v4.md
+```
+
+The document command defaults to refs `v3` and `main`, records their resolved
+SHAs, preserves the existing import map sections, and replaces the API
+reference in place. It does not write `diff.json` unless `--output` is also
+provided.
+
+List missing annotations, grouped by v3 module, and exit non-zero when any are
+missing:
+
+```sh
+pnpm api-diff --check
+```
+
 Unmatched APIs are reported as removals from the base and additions in the
 head. Likely replacements are reported separately for review, including
 cross-module moves and the paired type/value facets of class-style APIs.

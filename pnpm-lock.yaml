@@ -719,6 +719,9 @@ importers:
       effect:
         specifier: workspace:^
         version: link:../../effect
+      yaml:
+        specifier: ^2.9.0
+        version: 2.9.0
     devDependencies:
       '@effect/vitest':
         specifier: workspace:^

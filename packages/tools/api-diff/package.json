@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@effect/platform-node": "workspace:^",
-    "effect": "workspace:^"
+    "effect": "workspace:^",
+    "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@effect/vitest": "workspace:^",
