@@ -13,6 +13,7 @@ import * as Context from "../../Context.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
 import * as Fiber from "../../Fiber.ts"
+import * as FiberSet from "../../FiberSet.ts"
 import { identity } from "../../Function.ts"
 import * as Layer from "../../Layer.ts"
 import * as Num from "../../Number.ts"
@@ -165,7 +166,6 @@ export const make: (
   const services = yield* Effect.context<Scope.Scope | HttpClient.HttpClient>()
   const clock = Context.get(services, Clock)
   const scope = Context.get(services, Scope.Scope)
-  const runFork = Effect.runForkWith(services)
   const exportInterval = Duration.max(Duration.fromInputUnsafe(options.exportInterval), Duration.zero)
   let disabledUntil: number | undefined = undefined
 
@@ -215,12 +215,19 @@ export const make: (
     })
   )
 
+  const exportFibers = yield* FiberSet.make<void, never>()
+  const runExportFork = yield* FiberSet.runtime(exportFibers)<never>()
+
   const flusher = yield* Flusher
   yield* flusher.register(runExport)
 
   yield* Scope.addFinalizer(
     scope,
-    runExport.pipe(
+    Effect.suspend(() => {
+      if (disabledUntil !== undefined) return Effect.void
+      runExportFork(runExport)
+      return FiberSet.awaitEmpty(exportFibers)
+    }).pipe(
       Effect.ignore,
       Effect.interruptible,
       Effect.timeoutOption(options.shutdownTimeout)
@@ -228,7 +235,8 @@ export const make: (
   )
 
   yield* Effect.sleep(exportInterval).pipe(
-    Effect.andThen(runExport),
+    Effect.andThen(FiberSet.run(exportFibers, runExport)),
+    Effect.flatMap(Fiber.await),
     Effect.forever,
     Effect.forkIn(scope)
   )
@@ -238,7 +246,7 @@ export const make: (
       if (disabledUntil !== undefined) return
       buffer.push(data)
       if (options.maxBatchSize !== "disabled" && buffer.length >= options.maxBatchSize) {
-        Fiber.runIn(runFork(runExport), scope)
+        runExportFork(runExport)
       }
     }
   }
