@@ -1,3 +1,4 @@
+import type { OpenAiSchema } from "@effect/ai-openai"
 import type * as Generated from "@effect/ai-openai/Generated"
 import * as Errors from "@effect/ai-openai/internal/errors"
 import * as OpenAiClient from "@effect/ai-openai/OpenAiClient"
@@ -407,7 +408,7 @@ describe("OpenAiClient", () => {
         assert.strictEqual(result.reason._tag, "InvalidOutputError")
       }).pipe(Effect.provide(makeTestLayer(undefined, {
         _tag: "Json",
-        body: { invalid: "response" }
+        body: { invalid: "response" } as any
       }))))
   })
 
@@ -523,13 +524,19 @@ describe("OpenAiClient", () => {
 type MockResponse =
   | {
     readonly _tag: "Json"
-    readonly body: Schema.Json
+    readonly body: typeof Generated.Response.Encoded | {
+      readonly error: {
+        readonly message: string
+        readonly type?: string
+        readonly code?: string | null
+      }
+    }
     readonly status?: number | undefined
     readonly headers?: Record<string, string> | undefined
   }
   | {
     readonly _tag: "Sse"
-    readonly events: ReadonlyArray<Schema.Json>
+    readonly events: ReadonlyArray<typeof OpenAiSchema.ResponseStreamEvent.Encoded>
     readonly status?: number | undefined
     readonly headers?: Record<string, string> | undefined
   }
@@ -554,7 +561,7 @@ const makeHttpClientContext = Effect.gen(function*() {
       capturedRequests.push(request)
       return makeResponse(request, mock.response)
     }),
-    (request) => Effect.succeed(request)
+    Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
   )
 
   const mockHttpClient: MockHttpClient["Service"] = {
