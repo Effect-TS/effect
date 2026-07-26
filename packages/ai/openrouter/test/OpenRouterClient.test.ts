@@ -1,7 +1,7 @@
 import { OpenRouterClient } from "@effect/ai-openrouter"
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Layer, Redacted, type Schema } from "effect"
-import { HttpClient, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("OpenRouterClient", () => {
   it.effect("redacts the API key in AI error context", () =>
@@ -66,7 +66,7 @@ const makeHttpClientContext = Effect.gen(function*() {
       capturedRequests.push(request)
       return makeResponse(request, mock.response)
     }),
-    (request) => Effect.succeed(request)
+    Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
   )
 
   const mockHttpClient: MockHttpClient["Service"] = {
