@@ -58,7 +58,7 @@ const policy = Schedule.forever.pipe(
  * @category flushing
  * @since 4.0.0
  */
-export interface Flusher {
+export class Flusher extends Context.Service<Flusher, {
   /**
    * Drains all registered exporters concurrently and cannot fail.
    *
@@ -86,17 +86,9 @@ export interface Flusher {
    */
   readonly flush: Effect.Effect<void>
   readonly register: (run: Effect.Effect<void>) => Effect.Effect<void, never, Scope.Scope>
-}
-
-/**
- * Context key for the shared exporter flush registry.
- *
- * @category flushing
- * @since 4.0.0
- */
-export const Flusher: Context.Key<Flusher, Flusher> = Context.Service<Flusher>(
+}>()(
   "effect/observability/OtlpExporter/Flusher"
-)
+) {}
 
 /**
  * Provides a `Flusher` backed by a fresh registry.
@@ -110,7 +102,7 @@ export const Flusher: Context.Key<Flusher, Flusher> = Context.Service<Flusher>(
  * layer per call would silently create one registry per signal.
  *
  * Registration is scoped — an exporter is removed from the registry when its
- * own scope closes. Flushing with an empty registry is a debug-logged no-op.
+ * own scope closes. Flushing with an empty registry is a no-op.
  *
  * Note that `flush` cannot await an export that was already in flight when it
  * was called (for example one started by the export interval); it only waits
@@ -124,7 +116,7 @@ export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {
   return {
     flush: Effect.suspend(() => {
       if (registry.size === 0) {
-        return Effect.logDebug("Flush requested but no OTLP exporters are registered")
+        return Effect.void
       }
       return Effect.forEach(registry, identity, {
         concurrency: "unbounded",
@@ -224,7 +216,7 @@ export const make: (
   )
 
   const flusher = yield* Flusher
-  yield* Effect.provideService(flusher.register(runExport), Scope.Scope, scope)
+  yield* flusher.register(runExport)
 
   yield* Scope.addFinalizer(
     scope,
