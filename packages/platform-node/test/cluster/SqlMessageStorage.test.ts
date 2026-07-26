@@ -5,6 +5,7 @@ import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import { Message, MessageStorage, ShardingConfig, Snowflake, SqlMessageStorage } from "effect/unstable/cluster"
 import { SqlClient } from "effect/unstable/sql"
+import { MssqlContainer } from "../fixtures/mssql-utils.ts"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import {
@@ -16,24 +17,22 @@ import {
   StreamRpc
 } from "./MessageStorageTest.ts"
 
-const StorageLive = SqlMessageStorage.layer.pipe(
-  Layer.provideMerge(Snowflake.layerGenerator),
-  Layer.provide(ShardingConfig.layerDefaults)
-)
+// Each test provides its own storage layer with a distinct table prefix, so
+// concurrently running tests never share tables.
+const storageLive = (prefix: string) =>
+  SqlMessageStorage.layerWith({ prefix }).pipe(
+    Layer.provideMerge(Snowflake.layerGenerator),
+    Layer.provide(ShardingConfig.layerDefaults)
+  )
 
-const truncate = Effect.gen(function*() {
-  const sql = yield* SqlClient.SqlClient
-  yield* sql`DELETE FROM cluster_replies`
-  yield* sql`DELETE FROM cluster_messages`
-})
-
-describe("SqlMessageStorage", () => {
+describe("SqlMessageStorage", { timeout: 30_000 }, () => {
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
+    ["mssql", Layer.orDie(MssqlContainer.layerClient)],
     ["sqlite", Layer.orDie(SqliteLayer)]
   ] as const).forEach(([label, layer]) => {
-    it.layer(StorageLive.pipe(Layer.provideMerge(layer)), {
+    it.layer(layer, {
       timeout: 120000
     })(label, (it) => {
       it.effect("saveRequest", () =>
@@ -59,7 +58,7 @@ describe("SqlMessageStorage", () => {
           messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(5)
           expect(messages.map((m: any) => m.envelope.payload.id)).toEqual([6, 7, 8, 9, 10])
-        }))
+        }).pipe(Effect.provide(storageLive("save_request"))))
 
       it.effect("saveReply + saveRequest duplicate", () =>
         Effect.gen(function*() {
@@ -113,12 +112,10 @@ describe("SqlMessageStorage", () => {
           }
           const error = yield* Effect.flip(Fiber.join(fiber))
           expect(error._tag).toEqual("PersistenceError")
-        }))
+        }).pipe(Effect.provide(storageLive("stream_replies"))))
 
       it.effect("detects duplicates", () =>
         Effect.gen(function*() {
-          yield* truncate
-
           const storage = yield* MessageStorage.MessageStorage
           yield* storage.saveRequest(
             yield* makeRequest({
@@ -133,12 +130,10 @@ describe("SqlMessageStorage", () => {
             })
           )
           expect(result._tag).toEqual("Duplicate")
-        }))
+        }).pipe(Effect.provide(storageLive("detects_duplicates"))))
 
       it.effect("unprocessedMessages", () =>
         Effect.gen(function*() {
-          yield* truncate
-
           const storage = yield* MessageStorage.MessageStorage
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
@@ -149,24 +144,20 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveRequest(yield* makeRequest())
           messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(1)
-        }))
+        }).pipe(Effect.provide(storageLive("unprocessed_messages"))))
 
       it.effect("unprocessedMessages excludes complete requests", () =>
         Effect.gen(function*() {
-          yield* truncate
-
           const storage = yield* MessageStorage.MessageStorage
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
           yield* storage.saveReply(yield* makeReply(request))
           const messages = yield* storage.unprocessedMessages([request.envelope.address.shardId])
           expect(messages).toHaveLength(0)
-        }))
+        }).pipe(Effect.provide(storageLive("unprocessed_complete"))))
 
       it.effect("repliesFor", () =>
         Effect.gen(function*() {
-          yield* truncate
-
           const storage = yield* MessageStorage.MessageStorage
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
@@ -176,7 +167,7 @@ describe("SqlMessageStorage", () => {
           replies = yield* storage.repliesFor([request])
           expect(replies).toHaveLength(1)
           expect(replies[0].requestId).toEqual(request.envelope.requestId)
-        }))
+        }).pipe(Effect.provide(storageLive("replies_for"))))
 
       it.effect("registerReplyHandler", () =>
         Effect.gen(function*() {
@@ -194,12 +185,10 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(yield* makeReply(request))
           yield* latch.await
           yield* Fiber.await(fiber)
-        }))
+        }).pipe(Effect.provide(storageLive("register_reply_handler"))))
 
       it.effect("unprocessedMessagesById", () =>
         Effect.gen(function*() {
-          yield* truncate
-
           const storage = yield* MessageStorage.MessageStorage
           const request = yield* makeRequest()
           yield* storage.saveRequest(request)
@@ -208,7 +197,7 @@ describe("SqlMessageStorage", () => {
           yield* storage.saveReply(yield* makeReply(request))
           messages = yield* storage.unprocessedMessagesById([request.envelope.requestId])
           expect(messages).toHaveLength(0)
-        }))
+        }).pipe(Effect.provide(storageLive("unprocessed_by_id"))))
     })
   })
 })
