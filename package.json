@@ -17,6 +17,8 @@
     "check": "tsc -b tsconfig.json",
     "typeperf": "pnpm --dir packages/effect exec node typeperf/run.mjs",
     "typeperf-compare": "pnpm --dir packages/effect exec node typeperf/compare.mjs",
+    "runtimeperf": "pnpm --dir packages/effect exec node runtimeperf/run.mts",
+    "runtimeperf-compare": "pnpm --dir packages/effect exec node runtimeperf/compare.mts",
     "check-recursive": "pnpm --recursive --filter \"./packages/**/*\" exec tsc -b tsconfig.json",
     "jsdocs": "effect-jsdocs",
     "lint": "pnpm jsdocs && oxlint -f unix && dprint check",
