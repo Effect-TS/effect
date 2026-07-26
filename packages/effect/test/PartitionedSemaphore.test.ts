@@ -81,7 +81,9 @@ describe("PartitionedSemaphore", () => {
       yield* Effect.yieldNow
 
       yield* PartitionedSemaphore.release(sem, 1)
+      assert.strictEqual(yield* PartitionedSemaphore.available(sem), 0)
       yield* Fiber.interrupt(waiter)
+      assert.strictEqual(yield* PartitionedSemaphore.available(sem), 2)
       yield* PartitionedSemaphore.release(sem, 2)
 
       assert.strictEqual(yield* PartitionedSemaphore.available(sem), 4)
