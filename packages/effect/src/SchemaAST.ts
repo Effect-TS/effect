@@ -3595,12 +3595,21 @@ function segmentTemplateLiteralParts(
   input: string,
   options: ParseOptions
 ): Array<string> | undefined {
+  const literals = parts.map((part) => part._tag === "Literal" ? globalThis.String(part.literal) : undefined)
+  if (literals.some((literal) => literal !== undefined && !input.includes(literal))) return undefined
+
+  const minimumLengths = new Array<number>(parts.length + 1)
+  minimumLengths[parts.length] = 0
+  for (let i = parts.length - 1; i >= 0; i--) {
+    minimumLengths[i] = minimumLengths[i + 1] + (literals[i]?.length ?? 0)
+  }
+  if (minimumLengths[0] > input.length) return undefined
+
   const out = new Array<string>(parts.length)
-  const failures = new Set<string>()
+  const failures = parts.map(() => new Set<number>())
   function go(i: number, pos: number): boolean {
     if (i === parts.length) return pos === input.length
-    const key = `${i}/${pos}`
-    if (failures.has(key)) return false
+    if (failures[i].has(pos)) return false
     const part = parts[i]
     if (i === parts.length - 1) {
       const s = input.slice(pos)
@@ -3609,21 +3618,27 @@ function segmentTemplateLiteralParts(
         return true
       }
     } else if (part._tag === "Literal") {
-      const s = globalThis.String(part.literal)
+      const s = literals[i]!
       if (input.startsWith(s, pos) && go(i + 1, pos + s.length)) {
         out[i] = s
         return true
       }
     } else {
-      for (let end = input.length; end >= pos; end--) {
+      const maximumEnd = input.length - minimumLengths[i + 1]
+      // Splits preceding a literal only need to consider occurrences of that literal.
+      const anchor = literals[i + 1]
+      let end = anchor === undefined ? maximumEnd : input.lastIndexOf(anchor, maximumEnd)
+      while (end >= pos) {
         const s = input.slice(pos, end)
         if (part.matchPart(s, options) !== undefined && go(i + 1, end)) {
           out[i] = s
           return true
         }
+        if (end === 0) break
+        end = anchor === undefined ? end - 1 : input.lastIndexOf(anchor, end - 1)
       }
     }
-    failures.add(key)
+    failures[i].add(pos)
     return false
   }
   return go(0, 0) ? out : undefined
