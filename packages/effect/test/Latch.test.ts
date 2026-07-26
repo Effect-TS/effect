@@ -145,6 +145,9 @@ describe("Latch", () => {
       yield* latch.release.pipe(Effect.provideService(Scheduler.Scheduler, scheduler))
       latch.openUnsafe()
       assert.isUndefined(second!.pollUnsafe())
+      assert.lengthOf(tasks, 1)
+      tasks.shift()!()
+      assert.isUndefined(second!.pollUnsafe())
     }))
 
   it.effect("interrupting a waiter removes it from a pending flush", () =>
