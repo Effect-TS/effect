@@ -5516,7 +5516,7 @@ const succeedFalse = succeed(false)
 
 class Latch implements _Latch.Latch {
   waiters: Array<(_: Effect.Effect<void>) => void> = []
-  scheduled = false
+  scheduled: Array<(_: Effect.Effect<void>) => void> | undefined = undefined
   private _isOpen: boolean
 
   constructor(isOpen: boolean) {
@@ -5524,17 +5524,35 @@ class Latch implements _Latch.Latch {
   }
 
   private scheduleUnsafe(fiber: Fiber.Fiber<unknown, unknown>) {
-    if (this.scheduled || this.waiters.length === 0) {
+    if (this.waiters.length === 0) {
       return succeedTrue
     }
-    this.scheduled = true
-    fiber.currentDispatcher.scheduleTask(this.flushWaiters, 0)
+    if (this.scheduled === undefined) {
+      this.scheduled = this.waiters
+      fiber.currentDispatcher.scheduleTask(this.flushScheduled, 0)
+    } else {
+      for (let i = 0; i < this.waiters.length; i++) {
+        this.scheduled.push(this.waiters[i])
+      }
+    }
+    this.waiters = []
     return succeedTrue
   }
-  private flushWaiters = () => {
-    this.scheduled = false
+  private flushScheduled = () => {
+    if (this.scheduled === undefined) return
+    const waiters = this.scheduled
+    this.scheduled = undefined
+    for (let i = 0; i < waiters.length; i++) {
+      waiters[i](exitVoid)
+    }
+  }
+  private flushWaiters() {
+    // swap both arrays out before any resume runs: a resumed waiter can
+    // reentrantly close the latch and register new waiters, which must not
+    // be drained by this flush
     const waiters = this.waiters
     this.waiters = []
+    this.flushScheduled()
     for (let i = 0; i < waiters.length; i++) {
       waiters[i](exitVoid)
     }
@@ -5558,9 +5576,14 @@ class Latch implements _Latch.Latch {
     }
     this.waiters.push(resume)
     return sync(() => {
-      const index = this.waiters.indexOf(resume)
+      let index = this.waiters.indexOf(resume)
       if (index !== -1) {
         this.waiters.splice(index, 1)
+      } else if (this.scheduled !== undefined) {
+        index = this.scheduled.indexOf(resume)
+        if (index !== -1) {
+          this.scheduled.splice(index, 1)
+        }
       }
     })
   })
