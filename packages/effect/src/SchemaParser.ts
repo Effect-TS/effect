@@ -995,6 +995,9 @@ function mapSchemaIssueEffect<A, R>(
   self: Effect.Effect<A, SchemaIssue.Issue, R>,
   f: (issue: SchemaIssue.Issue) => SchemaIssue.Issue
 ): Effect.Effect<A, SchemaIssue.Issue, R> {
+  if (Exit.isExit(self) && Exit.isSuccess(self)) {
+    return self
+  }
   return Effect.catchCause(self, (cause) => Effect.failCauseSync(() => Cause.map(cause, f)))
 }
 

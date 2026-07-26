@@ -1,5 +1,6 @@
 import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import * as SchemaParser from "effect/SchemaParser"
 import assert from "node:assert/strict"
 
 const makeDecodeCase = (
@@ -10,7 +11,7 @@ const makeDecodeCase = (
 ) =>
 () => {
   assert.equal(schema.ast._tag, expectedTag)
-  const run = Schema.decodeUnknownExit(schema)
+  const run = SchemaParser.decodeUnknownExit(schema)
   return {
     run: () => run(input),
     validate: (result) => assert.equal(result._tag, expectedResult)

@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema"
+import * as SchemaParser from "effect/SchemaParser"
 import assert from "node:assert/strict"
 
 const decodeCase = (schema, input, success, options) => () => {
@@ -9,8 +10,16 @@ const decodeCase = (schema, input, success, options) => () => {
   }
 }
 
-const encodeCase = (schema, input, success, options) => () => {
-  const run = Schema.encodeUnknownExit(schema, options)
+const decodeParserCase = (schema, input, success, options) => () => {
+  const run = SchemaParser.decodeUnknownExit(schema, options)
+  return {
+    run: () => run(input),
+    validate: (result) => assert.equal(result._tag, success ? "Success" : "Failure")
+  }
+}
+
+const encodeParserCase = (schema, input, success, options) => () => {
+  const run = SchemaParser.encodeUnknownExit(schema, options)
   return {
     run: () => run(input),
     validate: (result) => assert.equal(result._tag, success ? "Success" : "Failure")
@@ -25,9 +34,9 @@ export const checksValid = decodeCase(checkedString, "runtimeperf", true)
 export const checksInvalidFirst = decodeCase(checkedString, "", false)
 export const checksInvalidLast = decodeCase(checkedString, "runtime-perf", false)
 
-export const transformationDecodeValid = decodeCase(Schema.FiniteFromString, "123", true)
-export const transformationDecodeInvalid = decodeCase(Schema.FiniteFromString, "invalid", false)
-export const transformationEncodeValid = encodeCase(Schema.FiniteFromString, 123, true)
+export const transformationDecodeValid = decodeParserCase(Schema.FiniteFromString, "123", true)
+export const transformationDecodeInvalid = decodeParserCase(Schema.FiniteFromString, "invalid", false)
+export const transformationEncodeValid = encodeParserCase(Schema.FiniteFromString, 123, true)
 
 const optionalStruct = Schema.Struct({
   required: Schema.String,

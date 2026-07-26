@@ -303,6 +303,13 @@ describe("SchemaParser", () => {
   })
 
   describe("decodeUnknownExit", () => {
+    it("keeps synchronous transformations eager", () => {
+      const effect = SchemaParser.decodeUnknownEffect(Schema.NumberFromString)("1")
+      assertTrue(Exit.isExit(effect))
+      assertTrue(Exit.isSuccess(effect))
+      strictEqual(effect.value, 1)
+    })
+
     it("should preserve mixed causes in union candidates instead of trying later candidates", () => {
       const schema = Schema.Union([
         Schema.String.pipe(Schema.decode({
