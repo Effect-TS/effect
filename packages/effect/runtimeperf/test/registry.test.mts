@@ -43,7 +43,7 @@ describe("runtimeperf registry", () => {
     const { fixtures } = loadRegistry()
     assert.equal(new Set(fixtures.map((fixture) => fixture.target)).size, fixtures.length)
     for (const fixture of fixtures) {
-      assert.ok(["effect", "valibot", "zod4"].includes(fixture.implementation))
+      assert.ok(["effect", "typebox", "valibot", "zod4"].includes(fixture.implementation))
     }
   })
 
@@ -60,6 +60,23 @@ describe("runtimeperf registry", () => {
       assert.match(source, /from "zod\/v4"/)
       assert.doesNotMatch(source, /from "zod\/v4-mini"/)
       assert.match(source, /jitless:\s*true/)
+    }
+  })
+
+  it("uses TypeBox Value.Errors without compilation for the typebox fixtures", async () => {
+    const { fixtures } = loadRegistry()
+    const typeboxFiles = new Set(
+      fixtures
+        .filter((fixture) => fixture.implementation === "typebox")
+        .map((fixture) => fixture.fixturePath)
+    )
+    assert.ok(typeboxFiles.size > 0)
+    for (const path of typeboxFiles) {
+      const source = await readFile(path, "utf8")
+      assert.match(source, /from "typebox\/value"/)
+      assert.match(source, /TypeBoxValue\.Errors/)
+      assert.doesNotMatch(source, /from "typebox\/schema"/)
+      assert.doesNotMatch(source, /\.Compile\(/)
     }
   })
 

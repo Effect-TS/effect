@@ -26,6 +26,7 @@ export const hashFile = (path) => sha256(readFileSync(path))
 export const libraryVersions = () => ({
   effect: readJson(join(effectDir, "package.json")).version,
   tinybench: readJson(join(effectDir, "node_modules", "tinybench", "package.json")).version,
+  typebox: readJson(join(effectDir, "node_modules", "typebox", "package.json")).version,
   valibot: readJson(join(effectDir, "node_modules", "valibot", "package.json")).version,
   zod: readJson(join(repoRoot, "node_modules", "zod", "package.json")).version,
   zodExport: "zod/v4"

@@ -4,7 +4,7 @@ This harness measures focused synchronous runtime paths in fresh Node
 processes. It supports:
 
 - a broad Effect Schema survey;
-- contextual comparisons with Valibot and Zod 4 standard;
+- contextual comparisons with TypeBox, Valibot and Zod 4 standard;
 - paired comparisons between Git revisions or the current working tree.
 
 Cross-library results are diagnostic. Effect base/head comparisons are the
@@ -27,6 +27,7 @@ pnpm runtimeperf schema/object-32-valid-effect
 pnpm runtimeperf --tier 0
 pnpm runtimeperf --family arrays
 pnpm runtimeperf --implementation zod4
+pnpm runtimeperf --implementation typebox
 ```
 
 Override measurement settings:
@@ -76,6 +77,12 @@ functions. Effect uses `SchemaParser.decodeUnknownExit`, whose failures contain
 `SchemaIssue` directly. The public `Schema` adapters that wrap issues in
 `SchemaError` are measured separately in the adapter family and are not used
 for cross-library ratios.
+
+TypeBox comparisons use `Value.Errors`, which performs exhaustive dynamic
+validation and returns structured errors. They do not import `typebox/schema`,
+call `Schema.Compile`, or use TypeBox's JIT compiler. The application-shaped
+fixture is excluded from the TypeBox comparison because it includes a decode
+transformation with no equivalent operation in `Value.Errors`.
 
 ## Measurement model
 

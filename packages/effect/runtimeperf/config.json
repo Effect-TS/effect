@@ -683,6 +683,145 @@
           ]
         },
         {
+          "file": "suites/schema/fixtures/comparison.ts",
+          "defaults": {
+            "tier": 1,
+            "implementation": "typebox",
+            "operation": "decode",
+            "astTags": []
+          },
+          "cases": [
+            {
+              "name": "object-1-valid-typebox",
+              "export": "typeboxObject1Valid",
+              "scenario": "object-1-valid",
+              "family": "objects",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "object-1-invalid-typebox",
+              "export": "typeboxObject1Invalid",
+              "scenario": "object-1-invalid",
+              "family": "objects",
+              "path": "invalid",
+              "size": 1
+            },
+            {
+              "name": "object-32-valid-typebox",
+              "export": "typeboxObject32Valid",
+              "scenario": "object-32-valid",
+              "family": "objects",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "object-32-invalid-last-typebox",
+              "export": "typeboxObject32InvalidLast",
+              "scenario": "object-32-invalid-last",
+              "family": "objects",
+              "path": "invalid",
+              "size": 32
+            },
+            {
+              "name": "array-32-valid-typebox",
+              "export": "typeboxArray32Valid",
+              "scenario": "array-32-valid",
+              "family": "arrays",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "array-32-invalid-last-typebox",
+              "export": "typeboxArray32InvalidLast",
+              "scenario": "array-32-invalid-last",
+              "family": "arrays",
+              "path": "invalid",
+              "size": 32
+            },
+            {
+              "name": "record-1-valid-typebox",
+              "export": "typeboxRecord1Valid",
+              "scenario": "record-1-valid",
+              "family": "records",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "record-32-valid-typebox",
+              "export": "typeboxRecord32Valid",
+              "scenario": "record-32-valid",
+              "family": "records",
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "record-32-invalid-last-typebox",
+              "export": "typeboxRecord32InvalidLast",
+              "scenario": "record-32-invalid-last",
+              "family": "records",
+              "path": "invalid",
+              "size": 32
+            },
+            {
+              "name": "literal-100-valid-last-typebox",
+              "export": "typeboxLiteral100ValidLast",
+              "scenario": "literal-100-valid-last",
+              "family": "union",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "literal-100-invalid-typebox",
+              "export": "typeboxLiteral100Invalid",
+              "scenario": "literal-100-invalid",
+              "family": "union",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "tagged-100-valid-last-typebox",
+              "export": "typeboxTagged100ValidLast",
+              "scenario": "tagged-100-valid-last",
+              "family": "union",
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "tagged-100-invalid-selected-typebox",
+              "export": "typeboxTagged100InvalidSelected",
+              "scenario": "tagged-100-invalid-selected",
+              "family": "union",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "tagged-100-invalid-tag-typebox",
+              "export": "typeboxTagged100InvalidTag",
+              "scenario": "tagged-100-invalid-tag",
+              "family": "union",
+              "path": "invalid",
+              "size": 100
+            },
+            {
+              "name": "non-empty-valid-typebox",
+              "export": "typeboxNonEmptyValid",
+              "scenario": "non-empty-valid",
+              "family": "checks",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "non-empty-invalid-typebox",
+              "export": "typeboxNonEmptyInvalid",
+              "scenario": "non-empty-invalid",
+              "family": "checks",
+              "path": "invalid",
+              "size": 1
+            }
+          ]
+        },
+        {
           "file": "suites/schema/fixtures/behavior.ts",
           "defaults": {
             "tier": 2,
@@ -990,6 +1129,37 @@
               "implementation": "zod4",
               "operation": "first-decode",
               "astTags": []
+            }
+          ]
+        },
+        {
+          "file": "suites/schema/fixtures/cold.ts",
+          "defaults": {
+            "tier": 2,
+            "implementation": "typebox",
+            "family": "cold",
+            "astTags": [],
+            "path": "valid",
+            "size": 32
+          },
+          "cases": [
+            {
+              "name": "schema-creation-object-32-typebox",
+              "export": "typeboxSchemaCreationObject32",
+              "scenario": "schema-creation-object-32",
+              "operation": "schema"
+            },
+            {
+              "name": "first-decode-object-32-typebox",
+              "export": "typeboxFirstDecodeObject32",
+              "scenario": "first-decode-object-32",
+              "operation": "first-decode"
+            },
+            {
+              "name": "first-decode-record-32-typebox",
+              "export": "typeboxFirstDecodeRecord32",
+              "scenario": "first-decode-record-32",
+              "operation": "first-decode"
             }
           ]
         },
