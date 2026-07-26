@@ -14732,14 +14732,17 @@ export function toFormatter<S extends Constraint>(schema: S, options?: {
         }
       }
       case "Union": {
-        const getCandidates = (t: any) => SchemaAST.getCandidates(t, ast.types)
+        const types = SchemaAST.toType(ast).types
+        const getCandidates = (t: any) => SchemaAST.getCandidates(t, types)
+        const compiled = new Map(
+          types.map((candidate) => [candidate, [SchemaParser._is(candidate), recur(candidate)] as const] as const)
+        )
         return (t) => {
           const candidates = getCandidates(t)
-          const refinements = candidates.map(SchemaParser._is)
           for (let i = 0; i < candidates.length; i++) {
-            const is = refinements[i]
+            const [is, formatter] = compiled.get(candidates[i])!
             if (is(t)) {
-              return recur(candidates[i])(t)
+              return formatter(t)
             }
           }
           return format(t)
