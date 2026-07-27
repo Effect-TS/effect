@@ -549,6 +549,34 @@ export class WebSocket extends Context.Service<WebSocket, globalThis.WebSocket>(
 ) {}
 
 /**
+ * A WebSocket-backed `Socket` that provides the active `WebSocket` service to
+ * message handlers.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WebSocketSocket extends Socket {
+  readonly run: <_, E = never, R = never>(
+    handler: (_: Uint8Array) => Effect.Effect<_, E, R> | void,
+    options?: {
+      readonly onOpen?: Effect.Effect<void> | undefined
+    }
+  ) => Effect.Effect<void, SocketError | E, Exclude<R, WebSocket>>
+  readonly runString: <_, E = never, R = never>(
+    handler: (_: string) => Effect.Effect<_, E, R> | void,
+    options?: {
+      readonly onOpen?: Effect.Effect<void> | undefined
+    }
+  ) => Effect.Effect<void, SocketError | E, Exclude<R, WebSocket>>
+  readonly runRaw: <_, E = never, R = never>(
+    handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void,
+    options?: {
+      readonly onOpen?: Effect.Effect<void> | undefined
+    }
+  ) => Effect.Effect<void, SocketError | E, Exclude<R, WebSocket>>
+}
+
+/**
  * Context service for constructing `WebSocket` instances from a URL and
  * optional protocols.
  *
@@ -571,7 +599,7 @@ export const layerWebSocketConstructorGlobal: Layer.Layer<WebSocketConstructor> 
 )
 
 /**
- * Creates a `Socket` backed by a `WebSocketConstructor`, acquiring the
+ * Creates a `WebSocketSocket` backed by a `WebSocketConstructor`, acquiring the
  * WebSocket for each run and using the close-code classifier to decide which
  * closes fail the run.
  *
@@ -582,7 +610,7 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   readonly closeCodeIsError?: ((code: number) => boolean) | undefined
   readonly openTimeout?: Duration.Input | undefined
   readonly protocols?: string | Array<string> | undefined
-}): Effect.Effect<Socket, never, WebSocketConstructor> =>
+}): Effect.Effect<WebSocketSocket, never, WebSocketConstructor> =>
   WebSocketConstructor.use((makeWs) =>
     fromWebSocket(
       Effect.acquireRelease(
@@ -596,9 +624,9 @@ export const makeWebSocket = (url: string | Effect.Effect<string>, options?: {
   )
 
 /**
- * Builds a `Socket` from a scoped WebSocket acquisition effect, waiting for the
- * socket to open, dispatching message handlers in fibers, and translating
- * open, read, and close events into `SocketError` values.
+ * Builds a `WebSocketSocket` from a scoped WebSocket acquisition effect,
+ * waiting for the socket to open, dispatching message handlers in fibers, and
+ * translating open, read, and close events into `SocketError` values.
  *
  * @category constructors
  * @since 4.0.0
@@ -609,16 +637,19 @@ export const fromWebSocket = <RO>(
     readonly closeCodeIsError?: ((code: number) => boolean) | undefined
     readonly openTimeout?: Duration.Input | undefined
   } | undefined
-): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
+): Effect.Effect<WebSocketSocket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
     let currentWS: globalThis.WebSocket | undefined
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
     const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
 
-    const runRaw = <_, E, R>(handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void, opts?: {
-      readonly onOpen?: Effect.Effect<void> | undefined
-    }) =>
+    const runRaw: WebSocketSocket["runRaw"] = <_, E, R>(
+      handler: (_: string | Uint8Array) => Effect.Effect<_, E, R> | void,
+      opts?: {
+        readonly onOpen?: Effect.Effect<void> | undefined
+      }
+    ) =>
       Effect.scopedWith(Effect.fnUntraced(function*(scope) {
         const fiberSet = yield* FiberSet.make<any, E | SocketError>().pipe(
           Scope.provide(scope)
@@ -715,7 +746,7 @@ export const fromWebSocket = <RO>(
           () => Effect.void
         )
       })).pipe(
-        Effect.updateContext((input: Context.Context<R>) => Context.merge(acquireContext, input)),
+        Effect.updateContext((input: Context.Context<Exclude<R, WebSocket>>) => Context.merge(acquireContext, input)),
         Effect.ensuring(Effect.sync(() => {
           latch.closeUnsafe()
           currentWS = undefined
@@ -736,7 +767,7 @@ export const fromWebSocket = <RO>(
     return Effect.succeed(make({
       runRaw,
       writer
-    }))
+    }) as WebSocketSocket)
   })
 
 /**
