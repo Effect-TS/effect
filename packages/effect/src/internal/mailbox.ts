@@ -255,7 +255,10 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         return core.exitAs(this.state.exit, constDone)
       } else if (n <= 0) {
         return core.succeed([empty, false])
-      } else if (this.capacity <= 0 && this.state.offers.size > 0) {
+      } else if (
+        this.capacity <= 0 && this.messages.length === 0 && this.messagesChunk.length === 0 &&
+        this.state.offers.size > 0
+      ) {
         this.capacity = 1
         this.releaseCapacity()
         this.capacity = 0
