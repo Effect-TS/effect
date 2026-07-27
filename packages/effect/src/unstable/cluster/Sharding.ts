@@ -1202,7 +1202,7 @@ const make = Effect.gen(function*() {
               if (!options.discard) {
                 const entry: ClientRequestEntry = {
                   rpc: rpc as any,
-                  context: fiber.currentContext,
+                  context: fiber.context,
                   message
                 }
                 clientRequests.set(id, entry)
