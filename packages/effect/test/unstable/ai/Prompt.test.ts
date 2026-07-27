@@ -1,7 +1,30 @@
 import { assert, describe, it } from "@effect/vitest"
+import { Schema } from "effect"
 import { Prompt, Response } from "effect/unstable/ai"
 
 describe("Prompt", () => {
+  describe("part schemas", () => {
+    it("exports schemas for all parts and message-specific parts", () => {
+      assert.strictEqual(Schema.decodeUnknownExit(Prompt.Part)({ type: "text", text: "hello" })._tag, "Success")
+      assert.strictEqual(
+        Schema.decodeUnknownExit(Prompt.UserMessagePart)({ type: "file", mediaType: "text/plain", data: "hello" })._tag,
+        "Success"
+      )
+      assert.strictEqual(
+        Schema.decodeUnknownExit(Prompt.AssistantMessagePart)({ type: "reasoning", text: "thinking" })._tag,
+        "Success"
+      )
+      assert.strictEqual(
+        Schema.decodeUnknownExit(Prompt.ToolMessagePart)({
+          type: "tool-approval-response",
+          approvalId: "approval-1",
+          approved: true
+        })._tag,
+        "Success"
+      )
+    })
+  })
+
   describe("fromResponseParts", () => {
     it("folds streamed text and reasoning deltas into an assistant message", () => {
       const parts = [
