@@ -1201,13 +1201,23 @@ export type ChatCompletionResponse = typeof ChatCompletionResponse.Type
  */
 export type ChatCompletionChunk = typeof ChatCompletionChunk.Type
 /**
- * Streaming chat completion event, including decoded chunks and the `[DONE]`
- * sentinel.
+ * A parsed chat completion event that does not match the expected chunk schema.
  *
  * @category streaming
  * @since 4.0.0
  */
-export type ChatCompletionStreamEvent = ChatCompletionChunk | "[DONE]"
+export interface UnknownChatCompletionEvent {
+  readonly _tag: "UnknownChatCompletionEvent"
+  readonly data: unknown
+}
+/**
+ * Streaming chat completion event, including decoded chunks, unknown parsed
+ * events, and the `[DONE]` sentinel.
+ *
+ * @category streaming
+ * @since 4.0.0
+ */
+export type ChatCompletionStreamEvent = ChatCompletionChunk | UnknownChatCompletionEvent | "[DONE]"
 
 const parseJson = (value: string): unknown => {
   try {
@@ -1226,7 +1236,11 @@ const decodeChatCompletionSseData = (
     return data
   }
   const parsed = parseJson(data)
-  return isChatCompletionChunk(parsed)
-    ? parsed
-    : undefined
+  if (parsed === undefined) {
+    return undefined
+  }
+  return isChatCompletionChunk(parsed) ? parsed : {
+    _tag: "UnknownChatCompletionEvent",
+    data: parsed
+  }
 }

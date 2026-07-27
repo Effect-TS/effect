@@ -48,7 +48,8 @@ import {
   type ReasoningItem,
   type SummaryTextContent,
   type TextResponseFormatConfiguration,
-  type Tool as OpenAiClientTool
+  type Tool as OpenAiClientTool,
+  type UnknownChatCompletionEvent
 } from "./OpenAiClient.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 
@@ -1027,6 +1028,11 @@ const buildHttpResponseDetails = (
 
 type ResponseStreamEvent = CreateResponse200Sse
 
+const isUnknownChatCompletionEvent = (
+  event: ResponseStreamEvent
+): event is UnknownChatCompletionEvent =>
+  typeof event !== "string" && "_tag" in event && event._tag === "UnknownChatCompletionEvent"
+
 type ActiveToolCall = {
   readonly id: string
   name: string
@@ -1202,6 +1208,12 @@ const makeStreamResponse = Effect.fnUntraced(
               ? { metadata: { openai: { serviceTier: normalizedServiceTier } } }
               : undefined)
           })
+          return parts
+        }
+
+        // Keep unknown events available to direct client consumers; this layer
+        // cannot translate provider-specific data into portable stream parts.
+        if (isUnknownChatCompletionEvent(event)) {
           return parts
         }
 
