@@ -343,13 +343,18 @@ interface Session {
   readonly protocol: McpProtocol.ProtocolAdapter
 }
 
+interface Sessions {
+  readonly bySessionId: Map<string, Session>
+  readonly byClientId: Map<number, Session>
+}
+
 class McpClientKey extends Data.Class<{
   readonly clientId: number
   readonly protocolVersion: string
 }> {}
 
 class McpProtocolState extends Context.Service<McpProtocolState, {
-  readonly clientSessions: Map<string, Session>
+  readonly sessions: Sessions
   readonly protocolRegistry: McpProtocolRegistry.ProtocolRegistry<McpProtocol.ProtocolAdapter>
 }>()("effect/ai/McpServer/McpProtocolState") {}
 
@@ -357,7 +362,10 @@ const makeMcpProtocolState = Effect.fnUntraced(function*(
   protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
 ) {
   return McpProtocolState.of({
-    clientSessions: new Map(),
+    sessions: {
+      bySessionId: new Map(),
+      byClientId: new Map()
+    },
     protocolRegistry: yield* McpProtocolRegistry.make(protocols)
   })
 })
@@ -410,10 +418,10 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   const protocol = yield* RpcServer.Protocol
   const server = yield* McpServer
   const isHttp = Option.isSome(yield* Effect.serviceOption(HttpRouter.HttpRouter))
-  const clientSessions = protocolState.clientSessions
+  const sessions = protocolState.sessions
   const clientProtocols = new Map<number, McpProtocol.ProtocolAdapter>()
   const handlers = yield* Layer.build(layerHandlers(options, {
-    clientSessions,
+    sessions,
     protocolRegistry
   }))
 
@@ -454,7 +462,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   })
 
   const clientMiddleware = McpServerClientMiddleware.of((effect, { client, headers, payload, rpc }) => {
-    const session = getClientSession(clientSessions, client.id, headers)
+    const session = getClientSession(sessions, client.id, headers)
     const isInitialize = rpc._tag.endsWith("/initialize")
     if (!isInitialize && !session) {
       const fiber = Fiber.getCurrent()!
@@ -520,7 +528,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
                 HttpServerRequest.HttpServerRequest
               ).headers
               : Headers.fromInput(request.headers)
-            const session = getClientSession(clientSessions, clientId, headers)
+            const session = getClientSession(sessions, clientId, headers)
             const selectedProtocol = session?.protocol ??
               (request.tag === "initialize"
                 ? protocolRegistry.select(getOfferedProtocolVersion(request.payload))
@@ -543,9 +551,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
             const routedRequest = protocolRegistry.routeClientRequest(selectedProtocol, request)
             const rpc = protocolRegistry.clientRpcs.requests.get(routedRequest.tag)
             if (rpc && selectedProtocol.clientNotificationRpcs.requests.has(request.tag)) {
-              const decode = Schema.decodeUnknownEffect(
-                Schema.toCodecJson(rpc.payloadSchema)
-              )(request.payload) as Effect.Effect<unknown, Schema.SchemaError>
+              const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)
               return decode.pipe(
                 Effect.flatMap((payload) => {
                   if (request.tag === "notifications/cancelled") {
@@ -601,7 +607,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           clientProtocols.delete(clientId)
           // HTTP client IDs are request-scoped; their UUID sessions outlive them.
           if (!isHttp) {
-            clientSessions.delete(`client:${clientId}`)
+            sessions.byClientId.delete(clientId)
           }
         }
       }
@@ -618,9 +624,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         if (!rpc) {
           continue
         }
-        const encoded = yield* Schema.encodeUnknownEffect(
-          Schema.toCodecJson(rpc.payloadSchema)
-        )(request.payload)
+        const encoded = yield* selectedProtocol.payloadCodecs(rpc).encode(request.payload)
         // TODO: Extend RpcServer.Protocol's outbound message contract with server-originated
         // notifications so MCP does not need to treat this notification as an RPC response.
         const message: RpcMessage.RequestEncoded = {
@@ -1467,7 +1471,7 @@ const layerHandlers = (serverInfo: {
   readonly version: string
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
 }, options: {
-  readonly clientSessions: Map<string, Session>
+  readonly sessions: Sessions
   readonly protocolRegistry: McpProtocolRegistry.ProtocolRegistry<McpProtocol.ProtocolAdapter>
 }) =>
   Layer.effectContext(
@@ -1508,14 +1512,14 @@ const layerHandlers = (serverInfo: {
               }
               if (httpRequest) {
                 const sessionId = crypto.randomUUID()
-                options.clientSessions.set(`session:${sessionId}`, session)
+                options.sessions.bySessionId.set(sessionId, session)
                 appendPreResponseHandlerUnsafe(httpRequest, (_req, res) =>
                   Effect.succeed(HttpServerResponse.setHeaders(res, {
                     [MCP_SESSION_ID_HEADER]: sessionId,
                     [MCP_PROTOCOL_VERSION_HEADER]: selectedProtocol.protocolVersion
                   })))
               } else {
-                options.clientSessions.set(`client:${client.id}`, session)
+                options.sessions.byClientId.set(client.id, session)
               }
               return Effect.succeed({
                 capabilities,
@@ -1557,12 +1561,12 @@ const layerHandlers = (serverInfo: {
             ),
           "prompts/list": (_, { client, headers }) =>
             Effect.sync(() => {
-              const initialized = getClientSession(options.clientSessions, client.id, headers)?.initializePayload
+              const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload
               return new ListPromptsResult({ prompts: filterByClient(initialized, server.prompts, "prompt") })
             }),
           "resources/list": (_, { client, headers }) =>
             Effect.sync(() => {
-              const initialized = getClientSession(options.clientSessions, client.id, headers)?.initializePayload
+              const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload
               return new ListResourcesResult({ resources: filterByClient(initialized, server.resources, "resource") })
             }),
           "resources/read": ({ uri }) =>
@@ -1575,7 +1579,7 @@ const layerHandlers = (serverInfo: {
             InternalError.notImplemented,
           "resources/templates/list": (_, { client, headers }) =>
             Effect.sync(() => {
-              const initialized = getClientSession(options.clientSessions, client.id, headers)?.initializePayload
+              const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload
               return new ListResourceTemplatesResult({
                 resourceTemplates: filterByClient(initialized, server.resourceTemplates, "template")
               })
@@ -1586,7 +1590,7 @@ const layerHandlers = (serverInfo: {
             ),
           "tools/list": (_, { client, headers }) =>
             Effect.sync(() => {
-              const initialized = getClientSession(options.clientSessions, client.id, headers)?.initializePayload
+              const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload
               return new ListToolsResult({
                 tools: filterByClient(initialized, server.tools, "tool")
               })
@@ -1687,15 +1691,15 @@ const filterByClient = <
 }
 
 const getClientSession = (
-  sessions: Map<string, Session>,
+  sessions: Sessions,
   clientId: number,
   headers: Headers.Headers
 ) => {
   const sessionId = headers[MCP_SESSION_ID_HEADER]
   if (sessionId === undefined) {
-    return sessions.get(`client:${clientId}`)
+    return sessions.byClientId.get(clientId)
   }
-  return sessions.get(`session:${sessionId}`)
+  return sessions.bySessionId.get(sessionId)
 }
 
 const getOfferedProtocolVersion = (payload: unknown): string =>
