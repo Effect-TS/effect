@@ -4,7 +4,7 @@
 
 Base: `v3` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `main` (`797111ae7630edde7f4f801d1e6a86fc32d15eed`)
+Head: `main` (`96ced895a07f89b2dd03c3e470884f7e25063696`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
