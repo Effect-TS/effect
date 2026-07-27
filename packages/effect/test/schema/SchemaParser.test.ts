@@ -350,6 +350,36 @@ describe("SchemaParser", () => {
       strictEqual(evaluations, 1)
     })
 
+    it("keeps direct Suspend parser compilation lazy", () => {
+      let evaluations = 0
+      const schema = Schema.suspend(() => {
+        evaluations++
+        return Schema.String
+      })
+
+      const decode = SchemaParser.decodeUnknownExit(schema)
+      strictEqual(evaluations, 0)
+      strictEqual(decode("a")._tag, "Success")
+      strictEqual(evaluations, 1)
+      strictEqual(decode("b")._tag, "Success")
+      strictEqual(evaluations, 1)
+    })
+
+    it("keeps Declaration parser compilation lazy", () => {
+      let evaluations = 0
+      const schema = Schema.declareConstructor<unknown>()([], () => {
+        evaluations++
+        return (input) => Effect.succeed(input)
+      })
+
+      const decode = SchemaParser.decodeUnknownExit(schema)
+      strictEqual(evaluations, 0)
+      strictEqual(decode("a")._tag, "Success")
+      strictEqual(evaluations, 1)
+      strictEqual(decode("b")._tag, "Success")
+      strictEqual(evaluations, 1)
+    })
+
     it("should preserve mixed causes in union candidates instead of trying later candidates", () => {
       const schema = Schema.Union([
         Schema.String.pipe(Schema.decode({
