@@ -679,6 +679,46 @@
               "astTags": [],
               "path": "invalid",
               "size": 1
+            },
+            {
+              "name": "template-literal-native-valid-effect",
+              "export": "effectTemplateLiteralValid",
+              "scenario": "template-literal-native-valid",
+              "implementation": "effect",
+              "family": "template-literal",
+              "astTags": ["TemplateLiteral"],
+              "path": "valid",
+              "size": 5
+            },
+            {
+              "name": "template-literal-native-valid-zod4",
+              "export": "zodTemplateLiteralValid",
+              "scenario": "template-literal-native-valid",
+              "implementation": "zod4",
+              "family": "template-literal",
+              "astTags": [],
+              "path": "valid",
+              "size": 5
+            },
+            {
+              "name": "template-literal-native-invalid-effect",
+              "export": "effectTemplateLiteralInvalid",
+              "scenario": "template-literal-native-invalid",
+              "implementation": "effect",
+              "family": "template-literal",
+              "astTags": ["TemplateLiteral"],
+              "path": "invalid",
+              "size": 5
+            },
+            {
+              "name": "template-literal-native-invalid-zod4",
+              "export": "zodTemplateLiteralInvalid",
+              "scenario": "template-literal-native-invalid",
+              "implementation": "zod4",
+              "family": "template-literal",
+              "astTags": [],
+              "path": "invalid",
+              "size": 5
             }
           ]
         },
@@ -882,6 +922,60 @@
               "astTags": ["String"],
               "path": "valid",
               "size": 1
+            },
+            {
+              "name": "template-literal-linear-valid",
+              "export": "templateLiteralLinearValid",
+              "scenario": "template-literal-linear-valid",
+              "family": "template-literal",
+              "astTags": ["TemplateLiteral", "Arrays"],
+              "path": "valid",
+              "size": 5
+            },
+            {
+              "name": "template-literal-linear-invalid",
+              "export": "templateLiteralLinearInvalid",
+              "scenario": "template-literal-linear-invalid",
+              "family": "template-literal",
+              "astTags": ["TemplateLiteral", "Arrays"],
+              "path": "invalid",
+              "size": 5
+            },
+            {
+              "name": "template-literal-backtracking-valid",
+              "export": "templateLiteralBacktrackingValid",
+              "scenario": "template-literal-backtracking-valid",
+              "family": "template-literal",
+              "astTags": ["TemplateLiteral", "Arrays", "String"],
+              "path": "valid",
+              "size": 4
+            },
+            {
+              "name": "template-literal-backtracking-invalid",
+              "export": "templateLiteralBacktrackingInvalid",
+              "scenario": "template-literal-backtracking-invalid",
+              "family": "template-literal",
+              "astTags": ["TemplateLiteral", "Arrays", "String"],
+              "path": "invalid",
+              "size": 4
+            },
+            {
+              "name": "template-literal-transformed-valid",
+              "export": "templateLiteralTransformedValid",
+              "scenario": "template-literal-transformed-valid",
+              "family": "template-literal",
+              "astTags": ["TemplateLiteral", "Arrays", "String", "Number"],
+              "path": "valid",
+              "size": 3
+            },
+            {
+              "name": "template-literal-record-32-valid",
+              "export": "templateLiteralRecord32Valid",
+              "scenario": "template-literal-record-32-valid",
+              "family": "template-literal",
+              "astTags": ["TemplateLiteral", "Objects", "String", "Number"],
+              "path": "valid",
+              "size": 32
             },
             {
               "name": "transformation-decode-valid",
@@ -1169,6 +1263,15 @@
               "operation": "schema"
             },
             {
+              "name": "schema-creation-template-literal-effect",
+              "export": "effectSchemaCreationTemplateLiteral",
+              "scenario": "schema-creation-template-literal",
+              "implementation": "effect",
+              "operation": "schema",
+              "astTags": ["TemplateLiteral"],
+              "size": 5
+            },
+            {
               "name": "schema-creation-object-32-valibot",
               "export": "valibotSchemaCreationObject32",
               "scenario": "schema-creation-object-32",
@@ -1197,6 +1300,15 @@
               "scenario": "first-decode-checked-object-32",
               "implementation": "effect",
               "operation": "first-decode"
+            },
+            {
+              "name": "first-decode-template-literal-effect",
+              "export": "effectFirstDecodeTemplateLiteral",
+              "scenario": "first-decode-template-literal",
+              "implementation": "effect",
+              "operation": "first-decode",
+              "astTags": ["TemplateLiteral"],
+              "size": 5
             },
             {
               "name": "first-decode-object-32-valibot",

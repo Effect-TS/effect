@@ -1105,6 +1105,10 @@ export class TemplateLiteral extends Base {
   readonly parts: ReadonlyArray<AST>
   /** @internal */
   readonly encodedParts: ReadonlyArray<TemplateLiteralPart>
+  /** @internal */
+  readonly literals: ReadonlyArray<string | undefined>
+  /** @internal */
+  readonly suffixLengths: ReadonlyArray<number>
 
   constructor(
     parts: ReadonlyArray<AST>,
@@ -1115,16 +1119,25 @@ export class TemplateLiteral extends Base {
   ) {
     super(annotations, checks, encoding, context)
     const encodedParts: Array<TemplateLiteralPart> = []
+    const literals: Array<string | undefined> = []
     for (const part of parts) {
       const encoded = toEncoded(part)
       if (isTemplateLiteralPart(encoded)) {
         encodedParts.push(encoded)
+        literals.push(encoded._tag === "Literal" ? globalThis.String(encoded.literal) : undefined)
       } else {
         throw new Error(`Invalid TemplateLiteral part ${encoded._tag}`)
       }
     }
+    const suffixLengths = new Array<number>(encodedParts.length + 1)
+    suffixLengths[encodedParts.length] = 0
+    for (let i = encodedParts.length - 1; i >= 0; i--) {
+      suffixLengths[i] = suffixLengths[i + 1] + (literals[i]?.length ?? 0)
+    }
     this.parts = parts
     this.encodedParts = encodedParts
+    this.literals = literals
+    this.suffixLengths = suffixLengths
   }
   /** @internal */
   getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
@@ -1141,7 +1154,7 @@ export class TemplateLiteral extends Base {
   }
   /** @internal */
   matchPart(s: string, options: ParseOptions): string | undefined {
-    return segmentTemplateLiteralParts(this.encodedParts, s, options) === undefined ? undefined : s
+    return segmentTemplateLiteralParts(this, s, options) === undefined ? undefined : s
   }
   /** @internal */
   asTemplateLiteralParser(): Arrays {
@@ -1151,7 +1164,7 @@ export class TemplateLiteral extends Base {
       tuple,
       new SchemaTransformation.Transformation(
         SchemaGetter.transformOrFail((s: string, options) => {
-          const segments = segmentTemplateLiteralParts(this.encodedParts, s, options)
+          const segments = segmentTemplateLiteralParts(this, s, options)
           if (segments !== undefined) return Effect.succeed(segments)
           return Effect.fail(
             new SchemaIssue.InvalidValue(Option.some(s), {
@@ -3595,25 +3608,23 @@ function applyTemplateLiteralPartChecks<A>(ast: AST, value: A, options: ParseOpt
 }
 
 function segmentTemplateLiteralParts(
-  parts: ReadonlyArray<TemplateLiteralPart>,
+  ast: TemplateLiteral,
   input: string,
   options: ParseOptions
 ): Array<string> | undefined {
-  const literals = parts.map((part) => part._tag === "Literal" ? globalThis.String(part.literal) : undefined)
-  if (literals.some((literal) => literal !== undefined && !input.includes(literal))) return undefined
-
-  const minimumLengths = new Array<number>(parts.length + 1)
-  minimumLengths[parts.length] = 0
-  for (let i = parts.length - 1; i >= 0; i--) {
-    minimumLengths[i] = minimumLengths[i + 1] + (literals[i]?.length ?? 0)
+  const parts = ast.encodedParts
+  const literals = ast.literals
+  for (let i = 0; i < literals.length; i++) {
+    const literal = literals[i]
+    if (literal !== undefined && !input.includes(literal)) return undefined
   }
-  if (minimumLengths[0] > input.length) return undefined
+  if (ast.suffixLengths[0] > input.length) return undefined
 
   const out = new Array<string>(parts.length)
-  const failures = parts.map(() => new Set<number>())
+  let failures: Set<number> | undefined
   function go(i: number, pos: number): boolean {
     if (i === parts.length) return pos === input.length
-    if (failures[i].has(pos)) return false
+    if (failures?.has(i * (input.length + 1) + pos)) return false
     const part = parts[i]
     if (i === parts.length - 1) {
       const s = input.slice(pos)
@@ -3628,7 +3639,7 @@ function segmentTemplateLiteralParts(
         return true
       }
     } else {
-      const maximumEnd = input.length - minimumLengths[i + 1]
+      const maximumEnd = input.length - ast.suffixLengths[i + 1]
       // Splits preceding a literal only need to consider occurrences of that literal.
       const anchor = literals[i + 1]
       let end = anchor === undefined ? maximumEnd : input.lastIndexOf(anchor, maximumEnd)
@@ -3642,7 +3653,8 @@ function segmentTemplateLiteralParts(
         end = anchor === undefined ? end - 1 : input.lastIndexOf(anchor, end - 1)
       }
     }
-    failures[i].add(pos)
+    failures ??= new Set()
+    failures.add(i * (input.length + 1) + pos)
     return false
   }
   return go(0, 0) ? out : undefined

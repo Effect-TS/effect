@@ -18,6 +18,9 @@ const makeEffectCheckedSchema = () =>
     Object.fromEntries(Array.from({ length: size }, (_, index) => [`field${index}`, Schema.NonEmptyString]))
   )
 
+const makeEffectTemplateLiteralSchema = () =>
+  Schema.TemplateLiteral(["prefix-", Schema.String, "-middle-", Schema.Number, "-suffix"])
+
 const makeValibotSchema = () =>
   v.object(Object.fromEntries(Array.from({ length: size }, (_, index) => [`field${index}`, v.string()])))
 
@@ -111,6 +114,11 @@ export const effectSchemaCreationObject32 = () => ({
   validate: (schema) => assert.equal(schema.ast._tag, "Objects")
 })
 
+export const effectSchemaCreationTemplateLiteral = () => ({
+  run: makeEffectTemplateLiteralSchema,
+  validate: (schema) => assert.equal(schema.ast._tag, "TemplateLiteral")
+})
+
 export const valibotSchemaCreationObject32 = () => ({
   run: makeValibotSchema,
   validate: (schema) => assert.equal(schema.type, "object")
@@ -133,6 +141,11 @@ export const effectFirstDecodeObject32 = () => ({
 
 export const effectFirstDecodeCheckedObject32 = () => ({
   run: () => SchemaParser.decodeUnknownExit(makeEffectCheckedSchema())(input),
+  validate: (result) => assert.equal(result._tag, "Success")
+})
+
+export const effectFirstDecodeTemplateLiteral = () => ({
+  run: () => SchemaParser.decodeUnknownExit(makeEffectTemplateLiteralSchema())("prefix-value-middle-123-suffix"),
   validate: (result) => assert.equal(result._tag, "Success")
 })
 

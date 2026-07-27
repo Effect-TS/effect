@@ -234,3 +234,25 @@ export const effectNonEmptyInvalid = effectCase(effectNonEmpty, "", false)
 export const valibotNonEmptyInvalid = valibotCase(valibotNonEmpty, "", false)
 export const zodNonEmptyInvalid = zodCase(zodNonEmpty, "", false)
 export const typeboxNonEmptyInvalid = typeboxCase(typeboxNonEmpty, "", false)
+
+const templateLiteralValidInput = "prefix-value-middle-123-suffix"
+const templateLiteralInvalidInput = "prefix-value-middle-invalid-suffix"
+const effectTemplateLiteral = Schema.TemplateLiteral([
+  "prefix-",
+  Schema.String,
+  "-middle-",
+  Schema.Number,
+  "-suffix"
+])
+const zodTemplateLiteral = z.templateLiteral([
+  "prefix-",
+  z.string(),
+  "-middle-",
+  z.number(),
+  "-suffix"
+])
+
+export const effectTemplateLiteralValid = effectCase(effectTemplateLiteral, templateLiteralValidInput, true)
+export const zodTemplateLiteralValid = zodCase(zodTemplateLiteral, templateLiteralValidInput, true)
+export const effectTemplateLiteralInvalid = effectCase(effectTemplateLiteral, templateLiteralInvalidInput, false)
+export const zodTemplateLiteralInvalid = zodCase(zodTemplateLiteral, templateLiteralInvalidInput, false)

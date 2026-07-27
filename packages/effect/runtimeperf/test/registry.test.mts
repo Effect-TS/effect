@@ -60,6 +60,19 @@ describe("runtimeperf registry", () => {
     }
   })
 
+  it("compares native template literals only between Effect and Zod 4", () => {
+    const { fixtures } = loadRegistry()
+    for (const scenario of ["template-literal-native-valid", "template-literal-native-invalid"]) {
+      assert.deepEqual(
+        fixtures
+          .filter((fixture) => fixture.scenario === scenario)
+          .map((fixture) => fixture.implementation)
+          .sort(),
+        ["effect", "zod4"]
+      )
+    }
+  })
+
   it("uses Zod 4 standard in jitless mode for the zod4 fixtures", async () => {
     const { fixtures } = loadRegistry()
     const zodFiles = new Set(

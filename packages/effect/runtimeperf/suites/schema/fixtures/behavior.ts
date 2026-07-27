@@ -59,6 +59,59 @@ const encodingCheckedString = Schema.String.pipe(
 
 export const encodingCheckValid = decodeParserCase(encodingCheckedString, "runtimeperf", true)
 
+const templateLiteralLinear = Schema.TemplateLiteralParser([
+  "prefix-",
+  Schema.String,
+  "-middle-",
+  Schema.Number,
+  "-suffix"
+])
+
+export const templateLiteralLinearValid = decodeParserCase(
+  templateLiteralLinear,
+  "prefix-value-middle-123-suffix",
+  true
+)
+export const templateLiteralLinearInvalid = decodeParserCase(
+  templateLiteralLinear,
+  "prefix-value-middle-invalid",
+  false
+)
+
+const templateLiteralBacktracking = Schema.TemplateLiteralParser([
+  Schema.String,
+  ":",
+  Schema.NonEmptyString,
+  "x"
+])
+
+export const templateLiteralBacktrackingValid = decodeParserCase(
+  templateLiteralBacktracking,
+  "a:b:x",
+  true
+)
+export const templateLiteralBacktrackingInvalid = decodeParserCase(
+  templateLiteralBacktracking,
+  "a:x",
+  false
+)
+
+export const templateLiteralTransformedValid = decodeParserCase(
+  Schema.TemplateLiteralParser([Schema.FiniteFromString, "a", Schema.NonEmptyString]),
+  "100ab23a",
+  true
+)
+
+const templateLiteralRecordInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field-${index}`, `value${index}`])
+)
+
+export const templateLiteralRecord32Valid = decodeParserCase(
+  Schema.Record(Schema.TemplateLiteral(["field-", Schema.Number]), Schema.String),
+  templateLiteralRecordInput,
+  true
+)
+
 export const transformationDecodeValid = decodeParserCase(Schema.FiniteFromString, "123", true)
 export const transformationDecodeInvalid = decodeParserCase(Schema.FiniteFromString, "invalid", false)
 export const transformationEncodeValid = encodeParserCase(Schema.FiniteFromString, 123, true)
