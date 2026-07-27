@@ -438,6 +438,46 @@ describe("Stream", () => {
       assertTrue(Chunk.isEmpty(result))
     }))
 
+  for (const strategy of ["dropping", "sliding"] as const) {
+    it.effect(`asyncPush - ${strategy} buffer completes after synchronous emission`, () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.asyncPush<number>((emit) => {
+          emit.single(42)
+          emit.end()
+          return Effect.void
+        }, { bufferSize: 1, strategy }).pipe(
+          Stream.runCollect
+        )
+        deepStrictEqual(Array.from(result), [42])
+      }))
+
+    it.effect(`asyncPush - ${strategy} buffer handles done errors after synchronous emission`, () =>
+      Effect.gen(function*() {
+        const error = new Cause.RuntimeException("boom")
+        const result = yield* Stream.asyncPush<number, Cause.RuntimeException>((emit) => {
+          emit.single(42)
+          emit.done(Exit.fail(error))
+          return Effect.void
+        }, { bufferSize: 1, strategy }).pipe(
+          Stream.runCollect,
+          Effect.exit
+        )
+        deepStrictEqual(result, Exit.fail(error))
+      }))
+
+    it.effect(`asyncPush - ${strategy} buffer does not exceed its capacity`, () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.asyncPush<number>((emit) =>
+          Effect.gen(function*() {
+            emit.single(1)
+            yield* Effect.yieldNow({ priority: 1 })
+            emit.single(2)
+            emit.end()
+          }), { bufferSize: 1, strategy }).pipe(Stream.runCollect)
+        assertTrue(result.length === 1)
+      }))
+  }
+
   it.effect("asyncPush - handles errors", () =>
     Effect.gen(function*() {
       const error = new Cause.RuntimeException("boom")

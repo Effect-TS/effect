@@ -592,12 +592,12 @@ export const asyncEffect = <A, E = never, R = never>(
     fromChannel
   )
 
-const queueFromBufferOptionsPush = <A, E>(
+const queueFromBufferOptionsPush = <A>(
   options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
-): Effect.Effect<Queue.Queue<Array<A> | Exit.Exit<void, E>>> => {
+): Effect.Effect<Queue.Queue<Array<A>>> => {
   if (options?.bufferSize === "unbounded" || (options?.bufferSize === undefined && options?.strategy === undefined)) {
     return Queue.unbounded()
   }
@@ -620,17 +620,31 @@ export const asyncPush = <A, E = never, R = never>(
   } | undefined
 ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
   Effect.acquireRelease(
-    queueFromBufferOptionsPush<A, E>(options),
-    Queue.shutdown
+    Effect.all([
+      queueFromBufferOptionsPush<A>(options),
+      Queue.dropping<void>(1),
+      Deferred.make<Exit.Exit<void, E>>()
+    ]),
+    ([queue, wakeup]) => Effect.zipRight(Queue.shutdown(queue), Queue.shutdown(wakeup))
   ).pipe(
-    Effect.tap((queue) =>
-      FiberRef.getWith(FiberRef.currentScheduler, (scheduler) => register(emit.makePush(queue, scheduler)))
+    Effect.tap(([queue, wakeup, terminal]) =>
+      FiberRef.getWith(
+        FiberRef.currentScheduler,
+        (scheduler) => register(emit.makePush(queue, wakeup, terminal, scheduler))
+      )
     ),
-    Effect.map((queue) => {
-      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(Queue.take(queue), (item) =>
-        Exit.isExit(item)
-          ? Exit.isSuccess(item) ? core.void : core.failCause(item.cause)
-          : channel.zipRight(core.write(Chunk.unsafeFromArray(item)), loop))
+    Effect.map(([queue, wakeup, terminal]) => {
+      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(
+        Effect.race(Queue.take(wakeup), Deferred.await(terminal)),
+        (signal) =>
+          core.flatMap(core.fromEffect(Queue.takeAll(queue)), (items) => {
+            const values = Chunk.flatMap(items, Chunk.unsafeFromArray)
+            const next = Exit.isExit(signal)
+              ? Exit.isSuccess(signal) ? core.void : core.failCause(signal.cause)
+              : loop
+            return Chunk.isEmpty(values) ? next : channel.zipRight(core.write(values), next)
+          })
+      )
       return loop
     }),
     channel.unwrapScoped,

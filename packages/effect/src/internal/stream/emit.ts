@@ -1,5 +1,6 @@
 import * as Cause from "../../Cause.js"
 import * as Chunk from "../../Chunk.js"
+import * as Deferred from "../../Deferred.js"
 import * as Effect from "../../Effect.js"
 import * as Exit from "../../Exit.js"
 import { pipe } from "../../Function.js"
@@ -49,7 +50,9 @@ export const make = <R, E, A, B>(
 
 /** @internal */
 export const makePush = <E, A>(
-  queue: Queue.Queue<Array<A> | Exit.Exit<void, E>>,
+  queue: Queue.Queue<Array<A>>,
+  wakeup: Queue.Queue<void>,
+  terminal: Deferred.Deferred<Exit.Exit<void, E>>,
   scheduler: Scheduler.Scheduler
 ): Emit.EmitOpsPush<E, A> => {
   let finished = false
@@ -73,7 +76,9 @@ export const makePush = <E, A>(
   function flush() {
     running = false
     if (buffer.length > 0) {
-      queue.unsafeOffer(buffer)
+      if (queue.unsafeOffer(buffer)) {
+        wakeup.unsafeOffer(void 0)
+      }
       buffer = []
     }
   }
@@ -84,7 +89,7 @@ export const makePush = <E, A>(
       buffer.push(exit.value)
     }
     flush()
-    queue.unsafeOffer(exit._tag === "Success" ? Exit.void : exit)
+    Deferred.unsafeDone(terminal, Effect.succeed(exit._tag === "Success" ? Exit.void : exit))
   }
   return {
     single(value: A) {
@@ -105,7 +110,7 @@ export const makePush = <E, A>(
       if (finished) return
       finished = true
       flush()
-      queue.unsafeOffer(Exit.void)
+      Deferred.unsafeDone(terminal, Effect.succeed(Exit.void))
     },
     halt(cause: Cause.Cause<E>) {
       return done(Exit.failCause(cause))
