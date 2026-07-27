@@ -16,6 +16,7 @@ import type { LazyArg } from "../Function.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as internalExecutionPlan from "../internal/executionPlan.js"
 import * as Layer from "../Layer.js"
+import * as Mailbox from "../Mailbox.js"
 import * as MergeDecision from "../MergeDecision.js"
 import * as Option from "../Option.js"
 import type * as Order from "../Order.js"
@@ -592,21 +593,19 @@ export const asyncEffect = <A, E = never, R = never>(
     fromChannel
   )
 
-const queueFromBufferOptionsPush = <A>(
+const mailboxFromBufferOptionsPush = <A, E>(
   options?: { readonly bufferSize: "unbounded" } | {
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
-): Effect.Effect<Queue.Queue<Array<A>>> => {
+): Effect.Effect<Mailbox.Mailbox<Array<A>, E>> => {
   if (options?.bufferSize === "unbounded" || (options?.bufferSize === undefined && options?.strategy === undefined)) {
-    return Queue.unbounded()
+    return Mailbox.make()
   }
-  switch (options?.strategy) {
-    case "sliding":
-      return Queue.sliding(options.bufferSize ?? 16)
-    default:
-      return Queue.dropping(options?.bufferSize ?? 16)
-  }
+  return Mailbox.make({
+    capacity: options?.bufferSize ?? 16,
+    strategy: options?.strategy ?? "dropping"
+  })
 }
 
 /** @internal */
@@ -620,36 +619,21 @@ export const asyncPush = <A, E = never, R = never>(
   } | undefined
 ): Stream.Stream<A, E, Exclude<R, Scope.Scope>> =>
   Effect.acquireRelease(
-    Effect.all([
-      queueFromBufferOptionsPush<A>(options),
-      Queue.dropping<void>(1),
-      Deferred.make<Exit.Exit<void, E>>()
-    ]),
-    ([queue, wakeup]) => Effect.zipRight(Queue.shutdown(queue), Queue.shutdown(wakeup))
+    mailboxFromBufferOptionsPush<A, E>(options),
+    (mailbox) => mailbox.shutdown
   ).pipe(
-    Effect.tap(([queue, wakeup, terminal]) =>
+    Effect.tap((mailbox) =>
       FiberRef.getWith(
         FiberRef.currentScheduler,
-        (scheduler) => register(emit.makePush(queue, wakeup, terminal, scheduler))
+        (scheduler) => register(emit.makePush(mailbox, scheduler))
       )
     ),
-    Effect.map(([queue, wakeup, terminal]) => {
-      const step = Effect.flatMap(Queue.take(wakeup), () =>
-        Effect.flatMap(Deferred.poll(terminal), (exit) =>
-          Effect.map(
-            Queue.takeAll(queue),
-            (items) => [exit, Chunk.flatMap(items, Chunk.unsafeFromArray)] as const
-          )))
-      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(
-        step,
-        ([exit, values]) => {
-          const next = Option.isSome(exit)
-            ? core.flatMap(core.fromEffect(exit.value), (exit) =>
-              Exit.isSuccess(exit) ? core.void : core.failCause(exit.cause))
-            : loop
-          return Chunk.isEmpty(values) ? next : channel.zipRight(core.write(values), next)
-        }
-      )
+    Effect.map((mailbox) => {
+      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(mailbox.takeAll, ([items, done]) => {
+        const values = Chunk.flatMap(items, Chunk.unsafeFromArray)
+        const next = done ? core.void : loop
+        return Chunk.isEmpty(values) ? next : channel.zipRight(core.write(values), next)
+      })
       return loop
     }),
     channel.unwrapScoped,

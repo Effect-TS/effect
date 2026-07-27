@@ -1,11 +1,10 @@
 import * as Cause from "../../Cause.js"
 import * as Chunk from "../../Chunk.js"
-import * as Deferred from "../../Deferred.js"
 import * as Effect from "../../Effect.js"
 import * as Exit from "../../Exit.js"
 import { pipe } from "../../Function.js"
+import type * as Mailbox from "../../Mailbox.js"
 import * as Option from "../../Option.js"
-import type * as Queue from "../../Queue.js"
 import type * as Scheduler from "../../Scheduler.js"
 import type * as Emit from "../../StreamEmit.js"
 
@@ -50,9 +49,7 @@ export const make = <R, E, A, B>(
 
 /** @internal */
 export const makePush = <E, A>(
-  queue: Queue.Queue<Array<A>>,
-  wakeup: Queue.Queue<void>,
-  terminal: Deferred.Deferred<Exit.Exit<void, E>>,
+  mailbox: Mailbox.Mailbox<Array<A>, E>,
   scheduler: Scheduler.Scheduler
 ): Emit.EmitOpsPush<E, A> => {
   let finished = false
@@ -76,9 +73,7 @@ export const makePush = <E, A>(
   function flush() {
     running = false
     if (buffer.length > 0) {
-      if (queue.unsafeOffer(buffer)) {
-        wakeup.unsafeOffer(void 0)
-      }
+      mailbox.unsafeOffer(buffer)
       buffer = []
     }
   }
@@ -89,8 +84,7 @@ export const makePush = <E, A>(
       buffer.push(exit.value)
     }
     flush()
-    Deferred.unsafeDone(terminal, Effect.succeed(exit._tag === "Success" ? Exit.void : exit))
-    wakeup.unsafeOffer(void 0)
+    mailbox.unsafeDone(exit._tag === "Success" ? Exit.void : exit)
   }
   return {
     single(value: A) {
@@ -111,8 +105,7 @@ export const makePush = <E, A>(
       if (finished) return
       finished = true
       flush()
-      Deferred.unsafeDone(terminal, Effect.succeed(Exit.void))
-      wakeup.unsafeOffer(void 0)
+      mailbox.unsafeDone(Exit.void)
     },
     halt(cause: Cause.Cause<E>) {
       return done(Exit.failCause(cause))
