@@ -47,11 +47,7 @@ const isBreakingChange = (change: ApiChange): boolean => {
 interface MigrationEntry {
   readonly id: string
   readonly module: string
-  readonly changes: ReadonlyArray<ApiChange>
   readonly rename: ApiChange | undefined
-  readonly before: string | undefined
-  readonly after: string | undefined
-  readonly detailed: boolean
 }
 
 const importMapReplacements = (importMapSections: string): ReadonlyMap<string, ReadonlyArray<string>> => {
@@ -170,43 +166,42 @@ const migrationEntries = (
     entries.push({
       id,
       module: id.split("#")[0]!,
-      changes,
-      rename,
-      before: changes.find((change) => change.before !== undefined)?.before,
-      after: changes.find((change) => change.after !== undefined)?.after,
-      detailed: breaking || rename === undefined
+      rename
     })
   }
   return entries.sort((left, right) => compareStrings(left.module, right.module) || compareStrings(left.id, right.id))
 }
 
-const codeBlock = (label: string, source: string | undefined): ReadonlyArray<string> =>
-  source === undefined ? [] : [`**${label}**`, "", "```ts", source, "```", ""]
-
 const renderDetailedEntry = (
   entry: MigrationEntry,
-  annotation: MigrationAnnotation | undefined
+  annotation: MigrationAnnotation,
+  example: string
 ): ReadonlyArray<string> => [
   `#### \`${displayApiId(entry.id)}\``,
   "",
-  ...(annotation === undefined
-    ? ["TODO: needs guidance", ""]
-    : [`**Replacement:** \`${annotation.replacement}\``, "", annotation.note, ""]),
-  ...codeBlock("Before", entry.before),
-  ...codeBlock("After", entry.after),
-  ...(annotation?.example === undefined
-    ? []
-    : ["**Example**", "", "```ts", annotation.example, "```", ""])
+  `**Replacement:** \`${annotation.replacement}\``,
+  "",
+  annotation.note,
+  "",
+  "**Example**",
+  "",
+  "```ts",
+  example,
+  "```",
+  ""
 ]
 
-const renderRename = (
+const renderCompactEntry = (
   entry: MigrationEntry,
   annotation: MigrationAnnotation | undefined
 ): string => {
-  const target = entry.rename?.headApiId === undefined ? "unknown" : stableApiId(entry.rename.headApiId)
-  return annotation === undefined
-    ? `- \`${displayApiId(entry.id)}\` -> \`${displayApiId(target)}\`: TODO: needs guidance`
-    : `- \`${displayApiId(entry.id)}\` -> \`${annotation.replacement}\`: ${annotation.note}`
+  if (annotation !== undefined) {
+    return `- \`${displayApiId(entry.id)}\` -> \`${annotation.replacement}\`: ${annotation.note}`
+  }
+  const target = entry.rename?.headApiId
+  return target === undefined
+    ? `- \`${displayApiId(entry.id)}\`: TODO: needs guidance`
+    : `- \`${displayApiId(entry.id)}\` -> \`${displayApiId(stableApiId(target))}\`: TODO: needs guidance`
 }
 
 export const extractImportMapSections = (document: string): string => {
@@ -280,10 +275,10 @@ export const renderMigrationDocument = (
     lines.push(`### \`${module}\``, "")
     for (const entry of moduleEntries) {
       const annotation = annotations.get(entry.id)
-      if (entry.detailed) {
-        lines.push(...renderDetailedEntry(entry, annotation))
+      if (annotation?.example !== undefined) {
+        lines.push(...renderDetailedEntry(entry, annotation, annotation.example))
       } else {
-        lines.push(renderRename(entry, annotation), "")
+        lines.push(renderCompactEntry(entry, annotation), "")
       }
     }
   }

@@ -103,33 +103,11 @@ describe("migration document", () => {
         "",
         "### `effect/Beta`",
         "",
-        "#### `Beta.removed`",
-        "",
-        "TODO: needs guidance",
-        "",
-        "**Before**",
-        "",
-        "```ts",
-        "declare const removed: string",
-        "```",
+        "- `Beta.removed`: TODO: needs guidance",
         "",
         "### `effect/Zeta`",
         "",
-        "#### `Zeta.changed`",
-        "",
-        "TODO: needs guidance",
-        "",
-        "**Before**",
-        "",
-        "```ts",
-        "declare const changed: (value: string) => string",
-        "```",
-        "",
-        "**After**",
-        "",
-        "```ts",
-        "declare const changed: () => string",
-        "```",
+        "- `Zeta.changed`: TODO: needs guidance",
         ""
       ].join("\n")
     )
@@ -160,6 +138,8 @@ describe("migration document", () => {
     assert(document.includes("**Replacement:** `Zeta.changed()`"))
     assert(document.includes("Call the zero-argument form."))
     assert(document.includes("**Example**\n\n```ts\nZeta.changed()\n```"))
+    assert(!document.includes("**Before**"))
+    assert(!document.includes("**After**"))
   })
 
   it("retains annotated removals that also have move suggestions", () => {
@@ -188,8 +168,7 @@ describe("migration document", () => {
       "## Import Map\n"
     )
 
-    assert(document.includes("#### `Effect.Service`"))
-    assert(document.includes("**Replacement:** `Context.Service`"))
+    assert(document.includes("- `Effect.Service` -> `Context.Service`: Use the v4 service constructor."))
   })
 
   it("renders removed modules and omits unchanged APIs moved with them", () => {
@@ -230,7 +209,7 @@ describe("migration document", () => {
 
     assert(document.includes("## Removed Modules\n\n- `effect/Legacy` -> `effect/Current`"))
     assert(!document.includes("Legacy.unchanged"))
-    assert(document.includes("#### `Legacy.changed`"))
+    assert(document.includes("- `Legacy.changed` -> `Current.changed`: Use the changed API."))
     assert.strictEqual(
       extractImportMapSections(document),
       "## Import Map\n\neffect/Legacy -> effect/Current\n"
