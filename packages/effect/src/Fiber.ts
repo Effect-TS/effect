@@ -12,7 +12,6 @@ import type * as Context from "./Context.ts"
 import type { Effect } from "./Effect.ts"
 import type { Exit } from "./Exit.ts"
 import * as effect from "./internal/effect.ts"
-import { version } from "./internal/version.ts"
 import type { LogLevel } from "./LogLevel.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { hasProperty } from "./Predicate.ts"
@@ -22,7 +21,7 @@ import type { Scope } from "./Scope.ts"
 import type { AnySpan } from "./Tracer.ts"
 import type { Covariant } from "./Types.ts"
 
-const TypeId = `~effect/Fiber/${version}`
+const TypeId = "~effect/Fiber"
 
 /**
  * A runtime fiber is a lightweight thread that executes Effects. Fibers are

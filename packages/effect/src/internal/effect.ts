@@ -98,7 +98,6 @@ import {
 } from "./references.ts"
 import { getStackTraceLimit, setStackTraceLimit } from "./stackTraceLimit.ts"
 import { addSpanStackTrace, makeStackCleaner } from "./tracer.ts"
-import { version } from "./version.ts"
 
 // ----------------------------------------------------------------------------
 // Cause
@@ -490,7 +489,7 @@ const renderErrorCause = (cause: Error, prefix: string) => {
 // ----------------------------------------------------------------------------
 
 /** @internal */
-export const FiberTypeId = `~effect/Fiber/${version}` as const
+export const FiberTypeId = "~effect/Fiber" as const
 
 const fiberVariance = {
   _A: identity,
@@ -5204,16 +5203,17 @@ export const forkUnsafe = <FA, FE, A, E, R>(
   daemon = false,
   uninterruptible: boolean | "inherit" = false
 ): FiberImpl<A, E> => {
-  const interruptible = uninterruptible === "inherit" ? parent.interruptible : !uninterruptible
-  const child = new FiberImpl<A, E>(parent.context, interruptible)
+  const parentRuntime = parent as FiberImpl<FA, FE>
+  const interruptible = uninterruptible === "inherit" ? parentRuntime.interruptible : !uninterruptible
+  const child = new FiberImpl<A, E>(parentRuntime.context, interruptible)
   if (immediate) {
     child.evaluate(effect as any)
   } else {
-    parent.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
+    parentRuntime.currentDispatcher.scheduleTask(() => child.evaluate(effect as any), 0)
   }
   if (!daemon && !child._exit) {
-    parent.children().add(child)
-    child.addObserver(() => parent._children!.delete(child))
+    parentRuntime.children().add(child)
+    child.addObserver(() => parentRuntime._children!.delete(child))
   }
   return child
 }
