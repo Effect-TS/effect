@@ -182,4 +182,39 @@ describe("Mailbox", () => {
       result = yield* Fiber.join(fiber)
       strictEqual(result, 2)
     }))
+
+  it.effect("bounded 0 capacity take finalizes after end", () =>
+    Effect.gen(function*() {
+      const mailbox = yield* Mailbox.make<number>(0)
+      const offerFiber = yield* mailbox.offer(1).pipe(Effect.fork)
+      yield* Effect.yieldNow({ priority: 1 })
+
+      yield* mailbox.end
+      const awaitFiber = yield* mailbox.await.pipe(Effect.fork)
+      strictEqual(yield* mailbox.take, 1)
+      yield* Effect.yieldNow({ priority: 1 })
+
+      deepStrictEqual(awaitFiber.unsafePoll(), Exit.void)
+      assertTrue(yield* Fiber.join(offerFiber))
+    }))
+
+  it.effect("bounded 0 capacity takeN rendezvous", () =>
+    Effect.gen(function*() {
+      const pendingOffer = yield* Mailbox.make<number>(0)
+      const offerFiber = yield* pendingOffer.offer(1).pipe(Effect.fork)
+      yield* Effect.yieldNow({ priority: 1 })
+
+      const [first] = yield* pendingOffer.takeN(1)
+      deepStrictEqual(Chunk.toReadonlyArray(first), [1])
+      assertTrue(yield* Fiber.join(offerFiber))
+
+      const pendingTake = yield* Mailbox.make<number>(0)
+      const takeFiber = yield* pendingTake.takeN(1).pipe(Effect.fork)
+      yield* Effect.yieldNow({ priority: 1 })
+      strictEqual(takeFiber.unsafePoll(), null)
+
+      assertTrue(yield* pendingTake.offer(2))
+      const [second] = yield* Fiber.join(takeFiber)
+      deepStrictEqual(Chunk.toReadonlyArray(second), [2])
+    }))
 })
