@@ -1272,7 +1272,7 @@ export function toStandardSchemaV1<S extends ConstraintDecoder<unknown>>(
   const parseOptions: SchemaAST.ParseOptions = { errors: "all", ...options?.parseOptions }
   const formatter = SchemaIssue.makeFormatterStandardSchemaV1(options)
   const validate: StandardSchemaV1<S["Encoded"], S["Type"]>["~standard"]["validate"] = (value: unknown) => {
-    const scheduler = new Scheduler.MixedScheduler()
+    const scheduler = new Scheduler.MixedScheduler("sync")
     const fiber = Effect.runFork(
       Effect.match(decodeUnknownEffect(value, parseOptions), {
         onFailure: formatter,
