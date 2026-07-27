@@ -958,6 +958,24 @@
               "size": 100
             },
             {
+              "name": "tagged-2-valid-last",
+              "export": "tagged2ValidLast",
+              "scenario": "tagged-2-valid-last",
+              "family": "union",
+              "astTags": ["Union", "Objects", "Literal"],
+              "path": "valid",
+              "size": 2
+            },
+            {
+              "name": "tagged-with-fallback-valid",
+              "export": "taggedWithFallbackValid",
+              "scenario": "tagged-with-fallback-valid",
+              "family": "union",
+              "astTags": ["Union", "Objects", "Literal"],
+              "path": "valid",
+              "size": 2
+            },
+            {
               "name": "errors-first",
               "export": "errorsFirst",
               "scenario": "errors-first",
@@ -1192,6 +1210,15 @@
               "implementation": "effect",
               "operation": "first-decode",
               "astTags": ["Union", "Literal"],
+              "size": 100
+            },
+            {
+              "name": "first-decode-tagged-100-effect",
+              "export": "effectFirstDecodeTagged100",
+              "scenario": "first-decode-tagged-100",
+              "implementation": "effect",
+              "operation": "first-decode",
+              "astTags": ["Union", "Objects", "Literal"],
               "size": 100
             },
             {

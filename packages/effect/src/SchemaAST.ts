@@ -2526,6 +2526,10 @@ export function collectSentinels(ast: AST): Array<Sentinel> {
 type CandidateIndex = {
   literalOnly: boolean
   byLiteral?: Map<LiteralValue | symbol, Array<AST>>
+  discriminator?: {
+    key: PropertyKey
+    candidates: Map<LiteralValue | symbol, Array<AST>>
+  }
   byType?: { [K in Type]?: Array<number> }
   bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
   otherwise?: { [K in Type]?: Array<number> }
@@ -2539,6 +2543,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   if (idx) return idx
 
   idx = { literalOnly: true }
+  let hasOneSentinelPerCandidate = true
   for (let i = 0; i < types.length; i++) {
     const a = types[i]
     const encoded = toEncoded(a)
@@ -2559,6 +2564,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
 
     const candidateTypes = getCandidateTypes(encoded)
     const sentinels = collectSentinels(encoded)
+    if (sentinels.length !== 1) hasOneSentinelPerCandidate = false
 
     // by-type (always filled – cheap primary filter)
     idx.byType ??= {}
@@ -2577,6 +2583,18 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       idx.otherwise ??= {}
       for (const t of candidateTypes) (idx.otherwise[t] ??= []).push(i)
     }
+  }
+
+  if (hasOneSentinelPerCandidate && idx.bySentinel?.size === 1 && idx.otherwise === undefined) {
+    for (const [key, byValue] of idx.bySentinel) {
+      const candidates = new Map<LiteralValue | symbol, Array<AST>>()
+      for (const [literal, indexes] of byValue) {
+        candidates.set(literal, indexes.map((index) => types[index]))
+      }
+      idx.discriminator = { key, candidates }
+    }
+    delete idx.byType
+    delete idx.bySentinel
   }
 
   candidateIndexCache.set(types, idx)
@@ -2605,6 +2623,15 @@ export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyAr
   if (idx.literalOnly) {
     return idx.byLiteral?.get(input) ?? emptyCandidates
   }
+
+  if (idx.discriminator) {
+    if (input !== null && (Array.isArray(input) || typeof input === "object")) {
+      const { candidates, key } = idx.discriminator
+      return Object.hasOwn(input, key) ? candidates.get(input[key]) ?? emptyCandidates : emptyCandidates
+    }
+    return emptyCandidates
+  }
+
   const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
 
   // 1. Try sentinel-based dispatch (most selective)

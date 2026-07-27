@@ -98,9 +98,23 @@ export const object32SuspendedMiddleValid = decodeParserCase(
 
 const literal2 = Schema.Literals(["value0", "value1"])
 const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
+const tagged2 = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String }),
+  Schema.Struct({ kind: Schema.Literal("b"), value: Schema.String })
+])
+const taggedWithFallback = Schema.Union([
+  Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String }),
+  Schema.Struct({ value: Schema.String })
+])
 
 export const literal2ValidLast = decodeParserCase(literal2, "value1", true)
 export const literal100ValidFirst = decodeParserCase(literal100, "value0", true)
+export const tagged2ValidLast = decodeParserCase(tagged2, { kind: "b", value: "value" }, true)
+export const taggedWithFallbackValid = decodeParserCase(
+  taggedWithFallback,
+  { kind: "a", value: "value" },
+  true
+)
 
 const errorFields = Object.fromEntries(
   Array.from({ length: 8 }, (_, index) => [`field${index}`, Schema.String])

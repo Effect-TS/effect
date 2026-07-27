@@ -34,6 +34,17 @@ const literalValues100 = Array.from({ length: 100 }, (_, index) => `value${index
 
 const makeEffectLiteral100Schema = () => Schema.Literals(literalValues100)
 
+const makeEffectTaggedMember = (index) =>
+  Schema.Struct({
+    kind: Schema.Literal(`kind${index}`),
+    a: Schema.String,
+    b: Schema.Number,
+    c: Schema.Boolean
+  })
+
+const makeEffectTagged100Schema = () =>
+  Schema.Union(Array.from({ length: 100 }, (_, index) => makeEffectTaggedMember(index)))
+
 const makeEffectEncodingChain = (size) => {
   let schema = Schema.FiniteFromString
   for (let i = 1; i < size; i++) {
@@ -106,6 +117,17 @@ export const typeboxFirstDecodeRecord32 = () => ({
 
 export const effectFirstDecodeLiteral100 = () => ({
   run: () => SchemaParser.decodeUnknownExit(makeEffectLiteral100Schema())("value99"),
+  validate: (result) => assert.equal(result._tag, "Success")
+})
+
+export const effectFirstDecodeTagged100 = () => ({
+  run: () =>
+    SchemaParser.decodeUnknownExit(makeEffectTagged100Schema())({
+      kind: "kind99",
+      a: "a",
+      b: 1,
+      c: true
+    }),
   validate: (result) => assert.equal(result._tag, "Success")
 })
 

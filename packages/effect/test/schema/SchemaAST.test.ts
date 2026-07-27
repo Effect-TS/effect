@@ -385,6 +385,39 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [])
     })
 
+    it("should preserve duplicate candidates with a common discriminator", () => {
+      const member = Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String })
+      const schema = Schema.Union([
+        member,
+        Schema.Struct({ kind: Schema.Literal("b"), value: Schema.Number }),
+        member,
+        Schema.Never
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0], ast.types[2]])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "b" }, ast.types), [ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "c" }, ast.types), [])
+      deepStrictEqual(SchemaAST.getCandidates({}, ast.types), [])
+      deepStrictEqual(SchemaAST.getCandidates("a", ast.types), [])
+    })
+
+    it("should deduplicate repeated sentinels from a Declaration", () => {
+      class A {
+        readonly kind = "a"
+      }
+      const schema = Schema.Union([
+        Schema.instanceOf(A, {
+          "~sentinels": [
+            { key: "kind", literal: "a" },
+            { key: "kind", literal: "a" }
+          ]
+        }),
+        Schema.Struct({ kind: Schema.Literal("b") })
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0]])
+    })
+
     it("should collect matches from different sentinel keys without duplicates", () => {
       const schema = Schema.Union([
         Schema.Struct({
