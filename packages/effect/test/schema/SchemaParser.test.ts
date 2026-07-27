@@ -427,6 +427,30 @@ describe("SchemaParser", () => {
         strictEqual(yield* SchemaParser.decodeUnknownEffect(schema)("value"), "value")
       }))
 
+    it.effect("wraps an asynchronous failure from a uniquely selected union member", () =>
+      Effect.gen(function*() {
+        const failing = Schema.String.pipe(Schema.decode({
+          decode: new SchemaGetter.Getter((input) =>
+            Effect.yieldNow.pipe(
+              Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue(input)))
+            )
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+        const schema = Schema.Union([
+          Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String }),
+          Schema.Struct({ kind: Schema.Literal("b"), value: failing })
+        ])
+
+        const exit = yield* Effect.exit(
+          SchemaParser.decodeUnknownEffect(schema)({ kind: "b", value: "value" })
+        )
+        assertTrue(Exit.isFailure(exit))
+        const error = Cause.findError(exit.cause)
+        assertTrue(Result.isSuccess(error))
+        strictEqual(error.success._tag, "AnyOf")
+      }))
+
     it.effect("resolves an unchanged concurrent union candidate", () =>
       Effect.gen(function*() {
         const delayedFailure = Schema.String.pipe(Schema.decode({
@@ -617,20 +641,31 @@ describe("SchemaParser", () => {
     })
 
     it("should preserve mixed causes in union candidates instead of trying later candidates", () => {
+      const failure = Schema.String.pipe(Schema.decode({
+        decode: new SchemaGetter.Getter(() => Effect.failCause(makeMixedCause())),
+        encode: SchemaGetter.passthrough()
+      }))
       const schema = Schema.Union([
-        Schema.String.pipe(Schema.decode({
-          decode: new SchemaGetter.Getter(() => Effect.failCause(makeMixedCause())),
-          encode: SchemaGetter.passthrough()
-        })),
+        failure,
         Schema.Literal("a")
       ])
+      const taggedSchema = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a"), value: failure }),
+        Schema.Struct({ kind: Schema.Literal("b"), value: Schema.String })
+      ])
 
-      const exit = SchemaParser.decodeUnknownExit(schema)("a")
-      assertTrue(Exit.isFailure(exit))
-      assertTrue(Exit.hasDies(exit))
-      const error = Cause.findError(exit.cause)
-      assertTrue(Result.isSuccess(error))
-      assertTrue(SchemaIssue.isIssue(error.success))
+      for (
+        const exit of [
+          SchemaParser.decodeUnknownExit(schema)("a"),
+          SchemaParser.decodeUnknownExit(taggedSchema)({ kind: "a", value: "a" })
+        ] as ReadonlyArray<Exit.Exit<unknown, SchemaIssue.Issue>>
+      ) {
+        assertTrue(Exit.isFailure(exit))
+        assertTrue(Exit.hasDies(exit))
+        const error = Cause.findError(exit.cause)
+        assertTrue(Result.isSuccess(error))
+        assertTrue(SchemaIssue.isIssue(error.success))
+      }
     })
   })
 })

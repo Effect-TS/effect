@@ -2731,6 +2731,14 @@ export class Union<A extends AST = AST> extends Base {
       }
       const candidates = getCandidates(input, ast.types)
 
+      if (candidates.length === 1) {
+        const result = recur(candidates[0])(input, options)
+        if ((result as Exit.Exit<unknown, SchemaIssue.Issue>)._tag === "Success") return result
+        return effectIsExit(result)
+          ? failSingleUnionCandidate(ast, input, (result as Exit.Failure<unknown, SchemaIssue.Issue>).cause)
+          : Effect.catchCause(result, (cause) => failSingleUnionCandidate(ast, input, cause))
+      }
+
       const state = {
         ast,
         recur,
@@ -2811,6 +2819,17 @@ export class Union<A extends AST = AST> extends Base {
     })
     return Array.from(new Set(types)).join(" | ")
   }
+}
+
+function failSingleUnionCandidate(
+  ast: Union,
+  input: unknown,
+  cause: Cause.Cause<SchemaIssue.Issue>
+) {
+  const issue = InternalSchemaCause.getSchemaIssue(cause)
+  return issue
+    ? Exit.fail(new SchemaIssue.AnyOf(ast, input, [issue]))
+    : Exit.failCause(cause)
 }
 
 const parseUnion = iterateEager<{
