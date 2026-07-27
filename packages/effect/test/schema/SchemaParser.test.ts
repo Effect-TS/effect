@@ -303,12 +303,147 @@ describe("SchemaParser", () => {
   })
 
   describe("decodeUnknownExit", () => {
+    it("preserves values that use Effect data protocols", () => {
+      let executions = 0
+      const suspended = Effect.sync(() => {
+        executions++
+        return "a"
+      })
+      const decode = SchemaParser.decodeUnknownExit(Schema.Unknown)
+      const values = [Option.none(), Option.some("a"), Exit.succeed("a"), Exit.fail("a"), suspended]
+
+      for (const value of values) {
+        const result = decode(value)
+        assertTrue(Exit.isSuccess(result))
+        strictEqual(result.value, value)
+      }
+      strictEqual(executions, 0)
+
+      const failure = Exit.fail("a")
+      const unionResult = SchemaParser.decodeUnknownExit(Schema.Union([Schema.Unknown]))(failure)
+      assertTrue(Exit.isSuccess(unionResult))
+      strictEqual(unionResult.value, failure)
+    })
+
+    it("distinguishes missing tuple elements from undefined", () => {
+      const decode = SchemaParser.decodeUnknownExit(
+        Schema.Tuple([Schema.optionalKey(Schema.Undefined)])
+      )
+
+      const empty = decode([])
+      assertTrue(Exit.isSuccess(empty))
+      strictEqual(empty.value.length, 0)
+
+      const present = decode([undefined])
+      assertTrue(Exit.isSuccess(present))
+      strictEqual(present.value.length, 1)
+      assertTrue(Object.hasOwn(present.value, 0))
+
+      const sparse = decode(new Array(1))
+      assertTrue(Exit.isSuccess(sparse))
+      strictEqual(sparse.value.length, 1)
+      assertTrue(Object.hasOwn(sparse.value, 0))
+    })
+
+    it("preserves missing optional template literals", () => {
+      const template = Schema.optionalKey(Schema.TemplateLiteral(["a", Schema.String]))
+      const decodeTuple = SchemaParser.decodeUnknownExit(Schema.Tuple([template]))
+      const decodeStruct = SchemaParser.decodeUnknownExit(Schema.Struct({ value: template }))
+
+      const tuple = decodeTuple([])
+      assertTrue(Exit.isSuccess(tuple))
+      strictEqual(tuple.value.length, 0)
+
+      const struct = decodeStruct({})
+      assertTrue(Exit.isSuccess(struct))
+      assertTrue(!Object.hasOwn(struct.value, "value"))
+    })
+
+    it("reads property and index values once", () => {
+      let propertyReads = 0
+      let indexReads = 0
+      const propertyInput = {
+        get value(): unknown {
+          propertyReads++
+          return propertyReads === 1 ? "a" : 1
+        }
+      }
+      const indexInput = {
+        get value(): unknown {
+          indexReads++
+          return indexReads === 1 ? "a" : 1
+        }
+      }
+
+      const property = SchemaParser.decodeUnknownExit(Schema.Struct({ value: Schema.String }))(propertyInput)
+      assertTrue(Exit.isSuccess(property))
+      strictEqual(property.value.value, "a")
+      strictEqual(propertyReads, 1)
+
+      const index = SchemaParser.decodeUnknownExit(Schema.Record(Schema.String, Schema.String))(indexInput)
+      assertTrue(Exit.isSuccess(index))
+      strictEqual(index.value.value, "a")
+      strictEqual(indexReads, 1)
+
+      let rejectedReads = 0
+      const rejectedKey = Schema.String.pipe(Schema.decode({
+        decode: new SchemaGetter.Getter((input) => Effect.fail(new SchemaIssue.InvalidValue(input))),
+        encode: SchemaGetter.passthrough()
+      }))
+      const rejectedInput = {
+        get value(): unknown {
+          rejectedReads++
+          return "a"
+        }
+      }
+      const rejected = SchemaParser.decodeUnknownExit(Schema.Record(rejectedKey, Schema.String))(rejectedInput)
+      assertTrue(Exit.isFailure(rejected))
+      strictEqual(rejectedReads, 0)
+    })
+
     it("keeps synchronous transformations eager", () => {
       const effect = SchemaParser.decodeUnknownEffect(Schema.NumberFromString)("1")
       assertTrue(Exit.isExit(effect))
       assertTrue(Exit.isSuccess(effect))
       strictEqual(effect.value, 1)
     })
+
+    it("rejects a missing root output", () => {
+      const schema = Schema.String.pipe(Schema.decode({
+        decode: new SchemaGetter.Getter(() => Effect.succeedNone),
+        encode: SchemaGetter.passthrough()
+      }))
+      const result = SchemaParser.decodeUnknownExit(schema)("value")
+
+      assertTrue(Exit.isFailure(result))
+    })
+
+    it.effect("preserves unchanged values through asynchronous middleware", () =>
+      Effect.gen(function*() {
+        const schema = Schema.String.pipe(
+          Schema.middlewareDecoding((effect) => Effect.yieldNow.pipe(Effect.andThen(effect)))
+        )
+
+        strictEqual(yield* SchemaParser.decodeUnknownEffect(schema)("value"), "value")
+      }))
+
+    it.effect("resolves an unchanged concurrent union candidate", () =>
+      Effect.gen(function*() {
+        const delayedFailure = Schema.String.pipe(Schema.decode({
+          decode: new SchemaGetter.Getter((input) =>
+            Effect.yieldNow.pipe(
+              Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue(input)))
+            )
+          ),
+          encode: SchemaGetter.passthrough()
+        }))
+        const schema = Schema.Union([delayedFailure, Schema.String])
+
+        strictEqual(
+          yield* SchemaParser.decodeUnknownEffect(schema)("value", { concurrency: 2 }),
+          "value"
+        )
+      }))
 
     it("does not replay eager fields after encountering a suspended transformation", () => {
       const calls: Array<string> = []

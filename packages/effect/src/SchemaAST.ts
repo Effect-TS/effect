@@ -21,6 +21,7 @@ import { effectIsExit, iterateEager } from "./internal/effect.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
 import * as InternalSchemaCause from "./internal/schema/cause.ts"
+import * as InternalParser from "./internal/schema/parser.ts"
 import * as Option from "./Option.ts"
 import * as Pipeable from "./Pipeable.ts"
 import * as Predicate from "./Predicate.ts"
@@ -672,9 +673,9 @@ export class Declaration extends Base {
   /** @internal */
   getParser(): SchemaParser.Parser {
     let run: ReturnType<typeof this.run>
-    return (oinput, options) => {
-      if (Option.isNone(oinput)) return Effect.succeedNone
-      return Effect.mapEager((run ??= this.run(this.typeParameters))(oinput.value, this, options), Option.some)
+    return (input, options) => {
+      if (input === InternalParser.missing) return InternalParser.missingExit
+      return (run ??= this.run(this.typeParameters))(input, this, options)
     }
   }
   private _rebuild(recur: (ast: AST) => AST, checks: Checks | undefined, encodingChecks: Checks | undefined) {
@@ -1142,11 +1143,17 @@ export class TemplateLiteral extends Base {
   /** @internal */
   getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
     const parser = recur(this.asTemplateLiteralParser())
-    return (oinput: Option.Option<unknown>, options: ParseOptions) =>
-      Effect.mapBothEager(parser(oinput, options), {
-        onSuccess: () => oinput,
-        onFailure: (issue) => new SchemaIssue.Composite(this, oinput, [issue])
+    return (input, options) => {
+      if (input === InternalParser.missing) return InternalParser.missingExit
+      const result = parser(input, options)
+      if ((result as Exit.Exit<unknown, unknown>)._tag === "Success") {
+        return InternalParser.sameExit
+      }
+      return Effect.mapBothEager(result, {
+        onSuccess: () => input,
+        onFailure: (issue) => new SchemaIssue.Composite(this, InternalParser.toOption(input), [issue])
       })
+    }
   }
   /** @internal */
   getExpected(): string {
@@ -1688,22 +1695,21 @@ export class Arrays extends Base {
       return head
     }
 
-    return Effect.fnUntracedEager(function*(oinput, options) {
-      if (oinput._tag === "None") {
-        return oinput
+    return Effect.fnUntracedEager(function*(input, options) {
+      if (input === InternalParser.missing) {
+        return InternalParser.missing
       }
-      const input = oinput.value
 
       // If the input is not an array, return early with an error
       if (!Array.isArray(input)) {
-        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, oinput))
+        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, InternalParser.toOption(input)))
       }
 
       const len = input.length
       const state = {
         ast,
         getParser,
-        oinput,
+        input,
         len,
         tailThreshold: resolveTailThreshold(len, elementLen, tailLen),
         output: new globalThis.Array(len),
@@ -1727,14 +1733,18 @@ export class Arrays extends Base {
             if (state.issues) state.issues.push(issue)
             else state.issues = [issue]
           } else {
-            return yield* Effect.fail(new SchemaIssue.Composite(ast, oinput, [issue]))
+            return yield* Effect.fail(
+              new SchemaIssue.Composite(ast, InternalParser.toOption(input), [issue])
+            )
           }
         }
       }
       if (state.issues) {
-        return yield* Effect.fail(new SchemaIssue.Composite(ast, oinput, state.issues))
+        return yield* Effect.fail(
+          new SchemaIssue.Composite(ast, InternalParser.toOption(input), state.issues)
+        )
       }
-      return Option.some(state.output)
+      return state.output
     })
   }
   private _rebuild(recur: (ast: AST) => AST, checks: Checks | undefined, encodingChecks: Checks | undefined) {
@@ -1769,7 +1779,7 @@ export class Arrays extends Base {
 }
 const parseArray = iterateEager<{
   readonly ast: AST
-  readonly oinput: Option.Option<unknown>
+  readonly input: unknown
   readonly len: number
   readonly getParser: (
     tailThreshold: number,
@@ -1781,14 +1791,18 @@ const parseArray = iterateEager<{
   issues: Array<SchemaIssue.Issue> | undefined
 }, unknown>()({
   onItem(s, item, i) {
-    const value = i < s.len ? Option.some(item) : Option.none()
+    const value = i < s.len ? item : InternalParser.missing
     return s.getParser(s.tailThreshold, i).parser(value, s.options)
   },
-  step(s, _, exit, i) {
+  step(s, item, exit, i) {
     if (exit._tag === "Failure") {
       return wrapPropertyKeyIssue(s, s.ast, i, exit)
-    } else if (exit.value._tag === "Some") {
-      s.output[i] = exit.value.value
+    }
+    const value = exit === InternalParser.sameExit
+      ? item
+      : (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+    if (value !== InternalParser.missing) {
+      s.output[i] = value
     } else {
       const p = s.getParser(s.tailThreshold, i)
       if (isOptional(p.ast)) return
@@ -1797,7 +1811,9 @@ const parseArray = iterateEager<{
         if (s.issues) s.issues.push(issue)
         else s.issues = [issue]
       } else {
-        return Exit.fail(new SchemaIssue.Composite(s.ast, s.oinput, [issue]))
+        return Exit.fail(
+          new SchemaIssue.Composite(s.ast, InternalParser.toOption(s.input), [issue])
+        )
       }
     }
   }
@@ -1818,7 +1834,7 @@ const resolveConcurrency = (value: number | "unbounded" | undefined) => {
 
 const wrapPropertyKeyIssue = (
   s: {
-    readonly oinput: Option.Option<unknown>
+    readonly input: unknown
     readonly options: ParseOptions
     issues: Array<SchemaIssue.Issue> | undefined
   },
@@ -1834,7 +1850,12 @@ const wrapPropertyKeyIssue = (
     return Exit.failCause(
       Cause.map(
         exit.cause,
-        (issue) => new SchemaIssue.Composite(ast, s.oinput, [new SchemaIssue.Pointer([key], issue)])
+        (issue) =>
+          new SchemaIssue.Composite(
+            ast,
+            InternalParser.toOption(s.input),
+            [new SchemaIssue.Pointer([key], issue)]
+          )
       )
     )
   }
@@ -1843,7 +1864,9 @@ const wrapPropertyKeyIssue = (
     if (s.issues) s.issues.push(pointer)
     else s.issues = [pointer]
   } else {
-    return Exit.fail(new SchemaIssue.Composite(ast, s.oinput, [pointer]))
+    return Exit.fail(
+      new SchemaIssue.Composite(ast, InternalParser.toOption(s.input), [pointer])
+    )
   }
 }
 
@@ -2057,7 +2080,6 @@ export class Objects extends Base {
     const expectedKeys: Array<PropertyKey> = []
     const expectedKeysSet = new Set<PropertyKey>()
     const properties: Array<{
-      readonly ps: PropertySignature | IndexSignature
       readonly parser: SchemaParser.Parser
       readonly name: PropertyKey
       readonly type: AST
@@ -2066,12 +2088,12 @@ export class Objects extends Base {
       expectedKeys.push(ps.name)
       expectedKeysSet.add(ps.name)
       properties.push({
-        ps,
         parser: recur(ps.type),
         name: ps.name,
         type: ps.type
       })
     }
+    const hasProperties = properties.length > 0
     const indexCount = ast.indexSignatures.length
     // ---------------------------------------------
     // handle empty struct
@@ -2089,46 +2111,60 @@ export class Objects extends Base {
       undefined
 
     type Index = NonNullable<typeof indexes>[number]
+    const finishIndex = (
+      s: ObjectParserState,
+      key: PropertyKey,
+      k2: PropertyKey | typeof InternalParser.missing,
+      inputValue: unknown,
+      exitValue: Exit.Exit<unknown, SchemaIssue.Issue>
+    ): Effect.Effect<void, SchemaIssue.Issue, any> => {
+      if (exitValue._tag === "Failure") {
+        return wrapPropertyKeyIssue(s, ast, key, exitValue) ?? Exit.void
+      }
+      const value = exitValue === InternalParser.sameExit
+        ? inputValue
+        : (exitValue as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+      if (k2 !== InternalParser.missing && value !== InternalParser.missing) {
+        if (hasProperties && (expectedKeysSet.has(key) || expectedKeysSet.has(k2))) return Exit.void
+        InternalRecord.assignProperty(s.out, k2, value)
+      }
+      return Exit.void
+    }
     const parseIndex = (
       s: ObjectParserState,
       key: PropertyKey,
       index: Index,
-      exitKey?: Exit.Exit<Option.Option<PropertyKey>, SchemaIssue.Issue>,
-      exitValue?: Exit.Exit<Option.Option<unknown>, SchemaIssue.Issue>
+      exitKey?: Exit.Exit<unknown, SchemaIssue.Issue>
     ): Effect.Effect<void, SchemaIssue.Issue, any> => {
-      let k2: PropertyKey | undefined = key
-      if (index.is.parameter !== string) {
-        if (exitKey === undefined) {
-          const eff = index.parserKey(Option.some(key), s.options) as Effect.Effect<
-            Option.Option<PropertyKey>,
-            SchemaIssue.Issue,
-            any
-          >
-          if (!effectIsExit(eff)) {
-            return Effect.flatMap(Effect.exit(eff), (exit) => parseIndex(s, key, index, exit))
-          }
-          exitKey = eff
-        }
-        if (exitKey._tag === "Failure") {
-          return wrapPropertyKeyIssue(s, ast, key, exitKey) ?? Exit.void
-        }
-        k2 = exitKey.value._tag === "Some" ? exitKey.value.value : undefined
-      }
-      if (exitValue === undefined) {
-        const eff = index.parserValue(Option.some(s.input[key]), s.options)
+      if (exitKey === undefined) {
+        const eff = index.parserKey(key, s.options)
         if (!effectIsExit(eff)) {
-          return Effect.flatMap(Effect.exit(eff), (exit) => parseIndex(s, key, index, exitKey, exit))
+          return Effect.flatMap(Effect.exit(eff), (exit) => parseIndex(s, key, index, exit))
         }
-        exitValue = eff
+        exitKey = eff
       }
-      if (exitValue._tag === "Failure") {
-        return wrapPropertyKeyIssue(s, ast, key, exitValue) ?? Exit.void
-      } else if (k2 !== undefined && exitValue.value._tag === "Some") {
-        if (expectedKeysSet.has(key) || expectedKeysSet.has(k2)) return Exit.void
-        const v2 = exitValue.value.value
-        InternalRecord.assignProperty(s.out, k2, v2)
+      if (exitKey._tag === "Failure") {
+        return wrapPropertyKeyIssue(s, ast, key, exitKey) ?? Exit.void
       }
-      return Exit.void
+      const k2 = exitKey === InternalParser.sameExit
+        ? key
+        : (exitKey as InternalParser.Success<PropertyKey, SchemaIssue.Issue>)[InternalParser.args]
+      const inputValue = s.input[key]
+      const result = index.parserValue(inputValue, s.options)
+      return effectIsExit(result)
+        ? finishIndex(s, key, k2, inputValue, result)
+        : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, k2, inputValue, exit))
+    }
+    const parseStringIndex = (
+      s: ObjectParserState,
+      key: PropertyKey,
+      index: Index
+    ): Effect.Effect<void, SchemaIssue.Issue, any> => {
+      const inputValue = s.input[key]
+      const result = index.parserValue(inputValue, s.options)
+      return effectIsExit(result)
+        ? finishIndex(s, key, key, inputValue, result)
+        : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, key, inputValue, exit))
     }
     const parseIndexes = indexes ?
       iterateEager<ObjectParserState, [key: PropertyKey, index: Index]>()({
@@ -2137,22 +2173,21 @@ export class Objects extends Base {
       }) :
       undefined
 
-    return Effect.fnUntracedEager(function*(oinput, options) {
-      if (oinput._tag === "None") {
-        return oinput
+    return Effect.fnUntracedEager(function*(input, options) {
+      if (input === InternalParser.missing) {
+        return InternalParser.missing
       }
-      const input = oinput.value as Record<PropertyKey, unknown>
 
       // If the input is not a record, return early with an error
       if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
-        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, oinput))
+        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, InternalParser.toOption(input)))
       }
 
+      const record = input as Record<PropertyKey, unknown>
       const out: Record<PropertyKey, unknown> = {}
       const state = {
         ast,
-        oinput,
-        input,
+        input: record,
         out,
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
         options
@@ -2166,13 +2201,13 @@ export class Objects extends Base {
       // ---------------------------------------------
       let inputKeys: Array<PropertyKey> | undefined
       if (ast.indexSignatures.length === 0 && (onExcessPropertyError || onExcessPropertyPreserve)) {
-        inputKeys = Reflect.ownKeys(input)
+        inputKeys = Reflect.ownKeys(record)
         for (let i = 0; i < inputKeys.length; i++) {
           const key = inputKeys[i]
           if (!expectedKeysSet.has(key)) {
             // key is unexpected
             if (onExcessPropertyError) {
-              const issue = new SchemaIssue.Pointer([key], new SchemaIssue.UnexpectedKey(ast, input[key]))
+              const issue = new SchemaIssue.Pointer([key], new SchemaIssue.UnexpectedKey(ast, record[key]))
               if (errorsAllOption) {
                 if (state.issues) {
                   state.issues.push(issue)
@@ -2181,11 +2216,13 @@ export class Objects extends Base {
                 }
                 continue
               } else {
-                return yield* Effect.fail(new SchemaIssue.Composite(ast, oinput, [issue]))
+                return yield* Effect.fail(
+                  new SchemaIssue.Composite(ast, InternalParser.toOption(input), [issue])
+                )
               }
             } else {
               // preserve key
-              InternalRecord.assignProperty(out, key, input[key])
+              InternalRecord.assignProperty(out, key, record[key])
             }
           }
         }
@@ -2196,8 +2233,10 @@ export class Objects extends Base {
       // ---------------------------------------------
       // handle property signatures
       // ---------------------------------------------
-      const eff = parseProperties(state, properties, concurrency)
-      if (eff) yield* eff
+      if (hasProperties) {
+        const eff = parseProperties(state, properties, concurrency)
+        if (eff) yield* eff
+      }
 
       // ---------------------------------------------
       // handle index signatures
@@ -2205,11 +2244,12 @@ export class Objects extends Base {
       if (indexes && concurrency === undefined) {
         for (let i = 0; i < indexCount; i++) {
           const index = indexes[i]
+          const parse = index.is.parameter === string ? parseStringIndex : parseIndex
           const keys = index.is.parameter === string
-            ? Object.keys(input)
-            : getIndexSignatureKeys(input, index.is.parameter, options)
+            ? Object.keys(record)
+            : getIndexSignatureKeys(record, index.is.parameter, options)
           for (let j = 0; j < keys.length; j++) {
-            const eff = parseIndex(state, keys[j], index)
+            const eff = parse(state, keys[j], index)
             if (!effectIsExit(eff)) yield* eff
             else if (eff._tag === "Failure") return yield* eff as Exit.Exit<never, SchemaIssue.Issue>
           }
@@ -2218,7 +2258,7 @@ export class Objects extends Base {
         const keyPairs = Arr.empty<[PropertyKey, Index]>()
         for (let i = 0; i < indexCount; i++) {
           const index = indexes![i]
-          const keys = getIndexSignatureKeys(input, index.is.parameter, options)
+          const keys = getIndexSignatureKeys(record, index.is.parameter, options)
           for (let j = 0; j < keys.length; j++) {
             keyPairs.push([keys[j], index])
           }
@@ -2228,20 +2268,22 @@ export class Objects extends Base {
       }
 
       if (state.issues) {
-        return yield* Effect.fail(new SchemaIssue.Composite(ast, oinput, state.issues))
+        return yield* Effect.fail(
+          new SchemaIssue.Composite(ast, InternalParser.toOption(input), state.issues)
+        )
       }
       if (options.propertyOrder === "original") {
         // preserve input keys order
-        const keys = (inputKeys ?? Reflect.ownKeys(input)).concat(expectedKeys)
+        const keys = (inputKeys ?? Reflect.ownKeys(record)).concat(expectedKeys)
         const preserved: Record<PropertyKey, unknown> = {}
         for (const key of keys) {
           if (Object.hasOwn(out, key)) {
             InternalRecord.assignProperty(preserved, key, out[key])
           }
         }
-        return Option.some(preserved)
+        return preserved
       }
-      return Option.some(out)
+      return out
     })
   }
   private _rebuild(
@@ -2293,7 +2335,6 @@ export class Objects extends Base {
 
 type ObjectParserState = {
   readonly ast: Objects
-  readonly oinput: Option.Option<unknown>
   readonly input: Record<PropertyKey, unknown>
   readonly options: ParseOptions
   readonly out: Record<PropertyKey, unknown>
@@ -2301,7 +2342,6 @@ type ObjectParserState = {
 }
 
 type ParsedProperty = {
-  readonly ps: PropertySignature | IndexSignature
   readonly parser: SchemaParser.Parser
   readonly name: PropertyKey
   readonly type: AST
@@ -2309,17 +2349,25 @@ type ParsedProperty = {
 
 const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
   onItem(s, p) {
-    const value: Option.Option<unknown> = Object.hasOwn(s.input, p.name)
-      ? Option.some(s.input[p.name])
-      : Option.none()
+    if (!Object.hasOwn(s.input, p.name)) {
+      return p.parser(InternalParser.missing, s.options)
+    }
+    const value = s.input[p.name]
+    InternalRecord.assignProperty(s.out, p.name, value)
     return p.parser(value, s.options)
   },
   step(s, p, exit) {
     if (exit._tag === "Failure") {
       return wrapPropertyKeyIssue(s, s.ast, p.name, exit)
-    } else if (exit.value._tag === "Some") {
-      InternalRecord.assignProperty(s.out, p.name, exit.value.value)
-    } else if (!isOptional(p.type)) {
+    }
+    if (exit === InternalParser.sameExit) return
+    const value = (exit as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
+    if (value !== InternalParser.missing) {
+      InternalRecord.assignProperty(s.out, p.name, value)
+      return
+    }
+    delete s.out[p.name]
+    if (!isOptional(p.type)) {
       const issue = new SchemaIssue.Pointer([p.name], new SchemaIssue.MissingKey(p.type.context?.annotations))
       if (s.options.errors === "all") {
         if (s.issues) s.issues.push(issue)
@@ -2327,7 +2375,7 @@ const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
         return
       } else {
         return Exit.fail(
-          new SchemaIssue.Composite(s.ast, s.oinput, [issue])
+          new SchemaIssue.Composite(s.ast, InternalParser.toOption(s.input), [issue])
         )
       }
     }
@@ -2677,17 +2725,15 @@ export class Union<A extends AST = AST> extends Base {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
 
-    return (oinput, options) => {
-      if (oinput._tag === "None") {
-        return Effect.succeed(oinput)
+    return (input, options) => {
+      if (input === InternalParser.missing) {
+        return InternalParser.missingExit
       }
-      const input = oinput.value
       const candidates = getCandidates(input, ast.types)
 
       const state = {
         ast,
         recur,
-        oinput,
         input,
         out: undefined,
         successes: ast.mode === "oneOf" ? [] : undefined,
@@ -2697,14 +2743,12 @@ export class Union<A extends AST = AST> extends Base {
       const concurrency = resolveConcurrency(options?.concurrency)
       const eff = parseUnion(state, candidates, concurrency ? { ...concurrency, orderedStep: true } : undefined)
       if (!eff) {
-        return state.out
-          ? Effect.succeed(state.out)
-          : Effect.fail(new SchemaIssue.AnyOf(ast, input, state.issues ?? []))
+        return state.out ?? Effect.fail(new SchemaIssue.AnyOf(ast, input, state.issues ?? []))
       }
       return Effect.flatMap(eff, (_) => {
-        return state.out
-          ? Effect.succeed(state.out)
-          : Effect.fail(new SchemaIssue.AnyOf(ast, input, state.issues ?? []))
+        return state.out === InternalParser.sameExit
+          ? Effect.succeed(input)
+          : state.out ?? Effect.fail(new SchemaIssue.AnyOf(ast, input, state.issues ?? []))
       })
     }
   }
@@ -2772,16 +2816,15 @@ export class Union<A extends AST = AST> extends Base {
 const parseUnion = iterateEager<{
   readonly recur: (ast: AST) => SchemaParser.Parser
   readonly ast: Union
-  readonly oinput: Option.Option<unknown>
   readonly input: unknown
   readonly options: ParseOptions
-  out: Option.Option<unknown> | undefined
+  out: Exit.Success<unknown, SchemaIssue.Issue> | undefined
   readonly successes: Array<AST> | undefined
   issues: Array<SchemaIssue.Issue> | undefined
 }, AST>()({
   onItem(s, ast) {
     const parser = s.recur(ast)
-    return parser(s.oinput, s.options)
+    return parser(s.input, s.options)
   },
   step(s, candidate, exit) {
     if (exit._tag === "Failure") {
@@ -2796,7 +2839,7 @@ const parseUnion = iterateEager<{
         s.successes.push(candidate)
         return Exit.fail(new SchemaIssue.OneOf(s.ast, s.input, s.successes))
       }
-      s.out = exit.value
+      s.out = exit
       if (s.successes) {
         s.successes.push(candidate)
       } else {
@@ -3574,33 +3617,33 @@ function fromConst<const T>(
   ast: AST,
   value: T
 ): SchemaParser.Parser {
-  const succeed = Effect.succeedSome(value)
-  return (oinput) => {
-    if (oinput._tag === "None") {
-      return Effect.succeedNone
-    }
-    return oinput.value === value
+  const succeed = InternalParser.succeed(value)
+  return (input) => {
+    if (input === InternalParser.missing) return InternalParser.missingExit
+    return input === value
       ? succeed
-      : Effect.fail(new SchemaIssue.InvalidType(ast, oinput))
+      : Effect.fail(
+        new SchemaIssue.InvalidType(ast, InternalParser.toOption(input))
+      )
   }
 }
 
 function fromAnyToConst<const T>(value: T): SchemaParser.Parser {
-  const succeed = Effect.succeedSome(value)
-  return (oinput) => oinput._tag === "None" ? Effect.succeedNone : succeed
+  const succeed = InternalParser.succeed(value)
+  return (input) => input === InternalParser.missing ? InternalParser.missingExit : succeed
 }
 
 function fromRefinement<T>(
   ast: AST,
   refinement: (input: unknown) => input is T
 ): SchemaParser.Parser {
-  return (oinput) => {
-    if (oinput._tag === "None") {
-      return Effect.succeedNone
-    }
-    return refinement(oinput.value)
-      ? Effect.succeed(oinput)
-      : Effect.fail(new SchemaIssue.InvalidType(ast, oinput))
+  return (input) => {
+    if (input === InternalParser.missing) return InternalParser.missingExit
+    return refinement(input)
+      ? InternalParser.sameExit
+      : Effect.fail(
+        new SchemaIssue.InvalidType(ast, InternalParser.toOption(input))
+      )
   }
 }
 

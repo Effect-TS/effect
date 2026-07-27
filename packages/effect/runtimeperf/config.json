@@ -1097,6 +1097,15 @@
               "size": 100
             },
             {
+              "name": "homogeneous-union-100-invalid",
+              "export": "homogeneousUnion100Invalid",
+              "scenario": "homogeneous-union-100-invalid",
+              "family": "union",
+              "astTags": ["Union", "String"],
+              "path": "invalid",
+              "size": 100
+            },
+            {
               "name": "tagged-2-valid-last",
               "export": "tagged2ValidLast",
               "scenario": "tagged-2-valid-last",
