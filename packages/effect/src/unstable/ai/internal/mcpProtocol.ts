@@ -3,7 +3,6 @@ import * as Schema from "../../../Schema.ts"
 import type * as Rpc from "../../rpc/Rpc.ts"
 import type * as RpcGroup from "../../rpc/RpcGroup.ts"
 
-/** @internal */
 export interface PayloadCodecs {
   readonly decode: (input: unknown) => Effect.Effect<unknown, Schema.SchemaError>
   readonly encode: (input: unknown) => Effect.Effect<unknown, Schema.SchemaError>
@@ -19,19 +18,19 @@ export interface AnyProtocolAdapter {
   readonly payloadCodecs: (rpc: Rpc.AnyWithProps) => PayloadCodecs
 }
 
-/** @internal */
 export interface ProtocolAdapter<
   out Version extends string = string,
   ClientRpcs extends Rpc.Any = Rpc.Any,
   ClientNotificationRpcs extends ClientRpcs = ClientRpcs,
   ServerRequestRpcs extends Rpc.Any = Rpc.Any,
   ServerNotificationRpcs extends Rpc.Any = Rpc.Any
-> extends AnyProtocolAdapter {
+> {
   readonly protocolVersion: Version
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
   readonly serverNotificationRpcs: RpcGroup.RpcGroup<ServerNotificationRpcs>
+  readonly payloadCodecs: (rpc: Rpc.AnyWithProps) => PayloadCodecs
 }
 
 /** @internal */

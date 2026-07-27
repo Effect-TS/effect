@@ -551,6 +551,15 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
             const routedRequest = protocolRegistry.routeClientRequest(selectedProtocol, request)
             const rpc = protocolRegistry.clientRpcs.requests.get(routedRequest.tag)
             if (rpc && selectedProtocol.clientNotificationRpcs.requests.has(request.tag)) {
+              if (!session) {
+                if (httpRequest) {
+                  appendPreResponseHandlerUnsafe(
+                    httpRequest,
+                    () => Effect.succeed(HttpServerResponse.empty({ status: 404 }))
+                  )
+                }
+                return Effect.void
+              }
               const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)
               return decode.pipe(
                 Effect.flatMap((payload) => {

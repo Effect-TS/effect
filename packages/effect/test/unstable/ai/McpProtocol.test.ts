@@ -123,13 +123,11 @@ describe("McpProtocolRegistry", () => {
       assert.isDefined(unselectedRpc)
 
       const invalid = yield* Effect.exit(
-        Schema.decodeUnknownEffect(selectedRpc.payloadSchema)(selectedRequest.payload)
+        selected.payloadCodecs(selectedRpc).decode(selectedRequest.payload)
       )
 
       assert.strictEqual(invalid._tag, "Failure")
-      const valid = yield* Schema.decodeUnknownEffect(unselectedRpc.payloadSchema)(
-        unselectedRequest.payload
-      )
+      const valid = yield* second.payloadCodecs(unselectedRpc).decode(unselectedRequest.payload)
       assert.deepStrictEqual(valid, {
         protocol: "b",
         value: "other adapter"

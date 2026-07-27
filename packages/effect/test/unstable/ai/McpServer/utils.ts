@@ -26,7 +26,8 @@ export const makeServerLayer = (options: {
     Layer.provideMerge(Layer.succeed(
       References.CurrentLoggers,
       new Set([noopLogger])
-    ))
+    )),
+    Layer.orDie
   )
 
 export const makeWebHandler = Effect.fnUntraced(function*<A>(
