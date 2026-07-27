@@ -10,9 +10,6 @@ effect/MetricBoundaries#linear:
 effect/MetricBoundaries#MetricBoundaries:
   replacement: "ReadonlyArray<number>"
   note: "The wrapper was removed; Metric.histogram accepts plain boundaries in its options."
-effect/MetricBoundaries#isMetricBoundaries:
-  replacement: "none"
-  note: "Boundaries are unbranded arrays, so the guard and public type-id symbol have no replacement."
-effect/MetricBoundaries#MetricBoundariesTypeId:
-  replacement: "none"
-  note: "Boundaries are unbranded arrays, so the guard and public type-id symbol have no replacement."
+effect/MetricBoundaries:
+  replacement: varies by API
+  note: Boundaries are unbranded arrays, so the guard and public type-id symbol have no replacement.

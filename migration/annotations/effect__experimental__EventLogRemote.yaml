@@ -1,6 +1,3 @@
-"@effect/experimental/EventLogRemote#Ack":
-  replacement: none
-  note: A write acknowledgement is now the void success of EventLogMessage.WriteSingleRpc or WriteChunkedRpc.
 "@effect/experimental/EventLogRemote#Changes":
   replacement: effect/unstable/eventlog/EventLogMessage#ChangesRpc
   note: ChangesRpc replaces the separate request and response models with one streaming RPC.
@@ -31,9 +28,6 @@
 "@effect/experimental/EventLogRemote#layerWebSocketBrowser":
   replacement: effect/unstable/eventlog/EventLogRemote#layerEncrypted + effect/unstable/rpc/RpcClient#layerProtocolSocket + @effect/platform-browser/BrowserSocket#layerWebSocket
   note: Compose the encrypted remote and generic RPC socket protocol with the browser WebSocket layer.
-"@effect/experimental/EventLogRemote#Pong":
-  replacement: none
-  note: The event-log Pong model was removed; heartbeats belong to the generic RPC socket protocol.
 "@effect/experimental/EventLogRemote#ProtocolRequest":
   replacement: effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs
   note: EventLogRemoteRpcs and generic RPC serialization replace the old protocol request union.
@@ -46,12 +40,9 @@
 "@effect/experimental/EventLogRemote#ProtocolResponseMsgPack":
   replacement: effect/unstable/rpc/RpcSerialization#layerMsgPack
   note: Use the generic MsgPack RPC serialization layer instead of a response-specific schema.
-"@effect/experimental/EventLogRemote#RemoteAdditions":
-  replacement: none
-  note: This unused protocol model has no v4 counterpart.
 "@effect/experimental/EventLogRemote#RequestChanges":
   replacement: effect/unstable/eventlog/EventLogMessage#ChangesRpc
   note: ChangesRpc replaces the separate request model with one streaming RPC.
-"@effect/experimental/EventLogRemote#StopChanges":
-  replacement: none
-  note: Interrupt the ChangesRpc stream instead of sending a StopChanges message.
+"@effect/experimental/EventLogRemote":
+  replacement: effect/unstable/eventlog/EventLogMessage, effect/unstable/eventlog/EventLogRemote
+  note: A write acknowledgement is now the void success of EventLogMessage.WriteSingleRpc or WriteChunkedRpc. The event-log Pong model was removed; heartbeats belong to the generic RPC socket protocol. This unused protocol model has no v4 counterpart. Interrupt the ChangesRpc stream instead of sending a StopChanges message.

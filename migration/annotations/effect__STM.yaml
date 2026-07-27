@@ -1,15 +1,6 @@
-effect/STM#Adapter:
-  replacement: "none"
-  note: "The STM.gen adapter was removed; Effect.gen accepts yielded Effects directly."
 effect/STM#All.IsDiscard:
   replacement: "Effect.All.IsDiscard"
   note: "The helper moved to Effect.All because STM.all is now Effect.all."
-effect/STM#All.Narrow:
-  replacement: "none"
-  note: "Effect.all uses a const generic directly, so the separate tuple-narrowing helper was removed."
-effect/STM#All.Options:
-  replacement: "none"
-  note: "Effect.all inlines its options type; use its concurrency, discard, and mode options directly."
 effect/STM#All.STMAny:
   replacement: "Effect.All.EffectAny"
   note: "STM inputs are ordinary Effects in v4, so use the Effect.All helper."
@@ -34,9 +25,6 @@ effect/STM#STMTypeLambda:
 effect/STM#STMUnify:
   replacement: "Effect.EffectUnify"
   note: "STM unification moved to ordinary Effect unification."
-effect/STM#STMUnifyIgnore:
-  replacement: "none"
-  note: "The STM-specific unification ignore marker was removed; rely on Effect inference."
 effect/STM#acquireUseRelease:
   replacement: "Effect.acquireUseRelease + Effect.tx"
   note: "Wrap acquire, use, and release in separate Effect.tx calls to preserve the v3 separately committed phases; v4 release also receives the use Exit."
@@ -226,12 +214,6 @@ effect/STM#orDie:
 effect/STM#orDieWith:
   replacement: "Effect.mapError + Effect.orDie"
   note: "Map the typed error to the desired defect and then use Effect.orDie."
-effect/STM#orElse:
-  replacement: "none"
-  note: "V4 has no exact retry-aware transactional alternative with journal savepoint restoration. Effect.catch is only a failure-only approximation."
-effect/STM#orElseEither:
-  replacement: "none"
-  note: "V4 has no exact retry-aware alternative. For typed failures only, compose Effect.catch and Result tagging manually."
 effect/STM#orElseFail:
   replacement: "Effect.mapError"
   note: "Map typed failures to the replacement error; this does not preserve v3 retry fallback semantics."
@@ -241,9 +223,6 @@ effect/STM#orElseOptional:
 effect/STM#orElseSucceed:
   replacement: "Effect.orElseSucceed"
   note: "The name remains for typed failures, but v4 does not preserve v3 retry fallback or journal savepoints."
-effect/STM#orTry:
-  replacement: "none"
-  note: "V4 exposes no recoverable retry signal or public transactional savepoint; restructure branch selection before Effect.txRetry."
 effect/STM#partition:
   replacement: "Effect.partition"
   note: "The combinator keeps its name, but STM values are now ordinary Effects. Run the complete transaction with Effect.tx. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
@@ -352,3 +331,6 @@ effect/STM#zipLeft:
 effect/STM#zipRight:
   replacement: "Effect.andThen"
   note: "Use Effect.andThen for sequential composition that retains the right result."
+effect/STM:
+  replacement: varies by API
+  note: The STM.gen adapter was removed; Effect.gen accepts yielded Effects directly. Effect.all uses a const generic directly, so the separate tuple-narrowing helper was removed. Effect.all inlines its options type; use its concurrency, discard, and mode options directly. V4 has no exact retry-aware transactional alternative with journal savepoint restoration. Effect.catch is only a failure-only approximation. V4 has no exact retry-aware alternative. For typed failures only, compose Effect.catch and Result tagging manually. V4 exposes no recoverable retry signal or public transactional savepoint; restructure branch selection before Effect.txRetry. The STM-specific unification ignore marker was removed; rely on Effect inference.

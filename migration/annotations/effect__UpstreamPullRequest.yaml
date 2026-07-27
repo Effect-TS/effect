@@ -1,27 +1,3 @@
-"effect/UpstreamPullRequest#isNoUpstream":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
-"effect/UpstreamPullRequest#isPulled":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
-"effect/UpstreamPullRequest#isUpstreamPullRequest":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
-"effect/UpstreamPullRequest#match":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
-"effect/UpstreamPullRequest#NoUpstream":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
-"effect/UpstreamPullRequest#Pulled":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
-"effect/UpstreamPullRequest#UpstreamPullRequest":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
-"effect/UpstreamPullRequest#UpstreamPullRequest.Variance":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
-"effect/UpstreamPullRequest#UpstreamPullRequestTypeId":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull."
+effect/UpstreamPullRequest:
+  replacement: none
+  note: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.

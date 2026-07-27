@@ -25,6 +25,6 @@
 "@effect/workflow/DurableDeferred#succeed":
   replacement: "effect/unstable/workflow/DurableDeferred#succeed"
   note: "Moved into core Effect and now requires the success schema encoding services."
-"@effect/workflow/DurableDeferred#TypeId":
-  replacement: "none"
-  note: "The durable-deferred marker is private in v4. Use DurableDeferred, Any, or AnyWithProps constraints."
+"@effect/workflow/DurableDeferred":
+  replacement: effect/unstable/workflow/DurableDeferred
+  note: The durable-deferred marker is private in v4. Use DurableDeferred, Any, or AnyWithProps constraints.

@@ -71,9 +71,6 @@ effect/Micro#causeWithTrace:
 effect/Micro#context:
   replacement: "Effect.context"
   note: "Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect."
-effect/Micro#CurrentConcurrency:
-  replacement: "none"
-  note: "Removed in v4 (no fiber-wide concurrency reference). Pass a { concurrency } option directly to the operations that fan out, e.g. Effect.all or Effect.forEach."
 effect/Micro#CurrentScheduler:
   replacement: "References.Scheduler"
   note: "The scheduler reference lives in effect/References (also exported from effect/Scheduler as Scheduler.Scheduler). Override it with Effect.provideService/Effect.updateService."
@@ -278,18 +275,9 @@ effect/Micro#MicroExit.Proto:
 effect/Micro#MicroExit.Success:
   replacement: "Exit.Success"
   note: "MicroExit.Success becomes Exit.Success<A, E> from effect/Exit."
-effect/Micro#MicroExitTypeId:
-  replacement: "none"
-  note: "v4 Exit is a subtype of Effect and has no dedicated TypeId; use Exit.isExit to identify exits."
 effect/Micro#MicroFiber:
   replacement: "Fiber.Fiber"
   note: "MicroFiber<A, E> becomes Fiber.Fiber<A, E> from effect/Fiber."
-effect/Micro#MicroFiber.Variance:
-  replacement: "none"
-  note: "Type-level variance helper with no public v4 equivalent; the v4 Fiber.Fiber interface carries variance directly."
-effect/Micro#MicroFiberTypeId:
-  replacement: "none"
-  note: "No public TypeId on v4 fibers; use Fiber.isFiber to identify fibers."
 effect/Micro#MicroIterator:
   replacement: "Effect.EffectIterator"
   note: "Renamed: MicroIterator becomes Effect.EffectIterator (generator support for Effect.gen)."
@@ -305,18 +293,12 @@ effect/Micro#MicroSchedulerDefault:
 effect/Micro#MicroScope:
   replacement: "Scope.Scope"
   note: "MicroScope becomes Scope.Scope from effect/Scope; the closeable variant is Scope.Closeable."
-effect/Micro#MicroScopeTypeId:
-  replacement: "none"
-  note: "No public TypeId on v4 scopes; use the Scope.Scope service key to access the current scope."
 effect/Micro#MicroTypeLambda:
   replacement: "Effect.EffectTypeLambda"
   note: "Renamed: MicroTypeLambda becomes Effect.EffectTypeLambda."
 effect/Micro#MicroUnify:
   replacement: "Effect.EffectUnify"
   note: "Renamed: MicroUnify becomes Effect.EffectUnify."
-effect/Micro#MicroUnifyIgnore:
-  replacement: "none"
-  note: "Removed; v4 Effect declares its unify-ignore slot inline and exposes no named UnifyIgnore interface."
 effect/Micro#NoSuchElementException:
   replacement: "Cause.NoSuchElementError"
   note: "Renamed and moved: NoSuchElementException becomes Cause.NoSuchElementError from effect/Cause."
@@ -476,10 +458,6 @@ effect/Micro#when:
 effect/Micro#whileLoop:
   replacement: "Effect.whileLoop"
   note: "Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect."
-effect/Micro#withConcurrency:
-  replacement: "none"
-  note: "Removed in v4 along with \"inherit\" concurrency; pass a { concurrency } option directly to each concurrent operation."
-  example: "Effect.forEach(items, handle, { concurrency: 10 })"
 effect/Micro#withMicroFiber:
   replacement: "Effect.withFiber"
   note: "Renamed: withMicroFiber becomes Effect.withFiber, giving access to the current fiber."
@@ -489,9 +467,9 @@ effect/Micro#withTrace:
 effect/Micro#YieldableError:
   replacement: "Cause.YieldableError"
   note: "Moved: YieldableError lives in effect/Cause in v4."
-effect/Micro#yieldFlush:
-  replacement: "none"
-  note: "Removed; access the current scheduler via the References.Scheduler service and call its flush() method directly if deterministic draining is needed."
 effect/Micro#yieldNow:
   replacement: "Effect.yieldNow"
   note: "Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect."
+effect/Micro:
+  replacement: varies by API
+  note: 'Removed in v4 (no fiber-wide concurrency reference). Pass a { concurrency } option directly to the operations that fan out, e.g. Effect.all or Effect.forEach. v4 Exit is a subtype of Effect and has no dedicated TypeId; use Exit.isExit to identify exits. Type-level variance helper with no public v4 equivalent; the v4 Fiber.Fiber interface carries variance directly. No public TypeId on v4 fibers; use Fiber.isFiber to identify fibers. No public TypeId on v4 scopes; use the Scope.Scope service key to access the current scope. Removed; v4 Effect declares its unify-ignore slot inline and exposes no named UnifyIgnore interface. Removed in v4 along with "inherit" concurrency; pass a { concurrency } option directly to each concurrent operation. Example: `Effect.forEach(items, handle, { concurrency: 10 })`. Removed; access the current scheduler via the References.Scheduler service and call its flush() method directly if deterministic draining is needed.'

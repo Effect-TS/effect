@@ -7,9 +7,6 @@
 "@effect/sql/Statement#defaultEscape":
   replacement: "effect/unstable/sql/Statement#defaultEscape"
   note: "Moved with the same signature."
-"@effect/sql/Statement#FragmentId":
-  replacement: "none"
-  note: "The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access."
 "@effect/sql/Statement#join":
   replacement: "effect/unstable/sql/Statement#join"
   note: "Moved with the same empty, single, and multiple-clause behavior."
@@ -34,3 +31,6 @@
 "@effect/sql/Statement#withTransformerDisabled":
   replacement: "Effect.provideService(Statement.CurrentTransformer, undefined)"
   note: "The helper was removed; locally provide undefined for the transformer reference."
+"@effect/sql/Statement":
+  replacement: effect/unstable/sql/Statement
+  note: The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access.

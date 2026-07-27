@@ -40,21 +40,6 @@
 "@effect/cli/Args#fileContent":
   replacement: "Argument.file + Argument.mapEffect"
   note: "Parse a path and read it with FileSystem.readFile; no binary-content argument constructor remains."
-"@effect/cli/Args#getHelp":
-  replacement: "none"
-  note: "Per-argument help introspection was removed; Command generates help internally."
-"@effect/cli/Args#getIdentifier":
-  replacement: "none"
-  note: "Public argument identifier introspection was removed."
-"@effect/cli/Args#getMaxSize":
-  replacement: "none"
-  note: "Public arity introspection was removed; command parsing enforces variadic bounds internally."
-"@effect/cli/Args#getMinSize":
-  replacement: "none"
-  note: "Public arity introspection was removed; command parsing enforces variadic bounds internally."
-"@effect/cli/Args#getUsage":
-  replacement: "none"
-  note: "The public Usage tree was removed; Command generates a usage string internally."
 "@effect/cli/Args#isArgs":
   replacement: "Param.isParam(value) && value.kind === Param.argumentKind"
   note: "Arguments now use the shared Param representation and an explicit kind discriminator."
@@ -88,3 +73,6 @@
 "@effect/cli/Args#withSchema":
   replacement: "Argument.withSchema"
   note: "Use the moved combinator with a v4 Schema constraint decoder."
+"@effect/cli/Args":
+  replacement: effect/unstable/cli/Argument
+  note: Per-argument help introspection was removed; Command generates help internally. Public argument identifier introspection was removed. Public arity introspection was removed; command parsing enforces variadic bounds internally. The public Usage tree was removed; Command generates a usage string internally.

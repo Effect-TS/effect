@@ -40,12 +40,12 @@
 "effect/SortedSet#SortedSet":
   replacement: "HashSet.HashSet"
   note: "Use HashSet as the immutable core model and retain Order externally; ordered iteration requires sorting on observation."
-"effect/SortedSet#TypeId":
-  replacement: "none"
-  note: "The SortedSet brand was removed and HashSet.TypeId is private; use HashSet.isHashSet when a guard is needed."
 "effect/SortedSet#union":
   replacement: "HashSet.union + HashSet.fromIterable"
   note: "Convert the old general iterable argument to HashSet before taking the union."
 "effect/SortedSet#values":
   replacement: "Array.sort"
   note: "Sort the replacement HashSet with the retained Order and iterate the resulting array."
+effect/SortedSet:
+  replacement: varies by API
+  note: The SortedSet brand was removed and HashSet.TypeId is private; use HashSet.isHashSet when a guard is needed.

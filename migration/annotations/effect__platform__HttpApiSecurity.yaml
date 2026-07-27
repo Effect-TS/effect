@@ -10,6 +10,6 @@
 "@effect/platform/HttpApiSecurity#HttpApiSecurity.Type":
   replacement: "effect/unstable/httpapi/HttpApiSecurity#HttpApiSecurity.Type"
   note: "Unchanged after the module move; still extracts the credential type."
-"@effect/platform/HttpApiSecurity#TypeId":
-  replacement: "none"
-  note: "The marker is private; use the public union or specific Http, ApiKey, and Basic types."
+"@effect/platform/HttpApiSecurity":
+  replacement: effect/unstable/httpapi/HttpApiSecurity
+  note: The marker is private; use the public union or specific Http, ApiKey, and Basic types.

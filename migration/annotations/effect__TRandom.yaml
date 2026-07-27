@@ -1,9 +1,3 @@
-effect/TRandom#TRandom:
-  replacement: "none"
-  note: "The transactional random service was deliberately removed; use Random outside retried transactions where possible."
-effect/TRandom#TRandomTypeId:
-  replacement: "none"
-  note: "TRandom and its public type id were removed; v4 has no TxRandom module."
 effect/TRandom#Tag:
   replacement: "Random.Random"
   note: "Use the v4 Random Context.Reference; the transactional random service was removed."
@@ -25,3 +19,6 @@ effect/TRandom#nextRange:
 effect/TRandom#shuffle:
   replacement: "Random.shuffle"
   note: "TxRandom was removed. This ordinary Effect is not rollback-safe under transaction retry."
+effect/TRandom:
+  replacement: varies by API
+  note: The transactional random service was deliberately removed; use Random outside retried transactions where possible. TRandom and its public type id were removed; v4 has no TxRandom module.

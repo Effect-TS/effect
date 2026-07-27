@@ -16,15 +16,12 @@
 "effect/Reloadable#Reloadable":
   replacement: "LayerRef.LayerRef<I, E>"
   note: "LayerRef is the v4 refreshable layer-context abstraction."
-"effect/Reloadable#Reloadable.Variance":
-  replacement: "none"
-  note: "The exported variance artifact was removed and LayerRef has no public counterpart."
-"effect/Reloadable#ReloadableTypeId":
-  replacement: "none"
-  note: "Reloadable was removed and LayerRef's marker is private."
 "effect/Reloadable#reloadFork":
   replacement: "ServiceRef.refresh.pipe(Effect.ignore({ log: true }), Effect.forkDetach({ startImmediately: true }), Effect.asVoid)"
   note: "This recreates logged, ignored background refresh; forkDaemon became forkDetach."
 "effect/Reloadable#tag":
   replacement: "LayerRef.Service<Self>()(id, options)"
   note: "The generated LayerRef service class is itself the Context.Service key."
+effect/Reloadable:
+  replacement: varies by API
+  note: The exported variance artifact was removed and LayerRef has no public counterpart. Reloadable was removed and LayerRef's marker is private.

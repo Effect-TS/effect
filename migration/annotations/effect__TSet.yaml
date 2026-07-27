@@ -1,9 +1,6 @@
 effect/TSet#TSet:
   replacement: "TxHashSet.TxHashSet"
   note: "Rename the type and import from \"effect/TxHashSet\". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
-effect/TSet#TSet.Variance:
-  replacement: "none"
-  note: "TxHashSet exposes no public variance marker."
 effect/TSet#TSetTypeId:
   replacement: "TxHashSet.isTxHashSet"
   note: "The type id is internal in v4; use the public runtime guard."
@@ -43,18 +40,6 @@ effect/TSet#removeAll:
 effect/TSet#size:
   replacement: "TxHashSet.size"
   note: "Import TxHashSet from \"effect/TxHashSet\"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
-effect/TSet#takeFirst:
-  replacement: "none"
-  note: "No atomic take-and-match helper exists in TxHashSet; select and remove explicitly inside Effect.tx."
-effect/TSet#takeFirstSTM:
-  replacement: "none"
-  note: "No effectful atomic take-and-match helper exists; traverse and remove explicitly inside Effect.tx."
-effect/TSet#takeSome:
-  replacement: "none"
-  note: "No atomic multi-take helper exists in TxHashSet; select and remove explicitly inside Effect.tx."
-effect/TSet#takeSomeSTM:
-  replacement: "none"
-  note: "No effectful atomic multi-take helper exists; traverse and remove explicitly inside Effect.tx."
 effect/TSet#toArray:
   replacement: "Effect.map(TxHashSet.toHashSet(self), Array.from)"
   note: "Convert the immutable HashSet snapshot to an Array explicitly."
@@ -73,3 +58,6 @@ effect/TSet#transformSTM:
 effect/TSet#union:
   replacement: "TxHashSet.union"
   note: "The name remains, but v4 returns a new set instead of mutating self."
+effect/TSet:
+  replacement: effect/TxHashSet
+  note: No atomic take-and-match helper exists in TxHashSet; select and remove explicitly inside Effect.tx. No effectful atomic take-and-match helper exists; traverse and remove explicitly inside Effect.tx. No atomic multi-take helper exists in TxHashSet; select and remove explicitly inside Effect.tx. No effectful atomic multi-take helper exists; traverse and remove explicitly inside Effect.tx. TxHashSet exposes no public variance marker.

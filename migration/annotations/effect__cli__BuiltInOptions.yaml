@@ -7,18 +7,6 @@
 "@effect/cli/BuiltInOptions#BuiltInOptions.ShellType":
   replacement: "Completions.Shell"
   note: "The shell union moved to Completions."
-"@effect/cli/BuiltInOptions#isShowCompletions":
-  replacement: "none"
-  note: "Parsed ShowCompletions directives were removed; the runner processes GlobalFlag.Completions directly."
-"@effect/cli/BuiltInOptions#isShowHelp":
-  replacement: "none"
-  note: "Parsed ShowHelp directives were removed; the runner processes GlobalFlag.Help directly."
-"@effect/cli/BuiltInOptions#isShowVersion":
-  replacement: "none"
-  note: "Parsed ShowVersion directives were removed; the runner processes GlobalFlag.Version directly."
-"@effect/cli/BuiltInOptions#isShowWizard":
-  replacement: "none"
-  note: "Parsed ShowWizard directives were removed; the runner processes GlobalFlag.Wizard directly."
 "@effect/cli/BuiltInOptions#SetLogLevel":
   replacement: "GlobalFlag.LogLevel"
   note: "Log level is now a global Setting whose parsed value is provided through context."
@@ -46,3 +34,6 @@
 "@effect/cli/BuiltInOptions#ShowWizard":
   replacement: "GlobalFlag.Wizard"
   note: "The directive payload was replaced by a global wizard action definition."
+"@effect/cli/BuiltInOptions":
+  replacement: effect/unstable/cli/GlobalFlag
+  note: Parsed ShowCompletions directives were removed; the runner processes GlobalFlag.Completions directly. Parsed ShowHelp directives were removed; the runner processes GlobalFlag.Help directly. Parsed ShowVersion directives were removed; the runner processes GlobalFlag.Version directly. Parsed ShowWizard directives were removed; the runner processes GlobalFlag.Wizard directly.

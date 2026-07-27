@@ -1,9 +1,6 @@
 "@effect/ai/Tool#AnyParametersSchema":
   replacement: "Schema.Constraint"
   note: "The AI-specific alias was removed. V4 Tool parameter schemas use the general Schema.Constraint type and are no longer restricted to the old struct-or-EmptyParams union."
-"@effect/ai/Tool#AnyTaggedRequestSchema":
-  replacement: "none"
-  note: "The TaggedRequest-specific Tool adapter contract was removed. Model the operation directly with Tool.make and ordinary v4 Schema.Constraint values."
 "@effect/ai/Tool#Destructive":
   replacement: "Tool.Destructive"
   note: "Moved to effect/unstable/ai/Tool. It is now a Context.Reference<boolean> value rather than a Reference subclass; its default remains true."
@@ -55,3 +52,6 @@
 "@effect/ai/Tool#TypeId":
   replacement: "Tool.TypeId"
   note: "Moved to effect/unstable/ai/Tool and remains public. Its literal changed, so use the export rather than retaining the old hard-coded string."
+"@effect/ai/Tool":
+  replacement: effect/unstable/ai/Tool
+  note: The TaggedRequest-specific Tool adapter contract was removed. Model the operation directly with Tool.make and ordinary v4 Schema.Constraint values.

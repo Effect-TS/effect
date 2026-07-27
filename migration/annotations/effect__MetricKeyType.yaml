@@ -25,9 +25,6 @@ effect/MetricKeyType#MetricKeyType.OutType:
 effect/MetricKeyType#MetricKeyType.Untyped:
   replacement: "Metric.Metric<any, any>"
   note: "The key-type descriptor no longer exists independently of a metric."
-effect/MetricKeyType#MetricKeyType.Variance:
-  replacement: "none"
-  note: "The descriptor variance interface was removed; complete Metric carries Input and State variance."
 effect/MetricKeyType#isMetricKeyType:
   replacement: "Metric.isMetric"
   note: "Standalone key-type values were removed; test complete metrics instead."
@@ -46,21 +43,6 @@ effect/MetricKeyType#isHistogramKey:
 effect/MetricKeyType#isSummaryKey:
   replacement: "Metric.isMetric + metric.type"
   note: "Standalone refinements were removed. Complete metrics expose a Counter, Frequency, Gauge, Histogram, or Summary string discriminant."
-effect/MetricKeyType#MetricKeyTypeTypeId:
-  replacement: "none"
-  note: "All public key-type symbols were removed; use a complete metric's string type discriminant."
-effect/MetricKeyType#CounterKeyTypeTypeId:
-  replacement: "none"
-  note: "All public key-type symbols were removed; use a complete metric's string type discriminant."
-effect/MetricKeyType#FrequencyKeyTypeTypeId:
-  replacement: "none"
-  note: "All public key-type symbols were removed; use a complete metric's string type discriminant."
-effect/MetricKeyType#GaugeKeyTypeTypeId:
-  replacement: "none"
-  note: "All public key-type symbols were removed; use a complete metric's string type discriminant."
-effect/MetricKeyType#HistogramKeyTypeTypeId:
-  replacement: "none"
-  note: "All public key-type symbols were removed; use a complete metric's string type discriminant."
-effect/MetricKeyType#SummaryKeyTypeTypeId:
-  replacement: "none"
-  note: "All public key-type symbols were removed; use a complete metric's string type discriminant."
+effect/MetricKeyType:
+  replacement: varies by API
+  note: All public key-type symbols were removed; use a complete metric's string type discriminant. The descriptor variance interface was removed; complete Metric carries Input and State variance.

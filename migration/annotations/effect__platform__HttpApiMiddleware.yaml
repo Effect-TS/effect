@@ -19,9 +19,6 @@
 "@effect/platform/HttpApiMiddleware#HttpApiMiddleware.Provides":
   replacement: "effect/unstable/httpapi/HttpApiMiddleware#Provides"
   note: "Same name and reads the expanded v4 middleware ID metadata."
-"@effect/platform/HttpApiMiddleware#SecurityTypeId":
-  replacement: "none"
-  note: "The marker is private; use HttpApiMiddleware.isSecurity."
 "@effect/platform/HttpApiMiddleware#Tag":
   replacement: "effect/unstable/httpapi/HttpApiMiddleware#Service"
   note: "Renamed and redesigned; use error, requires, provides, clientError, and requiredForClient configuration."
@@ -43,9 +40,6 @@
 "@effect/platform/HttpApiMiddleware#TagClass.FailureService":
   replacement: "effect/unstable/httpapi/HttpApiMiddleware#Error"
   note: "Use the decoded error extractor; optional middleware fallback was removed."
-"@effect/platform/HttpApiMiddleware#TagClass.Optional":
-  replacement: "none"
-  note: "Optional declaration and fallback-on-failure behavior were removed; model fallback in the wrapping middleware."
 "@effect/platform/HttpApiMiddleware#TagClass.Provides":
   replacement: "effect/unstable/httpapi/HttpApiMiddleware#Provides"
   note: "Moved to the module level and applied to the middleware ID."
@@ -55,6 +49,6 @@
 "@effect/platform/HttpApiMiddleware#TagClassSecurityAny":
   replacement: "effect/unstable/httpapi/HttpApiMiddleware#AnyServiceSecurity"
   note: "Renamed widened security service-key type."
-"@effect/platform/HttpApiMiddleware#TypeId":
-  replacement: "none"
-  note: "The marker is private; use public guards and type extractors."
+"@effect/platform/HttpApiMiddleware":
+  replacement: effect/unstable/httpapi/HttpApiMiddleware
+  note: The marker is private; use HttpApiMiddleware.isSecurity. Optional declaration and fallback-on-failure behavior were removed; model fallback in the wrapping middleware. The marker is private; use public guards and type extractors.

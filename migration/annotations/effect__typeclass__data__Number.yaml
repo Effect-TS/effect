@@ -1,6 +1,3 @@
-"@effect/typeclass/data/Number#Bounded":
-  replacement: "none"
-  note: "V4 has no Bounded dictionary; use Number.Order with -Infinity and Infinity as separate bounds."
 "@effect/typeclass/data/Number#MonoidMax":
   replacement: "Number.ReducerMax"
   note: "Renamed and moved to the concrete v4 Number module."
@@ -25,3 +22,6 @@
 "@effect/typeclass/data/Number#SemigroupSum":
   replacement: "Number.ReducerSum"
   note: "The v4 Reducer is also a Combiner and preserves addition combine semantics."
+"@effect/typeclass/data/Number":
+  replacement: varies by API
+  note: V4 has no Bounded dictionary; use Number.Order with -Infinity and Infinity as separate bounds.

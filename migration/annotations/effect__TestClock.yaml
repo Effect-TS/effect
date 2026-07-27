@@ -13,12 +13,9 @@
 "effect/TestClock#makeData":
   replacement: "TestClock.layer() + TestClock.setTime(instant)"
   note: "State injection was removed. Build the layer, then set initial time; seeded pending sleeps cannot migrate because the queue is private."
-"effect/TestClock#save":
-  replacement: "none"
-  note: "Full clock snapshots including pending sleeps are no longer public. For timestamp-only restoration, read Clock.currentTimeMillis and later call TestClock.setTime(savedMillis)."
-"effect/TestClock#sleeps":
-  replacement: "none"
-  note: "The pending-sleep queue is private. Test observable behavior by forking sleepers, adjusting time, and joining or asserting the fibers."
 "effect/TestClock#testClock":
   replacement: "TestClock.testClockWith(Effect.succeed)"
   note: "V4 exposes callback-based access to the active test clock; use testClockWith directly when possible."
+effect/TestClock:
+  replacement: effect/testing/TestClock
+  note: Full clock snapshots including pending sleeps are no longer public. For timestamp-only restoration, read Clock.currentTimeMillis and later call TestClock.setTime(savedMillis). The pending-sleep queue is private. Test observable behavior by forking sleepers, adjusting time, and joining or asserting the fibers.

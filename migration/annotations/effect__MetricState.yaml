@@ -19,42 +19,6 @@ effect/MetricState#MetricState:
 effect/MetricState#MetricState.Untyped:
   replacement: "Metric.Metric.Snapshot['state']"
   note: "Use the state union from Metric.Metric.Snapshot, or explicitly union the five structural state interfaces."
-effect/MetricState#MetricState.Variance:
-  replacement: "none"
-  note: "States are structural objects and no longer carry a variance brand."
-effect/MetricState#isMetricState:
-  replacement: "none"
-  note: "Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination."
-effect/MetricState#isCounterState:
-  replacement: "none"
-  note: "Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination."
-effect/MetricState#isFrequencyState:
-  replacement: "none"
-  note: "Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination."
-effect/MetricState#isGaugeState:
-  replacement: "none"
-  note: "Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination."
-effect/MetricState#isHistogramState:
-  replacement: "none"
-  note: "Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination."
-effect/MetricState#isSummaryState:
-  replacement: "none"
-  note: "Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination."
-effect/MetricState#MetricStateTypeId:
-  replacement: "none"
-  note: "All state brand symbols were removed; v4 state interfaces are structural."
-effect/MetricState#CounterStateTypeId:
-  replacement: "none"
-  note: "All state brand symbols were removed; v4 state interfaces are structural."
-effect/MetricState#FrequencyStateTypeId:
-  replacement: "none"
-  note: "All state brand symbols were removed; v4 state interfaces are structural."
-effect/MetricState#GaugeStateTypeId:
-  replacement: "none"
-  note: "All state brand symbols were removed; v4 state interfaces are structural."
-effect/MetricState#HistogramStateTypeId:
-  replacement: "none"
-  note: "All state brand symbols were removed; v4 state interfaces are structural."
-effect/MetricState#SummaryStateTypeId:
-  replacement: "none"
-  note: "All state brand symbols were removed; v4 state interfaces are structural."
+effect/MetricState:
+  replacement: varies by API
+  note: All state brand symbols were removed; v4 state interfaces are structural. Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination. States are structural objects and no longer carry a variance brand.

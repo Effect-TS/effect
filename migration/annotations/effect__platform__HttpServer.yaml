@@ -10,15 +10,12 @@
 "@effect/platform/HttpServer#make":
   replacement: "HttpServer.make"
   note: "Retained; it returns the Context.Service implementation."
-"@effect/platform/HttpServer#ServeOptions":
-  replacement: "none"
-  note: "The unused respond option model was removed with no shared v4 counterpart."
 "@effect/platform/HttpServer#TcpAddress":
   replacement: "HttpServer.TcpAddress"
   note: "Moved unchanged."
-"@effect/platform/HttpServer#TypeId":
-  replacement: "none"
-  note: "The public TypeId was removed; HttpServer is now a Context.Service class."
 "@effect/platform/HttpServer#UnixAddress":
   replacement: "HttpServer.UnixAddress"
   note: "Moved unchanged."
+"@effect/platform/HttpServer":
+  replacement: effect/unstable/http/HttpServer
+  note: The unused respond option model was removed with no shared v4 counterpart. The public TypeId was removed; HttpServer is now a Context.Service class.

@@ -1,6 +1,3 @@
-"effect/Subscribable#isSubscribable":
-  replacement: "none"
-  note: "The common brand was removed; use a concrete guard such as SubscriptionRef.isSubscriptionRef or an application structural guard."
 "effect/Subscribable#make":
   replacement: "object literal { get, changes }"
   note: "No generic constructor remains; retain a local structural pair only when both the current read and change stream are needed."
@@ -13,9 +10,9 @@
 "effect/Subscribable#Subscribable":
   replacement: "custom { readonly get: Effect.Effect<A, E, R>; readonly changes: Stream.Stream<A, E, R> }"
   note: "No renamed generic model exists; prefer concrete SubscriptionRef APIs or own this unbranded structural type locally."
-"effect/Subscribable#TypeId":
-  replacement: "none"
-  note: "The Subscribable brand has no public replacement; use a concrete model guard or an application structural guard."
 "effect/Subscribable#unwrap":
   replacement: "Effect.flatMap + Stream.unwrap"
   note: "Build get with Effect.flatMap and changes with Stream.unwrap; no single v4 helper remains."
+effect/Subscribable:
+  replacement: varies by API
+  note: The common brand was removed; use a concrete guard such as SubscriptionRef.isSubscriptionRef or an application structural guard. The Subscribable brand has no public replacement; use a concrete model guard or an application structural guard.

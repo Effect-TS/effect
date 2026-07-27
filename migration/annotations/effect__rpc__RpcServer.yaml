@@ -1,9 +1,6 @@
 "@effect/rpc/RpcServer#fiberIdClientInterrupt":
   replacement: "effect/unstable/rpc/RpcSchema#ClientAbort"
   note: "The sentinel FiberId was replaced by a Cause annotation; inspect ClientAbort in the interruption cause when client cancellation must be distinguished."
-"@effect/rpc/RpcServer#fiberIdTransientInterrupt":
-  replacement: "none"
-  note: "The internal transient sentinel was removed; protocol shutdown and disconnect now interrupt with the active parent fiber identity."
 "@effect/rpc/RpcServer#layerHttpRouter":
   replacement: "effect/unstable/rpc/RpcServer#layerHttp"
   note: "Renamed; it installs an HTTP or WebSocket RPC route into the v4 HttpRouter service."
@@ -46,3 +43,6 @@
 "@effect/rpc/RpcServer#toWebHandler":
   replacement: "HttpRouter.toWebHandler(RpcServer.layerHttp(options).pipe(Layer.provide(options.layer)))"
   note: "The RPC convenience wrapper was removed; build the RPC route layer and convert it with the generic v4 HttpRouter web-handler adapter."
+"@effect/rpc/RpcServer":
+  replacement: effect/unstable/rpc/RpcServer
+  note: The internal transient sentinel was removed; protocol shutdown and disconnect now interrupt with the active parent fiber identity.

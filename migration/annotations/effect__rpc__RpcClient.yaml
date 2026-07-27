@@ -13,12 +13,9 @@
 "@effect/rpc/RpcClient#Protocol":
   replacement: "effect/unstable/rpc/RpcClient#Protocol"
   note: "Retained as a Context.Service; custom transports now route multiple client ids through run and send."
-"@effect/rpc/RpcClient#RpcClient.NonPrefixed":
-  replacement: "none"
-  note: "The prefix-partition helper was removed; v4 clients map every RPC tag directly to an object property."
-"@effect/rpc/RpcClient#RpcClient.Prefixes":
-  replacement: "none"
-  note: "Nested prefix client objects were removed; v4 preserves the full RPC tag as the generated client property."
 "@effect/rpc/RpcClient#withHeadersEffect":
   replacement: "Effect.flatMap(headers, (value) => RpcClient.withHeaders(effect, value))"
   note: "withHeaders now accepts Headers.Input synchronously; evaluate effectful headers first and then scope the client effect."
+"@effect/rpc/RpcClient":
+  replacement: effect/unstable/rpc/RpcClient
+  note: The prefix-partition helper was removed; v4 clients map every RPC tag directly to an object property. Nested prefix client objects were removed; v4 preserves the full RPC tag as the generated client property.

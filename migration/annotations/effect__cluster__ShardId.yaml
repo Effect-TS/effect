@@ -4,6 +4,6 @@
 "@effect/cluster/ShardId#ShardId":
   replacement: "effect/unstable/cluster/ShardId#ShardId"
   note: "The class became a merged interface and schema value. Use ShardId.make; former static parsers and printers are module functions."
-"@effect/cluster/ShardId#TypeId":
-  replacement: "none"
-  note: "The shard marker is private in v4. Use ShardId.isShardId for runtime refinement."
+"@effect/cluster/ShardId":
+  replacement: effect/unstable/cluster/ShardId
+  note: The shard marker is private in v4. Use ShardId.isShardId for runtime refinement.

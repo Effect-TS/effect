@@ -240,6 +240,64 @@ describe("migration document", () => {
     )
   })
 
+  it("uses exact removed-module guidance for APIs without replacements", () => {
+    const moduleDiff: ApiDiff = {
+      ...diff,
+      changes: [
+        change({ classification: "module-removed", delta: { from: "effect/Legacy", to: [] } }),
+        change({
+          classification: "api-removed",
+          baseApiId: "effect/Legacy#removed#value",
+          before: "declare const removed: string"
+        }),
+        change({
+          classification: "api-removed",
+          baseApiId: "effect/Legacy#replaced#value",
+          before: "declare const replaced: string"
+        }),
+        change({
+          classification: "api-removed",
+          baseApiId: "effect/LegacyExtra#removed#value",
+          before: "declare const removed: string"
+        }),
+        change({
+          classification: "api-removed",
+          baseApiId: "effect/Current#removed#value",
+          before: "declare const removed: string"
+        })
+      ]
+    }
+    const moduleAnnotations = new Map<string, MigrationAnnotation>([
+      ["effect/Legacy", {
+        replacement: "none",
+        note: "The module was removed."
+      }],
+      ["effect/Legacy#replaced", {
+        replacement: "Current.replaced",
+        note: "Use the replacement."
+      }],
+      ["effect/LegacyExtra#removed", {
+        replacement: "none",
+        note: "This similarly prefixed module still exists."
+      }],
+      ["effect/Current#removed", {
+        replacement: "none",
+        note: "This module still exists."
+      }]
+    ])
+    const document = renderMigrationDocument(moduleDiff, moduleAnnotations, "## Import Map\n")
+
+    assert(document.includes("- `effect/Legacy` -> `none`: The module was removed."))
+    assert(!document.includes("Legacy.removed"))
+    assert(document.includes("- `Legacy.replaced` -> `Current.replaced`: Use the replacement."))
+    assert(document.includes("- `LegacyExtra.removed` -> `none`: This similarly prefixed module still exists."))
+    assert(document.includes("- `Current.removed` -> `none`: This module still exists."))
+    assert.strictEqual(
+      renderMissingAnnotations(moduleDiff, moduleAnnotations),
+      "All migration APIs and removed modules have guidance.\n"
+    )
+  })
+
   it("uses per-API annotations for split modules and reports missing module guidance", () => {
     const moduleDiff: ApiDiff = {
       ...diff,

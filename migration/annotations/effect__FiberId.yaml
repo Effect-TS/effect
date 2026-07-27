@@ -1,30 +1,12 @@
-effect/FiberId#combine:
-  replacement: "none"
-  note: "Composite FiberId values were removed; v4 uses a single numeric fiber id."
-effect/FiberId#combineAll:
-  replacement: "none"
-  note: "Composite FiberId values were removed; v4 uses a single numeric fiber id."
-effect/FiberId#composite:
-  replacement: "none"
-  note: "Composite FiberId values were removed; v4 uses a single numeric fiber id."
-effect/FiberId#Composite:
-  replacement: "none"
-  note: "Composite FiberId values were removed; v4 uses a single numeric fiber id."
 effect/FiberId#FiberId:
   replacement: "number"
   note: "V4 represents a fiber identity as the numeric Fiber.id field."
-effect/FiberId#FiberIdTypeId:
-  replacement: "none"
-  note: "Fiber IDs are primitive numbers in v4 and have no type-id symbol."
 effect/FiberId#getOrElse:
   replacement: "fiberId ?? fallback"
   note: "Represent absence as undefined when migrating code that previously used FiberId.none."
 effect/FiberId#ids:
   replacement: "new Set([fiberId])"
   note: "A v4 fiber has one numeric id; composite-id flattening is no longer required."
-effect/FiberId#isComposite:
-  replacement: "none"
-  note: "Composite FiberId values do not exist in v4."
 effect/FiberId#isFiberId:
   replacement: "Number.isNumber"
   note: "Fiber IDs are primitive numbers in v4."
@@ -58,6 +40,6 @@ effect/FiberId#threadName:
 effect/FiberId#toSet:
   replacement: "new Set([fiberId])"
   note: "A v4 fiber has one numeric id, so composite-id flattening is unnecessary."
-effect/FiberId#unsafeMake:
-  replacement: "none"
-  note: "There is no public fiber-id allocator; obtain the current id with Effect.fiberId or from Fiber.id."
+effect/FiberId:
+  replacement: varies by API
+  note: Composite FiberId values were removed; v4 uses a single numeric fiber id. Fiber IDs are primitive numbers in v4 and have no type-id symbol. Composite FiberId values do not exist in v4. There is no public fiber-id allocator; obtain the current id with Effect.fiberId or from Fiber.id.

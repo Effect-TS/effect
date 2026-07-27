@@ -10,9 +10,6 @@
 "effect/SortedMap#get":
   replacement: "HashMap.get"
   note: "Direct optional lookup on the replacement immutable map."
-"effect/SortedMap#getOrder":
-  replacement: "none"
-  note: "HashMap does not store an Order; retain and pass the key Order explicitly."
 "effect/SortedMap#headOption":
   replacement: "HashMap.entries + Array.sortWith + Array.head"
   note: "Sort entries by key with the retained Order, then take the optional first entry."
@@ -52,9 +49,9 @@
 "effect/SortedMap#SortedMap":
   replacement: "HashMap.HashMap"
   note: "Use HashMap as the immutable core model and retain Order externally; ordered iteration and range seeks require sorting on observation."
-"effect/SortedMap#TypeId":
-  replacement: "none"
-  note: "The SortedMap brand was removed and HashMap.TypeId is private; use HashMap.isHashMap when a guard is needed."
 "effect/SortedMap#values":
   replacement: "HashMap.entries + Array.sortWith + Array.map"
   note: "Sort entries by key, map to values, and iterate the resulting array."
+effect/SortedMap:
+  replacement: varies by API
+  note: HashMap does not store an Order; retain and pass the key Order explicitly. The SortedMap brand was removed and HashMap.TypeId is private; use HashMap.isHashMap when a guard is needed.

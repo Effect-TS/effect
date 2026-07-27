@@ -1,27 +1,3 @@
-"effect/UpstreamPullStrategy#isPullAfterAllEnqueued":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
-"effect/UpstreamPullStrategy#isPullAfterNext":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
-"effect/UpstreamPullStrategy#isUpstreamPullStrategy":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
-"effect/UpstreamPullStrategy#match":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
-"effect/UpstreamPullStrategy#PullAfterAllEnqueued":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
-"effect/UpstreamPullStrategy#PullAfterNext":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
-"effect/UpstreamPullStrategy#UpstreamPullStrategy":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
-"effect/UpstreamPullStrategy#UpstreamPullStrategy.Variance":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
-"effect/UpstreamPullStrategy#UpstreamPullStrategyTypeId":
-  replacement: "none"
-  note: "Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT."
+effect/UpstreamPullStrategy:
+  replacement: none
+  note: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.

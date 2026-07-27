@@ -7,12 +7,9 @@
 "effect/ScheduleDecision#Done":
   replacement: "Cause.Done"
   note: "ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output)."
-"effect/ScheduleDecision#isContinue":
-  replacement: "none"
-  note: "ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output). Branch on the Pull result instead of inspecting a decision value."
 "effect/ScheduleDecision#isDone":
   replacement: "Cause.isDone"
   note: "ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output)."
-"effect/ScheduleDecision#ScheduleDecision":
-  replacement: "none"
-  note: "ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output)."
+effect/ScheduleDecision:
+  replacement: varies by API
+  note: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output). Branch on the Pull result instead of inspecting a decision value. ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output).

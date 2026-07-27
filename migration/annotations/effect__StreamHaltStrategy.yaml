@@ -16,9 +16,6 @@ effect/StreamHaltStrategy#Both:
 effect/StreamHaltStrategy#Either:
   replacement: "\"either\""
   note: "The tagged constructor is replaced by the plain string literal \"either\" passed directly to haltStrategy options."
-effect/StreamHaltStrategy#fromInput:
-  replacement: "none"
-  note: "Remove the call; there is no conversion step in v4 because strategies already are the string literals, so pass the value through unchanged."
 effect/StreamHaltStrategy#isLeft:
   replacement: "strategy === \"left\""
   note: "Refinements on the tagged union become plain string comparison against the literal."
@@ -42,3 +39,6 @@ effect/StreamHaltStrategy#match:
       case "both": return onBoth()
       case "either": return onEither()
     }
+effect/StreamHaltStrategy:
+  replacement: varies by API
+  note: Remove the call; there is no conversion step in v4 because strategies already are the string literals, so pass the value through unchanged.

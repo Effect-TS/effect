@@ -1,18 +1,3 @@
-"@effect/typeclass/SemiApplicative#ap":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/SemiApplicative#getSemigroup":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/SemiApplicative#lift2":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/SemiApplicative#SemiApplicative":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/SemiApplicative#zipLeft":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
-"@effect/typeclass/SemiApplicative#zipRight":
-  replacement: "none"
-  note: "The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions."
+"@effect/typeclass/SemiApplicative":
+  replacement: none
+  note: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.

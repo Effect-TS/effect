@@ -1,6 +1,3 @@
-"@effect/typeclass/data/Duration#Bounded":
-  replacement: "none"
-  note: "V4 has no Bounded dictionary; use Duration.Order with Duration.zero and Duration.infinity as separate bounds."
 "@effect/typeclass/data/Duration#MonoidMax":
   replacement: "Reducer.make(Duration.max, Duration.zero)"
   note: "Rebuild the removed maximum Monoid as a v4 Reducer with the same identity."
@@ -19,3 +16,6 @@
 "@effect/typeclass/data/Duration#SemigroupSum":
   replacement: "Duration.ReducerSum"
   note: "The v4 Reducer is also a Combiner and preserves Duration.sum combine semantics."
+"@effect/typeclass/data/Duration":
+  replacement: varies by API
+  note: V4 has no Bounded dictionary; use Duration.Order with Duration.zero and Duration.infinity as separate bounds.

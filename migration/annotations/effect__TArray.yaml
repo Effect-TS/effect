@@ -1,9 +1,6 @@
 effect/TArray#TArray:
   replacement: "TxChunk.TxChunk"
   note: "TArray has no direct v4 counterpart; TxChunk is the closest rewrite target but uses whole-Chunk operations."
-effect/TArray#TArray.Variance:
-  replacement: "none"
-  note: "TArray was removed and TxChunk exposes no public variance marker."
 effect/TArray#TArrayTypeId:
   replacement: "TxChunk.isTxChunk"
   note: "TArray and its public type id were removed; use the TxChunk runtime guard after rewriting the data structure."
@@ -115,3 +112,6 @@ effect/TArray#update:
 effect/TArray#updateSTM:
   replacement: "Effect.tx + TxChunk.get/TxChunk.set"
   note: "Read, effectfully update the indexed element, and write the rebuilt Chunk within one Effect.tx transaction."
+effect/TArray:
+  replacement: varies by API
+  note: TArray was removed and TxChunk exposes no public variance marker.

@@ -55,12 +55,12 @@
 "@effect/platform/FileSystem#WatchEventUpdate":
   replacement: "FileSystem.WatchEvent.Update"
   note: "The constructor was removed; construct a tagged object with _tag: \"Update\" and path."
-"@effect/platform/FileSystem#WatchOptions":
-  replacement: "none"
-  note: "FileSystem.watch now accepts only a path; the recursive watch option was removed."
 "@effect/platform/FileSystem#WriteFileOptions":
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"writeFile\"]>[2]>"
   note: "Operation option interfaces are inline in the v4 FileSystem service."
 "@effect/platform/FileSystem#WriteFileStringOptions":
   replacement: "NonNullable<Parameters<FileSystem.FileSystem[\"writeFileString\"]>[2]>"
   note: "Operation option interfaces are inline in the v4 FileSystem service."
+"@effect/platform/FileSystem":
+  replacement: effect/FileSystem
+  note: FileSystem.watch now accepts only a path; the recursive watch option was removed.

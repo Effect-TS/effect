@@ -4,9 +4,6 @@
 "effect/RedBlackTree#atReversed":
   replacement: "Array.take + Array.reverse"
   note: "For a valid absolute index, reverse Array.take(entries, index + 1) to traverse backward from it."
-"effect/RedBlackTree#Direction":
-  replacement: "none"
-  note: "The tree direction type was removed; use normal array order or Array.reverse."
 "effect/RedBlackTree#empty":
   replacement: "Array.empty"
   note: "The module was removed; use an empty Array<readonly [K, V]> and retain the Order separately."
@@ -28,9 +25,6 @@
 "effect/RedBlackTree#getAt":
   replacement: "Array.get"
   note: "Array.get on sorted entries preserves the optional index lookup behavior."
-"effect/RedBlackTree#getOrder":
-  replacement: "none"
-  note: "No replacement collection stores an Order; retain and pass the Order explicitly."
 "effect/RedBlackTree#greaterThan":
   replacement: "Array.filter"
   note: "Filter sorted entries with the retained Order for key > bound."
@@ -79,9 +73,6 @@
 "effect/RedBlackTree#RedBlackTree":
   replacement: "ReadonlyArray<readonly [K, V]>"
   note: "The core tree was removed; use sorted immutable entries for small collections or an external persistent ordered multimap when complexity or duplicate-key semantics matter."
-"effect/RedBlackTree#RedBlackTree.Direction":
-  replacement: "none"
-  note: "The nested direction type was removed; use normal array order or Array.reverse."
 "effect/RedBlackTree#reduce":
   replacement: "Array.reduce"
   note: "Reduce sorted entries in ascending order, adapting the callback to receive [key, value]."
@@ -94,12 +85,12 @@
 "effect/RedBlackTree#size":
   replacement: "Array.length"
   note: "Use Array.length or the .length property on the replacement entry array."
-"effect/RedBlackTree#TypeId":
-  replacement: "none"
-  note: "The RedBlackTree module and brand symbol were removed."
 "effect/RedBlackTree#values":
   replacement: "Array.map"
   note: "Map sorted entries to values and iterate the resulting array to preserve key order."
 "effect/RedBlackTree#valuesReversed":
   replacement: "Array.reverse + Array.map"
   note: "Reverse sorted entries, map them to values, and iterate to preserve reverse key order."
+effect/RedBlackTree:
+  replacement: varies by API
+  note: The tree direction type was removed; use normal array order or Array.reverse. No replacement collection stores an Order; retain and pass the Order explicitly. The nested direction type was removed; use normal array order or Array.reverse. The RedBlackTree module and brand symbol were removed.

@@ -208,27 +208,6 @@
 "@effect/vitest/index#SuiteHooks":
   replacement: "@vitest/runner#SuiteHooks"
   note: "Custom-runner code can add an explicit @vitest/runner dependency; ordinary tests should use public hook functions."
-"@effect/vitest/index#DoneCallback":
-  replacement: "none"
-  note: "Vitest does not support callback-style tests. Return a Promise or, in @effect/vitest tests, return an Effect."
-"@effect/vitest/index#HookCleanupCallback":
-  replacement: "none"
-  note: "No named Vitest 4 export replaces this alias. Let the hook return type infer, or type the cleanup function locally."
-"@effect/vitest/index#HookListener":
-  replacement: "none"
-  note: "Use the matching @vitest/runner hook-specific type such as BeforeAllListener, AfterAllListener, BeforeEachListener, or AfterEachListener for custom runner code."
-"@effect/vitest/index#ModuleCache":
-  replacement: "none"
-  note: "Vitest 3 marked this unused internal cache shape deprecated; Vitest 4 has no public replacement."
-"@effect/vitest/index#ResolvedTestEnvironment":
-  replacement: "none"
-  note: "Vitest 3 marked this type unsupported. Use Environment from vitest/environments for custom environments."
-"@effect/vitest/index#ResolveIdFunction":
-  replacement: "none"
-  note: "This deprecated vite-node callback was removed. Use Vite environment or module-runner APIs."
-"@effect/vitest/index#TransformModePatterns":
-  replacement: "none"
-  note: "This was removed with vite-node transform modes. Configure the Vite environment and its dependency optimizer instead."
-"@effect/vitest/index#WorkerRPC":
-  replacement: "none"
-  note: "The concrete worker RPC composition is internal. Use public Vitest RuntimeRPC, RunnerRPC, ContextRPC, or WorkerRequest types only when their narrower contract fits."
+"@effect/vitest/index":
+  replacement: varies by API
+  note: Vitest does not support callback-style tests. Return a Promise or, in @effect/vitest tests, return an Effect. No named Vitest 4 export replaces this alias. Let the hook return type infer, or type the cleanup function locally. Use the matching @vitest/runner hook-specific type such as BeforeAllListener, AfterAllListener, BeforeEachListener, or AfterEachListener for custom runner code. Vitest 3 marked this unused internal cache shape deprecated; Vitest 4 has no public replacement. Vitest 3 marked this type unsupported. Use Environment from vitest/environments for custom environments. This deprecated vite-node callback was removed. Use Vite environment or module-runner APIs. This was removed with vite-node transform modes. Configure the Vite environment and its dependency optimizer instead. The concrete worker RPC composition is internal. Use public Vitest RuntimeRPC, RunnerRPC, ContextRPC, or WorkerRequest types only when their narrower contract fits.
