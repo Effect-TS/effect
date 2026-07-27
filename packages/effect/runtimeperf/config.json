@@ -940,6 +940,24 @@
               "size": 32
             },
             {
+              "name": "literal-2-valid-last",
+              "export": "literal2ValidLast",
+              "scenario": "literal-2-valid-last",
+              "family": "union",
+              "astTags": ["Union", "Literal"],
+              "path": "valid",
+              "size": 2
+            },
+            {
+              "name": "literal-100-valid-first",
+              "export": "literal100ValidFirst",
+              "scenario": "literal-100-valid-first",
+              "family": "union",
+              "astTags": ["Union", "Literal"],
+              "path": "valid",
+              "size": 100
+            },
+            {
               "name": "errors-first",
               "export": "errorsFirst",
               "scenario": "errors-first",
@@ -1166,6 +1184,15 @@
               "implementation": "zod4",
               "operation": "first-decode",
               "astTags": []
+            },
+            {
+              "name": "first-decode-literal-100-effect",
+              "export": "effectFirstDecodeLiteral100",
+              "scenario": "first-decode-literal-100",
+              "implementation": "effect",
+              "operation": "first-decode",
+              "astTags": ["Union", "Literal"],
+              "size": 100
             },
             {
               "name": "first-decode-encoding-chain-8-effect",

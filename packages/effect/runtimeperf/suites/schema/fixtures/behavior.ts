@@ -96,6 +96,12 @@ export const object32SuspendedMiddleValid = decodeParserCase(
   true
 )
 
+const literal2 = Schema.Literals(["value0", "value1"])
+const literal100 = Schema.Literals(Array.from({ length: 100 }, (_, index) => `value${index}`))
+
+export const literal2ValidLast = decodeParserCase(literal2, "value1", true)
+export const literal100ValidFirst = decodeParserCase(literal100, "value0", true)
+
 const errorFields = Object.fromEntries(
   Array.from({ length: 8 }, (_, index) => [`field${index}`, Schema.String])
 )

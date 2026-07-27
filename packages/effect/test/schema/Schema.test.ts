@@ -4117,6 +4117,18 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       )
     })
 
+    it(`mode: "oneOf" counts repeated literal occurrences`, async () => {
+      const member = Schema.Literal("a")
+      const schema = Schema.Union([member, member], { mode: "oneOf" })
+      const asserts = new TestSchema.Asserts(schema)
+
+      const decoding = asserts.decoding()
+      await decoding.fail(
+        "a",
+        `Expected exactly one member to match the input "a"`
+      )
+    })
+
     it("preserves member order after sentinel dispatch", async () => {
       const fallback = Schema.Struct({ value: Schema.String }).pipe(
         Schema.decodeTo(Schema.String, {

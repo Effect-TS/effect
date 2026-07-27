@@ -345,6 +345,25 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(undefined, ast.types), [])
     })
 
+    it("literal-only union with a unique symbol", () => {
+      const symbol = Symbol.for("a")
+      const schema = Schema.Union([Schema.UniqueSymbol(symbol), Schema.Literal("b")])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates(symbol, ast.types), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates(Symbol("a"), ast.types), [])
+    })
+
+    it("should preserve duplicate literal candidates in member order", () => {
+      const schema = Schema.Union([
+        Schema.Literal("a").transform("first"),
+        Schema.Literal("a").transform("second"),
+        Schema.Never
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates("a", ast.types), [ast.types[0], ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates("b", ast.types), [])
+    })
+
     it("String | Literals", () => {
       const schema = Schema.Union([Schema.String, Schema.Literals(["a", "b", "c"])])
       const ast = schema.ast

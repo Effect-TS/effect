@@ -30,6 +30,10 @@ const makeZodRecordSchema = () => z.record(z.string(), z.string())
 
 const makeTypeboxRecordSchema = () => Type.Record(Type.String(), Type.String())
 
+const literalValues100 = Array.from({ length: 100 }, (_, index) => `value${index}`)
+
+const makeEffectLiteral100Schema = () => Schema.Literals(literalValues100)
+
 const makeEffectEncodingChain = (size) => {
   let schema = Schema.FiniteFromString
   for (let i = 1; i < size; i++) {
@@ -98,6 +102,11 @@ export const zodFirstDecodeRecord32 = () => ({
 export const typeboxFirstDecodeRecord32 = () => ({
   run: () => TypeBoxValue.Errors(makeTypeboxRecordSchema(), input),
   validate: (errors) => assert.equal(errors.length, 0)
+})
+
+export const effectFirstDecodeLiteral100 = () => ({
+  run: () => SchemaParser.decodeUnknownExit(makeEffectLiteral100Schema())("value99"),
+  validate: (result) => assert.equal(result._tag, "Success")
 })
 
 export const effectFirstDecodeEncodingChain8 = () => ({

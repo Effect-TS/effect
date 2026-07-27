@@ -2524,22 +2524,38 @@ export function collectSentinels(ast: AST): Array<Sentinel> {
 }
 
 type CandidateIndex = {
+  literalOnly: boolean
+  byLiteral?: Map<LiteralValue | symbol, Array<AST>>
   byType?: { [K in Type]?: Array<number> }
   bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
   otherwise?: { [K in Type]?: Array<number> }
 }
 
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
+const emptyCandidates: ReadonlyArray<AST> = []
 
 function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let idx = candidateIndexCache.get(types)
   if (idx) return idx
 
-  idx = {}
+  idx = { literalOnly: true }
   for (let i = 0; i < types.length; i++) {
     const a = types[i]
     const encoded = toEncoded(a)
     if (isNever(encoded)) continue
+
+    if (idx.literalOnly) {
+      if (isLiteral(encoded) || isUniqueSymbol(encoded)) {
+        idx.byLiteral ??= new Map()
+        const literal = isLiteral(encoded) ? encoded.literal : encoded.symbol
+        let arr = idx.byLiteral.get(literal)
+        if (!arr) idx.byLiteral.set(literal, arr = [])
+        arr.push(a)
+      } else {
+        idx.literalOnly = false
+        delete idx.byLiteral
+      }
+    }
 
     const candidateTypes = getCandidateTypes(encoded)
     const sentinels = collectSentinels(encoded)
@@ -2586,6 +2602,9 @@ function filterLiterals(input: any) {
  */
 export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyArray<AST> {
   const idx = getIndex(types)
+  if (idx.literalOnly) {
+    return idx.byLiteral?.get(input) ?? emptyCandidates
+  }
   const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
 
   // 1. Try sentinel-based dispatch (most selective)
