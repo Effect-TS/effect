@@ -147,6 +147,83 @@ describe("OpenAiClient", () => {
         ]
       }))))
 
+    it.effect("surfaces schema-mismatched chat chunks and continues streaming", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+
+        const events = yield* client.createResponseStream({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "hello" }]
+        }).pipe(
+          Effect.flatMap(([_, stream]) => Stream.runCollect(stream))
+        )
+
+        assert.deepStrictEqual(events[0], {
+          _tag: "UnknownChatCompletionEvent",
+          data: {
+            type: "provider.chat.completion.delta",
+            provider_payload: { content: "provider-specific" }
+          }
+        })
+        assert.propertyVal(events[1], "id", "chatcmpl_test_2")
+        assert.strictEqual(events[2], "[DONE]")
+      }).pipe(Effect.provide(makeTestLayer({
+        _tag: "Sse",
+        events: [
+          {
+            type: "provider.chat.completion.delta",
+            provider_payload: { content: "provider-specific" }
+          },
+          {
+            id: "chatcmpl_test_2",
+            object: "chat.completion.chunk",
+            model: "gpt-4o-mini",
+            created: 1,
+            choices: [{
+              index: 0,
+              delta: { content: "Hello" },
+              finish_reason: null
+            }]
+          },
+          "[DONE]"
+        ]
+      }))))
+
+    it.effect("drops invalid JSON and continues streaming", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+
+        const events = yield* client.createResponseStream({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "hello" }]
+        }).pipe(
+          Effect.flatMap(([_, stream]) => Stream.runCollect(stream))
+        )
+
+        assert.strictEqual(events.length, 2)
+        assert.propertyVal(events[0], "id", "chatcmpl_test_3")
+        assert.strictEqual(events[1], "[DONE]")
+      }).pipe(Effect.provide(makeTestLayer({
+        _tag: "RawSse",
+        body: [
+          "data: {invalid-json\n\n",
+          `data: ${
+            JSON.stringify({
+              id: "chatcmpl_test_3",
+              object: "chat.completion.chunk",
+              model: "gpt-4o-mini",
+              created: 1,
+              choices: [{
+                index: 0,
+                delta: { content: "Hello" },
+                finish_reason: null
+              }]
+            })
+          }\n\n`,
+          "data: [DONE]\n\n"
+        ].join("")
+      }))))
+
     it.effect("passes chat-completions tool_choice payload through unchanged", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
@@ -338,6 +415,12 @@ type MockResponse =
     readonly status?: number | undefined
     readonly headers?: Record<string, string> | undefined
   }
+  | {
+    readonly _tag: "RawSse"
+    readonly body: string
+    readonly status?: number | undefined
+    readonly headers?: Record<string, string> | undefined
+  }
 
 class MockOpenAiResponse extends Context.Service<MockOpenAiResponse, {
   readonly response: MockResponse
@@ -421,7 +504,9 @@ const makeResponse = (
     : "text/event-stream"
   const body = response._tag === "Json"
     ? JSON.stringify(response.body)
-    : toSseBody(response.events)
+    : response._tag === "Sse"
+    ? toSseBody(response.events)
+    : response.body
 
   return HttpClientResponse.fromWeb(
     request,
