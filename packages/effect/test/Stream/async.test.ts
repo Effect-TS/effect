@@ -454,15 +454,28 @@ describe("Stream", () => {
     it.effect(`asyncPush - ${strategy} buffer handles done errors after synchronous emission`, () =>
       Effect.gen(function*() {
         const error = new Cause.RuntimeException("boom")
-        const result = yield* Stream.asyncPush<number, Cause.RuntimeException>((emit) => {
+        const values: Array<number> = []
+        const exit = yield* Stream.asyncPush<number, Cause.RuntimeException>((emit) => {
           emit.single(42)
           emit.done(Exit.fail(error))
           return Effect.void
         }, { bufferSize: 1, strategy }).pipe(
-          Stream.runCollect,
+          Stream.runForEach((value) => Effect.sync(() => values.push(value))),
           Effect.exit
         )
-        deepStrictEqual(result, Exit.fail(error))
+        deepStrictEqual(values, [42])
+        deepStrictEqual(exit, Exit.fail(error))
+      }))
+
+    it.effect(`asyncPush - ${strategy} buffer bounds synchronous emissions`, () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.asyncPush<number>((emit) => {
+          emit.single(1)
+          emit.single(2)
+          emit.end()
+          return Effect.void
+        }, { bufferSize: 1, strategy }).pipe(Stream.runCollect)
+        deepStrictEqual(Array.from(result), strategy === "dropping" ? [1] : [2])
       }))
 
     it.effect(`asyncPush - ${strategy} buffer does not exceed its capacity`, () =>

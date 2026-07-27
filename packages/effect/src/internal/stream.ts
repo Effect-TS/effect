@@ -11,7 +11,6 @@ import * as Equal from "../Equal.js"
 import type { ExecutionPlan } from "../ExecutionPlan.js"
 import * as Exit from "../Exit.js"
 import * as Fiber from "../Fiber.js"
-import * as FiberRef from "../FiberRef.js"
 import type { LazyArg } from "../Function.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as internalExecutionPlan from "../internal/executionPlan.js"
@@ -602,7 +601,7 @@ const mailboxFromBufferOptionsPush = <A, E>(
     readonly bufferSize?: number | undefined
     readonly strategy?: "dropping" | "sliding" | undefined
   } | undefined
-): Effect.Effect<Mailbox.Mailbox<Array<A>, E>> => {
+): Effect.Effect<Mailbox.Mailbox<A, E>> => {
   if (options?.bufferSize === "unbounded" || (options?.bufferSize === undefined && options?.strategy === undefined)) {
     return mailbox.make()
   }
@@ -626,22 +625,9 @@ export const asyncPush = <A, E = never, R = never>(
     mailboxFromBufferOptionsPush<A, E>(options),
     (mailbox) => mailbox.shutdown
   ).pipe(
-    Effect.tap((mailbox) =>
-      FiberRef.getWith(
-        FiberRef.currentScheduler,
-        (scheduler) => register(emit.makePush(mailbox, scheduler))
-      )
-    ),
-    Effect.map((mailbox) => {
-      const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(mailbox.takeAll, ([items, done]) => {
-        const values = Chunk.flatMap(items, Chunk.unsafeFromArray)
-        const next = done ? core.void : loop
-        return Chunk.isEmpty(values) ? next : channel.zipRight(core.write(values), next)
-      })
-      return loop
-    }),
-    channel.unwrapScoped,
-    fromChannel
+    Effect.tap((mailbox) => register(emit.makePush(mailbox))),
+    Effect.map(mailboxToStream),
+    unwrapScoped
   )
 
 /** @internal */

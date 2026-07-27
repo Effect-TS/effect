@@ -31,7 +31,10 @@ describe("Stream.fromEventListener", () => {
       )
       const waitForListener = (): Effect.Effect<void> =>
         Effect.suspend(() => target.listening ? Effect.void : Effect.zipRight(Effect.yieldNow(), waitForListener()))
-      yield* waitForListener()
+      yield* Effect.raceFirst(
+        waitForListener(),
+        Fiber.join(fiber).pipe(Effect.flatMap(() => Effect.dieMessage("stream ended before listener registration")))
+      )
       target.emit()
       target.emit()
       target.emit()
