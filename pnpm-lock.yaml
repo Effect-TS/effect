@@ -908,14 +908,13 @@ importers:
         version: 26.1.1
 
   packages/vitest:
-    dependencies:
-      '@vitest/runner':
-        specifier: 4.1.10
-        version: 4.1.10
     devDependencies:
       '@types/node':
         specifier: ^26.1.1
         version: 26.1.1
+      '@vitest/runner':
+        specifier: 4.1.10
+        version: 4.1.10
       effect:
         specifier: workspace:^
         version: link:../effect

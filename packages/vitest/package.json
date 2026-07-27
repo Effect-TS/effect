@@ -46,15 +46,14 @@
     "test": "vitest",
     "coverage": "vitest --coverage"
   },
-  "dependencies": {
-    "@vitest/runner": "4.1.10"
-  },
   "peerDependencies": {
+    "@vitest/runner": "^3.0.0 || ^4.0.0",
     "effect": "workspace:^",
     "vitest": "^3.0.0 || ^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
+    "@vitest/runner": "4.1.10",
     "effect": "workspace:^",
     "vitest": "4.1.10"
   }
