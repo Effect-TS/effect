@@ -70,7 +70,13 @@ export interface AtomRegistry {
   readonly mount: <A>(atom: Atom.Atom<A>) => () => void
   readonly refresh: <A>(atom: Atom.Atom<A>) => void
   readonly set: <R, W>(atom: Atom.Writable<R, W>, value: W) => void
-  readonly setSerializable: (key: string, encoded: unknown) => void
+  readonly setSerializable: (
+    key: string,
+    encoded: unknown,
+    options?: {
+      readonly valueOnly?: boolean | undefined
+    }
+  ) => void
   readonly modify: <R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]) => A
   readonly update: <R, W>(atom: Atom.Writable<R, W>, f: (_: R) => W) => void
   readonly subscribe: <A>(atom: Atom.Atom<A>, f: (_: A) => void, options?: {
@@ -360,7 +366,10 @@ class RegistryImpl implements AtomRegistry {
   }
 
   readonly nodes = new Map<Atom.Atom<any> | string, NodeImpl<any>>()
-  readonly preloadedSerializable = new Map<string, unknown>()
+  readonly preloadedSerializable = new Map<string, {
+    readonly encoded: unknown
+    readonly valueOnly: boolean
+  }>()
   readonly timeoutBuckets = new Map<number, readonly [nodes: Set<NodeImpl<any>>, handle: number]>()
   readonly nodeTimeoutBucket = new Map<NodeImpl<any>, number>()
   disposed = false
@@ -377,8 +386,14 @@ class RegistryImpl implements AtomRegistry {
     atom.write(this.ensureNode(atom).writeContext, value)
   }
 
-  setSerializable(key: string, encoded: unknown): void {
-    this.preloadedSerializable.set(key, encoded)
+  setSerializable(
+    key: string,
+    encoded: unknown,
+    options?: {
+      readonly valueOnly?: boolean | undefined
+    }
+  ): void {
+    this.preloadedSerializable.set(key, { encoded, valueOnly: options?.valueOnly === true })
   }
 
   modify<R, W, A>(atom: Atom.Writable<R, W>, f: (_: R) => [returnValue: A, nextValue: W]): A {
@@ -436,14 +451,18 @@ class RegistryImpl implements AtomRegistry {
       this.removeNodeTimeout(node)
     }
     if (typeof key === "string" && this.preloadedSerializable.has(key)) {
-      const encoded = this.preloadedSerializable.get(key)
+      const preloaded = this.preloadedSerializable.get(key)!
       this.preloadedSerializable.delete(key)
-      const decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(encoded)
-      const target = initialValueTarget(atom)
-      if (target === atom) {
-        node.setInitialValue(decoded)
+      const decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(preloaded.encoded)
+      if (preloaded.valueOnly) {
+        node.setValue(decoded)
       } else {
-        this.ensureNode(target).setInitialValue(decoded)
+        const target = initialValueTarget(atom)
+        if (target === atom) {
+          node.setInitialValue(decoded)
+        } else {
+          this.ensureNode(target).setInitialValue(decoded)
+        }
       }
     }
     return node

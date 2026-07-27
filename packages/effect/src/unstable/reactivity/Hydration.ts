@@ -130,7 +130,7 @@ export const hydrate = (
   dehydratedState: Iterable<DehydratedAtom>
 ): void => {
   for (const datom of (dehydratedState as Iterable<DehydratedAtomValue>)) {
-    registry.setSerializable(datom.key, datom.value)
+    registry.setSerializable(datom.key, datom.value, { valueOnly: datom.resultPromise !== undefined })
 
     // If there's a resultPromise, it means this was in Initial state when dehydrated
     // and we should wait for it to resolve to a non-Initial state, then update the registry
@@ -148,7 +148,7 @@ export const hydrate = (
         }
       } else {
         // Fallback to setSerializable if node doesn't exist yet
-        registry.setSerializable(datom.key, resolvedValue)
+        registry.setSerializable(datom.key, resolvedValue, { valueOnly: true })
       }
     })
   }
