@@ -98,7 +98,7 @@ function transform(root: SchemaAST.AST): SchemaAST.AST {
           const type = recur(indexSignature.type)
           return parameter === indexSignature.parameter && type === indexSignature.type
             ? indexSignature
-            : new SchemaAST.IndexSignature(parameter, type, indexSignature.merge)
+            : new SchemaAST.IndexSignature(parameter, type)
         })
         const checks = prepareChecks(ast.checks)
         if (

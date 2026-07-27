@@ -13,7 +13,6 @@
 
 import * as Arr from "./Array.ts"
 import * as Cause from "./Cause.ts"
-import type * as Combiner from "./Combiner.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
@@ -1899,37 +1898,6 @@ export class PropertySignature {
   }
 }
 
-/**
- * Represents a bidirectional merge strategy for index signature key-value pairs.
- *
- * **Details**
- *
- * Used by {@link IndexSignature} when the same key appears multiple times
- * (e.g. from `Schema.extend` or overlapping records). Provides separate
- * `decode` and `encode` combiners that determine how duplicate entries are
- * merged.
- *
- * @see {@link IndexSignature}
- * @category models
- * @since 4.0.0
- */
-export class KeyValueCombiner {
-  readonly decode: Combiner.Combiner<readonly [key: PropertyKey, value: any]> | undefined
-  readonly encode: Combiner.Combiner<readonly [key: PropertyKey, value: any]> | undefined
-
-  constructor(
-    decode: Combiner.Combiner<readonly [key: PropertyKey, value: any]> | undefined,
-    encode: Combiner.Combiner<readonly [key: PropertyKey, value: any]> | undefined
-  ) {
-    this.decode = decode
-    this.encode = encode
-  }
-  /** @internal */
-  flip(): KeyValueCombiner {
-    return new KeyValueCombiner(this.encode, this.decode)
-  }
-}
-
 type IndexSignatureParameter =
   | String
   | Number
@@ -1968,7 +1936,6 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
  * - `parameter` — the key type AST (e.g. {@link String} for `string` keys,
  *   {@link TemplateLiteral} for patterned keys).
  * - `type` — the value type SchemaAST.
- * - `merge` — optional {@link KeyValueCombiner} for handling duplicate keys.
  *
  * **Gotchas**
  *
@@ -1983,19 +1950,16 @@ function isIndexSignatureParameter(ast: AST): ast is IndexSignatureParameter {
 export class IndexSignature {
   readonly parameter: IndexSignatureParameter
   readonly type: AST
-  readonly merge: KeyValueCombiner | undefined
 
   constructor(
     parameter: AST,
-    type: AST,
-    merge: KeyValueCombiner | undefined
+    type: AST
   ) {
     if (!isIndexSignatureParameter(parameter)) {
       throw new Error(`Invalid index signature parameter ${parameter._tag}`)
     }
     this.parameter = parameter
     this.type = type
-    this.merge = merge
     if (isOptional(type) && !containsUndefined(type)) {
       throw new Error("Cannot use `Schema.optionalKey` with index signatures, use `Schema.optional` instead.")
     }
@@ -2107,8 +2071,7 @@ export class Objects extends Base {
       ast.indexSignatures.map((is) => ({
         is,
         parserKey: recur(parameterFromPropertyKey(is.parameter)),
-        parserValue: recur(is.type),
-        merge: is.merge?.decode
+        parserValue: recur(is.type)
       })) :
       undefined
 
@@ -2150,12 +2113,7 @@ export class Objects extends Base {
       } else if (k2 !== undefined && exitValue.value._tag === "Some") {
         if (expectedKeysSet.has(key) || expectedKeysSet.has(k2)) return Exit.void
         const v2 = exitValue.value.value
-        if (index.merge && Object.hasOwn(s.out, k2)) {
-          const [k, v] = index.merge.combine([k2, s.out[k2]], [k2, v2])
-          InternalRecord.assignProperty(s.out, k, v)
-        } else {
-          InternalRecord.assignProperty(s.out, k2, v2)
-        }
+        InternalRecord.assignProperty(s.out, k2, v2)
       }
       return Exit.void
     }
@@ -2276,7 +2234,6 @@ export class Objects extends Base {
   private _rebuild(
     recur: (ast: AST) => AST,
     recurParameter: (ast: AST) => AST,
-    flipMerge: boolean,
     checks: Checks | undefined,
     encodingChecks: Checks | undefined
   ): Objects {
@@ -2288,10 +2245,9 @@ export class Objects extends Base {
     const indexes = mapOrSame(this.indexSignatures, (is) => {
       const p = recurParameter(is.parameter)
       const t = recur(is.type)
-      const merge = flipMerge ? is.merge?.flip() : is.merge
-      return p === is.parameter && t === is.type && merge === is.merge
+      return p === is.parameter && t === is.type
         ? is
-        : new IndexSignature(p, t, merge)
+        : new IndexSignature(p, t)
     })
 
     return props === this.propertySignatures && indexes === this.indexSignatures && checks === this.checks &&
@@ -2309,11 +2265,11 @@ export class Objects extends Base {
   }
   /** @internal */
   flip(recur: (ast: AST) => AST): AST {
-    return this._rebuild(recur, recur, true, this.encodingChecks, this.checks)
+    return this._rebuild(recur, recur, this.encodingChecks, this.checks)
   }
   /** @internal */
   recur(recur: (ast: AST) => AST, recurParameter: (ast: AST) => AST = recur): AST {
-    return this._rebuild(recur, recurParameter, false, this.checks, this.encodingChecks)
+    return this._rebuild(recur, recurParameter, this.checks, this.encodingChecks)
   }
   /** @internal */
   getExpected(): string {
@@ -3420,11 +3376,11 @@ function parseParameter(ast: AST): {
 }
 
 /** @internal */
-export function record(key: AST, value: AST, keyValueCombiner: KeyValueCombiner | undefined): Objects {
+export function record(key: AST, value: AST): Objects {
   const { literals, parameters: indexSignatures } = parseParameter(key)
   return new Objects(
     literals.map((literal) => new PropertySignature(literal, value)),
-    indexSignatures.map((parameter) => new IndexSignature(parameter, value, keyValueCombiner))
+    indexSignatures.map((parameter) => new IndexSignature(parameter, value))
   )
 }
 
@@ -4098,7 +4054,7 @@ export const unknownToJson = new Link(
 export const objectKeywordToJson = new Link(
   new Union([
     new Arrays(false, [], [Json]),
-    new Objects([], [new IndexSignature(string, Json, undefined)])
+    new Objects([], [new IndexSignature(string, Json)])
   ], "anyOf"),
   SchemaTransformation.passthrough()
 )

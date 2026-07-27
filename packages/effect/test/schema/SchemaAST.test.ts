@@ -513,13 +513,13 @@ describe("SchemaAST", () => {
 
   describe("record", () => {
     it("treats Never parameters as no keys", () => {
-      const ast = SchemaAST.record(Schema.Never.ast, Schema.Number.ast, undefined)
+      const ast = SchemaAST.record(Schema.Never.ast, Schema.Number.ast)
       deepStrictEqual(ast.propertySignatures, [])
       deepStrictEqual(ast.indexSignatures, [])
     })
 
     it("ignores Never arms in union parameters", () => {
-      const ast = SchemaAST.record(Schema.Union([Schema.String, Schema.Never]).ast, Schema.Number.ast, undefined)
+      const ast = SchemaAST.record(Schema.Union([Schema.String, Schema.Never]).ast, Schema.Number.ast)
       const indexSignature = ast.indexSignatures[0]!
 
       deepStrictEqual(ast.propertySignatures, [])
@@ -531,20 +531,19 @@ describe("SchemaAST", () => {
 
   describe("IndexSignature", () => {
     it("accepts valid parameters on both type and encoded side", () => {
-      doesNotThrow(() => new SchemaAST.IndexSignature(Schema.String.ast, Schema.Number.ast, undefined))
-      doesNotThrow(() => new SchemaAST.IndexSignature(Schema.NumberFromString.ast, Schema.Number.ast, undefined))
+      doesNotThrow(() => new SchemaAST.IndexSignature(Schema.String.ast, Schema.Number.ast))
+      doesNotThrow(() => new SchemaAST.IndexSignature(Schema.NumberFromString.ast, Schema.Number.ast))
       doesNotThrow(() =>
         new SchemaAST.IndexSignature(
           Schema.Union([Schema.String, Schema.NumberFromString]).ast,
-          Schema.Number.ast,
-          undefined
+          Schema.Number.ast
         )
       )
     })
 
     it("rejects invalid type side parameters", () => {
       throws(
-        () => new SchemaAST.IndexSignature(Schema.Literal("a").ast, Schema.Number.ast, undefined),
+        () => new SchemaAST.IndexSignature(Schema.Literal("a").ast, Schema.Number.ast),
         new Error("Invalid index signature parameter Literal")
       )
     })
@@ -557,7 +556,7 @@ describe("SchemaAST", () => {
         })
       )
       throws(
-        () => new SchemaAST.IndexSignature(StringFromBoolean.ast, Schema.Number.ast, undefined),
+        () => new SchemaAST.IndexSignature(StringFromBoolean.ast, Schema.Number.ast),
         new Error("Invalid index signature parameter String")
       )
     })

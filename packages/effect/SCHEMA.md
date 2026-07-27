@@ -1652,35 +1652,6 @@ console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
 // { aB: 2 }
 ```
 
-You can customize how key conflicts are resolved by providing a `combine` function.
-
-**Example** (Combining values for conflicting keys)
-
-```ts
-import { Schema, SchemaTransformation } from "effect"
-
-const SnakeToCamel = Schema.String.pipe(Schema.decode(SchemaTransformation.snakeToCamel()))
-
-const schema = Schema.Record(SnakeToCamel, Schema.Number, {
-  keyValueCombiner: {
-    decode: {
-      // When decoding, combine values of conflicting keys by summing them
-      combine: ([_, v1], [k2, v2]) => [k2, v1 + v2] // you can pass a Semigroup to combine keys
-    },
-    encode: {
-      // Same logic applied when encoding
-      combine: ([_, v1], [k2, v2]) => [k2, v1 + v2]
-    }
-  }
-})
-
-console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
-// { aB: 3 }
-
-console.log(Schema.encodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
-// { a_b: 3 }
-```
-
 ### Number Keys
 
 Records with number keys are supported.

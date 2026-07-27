@@ -3845,30 +3845,6 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await encoding.succeed({ a_b: 1, aB: 2 }, { a_b: "2" })
     })
 
-    it("Record(SnakeToCamel, Number, { keyValueCombiner: ... })", async () => {
-      const schema = Schema.Record(SnakeToCamel, Schema.NumberFromString, {
-        keyValueCombiner: {
-          decode: {
-            combine: ([_, v1], [k2, v2]) => [k2, v1 + v2]
-          },
-          encode: {
-            combine: ([_, v1], [k2, v2]) => [k2, v1 + "e" + v2]
-          }
-        }
-      })
-      const asserts = new TestSchema.Asserts(schema)
-
-      const decoding = asserts.decoding()
-      await decoding.succeed({ a: "1" }, { a: 1 })
-      await decoding.succeed({ a_b: "1" }, { aB: 1 })
-      await decoding.succeed({ a_b: "1", aB: "2" }, { aB: 3 })
-
-      const encoding = asserts.encoding()
-      await encoding.succeed({ a: 1 }, { a: "1" })
-      await encoding.succeed({ aB: 1 }, { a_b: "1" })
-      await encoding.succeed({ a_b: 1, aB: 2 }, { a_b: "1e2" })
-    })
-
     it("UniqueSymbol", async () => {
       const a = Symbol.for("a")
       const schema = Schema.Record(Schema.UniqueSymbol(a), Schema.Number)
