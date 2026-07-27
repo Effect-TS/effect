@@ -471,12 +471,12 @@ export const makeExit = <
   ) => Primitive | Yield
 }): Fn => {
   const Proto = {
-    ...makePrimitiveProto(options),
     [ExitTypeId]: ExitTypeId,
     _tag: options.op,
     get [options.prop](): any {
       return (this as any)[args]
     },
+    ...makePrimitiveProto(options),
     toString(this: any) {
       return `${options.op}(${format(this[args])})`
     },
