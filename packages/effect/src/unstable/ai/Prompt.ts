@@ -946,6 +946,32 @@ export const toolApprovalRequestPart = (
   params: PartConstructorParams<ToolApprovalRequestPart>
 ): ToolApprovalRequestPart => makePart("tool-approval-request", params as any)
 
+/**
+ * Schema for validation and encoding of content parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Part: Schema.Union<
+  readonly [
+    typeof TextPart,
+    typeof ReasoningPart,
+    typeof FilePart,
+    typeof ToolCallPart,
+    typeof ToolResultPart,
+    typeof ToolApprovalResponsePart,
+    typeof ToolApprovalRequestPart
+  ]
+> = Schema.Union([
+  TextPart,
+  ReasoningPart,
+  FilePart,
+  ToolCallPart,
+  ToolResultPart,
+  ToolApprovalResponsePart,
+  ToolApprovalRequestPart
+])
+
 // =============================================================================
 // Base Message
 // =============================================================================
@@ -1242,6 +1268,17 @@ export interface UserMessageEncoded extends BaseMessageEncoded<"user", UserMessa
 export type UserMessagePartEncoded = TextPartEncoded | FilePartEncoded
 
 /**
+ * Schema for validation and encoding of user message content parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const UserMessagePart: Schema.Union<readonly [typeof TextPart, typeof FilePart]> = Schema.Union([
+  TextPart,
+  FilePart
+])
+
+/**
  * Represents provider-specific options that can be associated with a
  * `UserMessage` through module augmentation.
  *
@@ -1428,6 +1465,30 @@ export type AssistantMessagePartEncoded =
   | ToolApprovalRequestPartEncoded
 
 /**
+ * Schema for validation and encoding of assistant message content parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const AssistantMessagePart: Schema.Union<
+  readonly [
+    typeof TextPart,
+    typeof FilePart,
+    typeof ReasoningPart,
+    typeof ToolCallPart,
+    typeof ToolResultPart,
+    typeof ToolApprovalRequestPart
+  ]
+> = Schema.Union([
+  TextPart,
+  FilePart,
+  ReasoningPart,
+  ToolCallPart,
+  ToolResultPart,
+  ToolApprovalRequestPart
+])
+
+/**
  * Represents provider-specific options that can be associated with a
  * `AssistantMessage` through module augmentation.
  *
@@ -1595,6 +1656,19 @@ export interface ToolMessageEncoded extends BaseMessageEncoded<"tool", ToolMessa
  * @since 4.0.0
  */
 export type ToolMessagePartEncoded = ToolResultPartEncoded | ToolApprovalResponsePartEncoded
+
+/**
+ * Schema for validation and encoding of tool message content parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ToolMessagePart: Schema.Union<
+  readonly [typeof ToolResultPart, typeof ToolApprovalResponsePart]
+> = Schema.Union([
+  ToolResultPart,
+  ToolApprovalResponsePart
+])
 
 /**
  * Represents provider-specific options that can be associated with a
