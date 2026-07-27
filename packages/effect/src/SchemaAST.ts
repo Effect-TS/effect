@@ -3591,9 +3591,7 @@ function fromRefinement<T>(
 
 function applyTemplateLiteralPartChecks<A>(ast: AST, value: A, options: ParseOptions): A | undefined {
   if (options?.disableChecks || ast.checks === undefined) return value
-  const issues: Array<SchemaIssue.Issue> = []
-  collectIssues(ast.checks, value, issues, ast, options)
-  return issues.length === 0 ? value : undefined
+  return collectIssues(ast.checks, value, undefined, ast, options) === undefined ? value : undefined
 }
 
 function segmentTemplateLiteralParts(
@@ -3812,24 +3810,27 @@ export function isStringSymbol(annotations?: Schema.Annotations.Filter) {
 export function collectIssues<T>(
   checks: ReadonlyArray<Check<T>>,
   value: T,
-  issues: Array<SchemaIssue.Issue>,
+  issues: Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
   ast: AST,
   options: ParseOptions
-) {
+): Arr.NonEmptyArray<SchemaIssue.Issue> | undefined {
   for (let i = 0; i < checks.length; i++) {
     const check = checks[i]
     if (check._tag === "FilterGroup") {
-      collectIssues(check.checks, value, issues, ast, options)
+      issues = collectIssues(check.checks, value, issues, ast, options)
     } else {
       const issue = check.run(value, ast, options)
       if (issue) {
-        issues.push(new SchemaIssue.Filter(value, check, issue))
+        const filter = new SchemaIssue.Filter(value, check, issue)
+        if (issues) issues.push(filter)
+        else issues = [filter]
         if (check.aborted || options?.errors !== "all") {
-          return
+          return issues
         }
       }
     }
   }
+  return issues
 }
 
 /** @internal */
@@ -3837,9 +3838,8 @@ export function runChecks<T>(
   checks: readonly [Check<T>, ...Array<Check<T>>],
   s: T
 ): Result.Result<T, SchemaIssue.Issue> {
-  const issues: Array<SchemaIssue.Issue> = []
-  collectIssues(checks, s, issues, unknown, { errors: "all" })
-  if (Arr.isArrayNonEmpty(issues)) {
+  const issues = collectIssues(checks, s, undefined, unknown, { errors: "all" })
+  if (issues) {
     const issue = new SchemaIssue.Composite(unknown, Option.some(s), issues)
     return Result.fail(issue)
   }

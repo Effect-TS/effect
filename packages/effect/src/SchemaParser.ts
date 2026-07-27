@@ -10,7 +10,6 @@
  *
  * @since 4.0.0
  */
-import * as Arr from "./Array.ts"
 import * as Cause from "./Cause.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
@@ -1050,11 +1049,8 @@ const recur = memoize(
         if (encodingChecks && !options?.disableChecks) {
           sroa = Effect.flatMapEager(sroa, (oa) => {
             if (Option.isSome(localOu) && Option.isSome(oa)) {
-              const issues: Array<SchemaIssue.Issue> = []
-
-              SchemaAST.collectIssues(encodingChecks, localOu.value, issues, ast, options)
-
-              if (Arr.isArrayNonEmpty(issues)) {
+              const issues = SchemaAST.collectIssues(encodingChecks, localOu.value, undefined, ast, options)
+              if (issues) {
                 return Effect.fail(new SchemaIssue.Composite(ast, localOu, issues))
               }
             }
@@ -1066,11 +1062,8 @@ const recur = memoize(
           sroa = Effect.flatMapEager(sroa, (oa) => {
             if (Option.isSome(oa)) {
               const value = oa.value
-              const issues: Array<SchemaIssue.Issue> = []
-
-              SchemaAST.collectIssues(checks, value, issues, ast, options)
-
-              if (Arr.isArrayNonEmpty(issues)) {
+              const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
+              if (issues) {
                 return Effect.fail(new SchemaIssue.Composite(ast, oa, issues))
               }
             }

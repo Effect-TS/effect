@@ -13,6 +13,11 @@ const input = Object.fromEntries(Array.from({ length: size }, (_, index) => [`fi
 const makeEffectSchema = () =>
   Schema.Struct(Object.fromEntries(Array.from({ length: size }, (_, index) => [`field${index}`, Schema.String])))
 
+const makeEffectCheckedSchema = () =>
+  Schema.Struct(
+    Object.fromEntries(Array.from({ length: size }, (_, index) => [`field${index}`, Schema.NonEmptyString]))
+  )
+
 const makeValibotSchema = () =>
   v.object(Object.fromEntries(Array.from({ length: size }, (_, index) => [`field${index}`, v.string()])))
 
@@ -123,6 +128,11 @@ export const typeboxSchemaCreationObject32 = () => ({
 
 export const effectFirstDecodeObject32 = () => ({
   run: () => SchemaParser.decodeUnknownExit(makeEffectSchema())(input),
+  validate: (result) => assert.equal(result._tag, "Success")
+})
+
+export const effectFirstDecodeCheckedObject32 = () => ({
+  run: () => SchemaParser.decodeUnknownExit(makeEffectCheckedSchema())(input),
   validate: (result) => assert.equal(result._tag, "Success")
 })
 

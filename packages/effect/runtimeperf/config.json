@@ -857,6 +857,33 @@
               "size": 2
             },
             {
+              "name": "checks-object-32-valid",
+              "export": "checksObject32Valid",
+              "scenario": "checks-object-32-valid",
+              "family": "checks",
+              "astTags": ["Objects", "String"],
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "checks-array-32-valid",
+              "export": "checksArray32Valid",
+              "scenario": "checks-array-32-valid",
+              "family": "checks",
+              "astTags": ["Arrays", "String"],
+              "path": "valid",
+              "size": 32
+            },
+            {
+              "name": "encoding-check-valid",
+              "export": "encodingCheckValid",
+              "scenario": "encoding-check-valid",
+              "family": "checks",
+              "astTags": ["String"],
+              "path": "valid",
+              "size": 1
+            },
+            {
               "name": "transformation-decode-valid",
               "export": "transformationDecodeValid",
               "scenario": "transformation-decode-valid",
@@ -1161,6 +1188,13 @@
               "name": "first-decode-object-32-effect",
               "export": "effectFirstDecodeObject32",
               "scenario": "first-decode-object-32",
+              "implementation": "effect",
+              "operation": "first-decode"
+            },
+            {
+              "name": "first-decode-checked-object-32-effect",
+              "export": "effectFirstDecodeCheckedObject32",
+              "scenario": "first-decode-checked-object-32",
               "implementation": "effect",
               "operation": "first-decode"
             },

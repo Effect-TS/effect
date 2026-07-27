@@ -33,9 +33,31 @@ const checkedString = Schema.String
   .check(Schema.isMinLength(2))
   .check(Schema.isPattern(/^[a-z]+$/))
 
-export const checksValid = decodeCase(checkedString, "runtimeperf", true)
-export const checksInvalidFirst = decodeCase(checkedString, "", false)
-export const checksInvalidLast = decodeCase(checkedString, "runtime-perf", false)
+export const checksValid = decodeParserCase(checkedString, "runtimeperf", true)
+export const checksInvalidFirst = decodeParserCase(checkedString, "", false)
+export const checksInvalidLast = decodeParserCase(checkedString, "runtime-perf", false)
+
+const checkedObject32Input = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, `value${index}`])
+)
+const checkedObject32 = Schema.Struct(
+  Object.fromEntries(Array.from({ length: 32 }, (_, index) => [`field${index}`, Schema.NonEmptyString]))
+)
+
+export const checksObject32Valid = decodeParserCase(checkedObject32, checkedObject32Input, true)
+
+const checkedArray32Input = Array.from({ length: 32 }, (_, index) => `value${index}`)
+const checkedArray32 = Schema.Array(Schema.NonEmptyString)
+
+export const checksArray32Valid = decodeParserCase(checkedArray32, checkedArray32Input, true)
+
+const encodingCheckedString = Schema.String.pipe(
+  Schema.flip,
+  Schema.check(Schema.isMinLength(2)),
+  Schema.flip
+)
+
+export const encodingCheckValid = decodeParserCase(encodingCheckedString, "runtimeperf", true)
 
 export const transformationDecodeValid = decodeParserCase(Schema.FiniteFromString, "123", true)
 export const transformationDecodeInvalid = decodeParserCase(Schema.FiniteFromString, "invalid", false)
