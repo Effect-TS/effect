@@ -414,8 +414,8 @@ effect/Micro#scopeUnsafeMake:
   replacement: "Scope.makeUnsafe"
   note: "Renamed and moved: scopeUnsafeMake becomes Scope.makeUnsafe from effect/Scope."
 effect/Micro#service:
-  replacement: "Effect.service"
-  note: "Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect."
+  replacement: "service"
+  note: "Micro was removed in v4, and services are Effects; yield or compose the service key directly in the rewritten Effect runtime."
 effect/Micro#succeed:
   replacement: "Effect.succeed"
   note: "Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect."

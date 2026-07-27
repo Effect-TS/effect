@@ -77,17 +77,17 @@ effect/Effect#checkInterruptible:
   replacement: "none"
   note: "Interruptibility introspection was removed; structure the region explicitly with `Effect.interruptible` or `Effect.uninterruptible`. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."
 effect/Effect#clock:
-  replacement: "Effect.service(Clock.Clock)"
-  note: "Read the Clock context reference through the service API. Adapt arguments and imports to the v4 API."
+  replacement: "Clock.Clock"
+  note: "Services are Effects in v4; yield or compose `Clock.Clock` directly. Adapt imports to the v4 API."
 effect/Effect#configProviderWith:
-  replacement: "Effect.service(ConfigProvider.ConfigProvider)"
-  note: "Read the ConfigProvider context reference and flatMap the callback. Adapt arguments and imports to the v4 API."
+  replacement: "ConfigProvider.ConfigProvider.use"
+  note: "Use the ConfigProvider reference's `.use` helper to invoke the effectful callback. Adapt arguments and imports to the v4 API."
 effect/Effect#console:
-  replacement: "Effect.service(Console.Console)"
-  note: "Read the Console context reference through the service API. Adapt arguments and imports to the v4 API."
+  replacement: "Console.Console"
+  note: "Services are Effects in v4; yield or compose `Console.Console` directly. Adapt imports to the v4 API."
 effect/Effect#consoleWith:
-  replacement: "Effect.service(Console.Console) + Effect.flatMap"
-  note: "Read the Console service and invoke the effectful callback explicitly. Adapt arguments and imports to the v4 API."
+  replacement: "Console.Console.use"
+  note: "Use the Console reference's `.use` helper to invoke the effectful callback. Adapt arguments and imports to the v4 API."
 effect/Effect#contextWithEffect:
   replacement: "Effect.contextWith"
   note: "`contextWith` accepts an effectful callback in v4. Adapt arguments and imports to the v4 API."
@@ -287,14 +287,14 @@ effect/Effect#locallyScoped:
   replacement: "Effect.provideService"
   note: "Provide the context reference around the scoped Effect. Adapt arguments and imports to the v4 API."
 effect/Effect#locallyScopedWith:
-  replacement: "Effect.service + Effect.provideService"
-  note: "Read, transform, and provide the context reference explicitly. Adapt arguments and imports to the v4 API."
+  replacement: "Effect.updateServiceScoped"
+  note: "Context references replace FiberRefs in v4; update the reference for the current scope. Adapt arguments and imports to the v4 API."
 effect/Effect#locallyWith:
-  replacement: "Effect.service + Effect.provideService"
-  note: "Read, transform, and provide the context reference explicitly. Adapt arguments and imports to the v4 API."
+  replacement: "Effect.updateService"
+  note: "Context references replace FiberRefs in v4; update the reference around the target Effect. Adapt arguments and imports to the v4 API."
 effect/Effect#logAnnotations:
-  replacement: "Effect.service(References.CurrentLogAnnotations)"
-  note: "Read the log-annotations context reference. Adapt arguments and imports to the v4 API."
+  replacement: "References.CurrentLogAnnotations"
+  note: "Context references are Effects in v4; yield or compose `References.CurrentLogAnnotations` directly. Adapt imports to the v4 API."
 effect/Effect#loop:
   replacement: "none"
   note: "Use an explicit `Effect.gen` loop and collect results when needed. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."
@@ -320,8 +320,8 @@ effect/Effect#mergeAll:
   replacement: "Effect.reduce"
   note: "Reduce the input effects with an effectful accumulator. Adapt arguments and imports to the v4 API."
 effect/Effect#metricLabels:
-  replacement: "Effect.service(Metric.CurrentMetricAttributes)"
-  note: "Read the current metric attribute set. Adapt arguments and imports to the v4 API."
+  replacement: "Metric.CurrentMetricAttributes"
+  note: "Context references are Effects in v4; yield or compose `Metric.CurrentMetricAttributes` directly. Adapt imports to the v4 API."
 effect/Effect#negate:
   replacement: "Effect.map"
   note: "Map the boolean result with logical negation. Adapt arguments and imports to the v4 API."
@@ -362,11 +362,11 @@ effect/Effect#raceWith:
   replacement: "Effect.raceFirst + Fiber APIs"
   note: "Use `raceFirst` for first completion, or fork both effects and inspect their Exits for custom finishers. Adapt arguments and imports to the v4 API."
 effect/Effect#random:
-  replacement: "Effect.service(Random.Random)"
-  note: "Read the Random context reference through the service API. Adapt arguments and imports to the v4 API."
+  replacement: "Random.Random"
+  note: "Services are Effects in v4; yield or compose `Random.Random` directly. Adapt imports to the v4 API."
 effect/Effect#randomWith:
-  replacement: "Effect.service(Random.Random) + Effect.flatMap"
-  note: "Read the Random service and invoke the callback explicitly. Adapt arguments and imports to the v4 API."
+  replacement: "Random.Random.use"
+  note: "Use the Random reference's `.use` helper to invoke the effectful callback. Prefer module-level Random operations when possible."
 effect/Effect#reduceEffect:
   replacement: "Effect.flatMap + Effect.reduce"
   note: "Evaluate the initial Effect, then reduce the remaining effects. Adapt arguments and imports to the v4 API."
@@ -461,8 +461,8 @@ effect/Effect#serviceMembers:
   replacement: "Context.Service.use"
   note: "Define explicit service accessors with the generated `.use` helper. Adapt arguments and imports to the v4 API."
 effect/Effect#serviceOptional:
-  replacement: "Effect.service"
-  note: "Retrieve the required service directly; use `Effect.serviceOption` only when absence is expected. Adapt arguments and imports to the v4 API."
+  replacement: "service"
+  note: "Services are Effects in v4; yield or compose the service key directly. Use `Effect.serviceOption` only when absence is expected."
 effect/Effect#setFiberRefs:
   replacement: "none"
   note: "Bulk FiberRefs replacement was removed; provide individual context references. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."
@@ -518,8 +518,8 @@ effect/Effect#timeoutTo:
   replacement: "Effect.timeoutOrElse + Effect.map"
   note: "Map successful values first and use the timeout fallback for `onTimeout`. Adapt arguments and imports to the v4 API."
 effect/Effect#tracerWith:
-  replacement: "Effect.tracer + Effect.flatMap"
-  note: "Read the current Tracer and invoke the callback explicitly. Adapt arguments and imports to the v4 API."
+  replacement: "Tracer.Tracer.use"
+  note: "Use the Tracer reference's `.use` helper to invoke the effectful callback. Adapt arguments and imports to the v4 API."
 effect/Effect#transplant:
   replacement: "none"
   note: "Fiber scope grafting was removed; use structured concurrency with `forkChild`, `forkScoped`, or `forkIn`. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."
@@ -569,8 +569,8 @@ effect/Effect#whenEffect:
   replacement: "Effect.when"
   note: "The v4 `when` combinator accepts an effectful boolean condition directly. Adapt arguments and imports to the v4 API."
 effect/Effect#whenFiberRef:
-  replacement: "Effect.service + Effect.flatMap"
-  note: "Read the context reference, test it, and branch explicitly. Adapt arguments and imports to the v4 API."
+  replacement: "reference.use + Effect.when"
+  note: "Use the Context.Reference `.use` helper to inspect the value, test it, and branch explicitly. Adapt arguments and imports to the v4 API."
 effect/Effect#whenLogLevel:
   replacement: "none"
   note: "Log-level conditional execution was removed; configure Logger filtering and guard optional work explicitly. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."

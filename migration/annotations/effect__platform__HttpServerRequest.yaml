@@ -5,8 +5,8 @@
   replacement: "HttpServerRequest.ParsedSearchParams"
   note: "The marker and tag became one Context.Service class."
 "@effect/platform/HttpServerRequest#persistedMultipart":
-  replacement: "Effect.flatMap(HttpServerRequest.HttpServerRequest, (request) => request.multipart)"
-  note: "Read the request service and use its cached multipart effect directly."
+  replacement: "HttpServerRequest.HttpServerRequest.use((request) => request.multipart)"
+  note: "Use the request service's `.use` helper to return its cached multipart effect."
 "@effect/platform/HttpServerRequest#schemaBodyJson":
   replacement: "HttpServerRequest.schemaBodyJson"
   note: "Retained with v4 Schema constraints and error types."

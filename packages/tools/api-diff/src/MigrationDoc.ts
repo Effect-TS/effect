@@ -21,6 +21,15 @@ const breakingClassifications = new Set<ChangeClassification>([
 
 const stableApiId = (id: string): string => id.replace(/#(?:type|value)$/, "")
 
+const displayApiId = (id: string): string => {
+  const separator = id.indexOf("#")
+  if (separator === -1) {
+    return id
+  }
+  const module = id.slice(0, separator).split("/").at(-1)!
+  return `${module}.${id.slice(separator + 1)}`
+}
+
 const compareStrings = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0
 
 const isBreakingChange = (change: ApiChange): boolean => {
@@ -89,7 +98,7 @@ const renderDetailedEntry = (
   entry: MigrationEntry,
   annotation: MigrationAnnotation | undefined
 ): ReadonlyArray<string> => [
-  `#### \`${entry.id}\``,
+  `#### \`${displayApiId(entry.id)}\``,
   "",
   ...(annotation === undefined
     ? ["TODO: needs guidance", ""]
@@ -107,8 +116,8 @@ const renderRename = (
 ): string => {
   const target = entry.rename?.headApiId === undefined ? "unknown" : stableApiId(entry.rename.headApiId)
   return annotation === undefined
-    ? `- \`${entry.id}\` -> \`${target}\`: TODO: needs guidance`
-    : `- \`${entry.id}\` -> \`${annotation.replacement}\`: ${annotation.note}`
+    ? `- \`${displayApiId(entry.id)}\` -> \`${displayApiId(target)}\`: TODO: needs guidance`
+    : `- \`${displayApiId(entry.id)}\` -> \`${annotation.replacement}\`: ${annotation.note}`
 }
 
 export const extractImportMapSections = (document: string): string => {
