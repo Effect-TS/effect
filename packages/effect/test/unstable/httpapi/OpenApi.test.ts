@@ -88,6 +88,13 @@ describe("OpenApi", () => {
     assert.notStrictEqual(first.paths["/resource"]!.get, second.paths["/resource"]!.get)
     assert.strictEqual(second.info.title, "Api")
     assert.isUndefined(second.paths["/resource"]!.get!.summary)
+
+    second.info.title = "mutated again"
+    second.paths["/resource"]!.get!.summary = "mutated again"
+    const third = OpenApi.fromApi(Api)
+
+    assert.strictEqual(third.info.title, "Api")
+    assert.isUndefined(third.paths["/resource"]!.get!.summary)
   })
 
   it("preserves every declared payload content type for normalized equivalents", () => {
