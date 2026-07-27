@@ -778,8 +778,8 @@ const FileSearchCall = Schema.Struct({
 const ImageGenerationCall = Schema.Struct({
   id: Schema.String,
   type: Schema.Literal("image_generation_call"),
-  result: Schema.optionalKey(Schema.String),
-  status: Schema.optionalKey(MessageStatus)
+  result: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  status: Schema.optionalKey(Schema.Literals(["in_progress", "completed", "generating", "failed"]))
 })
 
 const McpCall = Schema.Struct({
