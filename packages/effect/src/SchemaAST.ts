@@ -2522,13 +2522,13 @@ export function collectSentinels(ast: AST): Array<Sentinel> {
   }
 }
 
-type CandidateIndex = {
-  direct?: Map<LiteralValue | symbol, Array<AST>>
-  key?: PropertyKey
-  byType?: { [K in Type]?: Array<number> }
-  bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
-  otherwise?: { [K in Type]?: Array<number> }
-}
+type CandidateIndex =
+  | ((input: any) => ReadonlyArray<AST>)
+  | {
+    byType?: { [K in Type]?: Array<number> }
+    bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
+    otherwise?: { [K in Type]?: Array<number> }
+  }
 
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
 const emptyCandidates: ReadonlyArray<AST> = []
@@ -2538,14 +2538,13 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   if (idx) return idx
 
   idx = {}
-  let literalOnly = true
-  let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | undefined
+  let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | null | undefined
   for (let i = 0; i < types.length; i++) {
     const a = types[i]
     const encoded = toEncoded(a)
     if (isNever(encoded)) continue
 
-    if (literalOnly) {
+    if (literalCandidates !== null) {
       if (isLiteral(encoded) || isUniqueSymbol(encoded)) {
         literalCandidates ??= new Map()
         const literal = isLiteral(encoded) ? encoded.literal : encoded.symbol
@@ -2553,8 +2552,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
         if (!arr) literalCandidates.set(literal, arr = [])
         arr.push(a)
       } else {
-        literalOnly = false
-        literalCandidates = undefined
+        literalCandidates = null
       }
     }
 
@@ -2580,15 +2578,18 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     }
   }
 
-  if (literalOnly && literalCandidates) {
-    idx = { direct: literalCandidates }
+  if (literalCandidates) {
+    idx = (input) => literalCandidates.get(input) ?? emptyCandidates
   } else if (idx.bySentinel?.size === 1 && idx.otherwise === undefined) {
     for (const [key, byValue] of idx.bySentinel) {
-      const candidates = new Map<LiteralValue | symbol, Array<AST>>()
+      const candidates = byValue as unknown as Map<LiteralValue | symbol, Array<AST>>
       for (const [literal, indexes] of byValue) {
         candidates.set(literal, indexes.map((index) => types[index]))
       }
-      idx = { key, direct: candidates }
+      idx = (input) =>
+        input !== null && typeof input === "object" && Object.hasOwn(input, key)
+          ? candidates.get(input[key]) ?? emptyCandidates
+          : emptyCandidates
     }
   }
 
@@ -2615,15 +2616,7 @@ function filterLiterals(input: any) {
  */
 export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyArray<AST> {
   const idx = getIndex(types)
-  const direct = idx.direct
-  if (direct) {
-    const key = idx.key
-    if (key === undefined) return direct.get(input) ?? emptyCandidates
-    if (input !== null && (Array.isArray(input) || typeof input === "object")) {
-      return Object.hasOwn(input, key) ? direct.get(input[key]) ?? emptyCandidates : emptyCandidates
-    }
-    return emptyCandidates
-  }
+  if (typeof idx === "function") return idx(input)
 
   const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
 
