@@ -4,7 +4,7 @@
 
 Base: `v3` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `main` (`797111ae7630edde7f4f801d1e6a86fc32d15eed`)
+Head: `main` (`0a532e503f165fdea485a5343fc2f420917e8376`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -4937,11 +4937,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/McpServer`
 
-- `McpServer.layer` -> `McpServer.layer`: Moved to effect/unstable/ai/McpServer. It still runs over a caller-provided RpcServer.Protocol; v4 also accepts optional MCP extensions.
+- `McpServer.layer` -> `McpServer.layer`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it still runs over a caller-provided RpcServer.Protocol.
 
-- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; the old HttpLayerRouter-specific function was removed.
+- `McpServer.layerHttp` -> `McpServer.layerHttp`: Moved to effect/unstable/ai/McpServer and the unified HttpRouter. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
 
-- `McpServer.run` -> `McpServer.run`: Moved to effect/unstable/ai/McpServer. It remains the Effect-level runner over RpcServer.Protocol and now supports optional extensions and MCP session lifecycle handling.
+- `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
+
+- `McpServer.layerStdio` -> `McpServer.layerStdio`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai.
+
+- `McpServer.run` -> `McpServer.run`: Moved to effect/unstable/ai/McpServer. Pass a non-empty protocols array of adapters, such as [McpProtocol.v2025\_06\_18], imported with McpProtocol from effect/unstable/ai; it remains the Effect-level runner over RpcServer.Protocol.
 
 ### `@effect/ai/Model`
 
