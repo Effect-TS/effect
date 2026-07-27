@@ -358,7 +358,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ## Removed Modules
 
-- `@effect/ai` -> `effect/unstable/ai`: The @effect/ai package was merged into the effect package; import the effect/unstable/ai barrel or import specific modules directly (e.g. effect/unstable/ai/<Module>).
+- `@effect/ai` -> `effect/unstable/ai`: The @effect/ai package was merged into the effect package; import the effect/unstable/ai barrel or import specific modules directly (e.g. effect/unstable/ai/\<Module\>).
 - `@effect/ai-amazon-bedrock` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4 with no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
 - `@effect/ai-amazon-bedrock/AmazonBedrockClient`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-amazon-bedrock/AmazonBedrockConfig`: No single module replacement; follow the curated per-API guidance below.
@@ -394,7 +394,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/ai/Tool` -> `effect/unstable/ai/Tool`
 - `@effect/ai/Toolkit` -> `effect/unstable/ai/Toolkit`
 - `@effect/ai/index` -> `effect/unstable/ai`: The package barrel was removed; import the same namespaces from the effect/unstable/ai barrel or import specific modules directly.
-- `@effect/cli` -> `effect/unstable/cli`: The @effect/cli package was merged into the effect package; import the effect/unstable/cli barrel or import specific modules directly (e.g. effect/unstable/cli/<Module>).
+- `@effect/cli` -> `effect/unstable/cli`: The @effect/cli package was merged into the effect package; import the effect/unstable/cli barrel or import specific modules directly (e.g. effect/unstable/cli/\<Module\>).
 - `@effect/cli/Args` -> `effect/unstable/cli/Argument`
 - `@effect/cli/AutoCorrect`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/BuiltInOptions` -> `effect/unstable/cli/GlobalFlag`
@@ -412,7 +412,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/cli/Usage`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/ValidationError` -> `effect/unstable/cli/CliError`
 - `@effect/cli/index` -> `effect/unstable/cli`: The package barrel was removed; import the same namespaces from the effect/unstable/cli barrel or import specific modules directly.
-- `@effect/cluster` -> `effect/unstable/cluster`: The @effect/cluster package was merged into the effect package; import the effect/unstable/cluster barrel or import specific modules directly (e.g. effect/unstable/cluster/<Module>).
+- `@effect/cluster` -> `effect/unstable/cluster`: The @effect/cluster package was merged into the effect package; import the effect/unstable/cluster barrel or import specific modules directly (e.g. effect/unstable/cluster/\<Module\>).
 - `@effect/cluster/ClusterCron` -> `effect/unstable/cluster/ClusterCron`
 - `@effect/cluster/ClusterError` -> `effect/unstable/cluster/ClusterError`
 - `@effect/cluster/ClusterMetrics` -> `effect/unstable/cluster/ClusterMetrics`
@@ -452,7 +452,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/cluster/SqlRunnerStorage` -> `effect/unstable/cluster/SqlRunnerStorage`
 - `@effect/cluster/TestRunner` -> `effect/unstable/cluster/TestRunner`
 - `@effect/cluster/index` -> `effect/unstable/cluster`: The package barrel was removed; import the same namespaces from the effect/unstable/cluster barrel or import specific modules directly.
-- `@effect/experimental` -> `none`: The @effect/experimental package was folded into the effect package, split across effect/unstable/* (devtools, eventlog, persistence, reactivity, ...); follow the Import Map for each module.
+- `@effect/experimental` -> `none`: The @effect/experimental package was folded into the effect package, split across effect/unstable/\* (devtools, eventlog, persistence, reactivity, ...); follow the Import Map for each module.
 - `@effect/experimental/DevTools` -> `effect/unstable/devtools/DevTools`
 - `@effect/experimental/DevTools/Client` -> `effect/unstable/devtools/DevToolsClient`
 - `@effect/experimental/DevTools/Domain` -> `effect/unstable/devtools/DevToolsSchema`
@@ -481,7 +481,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/experimental/RequestResolver`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/experimental/Sse` -> `effect/unstable/encoding/Sse`
 - `@effect/experimental/VariantSchema` -> `effect/unstable/schema/VariantSchema`
-- `@effect/experimental/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect/unstable/* location per the Import Map.
+- `@effect/experimental/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect/unstable/\* location per the Import Map.
 - `@effect/opentelemetry/Logger`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/opentelemetry/Metrics`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/opentelemetry/Otlp` -> `effect/unstable/observability/Otlp`
@@ -583,7 +583,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/printer/Optimize`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/printer/PageWidth`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/printer/index` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
-- `@effect/rpc` -> `effect/unstable/rpc`: The @effect/rpc package was merged into the effect package; import the effect/unstable/rpc barrel or import specific modules directly (e.g. effect/unstable/rpc/<Module>).
+- `@effect/rpc` -> `effect/unstable/rpc`: The @effect/rpc package was merged into the effect package; import the effect/unstable/rpc barrel or import specific modules directly (e.g. effect/unstable/rpc/\<Module\>).
 - `@effect/rpc/Rpc` -> `effect/unstable/rpc/Rpc`
 - `@effect/rpc/RpcClient` -> `effect/unstable/rpc/RpcClient`
 - `@effect/rpc/RpcClientError` -> `effect/unstable/rpc/RpcClientError`
@@ -596,7 +596,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/rpc/RpcTest` -> `effect/unstable/rpc/RpcTest`
 - `@effect/rpc/RpcWorker` -> `effect/unstable/rpc/RpcWorker`
 - `@effect/rpc/index` -> `effect/unstable/rpc`: The package barrel was removed; import the same namespaces from the effect/unstable/rpc barrel or import specific modules directly.
-- `@effect/sql` -> `effect/unstable/sql`: The @effect/sql package was merged into the effect package; import the effect/unstable/sql barrel or import specific modules directly (e.g. effect/unstable/sql/<Module>).
+- `@effect/sql` -> `effect/unstable/sql`: The @effect/sql package was merged into the effect package; import the effect/unstable/sql barrel or import specific modules directly (e.g. effect/unstable/sql/\<Module\>).
 - `@effect/sql-clickhouse/index` -> `@effect/sql-clickhouse`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-clickhouse package root or import specific modules directly.
 - `@effect/sql-d1/index` -> `@effect/sql-d1`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-d1 package root or import specific modules directly.
 - `@effect/sql-drizzle/Mysql`: No single module replacement; follow the curated per-API guidance below.
@@ -673,7 +673,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/typeclass/data/Tuple`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/index` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite abstractions against the concrete v4 data type and its module functions.
 - `@effect/vitest/index`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/workflow` -> `effect/unstable/workflow`: The @effect/workflow package was merged into the effect package; import the effect/unstable/workflow barrel or import specific modules directly (e.g. effect/unstable/workflow/<Module>).
+- `@effect/workflow` -> `effect/unstable/workflow`: The @effect/workflow package was merged into the effect package; import the effect/unstable/workflow barrel or import specific modules directly (e.g. effect/unstable/workflow/\<Module\>).
 - `@effect/workflow/Activity` -> `effect/unstable/workflow/Activity`
 - `@effect/workflow/DurableClock` -> `effect/unstable/workflow/DurableClock`
 - `@effect/workflow/DurableDeferred` -> `effect/unstable/workflow/DurableDeferred`
@@ -5607,7 +5607,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `AiError.TypeId` -> `AiError.isAiError`: The AiError brand is private in v4. Use isAiError for runtime narrowing, or isAiErrorReason for a reason, instead of inspecting or constructing the type id.
 
-- `AiError.UnknownError` -> `AiError.make + AiError.UnknownError`: UnknownError is now a semantic reason rather than a top-level error. Put module and method on AiError.make and inspect reason._tag when handling the outer AiError.
+- `AiError.UnknownError` -> `AiError.make + AiError.UnknownError`: UnknownError is now a semantic reason rather than a top-level error. Put module and method on AiError.make and inspect reason.\_tag when handling the outer AiError.
 
 ### `@effect/ai/EmbeddingModel`
 
@@ -5723,19 +5723,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Tool.AnyTaggedRequestSchema` -> `none`: The TaggedRequest-specific Tool adapter contract was removed. Model the operation directly with Tool.make and ordinary v4 Schema.Constraint values.
 
-- `Tool.Destructive` -> `Tool.Destructive`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference<boolean> value rather than a Reference subclass; its default remains true.
+- `Tool.Destructive` -> `Tool.Destructive`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains true.
 
 - `Tool.Failure` -> `Tool.Failure`: Moved to effect/unstable/ai/Tool and remains the utility type that extracts a tool's decoded failure type.
 
 - `Tool.FromTaggedRequest` -> `Tool.Tool`: The dedicated derived alias was removed. Construct with Tool.make and let Tool.Tool infer the name, parameter, success, and failure schemas.
 
-- `Tool.Idempotent` -> `Tool.Idempotent`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference<boolean> value rather than a Reference subclass; its default remains false.
+- `Tool.Idempotent` -> `Tool.Idempotent`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains false.
 
-- `Tool.OpenWorld` -> `Tool.OpenWorld`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference<boolean> value rather than a Reference subclass; its default remains true.
+- `Tool.OpenWorld` -> `Tool.OpenWorld`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains true.
 
 - `Tool.ProviderDefinedTypeId` -> `Tool.ProviderDefinedTypeId`: Moved to effect/unstable/ai/Tool and remains public. Its literal changed, so use the export rather than retaining the old hard-coded string.
 
-- `Tool.Readonly` -> `Tool.Readonly`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference<boolean> value rather than a Reference subclass; its default remains false.
+- `Tool.Readonly` -> `Tool.Readonly`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains false.
 
 - `Tool.Requirements` -> `Tool.HandlerServices`: Renamed and refined. HandlerServices combines parameter-decoding, result-encoding, and request-level dependencies required by a tool handler.
 
@@ -6143,7 +6143,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.isOptions` -> `Param.isParam(value) && value.kind === Param.flagKind`: Flags now use the shared Param representation and an explicit kind discriminator.
 
-- `Options.keyValueMap` -> `Flag.keyValuePair`: Renamed and now returns Record<string, string> rather than HashMap.
+- `Options.keyValueMap` -> `Flag.keyValuePair`: Renamed and now returns Record\<string, string\> rather than HashMap.
 
 - `Options.map` -> `Flag.map`: Use the moved combinator.
 
@@ -6191,7 +6191,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Primitive.Primitive.ValueType` -> `P extends Primitive.Primitive<infer A> ? A : never`: The named helper was removed; infer the value with a local conditional type.
 
-- `Primitive.Primitive.Variance` -> `Primitive.Primitive.Variance`: The variance interface remains, but its brand key is internal; prefer Primitive<A> in user APIs.
+- `Primitive.Primitive.Variance` -> `Primitive.Primitive.Variance`: The variance interface remains, but its brand key is internal; prefer Primitive\<A\> in user APIs.
 
 - `Primitive.PrimitiveTypeId` -> `none`: The public Primitive type-id symbol was removed.
 
@@ -6219,9 +6219,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Prompt.Prompt` -> `Prompt.Prompt`: The model moved to effect/unstable/cli; quitting now fails with Terminal.QuitError.
 
-- `Prompt.Prompt.Variance` -> `Prompt.Prompt`: The named variance artifact was removed; use Prompt<Output>.
+- `Prompt.Prompt.Variance` -> `Prompt.Prompt`: The named variance artifact was removed; use Prompt\<Output\>.
 
-- `Prompt.Prompt.VarianceStruct` -> `Prompt.Prompt`: The named variance structure was removed; use Prompt<Output>.
+- `Prompt.Prompt.VarianceStruct` -> `Prompt.Prompt`: The named variance structure was removed; use Prompt\<Output\>.
 
 - `Prompt.PromptTypeId` -> `Prompt.isPrompt`: The public type-id symbol was removed; use the runtime guard.
 
@@ -6349,7 +6349,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/ClusterError`
 
-- `ClusterError.TypeId` -> `none`: The shared marker is private in v4. Use the exported tagged error classes, their _tag fields, or class-specific is guards.
+- `ClusterError.TypeId` -> `none`: The shared marker is private in v4. Use the exported tagged error classes, their \_tag fields, or class-specific is guards.
 
 ### `@effect/cluster/ClusterSchema`
 
@@ -6369,7 +6369,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/DeliverAt`
 
-- `DeliverAt.symbol` -> `effect/unstable/cluster/DeliverAt#symbol`: Moved into core Effect; the protocol key is now the string literal ~effect/cluster/DeliverAt rather than a global symbol.
+- `DeliverAt.symbol` -> `effect/unstable/cluster/DeliverAt#symbol`: Moved into core Effect; the protocol key is now the string literal \~effect/cluster/DeliverAt rather than a global symbol.
 
 ### `@effect/cluster/Entity`
 
@@ -6397,7 +6397,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/EntityResource`
 
-- `EntityResource.TypeId` -> `effect/unstable/cluster/EntityResource#TypeId`: Moved into core Effect; its literal changed to ~effect/cluster/EntityResource.
+- `EntityResource.TypeId` -> `effect/unstable/cluster/EntityResource#TypeId`: Moved into core Effect; its literal changed to \~effect/cluster/EntityResource.
 
 - `EntityResource.make` -> `effect/unstable/cluster/EntityResource#make`: Moved into core Effect. Acquisition is lazy by default in v4; set acquireEagerly: true to preserve v3 behavior.
 
@@ -6489,7 +6489,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/Snowflake`
 
-- `Snowflake.TypeId` -> `effect/unstable/cluster/Snowflake#TypeId`: Moved into core Effect; the public marker is now the string literal ~effect/cluster/Snowflake.
+- `Snowflake.TypeId` -> `effect/unstable/cluster/Snowflake#TypeId`: Moved into core Effect; the public marker is now the string literal \~effect/cluster/Snowflake.
 
 ### `@effect/cluster/SqlMessageStorage`
 
@@ -6981,7 +6981,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Clipboard.Clipboard` -> `Clipboard.Clipboard`: The service remains, now as a Context.Service with a private brand; normal access and provision are unchanged.
 
-- `Clipboard.ErrorTypeId` -> `none`: The error marker is private in v4; discriminate ClipboardError by its _tag instead.
+- `Clipboard.ErrorTypeId` -> `none`: The error marker is private in v4; discriminate ClipboardError by its \_tag instead.
 
 - `Clipboard.TypeId` -> `none`: The service brand is private in v4; use the Clipboard Context.Service value.
 
@@ -7127,7 +7127,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `NodeHttpClient.HttpAgentTypeId` -> `none`: The public marker was removed; the HttpAgent Context.Service class supplies service identity.
 
-- `NodeHttpClient.UndiciRequestOptions` -> `NodeHttpClient.UndiciOptions`: The required Context.Tag became a defaulted Context.Reference<Partial<Dispatcher.RequestOptions>>; override it with Effect.provideService.
+- `NodeHttpClient.UndiciRequestOptions` -> `NodeHttpClient.UndiciOptions`: The required Context.Tag became a defaulted Context.Reference\<Partial\<Dispatcher.RequestOptions\>\>; override it with Effect.provideService.
 
 - `NodeHttpClient.agentLayer` -> `NodeHttpClient.layerAgent`: Direct rename; it provides the default scoped Node HTTP and HTTPS agents.
 
@@ -7167,9 +7167,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Undici.Client.OptionsInterceptors` -> `undici.Dispatcher.DispatcherComposeInterceptor + dispatcher.compose`: Undici 8 removed option-level interceptor tuples; keep DispatcherComposeInterceptor functions and apply them after construction with dispatcher.compose(...).
 
-- `Undici.DiagnosticsChannel` -> `undici.DiagnosticsChannel`: Import this type-only namespace from undici; subscribe at runtime through node:diagnostics_channel using Undici's channel names.
+- `Undici.DiagnosticsChannel` -> `undici.DiagnosticsChannel`: Import this type-only namespace from undici; subscribe at runtime through node:diagnostics\_channel using Undici's channel names.
 
-- `Undici.DiagnosticsChannel.ClientConnectErrorMessage` -> `undici.DiagnosticsChannel.ClientConnectErrorMessage`: Import the same type-only namespace member from undici; runtime delivery uses node:diagnostics_channel.
+- `Undici.DiagnosticsChannel.ClientConnectErrorMessage` -> `undici.DiagnosticsChannel.ClientConnectErrorMessage`: Import the same type-only namespace member from undici; runtime delivery uses node:diagnostics\_channel.
 
 - `Undici.DiagnosticsChannel.Error` -> `Error`: Undici 8 removed this unknown alias; diagnostic error fields now use the built-in Error type.
 
@@ -7357,11 +7357,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.StreamOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`: Stream options are inline; bufferSize was removed while bytesToRead, chunkSize, and offset remain.
 
-- `FileSystem.WatchEventCreate` -> `FileSystem.WatchEvent.Create`: The constructor was removed; construct a tagged object with _tag: "Create" and path.
+- `FileSystem.WatchEventCreate` -> `FileSystem.WatchEvent.Create`: The constructor was removed; construct a tagged object with \_tag: "Create" and path.
 
-- `FileSystem.WatchEventRemove` -> `FileSystem.WatchEvent.Remove`: The constructor was removed; construct a tagged object with _tag: "Remove" and path.
+- `FileSystem.WatchEventRemove` -> `FileSystem.WatchEvent.Remove`: The constructor was removed; construct a tagged object with \_tag: "Remove" and path.
 
-- `FileSystem.WatchEventUpdate` -> `FileSystem.WatchEvent.Update`: The constructor was removed; construct a tagged object with _tag: "Update" and path.
+- `FileSystem.WatchEventUpdate` -> `FileSystem.WatchEvent.Update`: The constructor was removed; construct a tagged object with \_tag: "Update" and path.
 
 - `FileSystem.WatchOptions` -> `none`: FileSystem.watch now accepts only a path; the recursive watch option was removed.
 
@@ -7401,7 +7401,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpApiBuilder`
 
-- `HttpApiBuilder.Handlers` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers`: Handlers now tracks an endpoint map and handled identifiers. Prefer Handlers.FromGroup<Group>.
+- `HttpApiBuilder.Handlers` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers`: Handlers now tracks an endpoint map and handled identifiers. Prefer Handlers.FromGroup\<Group\>.
 
 - `HttpApiBuilder.Handlers.Error` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers.Error`: The helper remains and extracts the error channel of an effectful group-builder return.
 
@@ -7477,15 +7477,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiEndpoint.HttpApiEndpoint.PathEntries` -> `none`: Removed with tagged-template path extraction; declare endpoint params explicitly.
 
-- `HttpApiEndpoint.HttpApiEndpoint.PathParsed` -> `effect/unstable/httpapi/HttpApiEndpoint#Params`: Path data became params; Params extracts the schema, so use Params<Endpoint>["Type"] for decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.PathParsed` -> `effect/unstable/httpapi/HttpApiEndpoint#Params`: Path data became params; Params extracts the schema, so use Params\<Endpoint\>["Type"] for decoded data.
 
-- `HttpApiEndpoint.HttpApiEndpoint.Payload` -> `effect/unstable/httpapi/HttpApiEndpoint#Payload`: The name remains but now extracts the schema; use Payload<Endpoint>["Type"] for buffered decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.Payload` -> `effect/unstable/httpapi/HttpApiEndpoint#Payload`: The name remains but now extracts the schema; use Payload\<Endpoint\>["Type"] for buffered decoded data.
 
 - `HttpApiEndpoint.HttpApiEndpoint.Success` -> `effect/unstable/httpapi/HttpApiEndpoint#SuccessWithIdentifier`: Use SuccessWithIdentifier for the decoded, stream-aware result; v4 Success extracts the schema.
 
 - `HttpApiEndpoint.HttpApiEndpoint.SuccessWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#SuccessWithIdentifier`: Direct rename from name to identifier; the result remains decoded and stream-aware.
 
-- `HttpApiEndpoint.HttpApiEndpoint.UrlParams` -> `effect/unstable/httpapi/HttpApiEndpoint#Query`: urlParams became query; Query extracts the schema, so use Query<Endpoint>["Type"] for decoded data.
+- `HttpApiEndpoint.HttpApiEndpoint.UrlParams` -> `effect/unstable/httpapi/HttpApiEndpoint#Query`: urlParams became query; Query extracts the schema, so use Query\<Endpoint\>["Type"] for decoded data.
 
 - `HttpApiEndpoint.HttpApiEndpoint.ValidateHeaders` -> `effect/unstable/httpapi/HttpApiEndpoint#HeadersConstraint`: Validation moved from an intersection helper to a constructor generic constraint.
 
@@ -7555,7 +7555,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiGroup.HttpApiGroup.Provides` -> `effect/unstable/httpapi/HttpApiGroup#MiddlewareProvides`: Renamed; derives provided services from endpoint middleware.
 
-- `HttpApiGroup.HttpApiGroup.ToService` -> `effect/unstable/httpapi/HttpApiGroup#ToService`: Same role and now produces Service<ApiId, Identifier>.
+- `HttpApiGroup.HttpApiGroup.ToService` -> `effect/unstable/httpapi/HttpApiGroup#ToService`: Same role and now produces Service\<ApiId, Identifier\>.
 
 - `HttpApiGroup.HttpApiGroup.WithName` -> `effect/unstable/httpapi/HttpApiGroup#WithIdentifier`: Direct rename from name to identifier.
 
@@ -7637,7 +7637,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiSchema.EmptyErrorUnifyIgnore` -> `none`: Removed with EmptyError; do not recreate the old Unify marker.
 
-- `HttpApiSchema.Encoding` -> `effect/unstable/httpapi/HttpApiSchema#Encoding`: The name remains but is now a discriminated PayloadEncoding or ResponseEncoding union; prefer public as* combinators.
+- `HttpApiSchema.Encoding` -> `effect/unstable/httpapi/HttpApiSchema#Encoding`: The name remains but is now a discriminated PayloadEncoding or ResponseEncoding union; prefer public as\* combinators.
 
 - `HttpApiSchema.Multipart` -> `effect/unstable/httpapi/HttpApiSchema#asMultipart`: The type and constructor became a curried schema combinator: schema.pipe(asMultipart(options)).
 
@@ -7659,7 +7659,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiSchema.getEmptyDecodeable` -> `effect/unstable/httpapi/HttpApiSchema#isNoContent`: Use isNoContent only to test bodylessness; decodeability is structural and has no exact query replacement.
 
-- `HttpApiSchema.getEncoding` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding / getResponseEncoding`: Encoding lookup split by direction; application code should normally use public as* combinators.
+- `HttpApiSchema.getEncoding` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding / getResponseEncoding`: Encoding lookup split by direction; application code should normally use public as\* combinators.
 
 - `HttpApiSchema.getMultipart` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with buffered mode; multipart limits are on the encoding value.
 
@@ -7751,7 +7751,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpClient.currentTracerDisabledWhen` -> `HttpClient.TracerDisabledWhen`: Renamed and changed from FiberRef to Context.Reference.
 
-- `HttpClient.currentTracerPropagation` -> `HttpClient.TracerPropagationEnabled`: Renamed and changed from FiberRef to Context.Reference<boolean>.
+- `HttpClient.currentTracerPropagation` -> `HttpClient.TracerPropagationEnabled`: Renamed and changed from FiberRef to Context.Reference\<boolean\>.
 
 - `HttpClient.filterOrFail` -> `HttpClient.filterOrFail`: Retained; v4 also provides refinement overloads.
 
@@ -7797,7 +7797,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpClientRequest.setBody` -> `HttpClientRequest.setBody`: Retained and still synchronizes body content metadata into headers.
 
-- `HttpClientRequest.toUrl` -> `HttpClientRequest.toUrl`: Retained and still returns Option<URL>.
+- `HttpClientRequest.toUrl` -> `HttpClientRequest.toUrl`: Retained and still returns Option\<URL\>.
 
 ### `@effect/platform/HttpClientResponse`
 
@@ -7821,7 +7821,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpIncomingMessage`
 
-- `HttpIncomingMessage.MaxBodySize` -> `HttpIncomingMessage.MaxBodySize`: Changed from a Reference subclass holding Option<Size> to Context.Reference<Size | undefined>.
+- `HttpIncomingMessage.MaxBodySize` -> `HttpIncomingMessage.MaxBodySize`: Changed from a Reference subclass holding Option\<Size\> to Context.Reference\<Size | undefined\>.
 
 - `HttpIncomingMessage.TypeId` -> `typeof HttpIncomingMessage.TypeId`: TypeId remains public but is now a string constant; use typeof in type position.
 
@@ -7841,7 +7841,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpLayerRouter.RouteTypeId` -> `none`: Route nominal ids are internal in v4; construct routes with HttpRouter.route.
 
-- `HttpLayerRouter.RouterConfig` -> `HttpRouter.RouterConfig`: Now a Context.Reference containing Partial<FindMyWay.RouterConfig>.
+- `HttpLayerRouter.RouterConfig` -> `HttpRouter.RouterConfig`: Now a Context.Reference containing Partial\<FindMyWay.RouterConfig\>.
 
 - `HttpLayerRouter.TypeId` -> `none`: The router nominal service id is internal in v4; use HttpRouter.HttpRouter.
 
@@ -7949,7 +7949,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpRouter.concatAll` -> `Layer.mergeAll`: Routers are now route-registration layers; merge all layers.
 
-- `HttpRouter.currentRouterConfig` -> `HttpRouter.RouterConfig`: The FiberRef became a Context.Reference containing Partial<FindMyWay.RouterConfig>.
+- `HttpRouter.currentRouterConfig` -> `HttpRouter.RouterConfig`: The FiberRef became a Context.Reference containing Partial\<FindMyWay.RouterConfig\>.
 
 - `HttpRouter.empty` -> `Layer.empty`: There is no immutable empty router; use an empty registration layer.
 
@@ -9379,7 +9379,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/rpc/RpcClientError`
 
-- `RpcClientError.TypeId` -> `none`: The marker is private in v4; narrow with instanceof RpcClientError or inspect the public _tag.
+- `RpcClientError.TypeId` -> `none`: The marker is private in v4; narrow with instanceof RpcClientError or inspect the public \_tag.
 
 ### `@effect/rpc/RpcGroup`
 
@@ -9547,7 +9547,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/sql-kysely/Sqlite`
 
-- `Sqlite.make` -> `none`: The integration was removed; use native Kysely with SqliteDialect and wrap promises, or rewrite against a matching @effect/sql-sqlite-* client.
+- `Sqlite.make` -> `none`: The integration was removed; use native Kysely with SqliteDialect and wrap promises, or rewrite against a matching @effect/sql-sqlite-\* client.
 
 ### `@effect/sql-mssql/MssqlClient`
 
@@ -9677,7 +9677,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Statement.Statement` -> `effect/unstable/sql/Statement#Statement`: Moved; the nested Transformer type is now top-level and its callback receives Fiber.Fiber rather than FiberRefs.FiberRefs.
 
-- `Statement.currentTransformer` -> `effect/unstable/sql/Statement#CurrentTransformer`: Capitalized and changed from FiberRef<Option<Transformer>> to Context.Reference<Transformer | undefined>.
+- `Statement.currentTransformer` -> `effect/unstable/sql/Statement#CurrentTransformer`: Capitalized and changed from FiberRef\<Option\<Transformer\>\> to Context.Reference\<Transformer | undefined\>.
 
 - `Statement.custom` -> `effect/unstable/sql/Statement#custom`: Retained, but returns a Custom segment and uses paramA/paramB/paramC; wrap it with Statement.fragment when a Fragment is required.
 
@@ -10333,7 +10333,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.CoverageV8Options` -> `vitest/node#CoverageV8Options`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
 
-- `index.Custom` -> `vitest#RunnerTestCase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.Custom` -> `vitest#RunnerTestCase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
 - `index.CustomProviderOptions` -> `vitest/node#CustomProviderOptions`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
 
@@ -10351,7 +10351,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.ExtendedContext` -> `vitest#TestContext`: The separate context alias was removed. Vitest 4 uses TestContext, which includes the current task and lifecycle methods.
 
-- `index.File` -> `vitest#RunnerTestFile`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.File` -> `vitest#RunnerTestFile`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
 - `index.HappyDOMOptions` -> `NonNullable<import("vitest/node").EnvironmentOptions["happyDOM"]>`: Vitest 4 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type.
 
@@ -10393,7 +10393,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.RootAndTarget` -> `vitest/node#TypeCheckRootAndTarget`: Vitest 3 deprecated the root alias in favor of this renamed vitest/node type.
 
-- `index.RunnerCustomCase` -> `vitest#RunnerTestCase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.RunnerCustomCase` -> `vitest#RunnerTestCase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
 - `index.RuntimeContext` -> `@vitest/runner#RuntimeContext`: Custom-runner code can add an explicit @vitest/runner dependency; ordinary tests should avoid this internal state type.
 
@@ -10403,21 +10403,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.SerializableSpec` -> `vitest#SerializedTestSpecification`: Use the non-deprecated Vitest name; SerializableSpec was only an alias.
 
-- `index.Suite` -> `vitest#RunnerTestSuite`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.Suite` -> `vitest#RunnerTestSuite`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
 - `index.SuiteHooks` -> `@vitest/runner#SuiteHooks`: Custom-runner code can add an explicit @vitest/runner dependency; ordinary tests should use public hook functions.
 
-- `index.Task` -> `vitest#RunnerTask`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.Task` -> `vitest#RunnerTask`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
-- `index.TaskBase` -> `vitest#RunnerTaskBase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.TaskBase` -> `vitest#RunnerTaskBase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
 - `index.TaskContext` -> `vitest#TestContext`: The separate context alias was removed. Vitest 4 uses TestContext, which includes the current task and lifecycle methods.
 
-- `index.TaskResult` -> `vitest#RunnerTaskResult`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.TaskResult` -> `vitest#RunnerTaskResult`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
-- `index.TaskResultPack` -> `vitest#RunnerTaskResultPack`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.TaskResultPack` -> `vitest#RunnerTaskResultPack`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
-- `index.Test` -> `vitest#RunnerTestCase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner* type from vitest.
+- `index.Test` -> `vitest#RunnerTestCase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
 - `index.TransformModePatterns` -> `none`: This was removed with vite-node transform modes. Configure the Vite environment and its dependency optimizer instead.
 
@@ -10503,7 +10503,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/workflow/DurableQueue`
 
-- `DurableQueue.TypeId` -> `effect/unstable/workflow/DurableQueue#TypeId`: Moved into core Effect; the marker literal changed to ~effect/workflow/DurableQueue. Use typeof DurableQueue.TypeId in type position.
+- `DurableQueue.TypeId` -> `effect/unstable/workflow/DurableQueue#TypeId`: Moved into core Effect; the marker literal changed to \~effect/workflow/DurableQueue. Use typeof DurableQueue.TypeId in type position.
 
 - `DurableQueue.make` -> `effect/unstable/workflow/DurableQueue#make`: Moved into core Effect; queue persistence now comes from effect/unstable/persistence.
 
@@ -10513,13 +10513,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/workflow/Workflow`
 
-- `Workflow.Any` -> `effect/unstable/workflow/Workflow#Any`: Moved into core Effect. Workflow identity changed from name to _tag and definitions are now class-compatible constructors.
+- `Workflow.Any` -> `effect/unstable/workflow/Workflow#Any`: Moved into core Effect. Workflow identity changed from name to \_tag and definitions are now class-compatible constructors.
 
 - `Workflow.AnyTaggedRequestSchema` -> `none`: The TaggedRequest adapter constraint was removed. Define the workflow explicitly with Workflow.make and the request payload, success, error, and PrimaryKey schemas.
 
 - `Workflow.CaptureDefects` -> `effect/unstable/workflow/Workflow#CaptureDefects`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same true default.
 
-- `Workflow.Execution` -> `effect/unstable/workflow/Workflow#Execution`: Moved into core Effect; its workflow discriminator changed from name to _tag.
+- `Workflow.Execution` -> `effect/unstable/workflow/Workflow#Execution`: Moved into core Effect; its workflow discriminator changed from name to \_tag.
 
 - `Workflow.Requirements` -> `Workflow.RequirementsClient / Workflow.RequirementsHandler`: The schema Context union split by direction: client payload encoding and result decoding versus handler payload decoding and result encoding.
 
@@ -10533,7 +10533,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Workflow.TypeId` -> `none`: The workflow marker is private in v4. Use Workflow.Any or Workflow.Workflow constraints.
 
-- `Workflow.Workflow` -> `effect/unstable/workflow/Workflow#Workflow`: Name and name became Tag and _tag, schemas use directional services, definitions are constructable, and poll returns Option.
+- `Workflow.Workflow` -> `effect/unstable/workflow/Workflow#Workflow`: Name and name became Tag and \_tag, schemas use directional services, definitions are constructable, and poll returns Option.
 
 - `Workflow.Workflow.Error` -> `W["errorSchema"]["Type"]`: The namespace alias was removed. Extract the decoded error type from the public errorSchema property.
 
@@ -10541,9 +10541,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Workflow.Workflow.Success` -> `W["successSchema"]["Type"]`: The namespace alias was removed. Extract the decoded success type from the public successSchema property.
 
-- `Workflow.fromTaggedRequest` -> `none`: Removed. Expand to Workflow.make(schema._tag, { payload: schema, success: schema.success, error: schema.failure, idempotencyKey: PrimaryKey.value }).
+- `Workflow.fromTaggedRequest` -> `none`: Removed. Expand to Workflow.make(schema.\_tag, { payload: schema, success: schema.success, error: schema.failure, idempotencyKey: PrimaryKey.value }).
 
-- `Workflow.make` -> `effect/unstable/workflow/Workflow#make`: The signature changed from make({ name, ... }) to make(tag, { ... }); definitions expose _tag and are class-compatible constructors.
+- `Workflow.make` -> `effect/unstable/workflow/Workflow#make`: The signature changed from make({ name, ... }) to make(tag, { ... }); definitions expose \_tag and are class-compatible constructors.
 
 ### `@effect/workflow/WorkflowEngine`
 
@@ -10609,7 +10609,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Array.getRights` -> `Array.getSuccesses`: Either became Result; this extracts success payloads in input order.
 
-- `Array.init` -> `Array.init`: The API and Option<Array<A>> behavior remain unchanged.
+- `Array.init` -> `Array.init`: The API and Option\<Array\<A\>\> behavior remain unchanged.
 
 - `Array.isEmptyArray` -> `Array.isArrayEmpty`: Direct word-order rename; retains the mutable empty-array type guard.
 
@@ -10641,7 +10641,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Array.splitNonEmptyAt` -> `Array.splitAtNonEmpty`: Direct word-order rename; the left output remains guaranteed non-empty.
 
-- `Array.tail` -> `Array.tail`: The API and Option<Array<A>> behavior remain unchanged.
+- `Array.tail` -> `Array.tail`: The API and Option\<Array\<A\>\> behavior remain unchanged.
 
 - `Array.unsafeGet` -> `Array.getUnsafe`: Direct word-order rename; it still throws for an out-of-bounds index.
 
@@ -10729,7 +10729,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Cache.EntryStats` -> `none`: Per-entry loaded-time statistics were removed; record lookup timing in application instrumentation if needed.
 
-- `Cache.Lookup` -> `(key: Key) => Effect.Effect<A, E, R>`: The named alias was removed; use an inline lookup function type or Cache.Cache<Key, A, E, R>["lookup"].
+- `Cache.Lookup` -> `(key: Key) => Effect.Effect<A, E, R>`: The named alias was removed; use an inline lookup function type or Cache.Cache\<Key, A, E, R\>["lookup"].
 
 - `Cache.makeCacheStats` -> `none`: CacheStats and its constructor were removed; define an application metrics record if these counters are still required.
 
@@ -10737,7 +10737,7 @@ Schema.toArbitraryLazy(schema)
 
 ### `effect/Cause`
 
-- `Cause.Cause` -> `Cause.Cause`: The name remains, but v4 Cause<E> is a wrapper with readonly reasons: ReadonlyArray<Cause.Reason<E>>, not the v3 Empty/Fail/Die/Interrupt/Sequential/Parallel tree.
+- `Cause.Cause` -> `Cause.Cause`: The name remains, but v4 Cause\<E\> is a wrapper with readonly reasons: ReadonlyArray\<Cause.Reason\<E\>\>, not the v3 Empty/Fail/Die/Interrupt/Sequential/Parallel tree.
 
 - `Cause.Cause.Variance` -> `none`: The public variance helper was removed. Cause.Cause is directly branded by Cause.TypeId; application code should not reproduce the old variance member.
 
@@ -10747,13 +10747,13 @@ Schema.toArbitraryLazy(schema)
 
 - `Cause.Die` -> `Cause.Die`: The name remains, but Cause.Die is now a Reason stored in cause.reasons, not a Cause variant. Construct a standalone reason with Cause.makeDieReason or a cause with Cause.die.
 
-- `Cause.Empty` -> `Cause.empty`: The Empty subtype and _tag were removed. Empty is Cause.empty, represented by cause.reasons.length === 0.
+- `Cause.Empty` -> `Cause.empty`: The Empty subtype and \_tag were removed. Empty is Cause.empty, represented by cause.reasons.length === 0.
 
 - `Cause.ExceededCapacityException` -> `Cause.ExceededCapacityError`: Rename the class/type and update the discriminant from ExceededCapacityException to ExceededCapacityError.
 
 - `Cause.ExceededCapacityExceptionTypeId` -> `Cause.ExceededCapacityErrorTypeId`: Rename the brand; v4 exports a literal-string const, so use typeof Cause.ExceededCapacityErrorTypeId in type positions.
 
-- `Cause.Fail` -> `Cause.Fail`: The name remains, but Cause.Fail<E> is now a Reason stored in cause.reasons, not a Cause variant. Construct a standalone reason with Cause.makeFailReason or a cause with Cause.fail.
+- `Cause.Fail` -> `Cause.Fail`: The name remains, but Cause.Fail\<E\> is now a Reason stored in cause.reasons, not a Cause variant. Construct a standalone reason with Cause.makeFailReason or a cause with Cause.fail.
 
 - `Cause.IllegalArgumentException` -> `Cause.IllegalArgumentError`: Rename the class/type and update the discriminant from IllegalArgumentException to IllegalArgumentError.
 
@@ -10775,7 +10775,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Cause.Parallel` -> `none`: Parallel cause nodes were removed; v4 stores all reasons in one flat array and does not retain composition kind.
 
-- `Cause.PrettyError` -> `Error`: Cause.prettyErrors now returns Array<globalThis.Error>. The dedicated span field is gone; tracing information is incorporated from Reason annotations into rendered stacks.
+- `Cause.PrettyError` -> `Error`: Cause.prettyErrors now returns Array\<globalThis.Error\>. The dedicated span field is gone; tracing information is incorporated from Reason annotations into rendered stacks.
 
 - `Cause.RuntimeException` -> `Error`: The dedicated class was removed and v4 uses global Error for generic defects. Use Data.Error or Data.TaggedError instead when a yieldable typed error is required.
 
@@ -10801,11 +10801,11 @@ Schema.toArbitraryLazy(schema)
 
 - `Cause.defects` -> `self.reasons.filter(Cause.isDieReason).map((reason) => reason.defect)`: Collect defect values from the flat Reason array. The result is a standard array rather than v3 Chunk.
 
-- `Cause.dieOption` -> `Cause.findDefect`: Cause.findDefect returns Result.Result<unknown, Cause.Cause<E>>, not Option. Match the Result or convert it to Option when the old return shape is required.
+- `Cause.dieOption` -> `Cause.findDefect`: Cause.findDefect returns Result.Result\<unknown, Cause.Cause\<E\>\>, not Option. Match the Result or convert it to Option when the old return shape is required.
 
 - `Cause.failureOption` -> `Cause.findErrorOption`: Direct Option-based replacement for extracting the first typed Fail error value.
 
-- `Cause.failureOrCause` -> `Cause.findError`: Use the v4 Result-based split: success is the first E and failure is the original Cause<never> when no Fail reason exists.
+- `Cause.failureOrCause` -> `Cause.findError`: Use the v4 Result-based split: success is the first E and failure is the original Cause\<never\> when no Fail reason exists.
 
 - `Cause.failures` -> `self.reasons.filter(Cause.isFailReason).map((reason) => reason.error)`: Collect typed error values from the flat Reason array. The result is a standard array rather than v3 Chunk.
 
@@ -10815,11 +10815,11 @@ Schema.toArbitraryLazy(schema)
 
 - `Cause.flatMap` -> `Cause.fromReasons(self.reasons.flatMap((reason) => Cause.isFailReason(reason) ? f(reason.error).reasons : [reason]))`: No direct v4 export. Flat-map only Fail reasons into replacement causes, preserve Die/Interrupt reasons, and rebuild from the resulting Reason array.
 
-- `Cause.flatten` -> `Cause.fromReasons(self.reasons.flatMap((reason) => Cause.isFailReason(reason) ? reason.error.reasons : [reason]))`: No direct v4 export. For Cause<Cause<E>>, splice each Fail reason's nested cause.reasons and retain Die/Interrupt reasons.
+- `Cause.flatten` -> `Cause.fromReasons(self.reasons.flatMap((reason) => Cause.isFailReason(reason) ? reason.error.reasons : [reason]))`: No direct v4 export. For Cause\<Cause\<E\>\>, splice each Fail reason's nested cause.reasons and retain Die/Interrupt reasons.
 
 - `Cause.flipCauseOption` -> `Cause.fromReasons + Option`: Rewrite over reasons: drop Fail(None), replace Fail(Some(e)) with Cause.makeFailReason(e), retain Die/Interrupt, then return None only when a non-empty input loses every reason; preserve Some(Cause.empty) for an empty input.
 
-- `Cause.interruptOption` -> `Cause.findInterrupt`: The replacement returns Result.Result<Cause.Interrupt, Cause.Cause<E>> rather than Option<FiberId>; on success read reason.fiberId, now number | undefined.
+- `Cause.interruptOption` -> `Cause.findInterrupt`: The replacement returns Result.Result\<Cause.Interrupt, Cause.Cause\<E\>\> rather than Option\<FiberId\>; on success read reason.fiberId, now number | undefined.
 
 - `Cause.isDie` -> `Cause.hasDies`: Use the v4 cause-level predicate for the presence of at least one Die reason.
 
@@ -10873,7 +10873,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Cause.size` -> `self.reasons.length`: The v3 node count becomes the number of flat reasons in v4.
 
-- `Cause.squashWith` -> `Result.match(Cause.findError(self), { onSuccess: f, onFailure: Cause.squash })`: Apply f only to the first typed Fail error; if no Fail exists, squash the returned Cause<never>. This preserves v3's priority and avoids evaluating f for later Fail reasons.
+- `Cause.squashWith` -> `Result.match(Cause.findError(self), { onSuccess: f, onFailure: Cause.squash })`: Apply f only to the first typed Fail error; if no Fail exists, squash the returned Cause\<never\>. This preserves v3's priority and avoids evaluating f for later Fail reasons.
 
 - `Cause.stripFailures` -> `Cause.fromReasons(self.reasons.filter((reason) => !Cause.isFailReason(reason)))`: Remove Fail reasons and retain Die plus Interrupt reasons, then rebuild the cause. The v3 prose saying interrupts were removed did not match its implementation.
 
@@ -10881,13 +10881,13 @@ Schema.toArbitraryLazy(schema)
 
 ### `effect/Channel`
 
-- `Channel.Channel` -> `Channel.Channel`: Retained, but reorder type parameters from <OutElem, InElem, OutErr, InErr, OutDone, InDone, Env> to <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>. Convert Effect values explicitly with Channel.fromEffect or Channel.fromEffectDone.
+- `Channel.Channel` -> `Channel.Channel`: Retained, but reorder type parameters from \<OutElem, InElem, OutErr, InErr, OutDone, InDone, Env\> to \<OutElem, OutErr, OutDone, InElem, InErr, InDone, Env\>. Convert Effect values explicitly with Channel.fromEffect or Channel.fromEffectDone.
 
 - `Channel.ChannelException` -> `none`: Removed implementation artifact. Channel.pipeToOrFail now handles upstream failures without exposing the v3 exception wrapper.
 
 - `Channel.ChannelExceptionTypeId` -> `none`: Removed implementation artifact. Channel.pipeToOrFail now handles upstream failures without exposing the v3 exception wrapper.
 
-- `Channel.ChannelTypeId` -> `Channel.TypeId`: Renamed to TypeId; the brand is now the string literal ~effect/Channel. Prefer Channel.isChannel for runtime checks.
+- `Channel.ChannelTypeId` -> `Channel.TypeId`: Renamed to TypeId; the brand is now the string literal \~effect/Channel. Prefer Channel.isChannel for runtime checks.
 
 - `Channel.ChannelUnify` -> `Channel.ChannelUnify`: Retained; update inferred Channel arguments to the v4 generic order.
 
@@ -10895,9 +10895,9 @@ Schema.toArbitraryLazy(schema)
 
 - `Channel.acquireReleaseOut` -> `Channel.acquireRelease`: Renamed to acquireRelease. The v4 release action cannot add environment requirements, so capture or provide any services it needs.
 
-- `Channel.as` -> `Channel.mapDone`: Replace Channel.as(self, value) with Channel.mapDone(self, () => value).
+- `Channel.as` -> `Channel.mapDone`: Replace Channel.as(self, value) with Channel.mapDone(self, () =\> value).
 
-- `Channel.asVoid` -> `Channel.mapDone`: Replace Channel.asVoid(self) with Channel.mapDone(self, () => void 0).
+- `Channel.asVoid` -> `Channel.mapDone`: Replace Channel.asVoid(self) with Channel.mapDone(self, () =\> void 0).
 
 - `Channel.bufferChunk` -> `none`: The inferred Channel.fromChunk match is not equivalent. Rebuild the buffered upstream-pull transform with Channel.fromTransform and Channel.toTransform.
 
@@ -10919,11 +10919,11 @@ Schema.toArbitraryLazy(schema)
 
 - `Channel.concatOut` -> `Channel.flatten`: Use flatten for sequential emitted-channel flattening. V4 preserves the outer done value and discards child done values.
 
-- `Channel.context` -> `Channel.contextWith`: Use Channel.contextWith((context) => Channel.end(context)); the context was the v3 channel done value.
+- `Channel.context` -> `Channel.contextWith`: Use Channel.contextWith((context) =\> Channel.end(context)); the context was the v3 channel done value.
 
 - `Channel.contextWithChannel` -> `Channel.contextWith`: Renamed to contextWith.
 
-- `Channel.contextWithEffect` -> `Channel.contextWith`: Use Channel.contextWith((context) => Channel.fromEffectDone(f(context))) to preserve the effect result as the done value.
+- `Channel.contextWithEffect` -> `Channel.contextWith`: Use Channel.contextWith((context) =\> Channel.fromEffectDone(f(context))) to preserve the effect result as the done value.
 
 - `Channel.doneCollect` -> `none`: No exact channel combinator remains. Drive Channel.toPull, collect output elements, and handle Cause.Done to retain both outputs and the done value.
 
@@ -10941,13 +10941,13 @@ Schema.toArbitraryLazy(schema)
 
 - `Channel.fromOption` -> `Channel.fromEffectDone`: Use Channel.fromEffectDone(Effect.fromOption(option, Option.none)) to preserve the v3 Option.none error, or omit onNone for the v4 NoSuchElementError default.
 
-- `Channel.fromPubSubScoped` -> `Channel.fromPubSubTake`: Change the protocol to PubSub<Take<Elem, Err, Done>> and use Channel.flattenArray(Channel.fromPubSubTake(pubsub)). The v4 constructor owns the scoped subscription and returns a Channel directly.
+- `Channel.fromPubSubScoped` -> `Channel.fromPubSubTake`: Change the protocol to PubSub\<Take\<Elem, Err, Done\>\> and use Channel.flattenArray(Channel.fromPubSubTake(pubsub)). The v4 constructor owns the scoped subscription and returns a Channel directly.
 
 - `Channel.interruptWhenDeferred` -> `Channel.interruptWhen`: Use Channel.interruptWhen(self, Deferred.await(deferred)); the Deferred-specific overload was removed.
 
 - `Channel.isChannelException` -> `none`: Removed implementation artifact. Channel.pipeToOrFail now handles upstream failures without exposing the v3 exception wrapper.
 
-- `Channel.mapErrorCause` -> `Channel.catchCause`: Use Channel.catchCause(self, (cause) => Channel.failCause(f(cause))).
+- `Channel.mapErrorCause` -> `Channel.catchCause`: Use Channel.catchCause(self, (cause) =\> Channel.failCause(f(cause))).
 
 - `Channel.mapInputContext` -> `Channel.updateContext`: Renamed to updateContext for transforming the channel requirement Context.
 
@@ -10955,7 +10955,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Channel.mapInputErrorEffect` -> `none`: V4 removed upstream done/error effect mapping. Adapt Cause.Done or failure on the upstream Pull, then pass it through Channel.toTransform(self).
 
-- `Channel.mapInputIn` -> `Channel.mapInput`: Use Channel.mapInput(self, (value) => Effect.succeed(f(value))); v4 consolidated pure and effectful input mapping.
+- `Channel.mapInputIn` -> `Channel.mapInput`: Use Channel.mapInput(self, (value) =\> Effect.succeed(f(value))); v4 consolidated pure and effectful input mapping.
 
 - `Channel.mapInputInEffect` -> `Channel.mapInput`: Renamed to mapInput; the mapper remains effectful.
 
@@ -10979,9 +10979,9 @@ Schema.toArbitraryLazy(schema)
 
 - `Channel.mergeWith` -> `Channel.merge`: Use Channel.merge with haltStrategy left, right, both, or either for standard policies. Custom MergeDecision effects require a Pull-level redesign.
 
-- `Channel.orDieWith` -> `Channel.catch`: Use Channel.catch(self, (error) => Channel.die(f(error))); v4 Channel.orDie has no mapping callback.
+- `Channel.orDieWith` -> `Channel.catch`: Use Channel.catch(self, (error) =\> Channel.die(f(error))); v4 Channel.orDie has no mapping callback.
 
-- `Channel.orElse` -> `Channel.catch`: Use Channel.catch(self, () => that()) and keep the fallback lazy.
+- `Channel.orElse` -> `Channel.catch`: Use Channel.catch(self, () =\> that()) and keep the fallback lazy.
 
 - `Channel.provideLayer` -> `Channel.provide`: Both collapse into provide. V4 removes services supplied by the layer and retains remaining requirements; use options.local when a fresh layer instance is needed.
 
@@ -11001,7 +11001,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Channel.runScoped` -> `Channel.toPull`: No direct scoped runner remains. Use toPull in the caller scope and recover Cause.Done; use runDone or runDrain when an internally managed scope is acceptable.
 
-- `Channel.scopedWith` -> `Channel.unwrap`: Use Channel.unwrap(Effect.map(Effect.scope, (scope) => Channel.fromEffect(f(scope)))) so the effect uses the active channel scope.
+- `Channel.scopedWith` -> `Channel.unwrap`: Use Channel.unwrap(Effect.map(Effect.scope, (scope) =\> Channel.fromEffect(f(scope)))) so the effect uses the active channel scope.
 
 - `Channel.toPullIn` -> `Channel.toPullScoped`: Renamed to toPullScoped. The returned Pull emits elements directly and represents completion with Cause.Done instead of Either.
 
@@ -11051,7 +11051,7 @@ Schema.toArbitraryLazy(schema)
 
 ### `effect/Chunk`
 
-- `Chunk.Chunk` -> `Chunk.Chunk`: The model remains Chunk.Chunk<A>; continue using Chunk constructors rather than depending on its exposed representation fields.
+- `Chunk.Chunk` -> `Chunk.Chunk`: The model remains Chunk.Chunk\<A\>; continue using Chunk constructors rather than depending on its exposed representation fields.
 
 - `Chunk.TypeId` -> `none`: The v4 Chunk brand key is private; no public Chunk.TypeId type or value is exported.
 
@@ -11145,7 +11145,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Config.repeat` -> `Config.schema(Config.Array(valueSchema), path)`: Repeated values are represented by an array Schema in v4; Config.Array also accepts flat separated input.
 
-- `Config.secret` -> `Config.redacted`: Secret was removed in favor of Redacted; this constructor already returns Redacted<string>.
+- `Config.secret` -> `Config.redacted`: Secret was removed in favor of Redacted; this constructor already returns Redacted\<string\>.
 
 - `Config.string` -> `Config.string`: Unchanged.
 
@@ -11245,7 +11245,7 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigProvider.lowerCase` -> `ConfigProvider.mapInput((path) => path.map((part) => typeof part === "string" ? part.toLowerCase() : part))`: Transform string path segments explicitly with mapInput.
 
-- `ConfigProvider.make` -> `ConfigProvider.make`: The constructor now takes a path lookup returning Effect<Node | undefined, SourceError>, rather than a full Config loader and flattened provider.
+- `ConfigProvider.make` -> `ConfigProvider.make`: The constructor now takes a path lookup returning Effect\<Node | undefined, SourceError\>, rather than a full Config loader and flattened provider.
 
 - `ConfigProvider.makeFlat` -> `ConfigProvider.make`: The flat-provider constructor was removed; return Value, Record, or Array nodes from the unified path lookup.
 
@@ -11305,13 +11305,13 @@ Schema.toArbitraryLazy(schema)
 
 - `Context.ReadonlyTag` -> `Context.Key<Identifier, Shape>`: Use the renamed service-key interface.
 
-- `Context.Reference` -> `Context.Reference<Shape>`: Use Context.Reference<Shape>(id, { defaultValue }); the identifier type parameter was removed.
+- `Context.Reference` -> `Context.Reference<Shape>`: Use Context.Reference\<Shape\>(id, { defaultValue }); the identifier type parameter was removed.
 
 - `Context.ReferenceClass` -> `Context.Reference<Shape>(id, { defaultValue })`: Replace reference subclasses with a constant created by Context.Reference.
 
 - `Context.ReferenceTypeId` -> `none`: The marker is private in v4; use Context.isReference for runtime discrimination.
 
-- `Context.Tag` -> `Context.Service`: Use Context.Service<T>(id), or Context.Service<Self, Shape>()(id) for class syntax.
+- `Context.Tag` -> `Context.Service`: Use Context.Service\<T\>(id), or Context.Service\<Self, Shape\>()(id) for class syntax.
 
 - `Context.Tag.Service` -> `Context.Service.Shape<T>`: The namespace type helper was renamed with Tag.
 
@@ -11339,7 +11339,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Cron.Cron` -> `Cron.Cron`: The model remains; update for the v4 representation and private type id.
 
-- `Cron.ParseError` -> `Cron.CronParseError`: The parse error was renamed and Cron.parse now returns Result.Result<Cron, CronParseError>.
+- `Cron.ParseError` -> `Cron.CronParseError`: The parse error was renamed and Cron.parse now returns Result.Result\<Cron, CronParseError\>.
 
 - `Cron.ParseErrorTypeId` -> `none`: The cron parse-error type id is private in v4. Use Cron.isCronParseError to narrow unknown failures.
 
@@ -11543,7 +11543,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Duration.decode` -> `Duration.fromInputUnsafe`: The throwing DurationInput decoder was renamed.
 
-- `Duration.decodeUnknown` -> `Duration.fromInput`: The safe decoder was renamed and accepts Duration.Input, returning Option<Duration>.
+- `Duration.decodeUnknown` -> `Duration.fromInput`: The safe decoder was renamed and accepts Duration.Input, returning Option\<Duration\>.
 
 - `Duration.formatIso` -> `none`: ISO 8601 duration formatting was removed from the v4 Duration module. The v4 source and migration guides expose no direct replacement; retain a local formatter when this wire format is required.
 
@@ -12033,7 +12033,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Either.Do` -> `Result.Do`: The empty successful do-notation value moved to Result.
 
-- `Either.Either` -> `Result.Result`: Either<A, E> became Result<A, E>; Right and Left became Success and Failure.
+- `Either.Either` -> `Result.Result`: Either\<A, E\> became Result\<A, E\>; Right and Left became Success and Failure.
 
 - `Either.Either.Left` -> `Result.Result.Failure`: Use the Result namespace extractor for the failure variant.
 
@@ -12053,7 +12053,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Either.all` -> `Result.all`: Either moved to Result; collection behavior is retained with Failure and Success terminology.
 
-- `Either.ap` -> `Result.flatMap`: Use Result.flatMap(self, (f) => Result.map(that, f)); v4 has no Result.ap.
+- `Either.ap` -> `Result.flatMap`: Use Result.flatMap(self, (f) =\> Result.map(that, f)); v4 has no Result.ap.
 
 - `Either.bind` -> `Result.bind`: The do-notation combinator moved to Result.
 
@@ -12099,7 +12099,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Either.try` -> `Result.try`: The synchronous throwable constructor moved to Result.
 
-- `Either.void` -> `Result.void`: Use the prebuilt successful Result<void>.
+- `Either.void` -> `Result.void`: Use the prebuilt successful Result\<void\>.
 
 ### `effect/Encoding`
 
@@ -12137,13 +12137,13 @@ Schema.toArbitraryLazy(schema)
 
 - `Equivalence.combineMany` -> `Equivalence.combine(self, Equivalence.combineAll(collection))`: Compose combine with combineAll; the dedicated dual combineMany helper was removed.
 
-- `Equivalence.number` -> `Equivalence.Number`: Capitalized instance name. V4 considers NaN equivalent to NaN; use Equivalence.strictEqual<number>() for exact v3 strict-equality behavior.
+- `Equivalence.number` -> `Equivalence.Number`: Capitalized instance name. V4 considers NaN equivalent to NaN; use Equivalence.strictEqual\<number\>() for exact v3 strict-equality behavior.
 
 - `Equivalence.product` -> `Equivalence.Tuple([self, that])`: Replace the dual two-comparator helper with the single-array Tuple constructor.
 
 - `Equivalence.productMany` -> `Equivalence.Tuple([self, ...collection])`: Materialize the comparator iterable in one Tuple call; v4 rejects unequal input lengths instead of using v3 prefix semantics.
 
-- `Equivalence.strict` -> `Equivalence.strictEqual`: Renamed strict-equality constructor; call as Equivalence.strictEqual<A>().
+- `Equivalence.strict` -> `Equivalence.strictEqual`: Renamed strict-equality constructor; call as Equivalence.strictEqual\<A\>().
 
 - `Equivalence.string` -> `Equivalence.String`: Capitalized instance name; case-sensitive strict equality is unchanged.
 
@@ -12187,25 +12187,25 @@ Schema.toArbitraryLazy(schema)
 
 ### `effect/Exit`
 
-- `Exit.Exit` -> `Exit.Exit`: Still exported as Exit.Exit<A, E> = Exit.Success<A, E> | Exit.Failure<A, E>; v4 variants share Exit.Exit.Proto and remain Effect values.
+- `Exit.Exit` -> `Exit.Exit`: Still exported as Exit.Exit\<A, E\> = Exit.Success\<A, E\> | Exit.Failure\<A, E\>; v4 variants share Exit.Exit.Proto and remain Effect values.
 
 - `Exit.ExitUnify` -> `none`: Removed type-level implementation hook; delete direct references. V4 Success and Failure inherit Exit.Exit.Proto, but no exported Exit-specific Unify interface replaces this API.
 
 - `Exit.ExitUnifyIgnore` -> `none`: Removed type-level implementation hook; delete direct references. V4 Success and Failure inherit Exit.Exit.Proto, but no exported Exit-specific Unify interface replaces this API.
 
-- `Exit.Failure` -> `Exit.Failure`: Still exported with _tag Failure and cause; it now extends Exit.Exit.Proto and no longer exposes the v3 _op, effect_instruction_i0, or Exit-specific Unify fields.
+- `Exit.Failure` -> `Exit.Failure`: Still exported with \_tag Failure and cause; it now extends Exit.Exit.Proto and no longer exposes the v3 \_op, effect\_instruction\_i0, or Exit-specific Unify fields.
 
-- `Exit.Success` -> `Exit.Success`: Still exported with _tag Success and value; it now extends Exit.Exit.Proto, defaults E to never, and no longer exposes the v3 _op, effect_instruction_i0, or Exit-specific Unify fields.
+- `Exit.Success` -> `Exit.Success`: Still exported with \_tag Success and value; it now extends Exit.Exit.Proto, defaults E to never, and no longer exposes the v3 \_op, effect\_instruction\_i0, or Exit-specific Unify fields.
 
 - `Exit.all` -> `Exit.asVoidAll + Exit.isSuccess + Option.some / Option.none`: No direct value-collecting v4 equivalent. Materialize the iterable once; return Option.none for empty input, use Exit.asVoidAll to combine every failure, and otherwise collect each Success.value into Exit.succeed and wrap it in Option.some. The parallel option is gone because v4 Cause flattens sequential and parallel composition.
 
-- `Exit.as` -> `Exit.map`: Replace with Exit.map(self, () => value); this preserves a failed Exit and returns Exit data rather than a general Effect.
+- `Exit.as` -> `Exit.map`: Replace with Exit.map(self, () =\> value); this preserves a failed Exit and returns Exit data rather than a general Effect.
 
 - `Exit.causeOption` -> `Exit.getCause`: Direct rename; still returns Option.some(cause) for Failure and Option.none for Success.
 
-- `Exit.exists` -> `Exit.isSuccess`: No direct v4 combinator; use Exit.isSuccess(self) && predicate(self.value). If callers rely on the refinement overload, retain an explicitly typed wrapper returning self is Exit.Exit<B>.
+- `Exit.exists` -> `Exit.isSuccess`: No direct v4 combinator; use Exit.isSuccess(self) && predicate(self.value). If callers rely on the refinement overload, retain an explicitly typed wrapper returning self is Exit.Exit\<B\>.
 
-- `Exit.flatMapEffect` -> `Effect.matchCauseEffectEager`: Use Effect.matchCauseEffectEager(self, { onFailure: cause => Effect.succeed(Exit.failCause(cause)), onSuccess: f }). The explicit failure branch is required because v3 preserved an input Failure as a successful outer Effect; plain Effect.flatMap would instead fail the outer Effect.
+- `Exit.flatMapEffect` -> `Effect.matchCauseEffectEager`: Use Effect.matchCauseEffectEager(self, { onFailure: cause =\> Effect.succeed(Exit.failCause(cause)), onSuccess: f }). The explicit failure branch is required because v3 preserved an input Failure as a successful outer Effect; plain Effect.flatMap would instead fail the outer Effect.
 
 - `Exit.flatten` -> `Exit.match`: No direct v4 Exit flatten; use Exit.match(self, { onFailure: Exit.failCause, onSuccess: identity }) to return the inner Exit on success and preserve an outer failure as Exit data.
 
@@ -12213,13 +12213,13 @@ Schema.toArbitraryLazy(schema)
 
 - `Exit.fromEither` -> `Result.match + Exit.fail / Exit.succeed`: V3 Either is v4 Result. Convert with Result.match(result, { onFailure: Exit.fail, onSuccess: Exit.succeed }); there is no v4 Exit.fromResult constructor.
 
-- `Exit.fromOption` -> `Option.match + Exit.fail / Exit.succeed`: Use Option.match(option, { onNone: () => Exit.fail(undefined), onSome: Exit.succeed }) to preserve v3's Exit<A, void> contract. Exit.findErrorOption is an accessor and is not a replacement.
+- `Exit.fromOption` -> `Option.match + Exit.fail / Exit.succeed`: Use Option.match(option, { onNone: () =\> Exit.fail(undefined), onSome: Exit.succeed }) to preserve v3's Exit\<A, void\> contract. Exit.findErrorOption is an accessor and is not a replacement.
 
 - `Exit.getOrElse` -> `Exit.match`: Use Exit.match(self, { onFailure: orElse, onSuccess: identity }); onFailure still receives the full Cause.
 
 - `Exit.isInterrupted` -> `Exit.hasInterrupts`: Direct semantic rename; true for a Failure whose Cause contains at least one Interrupt reason, false for Success.
 
-- `Exit.mapErrorCause` -> `Exit.match + Exit.failCause / Exit.succeed`: No direct v4 combinator. Use Exit.match(self, { onFailure: cause => Exit.failCause(f(cause)), onSuccess: Exit.succeed }); f now receives the flattened v4 Cause representation. Cause.map is only equivalent when f merely maps typed errors.
+- `Exit.mapErrorCause` -> `Exit.match + Exit.failCause / Exit.succeed`: No direct v4 combinator. Use Exit.match(self, { onFailure: cause =\> Exit.failCause(f(cause)), onSuccess: Exit.succeed }); f now receives the flattened v4 Cause representation. Cause.map is only equivalent when f merely maps typed errors.
 
 - `Exit.matchEffect` -> `Effect.matchCauseEffectEager`: Direct cause-aware migration because Exit is an Effect in v4. Use the same onFailure/onSuccess handlers; the Eager variant preserves v3's immediate branch selection for resolved Exit values.
 
@@ -12501,7 +12501,7 @@ FastCheck.uuid({ version: 4 })
 
 - `Fiber.unsafeRoots` -> `none`: The runtime no longer exposes a global root-fiber registry; track application fibers explicitly.
 
-- `Fiber.void` -> `Effect.runFork(Effect.void)`: Synthetic Fiber constants were removed; run Effect.void when a completed Fiber<void> is required.
+- `Fiber.void` -> `Effect.runFork(Effect.void)`: Synthetic Fiber constants were removed; run Effect.void when a completed Fiber\<void\> is required.
 
 - `Fiber.zip` -> `Effect.runFork(Effect.zip(Fiber.join(self), Fiber.join(that)))`: Compose joined Effects and fork the result only if another Fiber handle is required.
 
@@ -12517,7 +12517,7 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberHandle.TypeId` -> `FiberHandle.isFiberHandle`: The type-id symbol is private in v4; use the public guard.
 
-- `FiberHandle.get` -> `FiberHandle.get`: Retained, but v4 returns Effect<Option<Fiber>> instead of failing with NoSuchElementException when empty.
+- `FiberHandle.get` -> `FiberHandle.get`: Retained, but v4 returns Effect\<Option\<Fiber\>\> instead of failing with NoSuchElementException when empty.
 
 - `FiberHandle.unsafeGet` -> `FiberHandle.getUnsafe`: Renamed to put the Unsafe suffix last.
 
@@ -12657,7 +12657,7 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRef.set` -> `Effect.provideService`: Context.Reference values are overridden for an Effect scope instead of mutating the current fiber.
 
-- `FiberRef.unhandledErrorLogLevel` -> `References.UnhandledLogLevel`: Renamed and represented as a Context.Reference using Severity | undefined instead of Option<LogLevel>.
+- `FiberRef.unhandledErrorLogLevel` -> `References.UnhandledLogLevel`: Renamed and represented as a Context.Reference using Severity | undefined instead of Option\<LogLevel\>.
 
 - `FiberRef.unsafeMake` -> `Context.Reference`: Context.Reference construction is synchronous; provide a stable identifier and defaultValue.
 
@@ -12804,11 +12804,11 @@ stream.pipe(
 
 ```
 
-- `GroupBy.filter` -> `Stream.filter`: Filter the groups by key with an ordinary Stream.filter on the pairs: Stream.filter(([key]) => predicate(key)).
+- `GroupBy.filter` -> `Stream.filter`: Filter the groups by key with an ordinary Stream.filter on the pairs: Stream.filter(([key]) =\> predicate(key)).
 
 - `GroupBy.first` -> `Stream.take`: Keep only the first n groups with an ordinary Stream.take(n) on the [key, stream] pair stream.
 
-- `GroupBy.make` -> `none`: No wrapper to construct in v4: a grouped stream is just any Stream<readonly [K, Stream<V>]>, so build the pair stream directly (Stream.groupBy/groupByKey produce it); the v3 shape Stream<[K, Dequeue<Take<V, E>>]> is gone along with the queue-of-Take encoding.
+- `GroupBy.make` -> `none`: No wrapper to construct in v4: a grouped stream is just any Stream\<readonly [K, Stream\<V\>]\>, so build the pair stream directly (Stream.groupBy/groupByKey produce it); the v3 shape Stream\<[K, Dequeue\<Take\<V, E\>\>]\> is gone along with the queue-of-Take encoding.
 
 ### `effect/Hash`
 
@@ -12818,9 +12818,9 @@ stream.pipe(
 
 - `HashMap.HashMap` -> `HashMap.HashMap`: The immutable two-parameter model remains; use public operations rather than depending on its representation.
 
-- `HashMap.TypeId` -> `HashMap.isHashMap`: The brand is private; use HashMap.isHashMap for runtime refinement and HashMap.HashMap<K, V> in type positions.
+- `HashMap.TypeId` -> `HashMap.isHashMap`: The brand is private; use HashMap.isHashMap for runtime refinement and HashMap.HashMap\<K, V\> in type positions.
 
-- `HashMap.countBy` -> `HashMap.reduce`: Count matches with HashMap.reduce(self, 0, (count, value, key) => count + (predicate(value, key) ? 1 : 0)).
+- `HashMap.countBy` -> `HashMap.reduce`: Count matches with HashMap.reduce(self, 0, (count, value, key) =\> count + (predicate(value, key) ? 1 : 0)).
 
 - `HashMap.keySet` -> `HashSet.fromIterable + HashMap.keys`: Construct the set with HashSet.fromIterable(HashMap.keys(self)); no direct keySet helper remains.
 
@@ -12830,7 +12830,7 @@ stream.pipe(
 
 - `HashSet.HashSet` -> `HashSet.HashSet`: The immutable model remains, but the brand is private and transient mutation helpers were removed.
 
-- `HashSet.TypeId` -> `HashSet.isHashSet`: The brand is private; use HashSet.isHashSet for runtime refinement and HashSet.HashSet<A> in type positions.
+- `HashSet.TypeId` -> `HashSet.isHashSet`: The brand is private; use HashSet.isHashSet for runtime refinement and HashSet.HashSet\<A\> in type positions.
 
 - `HashSet.beginMutation` -> `none`: Transient mutation mode was removed; reassign immutable add/remove results or build a batch with HashSet.fromIterable.
 
@@ -12948,7 +12948,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `KeyedPool.invalidate` -> `RcMap.get + Pool.invalidate`: KeyedPool was removed; retain the key, get its Pool from RcMap, and call Pool.invalidate for the item.
 
-- `KeyedPool.make` -> `RcMap.make + Pool.make`: Create an RcMap with lookup key => Pool.make({ acquire: acquire(key), size }); RcMap.get followed by Pool.get replaces keyed borrowing.
+- `KeyedPool.make` -> `RcMap.make + Pool.make`: Create an RcMap with lookup key =\> Pool.make({ acquire: acquire(key), size }); RcMap.get followed by Pool.get replaces keyed borrowing.
 
 - `KeyedPool.makeWith` -> `RcMap.make + Pool.make`: Create an RcMap whose lookup uses Pool.make with size: size(key).
 
@@ -12960,7 +12960,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Layer.CurrentMemoMap` -> `Layer.CurrentMemoMap`: The service remains but is now a Context.Service class with forkOrCreate.
 
-- `Layer.Layer` -> `Layer.Layer`: The type remains with Layer<ROut, E, RIn> parameter order.
+- `Layer.Layer` -> `Layer.Layer`: The type remains with Layer\<ROut, E, RIn\> parameter order.
 
 - `Layer.Layer.Context` -> `Layer.Services<T>`: The input-services extractor moved to the module level and was renamed.
 
@@ -13066,13 +13066,13 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Layer.setTracerTiming` -> `Layer.succeed(References.TracerTimingEnabled, enabled)`: Provide the renamed v4 Reference instead of setting a FiberRef.
 
-- `Layer.setUnhandledErrorLogLevel` -> `Layer.succeed(References.UnhandledLogLevel, severityOrUndefined)`: Provide LogLevel.Severity or undefined instead of Option<LogLevel>.
+- `Layer.setUnhandledErrorLogLevel` -> `Layer.succeed(References.UnhandledLogLevel, severityOrUndefined)`: Provide LogLevel.Severity or undefined instead of Option\<LogLevel\>.
 
 - `Layer.setVersionMismatchErrorLogLevel` -> `none`: No version-mismatch log-level Reference or public replacement exists.
 
 - `Layer.tapErrorCause` -> `Layer.tapCause`: The cause observer was renamed.
 
-- `Layer.toRuntime` -> `Layer.build(self), then Effect.runForkWith, Effect.runPromiseWith, or Effect.runSyncWith`: Runtime<R> was removed; build a Context, or use ManagedRuntime.make for a reusable managed runner.
+- `Layer.toRuntime` -> `Layer.build(self), then Effect.runForkWith, Effect.runPromiseWith, or Effect.runSyncWith`: Runtime\<R\> was removed; build a Context, or use ManagedRuntime.make for a reusable managed runner.
 
 - `Layer.toRuntimeWithMemoMap` -> `Layer.buildWithMemoMap(self, memoMap, scope), then Effect.run*With(context)`: Explicit memo-map building now yields a Context rather than a Runtime.
 
@@ -13100,7 +13100,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `List.Cons` -> `Array.NonEmptyReadonlyArray`: Use the immutable non-empty array type; constructors may return the assignable mutable NonEmptyArray subtype.
 
-- `List.List` -> `ReadonlyArray`: Replace the persistent linked-list representation with ReadonlyArray<A>.
+- `List.List` -> `ReadonlyArray`: Replace the persistent linked-list representation with ReadonlyArray\<A\>.
 
 - `List.List.AndNonEmpty` -> `Array.ReadonlyArray.AndNonEmpty`: Use the corresponding readonly-array utility type.
 
@@ -13192,7 +13192,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `LogLevel.Literal` -> `LogLevel.LogLevel`: This is the all-level replacement after renaming Warning to Warn. LogLevel.Severity is narrower because it excludes All and None.
 
-- `LogLevel.LogLevel` -> `LogLevel.LogLevel`: The name remains, but the representation is a string union and object fields such as _tag, label, syslog, and ordinal are gone. Use toUpperCase() for labels and LogLevel.getOrdinal for ordering.
+- `LogLevel.LogLevel` -> `LogLevel.LogLevel`: The name remains, but the representation is a string union and object fields such as \_tag, label, syslog, and ordinal are gone. Use toUpperCase() for labels and LogLevel.getOrdinal for ordering.
 
 - `LogLevel.None` -> `"None"`: V4 levels are string literals rather than branded objects; use the literal as both value and singleton type.
 
@@ -13226,7 +13226,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Logger.Logger` -> `Logger.Logger`: The name remains. Logger.Options now has fiber instead of fiberId; read the id from fiber.id and annotations or spans through fiber references.
 
-- `Logger.Logger.Variance` -> `none`: Public variance metadata was removed; use Logger.Logger<Message, Output> directly.
+- `Logger.Logger.Variance` -> `none`: Public variance metadata was removed; use Logger.Logger\<Message, Output\> directly.
 
 - `Logger.LoggerTypeId` -> `Logger.isLogger`: The brand is private in v4; use the public runtime guard.
 
@@ -13332,7 +13332,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 ### `effect/Match`
 
-- `Match.MatcherTypeId` -> `none`: The public matcher brand was internalized. Obtain matchers from Match.type or Match.value and use their public _tag when discrimination is required.
+- `Match.MatcherTypeId` -> `none`: The public matcher brand was internalized. Obtain matchers from Match.type or Match.value and use their public \_tag when discrimination is required.
 
 - `Match.SafeRefinementId` -> `none`: The public safe-refinement brand was internalized. Use Predicate.Refinement, Predicate.Predicate, or a built-in Match refinement instead of constructing the brand.
 
@@ -13426,21 +13426,21 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Metric.Metric` -> `Metric.Metric<Input, State>`: Drop the v3 key-type parameter. Metrics are no longer callable; use Effect.trackSuccesses for instrumentation and Metric.update or Metric.value for operations.
 
-- `Metric.Metric.Variance` -> `none`: The public variance interface was removed; Metric<Input, State> carries variance markers directly.
+- `Metric.Metric.Variance` -> `none`: The public variance interface was removed; Metric\<Input, State\> carries variance markers directly.
 
 - `Metric.MetricApply` -> `none`: Removed with Metric.make; v4 has no public low-level custom-metric constructor type.
 
 - `Metric.MetricTypeId` -> `Metric.isMetric`: The public unique-symbol type id was removed; use Metric.isMetric for runtime refinement.
 
-- `Metric.fiberActive` -> `Metric.enableRuntimeMetrics + Metric.snapshot`: The concrete metric is no longer exported. Enable runtime metrics, then read the Gauge snapshot whose id is child_fibers_active.
+- `Metric.fiberActive` -> `Metric.enableRuntimeMetrics + Metric.snapshot`: The concrete metric is no longer exported. Enable runtime metrics, then read the Gauge snapshot whose id is child\_fibers\_active.
 
-- `Metric.fiberFailures` -> `Metric.enableRuntimeMetrics + Metric.snapshot`: The concrete metric is no longer exported. Enable runtime metrics, then read the Counter snapshot whose id is child_fiber_failures.
+- `Metric.fiberFailures` -> `Metric.enableRuntimeMetrics + Metric.snapshot`: The concrete metric is no longer exported. Enable runtime metrics, then read the Counter snapshot whose id is child\_fiber\_failures.
 
 - `Metric.fiberLifetimes` -> `none`: The built-in lifetime histogram was removed. Define a Metric.timer and instrument selected effects with Effect.trackDuration when lifetime data is required.
 
-- `Metric.fiberStarted` -> `Metric.enableRuntimeMetrics + Metric.snapshot`: The concrete metric is no longer exported. Enable runtime metrics, then read the Counter snapshot whose id is child_fibers_started.
+- `Metric.fiberStarted` -> `Metric.enableRuntimeMetrics + Metric.snapshot`: The concrete metric is no longer exported. Enable runtime metrics, then read the Counter snapshot whose id is child\_fibers\_started.
 
-- `Metric.fiberSuccesses` -> `Metric.enableRuntimeMetrics + Metric.snapshot`: The concrete metric is no longer exported. Enable runtime metrics, then read the Counter snapshot whose id is child_fiber_successes.
+- `Metric.fiberSuccesses` -> `Metric.enableRuntimeMetrics + Metric.snapshot`: The concrete metric is no longer exported. Enable runtime metrics, then read the Counter snapshot whose id is child\_fiber\_successes.
 
 - `Metric.fromMetricKey` -> `Metric.counter / Metric.gauge / Metric.frequency / Metric.histogram / Metric.summary`: MetricKey and MetricKeyType were removed. Construct the required primitive metric directly.
 
@@ -13472,7 +13472,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Metric.timerWithBoundaries` -> `Metric.timer`: Use Metric.timer(name, { boundaries, description }); boundaries moved into the options object.
 
-- `Metric.trackAll` -> `Effect.track`: Moved to Effect; use effect.pipe(Effect.track(metric, () => input)).
+- `Metric.trackAll` -> `Effect.track`: Moved to Effect; use effect.pipe(Effect.track(metric, () =\> input)).
 
 - `Metric.trackDefect` -> `Effect.trackDefects`: Moved to Effect; use effect.pipe(Effect.trackDefects(metric)).
 
@@ -13488,7 +13488,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Metric.trackSuccessWith` -> `Effect.trackSuccesses`: Moved to Effect; pass the mapper as the optional second argument.
 
-- `Metric.unsafeSnapshot` -> `Metric.snapshotUnsafe`: Renamed and now requires an explicit Context.Context<never>. It returns structural snapshots rather than MetricPair values.
+- `Metric.unsafeSnapshot` -> `Metric.snapshotUnsafe`: Renamed and now requires an explicit Context.Context\<never\>. It returns structural snapshots rather than MetricPair values.
 
 - `Metric.withNow` -> `Metric.summary`: Metric.summary reads the current Clock automatically; use Metric.summaryWithTimestamp when timestamps are supplied explicitly. The generic timestamp-injecting combinator was removed.
 
@@ -13500,17 +13500,17 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `MetricBoundaries.MetricBoundariesTypeId` -> `none`: Boundaries are unbranded arrays, so the guard and public type-id symbol have no replacement.
 
-- `MetricBoundaries.exponential` -> `Metric.exponentialBoundaries`: Moved into effect/Metric and now returns ReadonlyArray<number>. V4 also filters non-positive boundaries.
+- `MetricBoundaries.exponential` -> `Metric.exponentialBoundaries`: Moved into effect/Metric and now returns ReadonlyArray\<number\>. V4 also filters non-positive boundaries.
 
-- `MetricBoundaries.fromIterable` -> `Metric.boundariesFromIterable`: Moved into effect/Metric and now returns an unbranded ReadonlyArray<number>; v4 removes non-positive values before appending Infinity.
+- `MetricBoundaries.fromIterable` -> `Metric.boundariesFromIterable`: Moved into effect/Metric and now returns an unbranded ReadonlyArray\<number\>; v4 removes non-positive values before appending Infinity.
 
 - `MetricBoundaries.isMetricBoundaries` -> `none`: Boundaries are unbranded arrays, so the guard and public type-id symbol have no replacement.
 
-- `MetricBoundaries.linear` -> `Metric.linearBoundaries`: Moved into effect/Metric, but the compared v4 implementation uses start + i + width rather than v3's start + i * width. Preserve the v3 formula manually when width is not 1.
+- `MetricBoundaries.linear` -> `Metric.linearBoundaries`: Moved into effect/Metric, but the compared v4 implementation uses start + i + width rather than v3's start + i \* width. Preserve the v3 formula manually when width is not 1.
 
 ### `effect/MetricHook`
 
-- `MetricHook.MetricHook` -> `Metric.Metric.Hooks`: The closest public structural interface is Metric.Metric.Hooks<Input, State>; get, update, and modify also receive a Context.
+- `MetricHook.MetricHook` -> `Metric.Metric.Hooks`: The closest public structural interface is Metric.Metric.Hooks\<Input, State\>; get, update, and modify also receive a Context.
 
 - `MetricHook.MetricHook.Root` -> `Metric.Metric.Hooks<any, any>`: The named aliases were removed; specialize the public Hooks interface directly when low-level typing is unavoidable.
 
@@ -13538,7 +13538,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 ### `effect/MetricKey`
 
-- `MetricKey.MetricKey` -> `Metric.Metric`: Key identity, metadata, and operations are combined in Metric<Input, State>.
+- `MetricKey.MetricKey` -> `Metric.Metric`: Key identity, metadata, and operations are combined in Metric\<Input, State\>.
 
 - `MetricKey.MetricKey.Untyped` -> `Metric.Metric<any, any>`: The separate untyped key alias was removed; use an untyped complete Metric only where required.
 
@@ -13570,11 +13570,11 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `MetricKeyType.HistogramKeyTypeTypeId` -> `none`: All public key-type symbols were removed; use a complete metric's string type discriminant.
 
-- `MetricKeyType.MetricKeyType` -> `Metric.Metric`: Input/state typing and kind configuration now live on the complete Metric<Input, State>.
+- `MetricKeyType.MetricKeyType` -> `Metric.Metric`: Input/state typing and kind configuration now live on the complete Metric\<Input, State\>.
 
-- `MetricKeyType.MetricKeyType.InType` -> `Metric.Metric.Input`: Use Metric.Metric.Input<M> to extract a metric's input type.
+- `MetricKeyType.MetricKeyType.InType` -> `Metric.Metric.Input`: Use Metric.Metric.Input\<M\> to extract a metric's input type.
 
-- `MetricKeyType.MetricKeyType.OutType` -> `Metric.Metric.State`: Use Metric.Metric.State<M> to extract a metric's state type.
+- `MetricKeyType.MetricKeyType.OutType` -> `Metric.Metric.State`: Use Metric.Metric.State\<M\> to extract a metric's state type.
 
 - `MetricKeyType.MetricKeyType.Untyped` -> `Metric.Metric<any, any>`: The key-type descriptor no longer exists independently of a metric.
 
@@ -13666,7 +13666,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `MetricState.HistogramStateTypeId` -> `none`: All state brand symbols were removed; v4 state interfaces are structural.
 
-- `MetricState.MetricState` -> `Metric.Metric.State`: The common branded state model was removed; extract a complete metric's state with Metric.Metric.State<M> or use a concrete state interface.
+- `MetricState.MetricState` -> `Metric.Metric.State`: The common branded state model was removed; extract a complete metric's state with Metric.Metric.State\<M\> or use a concrete state interface.
 
 - `MetricState.MetricState.Untyped` -> `Metric.Metric.Snapshot['state']`: Use the state union from Metric.Metric.Snapshot, or explicitly union the five structural state interfaces.
 
@@ -13716,39 +13716,39 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Micro.MaxOpsBeforeYield` -> `References.MaxOpsBeforeYield`: The reference lives in effect/References (also exported from effect/Scheduler). Override it with Effect.updateService.
 
-- `Micro.Micro` -> `Effect.Effect`: The Micro<A, E, R> type is Effect.Effect<A, E, R> in v4; the v4 Effect runtime is itself lightweight.
+- `Micro.Micro` -> `Effect.Effect`: The Micro\<A, E, R\> type is Effect.Effect\<A, E, R\> in v4; the v4 Effect runtime is itself lightweight.
 
-- `Micro.Micro.Context` -> `Effect.Services`: Type extractor renamed: Micro.Context<T> becomes Effect.Services<T> in v4.
+- `Micro.Micro.Context` -> `Effect.Services`: Type extractor renamed: Micro.Context\<T\> becomes Effect.Services\<T\> in v4.
 
-- `Micro.Micro.Error` -> `Effect.Error`: Type extractor: Micro.Error<T> becomes Effect.Error<T> in v4.
+- `Micro.Micro.Error` -> `Effect.Error`: Type extractor: Micro.Error\<T\> becomes Effect.Error\<T\> in v4.
 
-- `Micro.Micro.Success` -> `Effect.Success`: Type extractor: Micro.Success<T> becomes Effect.Success<T> in v4.
+- `Micro.Micro.Success` -> `Effect.Success`: Type extractor: Micro.Success\<T\> becomes Effect.Success\<T\> in v4.
 
-- `Micro.MicroCause` -> `Cause.Cause`: MicroCause<E> becomes Cause.Cause<E>. Note v4 Cause holds a list of failure reasons (Fail | Die | Interrupt) rather than being a single tagged variant.
+- `Micro.MicroCause` -> `Cause.Cause`: MicroCause\<E\> becomes Cause.Cause\<E\>. Note v4 Cause holds a list of failure reasons (Fail | Die | Interrupt) rather than being a single tagged variant.
 
 - `Micro.MicroCause.Die` -> `Cause.Die`: The Die variant is a Reason in v4: Cause.Die from effect/Cause.
 
 - `Micro.MicroCause.Error` -> `Cause.Cause.Error`: Type extractor: use the Error helper in the Cause.Cause namespace to extract the error type.
 
-- `Micro.MicroCause.Fail` -> `Cause.Fail`: The Fail variant is a Reason in v4: Cause.Fail<E> from effect/Cause.
+- `Micro.MicroCause.Fail` -> `Cause.Fail`: The Fail variant is a Reason in v4: Cause.Fail\<E\> from effect/Cause.
 
 - `Micro.MicroCause.Interrupt` -> `Cause.Interrupt`: The Interrupt variant is a Reason in v4: Cause.Interrupt from effect/Cause.
 
 - `Micro.MicroCause.Proto` -> `Cause.Cause.ReasonProto`: Internal prototype type; the closest v4 equivalent is the ReasonProto interface in the Cause.Cause namespace. Rarely needed directly.
 
-- `Micro.MicroCauseTypeId` -> `Cause.TypeId`: Use Cause.TypeId from effect/Cause (value is "~effect/Cause").
+- `Micro.MicroCauseTypeId` -> `Cause.TypeId`: Use Cause.TypeId from effect/Cause (value is "\~effect/Cause").
 
-- `Micro.MicroExit` -> `Exit.Exit`: MicroExit<A, E> becomes Exit.Exit<A, E> from effect/Exit. In v4 Exit is a subtype of Effect.
+- `Micro.MicroExit` -> `Exit.Exit`: MicroExit\<A, E\> becomes Exit.Exit\<A, E\> from effect/Exit. In v4 Exit is a subtype of Effect.
 
-- `Micro.MicroExit.Failure` -> `Exit.Failure`: MicroExit.Failure becomes Exit.Failure<A, E> from effect/Exit.
+- `Micro.MicroExit.Failure` -> `Exit.Failure`: MicroExit.Failure becomes Exit.Failure\<A, E\> from effect/Exit.
 
 - `Micro.MicroExit.Proto` -> `Exit.Exit.Proto`: Internal prototype type; v4 exposes the shared base as Proto in the Exit.Exit namespace. Rarely needed directly.
 
-- `Micro.MicroExit.Success` -> `Exit.Success`: MicroExit.Success becomes Exit.Success<A, E> from effect/Exit.
+- `Micro.MicroExit.Success` -> `Exit.Success`: MicroExit.Success becomes Exit.Success\<A, E\> from effect/Exit.
 
 - `Micro.MicroExitTypeId` -> `none`: v4 Exit is a subtype of Effect and has no dedicated TypeId; use Exit.isExit to identify exits.
 
-- `Micro.MicroFiber` -> `Fiber.Fiber`: MicroFiber<A, E> becomes Fiber.Fiber<A, E> from effect/Fiber.
+- `Micro.MicroFiber` -> `Fiber.Fiber`: MicroFiber\<A, E\> becomes Fiber.Fiber\<A, E\> from effect/Fiber.
 
 - `Micro.MicroFiber.Variance` -> `none`: Type-level variance helper with no public v4 equivalent; the v4 Fiber.Fiber interface carries variance directly.
 
@@ -13756,7 +13756,7 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Micro.MicroIterator` -> `Effect.EffectIterator`: Renamed: MicroIterator becomes Effect.EffectIterator (generator support for Effect.gen).
 
-- `Micro.MicroSchedule` -> `Schedule.Schedule`: v3 MicroSchedule was a plain function (attempt, elapsedMillis) => Option<delayMillis>; v4 uses the first-class Schedule.Schedule type from effect/Schedule.
+- `Micro.MicroSchedule` -> `Schedule.Schedule`: v3 MicroSchedule was a plain function (attempt, elapsedMillis) =\> Option\<delayMillis\>; v4 uses the first-class Schedule.Schedule type from effect/Schedule.
 
 - `Micro.MicroScheduler` -> `Scheduler.Scheduler`: The scheduler interface lives in effect/Scheduler in v4.
 
@@ -13836,7 +13836,7 @@ Effect.callback<number>((resume) => resume(Effect.succeed(1)))
 
 - `Micro.delay` -> `Effect.delay`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
-- `Micro.either` -> `Effect.result`: Either was replaced by Result in v4: Effect.result yields Result.Result<A, E> instead of Either<A, E>.
+- `Micro.either` -> `Effect.result`: Either was replaced by Result in v4: Effect.result yields Result.Result\<A, E\> instead of Either\<A, E\>.
 
 - `Micro.ensuring` -> `Effect.ensuring`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
@@ -14044,7 +14044,7 @@ Renamed: cap total elapsed time with Schedule.upTo({ duration }).
 Schedule.upTo(schedule, { duration: "30 seconds" })
 ```
 
-- `Micro.scopeMake` -> `Scope.make`: Moved to effect/Scope: Scope.make returns Effect<Scope.Closeable> and accepts an optional finalizer strategy.
+- `Micro.scopeMake` -> `Scope.make`: Moved to effect/Scope: Scope.make returns Effect\<Scope.Closeable\> and accepts an optional finalizer strategy.
 
 - `Micro.scopeUnsafeMake` -> `Scope.makeUnsafe`: Renamed and moved: scopeUnsafeMake becomes Scope.makeUnsafe from effect/Scope.
 
@@ -14174,7 +14174,7 @@ Effect.forEach(items, handle, { concurrency: 10 })
 
 - `MutableQueue.offerAll` -> `Queue.offerAllUnsafe`: The synchronous replacement returns the rejected remainder as an Array; Queue.offerAll is the effectful form.
 
-- `MutableQueue.poll` -> `Queue.poll`: Polling is now effectful and returns Option<A> rather than accepting a default; Queue.takeUnsafe is the low-level synchronous alternative.
+- `MutableQueue.poll` -> `Queue.poll`: Polling is now effectful and returns Option\<A\> rather than accepting a default; Queue.takeUnsafe is the low-level synchronous alternative.
 
 - `MutableQueue.pollUpTo` -> `Queue.takeUnsafe`: No direct non-blocking take-up-to helper remains; repeatedly call Queue.takeUnsafe and collect successful exits without waiting.
 
@@ -14214,7 +14214,7 @@ Effect.forEach(items, handle, { concurrency: 10 })
 
 - `Option.TypeId` -> `none`: The v4 Option brand is private and no public TypeId is exported.
 
-- `Option.ap` -> `Option.zipWith`: Use Option.zipWith(self, that, (f, a) => f(a)); v4 has no Option.ap.
+- `Option.ap` -> `Option.zipWith`: Use Option.zipWith(self, that, (f, a) =\> f(a)); v4 has no Option.ap.
 
 - `Option.flatMapNullable` -> `Option.flatMapNullishOr`: Renamed with v4 nullish-or terminology.
 
@@ -14250,7 +14250,7 @@ Effect.forEach(items, handle, { concurrency: 10 })
 
 - `Order.combineMany` -> `Order.combine(self, Order.combineAll(collection))`: Compose combine with combineAll; the dedicated dual combineMany helper was removed.
 
-- `Order.empty` -> `Order.alwaysEqual`: Renamed constructor; call as Order.alwaysEqual<A>() to produce an order that always returns zero.
+- `Order.empty` -> `Order.alwaysEqual`: Renamed constructor; call as Order.alwaysEqual\<A\>() to produce an order that always returns zero.
 
 - `Order.greaterThan` -> `Order.isGreaterThan`: Renamed with the v4 is-prefix; curried and uncurried comparisons are retained.
 
@@ -14356,7 +14356,7 @@ SchemaIssue.defaultFormatter(issue)
 
 - `ParseResult.flatMap` -> `Effect.flatMap`: Schema transformations now use Effect combinators.
 
-- `ParseResult.isComposite` -> `SchemaIssue.Composite`: Narrow with instanceof SchemaIssue.Composite or inspect the issue _tag.
+- `ParseResult.isComposite` -> `SchemaIssue.Composite`: Narrow with instanceof SchemaIssue.Composite or inspect the issue \_tag.
 
 - `ParseResult.isParseError` -> `Schema.isSchemaError`: ParseError was replaced by SchemaError.
 
@@ -14448,7 +14448,7 @@ Schema.decodeSync(Schema.toType(schema))
 
 ### `effect/Pipeable`
 
-- `Pipeable.PipeableConstructor` -> `Pipeable.PipeableConstructor`: Still exported; its rest arguments are ReadonlyArray<any> in v4, so make explicit constructor typings readonly-compatible.
+- `Pipeable.PipeableConstructor` -> `Pipeable.PipeableConstructor`: Still exported; its rest arguments are ReadonlyArray\<any\> in v4, so make explicit constructor typings readonly-compatible.
 
 ### `effect/Pool`
 
@@ -14658,7 +14658,7 @@ Schema.toFormatter(schema)
 
 ### `effect/Readable`
 
-- `Readable.Readable` -> `Effect.Effect`: The branded wrapper was removed; represent read access directly as Effect.Effect<A, E, R>.
+- `Readable.Readable` -> `Effect.Effect`: The branded wrapper was removed; represent read access directly as Effect.Effect\<A, E, R\>.
 
 - `Readable.TypeId` -> `Effect.TypeId`: The Readable brand was removed; use Effect.TypeId only when branding checks remain necessary after collapsing to Effect.
 
@@ -14704,15 +14704,15 @@ Schema.toFormatter(schema)
 
 - `RedBlackTree.atReversed` -> `Array.take + Array.reverse`: For a valid absolute index, reverse Array.take(entries, index + 1) to traverse backward from it.
 
-- `RedBlackTree.empty` -> `Array.empty`: The module was removed; use an empty Array<readonly [K, V]> and retain the Order separately.
+- `RedBlackTree.empty` -> `Array.empty`: The module was removed; use an empty Array\<readonly [K, V]\> and retain the Order separately.
 
 - `RedBlackTree.first` -> `Array.head`: On a sorted entry array, Array.head returns the same optional minimum entry.
 
-- `RedBlackTree.forEachBetween` -> `Array.filter + Array.forEach`: Filter sorted entries to min <= key < max with the retained Order, then visit them with Array.forEach.
+- `RedBlackTree.forEachBetween` -> `Array.filter + Array.forEach`: Filter sorted entries to min \<= key \< max with the retained Order, then visit them with Array.forEach.
 
-- `RedBlackTree.forEachGreaterThanEqual` -> `Array.filter + Array.forEach`: Filter sorted entries to key >= min with the retained Order, then visit them in ascending order.
+- `RedBlackTree.forEachGreaterThanEqual` -> `Array.filter + Array.forEach`: Filter sorted entries to key \>= min with the retained Order, then visit them in ascending order.
 
-- `RedBlackTree.forEachLessThan` -> `Array.filter + Array.forEach`: Filter sorted entries to key < max with the retained Order, then visit them in ascending order.
+- `RedBlackTree.forEachLessThan` -> `Array.filter + Array.forEach`: Filter sorted entries to key \< max with the retained Order, then visit them in ascending order.
 
 - `RedBlackTree.fromIterable` -> `Array.sortWith`: Sort the entry iterable by key and retain the Order separately; this does not preserve logarithmic tree operations.
 
@@ -14720,13 +14720,13 @@ Schema.toFormatter(schema)
 
 - `RedBlackTree.getOrder` -> `none`: No replacement collection stores an Order; retain and pass the Order explicitly.
 
-- `RedBlackTree.greaterThan` -> `Array.filter`: Filter sorted entries with the retained Order for key > bound.
+- `RedBlackTree.greaterThan` -> `Array.filter`: Filter sorted entries with the retained Order for key \> bound.
 
-- `RedBlackTree.greaterThanEqual` -> `Array.filter`: Filter sorted entries with the retained Order for key >= bound.
+- `RedBlackTree.greaterThanEqual` -> `Array.filter`: Filter sorted entries with the retained Order for key \>= bound.
 
-- `RedBlackTree.greaterThanEqualReversed` -> `Array.filter + Array.reverse`: Filter sorted entries with the retained Order for key >= bound, then reverse for descending traversal.
+- `RedBlackTree.greaterThanEqualReversed` -> `Array.filter + Array.reverse`: Filter sorted entries with the retained Order for key \>= bound, then reverse for descending traversal.
 
-- `RedBlackTree.greaterThanReversed` -> `Array.filter + Array.reverse`: Filter sorted entries with the retained Order for key > bound, then reverse for descending traversal.
+- `RedBlackTree.greaterThanReversed` -> `Array.filter + Array.reverse`: Filter sorted entries with the retained Order for key \> bound, then reverse for descending traversal.
 
 - `RedBlackTree.has` -> `Array.some`: Use Array.some on sorted entries with Equal.equals for key membership; this is linear rather than logarithmic.
 
@@ -14740,13 +14740,13 @@ Schema.toFormatter(schema)
 
 - `RedBlackTree.last` -> `Array.last`: On a sorted entry array, Array.last returns the same optional maximum entry.
 
-- `RedBlackTree.lessThan` -> `Array.filter`: Filter sorted entries with the retained Order for key < bound.
+- `RedBlackTree.lessThan` -> `Array.filter`: Filter sorted entries with the retained Order for key \< bound.
 
-- `RedBlackTree.lessThanEqual` -> `Array.filter`: Filter sorted entries with the retained Order for key <= bound.
+- `RedBlackTree.lessThanEqual` -> `Array.filter`: Filter sorted entries with the retained Order for key \<= bound.
 
-- `RedBlackTree.lessThanEqualReversed` -> `Array.filter + Array.reverse`: Filter sorted entries with the retained Order for key <= bound, then reverse for descending traversal.
+- `RedBlackTree.lessThanEqualReversed` -> `Array.filter + Array.reverse`: Filter sorted entries with the retained Order for key \<= bound, then reverse for descending traversal.
 
-- `RedBlackTree.lessThanReversed` -> `Array.filter + Array.reverse`: Filter sorted entries with the retained Order for key < bound, then reverse for descending traversal.
+- `RedBlackTree.lessThanReversed` -> `Array.filter + Array.reverse`: Filter sorted entries with the retained Order for key \< bound, then reverse for descending traversal.
 
 - `RedBlackTree.make` -> `Array.sortWith`: Sort the supplied entries by key and retain the Order separately; this is not a balanced tree.
 
@@ -14876,7 +14876,7 @@ Schema.toFormatter(schema)
 
 ### `effect/RequestResolver`
 
-- `RequestResolver.RequestResolver` -> `RequestResolver.RequestResolver`: The interface remains as RequestResolver<A extends Request.Any>; remove its R parameter and move service requirements to Request<A, E, R>.
+- `RequestResolver.RequestResolver` -> `RequestResolver.RequestResolver`: The interface remains as RequestResolver\<A extends Request.Any\>; remove its R parameter and move service requirements to Request\<A, E, R\>.
 
 - `RequestResolver.RequestResolver.Variance` -> `RequestResolver.RequestResolver.Variance`: The variance marker remains but tracks only the accepted Request type; resolver environment variance was removed.
 
@@ -14928,11 +14928,11 @@ Schema.toFormatter(schema)
 
 - `Runtime.RunForkOptions` -> `Effect.RunOptions`: Use common runner options; express scoped forking with Effect.forkIn or Effect.forkScoped.
 
-- `Runtime.Runtime` -> `Context.Context`: Runtime values were removed; carry a Context and invoke the corresponding Effect.run*With function.
+- `Runtime.Runtime` -> `Context.Context`: Runtime values were removed; carry a Context and invoke the corresponding Effect.run\*With function.
 
 - `Runtime.Runtime.Context` -> `none`: The Runtime context extractor was removed; carry the service union directly on Context.Context.
 
-- `Runtime.defaultRuntime` -> `Context.empty()`: Runtime values were removed; call Effect.run* directly or use an empty Context with an Effect.run*With function.
+- `Runtime.defaultRuntime` -> `Context.empty()`: Runtime values were removed; call Effect.run\* directly or use an empty Context with an Effect.run\*With function.
 
 - `Runtime.defaultRuntimeFlags` -> `none`: Runtime flags were removed; configure scheduler yielding, interruptibility, and runtime metrics independently.
 
@@ -14946,7 +14946,7 @@ Schema.toFormatter(schema)
 
 - `Runtime.isFiberFailure` -> `none`: FiberFailure no longer exists; use an Exit-returning runner and inspect Exit or Cause.
 
-- `Runtime.make` -> `Context.make`: Runtime values were removed; construct the service Context passed to Effect.run*With instead.
+- `Runtime.make` -> `Context.make`: Runtime values were removed; construct the service Context passed to Effect.run\*With instead.
 
 - `Runtime.makeFiberFailure` -> `Cause.squash`: Use Cause.squash only when a Cause must become the value thrown or rejected by a runner.
 
@@ -15320,7 +15320,7 @@ Schema.toFormatter(schema)
 
 - `Schedule.IterationMetadata` -> `Schedule.Metadata`: The metadata model now includes duration and uses attempt instead of recurrence; elapsed fields are millisecond numbers.
 
-- `Schedule.Schedule` -> `Schedule.Schedule`: The model remains but now has Schedule<Output, Input, Error, Env>; its public initial/step fields were replaced by Schedule.toStep and fromStep.
+- `Schedule.Schedule` -> `Schedule.Schedule`: The model remains but now has Schedule\<Output, Input, Error, Env\>; its public initial/step fields were replaced by Schedule.toStep and fromStep.
 
 - `Schedule.Schedule.DriverVariance` -> `none`: ScheduleDriver was removed in v4, so its variance marker has no replacement. Use the Schedule type parameters or the function returned by Schedule.toStepWithSleep.
 
@@ -15388,7 +15388,7 @@ Schema.toFormatter(schema)
 
 - `Schedule.fromDelays` -> `Schedule.duration + Schedule.andThen`: Build one Schedule.duration per delay and sequence them with Schedule.andThen.
 
-- `Schedule.fromFunction` -> `Schedule.identity + Schedule.map`: Start with Schedule.identity<A>() and map metadata.input through the function.
+- `Schedule.fromFunction` -> `Schedule.identity + Schedule.map`: Start with Schedule.identity\<A\>() and map metadata.input through the function.
 
 - `Schedule.hourOfDay` -> `Schedule.cron`: Express the hour constraint as a cron expression such as `0 <hour> * * *`.
 
@@ -16810,7 +16810,7 @@ Schema.toFormatter(schema)
 
 ### `effect/ScopedCache`
 
-- `ScopedCache.Lookup` -> `(key: Key) => Effect.Effect<A, E, R | Scope.Scope>`: The named alias was removed; use an inline lookup type or ScopedCache.ScopedCache<Key, A, E, R>["lookup"].
+- `ScopedCache.Lookup` -> `(key: Key) => Effect.Effect<A, E, R | Scope.Scope>`: The named alias was removed; use an inline lookup type or ScopedCache.ScopedCache\<Key, A, E, R\>["lookup"].
 
 - `ScopedCache.ScopedCache` -> `ScopedCache.ScopedCache`: The model remains as a Pipeable scoped cache; construct and use it inside a Scope with explicit ScopedCache operations.
 
@@ -16834,7 +16834,7 @@ Schema.toFormatter(schema)
 
 - `Secret.Secret` -> `Redacted.Redacted<string>`: Secret was deprecated in v3 and removed in v4; use the generic Redacted wrapper.
 
-- `Secret.Secret.Proto` -> `none`: The Secret-specific prototype was removed with the module; use Redacted.Redacted<string>.
+- `Secret.Secret.Proto` -> `none`: The Secret-specific prototype was removed with the module; use Redacted.Redacted\<string\>.
 
 - `Secret.SecretTypeId` -> `Redacted.isRedacted`: The Secret marker was removed; use the Redacted runtime guard.
 
@@ -16858,53 +16858,53 @@ Schema.toFormatter(schema)
 
 ### `effect/Sink`
 
-- `Sink.Sink` -> `Sink`: Interface kept as Sink<A, In, L, E, R> with the same type parameters; the internal representation changed from a Channel wrapper to a `transform: (upstream: Pull<NonEmptyReadonlyArray<In>>, scope) => Effect<End<A, L>>` function, and completion is the tuple `Sink.End<A, L> = readonly [value, leftover?]`.
+- `Sink.Sink` -> `Sink`: Interface kept as Sink\<A, In, L, E, R\> with the same type parameters; the internal representation changed from a Channel wrapper to a `transform: (upstream: Pull<NonEmptyReadonlyArray<In>>, scope) => Effect<End<A, L>>` function, and completion is the tuple `Sink.End<A, L> = readonly [value, leftover?]`.
 
-- `Sink.Sink.Variance` -> `Sink.Variance`: Still exists as the namespace interface Sink.Variance<A, In, L, E, R> (with Sink.VarianceStruct); the variance key is now the internal string "~effect/Sink" instead of the SinkTypeId symbol.
+- `Sink.Sink.Variance` -> `Sink.Variance`: Still exists as the namespace interface Sink.Variance\<A, In, L, E, R\> (with Sink.VarianceStruct); the variance key is now the internal string "\~effect/Sink" instead of the SinkTypeId symbol.
 
-- `Sink.SinkTypeId` -> `none`: The type id is the unexported internal string "~effect/Sink" (no unique symbol, no export); use the new guard Sink.isSink(u) instead of checking the symbol.
+- `Sink.SinkTypeId` -> `none`: The type id is the unexported internal string "\~effect/Sink" (no unique symbol, no export); use the new guard Sink.isSink(u) instead of checking the symbol.
 
 - `Sink.SinkUnify` -> `SinkUnify`: Kept with the same name and shape (extends Effect.EffectUnify, preserves all five Sink type parameters).
 
 - `Sink.SinkUnifyIgnore` -> `SinkUnifyIgnore`: Kept with the same name; now a standalone `{ Effect?: true }` interface instead of extending Effect.EffectUnifyIgnore.
 
-- `Sink.collectAll` -> `Sink.collect`: Renamed; returns Sink<Array<In>, In> collecting into a plain mutable Array instead of Chunk.
+- `Sink.collectAll` -> `Sink.collect`: Renamed; returns Sink\<Array\<In\>, In\> collecting into a plain mutable Array instead of Chunk.
 
 - `Sink.collectAllFrom` -> `none`: Repeated-run result accumulation was removed; checked the v4 export list (no collectAllFrom/repeatedly). Re-implement with Sink.fromTransform, looping self.transform on the upstream pull (feeding leftovers back) until the upstream ends, accumulating results in an array.
 
-- `Sink.collectAllN` -> `Sink.take`: Sink.take(n) returns Sink<Array<In>, In, In> collecting up to n elements (Array instead of Chunk), emitting the unconsumed remainder as leftovers.
+- `Sink.collectAllN` -> `Sink.take`: Sink.take(n) returns Sink\<Array\<In\>, In, In\> collecting up to n elements (Array instead of Chunk), emitting the unconsumed remainder as leftovers.
 
-- `Sink.collectAllToMap` -> `Sink.reduce`: Built-in HashMap collector removed; build a plain Map in the reducer: Sink.reduce(() => new Map<K, In>(), (m, in_) => { const k = key(in_); return m.set(k, m.has(k) ? merge(m.get(k)!, in_) : in_) }).
+- `Sink.collectAllToMap` -> `Sink.reduce`: Built-in HashMap collector removed; build a plain Map in the reducer: Sink.reduce(() =\> new Map\<K, In\>(), (m, in\_) =\> { const k = key(in\_); return m.set(k, m.has(k) ? merge(m.get(k)!, in\_) : in\_) }).
 
-- `Sink.collectAllToMapN` -> `none`: Removed; approximating with Sink.reduceWhile((...) , (m) => m.size < n, ...) consumes (merges) the element that introduces the (n+1)-th key, whereas v3 left it as leftover — exact v3 leftover behavior needs a custom Sink.fromTransform that checks the key before consuming.
+- `Sink.collectAllToMapN` -> `none`: Removed; approximating with Sink.reduceWhile((...) , (m) =\> m.size \< n, ...) consumes (merges) the element that introduces the (n+1)-th key, whereas v3 left it as leftover — exact v3 leftover behavior needs a custom Sink.fromTransform that checks the key before consuming.
 
-- `Sink.collectAllToSet` -> `Sink.reduce`: Built-in HashSet collector removed; build a plain Set: Sink.reduce(() => new Set<In>(), (s, in_) => s.add(in_)).
+- `Sink.collectAllToSet` -> `Sink.reduce`: Built-in HashSet collector removed; build a plain Set: Sink.reduce(() =\> new Set\<In\>(), (s, in\_) =\> s.add(in\_)).
 
-- `Sink.collectAllToSetN` -> `Sink.reduceWhile`: Removed; equivalent via Sink.reduceWhile(() => new Set<In>(), (s) => s.size < n, (s, in_) => s.add(in_)) — stops with leftovers once n distinct values are collected (plain Set instead of HashSet).
+- `Sink.collectAllToSetN` -> `Sink.reduceWhile`: Removed; equivalent via Sink.reduceWhile(() =\> new Set\<In\>(), (s) =\> s.size \< n, (s, in\_) =\> s.add(in\_)) — stops with leftovers once n distinct values are collected (plain Set instead of HashSet).
 
-- `Sink.collectAllUntil` -> `Sink.takeUntil`: Renamed; Sink.takeUntil(predicate) collects into Array<In> until the predicate matches, including the matching element, like v3.
+- `Sink.collectAllUntil` -> `Sink.takeUntil`: Renamed; Sink.takeUntil(predicate) collects into Array\<In\> until the predicate matches, including the matching element, like v3.
 
-- `Sink.collectAllUntilEffect` -> `Sink.takeUntilEffect`: Renamed; Sink.takeUntilEffect(p) collects into Array<In> until the effectful predicate returns true, including the matching element.
+- `Sink.collectAllUntilEffect` -> `Sink.takeUntilEffect`: Renamed; Sink.takeUntilEffect(p) collects into Array\<In\> until the effectful predicate returns true, including the matching element.
 
-- `Sink.collectAllWhile` -> `Sink.takeWhile`: Renamed; Sink.takeWhile(predicate) collects the matching prefix into Array<In>, keeps the refinement overload, and excludes the first failing element (returned via leftovers).
+- `Sink.collectAllWhile` -> `Sink.takeWhile`: Renamed; Sink.takeWhile(predicate) collects the matching prefix into Array\<In\>, keeps the refinement overload, and excludes the first failing element (returned via leftovers).
 
-- `Sink.collectAllWhileEffect` -> `Sink.takeWhileEffect`: Renamed; Sink.takeWhileEffect(p) collects into Array<In> while the effectful predicate returns true.
+- `Sink.collectAllWhileEffect` -> `Sink.takeWhileEffect`: Renamed; Sink.takeWhileEffect(p) collects into Array\<In\> while the effectful predicate returns true.
 
 - `Sink.collectAllWhileWith` -> `none`: Repeatedly-run-and-fold was removed (no v4 counterpart in the export list); re-implement with Sink.fromTransform looping self.transform while the `while` predicate holds on each result, folding results with `body` and feeding leftovers back into the next run.
 
-- `Sink.collectLeftover` -> `Sink.mapEnd`: Use Sink.mapEnd to move the leftovers into the result: Sink.mapEnd(self, ([a, leftover]) => [[a, leftover ?? []] as const]); leftovers are NonEmptyReadonlyArray<L> | undefined instead of Chunk<L>.
+- `Sink.collectLeftover` -> `Sink.mapEnd`: Use Sink.mapEnd to move the leftovers into the result: Sink.mapEnd(self, ([a, leftover]) =\> [[a, leftover ?? []] as const]); leftovers are NonEmptyReadonlyArray\<L\> | undefined instead of Chunk\<L\>.
 
-- `Sink.context` -> `Sink.fromEffect(Effect.context())`: Sink.context was removed; Sink.fromEffect(Effect.context<R>()) yields the same Sink<Context<R>, unknown, never, never, R>.
+- `Sink.context` -> `Sink.fromEffect(Effect.context())`: Sink.context was removed; Sink.fromEffect(Effect.context\<R\>()) yields the same Sink\<Context\<R\>, unknown, never, never, R\>.
 
 - `Sink.contextWith` -> `Sink.fromEffect(Effect.contextWith(f))`: Removed; compose Sink.fromEffect with Effect.contextWith to derive a value from the context.
 
-- `Sink.contextWithEffect` -> `Sink.fromEffect(Effect.flatMap(Effect.context(), f))`: Removed, and v4 Effect has no contextWithEffect; use Sink.fromEffect(Effect.flatMap(Effect.context<R0>(), f)).
+- `Sink.contextWithEffect` -> `Sink.fromEffect(Effect.flatMap(Effect.context(), f))`: Removed, and v4 Effect has no contextWithEffect; use Sink.fromEffect(Effect.flatMap(Effect.context\<R0\>(), f)).
 
-- `Sink.contextWithSink` -> `Sink.unwrap(Effect.contextWith(f))`: Removed; Sink.unwrap(Effect.contextWith((ctx: Context.Context<R0>) => f(ctx))) builds the sink from the context.
+- `Sink.contextWithSink` -> `Sink.unwrap(Effect.contextWith(f))`: Removed; Sink.unwrap(Effect.contextWith((ctx: Context.Context\<R0\>) =\> f(ctx))) builds the sink from the context.
 
 - `Sink.dieMessage` -> `Sink.die`: Removed (v4 has no RuntimeException-based dieMessage anywhere); use Sink.die(new Error(message)).
 
-- `Sink.dieSync` -> `Sink.failCauseSync`: Removed; use Sink.failCauseSync(() => Cause.die(evaluate())) to defer defect evaluation, or Sink.die(defect) when eager is fine.
+- `Sink.dieSync` -> `Sink.failCauseSync`: Removed; use Sink.failCauseSync(() =\> Cause.die(evaluate())) to defer defect evaluation, or Sink.die(defect) when eager is fine.
 
 - `Sink.dimap` -> `Sink.mapInput + Sink.map`: Removed; compose the two halves: self.pipe(Sink.mapInput(f), Sink.map(g)).
 
@@ -16914,9 +16914,9 @@ Schema.toFormatter(schema)
 
 - `Sink.dimapEffect` -> `Sink.mapInputEffect + Sink.mapEffect`: Removed; compose self.pipe(Sink.mapInputEffect(f), Sink.mapEffect(g)).
 
-- `Sink.drop` -> `none`: The drop* sinks were removed (nothing in the v4 export list); drop on the stream side instead with Stream.drop(n) before running the sink, or write a Sink.fromTransform that discards the first n pulled elements.
+- `Sink.drop` -> `none`: The drop\* sinks were removed (nothing in the v4 export list); drop on the stream side instead with Stream.drop(n) before running the sink, or write a Sink.fromTransform that discards the first n pulled elements.
 
-- `Sink.dropUntil` -> `none`: Removed with the other drop* sinks; use Stream.dropUntil(predicate) on the stream before running the sink.
+- `Sink.dropUntil` -> `none`: Removed with the other drop\* sinks; use Stream.dropUntil(predicate) on the stream before running the sink.
 
 - `Sink.dropUntilEffect` -> `none`: Removed; use Stream.dropUntilEffect(p) on the stream before running the sink.
 
@@ -16924,31 +16924,31 @@ Schema.toFormatter(schema)
 
 - `Sink.dropWhileEffect` -> `none`: Removed; use Stream.dropWhileEffect(p) on the stream before running the sink.
 
-- `Sink.ensuringWith` -> `Sink.onExit`: Renamed; Sink.onExit(self, (exit: Exit<A, E>) => finalizer) runs after completion, failure, or interruption — the exit now carries the sink's result value A (v3 passed Exit<unknown, E>). Plain Sink.ensuring(effect) also still exists for the exit-independent case.
+- `Sink.ensuringWith` -> `Sink.onExit`: Renamed; Sink.onExit(self, (exit: Exit\<A, E\>) =\> finalizer) runs after completion, failure, or interruption — the exit now carries the sink's result value A (v3 passed Exit\<unknown, E\>). Plain Sink.ensuring(effect) also still exists for the exit-independent case.
 
 - `Sink.filterInput` -> `none`: Removed, and not expressible via Sink.mapInputArray because its function must return a non-empty array (a fully-filtered batch is illegal); filter on the stream with Stream.filter(predicate) before running the sink, or write a Sink.fromTransform that skips empty filtered batches.
 
 - `Sink.filterInputEffect` -> `none`: Removed (same non-empty-array constraint as filterInput); use Stream.filterEffect(p) on the stream before running the sink.
 
-- `Sink.foldChunks` -> `Sink.reduceWhileArray`: Sink.reduceWhileArray(() => s, contFn, f) folds whole input batches; initial state is now a lazy thunk and f receives NonEmptyReadonlyArray<In> instead of Chunk<In>.
+- `Sink.foldChunks` -> `Sink.reduceWhileArray`: Sink.reduceWhileArray(() =\> s, contFn, f) folds whole input batches; initial state is now a lazy thunk and f receives NonEmptyReadonlyArray\<In\> instead of Chunk\<In\>.
 
-- `Sink.foldChunksEffect` -> `Sink.reduceWhileArrayEffect`: Sink.reduceWhileArrayEffect(() => s, contFn, f) is the effectful array-level fold with continuation predicate; lazy initial state, NonEmptyReadonlyArray instead of Chunk. Sink.foldArray has the same shape but does not check contFn on the initial state.
+- `Sink.foldChunksEffect` -> `Sink.reduceWhileArrayEffect`: Sink.reduceWhileArrayEffect(() =\> s, contFn, f) is the effectful array-level fold with continuation predicate; lazy initial state, NonEmptyReadonlyArray instead of Chunk. Sink.foldArray has the same shape but does not check contFn on the initial state.
 
-- `Sink.foldEffect` -> `Sink.reduceWhileEffect`: Sink.reduceWhileEffect(() => s, contFn, f) folds element-by-element with an effectful step and continuation predicate (checked on the initial state, like v3); initial state is now a lazy thunk. v4 Sink.fold has the same signature but skips the initial-state check.
+- `Sink.foldEffect` -> `Sink.reduceWhileEffect`: Sink.reduceWhileEffect(() =\> s, contFn, f) folds element-by-element with an effectful step and continuation predicate (checked on the initial state, like v3); initial state is now a lazy thunk. v4 Sink.fold has the same signature but skips the initial-state check.
 
-- `Sink.foldLeft` -> `Sink.reduce`: Renamed; Sink.reduce(() => s, f) — initial state is now a lazy thunk, semantics otherwise identical.
+- `Sink.foldLeft` -> `Sink.reduce`: Renamed; Sink.reduce(() =\> s, f) — initial state is now a lazy thunk, semantics otherwise identical.
 
-- `Sink.foldLeftChunks` -> `Sink.reduceArray`: Renamed; Sink.reduceArray(() => s, f) folds whole batches — lazy initial state, f receives NonEmptyReadonlyArray<In> instead of Chunk<In>.
+- `Sink.foldLeftChunks` -> `Sink.reduceArray`: Renamed; Sink.reduceArray(() =\> s, f) folds whole batches — lazy initial state, f receives NonEmptyReadonlyArray\<In\> instead of Chunk\<In\>.
 
-- `Sink.foldLeftChunksEffect` -> `Sink.reduceWhileArrayEffect`: No plain reduceArrayEffect exists in v4; use Sink.reduceWhileArrayEffect(() => s, () => true, f) (constant-true predicate) — f receives NonEmptyReadonlyArray<In> instead of Chunk<In> and the result has L = never like v3.
+- `Sink.foldLeftChunksEffect` -> `Sink.reduceWhileArrayEffect`: No plain reduceArrayEffect exists in v4; use Sink.reduceWhileArrayEffect(() =\> s, () =\> true, f) (constant-true predicate) — f receives NonEmptyReadonlyArray\<In\> instead of Chunk\<In\> and the result has L = never like v3.
 
-- `Sink.foldLeftEffect` -> `Sink.reduceEffect`: Renamed; Sink.reduceEffect(() => s, f) — lazy initial state, effectful step, no termination predicate.
+- `Sink.foldLeftEffect` -> `Sink.reduceEffect`: Renamed; Sink.reduceEffect(() =\> s, f) — lazy initial state, effectful step, no termination predicate.
 
-- `Sink.foldSink` -> `Sink.orElse + Sink.flatMap`: The two-channel match was removed; compose self.pipe(Sink.orElse((e) => options.onFailure(e)), Sink.flatMap((a) => options.onSuccess(a))) — orElse switches to the failure sink (resuming the same upstream), flatMap feeds leftovers to the success sink first.
+- `Sink.foldSink` -> `Sink.orElse + Sink.flatMap`: The two-channel match was removed; compose self.pipe(Sink.orElse((e) =\> options.onFailure(e)), Sink.flatMap((a) =\> options.onSuccess(a))) — orElse switches to the failure sink (resuming the same upstream), flatMap feeds leftovers to the success sink first.
 
-- `Sink.foldUntilEffect` -> `Sink.foldUntil`: v4 Sink.foldUntil(() => s, max, f) takes the effectful step function directly (f returns Effect<S, E, R>), so it covers v3 foldUntilEffect; initial state is now a lazy thunk. For the pure v3 foldUntil wrap the step in Effect.succeed.
+- `Sink.foldUntilEffect` -> `Sink.foldUntil`: v4 Sink.foldUntil(() =\> s, max, f) takes the effectful step function directly (f returns Effect\<S, E, R\>), so it covers v3 foldUntilEffect; initial state is now a lazy thunk. For the pure v3 foldUntil wrap the step in Effect.succeed.
 
-- `Sink.foldWeighted` -> `none`: The whole foldWeighted family was removed from v4 Sink (checked the export list); re-implement with Sink.fold carrying the accumulated cost in the state (cont while cost < max), returning leftovers automatically when stopping mid-batch.
+- `Sink.foldWeighted` -> `none`: The whole foldWeighted family was removed from v4 Sink (checked the export list); re-implement with Sink.fold carrying the accumulated cost in the state (cont while cost \< max), returning leftovers automatically when stopping mid-batch.
 
 - `Sink.foldWeightedDecompose` -> `none`: Removed with no decompose mechanism in v4; splitting oversized elements must happen upstream (transform the stream before the sink) or inside a custom Sink.fromTransform.
 
@@ -16956,19 +16956,19 @@ Schema.toFormatter(schema)
 
 - `Sink.foldWeightedEffect` -> `none`: Removed; re-implement with Sink.fold (its step is effectful in v4) tracking accumulated cost in the state.
 
-- `Sink.forEachChunk` -> `Sink.forEachArray`: Renamed; f receives NonEmptyReadonlyArray<In> instead of Chunk<In>.
+- `Sink.forEachChunk` -> `Sink.forEachArray`: Renamed; f receives NonEmptyReadonlyArray\<In\> instead of Chunk\<In\>.
 
-- `Sink.forEachChunkWhile` -> `Sink.forEachWhileArray`: Renamed; f: (NonEmptyReadonlyArray<In>) => Effect<boolean> continues while true, stops on false, as in v3.
+- `Sink.forEachChunkWhile` -> `Sink.forEachWhileArray`: Renamed; f: (NonEmptyReadonlyArray\<In\>) =\> Effect\<boolean\> continues while true, stops on false, as in v3.
 
-- `Sink.fromPush` -> `Sink.fromTransform`: The push-based protocol (Option<Chunk> push function failing with [Either, leftovers]) is gone; v4's low-level constructor is pull-based: Sink.fromTransform((upstream: Pull<NonEmptyReadonlyArray<In>>, scope) => Effect<End<A, L>>) — pull inputs from upstream and finish by succeeding with the [value, leftover?] tuple.
+- `Sink.fromPush` -> `Sink.fromTransform`: The push-based protocol (Option\<Chunk\> push function failing with [Either, leftovers]) is gone; v4's low-level constructor is pull-based: Sink.fromTransform((upstream: Pull\<NonEmptyReadonlyArray\<In\>\>, scope) =\> Effect\<End\<A, L\>\>) — pull inputs from upstream and finish by succeeding with the [value, leftover?] tuple.
 
-- `Sink.leftover` -> `Sink.succeed`: Removed as a standalone constructor; Sink.succeed now takes optional leftovers: Sink.succeed(void 0, leftovers) where leftovers is a NonEmptyReadonlyArray<L> instead of Chunk<L>.
+- `Sink.leftover` -> `Sink.succeed`: Removed as a standalone constructor; Sink.succeed now takes optional leftovers: Sink.succeed(void 0, leftovers) where leftovers is a NonEmptyReadonlyArray\<L\> instead of Chunk\<L\>.
 
-- `Sink.mapInputChunks` -> `Sink.mapInputArray`: Renamed; f maps NonEmptyReadonlyArray<In0> => NonEmptyReadonlyArray<In> (must stay non-empty) instead of Chunk => Chunk.
+- `Sink.mapInputChunks` -> `Sink.mapInputArray`: Renamed; f maps NonEmptyReadonlyArray\<In0\> =\> NonEmptyReadonlyArray\<In\> (must stay non-empty) instead of Chunk =\> Chunk.
 
-- `Sink.mapInputChunksEffect` -> `Sink.mapInputArrayEffect`: Renamed; f maps NonEmptyReadonlyArray<In0> => Effect<NonEmptyReadonlyArray<In>> (must stay non-empty) instead of Chunk => Effect<Chunk>.
+- `Sink.mapInputChunksEffect` -> `Sink.mapInputArrayEffect`: Renamed; f maps NonEmptyReadonlyArray\<In0\> =\> Effect\<NonEmptyReadonlyArray\<In\>\> (must stay non-empty) instead of Chunk =\> Effect\<Chunk\>.
 
-- `Sink.mkString` -> `Sink.reduceArray`: Removed as a built-in; equivalent one-liner: Sink.reduceArray(() => "", (s, arr) => s + arr.join("")).
+- `Sink.mkString` -> `Sink.reduceArray`: Removed as a built-in; equivalent one-liner: Sink.reduceArray(() =\> "", (s, arr) =\> s + arr.join("")).
 
 - `Sink.race` -> `none`: Sink racing (race/raceBoth/raceWith) was removed from v4; broadcast the stream (Stream.broadcast) into two consumers and race the resulting run effects with Effect.race, or write a custom Channel.
 
@@ -16976,23 +16976,23 @@ Schema.toFormatter(schema)
 
 - `Sink.raceWith` -> `none`: Removed, along with the MergeDecision type it depended on; the closest is broadcasting the stream and combining the two run effects manually (Effect.raceWith on the run effects).
 
-- `Sink.refineOrDie` -> `Sink.catch`: Removed; rebuild with the typed-error handler: Sink.catch(self, (e) => Option.match(pf(e), { onSome: Effect.fail, onNone: () => Effect.die(e) })) — note Sink.catch replaces the result on recovery, so refined errors must be re-failed as shown.
+- `Sink.refineOrDie` -> `Sink.catch`: Removed; rebuild with the typed-error handler: Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(e) })) — note Sink.catch replaces the result on recovery, so refined errors must be re-failed as shown.
 
-- `Sink.refineOrDieWith` -> `Sink.catch`: Removed; same pattern as refineOrDie but die with the mapped defect: Sink.catch(self, (e) => Option.match(pf(e), { onSome: Effect.fail, onNone: () => Effect.die(f(e)) })).
+- `Sink.refineOrDieWith` -> `Sink.catch`: Removed; same pattern as refineOrDie but die with the mapped defect: Sink.catch(self, (e) =\> Option.match(pf(e), { onSome: Effect.fail, onNone: () =\> Effect.die(f(e)) })).
 
 - `Sink.splitWhere` -> `none`: Removed; it re-chunked input so the sink stopped before the first later element matching the predicate — closest v4 options are pre-splitting the stream (Stream.split / Stream.takeWhile) or a custom Sink.fromTransform that cuts pulled arrays at the predicate boundary and returns the rest as leftovers.
 
-- `Sink.unwrapScoped` -> `Sink.unwrap`: Folded into Sink.unwrap, whose signature now excludes Scope from R (Sink<..., Exclude<R, Scope> | R2>), so scoped effects are accepted directly; resources stay open for the sink's lifetime.
+- `Sink.unwrapScoped` -> `Sink.unwrap`: Folded into Sink.unwrap, whose signature now excludes Scope from R (Sink\<..., Exclude\<R, Scope\> | R2\>), so scoped effects are accepted directly; resources stay open for the sink's lifetime.
 
 - `Sink.unwrapScopedWith` -> `Sink.unwrap`: Folded into Sink.unwrap — obtain the scope inside the effect via Effect.scope (Sink.unwrap(Effect.flatMap(Effect.scope, f))); for direct scope access use Sink.fromTransform, whose transform receives (upstream, scope).
 
-- `Sink.zip` -> `Sink.flatMap`: The zip family was removed; sequential zip is self.pipe(Sink.flatMap((a) => Sink.map(that, (a2) => [a, a2] as const))) — leftovers of the first sink feed the second. The { concurrent: true } racing mode has no v4 equivalent.
+- `Sink.zip` -> `Sink.flatMap`: The zip family was removed; sequential zip is self.pipe(Sink.flatMap((a) =\> Sink.map(that, (a2) =\> [a, a2] as const))) — leftovers of the first sink feed the second. The { concurrent: true } racing mode has no v4 equivalent.
 
-- `Sink.zipLeft` -> `Sink.flatMap`: Removed; use self.pipe(Sink.flatMap((a) => Sink.as(that, a))) to run both sequentially and keep the first result (no concurrent option).
+- `Sink.zipLeft` -> `Sink.flatMap`: Removed; use self.pipe(Sink.flatMap((a) =\> Sink.as(that, a))) to run both sequentially and keep the first result (no concurrent option).
 
-- `Sink.zipRight` -> `Sink.flatMap`: Removed; use self.pipe(Sink.flatMap(() => that)) to run both sequentially and keep the second result (no concurrent option).
+- `Sink.zipRight` -> `Sink.flatMap`: Removed; use self.pipe(Sink.flatMap(() =\> that)) to run both sequentially and keep the second result (no concurrent option).
 
-- `Sink.zipWith` -> `Sink.flatMap`: Removed; use self.pipe(Sink.flatMap((a) => Sink.map(that, (a2) => f(a, a2)))) — sequential only, the { concurrent: true } option has no v4 equivalent.
+- `Sink.zipWith` -> `Sink.flatMap`: Removed; use self.pipe(Sink.flatMap((a) =\> Sink.map(that, (a2) =\> f(a, a2)))) — sequential only, the { concurrent: true } option has no v4 equivalent.
 
 ### `effect/SortedMap`
 
@@ -17052,7 +17052,7 @@ Schema.toFormatter(schema)
 
 - `SortedSet.fromIterable` -> `HashSet.fromIterable`: Use HashSet.fromIterable and retain the element Order separately.
 
-- `SortedSet.getEquivalence` -> `Equal.asEquivalence`: HashSet implements Effect equality by set content; use Equal.asEquivalence<HashSet.HashSet<A>>().
+- `SortedSet.getEquivalence` -> `Equal.asEquivalence`: HashSet implements Effect equality by set content; use Equal.asEquivalence\<HashSet.HashSet\<A\>\>().
 
 - `SortedSet.intersection` -> `HashSet.intersection + HashSet.fromIterable`: Convert the old general iterable argument to HashSet before taking the intersection.
 
@@ -17074,15 +17074,15 @@ Schema.toFormatter(schema)
 
 ### `effect/Stream`
 
-- `Stream.Stream` -> `Stream`: The Stream<A, E, R> interface is unchanged in shape and keeps the effect/Stream import path; the type-id key is now the string literal "~effect/Stream" instead of a unique symbol.
+- `Stream.Stream` -> `Stream`: The Stream\<A, E, R\> interface is unchanged in shape and keeps the effect/Stream import path; the type-id key is now the string literal "\~effect/Stream" instead of a unique symbol.
 
-- `Stream.Stream.Context` -> `Stream.Services`: Type-level extractor of the R parameter renamed from Stream.Context<T> to Stream.Services<T>; identical conditional-infer semantics.
+- `Stream.Stream.Context` -> `Stream.Services`: Type-level extractor of the R parameter renamed from Stream.Context\<T\> to Stream.Services\<T\>; identical conditional-infer semantics.
 
-- `Stream.Stream.DynamicTuple` -> `Types.TupleOf`: Already deprecated in v3 in favor of Types.TupleOf; removed in v4. Use Types.TupleOf<N, T> (v4 Stream.broadcastN uses it for its return type).
+- `Stream.Stream.DynamicTuple` -> `Types.TupleOf`: Already deprecated in v3 in favor of Types.TupleOf; removed in v4. Use Types.TupleOf\<N, T\> (v4 Stream.broadcastN uses it for its return type).
 
-- `Stream.Stream.DynamicTupleOf` -> `Types.TupleOf`: Recursive tuple-builder helper removed with Stream.DynamicTuple; Types.TupleOf<N, T> is the v4 equivalent.
+- `Stream.Stream.DynamicTupleOf` -> `Types.TupleOf`: Recursive tuple-builder helper removed with Stream.DynamicTuple; Types.TupleOf\<N, T\> is the v4 equivalent.
 
-- `Stream.StreamTypeId` -> `Stream.TypeId`: Renamed StreamTypeId -> TypeId and changed from a unique symbol to the string literal "~effect/Stream" (both the const and the type).
+- `Stream.StreamTypeId` -> `Stream.TypeId`: Renamed StreamTypeId -\> TypeId and changed from a unique symbol to the string literal "\~effect/Stream" (both the const and the type).
 
 - `Stream.StreamUnify` -> `Stream.StreamUnify`: Still exported under the same name in v4 (extends Effect.EffectUnify); no change needed besides any Chunk-related element types.
 
@@ -17096,13 +17096,13 @@ Schema.toFormatter(schema)
 
 - `Stream.as` -> `Stream.map(() => value)`: Stream.as was removed; replace each element with a constant via Stream.map.
 
-- `Stream.async` -> `Stream.callback`: Stream.callback((queue) => Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail.
+- `Stream.async` -> `Stream.callback`: Stream.callback((queue) =\> Effect | void, { bufferSize?, strategy? }) replaces the Emit-based async; push with Queue.offer/offerAll, end with Queue.end, fail with Queue.fail.
 
 - `Stream.asyncEffect` -> `Stream.callback`: The register function of Stream.callback may return an Effect (run before the stream starts pulling), covering asyncEffect; signal end/failure through the provided Queue.
 
 - `Stream.asyncPush` -> `Stream.callback`: Stream.callback's register effect can use Scope for acquire/release of the external subscription, replacing asyncPush; the Emit ops helpers become plain Queue operations.
 
-- `Stream.asyncScoped` -> `Stream.callback`: Stream.callback's register effect may use Scope (Scope is excluded from the resulting R), replacing asyncScoped; the Option<E> end signal becomes Queue.end.
+- `Stream.asyncScoped` -> `Stream.callback`: Stream.callback's register effect may use Scope (Scope is excluded from the resulting R), replacing asyncScoped; the Option\<E\> end signal becomes Queue.end.
 
 #### `Stream.branchAfter`
 
@@ -17116,29 +17116,29 @@ Removed; the closest v4 primitive is Stream.peel(self, Sink.take(n)), a scoped E
 Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(head)(rest)))
 ```
 
-- `Stream.broadcastDynamic` -> `Stream.broadcast`: v4 Stream.broadcast({ capacity, strategy?, replay? }) is the dynamic-subscriber fan-out returning Effect<Stream<A, E>, never, Scope | R> (v3 fixed-arity broadcast(n) became Stream.broadcastN); Stream.share adds refcounted/idleTimeToLive semantics.
+- `Stream.broadcastDynamic` -> `Stream.broadcast`: v4 Stream.broadcast({ capacity, strategy?, replay? }) is the dynamic-subscriber fan-out returning Effect\<Stream\<A, E\>, never, Scope | R\> (v3 fixed-arity broadcast(n) became Stream.broadcastN); Stream.share adds refcounted/idleTimeToLive semantics.
 
 - `Stream.broadcastedQueues` -> `none`: Queue-of-Take fan-out surface removed. Use Stream.broadcastN({ n, capacity }) for a fixed tuple of mirror streams, or Stream.toPubSubTake to obtain a PubSub of Take values and subscribe consumers to it.
 
 - `Stream.broadcastedQueuesDynamic` -> `none`: Removed with broadcastedQueues. Use Stream.broadcast (dynamic mirror streams) or Stream.toPubSubTake + PubSub subscriptions when raw Take-level consumers are needed.
 
-- `Stream.bufferChunks` -> `Stream.bufferArray`: Chunk->Array rename; buffers whole arrays (chunks) up to capacity with the same strategy options.
+- `Stream.bufferChunks` -> `Stream.bufferArray`: Chunk-\>Array rename; buffers whole arrays (chunks) up to capacity with the same strategy options.
 
-- `Stream.catchAll` -> `Stream.catch`: Renamed to Stream.catch (exported keyword-style); same (error) => Stream handler for all typed failures.
+- `Stream.catchAll` -> `Stream.catch`: Renamed to Stream.catch (exported keyword-style); same (error) =\> Stream handler for all typed failures.
 
-- `Stream.catchAllCause` -> `Stream.catchCause`: Renamed; handler receives the full Cause<E> and returns a recovery stream, identical semantics.
+- `Stream.catchAllCause` -> `Stream.catchCause`: Renamed; handler receives the full Cause\<E\> and returns a recovery stream, identical semantics.
 
 - `Stream.catchSome` -> `Stream.catchFilter`: Option-returning partial handler replaced by the Filter API: Stream.catchFilter(filter, f, orElse?) recovers matched errors, unmatched failures pass through (Stream.catchIf for refinement/predicate matching).
 
 - `Stream.catchSomeCause` -> `Stream.catchCauseFilter`: Option-returning cause handler replaced by Stream.catchCauseFilter(filter, f, orElse?) using a Filter on the Cause (Stream.catchCauseIf for refinements).
 
-- `Stream.chunksWith` -> `Stream.flattenArray(f(Stream.chunks(self)))`: No dedicated combinator; expose chunk structure with Stream.chunks (Stream<NonEmptyReadonlyArray<A>>), transform, then re-flatten with Stream.flattenArray.
+- `Stream.chunksWith` -> `Stream.flattenArray(f(Stream.chunks(self)))`: No dedicated combinator; expose chunk structure with Stream.chunks (Stream\<NonEmptyReadonlyArray\<A\>\>), transform, then re-flatten with Stream.flattenArray.
 
-- `Stream.combineChunks` -> `Stream.combineArray`: Chunk->Array rename of the pull-level combining primitive; pulls now yield NonEmptyReadonlyArray values and halt via Cause.Done-failing Pull effects instead of Option-typed errors.
+- `Stream.combineChunks` -> `Stream.combineArray`: Chunk-\>Array rename of the pull-level combining primitive; pulls now yield NonEmptyReadonlyArray values and halt via Cause.Done-failing Pull effects instead of Option-typed errors.
 
 - `Stream.concatAll` -> `Stream.flatten`: Chunk-of-streams constructor removed; sequential concatenation of many streams is Stream.flatten(Stream.fromIterable(streams)) (default concurrency 1 preserves order).
 
-- `Stream.context` -> `Stream.fromEffect(Effect.context<R>())`: Dedicated accessor removed; lift Effect.context<R>() into a single-element stream.
+- `Stream.context` -> `Stream.fromEffect(Effect.context<R>())`: Dedicated accessor removed; lift Effect.context\<R\>() into a single-element stream.
 
 - `Stream.contextWith` -> `Stream.fromEffect(Effect.contextWith(f))`: Dedicated accessor removed; Effect.contextWith still exists in v4, lift it with Stream.fromEffect.
 
@@ -17148,7 +17148,7 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.crossLeft` -> `Stream.crossWith(that, (a, _) => a)`: Removed; cartesian product keeping only left elements is expressed with Stream.crossWith and a left-projecting combiner.
 
-- `Stream.crossRight` -> `Stream.crossWith(that, (_, b) => b)`: Removed; cartesian product keeping only right elements is Stream.crossWith with a right-projecting combiner (equivalently Stream.flatMap(self, () => that)).
+- `Stream.crossRight` -> `Stream.crossWith(that, (_, b) => b)`: Removed; cartesian product keeping only right elements is Stream.crossWith with a right-projecting combiner (equivalently Stream.flatMap(self, () =\> that)).
 
 - `Stream.dieMessage` -> `Stream.die(new Error(message))`: Removed along with RuntimeException; die with an explicit defect value via Stream.die.
 
@@ -17158,57 +17158,57 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.distributedWithDynamic` -> `none`: Dynamic predicate-routed fan-out removed with distributedWith. Use Stream.broadcast/Stream.share for dynamic mirrors plus per-subscriber Stream.filter, or hand-roll routing into Queues via Stream.runForEach.
 
-- `Stream.either` -> `Stream.result`: Either is replaced by Result in v4: Stream.result yields Stream<Result.Result<A, E>, never, R> (element -> Result.succeed, first error -> Result.fail and the stream ends, as before).
+- `Stream.either` -> `Stream.result`: Either is replaced by Result in v4: Stream.result yields Stream\<Result.Result\<A, E\>, never, R\> (element -\> Result.succeed, first error -\> Result.fail and the stream ends, as before).
 
-- `Stream.ensuringWith` -> `Stream.onExit`: Renamed; Stream.onExit runs the finalizer with the Exit<unknown, E> of the stream, identical shape.
+- `Stream.ensuringWith` -> `Stream.onExit`: Renamed; Stream.onExit runs the finalizer with the Exit\<unknown, E\> of the stream, identical shape.
 
-- `Stream.execute` -> `Stream.fromEffectDrain`: Renamed; runs the effect for its side effects and emits nothing (Stream<never, E, R>).
+- `Stream.execute` -> `Stream.fromEffectDrain`: Renamed; runs the effect for its side effects and emits nothing (Stream\<never, E, R\>).
 
 - `Stream.filterMapWhile` -> `Stream.takeWhileFilter`: Option-returning partial function replaced by the Filter API: Stream.takeWhileFilter(filter) maps and emits while the filter passes, ending the stream at the first miss.
 
-- `Stream.filterMapWhileEffect` -> `none`: No effectful takeWhileFilter variant in v4. Recreate by using Stream.takeWhileFilter with a Filter that selects the Effect<A2, E2, R2> to run, followed by Stream.mapEffect((eff) => eff) to execute it.
+- `Stream.filterMapWhileEffect` -> `none`: No effectful takeWhileFilter variant in v4. Recreate by using Stream.takeWhileFilter with a Filter that selects the Effect\<A2, E2, R2\> to run, followed by Stream.mapEffect((eff) =\> eff) to execute it.
 
 - `Stream.finalizer` -> `Stream.ensuring`: One-element finalizer-registering stream removed; attach finalizers directly with Stream.ensuring/Stream.onExit, or register in the stream scope via Stream.scoped(Stream.fromEffect(Effect.addFinalizer(fin))) when the v3 concat-a-finalizer pattern must be preserved.
 
 - `Stream.find` -> `Stream.take(Stream.filter(self, predicate), 1)`: Removed; first-match semantics are Stream.filter followed by Stream.take(1).
 
-- `Stream.findEffect` -> `Stream.take(Stream.filterEffect(self, f), 1)`: Removed; Stream.filterEffect takes an effectful (a, index) => Effect<boolean> predicate, then Stream.take(1) stops at the first match.
+- `Stream.findEffect` -> `Stream.take(Stream.filterEffect(self, f), 1)`: Removed; Stream.filterEffect takes an effectful (a, index) =\> Effect\<boolean\> predicate, then Stream.take(1) stops at the first match.
 
-- `Stream.flattenChunks` -> `Stream.flattenArray`: Chunk->Array rename; flattens a Stream of ReadonlyArray values into their elements.
+- `Stream.flattenChunks` -> `Stream.flattenArray`: Chunk-\>Array rename; flattens a Stream of ReadonlyArray values into their elements.
 
-- `Stream.flattenExitOption` -> `Stream.flattenTake`: The Exit<A, Option<E>> end-of-stream encoding is gone; v4 uses Take<A, E, Done> = NonEmptyReadonlyArray<A> | Exit and Stream.flattenTake unwraps it (emit arrays, end/fail on Exit).
+- `Stream.flattenExitOption` -> `Stream.flattenTake`: The Exit\<A, Option\<E\>\> end-of-stream encoding is gone; v4 uses Take\<A, E, Done\> = NonEmptyReadonlyArray\<A\> | Exit and Stream.flattenTake unwraps it (emit arrays, end/fail on Exit).
 
 - `Stream.flattenIterables` -> `Stream.flattenIterable`: Renamed (singular); flattens a Stream of Iterables into their elements.
 
-- `Stream.fromChunk` -> `Stream.fromArray`: Chunk->Array rename; takes a ReadonlyArray and emits it as one chunk.
+- `Stream.fromChunk` -> `Stream.fromArray`: Chunk-\>Array rename; takes a ReadonlyArray and emits it as one chunk.
 
-- `Stream.fromChunkPubSub` -> `Stream.fromPubSub`: Chunked PubSub constructors are gone; v4 Stream.fromPubSub(pubsub) consumes PubSub<A> directly (batched internally). For a PubSub carrying arrays use Stream.flattenArray(Stream.fromPubSub(pubsub)); the scoped/shutdown options were dropped (Stream.fromSubscription consumes an existing subscription).
+- `Stream.fromChunkPubSub` -> `Stream.fromPubSub`: Chunked PubSub constructors are gone; v4 Stream.fromPubSub(pubsub) consumes PubSub\<A\> directly (batched internally). For a PubSub carrying arrays use Stream.flattenArray(Stream.fromPubSub(pubsub)); the scoped/shutdown options were dropped (Stream.fromSubscription consumes an existing subscription).
 
-- `Stream.fromChunkQueue` -> `Stream.fromQueue`: Chunked Queue constructor gone; v4 Stream.fromQueue consumes Queue.Dequeue<A, E> whose done/failure signals end the stream (no shutdown option). For array payloads wrap with Stream.flattenArray.
+- `Stream.fromChunkQueue` -> `Stream.fromQueue`: Chunked Queue constructor gone; v4 Stream.fromQueue consumes Queue.Dequeue\<A, E\> whose done/failure signals end the stream (no shutdown option). For array payloads wrap with Stream.flattenArray.
 
-- `Stream.fromChunks` -> `Stream.fromArrays`: Chunk->Array rename; variadic arrays, each emitted as one chunk.
+- `Stream.fromChunks` -> `Stream.fromArrays`: Chunk-\>Array rename; variadic arrays, each emitted as one chunk.
 
-- `Stream.fromEffectOption` -> `none`: The Effect<A, Option<E>> encoding (fail None = empty stream) is removed; v4 signals early end with Cause.Done in Pull-level code. Rebuild with Stream.unwrap: map the success to Stream.succeed and match the Option error to Stream.empty (None) or Stream.fail (Some).
+- `Stream.fromEffectOption` -> `none`: The Effect\<A, Option\<E\>\> encoding (fail None = empty stream) is removed; v4 signals early end with Cause.Done in Pull-level code. Rebuild with Stream.unwrap: map the success to Stream.succeed and match the Option error to Stream.empty (None) or Stream.fail (Some).
 
 - `Stream.fromReadableStreamByob` -> `Stream.fromReadableStream`: BYOB reader variant removed (no byob support in v4 source); Stream.fromReadableStream({ evaluate, onError, releaseLockOnEnd? }) consumes any ReadableStream with a default reader, without byte-buffer allocation control.
 
-- `Stream.fromTPubSub` -> `none`: STM TPubSub was replaced by the transactional TxPubSub module and v4 Stream has no Tx* constructors; subscribe and repeatedly TxQueue.take from the subscription (e.g. inside Stream.fromPull/Stream.callback), or bridge through a regular PubSub and Stream.fromPubSub.
+- `Stream.fromTPubSub` -> `none`: STM TPubSub was replaced by the transactional TxPubSub module and v4 Stream has no Tx\* constructors; subscribe and repeatedly TxQueue.take from the subscription (e.g. inside Stream.fromPull/Stream.callback), or bridge through a regular PubSub and Stream.fromPubSub.
 
-- `Stream.fromTQueue` -> `none`: STM TQueue was replaced by TxQueue and v4 Stream has no Tx* constructors; drain by repeatedly calling TxQueue.take inside a custom loop (Stream.fromPull/Stream.callback), or bridge into a regular Queue and use Stream.fromQueue.
+- `Stream.fromTQueue` -> `none`: STM TQueue was replaced by TxQueue and v4 Stream has no Tx\* constructors; drain by repeatedly calling TxQueue.take inside a custom loop (Stream.fromPull/Stream.callback), or bridge into a regular Queue and use Stream.fromQueue.
 
 - `Stream.haltAfter` -> `Stream.haltWhen(Effect.sleep(duration))`: Duration-specialized halt removed; v3 documented it as haltWhen with a sleep — completes the stream after the duration without interrupting an in-flight pull.
 
 - `Stream.haltWhenDeferred` -> `Stream.haltWhen(Deferred.await(deferred))`: Deferred-specialized variant removed; Deferred.await is an Effect, so plain Stream.haltWhen covers it.
 
-- `Stream.identity` -> `Channel.identity`: The identity-pipeline Stream is gone; for pipeThrough-style plumbing use Stream.pipeThroughChannel(Channel.identity()), or simply the identity function where a Stream=>Stream transform is expected.
+- `Stream.identity` -> `Channel.identity`: The identity-pipeline Stream is gone; for pipeThrough-style plumbing use Stream.pipeThroughChannel(Channel.identity()), or simply the identity function where a Stream=\>Stream transform is expected.
 
 - `Stream.interruptAfter` -> `Stream.interruptWhen(Effect.sleep(duration))`: Duration-specialized interrupt removed; interruptWhen forks the sleep and also interrupts an in-progress pull, matching v3 semantics.
 
 - `Stream.interruptWhenDeferred` -> `Stream.interruptWhen(Deferred.await(deferred))`: Deferred-specialized variant removed; pass Deferred.await to Stream.interruptWhen (a Deferred failure surfaces as the stream's failure, as before).
 
-- `Stream.mapChunks` -> `Stream.mapArray`: Chunk->Array rename; transforms each emitted chunk as a NonEmptyReadonlyArray.
+- `Stream.mapChunks` -> `Stream.mapArray`: Chunk-\>Array rename; transforms each emitted chunk as a NonEmptyReadonlyArray.
 
-- `Stream.mapChunksEffect` -> `Stream.mapArrayEffect`: Chunk->Array rename of the effectful per-chunk transform.
+- `Stream.mapChunksEffect` -> `Stream.mapArrayEffect`: Chunk-\>Array rename of the effectful per-chunk transform.
 
 - `Stream.mapConcat` -> `Stream.flattenIterable(Stream.map(self, f))`: Removed; map each element to an Iterable and flatten with Stream.flattenIterable.
 
@@ -17220,9 +17220,9 @@ Stream.unwrap(Effect.map(Stream.peel(self, Sink.take(n)), ([head, rest]) => f(he
 
 - `Stream.mapErrorCause` -> `Stream.catchCause((cause) => Stream.failCause(f(cause)))`: Removed; transform the full Cause by catching it and re-failing with the mapped cause.
 
-- `Stream.mapInputContext` -> `Stream.updateContext`: Renamed; same contravariant (Context<R2>) => Context<R> mapping of the required services.
+- `Stream.mapInputContext` -> `Stream.updateContext`: Renamed; same contravariant (Context\<R2\>) =\> Context\<R\> mapping of the required services.
 
-- `Stream.mergeEither` -> `Stream.mergeResult`: Either replaced by Result: Stream.mergeResult(self, that) yields Result.Result<A, A2> with self -> Result.succeed and that -> Result.fail (v3 put self in Either.left and that in Either.right, so the success/left roles swap sides).
+- `Stream.mergeEither` -> `Stream.mergeResult`: Either replaced by Result: Stream.mergeResult(self, that) yields Result.Result\<A, A2\> with self -\> Result.succeed and that -\> Result.fail (v3 put self in Either.left and that in Either.right, so the success/left roles swap sides).
 
 - `Stream.mergeWith` -> `Stream.merge(Stream.map(self, onSelf), Stream.map(that, onOther), { haltStrategy })`: Removed; pre-map both streams to the common type and use Stream.merge, whose options accept the same haltStrategy union ("left" | "right" | "both" | "either").
 
@@ -17238,7 +17238,7 @@ Struct-to-tagged-union merge removed. Recreate with Stream.mergeAll over the ent
 Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value) => ({ _tag, value }))), { concurrency })
 ```
 
-- `Stream.onDone` -> `Stream.onEnd`: Renamed; v4 onEnd takes an Effect value (not a () => Effect thunk) run when the stream ends successfully, and its error type may add to the stream's.
+- `Stream.onDone` -> `Stream.onEnd`: Renamed; v4 onEnd takes an Effect value (not a () =\> Effect thunk) run when the stream ends successfully, and its error type may add to the stream's.
 
 - `Stream.orDieWith` -> `Stream.orDie`: orDieWith removed; transform the error first, then convert failures to defects: `self.pipe(Stream.mapError(f), Stream.orDie)`.
 
@@ -17250,7 +17250,7 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 
 - `Stream.orElseIfEmptyChunk` -> `Stream.orElseIfEmpty`: Folded into Stream.orElseIfEmpty, which now takes a lazy fallback Stream: `Stream.orElseIfEmpty(self, () => Stream.fromArray(array))`; Chunk is replaced by plain arrays.
 
-- `Stream.orElseIfEmptyStream` -> `Stream.orElseIfEmpty`: Direct rename: v4 Stream.orElseIfEmpty takes a LazyArg<Stream> fallback, identical semantics.
+- `Stream.orElseIfEmptyStream` -> `Stream.orElseIfEmpty`: Direct rename: v4 Stream.orElseIfEmpty takes a LazyArg\<Stream\> fallback, identical semantics.
 
 - `Stream.paginateChunk` -> `Stream.paginate`: v4 Stream.paginate is effectful and array-based: `paginate(s, (s) => Effect<readonly [ReadonlyArray<A>, Option<S>]>)`; wrap the pure step in Effect.succeed and use an array instead of a Chunk.
 
@@ -17258,7 +17258,7 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 
 - `Stream.paginateEffect` -> `Stream.paginate`: v4 Stream.paginate emits a batch per step; wrap the single value in an array: `(s) => Effect.map(step(s), ([a, next]) => [[a], next])`.
 
-- `Stream.partitionEither` -> `Stream.partitionEffect`: Either-based split replaced by Filter.FilterEffect: the function now returns Effect<Result<Pass, Fail>> (Result.succeed/Result.fail instead of Either.right/left). Returns Effect<[passes, fails], never, R | Scope> — note the tuple is [passes, fails], v3 was [left, right]; options are { capacity?, concurrency? }.
+- `Stream.partitionEither` -> `Stream.partitionEffect`: Either-based split replaced by Filter.FilterEffect: the function now returns Effect\<Result\<Pass, Fail\>\> (Result.succeed/Result.fail instead of Either.right/left). Returns Effect\<[passes, fails], never, R | Scope\> — note the tuple is [passes, fails], v3 was [left, right]; options are { capacity?, concurrency? }.
 
 - `Stream.provideLayer` -> `Stream.provide`: v4 Stream.provide accepts a Layer or a Context; behavior identical.
 
@@ -17276,9 +17276,9 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 
 - `Stream.repeatEffectChunk` -> `Stream.fromIterableEffectRepeat`: Renamed; the effect now produces an Iterable/array instead of a Chunk, repeated forever.
 
-- `Stream.repeatEffectChunkOption` -> `Stream.fromIterableEffectRepeat`: The Option<E> error encoding is gone: end the stream by failing the effect with `Cause.done()` (a Cause.Done failure); Done is excluded from the resulting stream's error type (Pull.ExcludeDone<E>).
+- `Stream.repeatEffectChunkOption` -> `Stream.fromIterableEffectRepeat`: The Option\<E\> error encoding is gone: end the stream by failing the effect with `Cause.done()` (a Cause.Done failure); Done is excluded from the resulting stream's error type (Pull.ExcludeDone\<E\>).
 
-- `Stream.repeatEffectOption` -> `Stream.fromEffectRepeat`: The Option<E> error encoding is gone: fail the effect with `Cause.done()` instead of Option.none() to end the stream; other failures propagate as stream errors.
+- `Stream.repeatEffectOption` -> `Stream.fromEffectRepeat`: The Option\<E\> error encoding is gone: fail the effect with `Cause.done()` instead of Option.none() to end the stream; other failures propagate as stream errors.
 
 - `Stream.repeatEffectWithSchedule` -> `Stream.fromEffectSchedule`: Renamed; runs the effect once, then repeats it per the schedule, emitting each result.
 
@@ -17290,7 +17290,7 @@ Stream.mergeAll(Object.entries(streams).map(([_tag, s]) => Stream.map(s, (value)
 
 - `Stream.repeatWith` -> `none`: Removed; v4 Stream.repeat(schedule) covers the repetition but drops the schedule outputs and the onElement/onSchedule unification. Hand-roll if schedule outputs must appear in the stream.
 
-- `Stream.runFoldScoped` -> `Stream.runFold`: Scoped run variants are gone; v4 run functions manage the stream's scope internally and the initial value is now a LazyArg: `Stream.runFold(self, () => s, f)`. For enclosing-scope control, pull manually via `Stream.toPull` (Effect<Pull, never, R | Scope>).
+- `Stream.runFoldScoped` -> `Stream.runFold`: Scoped run variants are gone; v4 run functions manage the stream's scope internally and the initial value is now a LazyArg: `Stream.runFold(self, () => s, f)`. For enclosing-scope control, pull manually via `Stream.toPull` (Effect\<Pull, never, R | Scope\>).
 
 - `Stream.runFoldScopedEffect` -> `Stream.runFoldEffect`: Scoped run variants are gone; use `Stream.runFoldEffect(self, () => s, f)` — scope is managed internally, initial value is a LazyArg. Use Stream.toPull for manual scoped consumption.
 
@@ -17314,7 +17314,7 @@ Effect.suspend(() => {
 
 ```
 
-- `Stream.runFoldWhileEffect` -> `none`: v4 runFoldEffect has no early-exit predicate; emulate with Stream.runForEachWhile and a mutable accumulator, mapping the effectful step to Effect<boolean> via cont(acc) (see runFoldWhile example).
+- `Stream.runFoldWhileEffect` -> `none`: v4 runFoldEffect has no early-exit predicate; emulate with Stream.runForEachWhile and a mutable accumulator, mapping the effectful step to Effect\<boolean\> via cont(acc) (see runFoldWhile example).
 
 - `Stream.runFoldWhileScoped` -> `none`: Both the while-predicate and the scoped run variants are gone in v4; emulate the predicate with Stream.runForEachWhile plus a mutable accumulator (see runFoldWhile); scope is managed internally by v4 run functions.
 
@@ -17326,13 +17326,13 @@ Effect.suspend(() => {
 
 - `Stream.runForEachScoped` -> `Stream.runForEach`: Scoped run variants are gone; v4 runForEach manages the stream scope internally. Use Stream.toPull for manual scoped consumption.
 
-- `Stream.runForEachWhileScoped` -> `Stream.runForEachWhile`: Scoped run variants are gone; v4 runForEachWhile (callback returns Effect<boolean>) manages the stream scope internally.
+- `Stream.runForEachWhileScoped` -> `Stream.runForEachWhile`: Scoped run variants are gone; v4 runForEachWhile (callback returns Effect\<boolean\>) manages the stream scope internally.
 
 - `Stream.runIntoPubSubScoped` -> `Stream.runIntoPubSub`: Scoped variant removed; v4 runIntoPubSub(pubsub, { shutdownOnEnd? }) publishes plain values (the Take wrapper is gone) and does not require Scope — fork the returned effect (Effect.forkIn/Effect.forkScoped) to reproduce the background scoped behavior.
 
-- `Stream.runIntoQueueElementsScoped` -> `Stream.runIntoQueue`: The per-element Exit<A, Option<E>> encoding is gone; v4 runIntoQueue targets a Queue<A, E | Cause.Done> — elements are offered plainly and failure/end are signalled through the queue's error/done channel. Fork with Effect.forkIn for scoped background running.
+- `Stream.runIntoQueueElementsScoped` -> `Stream.runIntoQueue`: The per-element Exit\<A, Option\<E\>\> encoding is gone; v4 runIntoQueue targets a Queue\<A, E | Cause.Done\> — elements are offered plainly and failure/end are signalled through the queue's error/done channel. Fork with Effect.forkIn for scoped background running.
 
-- `Stream.runIntoQueueScoped` -> `Stream.runIntoQueue`: Scoped variant removed; v4 runIntoQueue offers plain values to a Queue<A, E | Cause.Done> (Take wrapper gone) and requires no Scope — fork the returned effect into a scope (Effect.forkIn) if needed.
+- `Stream.runIntoQueueScoped` -> `Stream.runIntoQueue`: Scoped variant removed; v4 runIntoQueue offers plain values to a Queue\<A, E | Cause.Done\> (Take wrapper gone) and requires no Scope — fork the returned effect into a scope (Effect.forkIn) if needed.
 
 - `Stream.runScoped` -> `Stream.run`: Scoped variant removed; v4 Stream.run(sink) manages the stream's scope internally. For consumption tied to an enclosing Scope, use Stream.toPull and drive the Pull manually.
 
@@ -17344,7 +17344,7 @@ Effect.suspend(() => {
 
 - `Stream.scopedWith` -> `Stream.scoped`: Removed; v4 Stream.scoped scopes a Stream (provides a Scope kept open for the stream's lifetime). Emulate: `Stream.scoped(Stream.fromEffect(Effect.flatMap(Effect.scope, f)))` — Effect.scope accesses the ambient Scope.
 
-- `Stream.some` -> `none`: Removed along with Option<E> error encodings. To drop None values use `Stream.filterMap(self, Filter.fromPredicateOption((o) => o))`; to fail on None use Stream.mapEffect with Option.match into Effect.fail/Effect.succeed.
+- `Stream.some` -> `none`: Removed along with Option\<E\> error encodings. To drop None values use `Stream.filterMap(self, Filter.fromPredicateOption((o) => o))`; to fail on None use Stream.mapEffect with Option.match into Effect.fail/Effect.succeed.
 
 - `Stream.someOrElse` -> `Stream.map`: Removed; use `Stream.map(self, Option.getOrElse(() => fallback()))`.
 
@@ -17362,15 +17362,15 @@ Effect.suspend(() => {
 
 - `Stream.toAsyncIterableRuntime` -> `Stream.toAsyncIterableWith`: Renamed; takes a `Context.Context<XR>` instead of a Runtime (v4 removed Runtime — a services Context is the execution environment). toAsyncIterable/toAsyncIterableEffect also still exist.
 
-- `Stream.toQueueOfElements` -> `Stream.toQueue`: The Exit<A, Option<E>>-per-element queue is gone; v4 toQueue(options: { capacity, strategy? }) returns Effect<Queue.Dequeue<A, E | Cause.Done>, never, R | Scope> — elements are plain values and failure/end arrive through the queue's error/done channel.
+- `Stream.toQueueOfElements` -> `Stream.toQueue`: The Exit\<A, Option\<E\>\>-per-element queue is gone; v4 toQueue(options: { capacity, strategy? }) returns Effect\<Queue.Dequeue\<A, E | Cause.Done\>, never, R | Scope\> — elements are plain values and failure/end arrive through the queue's error/done channel.
 
 - `Stream.toReadableStreamRuntime` -> `Stream.toReadableStreamWith`: Renamed; takes a `Context.Context<XR>` instead of a Runtime (v4 removed Runtime); options `{ strategy?: QueuingStrategy }` unchanged.
 
 - `Stream.transduce` -> `Stream.transduce`: Unchanged name and Sink-based shape; chunks are plain arrays in v4.
 
-- `Stream.unfoldChunk` -> `Stream.paginate`: Removed; v4 Stream.paginate(s, (s) => Effect<[ReadonlyArray<A>, Option<S>]>) is the array-emitting unfold — wrap the pure step in Effect.succeed; to end without emitting return `[[], Option.none()]`.
+- `Stream.unfoldChunk` -> `Stream.paginate`: Removed; v4 Stream.paginate(s, (s) =\> Effect\<[ReadonlyArray\<A\>, Option\<S\>]\>) is the array-emitting unfold — wrap the pure step in Effect.succeed; to end without emitting return `[[], Option.none()]`.
 
-- `Stream.unfoldChunkEffect` -> `Stream.paginate`: Removed; v4 Stream.paginate has the effectful array-step shape — map v3's Option<[Chunk, S]> result to `[array, Option<S>]`, returning `[[], Option.none()]` to end without emitting.
+- `Stream.unfoldChunkEffect` -> `Stream.paginate`: Removed; v4 Stream.paginate has the effectful array-step shape — map v3's Option\<[Chunk, S]\> result to `[array, Option<S>]`, returning `[[], Option.none()]` to end without emitting.
 
 - `Stream.unfoldEffect` -> `Stream.unfold`: v4 Stream.unfold is effectful: `unfold(s, (s) => Effect<readonly [A, S] | undefined>)` — return the pair or `undefined` to end instead of Option.
 
@@ -17386,7 +17386,7 @@ Effect.suspend(() => {
 
 - `Stream.whenEffect` -> `Stream.when`: Folded into Stream.when, which now takes an `Effect<boolean>` test directly (wrap a pure condition with Effect.sync).
 
-- `Stream.zipAll` -> `none`: The entire zipAll family was removed in v4 (only zip/zipLatest/zipLatestAll exist; zip ends at the shorter side, zipLatest* combine latest values — different semantics). Pad-with-default zipping must be hand-rolled, e.g. with Stream.combineArray pulling both sides.
+- `Stream.zipAll` -> `none`: The entire zipAll family was removed in v4 (only zip/zipLatest/zipLatestAll exist; zip ends at the shorter side, zipLatest\* combine latest values — different semantics). Pad-with-default zipping must be hand-rolled, e.g. with Stream.combineArray pulling both sides.
 
 - `Stream.zipAllLeft` -> `none`: Removed with the zipAll family; no default-padding zip exists in v4. Hand-roll with Stream.combineArray (or concat the remainder after a plain Stream.zipLeft) if needed.
 
@@ -17410,7 +17410,7 @@ Effect.suspend(() => {
 
 **Replacement:** `Queue.Queue<A, E | Cause.Done>`
 
-The StreamEmit module is gone; v4 Stream.callback hands the callback a Queue<A, E | Cause.Done> instead of an Emit function. Emit values with Queue.offer/Queue.offerAll, end with Queue.end, fail with Queue.fail/Queue.failCause.
+The StreamEmit module is gone; v4 Stream.callback hands the callback a Queue\<A, E | Cause.Done\> instead of an Emit function. Emit values with Queue.offer/Queue.offerAll, end with Queue.end, fail with Queue.fail/Queue.failCause.
 
 **Example**
 
@@ -17424,9 +17424,9 @@ Stream.callback<number, Err>((queue) =>
 
 ```
 
-- `StreamEmit.EmitOps` -> `Queue.offer / Queue.offerAll / Queue.end / Queue.fail / Queue.failCause`: Method-by-method mapping onto the Queue passed to Stream.callback: single(a) -> Queue.offer(queue, a); chunk(c) -> Queue.offerAll(queue, c); end() -> Queue.end(queue); fail(e) -> Queue.fail(queue, e); halt(cause) -> Queue.failCause(queue, cause); die(d)/dieMessage(m) -> Queue.failCause(queue, Cause.die(d)); done(exit) -> Queue.offer then Queue.end on success, Queue.failCause on failure; fromEffect(eff) -> run eff and offer its value (Effect.flatMap(eff, (a) => Queue.offer(queue, a))).
+- `StreamEmit.EmitOps` -> `Queue.offer / Queue.offerAll / Queue.end / Queue.fail / Queue.failCause`: Method-by-method mapping onto the Queue passed to Stream.callback: single(a) -\> Queue.offer(queue, a); chunk(c) -\> Queue.offerAll(queue, c); end() -\> Queue.end(queue); fail(e) -\> Queue.fail(queue, e); halt(cause) -\> Queue.failCause(queue, cause); die(d)/dieMessage(m) -\> Queue.failCause(queue, Cause.die(d)); done(exit) -\> Queue.offer then Queue.end on success, Queue.failCause on failure; fromEffect(eff) -\> run eff and offer its value (Effect.flatMap(eff, (a) =\> Queue.offer(queue, a))).
 
-- `StreamEmit.EmitOpsPush` -> `Queue.offerUnsafe / Queue.offerAllUnsafe / Queue.endUnsafe / Queue.failCauseUnsafe`: The synchronous push interface of v3 Stream.asyncPush maps to the *Unsafe Queue operations on the Queue given to Stream.callback: single/array -> Queue.offerUnsafe/Queue.offerAllUnsafe, end -> Queue.endUnsafe, fail/halt/die -> Queue.failCauseUnsafe (wrap plain errors with Cause.fail, defects with Cause.die).
+- `StreamEmit.EmitOpsPush` -> `Queue.offerUnsafe / Queue.offerAllUnsafe / Queue.endUnsafe / Queue.failCauseUnsafe`: The synchronous push interface of v3 Stream.asyncPush maps to the \*Unsafe Queue operations on the Queue given to Stream.callback: single/array -\> Queue.offerUnsafe/Queue.offerAllUnsafe, end -\> Queue.endUnsafe, fail/halt/die -\> Queue.failCauseUnsafe (wrap plain errors with Cause.fail, defects with Cause.die).
 
 ### `effect/StreamHaltStrategy`
 
@@ -17973,7 +17973,7 @@ switch (strategy) {
 
 ### `effect/Take`
 
-- `Take.Take` -> `Take.Take<A, E, Done>`: v4 Take is the plain union NonEmptyReadonlyArray<A> | Exit.Exit<Done, E> — no wrapper object or Pipeable: a value batch is a non-empty array, a failure is a failed Exit, and end-of-stream is a successful Exit carrying the Done value (void by default). The module keeps the effect/Take path but exports only the type and toPull.
+- `Take.Take` -> `Take.Take<A, E, Done>`: v4 Take is the plain union NonEmptyReadonlyArray\<A\> | Exit.Exit\<Done, E\> — no wrapper object or Pipeable: a value batch is a non-empty array, a failure is a failed Exit, and end-of-stream is a successful Exit carrying the Done value (void by default). The module keeps the effect/Take path but exports only the type and toPull.
 
 - `Take.Take.Variance` -> `none`: Variance plumbing removed; v4 Take is a plain union type with no branded interface, so there is nothing to migrate to.
 
@@ -18019,9 +18019,9 @@ Effect.matchCause(pull, { onSuccess: (arr) => arr, onFailure: Pull.doneExitFromC
 
 - `Take.isFailure` -> `Exit.isExit(take) && Exit.isFailure(take)`: A failure Take is the failed-Exit branch of the union.
 
-- `Take.isSuccess` -> `!Exit.isExit(take)`: A value batch is the non-Exit branch; use Array.isReadonlyArrayNonEmpty(take) when a positive refinement to NonEmptyReadonlyArray<A> is needed.
+- `Take.isSuccess` -> `!Exit.isExit(take)`: A value batch is the non-Exit branch; use Array.isReadonlyArrayNonEmpty(take) when a positive refinement to NonEmptyReadonlyArray\<A\> is needed.
 
-- `Take.make` -> `none`: No wrapper constructor: build the union value directly — a non-empty array for values, Exit.fail/Exit.failCause for errors, Exit.succeed(done) (or Exit.void) for end-of-stream; the v3 Exit<Chunk<A>, Option<E>> encoding is gone.
+- `Take.make` -> `none`: No wrapper constructor: build the union value directly — a non-empty array for values, Exit.fail/Exit.failCause for errors, Exit.succeed(done) (or Exit.void) for end-of-stream; the v3 Exit\<Chunk\<A\>, Option\<E\>\> encoding is gone.
 
 - `Take.map` -> `Exit.isExit(take) ? take : Array.map(take, f)`: Only the value batch is mapped; effect's Array.map preserves the NonEmptyReadonlyArray type, and Exit branches (failure/end) pass through unchanged.
 
@@ -18147,7 +18147,7 @@ Exit.isExit(take)
 
 - `TestServices.annotationsWith` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
 
-- `TestServices.currentServices` -> `Effect.context()`: The separate FiberRef<Context<TestServices>> was removed. Test services now live in the ordinary Effect Context; override individual references with Effect.provideService.
+- `TestServices.currentServices` -> `Effect.context()`: The separate FiberRef\<Context\<TestServices\>\> was removed. Test services now live in the ordinary Effect Context; override individual references with Effect.provideService.
 
 - `TestServices.get` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
 
@@ -18169,9 +18169,9 @@ Exit.isExit(take)
 
 - `TestServices.shrinks` -> `none`: The legacy maximum-shrinks service setting was removed; @effect/vitest forwards FastCheck.Parameters, which has no equivalent service value.
 
-- `TestServices.size` -> `CurrentSize`: Define a custom Context.Reference<number> and yield it to read the current size.
+- `TestServices.size` -> `CurrentSize`: Define a custom Context.Reference\<number\> and yield it to read the current size.
 
-- `TestServices.sized` -> `CurrentSize`: TestSized was removed. Use a custom Context.Reference<number> directly instead of a wrapper object.
+- `TestServices.sized` -> `CurrentSize`: TestSized was removed. Use a custom Context.Reference\<number\> directly instead of a wrapper object.
 
 - `TestServices.sizedLayer` -> `Layer.succeed(CurrentSize, size)`: Provide the custom size reference as a layer.
 
@@ -18207,7 +18207,7 @@ Exit.isExit(take)
 
 - `TestSized.TestSizedTypeId` -> `none`: The wrapper's nominal type id is unnecessary; Context.Reference supplies stable key identity.
 
-- `TestSized.fromFiberRef` -> `Context.Reference<number>`: FiberRef and TestSized were removed. Define one stable Context.Reference<number> instead of wrapping a FiberRef.
+- `TestSized.fromFiberRef` -> `Context.Reference<number>`: FiberRef and TestSized were removed. Define one stable Context.Reference\<number\> instead of wrapping a FiberRef.
 
 - `TestSized.make` -> `Context.Reference<number>`: Define a module-level reference with defaultValue; do not create a fresh key at each call site.
 
@@ -18221,7 +18221,7 @@ Exit.isExit(take)
 
 - `Tracer.Span` -> `Tracer.Span`: Keep the type and rename span.context to span.annotations; the other public fields and methods remain.
 
-- `Tracer.SpanLink` -> `Tracer.SpanLink`: Keep the type but remove the _tag property; v4 links contain only span and attributes.
+- `Tracer.SpanLink` -> `Tracer.SpanLink`: Keep the type but remove the \_tag property; v4 links contain only span and attributes.
 
 - `Tracer.SpanOptions` -> `Tracer.SpanOptions`: Keep the type and rename context to annotations. V4 splits trace options and additionally accepts sampled and level.
 
@@ -18233,7 +18233,7 @@ Exit.isExit(take)
 
 ### `effect/Trie`
 
-- `Trie.TypeId` -> `none`: The Trie brand is private and there is no public Trie runtime guard; use Trie.Trie<V> in type positions.
+- `Trie.TypeId` -> `none`: The Trie brand is private and there is no public Trie runtime guard; use Trie.Trie\<V\> in type positions.
 
 - `Trie.unsafeGet` -> `Trie.getUnsafe`: Direct word-order rename; it still throws for a missing key.
 

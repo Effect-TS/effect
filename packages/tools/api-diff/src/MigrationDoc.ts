@@ -30,6 +30,41 @@ const displayApiId = (id: string): string => {
   return `${module}.${id.slice(separator + 1)}`
 }
 
+const codeSpan = (value: string): string => {
+  const delimiter = "`".repeat(Math.max(1, ...(value.match(/`+/g)?.map((run) => run.length + 1) ?? [])))
+  const content = value.startsWith("`") || value.endsWith("`") ? ` ${value} ` : value
+  return `${delimiter}${content}${delimiter}`
+}
+
+const escapeMarkdownText = (value: string): string => value.replace(/\\/g, "\\\\").replace(/[~<>*_]/g, "\\$&")
+
+const escapeAnnotationText = (value: string): string => {
+  const output: Array<string> = []
+  let index = 0
+  while (index < value.length) {
+    const start = value.indexOf("`", index)
+    if (start === -1) {
+      output.push(escapeMarkdownText(value.slice(index)))
+      break
+    }
+    output.push(escapeMarkdownText(value.slice(index, start)))
+    let end = start + 1
+    while (value[end] === "`") {
+      end++
+    }
+    const delimiter = value.slice(start, end)
+    const close = value.indexOf(delimiter, end)
+    if (close === -1) {
+      output.push("\\`".repeat(delimiter.length))
+      index = end
+    } else {
+      output.push(value.slice(start, close + delimiter.length))
+      index = close + delimiter.length
+    }
+  }
+  return output.join("")
+}
+
 const compareStrings = (left: string, right: string): number => left < right ? -1 : left > right ? 1 : 0
 
 const isBreakingChange = (change: ApiChange): boolean => {
@@ -177,11 +212,11 @@ const renderDetailedEntry = (
   annotation: MigrationAnnotation,
   example: string
 ): ReadonlyArray<string> => [
-  `#### \`${displayApiId(entry.id)}\``,
+  `#### ${codeSpan(displayApiId(entry.id))}`,
   "",
-  `**Replacement:** \`${annotation.replacement}\``,
+  `**Replacement:** ${codeSpan(annotation.replacement)}`,
   "",
-  annotation.note,
+  escapeAnnotationText(annotation.note),
   "",
   "**Example**",
   "",
@@ -196,12 +231,14 @@ const renderCompactEntry = (
   annotation: MigrationAnnotation | undefined
 ): string => {
   if (annotation !== undefined) {
-    return `- \`${displayApiId(entry.id)}\` -> \`${annotation.replacement}\`: ${annotation.note}`
+    return `- ${codeSpan(displayApiId(entry.id))} -> ${codeSpan(annotation.replacement)}: ${
+      escapeAnnotationText(annotation.note)
+    }`
   }
   const target = entry.rename?.headApiId
   return target === undefined
-    ? `- \`${displayApiId(entry.id)}\`: TODO: needs guidance`
-    : `- \`${displayApiId(entry.id)}\` -> \`${displayApiId(stableApiId(target))}\`: TODO: needs guidance`
+    ? `- ${codeSpan(displayApiId(entry.id))}: TODO: needs guidance`
+    : `- ${codeSpan(displayApiId(entry.id))} -> ${codeSpan(displayApiId(stableApiId(target)))}: TODO: needs guidance`
 }
 
 export const extractImportMapSections = (document: string): string => {
@@ -254,13 +291,15 @@ export const renderMigrationDocument = (
     const annotation = annotations.get(module)
     const targets = replacements.get(module)
     if (annotation !== undefined) {
-      lines.push(`- \`${module}\` -> \`${annotation.replacement}\`: ${annotation.note}`)
+      lines.push(
+        `- ${codeSpan(module)} -> ${codeSpan(annotation.replacement)}: ${escapeAnnotationText(annotation.note)}`
+      )
     } else if (targets !== undefined) {
-      lines.push(`- \`${module}\` -> ${targets.map((target) => `\`${target}\``).join(", ")}`)
+      lines.push(`- ${codeSpan(module)} -> ${targets.map(codeSpan).join(", ")}`)
     } else if ([...annotations.keys()].some((id) => id.startsWith(`${module}#`))) {
-      lines.push(`- \`${module}\`: No single module replacement; follow the curated per-API guidance below.`)
+      lines.push(`- ${codeSpan(module)}: No single module replacement; follow the curated per-API guidance below.`)
     } else {
-      lines.push(`- \`${module}\`: TODO: needs module guidance`)
+      lines.push(`- ${codeSpan(module)}: TODO: needs module guidance`)
     }
   }
   if (modulesRemoved.length === 0) {
@@ -272,7 +311,7 @@ export const renderMigrationDocument = (
     ""
   )
   for (const [module, moduleEntries] of modules) {
-    lines.push(`### \`${module}\``, "")
+    lines.push(`### ${codeSpan(module)}`, "")
     for (const entry of moduleEntries) {
       const annotation = annotations.get(entry.id)
       if (annotation?.example !== undefined) {
@@ -283,6 +322,63 @@ export const renderMigrationDocument = (
     }
   }
   return `${lines.join("\n").trim()}\n`
+}
+
+export const markdownSafetyIssues = (document: string): ReadonlyArray<string> => {
+  const issues: Array<string> = []
+  let fence: string | undefined
+  const lines = document.split("\n")
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex]!
+    const fenceMatch = /^\s*(`{3,})(?:[^`]*)$/.exec(line)
+    if (fence !== undefined) {
+      if (line.trim() === fence) {
+        fence = undefined
+      }
+      continue
+    }
+    if (fenceMatch !== null) {
+      fence = fenceMatch[1]!
+      continue
+    }
+    if (
+      line === "<!-- dprint-ignore-file -->" ||
+      line.startsWith("**Replacement:** ") ||
+      line === "**Example**"
+    ) {
+      continue
+    }
+    let index = 0
+    while (index < line.length) {
+      const character = line[index]!
+      if (character === "\\") {
+        index += 2
+        continue
+      }
+      if (character === "`") {
+        let end = index + 1
+        while (line[end] === "`") {
+          end++
+        }
+        const delimiter = line.slice(index, end)
+        const close = line.indexOf(delimiter, end)
+        if (close === -1) {
+          issues.push(`line ${lineIndex + 1}: unclosed inline code span`)
+          break
+        }
+        index = close + delimiter.length
+        continue
+      }
+      if (character === "~" || character === "<" || character === "*" || character === "_") {
+        issues.push(`line ${lineIndex + 1}: unescaped ${JSON.stringify(character)}`)
+      }
+      index++
+    }
+  }
+  if (fence !== undefined) {
+    issues.push(`unclosed ${fence} code fence`)
+  }
+  return issues
 }
 
 export const unannotatedApiIds = (

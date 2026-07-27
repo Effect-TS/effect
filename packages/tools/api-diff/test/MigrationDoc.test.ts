@@ -1,6 +1,7 @@
 import type { MigrationAnnotation } from "@effect/api-diff/Annotations"
 import {
   extractImportMapSections,
+  markdownSafetyIssues,
   renderMigrationDocument,
   renderMissingAnnotations
 } from "@effect/api-diff/MigrationDoc"
@@ -140,6 +141,29 @@ describe("migration document", () => {
     assert(document.includes("**Example**\n\n```ts\nZeta.changed()\n```"))
     assert(!document.includes("**Before**"))
     assert(!document.includes("**After**"))
+  })
+
+  it("escapes annotation prose while preserving inline code and fenced examples", () => {
+    const document = renderMigrationDocument(
+      diff,
+      new Map([...annotations, ["effect/Zeta#changed", {
+        replacement: "Zeta.changed()",
+        note: "Use ~effect/Zeta with Effect<A, E>, *literal*, snake_case, `Context.Context<R>`, and a bare ` marker.",
+        example: "const marker = `~effect/Zeta<*>`"
+      }]]),
+      "## Import Map\n"
+    )
+
+    assert(document.includes(
+      "Use \\~effect/Zeta with Effect\\<A, E\\>, \\*literal\\*, snake\\_case, `Context.Context<R>`, and a bare \\` marker."
+    ))
+    assert(document.includes("```ts\nconst marker = `~effect/Zeta<*>`\n```"))
+    assert.deepStrictEqual(markdownSafetyIssues(document), [])
+    assert.deepStrictEqual(markdownSafetyIssues("Unsafe ~~note and Effect<A>"), [
+      "line 1: unescaped \"~\"",
+      "line 1: unescaped \"~\"",
+      "line 1: unescaped \"<\""
+    ])
   })
 
   it("retains annotated removals that also have move suggestions", () => {

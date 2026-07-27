@@ -10,6 +10,7 @@ import { ApiDiffError } from "./Error.ts"
 import { prettyJson } from "./Json.ts"
 import {
   extractImportMapSections,
+  markdownSafetyIssues,
   renderMigrationDocument,
   renderMissingAnnotations,
   unannotatedApiIds,
@@ -114,13 +115,27 @@ export class ApiDiff extends Context.Service<ApiDiff, {
             : absolute(repoRoot, options.writeDoc)
           const existing = (yield* fs.exists(documentPath)) ? yield* fs.readFileString(documentPath) : ""
           const importMapSections = extractImportMapSections(existing)
+          let documentForCheck = existing
           if (options.writeDoc !== undefined) {
             const document = renderMigrationDocument(diff, annotations, importMapSections)
+            const unsafeMarkdown = markdownSafetyIssues(document)
+            if (unsafeMarkdown.length > 0) {
+              return yield* new ApiDiffError({
+                message: `Generated migration document has unsafe Markdown:\n${unsafeMarkdown.join("\n")}`
+              })
+            }
+            documentForCheck = document
             yield* fs.makeDirectory(path.dirname(documentPath), { recursive: true })
             yield* fs.writeFileString(documentPath, document)
             yield* Console.log(`Wrote ${path.relative(repoRoot, documentPath)} (${diff.changes.length} changes)`)
           }
           if (options.check) {
+            const unsafeMarkdown = markdownSafetyIssues(documentForCheck)
+            if (unsafeMarkdown.length > 0) {
+              return yield* new ApiDiffError({
+                message: `Migration document has unsafe Markdown:\n${unsafeMarkdown.join("\n")}`
+              })
+            }
             const missingApis = unannotatedApiIds(diff, annotations, importMapSections)
             const missingModules = unannotatedModuleIds(diff, annotations, importMapSections)
             yield* Console.log(renderMissingAnnotations(diff, annotations, importMapSections).trimEnd())
