@@ -38,7 +38,7 @@ export const make: (
 
     // stdin "end" fires once per process, so remember end-of-input for readers
     // created after the event (Bun never sets `readableEnded`).
-    let inputEnded = stdin.readableEnded === true
+    let inputEnded = stdin.readableEnded
     const onStdinEnd = () => {
       inputEnded = true
     }
@@ -83,9 +83,7 @@ export const make: (
           Queue.endUnsafe(queue)
         }
       }
-      // End the queue at stdin end-of-input so consumers (e.g. `Prompt.run`)
-      // fail with `QuitError` instead of waiting forever on piped or closed
-      // stdin; keypresses buffered before the end still deliver first.
+      // Without this, consumers (e.g. `Prompt.run`) hang forever on closed stdin.
       const handleEnd = () => {
         Queue.endUnsafe(queue)
       }
