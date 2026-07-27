@@ -952,7 +952,17 @@ export const toolApprovalRequestPart = (
  * @category schemas
  * @since 4.0.0
  */
-export const Part: Schema.Codec<Part, PartEncoded> = Schema.Union([
+export const Part: Schema.Union<
+  readonly [
+    typeof TextPart,
+    typeof ReasoningPart,
+    typeof FilePart,
+    typeof ToolCallPart,
+    typeof ToolResultPart,
+    typeof ToolApprovalResponsePart,
+    typeof ToolApprovalRequestPart
+  ]
+> = Schema.Union([
   TextPart,
   ReasoningPart,
   FilePart,
@@ -1263,7 +1273,7 @@ export type UserMessagePartEncoded = TextPartEncoded | FilePartEncoded
  * @category schemas
  * @since 4.0.0
  */
-export const UserMessagePart: Schema.Codec<UserMessagePart, UserMessagePartEncoded> = Schema.Union([
+export const UserMessagePart: Schema.Union<readonly [typeof TextPart, typeof FilePart]> = Schema.Union([
   TextPart,
   FilePart
 ])
@@ -1460,7 +1470,16 @@ export type AssistantMessagePartEncoded =
  * @category schemas
  * @since 4.0.0
  */
-export const AssistantMessagePart: Schema.Codec<AssistantMessagePart, AssistantMessagePartEncoded> = Schema.Union([
+export const AssistantMessagePart: Schema.Union<
+  readonly [
+    typeof TextPart,
+    typeof FilePart,
+    typeof ReasoningPart,
+    typeof ToolCallPart,
+    typeof ToolResultPart,
+    typeof ToolApprovalRequestPart
+  ]
+> = Schema.Union([
   TextPart,
   FilePart,
   ReasoningPart,
@@ -1644,7 +1663,9 @@ export type ToolMessagePartEncoded = ToolResultPartEncoded | ToolApprovalRespons
  * @category schemas
  * @since 4.0.0
  */
-export const ToolMessagePart: Schema.Codec<ToolMessagePart, ToolMessagePartEncoded> = Schema.Union([
+export const ToolMessagePart: Schema.Union<
+  readonly [typeof ToolResultPart, typeof ToolApprovalResponsePart]
+> = Schema.Union([
   ToolResultPart,
   ToolApprovalResponsePart
 ])

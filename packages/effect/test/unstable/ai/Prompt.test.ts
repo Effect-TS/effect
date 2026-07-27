@@ -5,23 +5,52 @@ import { Prompt, Response } from "effect/unstable/ai"
 describe("Prompt", () => {
   describe("part schemas", () => {
     it("exports schemas for all parts and message-specific parts", () => {
-      assert.strictEqual(Schema.decodeUnknownExit(Prompt.Part)({ type: "text", text: "hello" })._tag, "Success")
-      assert.strictEqual(
-        Schema.decodeUnknownExit(Prompt.UserMessagePart)({ type: "file", mediaType: "text/plain", data: "hello" })._tag,
-        "Success"
-      )
-      assert.strictEqual(
-        Schema.decodeUnknownExit(Prompt.AssistantMessagePart)({ type: "reasoning", text: "thinking" })._tag,
-        "Success"
-      )
-      assert.strictEqual(
-        Schema.decodeUnknownExit(Prompt.ToolMessagePart)({
+      const parts = {
+        text: { type: "text", text: "hello" },
+        reasoning: { type: "reasoning", text: "thinking" },
+        file: { type: "file", mediaType: "text/plain", data: "hello" },
+        toolCall: { type: "tool-call", id: "call-1", name: "tool", params: {} },
+        toolResult: { type: "tool-result", id: "call-1", name: "tool", isFailure: false, result: "done" },
+        toolApprovalResponse: {
           type: "tool-approval-response",
           approvalId: "approval-1",
           approved: true
-        })._tag,
-        "Success"
-      )
+        },
+        toolApprovalRequest: {
+          type: "tool-approval-request",
+          approvalId: "approval-1",
+          toolCallId: "call-1"
+        }
+      } as const
+
+      const decodePart = Schema.decodeUnknownExit(Prompt.Part)
+      for (const part of Object.values(parts)) {
+        assert.strictEqual(decodePart(part)._tag, "Success")
+      }
+
+      const decodeUserMessagePart = Schema.decodeUnknownExit(Prompt.UserMessagePart)
+      for (const part of [parts.text, parts.file]) {
+        assert.strictEqual(decodeUserMessagePart(part)._tag, "Success")
+      }
+
+      const decodeAssistantMessagePart = Schema.decodeUnknownExit(Prompt.AssistantMessagePart)
+      for (
+        const part of [
+          parts.text,
+          parts.file,
+          parts.reasoning,
+          parts.toolCall,
+          parts.toolResult,
+          parts.toolApprovalRequest
+        ]
+      ) {
+        assert.strictEqual(decodeAssistantMessagePart(part)._tag, "Success")
+      }
+
+      const decodeToolMessagePart = Schema.decodeUnknownExit(Prompt.ToolMessagePart)
+      for (const part of [parts.toolResult, parts.toolApprovalResponse]) {
+        assert.strictEqual(decodeToolMessagePart(part)._tag, "Success")
+      }
     })
   })
 
