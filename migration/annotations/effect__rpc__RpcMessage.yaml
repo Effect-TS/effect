@@ -1,0 +1,3 @@
+"@effect/rpc/RpcMessage#RequestIdTypeId":
+  replacement: "effect/unstable/rpc/RpcMessage#RequestId"
+  note: "The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand."

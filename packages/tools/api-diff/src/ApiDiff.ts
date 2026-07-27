@@ -4,16 +4,27 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
+import { loadAnnotations } from "./Annotations.ts"
 import { diffSnapshots } from "./Diff.ts"
 import { ApiDiffError } from "./Error.ts"
 import { prettyJson } from "./Json.ts"
+import {
+  extractImportMapSections,
+  markdownSafetyIssues,
+  renderMigrationDocument,
+  renderMissingAnnotations,
+  unannotatedApiIds,
+  unannotatedModuleIds
+} from "./MigrationDoc.ts"
 import { renderMarkdownReport } from "./Report.ts"
 import { Worktrees } from "./Worktrees.ts"
 
 export interface ApiDiffOptions {
   readonly baseRef: string
   readonly headRef: string
-  readonly output: string
+  readonly output?: string | undefined
+  readonly writeDoc?: string | undefined
+  readonly check: boolean
 }
 
 export class ApiDiff extends Context.Service<ApiDiff, {
@@ -50,9 +61,16 @@ export class ApiDiff extends Context.Service<ApiDiff, {
 
       const runInternal = Effect.fnUntraced(function*(options: ApiDiffOptions) {
         const repoRoot = yield* findRepoRoot()
+        if (options.output === undefined && options.writeDoc === undefined && !options.check) {
+          return yield* new ApiDiffError({ message: "Specify --output, --write-doc, or --check" })
+        }
 
         const baseSha = yield* worktrees.resolveRef(repoRoot, options.baseRef)
-        const headSha = yield* worktrees.resolveRef(repoRoot, options.headRef)
+        const headSha = yield* (options.headRef === "main"
+          ? worktrees.resolveRef(repoRoot, "origin/main").pipe(
+            Effect.catch(() => worktrees.resolveRef(repoRoot, options.headRef))
+          )
+          : worktrees.resolveRef(repoRoot, options.headRef))
         const toolRoot = path.join(repoRoot, "tmp", "api-diff")
         const cacheRoot = path.join(toolRoot, "cache")
         const worktreesRoot = path.join(toolRoot, "worktrees")
@@ -75,16 +93,59 @@ export class ApiDiff extends Context.Service<ApiDiff, {
           ref: options.headRef,
           sha: headSha
         })
-        const output = absolute(repoRoot, options.output)
         const diff = diffSnapshots(base, head)
-        const report = renderMarkdownReport(diff)
 
-        yield* fs.makeDirectory(output, { recursive: true })
-        yield* fs.writeFileString(path.join(output, "base.snapshot.json"), prettyJson(base))
-        yield* fs.writeFileString(path.join(output, "head.snapshot.json"), prettyJson(head))
-        yield* fs.writeFileString(path.join(output, "diff.json"), prettyJson(diff))
-        yield* fs.writeFileString(path.join(output, "report.md"), report)
-        yield* Console.log(`Wrote ${path.relative(repoRoot, output)} (${diff.changes.length} changes)`)
+        if (options.output !== undefined) {
+          const output = absolute(repoRoot, options.output)
+          yield* fs.makeDirectory(output, { recursive: true })
+          yield* fs.writeFileString(path.join(output, "base.snapshot.json"), prettyJson(base))
+          yield* fs.writeFileString(path.join(output, "head.snapshot.json"), prettyJson(head))
+          yield* fs.writeFileString(path.join(output, "diff.json"), prettyJson(diff))
+          yield* fs.writeFileString(path.join(output, "report.md"), renderMarkdownReport(diff))
+          yield* Console.log(`Wrote ${path.relative(repoRoot, output)} (${diff.changes.length} changes)`)
+        }
+
+        if (options.writeDoc !== undefined || options.check) {
+          const annotations = yield* loadAnnotations(path.join(repoRoot, "migration", "annotations")).pipe(
+            Effect.provideService(FileSystem.FileSystem, fs),
+            Effect.provideService(Path.Path, path)
+          )
+          const documentPath = options.writeDoc === undefined
+            ? path.join(repoRoot, "migration", "v3-to-v4.md")
+            : absolute(repoRoot, options.writeDoc)
+          const existing = (yield* fs.exists(documentPath)) ? yield* fs.readFileString(documentPath) : ""
+          const importMapSections = extractImportMapSections(existing)
+          let documentForCheck = existing
+          if (options.writeDoc !== undefined) {
+            const document = renderMigrationDocument(diff, annotations, importMapSections)
+            const unsafeMarkdown = markdownSafetyIssues(document)
+            if (unsafeMarkdown.length > 0) {
+              return yield* new ApiDiffError({
+                message: `Generated migration document has unsafe Markdown:\n${unsafeMarkdown.join("\n")}`
+              })
+            }
+            documentForCheck = document
+            yield* fs.makeDirectory(path.dirname(documentPath), { recursive: true })
+            yield* fs.writeFileString(documentPath, document)
+            yield* Console.log(`Wrote ${path.relative(repoRoot, documentPath)} (${diff.changes.length} changes)`)
+          }
+          if (options.check) {
+            const unsafeMarkdown = markdownSafetyIssues(documentForCheck)
+            if (unsafeMarkdown.length > 0) {
+              return yield* new ApiDiffError({
+                message: `Migration document has unsafe Markdown:\n${unsafeMarkdown.join("\n")}`
+              })
+            }
+            const missingApis = unannotatedApiIds(diff, annotations, importMapSections)
+            const missingModules = unannotatedModuleIds(diff, annotations, importMapSections)
+            yield* Console.log(renderMissingAnnotations(diff, annotations, importMapSections).trimEnd())
+            if (missingApis.size > 0 || missingModules.length > 0) {
+              return yield* new ApiDiffError({
+                message: `${missingApis.size} API groups and ${missingModules.length} modules need migration guidance`
+              })
+            }
+          }
+        }
       })
 
       const run = (options: ApiDiffOptions): Effect.Effect<void, ApiDiffError> =>

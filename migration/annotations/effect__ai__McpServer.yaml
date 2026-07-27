@@ -1,0 +1,9 @@
+"@effect/ai/McpServer#layer":
+  replacement: "McpServer.layer"
+  note: "Moved to effect/unstable/ai/McpServer. It still runs over a caller-provided RpcServer.Protocol; v4 also accepts optional MCP extensions."
+"@effect/ai/McpServer#layerHttpRouter":
+  replacement: "McpServer.layerHttp"
+  note: "Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; the old HttpLayerRouter-specific function was removed."
+"@effect/ai/McpServer#run":
+  replacement: "McpServer.run"
+  note: "Moved to effect/unstable/ai/McpServer. It remains the Effect-level runner over RpcServer.Protocol and now supports optional extensions and MCP session lifecycle handling."
