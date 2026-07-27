@@ -1254,23 +1254,6 @@ const StatementProto: Omit<
   StatementImpl<any>,
   "segments" | "acquirer" | "compiler" | "spanAttributes" | "transformRows"
 > = {
-  ...Effectable.Prototype<StatementImpl<any>>({
-    label: "Statement",
-    evaluate(fiber) {
-      const span = internalEffect.makeSpanUnsafe(fiber, "sql.execute", { kind: "client" })
-      const clock = fiber.getRef(Clock)
-      const timingEnabled = fiber.getRef(TracerTimingEnabled)
-      return Effect.onExit(
-        this.withConnectionSpan(
-          "execute",
-          (connection, sql, params) => connection.execute(sql, params, this.transformRows),
-          false,
-          span
-        ),
-        (exit) => internalEffect.endSpan(span, exit, clock, timingEnabled)
-      )
-    }
-  }),
   [FragmentTypeId]: FragmentTypeId,
   withConnection<XA, E>(
     this: StatementImpl<any>,
@@ -1373,6 +1356,24 @@ const StatementProto: Omit<
       (connection, sql, params) => connection.executeUnprepared(sql, params, self.transformRows)
     )
   },
+
+  ...Effectable.Prototype<StatementImpl<any>>({
+    label: "Statement",
+    evaluate(fiber) {
+      const span = internalEffect.makeSpanUnsafe(fiber, "sql.execute", { kind: "client" })
+      const clock = fiber.getRef(Clock)
+      const timingEnabled = fiber.getRef(TracerTimingEnabled)
+      return Effect.onExit(
+        this.withConnectionSpan(
+          "execute",
+          (connection, sql, params) => connection.execute(sql, params, this.transformRows),
+          false,
+          span
+        ),
+        (exit) => internalEffect.endSpan(span, exit, clock, timingEnabled)
+      )
+    }
+  }),
 
   compile(
     this: StatementImpl<any>,
