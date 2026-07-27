@@ -1,15 +1,3 @@
-"@effect/ai-google/GoogleLanguageModel#Config":
-  replacement: "none"
-  note: "The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK."
-"@effect/ai-google/GoogleLanguageModel#Config.Service":
-  replacement: "none"
-  note: "The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK."
-"@effect/ai-google/GoogleLanguageModel#layer":
-  replacement: "none"
-  note: "The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK."
-"@effect/ai-google/GoogleLanguageModel#make":
-  replacement: "none"
-  note: "The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK."
-"@effect/ai-google/GoogleLanguageModel#model":
-  replacement: "none"
-  note: "The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK."
+"@effect/ai-google/GoogleLanguageModel":
+  replacement: none
+  note: The @effect/ai-google language-model integration was removed from v4. Use a supported v4 provider integration for Gemini models or implement LanguageModel.LanguageModel against Google's current SDK.
