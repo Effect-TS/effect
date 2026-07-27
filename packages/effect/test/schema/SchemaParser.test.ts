@@ -365,7 +365,29 @@ describe("SchemaParser", () => {
       strictEqual(evaluations, 1)
     })
 
-    it("keeps Declaration parser compilation lazy", () => {
+    it("supports mutually recursive Suspend parsers", () => {
+      interface A {
+        readonly _tag: "A"
+        readonly next: string | B
+      }
+      interface B {
+        readonly _tag: "B"
+        readonly next: string | A
+      }
+      const A = Schema.Struct({
+        _tag: Schema.Literal("A"),
+        next: Schema.Union([Schema.String, Schema.suspend((): Schema.Codec<B> => B)])
+      })
+      const B = Schema.Struct({
+        _tag: Schema.Literal("B"),
+        next: Schema.Union([Schema.String, Schema.suspend((): Schema.Codec<A> => A)])
+      })
+      const decode = SchemaParser.decodeUnknownExit(A)
+
+      strictEqual(decode({ _tag: "A", next: { _tag: "B", next: { _tag: "A", next: "end" } } })._tag, "Success")
+    })
+
+    it("keeps Declaration parser compilation lazy and shared by AST identity", () => {
       let evaluations = 0
       const schema = Schema.declareConstructor<unknown>()([], () => {
         evaluations++
@@ -373,11 +395,90 @@ describe("SchemaParser", () => {
       })
 
       const decode = SchemaParser.decodeUnknownExit(schema)
+      const decodeAgain = SchemaParser.decodeUnknownExit(schema)
       strictEqual(evaluations, 0)
       strictEqual(decode("a")._tag, "Success")
       strictEqual(evaluations, 1)
+      strictEqual(decodeAgain("b")._tag, "Success")
+      strictEqual(evaluations, 1)
+    })
+
+    it("keeps untried Declaration union members lazy", () => {
+      let evaluations = 0
+      const declaration = Schema.declareConstructor<unknown>()([], () => {
+        evaluations++
+        return (input) => Effect.succeed(input)
+      })
+      const decode = SchemaParser.decodeUnknownExit(Schema.Union([Schema.Literal("a"), declaration]))
+
+      strictEqual(decode("a")._tag, "Success")
+      strictEqual(evaluations, 0)
       strictEqual(decode("b")._tag, "Success")
       strictEqual(evaluations, 1)
+    })
+
+    it("keeps encode-side Declaration and Suspend parser compilation lazy", () => {
+      let declarationEvaluations = 0
+      let suspendEvaluations = 0
+      const declaration = Schema.declareConstructor<unknown>()([], () => {
+        declarationEvaluations++
+        return (input) => Effect.succeed(input)
+      })
+      const suspend = Schema.suspend(() => {
+        suspendEvaluations++
+        return Schema.String
+      })
+
+      const encodeDeclaration = SchemaParser.encodeUnknownExit(declaration)
+      const encodeSuspend = SchemaParser.encodeUnknownExit(suspend)
+      strictEqual(declarationEvaluations, 0)
+      strictEqual(suspendEvaluations, 0)
+      strictEqual(encodeDeclaration("a")._tag, "Success")
+      strictEqual(encodeSuspend("a")._tag, "Success")
+      strictEqual(declarationEvaluations, 1)
+      strictEqual(suspendEvaluations, 1)
+      strictEqual(encodeDeclaration("b")._tag, "Success")
+      strictEqual(encodeSuspend("b")._tag, "Success")
+      strictEqual(declarationEvaluations, 1)
+      strictEqual(suspendEvaluations, 1)
+    })
+
+    it("retries lazy parser compilation after a synchronous factory failure", () => {
+      let evaluations = 0
+      const schema = Schema.declareConstructor<unknown>()([], () => {
+        if (++evaluations === 1) {
+          throw new Error("factory failure")
+        }
+        return (input) => Effect.succeed(input)
+      })
+      const decode = SchemaParser.decodeUnknownExit(schema)
+
+      throws(() => decode("a"), (error) => {
+        assertTrue(error instanceof Error)
+        strictEqual(error.message, "factory failure")
+      })
+      strictEqual(decode("b")._tag, "Success")
+      strictEqual(decode("c")._tag, "Success")
+      strictEqual(evaluations, 2)
+    })
+
+    it("retries lazy Suspend parser compilation after a synchronous thunk failure", () => {
+      let evaluations = 0
+      const schema = Schema.suspend(() => {
+        if (++evaluations === 1) {
+          throw new Error("thunk failure")
+        }
+        return Schema.String
+      })
+      const decode = SchemaParser.decodeUnknownExit(schema)
+
+      throws(() => decode("a"), (error) => {
+        assertTrue(error instanceof Error)
+        strictEqual(error.message, "thunk failure")
+      })
+      strictEqual(decode("b")._tag, "Success")
+      strictEqual(decode("c")._tag, "Success")
+      strictEqual(evaluations, 2)
     })
 
     it("should preserve mixed causes in union candidates instead of trying later candidates", () => {

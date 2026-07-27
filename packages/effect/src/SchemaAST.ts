@@ -671,10 +671,10 @@ export class Declaration extends Base {
   }
   /** @internal */
   getParser(): SchemaParser.Parser {
-    const run = this.run(this.typeParameters)
+    let run: ReturnType<typeof this.run>
     return (oinput, options) => {
       if (Option.isNone(oinput)) return Effect.succeedNone
-      return Effect.mapEager(run(oinput.value, this, options), Option.some)
+      return Effect.mapEager((run ??= this.run(this.typeParameters))(oinput.value, this, options), Option.some)
     }
   }
   private _rebuild(recur: (ast: AST) => AST, checks: Checks | undefined, encodingChecks: Checks | undefined) {
@@ -2690,7 +2690,7 @@ export class Union<A extends AST = AST> extends Base {
         oinput,
         input,
         out: undefined,
-        successes: [],
+        successes: ast.mode === "oneOf" ? [] : undefined,
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
         options
       }
@@ -2776,7 +2776,7 @@ const parseUnion = iterateEager<{
   readonly input: unknown
   readonly options: ParseOptions
   out: Option.Option<unknown> | undefined
-  successes: Array<AST>
+  readonly successes: Array<AST> | undefined
   issues: Array<SchemaIssue.Issue> | undefined
 }, AST>()({
   onItem(s, ast) {
@@ -2792,13 +2792,14 @@ const parseUnion = iterateEager<{
       if (s.issues) s.issues.push(issue)
       else s.issues = [issue]
     } else {
-      if (s.out && s.ast.mode === "oneOf") {
+      if (s.out && s.successes) {
         s.successes.push(candidate)
         return Exit.fail(new SchemaIssue.OneOf(s.ast, s.input, s.successes))
       }
       s.out = exit.value
-      s.successes.push(candidate)
-      if (s.ast.mode === "anyOf") {
+      if (s.successes) {
+        s.successes.push(candidate)
+      } else {
         return Exit.void
       }
     }
@@ -2883,7 +2884,8 @@ export class Suspend extends Base {
   }
   /** @internal */
   getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
-    return recur(this.thunk())
+    let parser: SchemaParser.Parser
+    return (input, options) => (parser ??= recur(this.thunk()))(input, options)
   }
   /** @internal */
   recur(recur: (ast: AST) => AST) {

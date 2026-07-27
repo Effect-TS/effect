@@ -912,16 +912,21 @@ const mergeParseOptions = (
   overrideOptions: SchemaAST.ParseOptions | undefined
 ): SchemaAST.ParseOptions => overrideOptions === undefined ? options : { ...options, ...overrideOptions }
 
+const getValue = (oa: Option.Option<unknown>): Effect.Effect<any, SchemaIssue.Issue> => {
+  if (oa._tag === "None") {
+    return Effect.fail(new SchemaIssue.InvalidValue(oa))
+  }
+  return Effect.succeed(oa.value)
+}
+
 /** @internal */
 export function run<T, R>(ast: SchemaAST.AST) {
-  const parser = recur(ast)
+  let parser: Parser
   return (input: unknown, options?: SchemaAST.ParseOptions): Effect.Effect<T, SchemaIssue.Issue, R> =>
-    Effect.flatMapEager(parser(Option.some(input), options ?? SchemaAST.defaultParseOptions), (oa) => {
-      if (oa._tag === "None") {
-        return Effect.fail(new SchemaIssue.InvalidValue(oa))
-      }
-      return Effect.succeed(oa.value as T)
-    })
+    Effect.flatMapEager(
+      (parser ??= compile(ast))(Option.some(input), options ?? SchemaAST.defaultParseOptions),
+      getValue
+    )
 }
 
 function asPromise<T, E>(
@@ -998,48 +1003,60 @@ export interface Parser {
   ): Effect.Effect<Option.Option<unknown>, SchemaIssue.Issue, any>
 }
 
-interface ParserCacheEntry {
-  compiled?: Parser
-  deferred?: Parser
-}
-
-const parserCache = new WeakMap<SchemaAST.AST, ParserCacheEntry>()
-
-function getParserCacheEntry(ast: SchemaAST.AST): ParserCacheEntry {
-  let entry = parserCache.get(ast)
-  if (!entry) {
-    parserCache.set(ast, entry = {})
-  }
-  return entry
-}
+const parserCache = new WeakMap<SchemaAST.AST, Parser>()
 
 function compile(ast: SchemaAST.AST): Parser {
-  const entry = getParserCacheEntry(ast)
-  return entry.compiled ??= makeParser(ast)
+  let parser = parserCache.get(ast)
+  if (!parser) {
+    parserCache.set(ast, parser = makeParser(ast))
+  }
+  return parser
 }
 
 function makeParser(ast: SchemaAST.AST): Parser {
-  let parser: Parser | undefined = ast._tag === "Declaration" || ast._tag === "Suspend"
-    ? undefined
-    : ast.getParser(compile)
+  const parser = ast.getParser(compile)
   const checks = ast.checks
   const links = ast.encoding
   const encodingChecks = (ast as any).encodingChecks
   const astOptions = (checks ? checks[checks.length - 1].annotations : ast.annotations)
     ?.["parseOptions"]
   if (!links && !checks && !encodingChecks) {
-    if (parser && !astOptions) {
+    if (!astOptions) {
       return parser
     }
-    return (ou, options) => {
-      parser ??= ast.getParser(compile)
-      if (astOptions) {
-        options = { ...options, ...astOptions }
-      }
-      return parser(ou, options)
-    }
+    return (ou, options) => parser(ou, { ...options, ...astOptions })
   }
   let encodingParsers: ReadonlyArray<Parser> | undefined
+  const parseLocal = (localOu: Option.Option<unknown>, options: SchemaAST.ParseOptions) => {
+    let sroa = parser(localOu, options)
+
+    if (encodingChecks && !options.disableChecks) {
+      sroa = Effect.flatMapEager(sroa, (oa) => {
+        if (Option.isSome(localOu) && Option.isSome(oa)) {
+          const issues = SchemaAST.collectIssues(encodingChecks, localOu.value, undefined, ast, options)
+          if (issues) {
+            return Effect.fail(new SchemaIssue.Composite(ast, localOu, issues))
+          }
+        }
+        return Effect.succeed(oa)
+      })
+    }
+
+    if (checks && !options.disableChecks) {
+      sroa = Effect.flatMapEager(sroa, (oa) => {
+        if (Option.isSome(oa)) {
+          const value = oa.value
+          const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
+          if (issues) {
+            return Effect.fail(new SchemaIssue.Composite(ast, oa, issues))
+          }
+        }
+        return Effect.succeed(oa)
+      })
+    }
+
+    return sroa
+  }
   return (ou, options) => {
     if (astOptions) {
       options = { ...options, ...astOptions }
@@ -1066,45 +1083,8 @@ function makeParser(ast: SchemaAST.AST): Parser {
       }
     }
 
-    const parse = parser ??= ast.getParser(compile)
-    const parseLocal = (localOu: Option.Option<unknown>) => {
-      let sroa = parse(localOu, options)
-
-      if (encodingChecks && !options?.disableChecks) {
-        sroa = Effect.flatMapEager(sroa, (oa) => {
-          if (Option.isSome(localOu) && Option.isSome(oa)) {
-            const issues = SchemaAST.collectIssues(encodingChecks, localOu.value, undefined, ast, options)
-            if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, localOu, issues))
-            }
-          }
-          return Effect.succeed(oa)
-        })
-      }
-
-      if (checks && !options?.disableChecks) {
-        sroa = Effect.flatMapEager(sroa, (oa) => {
-          if (Option.isSome(oa)) {
-            const value = oa.value
-            const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
-            if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, oa, issues))
-            }
-          }
-          return Effect.succeed(oa)
-        })
-      }
-
-      return sroa
-    }
-
-    const sroa = srou ? Effect.flatMapEager(srou, parseLocal) : parseLocal(ou)
+    const sroa = srou ? Effect.flatMapEager(srou, (ou) => parseLocal(ou, options)) : parseLocal(ou, options)
 
     return sroa
   }
-}
-
-function recur(ast: SchemaAST.AST): Parser {
-  const entry = getParserCacheEntry(ast)
-  return entry.deferred ??= (ou, options) => (entry.compiled ??= makeParser(ast))(ou, options)
 }
