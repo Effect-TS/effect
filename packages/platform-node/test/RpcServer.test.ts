@@ -211,8 +211,7 @@ describe("RpcServer", () => {
       }))
   })
 
-  // Shared harness asserting that a failing sibling call does not affect an
-  // in-flight Ticker stream multiplexed on the same socket connection.
+  // Asserts a failing sibling call does not affect an in-flight Ticker stream on the same connection
   const Ticker = Rpc.make("Ticker", {
     success: Schema.Number,
     stream: true
@@ -311,9 +310,6 @@ describe("RpcServer", () => {
     )
   })
 
-  // Guards the behavior the cluster RunnerServer relies on: with
-  // `disableFatalDefects` a handler defect is delivered as a per-request
-  // exit instead of a connection-wide defect frame.
   describe("fatal-defect isolation", () => {
     const Boom = Rpc.make("Boom", {
       success: Schema.String

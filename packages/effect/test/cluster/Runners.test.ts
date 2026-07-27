@@ -98,8 +98,6 @@ describe.concurrent("RunnerServer", () => {
       const request = yield* makeRequest({ entityId: "bad-1", tag: "BadReply" })
 
       const exit = yield* Effect.exit(client.Effect({ request, persisted: false }))
-      // the serialize failure must be delivered as this request's reply,
-      // not defect the whole connection
       if (!Exit.isSuccess(exit)) {
         return assert.fail("Effect rpc must not defect on a reply serialization failure")
       }
@@ -135,8 +133,6 @@ describe.concurrent("RunnerServer", () => {
         Effect.catchTag("Done", () => Effect.void)
       )
 
-      // the stream is terminated with a defect reply for the chunk that
-      // could not be serialized
       assert.strictEqual(replies.length, 1)
       const last = replies[0]
       if (last._tag !== "WithExit" || last.exit._tag !== "Failure") {
@@ -235,8 +231,6 @@ describe.concurrent("Runners.makeRpc", () => {
         }))
 
       const exit = yield* Effect.exit(runners.send({ address: runnerAddress, message }))
-      // a defect the server delivered must not be treated as an unavailable
-      // runner, otherwise the message is re-sent into the dedup guard
       assert.isTrue(Exit.isSuccess(exit), "send must not fail with RunnerUnavailable for a delivered defect")
       assert.strictEqual(replies.length, 1)
       const reply = replies[0]
@@ -276,8 +270,6 @@ describe.concurrent("Runners.makeRpc", () => {
       const message = makeOutgoingRequest(TestRpcPersisted, snowflakeGen.nextUnsafe(), () => Effect.void)
 
       const exit = yield* Effect.exit(runners.send({ address: runnerAddress, message }))
-      // persisted replies can be recovered from storage, so the send is
-      // reported as RunnerUnavailable to trigger the storage fallback
       if (!Exit.isFailure(exit)) {
         return assert.fail("send must fail for a delivered defect on a persisted request")
       }

@@ -32,8 +32,6 @@ import { ShardingConfig } from "./ShardingConfig.ts"
 
 const constVoid = constant(Effect.void)
 
-// The original reply never left this runner, so its id can be reused for the
-// fallback reply without requiring a Snowflake.Generator here.
 const serializeDefectReply = <R extends Rpc.Any>(
   reply: Reply.ReplyWithContext<R>,
   defect: unknown
@@ -44,9 +42,6 @@ const serializeDefectReply = <R extends Rpc.Any>(
     defect
   })))
 
-// A reply that cannot be serialized is delivered to its own request as a
-// defect, instead of failing the handler fiber and poisoning every request
-// multiplexed on the runner connection.
 const serializeReply = <R extends Rpc.Any>(
   reply: Reply.ReplyWithContext<R>
 ): Effect.Effect<Reply.Encoded> =>
@@ -206,8 +201,6 @@ export const layer: Layer.Layer<
 > = RpcServer.layer(Runners.Rpcs, {
   spanPrefix: "RunnerServer",
   disableTracing: true,
-  // a handler defect concerns a single request, so it must not tear down
-  // every request multiplexed on the runner connection
   disableFatalDefects: true
 }).pipe(Layer.provide(layerHandlers))
 

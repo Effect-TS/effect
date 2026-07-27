@@ -578,11 +578,8 @@ export const makeRpc: Effect.Effect<
           Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address })))
         )
       }
-      // A defect here was delivered by the peer, not a transport failure - those
-      // surface as `RpcClientError`. Persisted requests recover their reply from
-      // storage via the `RunnerUnavailable` path. Volatile requests have no stored
-      // reply and duplicate delivery is rejected by the entity's dedup guard, so
-      // the defect becomes the request's reply.
+      // Persisted requests can recover their reply from storage via the
+      // `RunnerUnavailable` path, volatile requests receive the defect as their reply.
       const respondDefect = (defect: unknown) =>
         isPersisted
           ? Effect.fail(new RunnerUnavailable({ address }))
