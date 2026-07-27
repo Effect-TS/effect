@@ -84,7 +84,8 @@ describe("OpenAiSchema", () => {
         output: [{
           id: "image_1",
           type: "image_generation_call",
-          status
+          status,
+          result: null
         }]
       })
 
