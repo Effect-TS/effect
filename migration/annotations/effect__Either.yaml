@@ -97,9 +97,9 @@
 "effect/Either#try":
   replacement: "Result.try"
   note: "The synchronous throwable constructor moved to Result."
+"effect/Either#TypeId":
+  replacement: "none"
+  note: "Result keeps its brand private and exports no public TypeId."
 "effect/Either#void":
   replacement: "Result.void"
   note: "Use the prebuilt successful Result<void>."
-effect/Either:
-  replacement: effect/Result
-  note: Result keeps its brand private and exports no public TypeId.

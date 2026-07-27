@@ -13,6 +13,9 @@
 "@effect/platform/HttpLayerRouter#make":
   replacement: "HttpRouter.make"
   note: "The layer-oriented router became the sole v4 HttpRouter implementation."
+"@effect/platform/HttpLayerRouter#MiddlewareTypeId":
+  replacement: "none"
+  note: "The middleware type id is internal in v4; use HttpRouter.Middleware."
 "@effect/platform/HttpLayerRouter#PathInput":
   replacement: "HttpRouter.PathInput"
   note: "Moved to the consolidated v4 router."
@@ -22,6 +25,9 @@
 "@effect/platform/HttpLayerRouter#RouterConfig":
   replacement: "HttpRouter.RouterConfig"
   note: "Now a Context.Reference containing Partial<FindMyWay.RouterConfig>."
+"@effect/platform/HttpLayerRouter#RouteTypeId":
+  replacement: "none"
+  note: "Route nominal ids are internal in v4; construct routes with HttpRouter.route."
 "@effect/platform/HttpLayerRouter#schemaJson":
   replacement: "HttpRouter.schemaJson"
   note: "Moved to the consolidated router with v4 Schema and error types."
@@ -34,6 +40,6 @@
 "@effect/platform/HttpLayerRouter#toWebHandler":
   replacement: "HttpRouter.toWebHandler"
   note: "Moved to the consolidated router for building a Fetch handler and disposer."
-"@effect/platform/HttpLayerRouter":
-  replacement: varies by API
-  note: The middleware type id is internal in v4; use HttpRouter.Middleware. Route nominal ids are internal in v4; construct routes with HttpRouter.route. The router nominal service id is internal in v4; use HttpRouter.HttpRouter.
+"@effect/platform/HttpLayerRouter#TypeId":
+  replacement: "none"
+  note: "The router nominal service id is internal in v4; use HttpRouter.HttpRouter."

@@ -22,6 +22,9 @@
 "@effect/platform/HttpApiSchema#asEmpty":
   replacement: "effect/unstable/httpapi/HttpApiSchema#asNoContent"
   note: "Use schema.pipe(asNoContent({ decode }), status(code)); status is now a separate combinator."
+"@effect/platform/HttpApiSchema#deunionize":
+  replacement: "none"
+  note: "Pass schema arrays to endpoint success, error, and body alternatives so each member retains status and content type."
 "@effect/platform/HttpApiSchema#Empty":
   replacement: "effect/unstable/httpapi/HttpApiSchema#Empty"
   note: "The API remains and returns Schema.Void annotated with the supplied status."
@@ -31,9 +34,18 @@
 "@effect/platform/HttpApiSchema#EmptyErrorClass":
   replacement: "effect/Schema#ErrorClass"
   note: "The class and no-content codec are separate in v4; combine ErrorClass with HttpApiSchema.asNoContent."
+"@effect/platform/HttpApiSchema#EmptyErrorUnify":
+  replacement: "none"
+  note: "Removed with EmptyError; Schema.ErrorClass instances already support yieldable-error behavior."
+"@effect/platform/HttpApiSchema#EmptyErrorUnifyIgnore":
+  replacement: "none"
+  note: "Removed with EmptyError; do not recreate the old Unify marker."
 "@effect/platform/HttpApiSchema#Encoding":
   replacement: "effect/unstable/httpapi/HttpApiSchema#Encoding"
   note: "The name remains but is now a discriminated PayloadEncoding or ResponseEncoding union; prefer public as* combinators."
+"@effect/platform/HttpApiSchema#extractAnnotations":
+  replacement: "none"
+  note: "The internal symbol-copy helper was removed; HTTP metadata is schema-native and resolved through AST traversal."
 "@effect/platform/HttpApiSchema#getEmptyDecodeable":
   replacement: "effect/unstable/httpapi/HttpApiSchema#isNoContent"
   note: "Use isNoContent only to test bodylessness; decodeability is structural and has no exact query replacement."
@@ -46,6 +58,9 @@
 "@effect/platform/HttpApiSchema#getMultipartStream":
   replacement: "effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding"
   note: "Narrow the payload encoding to Multipart with stream mode; multipart limits are on the encoding value."
+"@effect/platform/HttpApiSchema#getParam":
+  replacement: "none"
+  note: "Param identity moved out of schema metadata; read endpoint.path and endpoint.params."
 "@effect/platform/HttpApiSchema#getStatus":
   replacement: "effect/SchemaAST#resolveAt"
   note: "Resolve the httpApiStatus annotation directly, or prefer getStatusSuccess and getStatusError for response logic."
@@ -82,6 +97,3 @@
 "@effect/platform/HttpApiSchema#withEncoding":
   replacement: "effect/unstable/httpapi/HttpApiSchema#asJson / asFormUrlEncoded / asUint8Array / asText"
   note: "Replace the generic kind with the matching public curried encoding combinator."
-"@effect/platform/HttpApiSchema":
-  replacement: effect/unstable/httpapi/HttpApiSchema
-  note: Pass schema arrays to endpoint success, error, and body alternatives so each member retains status and content type. Removed with EmptyError; Schema.ErrorClass instances already support yieldable-error behavior. Removed with EmptyError; do not recreate the old Unify marker. The internal symbol-copy helper was removed; HTTP metadata is schema-native and resolved through AST traversal. Param identity moved out of schema metadata; read endpoint.path and endpoint.params.

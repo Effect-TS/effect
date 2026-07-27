@@ -29,6 +29,9 @@
 "effect/ParseResult#decodeUnknownSync":
   replacement: "Schema.decodeUnknownSync"
   note: "Parsing helpers moved onto Schema and now throw SchemaError."
+"effect/ParseResult#eitherOrUndefined":
+  replacement: "none"
+  note: "This ParseResult internal optimization was removed; use Effect, Exit, Option, or Result combinators directly."
 "effect/ParseResult#encodeEither":
   replacement: "Schema.encodeExit"
   note: "Either encoding was replaced by Exit encoding."
@@ -66,6 +69,9 @@
   replacement: "Schema.SchemaError"
   note: "Construct a SchemaError from a SchemaIssue.Issue."
   example: "new Schema.SchemaError(issue)"
+"effect/ParseResult#ParseErrorTypeId":
+  replacement: "none"
+  note: "The public symbol was removed; use Schema.isSchemaError for runtime narrowing."
 "effect/ParseResult#ParseIssue":
   replacement: "SchemaIssue.Issue"
   note: "The structured parse issue union moved to SchemaIssue."
@@ -114,6 +120,3 @@
   replacement: "Schema.decodeSync + Schema.toType"
   note: "Validation-only parsers were removed; decode the type-side schema instead."
   example: "Schema.decodeSync(Schema.toType(schema))"
-effect/ParseResult:
-  replacement: effect/SchemaIssue, effect/SchemaParser
-  note: This ParseResult internal optimization was removed; use Effect, Exit, Option, or Result combinators directly. The public symbol was removed; use Schema.isSchemaError for runtime narrowing.

@@ -7,6 +7,6 @@
 "effect/TestSized#TestSized":
   replacement: "Context.Reference<number>"
   note: "Collapse the wrapper service to the reference itself; yield the reference to read the current size."
-effect/TestSized:
-  replacement: varies by API
-  note: The wrapper's nominal type id is unnecessary; Context.Reference supplies stable key identity.
+"effect/TestSized#TestSizedTypeId":
+  replacement: "none"
+  note: "The wrapper's nominal type id is unnecessary; Context.Reference supplies stable key identity."

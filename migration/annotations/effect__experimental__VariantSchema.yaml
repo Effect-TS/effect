@@ -10,6 +10,15 @@
 "@effect/experimental/VariantSchema#Field.ValueAny":
   replacement: effect/Schema#Top
   note: Use the core Schema.Top constraint for an arbitrary field value schema.
+"@effect/experimental/VariantSchema#FieldTypeId":
+  replacement: none
+  note: The Field brand is private in v4; use VariantSchema.isField for narrowing.
+"@effect/experimental/VariantSchema#fromKey":
+  replacement: none
+  note: Field-level fromKey was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
+"@effect/experimental/VariantSchema#fromKey.Rename":
+  replacement: none
+  note: The fromKey rename helper was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
 "@effect/experimental/VariantSchema#isField":
   replacement: effect/unstable/schema/VariantSchema#isField
   note: Import isField from the v4 unstable VariantSchema module.
@@ -25,6 +34,3 @@
 "@effect/experimental/VariantSchema#TypeId":
   replacement: effect/unstable/schema/VariantSchema#TypeId
   note: Use the retained runtime value; in type position use typeof VariantSchema.TypeId.
-"@effect/experimental/VariantSchema":
-  replacement: effect/unstable/schema/VariantSchema
-  note: The Field brand is private in v4; use VariantSchema.isField for narrowing. The fromKey rename helper was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys. Field-level fromKey was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.

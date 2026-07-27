@@ -61,6 +61,9 @@
 "effect/List#nil":
   replacement: "Array.empty"
   note: "List was removed; represent Nil with an empty array."
+"effect/List#Nil":
+  replacement: "none"
+  note: "Represent this case as readonly []; there is no tagged Nil interface in v4."
 "effect/List#of":
   replacement: "Array.of"
   note: "List was removed; use Array.of. It preserves ordering but returns arrays rather than persistent linked lists."
@@ -103,6 +106,9 @@
 "effect/List#toChunk":
   replacement: "Chunk.fromIterable"
   note: "Convert the replacement array or other iterable with Chunk.fromIterable."
+"effect/List#TypeId":
+  replacement: "none"
+  note: "Arrays have no List runtime marker; remove TypeId inspection."
 "effect/List#unsafeHead":
   replacement: "Array.headNonEmpty"
   note: "Use a NonEmptyReadonlyArray proof before accessing the head; the v4 helper does not accept an empty array."
@@ -112,6 +118,3 @@
 "effect/List#unsafeTail":
   replacement: "Array.tailNonEmpty"
   note: "Use a NonEmptyReadonlyArray proof before taking the tail; the v4 helper does not accept an empty array."
-effect/List:
-  replacement: varies by API
-  note: Represent this case as readonly []; there is no tagged Nil interface in v4. Arrays have no List runtime marker; remove TypeId inspection.

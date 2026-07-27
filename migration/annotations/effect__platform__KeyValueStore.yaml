@@ -19,6 +19,9 @@
 "@effect/platform/KeyValueStore#prefix":
   replacement: "KeyValueStore.prefix"
   note: "The prefixed-store combinator remains in the moved module."
-"@effect/platform/KeyValueStore":
-  replacement: effect/unstable/persistence/KeyValueStore
-  note: The v4 SchemaStore has no public type-id alias; use the SchemaStore interface. The KeyValueStore runtime marker is internal in v4; use the service and interface.
+"@effect/platform/KeyValueStore#SchemaStoreTypeId":
+  replacement: "none"
+  note: "The v4 SchemaStore has no public type-id alias; use the SchemaStore interface."
+"@effect/platform/KeyValueStore#TypeId":
+  replacement: "none"
+  note: "The KeyValueStore runtime marker is internal in v4; use the service and interface."

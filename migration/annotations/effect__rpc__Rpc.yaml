@@ -10,6 +10,9 @@
 "@effect/rpc/Rpc#AnySchema":
   replacement: "Schema.Top"
   note: "The RPC-specific erased schema alias was removed; use the v4 top schema constraint."
+"@effect/rpc/Rpc#AnyTaggedRequestSchema":
+  replacement: "none"
+  note: "RpcGroup no longer converts Schema.TaggedRequest classes into RPCs; declare the contract explicitly with Rpc.make."
 "@effect/rpc/Rpc#Context":
   replacement: "effect/unstable/rpc/Rpc#Services"
   note: "Schema Context became decoding and encoding services; use Services, or ServicesClient / ServicesServer at the corresponding boundary."
@@ -58,6 +61,9 @@
 "@effect/rpc/Rpc#Tag":
   replacement: "effect/unstable/rpc/Rpc#Tag"
   note: "Retained and also accounts for the v4 RPC service-requirement parameter."
-"@effect/rpc/Rpc":
-  replacement: effect/unstable/rpc/Rpc
-  note: RpcGroup no longer converts Schema.TaggedRequest classes into RPCs; declare the contract explicitly with Rpc.make. The RPC marker is private in v4; use Rpc.isRpc for runtime checks and Rpc.Any for type constraints. The wrapper marker is private in v4; use Rpc.isWrapper and the public Wrapper type.
+"@effect/rpc/Rpc#TypeId":
+  replacement: "none"
+  note: "The RPC marker is private in v4; use Rpc.isRpc for runtime checks and Rpc.Any for type constraints."
+"@effect/rpc/Rpc#WrapperTypeId":
+  replacement: "none"
+  note: "The wrapper marker is private in v4; use Rpc.isWrapper and the public Wrapper type."

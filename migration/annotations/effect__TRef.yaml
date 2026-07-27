@@ -1,6 +1,9 @@
 effect/TRef#TRef:
   replacement: "TxRef.TxRef"
   note: "Rename the type and import from \"effect/TxRef\". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TRef#TRef.Variance:
+  replacement: "none"
+  note: "TxRef exposes no public variance marker."
 effect/TRef#TRefTypeId:
   replacement: "TxRef.isTxRef"
   note: "The type id is internal in v4; use the public runtime guard."
@@ -25,6 +28,3 @@ effect/TRef#updateSome:
 effect/TRef#updateSomeAndGet:
   replacement: "TxRef.modify"
   note: "Use one atomic modify that returns the resulting value, retaining the old value for None."
-effect/TRef:
-  replacement: effect/TxRef
-  note: TxRef exposes no public variance marker.

@@ -10,6 +10,9 @@
 "@effect/platform/CommandExecutor#Process.Id":
   replacement: "ChildProcessSpawner.ProcessId"
   note: "The process-id brand is now exported directly."
-"@effect/platform/CommandExecutor":
-  replacement: effect/unstable/process/ChildProcessSpawner
-  note: The ChildProcessHandle marker is internal in v4; use the ChildProcessHandle interface. The Context.Service class replaces the public executor type-id alias.
+"@effect/platform/CommandExecutor#ProcessTypeId":
+  replacement: "none"
+  note: "The ChildProcessHandle marker is internal in v4; use the ChildProcessHandle interface."
+"@effect/platform/CommandExecutor#TypeId":
+  replacement: "none"
+  note: "The Context.Service class replaces the public executor type-id alias."

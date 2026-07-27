@@ -298,6 +298,41 @@ describe("migration document", () => {
     )
   })
 
+  it("keeps removals from relocated modules and modules without module guidance", () => {
+    const moduleDiff: ApiDiff = {
+      ...diff,
+      changes: [
+        change({ classification: "module-removed", delta: { from: "effect/Relocated", to: [] } }),
+        change({ classification: "module-removed", delta: { from: "effect/Unguided", to: [] } }),
+        change({ classification: "api-removed", baseApiId: "effect/Relocated#removed#value" }),
+        change({ classification: "api-removed", baseApiId: "effect/Unguided#removed#value" })
+      ]
+    }
+    const moduleAnnotations = new Map<string, MigrationAnnotation>([
+      ["effect/Relocated", {
+        replacement: "effect/Current",
+        note: "The module moved."
+      }],
+      ["effect/Relocated#removed", {
+        replacement: "none",
+        note: "This API was not moved."
+      }],
+      ["effect/Unguided#removed", {
+        replacement: "none",
+        note: "This API was removed."
+      }]
+    ])
+    const document = renderMigrationDocument(moduleDiff, moduleAnnotations, "## Import Map\n")
+
+    assert(document.includes("- `effect/Relocated` -> `effect/Current`: The module moved."))
+    assert(document.includes("- `Relocated.removed` -> `none`: This API was not moved."))
+    assert(document.includes("- `Unguided.removed` -> `none`: This API was removed."))
+    assert.strictEqual(
+      renderMissingAnnotations(moduleDiff, moduleAnnotations),
+      "All migration APIs and removed modules have guidance.\n"
+    )
+  })
+
   it("uses per-API annotations for split modules and reports missing module guidance", () => {
     const moduleDiff: ApiDiff = {
       ...diff,

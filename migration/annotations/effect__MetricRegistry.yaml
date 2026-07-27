@@ -4,6 +4,6 @@ effect/MetricRegistry#MetricRegistry:
 effect/MetricRegistry#make:
   replacement: "new Map<string, Metric.Metric.Metadata<any, any>>()"
   note: "Provide a fresh Map to Metric.MetricRegistry for isolation. Read it through Metric.snapshot or snapshotUnsafe."
-effect/MetricRegistry:
-  replacement: varies by API
-  note: The registry service is an ordinary Map behind a Context.Reference and has no public brand.
+effect/MetricRegistry#MetricRegistryTypeId:
+  replacement: "none"
+  note: "The registry service is an ordinary Map behind a Context.Reference and has no public brand."

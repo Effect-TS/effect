@@ -1,3 +1,3 @@
-"@effect/cluster/SingletonAddress":
-  replacement: effect/unstable/cluster/SingletonAddress
-  note: The singleton-address marker is private in v4. Use the exported SingletonAddress class and schema.
+"@effect/cluster/SingletonAddress#TypeId":
+  replacement: "none"
+  note: "The singleton-address marker is private in v4. Use the exported SingletonAddress class and schema."

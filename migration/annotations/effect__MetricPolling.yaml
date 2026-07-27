@@ -19,6 +19,6 @@ effect/MetricPolling#launch:
 effect/MetricPolling#collectAll:
   replacement: "Effect.forEach + Metric.update/value"
   note: "No combined metric replacement exists. Poll records, update each metric, and collect states explicitly."
-effect/MetricPolling:
-  replacement: varies by API
-  note: The polling wrapper and its brand were removed.
+effect/MetricPolling#MetricPollingTypeId:
+  replacement: "none"
+  note: "The polling wrapper and its brand were removed."

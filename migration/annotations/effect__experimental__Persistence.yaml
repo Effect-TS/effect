@@ -1,6 +1,12 @@
 "@effect/experimental/Persistence#BackingPersistence":
   replacement: effect/unstable/persistence/Persistence#BackingPersistence
   note: Use the v4 BackingPersistence Context.Service class.
+"@effect/experimental/Persistence#BackingPersistenceTypeId":
+  replacement: none
+  note: The BackingPersistence brand is no longer publicly exported in v4.
+"@effect/experimental/Persistence#ErrorTypeId":
+  replacement: none
+  note: The v4 persistence error identifier is private; narrow with the exported error classes.
 "@effect/experimental/Persistence#layerKeyValueStore":
   replacement: effect/unstable/persistence/Persistence#layerBackingKvs
   note: The KeyValueStore backing layer was renamed to layerBackingKvs.
@@ -40,6 +46,6 @@
 "@effect/experimental/Persistence#ResultPersistenceStore":
   replacement: effect/unstable/persistence/Persistence#PersistenceStore
   note: ResultPersistenceStore was renamed to PersistenceStore.
-"@effect/experimental/Persistence":
-  replacement: effect/unstable/persistence/Persistable, effect/unstable/persistence/Persistence
-  note: The BackingPersistence brand is no longer publicly exported in v4. The v4 persistence error identifier is private; narrow with the exported error classes. The ResultPersistence brand is no longer publicly exported in v4.
+"@effect/experimental/Persistence#ResultPersistenceTypeId":
+  replacement: none
+  note: The ResultPersistence brand is no longer publicly exported in v4.

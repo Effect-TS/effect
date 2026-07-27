@@ -1,6 +1,9 @@
 "@effect/experimental/EventJournal#EntryIdTypeId":
   replacement: effect/unstable/eventlog/EventJournal#EntryIdTypeId
   note: Import EntryIdTypeId from the v4 EventJournal module; it is now a string brand.
+"@effect/experimental/EventJournal#ErrorTypeId":
+  replacement: none
+  note: The v4 error marker is private; narrow with EventJournalError instead.
 "@effect/experimental/EventJournal#makeEntryId":
   replacement: effect/unstable/eventlog/EventJournal#makeEntryIdUnsafe
   note: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
@@ -10,6 +13,3 @@
 "@effect/experimental/EventJournal#RemoteIdTypeId":
   replacement: effect/unstable/eventlog/EventJournal#RemoteIdTypeId
   note: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
-"@effect/experimental/EventJournal":
-  replacement: effect/unstable/eventlog/EventJournal
-  note: The v4 error marker is private; narrow with EventJournalError instead.

@@ -10,6 +10,6 @@
 "@effect/cli/CliConfig#make":
   replacement: "CliConfig.make"
   note: "The constructor remains but accepts the redesigned service options."
-"@effect/cli/CliConfig":
-  replacement: varies by API
-  note: Case normalization is no longer configurable through CliConfig.
+"@effect/cli/CliConfig#normalizeCase":
+  replacement: "none"
+  note: "Case normalization is no longer configurable through CliConfig."

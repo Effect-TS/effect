@@ -10,6 +10,12 @@
 "@effect/platform/HttpApiEndpoint#HttpApiEndpoint.AddContext":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#AddMiddleware"
   note: "Use AddMiddleware to add a middleware identifier and compute its service transformation."
+"@effect/platform/HttpApiEndpoint#HttpApiEndpoint.AddError":
+  replacement: "none"
+  note: "Declare error schemas in the endpoint constructor options; the type helper and fluent addError method were removed."
+"@effect/platform/HttpApiEndpoint#HttpApiEndpoint.Constructor":
+  replacement: "none"
+  note: "The tagged-template constructor type was removed; use HttpApiEndpoint.make(method)(identifier, path, options?)."
 "@effect/platform/HttpApiEndpoint#HttpApiEndpoint.Context":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#ServerServices"
   note: "Use ServerServices for handler requirements; middleware IDs and extra requirements have separate extractors."
@@ -31,12 +37,21 @@
 "@effect/platform/HttpApiEndpoint#HttpApiEndpoint.ExcludeName":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#ExcludeIdentifier"
   note: "Direct rename from name to identifier."
+"@effect/platform/HttpApiEndpoint#HttpApiEndpoint.ExtractPath":
+  replacement: "none"
+  note: "Tagged-template path extraction was removed. Put a params schema or field record in constructor option params."
 "@effect/platform/HttpApiEndpoint#HttpApiEndpoint.HandlerRawWithName":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#HandlerRawWithIdentifier"
   note: "Direct rename; raw request fields are now params and query."
 "@effect/platform/HttpApiEndpoint#HttpApiEndpoint.HandlerWithName":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#HandlerWithIdentifier"
   note: "Direct rename from name to identifier."
+"@effect/platform/HttpApiEndpoint#HttpApiEndpoint.OptionalTypePropertySignature":
+  replacement: "none"
+  note: "Removed with the tagged-template path implementation."
+"@effect/platform/HttpApiEndpoint#HttpApiEndpoint.PathEntries":
+  replacement: "none"
+  note: "Removed with tagged-template path extraction; declare endpoint params explicitly."
 "@effect/platform/HttpApiEndpoint#HttpApiEndpoint.PathParsed":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#Params"
   note: "Path data became params; Params extracts the schema, so use Params<Endpoint>[\"Type\"] for decoded data."
@@ -55,6 +70,9 @@
 "@effect/platform/HttpApiEndpoint#HttpApiEndpoint.ValidateHeaders":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#HeadersConstraint"
   note: "Validation moved from an intersection helper to a constructor generic constraint."
+"@effect/platform/HttpApiEndpoint#HttpApiEndpoint.ValidateParams":
+  replacement: "none"
+  note: "Tagged-template interpolation validation was removed; params are declared explicitly in options.params."
 "@effect/platform/HttpApiEndpoint#HttpApiEndpoint.ValidatePath":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#ParamsConstraint"
   note: "path became params and validation is now a constructor constraint."
@@ -82,6 +100,6 @@
 "@effect/platform/HttpApiEndpoint#put":
   replacement: "effect/unstable/httpapi/HttpApiEndpoint#put"
   note: "Same HTTP method constructor with the new identifier, path, and options signature."
-"@effect/platform/HttpApiEndpoint":
-  replacement: effect/unstable/httpapi/HttpApiEndpoint
-  note: Declare error schemas in the endpoint constructor options; the type helper and fluent addError method were removed. The tagged-template constructor type was removed; use HttpApiEndpoint.make(method)(identifier, path, options?). Tagged-template path extraction was removed. Put a params schema or field record in constructor option params. Removed with the tagged-template path implementation. Removed with tagged-template path extraction; declare endpoint params explicitly. Tagged-template interpolation validation was removed; params are declared explicitly in options.params. The endpoint type ID is private; use HttpApiEndpoint.isHttpApiEndpoint for runtime narrowing.
+"@effect/platform/HttpApiEndpoint#TypeId":
+  replacement: "none"
+  note: "The endpoint type ID is private; use HttpApiEndpoint.isHttpApiEndpoint for runtime narrowing."

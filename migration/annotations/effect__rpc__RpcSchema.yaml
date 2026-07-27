@@ -10,6 +10,6 @@
 "@effect/rpc/RpcSchema#Stream":
   replacement: "effect/unstable/rpc/RpcSchema#Stream"
   note: "Retained as both the stream schema interface and constructor; error is the second argument and schema services are split by direction."
-"@effect/rpc/RpcSchema":
-  replacement: effect/unstable/rpc/RpcSchema
-  note: The stream marker is private in v4; use RpcSchema.isStreamSchema and getStreamSchemas.
+"@effect/rpc/RpcSchema#StreamSchemaId":
+  replacement: "none"
+  note: "The stream marker is private in v4; use RpcSchema.isStreamSchema and getStreamSchemas."

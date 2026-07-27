@@ -1,3 +1,6 @@
+"@effect/platform/OpenApi#AdditionalPropertiesStrategy":
+  replacement: "none"
+  note: "OpenApi.fromApi no longer accepts generation options; standalone JSON Schema generation has a separate additionalProperties option."
 "@effect/platform/OpenApi#annotations":
   replacement: "effect/unstable/httpapi/OpenApi#annotations"
   note: "Same annotation-context helper after the module move."
@@ -13,6 +16,3 @@
 "@effect/platform/OpenApi#Title":
   replacement: "effect/unstable/httpapi/OpenApi#Title"
   note: "Same annotation role, now implemented as a v4 Context.Service."
-"@effect/platform/OpenApi":
-  replacement: effect/unstable/httpapi/OpenApi
-  note: OpenApi.fromApi no longer accepts generation options; standalone JSON Schema generation has a separate additionalProperties option.

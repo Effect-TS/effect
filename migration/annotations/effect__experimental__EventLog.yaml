@@ -16,12 +16,12 @@
 "@effect/experimental/EventLog#layer":
   replacement: effect/unstable/eventlog/EventLog#layer
   note: The v4 layer takes both the schema and handler layer; use layerEventLog for runtime only.
+"@effect/experimental/EventLog#layerIdentityKvs":
+  replacement: none
+  note: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.
 "@effect/experimental/EventLog#schema":
   replacement: effect/unstable/eventlog/EventLog#schema
   note: Import schema from the v4 EventLog module.
 "@effect/experimental/EventLog#SchemaTypeId":
   replacement: effect/unstable/eventlog/EventLog#SchemaTypeId
   note: Import SchemaTypeId from the v4 EventLog module.
-"@effect/experimental/EventLog":
-  replacement: effect/unstable/eventlog/EventLog
-  note: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.

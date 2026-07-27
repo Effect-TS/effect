@@ -55,6 +55,9 @@ effect/TQueue#peek:
 effect/TQueue#poll:
   replacement: "TxQueue.poll"
   note: "Import TxQueue from \"effect/TxQueue\"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TQueue#seek:
+  replacement: "none"
+  note: "TxQueue has no seek helper; repeat TxQueue.take under Effect.tx until the predicate matches."
 effect/TQueue#shutdown:
   replacement: "TxQueue.shutdown"
   note: "The operation remains, but now returns whether shutdown changed the queue state."
@@ -76,6 +79,3 @@ effect/TQueue#takeN:
 effect/TQueue#unbounded:
   replacement: "TxQueue.unbounded"
   note: "Import TxQueue from \"effect/TxQueue\"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
-effect/TQueue:
-  replacement: effect/TxQueue
-  note: TxQueue has no seek helper; repeat TxQueue.take under Effect.tx until the predicate matches.

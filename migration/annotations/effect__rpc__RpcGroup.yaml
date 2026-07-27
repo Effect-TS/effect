@@ -7,6 +7,6 @@
 "@effect/rpc/RpcGroup#make":
   replacement: "effect/unstable/rpc/RpcGroup#make"
   note: "Retained for explicit Rpc definitions; passing TaggedRequest schema classes for implicit conversion is no longer supported."
-"@effect/rpc/RpcGroup":
-  replacement: effect/unstable/rpc/RpcGroup
-  note: The group marker is private in v4; use RpcGroup.Any for an erased group constraint.
+"@effect/rpc/RpcGroup#TypeId":
+  replacement: "none"
+  note: "The group marker is private in v4; use RpcGroup.Any for an erased group constraint."

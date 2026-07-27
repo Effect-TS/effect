@@ -40,6 +40,9 @@
 "@effect/platform/HttpRouter#HttpRouter":
   replacement: "HttpRouter.HttpRouter"
   note: "The name remains, but now denotes the mutable layer-oriented registration service."
+"@effect/platform/HttpRouter#HttpRouter.DefaultServices":
+  replacement: "none"
+  note: "The custom tagged-router default-service bundle was removed."
 "@effect/platform/HttpRouter#HttpRouter.Service":
   replacement: "HttpRouter.HttpRouter"
   note: "Use the consolidated router service interface."
@@ -73,18 +76,27 @@
 "@effect/platform/HttpRouter#Route.Middleware":
   replacement: "Effect.Effect"
   note: "Spell the route response Effect directly, or use HttpRouter.middleware for transforms."
+"@effect/platform/HttpRouter#RouteContextTypeId":
+  replacement: "none"
+  note: "The nominal id is internal in v4; access HttpRouter.RouteContext as a service."
+"@effect/platform/HttpRouter#RouteTypeId":
+  replacement: "none"
+  note: "The nominal id is internal in v4; construct routes with HttpRouter.route."
 "@effect/platform/HttpRouter#setRouterConfig":
   replacement: "Layer.succeed(HttpRouter.RouterConfig)(config)"
   note: "Provide the RouterConfig Context.Reference as a layer."
+"@effect/platform/HttpRouter#Tag":
+  replacement: "none"
+  note: "Custom router tags were removed; use the singleton router service and registration layers."
 "@effect/platform/HttpRouter#toHttpApp":
   replacement: "HttpRouter.toHttpEffect"
   note: "Pass the route-registration layer to build the server handler effect."
 "@effect/platform/HttpRouter#transform":
   replacement: "HttpRouter.middleware"
   note: "Express the route-wide response Effect transform as router middleware."
+"@effect/platform/HttpRouter#TypeId":
+  replacement: "none"
+  note: "The router nominal service id is internal in v4; use HttpRouter.HttpRouter."
 "@effect/platform/HttpRouter#withRouterConfig":
   replacement: "Effect.provideService(effect, HttpRouter.RouterConfig, config)"
   note: "Provide the RouterConfig Context.Reference locally instead of setting a FiberRef."
-"@effect/platform/HttpRouter":
-  replacement: effect/unstable/http/HttpRouter
-  note: The custom tagged-router default-service bundle was removed. The nominal id is internal in v4; access HttpRouter.RouteContext as a service. The nominal id is internal in v4; construct routes with HttpRouter.route. Custom router tags were removed; use the singleton router service and registration layers. The router nominal service id is internal in v4; use HttpRouter.HttpRouter.

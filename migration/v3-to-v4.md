@@ -4,7 +4,7 @@
 
 Base: `v3` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `main` (`205ebc776062012581e98fced7ced19adfc44ee7`)
+Head: `main` (`cc27b194b9d13fa3a66ab037e853fca9d41700ff`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -383,44 +383,44 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/ai/Chat` -> `effect/unstable/ai/Chat`
 - `@effect/ai/EmbeddingModel` -> `effect/unstable/ai/EmbeddingModel`
 - `@effect/ai/IdGenerator` -> `effect/unstable/ai/IdGenerator`
-- `@effect/ai/LanguageModel` -> `effect/unstable/ai/LanguageModel`: V4 inlines this provider-adapter shape in LanguageModel.make. Pass generateText and streamText directly to make, with optional codecTransformer, instead of naming a constructor-parameter type.
+- `@effect/ai/LanguageModel` -> `effect/unstable/ai/LanguageModel`
 - `@effect/ai/McpSchema` -> `effect/unstable/ai/McpSchema`
 - `@effect/ai/McpServer` -> `effect/unstable/ai/McpServer`
-- `@effect/ai/Model` -> `effect/unstable/ai/Model`: The Model brand still exists internally, but its TypeId is not exported and v4 has no public isModel guard. Use Model values created by Model.make rather than inspecting or constructing the brand.
+- `@effect/ai/Model` -> `effect/unstable/ai/Model`
 - `@effect/ai/Prompt` -> `effect/unstable/ai/Prompt`
 - `@effect/ai/Response` -> `effect/unstable/ai/Response`
 - `@effect/ai/Telemetry` -> `effect/unstable/ai/Telemetry`
 - `@effect/ai/Tokenizer` -> `effect/unstable/ai/Tokenizer`
-- `@effect/ai/Tool` -> `effect/unstable/ai/Tool`: The TaggedRequest-specific Tool adapter contract was removed. Model the operation directly with Tool.make and ordinary v4 Schema.Constraint values.
+- `@effect/ai/Tool` -> `effect/unstable/ai/Tool`
 - `@effect/ai/Toolkit` -> `effect/unstable/ai/Toolkit`
 - `@effect/ai/index` -> `effect/unstable/ai`: The package barrel was removed; import the same namespaces from the effect/unstable/ai barrel or import specific modules directly.
 - `@effect/cli` -> `effect/unstable/cli`: The @effect/cli package was merged into the effect package; import the effect/unstable/cli barrel or import specific modules directly (e.g. effect/unstable/cli/\<Module\>).
-- `@effect/cli/Args` -> `effect/unstable/cli/Argument`: Per-argument help introspection was removed; Command generates help internally. Public argument identifier introspection was removed. Public arity introspection was removed; command parsing enforces variadic bounds internally. The public Usage tree was removed; Command generates a usage string internally.
+- `@effect/cli/Args` -> `effect/unstable/cli/Argument`
 - `@effect/cli/AutoCorrect` -> `none`: V4 suggestion distance is internal and fixed; the public configurable distance helper was removed.
-- `@effect/cli/BuiltInOptions` -> `effect/unstable/cli/GlobalFlag`: Parsed ShowCompletions directives were removed; the runner processes GlobalFlag.Completions directly. Parsed ShowHelp directives were removed; the runner processes GlobalFlag.Help directly. Parsed ShowVersion directives were removed; the runner processes GlobalFlag.Version directly. Parsed ShowWizard directives were removed; the runner processes GlobalFlag.Wizard directly.
-- `@effect/cli/CliApp` -> `varies by API`: Build the command with Command.make and withDescription, then pass version to Command.run; the old app constructor shape was removed.
-- `@effect/cli/CliConfig` -> `varies by API`: Case normalization is no longer configurable through CliConfig.
-- `@effect/cli/Command` -> `effect/unstable/cli/Command`: The parsed config representation is internal in v4. The parsed config node representation is internal in v4. The parsed config tree representation is internal in v4. The handler transformation type and machinery are internal in v4. Help generation for a command path is internal; use GlobalFlag.Help through Command.run or runWith. Usage is generated internally as part of structured HelpDoc. Transform in the handler or use the specific provide combinators; the generic handler transform is internal.
-- `@effect/cli/CommandDescriptor` -> `effect/unstable/cli/Completions`: No public parsed-input extractor remains; v4 handlers receive inferred config directly. The name/options/args parsed wrapper was removed; handlers receive inferred config directly. The descriptor-level prompt command was removed; use Prompt APIs or Command.wizard. Compose independently handled commands with Command.withSubcommands instead of parsing a tuple union. Help generation is internal to the Command runner. Usage generation is internal to Command help generation. Map individual Argument or Flag values, or transform inside the command handler. Use parameter mapEffect where the transformation belongs to an input, or perform the Effect in the handler.
-- `@effect/cli/CommandDirective` -> `varies by API`: The intermediate parse-result model was removed; the runner invokes the selected handler directly. Intermediate built-in directives were removed. Map parameters or transform in the handler; there is no intermediate directive to map. The user-defined intermediate directive was removed. Parsed input is delivered directly to the selected command handler.
-- `@effect/cli/ConfigFile` -> `varies by API`: ConfigProvider.SourceError has no public type-id export. V4 has no API that discovers, parses, and composes config files; use FileSystem, a format parser, and ConfigProvider.fromUnknown explicitly.
-- `@effect/cli/HelpDoc` -> `effect/unstable/cli/HelpDoc`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput. The Span ADT and document-to-span conversion were removed; v4 help fields are strings. CliOutput owns rendering and exposes formatted text rather than an AnsiDoc.
+- `@effect/cli/BuiltInOptions` -> `effect/unstable/cli/GlobalFlag`
+- `@effect/cli/CliApp`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/CliConfig`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/Command` -> `effect/unstable/cli/Command`
+- `@effect/cli/CommandDescriptor` -> `effect/unstable/cli/Completions`
+- `@effect/cli/CommandDirective`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/ConfigFile`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/HelpDoc` -> `effect/unstable/cli/HelpDoc`
 - `@effect/cli/HelpDoc/Span` -> `none`: The Span ADT was removed; v4 help fields are strings and terminal styling is owned by CliOutput.
-- `@effect/cli/Options` -> `effect/unstable/cli/Flag`: Per-flag help introspection was removed; Command generates help internally. Public flag identifier introspection was removed. The public Usage tree was removed; Command generates a usage string internally. No public flag-shape predicate remains; boolean-shape inspection is internal.
-- `@effect/cli/Primitive` -> `effect/unstable/cli/Primitive`: Choice introspection is internal in v4; retain alternatives in application code when needed. Primitive-level help generation was removed from the public API. The boolean Primitive predicate is internal in v4. The public Primitive type-id symbol was removed.
+- `@effect/cli/Options` -> `effect/unstable/cli/Flag`
+- `@effect/cli/Primitive` -> `effect/unstable/cli/Primitive`
 - `@effect/cli/Prompt` -> `effect/unstable/cli/Prompt`
 - `@effect/cli/Usage` -> `none`: The Usage ADT was removed; Command builds a plain HelpDoc.usage string internally.
-- `@effect/cli/ValidationError` -> `effect/unstable/cli/CliError`: The root-command mismatch error was removed. V4 runners receive arguments after the root name; unknown child commands use CliError.UnknownSubcommand. Missing subcommands now cause ShowHelp rather than a dedicated error. Count violations are summarized as InvalidValue without a stable subtype. Built-ins are GlobalFlag definitions and the intermediate failure was removed. Cluster expansion is internal and has no public intermediate error. The dedicated missing-subcommand error was removed. A parent without a selected subcommand now shows help rather than emitting a dedicated error. The intermediate built-in matching error was removed. The public cluster error was removed. Flag cluster expansion is internal in v4. V4 errors are schema-backed classes and expose no shared public prototype type. The CliError type id is private; use CliError.isCliError.
+- `@effect/cli/ValidationError` -> `effect/unstable/cli/CliError`
 - `@effect/cli/index` -> `effect/unstable/cli`: The package barrel was removed; import the same namespaces from the effect/unstable/cli barrel or import specific modules directly.
 - `@effect/cluster` -> `effect/unstable/cluster`: The @effect/cluster package was merged into the effect package; import the effect/unstable/cluster barrel or import specific modules directly (e.g. effect/unstable/cluster/\<Module\>).
 - `@effect/cluster/ClusterCron` -> `effect/unstable/cluster/ClusterCron`
-- `@effect/cluster/ClusterError` -> `effect/unstable/cluster/ClusterError`: The shared marker is private in v4. Use the exported tagged error classes, their \_tag fields, or class-specific is guards.
+- `@effect/cluster/ClusterError` -> `effect/unstable/cluster/ClusterError`
 - `@effect/cluster/ClusterMetrics` -> `effect/unstable/cluster/ClusterMetrics`
 - `@effect/cluster/ClusterSchema` -> `effect/unstable/cluster/ClusterSchema`
 - `@effect/cluster/ClusterWorkflowEngine` -> `effect/unstable/cluster/ClusterWorkflowEngine`
 - `@effect/cluster/DeliverAt` -> `effect/unstable/cluster/DeliverAt`
-- `@effect/cluster/Entity` -> `effect/unstable/cluster/Entity`: The entity marker is private in v4. Use Entity.isEntity for runtime refinement.
-- `@effect/cluster/EntityAddress` -> `effect/unstable/cluster/EntityAddress`: The marker is private in v4. Use the exported EntityAddress class and schema.
+- `@effect/cluster/Entity` -> `effect/unstable/cluster/Entity`
+- `@effect/cluster/EntityAddress` -> `effect/unstable/cluster/EntityAddress`
 - `@effect/cluster/EntityId` -> `effect/unstable/cluster/EntityId`
 - `@effect/cluster/EntityProxy` -> `effect/unstable/cluster/EntityProxy`
 - `@effect/cluster/EntityProxyServer` -> `effect/unstable/cluster/EntityProxyServer`
@@ -432,20 +432,20 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/cluster/MachineId` -> `effect/unstable/cluster/MachineId`
 - `@effect/cluster/Message` -> `effect/unstable/cluster/Message`
 - `@effect/cluster/MessageStorage` -> `effect/unstable/cluster/MessageStorage`
-- `@effect/cluster/Reply` -> `effect/unstable/cluster/Reply`: The reply marker is private in v4. Use Reply.isReply for runtime refinement.
-- `@effect/cluster/Runner` -> `effect/unstable/cluster/Runner`: The runner marker is private in v4. Use the exported Runner class and schema.
-- `@effect/cluster/RunnerAddress` -> `effect/unstable/cluster/RunnerAddress`: The runner-address marker is private in v4. Use the exported RunnerAddress class and schema.
+- `@effect/cluster/Reply` -> `effect/unstable/cluster/Reply`
+- `@effect/cluster/Runner` -> `effect/unstable/cluster/Runner`
+- `@effect/cluster/RunnerAddress` -> `effect/unstable/cluster/RunnerAddress`
 - `@effect/cluster/RunnerHealth` -> `effect/unstable/cluster/RunnerHealth`
 - `@effect/cluster/RunnerServer` -> `effect/unstable/cluster/RunnerServer`
 - `@effect/cluster/RunnerStorage` -> `effect/unstable/cluster/RunnerStorage`
 - `@effect/cluster/Runners` -> `effect/unstable/cluster/Runners`
-- `@effect/cluster/ShardId` -> `effect/unstable/cluster/ShardId`: The shard marker is private in v4. Use ShardId.isShardId for runtime refinement.
+- `@effect/cluster/ShardId` -> `effect/unstable/cluster/ShardId`
 - `@effect/cluster/Sharding` -> `effect/unstable/cluster/Sharding`
 - `@effect/cluster/ShardingConfig` -> `effect/unstable/cluster/ShardingConfig`
 - `@effect/cluster/ShardingRegistrationEvent` -> `effect/unstable/cluster/ShardingRegistrationEvent`
 - `@effect/cluster/SingleRunner` -> `effect/unstable/cluster/SingleRunner`
 - `@effect/cluster/Singleton` -> `effect/unstable/cluster/Singleton`
-- `@effect/cluster/SingletonAddress` -> `effect/unstable/cluster/SingletonAddress`: The singleton-address marker is private in v4. Use the exported SingletonAddress class and schema.
+- `@effect/cluster/SingletonAddress` -> `effect/unstable/cluster/SingletonAddress`
 - `@effect/cluster/Snowflake` -> `effect/unstable/cluster/Snowflake`
 - `@effect/cluster/SocketRunner` -> `effect/unstable/cluster/SocketRunner`
 - `@effect/cluster/SqlMessageStorage` -> `effect/unstable/cluster/SqlMessageStorage`
@@ -455,14 +455,14 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/experimental` -> `none`: The @effect/experimental package was folded into the effect package, split across effect/unstable/\* (devtools, eventlog, persistence, reactivity, ...); follow the Import Map for each module.
 - `@effect/experimental/DevTools` -> `effect/unstable/devtools/DevTools`
 - `@effect/experimental/DevTools/Client` -> `effect/unstable/devtools/DevToolsClient`
-- `@effect/experimental/DevTools/Domain` -> `effect/unstable/devtools/DevToolsSchema`: The metric schema helper is private in v4; use the exported Counter, Frequency, Gauge, Histogram, Summary, or Metric schemas, or build a Schema.Struct.
+- `@effect/experimental/DevTools/Domain` -> `effect/unstable/devtools/DevToolsSchema`
 - `@effect/experimental/DevTools/Server` -> `effect/unstable/devtools/DevToolsServer`
 - `@effect/experimental/Event` -> `effect/unstable/eventlog/Event`
 - `@effect/experimental/EventGroup` -> `effect/unstable/eventlog/EventGroup`
-- `@effect/experimental/EventJournal` -> `effect/unstable/eventlog/EventJournal`: The v4 error marker is private; narrow with EventJournalError instead.
-- `@effect/experimental/EventLog` -> `effect/unstable/eventlog/EventLog`: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.
+- `@effect/experimental/EventJournal` -> `effect/unstable/eventlog/EventJournal`
+- `@effect/experimental/EventLog` -> `effect/unstable/eventlog/EventLog`
 - `@effect/experimental/EventLogEncryption` -> `effect/unstable/eventlog/EventLogEncryption`
-- `@effect/experimental/EventLogRemote` -> `effect/unstable/eventlog/EventLogMessage, effect/unstable/eventlog/EventLogRemote`: A write acknowledgement is now the void success of EventLogMessage.WriteSingleRpc or WriteChunkedRpc. The event-log Pong model was removed; heartbeats belong to the generic RPC socket protocol. This unused protocol model has no v4 counterpart. Interrupt the ChangesRpc stream instead of sending a StopChanges message.
+- `@effect/experimental/EventLogRemote` -> `effect/unstable/eventlog/EventLogMessage`, `effect/unstable/eventlog/EventLogRemote`
 - `@effect/experimental/EventLogServer` -> `effect/unstable/eventlog/EventLogServer`, `effect/unstable/eventlog/EventLogServerEncrypted`
 - `@effect/experimental/EventLogServer/Cloudflare` -> `none`: The Cloudflare adapter was not ported; combine EventLogServerEncrypted.layer with a custom Durable Object RpcServer.Protocol adapter.
 - `@effect/experimental/Machine` -> `none`: The experimental local Machine actor runtime was not ported to v4; redesign with Rpc, Cluster Entity, Workflow, or local Queue/Ref/PubSub primitives. The experimental local Machine actor runtime and its brands were not ported to v4. The local Machine actor boot runtime was not ported; choose Cluster Entity or rebuild the local actor with Queue, Ref, PubSub, and scoped fibers. The Machine-specific tracing gate was removed with the Machine runtime; use ordinary Effect tracing controls in a redesign. The Machine model and its context helper types were not ported to v4. The Machine model and its helper types were not ported to v4. The Machine model and its initialization helper types were not ported to v4. The Machine model and its initialization contract were not ported to v4. The serializable Machine initialization contract was not ported to v4. The Machine model and its extractor types were not ported to v4. The Machine model and its private-request extractor were not ported to v4. The Machine model and its public-request extractor were not ported to v4. The Machine model and its state extractor were not ported to v4. The experimental local Machine actor model was not ported to v4; ClusterWorkflowEngine is a different durable Workflow abstraction. The Machine-specific handler context was not ported; redesign request handling and state management explicitly. The Machine-specific defect wrapper was removed with the Machine runtime. The Machine constructor was not ported; use Rpc/RpcGroup plus Cluster Entity, Workflow, or local concurrency primitives according to the required semantics. Serializable Machine actors were not ported; define schemas with Rpc/RpcGroup and choose Cluster Entity or Workflow explicitly. The Machine constructor was not ported; redesign the actor runtime explicitly. Machine snapshot restoration was not ported; implement persistence for the replacement architecture explicitly. The Machine-specific retry wrapper was removed; use Effect.retry where appropriate in the redesigned handler. Serializable Machine actors were not ported to v4. Serializable Machine definitions were not ported to v4. The serializable Machine brand was removed with the Machine runtime. The Machine brand was removed with the Machine runtime. The Machine-specific tracing gate was removed; use ordinary Effect tracing controls in a redesign.
@@ -471,16 +471,16 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/experimental/Machine/SerializableProcedureList` -> `none`: SerializableProcedureList was not ported; collect schema-backed operations with RpcGroup and implement state handling separately. SerializableProcedureList and its public/private split were not ported; enforce visibility in the replacement architecture. SerializableProcedureList was not ported; RpcGroup is the closest protocol collection but has no initial state or visibility split. The serializable stateful ProcedureList abstraction was not ported to v4. SerializableProcedureList initial state was not ported; state initialization belongs in the replacement actor or workflow implementation.
 - `@effect/experimental/PersistedCache` -> `effect/unstable/persistence/PersistedCache`
 - `@effect/experimental/PersistedQueue` -> `effect/unstable/persistence/PersistedQueue`
-- `@effect/experimental/PersistedQueue/Redis` -> `varies by API`: Configure a Redis provider such as NodeRedis.layerConfig separately, then compose it with PersistedQueue.layerStoreRedis.
-- `@effect/experimental/Persistence` -> `effect/unstable/persistence/Persistable, effect/unstable/persistence/Persistence`: The BackingPersistence brand is no longer publicly exported in v4. The v4 persistence error identifier is private; narrow with the exported error classes. The ResultPersistence brand is no longer publicly exported in v4.
+- `@effect/experimental/PersistedQueue/Redis`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Persistence` -> `effect/unstable/persistence/Persistable`, `effect/unstable/persistence/Persistence`
 - `@effect/experimental/Persistence/Lmdb` -> `none`: The LMDB backend was not ported; implement a custom BackingPersistence layer or use a supported Kvs, Redis, or SQL backend.
-- `@effect/experimental/Persistence/Redis` -> `varies by API`: Compose Persistence.layerBackingRedis with a config-driven provider such as NodeRedis.layerConfig. Compose Persistence.layerRedis with a config-driven provider such as NodeRedis.layerConfig. V4 exposes Redis-backed layers over the Redis.Redis service, not a constructor that creates an ioredis client directly.
+- `@effect/experimental/Persistence/Redis`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/experimental/RateLimiter` -> `effect/unstable/persistence/RateLimiter`
 - `@effect/experimental/RateLimiter/Redis`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/experimental/Reactivity` -> `effect/unstable/reactivity/Reactivity`
 - `@effect/experimental/RequestResolver`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/experimental/Sse` -> `effect/unstable/encoding/Sse`: The Retry identifier is private in v4; use effect/unstable/encoding/Sse#Retry and Retry.is instead of inspecting the brand.
-- `@effect/experimental/VariantSchema` -> `effect/unstable/schema/VariantSchema`: The Field brand is private in v4; use VariantSchema.isField for narrowing. The fromKey rename helper was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys. Field-level fromKey was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
+- `@effect/experimental/Sse` -> `effect/unstable/encoding/Sse`
+- `@effect/experimental/VariantSchema` -> `effect/unstable/schema/VariantSchema`
 - `@effect/experimental/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect/unstable/\* location per the Import Map.
 - `@effect/opentelemetry/Logger`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/opentelemetry/Metrics`: No single module replacement; follow the curated per-API guidance below.
@@ -509,25 +509,25 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/platform-node/NodeKeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via NodeServices.layer or NodeFileSystem.layer with NodePath.layer.
 - `@effect/platform-node/index` -> `@effect/platform-node`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-node package root or import specific modules directly.
 - `@effect/platform/ChannelSchema` -> `effect/ChannelSchema`
-- `@effect/platform/Command` -> `effect/unstable/process/ChildProcess`: The command type-id alias is internal in v4; use ChildProcess.Command or ChildProcess.isCommand instead. No flatten helper remains; inspect StandardCommand and PipedCommand recursively when command structure is required.
-- `@effect/platform/CommandExecutor` -> `effect/unstable/process/ChildProcessSpawner`: The ChildProcessHandle marker is internal in v4; use the ChildProcessHandle interface. The Context.Service class replaces the public executor type-id alias.
+- `@effect/platform/Command` -> `effect/unstable/process/ChildProcess`
+- `@effect/platform/CommandExecutor` -> `effect/unstable/process/ChildProcessSpawner`
 - `@effect/platform/Cookies` -> `effect/unstable/http/Cookies`
 - `@effect/platform/Effectify` -> `effect/Effect`: effectify moved into the Effect module as Effect.effectify; the Effectify and EffectifyError type helpers live in the Effect namespace as well.
-- `@effect/platform/Error` -> `effect/PlatformError`: The PlatformError runtime marker is internal in v4; use the PlatformError class/tag.
+- `@effect/platform/Error` -> `effect/PlatformError`
 - `@effect/platform/Etag` -> `effect/unstable/http/Etag`
 - `@effect/platform/FetchHttpClient` -> `effect/unstable/http/FetchHttpClient`
-- `@effect/platform/FileSystem` -> `effect/FileSystem`: FileSystem.watch now accepts only a path; the recursive watch option was removed.
+- `@effect/platform/FileSystem` -> `effect/FileSystem`
 - `@effect/platform/Headers` -> `effect/unstable/http/Headers`
-- `@effect/platform/HttpApi` -> `effect/unstable/httpapi/HttpApi`: The Context tag carrying the API was removed. Pass the HttpApi value explicitly to builders and clients. The marker is private in v4; use HttpApi.isHttpApi for runtime narrowing and Constraint or Top for types.
-- `@effect/platform/HttpApiBuilder` -> `effect/unstable/httpapi/HttpApiBuilder`: API-wide middleware assembly was removed. Declared HttpApiMiddleware services are applied while routes are built; use HttpRouter.middleware for additional middleware. The handler-internal HttpApp middleware alias was removed. Use HttpRouter.middleware inference or HttpRouter.middleware.Fn. The exported symbol was removed; do not inspect or construct the private Handlers marker.
+- `@effect/platform/HttpApi` -> `effect/unstable/httpapi/HttpApi`
+- `@effect/platform/HttpApiBuilder` -> `effect/unstable/httpapi/HttpApiBuilder`
 - `@effect/platform/HttpApiClient` -> `effect/unstable/httpapi/HttpApiClient`
-- `@effect/platform/HttpApiEndpoint` -> `effect/unstable/httpapi/HttpApiEndpoint`: Declare error schemas in the endpoint constructor options; the type helper and fluent addError method were removed. The tagged-template constructor type was removed; use HttpApiEndpoint.make(method)(identifier, path, options?). Tagged-template path extraction was removed. Put a params schema or field record in constructor option params. Removed with the tagged-template path implementation. Removed with tagged-template path extraction; declare endpoint params explicitly. Tagged-template interpolation validation was removed; params are declared explicitly in options.params. The endpoint type ID is private; use HttpApiEndpoint.isHttpApiEndpoint for runtime narrowing.
+- `@effect/platform/HttpApiEndpoint` -> `effect/unstable/httpapi/HttpApiEndpoint`
 - `@effect/platform/HttpApiError` -> `effect/unstable/httpapi/HttpApiError`
-- `@effect/platform/HttpApiGroup` -> `effect/unstable/httpapi/HttpApiGroup`: Groups no longer carry arbitrary context. Use AddMiddleware for middleware service transformations. Group error and context generics were removed; derive server requirements from the group's endpoints. Select with WithIdentifier and derive endpoint server requirements; groups no longer have a context generic. Group-level errors were removed. Declare shared errors on each endpoint or through middleware. Group-level errors were removed; select with WithIdentifier and inspect Errors over the selected endpoints. The group type ID is private; use HttpApiGroup.isHttpApiGroup for runtime narrowing.
-- `@effect/platform/HttpApiMiddleware` -> `effect/unstable/httpapi/HttpApiMiddleware`: The marker is private; use HttpApiMiddleware.isSecurity. Optional declaration and fallback-on-failure behavior were removed; model fallback in the wrapping middleware. The marker is private; use public guards and type extractors.
+- `@effect/platform/HttpApiGroup` -> `effect/unstable/httpapi/HttpApiGroup`
+- `@effect/platform/HttpApiMiddleware` -> `effect/unstable/httpapi/HttpApiMiddleware`
 - `@effect/platform/HttpApiScalar` -> `effect/unstable/httpapi/HttpApiScalar`
-- `@effect/platform/HttpApiSchema` -> `effect/unstable/httpapi/HttpApiSchema`: Pass schema arrays to endpoint success, error, and body alternatives so each member retains status and content type. Removed with EmptyError; Schema.ErrorClass instances already support yieldable-error behavior. Removed with EmptyError; do not recreate the old Unify marker. The internal symbol-copy helper was removed; HTTP metadata is schema-native and resolved through AST traversal. Param identity moved out of schema metadata; read endpoint.path and endpoint.params.
-- `@effect/platform/HttpApiSecurity` -> `effect/unstable/httpapi/HttpApiSecurity`: The marker is private; use the public union or specific Http, ApiKey, and Basic types.
+- `@effect/platform/HttpApiSchema` -> `effect/unstable/httpapi/HttpApiSchema`
+- `@effect/platform/HttpApiSecurity` -> `effect/unstable/httpapi/HttpApiSecurity`
 - `@effect/platform/HttpApiSwagger` -> `effect/unstable/httpapi/HttpApiSwagger`
 - `@effect/platform/HttpApp` -> `effect/unstable/http/HttpEffect`
 - `@effect/platform/HttpBody` -> `effect/unstable/http/HttpBody`
@@ -536,23 +536,23 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/platform/HttpClientRequest` -> `effect/unstable/http/HttpClientRequest`
 - `@effect/platform/HttpClientResponse` -> `effect/unstable/http/HttpClientResponse`
 - `@effect/platform/HttpIncomingMessage` -> `effect/unstable/http/HttpIncomingMessage`
-- `@effect/platform/HttpLayerRouter` -> `varies by API`: The middleware type id is internal in v4; use HttpRouter.Middleware. Route nominal ids are internal in v4; construct routes with HttpRouter.route. The router nominal service id is internal in v4; use HttpRouter.HttpRouter.
+- `@effect/platform/HttpLayerRouter`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform/HttpMethod` -> `effect/unstable/http/HttpMethod`
 - `@effect/platform/HttpMiddleware` -> `effect/unstable/http/HttpMiddleware`
 - `@effect/platform/HttpMultiplex` -> `none`: No v4 multiplex abstraction exists; add a predicate and app to a custom first-match dispatcher. No v4 multiplex value exists; initialize an empty custom dispatcher. Use a custom dispatcher predicate over the lower-cased request header and String.endsWith. Use a custom dispatcher predicate over the lower-cased request header with exact equality. Use a custom dispatcher predicate over the lower-cased request header and RegExp.test. Use a custom dispatcher predicate over the lower-cased request header and String.startsWith. Use a custom dispatcher predicate over request.headers.host and String.endsWith. Use a custom dispatcher predicate comparing request.headers.host exactly. Use a custom dispatcher predicate over request.headers.host and RegExp.test. Use a custom dispatcher predicate over request.headers.host and String.startsWith. Represent the removed model as a first-match Effect dispatcher requiring HttpServerRequest. No constructor was ported; fold predicate/app pairs into a first-match Effect dispatcher. The module and nominal type id were removed with no v4 counterpart.
-- `@effect/platform/HttpPlatform` -> `effect/unstable/http/HttpPlatform`: The public type id was removed; use the HttpPlatform Context.Service class.
-- `@effect/platform/HttpRouter` -> `effect/unstable/http/HttpRouter`: The custom tagged-router default-service bundle was removed. The nominal id is internal in v4; access HttpRouter.RouteContext as a service. The nominal id is internal in v4; construct routes with HttpRouter.route. Custom router tags were removed; use the singleton router service and registration layers. The router nominal service id is internal in v4; use HttpRouter.HttpRouter.
-- `@effect/platform/HttpServer` -> `effect/unstable/http/HttpServer`: The unused respond option model was removed with no shared v4 counterpart. The public TypeId was removed; HttpServer is now a Context.Service class.
+- `@effect/platform/HttpPlatform` -> `effect/unstable/http/HttpPlatform`
+- `@effect/platform/HttpRouter` -> `effect/unstable/http/HttpRouter`
+- `@effect/platform/HttpServer` -> `effect/unstable/http/HttpServer`
 - `@effect/platform/HttpServerError` -> `effect/unstable/http/HttpServerError`
 - `@effect/platform/HttpServerRequest` -> `effect/unstable/http/HttpServerRequest`
 - `@effect/platform/HttpServerRespondable` -> `effect/unstable/http/HttpServerRespondable`
 - `@effect/platform/HttpServerResponse` -> `effect/unstable/http/HttpServerResponse`
 - `@effect/platform/HttpTraceContext` -> `effect/unstable/http/HttpTraceContext`
-- `@effect/platform/KeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: The v4 SchemaStore has no public type-id alias; use the SchemaStore interface. The KeyValueStore runtime marker is internal in v4; use the service and interface.
+- `@effect/platform/KeyValueStore` -> `effect/unstable/persistence/KeyValueStore`
 - `@effect/platform/MsgPack` -> `effect/unstable/encoding/Msgpack`
 - `@effect/platform/Multipart` -> `effect/unstable/http/Multipart`
 - `@effect/platform/Ndjson` -> `effect/unstable/encoding/Ndjson`
-- `@effect/platform/OpenApi` -> `effect/unstable/httpapi/OpenApi`: OpenApi.fromApi no longer accepts generation options; standalone JSON Schema generation has a separate additionalProperties option.
+- `@effect/platform/OpenApi` -> `effect/unstable/httpapi/OpenApi`
 - `@effect/platform/OpenApiJsonSchema`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform/Path` -> `effect/Path`
 - `@effect/platform/PlatformConfigProvider`: No single module replacement; follow the curated per-API guidance below.
@@ -565,9 +565,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/platform/Transferable` -> `effect/unstable/workers/Transferable`
 - `@effect/platform/Url` -> `effect/unstable/http/Url`
 - `@effect/platform/UrlParams` -> `effect/unstable/http/UrlParams`
-- `@effect/platform/Worker` -> `effect/unstable/workers/Worker`: The Context.Service class replaces the public platform-worker type-id alias. The old tagged-request wire response is gone; worker RPC wire messages are internal to RpcClient and RpcServer. The explicit span tuple was removed; the RPC worker protocol handles span propagation internally. The removed WorkerManager has no v4 type-id; WorkerPlatform is a Context.Service class.
+- `@effect/platform/Worker` -> `effect/unstable/workers/Worker`
 - `@effect/platform/WorkerError` -> `effect/unstable/workers/WorkerError`
-- `@effect/platform/WorkerRunner` -> `effect/unstable/workers/WorkerRunner`: The public close-latch service was removed; WorkerRunner implementations manage lifetime through their run effect and adapter scope. The public close-latch layer was removed; adapter runner lifetime is managed internally. The Context.Service class replaces the public platform-runner type-id alias. The custom decode/encode callbacks were removed; use raw low-level messages or define schemas in the v4 RPC model. Initial-message layer outputs are no longer inferred by this helper; model initialization as normal RpcGroup handler layers and services. Initial-message layer inputs are no longer inferred by this helper; model initialization as normal RpcGroup handler layers and services.
+- `@effect/platform/WorkerRunner` -> `effect/unstable/workers/WorkerRunner`
 - `@effect/platform/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect location (e.g. effect/FileSystem, effect/unstable/http/HttpClient) per the Import Map.
 - `@effect/printer` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/printer-ansi` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
@@ -584,15 +584,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/printer/PageWidth` -> `none`: The @effect/printer page-width layout model was removed in v4 with no direct replacement. Use Terminal.columns for terminal dimensions, or another pretty-printing library for page-width-aware layout.
 - `@effect/printer/index` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/rpc` -> `effect/unstable/rpc`: The @effect/rpc package was merged into the effect package; import the effect/unstable/rpc barrel or import specific modules directly (e.g. effect/unstable/rpc/\<Module\>).
-- `@effect/rpc/Rpc` -> `effect/unstable/rpc/Rpc`: RpcGroup no longer converts Schema.TaggedRequest classes into RPCs; declare the contract explicitly with Rpc.make. The RPC marker is private in v4; use Rpc.isRpc for runtime checks and Rpc.Any for type constraints. The wrapper marker is private in v4; use Rpc.isWrapper and the public Wrapper type.
-- `@effect/rpc/RpcClient` -> `effect/unstable/rpc/RpcClient`: The prefix-partition helper was removed; v4 clients map every RPC tag directly to an object property. Nested prefix client objects were removed; v4 preserves the full RPC tag as the generated client property.
-- `@effect/rpc/RpcClientError` -> `effect/unstable/rpc/RpcClientError`: The marker is private in v4; narrow with instanceof RpcClientError or inspect the public \_tag.
-- `@effect/rpc/RpcGroup` -> `effect/unstable/rpc/RpcGroup`: The group marker is private in v4; use RpcGroup.Any for an erased group constraint.
+- `@effect/rpc/Rpc` -> `effect/unstable/rpc/Rpc`
+- `@effect/rpc/RpcClient` -> `effect/unstable/rpc/RpcClient`
+- `@effect/rpc/RpcClientError` -> `effect/unstable/rpc/RpcClientError`
+- `@effect/rpc/RpcGroup` -> `effect/unstable/rpc/RpcGroup`
 - `@effect/rpc/RpcMessage` -> `effect/unstable/rpc/RpcMessage`
-- `@effect/rpc/RpcMiddleware` -> `effect/unstable/rpc/RpcMiddleware`: Optional declaration and fallback-on-failure behavior were removed; model fallback inside the middleware effect.
-- `@effect/rpc/RpcSchema` -> `effect/unstable/rpc/RpcSchema`: The stream marker is private in v4; use RpcSchema.isStreamSchema and getStreamSchemas.
+- `@effect/rpc/RpcMiddleware` -> `effect/unstable/rpc/RpcMiddleware`
+- `@effect/rpc/RpcSchema` -> `effect/unstable/rpc/RpcSchema`
 - `@effect/rpc/RpcSerialization` -> `effect/unstable/rpc/RpcSerialization`
-- `@effect/rpc/RpcServer` -> `effect/unstable/rpc/RpcServer`: The internal transient sentinel was removed; protocol shutdown and disconnect now interrupt with the active parent fiber identity.
+- `@effect/rpc/RpcServer` -> `effect/unstable/rpc/RpcServer`
 - `@effect/rpc/RpcTest` -> `effect/unstable/rpc/RpcTest`
 - `@effect/rpc/RpcWorker` -> `effect/unstable/rpc/RpcWorker`
 - `@effect/rpc/index` -> `effect/unstable/rpc`: The package barrel was removed; import the same namespaces from the effect/unstable/rpc barrel or import specific modules directly.
@@ -620,7 +620,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/sql/Migrator` -> `effect/unstable/sql/Migrator`
 - `@effect/sql/Migrator/FileSystem` -> `effect/unstable/sql/Migrator`: fromFileSystem was merged into the main Migrator module with the same (directory) signature; use Migrator.fromFileSystem as the loader.
 - `@effect/sql/Model` -> `effect/unstable/schema/Model`, `effect/unstable/sql/SqlModel`
-- `@effect/sql/SqlClient` -> `effect/unstable/sql/SqlClient`: The brand is private in v4; do not inspect or attach it, and obtain clients through SqlClient or SqlClient.make.
+- `@effect/sql/SqlClient` -> `effect/unstable/sql/SqlClient`
 - `@effect/sql/SqlConnection` -> `effect/unstable/sql/SqlConnection`
 - `@effect/sql/SqlError` -> `effect/unstable/sql/SqlError`
 - `@effect/sql/SqlEventJournal` -> `effect/unstable/eventlog/SqlEventJournal`
@@ -629,13 +629,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/sql/SqlResolver` -> `effect/unstable/sql/SqlResolver`
 - `@effect/sql/SqlSchema` -> `effect/unstable/sql/SqlSchema`
 - `@effect/sql/SqlStream` -> `effect/unstable/sql/SqlStream`
-- `@effect/sql/Statement` -> `effect/unstable/sql/Statement`: The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access.
+- `@effect/sql/Statement` -> `effect/unstable/sql/Statement`
 - `@effect/sql/index` -> `effect/unstable/sql`: The package barrel was removed; import the same namespaces from the effect/unstable/sql barrel or import specific modules directly.
 - `@effect/typeclass` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite abstractions against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Alternative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Applicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Bicovariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-- `@effect/typeclass/Bounded` -> `varies by API`: V4 removed Bounded dictionaries. Keep the Order and minimum/maximum bounds as separate application values. V4 removed the @effect/typeclass higher-kinded Bounded instance machinery.
+- `@effect/typeclass/Bounded`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/Chainable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Contravariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Coproduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
@@ -653,18 +653,18 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/typeclass/SemiApplicative` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/SemiCoproduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/SemiProduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
-- `@effect/typeclass/Semigroup` -> `effect/Combiner`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+- `@effect/typeclass/Semigroup` -> `effect/Combiner`
 - `@effect/typeclass/Traversable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/TraversableFilterable` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/data/Array`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/BigInt`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Boolean`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/data/Duration` -> `varies by API`: V4 has no Bounded dictionary; use Duration.Order with Duration.zero and Duration.infinity as separate bounds.
+- `@effect/typeclass/data/Duration`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Effect`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Either`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Identity` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 - `@effect/typeclass/data/Micro`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/data/Number` -> `varies by API`: V4 has no Bounded dictionary; use Number.Order with -Infinity and Infinity as separate bounds.
+- `@effect/typeclass/data/Number`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Option`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Ordering`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Predicate`: No single module replacement; follow the curated per-API guidance below.
@@ -672,95 +672,95 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/typeclass/data/String`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Tuple`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/index` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite abstractions against the concrete v4 data type and its module functions.
-- `@effect/vitest/index` -> `varies by API`: Vitest does not support callback-style tests. Return a Promise or, in @effect/vitest tests, return an Effect. No named Vitest 4 export replaces this alias. Let the hook return type infer, or type the cleanup function locally. Use the matching @vitest/runner hook-specific type such as BeforeAllListener, AfterAllListener, BeforeEachListener, or AfterEachListener for custom runner code. Vitest 3 marked this unused internal cache shape deprecated; Vitest 4 has no public replacement. Vitest 3 marked this type unsupported. Use Environment from vitest/environments for custom environments. This deprecated vite-node callback was removed. Use Vite environment or module-runner APIs. This was removed with vite-node transform modes. Configure the Vite environment and its dependency optimizer instead. The concrete worker RPC composition is internal. Use public Vitest RuntimeRPC, RunnerRPC, ContextRPC, or WorkerRequest types only when their narrower contract fits.
+- `@effect/vitest/index`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/workflow` -> `effect/unstable/workflow`: The @effect/workflow package was merged into the effect package; import the effect/unstable/workflow barrel or import specific modules directly (e.g. effect/unstable/workflow/\<Module\>).
-- `@effect/workflow/Activity` -> `effect/unstable/workflow/Activity`: The activity marker is private in v4. Use Activity, Activity.Any, or Activity.AnyWithProps constraints.
-- `@effect/workflow/DurableClock` -> `effect/unstable/workflow/DurableClock`: The durable-clock marker is private in v4. Use DurableClock values structurally.
-- `@effect/workflow/DurableDeferred` -> `effect/unstable/workflow/DurableDeferred`: The durable-deferred marker is private in v4. Use DurableDeferred, Any, or AnyWithProps constraints.
+- `@effect/workflow/Activity` -> `effect/unstable/workflow/Activity`
+- `@effect/workflow/DurableClock` -> `effect/unstable/workflow/DurableClock`
+- `@effect/workflow/DurableDeferred` -> `effect/unstable/workflow/DurableDeferred`
 - `@effect/workflow/DurableQueue` -> `effect/unstable/workflow/DurableQueue`
 - `@effect/workflow/DurableRateLimiter` -> `none`: Not ported. Build an Activity whose execute uses persistence RateLimiter.consume with onExceeded: delay, then sleeps for the returned delay with DurableClock.
-- `@effect/workflow/Workflow` -> `effect/unstable/workflow/Workflow`: The TaggedRequest adapter constraint was removed. Define the workflow explicitly with Workflow.make and the request payload, success, error, and PrimaryKey schemas. Removed. Expand to Workflow.make(schema.\_tag, { payload: schema, success: schema.success, error: schema.failure, idempotencyKey: PrimaryKey.value }). The result marker is private in v4. Use Workflow.isResult for narrowing. The workflow marker is private in v4. Use Workflow.Any or Workflow.Workflow constraints.
+- `@effect/workflow/Workflow` -> `effect/unstable/workflow/Workflow`
 - `@effect/workflow/WorkflowEngine` -> `effect/unstable/workflow/WorkflowEngine`
 - `@effect/workflow/WorkflowProxy` -> `effect/unstable/workflow/WorkflowProxy`
 - `@effect/workflow/WorkflowProxyServer` -> `effect/unstable/workflow/WorkflowProxyServer`
 - `effect/Arbitrary`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ChildExecutorDecision` -> `none`: Removed with the v3 channel executor and Channel.concatMapWithCustom. Choose Channel.flatMap, Channel.switchMap, or Channel.mergeAll instead; v4 exposes no child-executor decision ADT.
-- `effect/ConfigError` -> `varies by API`: The ConfigError-specific reducer API was removed; inspect ConfigError.cause and recurse over SchemaError.issue when structured handling is required. The Unsupported variant was removed; report unsupported custom decoding through a SchemaError or source failures through ConfigProvider.SourceError. The shared constructor options type was removed; ConfigProvider.SourceError accepts message and optional cause, while Schema issues have issue-specific constructors. The specialized fold was removed; branch on ConfigError.cause, then recurse over the public SchemaIssue union if a fold is needed. The variant was removed; use a SchemaError for unsupported input or ConfigProvider.SourceError for source capability failures.
-- `effect/ConfigProviderPathPatch` -> `varies by API`: The PathPatch ADT was removed; an unchanged provider represents the identity transformation. The PathPatch ADT was removed; use a path transformation function with ConfigProvider.mapInput. The PathPatch ADT was removed; use ConfigProvider.nested on the provider. The PathPatch ADT was removed; express prefix removal as a ConfigProvider.mapInput function.
-- `effect/DefaultServices` -> `varies by API`: The aggregate type and module were removed; Clock, Console, Random, ConfigProvider, and Tracer are independent defaulted references.
-- `effect/Either` -> `effect/Result`: Result keeps its brand private and exports no public TypeId.
+- `effect/ConfigError`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ConfigProviderPathPatch`: No single module replacement; follow the curated per-API guidance below.
+- `effect/DefaultServices`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Either` -> `effect/Result`
 - `effect/ExecutionStrategy`: No single module replacement; follow the curated per-API guidance below.
 - `effect/FastCheck` -> `effect/testing/FastCheck`
-- `effect/FiberId` -> `varies by API`: Composite FiberId values were removed; v4 uses a single numeric fiber id. Fiber IDs are primitive numbers in v4 and have no type-id symbol. Composite FiberId values do not exist in v4. There is no public fiber-id allocator; obtain the current id with Effect.fiberId or from Fiber.id.
-- `effect/FiberRef` -> `effect/References`: Inherited concurrency was removed; pass concurrency explicitly to each v4 combinator that supports it. The request batching FiberRef was removed; batching is defined by the v4 RequestResolver runAll implementation. RuntimeFlags and their FiberRef were removed; use specific v4 runtime options such as interruptibility and scheduler settings. The ambient scheduling-priority FiberRef was removed; use explicit scheduler operations where priority is needed. The Supervisor and ambient supervisor FiberRef APIs were removed; track fibers explicitly with FiberSet or FiberMap. Context.Reference is a service key and does not require the old FiberRef Effect-unification helper. The pending interruption cause is no longer exposed as public fiber-local state; inspect completed failure Causes from Fiber.await. RuntimeFlags and specialized FiberRef constructors were removed; migrate each flag to its explicit v4 runtime option. Supervisor and FiberRef were removed; track managed fibers explicitly with FiberSet or FiberMap. The version-mismatch logging FiberRef was removed and no public v4 Context.Reference replaces it.
-- `effect/FiberRefs` -> `varies by API`: Context does not expose public enumeration of its Reference keys; retain the keys explicitly if enumeration is required. FiberRefs and its marker symbol were removed. Context is inherited automatically when a v4 child fiber is forked; custom per-reference fork patches were removed. Child-to-parent FiberRef joining was removed; pass results explicitly or merge ordinary Context values where appropriate.
-- `effect/FiberRefsPatch` -> `varies by API`: There is no generic Context diff because FiberRef fork and join patch semantics were removed. The patch data type was removed with FiberRefs; construct or merge Context values directly.
-- `effect/FiberStatus` -> `varies by API`: FiberStatus and its type-id symbol were removed. FiberStatus values no longer exist; inspect a Fiber with pollUnsafe instead. The public runtime no longer exposes suspended status. The public runtime no longer models running status as a value. FiberStatus constructors were removed; keep the Fiber and poll it instead. The public runtime no longer models suspended status as a value. FiberStatus constructors and public suspended status were removed.
+- `effect/FiberId`: No single module replacement; follow the curated per-API guidance below.
+- `effect/FiberRef` -> `effect/References`
+- `effect/FiberRefs`: No single module replacement; follow the curated per-API guidance below.
+- `effect/FiberRefsPatch`: No single module replacement; follow the curated per-API guidance below.
+- `effect/FiberStatus`: No single module replacement; follow the curated per-API guidance below.
 - `effect/GlobalValue`: No single module replacement; follow the curated per-API guidance below.
-- `effect/GroupBy` -> `varies by API`: Variance plumbing for the removed GroupBy datatype; v4 has no GroupBy type, so there is no variance interface to migrate to. Brand symbol for the removed GroupBy datatype; v4 groupBy results are plain Streams, discriminated with Stream.isStream if needed. No wrapper to construct in v4: a grouped stream is just any Stream\<readonly [K, Stream\<V\>]\>, so build the pair stream directly (Stream.groupBy/groupByKey produce it); the v3 shape Stream\<[K, Dequeue\<Take\<V, E\>\>]\> is gone along with the queue-of-Take encoding.
+- `effect/GroupBy`: No single module replacement; follow the curated per-API guidance below.
 - `effect/JSONSchema` -> `effect/JsonSchema`
-- `effect/KeyedPool` -> `varies by API`: KeyedPool and its variance marker were removed; use the RcMap and Pool public models without depending on branding internals. KeyedPool was removed, so its runtime type id has no v4 equivalent.
-- `effect/List` -> `varies by API`: Represent this case as readonly []; there is no tagged Nil interface in v4. Arrays have no List runtime marker; remove TypeId inspection.
+- `effect/KeyedPool`: No single module replacement; follow the curated per-API guidance below.
+- `effect/List`: No single module replacement; follow the curated per-API guidance below.
 - `effect/LogSpan`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Mailbox`: No single module replacement; follow the curated per-API guidance below.
 - `effect/MergeDecision`: No single module replacement; follow the curated per-API guidance below.
 - `effect/MergeState` -> `none`: Internal execution state of the removed Channel.mergeWith implementation. V4 Channel.merge manages its fibers and queues internally and exposes only a haltStrategy option.
 - `effect/MergeStrategy`: No single module replacement; follow the curated per-API guidance below.
-- `effect/MetricBoundaries` -> `varies by API`: Boundaries are unbranded arrays, so the guard and public type-id symbol have no replacement.
-- `effect/MetricHook` -> `varies by API`: There is no public hook constructor; metric classes create and attach hooks internally. Hooks are structural and unbranded; the variance helper and public symbol were removed. The operation-specific hook decorators were removed. Metric.mapInput cannot distinguish update from modify.
-- `effect/MetricKey` -> `varies by API`: The key brand was removed; Metric's protocol key is internal.
-- `effect/MetricKeyType` -> `varies by API`: All public key-type symbols were removed; use a complete metric's string type discriminant. The descriptor variance interface was removed; complete Metric carries Input and State variance.
-- `effect/MetricLabel` -> `varies by API`: Attributes are plain tuples or records, so there is no branded guard or type-id symbol.
-- `effect/MetricPair` -> `varies by API`: Snapshots are structural, so the pair variance helper and brand symbol were removed.
-- `effect/MetricPolling` -> `varies by API`: The polling wrapper and its brand were removed.
-- `effect/MetricRegistry` -> `varies by API`: The registry service is an ordinary Map behind a Context.Reference and has no public brand.
-- `effect/MetricState` -> `varies by API`: All state brand symbols were removed; v4 state interfaces are structural. Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination. States are structural objects and no longer carry a variance brand.
-- `effect/Micro` -> `varies by API`: Removed in v4 (no fiber-wide concurrency reference). Pass a { concurrency } option directly to the operations that fan out, e.g. Effect.all or Effect.forEach. v4 Exit is a subtype of Effect and has no dedicated TypeId; use Exit.isExit to identify exits. Type-level variance helper with no public v4 equivalent; the v4 Fiber.Fiber interface carries variance directly. No public TypeId on v4 fibers; use Fiber.isFiber to identify fibers. No public TypeId on v4 scopes; use the Scope.Scope service key to access the current scope. Removed; v4 Effect declares its unify-ignore slot inline and exposes no named UnifyIgnore interface. Removed in v4 along with "inherit" concurrency; pass a { concurrency } option directly to each concurrent operation. Example: `Effect.forEach(items, handle, { concurrency: 10 })`. Removed; access the current scheduler via the References.Scheduler service and call its flush() method directly if deterministic draining is needed.
+- `effect/MetricBoundaries`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricHook`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricKey`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricKeyType`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricLabel`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricPair`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricPolling`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricRegistry`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricState`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Micro`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ModuleVersion` -> `none`: The mutable module-version facility was removed; the v4 build version is private and effect/package.json is metadata, not an equivalent runtime API. No mutable version setter remains; the v3 runtime-isolation mechanism has no public v4 equivalent.
-- `effect/MutableQueue` -> `varies by API`: Read queue.capacity on the replacement Queue; unbounded queues expose Infinity. Queue.poll reports emptiness with Option.none, so no default sentinel is required. Use the Option returned by Queue.poll; the old empty sentinel was removed. The MutableQueue module and its public marker were removed.
-- `effect/ParseResult` -> `effect/SchemaIssue, effect/SchemaParser`: This ParseResult internal optimization was removed; use Effect, Exit, Option, or Result combinators directly. The public symbol was removed; use Schema.isSchemaError for runtime narrowing.
+- `effect/MutableQueue`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ParseResult` -> `effect/SchemaIssue`, `effect/SchemaParser`
 - `effect/Pretty`: No single module replacement; follow the curated per-API guidance below.
 - `effect/RateLimiter` -> `none`: The old limit, interval, and algorithm options belonged to the removed in-process limiter; choose and configure an application limiter explicitly. The scoped in-process callable limiter was not ported to v4; effect/unstable/persistence/RateLimiter is a keyed persistence service with different semantics, not a drop-in replacement. The FiberRef-based per-effect cost annotation was removed with the core RateLimiter; pass token cost explicitly to the replacement limiter.
 - `effect/Readable`: No single module replacement; follow the curated per-API guidance below.
-- `effect/RedBlackTree` -> `varies by API`: The tree direction type was removed; use normal array order or Array.reverse. No replacement collection stores an Order; retain and pass the Order explicitly. The nested direction type was removed; use normal array order or Array.reverse. The RedBlackTree module and brand symbol were removed.
-- `effect/Reloadable` -> `varies by API`: The exported variance artifact was removed and LayerRef has no public counterpart. Reloadable was removed and LayerRef's marker is private.
-- `effect/RequestBlock` -> `varies by API`: The public blocked-request graph was removed; application code should compose Effect.request computations instead of inspecting Empty nodes. The public blocked-request graph was removed; express parallel request execution with Effect concurrency combinators. The public blocked-request graph and reducer were removed; structure analysis is now internal to the request runtime. RequestBlock is no longer public in v4; compose Effect.request values directly and let the runtime batch requests by resolver. The public blocked-request graph was removed; express sequencing in the Effect program instead of constructing Seq nodes.
-- `effect/RuntimeFlags` -> `varies by API`: The runtime-flags bitset was removed; configure each semantic behavior directly. The runtime-flags bitset and patch differ were removed. The generic flag operation was removed; disable the corresponding behavior directly. The aggregate flags value was removed; configure scheduler yielding, interruptibility, and metrics independently. Operation supervision and its runtime flag were removed. The wind-down flag is runtime-internal in v4; use normal scoped finalizers and explicit interruptibility regions. The generic flag operation was removed; enable the corresponding behavior directly. There is no public current-interruptibility getter; structure the program with Effect.interruptible or Effect.uninterruptible. Interruptibility is controlled by Effect regions rather than queried from a flags value. There is no aggregate flags value to query; inspect or control the corresponding semantic facility. The runtime-flags bitset was removed; do not recreate it in v4. The runtime-flags bitset was removed; configure each semantic behavior independently. The empty runtime-flags value and its type were removed. Aggregate runtime-flags patches were removed; configure each semantic behavior directly. The runtime-flags bitset and its renderer were removed. Individual bit flags were removed; use the corresponding semantic API. The aggregate runtime-flags bitset was removed. The runtime-flags bitset was removed; there is no set conversion. The wind-down flag is no longer public.
+- `effect/RedBlackTree`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Reloadable`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RequestBlock`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RuntimeFlags`: No single module replacement; follow the curated per-API guidance below.
 - `effect/RuntimeFlagsPatch` -> `none`: RuntimeFlagsPatch was removed; combine the replacement semantic configurations directly. RuntimeFlagsPatch was removed; disable the corresponding semantic behavior directly. RuntimeFlagsPatch and its disabled-bit set were removed. RuntimeFlagsPatch was removed; no aggregate patch value is needed. RuntimeFlagsPatch was removed; enable the corresponding semantic behavior directly. RuntimeFlagsPatch and its enabled-bit set were removed. RuntimeFlagsPatch and aggregate patch set operations were removed. RuntimeFlagsPatch and aggregate patch queries were removed. RuntimeFlagsPatch was removed; configure inverse semantic behavior explicitly. RuntimeFlagsPatch was removed; inspect the corresponding semantic facility if needed. RuntimeFlagsPatch was removed; no aggregate patch value remains to query. RuntimeFlagsPatch was removed; configure scheduler yielding, interruptibility, or metrics directly. RuntimeFlagsPatch and its renderer were removed. The aggregate runtime-flags patch abstraction was removed.
-- `effect/STM` -> `varies by API`: The STM.gen adapter was removed; Effect.gen accepts yielded Effects directly. Effect.all uses a const generic directly, so the separate tuple-narrowing helper was removed. Effect.all inlines its options type; use its concurrency, discard, and mode options directly. V4 has no exact retry-aware transactional alternative with journal savepoint restoration. Effect.catch is only a failure-only approximation. V4 has no exact retry-aware alternative. For typed failures only, compose Effect.catch and Result tagging manually. V4 exposes no recoverable retry signal or public transactional savepoint; restructure branch selection before Effect.txRetry. The STM-specific unification ignore marker was removed; rely on Effect inference.
-- `effect/ScheduleDecision` -> `varies by API`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output). Branch on the Pull result instead of inspecting a decision value. ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output).
+- `effect/STM`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ScheduleDecision`: No single module replacement; follow the curated per-API guidance below.
 - `effect/ScheduleInterval` -> `none`: The public ScheduleInterval module was removed in v4. Schedule steps now express only a relative Duration; combine policies with Schedule.max or Schedule.min, or implement custom timing with Schedule.fromStep.
 - `effect/ScheduleIntervals` -> `none`: The public ScheduleIntervals module was removed in v4 along with absolute interval-set decisions. Use relative Duration values in Schedule.fromStep and Schedule.max or Schedule.min for standard policy composition.
-- `effect/Secret` -> `varies by API`: The Secret-specific prototype was removed with the module; use Redacted.Redacted\<string\>.
+- `effect/Secret`: No single module replacement; follow the curated per-API guidance below.
 - `effect/SingleProducerAsyncInput`: No single module replacement; follow the curated per-API guidance below.
-- `effect/SortedMap` -> `varies by API`: HashMap does not store an Order; retain and pass the key Order explicitly. The SortedMap brand was removed and HashMap.TypeId is private; use HashMap.isHashMap when a guard is needed.
-- `effect/SortedSet` -> `varies by API`: The SortedSet brand was removed and HashSet.TypeId is private; use HashSet.isHashSet when a guard is needed.
+- `effect/SortedMap`: No single module replacement; follow the curated per-API guidance below.
+- `effect/SortedSet`: No single module replacement; follow the curated per-API guidance below.
 - `effect/StreamEmit`: No single module replacement; follow the curated per-API guidance below.
-- `effect/StreamHaltStrategy` -> `varies by API`: Remove the call; there is no conversion step in v4 because strategies already are the string literals, so pass the value through unchanged.
+- `effect/StreamHaltStrategy`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Streamable` -> `none`: Removed in v4 with no direct replacement. Instead of extending Streamable.Class, expose the underlying stream as a value (e.g. a property or method built with Stream.suspend).
-- `effect/Subscribable` -> `varies by API`: The common brand was removed; use a concrete guard such as SubscriptionRef.isSubscriptionRef or an application structural guard. The Subscribable brand has no public replacement; use a concrete model guard or an application structural guard.
-- `effect/Supervisor` -> `varies by API`: The ambient Supervisor abstraction and runtime event hooks were removed. Layer-installed ambient supervision was removed; use structured concurrency and explicit FiberSet or FiberMap tracking. The Supervisor abstraction and its effect-valued observation hook were removed. The Supervisor abstraction was removed; normal structured concurrency needs no no-op supervisor. The Supervisor abstraction and its variance marker were removed. Ambient fiber supervision was removed; use structured concurrency or explicit FiberSet and FiberMap tracking. The Supervisor abstraction and its type identifier were removed.
-- `effect/TArray` -> `varies by API`: TArray was removed and TxChunk exposes no public variance marker.
-- `effect/TDeferred` -> `effect/TxDeferred`: TxDeferred exposes no public variance marker.
-- `effect/TMap` -> `effect/TxHashMap`: No atomic take-and-match helper exists in TxHashMap; implement explicit selection and removal inside Effect.tx. No effectful atomic take-and-match helper exists; implement explicit traversal and removal inside Effect.tx. No atomic multi-take helper exists in TxHashMap; implement explicit selection and removals inside Effect.tx. No effectful atomic multi-take helper exists; implement explicit traversal and removals inside Effect.tx. TxHashMap exposes no public variance marker.
-- `effect/TPriorityQueue` -> `effect/TxPriorityQueue`: TxPriorityQueue exposes no public variance marker.
+- `effect/Subscribable`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Supervisor`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TArray`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TDeferred` -> `effect/TxDeferred`
+- `effect/TMap` -> `effect/TxHashMap`
+- `effect/TPriorityQueue` -> `effect/TxPriorityQueue`
 - `effect/TPubSub` -> `effect/TxPubSub`
-- `effect/TQueue` -> `effect/TxQueue`: TxQueue has no seek helper; repeat TxQueue.take under Effect.tx until the predicate matches.
-- `effect/TRandom` -> `varies by API`: The transactional random service was deliberately removed; use Random outside retried transactions where possible. TRandom and its public type id were removed; v4 has no TxRandom module.
-- `effect/TReentrantLock` -> `effect/TxReentrantLock`: Per-fiber read-lock counts were removed; TxReentrantLock.readLocks reports only the total count. Per-fiber write-lock counts were removed; TxReentrantLock.writeLocks reports only the total count. The public prototype interface was removed.
-- `effect/TRef` -> `effect/TxRef`: TxRef exposes no public variance marker.
-- `effect/TSemaphore` -> `effect/TxSemaphore`: The public prototype interface was removed. The unsafe constructor was removed; use TxSemaphore.make.
-- `effect/TSet` -> `effect/TxHashSet`: No atomic take-and-match helper exists in TxHashSet; select and remove explicitly inside Effect.tx. No effectful atomic take-and-match helper exists; traverse and remove explicitly inside Effect.tx. No atomic multi-take helper exists in TxHashSet; select and remove explicitly inside Effect.tx. No effectful atomic multi-take helper exists; traverse and remove explicitly inside Effect.tx. TxHashSet exposes no public variance marker.
-- `effect/TSubscriptionRef` -> `effect/TxSubscriptionRef`: The old unscoped transactional subscription was removed; use scoped TxSubscriptionRef.changes. TxSubscriptionRef exposes no public variance marker.
+- `effect/TQueue` -> `effect/TxQueue`
+- `effect/TRandom`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TReentrantLock` -> `effect/TxReentrantLock`
+- `effect/TRef` -> `effect/TxRef`
+- `effect/TSemaphore` -> `effect/TxSemaphore`
+- `effect/TSet` -> `effect/TxHashSet`
+- `effect/TSubscriptionRef` -> `effect/TxSubscriptionRef`
 - `effect/TestAnnotation` -> `none`: The legacy test-runner annotation key and built-in counters were removed. Use Vitest skip/repeat/retry options for runner concerns and FiberSet for explicit fiber tracking; there is no annotation-key equivalent.
 - `effect/TestAnnotationMap` -> `none`: TestAnnotationMap was removed with TestAnnotation. Use an application-owned HashMap or Ref only when arbitrary typed annotations are still required; it is not part of the v4 test runner.
 - `effect/TestAnnotations` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
-- `effect/TestClock` -> `effect/testing/TestClock`: Full clock snapshots including pending sleeps are no longer public. For timestamp-only restoration, read Clock.currentTimeMillis and later call TestClock.setTime(savedMillis). The pending-sleep queue is private. Test observable behavior by forking sleepers, adjusting time, and joining or asserting the fibers.
-- `effect/TestConfig` -> `varies by API`: There is no v4 TestConfig service. Move runner settings to Vitest and FastCheck options, or define an application-specific Context.Reference if runtime access is needed.
+- `effect/TestClock` -> `effect/testing/TestClock`
+- `effect/TestConfig`: No single module replacement; follow the curated per-API guidance below.
 - `effect/TestContext`: No single module replacement; follow the curated per-API guidance below.
-- `effect/TestLive` -> `varies by API`: There is no grouped live-default-services object. Use Context.Context plus Effect.provideContext, TestClock.withLive for live time, or it.live for the whole test. The TestLive nominal wrapper was removed, so its type id has no replacement.
-- `effect/TestServices` -> `varies by API`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking. The standalone TestLive service and layer were removed. TestClock.layer() captures its surrounding live Clock itself. There is no prebuilt aggregate test-service Context. @effect/vitest constructs TestClock and TestConsole layers per test; live references are defaults. The legacy maximum-shrinks service setting was removed; @effect/vitest forwards FastCheck.Parameters, which has no equivalent service value. The runner no longer reads an Effect TestConfig service. Use Vitest TestOptions and property-test fastCheck options; model application state as a custom Context.Reference. There is no scoped TestLive service override. Apply TestClock.withLive to a specific effect, or choose it.live at test declaration time.
-- `effect/TestSized` -> `varies by API`: The wrapper's nominal type id is unnecessary; Context.Reference supplies stable key identity.
+- `effect/TestLive`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestServices`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestSized`: No single module replacement; follow the curated per-API guidance below.
 - `effect/UpstreamPullRequest` -> `none`: Removed with Channel.concatMapWithCustom; v4 does not expose channel-executor pull-request events. Use supported flattening operators or implement exceptional behavior with Channel.fromTransform and Pull.
 - `effect/UpstreamPullStrategy` -> `none`: Removed with Channel.concatMapWithCustom. Select flattening and scheduling through Channel.flatMap, Channel.switchMap, or Channel.mergeAll; v4 has no upstream-pull strategy ADT.
 - `effect/index`: No single module replacement; follow the curated per-API guidance below.
@@ -4921,6 +4921,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/ai/LanguageModel`
 
+- `LanguageModel.ConstructorParams` -> `none`: V4 inlines this provider-adapter shape in LanguageModel.make. Pass generateText and streamText directly to make, with optional codecTransformer, instead of naming a constructor-parameter type.
+
 - `LanguageModel.ExtractContext` -> `LanguageModel.ExtractServices`: Renamed in effect/unstable/ai/LanguageModel. ExtractServices infers toolkit handler, result-decoding, and effectful-toolkit service requirements.
 
 ### `@effect/ai/McpSchema`
@@ -4940,6 +4942,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `McpServer.layerHttpRouter` -> `McpServer.layerHttp`: Renamed and consolidated. V4 layerHttp registers the Streamable HTTP endpoint in the unified HttpRouter; the old HttpLayerRouter-specific function was removed.
 
 - `McpServer.run` -> `McpServer.run`: Moved to effect/unstable/ai/McpServer. It remains the Effect-level runner over RpcServer.Protocol and now supports optional extensions and MCP session lifecycle handling.
+
+### `@effect/ai/Model`
+
+- `Model.TypeId` -> `none`: The Model brand still exists internally, but its TypeId is not exported and v4 has no public isModel guard. Use Model values created by Model.make rather than inspecting or constructing the brand.
 
 ### `@effect/ai/Prompt`
 
@@ -5017,6 +5023,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Tool.AnyParametersSchema` -> `Schema.Constraint`: The AI-specific alias was removed. V4 Tool parameter schemas use the general Schema.Constraint type and are no longer restricted to the old struct-or-EmptyParams union.
 
+- `Tool.AnyTaggedRequestSchema` -> `none`: The TaggedRequest-specific Tool adapter contract was removed. Model the operation directly with Tool.make and ordinary v4 Schema.Constraint values.
+
 - `Tool.Destructive` -> `Tool.Destructive`: Moved to effect/unstable/ai/Tool. It is now a Context.Reference\<boolean\> value rather than a Reference subclass; its default remains true.
 
 - `Tool.Failure` -> `Tool.Failure`: Moved to effect/unstable/ai/Tool and remains the utility type that extracts a tool's decoded failure type.
@@ -5085,6 +5093,16 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Args.fileContent` -> `Argument.file + Argument.mapEffect`: Parse a path and read it with FileSystem.readFile; no binary-content argument constructor remains.
 
+- `Args.getHelp` -> `none`: Per-argument help introspection was removed; Command generates help internally.
+
+- `Args.getIdentifier` -> `none`: Public argument identifier introspection was removed.
+
+- `Args.getMaxSize` -> `none`: Public arity introspection was removed; command parsing enforces variadic bounds internally.
+
+- `Args.getMinSize` -> `none`: Public arity introspection was removed; command parsing enforces variadic bounds internally.
+
+- `Args.getUsage` -> `none`: The public Usage tree was removed; Command generates a usage string internally.
+
 - `Args.isArgs` -> `Param.isParam(value) && value.kind === Param.argumentKind`: Arguments now use the shared Param representation and an explicit kind discriminator.
 
 - `Args.map` -> `Argument.map`: Use the moved combinator.
@@ -5125,6 +5143,14 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `BuiltInOptions.builtInOptions` -> `GlobalFlag.BuiltIns`: Built-ins are global flag definitions consumed automatically by Command.run and Command.runWith.
 
+- `BuiltInOptions.isShowCompletions` -> `none`: Parsed ShowCompletions directives were removed; the runner processes GlobalFlag.Completions directly.
+
+- `BuiltInOptions.isShowHelp` -> `none`: Parsed ShowHelp directives were removed; the runner processes GlobalFlag.Help directly.
+
+- `BuiltInOptions.isShowVersion` -> `none`: Parsed ShowVersion directives were removed; the runner processes GlobalFlag.Version directly.
+
+- `BuiltInOptions.isShowWizard` -> `none`: Parsed ShowWizard directives were removed; the runner processes GlobalFlag.Wizard directly.
+
 - `BuiltInOptions.showCompletions` -> `GlobalFlag.Completions`: Use the built-in completion action; the shell is parsed from --completions.
 
 - `BuiltInOptions.showHelp` -> `GlobalFlag.Help`: Use the built-in help action; usage and help are derived from the active Command.
@@ -5136,6 +5162,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ### `@effect/cli/CliApp`
 
 - `CliApp.CliApp` -> `Command.Command`: The separate application wrapper was folded into the runnable v4 Command tree.
+
+- `CliApp.CliApp.ConstructorArgs` -> `none`: Build the command with Command.make and withDescription, then pass version to Command.run; the old app constructor shape was removed.
 
 - `CliApp.make` -> `Command.make`: Build the executable Command directly; there is no separate CliApp wrapper.
 
@@ -5149,6 +5177,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `CliConfig.make` -> `CliConfig.make`: The constructor remains but accepts the redesigned service options.
 
+- `CliConfig.normalizeCase` -> `none`: Case normalization is no longer configurable through CliConfig.
+
 ### `@effect/cli/Command`
 
 - `Command.Command.Context` -> `Command.CommandContext`: Renamed to CommandContext.
@@ -5156,6 +5186,14 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Command.Command.ParseConfig` -> `Command.Command.Config.Infer`: Use the v4 command-config inference helper.
 
 - `Command.Command.ParseConfigValue` -> `Command.Command.Config.InferValue`: Use the v4 command-config value inference helper.
+
+- `Command.Command.ParsedConfig` -> `none`: The parsed config representation is internal in v4.
+
+- `Command.Command.ParsedConfigNode` -> `none`: The parsed config node representation is internal in v4.
+
+- `Command.Command.ParsedConfigTree` -> `none`: The parsed config tree representation is internal in v4.
+
+- `Command.Command.Transform` -> `none`: The handler transformation type and machinery are internal in v4.
 
 - `Command.TypeId` -> `Command.isCommand`: The type id is internal in v4; use the public runtime guard.
 
@@ -5165,9 +5203,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Command.getFishCompletions` -> `Completions.generate`: Generation now returns one script string; normally use GlobalFlag.Completions through the runner.
 
+- `Command.getHelp` -> `none`: Help generation for a command path is internal; use GlobalFlag.Help through Command.run or runWith.
+
 - `Command.getNames` -> `Command.Command.name / Command.Command.alias`: Read the public name and optional alias fields; no HashSet accessor remains.
 
 - `Command.getSubcommands` -> `Command.Command.subcommands`: Read the public grouped subcommands field; its shape is no longer a name map.
+
+- `Command.getUsage` -> `none`: Usage is generated internally as part of structured HelpDoc.
 
 - `Command.getZshCompletions` -> `Completions.generate`: Generation now returns one script string; normally use GlobalFlag.Completions through the runner.
 
@@ -5175,11 +5217,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Command.run` -> `Command.runWith`: Use runWith for the v3-style function that accepts an argv array; use run to read arguments from Stdio.
 
+- `Command.transformHandler` -> `none`: Transform in the handler or use the specific provide combinators; the generic handler transform is internal.
+
 - `Command.withDescription` -> `Command.withDescription`: Use the retained combinator; v4 descriptions are strings rather than the old HelpDoc ADT.
 
 ### `@effect/cli/CommandDescriptor`
 
 - `CommandDescriptor.Command.ComputeParsedType` -> `Types.Simplify`: Use the general simplification utility, or Command.Command.Config.Infer for command config.
+
+- `CommandDescriptor.Command.GetParsedType` -> `none`: No public parsed-input extractor remains; v4 handlers receive inferred config directly.
+
+- `CommandDescriptor.Command.ParsedStandardCommand` -> `none`: The name/options/args parsed wrapper was removed; handlers receive inferred config directly.
+
+- `CommandDescriptor.Command.ParsedUserInputCommand` -> `none`: The descriptor-level prompt command was removed; use Prompt APIs or Command.wizard.
+
+- `CommandDescriptor.Command.Subcommands` -> `none`: Compose independently handled commands with Command.withSubcommands instead of parsing a tuple union.
 
 - `CommandDescriptor.Command.Variance` -> `Command.Command.Variance`: The command variance helper remains conceptually, now tracking input, error, and requirements.
 
@@ -5189,13 +5241,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `CommandDescriptor.getFishCompletions` -> `Completions.generate`: Completion generation moved to one shell-parameterized function; command conversion is internal.
 
+- `CommandDescriptor.getHelp` -> `none`: Help generation is internal to the Command runner.
+
 - `CommandDescriptor.getNames` -> `Command.Command.name / Command.Command.alias`: Read the public fields; no HashSet accessor remains.
 
 - `CommandDescriptor.getSubcommands` -> `Command.Command.subcommands`: Read the public grouped subcommands field.
 
+- `CommandDescriptor.getUsage` -> `none`: Usage generation is internal to Command help generation.
+
 - `CommandDescriptor.getZshCompletions` -> `Completions.generate`: Completion generation moved to one shell-parameterized function; command conversion is internal.
 
 - `CommandDescriptor.make` -> `Command.make`: The descriptor and executable command layers were merged into one constructor.
+
+- `CommandDescriptor.map` -> `none`: Map individual Argument or Flag values, or transform inside the command handler.
+
+- `CommandDescriptor.mapEffect` -> `none`: Use parameter mapEffect where the transformation belongs to an input, or perform the Effect in the handler.
 
 - `CommandDescriptor.parse` -> `Command.runWith`: Parsing was folded into execution and no intermediate CommandDirective is returned.
 
@@ -5205,17 +5265,77 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `CommandDirective.BuiltIn` -> `GlobalFlag.Action`: Use the global action definition type; it is processed directly by the runner.
 
+- `CommandDirective.CommandDirective` -> `none`: The intermediate parse-result model was removed; the runner invokes the selected handler directly.
+
+- `CommandDirective.UserDefined` -> `none`: The user-defined intermediate directive was removed.
+
 - `CommandDirective.builtIn` -> `GlobalFlag.action`: Define a custom action flag; v4 runners no longer return built-in directives.
 
+- `CommandDirective.isBuiltIn` -> `none`: Intermediate built-in directives were removed.
+
+- `CommandDirective.map` -> `none`: Map parameters or transform in the handler; there is no intermediate directive to map.
+
+- `CommandDirective.userDefined` -> `none`: Parsed input is delivered directly to the selected command handler.
+
 ### `@effect/cli/ConfigFile`
+
+- `ConfigFile.ConfigErrorTypeId` -> `none`: ConfigProvider.SourceError has no public type-id export.
 
 - `ConfigFile.ConfigFileError` -> `ConfigProvider.SourceError`: Use the general source error when implementing a custom file-backed provider.
 
 - `ConfigFile.layer` -> `ConfigProvider.layerAdd(customProviderEffect)`: Build the provider explicitly and add it as fallback to preserve the v3 composition order.
 
+- `ConfigFile.makeProvider` -> `none`: V4 has no API that discovers, parses, and composes config files; use FileSystem, a format parser, and ConfigProvider.fromUnknown explicitly.
+
 ### `@effect/cli/HelpDoc`
 
+- `HelpDoc.DescriptionList` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.Empty` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.Enumeration` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.Header` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
 - `HelpDoc.HelpDoc` -> `HelpDoc.HelpDoc`: The name remains, but v4 is a structured command-help record rather than a tagged document AST.
+
+- `HelpDoc.Paragraph` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.Sequence` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.blocks` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.descriptionList` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.empty` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.enumeration` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.getSpan` -> `none`: The Span ADT and document-to-span conversion were removed; v4 help fields are strings.
+
+- `HelpDoc.h1` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.h2` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.h3` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.isDescriptionList` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.isEnumeration` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.isHeader` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.isParagraph` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.isSequence` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.mapDescriptionList` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.orElse` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.p` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.toAnsiDoc` -> `none`: CliOutput owns rendering and exposes formatted text rather than an AnsiDoc.
 
 - `HelpDoc.toAnsiText` -> `CliOutput.defaultFormatter().formatHelpDoc`: Format the structured help record; inside Effect code prefer the CliOutput.Formatter service.
 
@@ -5267,7 +5387,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Options.float` -> `Flag.float`: Use the moved constructor.
 
+- `Options.getHelp` -> `none`: Per-flag help introspection was removed; Command generates help internally.
+
+- `Options.getIdentifier` -> `none`: Public flag identifier introspection was removed.
+
+- `Options.getUsage` -> `none`: The public Usage tree was removed; Command generates a usage string internally.
+
 - `Options.integer` -> `Flag.integer`: Use the moved constructor.
+
+- `Options.isBool` -> `none`: No public flag-shape predicate remains; boolean-shape inspection is internal.
 
 - `Options.isOptions` -> `Param.isParam(value) && value.kind === Param.flagKind`: Flags now use the shared Param representation and an explicit kind discriminator.
 
@@ -5321,11 +5449,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Primitive.Primitive.Variance` -> `Primitive.Primitive.Variance`: The variance interface remains, but its brand key is internal; prefer Primitive\<A\> in user APIs.
 
+- `Primitive.PrimitiveTypeId` -> `none`: The public Primitive type-id symbol was removed.
+
 - `Primitive.boolean` -> `Primitive.boolean`: Boolean is now a singleton value; defaults belong on Flag.boolean or withDefault.
 
 - `Primitive.choice` -> `Primitive.choice`: Use the moved constructor.
 
 - `Primitive.date` -> `Primitive.date`: Date is now a singleton Primitive value.
+
+- `Primitive.getChoices` -> `none`: Choice introspection is internal in v4; retain alternatives in application code when needed.
+
+- `Primitive.getHelp` -> `none`: Primitive-level help generation was removed from the public API.
+
+- `Primitive.isBool` -> `none`: The boolean Primitive predicate is internal in v4.
 
 - `Primitive.text` -> `Primitive.string`: Renamed from text to string.
 
@@ -5357,6 +5493,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cli/ValidationError`
 
+- `ValidationError.CommandMismatch` -> `none`: The root-command mismatch error was removed.
+
 - `ValidationError.CorrectedFlag` -> `CliError.UnrecognizedOption`: Use the unrecognized-option class and its suggestions field.
 
 - `ValidationError.HelpRequested` -> `CliError.ShowHelp`: Renamed and redesigned as ShowHelp.
@@ -5367,11 +5505,23 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `ValidationError.MissingFlag` -> `CliError.MissingOption`: Renamed to MissingOption.
 
+- `ValidationError.MissingSubcommand` -> `none`: The dedicated missing-subcommand error was removed.
+
 - `ValidationError.MissingValue` -> `CliError.InvalidValue`: The dedicated tag was folded into InvalidValue.
 
 - `ValidationError.MultipleValuesDetected` -> `CliError.InvalidValue`: Count violations are summarized as InvalidValue without preserving the old values array.
 
+- `ValidationError.NoBuiltInMatch` -> `none`: The intermediate built-in matching error was removed.
+
+- `ValidationError.UnclusteredFlag` -> `none`: The public cluster error was removed.
+
 - `ValidationError.ValidationError` -> `CliError.CliError`: The validation union was redesigned and renamed to CliError.
+
+- `ValidationError.ValidationError.Proto` -> `none`: V4 errors are schema-backed classes and expose no shared public prototype type.
+
+- `ValidationError.ValidationErrorTypeId` -> `none`: The CliError type id is private; use CliError.isCliError.
+
+- `ValidationError.commandMismatch` -> `none`: V4 runners receive arguments after the root name; unknown child commands use CliError.UnknownSubcommand.
 
 - `ValidationError.correctedFlag` -> `new CliError.UnrecognizedOption({ option, command, suggestions })`: Suggestions are carried by UnrecognizedOption; there is no separate corrected-flag case.
 
@@ -5380,6 +5530,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `ValidationError.invalidArgument` -> `new CliError.InvalidValue({ option, value, expected, kind: "argument" })`: Use InvalidValue for undecodable arguments and UnexpectedArgument for leftover operands.
 
 - `ValidationError.invalidValue` -> `new CliError.InvalidValue({ option, value, expected, kind })`: Replace the HelpDoc payload with structured option, value, expected, and kind fields.
+
+- `ValidationError.isCommandMismatch` -> `none`: The root-command mismatch error was removed.
 
 - `ValidationError.isCorrectedFlag` -> `error._tag === "UnrecognizedOption" && error.suggestions.length > 0`: Check the v4 tag and suggestions array.
 
@@ -5391,7 +5543,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `ValidationError.isMissingFlag` -> `error._tag === "MissingOption"`: MissingFlag was renamed to MissingOption.
 
+- `ValidationError.isMissingSubcommand` -> `none`: Missing subcommands now cause ShowHelp rather than a dedicated error.
+
 - `ValidationError.isMissingValue` -> `error._tag === "InvalidValue" && error.value === ""`: Missing values are represented as InvalidValue with an empty value.
+
+- `ValidationError.isMultipleValuesDetected` -> `none`: Count violations are summarized as InvalidValue without a stable subtype.
+
+- `ValidationError.isNoBuiltInMatch` -> `none`: Built-ins are GlobalFlag definitions and the intermediate failure was removed.
+
+- `ValidationError.isUnclusteredFlag` -> `none`: Cluster expansion is internal and has no public intermediate error.
 
 - `ValidationError.isValidationError` -> `CliError.isCliError`: Use the renamed union guard.
 
@@ -5399,11 +5559,21 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `ValidationError.missingFlag` -> `new CliError.MissingOption({ option })`: MissingFlag was renamed to MissingOption.
 
+- `ValidationError.missingSubcommand` -> `none`: A parent without a selected subcommand now shows help rather than emitting a dedicated error.
+
 - `ValidationError.missingValue` -> `new CliError.InvalidValue({ option, value: "", expected, kind })`: Missing values are represented as InvalidValue with an empty value.
+
+- `ValidationError.noBuiltInMatch` -> `none`: Built-ins are GlobalFlag definitions and the intermediate failure was removed.
+
+- `ValidationError.unclusteredFlag` -> `none`: Flag cluster expansion is internal in v4.
 
 ### `@effect/cluster/ClusterCron`
 
 - `ClusterCron.make` -> `effect/unstable/cluster/ClusterCron#make`: Moved into core Effect. The constructor remains; Duration.DurationInput is now Duration.Input.
+
+### `@effect/cluster/ClusterError`
+
+- `ClusterError.TypeId` -> `none`: The shared marker is private in v4. Use the exported tagged error classes, their \_tag fields, or class-specific is guards.
 
 ### `@effect/cluster/ClusterSchema`
 
@@ -5425,9 +5595,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `DeliverAt.symbol` -> `effect/unstable/cluster/DeliverAt#symbol`: Moved into core Effect; the protocol key is now the string literal \~effect/cluster/DeliverAt rather than a global symbol.
 
+### `@effect/cluster/Entity`
+
+- `Entity.TypeId` -> `none`: The entity marker is private in v4. Use Entity.isEntity for runtime refinement.
+
 ### `@effect/cluster/EntityAddress`
 
 - `EntityAddress.EntityAddressFromSelf` -> `effect/unstable/cluster/EntityAddress#EntityAddress`: The separate self schema was removed; the v4 Schema.Class is itself the EntityAddress schema.
+
+- `EntityAddress.TypeId` -> `none`: The marker is private in v4. Use the exported EntityAddress class and schema.
 
 ### `@effect/cluster/EntityProxy`
 
@@ -5493,7 +5669,17 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Reply.ReplyEncoded` -> `effect/unstable/cluster/Reply#Encoded`: Renamed to Encoded and no longer parameterized by an Rpc; payload fields are unknown and validated by Reply.Reply(rpc).
 
+- `Reply.TypeId` -> `none`: The reply marker is private in v4. Use Reply.isReply for runtime refinement.
+
 - `Reply.serialize` -> `effect/unstable/cluster/Reply#serialize`: Moved into core Effect and now returns the non-generic Reply.Encoded wire union.
+
+### `@effect/cluster/Runner`
+
+- `Runner.TypeId` -> `none`: The runner marker is private in v4. Use the exported Runner class and schema.
+
+### `@effect/cluster/RunnerAddress`
+
+- `RunnerAddress.TypeId` -> `none`: The runner-address marker is private in v4. Use the exported RunnerAddress class and schema.
 
 ### `@effect/cluster/Runners`
 
@@ -5502,6 +5688,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ### `@effect/cluster/ShardId`
 
 - `ShardId.ShardId` -> `effect/unstable/cluster/ShardId#ShardId`: The class became a merged interface and schema value. Use ShardId.make; former static parsers and printers are module functions.
+
+- `ShardId.TypeId` -> `none`: The shard marker is private in v4. Use ShardId.isShardId for runtime refinement.
 
 ### `@effect/cluster/ShardingConfig`
 
@@ -5518,6 +5706,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ### `@effect/cluster/SingleRunner`
 
 - `SingleRunner.layer` -> `effect/unstable/cluster/SingleRunner#layer`: Moved into core Effect. V4 additionally requires Crypto.Crypto because SQL message storage hashes long deduplication keys.
+
+### `@effect/cluster/SingletonAddress`
+
+- `SingletonAddress.TypeId` -> `none`: The singleton-address marker is private in v4. Use the exported SingletonAddress class and schema.
 
 ### `@effect/cluster/Snowflake`
 
@@ -5556,6 +5748,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Domain.ParentSpanFrom` -> `effect/Schema#Codec.Encoded<typeof effect/unstable/devtools/DevToolsSchema#ParentSpan>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from ParentSpan.
 
 - `Domain.SpanFrom` -> `effect/Schema#Codec.Encoded<typeof effect/unstable/devtools/DevToolsSchema#Span>`: The named encoded alias was removed; derive it with Schema.Codec.Encoded from Span.
+
+- `Domain.metric` -> `none`: The metric schema helper is private in v4; use the exported Counter, Frequency, Gauge, Histogram, Summary, or Metric schemas, or build a Schema.Struct.
 
 ### `@effect/experimental/DevTools/Server`
 
@@ -5607,6 +5801,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EventJournal.EntryIdTypeId` -> `effect/unstable/eventlog/EventJournal#EntryIdTypeId`: Import EntryIdTypeId from the v4 EventJournal module; it is now a string brand.
 
+- `EventJournal.ErrorTypeId` -> `none`: The v4 error marker is private; narrow with EventJournalError instead.
+
 - `EventJournal.RemoteIdTypeId` -> `effect/unstable/eventlog/EventJournal#RemoteIdTypeId`: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
 
 - `EventJournal.makeEntryId` -> `effect/unstable/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
@@ -5625,13 +5821,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EventLog.layer` -> `effect/unstable/eventlog/EventLog#layer`: The v4 layer takes both the schema and handler layer; use layerEventLog for runtime only.
 
+- `EventLog.layerIdentityKvs` -> `none`: Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdentity, and Layer.effect manually.
+
 ### `@effect/experimental/EventLogRemote`
+
+- `EventLogRemote.Ack` -> `none`: A write acknowledgement is now the void success of EventLogMessage.WriteSingleRpc or WriteChunkedRpc.
 
 - `EventLogRemote.Changes` -> `effect/unstable/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request and response models with one streaming RPC.
 
 - `EventLogRemote.EventLogRemote` -> `effect/unstable/eventlog/EventLogRemote#EventLogRemote`: Use the v4 Context.Service; methods now take storeId-aware options.
 
 - `EventLogRemote.Hello` -> `effect/unstable/eventlog/EventLogMessage#HelloResponse`: HelloResponse replaces Hello and includes the v4 authentication challenge; HelloRpc defines the endpoint.
+
+- `EventLogRemote.Pong` -> `none`: The event-log Pong model was removed; heartbeats belong to the generic RPC socket protocol.
 
 - `EventLogRemote.ProtocolRequest` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: EventLogRemoteRpcs and generic RPC serialization replace the old protocol request union.
 
@@ -5641,7 +5843,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `EventLogRemote.ProtocolResponseMsgPack` -> `effect/unstable/rpc/RpcSerialization#layerMsgPack`: Use the generic MsgPack RPC serialization layer instead of a response-specific schema.
 
+- `EventLogRemote.RemoteAdditions` -> `none`: This unused protocol model has no v4 counterpart.
+
 - `EventLogRemote.RequestChanges` -> `effect/unstable/eventlog/EventLogMessage#ChangesRpc`: ChangesRpc replaces the separate request model with one streaming RPC.
+
+- `EventLogRemote.StopChanges` -> `none`: Interrupt the ChangesRpc stream instead of sending a StopChanges message.
 
 - `EventLogRemote.decodeRequest` -> `effect/unstable/eventlog/EventLogMessage#EventLogRemoteRpcs`: Generic RPC framing and RpcSerialization.layerMsgPack replace the module-specific request decoder.
 
@@ -5679,11 +5885,17 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Redis.layerStore` -> `effect/unstable/persistence/PersistedQueue#layerStoreRedis`: The Redis adapter was merged into PersistedQueue and now requires the generic Redis.Redis service.
 
+- `Redis.layerStoreConfig` -> `none`: Configure a Redis provider such as NodeRedis.layerConfig separately, then compose it with PersistedQueue.layerStoreRedis.
+
 - `Redis.make` -> `effect/unstable/persistence/PersistedQueue#makeStoreRedis`: The Redis adapter was merged into PersistedQueue and now requires the generic Redis.Redis service.
 
 ### `@effect/experimental/Persistence`
 
 - `Persistence.BackingPersistence` -> `effect/unstable/persistence/Persistence#BackingPersistence`: Use the v4 BackingPersistence Context.Service class.
+
+- `Persistence.BackingPersistenceTypeId` -> `none`: The BackingPersistence brand is no longer publicly exported in v4.
+
+- `Persistence.ErrorTypeId` -> `none`: The v4 persistence error identifier is private; narrow with the exported error classes.
 
 - `Persistence.PersistenceBackingError` -> `effect/unstable/persistence/Persistence#PersistenceError`: PersistenceError now represents failures from the backing persistence implementation.
 
@@ -5701,6 +5913,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Persistence.ResultPersistenceStore` -> `effect/unstable/persistence/Persistence#PersistenceStore`: ResultPersistenceStore was renamed to PersistenceStore.
 
+- `Persistence.ResultPersistenceTypeId` -> `none`: The ResultPersistence brand is no longer publicly exported in v4.
+
 - `Persistence.layerKeyValueStore` -> `effect/unstable/persistence/Persistence#layerBackingKvs`: The KeyValueStore backing layer was renamed to layerBackingKvs.
 
 - `Persistence.layerMemory` -> `effect/unstable/persistence/Persistence#layerBackingMemory`: Use layerBackingMemory for the old backing service; v4 layerMemory creates the higher-level Persistence service.
@@ -5715,7 +5929,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Redis.layer` -> `effect/unstable/persistence/Persistence#layerBackingRedis`: The Redis backing adapter was merged into Persistence and now requires the generic Redis.Redis service.
 
+- `Redis.layerConfig` -> `none`: Compose Persistence.layerBackingRedis with a config-driven provider such as NodeRedis.layerConfig.
+
 - `Redis.layerResult` -> `effect/unstable/persistence/Persistence#layerRedis`: The combined Redis persistence layer was merged into Persistence and now requires Redis.Redis.
+
+- `Redis.layerResultConfig` -> `none`: Compose Persistence.layerRedis with a config-driven provider such as NodeRedis.layerConfig.
+
+- `Redis.make` -> `none`: V4 exposes Redis-backed layers over the Redis.Redis service, not a constructor that creates an ioredis client directly.
 
 ### `@effect/experimental/RateLimiter`
 
@@ -5747,6 +5967,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RequestResolver.dataLoader` -> `effect/RequestResolver#setDelay + effect/RequestResolver#batchN`: Pipe the resolver through setDelay(options.window) and batchN(options.maxBatchSize ?? Infinity); the transformation is now pure.
 
+### `@effect/experimental/Sse`
+
+- `Sse.RetryTypeId` -> `none`: The Retry identifier is private in v4; use effect/unstable/encoding/Sse#Retry and Retry.is instead of inspecting the brand.
+
 ### `@effect/experimental/VariantSchema`
 
 - `VariantSchema.Field.Any` -> `effect/unstable/schema/VariantSchema#Field.Any`: Import the retained Field.Any helper type from the v4 unstable VariantSchema module.
@@ -5757,9 +5981,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `VariantSchema.Field.ValueAny` -> `effect/Schema#Top`: Use the core Schema.Top constraint for an arbitrary field value schema.
 
+- `VariantSchema.FieldTypeId` -> `none`: The Field brand is private in v4; use VariantSchema.isField for narrowing.
+
 - `VariantSchema.Struct.Fields` -> `effect/unstable/schema/VariantSchema#Struct.Fields`: Import the retained Struct.Fields helper type from the v4 unstable VariantSchema module.
 
 - `VariantSchema.TypeId` -> `effect/unstable/schema/VariantSchema#TypeId`: Use the retained runtime value; in type position use typeof VariantSchema.TypeId.
+
+- `VariantSchema.fromKey` -> `none`: Field-level fromKey was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
+
+- `VariantSchema.fromKey.Rename` -> `none`: The fromKey rename helper was not ported; for whole-struct encoded-key renaming consider Schema.encodeKeys.
 
 - `VariantSchema.make` -> `effect/unstable/schema/VariantSchema#make`: Import make from the v4 module; FieldOnly and FieldExcept take one key array and Union takes one member array.
 
@@ -6115,11 +6345,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Command.Command.Proto` -> `ChildProcess.StandardCommand | ChildProcess.PipedCommand`: The public command prototype was removed; narrow the Command union to its StandardCommand or PipedCommand interfaces.
 
+- `Command.CommandTypeId` -> `none`: The command type-id alias is internal in v4; use ChildProcess.Command or ChildProcess.isCommand instead.
+
 - `Command.env` -> `ChildProcess.setEnv`: Use the renamed command combinator.
 
 - `Command.exitCode` -> `ChildProcessSpawner.ChildProcessSpawner.exitCode`: Obtain the ChildProcessSpawner service and call exitCode, or spawn the Effectable command and read the handle exitCode.
 
 - `Command.feed` -> `ChildProcess.CommandOptions["stdin"]`: The feed combinator was removed; pass a Stream as stdin when constructing the command.
+
+- `Command.flatten` -> `none`: No flatten helper remains; inspect StandardCommand and PipedCommand recursively when command structure is required.
 
 - `Command.lines` -> `ChildProcessSpawner.ChildProcessSpawner.lines`: Output collection moved onto the ChildProcessSpawner service.
 
@@ -6149,6 +6383,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `CommandExecutor.Process.Id` -> `ChildProcessSpawner.ProcessId`: The process-id brand is now exported directly.
 
+- `CommandExecutor.ProcessTypeId` -> `none`: The ChildProcessHandle marker is internal in v4; use the ChildProcessHandle interface.
+
+- `CommandExecutor.TypeId` -> `none`: The Context.Service class replaces the public executor type-id alias.
+
 - `CommandExecutor.makeExecutor` -> `ChildProcessSpawner.make`: Use the renamed constructor; it derives output helpers from a spawn implementation.
 
 ### `@effect/platform/Cookies`
@@ -6172,6 +6410,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Error.PlatformError` -> `PlatformError.PlatformError`: The module moved to effect/PlatformError and PlatformError became a wrapper class around BadArgument or SystemError.
 
 - `Error.SystemErrorReason` -> `PlatformError.SystemErrorTag`: The normalized system-error reason union was renamed.
+
+- `Error.TypeId` -> `none`: The PlatformError runtime marker is internal in v4; use the PlatformError class/tag.
 
 - `Error.TypeIdError` -> `Data.TaggedError or Schema.ErrorClass`: The platform-specific error-class factory was removed; define tagged data errors or schema-backed error classes directly.
 
@@ -6219,6 +6459,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.WatchEventUpdate` -> `FileSystem.WatchEvent.Update`: The constructor was removed; construct a tagged object with \_tag: "Update" and path.
 
+- `FileSystem.WatchOptions` -> `none`: FileSystem.watch now accepts only a path; the recursive watch option was removed.
+
 - `FileSystem.WriteFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["writeFile"]>[2]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
 - `FileSystem.WriteFileStringOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["writeFileString"]>[2]>`: Operation option interfaces are inline in the v4 FileSystem service.
@@ -6243,9 +6485,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/platform/HttpApi`
 
+- `HttpApi.Api` -> `none`: The Context tag carrying the API was removed. Pass the HttpApi value explicitly to builders and clients.
+
 - `HttpApi.HttpApi.Any` -> `effect/unstable/httpapi/HttpApi#Constraint`: Use the erased marker constraint when only HttpApi identity is needed.
 
 - `HttpApi.HttpApi.AnyWithProps` -> `effect/unstable/httpapi/HttpApi#Top`: Use the widened HttpApi type that retains runtime properties.
+
+- `HttpApi.TypeId` -> `none`: The marker is private in v4; use HttpApi.isHttpApi for runtime narrowing and Constraint or Top for types.
 
 - `HttpApi.make` -> `effect/unstable/httpapi/HttpApi#make`: The constructor remains, but API-wide error and service parameters were removed; declare errors on endpoints and attach middleware.
 
@@ -6255,13 +6501,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiBuilder.Handlers.Error` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers.Error`: The helper remains and extracts the error channel of an effectful group-builder return.
 
+- `HttpApiBuilder.Handlers.Middleware` -> `none`: The handler-internal HttpApp middleware alias was removed. Use HttpRouter.middleware inference or HttpRouter.middleware.Fn.
+
 - `HttpApiBuilder.Handlers.ValidateReturn` -> `effect/unstable/httpapi/HttpApiBuilder#Handlers.ValidateReturn`: The validator remains and now checks the endpoint map against handled identifiers.
+
+- `HttpApiBuilder.HandlersTypeId` -> `none`: The exported symbol was removed; do not inspect or construct the private Handlers marker.
 
 - `HttpApiBuilder.MiddlewareFn` -> `effect/unstable/http/HttpRouter#middleware.Fn`: HTTP apps are Effects in v4; use the router middleware function type or infer it through HttpRouter.middleware.
 
 - `HttpApiBuilder.Router` -> `effect/unstable/http/HttpRouter#HttpRouter`: The API-specific router tag was removed; API and group layers register with the shared HttpRouter service.
 
 - `HttpApiBuilder.api` -> `effect/unstable/httpapi/HttpApiBuilder#layer`: Use layer(api) and provide the group layers; it registers the completed API with HttpRouter.
+
+- `HttpApiBuilder.buildMiddleware` -> `none`: API-wide middleware assembly was removed. Declared HttpApiMiddleware services are applied while routes are built; use HttpRouter.middleware for additional middleware.
 
 - `HttpApiBuilder.group` -> `effect/unstable/httpapi/HttpApiBuilder#group`: The group layer remains; names are now identifiers and API/group global error channels are gone.
 
@@ -6293,6 +6545,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiEndpoint.HttpApiEndpoint.AddContext` -> `effect/unstable/httpapi/HttpApiEndpoint#AddMiddleware`: Use AddMiddleware to add a middleware identifier and compute its service transformation.
 
+- `HttpApiEndpoint.HttpApiEndpoint.AddError` -> `none`: Declare error schemas in the endpoint constructor options; the type helper and fluent addError method were removed.
+
+- `HttpApiEndpoint.HttpApiEndpoint.Constructor` -> `none`: The tagged-template constructor type was removed; use HttpApiEndpoint.make(method)(identifier, path, options?).
+
 - `HttpApiEndpoint.HttpApiEndpoint.Context` -> `effect/unstable/httpapi/HttpApiEndpoint#ServerServices`: Use ServerServices for handler requirements; middleware IDs and extra requirements have separate extractors.
 
 - `HttpApiEndpoint.HttpApiEndpoint.ContextWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#ServerServicesWithIdentifier`: Name became Identifier; combine with middleware extractors when the complete handler requirement union is needed.
@@ -6307,9 +6563,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiEndpoint.HttpApiEndpoint.ExcludeName` -> `effect/unstable/httpapi/HttpApiEndpoint#ExcludeIdentifier`: Direct rename from name to identifier.
 
+- `HttpApiEndpoint.HttpApiEndpoint.ExtractPath` -> `none`: Tagged-template path extraction was removed. Put a params schema or field record in constructor option params.
+
 - `HttpApiEndpoint.HttpApiEndpoint.HandlerRawWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#HandlerRawWithIdentifier`: Direct rename; raw request fields are now params and query.
 
 - `HttpApiEndpoint.HttpApiEndpoint.HandlerWithName` -> `effect/unstable/httpapi/HttpApiEndpoint#HandlerWithIdentifier`: Direct rename from name to identifier.
+
+- `HttpApiEndpoint.HttpApiEndpoint.OptionalTypePropertySignature` -> `none`: Removed with the tagged-template path implementation.
+
+- `HttpApiEndpoint.HttpApiEndpoint.PathEntries` -> `none`: Removed with tagged-template path extraction; declare endpoint params explicitly.
 
 - `HttpApiEndpoint.HttpApiEndpoint.PathParsed` -> `effect/unstable/httpapi/HttpApiEndpoint#Params`: Path data became params; Params extracts the schema, so use Params\<Endpoint\>["Type"] for decoded data.
 
@@ -6323,6 +6585,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiEndpoint.HttpApiEndpoint.ValidateHeaders` -> `effect/unstable/httpapi/HttpApiEndpoint#HeadersConstraint`: Validation moved from an intersection helper to a constructor generic constraint.
 
+- `HttpApiEndpoint.HttpApiEndpoint.ValidateParams` -> `none`: Tagged-template interpolation validation was removed; params are declared explicitly in options.params.
+
 - `HttpApiEndpoint.HttpApiEndpoint.ValidatePath` -> `effect/unstable/httpapi/HttpApiEndpoint#ParamsConstraint`: path became params and validation is now a constructor constraint.
 
 - `HttpApiEndpoint.HttpApiEndpoint.ValidatePayload` -> `effect/unstable/httpapi/HttpApiEndpoint#PayloadConstraint`: Payload validation is now a method-sensitive constructor constraint.
@@ -6330,6 +6594,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpApiEndpoint.HttpApiEndpoint.ValidateUrlParams` -> `effect/unstable/httpapi/HttpApiEndpoint#QueryConstraint`: urlParams became query and validation is now a constructor constraint.
 
 - `HttpApiEndpoint.PathSegment` -> `effect/unstable/http/HttpRouter#PathInput`: Path input moved to the shared router and is generalized to slash-prefixed paths or wildcard.
+
+- `HttpApiEndpoint.TypeId` -> `none`: The endpoint type ID is private; use HttpApiEndpoint.isHttpApiEndpoint for runtime narrowing.
 
 - `HttpApiEndpoint.get` -> `effect/unstable/httpapi/HttpApiEndpoint#get`: Use get(identifier, path, options?); tagged templates and fluent schema setters were removed.
 
@@ -6359,15 +6625,25 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiGroup.ApiGroup` -> `effect/unstable/httpapi/HttpApiGroup#Service`: Renamed; the service field and type parameter are now identifier rather than name.
 
+- `HttpApiGroup.HttpApiGroup.AddContext` -> `none`: Groups no longer carry arbitrary context. Use AddMiddleware for middleware service transformations.
+
 - `HttpApiGroup.HttpApiGroup.Any` -> `effect/unstable/httpapi/HttpApiGroup#Constraint`: Renamed widened structural constraint.
 
 - `HttpApiGroup.HttpApiGroup.AnyWithProps` -> `effect/unstable/httpapi/HttpApiGroup#Top`: Renamed widened runtime-property type.
 
 - `HttpApiGroup.HttpApiGroup.ClientContext` -> `effect/unstable/httpapi/HttpApiGroup#ClientServices / ErrorServicesDecode / MiddlewareClient`: Client schema services and required client middleware are separate extractors in v4.
 
+- `HttpApiGroup.HttpApiGroup.Context` -> `none`: Group error and context generics were removed; derive server requirements from the group's endpoints.
+
+- `HttpApiGroup.HttpApiGroup.ContextWithName` -> `none`: Select with WithIdentifier and derive endpoint server requirements; groups no longer have a context generic.
+
 - `HttpApiGroup.HttpApiGroup.EndpointsWithName` -> `effect/unstable/httpapi/HttpApiGroup#EndpointsWithIdentifier`: Direct rename from name to identifier.
 
+- `HttpApiGroup.HttpApiGroup.Error` -> `none`: Group-level errors were removed. Declare shared errors on each endpoint or through middleware.
+
 - `HttpApiGroup.HttpApiGroup.ErrorContext` -> `effect/unstable/httpapi/HttpApiGroup#ErrorServicesEncode / ErrorServicesDecode`: The closest endpoint-error aggregate splits server encoding from client decoding services.
+
+- `HttpApiGroup.HttpApiGroup.ErrorWithName` -> `none`: Group-level errors were removed; select with WithIdentifier and inspect Errors over the selected endpoints.
 
 - `HttpApiGroup.HttpApiGroup.Middleware` -> `effect/unstable/httpapi/HttpApiEndpoint#Middleware`: Middleware is attached to the endpoints present when group.middleware is called; extract it from group endpoints.
 
@@ -6378,6 +6654,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpApiGroup.HttpApiGroup.ToService` -> `effect/unstable/httpapi/HttpApiGroup#ToService`: Same role and now produces Service\<ApiId, Identifier\>.
 
 - `HttpApiGroup.HttpApiGroup.WithName` -> `effect/unstable/httpapi/HttpApiGroup#WithIdentifier`: Direct rename from name to identifier.
+
+- `HttpApiGroup.TypeId` -> `none`: The group type ID is private; use HttpApiGroup.isHttpApiGroup for runtime narrowing.
 
 - `HttpApiGroup.make` -> `effect/unstable/httpapi/HttpApiGroup#make`: The constructor remains; group error and context generics are gone and add is variadic.
 
@@ -6397,6 +6675,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiMiddleware.HttpApiMiddleware.Provides` -> `effect/unstable/httpapi/HttpApiMiddleware#Provides`: Same name and reads the expanded v4 middleware ID metadata.
 
+- `HttpApiMiddleware.SecurityTypeId` -> `none`: The marker is private; use HttpApiMiddleware.isSecurity.
+
 - `HttpApiMiddleware.Tag` -> `effect/unstable/httpapi/HttpApiMiddleware#Service`: Renamed and redesigned; use error, requires, provides, clientError, and requiredForClient configuration.
 
 - `HttpApiMiddleware.TagClass` -> `effect/unstable/httpapi/HttpApiMiddleware#ServiceClass`: Renamed class type with the new two-stage type configuration and wrapping service shape.
@@ -6411,11 +6691,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiMiddleware.TagClass.FailureService` -> `effect/unstable/httpapi/HttpApiMiddleware#Error`: Use the decoded error extractor; optional middleware fallback was removed.
 
+- `HttpApiMiddleware.TagClass.Optional` -> `none`: Optional declaration and fallback-on-failure behavior were removed; model fallback in the wrapping middleware.
+
 - `HttpApiMiddleware.TagClass.Provides` -> `effect/unstable/httpapi/HttpApiMiddleware#Provides`: Moved to the module level and applied to the middleware ID.
 
 - `HttpApiMiddleware.TagClassAny` -> `effect/unstable/httpapi/HttpApiMiddleware#AnyService`: Renamed widened service-key type.
 
 - `HttpApiMiddleware.TagClassSecurityAny` -> `effect/unstable/httpapi/HttpApiMiddleware#AnyServiceSecurity`: Renamed widened security service-key type.
+
+- `HttpApiMiddleware.TypeId` -> `none`: The marker is private; use public guards and type extractors.
 
 ### `@effect/platform/HttpApiScalar`
 
@@ -6445,6 +6729,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiSchema.EmptyErrorClass` -> `effect/Schema#ErrorClass`: The class and no-content codec are separate in v4; combine ErrorClass with HttpApiSchema.asNoContent.
 
+- `HttpApiSchema.EmptyErrorUnify` -> `none`: Removed with EmptyError; Schema.ErrorClass instances already support yieldable-error behavior.
+
+- `HttpApiSchema.EmptyErrorUnifyIgnore` -> `none`: Removed with EmptyError; do not recreate the old Unify marker.
+
 - `HttpApiSchema.Encoding` -> `effect/unstable/httpapi/HttpApiSchema#Encoding`: The name remains but is now a discriminated PayloadEncoding or ResponseEncoding union; prefer public as\* combinators.
 
 - `HttpApiSchema.Multipart` -> `effect/unstable/httpapi/HttpApiSchema#asMultipart`: The type and constructor became a curried schema combinator: schema.pipe(asMultipart(options)).
@@ -6461,6 +6749,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiSchema.asEmpty` -> `effect/unstable/httpapi/HttpApiSchema#asNoContent`: Use schema.pipe(asNoContent({ decode }), status(code)); status is now a separate combinator.
 
+- `HttpApiSchema.deunionize` -> `none`: Pass schema arrays to endpoint success, error, and body alternatives so each member retains status and content type.
+
+- `HttpApiSchema.extractAnnotations` -> `none`: The internal symbol-copy helper was removed; HTTP metadata is schema-native and resolved through AST traversal.
+
 - `HttpApiSchema.getEmptyDecodeable` -> `effect/unstable/httpapi/HttpApiSchema#isNoContent`: Use isNoContent only to test bodylessness; decodeability is structural and has no exact query replacement.
 
 - `HttpApiSchema.getEncoding` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding / getResponseEncoding`: Encoding lookup split by direction; application code should normally use public as\* combinators.
@@ -6468,6 +6760,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpApiSchema.getMultipart` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with buffered mode; multipart limits are on the encoding value.
 
 - `HttpApiSchema.getMultipartStream` -> `effect/unstable/httpapi/HttpApiSchema#getPayloadEncoding`: Narrow the payload encoding to Multipart with stream mode; multipart limits are on the encoding value.
+
+- `HttpApiSchema.getParam` -> `none`: Param identity moved out of schema metadata; read endpoint.path and endpoint.params.
 
 - `HttpApiSchema.getStatus` -> `effect/SchemaAST#resolveAt`: Resolve the httpApiStatus annotation directly, or prefer getStatusSuccess and getStatusError for response logic.
 
@@ -6486,6 +6780,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ### `@effect/platform/HttpApiSecurity`
 
 - `HttpApiSecurity.Bearer` -> `effect/unstable/httpapi/HttpApiSecurity#Http`: Bearer was generalized to Http with scheme Bearer; the value-level bearer singleton remains.
+
+- `HttpApiSecurity.TypeId` -> `none`: The marker is private; use the public union or specific Http, ApiKey, and Basic types.
 
 - `HttpApiSecurity.annotate` -> `effect/unstable/httpapi/HttpApiSecurity#annotate`: The combinator remains; its key is now the v4 Context.Key abstraction.
 
@@ -6633,11 +6929,17 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpLayerRouter.FindMyWay.make` -> `FindMyWay.make`: Import FindMyWay from effect/unstable/http.
 
+- `HttpLayerRouter.MiddlewareTypeId` -> `none`: The middleware type id is internal in v4; use HttpRouter.Middleware.
+
 - `HttpLayerRouter.PathInput` -> `HttpRouter.PathInput`: Moved to the consolidated v4 router.
 
 - `HttpLayerRouter.RouteContext` -> `HttpRouter.RouteContext`: Moved to the consolidated v4 router.
 
+- `HttpLayerRouter.RouteTypeId` -> `none`: Route nominal ids are internal in v4; construct routes with HttpRouter.route.
+
 - `HttpLayerRouter.RouterConfig` -> `HttpRouter.RouterConfig`: Now a Context.Reference containing Partial\<FindMyWay.RouterConfig\>.
+
+- `HttpLayerRouter.TypeId` -> `none`: The router nominal service id is internal in v4; use HttpRouter.HttpRouter.
 
 - `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/unstable/httpapi.
 
@@ -6675,6 +6977,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpPlatform.HttpPlatform` -> `HttpPlatform.HttpPlatform`: The service is now a Context.Service class; use its Service member for the implementation type.
 
+- `HttpPlatform.TypeId` -> `none`: The public type id was removed; use the HttpPlatform Context.Service class.
+
 - `HttpPlatform.layer` -> `HttpPlatform.layer`: Retained as the default file-response layer.
 
 - `HttpPlatform.make` -> `HttpPlatform.make`: Retained; v4 returns the service implementation and uses updated file stream options.
@@ -6685,9 +6989,19 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpRouter.HttpRouter` -> `HttpRouter.HttpRouter`: The name remains, but now denotes the mutable layer-oriented registration service.
 
+- `HttpRouter.HttpRouter.DefaultServices` -> `none`: The custom tagged-router default-service bundle was removed.
+
 - `HttpRouter.HttpRouter.Service` -> `HttpRouter.HttpRouter`: Use the consolidated router service interface.
 
 - `HttpRouter.Route.Middleware` -> `Effect.Effect`: Spell the route response Effect directly, or use HttpRouter.middleware for transforms.
+
+- `HttpRouter.RouteContextTypeId` -> `none`: The nominal id is internal in v4; access HttpRouter.RouteContext as a service.
+
+- `HttpRouter.RouteTypeId` -> `none`: The nominal id is internal in v4; construct routes with HttpRouter.route.
+
+- `HttpRouter.Tag` -> `none`: Custom router tags were removed; use the singleton router service and registration layers.
+
+- `HttpRouter.TypeId` -> `none`: The router nominal service id is internal in v4; use HttpRouter.HttpRouter.
 
 - `HttpRouter.all` -> `HttpRouter.add("*", path, handler, options)`: v4 registers a route layer instead of returning an immutable router.
 
@@ -6740,6 +7054,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ### `@effect/platform/HttpServer`
 
 - `HttpServer.HttpServer` -> `HttpServer.HttpServer`: The interface and tag became one Context.Service class; use its Service member for implementations.
+
+- `HttpServer.ServeOptions` -> `none`: The unused respond option model was removed with no shared v4 counterpart.
+
+- `HttpServer.TypeId` -> `none`: The public TypeId was removed; HttpServer is now a Context.Service class.
 
 - `HttpServer.addressWith` -> `HttpServer.HttpServer.use(({ address }) => effect(address))`: The accessor was removed; read the service and pass its Address to the callback.
 
@@ -6814,6 +7132,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `KeyValueStore.KeyValueStore` -> `KeyValueStore.KeyValueStore`: The service moved to effect/unstable/persistence/KeyValueStore; missing values now use undefined and operations fail with KeyValueStoreError.
 
 - `KeyValueStore.KeyValueStore.AnyStore` -> `KeyValueStore.KeyValueStore | KeyValueStore.SchemaStore<Schema.Constraint>`: The convenience namespace alias was removed; write the store union explicitly when needed.
+
+- `KeyValueStore.SchemaStoreTypeId` -> `none`: The v4 SchemaStore has no public type-id alias; use the SchemaStore interface.
+
+- `KeyValueStore.TypeId` -> `none`: The KeyValueStore runtime marker is internal in v4; use the service and interface.
 
 - `KeyValueStore.layerSchema` -> `KeyValueStore.toSchemaStore`: Schema stores are now derived with toSchemaStore; define the desired Context.Service and layer explicitly.
 
@@ -6898,6 +7220,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Ndjson.unpackString` -> `Ndjson.decodeString`: The string unpack channel was renamed to decodeString.
 
 ### `@effect/platform/OpenApi`
+
+- `OpenApi.AdditionalPropertiesStrategy` -> `none`: OpenApi.fromApi no longer accepts generation options; standalone JSON Schema generation has a separate additionalProperties option.
 
 - `OpenApi.Exclude` -> `effect/unstable/httpapi/OpenApi#Exclude`: Same annotation key and default; it is now a Context.Reference value.
 
@@ -7035,6 +7359,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Worker.PlatformWorker` -> `Worker.WorkerPlatform`: The platform service was renamed and is now a Context.Service class.
 
+- `Worker.PlatformWorkerTypeId` -> `none`: The Context.Service class replaces the public platform-worker type-id alias.
+
 - `Worker.SerializedWorker` -> `RpcClient with RpcClient.layerProtocolWorker`: The serialized worker facade was removed; v4 routes schema-defined RPCs through the worker protocol.
 
 - `Worker.SerializedWorker.Options` -> `RpcWorker.layerInitialMessage`: Use RpcWorker.layerInitialMessage when a worker RPC protocol needs schema-encoded initialization.
@@ -7047,7 +7373,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Worker.Worker.Options` -> `Worker.Worker["run"] options`: Encoding moved to RPC schemas; the low-level run operation only accepts an optional onSpawn effect.
 
+- `Worker.Worker.Response` -> `none`: The old tagged-request wire response is gone; worker RPC wire messages are internal to RpcClient and RpcServer.
+
+- `Worker.Worker.Span` -> `none`: The explicit span tuple was removed; the RPC worker protocol handles span propagation internally.
+
 - `Worker.WorkerManager` -> `Worker.WorkerPlatform`: WorkerPlatform now spawns low-level Worker values directly, replacing WorkerManager.
+
+- `Worker.WorkerManagerTypeId` -> `none`: The removed WorkerManager has no v4 type-id; WorkerPlatform is a Context.Service class.
 
 - `Worker.WorkerPool` -> `RpcClient.Protocol`: For serialized request/response workloads use the worker-backed RPC Protocol; for raw messages build a Pool around WorkerPlatform.spawn.
 
@@ -7079,9 +7411,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `WorkerRunner.BackingRunner.Message` -> `WorkerRunner.PlatformMessage`: The request/close wire tuple moved to the top-level PlatformMessage type.
 
+- `WorkerRunner.CloseLatch` -> `none`: The public close-latch service was removed; WorkerRunner implementations manage lifetime through their run effect and adapter scope.
+
 - `WorkerRunner.PlatformRunner` -> `WorkerRunner.WorkerRunnerPlatform`: The platform service was renamed and is now a Context.Service class.
 
+- `WorkerRunner.PlatformRunnerTypeId` -> `none`: The Context.Service class replaces the public platform-runner type-id alias.
+
 - `WorkerRunner.Runner` -> `WorkerRunner.WorkerRunner`: The namespace-only runner API was replaced by the low-level WorkerRunner interface.
+
+- `WorkerRunner.Runner.Options` -> `none`: The custom decode/encode callbacks were removed; use raw low-level messages or define schemas in the v4 RPC model.
 
 - `WorkerRunner.SerializedRunner` -> `RpcServer with RpcGroup handlers`: The serialized runner namespace was removed in favor of typed Rpc definitions and RpcServer.
 
@@ -7089,9 +7427,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `WorkerRunner.SerializedRunner.HandlersContext` -> `RpcGroup.HandlersServices`: Derive services required by an RpcGroup handler object with HandlersServices.
 
+- `WorkerRunner.SerializedRunner.InitialContext` -> `none`: Initial-message layer outputs are no longer inferred by this helper; model initialization as normal RpcGroup handler layers and services.
+
+- `WorkerRunner.SerializedRunner.InitialEnv` -> `none`: Initial-message layer inputs are no longer inferred by this helper; model initialization as normal RpcGroup handler layers and services.
+
 - `WorkerRunner.launch` -> `RpcServer.layerProtocolWorkerRunner`: For schema-defined workers, provide the worker-runner RPC protocol and launch the normal RpcServer layer.
 
 - `WorkerRunner.layer` -> `WorkerRunner.WorkerRunnerPlatform.start + WorkerRunner.WorkerRunner.run`: The generic processing layer was removed; use the low-level runner directly or the RpcServer worker protocol.
+
+- `WorkerRunner.layerCloseLatch` -> `none`: The public close-latch layer was removed; adapter runner lifetime is managed internally.
 
 - `WorkerRunner.layerSerialized` -> `RpcServer.layerProtocolWorkerRunner`: Serialized tagged-request handlers moved to RpcGroup handlers served through the worker-runner RPC protocol.
 
@@ -7108,6 +7452,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Rpc.Any` -> `effect/unstable/rpc/Rpc#Any`: Retained as the erased RPC shape; use AnyWithProps when schema and middleware fields are required.
 
 - `Rpc.AnySchema` -> `Schema.Top`: The RPC-specific erased schema alias was removed; use the v4 top schema constraint.
+
+- `Rpc.AnyTaggedRequestSchema` -> `none`: RpcGroup no longer converts Schema.TaggedRequest classes into RPCs; declare the contract explicitly with Rpc.make.
 
 - `Rpc.Context` -> `effect/unstable/rpc/Rpc#Services`: Schema Context became decoding and encoding services; use Services, or ServicesClient / ServicesServer at the corresponding boundary.
 
@@ -7135,6 +7481,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Rpc.Tag` -> `effect/unstable/rpc/Rpc#Tag`: Retained and also accounts for the v4 RPC service-requirement parameter.
 
+- `Rpc.TypeId` -> `none`: The RPC marker is private in v4; use Rpc.isRpc for runtime checks and Rpc.Any for type constraints.
+
+- `Rpc.WrapperTypeId` -> `none`: The wrapper marker is private in v4; use Rpc.isWrapper and the public Wrapper type.
+
 - `Rpc.fromTaggedRequest` -> `Rpc.make`: Automatic TaggedRequest conversion was removed; pass the tag, payload, success, and error schemas explicitly to Rpc.make.
 
 - `Rpc.make` -> `effect/unstable/rpc/Rpc#make`: Retained; schemas use v4 Schema.Top constraints and the defect option accepts Rpc.DefectSchema.
@@ -7143,17 +7493,27 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RpcClient.Protocol` -> `effect/unstable/rpc/RpcClient#Protocol`: Retained as a Context.Service; custom transports now route multiple client ids through run and send.
 
+- `RpcClient.RpcClient.NonPrefixed` -> `none`: The prefix-partition helper was removed; v4 clients map every RPC tag directly to an object property.
+
+- `RpcClient.RpcClient.Prefixes` -> `none`: Nested prefix client objects were removed; v4 preserves the full RPC tag as the generated client property.
+
 - `RpcClient.currentHeaders` -> `effect/unstable/rpc/RpcClient#CurrentHeaders`: Renamed and changed from FiberRef to Context.Reference; prefer RpcClient.withHeaders for scoped overrides.
 
 - `RpcClient.makeProtocolHttp` -> `effect/unstable/rpc/RpcClient#makeProtocolHttp`: Retained; it creates the Protocol service implementation from an HttpClient.
 
 - `RpcClient.withHeadersEffect` -> `Effect.flatMap(headers, (value) => RpcClient.withHeaders(effect, value))`: withHeaders now accepts Headers.Input synchronously; evaluate effectful headers first and then scope the client effect.
 
+### `@effect/rpc/RpcClientError`
+
+- `RpcClientError.TypeId` -> `none`: The marker is private in v4; narrow with instanceof RpcClientError or inspect the public \_tag.
+
 ### `@effect/rpc/RpcGroup`
 
 - `RpcGroup.HandlerContext` -> `effect/unstable/rpc/RpcGroup#HandlerServices`: Renamed for v4 service terminology and now includes explicit RPC requirements after removing middleware-provided services.
 
 - `RpcGroup.HandlersContext` -> `effect/unstable/rpc/RpcGroup#HandlersServices`: Renamed; it unions HandlerServices across the handler object.
+
+- `RpcGroup.TypeId` -> `none`: The group marker is private in v4; use RpcGroup.Any for an erased group constraint.
 
 ### `@effect/rpc/RpcMessage`
 
@@ -7175,6 +7535,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RpcMiddleware.TagClass.FailureService` -> `effect/unstable/rpc/RpcMiddleware#Error`: Use the decoded error extractor; optional middleware fallback was removed.
 
+- `RpcMiddleware.TagClass.Optional` -> `none`: Optional declaration and fallback-on-failure behavior were removed; model fallback inside the middleware effect.
+
 - `RpcMiddleware.TagClass.Provides` -> `effect/unstable/rpc/RpcMiddleware#Provides`: Moved to the module level and applied to the middleware ID metadata.
 
 - `RpcMiddleware.TagClass.RequiredForClient` -> `RpcMiddleware.ServiceClass["requiredForClient"]`: The standalone options extractor was removed; the boolean is exposed directly by the resulting service class.
@@ -7191,6 +7553,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RpcSchema.Stream` -> `effect/unstable/rpc/RpcSchema#Stream`: Retained as both the stream schema interface and constructor; error is the second argument and schema services are split by direction.
 
+- `RpcSchema.StreamSchemaId` -> `none`: The stream marker is private in v4; use RpcSchema.isStreamSchema and getStreamSchemas.
+
 - `RpcSchema.getStreamSchemas` -> `effect/unstable/rpc/RpcSchema#getStreamSchemas`: Retained for internal-style schema inspection; pass the schema itself rather than its AST.
 
 - `RpcSchema.isStreamSchema` -> `effect/unstable/rpc/RpcSchema#isStreamSchema`: Retained; it accepts a v4 Schema.Constraint.
@@ -7202,6 +7566,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `RpcServer.Protocol` -> `effect/unstable/rpc/RpcServer#Protocol`: Retained as a Context.Service; custom transports now expose a disconnect queue and explicit capability flags.
 
 - `RpcServer.fiberIdClientInterrupt` -> `effect/unstable/rpc/RpcSchema#ClientAbort`: The sentinel FiberId was replaced by a Cause annotation; inspect ClientAbort in the interruption cause when client cancellation must be distinguished.
+
+- `RpcServer.fiberIdTransientInterrupt` -> `none`: The internal transient sentinel was removed; protocol shutdown and disconnect now interrupt with the active parent fiber identity.
 
 - `RpcServer.layerHttpRouter` -> `effect/unstable/rpc/RpcServer#layerHttp`: Renamed; it installs an HTTP or WebSocket RPC route into the v4 HttpRouter service.
 
@@ -7367,6 +7733,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `SqlClient.TransactionConnection` -> `effect/unstable/sql/SqlClient#TransactionConnection`: Now a factory keyed by client id, not a singleton tag. Prefer the client's transactionService; the payload type is TransactionConnection.Service.
 
+- `SqlClient.TypeId` -> `none`: The brand is private in v4; do not inspect or attach it, and obtain clients through SqlClient or SqlClient.make.
+
 - `SqlClient.make` -> `effect/unstable/sql/SqlClient#make`: Moved; custom clients rename MakeOptions.reactiveMailbox to reactiveQueue and may supply transactionService.
 
 ### `@effect/sql/SqlConnection`
@@ -7409,6 +7777,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/sql/Statement`
 
+- `Statement.FragmentId` -> `none`: The v4 fragment brand is private; use Fragment, fragment, and isFragment instead of direct type-id access.
+
 - `Statement.Statement` -> `effect/unstable/sql/Statement#Statement`: Moved; the nested Transformer type is now top-level and its callback receives Fiber.Fiber rather than FiberRefs.FiberRefs.
 
 - `Statement.currentTransformer` -> `effect/unstable/sql/Statement#CurrentTransformer`: Capitalized and changed from FiberRef\<Option\<Transformer\>\> to Context.Reference\<Transformer | undefined\>.
@@ -7430,6 +7800,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Statement.withTransformerDisabled` -> `Effect.provideService(Statement.CurrentTransformer, undefined)`: The helper was removed; locally provide undefined for the transformer reference.
 
 ### `@effect/typeclass/Bounded`
+
+- `Bounded.Bounded` -> `none`: V4 removed Bounded dictionaries. Keep the Order and minimum/maximum bounds as separate application values.
+
+- `Bounded.BoundedTypeLambda` -> `none`: V4 removed the @effect/typeclass higher-kinded Bounded instance machinery.
 
 - `Bounded.between` -> `Order.isBetween(B.compare)`: Use the v4 Order predicate with { minimum: B.minBound, maximum: B.maxBound }; the Bounded dictionary itself was removed.
 
@@ -7453,7 +7827,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/typeclass/Semigroup`
 
+- `Semigroup.Invariant` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+
+- `Semigroup.Product` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+
+- `Semigroup.SemiProduct` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
+
 - `Semigroup.Semigroup` -> `Combiner.Combiner`: Combiner replaces Semigroup in v4 and retains the binary combine method; combineMany was removed.
+
+- `Semigroup.SemigroupTypeLambda` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite this abstraction against the concrete v4 data type and its module functions.
 
 - `Semigroup.array` -> `Array.makeReducerConcat`: The v4 concatenation Reducer is also a Combiner and replaces the array Semigroup.
 
@@ -7544,6 +7926,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Boolean.SemigroupXor` -> `Combiner.make(Boolean.xor)`: Rebuild the removed instance as a v4 Combiner.
 
 ### `@effect/typeclass/data/Duration`
+
+- `Duration.Bounded` -> `none`: V4 has no Bounded dictionary; use Duration.Order with Duration.zero and Duration.infinity as separate bounds.
 
 - `Duration.MonoidMax` -> `Reducer.make(Duration.max, Duration.zero)`: Rebuild the removed maximum Monoid as a v4 Reducer with the same identity.
 
@@ -7644,6 +8028,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Micro.getSemiProduct` -> `effect/Micro`: The @effect/typeclass package and its Micro instance dictionaries were removed in v4. Use the concrete effect/Micro operations directly.
 
 ### `@effect/typeclass/data/Number`
+
+- `Number.Bounded` -> `none`: V4 has no Bounded dictionary; use Number.Order with -Infinity and Infinity as separate bounds.
 
 - `Number.MonoidMax` -> `Number.ReducerMax`: Renamed and moved to the concrete v4 Number module.
 
@@ -7821,6 +8207,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.DepsOptimizationOptions` -> `vitest/node#DepsOptimizationOptions`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
 
+- `index.DoneCallback` -> `none`: Vitest does not support callback-style tests. Return a Promise or, in @effect/vitest tests, return an Effect.
+
 - `index.Environment` -> `vitest/environments#Environment`: This was a deprecated root re-export. Import it from vitest/environments; Vitest 4 custom environments use Vite environments.
 
 - `index.EnvironmentOptions` -> `vitest/node#EnvironmentOptions`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
@@ -7835,11 +8223,17 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.HappyDOMOptions` -> `NonNullable<import("vitest/node").EnvironmentOptions["happyDOM"]>`: Vitest 4 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type.
 
+- `index.HookCleanupCallback` -> `none`: No named Vitest 4 export replaces this alias. Let the hook return type infer, or type the cleanup function locally.
+
+- `index.HookListener` -> `none`: Use the matching @vitest/runner hook-specific type such as BeforeAllListener, AfterAllListener, BeforeEachListener, or AfterEachListener for custom runner code.
+
 - `index.InlineConfig` -> `vitest/node#InlineConfig`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
 
 - `index.JSDOMOptions` -> `NonNullable<import("vitest/node").EnvironmentOptions["jsdom"]>`: Vitest 4 keeps this shape only as a property of EnvironmentOptions; derive it from the public vitest/node type.
 
 - `index.Mock` -> `vitest#Mock`: This was a Vitest re-export, not Effect API. Import it directly from vitest; @effect/vitest/index is not a valid v4 route.
+
+- `index.ModuleCache` -> `none`: Vitest 3 marked this unused internal cache shape deprecated; Vitest 4 has no public replacement.
 
 - `index.MutableArray` -> `{ -readonly [K in keyof T]: T[K] }`: Vitest 3 marked this root alias as an internal helper. Define the small TypeScript shape locally instead of depending on transitive internals.
 
@@ -7857,9 +8251,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.Reporter` -> `vitest/reporters#Reporter`: Import Reporter from the public plural vitest/reporters entrypoint; its lifecycle methods changed in Vitest 4.
 
+- `index.ResolveIdFunction` -> `none`: This deprecated vite-node callback was removed. Use Vite environment or module-runner APIs.
+
 - `index.ResolvedConfig` -> `vitest/node#ResolvedConfig`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
 
 - `index.ResolvedCoverageOptions` -> `vitest/node#ResolvedCoverageOptions`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
+
+- `index.ResolvedTestEnvironment` -> `none`: Vitest 3 marked this type unsupported. Use Environment from vitest/environments for custom environments.
 
 - `index.RootAndTarget` -> `vitest/node#TypeCheckRootAndTarget`: Vitest 3 deprecated the root alias in favor of this renamed vitest/node type.
 
@@ -7889,6 +8287,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `index.Test` -> `vitest#RunnerTestCase`: Vitest 4 removed the deprecated unprefixed runner alias. Import the explicit Runner\* type from vitest.
 
+- `index.TransformModePatterns` -> `none`: This was removed with vite-node transform modes. Configure the Vite environment and its dependency optimizer instead.
+
 - `index.TscErrorInfo` -> `vitest/node#TypeCheckErrorInfo`: Vitest 3 deprecated the root alias in favor of this renamed vitest/node type.
 
 - `index.TypecheckConfig` -> `vitest/node#TypecheckConfig`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
@@ -7904,6 +8304,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `index.VmEnvironmentReturn` -> `vitest/environments#VmEnvironmentReturn`: This was a deprecated root re-export. Import it from vitest/environments; Vitest 4 custom environments use Vite environments.
 
 - `index.WorkerContext` -> `vitest/node#WorkerContext`: This was a deprecated Vitest 3 root re-export. Import the type directly from vitest/node and review its Vitest 4 shape.
+
+- `index.WorkerRPC` -> `none`: The concrete worker RPC composition is internal. Use public Vitest RuntimeRPC, RunnerRPC, ContextRPC, or WorkerRequest types only when their narrower contract fits.
 
 - `index.chai.Should` -> `vitest#chai.Should`: This was a Vitest re-export, not Effect API. Import it directly from vitest; @effect/vitest/index is not a valid v4 route.
 
@@ -7933,17 +8335,23 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Activity.CurrentAttempt` -> `effect/unstable/workflow/Activity#CurrentAttempt`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same default of 1.
 
+- `Activity.TypeId` -> `none`: The activity marker is private in v4. Use Activity, Activity.Any, or Activity.AnyWithProps constraints.
+
 - `Activity.make` -> `effect/unstable/workflow/Activity#make`: Moved into core Effect with the same constructor shape, v4 Schema.Constraint service directions, and optional annotations.
 
 - `Activity.raceAll` -> `effect/unstable/workflow/Activity#raceAll`: Moved into core Effect with the same named durable race behavior.
 
 ### `@effect/workflow/DurableClock`
 
+- `DurableClock.TypeId` -> `none`: The durable-clock marker is private in v4. Use DurableClock values structurally.
+
 - `DurableClock.make` -> `effect/unstable/workflow/DurableClock#make`: Moved into core Effect; Duration.DurationInput is now Duration.Input.
 
 ### `@effect/workflow/DurableDeferred`
 
 - `DurableDeferred.Any` -> `effect/unstable/workflow/DurableDeferred#Any`: Moved into core Effect. V4 Any is minimal; use AnyWithProps when success, error, or exit schemas are required.
+
+- `DurableDeferred.TypeId` -> `none`: The durable-deferred marker is private in v4. Use DurableDeferred, Any, or AnyWithProps constraints.
 
 - `DurableDeferred.await` -> `effect/unstable/workflow/DurableDeferred#await`: Moved into core Effect with the same persisted-result and workflow-suspension behavior.
 
@@ -7971,6 +8379,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Workflow.Any` -> `effect/unstable/workflow/Workflow#Any`: Moved into core Effect. Workflow identity changed from name to \_tag and definitions are now class-compatible constructors.
 
+- `Workflow.AnyTaggedRequestSchema` -> `none`: The TaggedRequest adapter constraint was removed. Define the workflow explicitly with Workflow.make and the request payload, success, error, and PrimaryKey schemas.
+
 - `Workflow.CaptureDefects` -> `effect/unstable/workflow/Workflow#CaptureDefects`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same true default.
 
 - `Workflow.Execution` -> `effect/unstable/workflow/Workflow#Execution`: Moved into core Effect; its workflow discriminator changed from name to \_tag.
@@ -7981,7 +8391,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Workflow.ResultEncoded` -> `effect/unstable/workflow/Workflow#ResultEncoded`: Moved into core Effect and remains both the encoded result type and generic encoded-result codec.
 
+- `Workflow.ResultTypeId` -> `none`: The result marker is private in v4. Use Workflow.isResult for narrowing.
+
 - `Workflow.SuspendOnFailure` -> `effect/unstable/workflow/Workflow#SuspendOnFailure`: Moved into core Effect and changed from a Context.Tag subclass to a Context.Reference value with the same false default.
+
+- `Workflow.TypeId` -> `none`: The workflow marker is private in v4. Use Workflow.Any or Workflow.Workflow constraints.
 
 - `Workflow.Workflow` -> `effect/unstable/workflow/Workflow#Workflow`: Name and name became Tag and \_tag, schemas use directional services, definitions are constructable, and poll returns Option.
 
@@ -7990,6 +8404,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Workflow.Workflow.Payload` -> `Schema.Schema.Type<Workflow.PayloadSchema<W>>`: The namespace alias was removed. Extract the decoded payload from the exported PayloadSchema helper.
 
 - `Workflow.Workflow.Success` -> `W["successSchema"]["Type"]`: The namespace alias was removed. Extract the decoded success type from the public successSchema property.
+
+- `Workflow.fromTaggedRequest` -> `none`: Removed. Expand to Workflow.make(schema.\_tag, { payload: schema, success: schema.success, error: schema.failure, idempotencyKey: PrimaryKey.value }).
 
 - `Workflow.make` -> `effect/unstable/workflow/Workflow#make`: The signature changed from make({ name, ... }) to make(tag, { ... }); definitions expose \_tag and are class-compatible constructors.
 
@@ -8599,15 +9015,23 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigError.ConfigError.Proto` -> `Config.ConfigError`: The public prototype interface was removed; use the Config.ConfigError class.
 
+- `ConfigError.ConfigError.Reducer` -> `none`: The ConfigError-specific reducer API was removed; inspect ConfigError.cause and recurse over SchemaError.issue when structured handling is required.
+
+- `ConfigError.ConfigErrorReducer` -> `none`: The ConfigError-specific reducer API was removed; inspect ConfigError.cause and recurse over SchemaError.issue when structured handling is required.
+
 - `ConfigError.ConfigErrorTypeId` -> `error instanceof Config.ConfigError`: The marker is gone because ConfigError is a class in v4.
 
 - `ConfigError.InvalidData` -> `new Config.ConfigError(new Schema.SchemaError(issue))`: Invalid configuration is now expressed as a SchemaIssue wrapped by SchemaError and Config.ConfigError.
 
 - `ConfigError.MissingData` -> `new Config.ConfigError(new Schema.SchemaError(new SchemaIssue.MissingKey(...)))`: Missing configuration is represented by Schema issues, commonly MissingKey under one or more Pointer nodes.
 
+- `ConfigError.Options` -> `none`: The shared constructor options type was removed; ConfigProvider.SourceError accepts message and optional cause, while Schema issues have issue-specific constructors.
+
 - `ConfigError.Or` -> `SchemaIssue.AnyOf`: The ConfigError boolean ADT was removed; alternative schema failures are represented inside Config.ConfigError.cause as SchemaIssue.AnyOf.
 
 - `ConfigError.SourceUnavailable` -> `new ConfigProvider.SourceError({ message, cause })`: Source failures moved to effect/ConfigProvider and are wrapped by Config.ConfigError when a Config is parsed.
+
+- `ConfigError.Unsupported` -> `none`: The variant was removed; use a SchemaError for unsupported input or ConfigProvider.SourceError for source capability failures.
 
 - `ConfigError.isAnd` -> `error.cause.issue._tag === "Composite"`: After narrowing cause with Schema.isSchemaError, inspect the SchemaIssue tag; the old And node no longer exists.
 
@@ -8623,7 +9047,11 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigError.isSourceUnavailable` -> `error.cause instanceof ConfigProvider.SourceError`: Provider source failures now use the ConfigProvider.SourceError class.
 
+- `ConfigError.isUnsupported` -> `none`: The Unsupported variant was removed; report unsupported custom decoding through a SchemaError or source failures through ConfigProvider.SourceError.
+
 - `ConfigError.prefixed` -> `SchemaIssue.Pointer`: Represent path context by wrapping the underlying SchemaIssue in a Pointer before constructing SchemaError.
+
+- `ConfigError.reduceWithContext` -> `none`: The specialized fold was removed; branch on ConfigError.cause, then recurse over the public SchemaIssue union if a fold is needed.
 
 ### `effect/ConfigProvider`
 
@@ -8677,7 +9105,15 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigProviderPathPatch.AndThen` -> `ConfigProvider.mapInput`: PathPatch is no longer public; compose path transformations as ordinary functions passed to mapInput.
 
+- `ConfigProviderPathPatch.Empty` -> `none`: The PathPatch ADT was removed; an unchanged provider represents the identity transformation.
+
+- `ConfigProviderPathPatch.MapName` -> `none`: The PathPatch ADT was removed; use a path transformation function with ConfigProvider.mapInput.
+
+- `ConfigProviderPathPatch.Nested` -> `none`: The PathPatch ADT was removed; use ConfigProvider.nested on the provider.
+
 - `ConfigProviderPathPatch.PathPatch` -> `(path: ConfigProvider.Path) => ConfigProvider.Path`: Path patches are ordinary full-path transformations in v4 and are installed with ConfigProvider.mapInput.
+
+- `ConfigProviderPathPatch.Unnested` -> `none`: The PathPatch ADT was removed; express prefix removal as a ConfigProvider.mapInput function.
 
 - `ConfigProviderPathPatch.empty` -> `ConfigProvider.ConfigProvider`: No identity patch value is needed; leave the provider untransformed.
 
@@ -8840,6 +9276,8 @@ Schema.toArbitraryLazy(schema)
 - `DateTime.zoneUnsafeMakeNamed` -> `DateTime.zoneMakeNamedUnsafe`: The unsafe suffix moved to the end of the named-zone constructor.
 
 ### `effect/DefaultServices`
+
+- `DefaultServices.DefaultServices` -> `none`: The aggregate type and module were removed; Clock, Console, Random, ConfigProvider, and Tracer are independent defaulted references.
 
 - `DefaultServices.currentServices` -> `Effect.context() and Context.get(context, reference)`: The aggregate FiberRef was removed; access and override default Context.Reference services individually.
 
@@ -9453,6 +9891,8 @@ Schema.toArbitraryLazy(schema)
 
 - `Either.Right` -> `Result.Success`: Right became Success; .right became .success.
 
+- `Either.TypeId` -> `none`: Result keeps its brand private and exports no public TypeId.
+
 - `Either.all` -> `Result.all`: Either moved to Result; collection behavior is retained with Failure and Success terminology.
 
 - `Either.ap` -> `Result.flatMap`: Use Result.flatMap(self, (f) =\> Result.map(that, f)); v4 has no Result.ap.
@@ -9927,7 +10367,11 @@ FastCheck.uuid({ version: 4 })
 
 ### `effect/FiberId`
 
+- `FiberId.Composite` -> `none`: Composite FiberId values were removed; v4 uses a single numeric fiber id.
+
 - `FiberId.FiberId` -> `number`: V4 represents a fiber identity as the numeric Fiber.id field.
+
+- `FiberId.FiberIdTypeId` -> `none`: Fiber IDs are primitive numbers in v4 and have no type-id symbol.
 
 - `FiberId.None` -> `undefined`: Optional interruptor IDs use undefined rather than a sentinel FiberId type.
 
@@ -9935,9 +10379,17 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberId.Single` -> `number | undefined`: Use a number, with undefined only where the old None case was meaningful.
 
+- `FiberId.combine` -> `none`: Composite FiberId values were removed; v4 uses a single numeric fiber id.
+
+- `FiberId.combineAll` -> `none`: Composite FiberId values were removed; v4 uses a single numeric fiber id.
+
+- `FiberId.composite` -> `none`: Composite FiberId values were removed; v4 uses a single numeric fiber id.
+
 - `FiberId.getOrElse` -> `fiberId ?? fallback`: Represent absence as undefined when migrating code that previously used FiberId.none.
 
 - `FiberId.ids` -> `new Set([fiberId])`: A v4 fiber has one numeric id; composite-id flattening is no longer required.
+
+- `FiberId.isComposite` -> `none`: Composite FiberId values do not exist in v4.
 
 - `FiberId.isFiberId` -> `Number.isNumber`: Fiber IDs are primitive numbers in v4.
 
@@ -9954,6 +10406,8 @@ FastCheck.uuid({ version: 4 })
 - `FiberId.threadName` -> `String(fiberId)`: There is no built-in thread-name formatter; format the numeric id at the presentation boundary.
 
 - `FiberId.toSet` -> `new Set([fiberId])`: A v4 fiber has one numeric id, so composite-id flattening is unnecessary.
+
+- `FiberId.unsafeMake` -> `none`: There is no public fiber-id allocator; obtain the current id with Effect.fiberId or from Fiber.id.
 
 ### `effect/FiberMap`
 
@@ -9973,7 +10427,13 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRef.FiberRefTypeId` -> `Context.isReference`: Use the public Context.Reference guard instead of a FiberRef type-id symbol.
 
+- `FiberRef.FiberRefUnify` -> `none`: Context.Reference is a service key and does not require the old FiberRef Effect-unification helper.
+
+- `FiberRef.FiberRefUnifyIgnore` -> `none`: Context.Reference is a service key and does not require the old FiberRef Effect-unification helper.
+
 - `FiberRef.Variance` -> `Context.Reference`: The FiberRef-specific variance interface was removed with FiberRef.
+
+- `FiberRef.currentConcurrency` -> `none`: Inherited concurrency was removed; pass concurrency explicitly to each v4 combinator that supports it.
 
 - `FiberRef.currentContext` -> `Effect.context`: Fiber services are stored directly in Context; use Effect.context to read them and Effect.provideContext to override them.
 
@@ -9991,11 +10451,19 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRef.currentMinimumLogLevel` -> `References.MinimumLogLevel`: Built-in FiberRefs are now Context.Reference values; yield the reference or provide it with Effect.provideService.
 
+- `FiberRef.currentRequestBatchingEnabled` -> `none`: The request batching FiberRef was removed; batching is defined by the v4 RequestResolver runAll implementation.
+
 - `FiberRef.currentRequestCache` -> `RequestResolver.withCache`: The ambient request cache was removed; wrap a RequestResolver with an explicit bounded cache.
 
 - `FiberRef.currentRequestCacheEnabled` -> `RequestResolver.withCache`: There is no ambient cache toggle; choose an explicitly cached or uncached RequestResolver.
 
+- `FiberRef.currentRuntimeFlags` -> `none`: RuntimeFlags and their FiberRef were removed; use specific v4 runtime options such as interruptibility and scheduler settings.
+
 - `FiberRef.currentScheduler` -> `Scheduler.Scheduler`: The scheduler is now a Context.Reference; yield it or provide it with Effect.provideService.
+
+- `FiberRef.currentSchedulingPriority` -> `none`: The ambient scheduling-priority FiberRef was removed; use explicit scheduler operations where priority is needed.
+
+- `FiberRef.currentSupervisor` -> `none`: The Supervisor and ambient supervisor FiberRef APIs were removed; track fibers explicitly with FiberSet or FiberMap.
 
 - `FiberRef.currentTracerEnabled` -> `References.TracerEnabled`: Built-in FiberRefs are now Context.Reference values; yield the reference or provide it with Effect.provideService.
 
@@ -10013,9 +10481,13 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRef.getWith` -> `Effect.flatMap(reference, f)`: Yield or flatMap the Context.Reference directly.
 
+- `FiberRef.interruptedCause` -> `none`: The pending interruption cause is no longer exposed as public fiber-local state; inspect completed failure Causes from Fiber.await.
+
 - `FiberRef.make` -> `Context.Reference`: Define a stable Context.Reference key with defaultValue; custom fork and join behavior is not supported.
 
 - `FiberRef.makeContext` -> `Context.Reference`: Define a Context.Reference whose defaultValue returns the Context; custom context diffing is no longer required.
+
+- `FiberRef.makeRuntimeFlags` -> `none`: RuntimeFlags and specialized FiberRef constructors were removed; migrate each flag to its explicit v4 runtime option.
 
 - `FiberRef.makeWith` -> `Context.Reference`: Use the lazy defaultValue option on a stable Context.Reference key.
 
@@ -10037,23 +10509,35 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRef.unsafeMakePatch` -> `Context.Reference`: Define a normal Context.Reference; custom Differ, fork patches, and join behavior are not supported in v4.
 
+- `FiberRef.unsafeMakeSupervisor` -> `none`: Supervisor and FiberRef were removed; track managed fibers explicitly with FiberSet or FiberMap.
+
 - `FiberRef.update` -> `Ref.update`: Use Ref for mutable state; for fiber-local configuration compute a value and scope it with Effect.provideService.
 
 - `FiberRef.updateSome` -> `Ref.updateSome`: Use Ref for mutable state; for fiber-local configuration compute a value and scope it with Effect.provideService.
 
 - `FiberRef.updateSomeAndGet` -> `Ref.updateSomeAndGet`: Use Ref for mutable state; for fiber-local configuration compute a value and scope it with Effect.provideService.
 
+- `FiberRef.versionMismatchErrorLogLevel` -> `none`: The version-mismatch logging FiberRef was removed and no public v4 Context.Reference replaces it.
+
 ### `effect/FiberRefs`
 
 - `FiberRefs.FiberRefs` -> `Context.Context`: Fiber-local services and reference overrides are stored directly in the Fiber context in v4.
+
+- `FiberRefs.FiberRefsSym` -> `none`: FiberRefs and its marker symbol were removed.
 
 - `FiberRefs.delete` -> `Context.omit`: FiberRefs became fiber Context; omit a Reference key when constructing the replacement Context.
 
 - `FiberRefs.empty` -> `Context.empty`: Use an empty Context as the starting collection of services and reference overrides.
 
+- `FiberRefs.fiberRefs` -> `none`: Context does not expose public enumeration of its Reference keys; retain the keys explicitly if enumeration is required.
+
+- `FiberRefs.forkAs` -> `none`: Context is inherited automatically when a v4 child fiber is forked; custom per-reference fork patches were removed.
+
 - `FiberRefs.get` -> `Context.getOption`: Read an explicitly stored service from Context; Context.Reference defaults can be read with Context.getReferenceUnsafe.
 
 - `FiberRefs.getOrDefault` -> `Context.getReferenceUnsafe`: Reads an override or the Context.Reference default value.
+
+- `FiberRefs.joinAs` -> `none`: Child-to-parent FiberRef joining was removed; pass results explicitly or merge ordinary Context values where appropriate.
 
 - `FiberRefs.setAll` -> `Effect.provideContext`: Provide the replacement Context around the Effect that should observe its services and reference overrides.
 
@@ -10071,7 +10555,11 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRefsPatch.Empty` -> `Context.Context<never>`: The empty patch model was removed; an empty Context represents no overrides.
 
+- `FiberRefsPatch.FiberRefsPatch` -> `none`: The patch data type was removed with FiberRefs; construct or merge Context values directly.
+
 - `FiberRefsPatch.combine` -> `Context.merge`: FiberRefsPatch was removed; merge the resulting Context values instead of combining patches.
+
+- `FiberRefsPatch.diff` -> `none`: There is no generic Context diff because FiberRef fork and join patch semantics were removed.
 
 - `FiberRefsPatch.empty` -> `Context.empty`: Use an empty Context when no services or Reference overrides are applied.
 
@@ -10091,9 +10579,23 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberStatus.FiberStatus` -> `Exit.Exit | undefined`: Use fiber.pollUnsafe(); undefined means incomplete and Exit means completed, with no running/suspended distinction.
 
+- `FiberStatus.FiberStatusTypeId` -> `none`: FiberStatus and its type-id symbol were removed.
+
+- `FiberStatus.Running` -> `none`: The public runtime no longer models running status as a value.
+
+- `FiberStatus.Suspended` -> `none`: The public runtime no longer models suspended status as a value.
+
 - `FiberStatus.isDone` -> `fiber.pollUnsafe() !== undefined`: Completion is observable by synchronously polling the Fiber.
 
+- `FiberStatus.isFiberStatus` -> `none`: FiberStatus values no longer exist; inspect a Fiber with pollUnsafe instead.
+
 - `FiberStatus.isRunning` -> `fiber.pollUnsafe() === undefined`: V4 only exposes incomplete versus completed; it does not distinguish running from suspended.
+
+- `FiberStatus.isSuspended` -> `none`: The public runtime no longer exposes suspended status.
+
+- `FiberStatus.running` -> `none`: FiberStatus constructors were removed; keep the Fiber and poll it instead.
+
+- `FiberStatus.suspended` -> `none`: FiberStatus constructors and public suspended status were removed.
 
 ### `effect/Function`
 
@@ -10123,6 +10625,10 @@ FastCheck.uuid({ version: 4 })
 
 - `GroupBy.GroupBy` -> `Stream<readonly [K, Stream<V>]>`: The GroupBy datatype is removed in v4; Stream.groupBy/groupByKey now return an ordinary Stream of readonly [key, substream] pairs, processed with regular Stream operators.
 
+- `GroupBy.GroupBy.Variance` -> `none`: Variance plumbing for the removed GroupBy datatype; v4 has no GroupBy type, so there is no variance interface to migrate to.
+
+- `GroupBy.GroupByTypeId` -> `none`: Brand symbol for the removed GroupBy datatype; v4 groupBy results are plain Streams, discriminated with Stream.isStream if needed.
+
 #### `GroupBy.evaluate`
 
 **Replacement:** `Stream.flatMap`
@@ -10143,6 +10649,8 @@ stream.pipe(
 - `GroupBy.filter` -> `Stream.filter`: Filter the groups by key with an ordinary Stream.filter on the pairs: Stream.filter(([key]) =\> predicate(key)).
 
 - `GroupBy.first` -> `Stream.take`: Keep only the first n groups with an ordinary Stream.take(n) on the [key, stream] pair stream.
+
+- `GroupBy.make` -> `none`: No wrapper to construct in v4: a grouped stream is just any Stream\<readonly [K, Stream\<V\>]\>, so build the pair stream directly (Stream.groupBy/groupByKey produce it); the v3 shape Stream\<[K, Dequeue\<Take\<V, E\>\>]\> is gone along with the queue-of-Take encoding.
 
 ### `effect/Hash`
 
@@ -10273,6 +10781,10 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 ### `effect/KeyedPool`
 
 - `KeyedPool.KeyedPool` -> `RcMap.RcMap<K, Pool.Pool<A, E>>`: Model keyed pools as an RcMap whose scoped lookup creates one Pool per key.
+
+- `KeyedPool.KeyedPool.Variance` -> `none`: KeyedPool and its variance marker were removed; use the RcMap and Pool public models without depending on branding internals.
+
+- `KeyedPool.KeyedPoolTypeId` -> `none`: KeyedPool was removed, so its runtime type id has no v4 equivalent.
 
 - `KeyedPool.get` -> `RcMap.get + Pool.get`: KeyedPool was removed; acquire the per-key Pool from an RcMap, then borrow an item with Pool.get in the current Scope.
 
@@ -10437,6 +10949,10 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `List.List.OrNonEmpty` -> `Array.ReadonlyArray.OrNonEmpty`: Use the corresponding readonly-array utility type.
 
 - `List.List.With` -> `Array.ReadonlyArray.With`: Use the corresponding readonly-array utility type.
+
+- `List.Nil` -> `none`: Represent this case as readonly []; there is no tagged Nil interface in v4.
+
+- `List.TypeId` -> `none`: Arrays have no List runtime marker; remove TypeId inspection.
 
 - `List.append` -> `Array.append`: List was removed; use Array.append. It preserves ordering but returns arrays rather than persistent linked lists.
 
@@ -10800,9 +11316,13 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `MetricBoundaries.MetricBoundaries` -> `ReadonlyArray<number>`: The wrapper was removed; Metric.histogram accepts plain boundaries in its options.
 
+- `MetricBoundaries.MetricBoundariesTypeId` -> `none`: Boundaries are unbranded arrays, so the guard and public type-id symbol have no replacement.
+
 - `MetricBoundaries.exponential` -> `Metric.exponentialBoundaries`: Moved into effect/Metric and now returns ReadonlyArray\<number\>. V4 also filters non-positive boundaries.
 
 - `MetricBoundaries.fromIterable` -> `Metric.boundariesFromIterable`: Moved into effect/Metric and now returns an unbranded ReadonlyArray\<number\>; v4 removes non-positive values before appending Infinity.
+
+- `MetricBoundaries.isMetricBoundaries` -> `none`: Boundaries are unbranded arrays, so the guard and public type-id symbol have no replacement.
 
 - `MetricBoundaries.linear` -> `Metric.linearBoundaries`: Moved into effect/Metric, but the compared v4 implementation uses start + i + width rather than v3's start + i \* width. Preserve the v3 formula manually when width is not 1.
 
@@ -10814,6 +11334,10 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `MetricHook.MetricHook.Untyped` -> `Metric.Metric.Hooks<any, any>`: The named aliases were removed; specialize the public Hooks interface directly when low-level typing is unavoidable.
 
+- `MetricHook.MetricHook.Variance` -> `none`: Hooks are structural and unbranded; the variance helper and public symbol were removed.
+
+- `MetricHook.MetricHookTypeId` -> `none`: Hooks are structural and unbranded; the variance helper and public symbol were removed.
+
 - `MetricHook.counter` -> `Metric.counter`: Hook construction was folded into the complete Metric.counter constructor; hooks are internal.
 
 - `MetricHook.frequency` -> `Metric.frequency`: Hook construction was folded into the complete Metric.frequency constructor; hooks are internal.
@@ -10821,6 +11345,12 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `MetricHook.gauge` -> `Metric.gauge`: Hook construction was folded into the complete Metric.gauge constructor; hooks are internal.
 
 - `MetricHook.histogram` -> `Metric.histogram`: Hook construction was folded into the complete Metric.histogram constructor; hooks are internal.
+
+- `MetricHook.make` -> `none`: There is no public hook constructor; metric classes create and attach hooks internally.
+
+- `MetricHook.onModify` -> `none`: The operation-specific hook decorators were removed. Metric.mapInput cannot distinguish update from modify.
+
+- `MetricHook.onUpdate` -> `none`: The operation-specific hook decorators were removed. Metric.mapInput cannot distinguish update from modify.
 
 - `MetricHook.summary` -> `Metric.summary`: Hook construction was folded into the complete Metric.summary constructor; hooks are internal.
 
@@ -10831,6 +11361,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `MetricKey.MetricKey.Untyped` -> `Metric.Metric<any, any>`: The separate untyped key alias was removed; use an untyped complete Metric only where required.
 
 - `MetricKey.MetricKey.Variance` -> `Metric.Metric`: There is no separate key variance interface; variance is carried by Metric's Input and State phantom fields.
+
+- `MetricKey.MetricKeyTypeId` -> `none`: The key brand was removed; Metric's protocol key is internal.
 
 - `MetricKey.counter` -> `Metric.counter`: The key and key type were merged into the complete Metric.counter constructor.
 
@@ -10848,6 +11380,14 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 ### `effect/MetricKeyType`
 
+- `MetricKeyType.CounterKeyTypeTypeId` -> `none`: All public key-type symbols were removed; use a complete metric's string type discriminant.
+
+- `MetricKeyType.FrequencyKeyTypeTypeId` -> `none`: All public key-type symbols were removed; use a complete metric's string type discriminant.
+
+- `MetricKeyType.GaugeKeyTypeTypeId` -> `none`: All public key-type symbols were removed; use a complete metric's string type discriminant.
+
+- `MetricKeyType.HistogramKeyTypeTypeId` -> `none`: All public key-type symbols were removed; use a complete metric's string type discriminant.
+
 - `MetricKeyType.MetricKeyType` -> `Metric.Metric`: Input/state typing and kind configuration now live on the complete Metric\<Input, State\>.
 
 - `MetricKeyType.MetricKeyType.InType` -> `Metric.Metric.Input`: Use Metric.Metric.Input\<M\> to extract a metric's input type.
@@ -10855,6 +11395,12 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `MetricKeyType.MetricKeyType.OutType` -> `Metric.Metric.State`: Use Metric.Metric.State\<M\> to extract a metric's state type.
 
 - `MetricKeyType.MetricKeyType.Untyped` -> `Metric.Metric<any, any>`: The key-type descriptor no longer exists independently of a metric.
+
+- `MetricKeyType.MetricKeyType.Variance` -> `none`: The descriptor variance interface was removed; complete Metric carries Input and State variance.
+
+- `MetricKeyType.MetricKeyTypeTypeId` -> `none`: All public key-type symbols were removed; use a complete metric's string type discriminant.
+
+- `MetricKeyType.SummaryKeyTypeTypeId` -> `none`: All public key-type symbols were removed; use a complete metric's string type discriminant.
 
 - `MetricKeyType.counter` -> `Metric.counter`: The standalone descriptor was folded into the complete Metric.counter constructor.
 
@@ -10882,6 +11428,10 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `MetricLabel.MetricLabel` -> `[string, string]`: A label is now an ordinary attribute tuple; collections are Metric.Metric.Attributes or Metric.Metric.AttributeSet.
 
+- `MetricLabel.MetricLabelTypeId` -> `none`: Attributes are plain tuples or records, so there is no branded guard or type-id symbol.
+
+- `MetricLabel.isMetricLabel` -> `none`: Attributes are plain tuples or records, so there is no branded guard or type-id symbol.
+
 - `MetricLabel.make` -> `[key, value]`: Construct an ordinary tuple, or place the pair in an attribute record passed to Metric.withAttributes or a metric constructor.
 
 ### `effect/MetricPair`
@@ -10890,6 +11440,10 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `MetricPair.MetricPair.Untyped` -> `Metric.Metric.Snapshot`: Registry key/state pairs became discriminated snapshots containing id, type, description, attributes, and state.
 
+- `MetricPair.MetricPair.Variance` -> `none`: Snapshots are structural, so the pair variance helper and brand symbol were removed.
+
+- `MetricPair.MetricPairTypeId` -> `none`: Snapshots are structural, so the pair variance helper and brand symbol were removed.
+
 - `MetricPair.make` -> `Metric.snapshot`: There is no pair constructor. Obtain snapshots with Metric.snapshot or Metric.snapshotUnsafe; manually constructed data can satisfy Metric.Metric.SnapshotProto.
 
 - `MetricPair.unsafeMake` -> `Metric.snapshot`: There is no pair constructor. Obtain snapshots with Metric.snapshot or Metric.snapshotUnsafe; manually constructed data can satisfy Metric.Metric.SnapshotProto.
@@ -10897,6 +11451,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 ### `effect/MetricPolling`
 
 - `MetricPolling.MetricPolling` -> `local { metric, poll } record`: The module was removed. Keep a local record pairing a Metric with its polling Effect when this abstraction is still useful.
+
+- `MetricPolling.MetricPollingTypeId` -> `none`: The polling wrapper and its brand were removed.
 
 - `MetricPolling.collectAll` -> `Effect.forEach + Metric.update/value`: No combined metric replacement exists. Poll records, update each metric, and collect states explicitly.
 
@@ -10914,13 +11470,29 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `MetricRegistry.MetricRegistry` -> `Metric.MetricRegistry`: The method-bearing registry became a Context.Reference whose service is a Map. Metrics register metadata and hooks lazily.
 
+- `MetricRegistry.MetricRegistryTypeId` -> `none`: The registry service is an ordinary Map behind a Context.Reference and has no public brand.
+
 - `MetricRegistry.make` -> `new Map<string, Metric.Metric.Metadata<any, any>>()`: Provide a fresh Map to Metric.MetricRegistry for isolation. Read it through Metric.snapshot or snapshotUnsafe.
 
 ### `effect/MetricState`
 
+- `MetricState.CounterStateTypeId` -> `none`: All state brand symbols were removed; v4 state interfaces are structural.
+
+- `MetricState.FrequencyStateTypeId` -> `none`: All state brand symbols were removed; v4 state interfaces are structural.
+
+- `MetricState.GaugeStateTypeId` -> `none`: All state brand symbols were removed; v4 state interfaces are structural.
+
+- `MetricState.HistogramStateTypeId` -> `none`: All state brand symbols were removed; v4 state interfaces are structural.
+
 - `MetricState.MetricState` -> `Metric.Metric.State`: The common branded state model was removed; extract a complete metric's state with Metric.Metric.State\<M\> or use a concrete state interface.
 
 - `MetricState.MetricState.Untyped` -> `Metric.Metric.Snapshot['state']`: Use the state union from Metric.Metric.Snapshot, or explicitly union the five structural state interfaces.
+
+- `MetricState.MetricState.Variance` -> `none`: States are structural objects and no longer carry a variance brand.
+
+- `MetricState.MetricStateTypeId` -> `none`: All state brand symbols were removed; v4 state interfaces are structural.
+
+- `MetricState.SummaryStateTypeId` -> `none`: All state brand symbols were removed; v4 state interfaces are structural.
 
 - `MetricState.counter` -> `Metric.CounterState`: There is no state constructor. Obtain the structural state with Metric.value(Metric.counter(...)).
 
@@ -10929,6 +11501,18 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `MetricState.gauge` -> `Metric.GaugeState`: There is no state constructor. Obtain the structural state with Metric.value(Metric.gauge(...)).
 
 - `MetricState.histogram` -> `Metric.HistogramState`: There is no state constructor. Obtain the structural state with Metric.value(Metric.histogram(...)).
+
+- `MetricState.isCounterState` -> `none`: Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination.
+
+- `MetricState.isFrequencyState` -> `none`: Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination.
+
+- `MetricState.isGaugeState` -> `none`: Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination.
+
+- `MetricState.isHistogramState` -> `none`: Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination.
+
+- `MetricState.isMetricState` -> `none`: Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination.
+
+- `MetricState.isSummaryState` -> `none`: Standalone state guards were removed. Retain the enclosing snapshot and switch on snapshot.type for runtime discrimination.
 
 - `MetricState.summary` -> `Metric.SummaryState`: There is no state constructor. Obtain the structural state with Metric.value(Metric.summary(...)).
 
@@ -10939,6 +11523,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `Micro.All.MicroAny` -> `Effect.All.EffectAny`: Renamed: MicroAny becomes EffectAny in the Effect.All namespace.
 
 - `Micro.All.Return` -> `Effect.All.Return`: Type-level helper moved to the Effect.All namespace.
+
+- `Micro.CurrentConcurrency` -> `none`: Removed in v4 (no fiber-wide concurrency reference). Pass a { concurrency } option directly to the operations that fan out, e.g. Effect.all or Effect.forEach.
 
 - `Micro.CurrentScheduler` -> `References.Scheduler`: The scheduler reference lives in effect/References (also exported from effect/Scheduler as Scheduler.Scheduler). Override it with Effect.provideService/Effect.updateService.
 
@@ -10978,7 +11564,13 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Micro.MicroExit.Success` -> `Exit.Success`: MicroExit.Success becomes Exit.Success\<A, E\> from effect/Exit.
 
+- `Micro.MicroExitTypeId` -> `none`: v4 Exit is a subtype of Effect and has no dedicated TypeId; use Exit.isExit to identify exits.
+
 - `Micro.MicroFiber` -> `Fiber.Fiber`: MicroFiber\<A, E\> becomes Fiber.Fiber\<A, E\> from effect/Fiber.
+
+- `Micro.MicroFiber.Variance` -> `none`: Type-level variance helper with no public v4 equivalent; the v4 Fiber.Fiber interface carries variance directly.
+
+- `Micro.MicroFiberTypeId` -> `none`: No public TypeId on v4 fibers; use Fiber.isFiber to identify fibers.
 
 - `Micro.MicroIterator` -> `Effect.EffectIterator`: Renamed: MicroIterator becomes Effect.EffectIterator (generator support for Effect.gen).
 
@@ -10990,9 +11582,13 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Micro.MicroScope` -> `Scope.Scope`: MicroScope becomes Scope.Scope from effect/Scope; the closeable variant is Scope.Closeable.
 
+- `Micro.MicroScopeTypeId` -> `none`: No public TypeId on v4 scopes; use the Scope.Scope service key to access the current scope.
+
 - `Micro.MicroTypeLambda` -> `Effect.EffectTypeLambda`: Renamed: MicroTypeLambda becomes Effect.EffectTypeLambda.
 
 - `Micro.MicroUnify` -> `Effect.EffectUnify`: Renamed: MicroUnify becomes Effect.EffectUnify.
+
+- `Micro.MicroUnifyIgnore` -> `none`: Removed; v4 Effect declares its unify-ignore slot inline and exposes no named UnifyIgnore interface.
 
 - `Micro.NoSuchElementException` -> `Cause.NoSuchElementError`: Renamed and moved: NoSuchElementException becomes Cause.NoSuchElementError from effect/Cause.
 
@@ -11308,9 +11904,23 @@ Schedule.upTo(schedule, { duration: "30 seconds" })
 
 - `Micro.whileLoop` -> `Effect.whileLoop`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
+#### `Micro.withConcurrency`
+
+**Replacement:** `none`
+
+Removed in v4 along with "inherit" concurrency; pass a { concurrency } option directly to each concurrent operation.
+
+**Example**
+
+```ts
+Effect.forEach(items, handle, { concurrency: 10 })
+```
+
 - `Micro.withMicroFiber` -> `Effect.withFiber`: Renamed: withMicroFiber becomes Effect.withFiber, giving access to the current fiber.
 
 - `Micro.withTrace` -> `Effect.withSpan`: Removed; v4 captures failure stack traces automatically and cause annotations replace the traces array. For named tracing regions use Effect.withSpan.
+
+- `Micro.yieldFlush` -> `none`: Removed; access the current scheduler via the References.Scheduler service and call its flush() method directly if deterministic draining is needed.
 
 - `Micro.yieldNow` -> `Effect.yieldNow`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
@@ -11354,9 +11964,17 @@ Schedule.upTo(schedule, { duration: "30 seconds" })
 
 ### `effect/MutableQueue`
 
+- `MutableQueue.EmptyMutableQueue` -> `none`: Queue.poll reports emptiness with Option.none, so no default sentinel is required.
+
 - `MutableQueue.MutableQueue` -> `Queue.Queue`: The replacement Queue is effectful, lifecycle-aware, and not Iterable.
 
+- `MutableQueue.MutableQueue.Empty` -> `none`: Use the Option returned by Queue.poll; the old empty sentinel was removed.
+
+- `MutableQueue.TypeId` -> `none`: The MutableQueue module and its public marker were removed.
+
 - `MutableQueue.bounded` -> `Queue.dropping`: The replacement constructor is effectful; dropping preserves the old immediate rejection when a bounded queue is full.
+
+- `MutableQueue.capacity` -> `none`: Read queue.capacity on the replacement Queue; unbounded queues expose Infinity.
 
 - `MutableQueue.isEmpty` -> `Queue.sizeUnsafe`: Use Queue.sizeUnsafe(queue) === 0, or map the effectful Queue.size result.
 
@@ -11498,6 +12116,8 @@ SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
 
 - `ParseResult.Missing` -> `SchemaIssue.MissingKey`: Missing-key failures use the v4 SchemaIssue class.
 
+- `ParseResult.ParseErrorTypeId` -> `none`: The public symbol was removed; use Schema.isSchemaError for runtime narrowing.
+
 - `ParseResult.ParseIssue` -> `SchemaIssue.Issue`: The structured parse issue union moved to SchemaIssue.
 
 - `ParseResult.ParseResultFormatter` -> `SchemaIssue.Formatter`: Issue formatter types moved to SchemaIssue.
@@ -11533,6 +12153,8 @@ SchemaIssue.defaultFormatter(issue)
 - `ParseResult.decodeUnknownPromise` -> `Schema.decodeUnknownPromise`: Parsing helpers moved onto Schema and now reject with SchemaError.
 
 - `ParseResult.decodeUnknownSync` -> `Schema.decodeUnknownSync`: Parsing helpers moved onto Schema and now throw SchemaError.
+
+- `ParseResult.eitherOrUndefined` -> `none`: This ParseResult internal optimization was removed; use Effect, Exit, Option, or Result combinators directly.
 
 - `ParseResult.encodeEither` -> `Schema.encodeExit`: Either encoding was replaced by Exit encoding.
 
@@ -11874,7 +12496,13 @@ Schema.toFormatter(schema)
 
 ### `effect/RedBlackTree`
 
+- `RedBlackTree.Direction` -> `none`: The tree direction type was removed; use normal array order or Array.reverse.
+
 - `RedBlackTree.RedBlackTree` -> `ReadonlyArray<readonly [K, V]>`: The core tree was removed; use sorted immutable entries for small collections or an external persistent ordered multimap when complexity or duplicate-key semantics matter.
+
+- `RedBlackTree.RedBlackTree.Direction` -> `none`: The nested direction type was removed; use normal array order or Array.reverse.
+
+- `RedBlackTree.TypeId` -> `none`: The RedBlackTree module and brand symbol were removed.
 
 - `RedBlackTree.at` -> `Array.drop`: Represent the removed tree as sorted entries; for a non-negative index, Array.drop(entries, index) traverses forward from that absolute position.
 
@@ -11893,6 +12521,8 @@ Schema.toFormatter(schema)
 - `RedBlackTree.fromIterable` -> `Array.sortWith`: Sort the entry iterable by key and retain the Order separately; this does not preserve logarithmic tree operations.
 
 - `RedBlackTree.getAt` -> `Array.get`: Array.get on sorted entries preserves the optional index lookup behavior.
+
+- `RedBlackTree.getOrder` -> `none`: No replacement collection stores an Order; retain and pass the Order explicitly.
 
 - `RedBlackTree.greaterThan` -> `Array.filter`: Filter sorted entries with the retained Order for key \> bound.
 
@@ -11986,6 +12616,10 @@ Schema.toFormatter(schema)
 
 - `Reloadable.Reloadable` -> `LayerRef.LayerRef<I, E>`: LayerRef is the v4 refreshable layer-context abstraction.
 
+- `Reloadable.Reloadable.Variance` -> `none`: The exported variance artifact was removed and LayerRef has no public counterpart.
+
+- `Reloadable.ReloadableTypeId` -> `none`: Reloadable was removed and LayerRef's marker is private.
+
 - `Reloadable.auto` -> `LayerRef.Service(..., { layer, invalidationSchedule: schedule, preload: true }).layer`: Use LayerRef for scheduled refresh; add idleTimeToLive: Duration.infinity to preserve an always-resident instance.
 
 - `Reloadable.autoFromConfig` -> `Layer.unwrap with Effect.contextWith and LayerRef.make`: Compute the schedule from the current context, then construct a preloaded LayerRef; no config-specific constructor remains.
@@ -12024,11 +12658,21 @@ Schema.toFormatter(schema)
 
 ### `effect/RequestBlock`
 
+- `RequestBlock.Empty` -> `none`: The public blocked-request graph was removed; application code should compose Effect.request computations instead of inspecting Empty nodes.
+
+- `RequestBlock.Par` -> `none`: The public blocked-request graph was removed; express parallel request execution with Effect concurrency combinators.
+
+- `RequestBlock.RequestBlock` -> `none`: RequestBlock is no longer public in v4; compose Effect.request values directly and let the runtime batch requests by resolver.
+
+- `RequestBlock.Seq` -> `none`: The public blocked-request graph was removed; express sequencing in the Effect program instead of constructing Seq nodes.
+
 - `RequestBlock.empty` -> `Effect.void`: RequestBlock was removed; represent an empty computation as Effect.void and let Effect.request perform batching.
 
 - `RequestBlock.mapRequestResolvers` -> `Effect.request`: Pass the selected resolver to each Effect.request call; the runtime request graph can no longer be traversed to rewrite resolvers.
 
 - `RequestBlock.parallel` -> `Effect.all`: Compose request effects with Effect.all and explicit concurrency; v4 batching is performed by resolver and batch key rather than RequestBlock nodes.
+
+- `RequestBlock.reduce` -> `none`: The public blocked-request graph and reducer were removed; structure analysis is now internal to the request runtime.
 
 - `RequestBlock.sequential` -> `Effect.andThen`: Sequence request effects with Effect.andThen, flatMap, or generator syntax; RequestBlock sequencing nodes were removed.
 
@@ -12134,27 +12778,83 @@ Schema.toFormatter(schema)
 
 - `RuntimeFlags.Interruption` -> `Effect.interruptible | Effect.uninterruptible`: The bit flag was removed; control interruptibility with Effect regions.
 
+- `RuntimeFlags.None` -> `none`: The empty runtime-flags value and its type were removed.
+
+- `RuntimeFlags.OpSupervision` -> `none`: Operation supervision and its runtime flag were removed.
+
+- `RuntimeFlags.RuntimeFlag` -> `none`: Individual bit flags were removed; use the corresponding semantic API.
+
+- `RuntimeFlags.RuntimeFlags` -> `none`: The aggregate runtime-flags bitset was removed.
+
 - `RuntimeFlags.RuntimeMetrics` -> `Metric.FiberRuntimeMetrics`: Runtime metrics are now configured through a Context.Reference service rather than a bit flag.
 
+- `RuntimeFlags.WindDown` -> `none`: The wind-down flag is no longer public.
+
 - `RuntimeFlags.cooperativeYielding` -> `!References.PreventSchedulerYield`: Read the scheduler Reference and negate it; the aggregate flags value was removed.
+
+- `RuntimeFlags.diff` -> `none`: The runtime-flags bitset was removed; configure each semantic behavior directly.
+
+- `RuntimeFlags.differ` -> `none`: The runtime-flags bitset and patch differ were removed.
+
+- `RuntimeFlags.disable` -> `none`: The generic flag operation was removed; disable the corresponding behavior directly.
+
+- `RuntimeFlags.disableAll` -> `none`: The aggregate flags value was removed; configure scheduler yielding, interruptibility, and metrics independently.
 
 - `RuntimeFlags.disableCooperativeYielding` -> `Effect.provideService(References.PreventSchedulerYield, true)`: Prevent scheduler yielding through its Context.Reference.
 
 - `RuntimeFlags.disableInterruption` -> `Effect.uninterruptible`: Use an uninterruptible region instead of changing a runtime flag.
 
+- `RuntimeFlags.disableOpSupervision` -> `none`: Operation supervision and its runtime flag were removed.
+
 - `RuntimeFlags.disableRuntimeMetrics` -> `Metric.disableRuntimeMetrics`: Disable fiber runtime metrics directly; use disableRuntimeMetricsLayer when providing a Layer.
+
+- `RuntimeFlags.disableWindDown` -> `none`: The wind-down flag is runtime-internal in v4; use normal scoped finalizers and explicit interruptibility regions.
+
+- `RuntimeFlags.enable` -> `none`: The generic flag operation was removed; enable the corresponding behavior directly.
+
+- `RuntimeFlags.enableAll` -> `none`: The aggregate flags value was removed; configure scheduler yielding, interruptibility, and metrics independently.
 
 - `RuntimeFlags.enableCooperativeYielding` -> `Effect.provideService(References.PreventSchedulerYield, false)`: Allow scheduler yielding through its Context.Reference.
 
 - `RuntimeFlags.enableInterruption` -> `Effect.interruptible`: Use an interruptible region instead of changing a runtime flag.
 
+- `RuntimeFlags.enableOpSupervision` -> `none`: Operation supervision and its runtime flag were removed.
+
 - `RuntimeFlags.enableRuntimeMetrics` -> `Metric.enableRuntimeMetrics`: Enable fiber runtime metrics directly; use enableRuntimeMetricsLayer when providing a Layer.
+
+- `RuntimeFlags.enableWindDown` -> `none`: The wind-down flag is runtime-internal in v4; use normal scoped finalizers and explicit interruptibility regions.
+
+- `RuntimeFlags.interruptible` -> `none`: There is no public current-interruptibility getter; structure the program with Effect.interruptible or Effect.uninterruptible.
+
+- `RuntimeFlags.interruption` -> `none`: Interruptibility is controlled by Effect regions rather than queried from a flags value.
+
+- `RuntimeFlags.isDisabled` -> `none`: There is no aggregate flags value to query; inspect or control the corresponding semantic facility.
+
+- `RuntimeFlags.make` -> `none`: The runtime-flags bitset was removed; do not recreate it in v4.
+
+- `RuntimeFlags.none` -> `none`: The runtime-flags bitset was removed; configure each semantic behavior independently.
+
+- `RuntimeFlags.opSupervision` -> `none`: Operation supervision and its runtime flag were removed.
+
+- `RuntimeFlags.patch` -> `none`: Aggregate runtime-flags patches were removed; configure each semantic behavior directly.
+
+- `RuntimeFlags.render` -> `none`: The runtime-flags bitset and its renderer were removed.
 
 - `RuntimeFlags.runtimeMetrics` -> `Metric.FiberRuntimeMetrics`: Read the Context.Reference and test for undefined instead of querying a bit flag.
 
+- `RuntimeFlags.toSet` -> `none`: The runtime-flags bitset was removed; there is no set conversion.
+
+- `RuntimeFlags.windDown` -> `none`: The wind-down flag is no longer public.
+
 ### `effect/STM`
 
+- `STM.Adapter` -> `none`: The STM.gen adapter was removed; Effect.gen accepts yielded Effects directly.
+
 - `STM.All.IsDiscard` -> `Effect.All.IsDiscard`: The helper moved to Effect.All because STM.all is now Effect.all.
+
+- `STM.All.Narrow` -> `none`: Effect.all uses a const generic directly, so the separate tuple-narrowing helper was removed.
+
+- `STM.All.Options` -> `none`: Effect.all inlines its options type; use its concurrency, discard, and mode options directly.
 
 - `STM.All.STMAny` -> `Effect.All.EffectAny`: STM inputs are ordinary Effects in v4, so use the Effect.All helper.
 
@@ -12171,6 +12871,8 @@ Schema.toFormatter(schema)
 - `STM.STMTypeLambda` -> `Effect.EffectTypeLambda`: Use the Effect type lambda; transactional requirements are represented by Effect.Transaction.
 
 - `STM.STMUnify` -> `Effect.EffectUnify`: STM unification moved to ordinary Effect unification.
+
+- `STM.STMUnifyIgnore` -> `none`: The STM-specific unification ignore marker was removed; rely on Effect inference.
 
 - `STM.acquireUseRelease` -> `Effect.acquireUseRelease + Effect.tx`: Wrap acquire, use, and release in separate Effect.tx calls to preserve the v3 separately committed phases; v4 release also receives the use Exit.
 
@@ -12298,11 +13000,17 @@ Schema.toFormatter(schema)
 
 - `STM.orDieWith` -> `Effect.mapError + Effect.orDie`: Map the typed error to the desired defect and then use Effect.orDie.
 
+- `STM.orElse` -> `none`: V4 has no exact retry-aware transactional alternative with journal savepoint restoration. Effect.catch is only a failure-only approximation.
+
+- `STM.orElseEither` -> `none`: V4 has no exact retry-aware alternative. For typed failures only, compose Effect.catch and Result tagging manually.
+
 - `STM.orElseFail` -> `Effect.mapError`: Map typed failures to the replacement error; this does not preserve v3 retry fallback semantics.
 
 - `STM.orElseOptional` -> `Effect.catch + Option.match`: Run the fallback for None and re-fail Some errors explicitly.
 
 - `STM.orElseSucceed` -> `Effect.orElseSucceed`: The name remains for typed failures, but v4 does not preserve v3 retry fallback or journal savepoints.
+
+- `STM.orTry` -> `none`: V4 exposes no recoverable retry signal or public transactional savepoint; restructure branch selection before Effect.txRetry.
 
 - `STM.partition` -> `Effect.partition`: The combinator keeps its name, but STM values are now ordinary Effects. Run the complete transaction with Effect.tx. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
@@ -12558,9 +13266,13 @@ Schema.toFormatter(schema)
 
 - `ScheduleDecision.Done` -> `Cause.Done`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output).
 
+- `ScheduleDecision.ScheduleDecision` -> `none`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output).
+
 - `ScheduleDecision.continue` -> `Effect.succeed([output, duration])`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output).
 
 - `ScheduleDecision.continueWith` -> `Effect.succeed([output, duration])`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output).
+
+- `ScheduleDecision.isContinue` -> `none`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output). Branch on the Pull result instead of inspecting a decision value.
 
 - `ScheduleDecision.isDone` -> `Cause.isDone`: ScheduleDecision was removed from the v4 public model. A Schedule.fromStep step recurs by returning [output, Duration] and terminates with Cause.done(output).
 
@@ -13842,6 +14554,8 @@ Schema.toFormatter(schema)
 
 - `Secret.Secret` -> `Redacted.Redacted<string>`: Secret was deprecated in v3 and removed in v4; use the generic Redacted wrapper.
 
+- `Secret.Secret.Proto` -> `none`: The Secret-specific prototype was removed with the module; use Redacted.Redacted\<string\>.
+
 - `Secret.SecretTypeId` -> `Redacted.isRedacted`: The Secret marker was removed; use the Redacted runtime guard.
 
 - `Secret.fromIterable` -> `Redacted.make(Array.from(iterable).join(""))`: Secret was removed; join the character iterable and wrap the resulting string in Redacted.
@@ -14004,6 +14718,8 @@ Schema.toFormatter(schema)
 
 - `SortedMap.SortedMap` -> `HashMap.HashMap`: Use HashMap as the immutable core model and retain Order externally; ordered iteration and range seeks require sorting on observation.
 
+- `SortedMap.TypeId` -> `none`: The SortedMap brand was removed and HashMap.TypeId is private; use HashMap.isHashMap when a guard is needed.
+
 - `SortedMap.empty` -> `HashMap.empty`: SortedMap was removed; use an immutable HashMap and retain the key Order separately.
 
 - `SortedMap.entries` -> `HashMap.entries + Array.sortWith`: Materialize HashMap.entries and sort by key with the retained Order when ordered traversal is required.
@@ -14011,6 +14727,8 @@ Schema.toFormatter(schema)
 - `SortedMap.fromIterable` -> `HashMap.fromIterable`: Use HashMap.fromIterable and retain the key Order separately; duplicate keys collapse.
 
 - `SortedMap.get` -> `HashMap.get`: Direct optional lookup on the replacement immutable map.
+
+- `SortedMap.getOrder` -> `none`: HashMap does not store an Order; retain and pass the key Order explicitly.
 
 - `SortedMap.headOption` -> `HashMap.entries + Array.sortWith + Array.head`: Sort entries by key with the retained Order, then take the optional first entry.
 
@@ -14041,6 +14759,8 @@ Schema.toFormatter(schema)
 ### `effect/SortedSet`
 
 - `SortedSet.SortedSet` -> `HashSet.HashSet`: Use HashSet as the immutable core model and retain Order externally; ordered iteration requires sorting on observation.
+
+- `SortedSet.TypeId` -> `none`: The SortedSet brand was removed and HashSet.TypeId is private; use HashSet.isHashSet when a guard is needed.
 
 - `SortedSet.add` -> `HashSet.add`: Direct persistent add on the replacement set; sort only when traversing.
 
@@ -14442,6 +15162,8 @@ Stream.callback<number, Err>((queue) =>
 
 - `StreamHaltStrategy.Right` -> `"right"`: The tagged constructor is replaced by the plain string literal "right" passed directly to haltStrategy options.
 
+- `StreamHaltStrategy.fromInput` -> `none`: Remove the call; there is no conversion step in v4 because strategies already are the string literals, so pass the value through unchanged.
+
 - `StreamHaltStrategy.isBoth` -> `strategy === "both"`: Refinements on the tagged union become plain string comparison against the literal.
 
 - `StreamHaltStrategy.isEither` -> `strategy === "either"`: Refinements on the tagged union become plain string comparison against the literal.
@@ -14481,6 +15203,10 @@ switch (strategy) {
 
 - `Subscribable.Subscribable` -> `custom { readonly get: Effect.Effect<A, E, R>; readonly changes: Stream.Stream<A, E, R> }`: No renamed generic model exists; prefer concrete SubscriptionRef APIs or own this unbranded structural type locally.
 
+- `Subscribable.TypeId` -> `none`: The Subscribable brand has no public replacement; use a concrete model guard or an application structural guard.
+
+- `Subscribable.isSubscribable` -> `none`: The common brand was removed; use a concrete guard such as SubscriptionRef.isSubscriptionRef or an application structural guard.
+
 - `Subscribable.make` -> `object literal { get, changes }`: No generic constructor remains; retain a local structural pair only when both the current read and change stream are needed.
 
 - `Subscribable.map` -> `Effect.map + Stream.map`: For a retained get and changes pair, map the Effect and Stream separately.
@@ -14503,7 +15229,21 @@ switch (strategy) {
 
 ### `effect/Supervisor`
 
+- `Supervisor.AbstractSupervisor` -> `none`: The ambient Supervisor abstraction and runtime event hooks were removed.
+
+- `Supervisor.Supervisor` -> `none`: Ambient fiber supervision was removed; use structured concurrency or explicit FiberSet and FiberMap tracking.
+
+- `Supervisor.Supervisor.Variance` -> `none`: The Supervisor abstraction and its variance marker were removed.
+
+- `Supervisor.SupervisorTypeId` -> `none`: The Supervisor abstraction and its type identifier were removed.
+
+- `Supervisor.addSupervisor` -> `none`: Layer-installed ambient supervision was removed; use structured concurrency and explicit FiberSet or FiberMap tracking.
+
 - `Supervisor.fibersIn` -> `FiberSet`: Use a scoped FiberSet and explicitly run or add fibers; it does not ambiently observe every descendant.
+
+- `Supervisor.fromEffect` -> `none`: The Supervisor abstraction and its effect-valued observation hook were removed.
+
+- `Supervisor.none` -> `none`: The Supervisor abstraction was removed; normal structured concurrency needs no no-op supervisor.
 
 - `Supervisor.unsafeTrack` -> `FiberSet`: Use scoped FiberSet.make and explicitly run or add fibers; there is no unsafe unscoped ambient tracker.
 
@@ -14528,6 +15268,8 @@ switch (strategy) {
 ### `effect/TArray`
 
 - `TArray.TArray` -> `TxChunk.TxChunk`: TArray has no direct v4 counterpart; TxChunk is the closest rewrite target but uses whole-Chunk operations.
+
+- `TArray.TArray.Variance` -> `none`: TArray was removed and TxChunk exposes no public variance marker.
 
 - `TArray.TArrayTypeId` -> `TxChunk.isTxChunk`: TArray and its public type id were removed; use the TxChunk runtime guard after rewriting the data structure.
 
@@ -14607,6 +15349,8 @@ switch (strategy) {
 
 - `TDeferred.TDeferred` -> `TxDeferred.TxDeferred`: Rename the type and import from "effect/TxDeferred". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TDeferred.TDeferred.Variance` -> `none`: TxDeferred exposes no public variance marker.
+
 - `TDeferred.TDeferredTypeId` -> `TxDeferred.isTxDeferred`: The type id is internal in v4; use the public runtime guard.
 
 - `TDeferred.await` -> `TxDeferred.await`: Import TxDeferred from "effect/TxDeferred"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
@@ -14616,6 +15360,8 @@ switch (strategy) {
 ### `effect/TMap`
 
 - `TMap.TMap` -> `TxHashMap.TxHashMap`: Rename the type and import from "effect/TxHashMap". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TMap.TMap.Variance` -> `none`: TxHashMap exposes no public variance marker.
 
 - `TMap.TMapTypeId` -> `TxHashMap.isTxHashMap`: The type id is internal in v4; use the public runtime guard.
 
@@ -14651,6 +15397,14 @@ switch (strategy) {
 
 - `TMap.size` -> `TxHashMap.size`: Import TxHashMap from "effect/TxHashMap"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TMap.takeFirst` -> `none`: No atomic take-and-match helper exists in TxHashMap; implement explicit selection and removal inside Effect.tx.
+
+- `TMap.takeFirstSTM` -> `none`: No effectful atomic take-and-match helper exists; implement explicit traversal and removal inside Effect.tx.
+
+- `TMap.takeSome` -> `none`: No atomic multi-take helper exists in TxHashMap; implement explicit selection and removals inside Effect.tx.
+
+- `TMap.takeSomeSTM` -> `none`: No effectful atomic multi-take helper exists; implement explicit traversal and removals inside Effect.tx.
+
 - `TMap.toArray` -> `TxHashMap.entries`: Use the entry snapshot; it replaces the old array conversion.
 
 - `TMap.toChunk` -> `Effect.map(TxHashMap.entries(self), Chunk.fromIterable)`: Convert the entry snapshot to Chunk explicitly.
@@ -14674,6 +15428,8 @@ switch (strategy) {
 ### `effect/TPriorityQueue`
 
 - `TPriorityQueue.TPriorityQueue` -> `TxPriorityQueue.TxPriorityQueue`: Rename the type and import from "effect/TxPriorityQueue". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TPriorityQueue.TPriorityQueue.Variance` -> `none`: TxPriorityQueue exposes no public variance marker.
 
 - `TPriorityQueue.TPriorityQueueTypeId` -> `TxPriorityQueue.isTxPriorityQueue`: The type id is internal in v4; use the public runtime guard.
 
@@ -14761,6 +15517,8 @@ switch (strategy) {
 
 - `TQueue.poll` -> `TxQueue.poll`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TQueue.seek` -> `none`: TxQueue has no seek helper; repeat TxQueue.take under Effect.tx until the predicate matches.
+
 - `TQueue.shutdown` -> `TxQueue.shutdown`: The operation remains, but now returns whether shutdown changed the queue state.
 
 - `TQueue.size` -> `TxQueue.size`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
@@ -14776,6 +15534,10 @@ switch (strategy) {
 - `TQueue.unbounded` -> `TxQueue.unbounded`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 ### `effect/TRandom`
+
+- `TRandom.TRandom` -> `none`: The transactional random service was deliberately removed; use Random outside retried transactions where possible.
+
+- `TRandom.TRandomTypeId` -> `none`: TRandom and its public type id were removed; v4 has no TxRandom module.
 
 - `TRandom.Tag` -> `Random.Random`: Use the v4 Random Context.Reference; the transactional random service was removed.
 
@@ -14795,7 +15557,13 @@ switch (strategy) {
 
 - `TReentrantLock.TReentrantLock` -> `TxReentrantLock.TxReentrantLock`: Rename the type and import from "effect/TxReentrantLock". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TReentrantLock.TReentrantLock.Proto` -> `none`: The public prototype interface was removed.
+
 - `TReentrantLock.TReentrantLockTypeId` -> `TxReentrantLock.isTxReentrantLock`: The type id is internal in v4; use the public runtime guard.
+
+- `TReentrantLock.fiberReadLocks` -> `none`: Per-fiber read-lock counts were removed; TxReentrantLock.readLocks reports only the total count.
+
+- `TReentrantLock.fiberWriteLocks` -> `none`: Per-fiber write-lock counts were removed; TxReentrantLock.writeLocks reports only the total count.
 
 - `TReentrantLock.lock` -> `TxReentrantLock.writeLock`: The generic lock helper was renamed to make write-lock acquisition explicit.
 
@@ -14804,6 +15572,8 @@ switch (strategy) {
 ### `effect/TRef`
 
 - `TRef.TRef` -> `TxRef.TxRef`: Rename the type and import from "effect/TxRef". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TRef.TRef.Variance` -> `none`: TxRef exposes no public variance marker.
 
 - `TRef.TRefTypeId` -> `TxRef.isTxRef`: The type id is internal in v4; use the public runtime guard.
 
@@ -14825,6 +15595,8 @@ switch (strategy) {
 
 - `TSemaphore.TSemaphore` -> `TxSemaphore.TxSemaphore`: Rename the type and import from "effect/TxSemaphore". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TSemaphore.TSemaphore.Proto` -> `none`: The public prototype interface was removed.
+
 - `TSemaphore.TSemaphoreTypeId` -> `TxSemaphore.isTxSemaphore`: The type id is internal in v4; use the public runtime guard.
 
 - `TSemaphore.available` -> `TxSemaphore.available`: Import TxSemaphore from "effect/TxSemaphore"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
@@ -14832,6 +15604,8 @@ switch (strategy) {
 - `TSemaphore.make` -> `TxSemaphore.make`: Import TxSemaphore from "effect/TxSemaphore"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 - `TSemaphore.release` -> `TxSemaphore.release`: Import TxSemaphore from "effect/TxSemaphore"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TSemaphore.unsafeMake` -> `none`: The unsafe constructor was removed; use TxSemaphore.make.
 
 - `TSemaphore.withPermit` -> `TxSemaphore.withPermit`: The helper remains, but data-first calls now pass the semaphore before the Effect.
 
@@ -14842,6 +15616,8 @@ switch (strategy) {
 ### `effect/TSet`
 
 - `TSet.TSet` -> `TxHashSet.TxHashSet`: Rename the type and import from "effect/TxHashSet". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TSet.TSet.Variance` -> `none`: TxHashSet exposes no public variance marker.
 
 - `TSet.TSetTypeId` -> `TxHashSet.isTxHashSet`: The type id is internal in v4; use the public runtime guard.
 
@@ -14869,6 +15645,14 @@ switch (strategy) {
 
 - `TSet.size` -> `TxHashSet.size`: Import TxHashSet from "effect/TxHashSet"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TSet.takeFirst` -> `none`: No atomic take-and-match helper exists in TxHashSet; select and remove explicitly inside Effect.tx.
+
+- `TSet.takeFirstSTM` -> `none`: No effectful atomic take-and-match helper exists; traverse and remove explicitly inside Effect.tx.
+
+- `TSet.takeSome` -> `none`: No atomic multi-take helper exists in TxHashSet; select and remove explicitly inside Effect.tx.
+
+- `TSet.takeSomeSTM` -> `none`: No effectful atomic multi-take helper exists; traverse and remove explicitly inside Effect.tx.
+
 - `TSet.toArray` -> `Effect.map(TxHashSet.toHashSet(self), Array.from)`: Convert the immutable HashSet snapshot to an Array explicitly.
 
 - `TSet.toChunk` -> `Effect.map(TxHashSet.toHashSet(self), (set) => Chunk.fromIterable(set))`: Convert the immutable HashSet snapshot to Chunk explicitly.
@@ -14885,7 +15669,11 @@ switch (strategy) {
 
 - `TSubscriptionRef.TSubscriptionRef` -> `TxSubscriptionRef.TxSubscriptionRef`: Rename the type; it no longer extends TxRef. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TSubscriptionRef.TSubscriptionRef.Variance` -> `none`: TxSubscriptionRef exposes no public variance marker.
+
 - `TSubscriptionRef.TSubscriptionRefTypeId` -> `TxSubscriptionRef.isTxSubscriptionRef`: The type id is internal in v4; use the public runtime guard.
+
+- `TSubscriptionRef.changes` -> `none`: The old unscoped transactional subscription was removed; use scoped TxSubscriptionRef.changes.
 
 - `TSubscriptionRef.changesScoped` -> `TxSubscriptionRef.changes`: The scoped changes operation lost its Scoped suffix and returns a scoped TxQueue.
 
@@ -14991,9 +15779,15 @@ Exit.isExit(take)
 
 - `TestClock.makeData` -> `TestClock.layer() + TestClock.setTime(instant)`: State injection was removed. Build the layer, then set initial time; seeded pending sleeps cannot migrate because the queue is private.
 
+- `TestClock.save` -> `none`: Full clock snapshots including pending sleeps are no longer public. For timestamp-only restoration, read Clock.currentTimeMillis and later call TestClock.setTime(savedMillis).
+
+- `TestClock.sleeps` -> `none`: The pending-sleep queue is private. Test observable behavior by forking sleepers, adjusting time, and joining or asserting the fibers.
+
 - `TestClock.testClock` -> `TestClock.testClockWith(Effect.succeed)`: V4 exposes callback-based access to the active test clock; use testClockWith directly when possible.
 
 ### `effect/TestConfig`
+
+- `TestConfig.TestConfig` -> `none`: There is no v4 TestConfig service. Move runner settings to Vitest and FastCheck options, or define an application-specific Context.Reference if runtime access is needed.
 
 - `TestConfig.make` -> `{ repeats, retries, samples, shrinks }`: The v3 constructor only returned its parameter object. The TestConfig service was removed; keep a plain object only for application-owned configuration.
 
@@ -15005,13 +15799,31 @@ Exit.isExit(take)
 
 ### `effect/TestLive`
 
+- `TestLive.TestLive` -> `none`: There is no grouped live-default-services object. Use Context.Context plus Effect.provideContext, TestClock.withLive for live time, or it.live for the whole test.
+
+- `TestLive.TestLiveTypeId` -> `none`: The TestLive nominal wrapper was removed, so its type id has no replacement.
+
 - `TestLive.make` -> `Effect.provideContext`: The wrapper was removed. Apply a captured Context directly with Effect.provideContext; for live time inside it.effect, prefer TestClock.withLive.
 
 ### `effect/TestServices`
 
 - `TestServices.TestServices` -> `TestClock.TestClock | TestConsole.TestConsole`: This is the v4 @effect/vitest test-environment union. it.effect provides both automatically; it.live provides neither override.
 
+- `TestServices.annotate` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
+
+- `TestServices.annotations` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
+
+- `TestServices.annotationsLayer` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
+
+- `TestServices.annotationsWith` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
+
 - `TestServices.currentServices` -> `Effect.context()`: The separate FiberRef\<Context\<TestServices\>\> was removed. Test services now live in the ordinary Effect Context; override individual references with Effect.provideService.
+
+- `TestServices.get` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
+
+- `TestServices.liveLayer` -> `none`: The standalone TestLive service and layer were removed. TestClock.layer() captures its surrounding live Clock itself.
+
+- `TestServices.liveServices` -> `none`: There is no prebuilt aggregate test-service Context. @effect/vitest constructs TestClock and TestConsole layers per test; live references are defaults.
 
 - `TestServices.liveWith` -> `TestClock.withLive`: There is no TestLive callback object. Refactor to the effect ultimately run and apply TestClock.withLive, or use it.live for whole-test live execution.
 
@@ -15025,6 +15837,8 @@ Exit.isExit(take)
 
 - `TestServices.samples` -> `{ fastCheck: { numRuns } }`: Pass the run count through @effect/vitest property-test options, for example it.effect.prop(..., { fastCheck: { numRuns: samples } }).
 
+- `TestServices.shrinks` -> `none`: The legacy maximum-shrinks service setting was removed; @effect/vitest forwards FastCheck.Parameters, which has no equivalent service value.
+
 - `TestServices.size` -> `CurrentSize`: Define a custom Context.Reference\<number\> and yield it to read the current size.
 
 - `TestServices.sized` -> `CurrentSize`: TestSized was removed. Use a custom Context.Reference\<number\> directly instead of a wrapper object.
@@ -15033,15 +15847,35 @@ Exit.isExit(take)
 
 - `TestServices.sizedWith` -> `CurrentSize.use`: Use the custom reference's callback, or preferably yield CurrentSize in Effect.gen.
 
+- `TestServices.supervisedFibers` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
+
+- `TestServices.testConfig` -> `none`: The runner no longer reads an Effect TestConfig service. Use Vitest TestOptions and property-test fastCheck options; model application state as a custom Context.Reference.
+
+- `TestServices.testConfigLayer` -> `none`: The runner no longer reads an Effect TestConfig service. Use Vitest TestOptions and property-test fastCheck options; model application state as a custom Context.Reference.
+
+- `TestServices.testConfigWith` -> `none`: The runner no longer reads an Effect TestConfig service. Use Vitest TestOptions and property-test fastCheck options; model application state as a custom Context.Reference.
+
+- `TestServices.withAnnotations` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
+
+- `TestServices.withAnnotationsScoped` -> `none`: The annotation service was removed. Use Vitest metadata/options for runner concerns, an ordinary Ref or Context.Reference for application-owned test state, and FiberSet for explicit fiber tracking.
+
+- `TestServices.withLiveScoped` -> `none`: There is no scoped TestLive service override. Apply TestClock.withLive to a specific effect, or choose it.live at test declaration time.
+
 - `TestServices.withSize` -> `Effect.provideService(effect, CurrentSize, size)`: Provide a custom size Context.Reference for the duration of the wrapped effect.
 
 - `TestServices.withSized` -> `Effect.provideService(effect, CurrentSize, size)`: Collapse the old TestSized wrapper to its numeric value and provide the custom reference.
 
 - `TestServices.withSizedScoped` -> `Effect.updateServiceScoped(CurrentSize, () => size)`: For a scope-bounded override use updateServiceScoped; otherwise prefer wrapping the workflow with Effect.provideService.
 
+- `TestServices.withTestConfig` -> `none`: The runner no longer reads an Effect TestConfig service. Use Vitest TestOptions and property-test fastCheck options; model application state as a custom Context.Reference.
+
+- `TestServices.withTestConfigScoped` -> `none`: The runner no longer reads an Effect TestConfig service. Use Vitest TestOptions and property-test fastCheck options; model application state as a custom Context.Reference.
+
 ### `effect/TestSized`
 
 - `TestSized.TestSized` -> `Context.Reference<number>`: Collapse the wrapper service to the reference itself; yield the reference to read the current size.
+
+- `TestSized.TestSizedTypeId` -> `none`: The wrapper's nominal type id is unnecessary; Context.Reference supplies stable key identity.
 
 - `TestSized.fromFiberRef` -> `Context.Reference<number>`: FiberRef and TestSized were removed. Define one stable Context.Reference\<number\> instead of wrapping a FiberRef.
 

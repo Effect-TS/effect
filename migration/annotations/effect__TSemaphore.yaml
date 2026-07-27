@@ -1,6 +1,9 @@
 effect/TSemaphore#TSemaphore:
   replacement: "TxSemaphore.TxSemaphore"
   note: "Rename the type and import from \"effect/TxSemaphore\". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TSemaphore#TSemaphore.Proto:
+  replacement: "none"
+  note: "The public prototype interface was removed."
 effect/TSemaphore#TSemaphoreTypeId:
   replacement: "TxSemaphore.isTxSemaphore"
   note: "The type id is internal in v4; use the public runtime guard."
@@ -13,6 +16,9 @@ effect/TSemaphore#make:
 effect/TSemaphore#release:
   replacement: "TxSemaphore.release"
   note: "Import TxSemaphore from \"effect/TxSemaphore\"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TSemaphore#unsafeMake:
+  replacement: "none"
+  note: "The unsafe constructor was removed; use TxSemaphore.make."
 effect/TSemaphore#withPermit:
   replacement: "TxSemaphore.withPermit"
   note: "The helper remains, but data-first calls now pass the semaphore before the Effect."
@@ -22,6 +28,3 @@ effect/TSemaphore#withPermits:
 effect/TSemaphore#withPermitsScoped:
   replacement: "TxSemaphore.acquireN + Effect.addFinalizer(TxSemaphore.releaseN)"
   note: "No scoped multi-permit helper remains; acquire and register release explicitly in a Scope."
-effect/TSemaphore:
-  replacement: effect/TxSemaphore
-  note: The public prototype interface was removed. The unsafe constructor was removed; use TxSemaphore.make.

@@ -25,6 +25,9 @@
 "@effect/platform/Worker#PlatformWorker":
   replacement: "Worker.WorkerPlatform"
   note: "The platform service was renamed and is now a Context.Service class."
+"@effect/platform/Worker#PlatformWorkerTypeId":
+  replacement: "none"
+  note: "The Context.Service class replaces the public platform-worker type-id alias."
 "@effect/platform/Worker#SerializedWorker":
   replacement: "RpcClient with RpcClient.layerProtocolWorker"
   note: "The serialized worker facade was removed; v4 routes schema-defined RPCs through the worker protocol."
@@ -43,15 +46,21 @@
 "@effect/platform/Worker#Worker.Options":
   replacement: "Worker.Worker[\"run\"] options"
   note: "Encoding moved to RPC schemas; the low-level run operation only accepts an optional onSpawn effect."
+"@effect/platform/Worker#Worker.Response":
+  replacement: "none"
+  note: "The old tagged-request wire response is gone; worker RPC wire messages are internal to RpcClient and RpcServer."
+"@effect/platform/Worker#Worker.Span":
+  replacement: "none"
+  note: "The explicit span tuple was removed; the RPC worker protocol handles span propagation internally."
 "@effect/platform/Worker#WorkerManager":
   replacement: "Worker.WorkerPlatform"
   note: "WorkerPlatform now spawns low-level Worker values directly, replacing WorkerManager."
+"@effect/platform/Worker#WorkerManagerTypeId":
+  replacement: "none"
+  note: "The removed WorkerManager has no v4 type-id; WorkerPlatform is a Context.Service class."
 "@effect/platform/Worker#WorkerPool":
   replacement: "RpcClient.Protocol"
   note: "For serialized request/response workloads use the worker-backed RPC Protocol; for raw messages build a Pool around WorkerPlatform.spawn."
 "@effect/platform/Worker#WorkerPool.Options":
   replacement: "Parameters<typeof RpcClient.makeProtocolWorker>[0]"
   note: "Worker RPC pool sizing is configured on makeProtocolWorker or layerProtocolWorker."
-"@effect/platform/Worker":
-  replacement: effect/unstable/workers/Worker
-  note: The Context.Service class replaces the public platform-worker type-id alias. The old tagged-request wire response is gone; worker RPC wire messages are internal to RpcClient and RpcServer. The explicit span tuple was removed; the RPC worker protocol handles span propagation internally. The removed WorkerManager has no v4 type-id; WorkerPlatform is a Context.Service class.

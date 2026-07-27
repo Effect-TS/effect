@@ -1,6 +1,12 @@
 "effect/MutableQueue#bounded":
   replacement: "Queue.dropping"
   note: "The replacement constructor is effectful; dropping preserves the old immediate rejection when a bounded queue is full."
+"effect/MutableQueue#capacity":
+  replacement: "none"
+  note: "Read queue.capacity on the replacement Queue; unbounded queues expose Infinity."
+"effect/MutableQueue#EmptyMutableQueue":
+  replacement: "none"
+  note: "Queue.poll reports emptiness with Option.none, so no default sentinel is required."
 "effect/MutableQueue#isEmpty":
   replacement: "Queue.sizeUnsafe"
   note: "Use Queue.sizeUnsafe(queue) === 0, or map the effectful Queue.size result."
@@ -13,6 +19,9 @@
 "effect/MutableQueue#MutableQueue":
   replacement: "Queue.Queue"
   note: "The replacement Queue is effectful, lifecycle-aware, and not Iterable."
+"effect/MutableQueue#MutableQueue.Empty":
+  replacement: "none"
+  note: "Use the Option returned by Queue.poll; the old empty sentinel was removed."
 "effect/MutableQueue#offer":
   replacement: "Queue.offerUnsafe"
   note: "Use with Queue.dropping to preserve the old synchronous boolean rejection at capacity; Queue.offer is the effectful form."
@@ -25,9 +34,9 @@
 "effect/MutableQueue#pollUpTo":
   replacement: "Queue.takeUnsafe"
   note: "No direct non-blocking take-up-to helper remains; repeatedly call Queue.takeUnsafe and collect successful exits without waiting."
+"effect/MutableQueue#TypeId":
+  replacement: "none"
+  note: "The MutableQueue module and its public marker were removed."
 "effect/MutableQueue#unbounded":
   replacement: "Queue.unbounded"
   note: "The unbounded replacement constructor is effectful."
-effect/MutableQueue:
-  replacement: varies by API
-  note: Read queue.capacity on the replacement Queue; unbounded queues expose Infinity. Queue.poll reports emptiness with Option.none, so no default sentinel is required. Use the Option returned by Queue.poll; the old empty sentinel was removed. The MutableQueue module and its public marker were removed.

@@ -4,6 +4,9 @@ effect/MetricLabel#MetricLabel:
 effect/MetricLabel#make:
   replacement: "[key, value]"
   note: "Construct an ordinary tuple, or place the pair in an attribute record passed to Metric.withAttributes or a metric constructor."
-effect/MetricLabel:
-  replacement: varies by API
-  note: Attributes are plain tuples or records, so there is no branded guard or type-id symbol.
+effect/MetricLabel#isMetricLabel:
+  replacement: "none"
+  note: "Attributes are plain tuples or records, so there is no branded guard or type-id symbol."
+effect/MetricLabel#MetricLabelTypeId:
+  replacement: "none"
+  note: "Attributes are plain tuples or records, so there is no branded guard or type-id symbol."

@@ -4,6 +4,6 @@
 "@effect/cluster/Reply#serialize":
   replacement: "effect/unstable/cluster/Reply#serialize"
   note: "Moved into core Effect and now returns the non-generic Reply.Encoded wire union."
-"@effect/cluster/Reply":
-  replacement: effect/unstable/cluster/Reply
-  note: The reply marker is private in v4. Use Reply.isReply for runtime refinement.
+"@effect/cluster/Reply#TypeId":
+  replacement: "none"
+  note: "The reply marker is private in v4. Use Reply.isReply for runtime refinement."

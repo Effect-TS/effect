@@ -52,9 +52,21 @@
 "@effect/cli/Options#float":
   replacement: "Flag.float"
   note: "Use the moved constructor."
+"@effect/cli/Options#getHelp":
+  replacement: "none"
+  note: "Per-flag help introspection was removed; Command generates help internally."
+"@effect/cli/Options#getIdentifier":
+  replacement: "none"
+  note: "Public flag identifier introspection was removed."
+"@effect/cli/Options#getUsage":
+  replacement: "none"
+  note: "The public Usage tree was removed; Command generates a usage string internally."
 "@effect/cli/Options#integer":
   replacement: "Flag.integer"
   note: "Use the moved constructor."
+"@effect/cli/Options#isBool":
+  replacement: "none"
+  note: "No public flag-shape predicate remains; boolean-shape inspection is internal."
 "@effect/cli/Options#isOptions":
   replacement: "Param.isParam(value) && value.kind === Param.flagKind"
   note: "Flags now use the shared Param representation and an explicit kind discriminator."
@@ -136,6 +148,3 @@
 "@effect/cli/Options#withSchema":
   replacement: "Flag.withSchema"
   note: "Use the moved combinator with a v4 Schema constraint decoder."
-"@effect/cli/Options":
-  replacement: effect/unstable/cli/Flag
-  note: Per-flag help introspection was removed; Command generates help internally. Public flag identifier introspection was removed. The public Usage tree was removed; Command generates a usage string internally. No public flag-shape predicate remains; boolean-shape inspection is internal.

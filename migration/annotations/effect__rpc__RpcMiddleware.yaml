@@ -25,6 +25,9 @@
 "@effect/rpc/RpcMiddleware#TagClass.FailureService":
   replacement: "effect/unstable/rpc/RpcMiddleware#Error"
   note: "Use the decoded error extractor; optional middleware fallback was removed."
+"@effect/rpc/RpcMiddleware#TagClass.Optional":
+  replacement: "none"
+  note: "Optional declaration and fallback-on-failure behavior were removed; model fallback inside the middleware effect."
 "@effect/rpc/RpcMiddleware#TagClass.Provides":
   replacement: "effect/unstable/rpc/RpcMiddleware#Provides"
   note: "Moved to the module level and applied to the middleware ID metadata."
@@ -40,6 +43,3 @@
 "@effect/rpc/RpcMiddleware#TypeId":
   replacement: "effect/unstable/rpc/RpcMiddleware#TypeId"
   note: "Retained as the public middleware metadata marker and now has a string-literal type."
-"@effect/rpc/RpcMiddleware":
-  replacement: effect/unstable/rpc/RpcMiddleware
-  note: Optional declaration and fallback-on-failure behavior were removed; model fallback inside the middleware effect.

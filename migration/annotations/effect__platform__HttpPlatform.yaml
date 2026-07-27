@@ -7,6 +7,6 @@
 "@effect/platform/HttpPlatform#make":
   replacement: "HttpPlatform.make"
   note: "Retained; v4 returns the service implementation and uses updated file stream options."
-"@effect/platform/HttpPlatform":
-  replacement: effect/unstable/http/HttpPlatform
-  note: The public type id was removed; use the HttpPlatform Context.Service class.
+"@effect/platform/HttpPlatform#TypeId":
+  replacement: "none"
+  note: "The public type id was removed; use the HttpPlatform Context.Service class."

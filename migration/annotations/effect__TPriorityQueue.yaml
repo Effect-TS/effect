@@ -1,6 +1,9 @@
 effect/TPriorityQueue#TPriorityQueue:
   replacement: "TxPriorityQueue.TxPriorityQueue"
   note: "Rename the type and import from \"effect/TxPriorityQueue\". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TPriorityQueue#TPriorityQueue.Variance:
+  replacement: "none"
+  note: "TxPriorityQueue exposes no public variance marker."
 effect/TPriorityQueue#TPriorityQueueTypeId:
   replacement: "TxPriorityQueue.isTxPriorityQueue"
   note: "The type id is internal in v4; use the public runtime guard."
@@ -31,6 +34,3 @@ effect/TPriorityQueue#toArray:
 effect/TPriorityQueue#toChunk:
   replacement: "Effect.map(TxPriorityQueue.toArray(self), Chunk.fromIterable)"
   note: "The direct Chunk conversion was removed; convert the retained Array snapshot explicitly."
-effect/TPriorityQueue:
-  replacement: effect/TxPriorityQueue
-  note: TxPriorityQueue exposes no public variance marker.

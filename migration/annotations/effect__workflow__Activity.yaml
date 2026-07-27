@@ -13,6 +13,6 @@
 "@effect/workflow/Activity#retry":
   replacement: "effect/unstable/workflow/Activity#retry"
   note: "Moved into core Effect and updated to v4 Effect.retry option types."
-"@effect/workflow/Activity":
-  replacement: effect/unstable/workflow/Activity
-  note: The activity marker is private in v4. Use Activity, Activity.Any, or Activity.AnyWithProps constraints.
+"@effect/workflow/Activity#TypeId":
+  replacement: "none"
+  note: "The activity marker is private in v4. Use Activity, Activity.Any, or Activity.AnyWithProps constraints."

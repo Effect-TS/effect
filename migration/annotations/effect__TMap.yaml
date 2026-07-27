@@ -1,6 +1,9 @@
 effect/TMap#TMap:
   replacement: "TxHashMap.TxHashMap"
   note: "Rename the type and import from \"effect/TxHashMap\". V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TMap#TMap.Variance:
+  replacement: "none"
+  note: "TxHashMap exposes no public variance marker."
 effect/TMap#TMapTypeId:
   replacement: "TxHashMap.isTxHashMap"
   note: "The type id is internal in v4; use the public runtime guard."
@@ -52,6 +55,18 @@ effect/TMap#setIfAbsent:
 effect/TMap#size:
   replacement: "TxHashMap.size"
   note: "Import TxHashMap from \"effect/TxHashMap\"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TMap#takeFirst:
+  replacement: "none"
+  note: "No atomic take-and-match helper exists in TxHashMap; implement explicit selection and removal inside Effect.tx."
+effect/TMap#takeFirstSTM:
+  replacement: "none"
+  note: "No effectful atomic take-and-match helper exists; implement explicit traversal and removal inside Effect.tx."
+effect/TMap#takeSome:
+  replacement: "none"
+  note: "No atomic multi-take helper exists in TxHashMap; implement explicit selection and removals inside Effect.tx."
+effect/TMap#takeSomeSTM:
+  replacement: "none"
+  note: "No effectful atomic multi-take helper exists; implement explicit traversal and removals inside Effect.tx."
 effect/TMap#toArray:
   replacement: "TxHashMap.entries"
   note: "Use the entry snapshot; it replaces the old array conversion."
@@ -82,6 +97,3 @@ effect/TMap#updateWith:
 effect/TMap#values:
   replacement: "TxHashMap.values"
   note: "Import TxHashMap from \"effect/TxHashMap\"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
-effect/TMap:
-  replacement: effect/TxHashMap
-  note: No atomic take-and-match helper exists in TxHashMap; implement explicit selection and removal inside Effect.tx. No effectful atomic take-and-match helper exists; implement explicit traversal and removal inside Effect.tx. No atomic multi-take helper exists in TxHashMap; implement explicit selection and removals inside Effect.tx. No effectful atomic multi-take helper exists; implement explicit traversal and removals inside Effect.tx. TxHashMap exposes no public variance marker.

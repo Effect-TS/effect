@@ -7,6 +7,6 @@
 "@effect/sql/SqlClient#TransactionConnection":
   replacement: "effect/unstable/sql/SqlClient#TransactionConnection"
   note: "Now a factory keyed by client id, not a singleton tag. Prefer the client's transactionService; the payload type is TransactionConnection.Service."
-"@effect/sql/SqlClient":
-  replacement: effect/unstable/sql/SqlClient
-  note: The brand is private in v4; do not inspect or attach it, and obtain clients through SqlClient or SqlClient.make.
+"@effect/sql/SqlClient#TypeId":
+  replacement: "none"
+  note: "The brand is private in v4; do not inspect or attach it, and obtain clients through SqlClient or SqlClient.make."

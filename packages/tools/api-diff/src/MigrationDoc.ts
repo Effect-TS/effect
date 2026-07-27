@@ -169,11 +169,12 @@ const isRemovalCoveredByModule = (
   annotations: ReadonlyMap<string, MigrationAnnotation>
 ): boolean => {
   const separator = id.indexOf("#")
-  if (separator === -1 || !removed.has(id.slice(0, separator))) {
+  const module = id.slice(0, separator)
+  if (separator === -1 || !removed.has(module) || annotations.get(module)?.replacement !== "none") {
     return false
   }
   const annotation = annotations.get(id)
-  return annotation?.replacement === "none" || (annotation === undefined && annotations.has(id.slice(0, separator)))
+  return annotation === undefined || annotation.replacement === "none"
 }
 
 const migrationEntries = (
