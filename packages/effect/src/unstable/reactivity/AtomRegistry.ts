@@ -435,7 +435,15 @@ class RegistryImpl implements AtomRegistry {
       const encoded = this.preloadedSerializable.get(key)
       this.preloadedSerializable.delete(key)
       const decoded = (atom as any as Atom.Serializable<any>)[SerializableTypeId].decode(encoded)
-      node.setValue(decoded)
+      let target = atom
+      while (target.initialValueTarget) {
+        target = target.initialValueTarget
+      }
+      if (target === atom) {
+        node.setValue(decoded)
+      } else {
+        this.ensureNode(target).setInitialValue(decoded)
+      }
     }
     return node
   }

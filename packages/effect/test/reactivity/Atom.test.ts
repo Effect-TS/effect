@@ -15,7 +15,7 @@ import {
 } from "effect"
 import { TestClock } from "effect/testing"
 import { KeyValueStore } from "effect/unstable/persistence"
-import { AsyncResult, Atom, AtomRegistry } from "effect/unstable/reactivity"
+import { AsyncResult, Atom, AtomRegistry, Hydration } from "effect/unstable/reactivity"
 
 declare const global: any
 
@@ -2281,6 +2281,42 @@ describe.sequential("Atom", () => {
         }),
         { reactivityKeys: ["counter"] }
       )
+      r.mount(atom)
+
+      assert.strictEqual(r.get(atom), 10)
+      assert.strictEqual(rebuilds, 1)
+
+      value = 11
+      r.set(fn, void 0)
+
+      assert.strictEqual(r.get(atom), 11)
+      assert.strictEqual(rebuilds, 2)
+    })
+
+    it("rebuilds on mutation with a hydrated value", async () => {
+      let rebuilds = 0
+      let value = 0
+      const atom = Atom.make(() => {
+        rebuilds++
+        return value
+      }).pipe(
+        Atom.withReactivity(["counter"]),
+        Atom.serializable({ key: "hydrated-counter", schema: Schema.Number }),
+        Atom.keepAlive
+      )
+      const r = AtomRegistry.make()
+      const fn = counterRuntime.fn(
+        Effect.fn(function*() {
+        }),
+        { reactivityKeys: ["counter"] }
+      )
+      const dehydratedState: Array<Hydration.DehydratedAtomValue> = [{
+        "~effect/reactivity/DehydratedAtom": true,
+        key: "hydrated-counter",
+        value: 10,
+        dehydratedAt: 0
+      }]
+      Hydration.hydrate(r, dehydratedState)
       r.mount(atom)
 
       assert.strictEqual(r.get(atom), 10)
