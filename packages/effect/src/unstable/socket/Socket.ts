@@ -764,6 +764,9 @@ export const fromWebSocket = <RO>(
       }))
     const writer = Effect.succeed(write)
 
+    // The cast is sound because `make` derives `run` and `runString` from the
+    // supplied `runRaw`, so every handler runs with the WebSocket service
+    // provided. Passing explicit `run` or `runString` here would break this.
     return Effect.succeed(make({
       runRaw,
       writer
