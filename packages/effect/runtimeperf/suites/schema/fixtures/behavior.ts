@@ -153,6 +153,12 @@ const optionalStruct = Schema.Struct({
 })
 
 export const optionalValid = decodeCase(optionalStruct, { required: "value" }, true)
+export const optionalPresentValid = decodeCase(
+  optionalStruct,
+  { required: "value", optionalKey: "key", optionalValue: "value" },
+  true
+)
+export const optionalPresentInvalid = decodeCase(optionalStruct, { required: "value", optionalKey: 1 }, false)
 
 const suspendedString = Schema.String.pipe(Schema.decode({
   decode: new SchemaGetter.Getter((input) => Effect.suspend(() => Effect.succeed(input))),

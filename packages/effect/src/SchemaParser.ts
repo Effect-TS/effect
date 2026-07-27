@@ -1006,7 +1006,7 @@ const recur = memoize(
     const encodingChecks = (ast as any).encodingChecks
     const astOptions = (checks ? checks[checks.length - 1].annotations : ast.annotations)
       ?.["parseOptions"]
-    if (!ast.context && !links && !checks && !encodingChecks) {
+    if (!links && !checks && !encodingChecks) {
       return (ou, options) => {
         parser ??= ast.getParser(recur)
         if (astOptions) {

@@ -1052,6 +1052,24 @@
               "size": 3
             },
             {
+              "name": "optional-present-valid",
+              "export": "optionalPresentValid",
+              "scenario": "optional-present-valid",
+              "family": "optional",
+              "astTags": ["Objects", "Union", "Undefined"],
+              "path": "valid",
+              "size": 3
+            },
+            {
+              "name": "optional-present-invalid",
+              "export": "optionalPresentInvalid",
+              "scenario": "optional-present-invalid",
+              "family": "optional",
+              "astTags": ["Objects", "Union", "Undefined"],
+              "path": "invalid",
+              "size": 3
+            },
+            {
               "name": "object-32-suspended-middle-valid",
               "export": "object32SuspendedMiddleValid",
               "scenario": "object-32-suspended-middle-valid",
