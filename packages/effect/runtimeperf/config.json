@@ -1213,12 +1213,48 @@
               "size": 100
             },
             {
+              "name": "first-decode-literal-100-valibot",
+              "export": "valibotFirstDecodeLiteral100",
+              "scenario": "first-decode-literal-100",
+              "implementation": "valibot",
+              "operation": "first-decode",
+              "astTags": [],
+              "size": 100
+            },
+            {
+              "name": "first-decode-literal-100-zod4",
+              "export": "zodFirstDecodeLiteral100",
+              "scenario": "first-decode-literal-100",
+              "implementation": "zod4",
+              "operation": "first-decode",
+              "astTags": [],
+              "size": 100
+            },
+            {
               "name": "first-decode-tagged-100-effect",
               "export": "effectFirstDecodeTagged100",
               "scenario": "first-decode-tagged-100",
               "implementation": "effect",
               "operation": "first-decode",
               "astTags": ["Union", "Objects", "Literal"],
+              "size": 100
+            },
+            {
+              "name": "first-decode-tagged-100-valibot",
+              "export": "valibotFirstDecodeTagged100",
+              "scenario": "first-decode-tagged-100",
+              "implementation": "valibot",
+              "operation": "first-decode",
+              "astTags": [],
+              "size": 100
+            },
+            {
+              "name": "first-decode-tagged-100-zod4",
+              "export": "zodFirstDecodeTagged100",
+              "scenario": "first-decode-tagged-100",
+              "implementation": "zod4",
+              "operation": "first-decode",
+              "astTags": [],
               "size": 100
             },
             {
@@ -1260,6 +1296,20 @@
               "export": "typeboxFirstDecodeRecord32",
               "scenario": "first-decode-record-32",
               "operation": "first-decode"
+            },
+            {
+              "name": "first-decode-literal-100-typebox",
+              "export": "typeboxFirstDecodeLiteral100",
+              "scenario": "first-decode-literal-100",
+              "operation": "first-decode",
+              "size": 100
+            },
+            {
+              "name": "first-decode-tagged-100-typebox",
+              "export": "typeboxFirstDecodeTagged100",
+              "scenario": "first-decode-tagged-100",
+              "operation": "first-decode",
+              "size": 100
             }
           ]
         },

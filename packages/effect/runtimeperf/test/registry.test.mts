@@ -47,6 +47,19 @@ describe("runtimeperf registry", () => {
     }
   })
 
+  it("covers cold union scenarios with every comparison implementation", () => {
+    const { fixtures } = loadRegistry()
+    for (const scenario of ["first-decode-literal-100", "first-decode-tagged-100"]) {
+      assert.deepEqual(
+        fixtures
+          .filter((fixture) => fixture.scenario === scenario)
+          .map((fixture) => fixture.implementation)
+          .sort(),
+        ["effect", "typebox", "valibot", "zod4"]
+      )
+    }
+  })
+
   it("uses Zod 4 standard in jitless mode for the zod4 fixtures", async () => {
     const { fixtures } = loadRegistry()
     const zodFiles = new Set(
