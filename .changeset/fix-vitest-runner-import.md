@@ -2,4 +2,4 @@
 "@effect/vitest": patch
 ---
 
-Declare the directly imported `@vitest/runner` package as a peer dependency so it shares Vitest's runner instance.
+Import suite state through the Vitest peer instead of relying on a separately resolved `@vitest/runner` instance.

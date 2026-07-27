@@ -2,7 +2,6 @@
  * @since 4.0.0
  */
 
-import { getCurrentSuite } from "@vitest/runner"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -18,6 +17,7 @@ import * as fc from "effect/testing/FastCheck"
 import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 import * as V from "vitest"
+import { getCurrentSuite } from "vitest/suite"
 import type * as Vitest from "../index.ts"
 
 const runPromise: <E, A>(
