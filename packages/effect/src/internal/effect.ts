@@ -4704,17 +4704,14 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
     for (; index < end; index++) {
       const item = items[index]
       const effect = onItem(state, item, index)
-      if (effectIsExit(effect)) {
-        const terminal = step(state, item, effect, index)
-        if (terminal) {
-          return terminal._tag === "Failure" ? terminal : undefined
-        }
-      } else {
-        return flatMap(exit(effect), (itemExit) => {
-          const terminal = step(state, item, itemExit, index)
-          return terminal ?? runSequential(state, items, index + 1, end) ?? void_
-        })
+      if (!effectIsExit(effect)) {
+        return flatMap(
+          exit(effect),
+          (itemExit) => step(state, item, itemExit, index) ?? runSequential(state, items, index + 1, end) ?? void_
+        )
       }
+      const terminal = step(state, item, effect, index)
+      if (terminal) return terminal._tag === "Failure" ? terminal : undefined
     }
   }
 

@@ -2226,10 +2226,9 @@ export class Objects extends Base {
       // handle index signatures
       // ---------------------------------------------
       if (parseIndexes) {
-        const indexParsers = indexes!
-        const keyPairs = Arr.empty<[PropertyKey, (typeof indexParsers)[number]]>()
+        const keyPairs = Arr.empty<[PropertyKey, NonNullable<typeof indexes>[number]]>()
         for (let i = 0; i < indexCount; i++) {
-          const index = indexParsers[i]
+          const index = indexes![i]
           const keys = getIndexSignatureKeys(input, index.is.parameter, options)
           for (let j = 0; j < keys.length; j++) {
             const key = keys[j]
@@ -2524,12 +2523,8 @@ export function collectSentinels(ast: AST): Array<Sentinel> {
 }
 
 type CandidateIndex = {
-  literalOnly: boolean
-  byLiteral?: Map<LiteralValue | symbol, Array<AST>>
-  discriminator?: {
-    key: PropertyKey
-    candidates: Map<LiteralValue | symbol, Array<AST>>
-  }
+  direct?: Map<LiteralValue | symbol, Array<AST>>
+  key?: PropertyKey
   byType?: { [K in Type]?: Array<number> }
   bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
   otherwise?: { [K in Type]?: Array<number> }
@@ -2542,29 +2537,29 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let idx = candidateIndexCache.get(types)
   if (idx) return idx
 
-  idx = { literalOnly: true }
-  let hasOneSentinelPerCandidate = true
+  idx = {}
+  let literalOnly = true
+  let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | undefined
   for (let i = 0; i < types.length; i++) {
     const a = types[i]
     const encoded = toEncoded(a)
     if (isNever(encoded)) continue
 
-    if (idx.literalOnly) {
+    if (literalOnly) {
       if (isLiteral(encoded) || isUniqueSymbol(encoded)) {
-        idx.byLiteral ??= new Map()
+        literalCandidates ??= new Map()
         const literal = isLiteral(encoded) ? encoded.literal : encoded.symbol
-        let arr = idx.byLiteral.get(literal)
-        if (!arr) idx.byLiteral.set(literal, arr = [])
+        let arr = literalCandidates.get(literal)
+        if (!arr) literalCandidates.set(literal, arr = [])
         arr.push(a)
       } else {
-        idx.literalOnly = false
-        delete idx.byLiteral
+        literalOnly = false
+        literalCandidates = undefined
       }
     }
 
     const candidateTypes = getCandidateTypes(encoded)
     const sentinels = collectSentinels(encoded)
-    if (sentinels.length !== 1) hasOneSentinelPerCandidate = false
 
     // by-type (always filled – cheap primary filter)
     idx.byType ??= {}
@@ -2577,7 +2572,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
         if (!m) idx.bySentinel.set(key, m = new Map())
         let arr = m.get(literal)
         if (!arr) m.set(literal, arr = [])
-        arr.push(i)
+        if (arr[arr.length - 1] !== i) arr.push(i)
       }
     } else { // non-discriminated
       idx.otherwise ??= {}
@@ -2585,16 +2580,16 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     }
   }
 
-  if (hasOneSentinelPerCandidate && idx.bySentinel?.size === 1 && idx.otherwise === undefined) {
+  if (literalOnly && literalCandidates) {
+    idx = { direct: literalCandidates }
+  } else if (idx.bySentinel?.size === 1 && idx.otherwise === undefined) {
     for (const [key, byValue] of idx.bySentinel) {
       const candidates = new Map<LiteralValue | symbol, Array<AST>>()
       for (const [literal, indexes] of byValue) {
         candidates.set(literal, indexes.map((index) => types[index]))
       }
-      idx.discriminator = { key, candidates }
+      idx = { key, direct: candidates }
     }
-    delete idx.byType
-    delete idx.bySentinel
   }
 
   candidateIndexCache.set(types, idx)
@@ -2620,14 +2615,12 @@ function filterLiterals(input: any) {
  */
 export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyArray<AST> {
   const idx = getIndex(types)
-  if (idx.literalOnly) {
-    return idx.byLiteral?.get(input) ?? emptyCandidates
-  }
-
-  if (idx.discriminator) {
+  const direct = idx.direct
+  if (direct) {
+    const key = idx.key
+    if (key === undefined) return direct.get(input) ?? emptyCandidates
     if (input !== null && (Array.isArray(input) || typeof input === "object")) {
-      const { candidates, key } = idx.discriminator
-      return Object.hasOwn(input, key) ? candidates.get(input[key]) ?? emptyCandidates : emptyCandidates
+      return Object.hasOwn(input, key) ? direct.get(input[key]) ?? emptyCandidates : emptyCandidates
     }
     return emptyCandidates
   }

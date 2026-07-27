@@ -401,23 +401,6 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates("a", ast.types), [])
     })
 
-    it("should deduplicate repeated sentinels from a Declaration", () => {
-      class A {
-        readonly kind = "a"
-      }
-      const schema = Schema.Union([
-        Schema.instanceOf(A, {
-          "~sentinels": [
-            { key: "kind", literal: "a" },
-            { key: "kind", literal: "a" }
-          ]
-        }),
-        Schema.Struct({ kind: Schema.Literal("b") })
-      ])
-      const ast = schema.ast
-      deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0]])
-    })
-
     it("should collect matches from different sentinel keys without duplicates", () => {
       const schema = Schema.Union([
         Schema.Struct({

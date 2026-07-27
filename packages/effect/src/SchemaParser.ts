@@ -991,16 +991,6 @@ function asSync<T, E>(
   }
 }
 
-function mapSchemaIssueEffect<A, R>(
-  self: Effect.Effect<A, SchemaIssue.Issue, R>,
-  f: (issue: SchemaIssue.Issue) => SchemaIssue.Issue
-): Effect.Effect<A, SchemaIssue.Issue, R> {
-  if (Exit.isExit(self) && Exit.isSuccess(self)) {
-    return self
-  }
-  return Effect.catchCause(self, (cause) => Effect.failCauseSync(() => Cause.map(cause, f)))
-}
-
 /** @internal */
 export interface Parser {
   (
@@ -1013,13 +1003,11 @@ const recur = memoize(
   (ast: SchemaAST.AST): Parser => {
     let parser: Parser
     const checks = ast.checks
-    const encoding = ast.encoding
-    const links = encoding
-    const len = links?.length ?? 0
+    const links = ast.encoding
     const encodingChecks = (ast as any).encodingChecks
     const astOptions = (checks ? checks[checks.length - 1].annotations : ast.annotations)
       ?.["parseOptions"]
-    if (!ast.context && !encoding && !checks && !encodingChecks) {
+    if (!ast.context && !links && !checks && !encodingChecks) {
       return (ou, options) => {
         parser ??= ast.getParser(recur)
         if (astOptions) {
@@ -1035,10 +1023,10 @@ const recur = memoize(
       }
       let srou: Effect.Effect<Option.Option<unknown>, SchemaIssue.Issue, unknown> | undefined
       if (links) {
-        encodingParsers ??= links.map((link) => recur(link.to))
-        for (let i = len - 1; i >= 0; i--) {
+        const parsers = encodingParsers ??= links.map((link) => recur(link.to))
+        for (let i = links.length - 1; i >= 0; i--) {
           const link = links[i]
-          const parser = encodingParsers[i]
+          const parser = parsers[i]
           srou = srou ? Effect.flatMapEager(srou, (ou) => parser(ou, options)) : parser(ou, options)
           if (link.transformation._tag === "Transformation") {
             const getter = link.transformation.decode
@@ -1047,7 +1035,12 @@ const recur = memoize(
             srou = link.transformation.decode(srou, options)
           }
         }
-        srou = mapSchemaIssueEffect(srou!, (issue) => new SchemaIssue.Encoding(ast, ou, issue))
+        if (!Exit.isExit(srou) || srou._tag === "Failure") {
+          srou = Effect.catchCause(
+            srou!,
+            (cause) => Effect.failCauseSync(() => Cause.map(cause, (issue) => new SchemaIssue.Encoding(ast, ou, issue)))
+          )
+        }
       }
 
       parser ??= ast.getParser(recur)
