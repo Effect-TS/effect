@@ -54,9 +54,88 @@ interface MigrationEntry {
   readonly detailed: boolean
 }
 
+const importMapReplacements = (importMapSections: string): ReadonlyMap<string, ReadonlyArray<string>> => {
+  const replacements = new Map<string, Array<string>>()
+  for (const line of importMapSections.split("\n")) {
+    const match = /^(\S+) -> (\S+)(?: \(barrel: [^)]+\))?$/.exec(line)
+    if (match === null) {
+      continue
+    }
+    const targets = replacements.get(match[1]!)
+    if (targets === undefined) {
+      replacements.set(match[1]!, [match[2]!])
+    } else if (!targets.includes(match[2]!)) {
+      targets.push(match[2]!)
+    }
+  }
+  return replacements
+}
+
+const removedModules = (diff: ApiDiff): ReadonlyArray<string> =>
+  [
+    ...new Set(diff.changes.flatMap((change) => {
+      if (change.classification !== "module-removed") {
+        return []
+      }
+      const from = (change.delta as { readonly from?: unknown } | undefined)?.from
+      return typeof from === "string" ? [from] : []
+    }))
+  ].sort(compareStrings)
+
+const sameStrings = (left: ReadonlyArray<string>, right: ReadonlyArray<string>): boolean =>
+  left.length === right.length && left.every((value, index) => value === right[index])
+
+const addedApiSignatures = (diff: ApiDiff): ReadonlyMap<string, ReadonlyArray<string>> => {
+  const signatures = new Map<string, Array<string>>()
+  for (const change of diff.changes) {
+    if (change.classification !== "api-added" || change.headApiId === undefined || change.after === undefined) {
+      continue
+    }
+    const id = stableApiId(change.headApiId)
+    const group = signatures.get(id)
+    if (group === undefined) {
+      signatures.set(id, [change.after])
+    } else {
+      group.push(change.after)
+    }
+  }
+  for (const group of signatures.values()) {
+    group.sort(compareStrings)
+  }
+  return signatures
+}
+
+const isUnchangedModuleMove = (
+  id: string,
+  changes: ReadonlyArray<ApiChange>,
+  removed: ReadonlySet<string>,
+  replacements: ReadonlyMap<string, ReadonlyArray<string>>,
+  addedSignatures: ReadonlyMap<string, ReadonlyArray<string>>
+): boolean => {
+  const separator = id.indexOf("#")
+  const module = id.slice(0, separator)
+  const targets = replacements.get(module)
+  if (separator === -1 || !removed.has(module) || targets === undefined) {
+    return false
+  }
+  const before = changes
+    .filter((change) => change.classification === "api-removed" && change.before !== undefined)
+    .map((change) => change.before!)
+    .sort(compareStrings)
+  if (before.length === 0) {
+    return false
+  }
+  const path = id.slice(separator + 1)
+  return targets.some((target) => {
+    const after = addedSignatures.get(`${target}#${path}`)
+    return after !== undefined && sameStrings(before, after)
+  })
+}
+
 const migrationEntries = (
   diff: ApiDiff,
-  annotations: ReadonlyMap<string, MigrationAnnotation>
+  annotations: ReadonlyMap<string, MigrationAnnotation>,
+  importMapSections: string
 ): ReadonlyArray<MigrationEntry> => {
   const grouped = new Map<string, Array<ApiChange>>()
   for (const change of diff.changes) {
@@ -73,12 +152,16 @@ const migrationEntries = (
   }
 
   const entries: Array<MigrationEntry> = []
+  const removedModuleSet = new Set(removedModules(diff))
+  const replacements = importMapReplacements(importMapSections)
+  const addedSignatures = addedApiSignatures(diff)
   for (const [id, changes] of grouped) {
     const rename = changes.find((change) => change.classification === "api-renamed")
     const breaking = changes.some(isBreakingChange)
     const removed = changes.some((change) => change.classification === "api-removed")
     const importMove = changes.some((change) => change.classification === "api-moved")
     if (
+      isUnchangedModuleMove(id, changes, removedModuleSet, replacements, addedSignatures) ||
       (!breaking && rename === undefined && !removed) ||
       (importMove && rename === undefined && !breaking && !annotations.has(id))
     ) {
@@ -132,8 +215,9 @@ export const extractImportMapSections = (document: string): string => {
     return "## Import Map\n\nNo import map is available.\n"
   }
   const apiRenames = document.indexOf("\n## API Renames", start)
+  const removedModules = document.indexOf("\n## Removed Modules", start)
   const apiReference = document.indexOf("\n## API Reference", start)
-  const ends = [apiRenames, apiReference].filter((index) => index !== -1)
+  const ends = [apiRenames, removedModules, apiReference].filter((index) => index !== -1)
   const end = ends.length === 0 ? document.length : Math.min(...ends)
   return `${document.slice(start, end).trim()}\n`
 }
@@ -143,7 +227,9 @@ export const renderMigrationDocument = (
   annotations: ReadonlyMap<string, MigrationAnnotation>,
   importMapSections: string
 ): string => {
-  const entries = migrationEntries(diff, annotations)
+  const entries = migrationEntries(diff, annotations, importMapSections)
+  const replacements = importMapReplacements(importMapSections)
+  const modulesRemoved = removedModules(diff)
   const modules = new Map<string, Array<MigrationEntry>>()
   for (const entry of entries) {
     const group = modules.get(entry.module)
@@ -166,9 +252,30 @@ export const renderMigrationDocument = (
     "",
     importMapSections.trim(),
     "",
-    "## API Reference",
+    "## Removed Modules",
     ""
   ]
+  for (const module of modulesRemoved) {
+    const annotation = annotations.get(module)
+    const targets = replacements.get(module)
+    if (annotation !== undefined) {
+      lines.push(`- \`${module}\` -> \`${annotation.replacement}\`: ${annotation.note}`)
+    } else if (targets !== undefined) {
+      lines.push(`- \`${module}\` -> ${targets.map((target) => `\`${target}\``).join(", ")}`)
+    } else if ([...annotations.keys()].some((id) => id.startsWith(`${module}#`))) {
+      lines.push(`- \`${module}\`: No single module replacement; follow the curated per-API guidance below.`)
+    } else {
+      lines.push(`- \`${module}\`: TODO: needs module guidance`)
+    }
+  }
+  if (modulesRemoved.length === 0) {
+    lines.push("No modules were removed.")
+  }
+  lines.push(
+    "",
+    "## API Reference",
+    ""
+  )
   for (const [module, moduleEntries] of modules) {
     lines.push(`### \`${module}\``, "")
     for (const entry of moduleEntries) {
@@ -185,10 +292,11 @@ export const renderMigrationDocument = (
 
 export const unannotatedApiIds = (
   diff: ApiDiff,
-  annotations: ReadonlyMap<string, MigrationAnnotation>
+  annotations: ReadonlyMap<string, MigrationAnnotation>,
+  importMapSections = ""
 ): ReadonlyMap<string, ReadonlyArray<string>> => {
   const modules = new Map<string, Array<string>>()
-  for (const entry of migrationEntries(diff, annotations)) {
+  for (const entry of migrationEntries(diff, annotations, importMapSections)) {
     if (annotations.has(entry.id)) {
       continue
     }
@@ -202,18 +310,36 @@ export const unannotatedApiIds = (
   return modules
 }
 
+export const unannotatedModuleIds = (
+  diff: ApiDiff,
+  annotations: ReadonlyMap<string, MigrationAnnotation>,
+  importMapSections: string
+): ReadonlyArray<string> => {
+  const replacements = importMapReplacements(importMapSections)
+  return removedModules(diff).filter((module) =>
+    !annotations.has(module) &&
+    !replacements.has(module) &&
+    ![...annotations.keys()].some((id) => id.startsWith(`${module}#`))
+  )
+}
+
 export const renderMissingAnnotations = (
   diff: ApiDiff,
-  annotations: ReadonlyMap<string, MigrationAnnotation>
+  annotations: ReadonlyMap<string, MigrationAnnotation>,
+  importMapSections = ""
 ): string => {
-  const missing = unannotatedApiIds(diff, annotations)
-  if (missing.size === 0) {
-    return "All migration APIs are annotated.\n"
+  const missingApis = unannotatedApiIds(diff, annotations, importMapSections)
+  const missingModules = unannotatedModuleIds(diff, annotations, importMapSections)
+  if (missingApis.size === 0 && missingModules.length === 0) {
+    return "All migration APIs and removed modules have guidance.\n"
   }
   return `${
-    [...missing].flatMap(([module, ids]) => [
-      `${module}:`,
-      ...ids.map((id) => `  - ${id}`)
-    ]).join("\n")
+    [
+      ...(missingModules.length === 0 ? [] : ["Removed modules:", ...missingModules.map((module) => `  - ${module}`)]),
+      ...[...missingApis].flatMap(([module, ids]) => [
+        `${module}:`,
+        ...ids.map((id) => `  - ${id}`)
+      ])
+    ].join("\n")
   }\n`
 }

@@ -356,6 +356,415 @@ effect/unstable/reactivity/Hydration (barrel: effect/unstable/reactivity)
 effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 ```
 
+## Removed Modules
+
+- `@effect/ai`: TODO: needs module guidance
+- `@effect/ai-amazon-bedrock`: TODO: needs module guidance
+- `@effect/ai-amazon-bedrock/AmazonBedrockClient`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-amazon-bedrock/AmazonBedrockConfig`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-amazon-bedrock/AmazonBedrockSchema`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-amazon-bedrock/AmazonBedrockTool`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-amazon-bedrock/EventStreamEncoding`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-amazon-bedrock/index`: TODO: needs module guidance
+- `@effect/ai-anthropic/AnthropicTokenizer`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-anthropic/index`: TODO: needs module guidance
+- `@effect/ai-google`: TODO: needs module guidance
+- `@effect/ai-google/Generated`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-google/GoogleClient`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-google/GoogleConfig`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-google/GoogleLanguageModel`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-google/GoogleTool`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-google/index`: TODO: needs module guidance
+- `@effect/ai-openai/OpenAiTokenizer`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/ai-openai/index`: TODO: needs module guidance
+- `@effect/ai-openrouter/index`: TODO: needs module guidance
+- `@effect/ai/AiError` -> `effect/unstable/ai/AiError`
+- `@effect/ai/Chat` -> `effect/unstable/ai/Chat`
+- `@effect/ai/EmbeddingModel` -> `effect/unstable/ai/EmbeddingModel`
+- `@effect/ai/IdGenerator` -> `effect/unstable/ai/IdGenerator`
+- `@effect/ai/LanguageModel` -> `effect/unstable/ai/LanguageModel`
+- `@effect/ai/McpSchema` -> `effect/unstable/ai/McpSchema`
+- `@effect/ai/McpServer` -> `effect/unstable/ai/McpServer`
+- `@effect/ai/Model` -> `effect/unstable/ai/Model`
+- `@effect/ai/Prompt` -> `effect/unstable/ai/Prompt`
+- `@effect/ai/Response` -> `effect/unstable/ai/Response`
+- `@effect/ai/Telemetry` -> `effect/unstable/ai/Telemetry`
+- `@effect/ai/Tokenizer` -> `effect/unstable/ai/Tokenizer`
+- `@effect/ai/Tool` -> `effect/unstable/ai/Tool`
+- `@effect/ai/Toolkit` -> `effect/unstable/ai/Toolkit`
+- `@effect/ai/index`: TODO: needs module guidance
+- `@effect/cli`: TODO: needs module guidance
+- `@effect/cli/Args` -> `effect/unstable/cli/Argument`
+- `@effect/cli/AutoCorrect`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/BuiltInOptions` -> `effect/unstable/cli/GlobalFlag`
+- `@effect/cli/CliApp`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/CliConfig`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/Command` -> `effect/unstable/cli/Command`
+- `@effect/cli/CommandDescriptor` -> `effect/unstable/cli/Completions`
+- `@effect/cli/CommandDirective`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/ConfigFile`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/HelpDoc` -> `effect/unstable/cli/HelpDoc`
+- `@effect/cli/HelpDoc/Span`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/Options` -> `effect/unstable/cli/Flag`
+- `@effect/cli/Primitive` -> `effect/unstable/cli/Primitive`
+- `@effect/cli/Prompt` -> `effect/unstable/cli/Prompt`
+- `@effect/cli/Usage`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/cli/ValidationError` -> `effect/unstable/cli/CliError`
+- `@effect/cli/index`: TODO: needs module guidance
+- `@effect/cluster`: TODO: needs module guidance
+- `@effect/cluster/ClusterCron` -> `effect/unstable/cluster/ClusterCron`
+- `@effect/cluster/ClusterError` -> `effect/unstable/cluster/ClusterError`
+- `@effect/cluster/ClusterMetrics` -> `effect/unstable/cluster/ClusterMetrics`
+- `@effect/cluster/ClusterSchema` -> `effect/unstable/cluster/ClusterSchema`
+- `@effect/cluster/ClusterWorkflowEngine` -> `effect/unstable/cluster/ClusterWorkflowEngine`
+- `@effect/cluster/DeliverAt` -> `effect/unstable/cluster/DeliverAt`
+- `@effect/cluster/Entity` -> `effect/unstable/cluster/Entity`
+- `@effect/cluster/EntityAddress` -> `effect/unstable/cluster/EntityAddress`
+- `@effect/cluster/EntityId` -> `effect/unstable/cluster/EntityId`
+- `@effect/cluster/EntityProxy` -> `effect/unstable/cluster/EntityProxy`
+- `@effect/cluster/EntityProxyServer` -> `effect/unstable/cluster/EntityProxyServer`
+- `@effect/cluster/EntityResource` -> `effect/unstable/cluster/EntityResource`
+- `@effect/cluster/EntityType` -> `effect/unstable/cluster/EntityType`
+- `@effect/cluster/Envelope` -> `effect/unstable/cluster/Envelope`
+- `@effect/cluster/HttpRunner` -> `effect/unstable/cluster/HttpRunner`
+- `@effect/cluster/K8sHttpClient` -> `effect/unstable/cluster/K8sHttpClient`
+- `@effect/cluster/MachineId` -> `effect/unstable/cluster/MachineId`
+- `@effect/cluster/Message` -> `effect/unstable/cluster/Message`
+- `@effect/cluster/MessageStorage` -> `effect/unstable/cluster/MessageStorage`
+- `@effect/cluster/Reply` -> `effect/unstable/cluster/Reply`
+- `@effect/cluster/Runner` -> `effect/unstable/cluster/Runner`
+- `@effect/cluster/RunnerAddress` -> `effect/unstable/cluster/RunnerAddress`
+- `@effect/cluster/RunnerHealth` -> `effect/unstable/cluster/RunnerHealth`
+- `@effect/cluster/RunnerServer` -> `effect/unstable/cluster/RunnerServer`
+- `@effect/cluster/RunnerStorage` -> `effect/unstable/cluster/RunnerStorage`
+- `@effect/cluster/Runners` -> `effect/unstable/cluster/Runners`
+- `@effect/cluster/ShardId` -> `effect/unstable/cluster/ShardId`
+- `@effect/cluster/Sharding` -> `effect/unstable/cluster/Sharding`
+- `@effect/cluster/ShardingConfig` -> `effect/unstable/cluster/ShardingConfig`
+- `@effect/cluster/ShardingRegistrationEvent` -> `effect/unstable/cluster/ShardingRegistrationEvent`
+- `@effect/cluster/SingleRunner` -> `effect/unstable/cluster/SingleRunner`
+- `@effect/cluster/Singleton` -> `effect/unstable/cluster/Singleton`
+- `@effect/cluster/SingletonAddress` -> `effect/unstable/cluster/SingletonAddress`
+- `@effect/cluster/Snowflake` -> `effect/unstable/cluster/Snowflake`
+- `@effect/cluster/SocketRunner` -> `effect/unstable/cluster/SocketRunner`
+- `@effect/cluster/SqlMessageStorage` -> `effect/unstable/cluster/SqlMessageStorage`
+- `@effect/cluster/SqlRunnerStorage` -> `effect/unstable/cluster/SqlRunnerStorage`
+- `@effect/cluster/TestRunner` -> `effect/unstable/cluster/TestRunner`
+- `@effect/cluster/index`: TODO: needs module guidance
+- `@effect/experimental`: TODO: needs module guidance
+- `@effect/experimental/DevTools` -> `effect/unstable/devtools/DevTools`
+- `@effect/experimental/DevTools/Client` -> `effect/unstable/devtools/DevToolsClient`
+- `@effect/experimental/DevTools/Domain` -> `effect/unstable/devtools/DevToolsSchema`
+- `@effect/experimental/DevTools/Server` -> `effect/unstable/devtools/DevToolsServer`
+- `@effect/experimental/Event` -> `effect/unstable/eventlog/Event`
+- `@effect/experimental/EventGroup` -> `effect/unstable/eventlog/EventGroup`
+- `@effect/experimental/EventJournal` -> `effect/unstable/eventlog/EventJournal`
+- `@effect/experimental/EventLog` -> `effect/unstable/eventlog/EventLog`
+- `@effect/experimental/EventLogEncryption` -> `effect/unstable/eventlog/EventLogEncryption`
+- `@effect/experimental/EventLogRemote` -> `effect/unstable/eventlog/EventLogMessage`, `effect/unstable/eventlog/EventLogRemote`
+- `@effect/experimental/EventLogServer` -> `effect/unstable/eventlog/EventLogServer`, `effect/unstable/eventlog/EventLogServerEncrypted`
+- `@effect/experimental/EventLogServer/Cloudflare`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Machine`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Machine/Procedure`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Machine/ProcedureList`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Machine/SerializableProcedureList`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/PersistedCache` -> `effect/unstable/persistence/PersistedCache`
+- `@effect/experimental/PersistedQueue` -> `effect/unstable/persistence/PersistedQueue`
+- `@effect/experimental/PersistedQueue/Redis`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Persistence` -> `effect/unstable/persistence/Persistable`, `effect/unstable/persistence/Persistence`
+- `@effect/experimental/Persistence/Lmdb`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Persistence/Redis`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/RateLimiter` -> `effect/unstable/persistence/RateLimiter`
+- `@effect/experimental/RateLimiter/Redis`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Reactivity` -> `effect/unstable/reactivity/Reactivity`
+- `@effect/experimental/RequestResolver`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/experimental/Sse` -> `effect/unstable/encoding/Sse`
+- `@effect/experimental/VariantSchema` -> `effect/unstable/schema/VariantSchema`
+- `@effect/experimental/index`: TODO: needs module guidance
+- `@effect/opentelemetry/Logger`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/opentelemetry/Metrics`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/opentelemetry/Otlp` -> `effect/unstable/observability/Otlp`
+- `@effect/opentelemetry/OtlpLogger` -> `effect/unstable/observability/OtlpLogger`
+- `@effect/opentelemetry/OtlpMetrics` -> `effect/unstable/observability/OtlpMetrics`
+- `@effect/opentelemetry/OtlpResource` -> `effect/unstable/observability/OtlpResource`
+- `@effect/opentelemetry/OtlpSerialization` -> `effect/unstable/observability/OtlpSerialization`
+- `@effect/opentelemetry/OtlpTracer` -> `effect/unstable/observability/OtlpTracer`
+- `@effect/opentelemetry/Tracer`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/opentelemetry/index`: TODO: needs module guidance
+- `@effect/platform`: TODO: needs module guidance
+- `@effect/platform-browser/index`: TODO: needs module guidance
+- `@effect/platform-bun/BunCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-bun/BunContext`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-bun/BunFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-bun/BunKeyValueStore`: TODO: needs module guidance
+- `@effect/platform-bun/index`: TODO: needs module guidance
+- `@effect/platform-node-shared/NodeCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-node-shared/NodeFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-node-shared/NodeKeyValueStore`: TODO: needs module guidance
+- `@effect/platform-node-shared/NodeMultipart`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-node/NodeCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-node/NodeContext`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-node/NodeFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform-node/NodeKeyValueStore`: TODO: needs module guidance
+- `@effect/platform-node/index`: TODO: needs module guidance
+- `@effect/platform/ChannelSchema` -> `effect/ChannelSchema`
+- `@effect/platform/Command` -> `effect/unstable/process/ChildProcess`
+- `@effect/platform/CommandExecutor` -> `effect/unstable/process/ChildProcessSpawner`
+- `@effect/platform/Cookies` -> `effect/unstable/http/Cookies`
+- `@effect/platform/Effectify`: TODO: needs module guidance
+- `@effect/platform/Error` -> `effect/PlatformError`
+- `@effect/platform/Etag` -> `effect/unstable/http/Etag`
+- `@effect/platform/FetchHttpClient` -> `effect/unstable/http/FetchHttpClient`
+- `@effect/platform/FileSystem` -> `effect/FileSystem`
+- `@effect/platform/Headers` -> `effect/unstable/http/Headers`
+- `@effect/platform/HttpApi` -> `effect/unstable/httpapi/HttpApi`
+- `@effect/platform/HttpApiBuilder` -> `effect/unstable/httpapi/HttpApiBuilder`
+- `@effect/platform/HttpApiClient` -> `effect/unstable/httpapi/HttpApiClient`
+- `@effect/platform/HttpApiEndpoint` -> `effect/unstable/httpapi/HttpApiEndpoint`
+- `@effect/platform/HttpApiError` -> `effect/unstable/httpapi/HttpApiError`
+- `@effect/platform/HttpApiGroup` -> `effect/unstable/httpapi/HttpApiGroup`
+- `@effect/platform/HttpApiMiddleware` -> `effect/unstable/httpapi/HttpApiMiddleware`
+- `@effect/platform/HttpApiScalar` -> `effect/unstable/httpapi/HttpApiScalar`
+- `@effect/platform/HttpApiSchema` -> `effect/unstable/httpapi/HttpApiSchema`
+- `@effect/platform/HttpApiSecurity` -> `effect/unstable/httpapi/HttpApiSecurity`
+- `@effect/platform/HttpApiSwagger` -> `effect/unstable/httpapi/HttpApiSwagger`
+- `@effect/platform/HttpApp` -> `effect/unstable/http/HttpEffect`
+- `@effect/platform/HttpBody` -> `effect/unstable/http/HttpBody`
+- `@effect/platform/HttpClient` -> `effect/unstable/http/HttpClient`
+- `@effect/platform/HttpClientError` -> `effect/unstable/http/HttpClientError`
+- `@effect/platform/HttpClientRequest` -> `effect/unstable/http/HttpClientRequest`
+- `@effect/platform/HttpClientResponse` -> `effect/unstable/http/HttpClientResponse`
+- `@effect/platform/HttpIncomingMessage` -> `effect/unstable/http/HttpIncomingMessage`
+- `@effect/platform/HttpLayerRouter`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform/HttpMethod` -> `effect/unstable/http/HttpMethod`
+- `@effect/platform/HttpMiddleware` -> `effect/unstable/http/HttpMiddleware`
+- `@effect/platform/HttpMultiplex`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform/HttpPlatform` -> `effect/unstable/http/HttpPlatform`
+- `@effect/platform/HttpRouter` -> `effect/unstable/http/HttpRouter`
+- `@effect/platform/HttpServer` -> `effect/unstable/http/HttpServer`
+- `@effect/platform/HttpServerError` -> `effect/unstable/http/HttpServerError`
+- `@effect/platform/HttpServerRequest` -> `effect/unstable/http/HttpServerRequest`
+- `@effect/platform/HttpServerRespondable` -> `effect/unstable/http/HttpServerRespondable`
+- `@effect/platform/HttpServerResponse` -> `effect/unstable/http/HttpServerResponse`
+- `@effect/platform/HttpTraceContext` -> `effect/unstable/http/HttpTraceContext`
+- `@effect/platform/KeyValueStore` -> `effect/unstable/persistence/KeyValueStore`
+- `@effect/platform/MsgPack` -> `effect/unstable/encoding/Msgpack`
+- `@effect/platform/Multipart` -> `effect/unstable/http/Multipart`
+- `@effect/platform/Ndjson` -> `effect/unstable/encoding/Ndjson`
+- `@effect/platform/OpenApi` -> `effect/unstable/httpapi/OpenApi`
+- `@effect/platform/OpenApiJsonSchema`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform/Path` -> `effect/Path`
+- `@effect/platform/PlatformConfigProvider`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform/PlatformLogger`: TODO: needs module guidance
+- `@effect/platform/Runtime`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/platform/Socket` -> `effect/unstable/socket/Socket`
+- `@effect/platform/SocketServer` -> `effect/unstable/socket/SocketServer`
+- `@effect/platform/Template` -> `effect/unstable/http/Template`
+- `@effect/platform/Terminal` -> `effect/Terminal`
+- `@effect/platform/Transferable` -> `effect/unstable/workers/Transferable`
+- `@effect/platform/Url` -> `effect/unstable/http/Url`
+- `@effect/platform/UrlParams` -> `effect/unstable/http/UrlParams`
+- `@effect/platform/Worker` -> `effect/unstable/workers/Worker`
+- `@effect/platform/WorkerError` -> `effect/unstable/workers/WorkerError`
+- `@effect/platform/WorkerRunner` -> `effect/unstable/workers/WorkerRunner`
+- `@effect/platform/index`: TODO: needs module guidance
+- `@effect/printer`: TODO: needs module guidance
+- `@effect/printer-ansi`: TODO: needs module guidance
+- `@effect/printer-ansi/Ansi`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer-ansi/AnsiDoc`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer-ansi/Color`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer-ansi/index`: TODO: needs module guidance
+- `@effect/printer/Doc`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer/DocStream`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer/DocTree`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer/Flatten`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer/Layout`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer/Optimize`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer/PageWidth`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/printer/index`: TODO: needs module guidance
+- `@effect/rpc`: TODO: needs module guidance
+- `@effect/rpc/Rpc` -> `effect/unstable/rpc/Rpc`
+- `@effect/rpc/RpcClient` -> `effect/unstable/rpc/RpcClient`
+- `@effect/rpc/RpcClientError` -> `effect/unstable/rpc/RpcClientError`
+- `@effect/rpc/RpcGroup` -> `effect/unstable/rpc/RpcGroup`
+- `@effect/rpc/RpcMessage` -> `effect/unstable/rpc/RpcMessage`
+- `@effect/rpc/RpcMiddleware` -> `effect/unstable/rpc/RpcMiddleware`
+- `@effect/rpc/RpcSchema` -> `effect/unstable/rpc/RpcSchema`
+- `@effect/rpc/RpcSerialization` -> `effect/unstable/rpc/RpcSerialization`
+- `@effect/rpc/RpcServer` -> `effect/unstable/rpc/RpcServer`
+- `@effect/rpc/RpcTest` -> `effect/unstable/rpc/RpcTest`
+- `@effect/rpc/RpcWorker` -> `effect/unstable/rpc/RpcWorker`
+- `@effect/rpc/index`: TODO: needs module guidance
+- `@effect/sql`: TODO: needs module guidance
+- `@effect/sql-clickhouse/index`: TODO: needs module guidance
+- `@effect/sql-d1/index`: TODO: needs module guidance
+- `@effect/sql-drizzle/Mysql`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-drizzle/Pg`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-drizzle/Sqlite`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-kysely/Kysely`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-kysely/Mssql`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-kysely/Mysql`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-kysely/Pg`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-kysely/Sqlite`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql-kysely/patch.types`: TODO: needs module guidance
+- `@effect/sql-libsql/index`: TODO: needs module guidance
+- `@effect/sql-mssql/index`: TODO: needs module guidance
+- `@effect/sql-mysql2/index`: TODO: needs module guidance
+- `@effect/sql-pg/index`: TODO: needs module guidance
+- `@effect/sql-sqlite-bun/index`: TODO: needs module guidance
+- `@effect/sql-sqlite-do/index`: TODO: needs module guidance
+- `@effect/sql-sqlite-node/index`: TODO: needs module guidance
+- `@effect/sql-sqlite-react-native/index`: TODO: needs module guidance
+- `@effect/sql-sqlite-wasm/index`: TODO: needs module guidance
+- `@effect/sql/Migrator` -> `effect/unstable/sql/Migrator`
+- `@effect/sql/Migrator/FileSystem`: TODO: needs module guidance
+- `@effect/sql/Model` -> `effect/unstable/schema/Model`, `effect/unstable/sql/SqlModel`
+- `@effect/sql/SqlClient` -> `effect/unstable/sql/SqlClient`
+- `@effect/sql/SqlConnection` -> `effect/unstable/sql/SqlConnection`
+- `@effect/sql/SqlError` -> `effect/unstable/sql/SqlError`
+- `@effect/sql/SqlEventJournal` -> `effect/unstable/eventlog/SqlEventJournal`
+- `@effect/sql/SqlEventLogServer` -> `effect/unstable/eventlog/SqlEventLogServerEncrypted`
+- `@effect/sql/SqlPersistedQueue`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/sql/SqlResolver` -> `effect/unstable/sql/SqlResolver`
+- `@effect/sql/SqlSchema` -> `effect/unstable/sql/SqlSchema`
+- `@effect/sql/SqlStream` -> `effect/unstable/sql/SqlStream`
+- `@effect/sql/Statement` -> `effect/unstable/sql/Statement`
+- `@effect/sql/index`: TODO: needs module guidance
+- `@effect/typeclass`: TODO: needs module guidance
+- `@effect/typeclass/Alternative`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Applicative`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Bicovariant`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Bounded`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Chainable`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Contravariant`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Coproduct`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Covariant`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Filterable`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/FlatMap`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Foldable`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Invariant`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Monad`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Monoid` -> `effect/Reducer`
+- `@effect/typeclass/Of`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Pointed`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Product`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/SemiAlternative`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/SemiApplicative`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/SemiCoproduct`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/SemiProduct`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/Semigroup` -> `effect/Combiner`
+- `@effect/typeclass/Traversable`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/TraversableFilterable`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Array`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/BigInt`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Boolean`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Duration`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Effect`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Either`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Identity`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Micro`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Number`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Option`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Ordering`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Predicate`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Record`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/String`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/data/Tuple`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/typeclass/index`: TODO: needs module guidance
+- `@effect/vitest/index`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/workflow`: TODO: needs module guidance
+- `@effect/workflow/Activity` -> `effect/unstable/workflow/Activity`
+- `@effect/workflow/DurableClock` -> `effect/unstable/workflow/DurableClock`
+- `@effect/workflow/DurableDeferred` -> `effect/unstable/workflow/DurableDeferred`
+- `@effect/workflow/DurableQueue` -> `effect/unstable/workflow/DurableQueue`
+- `@effect/workflow/DurableRateLimiter`: No single module replacement; follow the curated per-API guidance below.
+- `@effect/workflow/Workflow` -> `effect/unstable/workflow/Workflow`
+- `@effect/workflow/WorkflowEngine` -> `effect/unstable/workflow/WorkflowEngine`
+- `@effect/workflow/WorkflowProxy` -> `effect/unstable/workflow/WorkflowProxy`
+- `@effect/workflow/WorkflowProxyServer` -> `effect/unstable/workflow/WorkflowProxyServer`
+- `effect/Arbitrary`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ChildExecutorDecision`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ConfigError`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ConfigProviderPathPatch`: No single module replacement; follow the curated per-API guidance below.
+- `effect/DefaultServices`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Either` -> `effect/Result`
+- `effect/ExecutionStrategy`: No single module replacement; follow the curated per-API guidance below.
+- `effect/FastCheck` -> `effect/testing/FastCheck`
+- `effect/FiberId`: No single module replacement; follow the curated per-API guidance below.
+- `effect/FiberRef` -> `effect/References`
+- `effect/FiberRefs`: No single module replacement; follow the curated per-API guidance below.
+- `effect/FiberRefsPatch`: No single module replacement; follow the curated per-API guidance below.
+- `effect/FiberStatus`: No single module replacement; follow the curated per-API guidance below.
+- `effect/GlobalValue`: No single module replacement; follow the curated per-API guidance below.
+- `effect/GroupBy`: No single module replacement; follow the curated per-API guidance below.
+- `effect/JSONSchema` -> `effect/JsonSchema`
+- `effect/KeyedPool`: No single module replacement; follow the curated per-API guidance below.
+- `effect/List`: No single module replacement; follow the curated per-API guidance below.
+- `effect/LogSpan`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Mailbox`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MergeDecision`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MergeState`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MergeStrategy`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricBoundaries`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricHook`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricKey`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricKeyType`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricLabel`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricPair`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricPolling`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricRegistry`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MetricState`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Micro`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ModuleVersion`: No single module replacement; follow the curated per-API guidance below.
+- `effect/MutableQueue`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ParseResult` -> `effect/SchemaIssue`, `effect/SchemaParser`
+- `effect/Pretty`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RateLimiter`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Readable`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RedBlackTree`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Reloadable`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RequestBlock`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RuntimeFlags`: No single module replacement; follow the curated per-API guidance below.
+- `effect/RuntimeFlagsPatch`: No single module replacement; follow the curated per-API guidance below.
+- `effect/STM`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ScheduleDecision`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ScheduleInterval`: No single module replacement; follow the curated per-API guidance below.
+- `effect/ScheduleIntervals`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Secret`: No single module replacement; follow the curated per-API guidance below.
+- `effect/SingleProducerAsyncInput`: No single module replacement; follow the curated per-API guidance below.
+- `effect/SortedMap`: No single module replacement; follow the curated per-API guidance below.
+- `effect/SortedSet`: No single module replacement; follow the curated per-API guidance below.
+- `effect/StreamEmit`: No single module replacement; follow the curated per-API guidance below.
+- `effect/StreamHaltStrategy`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Streamable`: TODO: needs module guidance
+- `effect/Subscribable`: No single module replacement; follow the curated per-API guidance below.
+- `effect/Supervisor`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TArray`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TDeferred` -> `effect/TxDeferred`
+- `effect/TMap` -> `effect/TxHashMap`
+- `effect/TPriorityQueue` -> `effect/TxPriorityQueue`
+- `effect/TPubSub` -> `effect/TxPubSub`
+- `effect/TQueue` -> `effect/TxQueue`
+- `effect/TRandom`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TReentrantLock` -> `effect/TxReentrantLock`
+- `effect/TRef` -> `effect/TxRef`
+- `effect/TSemaphore` -> `effect/TxSemaphore`
+- `effect/TSet` -> `effect/TxHashSet`
+- `effect/TSubscriptionRef` -> `effect/TxSubscriptionRef`
+- `effect/TestAnnotation`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestAnnotationMap`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestAnnotations`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestClock` -> `effect/testing/TestClock`
+- `effect/TestConfig`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestContext`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestLive`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestServices`: No single module replacement; follow the curated per-API guidance below.
+- `effect/TestSized`: No single module replacement; follow the curated per-API guidance below.
+- `effect/UpstreamPullRequest`: No single module replacement; follow the curated per-API guidance below.
+- `effect/UpstreamPullStrategy`: No single module replacement; follow the curated per-API guidance below.
+- `effect/index`: No single module replacement; follow the curated per-API guidance below.
+
 ## API Reference
 
 ### `@effect/ai-amazon-bedrock/AmazonBedrockClient`
@@ -34534,42 +34943,6 @@ Moved to effect/unstable/ai/McpSchema. It remains the MCP content-block union, b
 export declare class ContentBlock extends ContentBlock_base { }
 ```
 
-#### `McpSchema.FailureEncoded`
-
-**Replacement:** `McpSchema.FailureEncoded`
-
-Moved to effect/unstable/ai/McpSchema and still derives an encoded JSON-RPC failure union from an RpcGroup.
-
-**Before**
-
-```ts
-export type FailureEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<Group> extends infer Rpc ? Rpc extends Rpc.Rpc<infer _Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? { readonly _tag: "Failure"; readonly id: string | number; readonly error: _Error["Encoded"]; } : never : never;
-```
-
-#### `McpSchema.FromClientEncoded`
-
-**Replacement:** `McpSchema.FromClientEncoded`
-
-Moved to effect/unstable/ai/McpSchema and remains the union of client requests and client notifications.
-
-**Before**
-
-```ts
-export type FromClientEncoded = ClientRequestEncoded | ClientNotificationEncoded;
-```
-
-#### `McpSchema.FromServerEncoded`
-
-**Replacement:** `McpSchema.FromServerEncoded`
-
-Moved to effect/unstable/ai/McpSchema and remains the union of server results and server notifications.
-
-**Before**
-
-```ts
-export type FromServerEncoded = ServerResultEncoded | ServerNotificationEncoded;
-```
-
 #### `McpSchema.McpError`
 
 **Replacement:** `McpSchema.McpError`
@@ -34592,18 +34965,6 @@ The public symbol annotation was removed. Detect parameter wrappers with McpSche
 
 ```ts
 ParamAnnotation: unique symbol
-```
-
-#### `McpSchema.SuccessEncoded`
-
-**Replacement:** `McpSchema.SuccessEncoded`
-
-Moved to effect/unstable/ai/McpSchema and still derives an encoded JSON-RPC success union from an RpcGroup.
-
-**Before**
-
-```ts
-export type SuccessEncoded<Group extends RpcGroup.Any> = RpcGroup.Rpcs<Group> extends infer Rpc ? Rpc extends Rpc.Rpc<infer _Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? { readonly _tag: "Success"; readonly id: string | number; readonly result: _Success["Encoded"]; } : never : never;
 ```
 
 #### `McpSchema.param`
@@ -34682,18 +35043,6 @@ Moved to effect/unstable/ai/Prompt with the same file-part model and schema; upd
 
 ```ts
 export interface FilePart extends BasePart<"file", FilePartOptions> { readonly mediaType: string; readonly fileName?: string | undefined; readonly data: string | Uint8Array | URL; }
-```
-
-#### `Prompt.FilePartEncoded`
-
-**Replacement:** `Prompt.FilePartEncoded`
-
-Moved to effect/unstable/ai/Prompt with the same encoded file-part shape; update the module import.
-
-**Before**
-
-```ts
-export interface FilePartEncoded extends BasePartEncoded<"file", FilePartOptions> { readonly mediaType: string; readonly fileName?: string | undefined; readonly data: string | Uint8Array | URL; }
 ```
 
 #### `Prompt.FromJson`
@@ -34792,18 +35141,6 @@ Moved to effect/unstable/ai/Prompt with the same reasoning-part model and schema
 export interface ReasoningPart extends BasePart<"reasoning", ReasoningPartOptions> { readonly text: string; }
 ```
 
-#### `Prompt.ReasoningPartEncoded`
-
-**Replacement:** `Prompt.ReasoningPartEncoded`
-
-Moved to effect/unstable/ai/Prompt with the same encoded reasoning payload; update the module import.
-
-**Before**
-
-```ts
-export interface ReasoningPartEncoded extends BasePartEncoded<"reasoning", ReasoningPartOptions> { readonly text: string; }
-```
-
 #### `Prompt.TextPart`
 
 **Replacement:** `Prompt.TextPart`
@@ -34816,18 +35153,6 @@ Moved to effect/unstable/ai/Prompt with the same text-part model and schema; upd
 export interface TextPart extends BasePart<"text", TextPartOptions> { readonly text: string; }
 ```
 
-#### `Prompt.TextPartEncoded`
-
-**Replacement:** `Prompt.TextPartEncoded`
-
-Moved to effect/unstable/ai/Prompt with the same encoded text payload; update the module import.
-
-**Before**
-
-```ts
-export interface TextPartEncoded extends BasePartEncoded<"text", TextPartOptions> { readonly text: string; }
-```
-
 #### `Prompt.ToolCallPart`
 
 **Replacement:** `Prompt.ToolCallPart`
@@ -34838,18 +35163,6 @@ Moved to effect/unstable/ai/Prompt with the same tool-call model and schema; upd
 
 ```ts
 export interface ToolCallPart extends BasePart<"tool-call", ToolCallPartOptions> { readonly id: string; readonly name: string; readonly params: unknown; readonly providerExecuted: boolean; }
-```
-
-#### `Prompt.ToolCallPartEncoded`
-
-**Replacement:** `Prompt.ToolCallPartEncoded`
-
-Moved to effect/unstable/ai/Prompt with the same encoded tool-call shape; update the module import.
-
-**Before**
-
-```ts
-export interface ToolCallPartEncoded extends BasePartEncoded<"tool-call", ToolCallPartOptions> { readonly id: string; readonly name: string; readonly params: unknown; readonly providerExecuted?: boolean | undefined; }
 ```
 
 #### `Prompt.ToolResultPartEncoded`
@@ -34876,30 +35189,6 @@ The Prompt type id is private in v4 and its internal literal changed. Use the pu
 export type TypeId = typeof TypeId;
 ```
 
-#### `Prompt.isPart`
-
-**Replacement:** `Prompt.isPart`
-
-Moved to effect/unstable/ai/Prompt and remains the public runtime guard for prompt parts.
-
-**Before**
-
-```ts
-isPart: (u: unknown) => u is Part
-```
-
-#### `Prompt.isPrompt`
-
-**Replacement:** `Prompt.isPrompt`
-
-Moved to effect/unstable/ai/Prompt and remains the public runtime guard for Prompt values.
-
-**Before**
-
-```ts
-isPrompt: (u: unknown) => u is Prompt
-```
-
 #### `Prompt.makePart`
 
 **Replacement:** `Prompt.makePart`
@@ -34924,43 +35213,7 @@ Renamed in v4. concat preserves the old dual API and concatenates the messages f
 merge: { (input: RawInput): (self: Prompt) => Prompt; (self: Prompt, input: RawInput): Prompt; }
 ```
 
-#### `Prompt.toolCallPart`
-
-**Replacement:** `Prompt.toolCallPart`
-
-Moved to effect/unstable/ai/Prompt and remains the typed convenience constructor over makePart("tool-call", params).
-
-**Before**
-
-```ts
-toolCallPart: (params: PartConstructorParams<ToolCallPart>) => ToolCallPart
-```
-
-#### `Prompt.toolResultPart`
-
-**Replacement:** `Prompt.toolResultPart`
-
-Moved to effect/unstable/ai/Prompt. V4 removes providerExecuted from prompt tool-result parts; provider-executed response results are handled when converting Response parts.
-
-**Before**
-
-```ts
-toolResultPart: (params: PartConstructorParams<ToolResultPart>) => ToolResultPart
-```
-
 ### `@effect/ai/Response`
-
-#### `Response.FilePartEncoded`
-
-**Replacement:** `Response.FilePartEncoded`
-
-Moved to effect/unstable/ai/Response; file data remains a base64 string in the encoded representation.
-
-**Before**
-
-```ts
-export interface FilePartEncoded extends BasePartEncoded<"file", FilePartMetadata> { readonly mediaType: string; readonly data: string; }
-```
 
 #### `Response.Part`
 
@@ -34984,30 +35237,6 @@ The public PartTypeId was removed and the marker is internal in v4. Use Response
 
 ```ts
 export type PartTypeId = typeof PartTypeId;
-```
-
-#### `Response.ReasoningPartEncoded`
-
-**Replacement:** `Response.ReasoningPartEncoded`
-
-Moved to effect/unstable/ai/Response; the encoded reasoning payload remains text: string.
-
-**Before**
-
-```ts
-export interface ReasoningPartEncoded extends BasePartEncoded<"reasoning", ReasoningPartMetadata> { readonly text: string; }
-```
-
-#### `Response.TextPartEncoded`
-
-**Replacement:** `Response.TextPartEncoded`
-
-Moved to effect/unstable/ai/Response; the encoded text payload remains text: string.
-
-**Before**
-
-```ts
-export interface TextPartEncoded extends BasePartEncoded<"text", TextPartMetadata> { readonly text: string; }
 ```
 
 #### `Response.ToolCallPartEncoded`
@@ -35152,18 +35381,6 @@ The lowercase convenience constructor was removed; construct the retained TextSt
 
 ```ts
 textStartPart: (params: ConstructorParams<TextStartPart>) => TextStartPart
-```
-
-#### `Response.toolCallPart`
-
-**Replacement:** `Response.toolCallPart`
-
-Moved to effect/unstable/ai/Response. The constructor remains, but providerName was removed from tool-call parts.
-
-**Before**
-
-```ts
-toolCallPart: <const Name extends string, Params>(params: ConstructorParams<ToolCallPart<Name, Params>>) => ToolCallPart<Name, Params>
 ```
 
 #### `Response.toolParamsDeltaPart`
@@ -35360,18 +35577,6 @@ Moved to effect/unstable/ai/Tool and remains the utility type that extracts a to
 export type Success<T> = T extends Tool<infer _Name, infer _Config, infer _Requirements> ? Schema.Schema.Type<_Config["success"]> : never;
 ```
 
-#### `Tool.Title`
-
-**Replacement:** `Tool.Title`
-
-Moved to effect/unstable/ai/Tool. It is now a Context.Service annotation key; continue attaching the string title with tool.annotate(Tool.Title, value).
-
-**Before**
-
-```ts
-export declare class Title extends Title_base { }
-```
-
 #### `Tool.Tool.ProviderDefinedProto`
 
 **Replacement:** `Tool.ProviderDefined`
@@ -35480,18 +35685,6 @@ The toolkit nominal id is private in v4. Use Toolkit.Toolkit or Toolkit.Any for 
 
 ```ts
 export type TypeId = typeof TypeId;
-```
-
-#### `Toolkit.make`
-
-**Replacement:** `Toolkit.make`
-
-Moved to effect/unstable/ai/Toolkit. It now accepts Tool.Any values only and no longer converts TaggedRequest schemas; create each tool explicitly with Tool.make first.
-
-**Before**
-
-```ts
-make: <Tools extends ReadonlyArray<Tool.Any>>(...tools: Tools) => Toolkit<ToolsByName<Tools>>
 ```
 
 ### `@effect/cli/Args`
@@ -37988,18 +38181,6 @@ Date is now a singleton Primitive value.
 date: Primitive<globalThis.Date>
 ```
 
-#### `Primitive.float`
-
-**Replacement:** `Primitive.float`
-
-Float is now a singleton Primitive value and rejects non-finite numbers.
-
-**Before**
-
-```ts
-float: Primitive<number>
-```
-
 #### `Primitive.getChoices`
 
 **Replacement:** `none`
@@ -38022,18 +38203,6 @@ Primitive-level help generation was removed from the public API.
 
 ```ts
 getHelp: <A>(self: Primitive<A>) => Span
-```
-
-#### `Primitive.integer`
-
-**Replacement:** `Primitive.integer`
-
-Integer is now a singleton Primitive value.
-
-**Before**
-
-```ts
-integer: Primitive<number>
 ```
 
 #### `Primitive.isBool`
@@ -38171,18 +38340,6 @@ Use the moved constructor; v4 also supports a default selected path.
 file: (options?: Prompt.FileOptions) => Prompt<string>
 ```
 
-#### `Prompt.flatMap`
-
-**Replacement:** `Prompt.flatMap`
-
-Use the moved combinator.
-
-**Before**
-
-```ts
-flatMap: { <Output, Output2>(f: (output: Output) => Prompt<Output2>): (self: Prompt<Output>) => Prompt<Output2>; <Output, Output2>(self: Prompt<Output>, f: (output: Output) => Prompt<Output2>): Prompt<Output2>; }
-```
-
 #### `Prompt.float`
 
 **Replacement:** `Prompt.float`
@@ -38205,18 +38362,6 @@ Use the moved constructor; v4 also supports a default value.
 
 ```ts
 integer: (options: Prompt.IntegerOptions) => Prompt<number>
-```
-
-#### `Prompt.map`
-
-**Replacement:** `Prompt.map`
-
-Use the moved combinator.
-
-**Before**
-
-```ts
-map: { <Output, Output2>(f: (output: Output) => Output2): (self: Prompt<Output>) => Prompt<Output2>; <Output, Output2>(self: Prompt<Output>, f: (output: Output) => Output2): Prompt<Output2>; }
 ```
 
 #### `Prompt.text`
@@ -38980,18 +39125,6 @@ symbol: unique symbol
 
 ### `@effect/cluster/Entity`
 
-#### `Entity.Any`
-
-**Replacement:** `effect/unstable/cluster/Entity#Any`
-
-Moved into core Effect with the same erased entity type.
-
-**Before**
-
-```ts
-export type Any = Entity<string, Rpc.Any>;
-```
-
 #### `Entity.TypeId`
 
 **Replacement:** `none`
@@ -39002,18 +39135,6 @@ The entity marker is private in v4. Use Entity.isEntity for runtime refinement.
 
 ```ts
 export type TypeId = typeof TypeId;
-```
-
-#### `Entity.makeTestClient`
-
-**Replacement:** `effect/unstable/cluster/Entity#makeTestClient`
-
-Moved into core Effect; adapt its inputs and requirements to the v4 RPC, Layer, Scope, and Context APIs.
-
-**Before**
-
-```ts
-makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE, LR>(entity: Entity<Type, Rpcs>, layer: Layer.Layer<LA, LE, LR>) => Effect.Effect<(entityId: string) => Effect.Effect<RpcClient.RpcClient<Rpcs>>, LE, Scope | ShardingConfig | Exclude<LR, Sharding> | Rpc.MiddlewareClient<Rpcs>>
 ```
 
 ### `@effect/cluster/EntityAddress`
@@ -39040,32 +39161,6 @@ The marker is private in v4. Use the exported EntityAddress class and schema.
 
 ```ts
 export type TypeId = typeof TypeId;
-```
-
-#### `EntityAddress.make`
-
-**Replacement:** `effect/unstable/cluster/EntityAddress#make`
-
-Moved into core Effect with the same options-object constructor.
-
-**Before**
-
-```ts
-make: (options: { readonly shardId: ShardId; readonly entityType: EntityType; readonly entityId: EntityId; }) => EntityAddress
-```
-
-### `@effect/cluster/EntityId`
-
-#### `EntityId.make`
-
-**Replacement:** `effect/unstable/cluster/EntityId#make`
-
-Moved into core Effect; the branding helper remains and performs no validation or normalization.
-
-**Before**
-
-```ts
-make: (id: string) => EntityId
 ```
 
 ### `@effect/cluster/EntityProxy`
@@ -39159,18 +39254,6 @@ make: <A, E, R>(options: { readonly acquire: Effect.Effect<A, E, R>; readonly id
 ```
 
 ### `@effect/cluster/Envelope`
-
-#### `Envelope.Envelope.Any`
-
-**Replacement:** `effect/unstable/cluster/Envelope#Envelope.Any`
-
-Moved into core Effect with the same erased envelope type.
-
-**Before**
-
-```ts
-type Any = Envelope<any>;
-```
 
 #### `Envelope.Envelope.Encoded`
 
@@ -39281,18 +39364,6 @@ export interface Request<in out Rpc extends Rpc.Any> { readonly [TypeId]: TypeId
 export declare namespace Request { type Any = Request<any>; interface Encoded { readonly _tag: "Request"; readonly requestId: string; readonly address: typeof EntityAddress.Encoded; readonly tag: string; readonly payload: unknown; readonly headers: ReadonlyRecord<string, string>; readonly traceId?: string | undefined; readonly spanId?: string | undefined; readonly sampled?: boolean | undefined; } interface PartialEncoded { readonly _tag: "Request"; readonly requestId: Snowflake; readonly address: EntityAddress; readonly tag: string; readonly payload: unknown; readonly headers: Headers.Headers; readonly traceId?: string | undefined; readonly spanId?: string | undefined; readonly sampled?: boolean | undefined; } }
 ```
 
-#### `Envelope.Request.Any`
-
-**Replacement:** `effect/unstable/cluster/Envelope#Request.Any`
-
-Moved into core Effect with the same erased request type.
-
-**Before**
-
-```ts
-type Any = Request<any>;
-```
-
 #### `Envelope.Request.Encoded`
 
 **Replacement:** `effect/unstable/cluster/Envelope#PartialRequestEncoded`
@@ -39341,70 +39412,6 @@ The marker value remains, but the type alias was removed and the value is now a 
 export type TypeId = typeof TypeId;
 ```
 
-### `@effect/cluster/HttpRunner`
-
-#### `HttpRunner.layerClient`
-
-**Replacement:** `effect/unstable/cluster/HttpRunner#layerClient`
-
-Moved into core Effect with the same client-side Sharding and Runners layer composition.
-
-**Before**
-
-```ts
-layerClient: Layer.Layer<Sharding.Sharding | Runners.Runners, never, ShardingConfig.ShardingConfig | Runners.RpcClientProtocol | MessageStorage | RunnerStorage | RunnerHealth>
-```
-
-#### `HttpRunner.layerHttp`
-
-**Replacement:** `effect/unstable/cluster/HttpRunner#layerHttp`
-
-Moved into core Effect with the same HTTP runner composition.
-
-**Before**
-
-```ts
-layerHttp: Layer.Layer<Sharding.Sharding | Runners.Runners, never, RpcSerialization.RpcSerialization | ShardingConfig.ShardingConfig | HttpClient.HttpClient | HttpServer.HttpServer | MessageStorage | RunnerStorage | RunnerHealth>
-```
-
-#### `HttpRunner.toHttpEffect`
-
-**Replacement:** `effect/unstable/cluster/HttpRunner#toHttpEffect`
-
-Moved into core Effect with the same nested HTTP server effect and service requirements.
-
-**Before**
-
-```ts
-toHttpEffect: Effect.Effect<Effect.Effect<HttpServerResponse, never, Scope | HttpServerRequest>, never, Scope | RpcSerialization.RpcSerialization | Sharding.Sharding | MessageStorage>
-```
-
-#### `HttpRunner.toHttpEffectWebsocket`
-
-**Replacement:** `effect/unstable/cluster/HttpRunner#toHttpEffectWebsocket`
-
-Moved into core Effect with the same WebSocket HTTP effect shape and requirements.
-
-**Before**
-
-```ts
-toHttpEffectWebsocket: Effect.Effect<Effect.Effect<HttpServerResponse, never, Scope | HttpServerRequest>, never, Scope | RpcSerialization.RpcSerialization | Sharding.Sharding | MessageStorage>
-```
-
-### `@effect/cluster/K8sHttpClient`
-
-#### `K8sHttpClient.layer`
-
-**Replacement:** `effect/unstable/cluster/K8sHttpClient#layer`
-
-Moved into core Effect with the same in-cluster Kubernetes client behavior.
-
-**Before**
-
-```ts
-layer: Layer.Layer<K8sHttpClient, never, HttpClient.HttpClient | FileSystem.FileSystem>
-```
-
 ### `@effect/cluster/MachineId`
 
 #### `MachineId.make`
@@ -39434,30 +39441,6 @@ serialize: <Rpc extends Rpc.Any>(message: Outgoing<Rpc>) => Effect.Effect<Envelo
 ```
 
 ### `@effect/cluster/MessageStorage`
-
-#### `MessageStorage.layerMemory`
-
-**Replacement:** `effect/unstable/cluster/MessageStorage#layerMemory`
-
-Moved into core Effect; it still provides MessageStorage and MemoryDriver and requires ShardingConfig.
-
-**Before**
-
-```ts
-layerMemory: Layer.Layer<MessageStorage | MemoryDriver, never, ShardingConfig>
-```
-
-#### `MessageStorage.layerNoop`
-
-**Replacement:** `effect/unstable/cluster/MessageStorage#layerNoop`
-
-Moved into core Effect with the same dependency-free no-op implementation.
-
-**Before**
-
-```ts
-layerNoop: Layer.Layer<MessageStorage>
-```
 
 #### `MessageStorage.make`
 
@@ -39537,85 +39520,7 @@ The runner-address marker is private in v4. Use the exported RunnerAddress class
 export type TypeId = typeof TypeId;
 ```
 
-#### `RunnerAddress.make`
-
-**Replacement:** `effect/unstable/cluster/RunnerAddress#make`
-
-Moved into core Effect with the same host and port constructor; the host schema is now Schema.String.
-
-**Before**
-
-```ts
-make: (host: string, port: number) => RunnerAddress
-```
-
-### `@effect/cluster/RunnerHealth`
-
-#### `RunnerHealth.layerNoop`
-
-**Replacement:** `effect/unstable/cluster/RunnerHealth#layerNoop`
-
-Moved into core Effect with the same dependency-free health implementation.
-
-**Before**
-
-```ts
-layerNoop: Layer.Layer<RunnerHealth, never, never>
-```
-
-### `@effect/cluster/RunnerServer`
-
-#### `RunnerServer.layer`
-
-**Replacement:** `effect/unstable/cluster/RunnerServer#layer`
-
-Moved into core Effect; it still serves runner RPCs over a separately provided RpcServer.Protocol.
-
-**Before**
-
-```ts
-layer: Layer.Layer<never, never, RpcServer.Protocol | Sharding.Sharding | MessageStorage.MessageStorage>
-```
-
-#### `RunnerServer.layerClientOnly`
-
-**Replacement:** `effect/unstable/cluster/RunnerServer#layerClientOnly`
-
-Moved into core Effect with the same client-only Sharding and Runners composition.
-
-**Before**
-
-```ts
-layerClientOnly: Layer.Layer<Sharding.Sharding | Runners.Runners, never, ShardingConfig | Runners.RpcClientProtocol | MessageStorage.MessageStorage | RunnerStorage.RunnerStorage>
-```
-
-### `@effect/cluster/RunnerStorage`
-
-#### `RunnerStorage.layerMemory`
-
-**Replacement:** `effect/unstable/cluster/RunnerStorage#layerMemory`
-
-Moved into core Effect with the same in-memory registration and shard-lock implementation for tests and local use.
-
-**Before**
-
-```ts
-layerMemory: Layer.Layer<RunnerStorage>
-```
-
 ### `@effect/cluster/Runners`
-
-#### `Runners.layerNoop`
-
-**Replacement:** `effect/unstable/cluster/Runners#layerNoop`
-
-Moved into core Effect with the same no-op runner communication layer.
-
-**Before**
-
-```ts
-layerNoop: Layer.Layer<Runners, never, ShardingConfig | MessageStorage.MessageStorage>
-```
 
 #### `Runners.make`
 
@@ -39653,32 +39558,6 @@ The shard marker is private in v4. Use ShardId.isShardId for runtime refinement.
 
 ```ts
 export type TypeId = typeof TypeId;
-```
-
-#### `ShardId.make`
-
-**Replacement:** `effect/unstable/cluster/ShardId#make`
-
-Moved into core Effect with the same cached group and id constructor.
-
-**Before**
-
-```ts
-make: (group: string, id: number) => ShardId
-```
-
-### `@effect/cluster/Sharding`
-
-#### `Sharding.layer`
-
-**Replacement:** `effect/unstable/cluster/Sharding#layer`
-
-Moved into core Effect with the same main sharding runtime composition and public service requirements.
-
-**Before**
-
-```ts
-layer: Layer.Layer<Sharding, never, ShardingConfig | Runners | MessageStorage.MessageStorage | RunnerStorage | RunnerHealth.RunnerHealth>
 ```
 
 ### `@effect/cluster/ShardingConfig`
@@ -39747,20 +39626,6 @@ Moved into core Effect. V4 additionally requires Crypto.Crypto because SQL messa
 layer: (options?: { readonly shardingConfig?: Partial<ShardingConfig.ShardingConfig["Type"]> | undefined; readonly runnerStorage?: "memory" | "sql" | undefined; }) => Layer.Layer<Sharding.Sharding | Runners.Runners | MessageStorage.MessageStorage, ConfigError.ConfigError, SqlClient.SqlClient>
 ```
 
-### `@effect/cluster/Singleton`
-
-#### `Singleton.make`
-
-**Replacement:** `effect/unstable/cluster/Singleton#make`
-
-Moved into core Effect with the same singleton Layer constructor.
-
-**Before**
-
-```ts
-make: <E, R>(name: string, run: Effect.Effect<void, E, R>, options?: { readonly shardGroup?: string | undefined; }) => Layer.Layer<never, never, Sharding | Exclude<R, Scope>>
-```
-
 ### `@effect/cluster/SingletonAddress`
 
 #### `SingletonAddress.TypeId`
@@ -39777,18 +39642,6 @@ export type TypeId = typeof TypeId;
 
 ### `@effect/cluster/Snowflake`
 
-#### `Snowflake.Generator`
-
-**Replacement:** `effect/unstable/cluster/Snowflake#Generator`
-
-Moved into core Effect and changed to Context.Service; its unsafeNext method was renamed to nextUnsafe.
-
-**Before**
-
-```ts
-export declare class Generator extends Generator_base { }
-```
-
 #### `Snowflake.TypeId`
 
 **Replacement:** `effect/unstable/cluster/Snowflake#TypeId`
@@ -39799,44 +39652,6 @@ Moved into core Effect; the public marker is now the string literal ~effect/clus
 
 ```ts
 export type TypeId = typeof TypeId;
-```
-
-#### `Snowflake.make`
-
-**Replacement:** `effect/unstable/cluster/Snowflake#make`
-
-Moved into core Effect with the same timestamp, machine-id, and sequence packing constructor.
-
-**Before**
-
-```ts
-make: (options: { readonly machineId: MachineId; readonly sequence: number; readonly timestamp: number; }) => Snowflake
-```
-
-### `@effect/cluster/SocketRunner`
-
-#### `SocketRunner.layer`
-
-**Replacement:** `effect/unstable/cluster/SocketRunner#layer`
-
-Moved into core Effect with the same full socket runner composition.
-
-**Before**
-
-```ts
-layer: Layer.Layer<Sharding.Sharding | Runners.Runners, never, Runners.RpcClientProtocol | ShardingConfig | RpcSerialization.RpcSerialization | SocketServer | MessageStorage | RunnerStorage.RunnerStorage | RunnerHealth>
-```
-
-#### `SocketRunner.layerClientOnly`
-
-**Replacement:** `effect/unstable/cluster/SocketRunner#layerClientOnly`
-
-Moved into core Effect; it remains the client-only runner layer and does not start a socket server.
-
-**Before**
-
-```ts
-layerClientOnly: Layer.Layer<Sharding.Sharding | Runners.Runners, never, Runners.RpcClientProtocol | ShardingConfig | MessageStorage | RunnerStorage.RunnerStorage>
 ```
 
 ### `@effect/cluster/SqlMessageStorage`
@@ -39879,30 +39694,6 @@ make: (options?: { readonly prefix?: string | undefined; } | undefined) => Effec
 
 ### `@effect/cluster/SqlRunnerStorage`
 
-#### `SqlRunnerStorage.layer`
-
-**Replacement:** `effect/unstable/cluster/SqlRunnerStorage#layer`
-
-Moved into core Effect with the same default-prefix SQL runner storage layer.
-
-**Before**
-
-```ts
-layer: Layer.Layer<RunnerStorage.RunnerStorage, SqlError, SqlClient.SqlClient | ShardingConfig.ShardingConfig>
-```
-
-#### `SqlRunnerStorage.layerWith`
-
-**Replacement:** `effect/unstable/cluster/SqlRunnerStorage#layerWith`
-
-Moved into core Effect with the same optional table prefix.
-
-**Before**
-
-```ts
-layerWith: (options: { readonly prefix?: string | undefined; }) => Layer.Layer<RunnerStorage.RunnerStorage, SqlError, SqlClient.SqlClient | ShardingConfig.ShardingConfig>
-```
-
 #### `SqlRunnerStorage.make`
 
 **Replacement:** `effect/unstable/cluster/SqlRunnerStorage#make`
@@ -39913,46 +39704,6 @@ Moved into core Effect with the same prefix option and service requirements.
 
 ```ts
 make: (options: { readonly prefix?: string | undefined; }) => Effect.Effect<{ readonly register: (runner: import("./Runner.js").Runner, healthy: boolean) => Effect.Effect<import("./MachineId.js").MachineId, PersistenceError>; readonly unregister: (address: import("./RunnerAddress.js").RunnerAddress) => Effect.Effect<void, PersistenceError>; readonly getRunners: Effect.Effect<Array<readonly [runner: import("./Runner.js").Runner, healthy: boolean]>, PersistenceError>; readonly setRunnerHealth: (address: import("./RunnerAddress.js").RunnerAddress, healthy: boolean) => Effect.Effect<void, PersistenceError>; readonly acquire: (address: import("./RunnerAddress.js").RunnerAddress, shardIds: Iterable<ShardId.ShardId>) => Effect.Effect<Array<ShardId.ShardId>, PersistenceError>; readonly refresh: (address: import("./RunnerAddress.js").RunnerAddress, shardIds: Iterable<ShardId.ShardId>) => Effect.Effect<Array<ShardId.ShardId>, PersistenceError>; readonly release: (address: import("./RunnerAddress.js").RunnerAddress, shardId: ShardId.ShardId) => Effect.Effect<void, PersistenceError>; readonly releaseAll: (address: import("./RunnerAddress.js").RunnerAddress) => Effect.Effect<void, PersistenceError>; }, SqlError, Scope.Scope | ShardingConfig.ShardingConfig | SqlClient.SqlClient>
-```
-
-### `@effect/cluster/TestRunner`
-
-#### `TestRunner.layer`
-
-**Replacement:** `effect/unstable/cluster/TestRunner#layer`
-
-Moved into core Effect with the same dependency-free in-memory test cluster composition.
-
-**Before**
-
-```ts
-layer: Layer.Layer<Sharding.Sharding | Runners.Runners | MessageStorage.MessageStorage | MessageStorage.MemoryDriver>
-```
-
-### `@effect/experimental/DevTools`
-
-#### `DevTools.layer`
-
-**Replacement:** `effect/unstable/devtools/DevTools#layer`
-
-Import layer from the v4 unstable DevTools module.
-
-**Before**
-
-```ts
-layer: (url?: string) => Layer.Layer<never>
-```
-
-#### `DevTools.layerWebSocket`
-
-**Replacement:** `effect/unstable/devtools/DevTools#layerWebSocket`
-
-Import layerWebSocket from the v4 unstable DevTools module.
-
-**Before**
-
-```ts
-layerWebSocket: (url?: string) => Layer.Layer<never, never, Socket.WebSocketConstructor>
 ```
 
 ### `@effect/experimental/DevTools/Client`
@@ -39991,18 +39742,6 @@ Import layer from the v4 unstable DevToolsClient module.
 
 ```ts
 layer: Layer.Layer<Client, never, Socket.Socket>
-```
-
-#### `Client.layerTracer`
-
-**Replacement:** `effect/unstable/devtools/DevToolsClient#layerTracer`
-
-Import layerTracer from the v4 unstable DevToolsClient module.
-
-**Before**
-
-```ts
-layerTracer: Layer.Layer<never, never, Socket.Socket>
 ```
 
 #### `Client.make`
@@ -40414,30 +40153,6 @@ export interface Handlers<R, Events extends Event.Any = never> extends Pipeable 
 export declare namespace Handlers { interface Any { readonly [HandlersTypeId]: any; } type Item<R> = { readonly event: Event.AnyWithProps; readonly context: Context.Context<any>; readonly handler: (options: { readonly payload: any; readonly entry: Entry; readonly conflicts: Array<{ readonly entry: Entry; readonly payload: any; }>; }) => Effect.Effect<any, R>; }; type ValidateReturn<A> = A extends (Handlers<infer _R, infer _Events> | Effect.Effect<Handlers<infer _R, infer _Events>, infer _EX, infer _RX>) ? [_Events] extends [never] ? A : `Event not handled: ${Event.Tag<_Events>}` : `Must return the implemented handlers`; type Error<A> = A extends Effect.Effect<Handlers<infer _R, infer _Events>, infer _EX, infer _RX> ? _EX : never; type Context<A> = A extends Handlers<infer _R, infer _Events> ? _R | Event.Context<_Events> : A extends Effect.Effect<Handlers<infer _R, infer _Events>, infer _EX, infer _RX> ? _R | _RX | Event.Context<_Events> : never; }
 ```
 
-#### `EventLog.Handlers.Error`
-
-**Replacement:** `effect/unstable/eventlog/EventLog#Handlers.Error`
-
-Import the retained Handlers.Error type from the v4 EventLog module.
-
-**Before**
-
-```ts
-type Error<A> = A extends Effect.Effect<Handlers<infer _R, infer _Events>, infer _EX, infer _RX> ? _EX : never;
-```
-
-#### `EventLog.Handlers.ValidateReturn`
-
-**Replacement:** `effect/unstable/eventlog/EventLog#Handlers.ValidateReturn`
-
-Import the retained Handlers.ValidateReturn type from the v4 EventLog module.
-
-**Before**
-
-```ts
-type ValidateReturn<A> = A extends (Handlers<infer _R, infer _Events> | Effect.Effect<Handlers<infer _R, infer _Events>, infer _EX, infer _RX>) ? [_Events] extends [never] ? A : `Event not handled: ${Event.Tag<_Events>}` : `Must return the implemented handlers`;
-```
-
 #### `EventLog.HandlersTypeId`
 
 **Replacement:** `effect/unstable/eventlog/EventLog#HandlersTypeId`
@@ -40496,18 +40211,6 @@ Compose KeyValueStore.toSchemaStore, EventLog.IdentitySchema, EventLog.makeIdent
 
 ```ts
 layerIdentityKvs: (options: { readonly key: string; }) => Layer.Layer<Identity, ParseResult.ParseError | Error.PlatformError, KeyValueStore.KeyValueStore>
-```
-
-#### `EventLog.schema`
-
-**Replacement:** `effect/unstable/eventlog/EventLog#schema`
-
-Import schema from the v4 EventLog module.
-
-**Before**
-
-```ts
-schema: <Groups extends ReadonlyArray<EventGroup.Any>>(...groups: Groups) => EventLogSchema<Groups[number]>
 ```
 
 ### `@effect/experimental/EventLogRemote`
@@ -40741,30 +40444,6 @@ layerWebSocketBrowser: (url: string, options?: { readonly disablePing?: boolean;
 ```
 
 ### `@effect/experimental/EventLogServer`
-
-#### `EventLogServer.Storage`
-
-**Replacement:** `effect/unstable/eventlog/EventLogServerEncrypted#Storage`
-
-Use the encrypted server Storage service, which is storeId- and session-aware.
-
-**Before**
-
-```ts
-export declare class Storage extends Storage_base { }
-```
-
-#### `EventLogServer.layerStorageMemory`
-
-**Replacement:** `effect/unstable/eventlog/EventLogServerEncrypted#layerStorageMemory`
-
-Use the encrypted server memory storage layer; storage is now storeId- and session-aware.
-
-**Before**
-
-```ts
-layerStorageMemory: Layer.Layer<Storage>
-```
 
 #### `EventLogServer.makeHandler`
 
@@ -41493,30 +41172,6 @@ Import TypeId from the v4 unstable PersistedQueue module; it is now a string bra
 export type TypeId = "~@effect/experimental/PersistedQueue";
 ```
 
-#### `PersistedQueue.layer`
-
-**Replacement:** `effect/unstable/persistence/PersistedQueue#layer`
-
-Import layer from the v4 unstable PersistedQueue module.
-
-**Before**
-
-```ts
-layer: Layer.Layer<PersistedQueueFactory, never, PersistedQueueStore>
-```
-
-#### `PersistedQueue.layerStoreMemory`
-
-**Replacement:** `effect/unstable/persistence/PersistedQueue#layerStoreMemory`
-
-Import layerStoreMemory from the v4 unstable PersistedQueue module.
-
-**Before**
-
-```ts
-layerStoreMemory: Layer.Layer<PersistedQueueStore>
-```
-
 #### `PersistedQueue.make`
 
 **Replacement:** `effect/unstable/persistence/PersistedQueue#make`
@@ -41900,30 +41555,6 @@ Import TypeId from the v4 unstable RateLimiter module; it is now a string brand.
 export type TypeId = "~@effect/experimental/RateLimiter";
 ```
 
-#### `RateLimiter.layer`
-
-**Replacement:** `effect/unstable/persistence/RateLimiter#layer`
-
-Import layer from the v4 unstable RateLimiter module.
-
-**Before**
-
-```ts
-layer: Layer.Layer<RateLimiter, never, RateLimiterStore>
-```
-
-#### `RateLimiter.make`
-
-**Replacement:** `effect/unstable/persistence/RateLimiter#make`
-
-Import make from the v4 unstable RateLimiter module.
-
-**Before**
-
-```ts
-make: Effect.Effect<RateLimiter, never, RateLimiterStore>
-```
-
 ### `@effect/experimental/RateLimiter/Redis`
 
 #### `Redis.layerStore`
@@ -41989,18 +41620,6 @@ The named namespace member was removed; derive the service shape from the Contex
 interface Service { readonly unsafeInvalidate: (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) => void; readonly unsafeRegister: (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>, handler: () => void) => () => void; readonly invalidate: (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) => Effect.Effect<void>; readonly mutation: <A, E, R>(keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>, effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, R>; readonly query: <A, E, R>(keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>, effect: Effect.Effect<A, E, R>) => Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope>; readonly stream: <A, E, R>(keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>, effect: Effect.Effect<A, E, R>) => Stream.Stream<A, E, Exclude<R, Scope.Scope>>; }
 ```
 
-#### `Reactivity.layer`
-
-**Replacement:** `effect/unstable/reactivity/Reactivity#layer`
-
-Import layer from the v4 unstable Reactivity module.
-
-**Before**
-
-```ts
-layer: Layer.Layer<Reactivity>
-```
-
 #### `Reactivity.make`
 
 **Replacement:** `effect/unstable/reactivity/Reactivity#make`
@@ -42011,18 +41630,6 @@ Import make from the v4 unstable Reactivity module.
 
 ```ts
 make: Effect.Effect<Reactivity.Service, never, never>
-```
-
-#### `Reactivity.stream`
-
-**Replacement:** `effect/unstable/reactivity/Reactivity#stream`
-
-Import stream from the v4 unstable Reactivity module.
-
-**Before**
-
-```ts
-stream: { (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): <A, E, R>(effect: Effect.Effect<A, E, R>) => Stream.Stream<A, E, Exclude<R, Scope.Scope> | Reactivity>; <A, E, R>(effect: Effect.Effect<A, E, R>, keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>): Stream.Stream<A, E, Exclude<R, Scope.Scope> | Reactivity>; }
 ```
 
 ### `@effect/experimental/RequestResolver`
@@ -42140,18 +41747,6 @@ The Field brand is private in v4; use VariantSchema.isField for narrowing.
 export type FieldTypeId = typeof FieldTypeId;
 ```
 
-#### `VariantSchema.Override`
-
-**Replacement:** `effect/unstable/schema/VariantSchema#Override`
-
-Import Override from the v4 unstable VariantSchema module.
-
-**Before**
-
-```ts
-Override: <A>(value: A) => A & Brand<"Override">
-```
-
 #### `VariantSchema.Struct.Fields`
 
 **Replacement:** `effect/unstable/schema/VariantSchema#Struct.Fields`
@@ -42199,18 +41794,6 @@ The fromKey rename helper was not ported; for whole-struct encoded-key renaming 
 
 ```ts
 type Rename<S, Key extends string> = S extends Schema.PropertySignature<infer _TypeToken, infer _Type, infer _Key, infer _EncodedToken, infer _Encoded, infer _HasDefault, infer _R> ? Schema.PropertySignature<_TypeToken, _Type, Key, _EncodedToken, _Encoded, _HasDefault, _R> : S extends Schema.Schema.All ? fromKey<S, Key> : never;
-```
-
-#### `VariantSchema.isField`
-
-**Replacement:** `effect/unstable/schema/VariantSchema#isField`
-
-Import isField from the v4 unstable VariantSchema module.
-
-**Before**
-
-```ts
-isField: (u: unknown) => u is Field<any>
 ```
 
 #### `VariantSchema.make`
@@ -42364,18 +41947,6 @@ make: (options: { readonly url: string; readonly resource?: { readonly serviceNa
 ```
 
 ### `@effect/opentelemetry/OtlpResource`
-
-#### `OtlpResource.make`
-
-**Replacement:** `OtlpResource.make`
-
-The constructor remains in the module moved to effect/unstable/observability/OtlpResource.
-
-**Before**
-
-```ts
-make: (options: { readonly serviceName: string; readonly serviceVersion?: string | undefined; readonly attributes?: Record<string, unknown> | undefined; }) => Resource
-```
 
 #### `OtlpResource.unsafeServiceName`
 
@@ -44371,18 +43942,6 @@ The collection brand is private in v4; use the public refinement instead.
 export type TypeId = typeof TypeId;
 ```
 
-#### `Cookies.remove`
-
-**Replacement:** `Cookies.remove`
-
-Retained with the same dual name-based removal signature.
-
-**Before**
-
-```ts
-remove: { (name: string): (self: Cookies) => Cookies; (self: Cookies, name: string): Cookies; }
-```
-
 #### `Cookies.unsafeMakeCookie`
 
 **Replacement:** `Cookies.makeCookieUnsafe`
@@ -44517,18 +44076,6 @@ Retained; it still provides the strong metadata-based ETag Generator service.
 
 ```ts
 layer: Layer<Generator>
-```
-
-#### `Etag.toString`
-
-**Replacement:** `Etag.toString`
-
-Retained with the same Etag-to-header-string behavior and signature.
-
-**Before**
-
-```ts
-toString: (self: Etag) => string
 ```
 
 ### `@effect/platform/FetchHttpClient`
@@ -44679,18 +44226,6 @@ Operation option interfaces are inline in the v4 FileSystem service.
 export interface SinkOptions extends OpenFileOptions { }
 ```
 
-#### `FileSystem.Size`
-
-**Replacement:** `FileSystem.Size`
-
-The branded bigint size type remains after moving the module to effect/FileSystem.
-
-**Before**
-
-```ts
-export type Size = Brand.Branded<bigint, "Size">;
-```
-
 #### `FileSystem.StreamOptions`
 
 **Replacement:** `NonNullable<Parameters<FileSystem.FileSystem["stream"]>[1]>`
@@ -44775,18 +44310,6 @@ Operation option interfaces are inline in the v4 FileSystem service.
 export interface WriteFileStringOptions { readonly flag?: OpenFlag; readonly mode?: number; }
 ```
 
-#### `FileSystem.isFile`
-
-**Replacement:** `FileSystem.isFile`
-
-The guard remains after moving the module to effect/FileSystem.
-
-**Before**
-
-```ts
-isFile: (u: unknown) => u is File
-```
-
 #### `FileSystem.layerNoop`
 
 **Replacement:** `FileSystem.layerNoop`
@@ -44811,18 +44334,6 @@ The constructor remains after moving the module to effect/FileSystem; adapt the 
 make: (impl: Omit<FileSystem, "exists" | "readFileString" | "stream" | "sink" | "writeFileString">) => FileSystem
 ```
 
-#### `FileSystem.makeNoop`
-
-**Replacement:** `FileSystem.makeNoop`
-
-The helper remains after moving the module to effect/FileSystem.
-
-**Before**
-
-```ts
-makeNoop: (fileSystem: Partial<FileSystem>) => FileSystem
-```
-
 ### `@effect/platform/Headers`
 
 #### `Headers.HeadersTypeId`
@@ -44837,18 +44348,6 @@ The public Headers type-id symbol was renamed from HeadersTypeId to TypeId.
 export type HeadersTypeId = typeof HeadersTypeId;
 ```
 
-#### `Headers.Input`
-
-**Replacement:** `Headers.Input`
-
-Retained with the same record-or-entry-iterable input shape.
-
-**Before**
-
-```ts
-export type Input = Record.ReadonlyRecord<string, string | ReadonlyArray<string> | undefined> | Iterable<readonly [string, string]>;
-```
-
 #### `Headers.currentRedactedNames`
 
 **Replacement:** `Headers.CurrentRedactedNames`
@@ -44859,66 +44358,6 @@ Renamed and changed from FiberRef to Context.Reference; override it with service
 
 ```ts
 currentRedactedNames: FiberRef.FiberRef<ReadonlyArray<string | RegExp>>
-```
-
-#### `Headers.empty`
-
-**Replacement:** `Headers.empty`
-
-Retained as the empty immutable Headers value.
-
-**Before**
-
-```ts
-empty: Headers
-```
-
-#### `Headers.fromInput`
-
-**Replacement:** `Headers.fromInput`
-
-Retained with the same optional Input and lowercase normalization behavior.
-
-**Before**
-
-```ts
-fromInput: (input?: Input) => Headers
-```
-
-#### `Headers.get`
-
-**Replacement:** `Headers.get`
-
-Retained with the same dual, case-insensitive Option-returning signature.
-
-**Before**
-
-```ts
-get: { (key: string): (self: Headers) => Option.Option<string>; (self: Headers, key: string): Option.Option<string>; }
-```
-
-#### `Headers.has`
-
-**Replacement:** `Headers.has`
-
-Retained with the same dual, case-insensitive signature.
-
-**Before**
-
-```ts
-has: { (key: string): (self: Headers) => boolean; (self: Headers, key: string): boolean; }
-```
-
-#### `Headers.merge`
-
-**Replacement:** `Headers.merge`
-
-Retained with the same dual signature; values from the second collection win.
-
-**Before**
-
-```ts
-merge: { (headers: Headers): (self: Headers) => Headers; (self: Headers, headers: Headers): Headers; }
 ```
 
 #### `Headers.remove`
@@ -44955,30 +44394,6 @@ The encoded-record and self schemas were consolidated into HeadersSchema.
 
 ```ts
 schemaFromSelf: Schema.Schema<Headers>
-```
-
-#### `Headers.set`
-
-**Replacement:** `Headers.set`
-
-Retained with the same dual signature and lowercase key normalization.
-
-**Before**
-
-```ts
-set: { (key: string, value: string): (self: Headers) => Headers; (self: Headers, key: string, value: string): Headers; }
-```
-
-#### `Headers.setAll`
-
-**Replacement:** `Headers.setAll`
-
-Retained with the same dual Input signature; supplied values override existing names.
-
-**Before**
-
-```ts
-setAll: { (headers: Input): (self: Headers) => Headers; (self: Headers, headers: Input): Headers; }
 ```
 
 #### `Headers.unsafeFromRecord`
@@ -46686,18 +46101,6 @@ Bearer was generalized to Http with scheme Bearer; the value-level bearer single
 export interface Bearer extends HttpApiSecurity.Proto<Redacted> { readonly _tag: "Bearer"; }
 ```
 
-#### `HttpApiSecurity.HttpApiSecurity.Type`
-
-**Replacement:** `effect/unstable/httpapi/HttpApiSecurity#HttpApiSecurity.Type`
-
-Unchanged after the module move; still extracts the credential type.
-
-**Before**
-
-```ts
-type Type<A extends HttpApiSecurity> = A extends Proto<infer Out> ? Out : never;
-```
-
 #### `HttpApiSecurity.TypeId`
 
 **Replacement:** `none`
@@ -46944,18 +46347,6 @@ Retained with the same fields and tag, but v4 exports a class.
 export interface Uint8Array extends HttpBody.Proto { readonly _tag: "Uint8Array"; readonly body: globalThis.Uint8Array; readonly contentType: string; readonly contentLength: number; }
 ```
 
-#### `HttpBody.empty`
-
-**Replacement:** `HttpBody.empty`
-
-Retained as the singleton Empty body.
-
-**Before**
-
-```ts
-empty: Empty
-```
-
 #### `HttpBody.file`
 
 **Replacement:** `HttpBody.file`
@@ -46978,78 +46369,6 @@ Renamed; it still uses supplied File.Info for content length and requires FileSy
 
 ```ts
 fileInfo: (path: string, info: FileSystem.File.Info, options?: FileSystem.StreamOptions & { readonly contentType?: string; }) => Effect.Effect<Stream, PlatformError.PlatformError, FileSystem.FileSystem>
-```
-
-#### `HttpBody.formData`
-
-**Replacement:** `HttpBody.formData`
-
-Retained with the same Web FormData input.
-
-**Before**
-
-```ts
-formData: (body: globalThis.FormData) => FormData
-```
-
-#### `HttpBody.json`
-
-**Replacement:** `HttpBody.json`
-
-Retained as the safe Effect-returning JSON serializer.
-
-**Before**
-
-```ts
-json: (body: unknown, contentType?: string) => Effect.Effect<Uint8Array, HttpBodyError>
-```
-
-#### `HttpBody.raw`
-
-**Replacement:** `HttpBody.raw`
-
-Retained with optional contentType and contentLength metadata.
-
-**Before**
-
-```ts
-raw: (body: unknown, options?: { readonly contentType?: string | undefined; readonly contentLength?: number | undefined; } | undefined) => Raw
-```
-
-#### `HttpBody.stream`
-
-**Replacement:** `HttpBody.stream`
-
-Retained with the same byte stream and optional content metadata.
-
-**Before**
-
-```ts
-stream: (body: Stream_.Stream<globalThis.Uint8Array, unknown>, contentType?: string, contentLength?: number) => Stream
-```
-
-#### `HttpBody.text`
-
-**Replacement:** `HttpBody.text`
-
-Retained; it UTF-8 encodes and defaults to text/plain.
-
-**Before**
-
-```ts
-text: (body: string, contentType?: string) => Uint8Array
-```
-
-#### `HttpBody.uint8Array`
-
-**Replacement:** `HttpBody.uint8Array`
-
-Retained with the same bytes and optional content type.
-
-**Before**
-
-```ts
-uint8Array: (body: globalThis.Uint8Array, contentType?: string) => Uint8Array
 ```
 
 #### `HttpBody.unsafeJson`
@@ -47382,66 +46701,6 @@ Retained; all methods now accept Options.NoUrl without the GET/HEAD body restric
 make: <M extends HttpMethod>(method: M) => (url: string | URL, options?: (M extends "GET" | "HEAD" ? Options.NoBody : Options.NoUrl) | undefined) => HttpClientRequest
 ```
 
-#### `HttpClientRequest.modify`
-
-**Replacement:** `HttpClientRequest.modify`
-
-Retained with data-first and data-last overloads.
-
-**Before**
-
-```ts
-modify: { (options: Options): (self: HttpClientRequest) => HttpClientRequest; (self: HttpClientRequest, options: Options): HttpClientRequest; }
-```
-
-#### `HttpClientRequest.options`
-
-**Replacement:** `HttpClientRequest.options`
-
-Retained with Options.NoUrl.
-
-**Before**
-
-```ts
-options: (url: string | URL, options?: Options.NoUrl) => HttpClientRequest
-```
-
-#### `HttpClientRequest.patch`
-
-**Replacement:** `HttpClientRequest.patch`
-
-Retained with Options.NoUrl.
-
-**Before**
-
-```ts
-patch: (url: string | URL, options?: Options.NoUrl) => HttpClientRequest
-```
-
-#### `HttpClientRequest.post`
-
-**Replacement:** `HttpClientRequest.post`
-
-Retained with Options.NoUrl.
-
-**Before**
-
-```ts
-post: (url: string | URL, options?: Options.NoUrl) => HttpClientRequest
-```
-
-#### `HttpClientRequest.put`
-
-**Replacement:** `HttpClientRequest.put`
-
-Retained with Options.NoUrl.
-
-**Before**
-
-```ts
-put: (url: string | URL, options?: Options.NoUrl) => HttpClientRequest
-```
-
 #### `HttpClientRequest.setBody`
 
 **Replacement:** `HttpClientRequest.setBody`
@@ -47452,30 +46711,6 @@ Retained and still synchronizes body content metadata into headers.
 
 ```ts
 setBody: { (body: Body.HttpBody): (self: HttpClientRequest) => HttpClientRequest; (self: HttpClientRequest, body: Body.HttpBody): HttpClientRequest; }
-```
-
-#### `HttpClientRequest.setHeader`
-
-**Replacement:** `HttpClientRequest.setHeader`
-
-Retained with data-first and data-last overloads.
-
-**Before**
-
-```ts
-setHeader: { (key: string, value: string): (self: HttpClientRequest) => HttpClientRequest; (self: HttpClientRequest, key: string, value: string): HttpClientRequest; }
-```
-
-#### `HttpClientRequest.setHeaders`
-
-**Replacement:** `HttpClientRequest.setHeaders`
-
-Retained with data-first and data-last overloads.
-
-**Before**
-
-```ts
-setHeaders: { (input: Headers.Input): (self: HttpClientRequest) => HttpClientRequest; (self: HttpClientRequest, input: Headers.Input): HttpClientRequest; }
 ```
 
 #### `HttpClientRequest.toUrl`
@@ -47820,20 +47055,6 @@ Moved to the consolidated router for building a Fetch handler and disposer.
 toWebHandler: <A, E, R extends HttpRouter | Request<"Requires", any> | Request<"GlobalRequires", any> | Request<"Error", any> | Request<"GlobalError", any>, HE, HR = Exclude<Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>, A>>(appLayer: Layer.Layer<A, E, R>, options?: { readonly memoMap?: Layer.MemoMap | undefined; readonly routerConfig?: Partial<FindMyWay.RouterConfig> | undefined; readonly disableLogger?: boolean | undefined; readonly middleware?: (effect: Effect.Effect<HttpServerResponse.HttpServerResponse, Request.Only<"Error", R> | Request.Only<"GlobalError", R> | HttpServerError.RouteNotFound, Scope.Scope | HttpServerRequest.HttpServerRequest | Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>>) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR>; }) => { readonly handler: [HR] extends [never] ? ((request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>) : ((request: globalThis.Request, context: Context.Context<HR>) => Promise<Response>); readonly dispose: () => Promise<void>; }
 ```
 
-### `@effect/platform/HttpMethod`
-
-#### `HttpMethod.all`
-
-**Replacement:** `HttpMethod.all`
-
-Retained as the readonly set of all supported methods.
-
-**Before**
-
-```ts
-all: ReadonlySet<HttpMethod>
-```
-
 ### `@effect/platform/HttpMiddleware`
 
 #### `HttpMiddleware.SpanNameGenerator`
@@ -47882,18 +47103,6 @@ The FiberRef was removed; locally wrap an effect or use HttpRouter.disableLogger
 
 ```ts
 loggerDisabled: FiberRef.FiberRef<boolean>
-```
-
-#### `HttpMiddleware.make`
-
-**Replacement:** `HttpMiddleware.make`
-
-Retained as the precise middleware constructor.
-
-**Before**
-
-```ts
-make: <M extends HttpMiddleware>(middleware: M) => M
 ```
 
 #### `HttpMiddleware.withSpanNameGenerator`
@@ -48201,18 +47410,6 @@ Use the consolidated router service interface.
 
 ```ts
 interface Service<E, R> { readonly router: Effect.Effect<HttpRouter<E, R>>; readonly addRoute: (route: Route<E, R>) => Effect.Effect<void>; readonly all: (path: PathInput, handler: Route.Handler<E, R | Provided>, options?: { readonly uninterruptible?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly get: (path: PathInput, handler: Route.Handler<E, R | Provided>, options?: { readonly uninterruptible?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly post: (path: PathInput, handler: Route.Handler<E, R | Provided>, options?: { readonly uninterruptible?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly put: (path: PathInput, handler: Route.Handler<E, R | Provided>, options?: { readonly uninterruptible?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly patch: (path: PathInput, handler: Route.Handler<E, R | Provided>, options?: { readonly uninterruptible?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly del: (path: PathInput, handler: Route.Handler<E, R | Provided>, options?: { readonly uninterruptible?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly head: (path: PathInput, handler: Route.Handler<E, R | Provided>, options?: { readonly uninterruptible?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly options: (path: PathInput, handler: Route.Handler<E, R | Provided>, options?: { readonly uninterruptible?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly mount: (path: `/${string}`, router: HttpRouter<E, R>) => Effect.Effect<void>; readonly mountApp: (path: `/${string}`, router: App.Default<E, R>, options?: { readonly includePrefix?: boolean | undefined; } | undefined) => Effect.Effect<void>; readonly concat: (router: HttpRouter<E, R>) => Effect.Effect<void>; }
-```
-
-#### `HttpRouter.PathInput`
-
-**Replacement:** `HttpRouter.PathInput`
-
-Retained as an absolute slash path or wildcard.
-
-**Before**
-
-```ts
-export type PathInput = `/${string}` | "*";
 ```
 
 #### `HttpRouter.Route.Middleware`
@@ -48589,18 +47786,6 @@ The unused respond option model was removed with no shared v4 counterpart.
 export interface ServeOptions { readonly respond: boolean; }
 ```
 
-#### `HttpServer.TcpAddress`
-
-**Replacement:** `HttpServer.TcpAddress`
-
-Moved unchanged.
-
-**Before**
-
-```ts
-export interface TcpAddress { readonly _tag: "TcpAddress"; readonly hostname: string; readonly port: number; }
-```
-
 #### `HttpServer.TypeId`
 
 **Replacement:** `none`
@@ -48611,18 +47796,6 @@ The public TypeId was removed; HttpServer is now a Context.Service class.
 
 ```ts
 export type TypeId = typeof TypeId;
-```
-
-#### `HttpServer.UnixAddress`
-
-**Replacement:** `HttpServer.UnixAddress`
-
-Moved unchanged.
-
-**Before**
-
-```ts
-export interface UnixAddress { readonly _tag: "UnixAddress"; readonly path: string; }
 ```
 
 #### `HttpServer.addressWith`
@@ -48861,18 +48034,6 @@ The response brand is private in v4; use the public runtime refinement.
 export type TypeId = typeof TypeId;
 ```
 
-#### `HttpServerResponse.empty`
-
-**Replacement:** `HttpServerResponse.empty`
-
-Retained with default status 204; responses are no longer Effects or Respondables.
-
-**Before**
-
-```ts
-empty: (options?: Options.WithContent | undefined) => HttpServerResponse
-```
-
 #### `HttpServerResponse.expireCookie`
 
 **Replacement:** `HttpServerResponse.expireCookie`
@@ -48897,30 +48058,6 @@ Retained with updated FileSystem stream options.
 file: (path: string, options?: (Options & FileSystem.StreamOptions) | undefined) => Effect.Effect<HttpServerResponse, PlatformError.PlatformError, Platform.HttpPlatform>
 ```
 
-#### `HttpServerResponse.formData`
-
-**Replacement:** `HttpServerResponse.formData`
-
-Moved unchanged.
-
-**Before**
-
-```ts
-formData: (body: FormData, options?: Options.WithContent | undefined) => HttpServerResponse
-```
-
-#### `HttpServerResponse.fromWeb`
-
-**Replacement:** `HttpServerResponse.fromWeb`
-
-Retained; Set-Cookie headers become Cookies and Web bodies become stream bodies.
-
-**Before**
-
-```ts
-fromWeb: (response: Response) => HttpServerResponse
-```
-
 #### `HttpServerResponse.isServerResponse`
 
 **Replacement:** `HttpServerResponse.isHttpServerResponse`
@@ -48933,42 +48070,6 @@ Renamed.
 isServerResponse: (u: unknown) => u is HttpServerResponse
 ```
 
-#### `HttpServerResponse.json`
-
-**Replacement:** `HttpServerResponse.json`
-
-Retained as the safe effectful JSON constructor.
-
-**Before**
-
-```ts
-json: (body: unknown, options?: Options.WithContentType | undefined) => Effect.Effect<HttpServerResponse, Body.HttpBodyError>
-```
-
-#### `HttpServerResponse.raw`
-
-**Replacement:** `HttpServerResponse.raw`
-
-Moved unchanged.
-
-**Before**
-
-```ts
-raw: (body: unknown, options?: Options | undefined) => HttpServerResponse
-```
-
-#### `HttpServerResponse.setBody`
-
-**Replacement:** `HttpServerResponse.setBody`
-
-Retained and reflects body content metadata in response headers.
-
-**Before**
-
-```ts
-setBody: { (body: Body.HttpBody): (self: HttpServerResponse) => HttpServerResponse; (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse; }
-```
-
 #### `HttpServerResponse.setCookie`
 
 **Replacement:** `HttpServerResponse.setCookie`
@@ -48979,30 +48080,6 @@ Retained as the safe effectful cookie setter.
 
 ```ts
 setCookie: { (name: string, value: string, options?: Cookie["options"]): (self: HttpServerResponse) => Effect.Effect<HttpServerResponse, CookiesError>; (self: HttpServerResponse, name: string, value: string, options?: Cookie["options"]): Effect.Effect<HttpServerResponse, CookiesError>; }
-```
-
-#### `HttpServerResponse.setHeader`
-
-**Replacement:** `HttpServerResponse.setHeader`
-
-Retained with data-first and data-last overloads.
-
-**Before**
-
-```ts
-setHeader: { (key: string, value: string): (self: HttpServerResponse) => HttpServerResponse; (self: HttpServerResponse, key: string, value: string): HttpServerResponse; }
-```
-
-#### `HttpServerResponse.setHeaders`
-
-**Replacement:** `HttpServerResponse.setHeaders`
-
-Retained with data-first and data-last overloads.
-
-**Before**
-
-```ts
-setHeaders: { (input: Headers.Input): (self: HttpServerResponse) => HttpServerResponse; (self: HttpServerResponse, input: Headers.Input): HttpServerResponse; }
 ```
 
 #### `HttpServerResponse.stream`
@@ -49089,18 +48166,6 @@ Renamed to put Unsafe last; invalid cookies still throw.
 unsafeSetCookies: { (cookies: Iterable<readonly [ name: string, value: string, options?: Cookie["options"] ]>): (self: HttpServerResponse) => HttpServerResponse; (self: HttpServerResponse, cookies: Iterable<readonly [ name: string, value: string, options?: Cookie["options"] ]>): HttpServerResponse; }
 ```
 
-#### `HttpServerResponse.urlParams`
-
-**Replacement:** `HttpServerResponse.urlParams`
-
-Retained and widened to accept UrlParams.Input.
-
-**Before**
-
-```ts
-urlParams: (body: UrlParams.Input, options?: Options.WithContentType | undefined) => HttpServerResponse
-```
-
 ### `@effect/platform/KeyValueStore`
 
 #### `KeyValueStore.KeyValueStore`
@@ -49152,18 +48217,6 @@ The KeyValueStore runtime marker is internal in v4; use the service and interfac
 export type TypeId = typeof TypeId;
 ```
 
-#### `KeyValueStore.layerMemory`
-
-**Replacement:** `KeyValueStore.layerMemory`
-
-The in-memory layer remains in the moved module.
-
-**Before**
-
-```ts
-layerMemory: Layer.Layer<KeyValueStore>
-```
-
 #### `KeyValueStore.layerSchema`
 
 **Replacement:** `KeyValueStore.toSchemaStore`
@@ -49174,18 +48227,6 @@ Schema stores are now derived with toSchemaStore; define the desired Context.Ser
 
 ```ts
 layerSchema: <A, I, R>(schema: Schema.Schema<A, I, R>, tagIdentifier: string) => { readonly tag: Context.Tag<SchemaStore<A, R>, SchemaStore<A, R>>; readonly layer: Layer.Layer<SchemaStore<A, R>, never, KeyValueStore>; }
-```
-
-#### `KeyValueStore.layerStorage`
-
-**Replacement:** `KeyValueStore.layerStorage`
-
-The Web Storage layer remains in the moved module.
-
-**Before**
-
-```ts
-layerStorage: (evaluate: LazyArg<Storage>) => Layer.Layer<KeyValueStore>
 ```
 
 #### `KeyValueStore.make`
@@ -49394,42 +48435,6 @@ The runtime marker remains exported, but the separate type alias was removed.
 
 ```ts
 export type TypeId = typeof TypeId;
-```
-
-#### `Multipart.isField`
-
-**Replacement:** `Multipart.isField`
-
-The guard remains in effect/unstable/http/Multipart.
-
-**Before**
-
-```ts
-isField: (u: unknown) => u is Field
-```
-
-#### `Multipart.isFile`
-
-**Replacement:** `Multipart.isFile`
-
-The guard remains in effect/unstable/http/Multipart.
-
-**Before**
-
-```ts
-isFile: (u: unknown) => u is File
-```
-
-#### `Multipart.isPart`
-
-**Replacement:** `Multipart.isPart`
-
-The guard remains in effect/unstable/http/Multipart.
-
-**Before**
-
-```ts
-isPart: (u: unknown) => u is Part
 ```
 
 #### `Multipart.schemaJson`
@@ -49711,30 +48716,6 @@ The closed media-type union was removed so custom and streaming media types are 
 
 ```ts
 export type OpenApiSpecContentType = "application/json" | "application/xml" | "application/x-www-form-urlencoded" | "multipart/form-data" | "text/plain";
-```
-
-#### `OpenApi.Title`
-
-**Replacement:** `effect/unstable/httpapi/OpenApi#Title`
-
-Same annotation role, now implemented as a v4 Context.Service.
-
-**Before**
-
-```ts
-export declare class Title extends Title_base { }
-```
-
-#### `OpenApi.annotations`
-
-**Replacement:** `effect/unstable/httpapi/OpenApi#annotations`
-
-Same annotation-context helper after the module move.
-
-**Before**
-
-```ts
-annotations: (options: { readonly identifier?: string | undefined; readonly title?: string | undefined; readonly version?: string | undefined; readonly description?: string | undefined; readonly license?: OpenAPISpecLicense | undefined; readonly summary?: string | undefined; readonly deprecated?: boolean | undefined; readonly externalDocs?: OpenAPISpecExternalDocs | undefined; readonly servers?: ReadonlyArray<OpenAPISpecServer> | undefined; readonly format?: string | undefined; readonly override?: Record<string, unknown> | undefined; readonly exclude?: boolean | undefined; readonly transform?: ((openApiSpec: Record<string, any>) => Record<string, any>) | undefined; }) => Context.Context<never>
 ```
 
 #### `OpenApi.fromApi`
@@ -50145,30 +49126,6 @@ The API moved to effect/unstable/socket/SocketServer and retains this name.
 export type ErrorTypeId = typeof ErrorTypeId;
 ```
 
-#### `SocketServer.TcpAddress`
-
-**Replacement:** `SocketServer.TcpAddress`
-
-The API moved to effect/unstable/socket/SocketServer and retains this name.
-
-**Before**
-
-```ts
-export interface TcpAddress { readonly _tag: "TcpAddress"; readonly hostname: string; readonly port: number; }
-```
-
-#### `SocketServer.UnixAddress`
-
-**Replacement:** `SocketServer.UnixAddress`
-
-The API moved to effect/unstable/socket/SocketServer and retains this name.
-
-**Before**
-
-```ts
-export interface UnixAddress { readonly _tag: "UnixAddress"; readonly path: string; }
-```
-
 ### `@effect/platform/Template`
 
 #### `Template.Interpolated.Context`
@@ -50193,18 +49150,6 @@ The API moved to effect/unstable/http/Template; v4 interpolation types also acco
 
 ```ts
 type Error<A> = A extends infer T ? T extends Option.Option<infer _> ? never : T extends Stream.Stream<infer _A, infer E, infer _R> ? E : never : never;
-```
-
-#### `Template.make`
-
-**Replacement:** `Template.make`
-
-The API moved to effect/unstable/http/Template; v4 interpolation types also account for Effect values.
-
-**Before**
-
-```ts
-export declare function make<A extends ReadonlyArray<Interpolated>>(strings: TemplateStringsArray, ...args: A): Effect.Effect<string, Interpolated.Error<A[number]>, Interpolated.Context<A[number]>>;
 ```
 
 ### `@effect/platform/Terminal`
@@ -50297,18 +49242,6 @@ Retained and widened to accept UrlParams.Input.
 setUrlParams: { (urlParams: UrlParams.UrlParams): (url: URL) => URL; (url: URL, urlParams: UrlParams.UrlParams): URL; }
 ```
 
-#### `Url.urlParams`
-
-**Replacement:** `Url.urlParams`
-
-Retained and returns the v4 UrlParams wrapper.
-
-**Before**
-
-```ts
-urlParams: (url: URL) => UrlParams.UrlParams
-```
-
 ### `@effect/platform/UrlParams`
 
 #### `UrlParams.CoercibleRecord`
@@ -50335,54 +49268,6 @@ Retained and broadened to include UrlParams itself.
 export type Input = CoercibleRecord | Iterable<readonly [string, Coercible]> | URLSearchParams;
 ```
 
-#### `UrlParams.append`
-
-**Replacement:** `UrlParams.append`
-
-Retained and returns the immutable UrlParams wrapper.
-
-**Before**
-
-```ts
-append: { (key: string, value: Coercible): (self: UrlParams) => UrlParams; (self: UrlParams, key: string, value: Coercible): UrlParams; }
-```
-
-#### `UrlParams.appendAll`
-
-**Replacement:** `UrlParams.appendAll`
-
-Retained and preserves existing parameters.
-
-**Before**
-
-```ts
-appendAll: { (input: Input): (self: UrlParams) => UrlParams; (self: UrlParams, input: Input): UrlParams; }
-```
-
-#### `UrlParams.empty`
-
-**Replacement:** `UrlParams.empty`
-
-Now a branded iterable object with params rather than a ReadonlyArray.
-
-**Before**
-
-```ts
-empty: UrlParams
-```
-
-#### `UrlParams.fromInput`
-
-**Replacement:** `UrlParams.fromInput`
-
-Retained and now also accepts an existing UrlParams.
-
-**Before**
-
-```ts
-fromInput: (input: Input) => UrlParams
-```
-
 #### `UrlParams.makeUrl`
 
 **Replacement:** `Url.make`
@@ -50393,18 +49278,6 @@ Moved to Url, returns Result, and takes string | undefined for the hash.
 
 ```ts
 makeUrl: (url: string, params: UrlParams, hash: Option.Option<string>) => Either.Either<URL, Error>
-```
-
-#### `UrlParams.remove`
-
-**Replacement:** `UrlParams.remove`
-
-Retained and removes every value for the key.
-
-**Before**
-
-```ts
-remove: { (key: string): (self: UrlParams) => UrlParams; (self: UrlParams, key: string): UrlParams; }
 ```
 
 #### `UrlParams.schemaFromSelf`
@@ -50477,30 +49350,6 @@ Compose the record codec with the target schema and decode it.
 
 ```ts
 schemaStruct: <A, I extends Record<string, string | ReadonlyArray<string> | undefined>, R>(schema: Schema.Schema<A, I, R>, options?: ParseOptions | undefined) => (self: UrlParams) => Effect.Effect<A, ParseResult.ParseError, R>
-```
-
-#### `UrlParams.set`
-
-**Replacement:** `UrlParams.set`
-
-Retained and replaces all existing values for the key.
-
-**Before**
-
-```ts
-set: { (key: string, value: Coercible): (self: UrlParams) => UrlParams; (self: UrlParams, key: string, value: Coercible): UrlParams; }
-```
-
-#### `UrlParams.setAll`
-
-**Replacement:** `UrlParams.setAll`
-
-Retained; supplied keys replace existing values and other keys remain.
-
-**Before**
-
-```ts
-setAll: { (input: Input): (self: UrlParams) => UrlParams; (self: UrlParams, input: Input): UrlParams; }
 ```
 
 #### `UrlParams.toString`
@@ -56640,18 +55489,6 @@ Schema Context became decoding and encoding services; use Services, or ServicesC
 export type Context<R> = R extends Rpc<infer _Tag, infer _Payload, infer _Success, infer _Error, infer _Middleware> ? _Payload["Context"] | _Success["Context"] | _Error["Context"] : never;
 ```
 
-#### `Rpc.Error`
-
-**Replacement:** `effect/unstable/rpc/Rpc#Error`
-
-Retained; it includes decoded errors contributed by attached middleware.
-
-**Before**
-
-```ts
-export type Error<R> = Schema.Schema.Type<ErrorSchema<R>>;
-```
-
 #### `Rpc.ErrorEncoded`
 
 **Replacement:** `Rpc.ErrorSchema<R>["Encoded"]`
@@ -56894,30 +55731,6 @@ Renamed and changed from FiberRef to Context.Reference; prefer RpcClient.withHea
 currentHeaders: FiberRef.FiberRef<Headers.Headers>
 ```
 
-#### `RpcClient.layerProtocolHttp`
-
-**Replacement:** `effect/unstable/rpc/RpcClient#layerProtocolHttp`
-
-Retained; it provides the v4 Protocol from HttpClient and RpcSerialization.
-
-**Before**
-
-```ts
-layerProtocolHttp: (options: { readonly url: string; readonly transformClient?: <E, R>(client: HttpClient.HttpClient.With<E, R>) => HttpClient.HttpClient.With<E, R>; }) => Layer.Layer<Protocol, never, RpcSerialization.RpcSerialization | HttpClient.HttpClient>
-```
-
-#### `RpcClient.make`
-
-**Replacement:** `effect/unstable/rpc/RpcClient#make`
-
-Retained; generated calls can now take per-request headers and Context, and include RpcClientError in their error channel.
-
-**Before**
-
-```ts
-make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>(group: RpcGroup.RpcGroup<Rpcs>, options?: { readonly spanPrefix?: string | undefined; readonly spanAttributes?: Record<string, unknown> | undefined; readonly generateRequestId?: (() => RequestId) | undefined; readonly disableTracing?: boolean | undefined; readonly flatten?: Flatten | undefined; } | undefined) => Effect.Effect<Flatten extends true ? RpcClient.Flat<Rpcs, RpcClientError> : RpcClient<Rpcs, RpcClientError>, never, Protocol | Rpc.MiddlewareClient<Rpcs> | Scope.Scope>
-```
-
 #### `RpcClient.makeProtocolHttp`
 
 **Replacement:** `effect/unstable/rpc/RpcClient#makeProtocolHttp`
@@ -56994,18 +55807,6 @@ The group marker is private in v4; use RpcGroup.Any for an erased group constrai
 export type TypeId = typeof TypeId;
 ```
 
-#### `RpcGroup.make`
-
-**Replacement:** `effect/unstable/rpc/RpcGroup#make`
-
-Retained for explicit Rpc definitions; passing TaggedRequest schema classes for implicit conversion is no longer supported.
-
-**Before**
-
-```ts
-make: <const Rpcs extends ReadonlyArray<Rpc.Any>>(...rpcs: Rpcs) => RpcGroup<Rpcs[number]>
-```
-
 ### `@effect/rpc/RpcMessage`
 
 #### `RpcMessage.RequestIdTypeId`
@@ -57021,18 +55822,6 @@ export type RequestIdTypeId = typeof RequestIdTypeId;
 ```
 
 ### `@effect/rpc/RpcMiddleware`
-
-#### `RpcMiddleware.ForClient`
-
-**Replacement:** `effect/unstable/rpc/RpcMiddleware#ForClient`
-
-Retained as the marker requirement provided by a client middleware layer.
-
-**Before**
-
-```ts
-export interface ForClient<Id> { readonly _: unique symbol; readonly id: Id; }
-```
 
 #### `RpcMiddleware.RpcMiddlewareWrap`
 
@@ -58093,20 +56882,6 @@ export interface SqliteClient extends Client.SqlClient { readonly [TypeId]: Type
 
 - `SqliteClient.currentTransferables` -> `@effect/sql-sqlite-wasm/SqliteClient#Transferables`: Renamed and changed from FiberRef to Context.Reference; prefer withTransferables or provide Transferables as a service.
 
-### `@effect/sql/Migrator`
-
-#### `Migrator.make`
-
-**Replacement:** `effect/unstable/sql/Migrator#make`
-
-Moved with the same curried make({ dumpSchema })(options) pattern.
-
-**Before**
-
-```ts
-make: <RD = never>({ dumpSchema }: { dumpSchema?: (path: string, migrationsTable: string) => Effect.Effect<void, MigrationError, RD>; }) => <R2 = never>({ loader, schemaDirectory, table }: MigratorOptions<R2>) => Effect.Effect<ReadonlyArray<readonly [id: number, name: string]>, MigrationError | SqlError, Client.SqlClient | RD | R2>
-```
-
 ### `@effect/sql/Model`
 
 #### `Model.Any`
@@ -58179,18 +56954,6 @@ Renamed and now read-only, with select and json variants only. Use Model.Field w
 
 ```ts
 export interface Generated<S extends Schema.Schema.All | Schema.PropertySignature.All> extends VariantSchema.Field<{ readonly select: S; readonly update: S; readonly json: S; }> { }
-```
-
-#### `Model.Override`
-
-**Replacement:** `effect/unstable/schema/Model#Override`
-
-Moved with the same explicit-default override purpose.
-
-**Before**
-
-```ts
-Override: <A>(value: A) => A & Brand<"Override">
 ```
 
 #### `Model.fieldFromKey`
@@ -58511,18 +57274,6 @@ Moved with the same constructor inputs.
 
 ```ts
 make: (acquirer: Connection.Acquirer, compiler: Compiler, spanAttributes: ReadonlyArray<readonly [string, unknown]>, transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined) => Constructor
-```
-
-#### `Statement.or`
-
-**Replacement:** `effect/unstable/sql/Statement#or`
-
-Moved unchanged.
-
-**Before**
-
-```ts
-or: (clauses: ReadonlyArray<string | Fragment>) => Fragment
 ```
 
 #### `Statement.setTransformer`
@@ -62839,18 +61590,6 @@ Moved into core Effect with the same named durable race behavior.
 raceAll: <const Activities extends NonEmptyReadonlyArray<Any>>(name: string, activities: Activities) => Effect.Effect<(Activities[number] extends Activity<infer _A, infer _E, infer _R> ? _A["Type"] : never), (Activities[number] extends Activity<infer _A, infer _E_1, infer _R_1> ? _E_1["Type"] : never), (Activities[number] extends Activity<infer Success, infer Error, infer R> ? Success["Context"] | Error["Context"] | R : never) | WorkflowEngine | WorkflowInstance>
 ```
 
-#### `Activity.retry`
-
-**Replacement:** `effect/unstable/workflow/Activity#retry`
-
-Moved into core Effect and updated to v4 Effect.retry option types.
-
-**Before**
-
-```ts
-retry: { <E, O extends Types.NoExcessProperties<Omit<Effect.Retry.Options<E>, "schedule">, O>>(options: O): <A, R>(self: Effect.Effect<A, E, R>) => Effect.Retry.Return<R, E, A, O>; <A, E, R, O extends Types.NoExcessProperties<Omit<Effect.Retry.Options<E>, "schedule">, O>>(self: Effect.Effect<A, E, R>, options: O): Effect.Retry.Return<R, E, A, O>; }
-```
-
 ### `@effect/workflow/DurableClock`
 
 #### `DurableClock.TypeId`
@@ -63212,18 +61951,6 @@ Removed. Expand to Workflow.make(schema._tag, { payload: schema, success: schema
 fromTaggedRequest: <S extends AnyTaggedRequestSchema>(schema: S, options?: { readonly suspendedRetrySchedule?: Schedule.Schedule<any, unknown> | undefined; }) => Workflow<S["_tag"], S, S["success"], S["failure"]>
 ```
 
-#### `Workflow.isResult`
-
-**Replacement:** `effect/unstable/workflow/Workflow#isResult`
-
-Moved into core Effect with the same result refinement behavior.
-
-**Before**
-
-```ts
-isResult: <A = unknown, E = unknown>(u: unknown) => u is Result<A, E>
-```
-
 #### `Workflow.make`
 
 **Replacement:** `effect/unstable/workflow/Workflow#make`
@@ -63237,18 +61964,6 @@ make: <const Name extends string, Payload extends Schema.Struct.Fields | AnyStru
 ```
 
 ### `@effect/workflow/WorkflowEngine`
-
-#### `WorkflowEngine.layerMemory`
-
-**Replacement:** `effect/unstable/workflow/WorkflowEngine#layerMemory`
-
-Moved into core Effect and remains the non-durable engine for tests and local development.
-
-**Before**
-
-```ts
-layerMemory: Layer.Layer<WorkflowEngine>
-```
 
 #### `WorkflowEngine.makeUnsafe`
 
@@ -63276,31 +61991,7 @@ Moved into core Effect and updated to v4 HttpApiEndpoint types and the consolida
 export type ConvertHttpApi<Workflows extends Workflow.Any> = Workflows extends Workflow.Workflow<infer _Name, infer _Payload, infer _Success, infer _Error> ? HttpApiEndpoint.HttpApiEndpoint<_Name, "POST", never, never, _Payload["Type"], never, _Success["Type"], _Error["Type"], _Payload["Context"] | _Success["Context"], _Error["Context"]> | HttpApiEndpoint.HttpApiEndpoint<`${_Name}Discard`, "POST", never, never, _Payload["Type"], never, void, never, _Payload["Context"]> | HttpApiEndpoint.HttpApiEndpoint<`${_Name}Resume`, "POST", never, never, typeof ResumePayload.Type, never, void, never, typeof ResumePayload.Context> : never;
 ```
 
-#### `WorkflowProxy.ConvertRpcs`
-
-**Replacement:** `effect/unstable/workflow/WorkflowProxy#ConvertRpcs`
-
-Moved into core Effect; generated execute, discard, and resume RPCs are now keyed from workflow _tag.
-
-**Before**
-
-```ts
-export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> = Workflows extends Workflow.Workflow<infer _Name, infer _Payload, infer _Success, infer _Error> ? Rpc.Rpc<`${Prefix}${_Name}`, _Payload, _Success, _Error> | Rpc.Rpc<`${Prefix}${_Name}Discard`, _Payload> | Rpc.Rpc<`${Prefix}${_Name}Resume`, typeof ResumePayload> : never;
-```
-
 ### `@effect/workflow/WorkflowProxyServer`
-
-#### `WorkflowProxyServer.RpcHandlers`
-
-**Replacement:** `effect/unstable/workflow/WorkflowProxyServer#RpcHandlers`
-
-Moved into core Effect; handler names derive from workflow _tag and the optional prefix.
-
-**Before**
-
-```ts
-export type RpcHandlers<Workflows extends Workflow.Any, Prefix extends string> = Workflows extends Workflow.Workflow<infer _Name, infer _Payload, infer _Success, infer _Error> ? Rpc.Handler<`${Prefix}${_Name}`> | Rpc.Handler<`${Prefix}${_Name}Discard`> | Rpc.Handler<`${Prefix}${_Name}Resume`> : never;
-```
 
 #### `WorkflowProxyServer.layerHttpApi`
 
@@ -72766,20 +71457,6 @@ export declare function char16bits(): Arbitrary<string>;
 
 ```ts
 FastCheck.nat({ max: 0xffff }).map(String.fromCharCode)
-```
-
-#### `FastCheck.check`
-
-**Replacement:** `FastCheck.check`
-
-Import FastCheck from effect/testing. The runner remains, but RunDetails.error was replaced by errorInstance in fast-check v4.
-
-**Before**
-
-```ts
-declare function check<Ts>(property: IAsyncProperty<Ts>, params?: Parameters<Ts>): Promise<RunDetails<Ts>>;
-declare function check<Ts>(property: IProperty<Ts>, params?: Parameters<Ts>): RunDetails<Ts>;
-declare function check<Ts>(property: IRawProperty<Ts>, params?: Parameters<Ts>): Promise<RunDetails<Ts>> | RunDetails<Ts>;
 ```
 
 #### `FastCheck.constant`

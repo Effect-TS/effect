@@ -12,7 +12,8 @@ import {
   extractImportMapSections,
   renderMigrationDocument,
   renderMissingAnnotations,
-  unannotatedApiIds
+  unannotatedApiIds,
+  unannotatedModuleIds
 } from "./MigrationDoc.ts"
 import { renderMarkdownReport } from "./Report.ts"
 import { Worktrees } from "./Worktrees.ts"
@@ -108,19 +109,25 @@ export class ApiDiff extends Context.Service<ApiDiff, {
             Effect.provideService(FileSystem.FileSystem, fs),
             Effect.provideService(Path.Path, path)
           )
+          const documentPath = options.writeDoc === undefined
+            ? path.join(repoRoot, "migration", "v3-to-v4.md")
+            : absolute(repoRoot, options.writeDoc)
+          const existing = (yield* fs.exists(documentPath)) ? yield* fs.readFileString(documentPath) : ""
+          const importMapSections = extractImportMapSections(existing)
           if (options.writeDoc !== undefined) {
-            const documentPath = absolute(repoRoot, options.writeDoc)
-            const existing = (yield* fs.exists(documentPath)) ? yield* fs.readFileString(documentPath) : ""
-            const document = renderMigrationDocument(diff, annotations, extractImportMapSections(existing))
+            const document = renderMigrationDocument(diff, annotations, importMapSections)
             yield* fs.makeDirectory(path.dirname(documentPath), { recursive: true })
             yield* fs.writeFileString(documentPath, document)
             yield* Console.log(`Wrote ${path.relative(repoRoot, documentPath)} (${diff.changes.length} changes)`)
           }
           if (options.check) {
-            const missing = unannotatedApiIds(diff, annotations)
-            yield* Console.log(renderMissingAnnotations(diff, annotations).trimEnd())
-            if (missing.size > 0) {
-              return yield* new ApiDiffError({ message: `${missing.size} modules need migration guidance` })
+            const missingApis = unannotatedApiIds(diff, annotations, importMapSections)
+            const missingModules = unannotatedModuleIds(diff, annotations, importMapSections)
+            yield* Console.log(renderMissingAnnotations(diff, annotations, importMapSections).trimEnd())
+            if (missingApis.size > 0 || missingModules.length > 0) {
+              return yield* new ApiDiffError({
+                message: `${missingApis.size} API groups and ${missingModules.length} modules need migration guidance`
+              })
             }
           }
         }

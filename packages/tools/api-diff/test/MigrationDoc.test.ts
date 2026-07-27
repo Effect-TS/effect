@@ -1,5 +1,9 @@
 import type { MigrationAnnotation } from "@effect/api-diff/Annotations"
-import { renderMigrationDocument, renderMissingAnnotations } from "@effect/api-diff/MigrationDoc"
+import {
+  extractImportMapSections,
+  renderMigrationDocument,
+  renderMissingAnnotations
+} from "@effect/api-diff/MigrationDoc"
 import type { ApiChange, ApiDiff } from "@effect/api-diff/Model"
 import { assert, describe, it } from "@effect/vitest"
 
@@ -86,6 +90,10 @@ describe("migration document", () => {
         "```text",
         "effect/Alpha -> effect/Alpha",
         "```",
+        "",
+        "## Removed Modules",
+        "",
+        "No modules were removed.",
         "",
         "## API Reference",
         "",
@@ -182,5 +190,79 @@ describe("migration document", () => {
 
     assert(document.includes("#### `Effect.Service`"))
     assert(document.includes("**Replacement:** `Context.Service`"))
+  })
+
+  it("renders removed modules and omits unchanged APIs moved with them", () => {
+    const moduleDiff: ApiDiff = {
+      ...diff,
+      changes: [
+        change({ classification: "module-removed", delta: { from: "effect/Legacy", to: [] } }),
+        change({
+          classification: "api-removed",
+          baseApiId: "effect/Legacy#unchanged#value",
+          before: "declare const unchanged: string"
+        }),
+        change({
+          classification: "api-added",
+          headApiId: "effect/Current#unchanged#value",
+          after: "declare const unchanged: string"
+        }),
+        change({
+          classification: "api-removed",
+          baseApiId: "effect/Legacy#changed#value",
+          before: "declare const changed: string"
+        }),
+        change({
+          classification: "api-added",
+          headApiId: "effect/Current#changed#value",
+          after: "declare const changed: number"
+        })
+      ]
+    }
+    const document = renderMigrationDocument(
+      moduleDiff,
+      new Map([["effect/Legacy#changed", {
+        replacement: "Current.changed",
+        note: "Use the changed API."
+      }]]),
+      "## Import Map\n\neffect/Legacy -> effect/Current\n"
+    )
+
+    assert(document.includes("## Removed Modules\n\n- `effect/Legacy` -> `effect/Current`"))
+    assert(!document.includes("Legacy.unchanged"))
+    assert(document.includes("#### `Legacy.changed`"))
+    assert.strictEqual(
+      extractImportMapSections(document),
+      "## Import Map\n\neffect/Legacy -> effect/Current\n"
+    )
+  })
+
+  it("uses per-API annotations for split modules and reports missing module guidance", () => {
+    const moduleDiff: ApiDiff = {
+      ...diff,
+      changes: [
+        change({ classification: "module-removed", delta: { from: "effect/Split", to: [] } }),
+        change({ classification: "module-removed", delta: { from: "effect/Unknown", to: [] } }),
+        change({
+          classification: "api-removed",
+          baseApiId: "effect/Split#removed#value",
+          before: "declare const removed: string"
+        })
+      ]
+    }
+    const splitAnnotations = new Map([["effect/Split#removed", {
+      replacement: "Current.removed",
+      note: "Use the split replacement."
+    }]])
+    const document = renderMigrationDocument(moduleDiff, splitAnnotations, "## Import Map\n")
+
+    assert(
+      document.includes("- `effect/Split`: No single module replacement; follow the curated per-API guidance below.")
+    )
+    assert(document.includes("- `effect/Unknown`: TODO: needs module guidance"))
+    assert.strictEqual(
+      renderMissingAnnotations(moduleDiff, splitAnnotations),
+      "Removed modules:\n  - effect/Unknown\n"
+    )
   })
 })
