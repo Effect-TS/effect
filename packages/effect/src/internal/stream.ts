@@ -16,7 +16,7 @@ import type { LazyArg } from "../Function.js"
 import { constTrue, dual, identity, pipe } from "../Function.js"
 import * as internalExecutionPlan from "../internal/executionPlan.js"
 import * as Layer from "../Layer.js"
-import * as Mailbox from "../Mailbox.js"
+import type * as Mailbox from "../Mailbox.js"
 import * as MergeDecision from "../MergeDecision.js"
 import * as Option from "../Option.js"
 import type * as Order from "../Order.js"
@@ -43,7 +43,11 @@ import * as channel from "./channel.js"
 import * as channelExecutor from "./channel/channelExecutor.js"
 import * as MergeStrategy from "./channel/mergeStrategy.js"
 import * as core from "./core-stream.js"
+import * as effectCore from "./core.js"
 import * as doNotation from "./doNotation.js"
+import * as circular from "./effect/circular.js"
+import * as fiberRuntime from "./fiberRuntime.js"
+import * as mailbox from "./mailbox.js"
 import { RingBuffer } from "./ringBuffer.js"
 import * as InternalSchedule from "./schedule.js"
 import * as sink_ from "./sink.js"
@@ -600,9 +604,9 @@ const mailboxFromBufferOptionsPush = <A, E>(
   } | undefined
 ): Effect.Effect<Mailbox.Mailbox<Array<A>, E>> => {
   if (options?.bufferSize === "unbounded" || (options?.bufferSize === undefined && options?.strategy === undefined)) {
-    return Mailbox.make()
+    return mailbox.make()
   }
-  return Mailbox.make({
+  return mailbox.make({
     capacity: options?.bufferSize ?? 16,
     strategy: options?.strategy ?? "dropping"
   })
@@ -3013,6 +3017,51 @@ export const toChannel = <A, E, R>(
     throw new TypeError(`Expected a Stream.`)
   }
 }
+
+/** @internal */
+export const mailboxToStream = <A, E>(self: Mailbox.ReadonlyMailbox<A, E>): Stream.Stream<A, E> =>
+  fromChannel(mailbox.toChannel(self))
+
+/** @internal */
+export const mailboxFromStream: {
+  (options?: {
+    readonly capacity?: number | undefined
+    readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+  }): <A, E, R>(self: Stream.Stream<A, E, R>) => Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope>
+  <A, E, R>(
+    self: Stream.Stream<A, E, R>,
+    options?: {
+      readonly capacity?: number | undefined
+      readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+    }
+  ): Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope>
+} = dual((args) => isStream(args[0]), <A, E, R>(
+  self: Stream.Stream<A, E, R>,
+  options?: {
+    readonly capacity?: number | undefined
+    readonly strategy?: "suspend" | "dropping" | "sliding" | undefined
+  }
+): Effect.Effect<Mailbox.ReadonlyMailbox<A, E>, never, R | Scope.Scope> =>
+  effectCore.tap(
+    fiberRuntime.acquireRelease(
+      mailbox.make<A, E>(options),
+      (mailbox) => mailbox.shutdown
+    ),
+    (mailbox) => {
+      const writer: Channel.Channel<never, Chunk.Chunk<A>, never, E> = core.readWithCause({
+        onInput: (input: Chunk.Chunk<A>) => core.flatMap(mailbox.offerAll(input), () => writer),
+        onFailure: (cause: Cause.Cause<E>) => mailbox.failCause(cause),
+        onDone: () => mailbox.end
+      })
+      return fiberRuntime.scopeWith((scope) =>
+        toChannel(self).pipe(
+          core.pipeTo(writer),
+          channelExecutor.runIn(scope),
+          circular.forkIn(scope)
+        )
+      )
+    }
+  ))
 
 /** @internal */
 export const fromChunk = <A>(chunk: Chunk.Chunk<A>): Stream.Stream<A> =>
