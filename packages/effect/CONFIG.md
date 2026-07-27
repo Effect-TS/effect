@@ -347,7 +347,7 @@ Effect.runSync(host) // "localhost"
 
 **How `_` splitting works**: env var names are split on `_` to build a tree. This means `DATABASE_HOST=localhost` is accessible at both `["DATABASE_HOST"]` (flat) and `["DATABASE", "HOST"]` (nested). Querying `["DATABASE"]` returns a Record node with child key `"HOST"`.
 
-Pass `{ env: { ... } }` for testing. Omit to use `process.env` (merged with `import.meta.env` when available).
+Pass `{ env: { ... } }` for testing. Omit to use `process.env` when available.
 
 ### `ConfigProvider.fromUnknown` — Plain JS Objects
 
