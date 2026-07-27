@@ -23,6 +23,7 @@ import type * as RpcClient from "../rpc/RpcClient.ts"
 import type { RpcClientError } from "../rpc/RpcClientError.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
+import type * as McpProtocol from "./McpProtocol.ts"
 
 /**
  * Schema type returned by `optionalWithDefault`.
@@ -2165,6 +2166,7 @@ export class ElicitationDeclined
  */
 export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientId: number
+  readonly protocolVersion: McpProtocol.ProtocolVersion
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]
   readonly getClient: Effect.Effect<
     RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerRequestRpcs>, RpcClientError>,
