@@ -310,6 +310,28 @@ describe("SchemaParser", () => {
       strictEqual(effect.value, 1)
     })
 
+    it("does not replay eager fields after encountering a suspended transformation", () => {
+      const calls: Array<string> = []
+      const field = (name: string, suspended = false) =>
+        Schema.String.pipe(Schema.decode({
+          decode: new SchemaGetter.Getter((input) => {
+            calls.push(name)
+            return suspended ? Effect.suspend(() => Effect.succeed(input)) : Effect.succeed(input)
+          }),
+          encode: SchemaGetter.passthrough()
+        }))
+      const schema = Schema.Struct({
+        a: field("a"),
+        b: field("b", true),
+        c: field("c")
+      })
+
+      const exit = SchemaParser.decodeUnknownExit(schema)({ a: "a", b: "b", c: "c" })
+
+      assertTrue(Exit.isSuccess(exit))
+      strictEqual(calls.join(","), "a,b,c")
+    })
+
     it("keeps encoding-link parser compilation lazy for Suspend", () => {
       let evaluations = 0
       const schema = Schema.suspend(() => {

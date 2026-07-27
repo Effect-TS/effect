@@ -4695,6 +4695,29 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
   const onItem = options.onItem
   const step = options.step
 
+  const runSequential = (
+    state: S,
+    items: ReadonlyArray<A>,
+    index: number,
+    end: number
+  ): Effect.Effect<void, E | E2, R> | undefined => {
+    for (; index < end; index++) {
+      const item = items[index]
+      const effect = onItem(state, item, index)
+      if (effectIsExit(effect)) {
+        const terminal = step(state, item, effect, index)
+        if (terminal) {
+          return terminal._tag === "Failure" ? terminal : undefined
+        }
+      } else {
+        return flatMap(exit(effect), (itemExit) => {
+          const terminal = step(state, item, itemExit, index)
+          return terminal ?? runSequential(state, items, index + 1, end) ?? void_
+        })
+      }
+    }
+  }
+
   return (
     state: S,
     items: ReadonlyArray<A>,
@@ -4703,6 +4726,9 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
     let index = opts?.start ?? 0
     const end = opts?.end ?? items.length
     const concurrency = opts?.concurrency ?? 1
+    if (concurrency === 1) {
+      return runSequential(state, items, index, end)
+    }
     const orderedStep = opts?.orderedStep === true && concurrency > 1
     let done = false
     let parentFiber: Fiber.Fiber<any, any> | undefined
@@ -4748,14 +4774,6 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
         if (effectIsExit(eff)) {
           terminal = runStep(item, eff, index)
           if (terminal) break
-
-          // Use flatMap for concurrency of 1
-        } else if (concurrency === 1) {
-          return flatMap(exit(eff), (exit) => {
-            terminal = runStep(item, exit, index)
-            index++
-            return terminal ?? go() ?? void_
-          })
 
           // We have an effect, so enter "async" mode
         } else if (!parentFiber) {

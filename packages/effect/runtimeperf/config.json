@@ -931,6 +931,15 @@
               "size": 3
             },
             {
+              "name": "object-32-suspended-middle-valid",
+              "export": "object32SuspendedMiddleValid",
+              "scenario": "object-32-suspended-middle-valid",
+              "family": "objects",
+              "astTags": ["Objects", "String", "Transformation"],
+              "path": "valid",
+              "size": 32
+            },
+            {
               "name": "errors-first",
               "export": "errorsFirst",
               "scenario": "errors-first",

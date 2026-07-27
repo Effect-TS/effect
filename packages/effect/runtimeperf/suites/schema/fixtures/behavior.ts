@@ -1,4 +1,6 @@
+import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
+import * as SchemaGetter from "effect/SchemaGetter"
 import * as SchemaParser from "effect/SchemaParser"
 import * as SchemaTransformation from "effect/SchemaTransformation"
 import assert from "node:assert/strict"
@@ -76,6 +78,23 @@ const optionalStruct = Schema.Struct({
 })
 
 export const optionalValid = decodeCase(optionalStruct, { required: "value" }, true)
+
+const suspendedString = Schema.String.pipe(Schema.decode({
+  decode: new SchemaGetter.Getter((input) => Effect.suspend(() => Effect.succeed(input))),
+  encode: SchemaGetter.passthrough()
+}))
+const suspendedObjectFields = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, index === 16 ? suspendedString : Schema.String])
+)
+const suspendedObjectInput = Object.fromEntries(
+  Array.from({ length: 32 }, (_, index) => [`field${index}`, `value${index}`])
+)
+
+export const object32SuspendedMiddleValid = decodeParserCase(
+  Schema.Struct(suspendedObjectFields),
+  suspendedObjectInput,
+  true
+)
 
 const errorFields = Object.fromEntries(
   Array.from({ length: 8 }, (_, index) => [`field${index}`, Schema.String])
