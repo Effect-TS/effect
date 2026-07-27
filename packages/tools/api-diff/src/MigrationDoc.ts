@@ -54,7 +54,10 @@ interface MigrationEntry {
   readonly detailed: boolean
 }
 
-const migrationEntries = (diff: ApiDiff): ReadonlyArray<MigrationEntry> => {
+const migrationEntries = (
+  diff: ApiDiff,
+  annotations: ReadonlyMap<string, MigrationAnnotation>
+): ReadonlyArray<MigrationEntry> => {
   const grouped = new Map<string, Array<ApiChange>>()
   for (const change of diff.changes) {
     if (change.baseApiId === undefined) {
@@ -75,7 +78,10 @@ const migrationEntries = (diff: ApiDiff): ReadonlyArray<MigrationEntry> => {
     const breaking = changes.some(isBreakingChange)
     const removed = changes.some((change) => change.classification === "api-removed")
     const importMove = changes.some((change) => change.classification === "api-moved")
-    if ((!breaking && rename === undefined && !removed) || (importMove && rename === undefined && !breaking)) {
+    if (
+      (!breaking && rename === undefined && !removed) ||
+      (importMove && rename === undefined && !breaking && !annotations.has(id))
+    ) {
       continue
     }
     entries.push({
@@ -137,7 +143,7 @@ export const renderMigrationDocument = (
   annotations: ReadonlyMap<string, MigrationAnnotation>,
   importMapSections: string
 ): string => {
-  const entries = migrationEntries(diff)
+  const entries = migrationEntries(diff, annotations)
   const modules = new Map<string, Array<MigrationEntry>>()
   for (const entry of entries) {
     const group = modules.get(entry.module)
@@ -182,7 +188,7 @@ export const unannotatedApiIds = (
   annotations: ReadonlyMap<string, MigrationAnnotation>
 ): ReadonlyMap<string, ReadonlyArray<string>> => {
   const modules = new Map<string, Array<string>>()
-  for (const entry of migrationEntries(diff)) {
+  for (const entry of migrationEntries(diff, annotations)) {
     if (annotations.has(entry.id)) {
       continue
     }

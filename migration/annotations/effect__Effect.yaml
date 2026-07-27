@@ -406,6 +406,9 @@ effect/Effect#scopeWith:
 effect/Effect#sequentialFinalizers:
   replacement: "none"
   note: "Sequential reverse-order finalization is the normal Scope behavior; remove this wrapper. No direct public replacement exists in v4; rewrite the call site around the stated v4 primitive."
+effect/Effect#Service:
+  replacement: "Context.Service"
+  note: "Replace the `effect` constructor option with `make`. V4 does not generate a `Default` layer or wire `dependencies`; define a `Layer.effect` and provide its dependencies explicitly."
 effect/Effect#Service.AllowedType:
   replacement: "Context.Service"
   note: "Service type machinery moved to `Context.Service`; do not reference its internal helper types. Adapt arguments and imports to the v4 API."

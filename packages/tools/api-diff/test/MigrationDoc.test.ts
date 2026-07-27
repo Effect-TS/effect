@@ -153,4 +153,34 @@ describe("migration document", () => {
     assert(document.includes("Call the zero-argument form."))
     assert(document.includes("**Example**\n\n```ts\nZeta.changed()\n```"))
   })
+
+  it("retains annotated removals that also have move suggestions", () => {
+    const serviceDiff: ApiDiff = {
+      ...diff,
+      changes: [
+        change({
+          classification: "api-moved",
+          baseApiId: "effect/Effect#Service#value",
+          headApiId: "effect/Context#Service#value",
+          authoritative: false
+        }),
+        change({
+          classification: "api-removed",
+          baseApiId: "effect/Effect#Service#value",
+          before: "declare const Service: unknown"
+        })
+      ]
+    }
+    const document = renderMigrationDocument(
+      serviceDiff,
+      new Map([["effect/Effect#Service", {
+        replacement: "Context.Service",
+        note: "Use the v4 service constructor."
+      }]]),
+      "## Import Map\n"
+    )
+
+    assert(document.includes("#### `Effect.Service`"))
+    assert(document.includes("**Replacement:** `Context.Service`"))
+  })
 })
