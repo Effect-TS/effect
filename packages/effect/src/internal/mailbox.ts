@@ -255,8 +255,17 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
         return core.exitAs(this.state.exit, constDone)
       } else if (n <= 0) {
         return core.succeed([empty, false])
+      } else if (
+        this.capacity <= 0 && this.messages.length === 0 && this.messagesChunk.length === 0 &&
+        this.state.offers.size > 0
+      ) {
+        this.capacity = 1
+        this.releaseCapacity()
+        this.capacity = 0
+        const messages = Chunk.of(this.messages.pop()!)
+        return core.succeed([messages, this.releaseCapacity()])
       }
-      n = Math.min(n, this.capacity)
+      n = Math.min(n, this.capacity || 1)
       let messages: Chunk.Chunk<A>
       if (n <= this.messagesChunk.length) {
         messages = Chunk.take(this.messagesChunk, n)
@@ -288,7 +297,9 @@ class MailboxImpl<A, E> extends Effectable.Class<readonly [messages: Chunk.Chunk
       this.capacity = 1
       this.releaseCapacity()
       this.capacity = 0
-      return this.messages.length > 0 ? core.exitSucceed(this.messages.pop()!) : undefined
+      const message = this.messages.pop()!
+      this.releaseCapacity()
+      return core.exitSucceed(message)
     } else {
       return undefined
     }
