@@ -90,6 +90,7 @@ export const makePush = <E, A>(
     }
     flush()
     Deferred.unsafeDone(terminal, Effect.succeed(exit._tag === "Success" ? Exit.void : exit))
+    wakeup.unsafeOffer(void 0)
   }
   return {
     single(value: A) {
@@ -111,6 +112,7 @@ export const makePush = <E, A>(
       finished = true
       flush()
       Deferred.unsafeDone(terminal, Effect.succeed(Exit.void))
+      wakeup.unsafeOffer(void 0)
     },
     halt(cause: Cause.Cause<E>) {
       return done(Exit.failCause(cause))

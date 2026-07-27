@@ -634,16 +634,21 @@ export const asyncPush = <A, E = never, R = never>(
       )
     ),
     Effect.map(([queue, wakeup, terminal]) => {
+      const step = Effect.flatMap(Queue.take(wakeup), () =>
+        Effect.flatMap(Deferred.poll(terminal), (exit) =>
+          Effect.map(
+            Queue.takeAll(queue),
+            (items) => [exit, Chunk.flatMap(items, Chunk.unsafeFromArray)] as const
+          )))
       const loop: Channel.Channel<Chunk.Chunk<A>, unknown, E> = core.flatMap(
-        Effect.race(Queue.take(wakeup), Deferred.await(terminal)),
-        (signal) =>
-          core.flatMap(core.fromEffect(Queue.takeAll(queue)), (items) => {
-            const values = Chunk.flatMap(items, Chunk.unsafeFromArray)
-            const next = Exit.isExit(signal)
-              ? Exit.isSuccess(signal) ? core.void : core.failCause(signal.cause)
-              : loop
-            return Chunk.isEmpty(values) ? next : channel.zipRight(core.write(values), next)
-          })
+        step,
+        ([exit, values]) => {
+          const next = Option.isSome(exit)
+            ? core.flatMap(core.fromEffect(exit.value), (exit) =>
+              Exit.isSuccess(exit) ? core.void : core.failCause(exit.cause))
+            : loop
+          return Chunk.isEmpty(values) ? next : channel.zipRight(core.write(values), next)
+        }
       )
       return loop
     }),
