@@ -3728,6 +3728,25 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await asserts.encoding().succeed(input)
     })
 
+    it.effect("sequential parsing resumes without replaying entries", () =>
+      Effect.gen(function*() {
+        const calls: Array<string> = []
+        const value = Schema.String.pipe(
+          Schema.decode({
+            decode: SchemaGetter.transformOrFail((value) => {
+              calls.push(value)
+              return value === "b" ? Effect.yieldNow.pipe(Effect.as(value)) : Effect.succeed(value)
+            }),
+            encode: SchemaGetter.passthrough()
+          })
+        )
+        const schema = Schema.Record(Schema.String, value)
+        const input = { a: "a", b: "b", c: "c" }
+
+        deepStrictEqual(yield* Schema.decodeUnknownEffect(schema)(input), input)
+        deepStrictEqual(calls, ["a", "b", "c"])
+      }))
+
     it("Record(String, optionalKey(Number)) should throw", async () => {
       throws(
         () => Schema.Record(Schema.String, Schema.optionalKey(Schema.Number)),

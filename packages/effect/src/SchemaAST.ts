@@ -2112,50 +2112,56 @@ export class Objects extends Base {
       })) :
       undefined
 
-    const parseIndexes = indexes ?
-      iterateEager<{
-        readonly oinput: Option.Option<unknown>
-        readonly input: Record<PropertyKey, unknown>
-        readonly options: ParseOptions
-        readonly out: Record<PropertyKey, unknown>
-        issues: Array<SchemaIssue.Issue> | undefined
-      }, [key: PropertyKey, index: NonNullable<typeof indexes>[number]]>()({
-        onItem: Effect.fnUntracedEager(function*(
-          s,
-          [key, index]
-        ) {
-          const effKey = index.parserKey(Option.some(key), s.options)
-          const exitKey = (effectIsExit(effKey) ? effKey : yield* Effect.exit(effKey)) as Exit.Exit<
+    type Index = NonNullable<typeof indexes>[number]
+    const parseIndex = (
+      s: ObjectParserState,
+      key: PropertyKey,
+      index: Index,
+      exitKey?: Exit.Exit<Option.Option<PropertyKey>, SchemaIssue.Issue>,
+      exitValue?: Exit.Exit<Option.Option<unknown>, SchemaIssue.Issue>
+    ): Effect.Effect<void, SchemaIssue.Issue, any> => {
+      let k2: PropertyKey | undefined = key
+      if (index.is.parameter !== string) {
+        if (exitKey === undefined) {
+          const eff = index.parserKey(Option.some(key), s.options) as Effect.Effect<
             Option.Option<PropertyKey>,
-            SchemaIssue.Issue
+            SchemaIssue.Issue,
+            any
           >
-          if (exitKey._tag === "Failure") {
-            const eff = wrapPropertyKeyIssue(s, ast, key, exitKey)
-            if (eff) yield* eff
-            return
+          if (!effectIsExit(eff)) {
+            return Effect.flatMap(Effect.exit(eff), (exit) => parseIndex(s, key, index, exit))
           }
-
-          const value: Option.Option<unknown> = Option.some(s.input[key])
-          const effValue = index.parserValue(value, s.options)
-          const exitValue = effectIsExit(effValue) ? effValue : yield* Effect.exit(effValue)
-          if (exitValue._tag === "Failure") {
-            const eff = wrapPropertyKeyIssue(s, ast, key, exitValue)
-            if (eff) yield* eff
-            return
-          } else if (exitKey.value._tag === "Some" && exitValue.value._tag === "Some") {
-            const k2 = exitKey.value.value
-            if (expectedKeysSet.has(key) || expectedKeysSet.has(k2)) {
-              return
-            }
-            const v2 = exitValue.value.value
-            if (index.merge && Object.hasOwn(s.out, k2)) {
-              const [k, v] = index.merge.combine([k2, s.out[k2]], [k2, v2])
-              InternalRecord.assignProperty(s.out, k, v)
-            } else {
-              InternalRecord.assignProperty(s.out, k2, v2)
-            }
-          }
-        }),
+          exitKey = eff
+        }
+        if (exitKey._tag === "Failure") {
+          return wrapPropertyKeyIssue(s, ast, key, exitKey) ?? Exit.void
+        }
+        k2 = exitKey.value._tag === "Some" ? exitKey.value.value : undefined
+      }
+      if (exitValue === undefined) {
+        const eff = index.parserValue(Option.some(s.input[key]), s.options)
+        if (!effectIsExit(eff)) {
+          return Effect.flatMap(Effect.exit(eff), (exit) => parseIndex(s, key, index, exitKey, exit))
+        }
+        exitValue = eff
+      }
+      if (exitValue._tag === "Failure") {
+        return wrapPropertyKeyIssue(s, ast, key, exitValue) ?? Exit.void
+      } else if (k2 !== undefined && exitValue.value._tag === "Some") {
+        if (expectedKeysSet.has(key) || expectedKeysSet.has(k2)) return Exit.void
+        const v2 = exitValue.value.value
+        if (index.merge && Object.hasOwn(s.out, k2)) {
+          const [k, v] = index.merge.combine([k2, s.out[k2]], [k2, v2])
+          InternalRecord.assignProperty(s.out, k, v)
+        } else {
+          InternalRecord.assignProperty(s.out, k2, v2)
+        }
+      }
+      return Exit.void
+    }
+    const parseIndexes = indexes ?
+      iterateEager<ObjectParserState, [key: PropertyKey, index: Index]>()({
+        onItem: (s, [key, index]) => parseIndex(s, key, index),
         step: (_s, _, exit: Exit.Exit<void, SchemaIssue.Issue>) => exit._tag === "Failure" ? exit : undefined
       }) :
       undefined
@@ -2225,14 +2231,25 @@ export class Objects extends Base {
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (parseIndexes) {
-        const keyPairs = Arr.empty<[PropertyKey, NonNullable<typeof indexes>[number]]>()
+      if (indexes && concurrency === undefined) {
+        for (let i = 0; i < indexCount; i++) {
+          const index = indexes[i]
+          const keys = index.is.parameter === string
+            ? Object.keys(input)
+            : getIndexSignatureKeys(input, index.is.parameter, options)
+          for (let j = 0; j < keys.length; j++) {
+            const eff = parseIndex(state, keys[j], index)
+            if (!effectIsExit(eff)) yield* eff
+            else if (eff._tag === "Failure") return yield* eff as Exit.Exit<never, SchemaIssue.Issue>
+          }
+        }
+      } else if (parseIndexes) {
+        const keyPairs = Arr.empty<[PropertyKey, Index]>()
         for (let i = 0; i < indexCount; i++) {
           const index = indexes![i]
           const keys = getIndexSignatureKeys(input, index.is.parameter, options)
           for (let j = 0; j < keys.length; j++) {
-            const key = keys[j]
-            keyPairs.push([key, index])
+            keyPairs.push([keys[j], index])
           }
         }
         const eff = parseIndexes(state, keyPairs, concurrency)
@@ -2305,6 +2322,15 @@ export class Objects extends Base {
   }
 }
 
+type ObjectParserState = {
+  readonly ast: Objects
+  readonly oinput: Option.Option<unknown>
+  readonly input: Record<PropertyKey, unknown>
+  readonly options: ParseOptions
+  readonly out: Record<PropertyKey, unknown>
+  issues: Array<SchemaIssue.Issue> | undefined
+}
+
 type ParsedProperty = {
   readonly ps: PropertySignature | IndexSignature
   readonly parser: SchemaParser.Parser
@@ -2312,24 +2338,8 @@ type ParsedProperty = {
   readonly type: AST
 }
 
-const parseProperties = iterateEager<{
-  readonly ast: AST
-  readonly oinput: Option.Option<unknown>
-  readonly input: Record<PropertyKey, unknown>
-  readonly options: ParseOptions
-  readonly out: Record<PropertyKey, unknown>
-  issues: Array<SchemaIssue.Issue> | undefined
-}, ParsedProperty>()({
-  onItem(
-    s: {
-      readonly oinput: Option.Option<unknown>
-      readonly input: Record<PropertyKey, unknown>
-      readonly options: ParseOptions
-      readonly out: Record<PropertyKey, unknown>
-      issues: Array<SchemaIssue.Issue> | undefined
-    },
-    p
-  ) {
+const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
+  onItem(s, p) {
     const value: Option.Option<unknown> = Object.hasOwn(s.input, p.name)
       ? Option.some(s.input[p.name])
       : Option.none()
