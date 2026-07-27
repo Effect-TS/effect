@@ -358,27 +358,27 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ## Removed Modules
 
-- `@effect/ai`: TODO: needs module guidance
-- `@effect/ai-amazon-bedrock`: TODO: needs module guidance
+- `@effect/ai` -> `effect/unstable/ai`: The @effect/ai package was merged into the effect package; import the effect/unstable/ai barrel or import specific modules directly (e.g. effect/unstable/ai/<Module>).
+- `@effect/ai-amazon-bedrock` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4 with no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
 - `@effect/ai-amazon-bedrock/AmazonBedrockClient`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-amazon-bedrock/AmazonBedrockConfig`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-amazon-bedrock/AmazonBedrockLanguageModel`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-amazon-bedrock/AmazonBedrockSchema`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-amazon-bedrock/AmazonBedrockTool`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-amazon-bedrock/EventStreamEncoding`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-amazon-bedrock/index`: TODO: needs module guidance
+- `@effect/ai-amazon-bedrock/index` -> `none`: The @effect/ai-amazon-bedrock provider package was removed from v4 with no direct replacement. Use @aws-sdk/client-bedrock-runtime directly or build a custom v4 provider integration.
 - `@effect/ai-anthropic/AnthropicTokenizer`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-anthropic/index`: TODO: needs module guidance
-- `@effect/ai-google`: TODO: needs module guidance
+- `@effect/ai-anthropic/index` -> `@effect/ai-anthropic`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/ai-anthropic package root or import specific modules directly.
+- `@effect/ai-google` -> `none`: The @effect/ai-google provider package was removed from v4 with no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
 - `@effect/ai-google/Generated`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-google/GoogleClient`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-google/GoogleConfig`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-google/GoogleLanguageModel`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/ai-google/GoogleTool`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-google/index`: TODO: needs module guidance
+- `@effect/ai-google/index` -> `none`: The @effect/ai-google provider package was removed from v4 with no direct replacement. Use a supported v4 provider integration for Gemini models or integrate Google's current SDK directly.
 - `@effect/ai-openai/OpenAiTokenizer`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/ai-openai/index`: TODO: needs module guidance
-- `@effect/ai-openrouter/index`: TODO: needs module guidance
+- `@effect/ai-openai/index` -> `@effect/ai-openai`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/ai-openai package root or import specific modules directly.
+- `@effect/ai-openrouter/index` -> `@effect/ai-openrouter`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/ai-openrouter package root or import specific modules directly.
 - `@effect/ai/AiError` -> `effect/unstable/ai/AiError`
 - `@effect/ai/Chat` -> `effect/unstable/ai/Chat`
 - `@effect/ai/EmbeddingModel` -> `effect/unstable/ai/EmbeddingModel`
@@ -393,8 +393,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/ai/Tokenizer` -> `effect/unstable/ai/Tokenizer`
 - `@effect/ai/Tool` -> `effect/unstable/ai/Tool`
 - `@effect/ai/Toolkit` -> `effect/unstable/ai/Toolkit`
-- `@effect/ai/index`: TODO: needs module guidance
-- `@effect/cli`: TODO: needs module guidance
+- `@effect/ai/index` -> `effect/unstable/ai`: The package barrel was removed; import the same namespaces from the effect/unstable/ai barrel or import specific modules directly.
+- `@effect/cli` -> `effect/unstable/cli`: The @effect/cli package was merged into the effect package; import the effect/unstable/cli barrel or import specific modules directly (e.g. effect/unstable/cli/<Module>).
 - `@effect/cli/Args` -> `effect/unstable/cli/Argument`
 - `@effect/cli/AutoCorrect`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/BuiltInOptions` -> `effect/unstable/cli/GlobalFlag`
@@ -411,8 +411,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/cli/Prompt` -> `effect/unstable/cli/Prompt`
 - `@effect/cli/Usage`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/cli/ValidationError` -> `effect/unstable/cli/CliError`
-- `@effect/cli/index`: TODO: needs module guidance
-- `@effect/cluster`: TODO: needs module guidance
+- `@effect/cli/index` -> `effect/unstable/cli`: The package barrel was removed; import the same namespaces from the effect/unstable/cli barrel or import specific modules directly.
+- `@effect/cluster` -> `effect/unstable/cluster`: The @effect/cluster package was merged into the effect package; import the effect/unstable/cluster barrel or import specific modules directly (e.g. effect/unstable/cluster/<Module>).
 - `@effect/cluster/ClusterCron` -> `effect/unstable/cluster/ClusterCron`
 - `@effect/cluster/ClusterError` -> `effect/unstable/cluster/ClusterError`
 - `@effect/cluster/ClusterMetrics` -> `effect/unstable/cluster/ClusterMetrics`
@@ -451,8 +451,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/cluster/SqlMessageStorage` -> `effect/unstable/cluster/SqlMessageStorage`
 - `@effect/cluster/SqlRunnerStorage` -> `effect/unstable/cluster/SqlRunnerStorage`
 - `@effect/cluster/TestRunner` -> `effect/unstable/cluster/TestRunner`
-- `@effect/cluster/index`: TODO: needs module guidance
-- `@effect/experimental`: TODO: needs module guidance
+- `@effect/cluster/index` -> `effect/unstable/cluster`: The package barrel was removed; import the same namespaces from the effect/unstable/cluster barrel or import specific modules directly.
+- `@effect/experimental` -> `none`: The @effect/experimental package was folded into the effect package, split across effect/unstable/* (devtools, eventlog, persistence, reactivity, ...); follow the Import Map for each module.
 - `@effect/experimental/DevTools` -> `effect/unstable/devtools/DevTools`
 - `@effect/experimental/DevTools/Client` -> `effect/unstable/devtools/DevToolsClient`
 - `@effect/experimental/DevTools/Domain` -> `effect/unstable/devtools/DevToolsSchema`
@@ -481,7 +481,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/experimental/RequestResolver`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/experimental/Sse` -> `effect/unstable/encoding/Sse`
 - `@effect/experimental/VariantSchema` -> `effect/unstable/schema/VariantSchema`
-- `@effect/experimental/index`: TODO: needs module guidance
+- `@effect/experimental/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect/unstable/* location per the Import Map.
 - `@effect/opentelemetry/Logger`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/opentelemetry/Metrics`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/opentelemetry/Otlp` -> `effect/unstable/observability/Otlp`
@@ -491,28 +491,28 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/opentelemetry/OtlpSerialization` -> `effect/unstable/observability/OtlpSerialization`
 - `@effect/opentelemetry/OtlpTracer` -> `effect/unstable/observability/OtlpTracer`
 - `@effect/opentelemetry/Tracer`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/opentelemetry/index`: TODO: needs module guidance
-- `@effect/platform`: TODO: needs module guidance
-- `@effect/platform-browser/index`: TODO: needs module guidance
+- `@effect/opentelemetry/index` -> `@effect/opentelemetry`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/opentelemetry package root or import specific modules directly.
+- `@effect/platform` -> `none`: The @effect/platform package was folded into the effect package: core services live in effect root modules (e.g. effect/FileSystem, effect/Path) and HTTP in effect/unstable/http; follow the Import Map for each module.
+- `@effect/platform-browser/index` -> `@effect/platform-browser`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-browser package root or import specific modules directly.
 - `@effect/platform-bun/BunCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-bun/BunContext`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-bun/BunFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform-bun/BunKeyValueStore`: TODO: needs module guidance
-- `@effect/platform-bun/index`: TODO: needs module guidance
+- `@effect/platform-bun/BunKeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via BunServices.layer or BunFileSystem.layer with BunPath.layer.
+- `@effect/platform-bun/index` -> `@effect/platform-bun`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-bun package root or import specific modules directly.
 - `@effect/platform-node-shared/NodeCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node-shared/NodeFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform-node-shared/NodeKeyValueStore`: TODO: needs module guidance
+- `@effect/platform-node-shared/NodeKeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via NodeServices.layer or NodeFileSystem.layer with NodePath.layer.
 - `@effect/platform-node-shared/NodeMultipart`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node/NodeCommandExecutor`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node/NodeContext`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform-node/NodeFileSystem/ParcelWatcher`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform-node/NodeKeyValueStore`: TODO: needs module guidance
-- `@effect/platform-node/index`: TODO: needs module guidance
+- `@effect/platform-node/NodeKeyValueStore` -> `effect/unstable/persistence/KeyValueStore`: layerFileSystem is now platform-neutral as KeyValueStore.layerFileSystem(directory); provide FileSystem and Path via NodeServices.layer or NodeFileSystem.layer with NodePath.layer.
+- `@effect/platform-node/index` -> `@effect/platform-node`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/platform-node package root or import specific modules directly.
 - `@effect/platform/ChannelSchema` -> `effect/ChannelSchema`
 - `@effect/platform/Command` -> `effect/unstable/process/ChildProcess`
 - `@effect/platform/CommandExecutor` -> `effect/unstable/process/ChildProcessSpawner`
 - `@effect/platform/Cookies` -> `effect/unstable/http/Cookies`
-- `@effect/platform/Effectify`: TODO: needs module guidance
+- `@effect/platform/Effectify` -> `effect/Effect`: effectify moved into the Effect module as Effect.effectify; the Effectify and EffectifyError type helpers live in the Effect namespace as well.
 - `@effect/platform/Error` -> `effect/PlatformError`
 - `@effect/platform/Etag` -> `effect/unstable/http/Etag`
 - `@effect/platform/FetchHttpClient` -> `effect/unstable/http/FetchHttpClient`
@@ -556,7 +556,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/platform/OpenApiJsonSchema`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform/Path` -> `effect/Path`
 - `@effect/platform/PlatformConfigProvider`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/platform/PlatformLogger`: TODO: needs module guidance
+- `@effect/platform/PlatformLogger` -> `effect/Logger`: toFile moved to Logger.toFile; it still requires a FileSystem service (e.g. NodeFileSystem.layer) and Scope.
 - `@effect/platform/Runtime`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/platform/Socket` -> `effect/unstable/socket/Socket`
 - `@effect/platform/SocketServer` -> `effect/unstable/socket/SocketServer`
@@ -568,13 +568,13 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/platform/Worker` -> `effect/unstable/workers/Worker`
 - `@effect/platform/WorkerError` -> `effect/unstable/workers/WorkerError`
 - `@effect/platform/WorkerRunner` -> `effect/unstable/workers/WorkerRunner`
-- `@effect/platform/index`: TODO: needs module guidance
-- `@effect/printer`: TODO: needs module guidance
-- `@effect/printer-ansi`: TODO: needs module guidance
+- `@effect/platform/index` -> `none`: The package barrel was removed along with the package; import each module from its new effect location (e.g. effect/FileSystem, effect/unstable/http/HttpClient) per the Import Map.
+- `@effect/printer` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
+- `@effect/printer-ansi` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/printer-ansi/Ansi`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/printer-ansi/AnsiDoc`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/printer-ansi/Color`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer-ansi/index`: TODO: needs module guidance
+- `@effect/printer-ansi/index` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
 - `@effect/printer/Doc`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/printer/DocStream`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/printer/DocTree`: No single module replacement; follow the curated per-API guidance below.
@@ -582,8 +582,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/printer/Layout`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/printer/Optimize`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/printer/PageWidth`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/printer/index`: TODO: needs module guidance
-- `@effect/rpc`: TODO: needs module guidance
+- `@effect/printer/index` -> `none`: The @effect/printer document algebra was removed in v4 with no direct replacement. Use strings and joins for simple output, or adopt another pretty-printing library when adaptive layout is required.
+- `@effect/rpc` -> `effect/unstable/rpc`: The @effect/rpc package was merged into the effect package; import the effect/unstable/rpc barrel or import specific modules directly (e.g. effect/unstable/rpc/<Module>).
 - `@effect/rpc/Rpc` -> `effect/unstable/rpc/Rpc`
 - `@effect/rpc/RpcClient` -> `effect/unstable/rpc/RpcClient`
 - `@effect/rpc/RpcClientError` -> `effect/unstable/rpc/RpcClientError`
@@ -595,10 +595,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/rpc/RpcServer` -> `effect/unstable/rpc/RpcServer`
 - `@effect/rpc/RpcTest` -> `effect/unstable/rpc/RpcTest`
 - `@effect/rpc/RpcWorker` -> `effect/unstable/rpc/RpcWorker`
-- `@effect/rpc/index`: TODO: needs module guidance
-- `@effect/sql`: TODO: needs module guidance
-- `@effect/sql-clickhouse/index`: TODO: needs module guidance
-- `@effect/sql-d1/index`: TODO: needs module guidance
+- `@effect/rpc/index` -> `effect/unstable/rpc`: The package barrel was removed; import the same namespaces from the effect/unstable/rpc barrel or import specific modules directly.
+- `@effect/sql` -> `effect/unstable/sql`: The @effect/sql package was merged into the effect package; import the effect/unstable/sql barrel or import specific modules directly (e.g. effect/unstable/sql/<Module>).
+- `@effect/sql-clickhouse/index` -> `@effect/sql-clickhouse`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-clickhouse package root or import specific modules directly.
+- `@effect/sql-d1/index` -> `@effect/sql-d1`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-d1 package root or import specific modules directly.
 - `@effect/sql-drizzle/Mysql`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/sql-drizzle/Pg`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/sql-drizzle/Sqlite`: No single module replacement; follow the curated per-API guidance below.
@@ -607,18 +607,18 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/sql-kysely/Mysql`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/sql-kysely/Pg`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/sql-kysely/Sqlite`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/sql-kysely/patch.types`: TODO: needs module guidance
-- `@effect/sql-libsql/index`: TODO: needs module guidance
-- `@effect/sql-mssql/index`: TODO: needs module guidance
-- `@effect/sql-mysql2/index`: TODO: needs module guidance
-- `@effect/sql-pg/index`: TODO: needs module guidance
-- `@effect/sql-sqlite-bun/index`: TODO: needs module guidance
-- `@effect/sql-sqlite-do/index`: TODO: needs module guidance
-- `@effect/sql-sqlite-node/index`: TODO: needs module guidance
-- `@effect/sql-sqlite-react-native/index`: TODO: needs module guidance
-- `@effect/sql-sqlite-wasm/index`: TODO: needs module guidance
+- `@effect/sql-kysely/patch.types` -> `none`: The @effect/sql-kysely package was removed in v4 along with its kysely type patches; depend on native kysely types directly and wrap query execution with Effect.tryPromise.
+- `@effect/sql-libsql/index` -> `@effect/sql-libsql`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-libsql package root or import specific modules directly.
+- `@effect/sql-mssql/index` -> `@effect/sql-mssql`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-mssql package root or import specific modules directly.
+- `@effect/sql-mysql2/index` -> `@effect/sql-mysql2`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-mysql2 package root or import specific modules directly.
+- `@effect/sql-pg/index` -> `@effect/sql-pg`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-pg package root or import specific modules directly.
+- `@effect/sql-sqlite-bun/index` -> `@effect/sql-sqlite-bun`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-bun package root or import specific modules directly.
+- `@effect/sql-sqlite-do/index` -> `@effect/sql-sqlite-do`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-do package root or import specific modules directly.
+- `@effect/sql-sqlite-node/index` -> `@effect/sql-sqlite-node`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-node package root or import specific modules directly.
+- `@effect/sql-sqlite-react-native/index` -> `@effect/sql-sqlite-react-native`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-react-native package root or import specific modules directly.
+- `@effect/sql-sqlite-wasm/index` -> `@effect/sql-sqlite-wasm`: The explicit /index entrypoint was removed; import the same namespaces from the @effect/sql-sqlite-wasm package root or import specific modules directly.
 - `@effect/sql/Migrator` -> `effect/unstable/sql/Migrator`
-- `@effect/sql/Migrator/FileSystem`: TODO: needs module guidance
+- `@effect/sql/Migrator/FileSystem` -> `effect/unstable/sql/Migrator`: fromFileSystem was merged into the main Migrator module with the same (directory) signature; use Migrator.fromFileSystem as the loader.
 - `@effect/sql/Model` -> `effect/unstable/schema/Model`, `effect/unstable/sql/SqlModel`
 - `@effect/sql/SqlClient` -> `effect/unstable/sql/SqlClient`
 - `@effect/sql/SqlConnection` -> `effect/unstable/sql/SqlConnection`
@@ -630,8 +630,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/sql/SqlSchema` -> `effect/unstable/sql/SqlSchema`
 - `@effect/sql/SqlStream` -> `effect/unstable/sql/SqlStream`
 - `@effect/sql/Statement` -> `effect/unstable/sql/Statement`
-- `@effect/sql/index`: TODO: needs module guidance
-- `@effect/typeclass`: TODO: needs module guidance
+- `@effect/sql/index` -> `effect/unstable/sql`: The package barrel was removed; import the same namespaces from the effect/unstable/sql barrel or import specific modules directly.
+- `@effect/typeclass` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite abstractions against the concrete v4 data type and its module functions.
 - `@effect/typeclass/Alternative`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/Applicative`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/Bicovariant`: No single module replacement; follow the curated per-API guidance below.
@@ -671,9 +671,9 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `@effect/typeclass/data/Record`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/String`: No single module replacement; follow the curated per-API guidance below.
 - `@effect/typeclass/data/Tuple`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/typeclass/index`: TODO: needs module guidance
+- `@effect/typeclass/index` -> `none`: The @effect/typeclass package was removed in v4 with no generic typeclass layer replacement. Rewrite abstractions against the concrete v4 data type and its module functions.
 - `@effect/vitest/index`: No single module replacement; follow the curated per-API guidance below.
-- `@effect/workflow`: TODO: needs module guidance
+- `@effect/workflow` -> `effect/unstable/workflow`: The @effect/workflow package was merged into the effect package; import the effect/unstable/workflow barrel or import specific modules directly (e.g. effect/unstable/workflow/<Module>).
 - `@effect/workflow/Activity` -> `effect/unstable/workflow/Activity`
 - `@effect/workflow/DurableClock` -> `effect/unstable/workflow/DurableClock`
 - `@effect/workflow/DurableDeferred` -> `effect/unstable/workflow/DurableDeferred`
@@ -737,7 +737,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `effect/SortedSet`: No single module replacement; follow the curated per-API guidance below.
 - `effect/StreamEmit`: No single module replacement; follow the curated per-API guidance below.
 - `effect/StreamHaltStrategy`: No single module replacement; follow the curated per-API guidance below.
-- `effect/Streamable`: TODO: needs module guidance
+- `effect/Streamable` -> `none`: Removed in v4 with no direct replacement. Instead of extending Streamable.Class, expose the underlying stream as a value (e.g. a property or method built with Stream.suspend).
 - `effect/Subscribable`: No single module replacement; follow the curated per-API guidance below.
 - `effect/Supervisor`: No single module replacement; follow the curated per-API guidance below.
 - `effect/TArray`: No single module replacement; follow the curated per-API guidance below.
