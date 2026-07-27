@@ -3,9 +3,9 @@ import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
-import { McpConformanceTest, type TestLayer } from "./McpConformanceTest.ts"
+import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =>
+export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Base Protocol", () => {
       // https://modelcontextprotocol.io/specification/2025-06-18/basic
@@ -13,7 +13,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         describe("Requests", () => {
           it.effect("SCHEMA accepts JSON-RPC 2.0 requests with string identifiers", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -29,7 +29,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
           it.effect("SCHEMA accepts JSON-RPC 2.0 requests with numeric identifiers", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -42,7 +42,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           // FIX: The server currently accepts jsonrpc "1.0" and returns a successful ping result.
           it.effect.skip("MUST reject requests with an invalid JSON-RPC version", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -60,7 +60,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           // FIX: Unknown methods currently return error code 0 instead of JSON-RPC -32601.
           it.effect.skip("MUST return method not found for unknown request methods", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -77,7 +77,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           // FIX: Invalid method params currently return error code 0 instead of JSON-RPC -32602.
           it.effect.skip("MUST return invalid params for request payloads that do not match the method schema", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -97,7 +97,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         describe("Responses", () => {
           it.effect("MUST return exactly one result response for a successful request", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -114,7 +114,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
           it.effect("MUST return exactly one error response for a failed request", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -134,7 +134,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
             }))
           it.effect("SCHEMA preserves the request identifier in result responses", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -147,7 +147,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
           it.effect("SCHEMA preserves the request identifier in error responses", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -161,7 +161,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
             }))
           it.effect("MUST not include both result and error in a response", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
               yield* test.notifyInitialized(initialized)
 
@@ -182,7 +182,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         describe("Notifications", () => {
           it.effect("MUST accept notifications without an identifier and send no response", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformanceTest
+              const test = yield* McpConformance
               const initialized = yield* test.initialize()
 
               const response = yield* test.send(initialized, test.initializedNotification)
@@ -195,7 +195,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // FIX: Malformed JSON currently becomes an internal -32603 response instead of a -32700 parse error with a null id.
         it.effect.skip("MUST return a parse error for malformed JSON", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
 
@@ -209,7 +209,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // FIX: A JSON-RPC object without a method currently receives an empty response instead of error -32600.
         it.effect.skip("MUST return an invalid request error for malformed JSON-RPC messages", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
 

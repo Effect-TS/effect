@@ -1,22 +1,25 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
-import { McpConformanceTest, type TestLayer } from "./McpConformanceTest.ts"
+import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
+import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 const decodeResources = Schema.decodeUnknownEffect(McpSchema.ListResourcesResult)
 const decodeResourceTemplates = Schema.decodeUnknownEffect(McpSchema.ListResourceTemplatesResult)
 const decodeReadResource = Schema.decodeUnknownEffect(McpSchema.ReadResourceResult)
+const decodeResourceUpdated = Schema.decodeUnknownEffect(McpSchema.ResourceUpdatedNotification.payloadSchema)
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =>
+export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Resources", () => {
       // Identical requirements in the 2024-11-05, 2025-03-26, and 2025-06-18 specifications.
       describe("Capabilities", () => {
         it.effect("MUST advertise resources when resources are registered", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
 
             assert.property(initialized.message.result.capabilities, "resources")
@@ -24,7 +27,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST NOT advertise resources when resources are not supported", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
 
             assert.notProperty(initialized.message.result.capabilities, "resources")
@@ -32,7 +35,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST NOT advertise resource subscriptions when they are unsupported", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
 
             assert.strictEqual(initialized.message.result.capabilities.resources?.subscribe, false)
@@ -40,7 +43,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST advertise listChanged when resource list change notifications are supported", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
 
             assert.strictEqual(initialized.message.result.capabilities.resources?.listChanged, true)
@@ -50,7 +53,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       describe("Listing Resources", () => {
         it.effect("MUST list every resource visible to the initialized client", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -72,7 +75,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("SCHEMA preserves resource URI, name, description, and MIME type", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -99,7 +102,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       describe("Reading Resources", () => {
         it.effect("MUST read text resource contents", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -120,7 +123,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("MUST read binary resource contents as base64", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -148,7 +151,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("SCHEMA preserves the resource URI and MIME type in returned contents", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -166,7 +169,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("MUST return multiple resource contents in order", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -188,7 +191,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // instead of the resource-specific Resource Not Found error (-32002).
         it.effect.skip("SHOULD return resource not found for an unknown resource URI", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -206,7 +209,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       describe("Resource Templates", () => {
         it.effect("MUST list every registered resource template", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -240,7 +243,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST match and decode a concrete resource-template URI", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -262,7 +265,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // path parameter cannot be decoded by its declared schema.
         it.effect.skip("MUST not invoke the handler when template parameter decoding fails", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             yield* test.resetObservations
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
@@ -278,19 +281,204 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       })
 
       describe("List Changed Notification", () => {
-        // HARNESS: Requires dynamic registration plus an observable outbound
-        // notification stream.
-        it.skip("SHOULD send a resource list changed notification when the advertised list changes", () => {})
+        it.effect("SHOULD send a resource list changed notification when the advertised list changes", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            const makeResource = (uri: string, name: string) => ({
+              resource: new McpSchema.Resource({ uri, name }),
+              annotations: Context.empty(),
+              handle: Effect.succeed(
+                McpSchema.ReadResourceResult.make({
+                  contents: [{ uri, text: name }]
+                })
+              )
+            })
+            yield* fixture.server.addResource(
+              makeResource("file:///baseline-list-changed", "baseline-list-changed-resource")
+            )
+            const initialized = yield* fixture.initialize()
+            const initializeResult = yield* Schema.decodeUnknownEffect(McpSchema.InitializeResult)(initialized.result)
+            assert.strictEqual(
+              initializeResult.capabilities.resources?.listChanged,
+              true
+            )
+
+            yield* fixture.server.addResource(
+              makeResource("file:///dynamic-list-changed", "dynamic-list-changed-resource")
+            )
+            const notification = yield* fixture.awaitOutboundMethod("notifications/resources/list_changed")
+            assert.strictEqual(notification.jsonrpc, "2.0")
+            assert.strictEqual(notification.method, "notifications/resources/list_changed")
+            assert.notProperty(notification, "id")
+
+            const response = yield* fixture.sendRequest("resources/list", {})
+            const result = yield* decodeResources(response.result)
+            assert.isTrue(result.resources.some((resource) => resource.uri === "file:///dynamic-list-changed"))
+          }))
       })
 
       describe("Subscriptions", () => {
-        // HARNESS: Requires a server fixture that advertises
-        // `resources.subscribe` and can publish controlled resource updates.
-        it.skip("MUST subscribe to a resource when subscriptions are advertised", () => {})
-        it.skip("MUST send update notifications only for subscribed resources", () => {})
-        it.skip("MUST include the updated resource URI in each notification", () => {})
-        it.skip("MUST unsubscribe from resource updates", () => {})
-        it.skip("MUST not send updates after a resource is unsubscribed", () => {})
+        // FIX: Every dated adapter currently advertises resources.subscribe as
+        // false and returns Method Not Found for subscribe and unsubscribe.
+        // Resource update notifications are broadcast without session-scoped
+        // subscription state or URI filtering.
+        it.effect.skip("MUST subscribe to a resource when subscriptions are advertised", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.server.addResource({
+              resource: new McpSchema.Resource({
+                uri: "file:///subscription-target",
+                name: "subscription-target"
+              }),
+              annotations: Context.empty(),
+              handle: Effect.succeed(
+                McpSchema.ReadResourceResult.make({
+                  contents: [{ uri: "file:///subscription-target", text: "target" }]
+                })
+              )
+            })
+            const initialized = yield* fixture.initialize()
+            const initializeResult = yield* Schema.decodeUnknownEffect(McpSchema.InitializeResult)(initialized.result)
+            assert.strictEqual(initializeResult.capabilities.resources?.subscribe, true)
+
+            const response = yield* fixture.sendRequest("resources/subscribe", {
+              uri: "file:///subscription-target"
+            })
+            assert.notProperty(response, "error")
+            assert.deepStrictEqual(response.result, {})
+          }))
+
+        // FIX: Resource update notifications are currently broadcast without
+        // checking session-scoped subscription state or filtering by URI.
+        it.effect.skip("MUST send update notifications only for subscribed resources", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.server.addResource({
+              resource: new McpSchema.Resource({
+                uri: "file:///subscription-target",
+                name: "subscription-target"
+              }),
+              annotations: Context.empty(),
+              handle: Effect.succeed(
+                McpSchema.ReadResourceResult.make({
+                  contents: [{ uri: "file:///subscription-target", text: "target" }]
+                })
+              )
+            })
+            yield* fixture.initialize()
+            yield* fixture.sendRequest("resources/subscribe", {
+              uri: "file:///subscription-target"
+            })
+
+            yield* fixture.server.notifications["notifications/resources/updated"]({
+              uri: "file:///not-subscribed"
+            })
+            yield* fixture.server.notifications["notifications/resources/updated"]({
+              uri: "file:///subscription-target"
+            })
+            const notification = yield* fixture.awaitOutboundMethod("notifications/resources/updated")
+            const payload = yield* decodeResourceUpdated(notification.params)
+            assert.strictEqual(payload.uri, "file:///subscription-target")
+          }))
+
+        it.effect("MUST include the updated resource URI in each notification", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.server.addResource({
+              resource: new McpSchema.Resource({
+                uri: "file:///subscription-target",
+                name: "subscription-target"
+              }),
+              annotations: Context.empty(),
+              handle: Effect.succeed(
+                McpSchema.ReadResourceResult.make({
+                  contents: [{ uri: "file:///subscription-target", text: "target" }]
+                })
+              )
+            })
+            yield* fixture.initialize()
+            yield* fixture.sendRequest("resources/subscribe", {
+              uri: "file:///subscription-target"
+            })
+
+            yield* fixture.server.notifications["notifications/resources/updated"]({
+              uri: "file:///subscription-target"
+            })
+            const notification = yield* fixture.awaitOutboundMethod("notifications/resources/updated")
+            assert.strictEqual(notification.jsonrpc, "2.0")
+            assert.strictEqual(notification.method, "notifications/resources/updated")
+            assert.notProperty(notification, "id")
+            const payload = yield* decodeResourceUpdated(notification.params)
+            assert.strictEqual(payload.uri, "file:///subscription-target")
+          }))
+
+        // FIX: The adapter currently returns Method Not Found for
+        // resources/unsubscribe because subscription state is not implemented.
+        it.effect.skip("MUST unsubscribe from resource updates", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.server.addResource({
+              resource: new McpSchema.Resource({
+                uri: "file:///subscription-target",
+                name: "subscription-target"
+              }),
+              annotations: Context.empty(),
+              handle: Effect.succeed(
+                McpSchema.ReadResourceResult.make({
+                  contents: [{ uri: "file:///subscription-target", text: "target" }]
+                })
+              )
+            })
+            yield* fixture.initialize()
+            yield* fixture.sendRequest("resources/subscribe", {
+              uri: "file:///subscription-target"
+            })
+
+            const response = yield* fixture.sendRequest("resources/unsubscribe", {
+              uri: "file:///subscription-target"
+            })
+            assert.notProperty(response, "error")
+            assert.deepStrictEqual(response.result, {})
+          }))
+
+        // FIX: Resource update notifications remain broadcast after unsubscribe
+        // because the server does not track session-scoped subscription state.
+        it.effect.skip("MUST not send updates after a resource is unsubscribed", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.server.addResource({
+              resource: new McpSchema.Resource({
+                uri: "file:///subscription-target",
+                name: "subscription-target"
+              }),
+              annotations: Context.empty(),
+              handle: Effect.succeed(
+                McpSchema.ReadResourceResult.make({
+                  contents: [{ uri: "file:///subscription-target", text: "target" }]
+                })
+              )
+            })
+            yield* fixture.initialize()
+            yield* fixture.sendRequest("resources/subscribe", {
+              uri: "file:///subscription-target"
+            })
+            yield* fixture.sendRequest("resources/subscribe", {
+              uri: "file:///subscription-sentinel"
+            })
+            yield* fixture.sendRequest("resources/unsubscribe", {
+              uri: "file:///subscription-target"
+            })
+
+            yield* fixture.server.notifications["notifications/resources/updated"]({
+              uri: "file:///subscription-target"
+            })
+            yield* fixture.server.notifications["notifications/resources/updated"]({
+              uri: "file:///subscription-sentinel"
+            })
+            const notification = yield* fixture.awaitOutboundMethod("notifications/resources/updated")
+            const payload = yield* decodeResourceUpdated(notification.params)
+            assert.strictEqual(payload.uri, "file:///subscription-sentinel")
+          }))
       })
     })
   })

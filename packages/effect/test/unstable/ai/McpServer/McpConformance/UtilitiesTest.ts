@@ -1,16 +1,20 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Context from "effect/Context"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
-import { McpConformanceTest, type TestLayer } from "./McpConformanceTest.ts"
+import * as McpSchema from "effect/unstable/ai/McpSchema"
+import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
+import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =>
+export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Utilities", () => {
       describe("Ping", () => {
         // https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/ping
         it.effect("MUST respond to a client ping with an empty result", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
 
@@ -27,7 +31,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/cancellation
         it.effect("MUST not send a response to a cancellation notification", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
 
@@ -43,12 +47,67 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
             assert.strictEqual(response.status, 202)
             assert.strictEqual(yield* Effect.promise(() => response.text()), "")
           }))
-        // HARNESS: Requires a deterministically gated in-flight request and an
-        // observable server response stream.
-        it.skip("SHOULD stop work and suppress the response after cancellation", () => {})
+        // FIX: Effect interrupts the request handler but still emits a response
+        // for the cancelled request before processing a subsequent ping.
+        it.effect.skip("SHOULD stop work and suppress the response after cancellation", () =>
+          Effect.gen(function*() {
+            const entered = yield* Deferred.make<void>()
+            const release = yield* Deferred.make<void>()
+            const interrupted = yield* Deferred.make<void>()
+            yield* Effect.addFinalizer(() => Deferred.succeed(release, void 0))
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            const cancelledRequestId = "cancelled-tool-call"
+            const pingRequestId = "post-cancellation-ping"
+
+            yield* fixture.server.addTool({
+              tool: new McpSchema.Tool({
+                name: "GatedTool",
+                inputSchema: { type: "object", properties: {} }
+              }),
+              annotations: Context.empty(),
+              handle: () =>
+                Deferred.succeed(entered, void 0).pipe(
+                  Effect.andThen(Deferred.await(release)),
+                  Effect.onInterrupt(() => Deferred.succeed(interrupted, void 0)),
+                  Effect.as(
+                    new McpSchema.CallToolResult({
+                      content: [{ type: "text", text: "released" }]
+                    })
+                  )
+                )
+            })
+
+            yield* fixture.initialize()
+            yield* fixture.sendRaw({
+              jsonrpc: "2.0",
+              id: cancelledRequestId,
+              method: "tools/call",
+              params: { name: "GatedTool", arguments: {} }
+            })
+            yield* Deferred.await(entered)
+            yield* fixture.sendNotification("notifications/cancelled", {
+              requestId: cancelledRequestId,
+              reason: "No longer needed"
+            })
+            yield* Deferred.await(interrupted)
+            yield* fixture.sendRaw({
+              jsonrpc: "2.0",
+              id: pingRequestId,
+              method: "ping"
+            })
+
+            while (true) {
+              const message = yield* fixture.takeMessage
+              assert.notStrictEqual(message.id, cancelledRequestId)
+              if (message.id === pingRequestId) {
+                assert.deepStrictEqual(message.result, {})
+                break
+              }
+            }
+          }))
         it.effect("SHOULD ignore cancellation for an unknown request identifier", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
 
@@ -63,7 +122,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("SHOULD ignore cancellation for an already completed request identifier", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
             yield* test.ping(initialized, { id: 11 })
@@ -83,7 +142,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/progress
         it.effect("MUST accept string progress tokens", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
 
@@ -101,7 +160,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("MUST accept numeric progress tokens", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
 
@@ -119,7 +178,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("SCHEMA accepts the optional total", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
             yield* test.notifyInitialized(initialized)
 

@@ -1,16 +1,18 @@
 import { assert, describe, it } from "@effect/vitest"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
-import { McpConformanceTest, type TestLayer } from "./McpConformanceTest.ts"
+import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
+import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 const decodePrompts = Schema.decodeUnknownEffect(McpSchema.ListPromptsResult)
 const decodeGetPrompt = Schema.decodeUnknownEffect(McpSchema.GetPromptResult)
 
 const getPrompt = (name: string) =>
   Effect.gen(function*() {
-    const test = yield* McpConformanceTest
+    const test = yield* McpConformance
     const initialized = yield* test.initialize({ server: "features" })
     yield* test.notifyInitialized(initialized)
     const response = yield* test.send(initialized, {
@@ -24,14 +26,28 @@ const getPrompt = (name: string) =>
     )
   })
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =>
+const getPromptWire = (name: string) =>
+  Effect.gen(function*() {
+    const test = yield* McpConformance
+    const initialized = yield* test.initialize({ server: "features" })
+    yield* test.notifyInitialized(initialized)
+    const response = yield* test.send(initialized, {
+      jsonrpc: "2.0",
+      id: 2,
+      method: "prompts/get",
+      params: { name }
+    })
+    return yield* test.decodeResult(response)
+  })
+
+export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Prompts", () => {
       // Identical requirements in the 2024-11-05, 2025-03-26, and 2025-06-18 specifications.
       describe("Capabilities", () => {
         it.effect("MUST advertise prompts when prompts are registered", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
 
             assert.property(initialized.message.result.capabilities, "prompts")
@@ -39,7 +55,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST NOT advertise prompts when prompts are not supported", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize()
 
             assert.notProperty(initialized.message.result.capabilities, "prompts")
@@ -47,7 +63,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST advertise listChanged when prompt list change notifications are supported", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
 
             assert.strictEqual(initialized.message.result.capabilities.prompts?.listChanged, true)
@@ -57,7 +73,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       describe("Listing Prompts", () => {
         it.effect("MUST list every prompt visible to the initialized client", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -83,7 +99,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("SCHEMA preserves prompt names, descriptions, and arguments", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -107,7 +123,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST mark required and optional prompt arguments correctly", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -132,7 +148,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       describe("Getting Prompts", () => {
         it.effect("MUST get a registered prompt without arguments", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -152,7 +168,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("MUST get a registered prompt with valid arguments", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -181,7 +197,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // rather than Invalid Params.
         it.effect.skip("SHOULD reject an unknown prompt name with Invalid Params", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -202,7 +218,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // code 0, rather than Invalid Params.
         it.effect.skip("SHOULD reject missing required prompt arguments with Invalid Params", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -223,7 +239,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
         // of the Invalid Params (-32602) error required for invalid prompt arguments.
         it.effect.skip("SHOULD reject prompt arguments with invalid values", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -243,7 +259,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("MUST not invoke the prompt handler when argument validation fails", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             yield* test.resetObservations
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
@@ -261,7 +277,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
           }))
         it.effect("SCHEMA preserves the prompt description and message order", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -283,7 +299,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST return text message content", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             const response = yield* test.send(initialized, {
@@ -346,9 +362,38 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       })
 
       describe("List Changed Notification", () => {
-        // HARNESS: Requires dynamic registration plus an observable outbound
-        // notification stream.
-        it.skip("SHOULD send a prompt list changed notification when the advertised list changes", () => {})
+        it.effect("SHOULD send a prompt list changed notification when the advertised list changes", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            const makePrompt = (name: string) => ({
+              prompt: new McpSchema.Prompt({ name }),
+              annotations: Context.empty(),
+              completions: {},
+              handle: () =>
+                Effect.succeed(
+                  new McpSchema.GetPromptResult({
+                    messages: [{ role: "user", content: { type: "text", text: name } }]
+                  })
+                )
+            })
+            yield* fixture.server.addPrompt(makePrompt("baseline-list-changed-prompt"))
+            const initialized = yield* fixture.initialize()
+            const initializeResult = yield* Schema.decodeUnknownEffect(McpSchema.InitializeResult)(initialized.result)
+            assert.strictEqual(
+              initializeResult.capabilities.prompts?.listChanged,
+              true
+            )
+
+            yield* fixture.server.addPrompt(makePrompt("dynamic-list-changed-prompt"))
+            const notification = yield* fixture.awaitOutboundMethod("notifications/prompts/list_changed")
+            assert.strictEqual(notification.jsonrpc, "2.0")
+            assert.strictEqual(notification.method, "notifications/prompts/list_changed")
+            assert.notProperty(notification, "id")
+
+            const response = yield* fixture.sendRequest("prompts/list", {})
+            const result = yield* decodePrompts(response.result)
+            assert.isTrue(result.prompts.some((prompt) => prompt.name === "dynamic-list-changed-prompt"))
+          }))
       })
     })
   })

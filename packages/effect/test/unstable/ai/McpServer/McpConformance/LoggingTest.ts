@@ -1,15 +1,17 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
 import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
-import { McpConformanceTest, type TestLayer } from "./McpConformanceTest.ts"
+import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
+import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 const levels = ["debug", "info", "notice", "warning", "error", "critical", "alert", "emergency"] as const
 
 const setLevel = (level: string) =>
   Effect.gen(function*() {
-    const test = yield* McpConformanceTest
+    const test = yield* McpConformance
     const initialized = yield* test.initialize({ server: "features" })
     yield* test.notifyInitialized(initialized)
     const response = yield* test.send(initialized, {
@@ -21,17 +23,16 @@ const setLevel = (level: string) =>
     return { initialized, response, test }
   })
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =>
+export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Logging", () => {
       // Logging has the same protocol surface in all three dated specifications.
       describe("Capabilities", () => {
-        // DECISION: The fixture can accept `logging/setLevel` but does not emit
-        // log notifications. Decide whether logging needs explicit registration
-        // or should always be advertised.
+        // FIX: McpServer exposes notifications/message and forwards it to
+        // initialized clients, but initialize currently omits capabilities.logging.
         it.effect.skip("MUST advertise logging when log notifications are supported", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
             assert.property(initialized.message.result.capabilities, "logging")
           }))
@@ -69,10 +70,61 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
             )
             assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("Debug") }])
           }))
-        // HARNESS: Requires a log-emitting operation and an observable outbound
-        // notification stream.
-        it.skip("SHOULD send notifications at the selected level and higher", () => {})
-        it.skip("MUST not send notifications below the selected level", () => {})
+        // FIX: logging/setLevel updates CurrentLogLevel for request handlers, but
+        // direct McpServer notification emission does not apply the client's
+        // selected threshold.
+        it.effect.skip("SHOULD send notifications at the selected level and higher", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.initialize()
+            const response = yield* fixture.sendRequest("logging/setLevel", { level: "warning" }, 2)
+            assert.deepStrictEqual(response.result, {})
+
+            yield* fixture.server.notifications["notifications/message"]({
+              level: "warning",
+              logger: "conformance",
+              data: "at-threshold"
+            })
+            const notification = yield* fixture.awaitOutboundMethod("notifications/message")
+            const payload = yield* Schema.decodeUnknownEffect(
+              McpSchema.LoggingMessageNotification.payloadSchema
+            )(notification.params)
+            assert.deepStrictEqual(payload, {
+              level: "warning",
+              logger: "conformance",
+              data: "at-threshold"
+            })
+          }))
+        // FIX: The direct notification API broadcasts messages below the level
+        // selected with logging/setLevel. The warning notification is an ordered
+        // sentinel: receiving it first proves the preceding debug message was
+        // suppressed without relying on timing.
+        it.effect.skip("MUST not send notifications below the selected level", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.initialize()
+            const response = yield* fixture.sendRequest("logging/setLevel", { level: "warning" }, 2)
+            assert.deepStrictEqual(response.result, {})
+
+            yield* fixture.server.notifications["notifications/message"]({
+              level: "debug",
+              logger: "conformance",
+              data: "below-threshold"
+            })
+            yield* fixture.server.notifications["notifications/message"]({
+              level: "warning",
+              logger: "conformance",
+              data: "allowed-sentinel"
+            })
+            const notification = yield* fixture.awaitOutboundMethod("notifications/message")
+            assert.deepNestedInclude(notification, {
+              params: {
+                level: "warning",
+                logger: "conformance",
+                data: "allowed-sentinel"
+              }
+            })
+          }))
       })
 
       describe("Log Message Notifications", () => {
@@ -115,12 +167,50 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
             }).pipe(
               Effect.map((payload) => assert.deepStrictEqual(payload.data, data))
             )))
-        // HARNESS: `notifications/message` is server-to-client and must be
-        // inspected on an outbound protocol stream.
-        it.skip("MUST emit log messages as notifications without an identifier", () => {})
-        // HARNESS: Requires separate protocol stdout and diagnostic stderr
-        // observation from the stdio fixture.
-        it.skip("SCENARIO does not corrupt the stdio protocol stream with log output", () => {})
+        it.effect("MUST emit log messages as notifications without an identifier", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.initialize()
+            yield* fixture.server.notifications["notifications/message"]({
+              level: "warning",
+              logger: "database",
+              data: { message: "slow query" }
+            })
+
+            const notification = yield* fixture.awaitOutboundMethod("notifications/message")
+            assert.strictEqual(notification.jsonrpc, "2.0")
+            assert.strictEqual(notification.method, "notifications/message")
+            yield* Schema.decodeUnknownEffect(
+              McpSchema.LoggingMessageNotification.payloadSchema
+            )(notification.params)
+            assert.notProperty(notification, "id")
+            assert.notProperty(notification, "result")
+          }))
+        it.effect("SCENARIO does not corrupt the stdio protocol stream with log output", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.initialize()
+            yield* fixture.takeFrame
+            yield* fixture.server.notifications["notifications/message"]({
+              level: "info",
+              logger: "conformance",
+              data: "stdio-integrity-diagnostic"
+            })
+            const ping = yield* fixture.sendRequest("ping", {}, 2).pipe(Effect.forkChild)
+
+            const notificationFrame = yield* fixture.takeFrame
+            const responseFrame = yield* fixture.takeFrame
+            assert.isObject(notificationFrame)
+            assert.isObject(responseFrame)
+            assert.deepInclude(notificationFrame, {
+              method: "notifications/message"
+            })
+            assert.deepNestedInclude(notificationFrame, {
+              "params.data": "stdio-integrity-diagnostic"
+            })
+            assert.deepInclude(responseFrame, { jsonrpc: "2.0", id: 2, result: {} })
+            yield* Fiber.join(ping)
+          }))
       })
     })
   })

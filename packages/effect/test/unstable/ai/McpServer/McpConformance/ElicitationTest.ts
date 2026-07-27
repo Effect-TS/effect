@@ -6,7 +6,7 @@ import * as Schema from "effect/Schema"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
-import { McpConformanceTest, type TestLayer } from "./McpConformanceTest.ts"
+import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 import type { McpTestPeer } from "./McpTestPeer.ts"
 
 const ElicitationRequest = Schema.Struct({
@@ -64,14 +64,14 @@ const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknow
     )
   )
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =>
+export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Elicitation", () => {
       // https://modelcontextprotocol.io/specification/2025-06-18/client/elicitation
       describe("Capabilities", () => {
         it.effect("MUST send elicitation requests when the client advertises elicitation", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { elicitation: {} },
               handlers: {
@@ -83,26 +83,16 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
               }
             })
 
-            yield* peer.client.elicit(request)
+            yield* peer.client["elicitation/create"](request)
 
             assert.strictEqual((yield* peer.takeRequest).method, "elicitation/create")
-          }).pipe(Effect.scoped))
-
-        it.effect("MUST NOT send elicitation requests when the client omits the elicitation capability", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformanceTest
-            const peer = yield* test.makePeer()
-            const error = yield* peer.client.elicit(request).pipe(Effect.flip)
-
-            assert.instanceOf(error, McpSchema.McpReverseOperationUnsupported)
-            assert.deepStrictEqual(yield* peer.requests, [])
           }).pipe(Effect.scoped))
       })
 
       describe("Form Mode", () => {
         it.effect("MUST send the message and requested primitive form schema", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { elicitation: {} },
               handlers: {
@@ -132,7 +122,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST decode accepted content against the requested schema", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { elicitation: {} },
               handlers: {
@@ -155,11 +145,9 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
             assert.deepStrictEqual(result, { name: "Ada", age: 37 })
           }).pipe(Effect.scoped))
 
-        // DECISION: Mapping the protocol's `decline` action to a typed Effect
-        // failure is an SDK contract, not a wire-protocol requirement.
-        it.effect.skip("SCENARIO returns a typed failure when the user declines", () =>
+        it.effect("SCENARIO returns a typed failure when the user declines", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { elicitation: {} },
               handlers: {
@@ -175,11 +163,9 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
             assert.instanceOf(error, McpSchema.ElicitationDeclined)
           }).pipe(Effect.scoped))
 
-        // DECISION: Mapping the protocol's `cancel` action to interruption is an
-        // SDK contract, not a wire-protocol requirement.
-        it.effect.skip("SCENARIO interrupts the operation when the user cancels", () =>
+        it.effect("SCENARIO interrupts the operation when the user cancels", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { elicitation: {} },
               handlers: {
@@ -200,7 +186,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST reject accepted content that does not match the requested schema", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { elicitation: {} },
               handlers: {

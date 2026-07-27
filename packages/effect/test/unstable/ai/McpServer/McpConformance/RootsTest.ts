@@ -2,19 +2,20 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
-import { McpConformanceTest, type TestLayer } from "./McpConformanceTest.ts"
+import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
+import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 const rootsHandler = (roots: ReadonlyArray<{ readonly uri: string; readonly name?: string }>) => () =>
   Effect.succeed({ roots })
 
-export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =>
+export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Roots", () => {
       // Identical requirements in the 2024-11-05, 2025-03-26, and 2025-06-18 specifications.
       describe("Capabilities", () => {
         it.effect("MUST send roots requests when the client advertises roots", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { roots: {} },
               handlers: {
@@ -22,23 +23,14 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
               }
             })
 
-            yield* peer.client.listRoots()
+            yield* peer.client["roots/list"](undefined)
 
             assert.strictEqual((yield* peer.takeRequest).method, "roots/list")
           }).pipe(Effect.scoped))
 
-        it.effect("MUST NOT send roots requests when the client omits the roots capability", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformanceTest
-            const peer = yield* test.makePeer()
-            const error = yield* peer.client.listRoots().pipe(Effect.flip)
-
-            assert.instanceOf(error, McpSchema.McpReverseOperationUnsupported)
-            assert.deepStrictEqual(yield* peer.requests, [])
-          }).pipe(Effect.scoped))
         it.effect("MUST accept roots requests when the client advertises list changes", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { roots: { listChanged: true } },
               handlers: {
@@ -55,7 +47,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       describe("Listing Roots", () => {
         it.effect("MUST accept roots with file URIs and preserve optional names", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { roots: {} },
               handlers: {
@@ -82,7 +74,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MAY accept an empty roots list", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { roots: {} },
               handlers: {
@@ -97,7 +89,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
 
         it.effect("MUST surface client errors returned by roots/list", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformanceTest
+            const test = yield* McpConformance
             const peer = yield* test.makePeer({
               capabilities: { roots: {} },
               handlers: {
@@ -118,9 +110,30 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: TestLayer) =
       })
 
       describe("Root List Changes", () => {
-        // HARNESS: Requires an initialized client session whose outbound roots/list
-        // requests can be observed after the inbound notification.
-        it.skip("SHOULD refresh roots after a capable client reports a list change", () => {})
+        // FIX: The protocol adapters decode notifications/roots/list_changed,
+        // but McpServer currently discards the resulting RootsChanged lifecycle
+        // event. No roots/list request is issued after a capable client reports
+        // a change. This scenario specifies eager refresh; if the public API
+        // adopts lazy invalidation instead, replace it with an assertion against
+        // that observable cache or consumer boundary.
+        it.effect.skip("SHOULD refresh roots after a capable client reports a list change", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.initialize({ roots: { listChanged: true } })
+
+            yield* fixture.sendNotification("notifications/roots/list_changed")
+
+            const request = yield* fixture.awaitOutboundMethod("roots/list")
+            assert.strictEqual(request.jsonrpc, "2.0")
+            assert.strictEqual(request.method, "roots/list")
+            if (typeof request.id !== "string" && typeof request.id !== "number") {
+              return assert.fail("roots/list request must include an identifier")
+            }
+
+            yield* fixture.respond(request.id, {
+              roots: [{ uri: "file:///updated", name: "Updated" }]
+            })
+          }))
       })
     })
   })

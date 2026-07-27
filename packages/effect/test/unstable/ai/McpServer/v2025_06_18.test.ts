@@ -6,7 +6,7 @@ import * as CompletionTest from "./McpConformance/CompletionTest.ts"
 import * as ElicitationTest from "./McpConformance/ElicitationTest.ts"
 import * as LifecycleTest from "./McpConformance/LifecycleTest.ts"
 import * as LoggingTest from "./McpConformance/LoggingTest.ts"
-import { layer as makeMcpConformanceLayer, McpConformanceTest } from "./McpConformance/McpConformanceTest.ts"
+import { layer as makeMcpConformanceLayer, McpConformance } from "./McpConformance/McpConformance.ts"
 import * as PromptsTest from "./McpConformance/PromptsTest.ts"
 import * as ResourcesTest from "./McpConformance/ResourcesTest.ts"
 import * as RootsTest from "./McpConformance/RootsTest.ts"
@@ -36,7 +36,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Progress", () => {
       it.effect("SCHEMA accepts the optional progress message", () =>
         Effect.gen(function*() {
-          const test = yield* McpConformanceTest
+          const test = yield* McpConformance
           const initialized = yield* test.initialize()
           yield* test.notifyInitialized(initialized)
 
@@ -61,7 +61,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     // 2025 removed support for batching.
     it.effect.skip("MUST reject JSON-RPC batches", () =>
       Effect.gen(function*() {
-        const test = yield* McpConformanceTest
+        const test = yield* McpConformance
         const response = yield* test.post([test.initializeRequest()])
 
         assert.isAtLeast(response.status, 400)
@@ -71,7 +71,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     // after initialization.
     it.effect.skip("MUST require the negotiated protocol-version header after initialization", () =>
       Effect.gen(function*() {
-        const test = yield* McpConformanceTest
+        const test = yield* McpConformance
         const initialized = yield* test.initialize()
         assert.isNotNull(initialized.sessionId)
 
