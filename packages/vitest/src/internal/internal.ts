@@ -17,8 +17,9 @@ import * as fc from "effect/testing/FastCheck"
 import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 import * as V from "vitest"
-import { getCurrentSuite } from "vitest/suite"
 import type * as Vitest from "../index.ts"
+
+const getCurrentSuite = V.TestRunner?.getCurrentSuite ?? (await import("vitest/suite")).getCurrentSuite
 
 const runPromise: <E, A>(
   _: Effect.Effect<A, E, never>,

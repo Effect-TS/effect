@@ -2,4 +2,4 @@
 "@effect/vitest": patch
 ---
 
-Import suite state through the Vitest peer instead of relying on a separately resolved `@vitest/runner` instance.
+Read suite state from the Vitest peer, using `TestRunner` when available and a lazy compatibility fallback for older versions.
