@@ -234,6 +234,9 @@ export const Service = <Self>() =>
         : self.runtime.atom(
           self.use((client) => client(tag, payload, { headers } as any)) as any
         )
+      if (reactivityKeys) {
+        atom = self.runtime.factory.withReactivity(reactivityKeys)(atom)
+      }
       if (!isStream && key.serializationKey) {
         atom = Atom.serializable(atom, {
           key: `AtomRpc:${key.tag}:${key.serializationKey}`,
@@ -248,9 +251,7 @@ export const Service = <Self>() =>
           ? Atom.setIdleTTL(atom, timeToLive)
           : Atom.keepAlive(atom)
       }
-      return reactivityKeys
-        ? self.runtime.factory.withReactivity(reactivityKeys)(atom)
-        : atom
+      return atom
     }
   )
 
