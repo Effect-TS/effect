@@ -63,6 +63,23 @@ describe("AtomHttpApi", () => {
           serializable: true
         }
       )
+      const keepAliveAtom = Client.query("group", "get", {
+        params: { id: 2 },
+        query: { page: 3 },
+        reactivityKeys: ["users"],
+        timeToLive: "Infinity",
+        serializationKey: "keep-alive"
+      })
+      assert.deepStrictEqual(
+        {
+          keepAlive: keepAliveAtom.keepAlive,
+          serializable: Atom.isSerializable(keepAliveAtom)
+        },
+        {
+          keepAlive: true,
+          serializable: true
+        }
+      )
       if (!Atom.isSerializable(atom)) {
         assert.fail("expected query atom to be serializable")
       }
