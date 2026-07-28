@@ -71,6 +71,12 @@ const readLineAfterEnd = Effect.gen(function*() {
   return error._tag
 })
 
+const readLineDisposed = Effect.gen(function*() {
+  const terminal = yield* Terminal.Terminal
+  const line = yield* terminal.readLine
+  return { line, dataListeners: process.stdin.listenerCount("data") }
+})
+
 const mode = process.argv[2]
 const program = Effect.gen(function*() {
   if (mode === "prompts") {
@@ -85,6 +91,8 @@ const program = Effect.gen(function*() {
     return yield* unused
   } else if (mode === "read-line-after-end") {
     return yield* readLineAfterEnd
+  } else if (mode === "read-line-disposed") {
+    return yield* readLineDisposed
   }
   return yield* Effect.die(`Unknown mode: ${mode}`)
 })

@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { spawnSync } from "node:child_process"
+import * as Effect from "effect/Effect"
+import { spawn, spawnSync } from "node:child_process"
 import { join } from "node:path"
 
 const fixture = join(__dirname, "fixtures", "node-terminal.ts")
@@ -17,6 +18,28 @@ const assertResult = (mode: string, input: string, expected: string) => {
   assert.strictEqual(result.status, 0, result.stderr)
   assert.isTrue(result.stderr.includes(`RESULT ${expected}`), result.stderr)
 }
+
+const assertOpenResult = (mode: string, input: string, expected: string) =>
+  Effect.callback<void>((resume) => {
+    const child = spawn(process.execPath, [fixture, mode])
+    let stderr = ""
+    child.stderr.setEncoding("utf8")
+    child.stderr.on("data", (data) => {
+      stderr += data
+      if (stderr.includes("RESULT ")) {
+        child.stdin.end()
+      }
+    })
+    child.on("exit", (code) => {
+      resume(
+        code === 0 && stderr.includes(`RESULT ${expected}`)
+          ? Effect.void
+          : Effect.die(new Error(stderr))
+      )
+    })
+    child.stdin.write(input)
+    return Effect.sync(() => child.kill())
+  })
 
 describe("NodeTerminal", () => {
   it("does not install a readline interface until the terminal is used", () => {
@@ -42,4 +65,7 @@ describe("NodeTerminal", () => {
   it("fails readLine with QuitError when stdin ended before initialization", () => {
     assertResult("read-line-after-end", "", "\"QuitError\"")
   })
+
+  it.effect("disposes readline after readLine completes", () =>
+    assertOpenResult("read-line-disposed", "line\n", "{\"line\":\"line\",\"dataListeners\":0}"))
 })
