@@ -471,9 +471,15 @@ importers:
       '@std/fs':
         specifier: jsr:^1.0.24
         version: '@jsr/std__fs@1.0.24'
+      '@std/media-types':
+        specifier: jsr:^1.1.0
+        version: '@jsr/std__media-types@1.1.0'
       '@std/path':
         specifier: jsr:^1.1.6
         version: '@jsr/std__path@1.1.6'
+      '@std/streams':
+        specifier: jsr:^1.1.1
+        version: '@jsr/std__streams@1.1.1'
     devDependencies:
       '@std/assert':
         specifier: jsr:^1.0.16
@@ -2263,11 +2269,17 @@ packages:
   '@jsr/std__io@0.224.5':
     resolution: {integrity: sha512-1Y8ZWIjFiQKkaSJwbt7NM/9esDtO0ieKS4vcT929dFArG2ADk7ZKVAV4KluYYh4+kF5VgkOcvJkEm84KeBpqFA==, tarball: https://npm.jsr.io/~/11/@jsr/std__io/0.224.5.tgz}
 
+  '@jsr/std__media-types@1.1.0':
+    resolution: {integrity: sha512-dHvaxHL7ENWnltgL653uo3KnKFse3ZbopZop2gqsT7yrscx7irZEClu5Cba7gMPPRk4Lg1FbriNcaBViM2RSBw==, tarball: https://npm.jsr.io/~/11/@jsr/std__media-types/1.1.0.tgz}
+
   '@jsr/std__path@1.1.6':
     resolution: {integrity: sha512-H1Cmg6z8jFyIsQbVV+vZB4eOx4k6Qg8lyUM6l7nZysj5MZumg89kb0M1bsPBTGQis3fw6mJFkJELo5+AK6oCFA==, tarball: https://npm.jsr.io/~/11/@jsr/std__path/1.1.6.tgz}
 
   '@jsr/std__random@0.1.0':
     resolution: {integrity: sha512-gt+pI83ha04zLv2+5kSf/i6uPT4c8QEwscpATrYe2IKfOkCVpL++NrFcH7pWHc0vgm2fDGC8aY6OI2Mz7tEHhQ==, tarball: https://npm.jsr.io/~/11/@jsr/std__random/0.1.0.tgz}
+
+  '@jsr/std__streams@1.1.1':
+    resolution: {integrity: sha512-V9auR/i6gJz6SR1+h5wc4EN42IC5+ObBjXu/h7Buef7UOE0GtX4vRSx+3MJywEiBcJqQC+lCnf+wBAodvBL1SA==, tarball: https://npm.jsr.io/~/11/@jsr/std__streams/1.1.1.tgz}
 
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
@@ -8201,11 +8213,17 @@ snapshots:
     dependencies:
       '@jsr/std__bytes': 1.0.6
 
+  '@jsr/std__media-types@1.1.0': {}
+
   '@jsr/std__path@1.1.6':
     dependencies:
       '@jsr/std__internal': 1.0.14
 
   '@jsr/std__random@0.1.0': {}
+
+  '@jsr/std__streams@1.1.1':
+    dependencies:
+      '@jsr/std__bytes': 1.0.6
 
   '@kwsites/file-exists@1.1.1':
     dependencies:

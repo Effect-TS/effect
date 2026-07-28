@@ -27,6 +27,11 @@ export * as DenoHttpClient from "./DenoHttpClient.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoHttpPlatform from "./DenoHttpPlatform.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoKeyValueStore from "./DenoKeyValueStore.ts"
 
 /**
