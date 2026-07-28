@@ -26,6 +26,7 @@
     "./packages/tools/*/typetest/**/*.ts",
     "./packages/tools/*/benchmark/**/*.ts"
   ],
+  "exclude": ["./packages/platform-deno/**/*.ts"],
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,

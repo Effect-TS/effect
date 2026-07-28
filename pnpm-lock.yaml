@@ -466,6 +466,22 @@ importers:
         specifier: workspace:^
         version: link:../effect
 
+  packages/platform-deno:
+    dependencies:
+      '@std/path':
+        specifier: jsr:^1.1.6
+        version: '@jsr/std__path@1.1.6'
+    devDependencies:
+      '@std/assert':
+        specifier: jsr:^1.0.16
+        version: '@jsr/std__assert@1.0.19'
+      '@types/deno':
+        specifier: ^2.7.0
+        version: 2.7.0
+      effect:
+        specifier: workspace:^
+        version: link:../effect
+
   packages/platform-node:
     dependencies:
       '@effect/platform-node-shared':
@@ -2305,6 +2321,15 @@ packages:
     resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
     engines: {node: '>=12'}
 
+  '@jsr/std__assert@1.0.19':
+    resolution: {integrity: sha512-pEj6RPkGbqlgRmyKwATp4cUs6+ijxtdrv3bq8v1d2I2CEcMEyPaO8cVKro61wGRDH4cNg8Zx6haztvK/9m7gkA==, tarball: https://npm.jsr.io/~/11/@jsr/std__assert/1.0.19.tgz}
+
+  '@jsr/std__internal@1.0.14':
+    resolution: {integrity: sha512-JT8b/t40WcR9q0GDwRZUooY7aXeXnFal8iidE/5TckdAFtvpVAsaJ71/Xgf1SfoChs41s6CZkuCYM8toaNgdvA==, tarball: https://npm.jsr.io/~/11/@jsr/std__internal/1.0.14.tgz}
+
+  '@jsr/std__path@1.1.6':
+    resolution: {integrity: sha512-H1Cmg6z8jFyIsQbVV+vZB4eOx4k6Qg8lyUM6l7nZysj5MZumg89kb0M1bsPBTGQis3fw6mJFkJELo5+AK6oCFA==, tarball: https://npm.jsr.io/~/11/@jsr/std__path/1.1.6.tgz}
+
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
 
@@ -3087,6 +3112,9 @@ packages:
 
   '@types/deep-eql@4.0.2':
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
+
+  '@types/deno@2.7.0':
+    resolution: {integrity: sha512-Y6fWcV8KpYeO3Lik/RiYnUxtr/LWqoeACciU0CA+dr1U/45tGgaX3HWQQAPCNN53raN4Rr4Fht4y6qsUH57fDA==}
 
   '@types/docker-modem@3.0.6':
     resolution: {integrity: sha512-yKpAGEuKRSS8wwx0joknWxsmLha78wNMe9R2S3UNsVOkZded8UqOrV8KoeDXoXsjndxwyF3eIhyClGbO1SEhEg==}
@@ -8143,6 +8171,16 @@ snapshots:
     dependencies:
       jsbi: 4.3.2
 
+  '@jsr/std__assert@1.0.19':
+    dependencies:
+      '@jsr/std__internal': 1.0.14
+
+  '@jsr/std__internal@1.0.14': {}
+
+  '@jsr/std__path@1.1.6':
+    dependencies:
+      '@jsr/std__internal': 1.0.14
+
   '@kwsites/file-exists@1.1.1':
     dependencies:
       debug: 4.4.3(supports-color@10.2.2)
@@ -8851,6 +8889,8 @@ snapshots:
       assertion-error: 2.0.1
 
   '@types/deep-eql@4.0.2': {}
+
+  '@types/deno@2.7.0': {}
 
   '@types/docker-modem@3.0.6':
     dependencies:
