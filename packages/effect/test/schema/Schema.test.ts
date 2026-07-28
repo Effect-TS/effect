@@ -5640,6 +5640,30 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       )
     })
 
+    it("reviver option", async () => {
+      const schema = Schema.fromJsonString(Schema.Struct({ a: Schema.Number }), {
+        reviver: (key, value) => key === "a" ? Number(value) : value
+      })
+      const decoding = new TestSchema.Asserts(schema).decoding()
+
+      await decoding.succeed(`{"a":"1"}`, { a: 1 })
+    })
+
+    it("replacer and space options", async () => {
+      const schema = Schema.fromJsonString(Schema.Struct({ a: Schema.Number, b: Schema.Number }), {
+        replacer: ["a"],
+        space: 2
+      })
+      const encoding = new TestSchema.Asserts(schema).encoding()
+
+      await encoding.succeed(
+        { a: 1, b: 2 },
+        `{
+  "a": 1
+}`
+      )
+    })
+
     it("use case: parse / stringify a nested schema", async () => {
       const schema = Schema.Struct({
         a: Schema.fromJsonString(Schema.Struct({ b: Schema.Number }))
