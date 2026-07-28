@@ -57,6 +57,11 @@ export * as DenoServices from "./DenoServices.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoSocket from "./DenoSocket.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoStdio from "./DenoStdio.ts"
 
 /**
