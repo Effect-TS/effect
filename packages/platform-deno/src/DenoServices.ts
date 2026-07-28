@@ -24,7 +24,7 @@ import * as DenoTerminal from "./DenoTerminal.ts"
 
 /**
  * The union of core services provided by the Deno platform layer, including
- * child process spawning, filesystem, path, stdio, and terminal services.
+ * child process spawning, crypto, filesystem, path, stdio, and terminal services.
  *
  * @category models
  * @since 4.0.0
@@ -33,7 +33,7 @@ export type DenoServices = ChildProcessSpawner | Crypto | FileSystem | Path | Te
 
 /**
  * Provides the default Deno implementations for child process spawning,
- * filesystem, path, stdio, and terminal services.
+ * crypto, filesystem, path, stdio, and terminal services.
  *
  * @category layers
  * @since 4.0.0
