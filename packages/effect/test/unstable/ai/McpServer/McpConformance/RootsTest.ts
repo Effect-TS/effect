@@ -110,13 +110,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
       })
 
       describe("Root List Changes", () => {
-        // FIX: The protocol adapters decode notifications/roots/list_changed,
-        // but McpServer currently discards the resulting RootsChanged lifecycle
-        // event. No roots/list request is issued after a capable client reports
-        // a change. This scenario specifies eager refresh; if the public API
-        // adopts lazy invalidation instead, replace it with an assertion against
-        // that observable cache or consumer boundary.
-        it.effect.skip("SHOULD refresh roots after a capable client reports a list change", () =>
+        it.effect("SHOULD refresh roots after a capable client reports a list change", () =>
           Effect.gen(function*() {
             const fixture = yield* makeMcpStdioHarness(protocol)
             yield* fixture.initialize({ roots: { listChanged: true } })
