@@ -189,9 +189,8 @@ export const fromConn = <RO>(
             return Effect.void
           }
           const { conn, writer } = current
-          return Effect.sync(() => writer.releaseLock()).pipe(
-            Effect.andThen(closeWrite(conn))
-          )
+          writer.releaseLock()
+          return closeWrite(conn)
         })
     )
 
