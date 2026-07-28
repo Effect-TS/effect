@@ -47,6 +47,11 @@ export * as DenoRuntime from "./DenoRuntime.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoServices from "./DenoServices.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoStdio from "./DenoStdio.ts"
 
 /**
