@@ -76,7 +76,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
         yield* Effect.scoped(Effect.gen(function*() {
           file = yield* fs.makeTempFileScoped({ directory: root })
           const separator = Math.max(file.lastIndexOf("/"), file.lastIndexOf("\\"))
-          assert(separator !== -1, "Expected temp file path to contain a directory separator")
+          assert(separator > 0, "Expected temp file path to contain a directory separator")
           dir = file.slice(0, separator)
           const stat = yield* fs.stat(dir)
           expect(stat.type).toEqual("Directory")

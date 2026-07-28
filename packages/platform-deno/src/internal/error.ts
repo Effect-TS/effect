@@ -15,32 +15,42 @@ export const handleError = (
   const denoError = error as DenoError
   let tag: SystemErrorTag = "Unknown"
 
-  if (denoError?.name === "NotCapable") {
-    tag = "PermissionDenied"
-  } else {
-    switch (denoError?.code) {
-      case "ENOENT":
-        tag = "NotFound"
-        break
+  switch (denoError?.name) {
+    case "NotCapable":
+      tag = "PermissionDenied"
+      break
+    case "BadResource":
+    case "InvalidData":
+    case "TimedOut":
+    case "UnexpectedEof":
+    case "WouldBlock":
+    case "WriteZero":
+      tag = denoError.name
+      break
+    default:
+      switch (denoError?.code) {
+        case "ENOENT":
+          tag = "NotFound"
+          break
 
-      case "EACCES":
-        tag = "PermissionDenied"
-        break
+        case "EACCES":
+          tag = "PermissionDenied"
+          break
 
-      case "EEXIST":
-        tag = "AlreadyExists"
-        break
+        case "EEXIST":
+          tag = "AlreadyExists"
+          break
 
-      case "EISDIR":
-      case "ENOTDIR":
-      case "ELOOP":
-        tag = "BadResource"
-        break
+        case "EISDIR":
+        case "ENOTDIR":
+        case "ELOOP":
+          tag = "BadResource"
+          break
 
-      case "EBUSY":
-        tag = "Busy"
-        break
-    }
+        case "EBUSY":
+          tag = "Busy"
+          break
+      }
   }
 
   return PlatformError.systemError({

@@ -13,6 +13,12 @@ describe("handleError", () => {
     [withCode(new Deno.errors.IsADirectory(), "EISDIR"), "BadResource"],
     [withCode(new Deno.errors.PermissionDenied(), "EACCES"), "PermissionDenied"],
     [new Deno.errors.NotCapable(), "PermissionDenied"],
+    [new Deno.errors.BadResource(), "BadResource"],
+    [new Deno.errors.InvalidData(), "InvalidData"],
+    [new Deno.errors.TimedOut(), "TimedOut"],
+    [new Deno.errors.UnexpectedEof(), "UnexpectedEof"],
+    [new Deno.errors.WouldBlock(), "WouldBlock"],
+    [new Deno.errors.WriteZero(), "WriteZero"],
     [new Error("unrecognised"), "Unknown"]
   ]
 
