@@ -61,6 +61,7 @@ const makeHandler = async () => {
   })
 
   const httpPlatform = HttpPlatform.HttpPlatform.of({
+    platform: "node",
     fileResponse: (_path, options) =>
       Effect.succeed(HttpServerResponse.text(fileBody, {
         status: options?.status,
@@ -100,6 +101,7 @@ const makeFailingApp = async (options: {
   })
 
   const httpPlatform = HttpPlatform.HttpPlatform.of({
+    platform: "node",
     fileResponse: (_path, fileOptions) => {
       if (options.fileResponseError !== undefined) {
         return Effect.fail(options.fileResponseError)
@@ -137,6 +139,7 @@ const makeLayerHandler = (options: {
     }
   })
   const httpPlatform = HttpPlatform.HttpPlatform.of({
+    platform: "node",
     fileResponse: () =>
       options.fileResponseError !== undefined
         ? Effect.fail(options.fileResponseError)

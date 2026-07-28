@@ -27,6 +27,7 @@ import * as NodeFileSystem from "./NodeFileSystem.ts"
  * @since 4.0.0
  */
 export const make = Platform.make({
+  platform: "node",
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
     const stream = contentLength === 0
       ? Readable.from([])
