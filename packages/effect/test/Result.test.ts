@@ -196,11 +196,12 @@ describe("Result", () => {
   describe("Mapping", () => {
     it("map", () => {
       const f = Result.map(Str.length)
+      const failure = Result.fail("s")
       assertSuccess(pipe(Result.succeed("abc"), f), 3)
-      assertFailure(pipe(Result.fail("s"), f), "s")
+      strictEqual(pipe(failure, f), failure)
       // data-first
       assertSuccess(Result.map(Result.succeed("abc"), Str.length), 3)
-      assertFailure(Result.map(Result.fail("s"), Str.length), "s")
+      strictEqual(Result.map(failure, Str.length), failure)
     })
 
     it("mapBoth", () => {

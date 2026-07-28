@@ -2,4 +2,5 @@
 "effect": patch
 ---
 
-Preserve successful `Result` values by identity in `Result.mapError`.
+Preserve untouched `Result` branches by identity in `Result.map` and
+`Result.mapError`.

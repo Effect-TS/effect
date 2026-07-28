@@ -863,7 +863,7 @@ export const map: {
 } = dual(
   2,
   <A, E, A2>(self: Result<A, E>, f: (ok: A) => A2): Result<A2, E> =>
-    isSuccess(self) ? succeed(f(self.success)) : fail(self.failure)
+    isSuccess(self) ? succeed(f(self.success)) : self as unknown as Result<A2, E>
 )
 
 /**
