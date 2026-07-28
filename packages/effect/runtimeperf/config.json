@@ -1520,6 +1520,143 @@
           ]
         }
       ]
+    },
+    {
+      "name": "schema-benchmarks",
+      "fixtures": [
+        {
+          "file": "suites/schema-benchmarks/fixtures/effect-beta.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "effect",
+            "family": "schema-benchmarks",
+            "astTags": ["Objects", "Arrays", "Literal", "String", "Number", "Null", "Declaration"],
+            "size": "product"
+          },
+          "cases": [
+            {
+              "name": "initialization-schema",
+              "export": "initializationSchema",
+              "scenario": "schema-benchmarks-initialization-schema",
+              "operation": "schema",
+              "path": "cold"
+            },
+            {
+              "name": "initialization-decoder",
+              "export": "initializationDecoder",
+              "scenario": "schema-benchmarks-initialization-decoder",
+              "operation": "schema-and-decoder",
+              "path": "cold"
+            },
+            {
+              "name": "validation-valid",
+              "export": "validationValid",
+              "scenario": "schema-benchmarks-validation-valid",
+              "operation": "is",
+              "path": "valid"
+            },
+            {
+              "name": "validation-invalid",
+              "export": "validationInvalid",
+              "scenario": "schema-benchmarks-validation-invalid",
+              "operation": "is",
+              "path": "invalid"
+            },
+            {
+              "name": "parsing-all-valid",
+              "export": "parsingAllValid",
+              "scenario": "schema-benchmarks-parsing-all-valid",
+              "operation": "decode-option-all",
+              "path": "valid"
+            },
+            {
+              "name": "parsing-all-invalid",
+              "export": "parsingAllInvalid",
+              "scenario": "schema-benchmarks-parsing-all-invalid",
+              "operation": "decode-option-all",
+              "path": "invalid"
+            },
+            {
+              "name": "parsing-first-valid",
+              "export": "parsingFirstValid",
+              "scenario": "schema-benchmarks-parsing-first-valid",
+              "operation": "decode-option-first",
+              "path": "valid"
+            },
+            {
+              "name": "parsing-first-invalid",
+              "export": "parsingFirstInvalid",
+              "scenario": "schema-benchmarks-parsing-first-invalid",
+              "operation": "decode-option-first",
+              "path": "invalid"
+            },
+            {
+              "name": "standard-all-valid",
+              "export": "standardAllValid",
+              "scenario": "schema-benchmarks-standard-all-valid",
+              "operation": "standard-schema-all",
+              "path": "valid"
+            },
+            {
+              "name": "standard-all-invalid",
+              "export": "standardAllInvalid",
+              "scenario": "schema-benchmarks-standard-all-invalid",
+              "operation": "standard-schema-all",
+              "path": "invalid"
+            },
+            {
+              "name": "standard-first-valid",
+              "export": "standardFirstValid",
+              "scenario": "schema-benchmarks-standard-first-valid",
+              "operation": "standard-schema-first",
+              "path": "valid"
+            },
+            {
+              "name": "standard-first-invalid",
+              "export": "standardFirstInvalid",
+              "scenario": "schema-benchmarks-standard-first-invalid",
+              "operation": "standard-schema-first",
+              "path": "invalid"
+            },
+            {
+              "name": "codec-typed-encode",
+              "export": "codecTypedEncode",
+              "scenario": "schema-benchmarks-codec-typed-encode",
+              "operation": "encode-sync",
+              "path": "valid",
+              "astTags": ["String", "BigInt"],
+              "size": 1
+            },
+            {
+              "name": "codec-typed-decode",
+              "export": "codecTypedDecode",
+              "scenario": "schema-benchmarks-codec-typed-decode",
+              "operation": "decode-sync",
+              "path": "valid",
+              "astTags": ["String", "BigInt"],
+              "size": 1
+            },
+            {
+              "name": "codec-unknown-encode",
+              "export": "codecUnknownEncode",
+              "scenario": "schema-benchmarks-codec-unknown-encode",
+              "operation": "encode-unknown-sync",
+              "path": "valid",
+              "astTags": ["String", "BigInt"],
+              "size": 1
+            },
+            {
+              "name": "codec-unknown-decode",
+              "export": "codecUnknownDecode",
+              "scenario": "schema-benchmarks-codec-unknown-decode",
+              "operation": "decode-unknown-sync",
+              "path": "valid",
+              "astTags": ["String", "BigInt"],
+              "size": 1
+            }
+          ]
+        }
+      ]
     }
   ]
 }

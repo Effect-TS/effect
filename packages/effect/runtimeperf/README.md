@@ -18,6 +18,20 @@ Run the complete registry:
 pnpm runtimeperf
 ```
 
+Run the cases extracted from the `effect@beta` adapter in
+[`open-circle/schema-benchmarks`](https://github.com/open-circle/schema-benchmarks):
+
+```sh
+pnpm runtimeperf schema-benchmarks
+pnpm runtimeperf-compare schema-benchmarks --base main --head HEAD
+```
+
+This suite covers the 16 upstream timing cases: schema and decoder
+initialization, validation, parsing and Standard Schema with valid/invalid
+inputs and first/all error modes, plus typed/unknown BigInt codec operations.
+The upstream bundle and stack reports are not throughput benchmarks, and its
+`effect@beta` adapter does not define the optional string-format cases.
+
 Select a suite, fixture, shared scenario, tier, family or implementation:
 
 ```sh

@@ -47,6 +47,34 @@ describe("runtimeperf registry", () => {
     }
   })
 
+  it("includes the complete effect@beta Schema Benchmarks matrix", () => {
+    const { fixtures } = loadRegistry()
+    assert.deepEqual(
+      fixtures
+        .filter((fixture) => fixture.suite === "schema-benchmarks")
+        .map((fixture) => fixture.name)
+        .sort(),
+      [
+        "codec-typed-decode",
+        "codec-typed-encode",
+        "codec-unknown-decode",
+        "codec-unknown-encode",
+        "initialization-decoder",
+        "initialization-schema",
+        "parsing-all-invalid",
+        "parsing-all-valid",
+        "parsing-first-invalid",
+        "parsing-first-valid",
+        "standard-all-invalid",
+        "standard-all-valid",
+        "standard-first-invalid",
+        "standard-first-valid",
+        "validation-invalid",
+        "validation-valid"
+      ]
+    )
+  })
+
   it("covers cold union scenarios with every comparison implementation", () => {
     const { fixtures } = loadRegistry()
     for (const scenario of ["first-decode-literal-100", "first-decode-tagged-100"]) {
