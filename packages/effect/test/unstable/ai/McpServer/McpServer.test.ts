@@ -159,8 +159,7 @@ const makeTestProtocol = (protocolVersion: string, field: "a" | "b") => {
   return InternalMcpProtocol.make({
     protocolVersion,
     transport: {
-      acceptsOperationalBatches: false,
-      requiresProtocolVersionHeaderOnSubsequentHttpRequests: false
+      requiresVersionHeader: false
     },
     clientRpcs: McpSchema.ClientRpcs.omit("ping").add(Ping),
     clientNotificationRpcs: McpSchema.ClientNotificationRpcs,

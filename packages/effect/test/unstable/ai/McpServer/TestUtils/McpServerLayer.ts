@@ -23,6 +23,7 @@ export const makeServerLayer = (options: {
     version: options.version ?? "1.0.0",
     path: "/mcp",
     protocols: options.protocols ?? [McpProtocol.v2025_06_18],
+    allowedOrigins: ["https://allowed.example"],
     extensions: options.extensions
   }).pipe(
     Layer.provideMerge(Layer.succeed(

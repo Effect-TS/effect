@@ -11,6 +11,9 @@ export interface PayloadCodecs {
 /** @internal */
 export interface AnyProtocolAdapter {
   readonly protocolVersion: string
+  readonly transport: {
+    readonly requiresVersionHeader: boolean
+  }
   readonly clientRpcs: RpcGroup.Any
   readonly clientNotificationRpcs: RpcGroup.Any
   readonly serverRequestRpcs: RpcGroup.Any
@@ -26,6 +29,9 @@ export interface ProtocolAdapter<
   ServerNotificationRpcs extends Rpc.Any = Rpc.Any
 > {
   readonly protocolVersion: Version
+  readonly transport: {
+    readonly requiresVersionHeader: boolean
+  }
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>
@@ -42,6 +48,9 @@ export const make = <
   ServerNotificationRpcs extends Rpc.Any
 >(options: {
   readonly protocolVersion: Version
+  readonly transport: {
+    readonly requiresVersionHeader: boolean
+  }
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>
   readonly clientNotificationRpcs: RpcGroup.RpcGroup<ClientNotificationRpcs>
   readonly serverRequestRpcs: RpcGroup.RpcGroup<ServerRequestRpcs>

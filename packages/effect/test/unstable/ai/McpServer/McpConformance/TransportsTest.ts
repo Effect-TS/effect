@@ -173,8 +173,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               assert.strictEqual(yield* Effect.promise(() => response.text()), "")
             }))
 
-          // FIX: Streamable HTTP does not validate Content-Type.
-          it.effect.skip("MUST require the application/json content type for POST requests", () =>
+          it.effect("MUST require the application/json content type for POST requests", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const accepted = yield* test.request(jsonRequest("POST", test.initializeRequest(), {
@@ -190,9 +189,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             }))
 
-          // FIX: Streamable HTTP does not validate the required Accept
-          // media types.
-          it.effect.skip("MUST require clients to accept application/json and text/event-stream", () =>
+          it.effect("MUST require clients to accept application/json and text/event-stream", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const accepted = yield* test.request(jsonRequest("POST", test.initializeRequest(), {
@@ -317,9 +314,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               assert.strictEqual(response.headers.get("allow"), "POST")
               assert.strictEqual((yield* test.ping(initialized)).status, 200)
             }))
-          // FIX: Streamable HTTP currently accepts initialize requests
-          // carrying an existing session identifier.
-          it.effect.skip("MUST reject initialize requests carrying a session identifier", () =>
+          it.effect("MUST reject initialize requests carrying a session identifier", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const initialized = yield* test.initialize()
@@ -341,9 +336,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
         })
 
         describe("Protocol Version Header", () => {
-          // FIX: Streamable HTTP does not require the negotiated protocol
-          // version header on subsequent requests.
-          it.effect.skip("MUST apply the revision-specific protocol header requirement", () =>
+          it.effect("MUST apply the revision-specific protocol header requirement", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const initialized = yield* test.initialize()
@@ -386,9 +379,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
         })
 
         describe("Security", () => {
-          // FIX: PR #6625 has no Origin-validation configuration or
-          // middleware for the Streamable HTTP route.
-          it.effect.skip("MUST validate the Origin header before every MCP route", () =>
+          it.effect("MUST validate the Origin header before every MCP route", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               assert.strictEqual((yield* test.post(test.initializeRequest())).status, 200)

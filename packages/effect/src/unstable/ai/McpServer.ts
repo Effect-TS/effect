@@ -852,7 +852,7 @@ export const layerStdio = (options: {
  *
  * POST serves JSON-RPC and accepted notification-only requests return `202`.
  * Unsupported protocol versions return `400`; methods without MCP handlers
- * return `405`.
+ * return `405`. Browser Origins are rejected unless listed in `allowedOrigins`.
  *
  * @see {@link layerStdio} for exposing the server over stdio
  * @see {@link layer} for the base MCP server layer without a transport protocol
@@ -865,6 +865,7 @@ export const layerHttp = (options: {
   readonly version: string
   readonly path: HttpRouter.PathInput
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
+  readonly allowedOrigins?: ReadonlyArray<string> | undefined
   readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, HttpRouter.HttpRouter> => {
   const protocolState = layerMcpProtocolState(options.protocols)
@@ -872,11 +873,19 @@ export const layerHttp = (options: {
     status: 405,
     headers: { allow: "POST" }
   })
+  const methodNotAllowed = (request: HttpServerRequest.HttpServerRequest) =>
+    Effect.succeed(
+      request.headers.origin !== undefined &&
+        !options.allowedOrigins?.includes(request.headers.origin)
+        ? HttpServerResponse.empty({ status: 403 })
+        : methodNotAllowedResponse
+    )
   const routes = Layer.mergeAll(
-    HttpRouter.add("GET", options.path, methodNotAllowedResponse),
-    HttpRouter.add("PUT", options.path, methodNotAllowedResponse),
-    HttpRouter.add("PATCH", options.path, methodNotAllowedResponse),
-    HttpRouter.add("DELETE", options.path, methodNotAllowedResponse)
+    HttpRouter.add("GET", options.path, methodNotAllowed),
+    HttpRouter.add("PUT", options.path, methodNotAllowed),
+    HttpRouter.add("PATCH", options.path, methodNotAllowed),
+    HttpRouter.add("DELETE", options.path, methodNotAllowed),
+    HttpRouter.add("OPTIONS", options.path, methodNotAllowed)
   )
   return Layer.merge(layerWithProtocolState(options), routes).pipe(
     Layer.provide(layerMcpProtocolHttp(options)),
@@ -887,6 +896,7 @@ export const layerHttp = (options: {
 
 const layerMcpProtocolHttp = (options: {
   readonly path: HttpRouter.PathInput
+  readonly allowedOrigins?: ReadonlyArray<string> | undefined
 }): Layer.Layer<
   RpcServer.Protocol,
   never,
@@ -897,6 +907,33 @@ const layerMcpProtocolHttp = (options: {
     const { httpEffect, protocol } = yield* RpcServer.makeProtocolWithHttpEffect
     const router = yield* HttpRouter.HttpRouter
     yield* router.add("POST", options.path, (request) => {
+      if (
+        request.headers.origin !== undefined &&
+        !options.allowedOrigins?.includes(request.headers.origin)
+      ) {
+        return Effect.succeed(HttpServerResponse.empty({ status: 403 }))
+      }
+      const contentType = request.headers["content-type"]?.split(";", 1)[0]?.trim().toLowerCase()
+      if (contentType !== "application/json") {
+        return Effect.succeed(HttpServerResponse.empty({ status: 415 }))
+      }
+      const accepted = new Set<string>()
+      for (const entry of request.headers.accept?.split(",") ?? []) {
+        const [mediaType, ...parameters] = entry.split(";").map((part) => part.trim().toLowerCase())
+        let quality = 1
+        for (const parameter of parameters) {
+          const [name, value] = parameter.split("=", 2).map((part) => part.trim())
+          if (name === "q") {
+            quality = value === undefined ? Number.NaN : Number(value)
+          }
+        }
+        if (mediaType !== undefined && quality > 0 && quality <= 1) {
+          accepted.add(mediaType)
+        }
+      }
+      if (!accepted.has("application/json") || !accepted.has("text/event-stream")) {
+        return Effect.succeed(HttpServerResponse.empty({ status: 406 }))
+      }
       const protocolVersion = request.headers[MCP_PROTOCOL_VERSION_HEADER]
       if (
         protocolVersion !== undefined &&
@@ -938,6 +975,28 @@ const layerMcpProtocolHttp = (options: {
                 const hasResult = Predicate.hasProperty(input, "result")
                 const hasError = Predicate.hasProperty(input, "error")
                 const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
+                const isInitialize = isRequest && input.method === "initialize"
+                const sessionId = request.headers[MCP_SESSION_ID_HEADER]
+                const session = sessionId === undefined ? undefined : state.sessions.bySessionId.get(sessionId)
+                if (isInitialize && sessionId !== undefined) {
+                  return {
+                    _tag: "HttpError" as const,
+                    status: session === undefined ? 404 : 400
+                  }
+                }
+                if (!isInitialize && isRequest && session === undefined) {
+                  return {
+                    _tag: "HttpError" as const,
+                    status: sessionId === undefined ? 400 : 404
+                  }
+                }
+                if (
+                  session !== undefined &&
+                  session.protocol.transport.requiresVersionHeader &&
+                  protocolVersion !== session.protocol.protocolVersion
+                ) {
+                  return { _tag: "HttpError" as const, status: 400 }
+                }
                 return isRequest || isResponse
                   ? { _tag: "Success" as const }
                   : {
@@ -948,7 +1007,9 @@ const layerMcpProtocolHttp = (options: {
               }
             }).pipe(
               Effect.flatMap((decoded) =>
-                decoded._tag === "Error"
+                decoded._tag === "HttpError"
+                  ? Effect.succeed(HttpServerResponse.empty({ status: decoded.status }))
+                  : decoded._tag === "Error"
                   ? Effect.succeed(
                     HttpServerResponse.jsonUnsafe({
                       jsonrpc: "2.0",

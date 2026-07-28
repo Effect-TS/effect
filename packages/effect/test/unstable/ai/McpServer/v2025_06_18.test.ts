@@ -69,9 +69,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
         assert.isAtLeast(response.status, 400)
       }))
 
-    // FIX: Streamable HTTP does not require or validate the negotiated header
-    // after initialization.
-    it.effect.skip("MUST require the negotiated protocol-version header after initialization", () =>
+    it.effect("MUST require the negotiated protocol-version header after initialization", () =>
       Effect.gen(function*() {
         const test = yield* McpConformance
         const initialized = yield* test.initialize()
