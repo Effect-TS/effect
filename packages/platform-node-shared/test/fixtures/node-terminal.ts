@@ -43,6 +43,13 @@ const readLine = Effect.gen(function*() {
   return { first, second: second._tag }
 })
 
+const readLines = Effect.gen(function*() {
+  const terminal = yield* Terminal.Terminal
+  const first = yield* terminal.readLine
+  const second = yield* terminal.readLine
+  return { first, second }
+})
+
 const mode = process.argv[2]
 const program = Effect.gen(function*() {
   if (mode === "prompts") {
@@ -51,6 +58,8 @@ const program = Effect.gen(function*() {
     return yield* readInput
   } else if (mode === "read-line") {
     return yield* readLine
+  } else if (mode === "read-lines") {
+    return yield* readLines
   }
   return yield* Effect.die(`Unknown mode: ${mode}`)
 })

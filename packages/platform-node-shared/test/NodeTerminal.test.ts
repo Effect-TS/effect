@@ -30,4 +30,8 @@ describe("NodeTerminal", () => {
   it("flushes an unterminated line before failing readLine with QuitError at EOF", () => {
     assertResult("read-line", "last line", "{\"first\":\"last line\",\"second\":\"QuitError\"}")
   })
+
+  it("preserves lines buffered between sequential readLine calls", () => {
+    assertResult("read-lines", "first\nsecond\n", "{\"first\":\"first\",\"second\":\"second\"}")
+  })
 })

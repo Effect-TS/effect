@@ -16,7 +16,6 @@ import * as Option from "effect/Option"
 import { badArgument, type PlatformError } from "effect/PlatformError"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
-import * as RcRef from "effect/RcRef"
 import type * as Scope from "effect/Scope"
 import * as Terminal from "effect/Terminal"
 import * as readline from "node:readline"
@@ -45,33 +44,34 @@ export const make: (
     stdin.once("end", onStdinEnd)
     yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("end", onStdinEnd)))
 
-    // Acquire readline interface with TTY setup/cleanup inside the scope
-    const rlRef = yield* RcRef.make({
-      acquire: Effect.acquireRelease(
-        Effect.sync(() => {
-          const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
-          readline.emitKeypressEvents(stdin, rl)
+    const lines = yield* Queue.make<string, Cause.Done>()
 
+    // Keep one readline interface so lines consumed together remain available.
+    yield* Effect.acquireRelease(
+      Effect.sync(() => {
+        const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
+        readline.emitKeypressEvents(stdin, rl)
+        rl.on("line", (line) => Queue.offerUnsafe(lines, line))
+        rl.once("close", () => Queue.endUnsafe(lines))
+
+        if (stdin.isTTY) {
+          stdin.setRawMode(true)
+        }
+        return rl
+      }),
+      (rl) =>
+        Effect.sync(() => {
           if (stdin.isTTY) {
-            stdin.setRawMode(true)
+            stdin.setRawMode(false)
           }
-          return rl
-        }),
-        (rl) =>
-          Effect.sync(() => {
-            if (stdin.isTTY) {
-              stdin.setRawMode(false)
-            }
-            rl.close()
-          })
-      )
-    })
+          rl.close()
+        })
+    )
 
     const columns = Effect.sync(() => stdout.columns ?? 0)
     const rows = Effect.sync(() => stdout.rows ?? 0)
 
     const readInput = Effect.gen(function*() {
-      yield* RcRef.get(rlRef)
       const queue = yield* Queue.make<Terminal.UserInput, Cause.Done>()
       const handleKeypress = (s: string | undefined, k: readline.Key) => {
         const userInput = {
@@ -102,29 +102,8 @@ export const make: (
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
     })
 
-    const readLine = Effect.suspend(() =>
-      inputEnded ? Effect.fail(new Terminal.QuitError({})) : Effect.scoped(
-        Effect.flatMap(RcRef.get(rlRef), (readlineInterface) =>
-          Effect.callback<string, Terminal.QuitError>((resume) => {
-            const cleanup = () => {
-              readlineInterface.off("line", onLine)
-              readlineInterface.off("close", onClose)
-            }
-            const onLine = (line: string) => {
-              cleanup()
-              resume(Effect.succeed(line))
-            }
-            // readline "close" (rather than stdin "end") so a final line without
-            // a trailing newline still flushes through the "line" event first.
-            const onClose = () => {
-              cleanup()
-              resume(Effect.fail(new Terminal.QuitError({})))
-            }
-            readlineInterface.on("line", onLine)
-            readlineInterface.on("close", onClose)
-            return Effect.sync(cleanup)
-          }))
-      )
+    const readLine = Queue.take(lines).pipe(
+      Effect.mapError(() => new Terminal.QuitError({}))
     )
 
     const display = (prompt: string) =>
