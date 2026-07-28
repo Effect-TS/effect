@@ -471,6 +471,9 @@ importers:
       '@db/redis':
         specifier: jsr:^0.41.2
         version: '@jsr/db__redis@0.41.2'
+      '@std/fs':
+        specifier: jsr:^1.0.24
+        version: '@jsr/std__fs@1.0.24'
       '@std/path':
         specifier: jsr:^1.1.6
         version: '@jsr/std__path@1.1.6'
@@ -2344,6 +2347,9 @@ packages:
 
   '@jsr/std__data-structures@1.1.1':
     resolution: {integrity: sha512-ceWGRdAPq3oD2If4k/JvgL/bskN5VohnM6wINlJhYLz4yCW9cmHFcGsrhRgh9HbD9xhXi9sEQoiHQG5B9caHEg==, tarball: https://npm.jsr.io/~/11/@jsr/std__data-structures/1.1.1.tgz}
+
+  '@jsr/std__fs@1.0.24':
+    resolution: {integrity: sha512-UunW2Rg++9sA74NJnYMGTsMVQgoFRAwPP02wRRohL0PQBNorbyxHiyCMRaxYQCtLepTLkC4nUyMtcwrGKqTR6g==, tarball: https://npm.jsr.io/~/11/@jsr/std__fs/1.0.24.tgz}
 
   '@jsr/std__internal@1.0.14':
     resolution: {integrity: sha512-JT8b/t40WcR9q0GDwRZUooY7aXeXnFal8iidE/5TckdAFtvpVAsaJ71/Xgf1SfoChs41s6CZkuCYM8toaNgdvA==, tarball: https://npm.jsr.io/~/11/@jsr/std__internal/1.0.14.tgz}
@@ -8226,6 +8232,11 @@ snapshots:
   '@jsr/std__data-structures@1.1.1':
     dependencies:
       '@jsr/std__assert': 1.0.19
+
+  '@jsr/std__fs@1.0.24':
+    dependencies:
+      '@jsr/std__internal': 1.0.14
+      '@jsr/std__path': 1.1.6
 
   '@jsr/std__internal@1.0.14': {}
 
