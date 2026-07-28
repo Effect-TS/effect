@@ -67,14 +67,6 @@ export const resultInvalid = () => {
   }
 }
 
-export const syncValid = () => {
-  const run = Schema.decodeUnknownSync(schema)
-  return {
-    run: () => run(input),
-    validate: (result) => assert.deepEqual(result, input)
-  }
-}
-
 export const syncInvalid = () => {
   const run = Schema.decodeUnknownSync(schema)
   return {
@@ -87,37 +79,5 @@ export const syncInvalid = () => {
       return undefined
     },
     validate: (result) => assert.equal(result instanceof Error, true)
-  }
-}
-
-export const isValid = () => {
-  const run = Schema.is(schema)
-  return {
-    run: () => run(input),
-    validate: (result) => assert.equal(result, true)
-  }
-}
-
-export const isInvalid = () => {
-  const run = Schema.is(schema)
-  return {
-    run: () => run(invalidInput),
-    validate: (result) => assert.equal(result, false)
-  }
-}
-
-export const encodeExitValid = () => {
-  const run = Schema.encodeUnknownExit(schema)
-  return {
-    run: () => run(input),
-    validate: (result) => assert.equal(result._tag, "Success")
-  }
-}
-
-export const encodeExitInvalid = () => {
-  const run = Schema.encodeUnknownExit(schema)
-  return {
-    run: () => run(invalidInput),
-    validate: (result) => assert.equal(result._tag, "Failure")
   }
 }

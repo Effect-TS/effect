@@ -31,7 +31,7 @@ Options:
   --warmup-time <ms>
   --tier <0-3>
   --family <name>
-  --implementation <effect|typebox|valibot|zod4>
+  --implementation <effect|valibot|zod4>
 `
 
 const rotate = (items, offset) => items.map((_, index) => items[(index + offset) % items.length])
@@ -118,7 +118,6 @@ const main = () => {
     libraries: libraryVersions(),
     crossLibraryDecodeApis: {
       effect: "SchemaParser.decodeUnknownExit (SchemaIssue)",
-      typebox: "Value.Errors (dynamic interpreter)",
       valibot: "safeParser",
       zod4: "safeParse ({ jitless: true })"
     },

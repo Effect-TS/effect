@@ -37,6 +37,39 @@ Use Schema to:
 13. **Integrations** — working examples for TanStack Form and Elysia.
 14. **Migration from v3** — API mapping from Schema v3 to v4.
 
+## Runtime Performance
+
+Effect Schema is benchmarked against the public
+[`schema-benchmarks`](https://github.com/open-circle/schema-benchmarks) suite.
+It exercises a realistic product schema across validation, parsing, error
+reporting, schema creation, and codecs.
+
+The table below compares Effect Schema with the Valibot and Zod cases available
+in the same suite.
+
+Values are microseconds per operation and lower is better. Results vary between
+machines, so they are most useful for understanding relative costs. A dash
+means that the library does not provide that benchmark.
+
+| Scenario                              | Effect Schema |    Valibot |      Zod 4 |
+| ------------------------------------- | ------------: | ---------: | ---------: |
+| Create a schema                       |        118.23 |  **40.24** |     318.56 |
+| Create a schema and parser            |    **130.50** |          — |          — |
+| Validate valid data                   |     **5.415** |       5.63 |          — |
+| Validate invalid data                 |         1.348 | **0.2431** |          — |
+| Parse valid data and collect errors   |         5.366 |   **5.22** |       7.16 |
+| Parse invalid data and collect errors |     **9.100** |      15.70 |      41.58 |
+| Parse valid data and stop early       |     **5.294** |       5.37 |          — |
+| Parse invalid data and stop early     |         1.352 | **0.2572** |          — |
+| Standard Schema, valid data           |         5.935 |       5.35 |   **3.83** |
+| Standard Schema, invalid data         |    **15.203** |      16.51 |      32.85 |
+| Standard Schema, valid, stop early    |     **5.843** |          — |          — |
+| Standard Schema, invalid, stop early  |     **2.244** |          — |          — |
+| Encode with a typed codec             |        0.3420 |          — | **0.0405** |
+| Decode with a typed codec             |        0.3762 |          — | **0.0463** |
+| Encode unknown input                  |    **0.3472** |          — |          — |
+| Decode unknown input                  |    **0.3637** |          — |          — |
+
 # Defining Elementary Schemas
 
 Schema provides built-in schemas for all common TypeScript types. These schemas represent a single value — like a string or a number — and they are the building blocks you combine into more complex shapes.

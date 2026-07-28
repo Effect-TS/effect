@@ -33,23 +33,8 @@ const checkedString = Schema.String
   .check(Schema.isMinLength(2))
   .check(Schema.isPattern(/^[a-z]+$/))
 
-export const checksValid = decodeParserCase(checkedString, "runtimeperf", true)
 export const checksInvalidFirst = decodeParserCase(checkedString, "", false)
 export const checksInvalidLast = decodeParserCase(checkedString, "runtime-perf", false)
-
-const checkedObject32Input = Object.fromEntries(
-  Array.from({ length: 32 }, (_, index) => [`field${index}`, `value${index}`])
-)
-const checkedObject32 = Schema.Struct(
-  Object.fromEntries(Array.from({ length: 32 }, (_, index) => [`field${index}`, Schema.NonEmptyString]))
-)
-
-export const checksObject32Valid = decodeParserCase(checkedObject32, checkedObject32Input, true)
-
-const checkedArray32Input = Array.from({ length: 32 }, (_, index) => `value${index}`)
-const checkedArray32 = Schema.Array(Schema.NonEmptyString)
-
-export const checksArray32Valid = decodeParserCase(checkedArray32, checkedArray32Input, true)
 
 const encodingCheckedString = Schema.String.pipe(
   Schema.flip,
@@ -203,17 +188,6 @@ export const taggedWithFallbackValid = decodeParserCase(
   { kind: "a", value: "value" },
   true
 )
-
-const errorFields = Object.fromEntries(
-  Array.from({ length: 8 }, (_, index) => [`field${index}`, Schema.String])
-)
-const errorsAllSchema = Schema.Struct(errorFields)
-const errorsAllInput = Object.fromEntries(
-  Array.from({ length: 8 }, (_, index) => [`field${index}`, index])
-)
-
-export const errorsFirst = decodeCase(errorsAllSchema, errorsAllInput, false)
-export const errorsAll = decodeCase(errorsAllSchema, errorsAllInput, false, { errors: "all" })
 
 const propertyOrderSchema = Schema.Struct({
   a: Schema.String,

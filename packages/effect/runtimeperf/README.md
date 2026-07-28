@@ -3,8 +3,8 @@
 This harness measures focused synchronous runtime paths in fresh Node
 processes. It supports:
 
-- a broad Effect Schema survey;
-- contextual comparisons with TypeBox, Valibot and Zod 4 standard;
+- focused Effect Schema diagnostics;
+- the upstream Effect, Valibot and Zod benchmark matrix;
 - paired comparisons between Git revisions or the current working tree.
 
 Cross-library results are diagnostic. Effect base/head comparisons are the
@@ -18,7 +18,7 @@ Run the complete registry:
 pnpm runtimeperf
 ```
 
-Run the cases extracted from the `effect@beta` adapter in
+Run the cases extracted from the `effect@beta`, Valibot and Zod adapters in
 [`open-circle/schema-benchmarks`](https://github.com/open-circle/schema-benchmarks):
 
 ```sh
@@ -26,11 +26,11 @@ pnpm runtimeperf schema-benchmarks
 pnpm runtimeperf-compare schema-benchmarks --base main --head HEAD
 ```
 
-This suite covers the 16 upstream timing cases: schema and decoder
-initialization, validation, parsing and Standard Schema with valid/invalid
-inputs and first/all error modes, plus typed/unknown BigInt codec operations.
-The upstream bundle and stack reports are not throughput benchmarks, and its
-`effect@beta` adapter does not define the optional string-format cases.
+This suite covers every upstream timing case supported by those adapters:
+schema and decoder initialization, validation, parsing and Standard Schema
+with valid/invalid inputs and first/all error modes, plus BigInt codec
+operations. The upstream bundle and stack reports are not throughput
+benchmarks, and the adapters do not define the optional string-format cases.
 
 Select a suite, fixture, shared scenario, tier, family or implementation:
 
@@ -38,10 +38,8 @@ Select a suite, fixture, shared scenario, tier, family or implementation:
 pnpm runtimeperf schema
 pnpm runtimeperf object-32-valid
 pnpm runtimeperf schema/object-32-valid-effect
-pnpm runtimeperf --tier 0
 pnpm runtimeperf --family arrays
 pnpm runtimeperf --implementation zod4
-pnpm runtimeperf --implementation typebox
 ```
 
 Override measurement settings:
@@ -80,23 +78,16 @@ are created under `tmp/runtimeperf/worktrees/` and removed in `finally`.
 - implementation;
 - a shared scenario name for cross-library comparisons.
 
-Tier 0 contains at least one Effect fixture for every current `SchemaAST.AST`
-variant. Higher tiers cover common scaling, cross-cutting behavior, adapters,
-cold paths and an application-shaped schema.
+The `schema` suite is Effect-only and retains targeted diagnostics for scaling,
+template literals, unions, records, transformations, optional properties,
+adapters, recursion and cold paths. The `schema-benchmarks` suite contains the
+complete timing matrices exposed by the upstream Effect, Valibot and Zod
+adapters.
 
-The `zod4` implementation always imports `zod/v4` and calls `safeParse` with
-`{ jitless: true }`; neither Zod's generated object fast path nor
-`zod/v4-mini` is used. Valibot comparisons use pre-created `safeParser`
-functions. Effect uses `SchemaParser.decodeUnknownExit`, whose failures contain
-`SchemaIssue` directly. The public `Schema` adapters that wrap issues in
-`SchemaError` are measured separately in the adapter family and are not used
-for cross-library ratios.
-
-TypeBox comparisons use `Value.Errors`, which performs exhaustive dynamic
-validation and returns structured errors. They do not import `typebox/schema`,
-call `Schema.Compile`, or use TypeBox's JIT compiler. The application-shaped
-fixture is excluded from the TypeBox comparison because it includes a decode
-transformation with no equivalent operation in `Value.Errors`.
+Zod parsing cases import `zod/v4` and call `safeParse` with `{ jitless: true }`;
+its Standard Schema and codec cases use their native APIs. Valibot uses the
+corresponding `is`, `safeParse` and Standard Schema APIs. The focused Effect
+adapter family measures the overhead of public APIs that wrap parser issues.
 
 ## Measurement model
 

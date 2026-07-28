@@ -15,185 +15,6 @@
       "name": "schema",
       "fixtures": [
         {
-          "file": "suites/schema/fixtures/ast.ts",
-          "defaults": {
-            "tier": 0,
-            "implementation": "effect",
-            "operation": "decode",
-            "size": 1
-          },
-          "cases": [
-            {
-              "name": "ast-declaration-valid",
-              "export": "declarationValid",
-              "scenario": "ast-declaration-valid",
-              "family": "declaration",
-              "astTags": ["Declaration"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-null-valid",
-              "export": "nullValid",
-              "scenario": "ast-null-valid",
-              "family": "nullish",
-              "astTags": ["Null"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-undefined-valid",
-              "export": "undefinedValid",
-              "scenario": "ast-undefined-valid",
-              "family": "nullish",
-              "astTags": ["Undefined"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-void-valid",
-              "export": "voidValid",
-              "scenario": "ast-void-valid",
-              "family": "nullish",
-              "astTags": ["Void"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-never-invalid",
-              "export": "neverInvalid",
-              "scenario": "ast-never-invalid",
-              "family": "top-bottom",
-              "astTags": ["Never"],
-              "path": "invalid"
-            },
-            {
-              "name": "ast-unknown-valid",
-              "export": "unknownValid",
-              "scenario": "ast-unknown-valid",
-              "family": "top-bottom",
-              "astTags": ["Unknown"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-any-valid",
-              "export": "anyValid",
-              "scenario": "ast-any-valid",
-              "family": "top-bottom",
-              "astTags": ["Any"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-string-valid",
-              "export": "stringValid",
-              "scenario": "ast-string-valid",
-              "family": "primitive",
-              "astTags": ["String"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-number-valid",
-              "export": "numberValid",
-              "scenario": "ast-number-valid",
-              "family": "primitive",
-              "astTags": ["Number"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-boolean-valid",
-              "export": "booleanValid",
-              "scenario": "ast-boolean-valid",
-              "family": "primitive",
-              "astTags": ["Boolean"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-bigint-valid",
-              "export": "bigintValid",
-              "scenario": "ast-bigint-valid",
-              "family": "primitive",
-              "astTags": ["BigInt"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-symbol-valid",
-              "export": "symbolValid",
-              "scenario": "ast-symbol-valid",
-              "family": "primitive",
-              "astTags": ["Symbol"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-literal-valid",
-              "export": "literalValid",
-              "scenario": "ast-literal-valid",
-              "family": "exact",
-              "astTags": ["Literal"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-unique-symbol-valid",
-              "export": "uniqueSymbolValid",
-              "scenario": "ast-unique-symbol-valid",
-              "family": "exact",
-              "astTags": ["UniqueSymbol"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-object-keyword-valid",
-              "export": "objectKeywordValid",
-              "scenario": "ast-object-keyword-valid",
-              "family": "object-keyword",
-              "astTags": ["ObjectKeyword"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-enum-valid",
-              "export": "enumValid",
-              "scenario": "ast-enum-valid",
-              "family": "exact",
-              "astTags": ["Enum"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-template-literal-valid",
-              "export": "templateLiteralValid",
-              "scenario": "ast-template-literal-valid",
-              "family": "template-literal",
-              "astTags": ["TemplateLiteral"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-arrays-valid",
-              "export": "arraysValid",
-              "scenario": "ast-arrays-valid",
-              "family": "arrays",
-              "astTags": ["Arrays"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-objects-valid",
-              "export": "objectsValid",
-              "scenario": "ast-objects-valid",
-              "family": "objects",
-              "astTags": ["Objects"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-union-valid",
-              "export": "unionValid",
-              "scenario": "ast-union-valid",
-              "family": "union",
-              "astTags": ["Union"],
-              "path": "valid"
-            },
-            {
-              "name": "ast-suspend-valid",
-              "export": "suspendValid",
-              "scenario": "ast-suspend-valid",
-              "family": "recursion",
-              "astTags": ["Suspend"],
-              "path": "valid"
-            }
-          ]
-        },
-        {
           "file": "suites/schema/fixtures/comparison.ts",
           "defaults": {
             "tier": 1,
@@ -201,92 +22,14 @@
           },
           "cases": [
             {
-              "name": "object-1-valid-effect",
-              "export": "effectObject1Valid",
-              "scenario": "object-1-valid",
-              "implementation": "effect",
-              "family": "objects",
-              "astTags": ["Objects"],
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "object-1-valid-valibot",
-              "export": "valibotObject1Valid",
-              "scenario": "object-1-valid",
-              "implementation": "valibot",
-              "family": "objects",
-              "astTags": [],
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "object-1-valid-zod4",
-              "export": "zodObject1Valid",
-              "scenario": "object-1-valid",
-              "implementation": "zod4",
-              "family": "objects",
-              "astTags": [],
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "object-1-invalid-effect",
-              "export": "effectObject1Invalid",
-              "scenario": "object-1-invalid",
-              "implementation": "effect",
-              "family": "objects",
-              "astTags": ["Objects"],
-              "path": "invalid",
-              "size": 1
-            },
-            {
-              "name": "object-1-invalid-valibot",
-              "export": "valibotObject1Invalid",
-              "scenario": "object-1-invalid",
-              "implementation": "valibot",
-              "family": "objects",
-              "astTags": [],
-              "path": "invalid",
-              "size": 1
-            },
-            {
-              "name": "object-1-invalid-zod4",
-              "export": "zodObject1Invalid",
-              "scenario": "object-1-invalid",
-              "implementation": "zod4",
-              "family": "objects",
-              "astTags": [],
-              "path": "invalid",
-              "size": 1
-            },
-            {
               "name": "object-32-valid-effect",
               "export": "effectObject32Valid",
               "scenario": "object-32-valid",
               "implementation": "effect",
               "family": "objects",
-              "astTags": ["Objects"],
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "object-32-valid-valibot",
-              "export": "valibotObject32Valid",
-              "scenario": "object-32-valid",
-              "implementation": "valibot",
-              "family": "objects",
-              "astTags": [],
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "object-32-valid-zod4",
-              "export": "zodObject32Valid",
-              "scenario": "object-32-valid",
-              "implementation": "zod4",
-              "family": "objects",
-              "astTags": [],
+              "astTags": [
+                "Objects"
+              ],
               "path": "valid",
               "size": 32
             },
@@ -296,27 +39,9 @@
               "scenario": "object-32-invalid-last",
               "implementation": "effect",
               "family": "objects",
-              "astTags": ["Objects"],
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "object-32-invalid-last-valibot",
-              "export": "valibotObject32InvalidLast",
-              "scenario": "object-32-invalid-last",
-              "implementation": "valibot",
-              "family": "objects",
-              "astTags": [],
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "object-32-invalid-last-zod4",
-              "export": "zodObject32InvalidLast",
-              "scenario": "object-32-invalid-last",
-              "implementation": "zod4",
-              "family": "objects",
-              "astTags": [],
+              "astTags": [
+                "Objects"
+              ],
               "path": "invalid",
               "size": 32
             },
@@ -326,27 +51,9 @@
               "scenario": "array-32-valid",
               "implementation": "effect",
               "family": "arrays",
-              "astTags": ["Arrays"],
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "array-32-valid-valibot",
-              "export": "valibotArray32Valid",
-              "scenario": "array-32-valid",
-              "implementation": "valibot",
-              "family": "arrays",
-              "astTags": [],
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "array-32-valid-zod4",
-              "export": "zodArray32Valid",
-              "scenario": "array-32-valid",
-              "implementation": "zod4",
-              "family": "arrays",
-              "astTags": [],
+              "astTags": [
+                "Arrays"
+              ],
               "path": "valid",
               "size": 32
             },
@@ -356,59 +63,11 @@
               "scenario": "array-32-invalid-last",
               "implementation": "effect",
               "family": "arrays",
-              "astTags": ["Arrays"],
+              "astTags": [
+                "Arrays"
+              ],
               "path": "invalid",
               "size": 32
-            },
-            {
-              "name": "array-32-invalid-last-valibot",
-              "export": "valibotArray32InvalidLast",
-              "scenario": "array-32-invalid-last",
-              "implementation": "valibot",
-              "family": "arrays",
-              "astTags": [],
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "array-32-invalid-last-zod4",
-              "export": "zodArray32InvalidLast",
-              "scenario": "array-32-invalid-last",
-              "implementation": "zod4",
-              "family": "arrays",
-              "astTags": [],
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "record-1-valid-effect",
-              "export": "effectRecord1Valid",
-              "scenario": "record-1-valid",
-              "implementation": "effect",
-              "family": "records",
-              "astTags": ["Objects"],
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "record-1-valid-valibot",
-              "export": "valibotRecord1Valid",
-              "scenario": "record-1-valid",
-              "implementation": "valibot",
-              "family": "records",
-              "astTags": [],
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "record-1-valid-zod4",
-              "export": "zodRecord1Valid",
-              "scenario": "record-1-valid",
-              "implementation": "zod4",
-              "family": "records",
-              "astTags": [],
-              "path": "valid",
-              "size": 1
             },
             {
               "name": "record-32-valid-effect",
@@ -416,27 +75,9 @@
               "scenario": "record-32-valid",
               "implementation": "effect",
               "family": "records",
-              "astTags": ["Objects"],
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "record-32-valid-valibot",
-              "export": "valibotRecord32Valid",
-              "scenario": "record-32-valid",
-              "implementation": "valibot",
-              "family": "records",
-              "astTags": [],
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "record-32-valid-zod4",
-              "export": "zodRecord32Valid",
-              "scenario": "record-32-valid",
-              "implementation": "zod4",
-              "family": "records",
-              "astTags": [],
+              "astTags": [
+                "Objects"
+              ],
               "path": "valid",
               "size": 32
             },
@@ -446,27 +87,9 @@
               "scenario": "record-32-invalid-last",
               "implementation": "effect",
               "family": "records",
-              "astTags": ["Objects"],
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "record-32-invalid-last-valibot",
-              "export": "valibotRecord32InvalidLast",
-              "scenario": "record-32-invalid-last",
-              "implementation": "valibot",
-              "family": "records",
-              "astTags": [],
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "record-32-invalid-last-zod4",
-              "export": "zodRecord32InvalidLast",
-              "scenario": "record-32-invalid-last",
-              "implementation": "zod4",
-              "family": "records",
-              "astTags": [],
+              "astTags": [
+                "Objects"
+              ],
               "path": "invalid",
               "size": 32
             },
@@ -476,27 +99,10 @@
               "scenario": "literal-100-valid-last",
               "implementation": "effect",
               "family": "union",
-              "astTags": ["Union", "Literal"],
-              "path": "valid",
-              "size": 100
-            },
-            {
-              "name": "literal-100-valid-last-valibot",
-              "export": "valibotLiteral100ValidLast",
-              "scenario": "literal-100-valid-last",
-              "implementation": "valibot",
-              "family": "union",
-              "astTags": [],
-              "path": "valid",
-              "size": 100
-            },
-            {
-              "name": "literal-100-valid-last-zod4",
-              "export": "zodLiteral100ValidLast",
-              "scenario": "literal-100-valid-last",
-              "implementation": "zod4",
-              "family": "union",
-              "astTags": [],
+              "astTags": [
+                "Union",
+                "Literal"
+              ],
               "path": "valid",
               "size": 100
             },
@@ -506,27 +112,10 @@
               "scenario": "literal-100-invalid",
               "implementation": "effect",
               "family": "union",
-              "astTags": ["Union", "Literal"],
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "literal-100-invalid-valibot",
-              "export": "valibotLiteral100Invalid",
-              "scenario": "literal-100-invalid",
-              "implementation": "valibot",
-              "family": "union",
-              "astTags": [],
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "literal-100-invalid-zod4",
-              "export": "zodLiteral100Invalid",
-              "scenario": "literal-100-invalid",
-              "implementation": "zod4",
-              "family": "union",
-              "astTags": [],
+              "astTags": [
+                "Union",
+                "Literal"
+              ],
               "path": "invalid",
               "size": 100
             },
@@ -536,27 +125,11 @@
               "scenario": "tagged-100-valid-last",
               "implementation": "effect",
               "family": "union",
-              "astTags": ["Union", "Objects", "Literal"],
-              "path": "valid",
-              "size": 100
-            },
-            {
-              "name": "tagged-100-valid-last-valibot",
-              "export": "valibotTagged100ValidLast",
-              "scenario": "tagged-100-valid-last",
-              "implementation": "valibot",
-              "family": "union",
-              "astTags": [],
-              "path": "valid",
-              "size": 100
-            },
-            {
-              "name": "tagged-100-valid-last-zod4",
-              "export": "zodTagged100ValidLast",
-              "scenario": "tagged-100-valid-last",
-              "implementation": "zod4",
-              "family": "union",
-              "astTags": [],
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal"
+              ],
               "path": "valid",
               "size": 100
             },
@@ -566,27 +139,11 @@
               "scenario": "tagged-100-invalid-selected",
               "implementation": "effect",
               "family": "union",
-              "astTags": ["Union", "Objects", "Literal"],
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "tagged-100-invalid-selected-valibot",
-              "export": "valibotTagged100InvalidSelected",
-              "scenario": "tagged-100-invalid-selected",
-              "implementation": "valibot",
-              "family": "union",
-              "astTags": [],
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "tagged-100-invalid-selected-zod4",
-              "export": "zodTagged100InvalidSelected",
-              "scenario": "tagged-100-invalid-selected",
-              "implementation": "zod4",
-              "family": "union",
-              "astTags": [],
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal"
+              ],
               "path": "invalid",
               "size": 100
             },
@@ -596,268 +153,13 @@
               "scenario": "tagged-100-invalid-tag",
               "implementation": "effect",
               "family": "union",
-              "astTags": ["Union", "Objects", "Literal"],
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal"
+              ],
               "path": "invalid",
               "size": 100
-            },
-            {
-              "name": "tagged-100-invalid-tag-valibot",
-              "export": "valibotTagged100InvalidTag",
-              "scenario": "tagged-100-invalid-tag",
-              "implementation": "valibot",
-              "family": "union",
-              "astTags": [],
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "tagged-100-invalid-tag-zod4",
-              "export": "zodTagged100InvalidTag",
-              "scenario": "tagged-100-invalid-tag",
-              "implementation": "zod4",
-              "family": "union",
-              "astTags": [],
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "non-empty-valid-effect",
-              "export": "effectNonEmptyValid",
-              "scenario": "non-empty-valid",
-              "implementation": "effect",
-              "family": "checks",
-              "astTags": ["String"],
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "non-empty-valid-valibot",
-              "export": "valibotNonEmptyValid",
-              "scenario": "non-empty-valid",
-              "implementation": "valibot",
-              "family": "checks",
-              "astTags": [],
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "non-empty-valid-zod4",
-              "export": "zodNonEmptyValid",
-              "scenario": "non-empty-valid",
-              "implementation": "zod4",
-              "family": "checks",
-              "astTags": [],
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "non-empty-invalid-effect",
-              "export": "effectNonEmptyInvalid",
-              "scenario": "non-empty-invalid",
-              "implementation": "effect",
-              "family": "checks",
-              "astTags": ["String"],
-              "path": "invalid",
-              "size": 1
-            },
-            {
-              "name": "non-empty-invalid-valibot",
-              "export": "valibotNonEmptyInvalid",
-              "scenario": "non-empty-invalid",
-              "implementation": "valibot",
-              "family": "checks",
-              "astTags": [],
-              "path": "invalid",
-              "size": 1
-            },
-            {
-              "name": "non-empty-invalid-zod4",
-              "export": "zodNonEmptyInvalid",
-              "scenario": "non-empty-invalid",
-              "implementation": "zod4",
-              "family": "checks",
-              "astTags": [],
-              "path": "invalid",
-              "size": 1
-            },
-            {
-              "name": "template-literal-native-valid-effect",
-              "export": "effectTemplateLiteralValid",
-              "scenario": "template-literal-native-valid",
-              "implementation": "effect",
-              "family": "template-literal",
-              "astTags": ["TemplateLiteral"],
-              "path": "valid",
-              "size": 5
-            },
-            {
-              "name": "template-literal-native-valid-zod4",
-              "export": "zodTemplateLiteralValid",
-              "scenario": "template-literal-native-valid",
-              "implementation": "zod4",
-              "family": "template-literal",
-              "astTags": [],
-              "path": "valid",
-              "size": 5
-            },
-            {
-              "name": "template-literal-native-invalid-effect",
-              "export": "effectTemplateLiteralInvalid",
-              "scenario": "template-literal-native-invalid",
-              "implementation": "effect",
-              "family": "template-literal",
-              "astTags": ["TemplateLiteral"],
-              "path": "invalid",
-              "size": 5
-            },
-            {
-              "name": "template-literal-native-invalid-zod4",
-              "export": "zodTemplateLiteralInvalid",
-              "scenario": "template-literal-native-invalid",
-              "implementation": "zod4",
-              "family": "template-literal",
-              "astTags": [],
-              "path": "invalid",
-              "size": 5
-            }
-          ]
-        },
-        {
-          "file": "suites/schema/fixtures/comparison.ts",
-          "defaults": {
-            "tier": 1,
-            "implementation": "typebox",
-            "operation": "decode",
-            "astTags": []
-          },
-          "cases": [
-            {
-              "name": "object-1-valid-typebox",
-              "export": "typeboxObject1Valid",
-              "scenario": "object-1-valid",
-              "family": "objects",
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "object-1-invalid-typebox",
-              "export": "typeboxObject1Invalid",
-              "scenario": "object-1-invalid",
-              "family": "objects",
-              "path": "invalid",
-              "size": 1
-            },
-            {
-              "name": "object-32-valid-typebox",
-              "export": "typeboxObject32Valid",
-              "scenario": "object-32-valid",
-              "family": "objects",
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "object-32-invalid-last-typebox",
-              "export": "typeboxObject32InvalidLast",
-              "scenario": "object-32-invalid-last",
-              "family": "objects",
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "array-32-valid-typebox",
-              "export": "typeboxArray32Valid",
-              "scenario": "array-32-valid",
-              "family": "arrays",
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "array-32-invalid-last-typebox",
-              "export": "typeboxArray32InvalidLast",
-              "scenario": "array-32-invalid-last",
-              "family": "arrays",
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "record-1-valid-typebox",
-              "export": "typeboxRecord1Valid",
-              "scenario": "record-1-valid",
-              "family": "records",
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "record-32-valid-typebox",
-              "export": "typeboxRecord32Valid",
-              "scenario": "record-32-valid",
-              "family": "records",
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "record-32-invalid-last-typebox",
-              "export": "typeboxRecord32InvalidLast",
-              "scenario": "record-32-invalid-last",
-              "family": "records",
-              "path": "invalid",
-              "size": 32
-            },
-            {
-              "name": "literal-100-valid-last-typebox",
-              "export": "typeboxLiteral100ValidLast",
-              "scenario": "literal-100-valid-last",
-              "family": "union",
-              "path": "valid",
-              "size": 100
-            },
-            {
-              "name": "literal-100-invalid-typebox",
-              "export": "typeboxLiteral100Invalid",
-              "scenario": "literal-100-invalid",
-              "family": "union",
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "tagged-100-valid-last-typebox",
-              "export": "typeboxTagged100ValidLast",
-              "scenario": "tagged-100-valid-last",
-              "family": "union",
-              "path": "valid",
-              "size": 100
-            },
-            {
-              "name": "tagged-100-invalid-selected-typebox",
-              "export": "typeboxTagged100InvalidSelected",
-              "scenario": "tagged-100-invalid-selected",
-              "family": "union",
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "tagged-100-invalid-tag-typebox",
-              "export": "typeboxTagged100InvalidTag",
-              "scenario": "tagged-100-invalid-tag",
-              "family": "union",
-              "path": "invalid",
-              "size": 100
-            },
-            {
-              "name": "non-empty-valid-typebox",
-              "export": "typeboxNonEmptyValid",
-              "scenario": "non-empty-valid",
-              "family": "checks",
-              "path": "valid",
-              "size": 1
-            },
-            {
-              "name": "non-empty-invalid-typebox",
-              "export": "typeboxNonEmptyInvalid",
-              "scenario": "non-empty-invalid",
-              "family": "checks",
-              "path": "invalid",
-              "size": 1
             }
           ]
         },
@@ -870,20 +172,13 @@
           },
           "cases": [
             {
-              "name": "checks-valid",
-              "export": "checksValid",
-              "scenario": "checks-valid",
-              "family": "checks",
-              "astTags": ["String"],
-              "path": "valid",
-              "size": 2
-            },
-            {
               "name": "checks-invalid-first",
               "export": "checksInvalidFirst",
               "scenario": "checks-invalid-first",
               "family": "checks",
-              "astTags": ["String"],
+              "astTags": [
+                "String"
+              ],
               "path": "invalid",
               "size": 2
             },
@@ -892,34 +187,20 @@
               "export": "checksInvalidLast",
               "scenario": "checks-invalid-last",
               "family": "checks",
-              "astTags": ["String"],
+              "astTags": [
+                "String"
+              ],
               "path": "invalid",
               "size": 2
-            },
-            {
-              "name": "checks-object-32-valid",
-              "export": "checksObject32Valid",
-              "scenario": "checks-object-32-valid",
-              "family": "checks",
-              "astTags": ["Objects", "String"],
-              "path": "valid",
-              "size": 32
-            },
-            {
-              "name": "checks-array-32-valid",
-              "export": "checksArray32Valid",
-              "scenario": "checks-array-32-valid",
-              "family": "checks",
-              "astTags": ["Arrays", "String"],
-              "path": "valid",
-              "size": 32
             },
             {
               "name": "encoding-check-valid",
               "export": "encodingCheckValid",
               "scenario": "encoding-check-valid",
               "family": "checks",
-              "astTags": ["String"],
+              "astTags": [
+                "String"
+              ],
               "path": "valid",
               "size": 1
             },
@@ -928,7 +209,10 @@
               "export": "templateLiteralLinearValid",
               "scenario": "template-literal-linear-valid",
               "family": "template-literal",
-              "astTags": ["TemplateLiteral", "Arrays"],
+              "astTags": [
+                "TemplateLiteral",
+                "Arrays"
+              ],
               "path": "valid",
               "size": 5
             },
@@ -937,7 +221,10 @@
               "export": "templateLiteralLinearInvalid",
               "scenario": "template-literal-linear-invalid",
               "family": "template-literal",
-              "astTags": ["TemplateLiteral", "Arrays"],
+              "astTags": [
+                "TemplateLiteral",
+                "Arrays"
+              ],
               "path": "invalid",
               "size": 5
             },
@@ -946,7 +233,11 @@
               "export": "templateLiteralBacktrackingValid",
               "scenario": "template-literal-backtracking-valid",
               "family": "template-literal",
-              "astTags": ["TemplateLiteral", "Arrays", "String"],
+              "astTags": [
+                "TemplateLiteral",
+                "Arrays",
+                "String"
+              ],
               "path": "valid",
               "size": 4
             },
@@ -955,7 +246,11 @@
               "export": "templateLiteralBacktrackingInvalid",
               "scenario": "template-literal-backtracking-invalid",
               "family": "template-literal",
-              "astTags": ["TemplateLiteral", "Arrays", "String"],
+              "astTags": [
+                "TemplateLiteral",
+                "Arrays",
+                "String"
+              ],
               "path": "invalid",
               "size": 4
             },
@@ -964,7 +259,12 @@
               "export": "templateLiteralTransformedValid",
               "scenario": "template-literal-transformed-valid",
               "family": "template-literal",
-              "astTags": ["TemplateLiteral", "Arrays", "String", "Number"],
+              "astTags": [
+                "TemplateLiteral",
+                "Arrays",
+                "String",
+                "Number"
+              ],
               "path": "valid",
               "size": 3
             },
@@ -973,7 +273,12 @@
               "export": "templateLiteralRecord32Valid",
               "scenario": "template-literal-record-32-valid",
               "family": "template-literal",
-              "astTags": ["TemplateLiteral", "Objects", "String", "Number"],
+              "astTags": [
+                "TemplateLiteral",
+                "Objects",
+                "String",
+                "Number"
+              ],
               "path": "valid",
               "size": 32
             },
@@ -982,7 +287,10 @@
               "export": "transformationDecodeValid",
               "scenario": "transformation-decode-valid",
               "family": "transformation",
-              "astTags": ["String", "Number"],
+              "astTags": [
+                "String",
+                "Number"
+              ],
               "path": "valid",
               "size": 1
             },
@@ -991,7 +299,10 @@
               "export": "transformationDecodeInvalid",
               "scenario": "transformation-decode-invalid",
               "family": "transformation",
-              "astTags": ["String", "Number"],
+              "astTags": [
+                "String",
+                "Number"
+              ],
               "path": "invalid",
               "size": 1
             },
@@ -1000,7 +311,10 @@
               "export": "transformationEncodeValid",
               "scenario": "transformation-encode-valid",
               "family": "transformation",
-              "astTags": ["String", "Number"],
+              "astTags": [
+                "String",
+                "Number"
+              ],
               "operation": "encode",
               "path": "valid",
               "size": 1
@@ -1010,7 +324,10 @@
               "export": "encodingChain8DecodeValid",
               "scenario": "encoding-chain-8-decode-valid",
               "family": "transformation",
-              "astTags": ["String", "Number"],
+              "astTags": [
+                "String",
+                "Number"
+              ],
               "path": "valid",
               "size": 8
             },
@@ -1019,7 +336,10 @@
               "export": "encodingChain8DecodeInvalid",
               "scenario": "encoding-chain-8-decode-invalid",
               "family": "transformation",
-              "astTags": ["String", "Number"],
+              "astTags": [
+                "String",
+                "Number"
+              ],
               "path": "invalid",
               "size": 8
             },
@@ -1028,7 +348,10 @@
               "export": "encodingChain8EncodeValid",
               "scenario": "encoding-chain-8-encode-valid",
               "family": "transformation",
-              "astTags": ["String", "Number"],
+              "astTags": [
+                "String",
+                "Number"
+              ],
               "operation": "encode",
               "path": "valid",
               "size": 8
@@ -1038,7 +361,10 @@
               "export": "transformedKeyRecordValid",
               "scenario": "record-32-transformed-keys-valid",
               "family": "records",
-              "astTags": ["Objects", "String"],
+              "astTags": [
+                "Objects",
+                "String"
+              ],
               "path": "valid",
               "size": 32
             },
@@ -1047,7 +373,11 @@
               "export": "optionalValid",
               "scenario": "optional-valid",
               "family": "optional",
-              "astTags": ["Objects", "Union", "Undefined"],
+              "astTags": [
+                "Objects",
+                "Union",
+                "Undefined"
+              ],
               "path": "valid",
               "size": 3
             },
@@ -1056,7 +386,11 @@
               "export": "optionalPresentValid",
               "scenario": "optional-present-valid",
               "family": "optional",
-              "astTags": ["Objects", "Union", "Undefined"],
+              "astTags": [
+                "Objects",
+                "Union",
+                "Undefined"
+              ],
               "path": "valid",
               "size": 3
             },
@@ -1065,7 +399,11 @@
               "export": "optionalPresentInvalid",
               "scenario": "optional-present-invalid",
               "family": "optional",
-              "astTags": ["Objects", "Union", "Undefined"],
+              "astTags": [
+                "Objects",
+                "Union",
+                "Undefined"
+              ],
               "path": "invalid",
               "size": 3
             },
@@ -1074,7 +412,11 @@
               "export": "object32SuspendedMiddleValid",
               "scenario": "object-32-suspended-middle-valid",
               "family": "objects",
-              "astTags": ["Objects", "String", "Transformation"],
+              "astTags": [
+                "Objects",
+                "String",
+                "Transformation"
+              ],
               "path": "valid",
               "size": 32
             },
@@ -1083,7 +425,10 @@
               "export": "literal2ValidLast",
               "scenario": "literal-2-valid-last",
               "family": "union",
-              "astTags": ["Union", "Literal"],
+              "astTags": [
+                "Union",
+                "Literal"
+              ],
               "path": "valid",
               "size": 2
             },
@@ -1092,7 +437,10 @@
               "export": "literal100ValidFirst",
               "scenario": "literal-100-valid-first",
               "family": "union",
-              "astTags": ["Union", "Literal"],
+              "astTags": [
+                "Union",
+                "Literal"
+              ],
               "path": "valid",
               "size": 100
             },
@@ -1101,7 +449,10 @@
               "export": "homogeneousUnion100Invalid",
               "scenario": "homogeneous-union-100-invalid",
               "family": "union",
-              "astTags": ["Union", "String"],
+              "astTags": [
+                "Union",
+                "String"
+              ],
               "path": "invalid",
               "size": 100
             },
@@ -1110,7 +461,11 @@
               "export": "tagged2ValidLast",
               "scenario": "tagged-2-valid-last",
               "family": "union",
-              "astTags": ["Union", "Objects", "Literal"],
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal"
+              ],
               "path": "valid",
               "size": 2
             },
@@ -1119,34 +474,22 @@
               "export": "taggedWithFallbackValid",
               "scenario": "tagged-with-fallback-valid",
               "family": "union",
-              "astTags": ["Union", "Objects", "Literal"],
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal"
+              ],
               "path": "valid",
               "size": 2
-            },
-            {
-              "name": "errors-first",
-              "export": "errorsFirst",
-              "scenario": "errors-first",
-              "family": "errors",
-              "astTags": ["Objects", "String"],
-              "path": "invalid",
-              "size": 8
-            },
-            {
-              "name": "errors-all",
-              "export": "errorsAll",
-              "scenario": "errors-all",
-              "family": "errors",
-              "astTags": ["Objects", "String"],
-              "path": "invalid",
-              "size": 8
             },
             {
               "name": "property-order-original",
               "export": "propertyOrderOriginal",
               "scenario": "property-order-original",
               "family": "parse-options",
-              "astTags": ["Objects"],
+              "astTags": [
+                "Objects"
+              ],
               "path": "valid",
               "size": 3
             },
@@ -1155,7 +498,11 @@
               "export": "recursiveTreeDepth16Valid",
               "scenario": "recursive-tree-depth-16-valid",
               "family": "recursion",
-              "astTags": ["Objects", "Arrays", "Suspend"],
+              "astTags": [
+                "Objects",
+                "Arrays",
+                "Suspend"
+              ],
               "path": "valid",
               "size": 16
             }
@@ -1167,7 +514,9 @@
             "tier": 2,
             "implementation": "effect",
             "family": "adapters",
-            "astTags": ["Objects"],
+            "astTags": [
+              "Objects"
+            ],
             "path": "valid",
             "size": 2
           },
@@ -1226,49 +575,12 @@
               "adapter": "Result"
             },
             {
-              "name": "adapter-decode-sync-valid",
-              "export": "syncValid",
-              "scenario": "adapter-decode-sync-valid",
-              "operation": "decode",
-              "adapter": "Sync"
-            },
-            {
               "name": "adapter-decode-sync-invalid",
               "export": "syncInvalid",
               "scenario": "adapter-decode-sync-invalid",
               "operation": "decode",
               "path": "invalid",
               "adapter": "Sync"
-            },
-            {
-              "name": "adapter-is-valid",
-              "export": "isValid",
-              "scenario": "adapter-is-valid",
-              "operation": "decode",
-              "adapter": "is"
-            },
-            {
-              "name": "adapter-is-invalid",
-              "export": "isInvalid",
-              "scenario": "adapter-is-invalid",
-              "operation": "decode",
-              "path": "invalid",
-              "adapter": "is"
-            },
-            {
-              "name": "adapter-encode-exit-valid",
-              "export": "encodeExitValid",
-              "scenario": "adapter-encode-exit-valid",
-              "operation": "encode",
-              "adapter": "Exit"
-            },
-            {
-              "name": "adapter-encode-exit-invalid",
-              "export": "encodeExitInvalid",
-              "scenario": "adapter-encode-exit-invalid",
-              "operation": "encode",
-              "path": "invalid",
-              "adapter": "Exit"
             }
           ]
         },
@@ -1277,49 +589,23 @@
           "defaults": {
             "tier": 2,
             "family": "cold",
-            "astTags": ["Objects"],
+            "astTags": [
+              "Objects"
+            ],
             "path": "valid",
             "size": 32
           },
           "cases": [
-            {
-              "name": "schema-creation-object-32-effect",
-              "export": "effectSchemaCreationObject32",
-              "scenario": "schema-creation-object-32",
-              "implementation": "effect",
-              "operation": "schema"
-            },
             {
               "name": "schema-creation-template-literal-effect",
               "export": "effectSchemaCreationTemplateLiteral",
               "scenario": "schema-creation-template-literal",
               "implementation": "effect",
               "operation": "schema",
-              "astTags": ["TemplateLiteral"],
+              "astTags": [
+                "TemplateLiteral"
+              ],
               "size": 5
-            },
-            {
-              "name": "schema-creation-object-32-valibot",
-              "export": "valibotSchemaCreationObject32",
-              "scenario": "schema-creation-object-32",
-              "implementation": "valibot",
-              "operation": "schema",
-              "astTags": []
-            },
-            {
-              "name": "schema-creation-object-32-zod4",
-              "export": "zodSchemaCreationObject32",
-              "scenario": "schema-creation-object-32",
-              "implementation": "zod4",
-              "operation": "schema",
-              "astTags": []
-            },
-            {
-              "name": "first-decode-object-32-effect",
-              "export": "effectFirstDecodeObject32",
-              "scenario": "first-decode-object-32",
-              "implementation": "effect",
-              "operation": "first-decode"
             },
             {
               "name": "first-decode-checked-object-32-effect",
@@ -1334,24 +620,10 @@
               "scenario": "first-decode-template-literal",
               "implementation": "effect",
               "operation": "first-decode",
-              "astTags": ["TemplateLiteral"],
+              "astTags": [
+                "TemplateLiteral"
+              ],
               "size": 5
-            },
-            {
-              "name": "first-decode-object-32-valibot",
-              "export": "valibotFirstDecodeObject32",
-              "scenario": "first-decode-object-32",
-              "implementation": "valibot",
-              "operation": "first-decode",
-              "astTags": []
-            },
-            {
-              "name": "first-decode-object-32-zod4",
-              "export": "zodFirstDecodeObject32",
-              "scenario": "first-decode-object-32",
-              "implementation": "zod4",
-              "operation": "first-decode",
-              "astTags": []
             },
             {
               "name": "first-decode-record-32-effect",
@@ -1361,46 +633,15 @@
               "operation": "first-decode"
             },
             {
-              "name": "first-decode-record-32-valibot",
-              "export": "valibotFirstDecodeRecord32",
-              "scenario": "first-decode-record-32",
-              "implementation": "valibot",
-              "operation": "first-decode",
-              "astTags": []
-            },
-            {
-              "name": "first-decode-record-32-zod4",
-              "export": "zodFirstDecodeRecord32",
-              "scenario": "first-decode-record-32",
-              "implementation": "zod4",
-              "operation": "first-decode",
-              "astTags": []
-            },
-            {
               "name": "first-decode-literal-100-effect",
               "export": "effectFirstDecodeLiteral100",
               "scenario": "first-decode-literal-100",
               "implementation": "effect",
               "operation": "first-decode",
-              "astTags": ["Union", "Literal"],
-              "size": 100
-            },
-            {
-              "name": "first-decode-literal-100-valibot",
-              "export": "valibotFirstDecodeLiteral100",
-              "scenario": "first-decode-literal-100",
-              "implementation": "valibot",
-              "operation": "first-decode",
-              "astTags": [],
-              "size": 100
-            },
-            {
-              "name": "first-decode-literal-100-zod4",
-              "export": "zodFirstDecodeLiteral100",
-              "scenario": "first-decode-literal-100",
-              "implementation": "zod4",
-              "operation": "first-decode",
-              "astTags": [],
+              "astTags": [
+                "Union",
+                "Literal"
+              ],
               "size": 100
             },
             {
@@ -1409,25 +650,11 @@
               "scenario": "first-decode-tagged-100",
               "implementation": "effect",
               "operation": "first-decode",
-              "astTags": ["Union", "Objects", "Literal"],
-              "size": 100
-            },
-            {
-              "name": "first-decode-tagged-100-valibot",
-              "export": "valibotFirstDecodeTagged100",
-              "scenario": "first-decode-tagged-100",
-              "implementation": "valibot",
-              "operation": "first-decode",
-              "astTags": [],
-              "size": 100
-            },
-            {
-              "name": "first-decode-tagged-100-zod4",
-              "export": "zodFirstDecodeTagged100",
-              "scenario": "first-decode-tagged-100",
-              "implementation": "zod4",
-              "operation": "first-decode",
-              "astTags": [],
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal"
+              ],
               "size": 100
             },
             {
@@ -1436,86 +663,11 @@
               "scenario": "first-decode-encoding-chain-8",
               "implementation": "effect",
               "operation": "first-decode",
-              "astTags": ["String", "Number"],
+              "astTags": [
+                "String",
+                "Number"
+              ],
               "size": 8
-            }
-          ]
-        },
-        {
-          "file": "suites/schema/fixtures/cold.ts",
-          "defaults": {
-            "tier": 2,
-            "implementation": "typebox",
-            "family": "cold",
-            "astTags": [],
-            "path": "valid",
-            "size": 32
-          },
-          "cases": [
-            {
-              "name": "schema-creation-object-32-typebox",
-              "export": "typeboxSchemaCreationObject32",
-              "scenario": "schema-creation-object-32",
-              "operation": "schema"
-            },
-            {
-              "name": "first-decode-object-32-typebox",
-              "export": "typeboxFirstDecodeObject32",
-              "scenario": "first-decode-object-32",
-              "operation": "first-decode"
-            },
-            {
-              "name": "first-decode-record-32-typebox",
-              "export": "typeboxFirstDecodeRecord32",
-              "scenario": "first-decode-record-32",
-              "operation": "first-decode"
-            },
-            {
-              "name": "first-decode-literal-100-typebox",
-              "export": "typeboxFirstDecodeLiteral100",
-              "scenario": "first-decode-literal-100",
-              "operation": "first-decode",
-              "size": 100
-            },
-            {
-              "name": "first-decode-tagged-100-typebox",
-              "export": "typeboxFirstDecodeTagged100",
-              "scenario": "first-decode-tagged-100",
-              "operation": "first-decode",
-              "size": 100
-            }
-          ]
-        },
-        {
-          "file": "suites/schema/fixtures/application.ts",
-          "defaults": {
-            "tier": 3,
-            "family": "application",
-            "operation": "decode",
-            "path": "valid",
-            "size": "message"
-          },
-          "cases": [
-            {
-              "name": "application-message-valid-effect",
-              "export": "effectMessageValid",
-              "scenario": "application-message-valid",
-              "implementation": "effect",
-              "astTags": ["Objects", "Arrays", "Union", "Literal", "String", "Number"]
-            },
-            {
-              "name": "application-message-valid-valibot",
-              "export": "valibotMessageValid",
-              "scenario": "application-message-valid",
-              "implementation": "valibot",
-              "astTags": []
-            },
-            {
-              "name": "application-message-valid-zod4",
-              "export": "zodMessageValid",
-              "scenario": "application-message-valid",
-              "implementation": "zod4",
-              "astTags": []
             }
           ]
         }
@@ -1525,12 +677,158 @@
       "name": "schema-benchmarks",
       "fixtures": [
         {
+          "file": "suites/schema-benchmarks/fixtures/valibot.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "valibot",
+            "family": "schema-benchmarks",
+            "astTags": [],
+            "size": "product"
+          },
+          "cases": [
+            {
+              "name": "initialization-schema-valibot",
+              "export": "initializationSchema",
+              "scenario": "schema-benchmarks-initialization-schema",
+              "operation": "schema",
+              "path": "cold"
+            },
+            {
+              "name": "validation-valid-valibot",
+              "export": "validationValid",
+              "scenario": "schema-benchmarks-validation-valid",
+              "operation": "is",
+              "path": "valid"
+            },
+            {
+              "name": "validation-invalid-valibot",
+              "export": "validationInvalid",
+              "scenario": "schema-benchmarks-validation-invalid",
+              "operation": "is",
+              "path": "invalid"
+            },
+            {
+              "name": "parsing-all-valid-valibot",
+              "export": "parsingAllValid",
+              "scenario": "schema-benchmarks-parsing-all-valid",
+              "operation": "safe-parse-all",
+              "path": "valid"
+            },
+            {
+              "name": "parsing-all-invalid-valibot",
+              "export": "parsingAllInvalid",
+              "scenario": "schema-benchmarks-parsing-all-invalid",
+              "operation": "safe-parse-all",
+              "path": "invalid"
+            },
+            {
+              "name": "parsing-first-valid-valibot",
+              "export": "parsingFirstValid",
+              "scenario": "schema-benchmarks-parsing-first-valid",
+              "operation": "safe-parse-first",
+              "path": "valid"
+            },
+            {
+              "name": "parsing-first-invalid-valibot",
+              "export": "parsingFirstInvalid",
+              "scenario": "schema-benchmarks-parsing-first-invalid",
+              "operation": "safe-parse-first",
+              "path": "invalid"
+            },
+            {
+              "name": "standard-all-valid-valibot",
+              "export": "standardAllValid",
+              "scenario": "schema-benchmarks-standard-all-valid",
+              "operation": "standard-schema-all",
+              "path": "valid"
+            },
+            {
+              "name": "standard-all-invalid-valibot",
+              "export": "standardAllInvalid",
+              "scenario": "schema-benchmarks-standard-all-invalid",
+              "operation": "standard-schema-all",
+              "path": "invalid"
+            }
+          ]
+        },
+        {
+          "file": "suites/schema-benchmarks/fixtures/zod.ts",
+          "defaults": {
+            "tier": 3,
+            "implementation": "zod4",
+            "family": "schema-benchmarks",
+            "astTags": [],
+            "size": "product"
+          },
+          "cases": [
+            {
+              "name": "initialization-schema-zod4",
+              "export": "initializationSchema",
+              "scenario": "schema-benchmarks-initialization-schema",
+              "operation": "schema",
+              "path": "cold"
+            },
+            {
+              "name": "parsing-all-valid-zod4",
+              "export": "parsingAllValid",
+              "scenario": "schema-benchmarks-parsing-all-valid",
+              "operation": "safe-parse-all",
+              "path": "valid"
+            },
+            {
+              "name": "parsing-all-invalid-zod4",
+              "export": "parsingAllInvalid",
+              "scenario": "schema-benchmarks-parsing-all-invalid",
+              "operation": "safe-parse-all",
+              "path": "invalid"
+            },
+            {
+              "name": "standard-all-valid-zod4",
+              "export": "standardAllValid",
+              "scenario": "schema-benchmarks-standard-all-valid",
+              "operation": "standard-schema-all",
+              "path": "valid"
+            },
+            {
+              "name": "standard-all-invalid-zod4",
+              "export": "standardAllInvalid",
+              "scenario": "schema-benchmarks-standard-all-invalid",
+              "operation": "standard-schema-all",
+              "path": "invalid"
+            },
+            {
+              "name": "codec-typed-encode-zod4",
+              "export": "codecTypedEncode",
+              "scenario": "schema-benchmarks-codec-typed-encode",
+              "operation": "encode",
+              "path": "valid",
+              "size": 1
+            },
+            {
+              "name": "codec-typed-decode-zod4",
+              "export": "codecTypedDecode",
+              "scenario": "schema-benchmarks-codec-typed-decode",
+              "operation": "decode",
+              "path": "valid",
+              "size": 1
+            }
+          ]
+        },
+        {
           "file": "suites/schema-benchmarks/fixtures/effect-beta.ts",
           "defaults": {
             "tier": 3,
             "implementation": "effect",
             "family": "schema-benchmarks",
-            "astTags": ["Objects", "Arrays", "Literal", "String", "Number", "Null", "Declaration"],
+            "astTags": [
+              "Objects",
+              "Arrays",
+              "Literal",
+              "String",
+              "Number",
+              "Null",
+              "Declaration"
+            ],
             "size": "product"
           },
           "cases": [
@@ -1624,7 +922,10 @@
               "scenario": "schema-benchmarks-codec-typed-encode",
               "operation": "encode-sync",
               "path": "valid",
-              "astTags": ["String", "BigInt"],
+              "astTags": [
+                "String",
+                "BigInt"
+              ],
               "size": 1
             },
             {
@@ -1633,7 +934,10 @@
               "scenario": "schema-benchmarks-codec-typed-decode",
               "operation": "decode-sync",
               "path": "valid",
-              "astTags": ["String", "BigInt"],
+              "astTags": [
+                "String",
+                "BigInt"
+              ],
               "size": 1
             },
             {
@@ -1642,7 +946,10 @@
               "scenario": "schema-benchmarks-codec-unknown-encode",
               "operation": "encode-unknown-sync",
               "path": "valid",
-              "astTags": ["String", "BigInt"],
+              "astTags": [
+                "String",
+                "BigInt"
+              ],
               "size": 1
             },
             {
@@ -1651,7 +958,10 @@
               "scenario": "schema-benchmarks-codec-unknown-decode",
               "operation": "decode-unknown-sync",
               "path": "valid",
-              "astTags": ["String", "BigInt"],
+              "astTags": [
+                "String",
+                "BigInt"
+              ],
               "size": 1
             }
           ]

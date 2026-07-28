@@ -4,54 +4,27 @@ import { describe, it } from "node:test"
 import { pathToFileURL } from "node:url"
 import { loadRegistry } from "../utils.mts"
 
-const astTags = [
-  "Declaration",
-  "Null",
-  "Undefined",
-  "Void",
-  "Never",
-  "Unknown",
-  "Any",
-  "String",
-  "Number",
-  "Boolean",
-  "BigInt",
-  "Symbol",
-  "Literal",
-  "UniqueSymbol",
-  "ObjectKeyword",
-  "Enum",
-  "TemplateLiteral",
-  "Arrays",
-  "Objects",
-  "Union",
-  "Suspend"
-]
-
 describe("runtimeperf registry", () => {
-  it("covers every SchemaAST tag in tier 0", () => {
-    const { fixtures } = loadRegistry()
-    const covered = new Set(
-      fixtures
-        .filter((fixture) => fixture.tier === 0 && fixture.implementation === "effect")
-        .flatMap((fixture) => fixture.astTags)
-    )
-    assert.deepEqual([...covered].sort(), astTags.slice().sort())
-  })
-
   it("uses unique fixture targets and valid implementations", () => {
     const { fixtures } = loadRegistry()
     assert.equal(new Set(fixtures.map((fixture) => fixture.target)).size, fixtures.length)
     for (const fixture of fixtures) {
-      assert.ok(["effect", "typebox", "valibot", "zod4"].includes(fixture.implementation))
+      assert.ok(["effect", "valibot", "zod4"].includes(fixture.implementation))
     }
+  })
+
+  it("keeps the focused Schema diagnostics Effect-only", () => {
+    const { fixtures } = loadRegistry()
+    const diagnostics = fixtures.filter((fixture) => fixture.suite === "schema")
+    assert.ok(diagnostics.length > 0)
+    assert.equal(diagnostics.every((fixture) => fixture.implementation === "effect"), true)
   })
 
   it("includes the complete effect@beta Schema Benchmarks matrix", () => {
     const { fixtures } = loadRegistry()
     assert.deepEqual(
       fixtures
-        .filter((fixture) => fixture.suite === "schema-benchmarks")
+        .filter((fixture) => fixture.suite === "schema-benchmarks" && fixture.implementation === "effect")
         .map((fixture) => fixture.name)
         .sort(),
       [
@@ -75,33 +48,36 @@ describe("runtimeperf registry", () => {
     )
   })
 
-  it("covers cold union scenarios with every comparison implementation", () => {
+  it("includes the complete Valibot and Zod Schema Benchmarks matrices", () => {
     const { fixtures } = loadRegistry()
-    for (const scenario of ["first-decode-literal-100", "first-decode-tagged-100"]) {
-      assert.deepEqual(
-        fixtures
-          .filter((fixture) => fixture.scenario === scenario)
-          .map((fixture) => fixture.implementation)
-          .sort(),
-        ["effect", "typebox", "valibot", "zod4"]
-      )
-    }
+    const names = (implementation) =>
+      fixtures
+        .filter((fixture) => fixture.suite === "schema-benchmarks" && fixture.implementation === implementation)
+        .map((fixture) => fixture.name)
+        .sort()
+    assert.deepEqual(names("valibot"), [
+      "initialization-schema-valibot",
+      "parsing-all-invalid-valibot",
+      "parsing-all-valid-valibot",
+      "parsing-first-invalid-valibot",
+      "parsing-first-valid-valibot",
+      "standard-all-invalid-valibot",
+      "standard-all-valid-valibot",
+      "validation-invalid-valibot",
+      "validation-valid-valibot"
+    ])
+    assert.deepEqual(names("zod4"), [
+      "codec-typed-decode-zod4",
+      "codec-typed-encode-zod4",
+      "initialization-schema-zod4",
+      "parsing-all-invalid-zod4",
+      "parsing-all-valid-zod4",
+      "standard-all-invalid-zod4",
+      "standard-all-valid-zod4"
+    ])
   })
 
-  it("compares native template literals only between Effect and Zod 4", () => {
-    const { fixtures } = loadRegistry()
-    for (const scenario of ["template-literal-native-valid", "template-literal-native-invalid"]) {
-      assert.deepEqual(
-        fixtures
-          .filter((fixture) => fixture.scenario === scenario)
-          .map((fixture) => fixture.implementation)
-          .sort(),
-        ["effect", "zod4"]
-      )
-    }
-  })
-
-  it("uses Zod 4 standard in jitless mode for the zod4 fixtures", async () => {
+  it("uses Zod 4 standard and jitless safeParse for the zod4 fixtures", async () => {
     const { fixtures } = loadRegistry()
     const zodFiles = new Set(
       fixtures
@@ -114,43 +90,6 @@ describe("runtimeperf registry", () => {
       assert.match(source, /from "zod\/v4"/)
       assert.doesNotMatch(source, /from "zod\/v4-mini"/)
       assert.match(source, /jitless:\s*true/)
-    }
-  })
-
-  it("uses TypeBox Value.Errors without compilation for the typebox fixtures", async () => {
-    const { fixtures } = loadRegistry()
-    const typeboxFiles = new Set(
-      fixtures
-        .filter((fixture) => fixture.implementation === "typebox")
-        .map((fixture) => fixture.fixturePath)
-    )
-    assert.ok(typeboxFiles.size > 0)
-    for (const path of typeboxFiles) {
-      const source = await readFile(path, "utf8")
-      assert.match(source, /from "typebox\/value"/)
-      assert.match(source, /TypeBoxValue\.Errors/)
-      assert.doesNotMatch(source, /from "typebox\/schema"/)
-      assert.doesNotMatch(source, /\.Compile\(/)
-    }
-  })
-
-  it("uses SchemaIssue results for Effect cross-library decoding fixtures", async () => {
-    const { fixtures } = loadRegistry()
-    const scenarios = Map.groupBy(fixtures, (fixture) => fixture.scenario)
-    const comparisonFiles = new Set(
-      fixtures
-        .filter((fixture) =>
-          fixture.implementation === "effect" &&
-          fixture.operation === "decode" &&
-          (scenarios.get(fixture.scenario)?.length ?? 0) > 1
-        )
-        .map((fixture) => fixture.fixturePath)
-    )
-    assert.ok(comparisonFiles.size > 0)
-    for (const path of comparisonFiles) {
-      const source = await readFile(path, "utf8")
-      assert.match(source, /SchemaParser\.decodeUnknownExit/)
-      assert.doesNotMatch(source, /Schema\.decodeUnknownExit/)
     }
   })
 
