@@ -102,24 +102,29 @@ export const make: (
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
     })
 
-    const readLine = Effect.scoped(
-      Effect.flatMap(RcRef.get(rlRef), (readlineInterface) =>
-        Effect.callback<string, Terminal.QuitError>((resume) => {
-          if (inputEnded) {
-            resume(Effect.fail(new Terminal.QuitError({})))
-            return Effect.void
-          }
-          const onLine = (line: string) => resume(Effect.succeed(line))
-          // readline "close" (rather than stdin "end") so a final line without
-          // a trailing newline still flushes through the "line" event first.
-          const onClose = () => resume(Effect.fail(new Terminal.QuitError({})))
-          readlineInterface.once("line", onLine)
-          readlineInterface.once("close", onClose)
-          return Effect.sync(() => {
-            readlineInterface.off("line", onLine)
-            readlineInterface.off("close", onClose)
-          })
-        }))
+    const readLine = Effect.suspend(() =>
+      inputEnded ? Effect.fail(new Terminal.QuitError({})) : Effect.scoped(
+        Effect.flatMap(RcRef.get(rlRef), (readlineInterface) =>
+          Effect.callback<string, Terminal.QuitError>((resume) => {
+            const cleanup = () => {
+              readlineInterface.off("line", onLine)
+              readlineInterface.off("close", onClose)
+            }
+            const onLine = (line: string) => {
+              cleanup()
+              resume(Effect.succeed(line))
+            }
+            // readline "close" (rather than stdin "end") so a final line without
+            // a trailing newline still flushes through the "line" event first.
+            const onClose = () => {
+              cleanup()
+              resume(Effect.fail(new Terminal.QuitError({})))
+            }
+            readlineInterface.on("line", onLine)
+            readlineInterface.on("close", onClose)
+            return Effect.sync(cleanup)
+          }))
+      )
     )
 
     const display = (prompt: string) =>
