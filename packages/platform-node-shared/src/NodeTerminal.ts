@@ -36,6 +36,15 @@ export const make: (
     const stdin = process.stdin
     const stdout = process.stdout
 
+    // stdin "end" fires once per process, so remember end-of-input for readers
+    // created after the event (Bun never sets `readableEnded`).
+    let inputEnded = stdin.readableEnded
+    const onStdinEnd = () => {
+      inputEnded = true
+    }
+    stdin.once("end", onStdinEnd)
+    yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("end", onStdinEnd)))
+
     // Acquire readline interface with TTY setup/cleanup inside the scope
     const rlRef = yield* RcRef.make({
       acquire: Effect.acquireRelease(
@@ -74,18 +83,48 @@ export const make: (
           Queue.endUnsafe(queue)
         }
       }
-      yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("keypress", handleKeypress)))
+      // Without this, consumers (e.g. `Prompt.run`) hang forever on closed stdin.
+      const handleEnd = () => {
+        Queue.endUnsafe(queue)
+      }
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          stdin.off("keypress", handleKeypress)
+          stdin.off("end", handleEnd)
+        })
+      )
       stdin.on("keypress", handleKeypress)
+      if (inputEnded) {
+        handleEnd()
+      } else {
+        stdin.once("end", handleEnd)
+      }
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
     })
 
-    const readLine = Effect.scoped(
-      Effect.flatMap(RcRef.get(rlRef), (readlineInterface) =>
-        Effect.callback<string, Terminal.QuitError>((resume) => {
-          const onLine = (line: string) => resume(Effect.succeed(line))
-          readlineInterface.once("line", onLine)
-          return Effect.sync(() => readlineInterface.off("line", onLine))
-        }))
+    const readLine = Effect.suspend(() =>
+      inputEnded ? Effect.fail(new Terminal.QuitError({})) : Effect.scoped(
+        Effect.flatMap(RcRef.get(rlRef), (readlineInterface) =>
+          Effect.callback<string, Terminal.QuitError>((resume) => {
+            const cleanup = () => {
+              readlineInterface.off("line", onLine)
+              readlineInterface.off("close", onClose)
+            }
+            const onLine = (line: string) => {
+              cleanup()
+              resume(Effect.succeed(line))
+            }
+            // readline "close" (rather than stdin "end") so a final line without
+            // a trailing newline still flushes through the "line" event first.
+            const onClose = () => {
+              cleanup()
+              resume(Effect.fail(new Terminal.QuitError({})))
+            }
+            readlineInterface.on("line", onLine)
+            readlineInterface.on("close", onClose)
+            return Effect.sync(cleanup)
+          }))
+      )
     )
 
     const display = (prompt: string) =>
