@@ -18,6 +18,32 @@ const getRandomValues = <T extends ArrayBufferView | null>(array: T): T => {
 }
 
 describe("BrowserCrypto", () => {
+  it.effect("generates random bytes at and above the getRandomValues limit", () => {
+    const chunks: Array<number> = []
+
+    return Effect.gen(function*() {
+      const crypto = yield* Crypto.Crypto
+      for (const size of [65_536, 65_537, 70_000]) {
+        const bytes = yield* crypto.randomBytes(size)
+        assert.strictEqual(bytes.length, size)
+        assert.strictEqual(bytes[0], 0)
+        assert.strictEqual(bytes[size - 1], (size - 1) & 0xff)
+      }
+      assert.deepStrictEqual(chunks, [65_536, 65_536, 1, 65_536, 4_464])
+    }).pipe(Effect.provide(BrowserCrypto.layer.pipe(
+      Layer.provide(Layer.succeed(BrowserCrypto.WebCrypto, {
+        ...crypto,
+        getRandomValues(array) {
+          if (array !== null) {
+            assert.ok(array.byteLength <= 65_536)
+            chunks.push(array.byteLength)
+          }
+          return getRandomValues(array)
+        }
+      }))
+    )))
+  })
+
   it.effect("generates UUIDv4 values from getRandomValues", () =>
     Effect.gen(function*() {
       const crypto = yield* Crypto.Crypto
