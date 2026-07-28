@@ -29,6 +29,7 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null,
+    "./index": null,
     "./*/index": null
   },
   "files": [
@@ -46,6 +47,7 @@
       ".": "./dist/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
+      "./index": null,
       "./*/index": null
     }
   },
@@ -59,7 +61,7 @@
   },
   "devDependencies": {
     "@effect/platform-node": "workspace:^",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.1.2",
     "effect": "workspace:^"
   },
   "peerDependencies": {

@@ -6,14 +6,12 @@ const isNode = typeof process !== "undefined" &&
   process.release.name === "node" &&
   !isDeno &&
   !isBun
+
 export default defineConfig({
   test: {
     projects: [
       "packages/*/vitest.config.ts",
-      "packages/ai/*/vitest.config.ts",
-      "packages/atom/*/vitest.config.ts",
-      "packages/tools/*/vitest.config.ts",
-      "packages/sql/*/vitest.config.ts",
+      "packages/*/*/vitest.config.ts",
       ...(isDeno ?
         [
           "!packages/platform-node-shared",

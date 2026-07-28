@@ -96,16 +96,13 @@ describe("Formatter", () => {
     it("function", () => {
       strictEqual(
         format(() => {}),
-        `() => {
-        }`
+        `() => {}`
       )
       strictEqual(
         format(() => {
           return 1
         }),
-        `() => {
-          return 1;
-        }`
+        `() => {\n\t\t\t\treturn 1;\n\t\t\t}`
       )
     })
 

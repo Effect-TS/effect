@@ -34,6 +34,7 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null,
+    "./index": null,
     "./*/index": null
   },
   "files": [
@@ -51,6 +52,7 @@
       ".": "./dist/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
+      "./index": null,
       "./*/index": null
     }
   },
@@ -69,9 +71,9 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@types/deno": "^2.7.0",
     "@std/assert": "jsr:^1.0.16",
-    "@testcontainers/redis": "^11.14.0",
+    "@testcontainers/redis": "^12.0.4",
+    "@types/deno": "^2.7.0",
     "effect": "workspace:^"
   }
 }

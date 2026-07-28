@@ -31,6 +31,7 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null,
+    "./index": null,
     "./*/index": null
   },
   "files": [
@@ -48,6 +49,7 @@
       ".": "./dist/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
+      "./index": null,
       "./*/index": null
     }
   },

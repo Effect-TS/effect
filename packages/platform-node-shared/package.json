@@ -32,6 +32,7 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null,
+    "./index": null,
     "./*/index": null
   },
   "files": [
@@ -49,6 +50,7 @@
       ".": "./dist/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
+      "./index": null,
       "./*/index": null
     }
   },
@@ -64,7 +66,7 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.1.2",
     "effect": "workspace:^",
     "tar": "^7.5.19"
   },

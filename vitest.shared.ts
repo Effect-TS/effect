@@ -1,33 +1,34 @@
 import path from "node:path"
-import aliases from "vite-tsconfig-paths"
 import type { ViteUserConfig } from "vitest/config"
 
+const exclude = [
+  "**/.*/**",
+  "**/node_modules/**",
+  "**/dist/**",
+  "**/benchmark/**",
+  "**/bundle/**",
+  "**/typetest/**",
+  "**/coverage/**",
+  "**/test/utils/**",
+  "**/*.d.ts",
+  "**/*.config.*",
+  "**/vitest.*"
+]
+
 const config: ViteUserConfig = {
-  esbuild: {
-    target: "es2020"
-  },
   optimizeDeps: {
     exclude: ["bun:sqlite"]
   },
-  plugins: [aliases()],
   server: {
     watch: {
-      ignored: [
-        "**/.context/**",
-        "**/.direnv/**",
-        "**/.lalph/**",
-        "**/.repos/**"
-      ]
+      ignored: exclude
     }
   },
+  resolve: {
+    tsconfigPaths: true
+  },
   test: {
-    exclude: [
-      "**/.context/**",
-      "**/.direnv/**",
-      "**/.lalph/**",
-      "**/.repos/**",
-      "**/node_modules/**"
-    ],
+    exclude,
     setupFiles: [path.join(__dirname, "vitest.setup.ts")],
     fakeTimers: {
       toFake: undefined
@@ -40,20 +41,7 @@ const config: ViteUserConfig = {
       provider: "v8",
       reporter: ["html"],
       reportsDirectory: "coverage",
-      exclude: [
-        "node_modules/",
-        "dist/",
-        "benchmark/",
-        "bundle/",
-        "typetest/",
-        "build/",
-        "coverage/",
-        "test/utils/",
-        "**/*.d.ts",
-        "**/*.config.*",
-        "**/vitest.setup.*",
-        "**/vitest.shared.*"
-      ]
+      exclude
     }
   }
 }
