@@ -19,6 +19,69 @@ const runEchoServer = (listener: Deno.Listener) =>
     Effect.promise(() => listener.accept().then((conn) => conn.readable.pipeTo(conn.writable)))
   )
 
+const makeTestConn = (options?: {
+  readonly data?: Uint8Array | undefined
+  readonly pendingRead?: boolean | undefined
+  readonly closeReadableOnCloseWrite?: boolean | undefined
+  readonly setNoDelay?: ((value?: boolean) => void) | undefined
+  readonly setKeepAlive?: ((value?: boolean) => void) | undefined
+}) => {
+  let controller!: ReadableStreamDefaultController<Uint8Array>
+  let readableClosed = false
+  let closeWrites = 0
+  const readable = new ReadableStream<Uint8Array>({
+    start(value) {
+      controller = value
+      if (options?.data) value.enqueue(options.data)
+      if (options?.pendingRead !== true) {
+        readableClosed = true
+        value.close()
+      }
+    }
+  })
+  const conn = {
+    readable,
+    writable: new WritableStream<Uint8Array>(),
+    read: () => Promise.resolve(null),
+    write: (data: Uint8Array) => Promise.resolve(data.length),
+    close() {
+      if (readableClosed) return
+      readableClosed = true
+      controller.close()
+    },
+    closeWrite() {
+      closeWrites++
+      if (options?.closeReadableOnCloseWrite && !readableClosed) {
+        readableClosed = true
+        controller.close()
+      }
+      return Promise.resolve()
+    },
+    ref() {},
+    unref() {},
+    localAddr: { transport: "tcp", hostname: "127.0.0.1", port: 0 },
+    remoteAddr: { transport: "tcp", hostname: "127.0.0.1", port: 0 },
+    [Symbol.dispose]() {
+      this.close()
+    },
+    ...(options?.setNoDelay ? { setNoDelay: options.setNoDelay } : {}),
+    ...(options?.setKeepAlive ? { setKeepAlive: options.setKeepAlive } : {})
+  } as Deno.Conn
+  return { conn, closeWrites: () => closeWrites }
+}
+
+const replaceDenoConnect = (
+  connect: (options: Deno.ConnectOptions | Deno.UnixConnectOptions) => Promise<Deno.Conn>
+) =>
+  Effect.acquireRelease(
+    Effect.sync(() => {
+      const descriptor = Object.getOwnPropertyDescriptor(Deno, "connect")!
+      Object.defineProperty(Deno, "connect", { ...descriptor, value: connect })
+      return descriptor
+    }),
+    (descriptor) => Effect.sync(() => Object.defineProperty(Deno, "connect", descriptor))
+  )
+
 describe("DenoSocket", () => {
   it.effect("echoes over TCP", () =>
     Effect.gen(function*() {
@@ -100,6 +163,83 @@ describe("DenoSocket", () => {
       )
 
       assert.strictEqual(output, "Closed")
+    }))
+
+  it.effect("does not carry a consumed half-close into a second run", () =>
+    Effect.gen(function*() {
+      const encoder = new TextEncoder()
+      const first = makeTestConn({ pendingRead: true, closeReadableOnCloseWrite: true })
+      const second = makeTestConn({ data: encoder.encode("Second") })
+      const connections = [first.conn, second.conn]
+      let index = 0
+      const socket = yield* DenoSocket.fromConn(Effect.sync(() => connections[index++]!))
+      const opened = yield* Deferred.make<void>()
+
+      const firstRun = yield* socket.run(() => {}, {
+        onOpen: Deferred.succeed(opened, undefined)
+      }).pipe(Effect.forkChild)
+      yield* Deferred.await(opened)
+      yield* Effect.scoped(socket.writer)
+      yield* Fiber.join(firstRun)
+
+      const received: Array<Uint8Array> = []
+      yield* socket.run((chunk) => Effect.sync(() => received.push(chunk)))
+
+      assert.deepStrictEqual(received, [encoder.encode("Second")])
+      assert.strictEqual(first.closeWrites(), 1)
+      assert.strictEqual(second.closeWrites(), 0)
+    }))
+
+  it.effect("maps connection refusal to SocketOpenError", () =>
+    Effect.gen(function*() {
+      const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 })
+      const address = listener.addr as Deno.NetAddr
+      listener.close()
+      const socket = yield* DenoSocket.makeTcp({ hostname: address.hostname, port: address.port })
+
+      const error = yield* socket.run(() => {}).pipe(Effect.flip)
+
+      assert.instanceOf(error, Socket.SocketError)
+      assert.strictEqual(error.reason._tag, "SocketOpenError")
+      if (error.reason._tag === "SocketOpenError") {
+        assert.strictEqual(error.reason.kind, "Unknown")
+        assert.instanceOf(error.reason.cause, Deno.errors.ConnectionRefused)
+      }
+    }))
+
+  it.effect("applies TCP tuning options and ignores them for Unix", () =>
+    Effect.gen(function*() {
+      const noDelay: Array<boolean | undefined> = []
+      const keepAlive: Array<boolean | undefined> = []
+      const tcp = makeTestConn({
+        setNoDelay: (value) => noDelay.push(value),
+        setKeepAlive: (value) => keepAlive.push(value)
+      })
+      const unix = makeTestConn()
+      const connections = [tcp.conn, unix.conn]
+      const connectOptions: Array<Deno.ConnectOptions | Deno.UnixConnectOptions> = []
+      let index = 0
+      yield* replaceDenoConnect((options) => {
+        connectOptions.push(options)
+        return Promise.resolve(connections[index++]!)
+      })
+
+      const tcpSocket = yield* DenoSocket.makeTcp({ port: 1, noDelay: false, keepAlive: true })
+      yield* tcpSocket.run(() => {})
+      const unixSocket = yield* DenoSocket.makeTcp({
+        transport: "unix",
+        path: "/unused.sock",
+        noDelay: true,
+        keepAlive: false
+      })
+      yield* unixSocket.run(() => {})
+
+      assert.deepStrictEqual(noDelay, [false])
+      assert.deepStrictEqual(keepAlive, [true])
+      assert.deepStrictEqual(connectOptions, [
+        { port: 1 },
+        { transport: "unix", path: "/unused.sock" }
+      ])
     }))
 
   it.effect("echoes over Unix sockets", () =>

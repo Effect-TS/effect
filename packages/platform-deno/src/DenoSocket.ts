@@ -184,8 +184,10 @@ export const fromConn = <RO>(
       }),
       () =>
         Effect.suspend(() => {
-          writeClosed = true
-          if (current === undefined) return Effect.void
+          if (current === undefined) {
+            writeClosed = true
+            return Effect.void
+          }
           const { conn, writer } = current
           return Effect.sync(() => writer.releaseLock()).pipe(
             Effect.andThen(closeWrite(conn))
