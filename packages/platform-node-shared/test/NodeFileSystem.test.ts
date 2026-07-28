@@ -47,6 +47,23 @@ describe("FileSystem", () => {
       assert(error.reason._tag === "NotFound")
     })))
 
+  it("lstat does not follow symbolic links", () =>
+    runPromise(Effect.scoped(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const dir = yield* fs.makeTempDirectoryScoped()
+      const target = `${dir}/target.txt`
+      const link = `${dir}/link.txt`
+
+      yield* fs.writeFileString(target, "target")
+      yield* fs.symlink(target, link)
+
+      const followed = yield* fs.stat(link)
+      const notFollowed = yield* fs.lstat(link)
+
+      assert.strictEqual(followed.type, "File")
+      assert.strictEqual(notFollowed.type, "SymbolicLink")
+    }))))
+
   it("truncate", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
