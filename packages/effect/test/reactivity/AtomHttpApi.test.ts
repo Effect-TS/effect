@@ -19,7 +19,7 @@ const Api = HttpApi.make("api").add(
 )
 
 describe("AtomHttpApi", () => {
-  it.effect("query creates a serializable atom that encodes the request and decodes the response", () =>
+  it.effect("query creates a serializable atom with reactivity and retention that encodes the request", () =>
     Effect.gen(function*() {
       const requestRef = yield* Ref.make<
         {
@@ -48,9 +48,21 @@ describe("AtomHttpApi", () => {
       const atom = Client.query("group", "get", {
         params: { id: 1 },
         query: { page: 2 },
+        reactivityKeys: ["users"],
+        timeToLive: "1 minute",
         serializationKey: `1:2`
       })
 
+      assert.deepStrictEqual(
+        {
+          idleTTL: atom.idleTTL,
+          serializable: Atom.isSerializable(atom)
+        },
+        {
+          idleTTL: 60_000,
+          serializable: true
+        }
+      )
       if (!Atom.isSerializable(atom)) {
         assert.fail("expected query atom to be serializable")
       }
@@ -59,6 +71,8 @@ describe("AtomHttpApi", () => {
       const atomFromEncodedInput = Client.query("group", "get", {
         params: { id: 1 },
         query: { page: 2 },
+        reactivityKeys: ["users"],
+        timeToLive: "1 minute",
         serializationKey: `1:2`
       })
       if (!Atom.isSerializable(atomFromEncodedInput)) {
