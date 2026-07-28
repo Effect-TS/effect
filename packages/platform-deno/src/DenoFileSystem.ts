@@ -185,6 +185,7 @@ class FileImpl implements FileSystem.File {
   private readonly file: Deno.FsFile
   private readonly append: boolean
   private position = BigInt(0)
+  private nativePosition: bigint | undefined = undefined
 
   constructor(
     file: Deno.FsFile,
@@ -221,17 +222,26 @@ class FileImpl implements FileSystem.File {
     return Effect.suspend(() => {
       const position = this.position
       return Effect.map(
-        tryPromise(
-          method,
-          undefined,
-          async () => {
-            this.file.seekSync(position, Deno.SeekMode.Start)
-            return await this.file.read(buffer)
-          }
+        Effect.tapError(
+          tryPromise(
+            method,
+            undefined,
+            async () => {
+              if (this.nativePosition !== position) {
+                this.file.seekSync(position, Deno.SeekMode.Start)
+                this.nativePosition = position
+              }
+              return await this.file.read(buffer)
+            }
+          ),
+          () =>
+            Effect.sync(() => {
+              this.nativePosition = undefined
+            })
         ),
         (bytesRead) => {
           const sizeRead = FileSystem.Size(bytesRead ?? 0)
-          this.position = position + sizeRead
+          this.position = this.nativePosition = position + sizeRead
           return sizeRead
         }
       )
@@ -271,18 +281,29 @@ class FileImpl implements FileSystem.File {
     return Effect.suspend(() => {
       const position = this.position
       return Effect.map(
-        tryPromise(
-          method,
-          undefined,
-          async () => {
-            this.file.seekSync(position, Deno.SeekMode.Start)
-            return await this.file.write(buffer)
-          }
+        Effect.tapError(
+          tryPromise(
+            method,
+            undefined,
+            async () => {
+              if (!this.append && this.nativePosition !== position) {
+                this.file.seekSync(position, Deno.SeekMode.Start)
+                this.nativePosition = position
+              }
+              return await this.file.write(buffer)
+            }
+          ),
+          () =>
+            Effect.sync(() => {
+              this.nativePosition = undefined
+            })
         ),
         (bytesWritten) => {
           const sizeWritten = FileSystem.Size(bytesWritten)
-          if (!this.append) {
-            this.position = position + sizeWritten
+          if (this.append) {
+            this.nativePosition = undefined
+          } else {
+            this.position = this.nativePosition = position + sizeWritten
           }
           return sizeWritten
         }

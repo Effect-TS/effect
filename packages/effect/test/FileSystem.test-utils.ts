@@ -153,6 +153,53 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
+  it("should read from a backwards seek", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+
+        const first = yield* file.readAlloc(Fs.Size(5)).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(first).toBe("lorem")
+
+        yield* file.seek(Fs.Size(-3), "current")
+        const second = yield* file.readAlloc(Fs.Size(3)).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(second).toBe("rem")
+      }).pipe(
+        Effect.scoped
+      )
+    })))
+
+  it("should read sequentially without an intervening seek", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const file = yield* fs.open(`${__dirname}/fixtures/text.txt`)
+
+        const first = yield* file.readAlloc(Fs.Size(5)).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(first).toBe("lorem")
+
+        const second = yield* file.readAlloc(Fs.Size(6)).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(second).toBe(" ipsum")
+      }).pipe(
+        Effect.scoped
+      )
+    })))
+
   it("should track the cursor position when writing", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
@@ -218,6 +265,34 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       )
     })))
 
+  it("should restore the read cursor after an append write", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const path = yield* fs.makeTempFileScoped()
+        const file = yield* fs.open(path, { flag: "a+" })
+
+        yield* file.write(new TextEncoder().encode("foo"))
+        yield* file.seek(Fs.Size(0), "start")
+
+        const first = yield* file.readAlloc(Fs.Size(1)).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(first).toBe("f")
+
+        yield* file.write(new TextEncoder().encode("bar"))
+        const second = yield* file.readAlloc(Fs.Size(2)).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(second).toBe("oo")
+      }).pipe(
+        Effect.scoped
+      )
+    })))
+
   it("should keep the current cursor if truncating doesn't affect it", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
@@ -250,6 +325,28 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
 
         const cursor = yield* file.seek(Fs.Size(0), "current")
         expect(cursor).toBe(Fs.Size(11))
+      }).pipe(
+        Effect.scoped
+      )
+    })))
+
+  it("should read from the clamped cursor after truncating", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+
+      yield* Effect.gen(function*() {
+        const path = yield* fs.makeTempFileScoped()
+        const file = yield* fs.open(path, { flag: "w+" })
+
+        yield* file.write(new TextEncoder().encode("abcdefghij"))
+        yield* file.truncate(Fs.Size(5))
+        yield* fs.writeFile(path, new TextEncoder().encode("xyz"), { flag: "a" })
+
+        const text = yield* file.readAlloc(Fs.Size(3)).pipe(
+          Effect.flatMap(Effect.fromOption),
+          Effect.map((_) => new TextDecoder().decode(_))
+        )
+        expect(text).toBe("xyz")
       }).pipe(
         Effect.scoped
       )
