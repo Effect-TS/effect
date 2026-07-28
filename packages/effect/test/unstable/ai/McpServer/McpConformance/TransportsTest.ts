@@ -285,9 +285,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               )
               assert.notStrictEqual(first.sessionId, second.sessionId)
             }))
-          // FIX: Requests without the session identifier currently reach
-          // middleware and return 404 instead of the required 400.
-          it.effect.skip("MUST require the returned session identifier on subsequent HTTP requests", () =>
+          it.effect("MUST require the returned session identifier on subsequent HTTP requests", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               yield* test.initialize()

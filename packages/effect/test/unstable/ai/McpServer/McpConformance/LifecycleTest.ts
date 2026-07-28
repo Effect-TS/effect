@@ -13,9 +13,7 @@ export const suite = (
       // version entrypoints that compose this suite.
       describe("Lifecycle Phases", () => {
         describe("Initialization", () => {
-          // FIX: The HTTP middleware maps an absent session to 404 rather than
-          // the required 400 before initialization.
-          it.effect.skip("MUST reject non-ping requests before initialize", () =>
+          it.effect("MUST reject non-ping requests before initialize", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const response = yield* test.post({
@@ -28,9 +26,7 @@ export const suite = (
               assert.strictEqual(response.status, 400)
             }))
 
-          // FIX: The HTTP middleware maps an absent session to 404 rather than
-          // the required 400 before initialization.
-          it.effect.skip("MUST reject initialized notifications before initialize", () =>
+          it.effect("MUST reject initialized notifications before initialize", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const response = yield* test.post(test.initializedNotification)

@@ -491,7 +491,12 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
       if (httpRequest) {
         appendPreResponseHandlerUnsafe(
           httpRequest,
-          () => Effect.succeed(HttpServerResponse.empty({ status: 404 }))
+          () =>
+            Effect.succeed(
+              HttpServerResponse.empty({
+                status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
+              })
+            )
         )
       }
       return Effect.die(new Error(`Mcp-Session-Id does not exist`))
@@ -576,7 +581,12 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
                 if (httpRequest) {
                   appendPreResponseHandlerUnsafe(
                     httpRequest,
-                    () => Effect.succeed(HttpServerResponse.empty({ status: 404 }))
+                    () =>
+                      Effect.succeed(
+                        HttpServerResponse.empty({
+                          status: headers[MCP_SESSION_ID_HEADER] === undefined ? 400 : 404
+                        })
+                      )
                   )
                 }
                 return Effect.void
