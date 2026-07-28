@@ -687,8 +687,10 @@ export const make = (
               span.attribute("url.query", query)
             }
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
+            const headerFilter = fiber.getRef(TracerHeaderFilter)
             const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
             for (const name in redactedHeaders) {
+              if (!headerFilter(name)) continue
               span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
             }
             request = fiber.getRef(TracerPropagationEnabled)
@@ -702,6 +704,7 @@ export const make = (
                     span.attribute("http.response.status_code", response.status)
                     const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
                     for (const name in redactedHeaders) {
+                      if (!headerFilter(name)) continue
                       span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
                     }
 
@@ -1506,6 +1509,18 @@ export const TracerDisabledWhen = Context.Reference<
   Predicate.Predicate<HttpClientRequest.HttpClientRequest>
 >("effect/http/HttpClient/TracerDisabledWhen", {
   defaultValue: () => constFalse
+})
+
+/**
+ * Context reference for filtering request and response headers added to client spans.
+ *
+ * @category references
+ * @since 4.0.0
+ */
+export const TracerHeaderFilter = Context.Reference<
+  Predicate.Predicate<string>
+>("effect/http/HttpClient/TracerHeaderFilter", {
+  defaultValue: () => constTrue
 })
 
 /**
