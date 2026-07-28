@@ -3166,14 +3166,16 @@ export const finite = appendChecks(number, [isFinite()])
  * **Details**
  *
  * The filter can be used with `Schema.filter` or attached directly to a
- * `String` AST node through checks. The regular expression source is stored in
- * annotations for serialization and arbitrary generation.
+ * `String` AST node through checks. The regular expression is cloned and its
+ * `lastIndex` is reset before each test, so global and sticky expressions are
+ * deterministic and the provided regular expression is not mutated. The
+ * regular expression source is stored in annotations for serialization and
+ * arbitrary generation.
  *
  * **Gotchas**
  *
- * Use a non-global, non-sticky regular expression, or reset `lastIndex`
- * yourself, because `RegExp.test` is stateful for expressions with the `g` or
- * `y` flag.
+ * When deriving an arbitrary, only `regExp.source` is used. Regular expression
+ * flags are ignored because fast-check does not support them.
  *
  * **Example** (Validating an email pattern)
  *
@@ -3189,8 +3191,12 @@ export const finite = appendChecks(number, [isFinite()])
  */
 export function isPattern(regExp: globalThis.RegExp, annotations?: Schema.Annotations.Filter) {
   const source = regExp.source
+  const pattern = new globalThis.RegExp(source, regExp.flags)
   return makeFilter(
-    (s: string) => regExp.test(s),
+    (s: string) => {
+      pattern.lastIndex = 0
+      return pattern.test(s)
+    },
     {
       expected: `a string matching the RegExp ${source}`,
       representation: {

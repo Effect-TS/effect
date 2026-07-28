@@ -1247,6 +1247,17 @@ Expected a string including "c", got "ab"`
         )
       })
 
+      it("isPattern with stateful RegExp flags", async () => {
+        for (const regExp of [/^a/g, /^a/y]) {
+          const schema = Schema.String.check(Schema.isPattern(regExp))
+          const decoding = new TestSchema.Asserts(schema).decoding()
+
+          await decoding.succeed("a")
+          await decoding.succeed("a")
+          strictEqual(regExp.lastIndex, 0)
+        }
+      })
+
       it("isStartsWith", async () => {
         const schema = Schema.String.check(Schema.isStartsWith("a"))
         const asserts = new TestSchema.Asserts(schema)
