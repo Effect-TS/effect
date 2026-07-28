@@ -16,7 +16,7 @@ import * as Option from "effect/Option"
 import { badArgument, type PlatformError } from "effect/PlatformError"
 import * as Predicate from "effect/Predicate"
 import * as Queue from "effect/Queue"
-import type * as Scope from "effect/Scope"
+import * as Scope from "effect/Scope"
 import * as Terminal from "effect/Terminal"
 import * as readline from "node:readline"
 
@@ -34,6 +34,7 @@ export const make: (
   function*(shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit) {
     const stdin = process.stdin
     const stdout = process.stdout
+    const scope = yield* Effect.scope
 
     // stdin "end" fires once per process, so remember end-of-input for readers
     // created after the event (Bun never sets `readableEnded`).
@@ -44,34 +45,48 @@ export const make: (
     stdin.once("end", onStdinEnd)
     yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("end", onStdinEnd)))
 
-    const lines = yield* Queue.make<string, Cause.Done>()
-
-    // Keep one readline interface so lines consumed together remain available.
-    yield* Effect.acquireRelease(
-      Effect.sync(() => {
-        const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
-        readline.emitKeypressEvents(stdin, rl)
-        rl.on("line", (line) => Queue.offerUnsafe(lines, line))
-        rl.once("close", () => Queue.endUnsafe(lines))
-
-        if (stdin.isTTY) {
-          stdin.setRawMode(true)
+    const getLines = yield* Effect.cached(
+      Effect.gen(function*() {
+        const lines = yield* Queue.make<string, Cause.Done>()
+        if (inputEnded) {
+          Queue.endUnsafe(lines)
+          return lines
         }
-        return rl
-      }),
-      (rl) =>
-        Effect.sync(() => {
-          if (stdin.isTTY) {
-            stdin.setRawMode(false)
-          }
-          rl.close()
-        })
+
+        // Keep one readline interface so lines consumed together remain available.
+        yield* Scope.provide(
+          Effect.acquireRelease(
+            Effect.sync(() => {
+              const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
+              readline.emitKeypressEvents(stdin, rl)
+              rl.on("line", (line) => Queue.offerUnsafe(lines, line))
+              rl.once("close", () => Queue.endUnsafe(lines))
+
+              if (stdin.isTTY) {
+                stdin.setRawMode(true)
+              }
+              return rl
+            }),
+            (rl) =>
+              Effect.sync(() => {
+                if (stdin.isTTY) {
+                  stdin.setRawMode(false)
+                }
+                rl.close()
+              })
+          ),
+          scope
+        )
+
+        return lines
+      })
     )
 
     const columns = Effect.sync(() => stdout.columns ?? 0)
     const rows = Effect.sync(() => stdout.rows ?? 0)
 
     const readInput = Effect.gen(function*() {
+      yield* getLines
       const queue = yield* Queue.make<Terminal.UserInput, Cause.Done>()
       const handleKeypress = (s: string | undefined, k: readline.Key) => {
         const userInput = {
@@ -102,7 +117,7 @@ export const make: (
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
     })
 
-    const readLine = Queue.take(lines).pipe(
+    const readLine = Effect.flatMap(getLines, Queue.take).pipe(
       Effect.mapError(() => new Terminal.QuitError({}))
     )
 

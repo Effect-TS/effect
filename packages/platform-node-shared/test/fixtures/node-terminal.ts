@@ -50,6 +50,27 @@ const readLines = Effect.gen(function*() {
   return { first, second }
 })
 
+const unused = Effect.gen(function*() {
+  yield* Terminal.Terminal
+  return { dataListeners: process.stdin.listenerCount("data") }
+})
+
+const readLineAfterEnd = Effect.gen(function*() {
+  const terminal = yield* Terminal.Terminal
+  yield* Effect.callback<void>((resume) => {
+    if (process.stdin.readableEnded) {
+      resume(Effect.void)
+      return
+    }
+    const onEnd = () => resume(Effect.void)
+    process.stdin.once("end", onEnd)
+    process.stdin.resume()
+    return Effect.sync(() => process.stdin.off("end", onEnd))
+  })
+  const error = yield* terminal.readLine.pipe(Effect.flip)
+  return error._tag
+})
+
 const mode = process.argv[2]
 const program = Effect.gen(function*() {
   if (mode === "prompts") {
@@ -60,6 +81,10 @@ const program = Effect.gen(function*() {
     return yield* readLine
   } else if (mode === "read-lines") {
     return yield* readLines
+  } else if (mode === "unused") {
+    return yield* unused
+  } else if (mode === "read-line-after-end") {
+    return yield* readLineAfterEnd
   }
   return yield* Effect.die(`Unknown mode: ${mode}`)
 })

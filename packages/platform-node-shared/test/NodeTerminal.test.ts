@@ -19,6 +19,10 @@ const assertResult = (mode: string, input: string, expected: string) => {
 }
 
 describe("NodeTerminal", () => {
+  it("does not install a readline interface until the terminal is used", () => {
+    assertResult("unused", "", "{\"dataListeners\":0}")
+  })
+
   it("fails a prompt with QuitError after piped input is exhausted", () => {
     assertResult("prompts", "y\n", "{\"first\":true,\"second\":\"QuitError\"}")
   })
@@ -33,5 +37,9 @@ describe("NodeTerminal", () => {
 
   it("preserves lines buffered between sequential readLine calls", () => {
     assertResult("read-lines", "first\nsecond\n", "{\"first\":\"first\",\"second\":\"second\"}")
+  })
+
+  it("fails readLine with QuitError when stdin ended before initialization", () => {
+    assertResult("read-line-after-end", "", "\"QuitError\"")
   })
 })
