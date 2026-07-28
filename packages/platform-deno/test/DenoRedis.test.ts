@@ -114,12 +114,36 @@ it.effect("uses the URL username for two-argument AUTH", () =>
 
     const port = (listener.addr as Deno.NetAddr).port
     yield* Layer.build(DenoRedis.layer({
-      url: `redis://alice:secret@127.0.0.1:${port}`
+      url: `redis://alice:secret@127.0.0.1:${port}`,
+      password: undefined
     }))
 
     assert.strictEqual(
       yield* Fiber.join(server),
       "*3\r\n$4\r\nAUTH\r\n$5\r\nalice\r\n$6\r\nsecret\r\n"
+    )
+  })))
+
+it.effect("prefers explicit credentials over URL credentials", () =>
+  Effect.scoped(Effect.gen(function*() {
+    const listener = yield* makeListener
+    const server = yield* Effect.gen(function*() {
+      const connection = yield* accept(listener)
+      const request = yield* read(connection)
+      yield* write(connection, "+OK\r\n")
+      return request
+    }).pipe(Effect.forkChild)
+
+    const port = (listener.addr as Deno.NetAddr).port
+    yield* Layer.build(DenoRedis.layer({
+      url: `redis://alice:secret@127.0.0.1:${port}`,
+      username: "bob",
+      password: "other"
+    }))
+
+    assert.strictEqual(
+      yield* Fiber.join(server),
+      "*3\r\n$4\r\nAUTH\r\n$3\r\nbob\r\n$5\r\nother\r\n"
     )
   })))
 

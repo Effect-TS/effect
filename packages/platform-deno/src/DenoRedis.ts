@@ -29,14 +29,6 @@ export type RedisOptions = Omit<RedisConnectOptions, "hostname"> & {
   readonly url?: string
 }
 
-const withoutUndefined = <A extends object>(options: A): Partial<A> =>
-  Object.fromEntries(
-    Reflect.ownKeys(options).flatMap((key) => {
-      const value = Reflect.get(options, key)
-      return value === undefined ? [] : [[key, value]]
-    })
-  ) as Partial<A>
-
 /**
  * Service tag for Deno Redis integration, exposing the raw `@db/redis` client
  * and a `use` helper that maps client promise failures to `RedisError`.
@@ -54,14 +46,27 @@ const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
     Effect.tryPromise({
       try: () => {
         const { url, ...connectOptions } = options
-        if (url === undefined) {
-          return connect({ hostname: "localhost", ...withoutUndefined(connectOptions) })
+        const resolved = url === undefined ? { hostname: "localhost" } : parseURL(url)
+        if (url !== undefined) {
+          if (resolved.name !== undefined) resolved.username = resolved.name
+          delete resolved.name
         }
-        const { name: username, ...parsed } = parseURL(url)
-        return connect({
-          ...withoutUndefined({ ...parsed, username }),
-          ...withoutUndefined(connectOptions)
-        } as RedisConnectOptions)
+        if (connectOptions.hostname !== undefined) resolved.hostname = connectOptions.hostname
+        if (connectOptions.port !== undefined) resolved.port = connectOptions.port
+        if (connectOptions.tls !== undefined) resolved.tls = connectOptions.tls
+        if (connectOptions.caCerts !== undefined) resolved.caCerts = connectOptions.caCerts
+        if (connectOptions.db !== undefined) resolved.db = connectOptions.db
+        if (connectOptions.password !== undefined) resolved.password = connectOptions.password
+        if (connectOptions.username !== undefined) resolved.username = connectOptions.username
+        if (connectOptions.name !== undefined) resolved.name = connectOptions.name
+        if (connectOptions.maxRetryCount !== undefined) resolved.maxRetryCount = connectOptions.maxRetryCount
+        if (connectOptions.backoff !== undefined) resolved.backoff = connectOptions.backoff
+        if (connectOptions.healthCheckInterval !== undefined) {
+          resolved.healthCheckInterval = connectOptions.healthCheckInterval
+        }
+        if (connectOptions.signal !== undefined) resolved.signal = connectOptions.signal
+        if (connectOptions.noDelay !== undefined) resolved.noDelay = connectOptions.noDelay
+        return connect(resolved)
       },
       catch: (cause) => new Redis.RedisError({ cause })
     }),
