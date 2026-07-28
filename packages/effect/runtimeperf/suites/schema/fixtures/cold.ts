@@ -154,10 +154,13 @@ export const valibotFirstDecodeObject32 = () => ({
   validate: (result) => assert.equal(result.success, true)
 })
 
-export const zodFirstDecodeObject32 = () => ({
-  run: () => makeZodSchema().safeParse(input, { jitless: true }),
-  validate: (result) => assert.equal(result.success, true)
-})
+export const zodFirstDecodeObject32 = () => {
+  const options = { jitless: true }
+  return {
+    run: () => makeZodSchema().safeParse(input, options),
+    validate: (result) => assert.equal(result.success, true)
+  }
+}
 
 export const typeboxFirstDecodeObject32 = () => ({
   run: () => TypeBoxValue.Errors(makeTypeboxSchema(), input),
@@ -174,10 +177,13 @@ export const valibotFirstDecodeRecord32 = () => ({
   validate: (result) => assert.equal(result.success, true)
 })
 
-export const zodFirstDecodeRecord32 = () => ({
-  run: () => makeZodRecordSchema().safeParse(input, { jitless: true }),
-  validate: (result) => assert.equal(result.success, true)
-})
+export const zodFirstDecodeRecord32 = () => {
+  const options = { jitless: true }
+  return {
+    run: () => makeZodRecordSchema().safeParse(input, options),
+    validate: (result) => assert.equal(result.success, true)
+  }
+}
 
 export const typeboxFirstDecodeRecord32 = () => ({
   run: () => TypeBoxValue.Errors(makeTypeboxRecordSchema(), input),
@@ -194,10 +200,13 @@ export const valibotFirstDecodeLiteral100 = () => ({
   validate: (result) => assert.equal(result.success, true)
 })
 
-export const zodFirstDecodeLiteral100 = () => ({
-  run: () => makeZodLiteral100Schema().safeParse("value99", { jitless: true }),
-  validate: (result) => assert.equal(result.success, true)
-})
+export const zodFirstDecodeLiteral100 = () => {
+  const options = { jitless: true }
+  return {
+    run: () => makeZodLiteral100Schema().safeParse("value99", options),
+    validate: (result) => assert.equal(result.success, true)
+  }
+}
 
 export const typeboxFirstDecodeLiteral100 = () => ({
   run: () => TypeBoxValue.Errors(makeTypeboxLiteral100Schema(), "value99"),
@@ -214,10 +223,13 @@ export const valibotFirstDecodeTagged100 = () => ({
   validate: (result) => assert.equal(result.success, true)
 })
 
-export const zodFirstDecodeTagged100 = () => ({
-  run: () => makeZodTagged100Schema().safeParse(taggedInput, { jitless: true }),
-  validate: (result) => assert.equal(result.success, true)
-})
+export const zodFirstDecodeTagged100 = () => {
+  const options = { jitless: true }
+  return {
+    run: () => makeZodTagged100Schema().safeParse(taggedInput, options),
+    validate: (result) => assert.equal(result.success, true)
+  }
+}
 
 export const typeboxFirstDecodeTagged100 = () => ({
   run: () => TypeBoxValue.Errors(makeTypeboxTagged100Schema(), taggedInput),

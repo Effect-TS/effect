@@ -229,10 +229,11 @@ describe("Result", () => {
 
     it("mapError", () => {
       const f = Result.mapError((n: number) => n * 2)
-      assertSuccess(pipe(Result.succeed("a"), f), "a")
+      const success = Result.succeed("a")
+      strictEqual(pipe(success, f), success)
       assertFailure(pipe(Result.fail(1), f), 2)
       // data-first
-      assertSuccess(Result.mapError(Result.succeed("a"), (n: number) => n * 2), "a")
+      strictEqual(Result.mapError(success, (n: number) => n * 2), success)
       assertFailure(Result.mapError(Result.fail(1), (n) => n * 2), 2)
     })
 

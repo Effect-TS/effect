@@ -87,12 +87,14 @@ const calibrate = (runtimeCase, targetBatchTimeNs, maxBatchSize) => {
 
 const measure = (runtimeCase, batchSize, timeMs, warmupTimeMs) => {
   const bench = new Bench({
+    iterations: 1,
     time: timeMs,
     warmup: true,
+    warmupIterations: 1,
     warmupTime: warmupTimeMs,
     timestampProvider: "hrtimeNow"
   })
-  bench.add("runtimeperf", () => runBatch(runtimeCase.run, batchSize))
+  bench.add("runtimeperf", () => runBatch(runtimeCase.run, batchSize), { async: false })
   bench.runSync()
   const task = bench.tasks[0]
   const result = task.result
@@ -142,6 +144,7 @@ const main = async () => {
       readPositiveNumber("--time-ms", 500),
       readPositiveNumber("--warmup-time-ms", 150)
     )
+  runtimeCase.validate(sink)
   process.stdout.write(`${JSON.stringify({ ok: true, mode, ...output })}\n`)
 }
 

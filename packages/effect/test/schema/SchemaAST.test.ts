@@ -385,6 +385,21 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [])
     })
 
+    it("should handle function-valued declarations with sentinels", () => {
+      const a = Schema.declare(
+        (input): input is () => void => typeof input === "function",
+        { "~sentinels": [{ key: "kind", literal: "a" }] }
+      )
+      const b = Schema.declare(
+        (input): input is () => void => typeof input === "function",
+        { "~sentinels": [{ key: "kind", literal: "b" }] }
+      )
+      const schema = Schema.Union([a, b])
+      const ast = schema.ast
+      const input = Object.assign(() => {}, { kind: "a" })
+      deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
+    })
+
     it("should preserve duplicate candidates with a common discriminator", () => {
       const member = Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String })
       const schema = Schema.Union([
@@ -399,6 +414,18 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates({ kind: "c" }, ast.types), [])
       deepStrictEqual(SchemaAST.getCandidates({}, ast.types), [])
       deepStrictEqual(SchemaAST.getCandidates("a", ast.types), [])
+    })
+
+    it("should protect cached common sentinel candidates from external mutation", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a") }),
+        Schema.Struct({ kind: Schema.Literal("b") })
+      ])
+      const ast = schema.ast
+      const input = { kind: "a" }
+      const candidates = SchemaAST.getCandidates(input, ast.types)
+      Reflect.set(candidates, candidates.length, ast.types[1])
+      deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
     })
 
     it("should collect matches from different sentinel keys without duplicates", () => {
@@ -430,6 +457,34 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(["c"], ast.types), [])
       deepStrictEqual(SchemaAST.getCandidates("", ast.types), [ast.types[2]])
       deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [])
+    })
+
+    it("should handle tagged tuples with unique symbol sentinels", () => {
+      const a = Symbol.for("a")
+      const b = Symbol.for("b")
+      const schema = Schema.Union([
+        Schema.Tuple([Schema.UniqueSymbol(a), Schema.String]),
+        Schema.Tuple([Schema.UniqueSymbol(b), Schema.Number])
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates([a, "value"], ast.types), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates([b, 1], ast.types), [ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates([Symbol("a"), "value"], ast.types), [])
+    })
+
+    it(`should deduplicate repeated declaration sentinels in "oneOf" mode`, () => {
+      const member = Schema.declare(
+        (input): input is object => typeof input === "object" && input !== null,
+        {
+          "~sentinels": [
+            { key: "kind", literal: "a" },
+            { key: "kind", literal: "a" }
+          ]
+        }
+      )
+      const schema = Schema.Union([member], { mode: "oneOf" })
+      const input = { kind: "a" }
+      strictEqual(Schema.decodeUnknownSync(schema)(input), input)
     })
   })
 

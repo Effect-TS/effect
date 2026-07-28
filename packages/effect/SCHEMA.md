@@ -1637,9 +1637,12 @@ console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, c_d: 2 }))
 // { aB: 1, cD: 2 }
 ```
 
-By default, if a transformation results in duplicate keys, the last value wins.
+When parsing sequentially, transformed keys are applied in selection order, so
+the later selected property wins if a transformation produces a duplicate key.
+With concurrency greater than `1`, completion order determines which value is
+retained.
 
-**Example** (Merging transformed keys by keeping the last one)
+**Example** (Keeping the later selected value when parsing sequentially)
 
 ```ts
 import { Schema, SchemaTransformation } from "effect"

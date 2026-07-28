@@ -51,27 +51,25 @@ const main = () => {
   const executionOrder = []
 
   for (const [scenario, group] of groups) {
-    const calibrations = group.map((fixture) => ({
-      fixture,
-      result: calibrateFixture(fixture, defaults)
-    }))
-    const batchSize = Math.max(...calibrations.map(({ result }) => result.batchSize))
+    const calibrations = new Map(group.map((fixture) => [fixture, calibrateFixture(fixture, defaults)]))
     const byTarget = new Map(group.map((fixture) => [fixture.target, []]))
 
     for (let round = 0; round < defaults.rounds; round++) {
       for (const fixture of rotate(group, round % group.length)) {
-        const measurement = measureFixture(fixture, defaults, batchSize)
+        const calibration = calibrations.get(fixture)
+        const measurement = measureFixture(fixture, defaults, calibration.batchSize)
         byTarget.get(fixture.target).push(measurement)
         executionOrder.push({ scenario, round: round + 1, target: fixture.target })
       }
     }
 
     for (const fixture of group) {
+      const calibration = calibrations.get(fixture)
       const measurements = byTarget.get(fixture.target)
       results.push({
         fixture,
-        batchSize,
-        calibration: calibrations.find((item) => item.fixture.target === fixture.target).result,
+        batchSize: calibration.batchSize,
+        calibration,
         measurements,
         aggregate: aggregateMeasurements(measurements)
       })

@@ -1584,7 +1584,7 @@ export function decodeUnknownExit<S extends ConstraintDecoder<unknown>>(schema: 
 
 function fromIssueExit<A>(exit: Exit_.Exit<A, SchemaIssue.Issue>): Exit_.Exit<A, SchemaError> {
   return Exit_.isSuccess(exit)
-    ? Exit_.succeed(exit.value)
+    ? exit as unknown as Exit_.Exit<A, SchemaError>
     : Exit_.failCause(Cause_.map(exit.cause, (issue) => new SchemaError(issue)))
 }
 
@@ -3887,7 +3887,9 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  * **Gotchas**
  *
  * When decoded or encoded key transformations produce the same property key,
- * the later selected own property overwrites the earlier value.
+ * sequential parsing applies selected own properties in selection order, so
+ * the later selected property overwrites the earlier value. With concurrency
+ * greater than `1`, completion order determines which value is retained.
  *
  * **Example** (Defining a string-keyed record of numbers)
  *

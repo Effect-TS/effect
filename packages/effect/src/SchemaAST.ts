@@ -816,7 +816,8 @@ export class Void extends Base {
   readonly _tag = "Void"
   /** @internal */
   getParser() {
-    return fromAnyToConst(undefined)
+    const succeed = InternalParser.succeed(undefined)
+    return (input: unknown) => input === InternalParser.missing ? InternalParser.missingExit : succeed
   }
   /** @internal */
   toCodecJson(): AST {
@@ -1080,9 +1081,9 @@ function isTemplateLiteralPart(ast: AST): ast is TemplateLiteralPart {
       return true
     case "Literal":
     case "TemplateLiteral":
-      return ast.checks === undefined
+      return !ast.checks
     case "Union":
-      return ast.checks === undefined && ast.types.every(isTemplateLiteralPart)
+      return !ast.checks && ast.types.every(isTemplateLiteralPart)
     default:
       return false
   }
@@ -1172,7 +1173,7 @@ export class TemplateLiteral extends Base {
       new SchemaTransformation.Transformation(
         SchemaGetter.transformOrFail((s: string, options) => {
           const segments = segmentTemplateLiteralParts(this, s, options)
-          if (segments !== undefined) return Effect.succeed(segments)
+          if (segments) return Effect.succeed(segments)
           return Effect.fail(
             new SchemaIssue.InvalidValue(Option.some(s), {
               message: `Expected a string matching template literal parts, got ${format(s)}`
@@ -1328,7 +1329,8 @@ export class String extends Base {
   }
   /** @internal */
   matchPart(s: string, options: ParseOptions): string | undefined {
-    return applyTemplateLiteralPartChecks(this, s, options)
+    const checks = this.checks
+    return checks && !options.disableChecks && collectIssues(checks, s, undefined, this, options) ? undefined : s
   }
   /** @internal */
   getExpected(): string {
@@ -1385,9 +1387,10 @@ export class Number extends Base {
     return this._match(isStringFiniteRegExp, s, options)
   }
   private _match(regexp: RegExp, s: string, options: ParseOptions): number | undefined {
-    return regexp.test(s)
-      ? applyTemplateLiteralPartChecks(this, globalThis.Number(s), options)
-      : undefined
+    if (!regexp.test(s)) return undefined
+    const value = globalThis.Number(s)
+    if (options.disableChecks || !this.checks) return value
+    return collectIssues(this.checks, value, undefined, this, options) ? undefined : value
   }
   /** @internal */
   toCodecJson(): AST {
@@ -1420,7 +1423,7 @@ function hasCheck(checks: ReadonlyArray<Check<unknown>>, id: string): boolean {
 }
 
 function numberToJson(checks: Checks | undefined): Link {
-  const encodedFinite = checks === undefined
+  const encodedFinite = !checks
     ? finite
     : appendChecks(finite, checks)
 
@@ -1512,7 +1515,8 @@ export class Symbol extends Base {
   }
   /** @internal */
   matchKey(s: symbol, options: ParseOptions): symbol | undefined {
-    return applyTemplateLiteralPartChecks(this, s, options)
+    if (options.disableChecks || !this.checks) return s
+    return collectIssues(this.checks, s, undefined, this, options) ? undefined : s
   }
   /** @internal */
   toCodecStringTree(): AST {
@@ -1565,9 +1569,10 @@ export class BigInt extends Base {
   }
   /** @internal */
   matchPart(s: string, options: ParseOptions): bigint | undefined {
-    return isStringBigIntRegExp.test(s)
-      ? applyTemplateLiteralPartChecks(this, globalThis.BigInt(s), options)
-      : undefined
+    if (!isStringBigIntRegExp.test(s)) return undefined
+    const value = globalThis.BigInt(s)
+    if (options.disableChecks || !this.checks) return value
+    return collectIssues(this.checks, value, undefined, this, options) ? undefined : value
   }
   /** @internal */
   toCodecStringTree(): AST {
@@ -1661,38 +1666,45 @@ export class Arrays extends Base {
     this.rest = rest
     this.encodingChecks = encodingChecks
 
-    // A required element cannot follow an optional element. ts(1257)
-    const i = elements.findIndex(isOptional)
-    if (i !== -1 && (elements.slice(i + 1).some((e) => !isOptional(e)) || rest.length > 1)) {
+    let hasOptional = false
+    for (let i = 0; i < elements.length; i++) {
+      if (isOptional(elements[i])) {
+        hasOptional = true
+      } else if (hasOptional) {
+        throw new Error("A required element cannot follow an optional element. ts(1257)")
+      }
+    }
+    if (hasOptional && rest.length > 1) {
       throw new Error("A required element cannot follow an optional element. ts(1257)")
     }
 
     // An optional element cannot follow a rest element.ts(1266)
-    if (rest.length > 1 && rest.slice(1).some(isOptional)) {
-      throw new Error("An optional element cannot follow a rest element. ts(1266)")
+    for (let i = 1; i < rest.length; i++) {
+      if (isOptional(rest[i])) {
+        throw new Error("An optional element cannot follow a rest element. ts(1266)")
+      }
     }
   }
   /** @internal */
   getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
-    const elements = ast.elements.map((ast) => ({ ast, parser: recur(ast) }))
-    const rest = ast.rest.map((ast) => ({ ast, parser: recur(ast) }))
-    const elementLen = elements.length
-
-    const [head, ...tail] = rest
-    const tailLen = tail.length
+    type ElementParser = { readonly ast: AST; readonly parser: SchemaParser.Parser }
+    let elements: Array<ElementParser> | undefined
+    let rest: Array<ElementParser> | undefined
+    const elementLen = ast.elements.length
+    const tailLen = Math.max(0, ast.rest.length - 1)
 
     function getParser(
       tailThreshold: number,
       index: number
     ): { readonly ast: AST; readonly parser: SchemaParser.Parser } {
       if (index < elementLen) {
-        return elements[index]
+        return elements![index]
       } else if (index >= tailThreshold) {
-        return tail[index - tailThreshold]
+        return rest![index - tailThreshold + 1]
       }
-      return head
+      return rest![0]
     }
 
     return Effect.fnUntracedEager(function*(input, options) {
@@ -1704,6 +1716,10 @@ export class Arrays extends Base {
       if (!Array.isArray(input)) {
         return yield* Effect.fail(new SchemaIssue.InvalidType(ast, InternalParser.toOption(input)))
       }
+      if (!elements) {
+        elements = ast.elements.map((ast) => ({ ast, parser: recur(ast) }))
+        rest = ast.rest.map((ast) => ({ ast, parser: recur(ast) }))
+      }
 
       const len = input.length
       const state = {
@@ -1711,7 +1727,7 @@ export class Arrays extends Base {
         getParser,
         input,
         len,
-        tailThreshold: resolveTailThreshold(len, elementLen, tailLen),
+        tailThreshold: Math.max(elementLen, len - tailLen),
         output: new globalThis.Array(len),
         issues: undefined as Arr.NonEmptyArray<SchemaIssue.Issue> | undefined,
         options
@@ -1818,14 +1834,6 @@ const parseArray = iterateEager<{
     }
   }
 })
-
-function resolveTailThreshold(
-  inputLen: number,
-  elementLen: number,
-  tailLen: number
-) {
-  return Math.max(elementLen, inputLen - tailLen)
-}
 
 const resolveConcurrency = (value: number | "unbounded" | undefined) => {
   value = value === "unbounded" ? Infinity : value ?? 1
@@ -2078,38 +2086,27 @@ export class Objects extends Base {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
     const expectedKeys: Array<PropertyKey> = []
-    const expectedKeysSet = new Set<PropertyKey>()
-    const properties: Array<{
-      readonly parser: SchemaParser.Parser
-      readonly name: PropertyKey
-      readonly type: AST
-    }> = []
     for (const ps of ast.propertySignatures) {
       expectedKeys.push(ps.name)
-      expectedKeysSet.add(ps.name)
-      properties.push({
-        parser: recur(ps.type),
-        name: ps.name,
-        type: ps.type
-      })
     }
-    const hasProperties = properties.length > 0
+    const hasProperties = expectedKeys.length
     const indexCount = ast.indexSignatures.length
+    let expectedKeysSet = hasProperties && indexCount ? new Set(expectedKeys) : undefined
     // ---------------------------------------------
     // handle empty struct
     // ---------------------------------------------
-    if (ast.propertySignatures.length === 0 && indexCount === 0) {
+    if (!hasProperties && !indexCount) {
       return fromRefinement(ast, Predicate.isNotNullish)
     }
 
-    const indexes = indexCount > 0 ?
-      ast.indexSignatures.map((is) => ({
-        is,
-        parserKey: recur(parameterFromPropertyKey(is.parameter)),
-        parserValue: recur(is.type)
-      })) :
-      undefined
-
+    let properties: Array<ParsedProperty> | undefined
+    let indexes:
+      | Array<{
+        readonly is: IndexSignature
+        readonly parserKey: SchemaParser.Parser
+        readonly parserValue: SchemaParser.Parser
+      }>
+      | undefined
     type Index = NonNullable<typeof indexes>[number]
     const finishIndex = (
       s: ObjectParserState,
@@ -2125,7 +2122,7 @@ export class Objects extends Base {
         ? inputValue
         : (exitValue as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args]
       if (k2 !== InternalParser.missing && value !== InternalParser.missing) {
-        if (hasProperties && (expectedKeysSet.has(key) || expectedKeysSet.has(k2))) return Exit.void
+        if (hasProperties && (expectedKeysSet!.has(key) || expectedKeysSet!.has(k2))) return Exit.void
         InternalRecord.assignProperty(s.out, k2, value)
       }
       return Exit.void
@@ -2136,7 +2133,7 @@ export class Objects extends Base {
       index: Index,
       exitKey?: Exit.Exit<unknown, SchemaIssue.Issue>
     ): Effect.Effect<void, SchemaIssue.Issue, any> => {
-      if (exitKey === undefined) {
+      if (!exitKey) {
         const eff = index.parserKey(key, s.options)
         if (!effectIsExit(eff)) {
           return Effect.flatMap(Effect.exit(eff), (exit) => parseIndex(s, key, index, exit))
@@ -2166,7 +2163,7 @@ export class Objects extends Base {
         ? finishIndex(s, key, key, inputValue, result)
         : Effect.flatMap(Effect.exit(result), (exit) => finishIndex(s, key, key, inputValue, exit))
     }
-    const parseIndexes = indexes ?
+    const parseIndexes = indexCount ?
       iterateEager<ObjectParserState, [key: PropertyKey, index: Index]>()({
         onItem: (s, [key, index]) => parseIndex(s, key, index),
         step: (_s, _, exit: Exit.Exit<void, SchemaIssue.Issue>) => exit._tag === "Failure" ? exit : undefined
@@ -2181,6 +2178,20 @@ export class Objects extends Base {
       // If the input is not a record, return early with an error
       if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
         return yield* Effect.fail(new SchemaIssue.InvalidType(ast, InternalParser.toOption(input)))
+      }
+      if (!properties) {
+        properties = ast.propertySignatures.map((ps) => ({
+          parser: recur(ps.type),
+          name: ps.name,
+          type: ps.type
+        }))
+        indexes = indexCount
+          ? ast.indexSignatures.map((is) => ({
+            is,
+            parserKey: recur(parameterFromPropertyKey(is.parameter)),
+            parserValue: recur(is.type)
+          }))
+          : undefined
       }
 
       const record = input as Record<PropertyKey, unknown>
@@ -2200,7 +2211,8 @@ export class Objects extends Base {
       // handle excess properties
       // ---------------------------------------------
       let inputKeys: Array<PropertyKey> | undefined
-      if (ast.indexSignatures.length === 0 && (onExcessPropertyError || onExcessPropertyPreserve)) {
+      if (!indexCount && (onExcessPropertyError || onExcessPropertyPreserve)) {
+        expectedKeysSet ??= new Set(expectedKeys)
         inputKeys = Reflect.ownKeys(record)
         for (let i = 0; i < inputKeys.length; i++) {
           const key = inputKeys[i]
@@ -2234,16 +2246,16 @@ export class Objects extends Base {
       // handle property signatures
       // ---------------------------------------------
       if (hasProperties) {
-        const eff = parseProperties(state, properties, concurrency)
+        const eff = parseProperties(state, properties!, concurrency)
         if (eff) yield* eff
       }
 
       // ---------------------------------------------
       // handle index signatures
       // ---------------------------------------------
-      if (indexes && concurrency === undefined) {
+      if (indexCount && !concurrency) {
         for (let i = 0; i < indexCount; i++) {
-          const index = indexes[i]
+          const index = indexes![i]
           const parse = index.is.parameter === string ? parseStringIndex : parseIndex
           const keys = index.is.parameter === string
             ? Object.keys(record)
@@ -2539,10 +2551,16 @@ export function collectSentinels(ast: AST): Array<Sentinel> {
         return []
       })
     case "Arrays":
-      return ast.elements.flatMap((e, i) => {
-        return isLiteral(e) && !isOptional(e)
-          ? [{ key: i, literal: e.literal }]
-          : []
+      return ast.elements.flatMap((e, i): Array<Sentinel> => {
+        if (!isOptional(e)) {
+          if (isLiteral(e)) {
+            return [{ key: i, literal: e.literal }]
+          }
+          if (isUniqueSymbol(e)) {
+            return [{ key: i, literal: e.symbol }]
+          }
+        }
+        return []
       })
     case "Suspend":
       return collectSentinels(ast.thunk())
@@ -2552,13 +2570,12 @@ export function collectSentinels(ast: AST): Array<Sentinel> {
 type CandidateIndex =
   | ((input: any) => ReadonlyArray<AST>)
   | {
-    byType?: { [K in Type]?: Array<number> }
     bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
     otherwise?: { [K in Type]?: Array<number> }
   }
 
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
-const emptyCandidates: ReadonlyArray<AST> = []
+const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
 function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let idx = candidateIndexCache.get(types)
@@ -2583,14 +2600,9 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       }
     }
 
-    const candidateTypes = getCandidateTypes(encoded)
     const sentinels = collectSentinels(encoded)
 
-    // by-type (always filled – cheap primary filter)
-    idx.byType ??= {}
-    for (const t of candidateTypes) (idx.byType[t] ??= []).push(i)
-
-    if (sentinels.length > 0) { // discriminated variants
+    if (sentinels.length) { // discriminated variants
       idx.bySentinel ??= new Map()
       for (const { key, literal } of sentinels) {
         let m = idx.bySentinel.get(key)
@@ -2601,21 +2613,23 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       }
     } else { // non-discriminated
       idx.otherwise ??= {}
+      const candidateTypes = getCandidateTypes(encoded)
       for (const t of candidateTypes) (idx.otherwise[t] ??= []).push(i)
     }
   }
 
   if (literalCandidates) {
+    literalCandidates.forEach(Object.freeze)
     idx = (input) => literalCandidates.get(input) ?? emptyCandidates
-  } else if (idx.bySentinel?.size === 1 && idx.otherwise === undefined) {
+  } else if (idx.bySentinel?.size === 1 && !idx.otherwise) {
     for (const [key, byValue] of idx.bySentinel) {
-      const candidates = byValue as unknown as Map<LiteralValue | symbol, Array<AST>>
+      const candidates = byValue as unknown as Map<LiteralValue | symbol, ReadonlyArray<AST>>
       for (const [literal, indexes] of byValue) {
-        candidates.set(literal, indexes.map((index) => types[index]))
+        candidates.set(literal, Object.freeze(indexes.map((index) => types[index])))
       }
       idx = (input) =>
-        input !== null && typeof input === "object" && Object.hasOwn(input, key)
-          ? candidates.get(input[key]) ?? emptyCandidates
+        Predicate.isObjectKeyword(input) && Object.hasOwn(input, key)
+          ? candidates.get((input as any)[key]) ?? emptyCandidates
           : emptyCandidates
     }
   }
@@ -2649,8 +2663,8 @@ export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyAr
 
   // 1. Try sentinel-based dispatch (most selective)
   if (idx.bySentinel) {
-    const base = idx.otherwise?.[runtimeType] ?? []
-    if (runtimeType === "object" || runtimeType === "array") {
+    const base = idx.otherwise?.[runtimeType] ?? emptyCandidates
+    if (Predicate.isObjectKeyword(input)) {
       const selected = new Set(base)
       for (const [k, m] of idx.bySentinel) {
         if (Object.hasOwn(input, k)) {
@@ -2660,13 +2674,13 @@ export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyAr
           }
         }
       }
-      return Array.from(selected).sort((a, b) => a - b).map((i) => types[i]).filter(filterLiterals(input))
+      return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
     }
     return base.map((i) => types[i])
   }
 
   // 2. Fallback: runtime-type dispatch only
-  return (idx.byType?.[runtimeType] ?? []).map((i) => types[i]).filter(filterLiterals(input))
+  return (idx.otherwise?.[runtimeType] ?? emptyCandidates).map((i) => types[i]).filter(filterLiterals(input))
 }
 
 /**
@@ -2753,7 +2767,7 @@ export class Union<A extends AST = AST> extends Base {
       if (!eff) {
         return state.out ?? Effect.fail(new SchemaIssue.AnyOf(ast, input, state.issues ?? []))
       }
-      return Effect.flatMap(eff, (_) => {
+      return Effect.flatMapEager(eff, (_) => {
         return state.out === InternalParser.sameExit
           ? Effect.succeed(input)
           : state.out ?? Effect.fail(new SchemaIssue.AnyOf(ast, input, state.issues ?? []))
@@ -2938,7 +2952,7 @@ export class Suspend extends Base {
     encoding?: Encoding,
     context?: Context
   ) {
-    if (checks !== undefined) {
+    if (checks) {
       throw new Error("Cannot add checks to Suspend")
     }
     super(annotations, undefined, encoding, context)
@@ -3228,7 +3242,7 @@ export function annotate<A extends AST>(ast: A, annotations: Schema.Annotations.
 
 /** @internal */
 export function replaceChecks<A extends AST>(ast: A, checks: Checks | undefined): A {
-  if (ast._tag === "Suspend" && checks !== undefined) {
+  if (ast._tag === "Suspend" && checks) {
     throw new Error("Cannot add checks to Suspend")
   }
   if (ast.checks === checks) {
@@ -3647,11 +3661,6 @@ function fromConst<const T>(
   }
 }
 
-function fromAnyToConst<const T>(value: T): SchemaParser.Parser {
-  const succeed = InternalParser.succeed(value)
-  return (input) => input === InternalParser.missing ? InternalParser.missingExit : succeed
-}
-
 function fromRefinement<T>(
   ast: AST,
   refinement: (input: unknown) => input is T
@@ -3666,11 +3675,6 @@ function fromRefinement<T>(
   }
 }
 
-function applyTemplateLiteralPartChecks<A>(ast: AST, value: A, options: ParseOptions): A | undefined {
-  if (options?.disableChecks || ast.checks === undefined) return value
-  return collectIssues(ast.checks, value, undefined, ast, options) === undefined ? value : undefined
-}
-
 function segmentTemplateLiteralParts(
   ast: TemplateLiteral,
   input: string,
@@ -3678,17 +3682,18 @@ function segmentTemplateLiteralParts(
 ): Array<string> | undefined {
   const parts = ast.encodedParts
   const literals = ast.literals
+  const inputLength = input.length
   for (let i = 0; i < literals.length; i++) {
     const literal = literals[i]
-    if (literal !== undefined && !input.includes(literal)) return undefined
+    if (literal && !input.includes(literal)) return undefined
   }
-  if (ast.suffixLengths[0] > input.length) return undefined
+  if (ast.suffixLengths[0] > inputLength) return undefined
 
   const out = new Array<string>(parts.length)
   let failures: Set<number> | undefined
   function go(i: number, pos: number): boolean {
-    if (i === parts.length) return pos === input.length
-    if (failures?.has(i * (input.length + 1) + pos)) return false
+    if (i === parts.length) return pos === inputLength
+    if (failures?.has(i * (inputLength + 1) + pos)) return false
     const part = parts[i]
     if (i === parts.length - 1) {
       const s = input.slice(pos)
@@ -3703,7 +3708,7 @@ function segmentTemplateLiteralParts(
         return true
       }
     } else {
-      const maximumEnd = input.length - ast.suffixLengths[i + 1]
+      const maximumEnd = inputLength - ast.suffixLengths[i + 1]
       // Splits preceding a literal only need to consider occurrences of that literal.
       const anchor = literals[i + 1]
       let end = anchor === undefined ? maximumEnd : input.lastIndexOf(anchor, maximumEnd)
@@ -3718,7 +3723,7 @@ function segmentTemplateLiteralParts(
       }
     }
     failures ??= new Set()
-    failures.add(i * (input.length + 1) + pos)
+    failures.add(i * (inputLength + 1) + pos)
     return false
   }
   return go(0, 0) ? out : undefined
@@ -3894,13 +3899,19 @@ export function collectIssues<T>(
     const check = checks[i]
     if (check._tag === "FilterGroup") {
       issues = collectIssues(check.checks, value, issues, ast, options)
+      if (
+        issues &&
+        (options.errors !== "all" || (issues[issues.length - 1] as SchemaIssue.Filter).filter.aborted)
+      ) {
+        return issues
+      }
     } else {
       const issue = check.run(value, ast, options)
       if (issue) {
         const filter = new SchemaIssue.Filter(value, check, issue)
         if (issues) issues.push(filter)
         else issues = [filter]
-        if (check.aborted || options?.errors !== "all") {
+        if (options.errors !== "all" || check.aborted) {
           return issues
         }
       }
@@ -4098,7 +4109,7 @@ export const Json = new Declaration(
   [],
   () => (input, ast) =>
     isJson(input) ?
-      Effect.succeed(input) :
+      InternalParser.sameExit :
       Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input))),
   {
     representation: {
@@ -4150,7 +4161,7 @@ const StringTree = new Declaration(
   [],
   () => (input, ast) =>
     isStringTree(input) ?
-      Effect.succeed(input) :
+      InternalParser.sameExit :
       Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input))),
   { expected: "StringTree", toCodecStringTree: () => undefined }
 )

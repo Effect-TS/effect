@@ -418,6 +418,59 @@ describe("SchemaParser", () => {
       assertTrue(Exit.isFailure(result))
     })
 
+    it("rejects a missing root output after parsing structural schemas", () => {
+      const missing = new SchemaGetter.Getter<never, unknown>(() => Effect.succeedNone)
+      const array = Schema.Array(Schema.String).pipe(Schema.decode({
+        decode: missing,
+        encode: missing
+      }))
+      const struct = Schema.Struct({ value: Schema.String }).pipe(Schema.decode({
+        decode: missing,
+        encode: missing
+      }))
+
+      assertTrue(Exit.isFailure(SchemaParser.decodeUnknownExit(array)(["value"])))
+      assertTrue(Exit.isFailure(SchemaParser.encodeUnknownExit(array)(["value"])))
+      assertTrue(Exit.isFailure(SchemaParser.decodeUnknownExit(struct)({ value: "value" })))
+      assertTrue(Exit.isFailure(SchemaParser.encodeUnknownExit(struct)({ value: "value" })))
+    })
+
+    it("rejects an invalid root without compiling deeply nested structural parsers", () => {
+      let array: Schema.Codec<unknown> = Schema.String
+      let struct: Schema.Codec<unknown> = Schema.String
+      for (let i = 0; i < 5_000; i++) {
+        array = Schema.Array(array)
+        struct = Schema.Struct({ value: struct })
+      }
+
+      assertTrue(Exit.isFailure(SchemaParser.decodeUnknownExit(array)(null)))
+      assertTrue(Exit.isFailure(SchemaParser.decodeUnknownExit(struct)(null)))
+    })
+
+    it("stops outer checks after an aborting check in a FilterGroup", () => {
+      let innerRuns = 0
+      let outerRuns = 0
+      const group = Schema.makeFilter(() => false).abort().and(
+        Schema.makeFilter(() => {
+          innerRuns++
+          return false
+        })
+      )
+      const schema = Schema.String.check(
+        group,
+        Schema.makeFilter(() => {
+          outerRuns++
+          return false
+        })
+      )
+
+      const result = SchemaParser.decodeUnknownExit(schema, { errors: "all" })("value")
+
+      assertTrue(Exit.isFailure(result))
+      strictEqual(innerRuns, 0)
+      strictEqual(outerRuns, 0)
+    })
+
     it.effect("preserves unchanged values through asynchronous middleware", () =>
       Effect.gen(function*() {
         const schema = Schema.String.pipe(

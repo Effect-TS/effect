@@ -29,8 +29,9 @@ const valibotCase = (schema, input, success) => () => {
 }
 
 const zodCase = (schema, input, success) => () => {
+  const options = { jitless: true }
   return {
-    run: () => schema.safeParse(input, { jitless: true }),
+    run: () => schema.safeParse(input, options),
     validate: (result) => {
       assert.equal(result.success, success)
       if (success) assert.deepEqual(result.data, input)

@@ -4679,7 +4679,6 @@ const forEachSequential = <A, B, E, R>(
 
 type IterateEagerOptions = {
   readonly concurrency?: number | undefined
-  readonly start?: number | undefined
   readonly end?: number | undefined
   readonly orderedStep?: boolean | undefined
 }
@@ -4720,11 +4719,11 @@ const iterateEagerImpl = <S, A, X, E, R, E2>(options: {
     items: ReadonlyArray<A>,
     opts: IterateEagerOptions | undefined
   ): Effect.Effect<void, E | E2, R> | undefined => {
-    let index = opts?.start ?? 0
+    let index = 0
     const end = opts?.end ?? items.length
     const concurrency = opts?.concurrency ?? 1
     if (concurrency === 1) {
-      return runSequential(state, items, index, end)
+      return runSequential(state, items, 0, end)
     }
     const orderedStep = opts?.orderedStep === true && concurrency > 1
     let done = false

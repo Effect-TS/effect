@@ -25,6 +25,12 @@ describe("runtimeperf stats", () => {
     assert.equal(analyzePairs([100, 101, 99], [100, 101, 99], options).status, "inconclusive")
   })
 
+  it("keeps exact percentage thresholds inconclusive", () => {
+    const options = { iterations: 100, seed: 1 }
+    assert.equal(analyzePairs([100, 100, 100], [98, 98, 98], options).status, "inconclusive")
+    assert.equal(analyzePairs([100, 100, 100], [105, 105, 105], options).status, "inconclusive")
+  })
+
   it("is deterministic for a fixed seed", () => {
     const first = bootstrapMedianLogRatio([0.8, 0.9, 1], { iterations: 1_000, seed: 42 })
     const second = bootstrapMedianLogRatio([0.8, 0.9, 1], { iterations: 1_000, seed: 42 })

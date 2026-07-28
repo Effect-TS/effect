@@ -115,9 +115,9 @@ export const analyzePairs = (
   const deltaPercent = (interval.ratio - 1) * 100
   const lowPercent = (interval.lowRatio - 1) * 100
   const highPercent = (interval.highRatio - 1) * 100
-  const status = highPercent < -minImprovementPercent
+  const status = interval.highRatio < 1 - minImprovementPercent / 100
     ? "improvement"
-    : lowPercent > maxRegressionPercent
+    : interval.lowRatio > 1 + maxRegressionPercent / 100
     ? "regression"
     : "inconclusive"
   return {

@@ -86,10 +86,10 @@ transformation with no equivalent operation in `Value.Errors`.
 
 ## Measurement model
 
-Each worker validates the fixture before measuring. Calibration finds a batch
-large enough for the configured target duration. Implementations in the same
-scenario use the largest proposed batch and execute in separate processes with
-rotating order.
+Each worker validates the fixture before and after measuring. Calibration finds
+a batch large enough for the configured target duration. Each implementation
+uses its own calibrated batch and executes in a separate process, with rotating
+order within the scenario.
 
 Tinybench measures one synchronous batched task. The primary process result is:
 

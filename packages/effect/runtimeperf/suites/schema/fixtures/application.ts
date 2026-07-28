@@ -82,8 +82,9 @@ export const valibotMessageValid = () => {
 }
 
 export const zodMessageValid = () => {
+  const options = { jitless: true }
   return {
-    run: () => zodMessage.safeParse(input, { jitless: true }),
+    run: () => zodMessage.safeParse(input, options),
     validate: (result) => {
       assert.equal(result.success, true)
       assert.deepEqual(result.data, expected)

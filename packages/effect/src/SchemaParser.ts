@@ -912,7 +912,7 @@ export const encodeSync: <S extends Schema.ConstraintEncoder<unknown>>(
 const mergeParseOptions = (
   options: SchemaAST.ParseOptions,
   overrideOptions: SchemaAST.ParseOptions | undefined
-): SchemaAST.ParseOptions => overrideOptions === undefined ? options : { ...options, ...overrideOptions }
+): SchemaAST.ParseOptions => overrideOptions ? { ...options, ...overrideOptions } : options
 
 const getValue = (value: unknown): Effect.Effect<any, SchemaIssue.Issue> => {
   if (value === InternalParser.missing) {
@@ -932,13 +932,13 @@ export function run<T, R>(ast: SchemaAST.AST) {
     if (result === InternalParser.sameExit) {
       return Effect.succeed(input) as Effect.Effect<T, SchemaIssue.Issue, R>
     }
-    return effectIsExit(result)
-      ? (result === InternalParser.missingExit ? getValue(InternalParser.missing) : result) as Effect.Effect<
-        T,
-        SchemaIssue.Issue,
-        R
-      >
-      : Effect.flatMapEager(result, getValue)
+    if (!effectIsExit(result)) {
+      return Effect.flatMapEager(result, getValue)
+    }
+    return (result as InternalParser.Success<unknown, SchemaIssue.Issue>)[InternalParser.args] ===
+        InternalParser.missing
+      ? getValue(InternalParser.missing)
+      : result as Effect.Effect<T, SchemaIssue.Issue, R>
   }
 }
 
@@ -1111,7 +1111,7 @@ function makeParser(ast: SchemaAST.AST): Parser {
       ? (input, options) => parseLocal(input, mergeParseOptions(options, astOptions))
       : parseLocal
   }
-  const runLinks = (
+  return (
     input: unknown,
     options: SchemaAST.ParseOptions
   ) => {
@@ -1179,5 +1179,4 @@ function makeParser(ast: SchemaAST.AST): Parser {
       return local === InternalParser.sameExit ? InternalParser.succeed(value) : local
     })
   }
-  return runLinks
 }
