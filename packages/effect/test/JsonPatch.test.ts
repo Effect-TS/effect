@@ -166,6 +166,15 @@ describe("JsonPatch", () => {
             { op: "replace", path: "/a~01b", value: 2 }
           ])
         })
+
+        it("treats '__proto__' as an own key", () => {
+          const oldValue = JSON.parse(`{"__proto__":{"value":1}}`)
+          const newValue = JSON.parse(`{"__proto__":{"value":2}}`)
+
+          deepStrictEqual(JsonPatch.get(oldValue, newValue), [
+            { op: "replace", path: "/__proto__/value", value: 2 }
+          ])
+        })
       })
     })
 
@@ -562,6 +571,19 @@ describe("JsonPatch", () => {
         )
       })
 
+      it("does not treat inherited properties as document members", () => {
+        const document = Object.create({ inherited: { value: 1 } }) as Schema.JsonObject
+
+        expectMessage(
+          () => JsonPatch.apply([{ op: "replace", path: "/inherited/value", value: 2 }], document),
+          "Cannot replace at"
+        )
+        expectMessage(
+          () => JsonPatch.apply([{ op: "remove", path: "/inherited" }], document),
+          "does not exist"
+        )
+      })
+
       it("rejects add/replace when the parent is missing or not a container", () => {
         expectMessage(
           () => JsonPatch.apply([{ op: "add", path: "/a/b", value: 1 }], { a: null }),
@@ -585,6 +607,22 @@ describe("JsonPatch", () => {
           () => JsonPatch.apply([{ op: "add", path: "/a/b/c", value: 1 }], { a: { b: "not-object" } }),
           "not a container"
         )
+      })
+
+      it("rejects operations when a nested parent cannot be resolved", () => {
+        const cases: ReadonlyArray<[JsonPatch.JsonPatchOperation, Schema.Json]> = [
+          [{ op: "add", path: "/a/b/c", value: 1 }, { a: null }],
+          [{ op: "add", path: "/a/0/b", value: 1 }, { a: [] }],
+          [{ op: "replace", path: "/a/b", value: 1 }, {}],
+          [{ op: "remove", path: "/a/b" }, {}],
+          [{ op: "remove", path: "/a/b/c" }, { a: "not-object" }]
+        ]
+        for (const [operation, document] of cases) {
+          expectMessage(
+            () => JsonPatch.apply([operation], document),
+            `Cannot ${operation.op} at`
+          )
+        }
       })
 
       it("rejects remove at the root", () => {
@@ -616,6 +654,34 @@ describe("JsonPatch", () => {
 
         JsonPatch.apply(patch, { a: 1 })
         deepStrictEqual(patch, patchCopy)
+      })
+
+      it("preserves references outside the modified path", () => {
+        const unchanged = { value: 1 }
+        const original = { changed: { value: 1 }, unchanged }
+        const result = JsonPatch.apply([{ op: "replace", path: "/changed/value", value: 2 }], original)
+
+        strictEqual((result as any).unchanged, unchanged)
+        deepStrictEqual(original, { changed: { value: 1 }, unchanged: { value: 1 } })
+      })
+
+      it("handles '__proto__' as an own data property", () => {
+        const original = JSON.parse(`{"nested":{"__proto__":{"value":1}}}`)
+        const result = JsonPatch.apply(
+          [
+            { op: "replace", path: "/nested/__proto__/value", value: 2 },
+            { op: "add", path: "/__proto__", value: { value: 3 } }
+          ],
+          original
+        ) as any
+
+        strictEqual(Object.getPrototypeOf(result), Object.prototype)
+        strictEqual(Object.getPrototypeOf(result.nested), Object.prototype)
+        strictEqual(Object.hasOwn(result, "__proto__"), true)
+        strictEqual(Object.hasOwn(result.nested, "__proto__"), true)
+        deepStrictEqual(result.__proto__, { value: 3 })
+        deepStrictEqual(result.nested.__proto__, { value: 2 })
+        deepStrictEqual(original, JSON.parse(`{"nested":{"__proto__":{"value":1}}}`))
       })
     })
 
@@ -765,6 +831,13 @@ describe("JsonPatch", () => {
     })
 
     describe("root operations", () => {
+      it("applies root add", () => {
+        deepStrictEqual(
+          JsonPatch.apply([{ op: "add", path: "", value: { replacement: true } }], { old: true }),
+          { replacement: true }
+        )
+      })
+
       it("applies root replace followed by nested operations", () => {
         const result = JsonPatch.apply(
           [
