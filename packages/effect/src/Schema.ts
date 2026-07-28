@@ -12372,43 +12372,6 @@ const JsonString = String.annotate({
 })
 
 /**
- * Type-level representation of {@link UnknownFromJsonString}.
- *
- * @category models
- * @since 4.0.0
- */
-export interface UnknownFromJsonString extends fromJsonString<Unknown> {
-  readonly "Rebuild": UnknownFromJsonString
-}
-
-/**
- * Schema that decodes a JSON-encoded string into an `unknown` value.
- *
- * **Details**
- *
- * Decoding:
- * - A `string` is decoded as an `unknown` value.
- * - If the string is not valid JSON, decoding fails.
- *
- * Encoding:
- * - Any value is encoded as a JSON string using `JSON.stringify`.
- * - If the value is not a valid JSON value, encoding fails.
- *
- * **Example** (Decoding unknown JSON strings)
- *
- * ```ts
- * import { Schema } from "effect"
- *
- * Schema.decodeUnknownSync(Schema.UnknownFromJsonString)(`{"a":1,"b":2}`)
- * // => { a: 1, b: 2 }
- * ```
- *
- * @category schemas
- * @since 4.0.0
- */
-export const UnknownFromJsonString: UnknownFromJsonString = fromJsonString(Unknown)
-
-/**
  * Type-level representation returned by {@link fromJsonString}.
  *
  * @category models
@@ -12427,27 +12390,40 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
  * This is useful when working with JSON-encoded strings where the actual
  * structure of the value is known and described by an existing schema.
  *
- * The resulting schema first parses the input string as JSON, and then runs the
- * provided schema on the parsed result.
+ * During decoding, the resulting schema first parses the input string as JSON,
+ * using `reviver` when provided, and then runs the provided schema on the
+ * parsed result. During encoding, it first encodes with the provided schema and
+ * then passes the result to `JSON.stringify` with the optional `replacer` and
+ * `space`.
  *
- * **Example** (Decoding JSON strings with a schema)
+ * **Example** (Formatting encoded JSON)
  *
  * ```ts
  * import { Schema } from "effect"
  *
  * const schema = Schema.Struct({ a: Schema.Number })
- * const schemaFromJsonString = Schema.fromJsonString(schema)
+ * const schemaFromJsonString = Schema.fromJsonString(schema, { space: 2 })
  *
- * Schema.decodeUnknownSync(schemaFromJsonString)(`{"a":1,"b":2}`)
- * // => { a: 1 }
+ * Schema.encodeSync(schemaFromJsonString)({ a: 1 })
+ * // => '{\n  "a": 1\n}'
  * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export function fromJsonString<S extends Constraint>(schema: S): fromJsonString<S> {
-  return JsonString.pipe(decodeTo(schema, SchemaTransformation.fromJsonString))
+export function fromJsonString<S extends Constraint>(
+  schema: S,
+  options?: {
+    readonly reviver?: Parameters<typeof JSON.parse>[1] | undefined
+    readonly replacer?: SchemaGetter.JsonReplacer | undefined
+    readonly space?: Parameters<typeof JSON.stringify>[2] | undefined
+  }
+): fromJsonString<S> {
+  return JsonString.pipe(decodeTo(schema, SchemaTransformation.fromJsonString(options)))
 }
+
+/** @internal */
+export const UnknownFromJsonString: fromJsonString<Unknown> = fromJsonString(Unknown)
 
 /**
  * Type-level representation of {@link File}.

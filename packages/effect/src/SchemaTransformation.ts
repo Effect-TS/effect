@@ -1596,8 +1596,10 @@ export const stringFromUriComponent: Transformation<string, string> = new Transf
  *
  * **Details**
  *
- * Decode fails with `InvalidValue` for invalid JSON, and encode can fail with
- * `InvalidValue` when `JSON.stringify` cannot serialize the value.
+ * The `reviver` option is passed to `JSON.parse` during decoding. The
+ * `replacer` and `space` options are passed to `JSON.stringify` during
+ * encoding. Decode fails with `InvalidValue` for invalid JSON, and encode can
+ * fail with `InvalidValue` when `JSON.stringify` cannot serialize the value.
  *
  * **Example** (Parsing JSON)
  *
@@ -1605,7 +1607,7 @@ export const stringFromUriComponent: Transformation<string, string> = new Transf
  * import { Schema, SchemaTransformation } from "effect"
  *
  * const schema = Schema.String.pipe(
- *   Schema.decodeTo(Schema.Unknown, SchemaTransformation.fromJsonString)
+ *   Schema.decodeTo(Schema.Unknown, SchemaTransformation.fromJsonString())
  * )
  * ```
  *
@@ -1615,10 +1617,16 @@ export const stringFromUriComponent: Transformation<string, string> = new Transf
  * @category decoding
  * @since 4.0.0
  */
-export const fromJsonString = new Transformation<unknown, string>(
-  SchemaGetter.parseJson(),
-  SchemaGetter.stringifyJson()
-)
+export function fromJsonString(options?: {
+  readonly reviver?: Parameters<typeof JSON.parse>[1] | undefined
+  readonly replacer?: SchemaGetter.JsonReplacer | undefined
+  readonly space?: Parameters<typeof JSON.stringify>[2] | undefined
+}): Transformation<unknown, string> {
+  return new Transformation(
+    SchemaGetter.parseJson(options ?? {}),
+    SchemaGetter.stringifyJson(options)
+  )
+}
 
 /**
  * Decodes a `FormData` instance into a nested record using bracket-path keys and
