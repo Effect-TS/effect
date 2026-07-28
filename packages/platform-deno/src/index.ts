@@ -27,6 +27,11 @@ export * as DenoPath from "./DenoPath.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoRedis from "./DenoRedis.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoRuntime from "./DenoRuntime.ts"
 
 /**

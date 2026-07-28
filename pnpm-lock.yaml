@@ -468,6 +468,9 @@ importers:
 
   packages/platform-deno:
     dependencies:
+      '@db/redis':
+        specifier: jsr:^0.41.2
+        version: '@jsr/db__redis@0.41.2'
       '@std/path':
         specifier: jsr:^1.1.6
         version: '@jsr/std__path@1.1.6'
@@ -475,6 +478,9 @@ importers:
       '@std/assert':
         specifier: jsr:^1.0.16
         version: '@jsr/std__assert@1.0.19'
+      '@testcontainers/redis':
+        specifier: ^11.14.0
+        version: 11.14.0
       '@types/deno':
         specifier: ^2.7.0
         version: 2.7.0
@@ -2321,14 +2327,35 @@ packages:
     resolution: {integrity: sha512-hloP58zRVCRSpgDxmqCWJNlizAlUgJFqG2ypq79DCvyv9tHjRYMDOcPFjzfl/A1/YxDvRCZz8wvZvmapQnKwFQ==}
     engines: {node: '>=12'}
 
+  '@jsr/db__redis@0.41.2':
+    resolution: {integrity: sha512-pDHlF3sQaU5+VDwDH3jRkETBSD9gAIqdoaC3j0B4nrffr+H/Kh0Pbw7i/p5eD+9W5j38l8yRqZGbo4xgohYttg==, tarball: https://npm.jsr.io/~/11/@jsr/db__redis/0.41.2.tgz}
+
   '@jsr/std__assert@1.0.19':
     resolution: {integrity: sha512-pEj6RPkGbqlgRmyKwATp4cUs6+ijxtdrv3bq8v1d2I2CEcMEyPaO8cVKro61wGRDH4cNg8Zx6haztvK/9m7gkA==, tarball: https://npm.jsr.io/~/11/@jsr/std__assert/1.0.19.tgz}
+
+  '@jsr/std__async@1.5.0':
+    resolution: {integrity: sha512-I2Qekl1oQYM+dpI2RQUCKi1TBuaA7Od3LNzxcqls9s1e2ytiZyREL4403qHJ6UbLNAwbqO2ZhdWAWDUQAajyiA==, tarball: https://npm.jsr.io/~/11/@jsr/std__async/1.5.0.tgz}
+
+  '@jsr/std__bytes@1.0.6':
+    resolution: {integrity: sha512-St6yKggjFGhxS52IFLJWvkchRFbAKg2Xh8UxA4S1EGz7GJ2Ui+ssDDldj/w2c8vCxvl6qgR0HaYbKeFJNqujmA==, tarball: https://npm.jsr.io/~/11/@jsr/std__bytes/1.0.6.tgz}
+
+  '@jsr/std__collections@1.3.0':
+    resolution: {integrity: sha512-oJ5V5ZvsWyO5VLdGk3TaRHaVibfVKHvDC8KJdgmxIucHN2QzAXlMt36ApyTUBncfrhXdN/5Q3yMNvloAKym8RA==, tarball: https://npm.jsr.io/~/11/@jsr/std__collections/1.3.0.tgz}
+
+  '@jsr/std__data-structures@1.1.1':
+    resolution: {integrity: sha512-ceWGRdAPq3oD2If4k/JvgL/bskN5VohnM6wINlJhYLz4yCW9cmHFcGsrhRgh9HbD9xhXi9sEQoiHQG5B9caHEg==, tarball: https://npm.jsr.io/~/11/@jsr/std__data-structures/1.1.1.tgz}
 
   '@jsr/std__internal@1.0.14':
     resolution: {integrity: sha512-JT8b/t40WcR9q0GDwRZUooY7aXeXnFal8iidE/5TckdAFtvpVAsaJ71/Xgf1SfoChs41s6CZkuCYM8toaNgdvA==, tarball: https://npm.jsr.io/~/11/@jsr/std__internal/1.0.14.tgz}
 
+  '@jsr/std__io@0.224.5':
+    resolution: {integrity: sha512-1Y8ZWIjFiQKkaSJwbt7NM/9esDtO0ieKS4vcT929dFArG2ADk7ZKVAV4KluYYh4+kF5VgkOcvJkEm84KeBpqFA==, tarball: https://npm.jsr.io/~/11/@jsr/std__io/0.224.5.tgz}
+
   '@jsr/std__path@1.1.6':
     resolution: {integrity: sha512-H1Cmg6z8jFyIsQbVV+vZB4eOx4k6Qg8lyUM6l7nZysj5MZumg89kb0M1bsPBTGQis3fw6mJFkJELo5+AK6oCFA==, tarball: https://npm.jsr.io/~/11/@jsr/std__path/1.1.6.tgz}
+
+  '@jsr/std__random@0.1.0':
+    resolution: {integrity: sha512-gt+pI83ha04zLv2+5kSf/i6uPT4c8QEwscpATrYe2IKfOkCVpL++NrFcH7pWHc0vgm2fDGC8aY6OI2Mz7tEHhQ==, tarball: https://npm.jsr.io/~/11/@jsr/std__random/0.1.0.tgz}
 
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
@@ -3837,6 +3864,10 @@ packages:
   clone@1.0.4:
     resolution: {integrity: sha512-JQHZ2QMW6l3aH/j6xCqQThY/9OH4D/9ls34cgkUBiEeocRTU04tHfKPBsUK1PqZCUQM7GiA0IIXJSuXHI64Kbg==}
     engines: {node: '>=0.8'}
+
+  cluster-key-slot@1.1.0:
+    resolution: {integrity: sha512-2Nii8p3RwAPiFwsnZvukotvow2rIHM+yQ6ZcBXGHdniadkYGZYiGmkHJIbZPIV9nfv7m/U1IPMVVcAhoWFeklw==}
+    engines: {node: '>=0.10.0'}
 
   cluster-key-slot@1.1.2:
     resolution: {integrity: sha512-RMr0FhtfXemyinomL4hrWcYJxmX6deFdCxpJzhDttxgO1+bcCnkk+9drydLVDmAMG7NE6aN/fl4F7ucU/90gAA==}
@@ -8171,15 +8202,42 @@ snapshots:
     dependencies:
       jsbi: 4.3.2
 
+  '@jsr/db__redis@0.41.2':
+    dependencies:
+      '@jsr/std__async': 1.5.0
+      '@jsr/std__bytes': 1.0.6
+      '@jsr/std__collections': 1.3.0
+      '@jsr/std__io': 0.224.5
+      '@jsr/std__random': 0.1.0
+      cluster-key-slot: 1.1.0
+
   '@jsr/std__assert@1.0.19':
     dependencies:
       '@jsr/std__internal': 1.0.14
 
+  '@jsr/std__async@1.5.0':
+    dependencies:
+      '@jsr/std__data-structures': 1.1.1
+
+  '@jsr/std__bytes@1.0.6': {}
+
+  '@jsr/std__collections@1.3.0': {}
+
+  '@jsr/std__data-structures@1.1.1':
+    dependencies:
+      '@jsr/std__assert': 1.0.19
+
   '@jsr/std__internal@1.0.14': {}
+
+  '@jsr/std__io@0.224.5':
+    dependencies:
+      '@jsr/std__bytes': 1.0.6
 
   '@jsr/std__path@1.1.6':
     dependencies:
       '@jsr/std__internal': 1.0.14
+
+  '@jsr/std__random@0.1.0': {}
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
@@ -9697,6 +9755,8 @@ snapshots:
       shallow-clone: 3.0.1
 
   clone@1.0.4: {}
+
+  cluster-key-slot@1.1.0: {}
 
   cluster-key-slot@1.1.2: {}
 

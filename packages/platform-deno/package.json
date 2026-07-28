@@ -61,6 +61,7 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
+    "@db/redis": "jsr:^0.41.2",
     "@std/path": "jsr:^1.1.6"
   },
   "peerDependencies": {
@@ -69,6 +70,7 @@
   "devDependencies": {
     "@types/deno": "^2.7.0",
     "@std/assert": "jsr:^1.0.16",
+    "@testcontainers/redis": "^11.14.0",
     "effect": "workspace:^"
   }
 }
