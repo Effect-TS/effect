@@ -19,7 +19,7 @@ describe("FileSystem", () => {
       const fiber = yield* fs.watch(root, { recursive: false }).pipe(
         Stream.runHead,
         Effect.flatMap(Effect.fromOption),
-        Effect.fork
+        Effect.forkChild
       )
       yield* Effect.yieldNow
 
@@ -43,7 +43,7 @@ describe("FileSystem", () => {
       const fiber = yield* fs.watch(root, { recursive: true }).pipe(
         Stream.runHead,
         Effect.flatMap(Effect.fromOption),
-        Effect.fork
+        Effect.forkChild
       )
       yield* Effect.yieldNow
 

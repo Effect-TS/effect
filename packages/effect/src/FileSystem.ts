@@ -343,6 +343,8 @@ export interface FileSystem {
   /**
    * Watch a directory or file for changes.
    *
+   * **Details**
+   *
    * By default, only changes to the direct children of the directory are
    * reported. Set the `recursive` option to `true` to watch for changes in
    * subdirectories as well.
