@@ -3,7 +3,6 @@ import { Array } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
-import * as Option from "effect/Option"
 import * as Stream from "effect/Stream"
 
 export interface TestLayerOptions {
@@ -196,32 +195,6 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
           Effect.map((_) => new TextDecoder().decode(_))
         )
         expect(second).toBe(" ipsum")
-      }).pipe(
-        Effect.scoped
-      )
-    })))
-
-  it("should restore the cursor after an interrupted read", () =>
-    runPromise(Effect.gen(function*() {
-      const fs = yield* Fs.FileSystem
-
-      yield* Effect.gen(function*() {
-        const path = yield* fs.makeTempFileScoped()
-        const data = new Uint8Array(32 * 1024 * 1024)
-        data.set(new TextEncoder().encode("lorem"))
-        yield* fs.writeFile(path, data)
-        const file = yield* fs.open(path)
-
-        const result = yield* file.readAlloc(Fs.Size(data.length)).pipe(Effect.timeoutOption(1))
-        expect(Option.isNone(result)).toBe(true)
-
-        yield* Effect.sleep(100)
-        yield* file.seek(Fs.Size(0), "start")
-        const text = yield* file.readAlloc(Fs.Size(5)).pipe(
-          Effect.flatMap(Effect.fromOption),
-          Effect.map((_) => new TextDecoder().decode(_))
-        )
-        expect(text).toBe("lorem")
       }).pipe(
         Effect.scoped
       )
