@@ -240,6 +240,45 @@ export const fromChannel = <L, In, E, A, R>(
   )
 
 /**
+ * Creates a sink that writes its input to a Web `WritableStream`.
+ *
+ * **Example** (Collecting values in a Web stream)
+ *
+ * ```ts
+ * import { Effect, Sink, Stream } from "effect"
+ *
+ * const written: Array<number> = []
+ * const sink = Sink.fromWritableStream({
+ *   evaluate: () => new WritableStream<number>({
+ *     write(value) {
+ *       written.push(value)
+ *     }
+ *   }),
+ *   onError: (cause) => new Error(String(cause))
+ * })
+ *
+ * const program = Stream.run(Stream.make(1, 2, 3), sink)
+ *
+ * Effect.runPromise(program).then(() => console.log(written))
+ * // Output: [ 1, 2, 3 ]
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromWritableStream = <A, E>(options: {
+  readonly evaluate: LazyArg<WritableStream<A>>
+  readonly onError: (error: unknown) => E
+  readonly closeOnDone?: boolean | undefined
+}): Sink<void, A, never, E> =>
+  fromChannel(
+    Channel.mapDone(
+      Channel.fromWritableStream<never, E, A>(options),
+      (_) => [_]
+    )
+  )
+
+/**
  * Creates a `Sink` from a low-level transform function.
  *
  * **Details**
