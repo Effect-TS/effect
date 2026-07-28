@@ -1615,7 +1615,9 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-call",
             id: part.id,
             name: toolName,
-            params: {},
+            params: webSearchTool?.name === "OpenAiWebSearchPreview"
+              ? {}
+              : { action: part.action },
             providerExecuted: true
           })
           parts.push({
@@ -1943,6 +1945,9 @@ const makeStreamResponse = Effect.fnUntraced(
                   id: event.item.id,
                   name: toolName
                 }
+                if (webSearchTool?.name === "OpenAiWebSearch") {
+                  break
+                }
                 parts.push({
                   type: "tool-params-start",
                   id: event.item.id,
@@ -2256,6 +2261,15 @@ const makeStreamResponse = Effect.fnUntraced(
                 const toolName = toolNameMapper.getCustomName(
                   webSearchTool?.name ?? "web_search"
                 )
+                if (webSearchTool?.name === "OpenAiWebSearch") {
+                  parts.push({
+                    type: "tool-call",
+                    id: event.item.id,
+                    name: toolName,
+                    params: { action: event.item.action },
+                    providerExecuted: true
+                  })
+                }
                 parts.push({
                   type: "tool-result",
                   id: event.item.id,
