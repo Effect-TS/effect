@@ -224,7 +224,10 @@ class FileImpl implements FileSystem.File {
         tryPromise(
           method,
           undefined,
-          () => this.file.seek(position, Deno.SeekMode.Start).then(() => this.file.read(buffer))
+          async () => {
+            this.file.seekSync(position, Deno.SeekMode.Start)
+            return await this.file.read(buffer)
+          }
         ),
         (bytesRead) => {
           const sizeRead = FileSystem.Size(bytesRead ?? 0)
@@ -271,7 +274,10 @@ class FileImpl implements FileSystem.File {
         tryPromise(
           method,
           undefined,
-          () => this.file.seek(position, Deno.SeekMode.Start).then(() => this.file.write(buffer))
+          async () => {
+            this.file.seekSync(position, Deno.SeekMode.Start)
+            return await this.file.write(buffer)
+          }
         ),
         (bytesWritten) => {
           const sizeWritten = FileSystem.Size(bytesWritten)
