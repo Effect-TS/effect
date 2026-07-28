@@ -180,6 +180,7 @@ const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
   blocks: Option.fromNullishOr(info.blocks)
 })
 
+/** A file handle is stateful and must not be used concurrently. */
 class FileImpl implements FileSystem.File {
   readonly [FileSystem.FileTypeId]: typeof FileSystem.FileTypeId = FileSystem.FileTypeId
   private readonly file: Deno.FsFile
@@ -222,22 +223,16 @@ class FileImpl implements FileSystem.File {
     return Effect.suspend(() => {
       const position = this.position
       return Effect.map(
-        Effect.tapError(
-          tryPromise(
-            method,
-            undefined,
-            async () => {
-              if (this.nativePosition !== position) {
-                this.file.seekSync(position, Deno.SeekMode.Start)
-                this.nativePosition = position
-              }
-              return await this.file.read(buffer)
+        tryPromise(
+          method,
+          undefined,
+          async () => {
+            if (this.nativePosition !== position) {
+              this.file.seekSync(position, Deno.SeekMode.Start)
             }
-          ),
-          () =>
-            Effect.sync(() => {
-              this.nativePosition = undefined
-            })
+            this.nativePosition = undefined
+            return await this.file.read(buffer)
+          }
         ),
         (bytesRead) => {
           const sizeRead = FileSystem.Size(bytesRead ?? 0)
@@ -281,22 +276,16 @@ class FileImpl implements FileSystem.File {
     return Effect.suspend(() => {
       const position = this.position
       return Effect.map(
-        Effect.tapError(
-          tryPromise(
-            method,
-            undefined,
-            async () => {
-              if (!this.append && this.nativePosition !== position) {
-                this.file.seekSync(position, Deno.SeekMode.Start)
-                this.nativePosition = position
-              }
-              return await this.file.write(buffer)
+        tryPromise(
+          method,
+          undefined,
+          async () => {
+            if (!this.append && this.nativePosition !== position) {
+              this.file.seekSync(position, Deno.SeekMode.Start)
             }
-          ),
-          () =>
-            Effect.sync(() => {
-              this.nativePosition = undefined
-            })
+            this.nativePosition = undefined
+            return await this.file.write(buffer)
+          }
         ),
         (bytesWritten) => {
           const sizeWritten = FileSystem.Size(bytesWritten)
