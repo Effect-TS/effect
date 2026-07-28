@@ -77,22 +77,11 @@ export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.succe
             })
           )
         }
-        function onError(error: MessageEvent) {
-          Deferred.doneUnsafe(
-            closeLatch,
-            new WorkerError({
-              reason: new WorkerReceiveError({
-                message: "received error event",
-                cause: error.data
-              })
-            })
-          )
-        }
         yield* Scope.addFinalizer(
           scope,
           Effect.sync(() => {
             port.removeEventListener("message", onMessage)
-            port.removeEventListener("messageerror", onError)
+            port.removeEventListener("messageerror", onMessageError)
           })
         )
         port.addEventListener("message", onMessage)
