@@ -820,7 +820,7 @@ export const mapError: {
 } = dual(
   2,
   <A, E, E2>(self: Result<A, E>, f: (err: E) => E2): Result<A, E2> =>
-    isFailure(self) ? fail(f(self.failure)) : succeed(self.success)
+    isFailure(self) ? fail(f(self.failure)) : self as unknown as Result<A, E2>
 )
 
 /**
@@ -863,7 +863,7 @@ export const map: {
 } = dual(
   2,
   <A, E, A2>(self: Result<A, E>, f: (ok: A) => A2): Result<A2, E> =>
-    isSuccess(self) ? succeed(f(self.success)) : fail(self.failure)
+    isSuccess(self) ? succeed(f(self.success)) : self as unknown as Result<A2, E>
 )
 
 /**

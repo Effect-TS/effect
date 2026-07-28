@@ -3713,6 +3713,40 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await encoding.fail(null, "Expected object, got null")
     })
 
+    it("recursive values stay lazy", async () => {
+      interface Recursive {
+        readonly [key: string]: Recursive
+      }
+      const schema: Schema.Codec<Recursive> = Schema.Record(
+        Schema.String,
+        Schema.suspend((): Schema.Codec<Recursive> => schema)
+      )
+      const asserts = new TestSchema.Asserts(schema)
+
+      const input = { a: { b: {} } }
+      await asserts.decoding().succeed(input)
+      await asserts.encoding().succeed(input)
+    })
+
+    it.effect("sequential parsing resumes without replaying entries", () =>
+      Effect.gen(function*() {
+        const calls: Array<string> = []
+        const value = Schema.String.pipe(
+          Schema.decode({
+            decode: SchemaGetter.transformOrFail((value) => {
+              calls.push(value)
+              return value === "b" ? Effect.yieldNow.pipe(Effect.as(value)) : Effect.succeed(value)
+            }),
+            encode: SchemaGetter.passthrough()
+          })
+        )
+        const schema = Schema.Record(Schema.String, value)
+        const input = { a: "a", b: "b", c: "c" }
+
+        deepStrictEqual(yield* Schema.decodeUnknownEffect(schema)(input), input)
+        deepStrictEqual(calls, ["a", "b", "c"])
+      }))
+
     it("Record(String, optionalKey(Number)) should throw", async () => {
       throws(
         () => Schema.Record(Schema.String, Schema.optionalKey(Schema.Number)),
@@ -3809,30 +3843,6 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await encoding.succeed({ a: 1 }, { a: "1" })
       await encoding.succeed({ aB: 1 }, { a_b: "1" })
       await encoding.succeed({ a_b: 1, aB: 2 }, { a_b: "2" })
-    })
-
-    it("Record(SnakeToCamel, Number, { keyValueCombiner: ... })", async () => {
-      const schema = Schema.Record(SnakeToCamel, Schema.NumberFromString, {
-        keyValueCombiner: {
-          decode: {
-            combine: ([_, v1], [k2, v2]) => [k2, v1 + v2]
-          },
-          encode: {
-            combine: ([_, v1], [k2, v2]) => [k2, v1 + "e" + v2]
-          }
-        }
-      })
-      const asserts = new TestSchema.Asserts(schema)
-
-      const decoding = asserts.decoding()
-      await decoding.succeed({ a: "1" }, { a: 1 })
-      await decoding.succeed({ a_b: "1" }, { aB: 1 })
-      await decoding.succeed({ a_b: "1", aB: "2" }, { aB: 3 })
-
-      const encoding = asserts.encoding()
-      await encoding.succeed({ a: 1 }, { a: "1" })
-      await encoding.succeed({ aB: 1 }, { a_b: "1" })
-      await encoding.succeed({ a_b: 1, aB: 2 }, { a_b: "1e2" })
     })
 
     it("UniqueSymbol", async () => {
@@ -4099,6 +4109,18 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await decoding.fail(
         { kind: "a" },
         `Expected exactly one member to match the input {"kind":"a"}`
+      )
+    })
+
+    it(`mode: "oneOf" counts repeated literal occurrences`, async () => {
+      const member = Schema.Literal("a")
+      const schema = Schema.Union([member, member], { mode: "oneOf" })
+      const asserts = new TestSchema.Asserts(schema)
+
+      const decoding = asserts.decoding()
+      await decoding.fail(
+        "a",
+        `Expected exactly one member to match the input "a"`
       )
     })
 

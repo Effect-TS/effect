@@ -19,7 +19,6 @@ import * as BigDecimal_ from "./BigDecimal.ts"
 import type * as Brand from "./Brand.ts"
 import * as Cause_ from "./Cause.ts"
 import * as Chunk_ from "./Chunk.ts"
-import type * as Combiner from "./Combiner.ts"
 import * as Data from "./Data.ts"
 import * as DateTime from "./DateTime.ts"
 import type { Differ } from "./Differ.ts"
@@ -1585,7 +1584,7 @@ export function decodeUnknownExit<S extends ConstraintDecoder<unknown>>(schema: 
 
 function fromIssueExit<A>(exit: Exit_.Exit<A, SchemaIssue.Issue>): Exit_.Exit<A, SchemaError> {
   return Exit_.isSuccess(exit)
-    ? Exit_.succeed(exit.value)
+    ? exit as unknown as Exit_.Exit<A, SchemaError>
     : Exit_.failCause(Cause_.map(exit.cause, (issue) => new SchemaError(issue)))
 }
 
@@ -3885,6 +3884,13 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  * For transformed key schemas, property selection is based on encoded property
  * names before the selected key is decoded.
  *
+ * **Gotchas**
+ *
+ * When decoded or encoded key transformations produce the same property key,
+ * sequential parsing applies selected own properties in selection order, so
+ * the later selected property overwrites the earlier value. With concurrency
+ * greater than `1`, completion order determines which value is retained.
+ *
  * **Example** (Defining a string-keyed record of numbers)
  *
  * ```ts
@@ -3905,18 +3911,9 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  */
 export function Record<Key extends Record.Key, Value extends Constraint>(
   key: Key,
-  value: Value,
-  options?: {
-    readonly keyValueCombiner: {
-      readonly decode?: Combiner.Combiner<readonly [Key["Type"], Value["Type"]]> | undefined
-      readonly encode?: Combiner.Combiner<readonly [Key["Encoded"], Value["Encoded"]]> | undefined
-    }
-  }
+  value: Value
 ): $Record<Key, Value> {
-  const keyValueCombiner = options?.keyValueCombiner?.decode || options?.keyValueCombiner?.encode
-    ? new SchemaAST.KeyValueCombiner(options.keyValueCombiner.decode, options.keyValueCombiner.encode)
-    : undefined
-  return make(SchemaAST.record(key.ast, value.ast, keyValueCombiner), { key, value })
+  return make(SchemaAST.record(key.ast, value.ast), { key, value })
 }
 
 /**

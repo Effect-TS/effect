@@ -345,6 +345,25 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(undefined, ast.types), [])
     })
 
+    it("literal-only union with a unique symbol", () => {
+      const symbol = Symbol.for("a")
+      const schema = Schema.Union([Schema.UniqueSymbol(symbol), Schema.Literal("b")])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates(symbol, ast.types), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates(Symbol("a"), ast.types), [])
+    })
+
+    it("should preserve duplicate literal candidates in member order", () => {
+      const schema = Schema.Union([
+        Schema.Literal("a").transform("first"),
+        Schema.Literal("a").transform("second"),
+        Schema.Never
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates("a", ast.types), [ast.types[0], ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates("b", ast.types), [])
+    })
+
     it("String | Literals", () => {
       const schema = Schema.Union([Schema.String, Schema.Literals(["a", "b", "c"])])
       const ast = schema.ast
@@ -364,6 +383,49 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates({ _tag: "c" }, ast.types), [])
       deepStrictEqual(SchemaAST.getCandidates("", ast.types), [ast.types[2]])
       deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [])
+    })
+
+    it("should handle function-valued declarations with sentinels", () => {
+      const a = Schema.declare(
+        (input): input is () => void => typeof input === "function",
+        { "~sentinels": [{ key: "kind", literal: "a" }] }
+      )
+      const b = Schema.declare(
+        (input): input is () => void => typeof input === "function",
+        { "~sentinels": [{ key: "kind", literal: "b" }] }
+      )
+      const schema = Schema.Union([a, b])
+      const ast = schema.ast
+      const input = Object.assign(() => {}, { kind: "a" })
+      deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
+    })
+
+    it("should preserve duplicate candidates with a common discriminator", () => {
+      const member = Schema.Struct({ kind: Schema.Literal("a"), value: Schema.String })
+      const schema = Schema.Union([
+        member,
+        Schema.Struct({ kind: Schema.Literal("b"), value: Schema.Number }),
+        member,
+        Schema.Never
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0], ast.types[2]])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "b" }, ast.types), [ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "c" }, ast.types), [])
+      deepStrictEqual(SchemaAST.getCandidates({}, ast.types), [])
+      deepStrictEqual(SchemaAST.getCandidates("a", ast.types), [])
+    })
+
+    it("should protect cached common sentinel candidates from external mutation", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a") }),
+        Schema.Struct({ kind: Schema.Literal("b") })
+      ])
+      const ast = schema.ast
+      const input = { kind: "a" }
+      const candidates = SchemaAST.getCandidates(input, ast.types)
+      Reflect.set(candidates, candidates.length, ast.types[1])
+      deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
     })
 
     it("should collect matches from different sentinel keys without duplicates", () => {
@@ -395,6 +457,34 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(["c"], ast.types), [])
       deepStrictEqual(SchemaAST.getCandidates("", ast.types), [ast.types[2]])
       deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [])
+    })
+
+    it("should handle tagged tuples with unique symbol sentinels", () => {
+      const a = Symbol.for("a")
+      const b = Symbol.for("b")
+      const schema = Schema.Union([
+        Schema.Tuple([Schema.UniqueSymbol(a), Schema.String]),
+        Schema.Tuple([Schema.UniqueSymbol(b), Schema.Number])
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates([a, "value"], ast.types), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates([b, 1], ast.types), [ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates([Symbol("a"), "value"], ast.types), [])
+    })
+
+    it(`should deduplicate repeated declaration sentinels in "oneOf" mode`, () => {
+      const member = Schema.declare(
+        (input): input is object => typeof input === "object" && input !== null,
+        {
+          "~sentinels": [
+            { key: "kind", literal: "a" },
+            { key: "kind", literal: "a" }
+          ]
+        }
+      )
+      const schema = Schema.Union([member], { mode: "oneOf" })
+      const input = { kind: "a" }
+      strictEqual(Schema.decodeUnknownSync(schema)(input), input)
     })
   })
 
@@ -478,13 +568,13 @@ describe("SchemaAST", () => {
 
   describe("record", () => {
     it("treats Never parameters as no keys", () => {
-      const ast = SchemaAST.record(Schema.Never.ast, Schema.Number.ast, undefined)
+      const ast = SchemaAST.record(Schema.Never.ast, Schema.Number.ast)
       deepStrictEqual(ast.propertySignatures, [])
       deepStrictEqual(ast.indexSignatures, [])
     })
 
     it("ignores Never arms in union parameters", () => {
-      const ast = SchemaAST.record(Schema.Union([Schema.String, Schema.Never]).ast, Schema.Number.ast, undefined)
+      const ast = SchemaAST.record(Schema.Union([Schema.String, Schema.Never]).ast, Schema.Number.ast)
       const indexSignature = ast.indexSignatures[0]!
 
       deepStrictEqual(ast.propertySignatures, [])
@@ -496,20 +586,19 @@ describe("SchemaAST", () => {
 
   describe("IndexSignature", () => {
     it("accepts valid parameters on both type and encoded side", () => {
-      doesNotThrow(() => new SchemaAST.IndexSignature(Schema.String.ast, Schema.Number.ast, undefined))
-      doesNotThrow(() => new SchemaAST.IndexSignature(Schema.NumberFromString.ast, Schema.Number.ast, undefined))
+      doesNotThrow(() => new SchemaAST.IndexSignature(Schema.String.ast, Schema.Number.ast))
+      doesNotThrow(() => new SchemaAST.IndexSignature(Schema.NumberFromString.ast, Schema.Number.ast))
       doesNotThrow(() =>
         new SchemaAST.IndexSignature(
           Schema.Union([Schema.String, Schema.NumberFromString]).ast,
-          Schema.Number.ast,
-          undefined
+          Schema.Number.ast
         )
       )
     })
 
     it("rejects invalid type side parameters", () => {
       throws(
-        () => new SchemaAST.IndexSignature(Schema.Literal("a").ast, Schema.Number.ast, undefined),
+        () => new SchemaAST.IndexSignature(Schema.Literal("a").ast, Schema.Number.ast),
         new Error("Invalid index signature parameter Literal")
       )
     })
@@ -522,7 +611,7 @@ describe("SchemaAST", () => {
         })
       )
       throws(
-        () => new SchemaAST.IndexSignature(StringFromBoolean.ast, Schema.Number.ast, undefined),
+        () => new SchemaAST.IndexSignature(StringFromBoolean.ast, Schema.Number.ast),
         new Error("Invalid index signature parameter String")
       )
     })
