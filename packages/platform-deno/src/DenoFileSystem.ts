@@ -390,11 +390,14 @@ const truncate: FileSystem.FileSystem["truncate"] = (path, length) =>
 const utimes: FileSystem.FileSystem["utimes"] = (path, atime, mtime) =>
   tryPromise("utimes", path, () => Deno.utime(path, atime, mtime))
 
-const watchNative = (path: string): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> =>
+const watchNative = (
+  path: string,
+  options?: FileSystem.WatchOptions
+): Stream.Stream<FileSystem.WatchEvent, PlatformError.PlatformError> =>
   Stream.unwrap(
     Effect.map(
       Effect.try({
-        try: () => Deno.watchFs(path, { recursive: true }),
+        try: () => Deno.watchFs(path, { recursive: options?.recursive ?? false }),
         catch: handleError("FileSystem", "watch", path)
       }),
       (watcher) =>
@@ -421,12 +424,16 @@ const watchNative = (path: string): Stream.Stream<FileSystem.WatchEvent, Platfor
     )
   )
 
-const watch = (backend: Option.Option<FileSystem.WatchBackend["Service"]>, path: string) =>
+const watch = (
+  backend: Option.Option<FileSystem.WatchBackend["Service"]>,
+  path: string,
+  options?: FileSystem.WatchOptions
+) =>
   stat(path).pipe(
     Effect.map((info) =>
       backend.pipe(
-        Option.flatMap((backend) => backend.register(path, info)),
-        Option.getOrElse(() => watchNative(path))
+        Option.flatMap((backend) => backend.register(path, info, options)),
+        Option.getOrElse(() => watchNative(path, options))
       )
     ),
     Stream.unwrap
@@ -469,8 +476,8 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     symlink,
     truncate,
     utimes,
-    watch(path) {
-      return watch(backend, path)
+    watch(path, options) {
+      return watch(backend, path, options)
     },
     writeFile
   }))
