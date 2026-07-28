@@ -32,6 +32,25 @@ export interface SourceFilters {
   readonly paths?: ReadonlyArray<string>
 }
 
+/** @internal */
+export const scopeToCwd = (
+  analysis: Workspace.WorkspaceAnalysis,
+  cwd: string,
+  filters: SourceFilters
+): SourceFilters => {
+  if ((filters.packages?.length ?? 0) > 0 || (filters.paths?.length ?? 0) > 0) return filters
+  const absoluteCwd = NodePath.resolve(cwd)
+  const pkg = analysis.workspace.packages.map((pkg) => ({
+    pkg,
+    root: NodePath.resolve(analysis.root, pkg.path)
+  })).filter(({ root }) => {
+    const relative = NodePath.relative(root, absoluteCwd)
+    return relative === "" || (relative !== ".." && !relative.startsWith(`..${NodePath.sep}`) &&
+      !NodePath.isAbsolute(relative))
+  }).sort((a, b) => b.root.length - a.root.length)[0]?.pkg
+  return pkg === undefined ? filters : { paths: [`${pkg.path}/`] }
+}
+
 const packageSlug = (name: string): string => name.replace(/^@effect\//, "").replace(/^@/, "").replaceAll("/", "-")
 
 /**

@@ -114,6 +114,7 @@ const workspacePackages = Effect.fnUntraced(function*(options: {
       })
     )
   )
+  const scopedOptions = DocgenWorkspace.scopeToCwd(analysis, cwd, options)
   const discovered = yield* DocgenWorkspace.fromAnalysis(analysis)
   const excluded = config.exclude.length === 0
     ? new Set<string>()
@@ -127,7 +128,7 @@ const workspacePackages = Effect.fnUntraced(function*(options: {
     ...pkg,
     files: pkg.files.filter((file) => !excluded.has(file.path))
   }))
-  const selected = yield* DocgenWorkspace.select(available, options)
+  const selected = yield* DocgenWorkspace.select(available, scopedOptions)
   return selected.map((pkg) => ({
     name: pkg.name,
     root: pkg.root,
@@ -151,7 +152,7 @@ const compileDeclarations = Effect.fnUntraced(function*(options: {
       })
     )
   )
-  return yield* DeclarationFrontend.analyzeWorkspace(analysis, options)
+  return yield* DeclarationFrontend.analyzeWorkspace(analysis, DocgenWorkspace.scopeToCwd(analysis, cwd, options))
 })
 
 /** @internal */

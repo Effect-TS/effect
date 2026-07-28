@@ -202,17 +202,36 @@ const readDocgenConfig = (
   })
 }
 
-const readTSConfig = (fileName: string): Effect.Effect<
+const findDocgenConfig = Effect.fnUntraced(function*(cwd: string) {
+  const path = yield* Path.Path
+  let directory = path.resolve(cwd)
+  let isInvocationDirectory = true
+  while (true) {
+    const configPath = path.join(directory, CONFIG_FILE_NAME)
+    const config = yield* readDocgenConfig(configPath)
+    if (Option.isSome(config)) {
+      // Package-local configurations take precedence. Ancestor configurations
+      // are inherited only when they explicitly describe a workspace.
+      return isInvocationDirectory || config.value.workspace === true
+        ? Option.some({ config: config.value, root: directory })
+        : Option.none()
+    }
+    const parent = path.dirname(directory)
+    if (parent === directory) return Option.none()
+    directory = parent
+    isInvocationDirectory = false
+  }
+})
+
+const readTSConfig = (root: string, fileName: string): Effect.Effect<
   { readonly [x: string]: unknown },
   never,
-  Path.Path | Domain.Process
+  Path.Path
 > =>
   Effect.gen(function*() {
     const path = yield* Path.Path
-    const process = yield* Domain.Process
-    const cwd = yield* process.cwd
     return yield* pipe(
-      Effect.tryPromise(() => tsconfck.parse(path.resolve(cwd, fileName))).pipe(
+      Effect.tryPromise(() => tsconfck.parse(path.resolve(root, fileName))).pipe(
         Effect.map(({ tsconfig }) => tsconfig.compilerOptions ?? defaultCompilerOptions),
         Effect.mapError((error) =>
           new DocgenError({
@@ -234,8 +253,9 @@ const loadCompilerOptions = (configKey: string) =>
 const resolveCompilerOptions = (
   configKey: string,
   fromCLI: Option.Option<string | Record<string, unknown>>,
-  fromDocgenJson: Option.Option<string | Record<string, unknown>>
-): Effect.Effect<{ readonly [x: string]: unknown }, never, Path.Path | Domain.Process> => {
+  fromDocgenJson: Option.Option<string | Record<string, unknown>>,
+  root: string
+): Effect.Effect<{ readonly [x: string]: unknown }, never, Path.Path> => {
   const fromConfigProvider = loadCompilerOptions(configKey)
   return Effect.gen(function*() {
     let config: string | Record<string, unknown>
@@ -251,7 +271,7 @@ const resolveCompilerOptions = (
         config = defaultCompilerOptions
       }
     }
-    return typeof config === "string" ? yield* readTSConfig(config) : config
+    return typeof config === "string" ? yield* readTSConfig(root, config) : config
   })
 }
 
@@ -292,15 +312,19 @@ export const load = (args: {
 
     // Read the root configuration before package metadata because workspace
     // roots are not required to be publishable packages.
-    const configPath = path.join(cwd, CONFIG_FILE_NAME)
-    const config = yield* readDocgenConfig(configPath)
+    const locatedConfig = yield* findDocgenConfig(cwd)
+    const config = Option.map(locatedConfig, ({ config }) => config)
+    const root = Option.match(locatedConfig, {
+      onNone: () => cwd,
+      onSome: ({ root }) => root
+    })
     const workspace = config.pipe(
       Option.flatMapNullishOr((config) => config.workspace),
       Option.getOrElse(() => false)
     )
 
     // Read and parse the required fields from the `package.json`
-    const packageJsonPath = path.join(cwd, PACKAGE_JSON_FILE_NAME)
+    const packageJsonPath = path.join(root, PACKAGE_JSON_FILE_NAME)
     const packageJson = yield* validateJsonFile(
       workspace || args.frontend === "declaration" ? WorkspacePackageJsonSchema : PackageJsonSchema,
       packageJsonPath
@@ -334,7 +358,8 @@ export const load = (args: {
     const parseCompilerOptions = yield* resolveCompilerOptions(
       "parseCompilerOptions",
       args.parseCompilerOptions,
-      Option.flatMap(config, (config) => Option.fromNullishOr(config.parseCompilerOptions))
+      Option.flatMap(config, (config) => Option.fromNullishOr(config.parseCompilerOptions)),
+      root
     )
 
     const packageHomepages = config.pipe(
@@ -344,7 +369,7 @@ export const load = (args: {
 
     const workspaceRelative = (value: string): string => {
       if (!workspace || !path.isAbsolute(value)) return value
-      const relative = path.relative(cwd, value)
+      const relative = path.relative(root, value)
       return relative === ".." || relative.startsWith(`..${path.sep}`) ? value : relative
     }
     const srcDir = workspaceRelative(args.srcDir)
@@ -385,10 +410,8 @@ export const configProviderLayer = Layer.effect(ConfigProvider.ConfigProvider)(E
   const process = yield* Domain.Process
   const cwd = yield* process.cwd
   const env = yield* process.env
-  const path = yield* Path.Path
-  // Attempt to load the `docgen.json` configuration file
-  const configPath = path.join(cwd, CONFIG_FILE_NAME)
-  const maybeConfig = yield* readDocgenConfig(configPath)
+  // Attempt to load the nearest applicable `docgen.json` configuration file
+  const maybeConfig = Option.map(yield* findDocgenConfig(cwd), ({ config }) => config)
   // Construct a config provider for the environment
   const fromEnv = ConfigProvider.fromEnv({ env }).pipe(
     ConfigProvider.nested("DOCGEN"),

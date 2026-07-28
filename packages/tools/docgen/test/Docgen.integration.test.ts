@@ -163,6 +163,26 @@ describe("docgen semantic compiler", () => {
       })
     ))
 
+  it.effect("discovers workspace configuration and scope from a package directory", () =>
+    fixture((root) =>
+      Effect.gen(function*() {
+        const outputFile = join(root, "artifacts", "package-docgen.json")
+        const result = yield* runDocgen(join(root, "packages", "example"), [
+          "--no-docs",
+          "--no-examples",
+          "--json",
+          outputFile
+        ])
+
+        assert.strictEqual(result.exitCode, 0, `${result.stdout}\n${result.stderr}`)
+        const output = JSON.parse(yield* Effect.promise(() => readFile(outputFile, "utf8")))
+        assert.deepStrictEqual(output.packages.map((pkg: { readonly name: string }) => pkg.name), [
+          "@effect/example"
+        ])
+        assert.match(result.stdout, /Parsing 1 source file\(s\) from 1 package\(s\)/)
+      })
+    ))
+
   it.effect("disables documentation and examples independently", () =>
     fixture((root) =>
       Effect.gen(function*() {

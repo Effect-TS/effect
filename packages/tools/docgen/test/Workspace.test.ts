@@ -96,6 +96,22 @@ describe("Workspace", () => {
       assert.deepStrictEqual(selected[0].files.map((file) => file.sourcePath), ["packages/second/src/index.ts"])
     }))
 
+  it.effect("scopes unfiltered package-local invocations and preserves explicit filters", () =>
+    Effect.gen(function*() {
+      const workspace = yield* analyzeWorkspace({
+        cwd: fileURLToPath(new URL("fixtures/workspace", import.meta.url))
+      })
+      const packageCwd = fileURLToPath(new URL("fixtures/workspace/packages/example", import.meta.url))
+
+      assert.deepStrictEqual(DocgenWorkspace.scopeToCwd(workspace, packageCwd, {}), {
+        paths: ["packages/example/"]
+      })
+      assert.deepStrictEqual(DocgenWorkspace.scopeToCwd(workspace, packageCwd, { packages: ["second"] }), {
+        packages: ["second"]
+      })
+      assert.deepStrictEqual(DocgenWorkspace.scopeToCwd(workspace, workspace.root, {}), {})
+    }))
+
   it.effect("fails when filters select no sources", () =>
     Effect.gen(function*() {
       const packages = yield* DocgenWorkspace.fromAnalysis(analysis([

@@ -51,6 +51,8 @@ docgen --validate --package effect --path Array.ts
 
 Package and path filters require `--validate`.
 
+When invoked from inside a workspace package, `docgen` discovers the nearest ancestor workspace configuration and automatically limits the run to that package. Invoke it from the workspace root to process every package. Explicit `--package` and `--path` filters override this inferred package scope.
+
 ## Input Frontends
 
 Source analysis is the default and does not require package builds. Select declaration analysis explicitly with `--frontend declaration` or `"frontend": "declaration"` in `docgen.json`. Declaration analysis reads the effective published surface from package manifests and analyzes only its `.d.ts`, `.d.mts`, or `.d.cts` targets. It supports workspace packages and a single built, installed, or unpacked package when docgen is invoked from that package root.
@@ -117,7 +119,7 @@ By default, `docgen` will search for files in the `src` directory and will outpu
 
 # Configuration
 
-`docgen` is meant to be a zero-configuration command-line tool by default. However, there are several configuration settings that can be specified for `docgen`. To customize the configuration of `docgen`, create a `docgen.json` file in the root directory of your project and indicate the custom configuration parameters that the tool should use when generating documentation.
+`docgen` is meant to be a zero-configuration command-line tool by default. However, there are several configuration settings that can be specified for `docgen`. To customize the configuration of `docgen`, create a `docgen.json` file in the root directory of your project and indicate the custom configuration parameters that the tool should use when generating documentation. Package-local configurations take precedence; when none exists, `docgen` searches ancestor directories for a configuration with workspace mode enabled.
 
 The `docgen.json` configuration file adheres to the following interface:
 
