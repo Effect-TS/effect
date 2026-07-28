@@ -4144,6 +4144,143 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       await decoding.succeed({ kind: "a", value: "value" }, "fallback")
     })
 
+    it("preserves recovering members during runtime type dispatch", async () => {
+      const decodingFallback = Schema.String.pipe(
+        Schema.catchDecoding(() => Effect.succeed(Option.some("fallback")))
+      )
+      const encodingFallback = Schema.String.pipe(
+        Schema.catchEncoding(() => Effect.succeed(Option.some("fallback")))
+      )
+      const transformedFallback = Schema.NumberFromString.pipe(
+        Schema.catchDecoding(() => Effect.succeed(Option.some(0)))
+      )
+      const nestedFallback = Schema.Union([decodingFallback, Schema.Number])
+      const literalFallback = Schema.Literal("a").pipe(
+        Schema.catchDecoding(() => Effect.succeed(Option.some("a" as const)))
+      )
+      const record = Schema.Record(decodingFallback, Schema.String)
+
+      const decoding = new TestSchema.Asserts(Schema.Union([decodingFallback, Schema.Null])).decoding()
+      await decoding.succeed(null, "fallback")
+
+      const transformedDecoding = new TestSchema.Asserts(Schema.Union([transformedFallback, Schema.Null])).decoding()
+      await transformedDecoding.succeed(null, 0)
+
+      const nestedDecoding = new TestSchema.Asserts(Schema.Union([nestedFallback, Schema.Null])).decoding()
+      await nestedDecoding.succeed(null, "fallback")
+
+      const recordDecoding = new TestSchema.Asserts(Schema.Union([record, Schema.Null])).decoding()
+      await recordDecoding.succeed(null, null)
+
+      const literalDecoding = new TestSchema.Asserts(
+        Schema.Union([literalFallback, Schema.Literal("b")])
+      ).decoding()
+      await literalDecoding.succeed("b", "a")
+
+      const decodingOneOf = new TestSchema.Asserts(
+        Schema.Union([decodingFallback, Schema.Null], { mode: "oneOf" })
+      ).decoding()
+      await decodingOneOf.fail(null, `Expected exactly one member to match the input null`)
+
+      const encoding = new TestSchema.Asserts(Schema.Union([encodingFallback, Schema.Null])).encoding()
+      await encoding.succeed(null, "fallback")
+
+      const encodingOneOf = new TestSchema.Asserts(
+        Schema.Union([encodingFallback, Schema.Null], { mode: "oneOf" })
+      ).encoding()
+      await encodingOneOf.fail(null, `Expected exactly one member to match the input null`)
+    })
+
+    it("preserves recovering members during sentinel dispatch", async () => {
+      const decodingTag = Schema.Literal("a").pipe(
+        Schema.catchDecoding(() => Effect.succeed(Option.some("a" as const)))
+      )
+      const encodingTag = Schema.Literal("a").pipe(
+        Schema.catchEncoding(() => Effect.succeed(Option.some("a" as const)))
+      )
+      const decodingFirst = Schema.Struct({ kind: decodingTag })
+      const encodingFirst = Schema.Struct({ kind: encodingTag })
+      const decodingRoot = Schema.Struct({ kind: Schema.Literal("a") }).pipe(
+        Schema.catchDecoding(() => Effect.succeed(Option.some({ kind: "a" as const })))
+      )
+      const second = Schema.Struct({ kind: Schema.Literal("b") })
+      const input = { kind: "b" as const }
+
+      const decoding = new TestSchema.Asserts(Schema.Union([decodingFirst, second])).decoding()
+      await decoding.succeed(input, { kind: "a" })
+
+      const rootDecoding = new TestSchema.Asserts(Schema.Union([decodingRoot, second])).decoding()
+      await rootDecoding.succeed(input, { kind: "a" })
+
+      const decodingOneOf = new TestSchema.Asserts(
+        Schema.Union([decodingFirst, second], { mode: "oneOf" })
+      ).decoding()
+      await decodingOneOf.fail(input, `Expected exactly one member to match the input {"kind":"b"}`)
+
+      const encoding = new TestSchema.Asserts(Schema.Union([encodingFirst, second])).encoding()
+      await encoding.succeed(input, { kind: "a" })
+
+      const encodingOneOf = new TestSchema.Asserts(
+        Schema.Union([encodingFirst, second], { mode: "oneOf" })
+      ).encoding()
+      await encodingOneOf.fail(input, `Expected exactly one member to match the input {"kind":"b"}`)
+    })
+
+    it("keeps suspended members lazy during candidate selection", async () => {
+      let decodingEvaluations = 0
+      const decodingSuspended = Schema.suspend(() => {
+        decodingEvaluations++
+        return Schema.String
+      })
+      const decoding = new TestSchema.Asserts(
+        Schema.Union([Schema.Literal("a"), decodingSuspended])
+      ).decoding()
+
+      await decoding.succeed("a", "a")
+      strictEqual(decodingEvaluations, 0)
+      await decoding.succeed("b", "b")
+      await decoding.succeed("c", "c")
+      strictEqual(decodingEvaluations, 1)
+
+      let encodingEvaluations = 0
+      const encodingSuspended = Schema.suspend(() => {
+        encodingEvaluations++
+        return Schema.String
+      })
+      const encoding = new TestSchema.Asserts(
+        Schema.Union([Schema.Literal("a"), encodingSuspended])
+      ).encoding()
+
+      await encoding.succeed("a", "a")
+      strictEqual(encodingEvaluations, 0)
+
+      let oneOfEvaluations = 0
+      const oneOfSuspended = Schema.suspend(() => {
+        oneOfEvaluations++
+        return Schema.String
+      })
+      const oneOf = new TestSchema.Asserts(
+        Schema.Union([Schema.Literal("a"), oneOfSuspended], { mode: "oneOf" })
+      ).decoding()
+
+      await oneOf.fail("a", `Expected exactly one member to match the input "a"`)
+      strictEqual(oneOfEvaluations, 1)
+    })
+
+    it("does not force a recursive suspended member after an earlier success", async () => {
+      let evaluations = 0
+      let recursive: Schema.Codec<"end">
+      const suspended: Schema.Codec<"end"> = Schema.suspend(() => {
+        evaluations++
+        return recursive
+      })
+      recursive = Schema.Union([Schema.Literal("end"), suspended])
+
+      const decoding = new TestSchema.Asserts(recursive).decoding()
+      await decoding.succeed("end", "end")
+      strictEqual(evaluations, 0)
+    })
+
     it.effect("preserves member order with concurrent decoding", () =>
       Effect.gen(function*() {
         const firstLatch = yield* Deferred.make<void>()
