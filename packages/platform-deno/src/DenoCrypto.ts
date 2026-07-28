@@ -1,11 +1,7 @@
 /**
  * Deno-backed implementation of Effect's Crypto service.
  *
- * This module uses Deno's global Web Crypto API. Random byte requests are split
- * into chunks of at most 65,536 bytes so they support the full size range
- * accepted by `Crypto.make`. Unlike browser runtimes, Deno's supported runtime
- * versions always provide `globalThis.crypto` and `crypto.subtle`, so this
- * implementation does not include availability guards.
+ * This module uses Deno's global Web Crypto API.
  *
  * @since 4.0.0
  */
