@@ -1643,6 +1643,7 @@ export class SetLevel extends Rpc.make("logging/setLevel", {
      */
     level: LoggingLevel
   },
+  success: Schema.Struct({}),
   error: McpError
 }) {}
 

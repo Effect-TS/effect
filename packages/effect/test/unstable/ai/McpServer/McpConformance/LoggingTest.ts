@@ -28,9 +28,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
     describe("Logging", () => {
       // Logging has the same protocol surface in all three dated specifications.
       describe("Capabilities", () => {
-        // FIX: McpServer exposes notifications/message and forwards it to
-        // initialized clients, but initialize currently omits capabilities.logging.
-        it.effect.skip("MUST advertise logging when log notifications are supported", () =>
+        it.effect("MUST advertise logging when log notifications are supported", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -39,9 +37,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
       })
 
       describe("Setting Log Level", () => {
-        // FIX: logging/setLevel currently serializes its successful result as
-        // null, whereas MCP JSON-RPC results must be objects.
-        it.effect.skip("MUST accept every specified log level", () =>
+        it.effect("MUST accept every specified log level", () =>
           Effect.forEach(levels, (level) =>
             Effect.gen(function*() {
               const { response, test } = yield* setLevel(level)
@@ -68,10 +64,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             )
             assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("Debug") }])
           }))
-        // FIX: logging/setLevel updates CurrentLogLevel for request handlers, but
-        // direct McpServer notification emission does not apply the client's
-        // selected threshold.
-        it.effect.skip("SHOULD send notifications at the selected level and higher", () =>
+        it.effect("SHOULD send notifications at the selected level and higher", () =>
           Effect.gen(function*() {
             const fixture = yield* makeMcpStdioHarness(protocol)
             yield* fixture.initialize()
@@ -93,11 +86,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               data: "at-threshold"
             })
           }))
-        // FIX: The direct notification API broadcasts messages below the level
-        // selected with logging/setLevel. The warning notification is an ordered
-        // sentinel: receiving it first proves the preceding debug message was
-        // suppressed without relying on timing.
-        it.effect.skip("MUST not send notifications below the selected level", () =>
+        it.effect("MUST not send notifications below the selected level", () =>
           Effect.gen(function*() {
             const fixture = yield* makeMcpStdioHarness(protocol)
             yield* fixture.initialize()

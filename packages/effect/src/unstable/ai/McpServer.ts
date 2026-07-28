@@ -18,6 +18,7 @@ import * as Effect from "../../Effect.ts"
 import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
+import * as LogLevel from "../../LogLevel.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
@@ -60,6 +61,7 @@ import {
   ListResourcesResult,
   ListResourceTemplatesResult,
   ListToolsResult,
+  LoggingMessageNotification,
   McpErrorBase,
   McpServerClient,
   McpServerClientMiddleware,
@@ -79,6 +81,7 @@ import type {
   CompleteResult,
   GetPrompt,
   Initialize,
+  LoggingLevel,
   Param,
   PromptArgument,
   PromptMessage,
@@ -361,9 +364,20 @@ const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
 
+type SessionLogLevel =
+  | {
+    readonly _tag: "Effect"
+    readonly level: LogLevel.LogLevel
+  }
+  | {
+    readonly _tag: "Mcp"
+    readonly level: LoggingLevel
+  }
+
 interface Session {
   readonly initializePayload: typeof Initialize.payloadSchema.Type
   readonly protocol: McpProtocol.ProtocolAdapter
+  logLevel: SessionLogLevel
 }
 
 interface Sessions {
@@ -504,23 +518,25 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
       return Effect.die(new Error(`Mcp-Session-Id does not exist`))
     }
     const selectedProtocol = session?.protocol ?? protocolForInternalTag(protocolRegistry, rpc._tag)
-    return Effect.provideService(
-      effect,
-      McpServerClient,
-      McpServerClient.of({
-        clientId: client.id,
-        protocolVersion: selectedProtocol.protocolVersion,
-        initializePayload: session?.initializePayload ?? payload as typeof Initialize.payloadSchema.Type,
-        getClient: RcMap.get(
-          clients,
-          new McpClientKey({
-            clientId: client.id,
-            protocolVersion: selectedProtocol.protocolVersion
-          })
-        ).pipe(
-          Effect.map(({ client }) => client)
-        )
-      })
+    return effect.pipe(
+      Effect.provideService(
+        McpServerClient,
+        McpServerClient.of({
+          clientId: client.id,
+          protocolVersion: selectedProtocol.protocolVersion,
+          initializePayload: session?.initializePayload ?? payload as typeof Initialize.payloadSchema.Type,
+          getClient: RcMap.get(
+            clients,
+            new McpClientKey({
+              clientId: client.id,
+              protocolVersion: selectedProtocol.protocolVersion
+            })
+          ).pipe(
+            Effect.map(({ client }) => client)
+          )
+        })
+      ),
+      Effect.provideService(CurrentLogLevel, effectLogLevel(session?.logLevel))
     )
   })
 
@@ -688,10 +704,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
       for (const clientId of clientProtocols.keys()) {
         if (!clientIds.has(clientId)) {
           clientProtocols.delete(clientId)
-          // HTTP client IDs are request-scoped; their UUID sessions outlive them.
-          if (!isHttp) {
-            sessions.byClientId.delete(clientId)
-          }
+          sessions.byClientId.delete(clientId)
         }
       }
       for (const clientId of server.initializedClients.keys()) {
@@ -706,6 +719,14 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         const rpc = selectedProtocol.serverNotificationRpcs.requests.get(request.tag)
         if (!rpc) {
           continue
+        }
+        if (request.tag === "notifications/message") {
+          const { level } = yield* Schema.decodeUnknownEffect(
+            LoggingMessageNotification.payloadSchema
+          )(request.payload)
+          if (!isMcpLogLevelEnabled(level, sessions.byClientId.get(clientId)?.logLevel)) {
+            continue
+          }
         }
         const encoded = yield* selectedProtocol.payloadCodecs(rpc).encode(request.payload)
         // TODO: Extend RpcServer.Protocol's outbound message contract with server-originated
@@ -1782,7 +1803,7 @@ const layerHandlers = (serverInfo: {
   Layer.effectContext(
     Effect.gen(function*() {
       const server = yield* McpServer
-      let currentLogLevel = yield* CurrentLogLevel
+      const currentLogLevel = yield* CurrentLogLevel
       const contextMap = new Map<string, unknown>()
 
       for (const protocol of options.protocolRegistry.protocols) {
@@ -1792,7 +1813,8 @@ const layerHandlers = (serverInfo: {
           ping: () => Effect.succeed({}),
           initialize(params, { client }) {
             const capabilities: Types.DeepMutable<typeof ServerCapabilities.Type> = {
-              completions: {}
+              completions: {},
+              logging: {}
             }
             if (server.tools.length > 0) {
               capabilities.tools = { listChanged: true }
@@ -1813,7 +1835,8 @@ const layerHandlers = (serverInfo: {
               const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
               const session: Session = {
                 initializePayload: params,
-                protocol: selectedProtocol
+                protocol: selectedProtocol,
+                logLevel: { _tag: "Effect", level: currentLogLevel }
               }
               if (httpRequest) {
                 const sessionId = crypto.randomUUID()
@@ -1834,36 +1857,17 @@ const layerHandlers = (serverInfo: {
             })
           },
           "completion/complete": (r) =>
-            server.completion(r).pipe(
-              Effect.provideService(CurrentLogLevel, currentLogLevel)
-            ),
-          "logging/setLevel": ({ level }) =>
+            server.completion(r),
+          "logging/setLevel": ({ level }, { client, headers }) =>
             Effect.sync(() => {
-              switch (level) {
-                case "notice":
-                case "info":
-                  currentLogLevel = "Info"
-                  break
-                case "error":
-                  currentLogLevel = "Error"
-                  break
-                case "debug":
-                  currentLogLevel = "Debug"
-                  break
-                case "warning":
-                  currentLogLevel = "Warn"
-                  break
-                case "critical":
-                case "alert":
-                case "emergency":
-                  currentLogLevel = "Fatal"
-                  break
+              const session = getClientSession(options.sessions, client.id, headers)
+              if (session) {
+                session.logLevel = { _tag: "Mcp", level }
               }
+              return {}
             }),
           "prompts/get": (r) =>
-            server.getPromptResult(r).pipe(
-              Effect.provideService(CurrentLogLevel, currentLogLevel)
-            ),
+            server.getPromptResult(r),
           "prompts/list": (_, { client, headers }) =>
             Effect.sync(() => {
               const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload
@@ -1874,14 +1878,9 @@ const layerHandlers = (serverInfo: {
               const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload
               return new ListResourcesResult({ resources: filterByClient(initialized, server.resources, "resource") })
             }),
-          "resources/read": ({ uri }) =>
-            server.findResource(uri).pipe(
-              Effect.provideService(CurrentLogLevel, currentLogLevel)
-            ),
-          "resources/subscribe": () =>
-            InternalError.notImplemented,
-          "resources/unsubscribe": () =>
-            InternalError.notImplemented,
+          "resources/read": ({ uri }) => server.findResource(uri),
+          "resources/subscribe": () => InternalError.notImplemented,
+          "resources/unsubscribe": () => InternalError.notImplemented,
           "resources/templates/list": (_, { client, headers }) =>
             Effect.sync(() => {
               const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload
@@ -1889,10 +1888,7 @@ const layerHandlers = (serverInfo: {
                 resourceTemplates: filterByClient(initialized, server.resourceTemplates, "template")
               })
             }),
-          "tools/call": (r) =>
-            server.callTool(r).pipe(
-              Effect.provideService(CurrentLogLevel, currentLogLevel)
-            ),
+          "tools/call": (r) => server.callTool(r),
           "tools/list": (_, { client, headers }) =>
             Effect.sync(() => {
               const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload
@@ -1903,9 +1899,13 @@ const layerHandlers = (serverInfo: {
 
           // Notifications
           "notifications/cancelled": (_) => Effect.void,
-          "notifications/initialized": (_, { client }) =>
+          "notifications/initialized": (_, { client, headers }) =>
             Effect.sync(() => {
               server.initializedClients.add(client.id)
+              const session = getClientSession(options.sessions, client.id, headers)
+              if (session) {
+                options.sessions.byClientId.set(client.id, session)
+              }
             }),
           "notifications/progress": (_) => Effect.void,
           "notifications/roots/list_changed": (_) => Effect.void
@@ -2006,6 +2006,31 @@ const getClientSession = (
   }
   return sessions.bySessionId.get(sessionId)
 }
+
+const mcpLogLevels: Record<LoggingLevel, {
+  readonly effect: LogLevel.LogLevel
+  readonly order: number
+}> = {
+  debug: { effect: "Debug", order: 0 },
+  info: { effect: "Info", order: 1 },
+  notice: { effect: "Info", order: 2 },
+  warning: { effect: "Warn", order: 3 },
+  error: { effect: "Error", order: 4 },
+  critical: { effect: "Fatal", order: 5 },
+  alert: { effect: "Fatal", order: 6 },
+  emergency: { effect: "Fatal", order: 7 }
+}
+
+const effectLogLevel = (logLevel: SessionLogLevel | undefined): LogLevel.LogLevel =>
+  logLevel?._tag === "Mcp" ? mcpLogLevels[logLevel.level].effect : logLevel?.level ?? "Info"
+
+const isMcpLogLevelEnabled = (
+  level: LoggingLevel,
+  minimum: SessionLogLevel | undefined
+): boolean =>
+  minimum?._tag === "Mcp"
+    ? mcpLogLevels[level].order >= mcpLogLevels[minimum.level].order
+    : LogLevel.isGreaterThanOrEqualTo(mcpLogLevels[level].effect, minimum?.level ?? "Info")
 
 const getOfferedProtocolVersion = (payload: unknown): string =>
   typeof payload === "object" &&
