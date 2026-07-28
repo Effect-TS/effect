@@ -26,6 +26,7 @@ import * as Iterable from "./Iterable.ts"
 import * as Latch from "./Latch.ts"
 import * as Layer from "./Layer.ts"
 import type { Severity } from "./LogLevel.ts"
+import * as MutableRef from "./MutableRef.ts"
 import * as Option from "./Option.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import { pipeArguments } from "./Pipeable.ts"
@@ -1670,6 +1671,262 @@ export const fromSchedule = <O, E, R>(
   schedule: Schedule.Schedule<O, unknown, E, R>
 ): Channel<O, E, O, unknown, unknown, unknown, R> =>
   fromPull(Effect.map(Schedule.toStepWithSleep(schedule), (step) => step(void 0)))
+
+/**
+ * Creates a channel from a lazily supplied Web `ReadableStream`.
+ *
+ * **Example** (Reading from a Web stream)
+ *
+ * ```ts
+ * import { Channel, Effect } from "effect"
+ *
+ * const channel = Channel.fromReadableStream({
+ *   evaluate: () => new ReadableStream({
+ *     start(controller) {
+ *       controller.enqueue(1)
+ *       controller.close()
+ *     }
+ *   }),
+ *   onError: (cause) => new Error(String(cause))
+ * })
+ *
+ * Effect.runPromise(Channel.runCollect(channel)).then(console.log)
+ * // Output: [ [ 1 ] ]
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromReadableStream = <A, E>(options: {
+  readonly evaluate: LazyArg<ReadableStream<A>>
+  readonly onError: (error: unknown) => E
+  readonly releaseLockOnEnd?: boolean | undefined
+}): Channel<Arr.NonEmptyReadonlyArray<A>, E> =>
+  fromTransform((_, scope) =>
+    readableStreamToPullUnsafe({
+      scope,
+      readable: options.evaluate(),
+      onError: options.onError,
+      releaseLockOnEnd: options.releaseLockOnEnd
+    })
+  )
+
+/**
+ * Writes values from an upstream pull into a Web `WritableStream`, respecting
+ * writer backpressure.
+ *
+ * **Example** (Writing an existing pull)
+ *
+ * ```ts
+ * import { Channel, Effect, Pull } from "effect"
+ *
+ * const written: Array<number> = []
+ * const writable = new WritableStream<number>({
+ *   write(value) {
+ *     written.push(value)
+ *   }
+ * })
+ *
+ * const program = Effect.scoped(Effect.gen(function*() {
+ *   const pull = yield* Channel.toPull(Channel.fromArray([[1, 2] as [number, number]]))
+ *   yield* Channel.pullIntoWritableStream({
+ *     pull,
+ *     writable,
+ *     onError: (cause) => new Error(String(cause))
+ *   }).pipe(Pull.catchDone(() => Effect.void))
+ * }))
+ *
+ * Effect.runPromise(program).then(() => console.log(written))
+ * // Output: [ 1, 2 ]
+ * ```
+ *
+ * @category converting
+ * @since 4.0.0
+ */
+export const pullIntoWritableStream = <A, IE, E>(options: {
+  readonly pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, IE, unknown>
+  readonly writable: WritableStream<A>
+  readonly onError: (error: unknown) => E
+  readonly closeOnDone?: boolean | undefined
+}): Pull.Pull<never, IE | E, unknown> =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => options.writable.getWriter()),
+    (writer) => {
+      const loop = options.pull.pipe(
+        Effect.flatMap((chunk) =>
+          Effect.forEach(
+            chunk,
+            (value) =>
+              Effect.tryPromise({
+                try: () => writer.ready.then(() => writer.write(value)),
+                catch: options.onError
+              }),
+            { discard: true }
+          )
+        ),
+        Effect.forever({ disableYield: true })
+      )
+      const withClose = options.closeOnDone !== false
+        ? Pull.catchDone(loop, (done) =>
+          Effect.andThen(
+            Effect.tryPromise({
+              try: () => writer.close(),
+              catch: options.onError
+            }),
+            Cause.done(done)
+          ))
+        : loop
+      return Effect.onError(
+        withClose,
+        (cause) =>
+          Pull.isDoneCause(cause)
+            ? Effect.void
+            : Effect.promise(() => writer.abort(cause).catch(constVoid))
+      )
+    },
+    (writer) => Effect.sync(() => writer.releaseLock())
+  )
+
+/**
+ * Creates a channel that writes upstream values to a lazily supplied Web
+ * `WritableStream`.
+ *
+ * **Example** (Writing channel input)
+ *
+ * ```ts
+ * import { Channel, Effect } from "effect"
+ *
+ * const written: Array<number> = []
+ * const sink = Channel.fromWritableStream<never, Error, number>({
+ *   evaluate: () => new WritableStream({
+ *     write(value) {
+ *       written.push(value)
+ *     }
+ *   }),
+ *   onError: (cause) => new Error(String(cause))
+ * })
+ *
+ * const program = Channel.fromArray([[1, 2] as [number, number]]).pipe(
+ *   Channel.pipeTo(sink),
+ *   Channel.runDrain
+ * )
+ *
+ * Effect.runPromise(program).then(() => console.log(written))
+ * // Output: [ 1, 2 ]
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromWritableStream = <IE, E, A>(options: {
+  readonly evaluate: LazyArg<WritableStream<A>>
+  readonly onError: (error: unknown) => E
+  readonly closeOnDone?: boolean | undefined
+}): Channel<never, IE | E, void, Arr.NonEmptyReadonlyArray<A>, IE> =>
+  fromTransform((pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, IE, unknown>) => {
+    const writable = options.evaluate()
+    return Effect.succeed(pullIntoWritableStream({ ...options, writable, pull }))
+  })
+
+/**
+ * Creates a channel backed by a Web `TransformStream`, writing upstream values
+ * while emitting transformed values from its readable side.
+ *
+ * **Example** (Transforming channel input)
+ *
+ * ```ts
+ * import { Channel, Effect } from "effect"
+ *
+ * const transform = Channel.fromTransformStream<never, number, number, Error>({
+ *   evaluate: () => new TransformStream({
+ *     transform(value, controller) {
+ *       controller.enqueue(value * 2)
+ *     }
+ *   }),
+ *   onError: (cause) => new Error(String(cause))
+ * })
+ *
+ * const program = Channel.fromArray([[1, 2] as [number, number]]).pipe(
+ *   Channel.pipeTo(transform),
+ *   Channel.runCollect
+ * )
+ *
+ * Effect.runPromise(program).then(console.log)
+ * // Output: [ [ 2 ], [ 4 ] ]
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromTransformStream = <IE, I, O, E>(options: {
+  readonly evaluate: LazyArg<TransformStream<I, O>>
+  readonly onError: (error: unknown) => E
+  readonly closeOnDone?: boolean | undefined
+  readonly releaseLockOnEnd?: boolean | undefined
+}): Channel<Arr.NonEmptyReadonlyArray<O>, IE | E, void, Arr.NonEmptyReadonlyArray<I>, IE> =>
+  fromTransform((upstream, scope) => {
+    const transform = options.evaluate()
+    const exit = MutableRef.make<Exit.Exit<never, IE | E | Cause.Done> | undefined>(undefined)
+    return pullIntoWritableStream({
+      pull: upstream,
+      writable: transform.writable,
+      onError: options.onError,
+      closeOnDone: options.closeOnDone
+    }).pipe(
+      Effect.catchCause((cause) => {
+        if (!Pull.isDoneCause(cause)) {
+          exit.current = Exit.failCause(cause as Cause.Cause<IE | E | Cause.Done>)
+        }
+        return Effect.void
+      }),
+      Effect.forkIn(scope),
+      Effect.flatMap(() =>
+        readableStreamToPullUnsafe({
+          scope,
+          exit,
+          readable: transform.readable,
+          onError: options.onError,
+          releaseLockOnEnd: options.releaseLockOnEnd
+        })
+      )
+    )
+  })
+
+const readableStreamToPullUnsafe = <A, E, E2 = never>(options: {
+  readonly scope: Scope.Scope
+  readonly exit?: MutableRef.MutableRef<Exit.Exit<never, E | E2 | Cause.Done> | undefined> | undefined
+  readonly readable: ReadableStream<A>
+  readonly onError: (error: unknown) => E
+  readonly releaseLockOnEnd?: boolean | undefined
+}): Effect.Effect<Pull.Pull<Arr.NonEmptyReadonlyArray<A>, E | E2>, never> => {
+  const reader = options.readable.getReader()
+  const exit = options.exit ?? MutableRef.make(undefined)
+  const pull = Effect.suspend(() => {
+    if (exit.current) return exit.current
+    return Effect.matchCauseEffect(
+      Effect.tryPromise({
+        try: () => reader.read(),
+        catch: options.onError
+      }),
+      {
+        onFailure: (cause) => exit.current ?? Effect.failCause(cause),
+        onSuccess: ({ done, value }) => {
+          if (exit.current) return exit.current
+          return done ? Cause.done() : Effect.succeed(Arr.of(value))
+        }
+      }
+    )
+  })
+  return Effect.as(
+    Scope.addFinalizer(
+      options.scope,
+      options.releaseLockOnEnd
+        ? Effect.sync(() => reader.releaseLock())
+        : Effect.promise(() => reader.cancel().catch(constVoid))
+    ),
+    pull
+  )
+}
 
 /**
  * Creates a channel that pulls values from an `AsyncIterable`.

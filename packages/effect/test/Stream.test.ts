@@ -149,6 +149,16 @@ describe("Stream", () => {
         )
       )
 
+    it.effect("mkArrayBuffer - concatenates Uint8Array chunks", () =>
+      Effect.gen(function*() {
+        const buffer = yield* Stream.make(
+          new Uint8Array([1, 2]),
+          new Uint8Array([3, 4])
+        ).pipe(Stream.mkArrayBuffer)
+
+        assert.deepStrictEqual([...new Uint8Array(buffer)], [1, 2, 3, 4])
+      }))
+
     it.effect("runForEachWhile continues across chunk boundaries", () =>
       Effect.gen(function*() {
         const seen: Array<number> = []
@@ -647,6 +657,52 @@ describe("Stream", () => {
   })
 
   describe("taking", () => {
+    it.effect("limitBytes - does not evaluate the fallback below the limit", () =>
+      Effect.gen(function*() {
+        let evaluated = false
+        const chunks = [new Uint8Array([1, 2]), new Uint8Array([3, 4])]
+        const result = yield* Stream.fromIterable(chunks).pipe(
+          Stream.limitBytes(5, () => {
+            evaluated = true
+            return Stream.empty
+          }),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual(result, chunks)
+        assert.isFalse(evaluated)
+      }))
+
+    it.effect("limitBytes - does not evaluate the fallback at the limit", () =>
+      Effect.gen(function*() {
+        let evaluated = false
+        const chunks = [new Uint8Array([1, 2]), new Uint8Array([3, 4])]
+        const result = yield* Stream.fromIterable(chunks).pipe(
+          Stream.limitBytes(4, () => {
+            evaluated = true
+            return Stream.empty
+          }),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual(result, chunks)
+        assert.isFalse(evaluated)
+      }))
+
+    it.effect("limitBytes - drops the crossing chunk and switches to the fallback", () =>
+      Effect.gen(function*() {
+        const first = new Uint8Array([1, 2])
+        const crossing = new Uint8Array([3, 4, 5, 6])
+        const after = new Uint8Array([7])
+        const fallback = new Uint8Array([8, 9])
+        const result = yield* Stream.make(first, crossing, after).pipe(
+          Stream.limitBytes(5, () => Stream.succeed(fallback)),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual(result, [first, fallback])
+      }))
+
     it.effect("take - pulls the first `n` values from a stream", () =>
       Effect.gen(function*() {
         const result = yield* Stream.range(1, 5).pipe(

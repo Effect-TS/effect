@@ -22,6 +22,7 @@ import * as Equal from "./Equal.ts"
 import * as ExecutionPlan from "./ExecutionPlan.ts"
 import * as Exit from "./Exit.ts"
 import * as Fiber from "./Fiber.ts"
+import type { SizeInput } from "./FileSystem.ts"
 import type * as Filter from "./Filter.ts"
 import type { LazyArg } from "./Function.ts"
 import { constant, constTrue, constVoid, dual, identity } from "./Function.ts"
@@ -1409,23 +1410,7 @@ export const fromReadableStream = <A, E>(
     readonly onError: (error: unknown) => E
     readonly releaseLockOnEnd?: boolean | undefined
   }
-): Stream<A, E> =>
-  fromChannel(Channel.fromTransform(Effect.fnUntraced(function*(_, scope) {
-    const reader = options.evaluate().getReader()
-    yield* Scope.addFinalizer(
-      scope,
-      options.releaseLockOnEnd
-        ? Effect.sync(() => reader.releaseLock())
-        : Effect.promise(() => reader.cancel().catch(constVoid))
-    )
-    return Effect.flatMap(
-      Effect.tryPromise({
-        try: () => reader.read(),
-        catch: (reason) => options.onError(reason)
-      }),
-      ({ done, value }) => done ? Cause.done() : Effect.succeed(Arr.of(value))
-    )
-  })))
+): Stream<A, E> => fromChannel(Channel.fromReadableStream(options))
 
 /**
  * Creates a stream from an AsyncIterable.
@@ -6336,6 +6321,64 @@ export const take: {
 )
 
 /**
+ * Emits byte chunks until the configured limit would be exceeded, then drops
+ * the crossing chunk and switches to a fallback stream.
+ *
+ * **Example** (Truncating at a byte limit)
+ *
+ * ```ts
+ * import { Effect, Stream } from "effect"
+ *
+ * const program = Stream.make(
+ *   new Uint8Array([1, 2]),
+ *   new Uint8Array([3, 4, 5])
+ * ).pipe(
+ *   Stream.limitBytes(4, () => Stream.empty),
+ *   Stream.runCollect,
+ *   Effect.map((chunks) => chunks.map((chunk) => [...chunk]))
+ * )
+ *
+ * Effect.runPromise(program).then(console.log)
+ * // Output: [ [ 1, 2 ] ]
+ * ```
+ *
+ * @category filtering
+ * @since 4.0.0
+ */
+export const limitBytes: {
+  <E, R>(
+    bytes: SizeInput,
+    onLimitReached: LazyArg<Stream<Uint8Array, E, R>>
+  ): (self: Stream<Uint8Array, E, R>) => Stream<Uint8Array, E, R>
+  <E, R>(
+    self: Stream<Uint8Array, E, R>,
+    bytes: SizeInput,
+    onLimitReached: LazyArg<Stream<Uint8Array, E, R>>
+  ): Stream<Uint8Array, E, R>
+} = dual(3, <E, R>(
+  self: Stream<Uint8Array, E, R>,
+  bytes: SizeInput,
+  onLimitReached: LazyArg<Stream<Uint8Array, E, R>>
+): Stream<Uint8Array, E, R> =>
+  suspend(() => {
+    const limit = BigInt(bytes)
+    let size = BigInt(0)
+    let limitReached = false
+    return concat(
+      takeWhile(self, (chunk) => {
+        const nextSize = size + BigInt(chunk.length)
+        if (nextSize > limit) {
+          limitReached = true
+          return false
+        }
+        size = nextSize
+        return true
+      }),
+      suspend(() => limitReached ? onLimitReached() : empty)
+    )
+  }))
+
+/**
  * Keeps the last `n` elements from this stream.
  *
  * **Example** (Taking elements from the right)
@@ -11070,27 +11113,29 @@ export const mkString = <E, R>(self: Stream<string, E, R>): Effect.Effect<string
   )
 
 /**
- * Concatenates the stream's `Uint8Array` chunks into a single `Uint8Array`.
+ * Concatenates the stream's `Uint8Array` chunks into a single `ArrayBuffer`.
  *
- * **Example** (Joining Uint8Array chunks)
+ * **Example** (Joining byte chunks into an ArrayBuffer)
  *
  * ```ts
- * import { Console, Effect, Stream } from "effect"
+ * import { Effect, Stream } from "effect"
  *
- * const stream = Stream.make(new Uint8Array([1, 2]), new Uint8Array([3, 4]))
- * const program = Effect.gen(function*() {
- *   const bytes = yield* Stream.mkUint8Array(stream)
- *   yield* Console.log([...bytes])
- * })
+ * const program = Stream.make(
+ *   new Uint8Array([1, 2]),
+ *   new Uint8Array([3, 4])
+ * ).pipe(
+ *   Stream.mkArrayBuffer,
+ *   Effect.map((buffer) => [...new Uint8Array(buffer)])
+ * )
  *
- * Effect.runPromise(program)
- * // [1, 2, 3, 4]
+ * Effect.runPromise(program).then(console.log)
+ * // Output: [ 1, 2, 3, 4 ]
  * ```
  *
  * @category destructors
  * @since 4.0.0
  */
-export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effect<Uint8Array, E, R> =>
+export const mkArrayBuffer = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effect<ArrayBuffer, E, R> =>
   Effect.map(
     Channel.runFold(
       self.channel,
@@ -11117,9 +11162,33 @@ export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effec
         result.set(array, offset)
         offset += array.length
       }
-      return result
+      return result.buffer
     }
   )
+
+/**
+ * Concatenates the stream's `Uint8Array` chunks into a single `Uint8Array`.
+ *
+ * **Example** (Joining Uint8Array chunks)
+ *
+ * ```ts
+ * import { Console, Effect, Stream } from "effect"
+ *
+ * const stream = Stream.make(new Uint8Array([1, 2]), new Uint8Array([3, 4]))
+ * const program = Effect.gen(function*() {
+ *   const bytes = yield* Stream.mkUint8Array(stream)
+ *   yield* Console.log([...bytes])
+ * })
+ *
+ * Effect.runPromise(program)
+ * // [1, 2, 3, 4]
+ * ```
+ *
+ * @category destructors
+ * @since 4.0.0
+ */
+export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effect<Uint8Array, E, R> =>
+  Effect.map(mkArrayBuffer(self), (buffer) => new Uint8Array(buffer))
 
 /**
  * Converts the stream to a `ReadableStream` using the provided services.
