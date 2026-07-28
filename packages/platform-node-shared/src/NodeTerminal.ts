@@ -100,12 +100,18 @@ export const make: (
           Queue.endUnsafe(queue)
         }
       }
+      // Deno's `process.stdin` shim does not keep the event loop alive, so a
+      // program blocked on input can exit before `end` is ever delivered. A
+      // timer holds the loop open for as long as this reader is active.
+      const keepAlive = setInterval(() => {}, 2147483647)
       // Without this, consumers (e.g. `Prompt.run`) hang forever on closed stdin.
       const handleEnd = () => {
+        clearInterval(keepAlive)
         Queue.endUnsafe(queue)
       }
       yield* Effect.addFinalizer(() =>
         Effect.sync(() => {
+          clearInterval(keepAlive)
           stdin.off("keypress", handleKeypress)
           stdin.off("end", handleEnd)
         })

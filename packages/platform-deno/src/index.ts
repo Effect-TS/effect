@@ -52,6 +52,11 @@ export * as DenoStdio from "./DenoStdio.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoTerminal from "./DenoTerminal.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoWorker from "./DenoWorker.ts"
 
 /**
