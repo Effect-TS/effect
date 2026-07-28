@@ -233,6 +233,26 @@ describe("HttpApiClient", () => {
         const textDecoder = new TextDecoder()
         strictEqual(chunks.map((chunk) => textDecoder.decode(chunk, { stream: true })).join(""), "hello world")
       }))
+
+    it.effect("preserves each endpoint's stream content type", () =>
+      Effect.gen(function*() {
+        const captured: Array<HttpBody.HttpBody> = []
+        const client = yield* HttpApiClient.makeWith(UploadApi, {
+          baseUrl: "http://test",
+          httpClient: HttpClient.make((request) => {
+            captured.push(request.body)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(undefined, { status: 200 })))
+          })
+        })
+
+        yield* client.test.upload({ payload: Stream.make(textEncoder.encode("a")) })
+        yield* client.test.uploadCustom({ payload: Stream.make(textEncoder.encode("b")) })
+
+        assert.strictEqual(captured[0]?._tag, "Stream")
+        assert.strictEqual((captured[0] as HttpBody.Stream).contentType, "application/octet-stream")
+        assert.strictEqual(captured[1]?._tag, "Stream")
+        assert.strictEqual((captured[1] as HttpBody.Stream).contentType, "application/vnd.custom")
+      }))
   })
 
   describe("error responses", () => {
@@ -681,6 +701,11 @@ const UploadApi = HttpApi.make("UploadApi").add(
   HttpApiGroup.make("test").add(
     HttpApiEndpoint.post("upload", "/upload", {
       payload: HttpApiSchema.StreamUint8Array(),
+      success: HttpApiSchema.Empty(200)
+    })
+  ).add(
+    HttpApiEndpoint.post("uploadCustom", "/uploadCustom", {
+      payload: HttpApiSchema.StreamUint8Array({ contentType: "application/vnd.custom" }),
       success: HttpApiSchema.Empty(200)
     })
   )
