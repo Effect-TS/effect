@@ -16,6 +16,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
+import * as Scope from "effect/Scope"
 import { WorkerError, WorkerReceiveError, WorkerSpawnError } from "effect/unstable/workers/WorkerError"
 import * as WorkerRunner from "effect/unstable/workers/WorkerRunner"
 import * as WorkerThreads from "node:worker_threads"
@@ -56,7 +57,8 @@ export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.succe
               runFork(Effect.logError("unhandled error in worker", exit.cause))
             }
           }
-          ;(WorkerThreads.parentPort ?? process).on("message", (message: WorkerRunner.PlatformMessage<I>) => {
+          const port = WorkerThreads.parentPort ?? process
+          function onMessage(message: WorkerRunner.PlatformMessage<I>) {
             if (message[0] === 0) {
               const result = handler(0, message[1])
               if (Effect.isEffect(result)) {
@@ -72,32 +74,46 @@ export const layer: Layer.Layer<WorkerRunner.WorkerRunnerPlatform> = Layer.succe
               }
               Deferred.doneUnsafe(closeLatch, Exit.void)
             }
-          })
-
-          if (WorkerThreads.parentPort) {
-            WorkerThreads.parentPort.on("messageerror", (cause) => {
-              Deferred.doneUnsafe(
-                closeLatch,
-                new WorkerError({
-                  reason: new WorkerReceiveError({
-                    message: "received messageerror event",
-                    cause
-                  })
-                })
-              )
-            })
-            WorkerThreads.parentPort.on("error", (cause) => {
-              Deferred.doneUnsafe(
-                closeLatch,
-                new WorkerError({
-                  reason: new WorkerReceiveError({
-                    message: "received messageerror event",
-                    cause
-                  })
-                })
-              )
-            })
           }
+          port.on("message", onMessage)
+
+          function onMessageError(cause: unknown) {
+            Deferred.doneUnsafe(
+              closeLatch,
+              new WorkerError({
+                reason: new WorkerReceiveError({
+                  message: "received messageerror event",
+                  cause
+                })
+              })
+            )
+          }
+          function onError(cause: unknown) {
+            Deferred.doneUnsafe(
+              closeLatch,
+              new WorkerError({
+                reason: new WorkerReceiveError({
+                  message: "received error event",
+                  cause
+                })
+              })
+            )
+          }
+          if (WorkerThreads.parentPort) {
+            WorkerThreads.parentPort.on("messageerror", onMessageError)
+            WorkerThreads.parentPort.on("error", onError)
+          }
+
+          yield* Scope.addFinalizer(
+            scope,
+            Effect.sync(() => {
+              port.off("message", onMessage)
+              if (WorkerThreads.parentPort) {
+                WorkerThreads.parentPort.off("messageerror", onMessageError)
+                WorkerThreads.parentPort.off("error", onError)
+              }
+            })
+          )
 
           sendUnsafe(0, [0])
 
