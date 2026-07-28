@@ -43,6 +43,40 @@ const readLine = Effect.gen(function*() {
   return { first, second: second._tag }
 })
 
+const readLines = Effect.gen(function*() {
+  const terminal = yield* Terminal.Terminal
+  const first = yield* terminal.readLine
+  const second = yield* terminal.readLine
+  return { first, second }
+})
+
+const unused = Effect.gen(function*() {
+  yield* Terminal.Terminal
+  return { dataListeners: process.stdin.listenerCount("data") }
+})
+
+const readLineAfterEnd = Effect.gen(function*() {
+  const terminal = yield* Terminal.Terminal
+  yield* Effect.callback<void>((resume) => {
+    if (process.stdin.readableEnded) {
+      resume(Effect.void)
+      return
+    }
+    const onEnd = () => resume(Effect.void)
+    process.stdin.once("end", onEnd)
+    process.stdin.resume()
+    return Effect.sync(() => process.stdin.off("end", onEnd))
+  })
+  const error = yield* terminal.readLine.pipe(Effect.flip)
+  return error._tag
+})
+
+const readLineDisposed = Effect.gen(function*() {
+  const terminal = yield* Terminal.Terminal
+  const line = yield* terminal.readLine
+  return { line, dataListeners: process.stdin.listenerCount("data") }
+})
+
 const mode = process.argv[2]
 const program = Effect.gen(function*() {
   if (mode === "prompts") {
@@ -51,6 +85,14 @@ const program = Effect.gen(function*() {
     return yield* readInput
   } else if (mode === "read-line") {
     return yield* readLine
+  } else if (mode === "read-lines") {
+    return yield* readLines
+  } else if (mode === "unused") {
+    return yield* unused
+  } else if (mode === "read-line-after-end") {
+    return yield* readLineAfterEnd
+  } else if (mode === "read-line-disposed") {
+    return yield* readLineDisposed
   }
   return yield* Effect.die(`Unknown mode: ${mode}`)
 })

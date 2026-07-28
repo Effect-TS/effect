@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { spawnSync } from "node:child_process"
+import * as Effect from "effect/Effect"
+import { spawn, spawnSync } from "node:child_process"
 import { join } from "node:path"
 
 const fixture = join(__dirname, "fixtures", "node-terminal.ts")
@@ -18,7 +19,33 @@ const assertResult = (mode: string, input: string, expected: string) => {
   assert.isTrue(result.stderr.includes(`RESULT ${expected}`), result.stderr)
 }
 
+const assertOpenResult = (mode: string, input: string, expected: string) =>
+  Effect.callback<void>((resume) => {
+    const child = spawn(process.execPath, [fixture, mode])
+    let stderr = ""
+    child.stderr.setEncoding("utf8")
+    child.stderr.on("data", (data) => {
+      stderr += data
+      if (stderr.includes("RESULT ")) {
+        child.stdin.end()
+      }
+    })
+    child.on("exit", (code) => {
+      resume(
+        code === 0 && stderr.includes(`RESULT ${expected}`)
+          ? Effect.void
+          : Effect.die(new Error(stderr))
+      )
+    })
+    child.stdin.write(input)
+    return Effect.sync(() => child.kill())
+  })
+
 describe("NodeTerminal", () => {
+  it("does not install a readline interface until the terminal is used", () => {
+    assertResult("unused", "", "{\"dataListeners\":0}")
+  })
+
   it("fails a prompt with QuitError after piped input is exhausted", () => {
     assertResult("prompts", "y\n", "{\"first\":true,\"second\":\"QuitError\"}")
   })
@@ -30,4 +57,15 @@ describe("NodeTerminal", () => {
   it("flushes an unterminated line before failing readLine with QuitError at EOF", () => {
     assertResult("read-line", "last line", "{\"first\":\"last line\",\"second\":\"QuitError\"}")
   })
+
+  it("preserves lines buffered between sequential readLine calls", () => {
+    assertResult("read-lines", "first\nsecond\n", "{\"first\":\"first\",\"second\":\"second\"}")
+  })
+
+  it("fails readLine with QuitError when stdin ended before initialization", () => {
+    assertResult("read-line-after-end", "", "\"QuitError\"")
+  })
+
+  it.effect("disposes readline after readLine completes", () =>
+    assertOpenResult("read-line-disposed", "line\n", "{\"line\":\"line\",\"dataListeners\":0}"))
 })
