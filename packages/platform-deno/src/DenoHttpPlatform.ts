@@ -28,6 +28,7 @@ import * as DenoFileSystem from "./DenoFileSystem.ts"
  * @since 4.0.0
  */
 export const make = Platform.make({
+  platform: "deno",
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
     let body: ReadableStream<Uint8Array>
     if (contentLength === 0) {

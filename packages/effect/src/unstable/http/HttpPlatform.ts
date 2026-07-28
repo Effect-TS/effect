@@ -29,6 +29,7 @@ import * as Response from "./HttpServerResponse.ts"
  * @since 4.0.0
  */
 export class HttpPlatform extends Context.Service<HttpPlatform, {
+  readonly platform: "deno" | "node" | "bun" | "web"
   readonly fileResponse: (
     path: string,
     options?: Response.Options.WithContent & {
@@ -54,6 +55,7 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
  * @since 4.0.0
  */
 export const make: (impl: {
+  readonly platform: "deno" | "node" | "bun" | "web"
   readonly fileResponse: (
     path: string,
     status: number,
@@ -83,6 +85,7 @@ export const make: (impl: {
   const etagGen = yield* Etag.Generator
 
   return HttpPlatform.of({
+    platform: impl.platform,
     fileResponse: Effect.fnUntraced(function*(path, options) {
       const info = yield* fs.stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
@@ -143,6 +146,7 @@ export const make: (impl: {
 export const layer = Layer.effect(HttpPlatform)(
   Effect.flatMap(FileSystem.FileSystem, (fs) =>
     make({
+      platform: "web",
       fileResponse(path, status, statusText, headers, start, end, contentLength) {
         return Response.stream(
           fs.stream(path, {

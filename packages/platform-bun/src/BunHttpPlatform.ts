@@ -26,6 +26,7 @@ const make: Effect.Effect<
   never,
   FileSystem | Etag.Generator
 > = Platform.make({
+  platform: "bun",
   fileResponse(path, status, statusText, headers, start, end, _contentLength) {
     let file = Bun.file(path)
     if (start > 0 || end !== undefined) {
