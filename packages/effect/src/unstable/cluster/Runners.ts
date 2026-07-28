@@ -574,11 +574,22 @@ export const makeRpc: Effect.Effect<
               persisted: isPersisted
             })
           ),
-          Effect.catchTag("RpcClientError", Effect.die),
           Effect.scoped,
-          Effect.catchDefect(() => Effect.fail(new RunnerUnavailable({ address })))
+          Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address })))
         )
       }
+      // Persisted requests can recover their reply from storage via the
+      // `RunnerUnavailable` path, volatile requests receive the defect as their reply.
+      const respondDefect = (defect: unknown) =>
+        isPersisted
+          ? Effect.fail(new RunnerUnavailable({ address }))
+          : message.respond(
+            new Reply.WithExit({
+              id: snowflakeGen.nextUnsafe(),
+              requestId: message.envelope.requestId,
+              exit: Exit.die(defect)
+            })
+          )
       const isStream = RpcSchema.isStreamSchema(rpc.successSchema)
       if (!isStream) {
         return Effect.matchEffect(Message.serializeRequest(message), {
@@ -590,7 +601,6 @@ export const makeRpc: Effect.Effect<
                   persisted: isPersisted
                 })
               ),
-              Effect.catchTag("RpcClientError", Effect.die),
               Effect.flatMap((reply) =>
                 Schema.decodeEffect(Reply.Reply(message.rpc))(reply).pipe(
                   Effect.provideContext(message.context),
@@ -599,7 +609,8 @@ export const makeRpc: Effect.Effect<
               ),
               Effect.flatMap(message.respond),
               Effect.scoped,
-              Effect.catchDefect(() => Effect.fail(new RunnerUnavailable({ address })))
+              Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address }))),
+              Effect.catchDefect(respondDefect)
             ),
           onFailure: (error) =>
             message.respond(
@@ -626,10 +637,10 @@ export const makeRpc: Effect.Effect<
                 Effect.flatMap((reply) => Effect.orDie(decode(reply))),
                 Effect.flatMap(message.respond),
                 Effect.forever,
-                Effect.catchTag("RpcClientError", Effect.die),
                 Effect.provideContext(message.context),
                 Effect.catchTag("Done", (_) => Effect.void),
-                Effect.catchDefect(() => Effect.fail(new RunnerUnavailable({ address })))
+                Effect.catchTag("RpcClientError", () => Effect.fail(new RunnerUnavailable({ address }))),
+                Effect.catchDefect(respondDefect)
               )
             }),
             Effect.scoped
