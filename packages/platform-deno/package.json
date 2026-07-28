@@ -62,6 +62,7 @@
   },
   "dependencies": {
     "@db/redis": "jsr:^0.41.2",
+    "@std/fs": "jsr:^1.0.24",
     "@std/path": "jsr:^1.1.6"
   },
   "peerDependencies": {
