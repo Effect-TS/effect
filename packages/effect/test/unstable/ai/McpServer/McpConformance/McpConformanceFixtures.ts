@@ -211,8 +211,8 @@ const ContextCompletionPrompt = McpServer.prompt({
     value: Schema.String
   },
   completion: {
-    value: (...args: ReadonlyArray<unknown>) =>
-      Effect.succeed(args.length > 1 ? ["context received"] : ["context missing"])
+    value: (_input, context) =>
+      Effect.succeed(context?.arguments?.locale === "en" ? ["context received"] : ["context missing"])
   },
   content: ({ value }) => Effect.succeed(value)
 })

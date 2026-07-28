@@ -64,9 +64,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.deepStrictEqual(result.completion.values, ["alpha", "beta"])
           }))
-        // FIX: The public completion-handler API currently receives only the
-        // argument value and drops the June `context.arguments` object.
-        it.effect.skip("MUST pass previously resolved argument context to the completion handler", () =>
+        it.effect("MUST pass previously resolved argument context to the completion handler", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -156,9 +154,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(result.completion.hasMore, false)
           }))
 
-        // FIX: Completion handlers can currently return more than the protocol's
-        // one-hundred-value limit without truncation or rejection.
-        it.effect.skip("MUST return at most one hundred completion values", () =>
+        it.effect("MUST return at most one hundred completion values", () =>
           Effect.gen(function*() {
             const result = yield* complete(
               { type: "ref/prompt", name: "TestPrompt" },

@@ -91,6 +91,8 @@ import type {
 import * as Tool from "./Tool.ts"
 import type * as Toolkit from "./Toolkit.ts"
 
+type CompletionContext = typeof Complete.payloadSchema.Type["context"]
+
 /**
  * Service that stores and serves an MCP server's registered tools, resources,
  * prompts, completions, and outgoing notifications.
@@ -140,7 +142,13 @@ export class McpServer extends Context.Service<McpServer, {
       readonly template: ResourceTemplate
       readonly annotations: Context.Context<never>
       readonly routerPath: string
-      readonly completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>>
+      readonly completions: Record<
+        string,
+        (
+          input: string,
+          context: CompletionContext
+        ) => Effect.Effect<CompleteResult, InternalError>
+      >
       readonly handle: (
         uri: string,
         params: Array<string>
@@ -165,7 +173,10 @@ export class McpServer extends Context.Service<McpServer, {
     readonly annotations: Context.Context<never>
     readonly completions: Record<
       string,
-      (input: string) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
+      (
+        input: string,
+        context: CompletionContext
+      ) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
     >
     readonly handle: (
       params: Record<string, string>
@@ -227,7 +238,10 @@ export class McpServer extends Context.Service<McpServer, {
     >()
     const completionsMap = new Map<
       string,
-      (input: string) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
+      (
+        input: string,
+        context: CompletionContext
+      ) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
     >()
     const notificationsQueue = yield* Queue.make<RpcMessage.Request<any>>()
     const listChangedHandles = new Map<string, any>()
@@ -347,7 +361,16 @@ export class McpServer extends Context.Service<McpServer, {
         if (!handler) {
           return yield* new InvalidParams({ message: "Unknown completion reference or argument" })
         }
-        return yield* handler(complete.argument.value)
+        const result = yield* handler(complete.argument.value, complete.context)
+        const values = Arr.take(result.completion.values, 100)
+        return {
+          completion: {
+            ...result.completion,
+            values,
+            hasMore: result.completion.hasMore === true ||
+              values.length < result.completion.values.length
+          }
+        }
       })
     })
   })
@@ -1285,7 +1308,11 @@ export const toolkit = <Tools extends Record<string, Tool.Any>>(
 export type ValidateCompletions<Completions, Keys extends string> =
   & Completions
   & {
-    readonly [K in keyof Completions]: K extends Keys ? (input: string) => any : never
+    readonly [K in keyof Completions]: K extends Keys ? (
+        input: string,
+        context: CompletionContext
+      ) => any
+      : never
   }
 
 /**
@@ -1304,7 +1331,10 @@ export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Constraint>
   readonly [
     K in Extract<keyof Schemas, `${number}`> as Schemas[K] extends Param<infer Id, infer _S> ? Id
       : `param${K}`
-  ]: (input: string) => Effect.Effect<Array<Schemas[K]["Type"]>, any, any>
+  ]: (
+    input: string,
+    context: CompletionContext
+  ) => Effect.Effect<Array<Schemas[K]["Type"]>, any, any>
 }
 
 /**
@@ -1411,7 +1441,15 @@ export const registerResource: {
     readonly mimeType?: string | undefined
     readonly audience?: ReadonlyArray<"user" | "assistant"> | undefined
     readonly priority?: number | undefined
-    readonly completion?: Record<string, (input: string) => Effect.Effect<any>> | undefined
+    readonly completion?:
+      | Record<
+        string,
+        (
+          input: string,
+          context: CompletionContext
+        ) => Effect.Effect<any>
+      >
+      | undefined
     readonly content: (uri: string, ...params: Array<any>) => Effect.Effect<
       typeof ReadResourceResult.Type | string | Uint8Array,
       E,
@@ -1427,13 +1465,20 @@ export const registerResource: {
       uriTemplate: uriPath,
       annotations: options!
     })
-    const completions: Record<string, (input: string) => Effect.Effect<CompleteResult, InternalError>> = Object.create(
-      null
-    )
+    const completions: Record<
+      string,
+      (
+        input: string,
+        context: CompletionContext
+      ) => Effect.Effect<CompleteResult, InternalError>
+    > = Object.create(null)
     for (const [param, handle] of Object.entries(options.completion ?? {})) {
       const encodeArray = Schema.encodeUnknownEffect(Schema.Array(params[param]))
-      const handler = (input: string) =>
-        handle(input).pipe(
+      const handler = (
+        input: string,
+        context: CompletionContext
+      ) =>
+        handle(input, context).pipe(
           Effect.flatMap(encodeArray),
           Effect.map((values) => ({
             completion: {
@@ -1563,7 +1608,10 @@ export const registerPrompt = <
   R,
   Params extends Schema.Struct.Fields = {},
   const Completions extends {
-    readonly [K in keyof Params]?: (input: string) => Effect.Effect<Array<Params[K]>, any, any>
+    readonly [K in keyof Params]?: (
+      input: string,
+      context: CompletionContext
+    ) => Effect.Effect<Array<Params[K]>, any, any>
   } = {}
 >(
   options: {
@@ -1592,18 +1640,30 @@ export const registerPrompt = <
   const decode = options.parameters
     ? Schema.decodeEffect(Schema.Struct(props))
     : () => Effect.succeed({} as Params)
-  const completion: Record<string, (input: string) => Effect.Effect<any>> = options.completion ?? {}
+  const completion: Record<
+    string,
+    (
+      input: string,
+      context: CompletionContext
+    ) => Effect.Effect<any>
+  > = options.completion ?? {}
   return Effect.gen(function*() {
     const registry = yield* McpServer
     const services = yield* Effect.context<Exclude<R | Schema.Struct.DecodingServices<Params>, McpServerClient>>()
     const completions: Record<
       string,
-      (input: string) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
+      (
+        input: string,
+        context: CompletionContext
+      ) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
     > = Object.create(null)
     for (const [param, handle] of Object.entries(completion)) {
       const encodeArray = Schema.encodeEffect(Schema.Array(props[param]))
-      const handler = (input: string) =>
-        handle(input).pipe(
+      const handler = (
+        input: string,
+        context: CompletionContext
+      ) =>
+        handle(input, context).pipe(
           Effect.flatMap(encodeArray),
           Effect.map((values) => ({
             completion: {
@@ -1673,7 +1733,10 @@ export const prompt = <
   R,
   Params extends Schema.Struct.Fields = {},
   const Completions extends {
-    readonly [K in keyof Params]?: (input: string) => Effect.Effect<Array<Params[K]["Type"]>, any, any>
+    readonly [K in keyof Params]?: (
+      input: string,
+      context: CompletionContext
+    ) => Effect.Effect<Array<Params[K]["Type"]>, any, any>
   } = {}
 >(
   options: {
