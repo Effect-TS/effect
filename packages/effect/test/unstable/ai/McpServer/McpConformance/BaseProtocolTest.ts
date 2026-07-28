@@ -43,8 +43,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               assert.strictEqual(message.id, 42)
             }))
 
-          // FIX: The server currently accepts jsonrpc "1.0" and returns a successful ping result.
-          it.effect.skip("MUST reject requests with an invalid JSON-RPC version", () =>
+          it.effect("MUST reject requests with an invalid JSON-RPC version", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const initialized = yield* test.initialize()
@@ -61,8 +60,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               assert.strictEqual(message.error.code, -32600)
             }))
 
-          // FIX: Unknown methods currently return error code 0 instead of JSON-RPC -32601.
-          it.effect.skip("MUST return method not found for unknown request methods", () =>
+          it.effect("MUST return method not found for unknown request methods", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const initialized = yield* test.initialize()
@@ -78,8 +76,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               assert.strictEqual(message.id, 3)
               assert.strictEqual(message.error.code, -32601)
             }))
-          // FIX: Invalid method params currently return error code 0 instead of JSON-RPC -32602.
-          it.effect.skip("MUST return invalid params for request payloads that do not match the method schema", () =>
+          it.effect("MUST return invalid params for request payloads that do not match the method schema", () =>
             Effect.gen(function*() {
               const test = yield* McpConformance
               const initialized = yield* test.initialize()
@@ -95,6 +92,54 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
               assert.strictEqual(message.id, 7)
               assert.strictEqual(message.error.code, -32602)
+            }))
+
+          it.effect("MUST not reply to unknown notifications", () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const initialized = yield* test.initialize()
+              yield* test.notifyInitialized(initialized)
+
+              const response = yield* test.send(initialized, {
+                jsonrpc: "2.0",
+                method: "unknown/method"
+              })
+
+              assert.strictEqual(response.status, 202)
+              assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+            }))
+
+          it.effect("MUST not reply to notifications with invalid params", () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const initialized = yield* test.initialize()
+              yield* test.notifyInitialized(initialized)
+
+              const response = yield* test.send(initialized, {
+                jsonrpc: "2.0",
+                method: "ping",
+                params: "invalid"
+              })
+
+              assert.strictEqual(response.status, 202)
+              assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+            }))
+
+          it.effect("MUST reject requests with invalid identifiers", () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const initialized = yield* test.initialize()
+              yield* test.notifyInitialized(initialized)
+
+              const response = yield* test.send(initialized, {
+                jsonrpc: "2.0",
+                id: true,
+                method: "ping"
+              })
+              const message = yield* test.decodeError(response)
+
+              assert.strictEqual(message.id, null)
+              assert.strictEqual(message.error.code, -32600)
             }))
         })
 
@@ -197,8 +242,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             }))
         })
 
-        // FIX: Malformed JSON currently becomes an internal -32603 response instead of a -32700 parse error with a null id.
-        it.effect.skip("MUST return a parse error for malformed JSON", () =>
+        it.effect("MUST return a parse error for malformed JSON", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize()
@@ -211,8 +255,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(message.error.code, -32700)
           }))
 
-        // FIX: A JSON-RPC object without a method currently receives an empty response instead of error -32600.
-        it.effect.skip("MUST return an invalid request error for malformed JSON-RPC messages", () =>
+        it.effect("MUST return an invalid request error for malformed JSON-RPC messages", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize()

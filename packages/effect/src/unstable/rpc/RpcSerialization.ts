@@ -232,6 +232,7 @@ function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEnc
       tag: request.method,
       payload: request.params ?? null,
       headers: request.headers ?? [],
+      ...(Predicate.hasProperty(request, "id") ? {} : { isNotification: true as const }),
       ...(request.spanId ?
         {
           traceId: request.traceId,
@@ -376,7 +377,8 @@ function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessag
           result: response.exit.value
         } as any
       }
-      const error = response.exit.cause.find((failure) => failure._tag === "Fail")
+      const failure = response.exit.cause.find((failure) => failure._tag === "Fail")
+      const error = failure?._tag === "Fail" ? failure.error : undefined
       return {
         jsonrpc: "2.0",
         id: response.requestId ?? undefined,

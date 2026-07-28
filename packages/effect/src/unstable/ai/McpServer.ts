@@ -19,6 +19,7 @@ import * as Exit from "../../Exit.ts"
 import * as Fiber from "../../Fiber.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
 import * as RcMap from "../../RcMap.ts"
 import { CurrentLogLevel } from "../../References.ts"
@@ -53,6 +54,7 @@ import {
   GetPromptResult,
   InternalError,
   InvalidParams,
+  InvalidRequest,
   isParam,
   ListPromptsResult,
   ListResourcesResult,
@@ -60,6 +62,8 @@ import {
   ListToolsResult,
   McpServerClient,
   McpServerClientMiddleware,
+  MethodNotFound,
+  ParseError,
   Prompt,
   Resource,
   ResourceTemplate,
@@ -582,7 +586,35 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
                 Effect.catchCause(() => Effect.void)
               )
             }
-            return f(clientId, routedRequest)
+            if (!rpc) {
+              if (request.isNotification) {
+                return Effect.void
+              }
+              return protocol.send(clientId, {
+                _tag: "Exit",
+                requestId: request.id,
+                exit: {
+                  _tag: "Failure",
+                  cause: [{ _tag: "Fail", error: new MethodNotFound({ message: `Method not found: ${request.tag}` }) }]
+                }
+              })
+            }
+            return selectedProtocol.payloadCodecs(rpc).decode(request.payload).pipe(
+              Effect.matchEffect({
+                onSuccess: () => f(clientId, routedRequest),
+                onFailure: () =>
+                  request.isNotification
+                    ? Effect.void
+                    : protocol.send(clientId, {
+                      _tag: "Exit",
+                      requestId: request.id,
+                      exit: {
+                        _tag: "Failure",
+                        cause: [{ _tag: "Fail", error: new InvalidParams({ message: "Invalid method parameters" }) }]
+                      }
+                    })
+              })
+            )
           }
           case "Ping":
           case "Ack":
@@ -845,7 +877,64 @@ const layerMcpProtocolHttp = (options: {
       ) {
         return Effect.succeed(HttpServerResponse.empty({ status: 400 }))
       }
-      return httpEffect
+      return request.text.pipe(
+        Effect.matchEffect({
+          onFailure: () =>
+            Effect.succeed(
+              HttpServerResponse.jsonUnsafe({
+                jsonrpc: "2.0",
+                id: null,
+                error: new ParseError({
+                  message: "Parse error"
+                })
+              })
+            ),
+          onSuccess: (body) => {
+            return Effect.match(Schema.decodeUnknownEffect(Schema.UnknownFromJsonString)(body), {
+              onFailure: () => ({
+                _tag: "Error" as const,
+                id: null,
+                error: new ParseError({ message: "Parse error" })
+              }),
+              onSuccess: (input) => {
+                const hasId = Predicate.hasProperty(input, "id")
+                const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
+                  ? input.id
+                  : null
+                const isJsonRpc = Predicate.hasProperty(input, "jsonrpc") && input.jsonrpc === "2.0"
+                const hasValidRequestId = hasId === false || typeof input.id === "string" ||
+                  typeof input.id === "number"
+                const isRequest = isJsonRpc && hasValidRequestId &&
+                  Predicate.hasProperty(input, "method") && typeof input.method === "string"
+                const hasValidResponseId = hasId &&
+                  (typeof input.id === "string" || typeof input.id === "number" || input.id === null)
+                const hasResult = Predicate.hasProperty(input, "result")
+                const hasError = Predicate.hasProperty(input, "error")
+                const isResponse = isJsonRpc && hasValidResponseId && hasResult !== hasError
+                return isRequest || isResponse
+                  ? { _tag: "Success" as const }
+                  : {
+                    _tag: "Error" as const,
+                    id,
+                    error: new InvalidRequest({ message: "Invalid Request" })
+                  }
+              }
+            }).pipe(
+              Effect.flatMap((decoded) =>
+                decoded._tag === "Error"
+                  ? Effect.succeed(
+                    HttpServerResponse.jsonUnsafe({
+                      jsonrpc: "2.0",
+                      id: decoded.id,
+                      error: decoded.error
+                    })
+                  )
+                  : httpEffect
+              )
+            )
+          }
+        })
+      )
     })
     return protocol
   }))
