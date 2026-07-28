@@ -31,8 +31,10 @@ const startWatch = <E, R>(
       Effect.forever,
       Effect.forkChild
     )
-    yield* Deferred.await(ready)
-    yield* Fiber.interrupt(signalFiber)
+    yield* Deferred.await(ready).pipe(
+      Effect.raceFirst(Fiber.join(fiber).pipe(Effect.asVoid)),
+      Effect.ensuring(Fiber.interrupt(signalFiber))
+    )
     return fiber
   })
 
