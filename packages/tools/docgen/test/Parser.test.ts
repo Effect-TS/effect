@@ -195,6 +195,46 @@ declare const foo: "foo"
 
 Since v1.0.0`
         )
+
+        yield* expectMarkdown(
+          Parser.parseModule,
+          `/**
+* This is the direct module.
+*
+* @since 1.0.0
+*/
+import * as assert from 'assert'
+
+/**
+ * This is the foo export.
+ *
+ * @since 1.0.0
+ */
+export const foo = 'foo'`,
+          `## test.ts overview
+
+This is the direct module.
+
+Since v1.0.0
+
+<!-- toc -->
+
+# utils
+
+## foo
+
+This is the foo export.
+
+**Signature**
+
+\`\`\`ts
+declare const foo: "foo"
+\`\`\`
+
+[Source](https://github.com/effect-ts/docgen/blob/main/src/test.ts#L13)
+
+Since v1.0.0`
+        )
       }))
 
     it.effect("should ignore non-JSDoc comments above JSDoc comments", () =>
