@@ -12,7 +12,6 @@
 import type { Array } from "effect"
 import * as Channel from "effect/Channel"
 import * as Context from "effect/Context"
-import * as Data from "effect/Data"
 import * as Deferred from "effect/Deferred"
 import type * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -23,40 +22,26 @@ import * as Layer from "effect/Layer"
 import * as Scope from "effect/Scope"
 import * as Socket from "effect/unstable/socket/Socket"
 
-type ConnectOptions = (Deno.ConnectOptions | Deno.UnixConnectOptions) & {
+/**
+ * Options for opening a TCP or Unix connection.
+ *
+ * @category types
+ * @since 4.0.0
+ */
+export type ConnectOptions = (Deno.ConnectOptions | Deno.UnixConnectOptions) & {
   readonly noDelay?: boolean | undefined
   readonly keepAlive?: boolean | undefined
 }
 
-type TcpOptions = ConnectOptions & {
+/**
+ * Options for opening a TCP or Unix connection.
+ *
+ * @category types
+ * @since 4.0.0
+ */
+export type TcpOptions = ConnectOptions & {
   readonly openTimeout?: Duration.Input | undefined
 }
-
-const encoder = new TextEncoder()
-
-class DenoError extends Data.TaggedError("DenoError")<{
-  readonly cause: unknown
-}> {}
-
-const isBadResource = (cause: unknown): cause is Deno.errors.BadResource => cause instanceof Deno.errors.BadResource
-
-const isTeardownError = (cause: unknown): boolean => cause instanceof Deno.errors.Interrupted || isBadResource(cause)
-
-const close = (conn: Deno.Conn): Effect.Effect<void> =>
-  Effect.try({
-    try: () => conn.close(),
-    catch: (cause) => new DenoError({ cause })
-  }).pipe(
-    Effect.catch((error) => isBadResource(error.cause) ? Effect.void : Effect.die(error.cause))
-  )
-
-const closeWrite = (conn: Deno.Conn): Effect.Effect<void> =>
-  Effect.tryPromise({
-    try: () => conn.closeWrite(),
-    catch: (cause) => new DenoError({ cause })
-  }).pipe(
-    Effect.catch((error) => isBadResource(error.cause) ? Effect.void : Effect.die(error.cause))
-  )
 
 /**
  * Service tag for the underlying Deno connection.
@@ -116,10 +101,9 @@ export const fromConn = <RO>(
         }
         latch.openUnsafe()
 
-        const read = Effect.tryPromise({
-          try: () => reader.read(),
-          catch: (cause) => new DenoError({ cause })
-        }).pipe(
+        const read = Effect.tryPromise(
+          () => reader.read()
+        ).pipe(
           Effect.catchIf(
             (error) => tearingDown && isTeardownError(error.cause),
             () => Effect.succeed({ done: true, value: undefined } as ReadableStreamReadDoneResult<Uint8Array>)
@@ -316,3 +300,19 @@ export const layerWebSocket = (url: string, options?: {
  */
 export const layerWebSocketConstructor: Layer.Layer<Socket.WebSocketConstructor> =
   Socket.layerWebSocketConstructorGlobal
+
+const encoder = new TextEncoder()
+
+const isBadResource = (cause: unknown): cause is Deno.errors.BadResource => cause instanceof Deno.errors.BadResource
+
+const isTeardownError = (cause: unknown): boolean => cause instanceof Deno.errors.Interrupted || isBadResource(cause)
+
+const close = (conn: Deno.Conn): Effect.Effect<void> =>
+  Effect.try(() => conn.close()).pipe(
+    Effect.catch(({ cause }) => isBadResource(cause) ? Effect.void : Effect.die(cause))
+  )
+
+const closeWrite = (conn: Deno.Conn): Effect.Effect<void> =>
+  Effect.tryPromise(() => conn.closeWrite()).pipe(
+    Effect.catch((error) => isBadResource(error) ? Effect.void : Effect.die(error))
+  )
