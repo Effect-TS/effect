@@ -1676,11 +1676,15 @@ const toChatMessages = (
           tool_calls: [...previous.tool_calls, toolCall]
         }
       } else {
-        messages.push({ role: "assistant", content: null, tool_calls: [toolCall] })
+        messages.push({
+          role: "assistant",
+          content: null,
+          tool_calls: [toolCall]
+        })
       }
-      continue
+    } else {
+      messages.push(...toChatMessagesFromItem(item))
     }
-    messages.push(...toChatMessagesFromItem(item))
   }
 
   return messages
