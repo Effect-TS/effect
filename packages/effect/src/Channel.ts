@@ -1711,38 +1711,7 @@ export const fromReadableStream = <A, E>(options: {
     })
   )
 
-/**
- * Writes values from an upstream pull into a Web `WritableStream`, respecting
- * writer backpressure.
- *
- * **Example** (Writing an existing pull)
- *
- * ```ts
- * import { Channel, Effect, Pull } from "effect"
- *
- * const written: Array<number> = []
- * const writable = new WritableStream<number>({
- *   write(value) {
- *     written.push(value)
- *   }
- * })
- *
- * const program = Effect.scoped(Effect.gen(function*() {
- *   const pull = yield* Channel.toPull(Channel.fromArray([[1, 2] as [number, number]]))
- *   yield* Channel.pullIntoWritableStream({
- *     pull,
- *     writable,
- *     onError: (cause) => new Error(String(cause))
- *   }).pipe(Pull.catchDone(() => Effect.void))
- * }))
- *
- * Effect.runPromise(program).then(() => console.log(written))
- * // Output: [ 1, 2 ]
- * ```
- *
- * @category converting
- * @since 4.0.0
- */
+/** @internal */
 export const pullIntoWritableStream = <A, IE, E>(options: {
   readonly pull: Pull.Pull<Arr.NonEmptyReadonlyArray<A>, IE, unknown>
   readonly writable: WritableStream<A>
