@@ -66,7 +66,9 @@
     "@db/redis": "jsr:^0.41.2",
     "@effect/platform-node-shared": "workspace:^",
     "@std/fs": "jsr:^1.0.24",
-    "@std/path": "jsr:^1.1.6"
+    "@std/media-types": "jsr:^1.1.0",
+    "@std/path": "jsr:^1.1.6",
+    "@std/streams": "jsr:^1.1.1"
   },
   "peerDependencies": {
     "effect": "workspace:^"
