@@ -129,7 +129,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 "elicitation/create": () =>
                   Effect.succeed({
                     action: "accept",
-                    content: { name: "Ada", age: 37 }
+                    content: { name: "Ada", age: "37" }
                   })
               }
             })
@@ -138,7 +138,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               peer.client,
               Schema.Struct({
                 name: Schema.String,
-                age: Schema.Number
+                age: Schema.NumberFromString
               })
             )
 

@@ -140,6 +140,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
       describe("Progress", () => {
         // https://modelcontextprotocol.io/specification/2025-06-18/basic/utilities/progress
+        // NOTE: Smoke test only. The client capability accepts this one-way notification,
+        // but McpServer does not expose an observer for its decoded payload.
         it.effect("MUST accept string progress tokens", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
@@ -158,6 +160,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(response.status, 202)
             assert.strictEqual(yield* Effect.promise(() => response.text()), "")
           }))
+        // NOTE: Smoke test only. The client capability accepts this one-way notification,
+        // but McpServer does not expose an observer for its decoded payload.
         it.effect("MUST accept numeric progress tokens", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
@@ -176,6 +180,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(response.status, 202)
             assert.strictEqual(yield* Effect.promise(() => response.text()), "")
           }))
+        // NOTE: Smoke test only. The client capability accepts this one-way notification,
+        // but McpServer does not expose an observer for its decoded payload.
         it.effect("SCHEMA accepts the optional total", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance

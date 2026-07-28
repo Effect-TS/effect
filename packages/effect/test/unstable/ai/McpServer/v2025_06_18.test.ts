@@ -34,6 +34,8 @@ ElicitationTest.suite(protocol, testLayer)
 it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   describe("Utilities", () => {
     describe("Progress", () => {
+      // NOTE: Smoke test only. The client capability accepts this one-way notification,
+      // but McpServer does not expose an observer for its decoded payload.
       it.effect("SCHEMA accepts the optional progress message", () =>
         Effect.gen(function*() {
           const test = yield* McpConformance

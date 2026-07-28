@@ -1,8 +1,12 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
+import * as Option from "effect/Option"
 import * as Schema from "effect/Schema"
+import { TestClock } from "effect/testing"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
+import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
@@ -97,19 +101,20 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
         describe("Responses", () => {
           it.effect("MUST return exactly one result response for a successful request", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformance
-              const initialized = yield* test.initialize()
-              yield* test.notifyInitialized(initialized)
-
-              const response = yield* test.ping(initialized, { id: 4 })
-              const raw = yield* Effect.promise<unknown>(() => response.clone().json()).pipe(
-                Effect.map(Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown)))
-              )
-              const message = yield* test.decodeResult(response)
-
+              const fixture = yield* makeMcpStdioHarness(protocol)
+              yield* fixture.initialize()
+              yield* fixture.sendRaw({ jsonrpc: "2.0", id: 4, method: "ping" })
+              const message = yield* fixture.takeMessage
               assert.strictEqual(message.id, 4)
-              assert.property(raw, "result")
-              assert.notProperty(raw, "error")
+              assert.deepStrictEqual(message.result, {})
+
+              const duplicate = yield* fixture.takeMessage.pipe(
+                Effect.timeoutOption("1 millis"),
+                Effect.forkChild
+              )
+              yield* TestClock.adjust("1 millis")
+
+              assert.isTrue(Option.isNone(yield* Fiber.join(duplicate)))
             }))
 
           it.effect("MUST return exactly one error response for a failed request", () =>

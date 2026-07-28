@@ -261,9 +261,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               "file:///template/encoded%20path:encoded path"
             )
           }))
-        // FIX: The resource-template handler is currently invoked even when a
-        // path parameter cannot be decoded by its declared schema.
-        it.effect.skip("MUST not invoke the handler when template parameter decoding fails", () =>
+        it.effect("MUST not invoke the handler when template parameter decoding fails", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             yield* test.resetObservations
@@ -346,6 +344,13 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
             assert.notProperty(response, "error")
             assert.deepStrictEqual(response.result, {})
+
+            yield* fixture.server.notifications["notifications/resources/updated"]({
+              uri: "file:///subscription-target"
+            })
+            const notification = yield* fixture.awaitOutboundMethod("notifications/resources/updated")
+            const payload = yield* decodeResourceUpdated(notification.params)
+            assert.strictEqual(payload.uri, "file:///subscription-target")
           }))
 
         // FIX: Resource update notifications are currently broadcast without
@@ -429,9 +434,13 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 })
               )
             })
+            yield* fixture.server.addResource(makeResource("file:///subscription-sentinel", "subscription-sentinel"))
             yield* fixture.initialize()
             yield* fixture.sendRequest("resources/subscribe", {
               uri: "file:///subscription-target"
+            })
+            yield* fixture.sendRequest("resources/subscribe", {
+              uri: "file:///subscription-sentinel"
             })
 
             const response = yield* fixture.sendRequest("resources/unsubscribe", {
@@ -439,6 +448,16 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
             assert.notProperty(response, "error")
             assert.deepStrictEqual(response.result, {})
+
+            yield* fixture.server.notifications["notifications/resources/updated"]({
+              uri: "file:///subscription-target"
+            })
+            yield* fixture.server.notifications["notifications/resources/updated"]({
+              uri: "file:///subscription-sentinel"
+            })
+            const notification = yield* fixture.awaitOutboundMethod("notifications/resources/updated")
+            const payload = yield* decodeResourceUpdated(notification.params)
+            assert.strictEqual(payload.uri, "file:///subscription-sentinel")
           }))
 
         // FIX: Resource update notifications remain broadcast after unsubscribe

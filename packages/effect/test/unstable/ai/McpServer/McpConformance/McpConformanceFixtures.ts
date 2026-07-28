@@ -155,7 +155,7 @@ const TestResourceTemplate = McpServer.resource`file:///template/${templatePath}
   content: (uri, path) => Effect.succeed(`${uri}:${path}`)
 })
 
-const numericId = McpSchema.param("id", Schema.NumberFromString)
+const numericId = McpSchema.param("id", Schema.FiniteFromString)
 const makeNumericResourceTemplate = (observations: Ref.Ref<Observations>) =>
   McpServer.resource`file:///numeric/${numericId}`({
     name: "NumericResourceTemplate",

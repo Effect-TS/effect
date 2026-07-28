@@ -142,18 +142,18 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
         it.effect("MUST return completion values in order", () =>
           Effect.gen(function*() {
             const result = yield* complete(
-              { type: "ref/prompt", name: "TestPrompt" },
-              { name: "required", value: "" }
+              { type: "ref/resource", uri: "file:///template/{path}" },
+              { name: "path", value: "" }
             )
 
-            assert.deepStrictEqual(result.completion.values, ["first", "second"])
+            assert.deepStrictEqual(result.completion.values, ["alpha", "beta"])
           }))
 
         it.effect("SCHEMA returns the total and additional-results indicator", () =>
           Effect.gen(function*() {
             const result = yield* complete(
-              { type: "ref/prompt", name: "TestPrompt" },
-              { name: "required", value: "" }
+              { type: "ref/resource", uri: "file:///template/{path}" },
+              { name: "path", value: "" }
             )
 
             assert.strictEqual(result.completion.total, 2)
