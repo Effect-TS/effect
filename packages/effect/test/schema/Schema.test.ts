@@ -5651,7 +5651,7 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
     it("replacer and space options", async () => {
       const schema = Schema.fromJsonString(Schema.Struct({ a: Schema.Number, b: Schema.Number }), {
-        replacer: ["a"],
+        replacer: (key, value) => key === "b" ? undefined : value,
         space: 2
       })
       const encoding = new TestSchema.Asserts(schema).encoding()

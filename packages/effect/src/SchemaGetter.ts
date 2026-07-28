@@ -999,8 +999,19 @@ export function parseJson<E extends string>(options?: ParseJsonOptions | undefin
   )
 }
 
+/**
+ * Replacer function or property allowlist accepted by `JSON.stringify`.
+ *
+ * @category JSON getters
+ * @since 4.0.0
+ */
+export type JsonReplacer =
+  | ((this: any, key: string, value: any) => any)
+  | Array<string | number>
+  | null
+
 type StringifyJsonOptions = {
-  readonly replacer?: Parameters<typeof JSON.stringify>[1]
+  readonly replacer?: JsonReplacer | undefined
   readonly space?: Parameters<typeof JSON.stringify>[2]
 }
 
@@ -1038,7 +1049,7 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
   return onSome((input) =>
     Effect.try({
       try: () => {
-        const output = JSON.stringify(input, options?.replacer, options?.space)
+        const output = JSON.stringify(input, options?.replacer as any, options?.space)
         if (output === undefined) {
           throw new TypeError("Value cannot be represented as JSON")
         }

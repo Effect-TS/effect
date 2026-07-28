@@ -12415,7 +12415,7 @@ export function fromJsonString<S extends Constraint>(
   schema: S,
   options?: {
     readonly reviver?: Parameters<typeof JSON.parse>[1] | undefined
-    readonly replacer?: Parameters<typeof JSON.stringify>[1] | undefined
+    readonly replacer?: SchemaGetter.JsonReplacer | undefined
     readonly space?: Parameters<typeof JSON.stringify>[2] | undefined
   }
 ): fromJsonString<S> {

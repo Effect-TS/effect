@@ -1619,7 +1619,7 @@ export const stringFromUriComponent: Transformation<string, string> = new Transf
  */
 export function fromJsonString(options?: {
   readonly reviver?: Parameters<typeof JSON.parse>[1] | undefined
-  readonly replacer?: Parameters<typeof JSON.stringify>[1] | undefined
+  readonly replacer?: SchemaGetter.JsonReplacer | undefined
   readonly space?: Parameters<typeof JSON.stringify>[2] | undefined
 }): Transformation<unknown, string> {
   return new Transformation(
