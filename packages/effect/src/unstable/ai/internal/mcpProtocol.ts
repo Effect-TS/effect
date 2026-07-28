@@ -12,6 +12,7 @@ export interface PayloadCodecs {
 export interface AnyProtocolAdapter {
   readonly protocolVersion: string
   readonly transport: {
+    readonly acceptsJsonRpcBatches: boolean
     readonly requiresVersionHeader: boolean
   }
   readonly clientRpcs: RpcGroup.Any
@@ -30,6 +31,7 @@ export interface ProtocolAdapter<
 > {
   readonly protocolVersion: Version
   readonly transport: {
+    readonly acceptsJsonRpcBatches: boolean
     readonly requiresVersionHeader: boolean
   }
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>
@@ -49,6 +51,7 @@ export const make = <
 >(options: {
   readonly protocolVersion: Version
   readonly transport: {
+    readonly acceptsJsonRpcBatches: boolean
     readonly requiresVersionHeader: boolean
   }
   readonly clientRpcs: RpcGroup.RpcGroup<ClientRpcs>

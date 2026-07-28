@@ -59,9 +59,7 @@ it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   })
 
   describe("Transport-specific behavior", () => {
-    // FIX: Streamable HTTP currently forwards JSON-RPC batches, although June
-    // 2025 removed support for batching.
-    it.effect.skip("MUST reject JSON-RPC batches", () =>
+    it.effect("MUST reject JSON-RPC batches", () =>
       Effect.gen(function*() {
         const test = yield* McpConformance
         const response = yield* test.post([test.initializeRequest()])

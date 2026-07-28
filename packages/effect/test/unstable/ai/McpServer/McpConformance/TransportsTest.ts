@@ -4,6 +4,7 @@ import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
+import * as McpSchema from "effect/unstable/ai/McpSchema"
 import { MCP_ENDPOINT } from "../TestUtils/McpHttpHarness.ts"
 import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
@@ -103,9 +104,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
           }))
 
-        // FIX: The stdio protocol currently accepts batches, although June
-        // 2025 removed JSON-RPC batching.
-        it.effect.skip("SCENARIO applies the revision-specific stdio batch policy", () =>
+        it.effect("SCENARIO applies the revision-specific stdio batch policy", () =>
           Effect.gen(function*() {
             const fixture = yield* makeMcpStdioHarness(protocol)
             yield* fixture.sendRaw({
@@ -124,7 +123,13 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               { jsonrpc: "2.0", id: 3, method: "ping", params: {} }
             ])
             const response = yield* fixture.takeFrame
-            assert.property(response, "error")
+            assert.strictEqual(response.id, null)
+            assert.strictEqual(
+              typeof response.error === "object" && response.error !== null && "code" in response.error
+                ? response.error.code
+                : undefined,
+              McpSchema.INVALID_REQUEST_ERROR_CODE
+            )
           }))
 
         it.effect("MUST shut down when the client closes stdin", () =>

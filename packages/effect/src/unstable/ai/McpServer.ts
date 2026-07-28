@@ -52,6 +52,7 @@ import {
   EnabledWhen,
   GetPromptResult,
   InternalError,
+  INVALID_REQUEST_ERROR_CODE,
   InvalidParams,
   InvalidRequest,
   isParam,
@@ -358,6 +359,7 @@ export class McpServer extends Context.Service<McpServer, {
 
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
+const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
 
 interface Session {
   readonly initializePayload: typeof Initialize.payloadSchema.Type
@@ -560,6 +562,19 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
                 ? protocolRegistry.select(getOfferedProtocolVersion(request.payload))
                 : protocolRegistry.protocols[0])
             clientProtocols.set(clientId, selectedProtocol)
+            if (request.tag === MCP_INVALID_BATCH_METHOD) {
+              return protocol.send(clientId, {
+                _tag: "Exit",
+                requestId: request.id,
+                exit: {
+                  _tag: "Failure",
+                  cause: [{
+                    _tag: "Fail",
+                    error: new InvalidRequest({ message: "JSON-RPC batches are not supported" })
+                  }]
+                }
+              })
+            }
             if (isHttp) {
               const fiber = Fiber.getCurrent()!
               const httpRequest = Context.getUnsafe(fiber.context, HttpServerRequest.HttpServerRequest)
@@ -771,6 +786,83 @@ const layerWithProtocolState = (options: {
     Layer.provideMerge(McpServer.layer)
   )
 
+const StdioInitializeRequest = Schema.Struct({
+  method: Schema.Literal("initialize"),
+  params: Schema.Struct({
+    protocolVersion: Schema.String
+  })
+})
+
+const StdioInvalidBatchExit = Schema.Struct({
+  _tag: Schema.Literal("Exit"),
+  requestId: Schema.Null,
+  exit: Schema.Struct({
+    cause: Schema.Unknown
+  })
+})
+
+const decodeStdioInitializeRequest = Schema.decodeUnknownOption(StdioInitializeRequest)
+const decodeStdioInvalidBatchExit = Schema.decodeUnknownOption(StdioInvalidBatchExit)
+
+const makeStdioSerialization = (
+  protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
+): RpcSerialization.RpcSerialization["Service"] =>
+  RpcSerialization.RpcSerialization.of({
+    contentType: "application/json-rpc",
+    includesFraming: true,
+    makeUnsafe: () => {
+      const framing = RpcSerialization.ndjson.makeUnsafe()
+      const jsonRpc = RpcSerialization.jsonRpc().makeUnsafe()
+      const protocolsByVersion = new Map<string, McpProtocol.ProtocolAdapter>(
+        protocols.map((protocol) => [protocol.protocolVersion, protocol])
+      )
+      let selectedProtocol = protocols[0]
+      return {
+        decode: (data) => {
+          const frames = framing.decode(data)
+          const messages: Array<unknown> = []
+          for (const frame of frames) {
+            const entries = Array.isArray(frame) ? frame : [frame]
+            const initialize = Arr.findFirst(entries, (entry) => decodeStdioInitializeRequest(entry))
+            selectedProtocol = Option.match(initialize, {
+              onNone: () => selectedProtocol,
+              onSome: ({ params }) => protocolsByVersion.get(params.protocolVersion) ?? protocols[0]
+            })
+            if (Array.isArray(frame) && !selectedProtocol.transport.acceptsJsonRpcBatches) {
+              messages.push({
+                _tag: "Request",
+                id: null,
+                tag: MCP_INVALID_BATCH_METHOD,
+                payload: null,
+                headers: []
+              })
+            } else {
+              messages.push(...jsonRpc.decode(JSON.stringify(frame)))
+            }
+          }
+          return messages
+        },
+        encode: (response) => {
+          const invalidBatchExit = decodeStdioInvalidBatchExit(response)
+          if (Option.isSome(invalidBatchExit)) {
+            return framing.encode({
+              jsonrpc: "2.0",
+              id: null,
+              error: {
+                _tag: "Cause",
+                code: INVALID_REQUEST_ERROR_CODE,
+                message: "JSON-RPC batches are not supported",
+                data: invalidBatchExit.value.exit.cause
+              }
+            })
+          }
+          const encoded = jsonRpc.encode(response)
+          return encoded === undefined ? undefined : `${encoded}\n`
+        }
+      }
+    }
+  })
+
 /**
  * Runs the McpServer, using stdio for input and output.
  *
@@ -838,7 +930,9 @@ export const layerStdio = (options: {
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, Stdio> =>
   layer(options).pipe(
     Layer.provide(RpcServer.layerProtocolStdio),
-    Layer.provide(RpcSerialization.layerNdJsonRpc())
+    Layer.provide(
+      Layer.succeed(RpcSerialization.RpcSerialization)(makeStdioSerialization(options.protocols))
+    )
   )
 
 /**
@@ -961,6 +1055,26 @@ const layerMcpProtocolHttp = (options: {
                 error: new ParseError({ message: "Parse error" })
               }),
               onSuccess: (input) => {
+                if (Array.isArray(input)) {
+                  const sessionId = request.headers[MCP_SESSION_ID_HEADER]
+                  const session = sessionId === undefined ? undefined : state.sessions.bySessionId.get(sessionId)
+                  let selectedProtocol = session?.protocol ?? state.protocolRegistry.protocols[0]
+                  for (const entry of input) {
+                    if (
+                      Predicate.hasProperty(entry, "method") &&
+                      entry.method === "initialize" &&
+                      Predicate.hasProperty(entry, "params") &&
+                      Predicate.hasProperty(entry.params, "protocolVersion") &&
+                      typeof entry.params.protocolVersion === "string"
+                    ) {
+                      selectedProtocol = state.protocolRegistry.select(entry.params.protocolVersion)
+                      break
+                    }
+                  }
+                  if (!selectedProtocol.transport.acceptsJsonRpcBatches) {
+                    return { _tag: "HttpError" as const, status: 400 }
+                  }
+                }
                 const hasId = Predicate.hasProperty(input, "id")
                 const id = hasId && (typeof input.id === "string" || typeof input.id === "number")
                   ? input.id
