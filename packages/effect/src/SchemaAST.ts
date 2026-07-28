@@ -16,7 +16,7 @@ import * as Cause from "./Cause.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
-import { memoize } from "./Function.ts"
+import { identity, memoize } from "./Function.ts"
 import { effectIsExit, iterateEager } from "./internal/effect.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
@@ -2480,6 +2480,21 @@ export type Sentinel = {
   readonly literal: LiteralValue | symbol
 }
 
+const toCandidate = memoize((ast: AST): AST => {
+  while (true) {
+    if (isSuspend(ast)) return unknown
+    const encoding = ast.encoding
+    if (!encoding) {
+      // Index signature parameters do not participate in union selection.
+      return (ast as any).recur?.(toCandidate, identity) ?? ast
+    }
+    if (
+      encoding.some((link) => link.transformation._tag === "Middleware" && link.transformation.decode !== identity)
+    ) return unknown
+    ast = encoding[encoding.length - 1].to
+  }
+})
+
 function getCandidateTypes(ast: AST): ReadonlyArray<Type> {
   switch (ast._tag) {
     case "Null":
@@ -2585,7 +2600,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | null | undefined
   for (let i = 0; i < types.length; i++) {
     const a = types[i]
-    const encoded = toEncoded(a)
+    const encoded = toCandidate(a)
     if (isNever(encoded)) continue
 
     if (literalCandidates !== null) {
@@ -2640,7 +2655,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
 
 function filterLiterals(input: any) {
   return (ast: AST) => {
-    const encoded = toEncoded(ast)
+    const encoded = toCandidate(ast)
     return encoded._tag === "Literal" ?
       encoded.literal === input
       : encoded._tag === "UniqueSymbol" ?
