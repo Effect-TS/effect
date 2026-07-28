@@ -48,9 +48,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               const result = yield* test.decodeResult(response)
               assert.deepStrictEqual(result.result, {})
             }), { concurrency: 1 }))
-        // FIX: Schema rejection for an unknown level currently uses error code 0
-        // instead of JSON-RPC Invalid Params (-32602).
-        it.effect.skip("MUST reject an unknown log level", () =>
+        it.effect("MUST reject an unknown log level", () =>
           Effect.gen(function*() {
             const { response, test } = yield* setLevel("verbose")
             const error = yield* test.decodeError(response)

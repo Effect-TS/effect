@@ -97,9 +97,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.deepStrictEqual(result.completion.values, ["context received"])
           }))
-        // FIX: Effect currently returns a successful empty completion result for an unknown
-        // prompt reference instead of rejecting the invalid reference.
-        it.effect.skip("SHOULD reject an unknown prompt reference with Invalid Params", () =>
+        it.effect("SHOULD reject an unknown prompt reference with Invalid Params", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -118,9 +116,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
           }))
 
-        // FIX: Effect currently returns a successful empty completion result for an unknown
-        // argument name instead of rejecting the invalid input.
-        it.effect.skip("MUST reject an unknown argument name", () =>
+        it.effect("MUST reject an unknown argument name", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })

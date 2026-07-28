@@ -47,7 +47,6 @@ import type * as McpProtocol from "./McpProtocol.ts"
 import {
   CallToolResult,
   ClientRpcs,
-  CompleteResult,
   Elicit,
   ElicitationDeclined,
   EnabledWhen,
@@ -60,6 +59,7 @@ import {
   ListResourcesResult,
   ListResourceTemplatesResult,
   ListToolsResult,
+  McpErrorBase,
   McpServerClient,
   McpServerClientMiddleware,
   MethodNotFound,
@@ -75,6 +75,7 @@ import type {
   CallTool,
   ClientCapabilities,
   Complete,
+  CompleteResult,
   GetPrompt,
   Initialize,
   Param,
@@ -110,7 +111,7 @@ export class McpServer extends Context.Service<McpServer, {
   readonly addTool: (options: {
     readonly tool: McpTool
     readonly annotations: Context.Context<never>
-    readonly handle: (payload: any) => Effect.Effect<CallToolResult, never, McpServerClient>
+    readonly handle: (payload: any) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpServerClient>
   }) => Effect.Effect<void>
   readonly callTool: (
     requests: typeof CallTool.payloadSchema.Type
@@ -139,13 +140,17 @@ export class McpServer extends Context.Service<McpServer, {
       readonly handle: (
         uri: string,
         params: Array<string>
-      ) => Effect.Effect<typeof ReadResourceResult.Type, InvalidParams | InternalError, McpServerClient>
+      ) => Effect.Effect<
+        typeof ReadResourceResult.Type,
+        InvalidParams | InternalError,
+        McpServerClient
+      >
     }
   ) => Effect.Effect<void>
 
   readonly findResource: (
     uri: string
-  ) => Effect.Effect<typeof ReadResourceResult.Type, InvalidParams | InternalError, McpServerClient>
+  ) => Effect.Effect<typeof ReadResourceResult.Type, McpErrorBase | InvalidParams | InternalError, McpServerClient>
 
   readonly prompts: ReadonlyArray<{
     readonly prompt: Prompt
@@ -168,7 +173,7 @@ export class McpServer extends Context.Service<McpServer, {
 
   readonly completion: (
     complete: typeof Complete.payloadSchema.Type
-  ) => Effect.Effect<CompleteResult, InternalError, McpServerClient>
+  ) => Effect.Effect<CompleteResult, InvalidParams | InternalError, McpServerClient>
 }>()("effect/ai/McpServer") {
   /**
    * Builds an MCP server service from registered tools, prompts, resources, and completions.
@@ -182,7 +187,11 @@ export class McpServer extends Context.Service<McpServer, {
         readonly handle: (
           uri: string,
           params: Array<string>
-        ) => Effect.Effect<typeof ReadResourceResult.Type, InternalError | InvalidParams, McpServerClient>
+        ) => Effect.Effect<
+          typeof ReadResourceResult.Type,
+          InternalError | InvalidParams,
+          McpServerClient
+        >
       } | {
         readonly _tag: "Resource"
         readonly effect: Effect.Effect<typeof ReadResourceResult.Type, InternalError, McpServerClient>
@@ -192,7 +201,10 @@ export class McpServer extends Context.Service<McpServer, {
       readonly tool: McpTool
       readonly annotations: Context.Context<never>
     }>()
-    const toolMap = new Map<string, (payload: any) => Effect.Effect<CallToolResult, InternalError, McpServerClient>>()
+    const toolMap = new Map<
+      string,
+      (payload: any) => Effect.Effect<CallToolResult, InternalError | InvalidParams, McpServerClient>
+    >()
     const resources: Array<{
       readonly resource: Resource
       readonly annotations: Context.Context<never>
@@ -291,7 +303,7 @@ export class McpServer extends Context.Service<McpServer, {
         Effect.suspend(() => {
           const match = matcher.find(uri)
           if (!match) {
-            return Effect.succeed({ contents: [] })
+            return Effect.fail(new McpErrorBase({ code: -32002, message: `Resource '${uri}' not found` }))
           } else if (match.handler._tag === "Resource") {
             return match.handler.effect
           }
@@ -326,7 +338,10 @@ export class McpServer extends Context.Service<McpServer, {
           ? `ref/resource/${ref.uri}/${complete.argument.name}`
           : `ref/prompt/${ref.name}/${complete.argument.name}`
         const handler = completionsMap.get(key)
-        return handler ? yield* handler(complete.argument.value) : CompleteResult.empty
+        if (!handler) {
+          return yield* new InvalidParams({ message: "Unknown completion reference or argument" })
+        }
+        return yield* handler(complete.argument.value)
       })
     })
   })
@@ -1017,7 +1032,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
             if (AiError.isAiError(error)) {
               const reason = (error as AiError.AiError).reason
               return reason._tag === "ToolParameterValidationError"
-                ? Effect.succeed(toolErrorResult(reason.message))
+                ? Effect.fail(new InvalidParams({ message: reason.message }))
                 : Effect.succeed(toolErrorResult(INTERNAL_TOOL_ERROR_MESSAGE))
             }
             if (isDeclaredFailure(error)) {
@@ -1404,20 +1419,23 @@ export const registerPrompt = <
       handle: (params) =>
         decode(params).pipe(
           Effect.mapError((error) => new InvalidParams({ message: error.message })),
-          Effect.flatMap((params) => options.content(params as any)),
-          Effect.map((messages) => {
-            messages = typeof messages === "string" ?
-              [{
-                role: "user",
-                content: TextContent.make({ text: messages })
-              }] :
-              messages
-            return new GetPromptResult({ messages, description: prompt.description })
-          }),
-          Effect.catchCause((cause) => {
-            const prettyError = Cause.prettyErrors(cause)[0]
-            return Effect.fail(new InternalError({ message: prettyError.message }))
-          }),
+          Effect.flatMap((params) =>
+            options.content(params as any).pipe(
+              Effect.map((messages) => {
+                messages = typeof messages === "string" ?
+                  [{
+                    role: "user",
+                    content: TextContent.make({ text: messages })
+                  }] :
+                  messages
+                return new GetPromptResult({ messages, description: prompt.description })
+              }),
+              Effect.catchCause((cause) => {
+                const prettyError = Cause.prettyErrors(cause)[0]
+                return Effect.fail(new InternalError({ message: prettyError.message }))
+              })
+            )
+          ),
           Effect.provideContext(services as Context.Context<unknown>)
         )
     })

@@ -192,9 +192,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.deepStrictEqual(result.content, [{ type: "text", text: JSON.stringify("called") }])
           }))
 
-        // FIX: Unknown tools currently serialize as JSON-RPC error code 0,
-        // rather than Invalid Params.
-        it.effect.skip("MUST reject an unknown tool name with a protocol error", () =>
+        it.effect("MUST reject an unknown tool name with a protocol error", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -213,10 +211,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
           }))
 
-        // FIX: Effect currently returns argument-schema failures as a successful tool result with
-        // `isError: true`; the dated MCP specifications classify invalid arguments as a JSON-RPC
-        // Invalid Params protocol error.
-        it.effect.skip("MUST reject arguments that do not match the input schema with a protocol error", () =>
+        it.effect("MUST reject arguments that do not match the input schema with a protocol error", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -331,9 +326,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(result.isError, true)
             assert.deepStrictEqual(result.content, [{ type: "text", text: "expected failure" }])
           }))
-        // FIX: Unknown tools currently serialize as JSON-RPC error code 0,
-        // so the protocol-error half of this distinction is not conformant.
-        it.effect.skip("MUST keep tool execution errors distinct from protocol errors", () =>
+        it.effect("MUST keep tool execution errors distinct from protocol errors", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })

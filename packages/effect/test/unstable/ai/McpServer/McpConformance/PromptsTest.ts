@@ -193,9 +193,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             }])
           }))
 
-        // FIX: Unknown prompts currently serialize as JSON-RPC error code 0,
-        // rather than Invalid Params.
-        it.effect.skip("SHOULD reject an unknown prompt name with Invalid Params", () =>
+        it.effect("SHOULD reject an unknown prompt name with Invalid Params", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -214,9 +212,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
           }))
 
-        // FIX: Invalid prompt arguments currently serialize as JSON-RPC error
-        // code 0, rather than Invalid Params.
-        it.effect.skip("SHOULD reject missing required prompt arguments with Invalid Params", () =>
+        it.effect("SHOULD reject missing required prompt arguments with Invalid Params", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -235,9 +231,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
           }))
 
-        // FIX: Effect's request-schema failure currently becomes an error with code 0 instead
-        // of the Invalid Params (-32602) error required for invalid prompt arguments.
-        it.effect.skip("SHOULD reject prompt arguments with invalid values", () =>
+        it.effect("SHOULD reject prompt arguments with invalid values", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })

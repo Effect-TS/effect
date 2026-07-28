@@ -187,9 +187,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               "file:///multiple#second"
             ])
           }))
-        // FIX: Effect currently returns Invalid Params (-32602) for an unknown resource URI
-        // instead of the resource-specific Resource Not Found error (-32002).
-        it.effect.skip("SHOULD return resource not found for an unknown resource URI", () =>
+        it.effect("SHOULD return resource not found for an unknown resource URI", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
