@@ -47,9 +47,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(response.status, 202)
             assert.strictEqual(yield* Effect.promise(() => response.text()), "")
           }))
-        // FIX: Effect interrupts the request handler but still emits a response
-        // for the cancelled request before processing a subsequent ping.
-        it.effect.skip("SHOULD stop work and suppress the response after cancellation", () =>
+        it.effect("SHOULD stop work and suppress the response after cancellation", () =>
           Effect.gen(function*() {
             const entered = yield* Deferred.make<void>()
             const release = yield* Deferred.make<void>()

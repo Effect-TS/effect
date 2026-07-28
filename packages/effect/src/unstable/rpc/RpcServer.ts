@@ -295,6 +295,12 @@ export const makeNoSerialization: <Rpcs extends Rpc.Any>(
           })
         }
       } else if (
+        exit.cause.reasons.some((reason) =>
+          reason._tag === "Interrupt" && reason.annotations.has(RpcSchema.ClientAbort.key)
+        )
+      ) {
+        write = Effect.void
+      } else if (
         !disableFatalDefects &&
         Cause.hasDies(exit.cause) &&
         !Cause.hasInterrupts(exit.cause)
