@@ -8,12 +8,6 @@ import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 const decodeTools = Schema.decodeUnknownEffect(McpSchema.ListToolsResult)
-const decodeToolsWithOutputSchema = Schema.decodeUnknownEffect(Schema.Struct({
-  tools: Schema.Array(Schema.Struct({
-    name: Schema.String,
-    outputSchema: Schema.optionalKey(Schema.Struct({ type: Schema.String }))
-  }))
-}))
 const decodeCallTool = Schema.decodeUnknownEffect(McpSchema.CallToolResult)
 
 const callTool = (name: string, arguments_: Record<string, unknown> = {}) =>
@@ -145,9 +139,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.isTrue(result.tools.every((tool) => tool.inputSchema.type === "object"))
           }))
-        // FIX: McpSchema.Tool and registerToolkit do not expose the June
-        // outputSchema, even though tool calls return structuredContent.
-        it.effect.skip("MUST return each declared tool output schema", () =>
+        it.effect("MUST return each declared tool output schema", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -159,13 +151,16 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               params: {}
             })
             const result = yield* test.decodeResult(response).pipe(
-              Effect.flatMap((message) => decodeToolsWithOutputSchema(message.result))
+              Effect.flatMap((message) => decodeTools(message.result))
             )
 
             assert.strictEqual(
               result.tools.find((tool) => tool.name === "StructuredTool")?.outputSchema?.type,
               "object"
             )
+            const scalarTool = result.tools.find((tool) => tool.name === "TestTool")
+            assert.isDefined(scalarTool)
+            assert.notProperty(scalarTool, "outputSchema")
           }))
       })
 
