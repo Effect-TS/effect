@@ -1,10 +1,40 @@
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import { assert, describe, it } from "@effect/vitest"
+import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Stream from "effect/Stream"
 import { testLayer } from "../../effect/test/FileSystem.test-utils.ts"
+
+const startWatch = <E, R>(
+  fs: FileSystem.FileSystem,
+  root: string,
+  watch: () => Stream.Stream<FileSystem.WatchEvent, E, R>
+) =>
+  Effect.gen(function*() {
+    const ready = yield* Deferred.make<void>()
+    const readyName = ".watch-ready"
+    const fiber = yield* watch().pipe(
+      Stream.tap((event) =>
+        event.path === readyName
+          ? Deferred.succeed(ready, undefined)
+          : Effect.void
+      ),
+      Stream.filter((event) => event.path !== readyName),
+      Stream.runHead,
+      Effect.flatMap(Effect.fromOption),
+      Effect.forkChild
+    )
+    const signalFiber = yield* fs.writeFileString(`${root}/${readyName}`, "").pipe(
+      Effect.andThen(Effect.sleep("10 millis")),
+      Effect.forever,
+      Effect.forkChild
+    )
+    yield* Deferred.await(ready)
+    yield* Fiber.interrupt(signalFiber)
+    return fiber
+  })
 
 describe("FileSystem", () => {
   testLayer(NodeFileSystem.layer)
@@ -16,12 +46,26 @@ describe("FileSystem", () => {
       const nested = `${root}/nested`
       yield* fs.makeDirectory(nested)
 
-      const fiber = yield* fs.watch(root, { recursive: false }).pipe(
-        Stream.runHead,
-        Effect.flatMap(Effect.fromOption),
-        Effect.forkChild
-      )
-      yield* Effect.yieldNow
+      const fiber = yield* startWatch(fs, root, () => fs.watch(root, { recursive: false }))
+
+      yield* fs.writeFileString(`${nested}/nested.txt`, "")
+      yield* fs.writeFileString(`${root}/direct.txt`, "")
+
+      const event = yield* Fiber.join(fiber)
+      assert.strictEqual(event.path, "direct.txt")
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer)
+    ))
+
+  it.effect("watch is non-recursive when options are omitted", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped()
+      const nested = `${root}/nested`
+      yield* fs.makeDirectory(nested)
+
+      const fiber = yield* startWatch(fs, root, () => fs.watch(root))
 
       yield* fs.writeFileString(`${nested}/nested.txt`, "")
       yield* fs.writeFileString(`${root}/direct.txt`, "")
@@ -40,12 +84,7 @@ describe("FileSystem", () => {
       const nested = `${root}/nested`
       yield* fs.makeDirectory(nested)
 
-      const fiber = yield* fs.watch(root, { recursive: true }).pipe(
-        Stream.runHead,
-        Effect.flatMap(Effect.fromOption),
-        Effect.forkChild
-      )
-      yield* Effect.yieldNow
+      const fiber = yield* startWatch(fs, root, () => fs.watch(root, { recursive: true }))
 
       yield* fs.writeFileString(`${nested}/nested.txt`, "")
 
