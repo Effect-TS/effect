@@ -7,6 +7,11 @@
 /**
  * @since 4.0.0
  */
+export * as DenoChildProcessSpawner from "./DenoChildProcessSpawner.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoCrypto from "./DenoCrypto.ts"
 
 /**

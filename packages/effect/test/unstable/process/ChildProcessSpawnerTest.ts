@@ -13,6 +13,7 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process"
 
 export interface Options {
   readonly processGroups: boolean
+  readonly additionalFds?: boolean | undefined
 }
 
 // Helper to collect stream output into a string
@@ -744,7 +745,7 @@ export const suite = (
           }).pipe(Effect.scoped))
       })
 
-      describe("additionalFds", () => {
+      describe.skipIf(options.additionalFds === false)("additionalFds", () => {
         it.effect("should read data from an output fd (fd3)", () =>
           Effect.gen(function*() {
             // Use a shell script that writes to fd3
