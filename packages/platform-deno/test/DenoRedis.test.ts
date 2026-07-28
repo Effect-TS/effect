@@ -1,7 +1,7 @@
 import { DenoRedis } from "@effect/platform-deno"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
-import { Effect, Layer, Schema } from "effect"
+import { Deferred, Effect, Fiber, Layer, Schema } from "effect"
 import { PersistedQueue, Persistence } from "effect/unstable/persistence"
 import * as PersistedCacheTest from "../../effect/test/unstable/persistence/PersistedCacheTest.ts"
 import * as PersistedQueueTest from "../../effect/test/unstable/persistence/PersistedQueueTest.ts"
@@ -73,6 +73,78 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
   }
 )
 
+it.effect("closes the connection when interrupted during acquisition", () =>
+  Effect.scoped(Effect.gen(function*() {
+    const listener = yield* makeListener
+    const authReceived = yield* Deferred.make<void>()
+    const sendAuthReply = yield* Deferred.make<void>()
+    const server = yield* Effect.gen(function*() {
+      const connection = yield* accept(listener)
+      yield* read(connection)
+      yield* Deferred.succeed(authReceived, void 0)
+      yield* Deferred.await(sendAuthReply)
+      yield* write(connection, "+OK\r\n")
+      return yield* read(connection)
+    }).pipe(Effect.forkChild)
+
+    const port = (listener.addr as Deno.NetAddr).port
+    const layerFiber = yield* Layer.build(DenoRedis.layer({
+      url: `redis://:secret@127.0.0.1:${port}`
+    })).pipe(Effect.forkChild({ startImmediately: true }))
+
+    yield* Deferred.await(authReceived)
+    const interruptFiber = yield* Fiber.interrupt(layerFiber).pipe(
+      Effect.forkChild({ startImmediately: true })
+    )
+    yield* Deferred.succeed(sendAuthReply, void 0)
+    yield* Fiber.join(interruptFiber)
+
+    assert.isNull(yield* Fiber.join(server))
+  })))
+
+it.effect("uses the URL username for two-argument AUTH", () =>
+  Effect.scoped(Effect.gen(function*() {
+    const listener = yield* makeListener
+    const server = yield* Effect.gen(function*() {
+      const connection = yield* accept(listener)
+      const request = yield* read(connection)
+      yield* write(connection, "+OK\r\n")
+      return request
+    }).pipe(Effect.forkChild)
+
+    const port = (listener.addr as Deno.NetAddr).port
+    yield* Layer.build(DenoRedis.layer({
+      url: `redis://alice:secret@127.0.0.1:${port}`
+    }))
+
+    assert.strictEqual(
+      yield* Fiber.join(server),
+      "*3\r\n$4\r\nAUTH\r\n$5\r\nalice\r\n$6\r\nsecret\r\n"
+    )
+  })))
+
 const RedisItem = Schema.Struct({
   n: Schema.Number
 })
+
+const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+
+const makeListener = Effect.acquireRelease(
+  Effect.sync(() => Deno.listen({ hostname: "127.0.0.1", port: 0 })),
+  (listener) => Effect.sync(() => listener.close())
+)
+
+const accept = (listener: Deno.TcpListener) =>
+  Effect.acquireRelease(
+    Effect.promise(() => listener.accept()),
+    (connection) => Effect.sync(() => connection.close())
+  )
+
+const read = (connection: Deno.TcpConn) =>
+  Effect.promise(() => {
+    const buffer = new Uint8Array(256)
+    return connection.read(buffer).then((size) => size === null ? null : decoder.decode(buffer.subarray(0, size)))
+  })
+
+const write = (connection: Deno.TcpConn, value: string) => Effect.promise(() => connection.write(encoder.encode(value)))

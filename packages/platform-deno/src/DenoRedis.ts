@@ -15,13 +15,27 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Scope from "effect/Scope"
 import * as Redis from "effect/unstable/persistence/Redis"
 
-type RedisOptions = Omit<RedisConnectOptions, "hostname"> & {
+/**
+ * Options for connecting to Redis, including a Redis URL or individual
+ * connection settings. Explicit settings override values from the URL.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type RedisOptions = Omit<RedisConnectOptions, "hostname"> & {
   readonly hostname?: string
   readonly url?: string
 }
+
+const withoutUndefined = <A extends object>(options: A): Partial<A> =>
+  Object.fromEntries(
+    Reflect.ownKeys(options).flatMap((key) => {
+      const value = Reflect.get(options, key)
+      return value === undefined ? [] : [[key, value]]
+    })
+  ) as Partial<A>
 
 /**
  * Service tag for Deno Redis integration, exposing the raw `@db/redis` client
@@ -36,20 +50,23 @@ export class DenoRedis extends Context.Service<DenoRedis, {
 }>()("@effect/platform-deno/DenoRedis") {}
 
 const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
-  const client = yield* Effect.tryPromise({
-    try: () => {
-      const { url, ...connectOptions } = options
-      const parsed = url === undefined ? undefined : parseURL(url)
-      return connect({
-        ...parsed,
-        ...connectOptions,
-        hostname: connectOptions.hostname ?? parsed?.hostname ?? "localhost"
-      })
-    },
-    catch: (cause) => new Redis.RedisError({ cause })
-  })
-  const scope = yield* Effect.scope
-  yield* Scope.addFinalizer(scope, Effect.sync(() => client.close()))
+  const client = yield* Effect.acquireRelease(
+    Effect.tryPromise({
+      try: () => {
+        const { url, ...connectOptions } = options
+        if (url === undefined) {
+          return connect({ hostname: "localhost", ...withoutUndefined(connectOptions) })
+        }
+        const { name: username, ...parsed } = parseURL(url)
+        return connect({
+          ...withoutUndefined({ ...parsed, username }),
+          ...withoutUndefined(connectOptions)
+        } as RedisConnectOptions)
+      },
+      catch: (cause) => new Redis.RedisError({ cause })
+    }),
+    (client) => Effect.sync(() => client.close())
+  )
 
   const use = <A>(f: (client: RedisClient) => Promise<A>) =>
     Effect.tryPromise({
