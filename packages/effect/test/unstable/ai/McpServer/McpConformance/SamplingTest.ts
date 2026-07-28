@@ -91,9 +91,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
       })
 
       describe("Creating Messages", () => {
-        // FIX: Canonical sampling request schema composition currently rejects
-        // the spec-defined optional model preferences before adapter projection.
-        it.effect.skip("MUST preserve message order and sampling request options", () =>
+        it.effect("MUST preserve message order and sampling request options", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const peer = yield* test.makePeer({
@@ -130,9 +128,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(payload.includeContext, "thisServer")
           }).pipe(Effect.scoped))
 
-        // FIX: CreateMessageResult omits the required role and content fields,
-        // so the generated client discards them while decoding the response.
-        it.effect.skip("MUST accept and decode text sampling content", () =>
+        it.effect("MUST accept and decode text sampling content", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const peer = yield* test.makePeer({
@@ -155,9 +151,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
           }).pipe(Effect.scoped))
 
-        // FIX: CreateMessageResult omits the required role and content fields,
-        // so the generated client discards them while decoding the response.
-        it.effect.skip("MUST accept image sampling content", () =>
+        it.effect("MUST accept image sampling content", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const peer = yield* test.makePeer({
@@ -187,9 +181,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
           }).pipe(Effect.scoped))
 
-        // FIX: CreateMessageResult omits the required role and content fields,
-        // so the generated client discards them while decoding the response.
-        it.effect.skip("MUST accept audio sampling content", () =>
+        it.effect("MUST accept audio sampling content", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const peer = yield* test.makePeer({

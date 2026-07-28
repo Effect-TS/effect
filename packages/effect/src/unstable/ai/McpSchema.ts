@@ -1791,6 +1791,7 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
 export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
   "@effect/ai/McpSchema/CreateMessageResult"
 )({
+  ...SamplingMessage.fields,
   /**
    * The name of the model that generated the message.
    */
@@ -1826,7 +1827,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
      * The server's preferences for which model to select. The client MAY ignore
      * these preferences.
      */
-    modelPreferences: optional(ModelPreferences),
+    modelPreferences: optional(Schema.Struct(ModelPreferences.fields)),
     /**
      * An optional system prompt the server wants to use for sampling. The
      * client MAY modify or omit this prompt.
