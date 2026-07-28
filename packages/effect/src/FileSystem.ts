@@ -11,7 +11,7 @@
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
-import * as Brand from "./Brand.ts"
+import type * as Brand from "./Brand.ts"
 import * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
@@ -1125,7 +1125,6 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  */
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
-  readonly fd: File.Descriptor
   readonly stat: Effect.Effect<File.Info, PlatformError>
   readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<void>
   readonly sync: Effect.Effect<void, PlatformError>
@@ -1143,19 +1142,6 @@ export interface File {
  * @since 4.0.0
  */
 export declare namespace File {
-  /**
-   * Branded type for file descriptors.
-   *
-   * **Details**
-   *
-   * File descriptors are numeric handles used by the operating system
-   * to identify open files. The branded type ensures type safety.
-   *
-   * @category file
-   * @since 4.0.0
-   */
-  export type Descriptor = Brand.Branded<number, "FileDescriptor">
-
   /**
    * Enumeration of possible file system entry types.
    *
@@ -1239,32 +1225,6 @@ export declare namespace File {
     readonly blocks: Option.Option<number>
   }
 }
-
-/**
- * Creates a `File.Descriptor` from a number.
- *
- * **When to use**
- *
- * Use to brand an operating-system file descriptor number when implementing a
- * `FileSystem` that returns custom `File` handles.
- *
- * **Details**
- *
- * `File.Descriptor` is a branded integer handle used by operating systems to
- * identify open files.
- *
- * **Gotchas**
- *
- * This constructor is nominal and does not check that the number is an integer
- * or that it refers to an open file descriptor.
- *
- * @see {@link File.Descriptor} for the branded descriptor type produced by this constructor
- * @see {@link File} for file handles that expose a descriptor through `fd`
- *
- * @category constructors
- * @since 4.0.0
- */
-export const FileDescriptor = Brand.nominal<File.Descriptor>()
 
 /**
  * Specifies the reference point for seeking within an open file.
