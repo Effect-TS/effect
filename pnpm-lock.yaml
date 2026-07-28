@@ -465,6 +465,9 @@ importers:
       '@db/redis':
         specifier: jsr:^0.41.2
         version: '@jsr/db__redis@0.41.2'
+      '@effect/platform-node-shared':
+        specifier: workspace:^
+        version: link:../platform-node-shared
       '@std/fs':
         specifier: jsr:^1.0.24
         version: '@jsr/std__fs@1.0.24'
