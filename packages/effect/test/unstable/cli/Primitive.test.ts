@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, PlatformError, Redacted, Stdio } from "effect"
-import { TestConsole } from "effect/testing/index"
+import { TestConsole } from "effect/testing"
 import { Primitive } from "effect/unstable/cli"
 import { ChildProcessSpawner } from "effect/unstable/process"
 import * as MockTerminal from "./services/MockTerminal.ts"

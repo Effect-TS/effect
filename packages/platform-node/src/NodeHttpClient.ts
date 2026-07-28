@@ -98,6 +98,8 @@ export class Dispatcher extends Context.Service<Dispatcher, Undici.Dispatcher>()
  * @since 4.0.0
  */
 export const makeDispatcher: Effect.Effect<Undici.Dispatcher, never, Scope.Scope> = Effect.acquireRelease(
+  // oxlint cannot resolve values re-exported through the local Undici facade.
+  // oxlint-disable-next-line import/namespace
   Effect.sync(() => new Undici.Agent()),
   (dispatcher) => Effect.promise(() => dispatcher.destroy())
 )
@@ -117,6 +119,8 @@ export const layerDispatcher: Layer.Layer<Dispatcher> = Layer.effect(Dispatcher)
  * @category Dispatcher
  * @since 4.0.0
  */
+// oxlint cannot resolve values re-exported through the local Undici facade.
+// oxlint-disable-next-line import/namespace
 export const dispatcherLayerGlobal: Layer.Layer<Dispatcher> = Layer.sync(Dispatcher)(() => Undici.getGlobalDispatcher())
 
 /**

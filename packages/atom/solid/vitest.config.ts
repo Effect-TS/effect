@@ -5,9 +5,6 @@ export default mergeConfig(shared, {
   resolve: {
     conditions: ["browser"]
   },
-  esbuild: {
-    target: "es2022"
-  },
   test: {
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"]

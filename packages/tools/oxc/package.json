@@ -58,13 +58,14 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@effect/jsdocs": "workspace:^"
+    "@effect/jsdocs": "workspace:^",
+    "@oxlint/plugins": "^1.76.0"
   },
   "peerDependencies": {
     "typescript": ">=5.0.0 <7.0.0"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.1.2",
     "typescript": "^6.0.3",
     "vitest": "^4.1.10"
   }
