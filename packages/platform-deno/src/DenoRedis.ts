@@ -15,6 +15,8 @@ import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Fn from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Predicate from "effect/Predicate"
+import * as Record from "effect/Record"
 import * as Redis from "effect/unstable/persistence/Redis"
 
 /**
@@ -46,27 +48,12 @@ const make = Effect.fnUntraced(function*(options: RedisOptions = {}) {
     Effect.tryPromise({
       try: () => {
         const { url, ...connectOptions } = options
-        const resolved = url === undefined ? { hostname: "localhost" } : parseURL(url)
-        if (url !== undefined) {
-          if (resolved.name !== undefined) resolved.username = resolved.name
-          delete resolved.name
-        }
-        if (connectOptions.hostname !== undefined) resolved.hostname = connectOptions.hostname
-        if (connectOptions.port !== undefined) resolved.port = connectOptions.port
-        if (connectOptions.tls !== undefined) resolved.tls = connectOptions.tls
-        if (connectOptions.caCerts !== undefined) resolved.caCerts = connectOptions.caCerts
-        if (connectOptions.db !== undefined) resolved.db = connectOptions.db
-        if (connectOptions.password !== undefined) resolved.password = connectOptions.password
-        if (connectOptions.username !== undefined) resolved.username = connectOptions.username
-        if (connectOptions.name !== undefined) resolved.name = connectOptions.name
-        if (connectOptions.maxRetryCount !== undefined) resolved.maxRetryCount = connectOptions.maxRetryCount
-        if (connectOptions.backoff !== undefined) resolved.backoff = connectOptions.backoff
-        if (connectOptions.healthCheckInterval !== undefined) {
-          resolved.healthCheckInterval = connectOptions.healthCheckInterval
-        }
-        if (connectOptions.signal !== undefined) resolved.signal = connectOptions.signal
-        if (connectOptions.noDelay !== undefined) resolved.noDelay = connectOptions.noDelay
-        return connect(resolved)
+        const { name, ...parsed } = url === undefined ? { hostname: "localhost" } : parseURL(url)
+        return connect({
+          ...parsed,
+          ...(name === undefined ? {} : { username: name }),
+          ...Record.filter(connectOptions, Predicate.isNotUndefined)
+        })
       },
       catch: (cause) => new Redis.RedisError({ cause })
     }),
