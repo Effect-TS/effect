@@ -46,9 +46,9 @@ const makeSourcefile = (source: string | ast.SourceFile) => {
 
 const makeSource = (source: string | ast.SourceFile) => {
   const sourceFile = makeSourcefile(source)
-  const filename = sourceFile.getBaseName()
+  const segments = sourceFile.getFilePath().split("/").filter((segment) => segment.length > 0)
   return Parser.Source.of({
-    path: [filename],
+    path: ["src", ...segments],
     sourceFile
   })
 }
@@ -70,7 +70,7 @@ const expectMarkdown = Effect.fnUntraced(function*<E>(
     E,
     Parser.Source | Configuration.Configuration | Path.Path
   >,
-  sourceText: string,
+  sourceText: string | ast.SourceFile,
   expected: string,
   config?: Partial<Configuration.ConfigurationShape>
 ) {
@@ -146,6 +146,52 @@ declare const foo: "foo"
 \`\`\`
 
 [Source](https://github.com/effect-ts/docgen/blob/main/src/test.ts#L19)
+
+Since v1.0.0`
+        )
+      }))
+
+    it.effect("should include the path relative to the source directory in source links", () =>
+      Effect.gen(function*() {
+        yield* expectMarkdown(
+          Parser.parseModule,
+          project.createSourceFile(
+            "nested/test.ts",
+            `/**
+* This is the nested module.
+*
+* @since 1.0.0
+*/
+import * as assert from 'assert'
+
+/**
+ * This is the foo export.
+ *
+ * @since 1.0.0
+ */
+export const foo = 'foo'`
+          ),
+          `## test.ts overview
+
+This is the nested module.
+
+Since v1.0.0
+
+<!-- toc -->
+
+# utils
+
+## foo
+
+This is the foo export.
+
+**Signature**
+
+\`\`\`ts
+declare const foo: "foo"
+\`\`\`
+
+[Source](https://github.com/effect-ts/docgen/blob/main/src/nested/test.ts#L13)
 
 Since v1.0.0`
         )
