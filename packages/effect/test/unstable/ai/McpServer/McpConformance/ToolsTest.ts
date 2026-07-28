@@ -345,9 +345,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(protocol.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
           }))
 
-        // FIX: Tool-handler defects are currently serialized into both the
-        // JSON-RPC error message and data fields.
-        it.effect.skip("SHOULD not expose defects or internal error details", () =>
+        it.effect("SHOULD not expose defects or internal error details", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
             const initialized = yield* test.initialize({ server: "features" })
@@ -360,6 +358,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
             const result = yield* test.decodeError(response)
 
+            assert.strictEqual(result.error.code, McpSchema.INTERNAL_ERROR_CODE)
+            assert.strictEqual(result.error.message, "Internal error")
             assert.notMatch(JSON.stringify(result), /private defect details/)
           }))
       })

@@ -276,7 +276,9 @@ export class McpServer extends Context.Service<McpServer, {
           if (!handle) {
             return Effect.fail(new InvalidParams({ message: `Tool '${request.name}' not found` }))
           }
-          return handle(request.arguments)
+          return handle(request.arguments).pipe(
+            Effect.catchDefect(() => Effect.fail(new InternalError({ message: "Internal error" })))
+          )
         }),
       get resources() {
         return resources
