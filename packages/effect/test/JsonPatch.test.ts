@@ -531,6 +531,10 @@ describe("JsonPatch", () => {
           () => JsonPatch.apply([{ op: "replace", path: "/-1", value: 1 }], [1, 2, 3]),
           `Invalid array index`
         )
+        expectMessage(
+          () => JsonPatch.apply([{ op: "add", path: "/items/abc/value", value: 1 }], { items: [] }),
+          `Invalid array index: "abc"`
+        )
       })
 
       it("rejects out-of-bounds array access", () => {
