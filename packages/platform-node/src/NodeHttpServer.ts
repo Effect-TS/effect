@@ -63,6 +63,26 @@ import * as NodeServices from "./NodeServices.ts"
 import { NodeWS } from "./NodeSocket.ts"
 
 /**
+ * Options accepted by the Node `HttpServer` constructors and layers.
+ *
+ * @category options
+ * @since 4.0.0
+ */
+export interface Options extends Net.ListenOptions {
+  readonly disablePreemptiveShutdown?: boolean | undefined
+  readonly gracefulShutdownTimeout?: Duration.Input | undefined
+  /**
+   * Options forwarded to the underlying `ws` `WebSocketServer`, minus the
+   * wiring options the server manages itself. Use this to enable
+   * `permessage-deflate` compression or tune payload limits, e.g.
+   * `websocket: { perMessageDeflate: true }`.
+   */
+  readonly websocket?:
+    | Omit<NodeWS.ServerOptions, "noServer" | "server" | "host" | "port" | "path">
+    | undefined
+}
+
+/**
  * Creates a scoped `HttpServer` from a Node `http.Server`, starts listening
  * with the supplied options, registers request and upgrade handling, and closes
  * the server during scope finalization with optional graceful-shutdown control.
@@ -72,10 +92,7 @@ import { NodeWS } from "./NodeSocket.ts"
  */
 export const make = Effect.fnUntraced(function*(
   evaluate: LazyArg<Http.Server>,
-  options: Net.ListenOptions & {
-    readonly disablePreemptiveShutdown?: boolean | undefined
-    readonly gracefulShutdownTimeout?: Duration.Input | undefined
-  }
+  options: Options
 ) {
   const scope = yield* Effect.scope
   const server = evaluate()
@@ -116,7 +133,7 @@ export const make = Effect.fnUntraced(function*(
   const address = server.address()!
 
   const wss = yield* Effect.acquireRelease(
-    Effect.sync(() => new NodeWS.WebSocketServer({ noServer: true })),
+    Effect.sync(() => new NodeWS.WebSocketServer({ ...options.websocket, noServer: true })),
     (wss) =>
       Effect.callback<void>((resume) => {
         wss.close(() => resume(Effect.void))
@@ -397,10 +414,7 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
  */
 export const layerServer: (
   evaluate: LazyArg<Http.Server<typeof Http.IncomingMessage, typeof Http.ServerResponse>>,
-  options: Net.ListenOptions & {
-    readonly disablePreemptiveShutdown?: boolean | undefined
-    readonly gracefulShutdownTimeout?: Duration.Input | undefined
-  }
+  options: Options
 ) => Layer.Layer<HttpServer.HttpServer, ServeError> = flow(make, Layer.effect(HttpServer.HttpServer))
 
 /**
@@ -427,10 +441,7 @@ export const layerHttpServices: Layer.Layer<
  */
 export const layer = (
   evaluate: LazyArg<Http.Server>,
-  options: Net.ListenOptions & {
-    readonly disablePreemptiveShutdown?: boolean | undefined
-    readonly gracefulShutdownTimeout?: Duration.Input | undefined
-  }
+  options: Options
 ): Layer.Layer<
   HttpServer.HttpServer | NodeServices.NodeServices | HttpPlatform.HttpPlatform | Etag.Generator,
   ServeError
@@ -450,12 +461,7 @@ export const layer = (
  */
 export const layerConfig = (
   evaluate: LazyArg<Http.Server>,
-  options: Config.Wrap<
-    Net.ListenOptions & {
-      readonly disablePreemptiveShutdown?: boolean | undefined
-      readonly gracefulShutdownTimeout?: Duration.Input | undefined
-    }
-  >
+  options: Config.Wrap<Options>
 ): Layer.Layer<
   HttpServer.HttpServer | NodeServices.NodeServices | HttpPlatform.HttpPlatform | Etag.Generator,
   ServeError | Config.ConfigError

@@ -1,5 +1,6 @@
 /** @effect-diagnostics preferSchemaOverJson:skip-file */
 import { NodeHttpServer } from "@effect/platform-node"
+import { NodeWS } from "@effect/platform-node/NodeSocket"
 import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import * as Duration from "effect/Duration"
@@ -673,7 +674,57 @@ describe("HttpServer", () => {
       )
       expect(root).toEqual("root")
     }).pipe(Effect.provide(NodeHttpServer.layerTest)))
+
+  it.effect("websocket options are forwarded to the WebSocketServer", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add(
+        "GET",
+        "/ws",
+        Effect.gen(function*() {
+          const request = yield* HttpServerRequest.HttpServerRequest
+          const socket = yield* Effect.orDie(request.upgrade)
+          yield* Effect.orDie(socket.run(() => Effect.void))
+          return HttpServerResponse.empty()
+        })
+      ).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as HttpServer.TcpAddress).port
+
+      const connect = (perMessageDeflate: boolean) =>
+        Effect.acquireRelease(
+          Effect.callback<NodeWS.WebSocket, Error>((resume) => {
+            const ws = new NodeWS.WebSocket(`ws://127.0.0.1:${port}/ws`, { perMessageDeflate })
+            ws.on("open", () => resume(Effect.succeed(ws)))
+            ws.on("error", (error) => resume(Effect.fail(error)))
+          }),
+          (ws) => Effect.sync(() => ws.close())
+        )
+
+      // layerTest configures websocket: { perMessageDeflate: true }, so the
+      // server accepts the extension when the client offers it...
+      const compressed = yield* connect(true)
+      expect(compressed.extensions).toContain("permessage-deflate")
+
+      // ...and clients that do not offer it still connect uncompressed.
+      const plain = yield* connect(false)
+      expect(plain.extensions).not.toContain("permessage-deflate")
+    }).pipe(Effect.scoped, Effect.provide(layerTestWebsocket)))
 })
+
+const layerTestWebsocket = HttpServer.layerTestClient.pipe(
+  Layer.provide(
+    Layer.fresh(FetchHttpClient.layer).pipe(
+      Layer.provide(Layer.succeed(FetchHttpClient.RequestInit)({ keepalive: false }))
+    )
+  ),
+  Layer.provideMerge(NodeHttpServer.layer(Http.createServer, {
+    port: 0,
+    websocket: { perMessageDeflate: true }
+  }))
+)
 
 const tcpPort = (server: Http.Server): number => {
   const address = server.address()
