@@ -10,4 +10,4 @@ Provides Deno-specific implementations for the abstractions defined in [`@effect
 
 - `ChildProcess` rejects `detached` because `Deno.Command` cannot create a detached process group.
 - `ChildProcess` rejects `additionalFds` because Deno supports only stdin, stdout, and stderr configuration.
-- Killing a `ChildProcess` terminates only the direct child. Descendants are not reaped because Deno has no portable process-group isolation API.
+- Killing a `ChildProcess` terminates only the direct child. Descendants are left running because Deno has no portable process-group isolation API.

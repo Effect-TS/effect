@@ -5,13 +5,15 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Layer from "effect/Layer"
 import * as PlatformError from "effect/PlatformError"
+import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
+import * as TestClock from "effect/testing/TestClock"
 import { ChildProcess } from "effect/unstable/process"
 import * as ChildProcessSpawnerTest from "../../effect/test/unstable/process/ChildProcessSpawnerTest.ts"
 
 const platformError = (method: string, path: string, cause: unknown) =>
   PlatformError.systemError({
-    _tag: cause instanceof Deno.errors.NotFound ? "NotFound" : "Unknown",
+    _tag: Predicate.hasProperty(cause, "name") && cause.name === "NotFound" ? "NotFound" : "Unknown",
     module: "FileSystem",
     method,
     pathOrDescriptor: path,
@@ -33,7 +35,7 @@ const fileSystem = FileSystem.layerNoop({
   makeTempDirectoryScoped: (options) =>
     Effect.acquireRelease(
       Effect.tryPromise({
-        try: () => Deno.makeTempDir(options),
+        try: () => Deno.makeTempDir({ dir: options?.directory, prefix: options?.prefix }),
         catch: (cause) => platformError("makeTempDirectoryScoped", options?.directory ?? "", cause)
       }),
       (path) => Effect.promise(() => Deno.remove(path, { recursive: true })).pipe(Effect.ignore)
@@ -87,6 +89,45 @@ describe("DenoChildProcessSpawner options", () => {
           description: "The additionalFds option is unsupported because Deno has no equivalent"
         })
       )
+    }).pipe(Effect.scoped, Effect.provide(layer)))
+
+  it.effect("rejects additional fd pipe sources", () =>
+    Effect.gen(function*() {
+      const error = yield* ChildProcess.make("echo", ["test"]).pipe(
+        ChildProcess.pipeTo(ChildProcess.make("cat"), { from: "fd3" }),
+        Effect.flip
+      )
+      assert.deepStrictEqual(
+        error.reason,
+        new PlatformError.BadArgument({
+          module: "ChildProcessSpawner",
+          method: "spawn",
+          description: "The additionalFds option is unsupported because Deno has no equivalent"
+        })
+      )
+    }).pipe(Effect.scoped, Effect.provide(layer)))
+
+  it.effect("kills every process in a pipeline", () =>
+    Effect.gen(function*() {
+      const directory = yield* Effect.acquireRelease(
+        Effect.promise(() => Deno.makeTempDir()),
+        (path) => Effect.promise(() => Deno.remove(path, { recursive: true })).pipe(Effect.ignore)
+      )
+      const heartbeat = `${directory}/heartbeat`
+      const handle = yield* ChildProcess.make(
+        "sh",
+        ["-c", "while :; do printf x >> \"$1\"; sleep 0.01; done", "pipeline-root", heartbeat]
+      ).pipe(
+        ChildProcess.pipeTo(ChildProcess.make("sleep", ["30"]))
+      )
+
+      yield* TestClock.withLive(Effect.sleep("100 millis"))
+      yield* handle.kill({ killSignal: "SIGKILL" })
+      const sizeAfterKill = (yield* Effect.promise(() => Deno.stat(heartbeat))).size
+      yield* TestClock.withLive(Effect.sleep("100 millis"))
+      const finalSize = (yield* Effect.promise(() => Deno.stat(heartbeat))).size
+
+      assert.strictEqual(finalSize, sizeAfterKill)
     }).pipe(Effect.scoped, Effect.provide(layer)))
 
   it.effect("emulates shell true without escaping joined arguments", () =>

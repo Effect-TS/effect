@@ -14,12 +14,12 @@ for i in {1..3}; do
     (
       grandchild_pid=$BASHPID
       echo "Grandchild of child $i started with PID $grandchild_pid"
-      # Keep running for 30 seconds
-      sleep 30
+      # Keep running for 30 seconds with a marker for process assertions
+      sh -c 'sleep 30; :' parent-exits-early-grandchild
     ) &
 
-    # Keep the child running
-    sleep 30
+    # Keep the child running with a marker for process assertions
+    sh -c 'sleep 30; :' parent-exits-early-child
   ) &
 done
 

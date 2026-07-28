@@ -3,7 +3,7 @@
  *
  * This module uses `Deno.Command` and Web Streams directly. Deno cannot create
  * detached process groups, so killing a handle terminates only its direct child;
- * descendants spawned by that child are not reaped.
+ * descendants spawned by that child are left running.
  *
  * @since 4.0.0
  */
@@ -38,11 +38,12 @@ const toPlatformError = (
   cause: unknown,
   command: ChildProcess.Command
 ): PlatformError.PlatformError => {
-  const tag = cause instanceof Deno.errors.NotFound ?
+  const errorName = Predicate.hasProperty(cause, "name") ? cause.name : undefined
+  const tag = errorName === "NotFound" ?
     "NotFound" :
-    cause instanceof Deno.errors.PermissionDenied ?
+    errorName === "PermissionDenied" ?
     "PermissionDenied" :
-    cause instanceof Deno.errors.TimedOut
+    errorName === "TimedOut"
     ? "TimedOut"
     : "Unknown"
   return PlatformError.systemError({
@@ -51,7 +52,7 @@ const toPlatformError = (
     method,
     pathOrDescriptor: commandString(command),
     syscall: `${method} ${commandString(command).trim()}`,
-    ...(tag === "Unknown" ? { cause } : undefined)
+    cause
   })
 }
 
@@ -66,20 +67,20 @@ const make = Effect.gen(function*() {
   const path = yield* Path.Path
 
   const resolveWorkingDirectory = (options: ChildProcess.CommandOptions) =>
-    Predicate.isUndefined(options.cwd) ? undefined : path.resolve(options.cwd)
+    options.cwd === undefined ? undefined : path.resolve(options.cwd)
 
   const resolveEnvironment = (options: ChildProcess.CommandOptions) => {
-    if (Predicate.isUndefined(options.env)) return undefined
+    if (options.env === undefined) return undefined
     const env: Record<string, string> = {}
     for (const [key, value] of Object.entries(options.env)) {
-      if (Predicate.isNotUndefined(value)) env[key] = value
+      if (value !== undefined) env[key] = value
     }
     return env
   }
 
   const resolveStdinOption = (options: ChildProcess.CommandOptions): ChildProcess.StdinConfig => {
     const defaultConfig: ChildProcess.StdinConfig = { stream: "pipe", encoding: "utf-8", endOnDone: true }
-    if (Predicate.isUndefined(options.stdin)) {
+    if (options.stdin === undefined) {
       return defaultConfig
     }
     if (typeof options.stdin === "string") {
@@ -100,7 +101,7 @@ const make = Effect.gen(function*() {
     streamName: "stdout" | "stderr"
   ): ChildProcess.StdoutConfig => {
     const option = options[streamName]
-    if (Predicate.isUndefined(option)) return { stream: "pipe" }
+    if (option === undefined) return { stream: "pipe" }
     if (typeof option === "string" || Sink.isSink(option)) return { stream: option }
     return { stream: option.stream }
   }
@@ -117,7 +118,7 @@ const make = Effect.gen(function*() {
   const outputToStdioOption = (
     output: ChildProcess.CommandOutput | undefined
   ): "piped" | "inherit" | "null" =>
-    Sink.isSink(output) || output === "pipe" || output === "overlapped" || Predicate.isUndefined(output) ?
+    Sink.isSink(output) || output === "pipe" || output === "overlapped" || output === undefined ?
       "piped" :
       output === "ignore"
       ? "null"
@@ -209,7 +210,7 @@ const make = Effect.gen(function*() {
     ) => Effect.Effect<A, E, R>
   ) => {
     const killSignal = options?.killSignal ?? "SIGTERM"
-    return Predicate.isUndefined(options?.forceKillAfter)
+    return options?.forceKillAfter === undefined
       ? kill(command, childProcess, killSignal)
       : Effect.timeoutOrElse(kill(command, childProcess, killSignal), {
         duration: options.forceKillAfter,
@@ -219,20 +220,15 @@ const make = Effect.gen(function*() {
 
   const getSourceStream = (
     handle: ChildProcessHandle,
-    from: ChildProcess.PipeFromOption | undefined
+    from: "stdout" | "stderr" | "all"
   ): Stream.Stream<Uint8Array, PlatformError.PlatformError> => {
-    const fromOption = from ?? "stdout"
-    switch (fromOption) {
+    switch (from) {
       case "stdout":
         return handle.stdout
       case "stderr":
         return handle.stderr
       case "all":
         return handle.all
-      default: {
-        const fd = ChildProcess.parseFdName(fromOption)
-        return Predicate.isNotUndefined(fd) ? handle.getOutputFd(fd) : handle.stdout
-      }
     }
   }
 
@@ -241,10 +237,10 @@ const make = Effect.gen(function*() {
   ) => Effect.Effect<ChildProcessHandle, PlatformError.PlatformError, Scope.Scope> = Effect.fnUntraced(function*(cmd) {
     switch (cmd._tag) {
       case "StandardCommand": {
-        if (Predicate.isNotUndefined(cmd.options.additionalFds)) {
+        if (cmd.options.additionalFds !== undefined) {
           return yield* Effect.fail(unsupported("additionalFds"))
         }
-        if (Predicate.isNotUndefined(cmd.options.detached)) {
+        if (cmd.options.detached !== undefined) {
           return yield* Effect.fail(unsupported("detached"))
         }
 
@@ -272,9 +268,9 @@ const make = Effect.gen(function*() {
         const env = resolveEnvironment(cmd.options)
         const [childProcess, exitSignal] = yield* Effect.acquireRelease(
           spawn(cmd, executable, args, {
-            ...(Predicate.isUndefined(cwd) ? undefined : { cwd }),
-            ...(Predicate.isUndefined(env) ? undefined : { env }),
-            clearEnv: Predicate.isNotUndefined(cmd.options.env) && cmd.options.extendEnv !== true,
+            ...(cwd === undefined ? undefined : { cwd }),
+            ...(env === undefined ? undefined : { env }),
+            clearEnv: cmd.options.env !== undefined && cmd.options.extendEnv !== true,
             stdin: inputToStdioOption(stdinConfig.stream),
             stdout: outputToStdioOption(stdoutConfig.stream),
             stderr: outputToStdioOption(stderrConfig.stream),
@@ -348,13 +344,15 @@ const make = Effect.gen(function*() {
           const command = pipeline[i]
           const options = pipeOptions[i] ?? {}
           const stdinConfig = resolveStdinOption(command.options)
-          const sourceStream = Stream.unwrap(
-            Effect.succeed(getSourceStream(handles[handles.length - 1], options.from))
-          )
+          const from = options.from ?? "stdout"
 
-          if ((options.to ?? "stdin") !== "stdin") {
+          if (
+            (from !== "stdout" && from !== "stderr" && from !== "all") ||
+            (options.to ?? "stdin") !== "stdin"
+          ) {
             return yield* Effect.fail(unsupported("additionalFds"))
           }
+          const sourceStream = getSourceStream(handles[handles.length - 1], from)
           handles.push(
             yield* spawnCommand(ChildProcess.make(command.command, command.args, {
               ...command.options,
@@ -364,6 +362,8 @@ const make = Effect.gen(function*() {
         }
 
         const handle = handles[handles.length - 1]
+        const kill = (options?: ChildProcess.KillOptions | undefined) =>
+          Effect.forEach([...handles].reverse(), (handle) => Effect.ignore(handle.kill(options)), { discard: true })
         const unref = Effect.gen(function*() {
           const rerefs: Array<Effect.Effect<void, PlatformError.PlatformError>> = []
           for (const handle of handles) rerefs.push(yield* handle.unref)
@@ -374,7 +374,7 @@ const make = Effect.gen(function*() {
           pid: handle.pid,
           exitCode: handle.exitCode,
           isRunning: handle.isRunning,
-          kill: handle.kill,
+          kill,
           stdin: handle.stdin,
           stdout: handle.stdout,
           stderr: handle.stderr,
@@ -434,6 +434,6 @@ export const flattenCommand = (command: ChildProcess.Command): FlattenedPipeline
   flatten(command)
 
   const [first, ...rest] = commands
-  if (Predicate.isUndefined(first)) throw new Error("flattenCommand produced empty commands array")
+  if (first === undefined) throw new Error("flattenCommand produced empty commands array")
   return { commands: [first, ...rest], pipeOptions }
 }

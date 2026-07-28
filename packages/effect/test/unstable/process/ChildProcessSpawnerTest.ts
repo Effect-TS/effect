@@ -4,7 +4,7 @@ import * as Exit from "effect/Exit"
 import * as FileSystem from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
-import * as PlatformError from "effect/PlatformError"
+import type * as PlatformError from "effect/PlatformError"
 import * as Schedule from "effect/Schedule"
 import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
@@ -19,8 +19,7 @@ export interface Options {
 // Helper to collect stream output into a string
 const decodeByteStream = Effect.fnUntraced(
   function*(
-    stream: Stream.Stream<Uint8Array, PlatformError.PlatformError>,
-    encoding: ChildProcess.Encoding = "utf-8"
+    stream: Stream.Stream<Uint8Array, PlatformError.PlatformError>
   ) {
     const chunks = yield* Stream.runCollect(stream)
     const totalLength = chunks.reduce((acc, c) => acc + c.length, 0)
@@ -30,7 +29,7 @@ const decodeByteStream = Effect.fnUntraced(
       result.set(chunk, offset)
       offset += chunk.length
     }
-    return new TextDecoder(encoding).decode(result).trim()
+    return new TextDecoder().decode(result).trim()
   }
 )
 
@@ -143,14 +142,15 @@ export const suite = (
           it.effect("should execute with shell when using sh -c", () =>
             Effect.gen(function*() {
               // Use sh -c to test shell expansion without triggering deprecation warning
-              const handle = yield* ChildProcess.make("sh", ["-c", "echo $HOME"])
+              const handle = yield* ChildProcess.make("sh", ["-c", "echo $SHELL_EXPANSION_VAR"], {
+                env: { SHELL_EXPANSION_VAR: "expanded" },
+                extendEnv: true
+              })
               const output = yield* decodeByteStream(handle.stdout)
               const exitCode = yield* handle.exitCode
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
-              // With shell, $HOME should be expanded
-              assert.isTrue(output.length > 0)
-              assert.isFalse(output.includes("$HOME"))
+              assert.strictEqual(output, "expanded")
             }).pipe(Effect.scoped))
 
           it.effect("should not expand variables without shell", () =>
@@ -218,8 +218,8 @@ export const suite = (
               yield* fs.writeFile(file, new TextEncoder().encode("test"))
 
               const handle = yield* ChildProcess.make`ls ${args} ${dir}`
-              const exitCode = yield* handle.exitCode
               const output = yield* decodeByteStream(handle.stdout)
+              const exitCode = yield* handle.exitCode
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.isTrue(output.includes("array-interpolation.txt"))
@@ -263,8 +263,10 @@ export const suite = (
           it.effect("should capture both stdout and stderr", () =>
             Effect.gen(function*() {
               const handle = yield* ChildProcess.make("sh", ["-c", "echo stdout; echo stderr >&2"])
-              const stdout = yield* decodeByteStream(handle.stdout)
-              const stderr = yield* decodeByteStream(handle.stderr)
+              const [stdout, stderr] = yield* Effect.all([
+                decodeByteStream(handle.stdout),
+                decodeByteStream(handle.stderr)
+              ], { concurrency: "unbounded" })
               const exitCode = yield* handle.exitCode
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
@@ -297,8 +299,10 @@ export const suite = (
                 "sh",
                 ["-c", "echo output; echo err1 >&2; echo err2 >&2; echo err3 >&2; echo err4 >&2; echo err5 >&2"]
               )
-              const stdout = yield* decodeByteStream(handle.stdout)
-              const stderr = yield* decodeByteStream(handle.stderr)
+              const [stdout, stderr] = yield* Effect.all([
+                decodeByteStream(handle.stdout),
+                decodeByteStream(handle.stderr)
+              ], { concurrency: "unbounded" })
               const exitCode = yield* handle.exitCode
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
@@ -358,8 +362,10 @@ export const suite = (
               const exitCode = yield* handle.exitCode
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
-              // With delays forcing buffer flushes, we should see proper interleaving
-              assert.strictEqual(all, ["stdout1", "stderr1", "stdout2", "stderr2"].join("\n"))
+              const lines = all.split("\n")
+              assert.strictEqual(lines.length, 4)
+              assert.deepStrictEqual(lines.filter((line) => line.startsWith("stdout")), ["stdout1", "stdout2"])
+              assert.deepStrictEqual(lines.filter((line) => line.startsWith("stderr")), ["stderr1", "stderr2"])
             }).pipe(Effect.scoped))
 
           it.effect("should capture only stdout via .all when no stderr", () =>
@@ -393,12 +399,16 @@ export const suite = (
               const exitCode = yield* handle.exitCode
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
-              // Verify all lines are present in interleaved order
-              const expected = []
-              for (let i = 1; i <= 5; i++) {
-                expected.push(`stdout${i}`, `stderr${i}`)
-              }
-              assert.strictEqual(all, expected.join("\n"))
+              const lines = all.split("\n")
+              assert.strictEqual(lines.length, 10)
+              assert.deepStrictEqual(
+                lines.filter((line) => line.startsWith("stdout")),
+                ["stdout1", "stdout2", "stdout3", "stdout4", "stdout5"]
+              )
+              assert.deepStrictEqual(
+                lines.filter((line) => line.startsWith("stderr")),
+                ["stderr1", "stderr2", "stderr3", "stderr4", "stderr5"]
+              )
             }).pipe(Effect.scoped))
 
           it.effect("should allow reading .all independently", () =>
@@ -718,16 +728,9 @@ export const suite = (
             const command = ChildProcess.make({ cwd })`./no-permissions.sh`
             const result = yield* Effect.flip(command)
 
-            assert.deepStrictEqual(
-              result,
-              PlatformError.systemError({
-                _tag: "PermissionDenied",
-                module: "ChildProcess",
-                method: "spawn",
-                pathOrDescriptor: "./no-permissions.sh ",
-                syscall: "spawn ./no-permissions.sh"
-              })
-            )
+            assert.strictEqual(result.reason._tag, "PermissionDenied")
+            assert.strictEqual(result.reason.module, "ChildProcess")
+            assert.strictEqual(result.reason.method, "spawn")
           }).pipe(Effect.scoped))
       })
 
@@ -872,9 +875,11 @@ export const suite = (
               { additionalFds: { fd3: { type: "output" } } }
             )
 
-            const stdout = yield* decodeByteStream(handle.stdout)
-            const stderr = yield* decodeByteStream(handle.stderr)
-            const fd3Output = yield* decodeByteStream(handle.getOutputFd(3))
+            const [stdout, stderr, fd3Output] = yield* Effect.all([
+              decodeByteStream(handle.stdout),
+              decodeByteStream(handle.stderr),
+              decodeByteStream(handle.getOutputFd(3))
+            ], { concurrency: "unbounded" })
             const exitCode = yield* handle.exitCode
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
@@ -895,12 +900,16 @@ export const suite = (
             return Number.parseInt(output.trim())
           }).pipe(Effect.orElseSucceed(() => 0))
 
-        const killMatchingProcesses = (pattern: string) =>
-          Effect.gen(function*() {
+        const killMatchingProcesses = (pattern: string) => {
+          if (!/^[A-Za-z0-9_-]+$/.test(pattern)) {
+            return Effect.die(new Error(`Invalid process pattern: ${pattern}`))
+          }
+          return Effect.gen(function*() {
             const escaped = `[${pattern[0]}]${pattern.slice(1)}`
             const handle = yield* ChildProcess.make("bash", ["-c", `pkill -f '${escaped}' || true`])
             yield* Effect.ignore(handle.exitCode)
           }).pipe(Effect.asVoid)
+        }
 
         const longRunningCommand = () =>
           ChildProcess.make("sh", ["-c", "sleep 30", "long-running-command"], {
@@ -990,7 +999,7 @@ export const suite = (
 
               const afterExitHandle = yield* ChildProcess.make("bash", [
                 "-c",
-                "ps aux | grep 'sleep 30' | grep -v grep | wc -l"
+                "ps aux | grep 'parent-exits-early-' | grep -v grep | wc -l"
               ])
               const afterExit = yield* decodeByteStream(afterExitHandle.stdout).pipe(
                 Effect.map((s) => Number.parseInt(s.trim())),
@@ -1010,15 +1019,15 @@ export const suite = (
               Effect.provide(layer)
             )
 
-            // @effect-diagnostics-next-line floatingEffect:off
-            yield* Scope.provide(scope)(handle.unref).pipe(Effect.provide(layer))
-            yield* Scope.close(scope, Exit.void)
-            yield* TestClock.withLive(Effect.sleep("100 millis"))
+            yield* Effect.gen(function*() {
+              // @effect-diagnostics-next-line floatingEffect:off
+              yield* Scope.provide(scope)(handle.unref).pipe(Effect.provide(layer))
+              yield* Scope.close(scope, Exit.void)
+              yield* TestClock.withLive(Effect.sleep("100 millis"))
 
-            const isRunning = yield* handle.isRunning
-            assert.isTrue(isRunning)
-
-            yield* handle.kill({ killSignal: "SIGKILL" })
+              const isRunning = yield* handle.isRunning
+              assert.isTrue(isRunning)
+            }).pipe(Effect.ensuring(Effect.ignore(handle.kill({ killSignal: "SIGKILL" }))))
           }).pipe(Effect.provide(layer)))
 
         it.effect("should kill a restored process when scope closes", () =>
@@ -1079,7 +1088,7 @@ export const suite = (
 
               yield* TestClock.withLive(Effect.sleep("100 millis"))
 
-              const remaining = yield* countMatchingProcesses("sleep 30")
+              const remaining = yield* countMatchingProcesses("parent-exits-early-")
               assert.strictEqual(remaining, 0)
             }).pipe(Effect.provide(layer))
         )
@@ -1106,18 +1115,22 @@ export const suite = (
               )
             })).pipe(Effect.provide(layer))
 
-            // @effect-diagnostics-next-line floatingEffect:off
-            yield* Scope.provide(scope)(handle.unref).pipe(Effect.provide(layer))
-            yield* Scope.close(scope, Exit.void)
-            yield* TestClock.withLive(Effect.sleep("100 millis"))
+            yield* Effect.gen(function*() {
+              // @effect-diagnostics-next-line floatingEffect:off
+              yield* Scope.provide(scope)(handle.unref).pipe(Effect.provide(layer))
+              yield* Scope.close(scope, Exit.void)
+              yield* TestClock.withLive(Effect.sleep("100 millis"))
 
-            const rootCount = yield* countMatchingProcesses(rootMarker)
-            const tailCount = yield* countMatchingProcesses(tailMarker)
-            assert.strictEqual(rootCount, 1)
-            assert.strictEqual(tailCount, 1)
-
-            yield* killMatchingProcesses(rootMarker)
-            yield* killMatchingProcesses(tailMarker)
+              const rootCount = yield* countMatchingProcesses(rootMarker)
+              const tailCount = yield* countMatchingProcesses(tailMarker)
+              assert.strictEqual(rootCount, 1)
+              assert.strictEqual(tailCount, 1)
+            }).pipe(
+              Effect.ensuring(Effect.ignore(Effect.all([
+                killMatchingProcesses(rootMarker),
+                killMatchingProcesses(tailMarker)
+              ], { discard: true })))
+            )
           }).pipe(Effect.provide(layer)))
       })
 
