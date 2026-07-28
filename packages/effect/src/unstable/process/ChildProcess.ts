@@ -383,6 +383,11 @@ export interface CommandOptions extends KillOptions {
    * If `extendEnv` is set to `true`, the value of `env` will be merged with
    * the value of `globalThis.process.env`, prioritizing the values in `env`
    * when conflicts exist.
+   *
+   * **Gotchas**
+   *
+   * Without `extendEnv: true`, providing `env` replaces the inherited child
+   * environment. The child will not receive `PATH` unless `env` includes it.
    */
   readonly env?: Record<string, string | undefined> | undefined
   /**
@@ -392,7 +397,9 @@ export interface CommandOptions extends KillOptions {
    *
    * **Details**
    *
-   * If set to `false`, only the value of `env` is used.
+   * If set to `false` and `env` is provided, only the value of `env` is used.
+   *
+   * @default false
    */
   readonly extendEnv?: boolean | undefined
   /**
