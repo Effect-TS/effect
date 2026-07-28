@@ -1069,6 +1069,7 @@ export class ResourceListChangedNotification extends Rpc.make("notifications/res
  * @since 4.0.0
  */
 export class Subscribe extends Rpc.make("resources/subscribe", {
+  success: Schema.Struct({}),
   error: McpError,
   payload: {
     ...RequestMeta.fields,
@@ -1089,6 +1090,7 @@ export class Subscribe extends Rpc.make("resources/subscribe", {
  * @since 4.0.0
  */
 export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
+  success: Schema.Struct({}),
   error: McpError,
   payload: {
     ...RequestMeta.fields,

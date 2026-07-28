@@ -70,6 +70,7 @@ import {
   Prompt,
   Resource,
   ResourceTemplate,
+  ResourceUpdatedNotification,
   ServerNotificationRpcs,
   TextContent,
   Tool as McpTool
@@ -400,6 +401,7 @@ type SessionLogLevel =
 interface Session {
   readonly initializePayload: typeof Initialize.payloadSchema.Type
   readonly protocol: McpProtocol.ProtocolAdapter
+  readonly resourceSubscriptions: Set<string> | undefined
   logLevel: SessionLogLevel
 }
 
@@ -748,6 +750,14 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
             LoggingMessageNotification.payloadSchema
           )(request.payload)
           if (!isMcpLogLevelEnabled(level, sessions.byClientId.get(clientId)?.logLevel)) {
+            continue
+          }
+        }
+        if (request.tag === "notifications/resources/updated") {
+          const { uri } = yield* Schema.decodeUnknownEffect(
+            ResourceUpdatedNotification.payloadSchema
+          )(request.payload)
+          if (sessions.byClientId.get(clientId)?.resourceSubscriptions?.has(uri) !== true) {
             continue
           }
         }
@@ -1885,7 +1895,7 @@ const layerHandlers = (serverInfo: {
             if (server.resources.length > 0 || server.resourceTemplates.length > 0) {
               capabilities.resources = {
                 listChanged: true,
-                subscribe: false
+                subscribe: true
               }
             }
             if (server.prompts.length > 0) {
@@ -1896,9 +1906,13 @@ const layerHandlers = (serverInfo: {
             }
             return Effect.withFiber((fiber) => {
               const httpRequest = Context.getOrUndefined(fiber.context, HttpServerRequest.HttpServerRequest)
+              if (httpRequest !== undefined && capabilities.resources !== undefined) {
+                capabilities.resources.subscribe = false
+              }
               const session: Session = {
                 initializePayload: params,
                 protocol: selectedProtocol,
+                resourceSubscriptions: capabilities.resources?.subscribe === true ? new Set() : undefined,
                 logLevel: { _tag: "Effect", level: currentLogLevel }
               }
               if (httpRequest) {
@@ -1942,8 +1956,36 @@ const layerHandlers = (serverInfo: {
               return new ListResourcesResult({ resources: filterByClient(initialized, server.resources, "resource") })
             }),
           "resources/read": ({ uri }) => server.findResource(uri),
-          "resources/subscribe": () => InternalError.notImplemented,
-          "resources/unsubscribe": () => InternalError.notImplemented,
+          "resources/subscribe": ({ uri }, { client, headers }) =>
+            Effect.gen(function*() {
+              const subscriptions = getClientSession(
+                options.sessions,
+                client.id,
+                headers
+              )?.resourceSubscriptions
+              if (subscriptions === undefined) {
+                return yield* new MethodNotFound({
+                  message: "Resource subscriptions are not supported"
+                })
+              }
+              subscriptions.add(uri)
+              return {}
+            }),
+          "resources/unsubscribe": ({ uri }, { client, headers }) =>
+            Effect.gen(function*() {
+              const subscriptions = getClientSession(
+                options.sessions,
+                client.id,
+                headers
+              )?.resourceSubscriptions
+              if (subscriptions === undefined) {
+                return yield* new MethodNotFound({
+                  message: "Resource subscriptions are not supported"
+                })
+              }
+              subscriptions.delete(uri)
+              return {}
+            }),
           "resources/templates/list": (_, { client, headers }) =>
             Effect.sync(() => {
               const initialized = getClientSession(options.sessions, client.id, headers)?.initializePayload

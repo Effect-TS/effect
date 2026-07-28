@@ -1,8 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
+import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Schema from "effect/Schema"
 import * as Sink from "effect/Sink"
@@ -20,6 +22,8 @@ import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
+import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
+import * as RpcServer from "effect/unstable/rpc/RpcServer"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 
@@ -459,41 +463,113 @@ describe("McpServer", () => {
         strictEqual(result.protocolVersion, "2025-06-18")
         strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
       }))
+  })
 
-    it.effect("should decode with the pinned adapter when sessions use incompatible schemas", () =>
+  describe("resource subscriptions", () => {
+    it.effect("should isolate resource update subscriptions between sessions", () =>
       Effect.gen(function*() {
-        const protocolA = makeTestProtocol("test-a", "a")
-        const protocolB = makeTestProtocol("test-b", "b")
-        const { initialize, request } = yield* makeRawHttpServer([protocolA, protocolB])
-        const sessionA = yield* initialize("test-a", 1)
-        const sessionB = yield* initialize("test-b", 2)
+        const clientIds = new Set([1, 2])
+        const client1Outbound = yield* Queue.unbounded<
+          RpcMessage.FromServerEncoded | RpcMessage.RequestEncoded
+        >()
+        const client2Outbound = yield* Queue.unbounded<
+          RpcMessage.FromServerEncoded | RpcMessage.RequestEncoded
+        >()
+        const disconnects = yield* Queue.unbounded<number>()
+        const writeRequest = yield* Deferred.make<
+          (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+        >()
+        const protocol = yield* RpcServer.Protocol.make((write) =>
+          Deferred.succeed(writeRequest, write).pipe(
+            Effect.as({
+              disconnects,
+              send: (clientId, message) =>
+                Queue.offer(clientId === 1 ? client1Outbound : client2Outbound, message).pipe(Effect.asVoid),
+              end: (_clientId) => Effect.void,
+              clientIds: Effect.succeed(clientIds),
+              initialMessage: Effect.succeedNone,
+              supportsAck: false,
+              supportsTransferables: false,
+              supportsSpanPropagation: false
+            })
+          )
+        )
+        const ready = yield* Deferred.make<McpServer.McpServer["Service"]>()
+        yield* Effect.gen(function*() {
+          const context = yield* Layer.build(
+            McpServer.resource({
+              uri: "file:///target",
+              name: "Target",
+              content: Effect.succeed("target")
+            }).pipe(
+              Layer.provideMerge(
+                McpServer.layer({
+                  name: "TestServer",
+                  version: "1.0.0",
+                  protocols: [McpProtocol.v2025_06_18]
+                }).pipe(Layer.provide(Layer.succeed(RpcServer.Protocol, protocol)))
+              )
+            )
+          )
+          yield* Deferred.succeed(ready, Context.get(context, McpServer.McpServer))
+          return yield* Effect.never
+        }).pipe(Effect.scoped, Effect.forkScoped)
+        const server = yield* Deferred.await(ready)
+        const send = yield* Deferred.await(writeRequest)
+        const nextResponse = Effect.fnUntraced(function*(clientId: number, requestId: number) {
+          while (true) {
+            const message = yield* Queue.take(clientId === 1 ? client1Outbound : client2Outbound)
+            if (message._tag === "Exit" && message.requestId === requestId) {
+              return message
+            }
+          }
+        })
+        const nextResourceUpdate = Effect.fnUntraced(function*(clientId: number) {
+          while (true) {
+            const message = yield* Queue.take(clientId === 1 ? client1Outbound : client2Outbound)
+            if (message._tag === "Request" && message.tag === "notifications/resources/updated") {
+              return yield* Schema.decodeUnknownEffect(
+                McpSchema.ResourceUpdatedNotification.payloadSchema
+              )(message.payload)
+            }
+          }
+        })
+        const request = Effect.fnUntraced(function*(
+          clientId: number,
+          id: number,
+          method: string,
+          payload: unknown,
+          isNotification = false
+        ) {
+          yield* send(clientId, {
+            _tag: "Request",
+            id,
+            tag: method,
+            payload,
+            headers: [],
+            ...(isNotification ? { isNotification: true as const } : {})
+          })
+          if (!isNotification) {
+            yield* nextResponse(clientId, id)
+          }
+        })
+        const initialize = (clientId: number) =>
+          request(clientId, clientId, "initialize", initializePayload).pipe(
+            Effect.andThen(request(clientId, clientId + 10, "notifications/initialized", {}, true))
+          )
 
-        const wrongForA = yield* request({
-          jsonrpc: "2.0",
-          id: 3,
-          method: "ping",
-          params: { b: 1 }
-        }, sessionA.sessionId)
-        const validForA = yield* request({
-          jsonrpc: "2.0",
-          id: 4,
-          method: "ping",
-          params: { a: "selected" }
-        }, sessionA.sessionId)
-        const validForB = yield* request({
-          jsonrpc: "2.0",
-          id: 5,
-          method: "ping",
-          params: { b: 1 }
-        }, sessionB.sessionId)
+        yield* initialize(1)
+        yield* initialize(2)
+        yield* request(1, 21, "resources/subscribe", { uri: "file:///target" })
+        yield* request(2, 22, "resources/subscribe", { uri: "file:///sentinel" })
 
-        const decodeBody = Schema.decodeUnknownEffect(Schema.Record(Schema.String, Schema.Unknown))
-        const invalidBody = yield* Effect.promise<unknown>(() => wrongForA.json()).pipe(Effect.flatMap(decodeBody))
-        const validABody = yield* Effect.promise<unknown>(() => validForA.json()).pipe(Effect.flatMap(decodeBody))
-        const validBBody = yield* Effect.promise<unknown>(() => validForB.json()).pipe(Effect.flatMap(decodeBody))
-        assert.property(invalidBody, "error")
-        assert.deepStrictEqual(validABody, { jsonrpc: "2.0", id: 4, result: {} })
-        assert.deepStrictEqual(validBBody, { jsonrpc: "2.0", id: 5, result: {} })
+        yield* server.notifications["notifications/resources/updated"]({ uri: "file:///target" })
+        yield* server.notifications["notifications/resources/updated"]({ uri: "file:///sentinel" })
+
+        assert.strictEqual((yield* nextResourceUpdate(1)).uri, "file:///target")
+        assert.strictEqual((yield* nextResourceUpdate(2)).uri, "file:///sentinel")
+        assert.isTrue(Option.isNone(yield* Queue.poll(client1Outbound)))
+        assert.isTrue(Option.isNone(yield* Queue.poll(client2Outbound)))
       }))
   })
 

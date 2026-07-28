@@ -314,11 +314,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
       })
 
       describe("Subscriptions", () => {
-        // FIX: Every dated adapter currently advertises resources.subscribe as
-        // false and returns Method Not Found for subscribe and unsubscribe.
-        // Resource update notifications are broadcast without session-scoped
-        // subscription state or URI filtering.
-        it.effect.skip("MUST subscribe to a resource when subscriptions are advertised", () =>
+        it.effect("MUST subscribe to a resource when subscriptions are advertised", () =>
           Effect.gen(function*() {
             const fixture = yield* makeMcpStdioHarness(protocol)
             yield* fixture.server.addResource({
@@ -351,9 +347,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(payload.uri, "file:///subscription-target")
           }))
 
-        // FIX: Resource update notifications are currently broadcast without
-        // checking session-scoped subscription state or filtering by URI.
-        it.effect.skip("MUST send update notifications only for subscribed resources", () =>
+        it.effect("MUST send update notifications only for subscribed resources", () =>
           Effect.gen(function*() {
             const fixture = yield* makeMcpStdioHarness(protocol)
             yield* fixture.server.addResource({
@@ -415,9 +409,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(payload.uri, "file:///subscription-target")
           }))
 
-        // FIX: The adapter currently returns Method Not Found for
-        // resources/unsubscribe because subscription state is not implemented.
-        it.effect.skip("MUST unsubscribe from resource updates", () =>
+        it.effect("MUST unsubscribe from resource updates", () =>
           Effect.gen(function*() {
             const fixture = yield* makeMcpStdioHarness(protocol)
             yield* fixture.server.addResource({
@@ -458,9 +450,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.strictEqual(payload.uri, "file:///subscription-sentinel")
           }))
 
-        // FIX: Resource update notifications remain broadcast after unsubscribe
-        // because the server does not track session-scoped subscription state.
-        it.effect.skip("MUST not send updates after a resource is unsubscribed", () =>
+        it.effect("MUST not send updates after a resource is unsubscribed", () =>
           Effect.gen(function*() {
             const fixture = yield* makeMcpStdioHarness(protocol)
             yield* fixture.server.addResource({
