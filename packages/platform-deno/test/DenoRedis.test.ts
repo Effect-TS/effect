@@ -1,4 +1,4 @@
-import { DenoRedis } from "@effect/platform-deno"
+import * as DenoRedis from "@effect/platform-deno/DenoRedis"
 import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
 import { Deferred, Effect, Fiber, Layer, Schema } from "effect"
