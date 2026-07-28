@@ -40,13 +40,17 @@ const collectAsyncIterable = <A>(
   method: string,
   pathOrDescriptor: string | number | undefined,
   evaluate: () => AsyncIterable<A>
-) => {
-  const onError = handleError("FileSystem", method, pathOrDescriptor)
-  return Effect.flatMap(
-    Effect.try({ try: evaluate, catch: onError }),
-    (iterable) => Stream.runCollect(Stream.fromAsyncIterable(iterable, onError))
-  )
-}
+) =>
+  Effect.tryPromise({
+    try: async () => {
+      const values = new Array<A>()
+      for await (const value of evaluate()) {
+        values.push(value)
+      }
+      return values
+    },
+    catch: handleError("FileSystem", method, pathOrDescriptor)
+  })
 
 const access: FileSystem.FileSystem["access"] = (path, options) => {
   if (!options?.readable && !options?.writable) {
@@ -152,13 +156,6 @@ const openOptions = (flag: FileSystem.OpenFlag = "r", mode?: number): Deno.OpenO
   }
 }
 
-let nextFileDescriptor = 0
-/**
- * Creates a process-unique handle for `FileSystem.File.fd`. Deno does not expose
- * an OS file descriptor, so this value must not be passed to native APIs.
- */
-const makeFileDescriptor = (): FileSystem.File.Descriptor => FileSystem.FileDescriptor(nextFileDescriptor++)
-
 const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
   type: info.isFile ?
     "File" :
@@ -192,30 +189,27 @@ const makeFileInfo = (info: Deno.FileInfo): FileSystem.File.Info => ({
 
 class FileImpl implements FileSystem.File {
   readonly [FileSystem.FileTypeId]: typeof FileSystem.FileTypeId = FileSystem.FileTypeId
-  readonly fd: FileSystem.File.Descriptor
   private readonly file: Deno.FsFile
   private readonly append: boolean
   private position = BigInt(0)
 
   constructor(
-    fd: FileSystem.File.Descriptor,
     file: Deno.FsFile,
     append: boolean
   ) {
-    this.fd = fd
     this.file = file
     this.append = append
   }
 
   get stat() {
     return Effect.map(
-      tryPromise("stat", this.fd, () => this.file.stat()),
+      tryPromise("stat", undefined, () => this.file.stat()),
       makeFileInfo
     )
   }
 
   get sync() {
-    return tryPromise("sync", this.fd, () => this.file.sync())
+    return tryPromise("sync", undefined, () => this.file.sync())
   }
 
   seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode) {
@@ -236,7 +230,7 @@ class FileImpl implements FileSystem.File {
       return Effect.map(
         tryPromise(
           method,
-          this.fd,
+          undefined,
           () => this.file.seek(position, Deno.SeekMode.Start).then(() => this.file.read(buffer))
         ),
         (bytesRead) => {
@@ -268,7 +262,7 @@ class FileImpl implements FileSystem.File {
   truncate(length?: FileSystem.SizeInput) {
     const size = FileSystem.Size(length ?? 0)
     return Effect.map(
-      tryPromise("truncate", this.fd, () => this.file.truncate(Number(size))),
+      tryPromise("truncate", undefined, () => this.file.truncate(Number(size))),
       () => {
         if (!this.append && this.position > size) {
           this.position = size
@@ -283,7 +277,7 @@ class FileImpl implements FileSystem.File {
       return Effect.map(
         tryPromise(
           method,
-          this.fd,
+          undefined,
           () => this.file.seek(position, Deno.SeekMode.Start).then(() => this.file.write(buffer))
         ),
         (bytesWritten) => {
@@ -308,7 +302,6 @@ class FileImpl implements FileSystem.File {
           module: "FileSystem",
           method: "writeAll",
           _tag: "WriteZero",
-          pathOrDescriptor: this.fd,
           description: "write returned 0 bytes written"
         }))
       }
@@ -325,16 +318,12 @@ class FileImpl implements FileSystem.File {
 
 const open: FileSystem.FileSystem["open"] = (path, options) => {
   const append = options?.flag?.startsWith("a") ?? false
-  return Effect.flatMap(
-    Effect.sync(makeFileDescriptor),
-    (descriptor) =>
-      Effect.map(
-        Effect.acquireRelease(
-          tryPromise("open", path, () => Deno.open(path, openOptions(options?.flag, options?.mode))),
-          (file) => close(file, "open", descriptor)
-        ),
-        (file) => new FileImpl(descriptor, file, append)
-      )
+  return Effect.map(
+    Effect.acquireRelease(
+      tryPromise("open", path, () => Deno.open(path, openOptions(options?.flag, options?.mode))),
+      (file) => close(file, "open", path)
+    ),
+    (file) => new FileImpl(file, append)
   )
 }
 
