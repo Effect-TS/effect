@@ -113,21 +113,30 @@ describe("DenoChildProcessSpawner options", () => {
         Effect.promise(() => Deno.makeTempDir()),
         (path) => Effect.promise(() => Deno.remove(path, { recursive: true })).pipe(Effect.ignore)
       )
-      const heartbeat = `${directory}/heartbeat`
+      const rootHeartbeat = `${directory}/root-heartbeat`
+      const childHeartbeat = `${directory}/child-heartbeat`
       const handle = yield* ChildProcess.make(
         "sh",
-        ["-c", "while :; do printf x >> \"$1\"; sleep 0.01; done", "pipeline-root", heartbeat]
+        ["-c", "while :; do printf x >> \"$1\"; sleep 0.01; done", "pipeline-root", rootHeartbeat]
       ).pipe(
-        ChildProcess.pipeTo(ChildProcess.make("sleep", ["30"]))
+        ChildProcess.pipeTo(
+          ChildProcess.make(
+            "sh",
+            ["-c", "while :; do printf x >> \"$1\"; sleep 0.01; done", "pipeline-child", childHeartbeat]
+          )
+        )
       )
 
       yield* TestClock.withLive(Effect.sleep("100 millis"))
       yield* handle.kill({ killSignal: "SIGKILL" })
-      const sizeAfterKill = (yield* Effect.promise(() => Deno.stat(heartbeat))).size
+      const rootSizeAfterKill = (yield* Effect.promise(() => Deno.stat(rootHeartbeat))).size
+      const childSizeAfterKill = (yield* Effect.promise(() => Deno.stat(childHeartbeat))).size
       yield* TestClock.withLive(Effect.sleep("100 millis"))
-      const finalSize = (yield* Effect.promise(() => Deno.stat(heartbeat))).size
+      const rootFinalSize = (yield* Effect.promise(() => Deno.stat(rootHeartbeat))).size
+      const childFinalSize = (yield* Effect.promise(() => Deno.stat(childHeartbeat))).size
 
-      assert.strictEqual(finalSize, sizeAfterKill)
+      assert.strictEqual(rootFinalSize, rootSizeAfterKill)
+      assert.strictEqual(childFinalSize, childSizeAfterKill)
     }).pipe(Effect.scoped, Effect.provide(layer)))
 
   it.effect("emulates shell true without escaping joined arguments", () =>
