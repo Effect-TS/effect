@@ -65,19 +65,18 @@ import { NodeWS } from "./NodeSocket.ts"
 /**
  * Options accepted by the Node `HttpServer` constructors and layers.
  *
- * **Details**
- *
- * `websocket` is forwarded to the underlying `ws` `WebSocketServer`, minus the
- * wiring options the server manages itself. Use it to enable
- * `permessage-deflate` compression or tune payload limits, e.g.
- * `NodeHttpServer.layer(() => createServer(), { port: 3000, websocket: { perMessageDeflate: true } })`.
- *
  * @category options
  * @since 4.0.0
  */
 export interface Options extends Net.ListenOptions {
   readonly disablePreemptiveShutdown?: boolean | undefined
   readonly gracefulShutdownTimeout?: Duration.Input | undefined
+  /**
+   * Options forwarded to the underlying `ws` `WebSocketServer`, minus the
+   * wiring options the server manages itself. Use this to enable
+   * `permessage-deflate` compression or tune payload limits, e.g.
+   * `websocket: { perMessageDeflate: true }`.
+   */
   readonly websocket?:
     | Omit<NodeWS.ServerOptions, "noServer" | "server" | "host" | "port" | "path">
     | undefined

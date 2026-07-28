@@ -82,7 +82,7 @@ export type ServeOptions<R extends string> =
  */
 export type WebSocketOptions = Omit<
   Bun.WebSocketHandler<WebSocketContext>,
-  "open" | "message" | "close" | "drain" | "ping" | "pong" | "data"
+  "open" | "message" | "close" | "drain" | "ping" | "pong" | "data" | "binaryType"
 >
 
 /**
