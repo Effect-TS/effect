@@ -1,13 +1,6 @@
 /**
  * Deno implementation of Effect's `FileSystem` service.
  *
- * Deno differs from the Node implementation in two places:
- *
- * - Writable access checks on directories fail because Deno probes access by
- *   opening the path and `Deno.open` rejects directories opened for writing.
- * - Scoped temporary files remove only the file, not its containing directory,
- *   because they are created directly with `Deno.makeTempFile`.
- *
  * @since 4.0.0
  */
 import { copy as denoCopy, expandGlob, walk } from "@std/fs"
