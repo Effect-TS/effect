@@ -6,14 +6,14 @@ import type * as Layer from "effect/Layer"
 import * as Stream from "effect/Stream"
 
 export interface TestLayerOptions {
-  /** Whether writable access to a directory is supported. Defaults to `true`. */
+  /** Whether writable access to a directory is supported. Deno's open-based access check rejects directories. Defaults to `true`. */
   readonly accessOnDirectory?: boolean
-  /** Whether a scoped temporary file removes its containing directory. Defaults to `true`. */
+  /** Whether a scoped temporary file removes its containing directory. Deno removes only the file. Defaults to `true`. */
   readonly tempFileScopedRemovesDirectory?: boolean
 }
 
 export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: TestLayerOptions = {}) => {
-  const runPromise = <E, A>(self: Effect.Effect<A, E, Fs.FileSystem>) =>
+  const runPromise = <E2, A>(self: Effect.Effect<A, E2, Fs.FileSystem>) =>
     Effect.runPromise(
       Effect.provide(self, layer)
     )
@@ -66,26 +66,29 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       }))
   )
 
-  it.skipIf(options.tempFileScopedRemovesDirectory === false)(
-    "makeTempFileScoped removes the containing directory",
-    () =>
-      runPromise(Effect.gen(function*() {
-        const fs = yield* Fs.FileSystem
+  it("makeTempFileScoped cleans up", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      yield* Effect.scoped(Effect.gen(function*() {
+        const root = yield* fs.makeTempDirectoryScoped()
+        let file = ""
+        let dir = ""
         yield* Effect.scoped(Effect.gen(function*() {
-          const root = yield* fs.makeTempDirectoryScoped()
-          let dir = ""
-          yield* Effect.scoped(Effect.gen(function*() {
-            const file = yield* fs.makeTempFileScoped({ directory: root })
-            const separator = Math.max(file.lastIndexOf("/"), file.lastIndexOf("\\"))
-            dir = file.slice(0, separator)
-            const stat = yield* fs.stat(dir)
-            expect(stat.type).toEqual("Directory")
-          }))
-          const error = yield* Effect.flip(fs.stat(dir))
-          assert(error.reason._tag === "NotFound")
+          file = yield* fs.makeTempFileScoped({ directory: root })
+          const separator = Math.max(file.lastIndexOf("/"), file.lastIndexOf("\\"))
+          assert(separator !== -1, "Expected temp file path to contain a directory separator")
+          dir = file.slice(0, separator)
+          const stat = yield* fs.stat(dir)
+          expect(stat.type).toEqual("Directory")
         }))
+        const fileError = yield* Effect.flip(fs.stat(file))
+        assert(fileError.reason._tag === "NotFound")
+        if (options.tempFileScopedRemovesDirectory !== false) {
+          const directoryError = yield* Effect.flip(fs.stat(dir))
+          assert(directoryError.reason._tag === "NotFound")
+        }
       }))
-  )
+    })))
 
   it("truncate", () =>
     runPromise(Effect.gen(function*() {
