@@ -1,21 +1,6 @@
 /**
  * Native Deno implementation of the Effect `HttpServer`.
  *
- * `make` starts `Deno.serve` immediately so the bound TCP or Unix address is
- * available before an application is installed. Applications are swapped by a
- * stable handler closure because Deno has no server reload API. Server shutdown
- * is graceful and uses a 20-second preemptive timeout by default.
- *
- * Serve options omit external abort signals, custom error handlers, and Deno's
- * unstable vsock transport. TCP, TLS, and Unix transports are supported.
- *
- * WebSocket options apply to every upgrade on the server; in particular,
- * `protocol` cannot vary per request. A successful upgrade resolves the native
- * upgrade response and discards the application's eventual HTTP response.
- * Discarded raw streams, including file bodies for `HEAD` requests, are
- * cancelled so native resources are released. Deno requests are standard
- * `Request` values and have no Bun-style route-pattern generic.
- *
  * @since 4.0.0
  */
 import * as Config from "effect/Config"
