@@ -43,6 +43,7 @@ export const fromListener = (listener: Listener): SocketServer.SocketServer["Ser
               pipe(
                 DenoSocket.fromConn(Effect.acquireRelease(Effect.succeed(conn), closeConn)),
                 Effect.flatMap(handler),
+                Effect.ensuring(closeConn(conn)),
                 Effect.catchCause(reportUnhandledError),
                 Effect.runForkWith(Context.add(services, DenoSocket.Conn, conn)),
                 trackFiber

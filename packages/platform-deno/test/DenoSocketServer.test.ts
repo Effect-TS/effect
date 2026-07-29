@@ -20,14 +20,16 @@ const echo = (socket: Socket.Socket) =>
     })
   )
 
-const makeTestConn = (): Deno.Conn => {
+const makeTestConn = (onClose?: () => void): Deno.Conn => {
   const transform = new TransformStream<Uint8Array>()
   return {
     readable: transform.readable,
     writable: transform.writable,
     read: () => Promise.resolve(null),
     write: (data) => Promise.resolve(data.length),
-    close() {},
+    close() {
+      onClose?.()
+    },
     closeWrite: () => Promise.resolve(),
     ref() {},
     unref() {},
@@ -137,6 +139,24 @@ describe("DenoSocketServer", () => {
 
       assert.isUndefined(runFiber.pollUnsafe())
       yield* Fiber.interrupt(runFiber)
+    }))
+
+  it.effect("closes the connection after its handler completes", () =>
+    Effect.gen(function*() {
+      const called = [Deferred.makeUnsafe<void>(), Deferred.makeUnsafe<void>()]
+      const handled = yield* Deferred.make<void>()
+      const closed = yield* Deferred.make<void>()
+      const listener = makeTestListener([
+        () => Promise.resolve(makeTestConn(() => Deferred.doneUnsafe(closed, Exit.void))),
+        neverAccept
+      ], called)
+      const server = fromListener(listener)
+      yield* server.run(() => Deferred.succeed(handled, undefined)).pipe(Effect.forkChild)
+
+      yield* Deferred.await(handled)
+      yield* Effect.yieldNow
+
+      assert.isTrue(yield* Deferred.isDone(closed))
     }))
 
   it.effect("logs accept failures and continues accepting", () =>

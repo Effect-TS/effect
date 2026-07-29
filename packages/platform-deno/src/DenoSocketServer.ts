@@ -24,11 +24,23 @@ import type * as Scope from "effect/Scope"
 import * as SocketServer from "effect/unstable/socket/SocketServer"
 import { closeListener, fromListener } from "./internal/denoSocketServer.ts"
 
-type ListenOptions =
+/**
+ * Native Deno options for listening on a TCP or Unix socket.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type ListenOptions =
   | (Deno.TcpListenOptions & { transport?: "tcp" })
   | (Deno.UnixListenOptions & { transport: "unix" })
 
-type TlsListenOptions = Deno.ListenTlsOptions & Deno.TlsCertifiedKeyPem
+/**
+ * Native Deno options and certified key material for listening with TLS.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type TlsListenOptions = Deno.ListenTlsOptions & Deno.TlsCertifiedKeyPem
 
 /**
  * Creates a scoped socket server using a native Deno TCP or Unix listener.
