@@ -4,10 +4,12 @@ AI prompt for writing Effect public API JSDoc:
 This package owns Effect public API JSDoc parsing, extraction, and model generation.
 */
 
+import { API as NativeTypeScriptAPI, type Diagnostic as NativeTypeScriptDiagnostic } from "@typescript/native/unstable/sync"
 import * as Effect from "effect/Effect"
 import { globSync } from "glob"
 import * as crypto from "node:crypto"
 import * as fs from "node:fs"
+import { createRequire } from "node:module"
 import * as path from "node:path"
 import * as ts from "typescript"
 
@@ -1762,8 +1764,21 @@ export interface JSDocConfig {
   readonly output: string
 }
 
+/**
+ * Vitest-style filters for selecting JSDoc examples to type-check.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface JSDocExampleFilter {
+  readonly filters?: ReadonlyArray<string>
+  readonly projects?: ReadonlyArray<string>
+  readonly testNamePattern?: string
+}
+
 export interface ExtractJSDocsOptions extends JSDocConfig {
   readonly cwd?: string
+  readonly exampleFilter?: JSDocExampleFilter
 }
 
 function addInputFile(files: Set<string>, filename: string) {
@@ -2481,6 +2496,11 @@ function validateExampleImports(
 interface LocatedExample {
   readonly example: ParsedExample
   readonly range: readonly [number, number]
+  readonly file: string
+  readonly module: string
+  readonly project: string
+  readonly declaration: string
+  readonly packageRoot: string
 }
 
 function precedingJSDocRange(source: string, range: readonly [number, number]): readonly [number, number] {
@@ -2491,40 +2511,115 @@ function precedingJSDocRange(source: string, range: readonly [number, number]): 
 }
 
 function collectFileExamples(cwd: string, file: JSDocModelFile): ReadonlyArray<LocatedExample> {
-  const source = fs.readFileSync(path.resolve(cwd, file.file), "utf8")
+  const filename = path.resolve(cwd, file.file)
+  const source = fs.readFileSync(filename, "utf8")
+  const packageRoot = findPackageRoot(filename) ?? cwd
+  const metadata = readPackageMetadata(packageRoot)
+  const project = metadata._tag === "Success" ? metadata.value.name : path.basename(packageRoot)
+  const module = file.imports?.module ?? file.file
   const locate = (
     examples: ReadonlyArray<ParsedExample>,
-    range: readonly [number, number]
+    range: readonly [number, number],
+    declaration: string
   ): ReadonlyArray<LocatedExample> =>
-    examples.map((example) => ({ example, range: precedingJSDocRange(source, range) }))
-  const collectMembers = (members: ReadonlyArray<ParsedMember>): ReadonlyArray<LocatedExample> =>
-    members.flatMap((member) => [
-      ...locate(member.examples, member.range),
-      ...collectMembers(member.members)
-    ])
-  const collectNamespaces = (namespaces: ReadonlyArray<ParsedNamespace>): ReadonlyArray<LocatedExample> =>
-    namespaces.flatMap((namespace) => [
-      ...locate(namespace.examples, namespace.range),
-      ...namespace.declarations.flatMap((declaration) => [
-        ...locate(declaration.examples, declaration.range),
-        ...collectMembers(declaration.members)
-      ]),
-      ...collectNamespaces(namespace.namespaces)
-    ])
+    examples.map((example) => ({
+      example,
+      range: precedingJSDocRange(source, range),
+      file: file.file,
+      module,
+      project,
+      declaration,
+      packageRoot
+    }))
+  const collectMembers = (
+    members: ReadonlyArray<ParsedMember>,
+    parent: ReadonlyArray<string>
+  ): ReadonlyArray<LocatedExample> =>
+    members.flatMap((member) => {
+      const declaration = [...parent, member.name]
+      return [
+        ...locate(member.examples, member.range, declaration.join(".")),
+        ...collectMembers(member.members, declaration)
+      ]
+    })
+  const collectNamespaces = (
+    namespaces: ReadonlyArray<ParsedNamespace>,
+    parent: ReadonlyArray<string>
+  ): ReadonlyArray<LocatedExample> =>
+    namespaces.flatMap((namespace) => {
+      const namespacePath = [...parent, namespace.name]
+      return [
+        ...locate(namespace.examples, namespace.range, namespacePath.join(".")),
+        ...namespace.declarations.flatMap((declaration) => [
+          ...locate(declaration.examples, declaration.range, [...namespacePath, declaration.name].join(".")),
+          ...collectMembers(declaration.members, [...namespacePath, declaration.name])
+        ]),
+        ...collectNamespaces(namespace.namespaces, namespacePath)
+      ]
+    })
   const moduleJSDoc = file.moduleJSDoc
   const moduleExamples = moduleJSDoc === undefined
     ? []
     : parseModuleExamples(
       parseLooseJSDocBlock(moduleJSDoc.raw, [moduleJSDoc.range[0], moduleJSDoc.range[1]])
-    ).examples.map((example) => ({ example, range: moduleJSDoc.range }))
+    ).examples.flatMap((example) => locate([example], moduleJSDoc.range, "module"))
   return [
     ...moduleExamples,
     ...file.declarations.flatMap((declaration) => [
-      ...locate(declaration.examples, declaration.range),
-      ...collectMembers(declaration.members)
+      ...locate(declaration.examples, declaration.range, declaration.name),
+      ...collectMembers(declaration.members, [declaration.name])
     ]),
-    ...collectNamespaces(file.namespaces)
+    ...collectNamespaces(file.namespaces, [])
   ]
+}
+
+interface CompiledExampleFilter {
+  readonly filters: ReadonlyArray<string>
+  readonly projects: ReadonlyArray<RegExp>
+  readonly testNamePattern?: RegExp
+}
+
+function compileExampleFilter(filter: JSDocExampleFilter | undefined): CompiledExampleFilter | undefined {
+  return filter === undefined
+    ? undefined
+    : {
+      filters: filter.filters?.map(normalizePathName) ?? [],
+      projects: filter.projects?.map(globToRegExp) ?? [],
+      ...(filter.testNamePattern === undefined ? {} : { testNamePattern: new RegExp(filter.testNamePattern) })
+    }
+}
+
+function projectMatches(project: string, filters: ReadonlyArray<RegExp>): boolean {
+  return filters.length === 0 || filters.some((filter) => filter.test(project))
+}
+
+function sourceMatchesExampleFilter(cwd: string, filename: string, filter: CompiledExampleFilter): boolean {
+  const packageRoot = findPackageRoot(filename)
+  const metadata = packageRoot === undefined ? undefined : readPackageMetadata(packageRoot)
+  const project = metadata?._tag === "Success"
+    ? metadata.value.name
+    : packageRoot === undefined
+    ? ""
+    : path.basename(packageRoot)
+  if (!projectMatches(project, filter.projects)) return false
+  if (filter.filters.length === 0) return true
+  const file = normalizeFile(cwd, filename)
+  if (filter.filters.some((value) => file.includes(value))) return true
+  const imports = resolveJSDocImports(cwd, filename)
+  return imports._tag === "Success" && filter.filters.some((value) => imports.value.module.includes(value))
+}
+
+function exampleMatchesFilter(example: LocatedExample, filter: CompiledExampleFilter | undefined): boolean {
+  if (filter === undefined) return true
+  if (!projectMatches(example.project, filter.projects)) return false
+  if (
+    filter.filters.length > 0 &&
+    !filter.filters.some((value) => example.file.includes(value) || example.module.includes(value))
+  ) return false
+  if (filter.testNamePattern === undefined) return true
+  return filter.testNamePattern.test(
+    `${example.module} > ${example.declaration} > ${example.example.title}`
+  )
 }
 
 function appendExampleImportDiagnostics(
@@ -2548,68 +2643,88 @@ function appendExampleImportDiagnostics(
 function appendExampleTypeDiagnostics(
   cwd: string,
   files: ReadonlyArray<JSDocModelFile>,
-  sourceProgram: ts.Program,
-  compilerOptions: ts.CompilerOptions
+  tsconfigPath: string,
+  filter?: CompiledExampleFilter
 ): ReadonlyArray<JSDocModelFile> {
   const diagnosticsByFile = new Map<string, Array<JSDocModelDiagnostic>>()
-  const examples = files.flatMap((file) => {
-    const packageRoot = findPackageRoot(path.resolve(cwd, file.file)) ?? cwd
-    return collectFileExamples(cwd, file).map((located, index) => ({
+  const examples = files.flatMap((file) =>
+    collectFileExamples(cwd, file).filter((example) => exampleMatchesFilter(example, filter)).map((located, index) => ({
       ...located,
       modelFile: file.file,
-      virtualFile: path.join(packageRoot, `.effect-jsdocs-example-${hashSource(file.file).slice(0, 8)}-${index}.ts`)
-    }))
-  })
-  if (examples.length === 0) return files
+      virtualFile: path.join(
+        located.packageRoot,
+        `.effect-jsdocs-example-${hashSource(file.file).slice(0, 8)}-${index}.ts`
+      )
+    })))
+  if (examples.length === 0) {
+    if (filter !== undefined) throw new Error("No JSDoc examples matched the provided filters")
+    return files
+  }
 
-  const virtualSources = new Map(examples.map((example) => [path.resolve(example.virtualFile), example.example.code]))
-  const options: ts.CompilerOptions = {
-    ...compilerOptions,
-    noEmit: true,
-    incremental: false,
-    composite: false,
-    declaration: false,
-    declarationMap: false,
-    sourceMap: false,
-    moduleDetection: ts.ModuleDetectionKind.Force
-  }
-  const baseHost = ts.createCompilerHost(options, true)
-  const host: ts.CompilerHost = {
-    ...baseHost,
-    fileExists: (filename) => virtualSources.has(path.resolve(filename)) || baseHost.fileExists(filename),
-    readFile: (filename) => virtualSources.get(path.resolve(filename)) ?? baseHost.readFile(filename),
-    getSourceFile: (filename, languageVersion, onError, shouldCreateNewSourceFile) => {
-      const source = virtualSources.get(path.resolve(filename))
-      return source === undefined
-        ? baseHost.getSourceFile(filename, languageVersion, onError, shouldCreateNewSourceFile)
-        : ts.createSourceFile(filename, source, languageVersion, true, ts.ScriptKind.TS)
+  const virtualConfig = path.join(cwd, `.effect-jsdocs-${hashSource(tsconfigPath).slice(0, 8)}.json`)
+  const virtualSources = new Map<string, string>([
+    ...examples.map((example) => [path.resolve(example.virtualFile), example.example.code] as const),
+    [virtualConfig, JSON.stringify({
+      extends: tsconfigPath,
+      files: examples.map((example) => example.virtualFile),
+      compilerOptions: {
+        noEmit: true,
+        incremental: false,
+        composite: false,
+        declaration: false,
+        declarationMap: false,
+        sourceMap: false,
+        moduleDetection: "force"
+      }
+    })]
+  ])
+  const nativePackageJson = import.meta.resolve("@typescript/native/package.json")
+  const require = createRequire(nativePackageJson)
+  const platformPackage = `@typescript/typescript-${process.platform}-${process.arch}`
+  const platformPackageJson = require.resolve(`${platformPackage}/package.json`)
+  const executable = path.join(
+    path.dirname(platformPackageJson),
+    "lib",
+    process.platform === "win32" ? "tsc.exe" : "tsc"
+  )
+  // effect-tsgo patch preserves the upstream binary under this name.
+  const upstreamExecutable = fs.existsSync(`${executable}.original`) ? `${executable}.original` : executable
+  const api = new NativeTypeScriptAPI({
+    cwd,
+    tsserverPath: upstreamExecutable,
+    fs: {
+      fileExists: (filename) => virtualSources.has(path.resolve(filename)) ? true : undefined,
+      readFile: (filename) => virtualSources.get(path.resolve(filename))
     }
-  }
-  const program = ts.createProgram({
-    rootNames: [...sourceProgram.getRootFileNames(), ...virtualSources.keys()],
-    options,
-    host,
-    oldProgram: sourceProgram
   })
-  for (const example of examples) {
-    const sourceFile = program.getSourceFile(example.virtualFile)
-    if (sourceFile === undefined) continue
-    const diagnostics = [
-      ...program.getSyntacticDiagnostics(sourceFile),
-      ...program.getSemanticDiagnostics(sourceFile)
-    ]
-    if (diagnostics.length === 0) continue
-    const fileDiagnostics = diagnosticsByFile.get(example.modelFile) ?? []
-    for (const item of diagnostics) {
-      fileDiagnostics.push({
-        code: "example-typecheck",
-        message: `TypeScript example "${example.example.title}" error TS${item.code}: ${
-          ts.flattenDiagnosticMessageText(item.messageText, "\n")
-        }`,
-        range: example.range
-      })
+  try {
+    const snapshot = api.updateSnapshot({ openProjects: [virtualConfig] })
+    try {
+      const project = snapshot.getProject(virtualConfig)
+      if (project === undefined) throw new Error(`Unable to load virtual TypeScript project ${virtualConfig}`)
+      for (const example of examples) {
+        const diagnostics = [
+          ...project.program.getSyntacticDiagnostics(example.virtualFile),
+          ...project.program.getSemanticDiagnostics(example.virtualFile)
+        ]
+        if (diagnostics.length === 0) continue
+        const fileDiagnostics = diagnosticsByFile.get(example.modelFile) ?? []
+        for (const item of diagnostics) {
+          fileDiagnostics.push({
+            code: "example-typecheck",
+            message: `TypeScript example "${example.example.title}" error TS${item.code}: ${
+              formatNativeTypeScriptDiagnostic(item)
+            }`,
+            range: example.range
+          })
+        }
+        diagnosticsByFile.set(example.modelFile, fileDiagnostics)
+      }
+    } finally {
+      snapshot.dispose()
     }
-    diagnosticsByFile.set(example.modelFile, fileDiagnostics)
+  } finally {
+    api.close()
   }
   return files.map((file) => {
     const diagnostics = diagnosticsByFile.get(file.file)
@@ -2617,6 +2732,12 @@ function appendExampleTypeDiagnostics(
       ? file
       : { ...file, diagnostics: uniqueModelDiagnostics([...file.diagnostics, ...diagnostics]) }
   })
+}
+
+function formatNativeTypeScriptDiagnostic(diagnostic: NativeTypeScriptDiagnostic): string {
+  return diagnostic.messageChain === undefined
+    ? diagnostic.text
+    : [diagnostic.text, ...diagnostic.messageChain.map(formatNativeTypeScriptDiagnostic)].join("\n")
 }
 
 function uniqueModelDiagnostics(
@@ -3361,19 +3482,20 @@ export function loadJSDocConfig(cwd = process.cwd(), configPath = "jsdocs.config
 
 export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
   const cwd = path.resolve(options.cwd ?? process.cwd())
+  const exampleFilter = compileExampleFilter(options.exampleFilter)
   const tsconfigPath = path.resolve(cwd, options.tsconfig)
   const entry = getProgram(tsconfigPath)
   if (entry.error !== undefined || entry.program === undefined) {
     throw new Error(entry.error ?? `Unable to read ${tsconfigPath}`)
   }
   const program = entry.program
-  let exampleCompilerOptions = program.getCompilerOptions()
+  let exampleTsconfigPath = tsconfigPath
   if (options.examplesTsconfig !== undefined) {
-    const result = parseTsConfig(path.resolve(cwd, options.examplesTsconfig))
+    exampleTsconfigPath = path.resolve(cwd, options.examplesTsconfig)
+    const result = parseTsConfig(exampleTsconfigPath)
     if (result.error !== undefined || result.parsed === undefined) {
       throw new Error(result.error ?? `Unable to read ${options.examplesTsconfig}`)
     }
-    exampleCompilerOptions = result.parsed.options
   }
   const checker = program.getTypeChecker()
   const sourceByPath = new Map(program.getSourceFiles().map((file) => [path.resolve(file.fileName), file]))
@@ -3383,7 +3505,9 @@ export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
     absolute: true,
     nodir: true,
     ignore: [...options.exclude ?? []]
-  }).sort()
+  }).sort().filter((filename) =>
+    exampleFilter === undefined || sourceMatchesExampleFilter(cwd, filename, exampleFilter)
+  )
   const modelFiles: Array<JSDocModelFile> = []
   for (const filename of files) {
     const source = fs.readFileSync(filename, "utf8")
@@ -3431,13 +3555,24 @@ export function extractJSDocsSync(options: ExtractJSDocsOptions): JSDocModel {
       ...result.parsed
     })
   }
-  const filesWithImportDiagnostics = appendExampleImportDiagnostics(cwd, modelFiles)
+  const filesWithImportDiagnostics = exampleFilter === undefined
+    ? appendExampleImportDiagnostics(cwd, modelFiles)
+    : modelFiles
   const filesWithExampleDiagnostics = appendExampleTypeDiagnostics(
     cwd,
     filesWithImportDiagnostics,
-    program,
-    exampleCompilerOptions
+    exampleTsconfigPath,
+    exampleFilter
   )
+  if (exampleFilter !== undefined) {
+    return {
+      version: 2,
+      generatedBy: "@effect/jsdocs",
+      generatedAt: new Date().toISOString(),
+      files: filesWithExampleDiagnostics,
+      apis: []
+    }
+  }
   const withPublicSeeDiagnostics = buildJSDocApisWithPublicSeeDiagnostics(filesWithExampleDiagnostics, {
     sourceFilesByFile,
     checker,

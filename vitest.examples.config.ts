@@ -2,7 +2,7 @@ import * as Configuration from "@effect/docgen/Configuration"
 import * as Core from "@effect/docgen/Core"
 import * as Examples from "@effect/docgen/Examples"
 import { readFileSync } from "node:fs"
-import { relative } from "node:path"
+import { relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
 import { defineConfig } from "vitest/config"
 
@@ -44,12 +44,16 @@ const config = Configuration.Configuration.of({
 })
 
 const model = await Core.analyzeWithNode(config)
+const reloadExamples = (file: string) =>
+  Core.analyzeWithNode(config, {
+    paths: [relative(import.meta.dirname, file).split(sep).join("/")]
+  }).then((model) => model.examples)
 const projects = model.packages.flatMap((pkg) => {
   const examples = model.examples.filter((example) => example.packageName === pkg.name)
   const files = globalThis.Array.from(new Set(examples.map((example) => example.declarationPathname)))
   if (files.length === 0) return []
   return [{
-    plugins: [Examples.vitestPlugin(examples)],
+    plugins: [Examples.vitestPlugin(examples, reloadExamples)],
     test: {
       name: relative(import.meta.dirname, pkg.root),
       root: pkg.root,

@@ -1,3 +1,4 @@
+import * as Examples from "@effect/docgen/Examples"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
@@ -94,6 +95,42 @@ const run = (command: "list" | "run", config: string) =>
   })
 
 describe("ExampleRunner", () => {
+  it.effect("reloads invalidated virtual example modules", () =>
+    Effect.gen(function*() {
+      const file = "/workspace/package/src/watch.ts"
+      const first = example(file, "fixture/watch example 1", "export const version = 1")
+      const second = example(file, "fixture/watch example 1", "export const version = 2")
+      const current: ReadonlyArray<Example> = [second]
+      const plugin = Examples.vitestPlugin([first], () => Promise.resolve(current))
+      const resolveId = plugin.resolveId
+      const load = plugin.load
+      const watchChange = plugin.watchChange
+      if (
+        typeof resolveId !== "function" || typeof load !== "function" || typeof watchChange !== "function"
+      ) {
+        return assert.fail("expected function plugin hooks")
+      }
+      const context = { addWatchFile() {} } as never
+      const collector = yield* Effect.promise(() =>
+        Promise.resolve(resolveId.call(context, Examples.collectorId(file), undefined, {} as never))
+      )
+      if (typeof collector !== "string") return assert.fail("expected resolved collector ID")
+      yield* Effect.promise(() => Promise.resolve(load.call(context, collector, {} as never)))
+
+      watchChange.call(context, file, { event: "update" })
+      const refreshed = yield* Effect.promise(() => Promise.resolve(load.call(context, collector, {} as never)))
+      if (typeof refreshed !== "string") return assert.fail("expected refreshed collector module")
+      const encodedId = /import\((".*")\)/.exec(refreshed)?.[1]
+      if (encodedId === undefined) return assert.fail("expected virtual example import")
+      const id = JSON.parse(encodedId)
+      const resolved = yield* Effect.promise(() => Promise.resolve(resolveId.call(context, id, undefined, {} as never)))
+      if (typeof resolved !== "string") return assert.fail("expected resolved example ID")
+      const source = yield* Effect.promise(() => Promise.resolve(load.call(context, resolved, {} as never)))
+
+      if (typeof source !== "string") return assert.fail("expected example module source")
+      assert.strictEqual(source, second.source)
+    }))
+
   it.effect("collects source-backed examples without importing their source files", () =>
     fixture((root) =>
       Effect.gen(function*() {

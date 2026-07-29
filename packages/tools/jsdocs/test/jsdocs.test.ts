@@ -120,7 +120,7 @@ export const makeValue = () => 1
     })
   })
 
-  it("type checks examples without writing source files", () => {
+  it("type checks examples with TypeScript 7 without writing source files", () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-"))
     fs.mkdirSync(path.join(cwd, "src"), { recursive: true })
     fs.writeFileSync(
@@ -154,6 +154,22 @@ export const makeValue = () => 1
  * @since 1.0.0
  */
 export const makeValue = () => 1
+
+/**
+ * Creates text.
+ *
+ * **Example** (Using the text)
+ *
+ * \`\`\`ts
+ * import { Foo } from "@effect/sample"
+ *
+ * const text: string = Foo.makeText()
+ * \`\`\`
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeText = () => "text"
 `
     fs.writeFileSync(path.join(cwd, "src/Foo.ts"), source)
 
@@ -167,6 +183,32 @@ export const makeValue = () => 1
 
     assert.match(diagnostic?.message ?? "", /TS2322: Type 'number' is not assignable to type 'string'/)
     assert.deepStrictEqual(diagnostic?.range, [0, source.indexOf("*/") + 2])
+
+    const targeted = extractJSDocsSync({
+      cwd,
+      tsconfig: "tsconfig.json",
+      include: ["src/**/*.ts"],
+      output: ".data/jsdocs.json",
+      exampleFilter: {
+        filters: ["missing", "@effect/sample/Foo"],
+        projects: ["missing", "@effect/*"],
+        testNamePattern: "makeText"
+      }
+    })
+    assert.deepStrictEqual(targeted.files.flatMap((file) => file.diagnostics), [])
+    assert.deepStrictEqual(targeted.apis, [])
+
+    assert.throws(
+      () =>
+        extractJSDocsSync({
+          cwd,
+          tsconfig: "tsconfig.json",
+          include: ["src/**/*.ts"],
+          output: ".data/jsdocs.json",
+          exampleFilter: { projects: ["missing"] }
+        }),
+      /No JSDoc examples matched the provided filters/
+    )
     assert.deepStrictEqual(fs.readdirSync(cwd).sort(), ["package.json", "src", "tsconfig.json"])
   })
 

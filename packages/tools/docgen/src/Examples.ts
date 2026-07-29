@@ -2,7 +2,7 @@
  * @since 0.6.0
  */
 
-import type { Plugin } from "vite"
+import { normalizePath, type Plugin } from "vite"
 import * as ExampleMetadata from "./ExampleMetadata.ts"
 import type * as SemanticModel from "./SemanticModel.ts"
 
@@ -67,19 +67,41 @@ const collectorModule = (examples: ReadonlyArray<SemanticModel.Example>): string
  * The original source files remain Vitest specifications, while every example executes in
  * its own module with imports resolved relative to the source file.
  *
+ * **Details**
+ *
+ * When `reload` is provided, changing a watched source file invalidates its cached examples
+ * and invokes `reload` before Vitest recollects the virtual modules.
+ *
  * @category testing
  * @since 0.6.0
  */
-export const vitestPlugin = (examples: ReadonlyArray<SemanticModel.Example>): Plugin => {
+export const vitestPlugin = (
+  examples: ReadonlyArray<SemanticModel.Example>,
+  reload?: ((file: string) => Promise<ReadonlyArray<SemanticModel.Example>>) | undefined
+): Plugin => {
   const byFile = new Map<string, ReadonlyArray<SemanticModel.Example>>()
+  const cache = new Map<string, Promise<ReadonlyArray<SemanticModel.Example>>>()
   for (const example of examples) {
     const current = byFile.get(example.declarationPathname)
     byFile.set(example.declarationPathname, current === undefined ? [example] : [...current, example])
+  }
+  for (const [file, examples] of byFile) cache.set(file, Promise.resolve(examples))
+
+  const loadExamples = (file: string): Promise<ReadonlyArray<SemanticModel.Example>> => {
+    const cached = cache.get(file)
+    if (cached !== undefined) return cached
+    const loaded = (reload === undefined ? Promise.resolve(byFile.get(file) ?? []) : reload(file)).then((examples) => {
+      byFile.set(file, examples)
+      return examples
+    })
+    cache.set(file, loaded)
+    return loaded
   }
 
   return {
     name: "effect-docgen-examples",
     enforce: "pre",
+    perEnvironmentWatchChangeDuringDev: true,
     resolveId(source, importer, options) {
       const collector = request(collectorPrefix, source)
       if (collector !== undefined && byFile.has(collector.file)) return resolvedId("collector", collector)
@@ -90,16 +112,21 @@ export const vitestPlugin = (examples: ReadonlyArray<SemanticModel.Example>): Pl
       if (parent?.kind !== "example") return null
       return this.resolve(source, parent.file, { ...options, skipSelf: true })
     },
-    load(id) {
+    async load(id) {
       const loaded = resolvedRequest(id)
       if (loaded === undefined) return null
       this.addWatchFile(loaded.file)
-      const examples = byFile.get(loaded.file)
-      if (examples === undefined) return null
+      const examples = await loadExamples(loaded.file)
       if (loaded.kind === "collector") return collectorModule(examples)
       const example = loaded.index === undefined ? undefined : examples[loaded.index]
       if (example === undefined) throw new Error(`Unknown documentation example module '${id}'`)
       return example.source
+    },
+    watchChange(id) {
+      const normalized = normalizePath(id)
+      for (const file of byFile.keys()) {
+        if (normalizePath(file) === normalized) cache.delete(file)
+      }
     }
   }
 }

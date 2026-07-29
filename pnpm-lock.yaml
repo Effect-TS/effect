@@ -808,6 +808,9 @@ importers:
 
   packages/tools/jsdocs:
     dependencies:
+      '@typescript/native':
+        specifier: npm:typescript@^7.0.2
+        version: typescript@7.0.2
       effect:
         specifier: workspace:^
         version: link:../../effect
