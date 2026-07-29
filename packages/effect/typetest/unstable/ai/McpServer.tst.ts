@@ -71,7 +71,7 @@ describe("McpServer", () => {
     })
 
     it("should expose the supported protocol adapter", () => {
-      expect<keyof typeof McpProtocol>().type.toBe<"v2025_06_18">()
+      expect<"v2025_06_18">().type.toBeAssignableTo<keyof typeof McpProtocol>()
       expect<McpProtocol.ProtocolVersion>().type.toBe<"2025-06-18">()
     })
 

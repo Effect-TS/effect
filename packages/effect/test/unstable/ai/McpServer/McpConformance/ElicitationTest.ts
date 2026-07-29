@@ -40,6 +40,7 @@ const request = {
 
 const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknown>, unknown>>(
   client: McpTestPeer["client"],
+  protocolVersion: string,
   schema: S
 ) =>
   McpServer.elicit({
@@ -50,9 +51,9 @@ const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknow
       McpSchema.McpServerClient,
       McpSchema.McpServerClient.of({
         clientId: 1,
-        protocolVersion: "2025-06-18",
+        protocolVersion,
         initializePayload: {
-          protocolVersion: "2025-06-18",
+          protocolVersion,
           capabilities: { elicitation: {} },
           clientInfo: {
             name: "McpConformancePeer",
@@ -136,6 +137,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             const result = yield* runElicitation(
               peer.client,
+              protocol.protocolVersion,
               Schema.Struct({
                 name: Schema.String,
                 age: Schema.NumberFromString
@@ -157,6 +159,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             const error = yield* runElicitation(
               peer.client,
+              protocol.protocolVersion,
               Schema.Struct({ name: Schema.String })
             ).pipe(Effect.flip)
 
@@ -175,6 +178,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             const exit = yield* Effect.exit(runElicitation(
               peer.client,
+              protocol.protocolVersion,
               Schema.Struct({ name: Schema.String })
             ))
 
@@ -200,6 +204,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             const exit = yield* Effect.exit(runElicitation(
               peer.client,
+              protocol.protocolVersion,
               Schema.Struct({ name: Schema.String })
             ))
 

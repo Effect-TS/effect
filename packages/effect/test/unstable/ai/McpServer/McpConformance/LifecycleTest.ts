@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
+import * as McpSchema from "effect/unstable/ai/McpSchema"
 import { McpConformance, type McpConformanceLayer } from "./McpConformance.ts"
 
 export const suite = (
@@ -52,17 +53,17 @@ export const suite = (
                 }
               ]
 
-              for (let i = 0; i < invalidParams.length; i++) {
+              for (const [index, params] of invalidParams.entries()) {
                 const response = yield* test.post({
                   jsonrpc: "2.0",
-                  id: i + 1,
+                  id: index + 1,
                   method: "initialize",
-                  params: invalidParams[i]
+                  params
                 })
                 const error = yield* test.decodeError(response)
 
-                assert.strictEqual(error.id, i + 1)
-                assert.isNumber(error.error.code)
+                assert.strictEqual(error.id, index + 1)
+                assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
                 assert.isNull(response.headers.get("Mcp-Session-Id"))
               }
             }))

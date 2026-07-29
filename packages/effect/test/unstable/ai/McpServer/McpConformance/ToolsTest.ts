@@ -227,7 +227,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
         it.effect("MUST not invoke a tool handler when argument validation fails", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance
-            yield* test.resetObservations
+            const before = (yield* test.observations).toolInvocations
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
             yield* test.send(initialized, {
@@ -240,7 +240,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            assert.strictEqual((yield* test.observations).toolInvocations, 0)
+            assert.strictEqual((yield* test.observations).toolInvocations, before)
           }))
         it.effect("SCHEMA returns text content", () =>
           Effect.gen(function*() {

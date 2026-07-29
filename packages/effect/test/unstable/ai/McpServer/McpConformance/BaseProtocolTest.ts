@@ -57,7 +57,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               const message = yield* test.decodeError(response)
 
               assert.strictEqual(message.id, 2)
-              assert.strictEqual(message.error.code, -32600)
+              assert.strictEqual(message.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
             }))
 
           it.effect("MUST return method not found for unknown request methods", () =>
@@ -74,7 +74,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               const message = yield* test.decodeError(response)
 
               assert.strictEqual(message.id, 3)
-              assert.strictEqual(message.error.code, -32601)
+              assert.strictEqual(message.error.code, McpSchema.METHOD_NOT_FOUND_ERROR_CODE)
             }))
           it.effect("MUST return invalid params for request payloads that do not match the method schema", () =>
             Effect.gen(function*() {
@@ -91,7 +91,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               const message = yield* test.decodeError(response)
 
               assert.strictEqual(message.id, 7)
-              assert.strictEqual(message.error.code, -32602)
+              assert.strictEqual(message.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
             }))
 
           it.effect("MUST not reply to unknown notifications", () =>
@@ -139,7 +139,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               const message = yield* test.decodeError(response)
 
               assert.strictEqual(message.id, null)
-              assert.strictEqual(message.error.code, -32600)
+              assert.strictEqual(message.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
             }))
         })
 
@@ -164,23 +164,25 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
           it.effect("MUST return exactly one error response for a failed request", () =>
             Effect.gen(function*() {
-              const test = yield* McpConformance
-              const initialized = yield* test.initialize()
-              yield* test.notifyInitialized(initialized)
-
-              const response = yield* test.send(initialized, {
+              const fixture = yield* makeMcpStdioHarness(protocol)
+              yield* fixture.initialize()
+              yield* fixture.sendRaw({
                 jsonrpc: "2.0",
                 id: 8,
                 method: "unknown/method"
               })
-              const raw = yield* Effect.promise<unknown>(() => response.clone().json()).pipe(
-                Effect.map(Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown)))
-              )
-              const message = yield* test.decodeError(response)
-
+              const message = yield* fixture.takeMessage
               assert.strictEqual(message.id, 8)
-              assert.property(raw, "error")
-              assert.notProperty(raw, "result")
+              assert.property(message, "error")
+              assert.notProperty(message, "result")
+
+              const duplicate = yield* fixture.takeMessage.pipe(
+                Effect.timeoutOption("1 millis"),
+                Effect.forkChild
+              )
+              yield* TestClock.adjust("1 millis")
+
+              assert.isTrue(Option.isNone(yield* Fiber.join(duplicate)))
             }))
           it.effect("SCHEMA preserves the request identifier in result responses", () =>
             Effect.gen(function*() {
@@ -252,7 +254,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             const message = yield* test.decodeError(response)
 
             assert.strictEqual(message.id, null)
-            assert.strictEqual(message.error.code, -32700)
+            assert.strictEqual(message.error.code, McpSchema.PARSE_ERROR_CODE)
           }))
 
         it.effect("MUST return an invalid request error for malformed JSON-RPC messages", () =>
@@ -268,7 +270,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             const message = yield* test.decodeError(response)
 
             assert.strictEqual(message.id, 10)
-            assert.strictEqual(message.error.code, -32600)
+            assert.strictEqual(message.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
           }))
       })
 

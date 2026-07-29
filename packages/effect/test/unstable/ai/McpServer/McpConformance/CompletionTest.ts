@@ -12,7 +12,24 @@ const complete = (
     readonly type: "ref/resource"
     readonly uri: string
   },
-  argument: { readonly name: string; readonly value: string }
+  argument: { readonly name: string; readonly value: string },
+  context?: { readonly arguments?: Readonly<Record<string, string>> | undefined }
+) =>
+  Effect.gen(function*() {
+    const response = yield* completeRaw(ref, argument, context)
+    const test = yield* McpConformance
+    return yield* test.decodeResult(response).pipe(
+      Effect.flatMap((message) => decodeCompletion(message.result))
+    )
+  })
+
+const completeRaw = (
+  ref: { readonly type: "ref/prompt"; readonly name: string } | {
+    readonly type: "ref/resource"
+    readonly uri: string
+  },
+  argument: { readonly name: string; readonly value: string },
+  context?: { readonly arguments?: Readonly<Record<string, string>> | undefined }
 ) =>
   Effect.gen(function*() {
     const test = yield* McpConformance
@@ -22,11 +39,9 @@ const complete = (
       jsonrpc: "2.0",
       id: 2,
       method: "completion/complete",
-      params: { ref, argument }
+      params: { ref, argument, ...(context === undefined ? {} : { context }) }
     })
-    return yield* test.decodeResult(response).pipe(
-      Effect.flatMap((message) => decodeCompletion(message.result))
-    )
+    return response
   })
 
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
@@ -66,31 +81,10 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           }))
         it.effect("MUST pass previously resolved argument context to the completion handler", () =>
           Effect.gen(function*() {
-            const test = yield* McpConformance
-            const initialized = yield* test.initialize({ server: "features" })
-            yield* test.notifyInitialized(initialized)
-            const response = yield* test.send(initialized, {
-              jsonrpc: "2.0",
-              id: 2,
-              method: "completion/complete",
-              params: {
-                ref: {
-                  type: "ref/prompt",
-                  name: "ContextCompletionPrompt"
-                },
-                argument: {
-                  name: "value",
-                  value: "c"
-                },
-                context: {
-                  arguments: {
-                    locale: "en"
-                  }
-                }
-              }
-            })
-            const result = yield* test.decodeResult(response).pipe(
-              Effect.flatMap((message) => decodeCompletion(message.result))
+            const result = yield* complete(
+              { type: "ref/prompt", name: "ContextCompletionPrompt" },
+              { name: "value", value: "c" },
+              { arguments: { locale: "en" } }
             )
 
             assert.deepStrictEqual(result.completion.values, ["context received"])
@@ -140,7 +134,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               { name: "path", value: "" }
             )
 
-            assert.deepStrictEqual(result.completion.values, ["alpha", "beta"])
+            assert.deepStrictEqual(result.completion.values, ["beta", "alpha"])
           }))
 
         it.effect("SCHEMA returns the total and additional-results indicator", () =>

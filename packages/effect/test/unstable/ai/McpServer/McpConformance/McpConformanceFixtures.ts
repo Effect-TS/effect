@@ -25,15 +25,16 @@ const TestTool = Tool.make("TestTool", {
   success: Schema.String
 })
 
-const StructuredTool = Tool.make("StructuredTool", {
-  parameters: Tool.EmptyParams,
-  success: Schema.Struct({
-    value: Schema.String
-  })
-}).annotate(
-  McpSchema.EnabledWhen,
-  (client) => client.protocolVersion === "2025-06-18"
-)
+const makeStructuredTool = (protocolVersion: string) =>
+  Tool.make("StructuredTool", {
+    parameters: Tool.EmptyParams,
+    success: Schema.Struct({
+      value: Schema.String
+    })
+  }).annotate(
+    McpSchema.EnabledWhen,
+    (client) => client.protocolVersion === protocolVersion
+  )
 
 const LogLevelTool = Tool.make("LogLevelTool", {
   parameters: Tool.EmptyParams,
@@ -41,10 +42,9 @@ const LogLevelTool = Tool.make("LogLevelTool", {
   dependencies: [CurrentLogLevel]
 })
 
-const TestToolkit = Toolkit.make(TestTool, StructuredTool, LogLevelTool)
-
-const makeTestToolkitLayer = (observations: Ref.Ref<Observations>) =>
-  McpServer.toolkit(TestToolkit).pipe(
+const makeTestToolkitLayer = (observations: Ref.Ref<Observations>, protocolVersion: string) => {
+  const TestToolkit = Toolkit.make(TestTool, makeStructuredTool(protocolVersion), LogLevelTool)
+  return McpServer.toolkit(TestToolkit).pipe(
     Layer.provide(TestToolkit.toLayer({
       TestTool: ({ value }) =>
         Ref.update(observations, (current) => ({
@@ -55,6 +55,7 @@ const makeTestToolkitLayer = (observations: Ref.Ref<Observations>) =>
       LogLevelTool: () => CurrentLogLevel
     }))
   )
+}
 
 const makeContentToolsLayer = Layer.effectDiscard(
   Effect.gen(function*() {
@@ -150,7 +151,7 @@ const TestResourceTemplate = McpServer.resource`file:///template/${templatePath}
   description: "A test resource template",
   mimeType: "text/plain",
   completion: {
-    path: () => Effect.succeed(["alpha", "beta"])
+    path: (value) => Effect.succeed(value === "" ? ["beta", "alpha"] : ["alpha", "beta"])
   },
   content: (uri, path) => Effect.succeed(`${uri}:${path}`)
 })
@@ -222,7 +223,7 @@ export const makeFeaturesServerLayer = (
   observations: Ref.Ref<Observations>
 ) =>
   Layer.mergeAll(
-    makeTestToolkitLayer(observations),
+    makeTestToolkitLayer(observations, protocol.protocolVersion),
     makeContentToolsLayer,
     McpServer.resource({
       uri: "file:///test",

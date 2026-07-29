@@ -12,18 +12,8 @@ const decodeGetPrompt = Schema.decodeUnknownEffect(McpSchema.GetPromptResult)
 
 const getPrompt = (name: string) =>
   Effect.gen(function*() {
-    const test = yield* McpConformance
-    const initialized = yield* test.initialize({ server: "features" })
-    yield* test.notifyInitialized(initialized)
-    const response = yield* test.send(initialized, {
-      jsonrpc: "2.0",
-      id: 2,
-      method: "prompts/get",
-      params: { name }
-    })
-    return yield* test.decodeResult(response).pipe(
-      Effect.flatMap((message) => decodeGetPrompt(message.result))
-    )
+    const message = yield* getPromptWire(name)
+    return yield* decodeGetPrompt(message.result)
   })
 
 const getPromptWire = (name: string) =>
@@ -257,7 +247,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             yield* test.resetObservations
             const initialized = yield* test.initialize({ server: "features" })
             yield* test.notifyInitialized(initialized)
-            yield* test.send(initialized, {
+            const response = yield* test.send(initialized, {
               jsonrpc: "2.0",
               id: 2,
               method: "prompts/get",
@@ -266,7 +256,9 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 arguments: { required: 123 }
               }
             })
+            const error = yield* test.decodeError(response)
 
+            assert.strictEqual(error.error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
             assert.strictEqual((yield* test.observations).promptInvocations, 0)
           }))
         it.effect("SCHEMA preserves the prompt description and message order", () =>
