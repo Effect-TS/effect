@@ -12,6 +12,11 @@ export * as DenoChildProcessSpawner from "./DenoChildProcessSpawner.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoClusterHttp from "./DenoClusterHttp.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoClusterSocket from "./DenoClusterSocket.ts"
 
 /**
