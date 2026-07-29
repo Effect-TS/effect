@@ -494,22 +494,31 @@ const parseOpenApi = (
         }
         const representable: Array<ParsedOperation.ParsedOperationMediaTypeSchema> = []
 
+        const jsonResponseEntries = findContentEntriesByMediaType(content, isJsonMediaType)
         let jsonSchemaName: string | undefined
-        const jsonResponseSchema = content?.["application/json"]?.schema
-        if (Predicate.isNotUndefined(jsonResponseSchema)) {
+        if (jsonResponseEntries.length > 0) {
+          const jsonResponseSchema = combineJsonResponseSchemas(jsonResponseEntries)
           jsonSchemaName = addSchema(`${schemaId}${status}`, jsonResponseSchema, op)
+
           if (isHttpApi) {
-            representable.push({
-              contentType: "application/json",
-              encoding: "json",
-              schema: jsonSchemaName
-            })
+            const multipleJsonRepresentations = jsonResponseEntries.length > 1
+            for (const [contentType, mediaType] of jsonResponseEntries) {
+              const schema = mediaType.schema as JsonSchema.JsonSchema
+              const schemaName = multipleJsonRepresentations
+                ? addSchema(`${schemaId}${status}${mediaTypeToSuffix(contentType)}`, schema, op)
+                : jsonSchemaName
+              representable.push({
+                contentType,
+                encoding: "json",
+                schema: schemaName
+              })
+            }
           }
         }
 
         if (isHttpApi) {
           for (const [contentType, mediaType] of Object.entries(content ?? {})) {
-            if (contentType === "application/json") {
+            if (isJsonMediaType(contentType.toLowerCase())) {
               continue
             }
             if (!Predicate.isObject(mediaType)) {
@@ -613,10 +622,20 @@ const parseOpenApi = (
           }
         }
 
-        if (Predicate.isNotUndefined(content?.["application/octet-stream"])) {
-          const statusMajorNumber = Number(parsedStatus[0])
-          if (!Number.isNaN(statusMajorNumber) && statusMajorNumber < 4) {
-            op.binaryResponse = true
+        if (Predicate.isNotUndefined(content)) {
+          for (const [contentType, mediaType] of Object.entries(content)) {
+            const schema = Predicate.isObject(mediaType) ? mediaType.schema : undefined
+            const isBinary = isBinaryMediaType(contentType.toLowerCase()) ||
+              (Predicate.isObject(schema) && schema.type === "string" && schema.format === "binary")
+            if (!isBinary) {
+              continue
+            }
+            const statusMajorNumber = Number(parsedStatus[0])
+            if (!Number.isNaN(statusMajorNumber) && statusMajorNumber < 4) {
+              op.binaryResponse = true
+              op.binarySuccessStatuses.add(parsedStatus.toLowerCase())
+            }
+            break
           }
         }
 
@@ -904,6 +923,38 @@ const isMultipartBinaryFiles = (value: Record<string, unknown>, singleFileRef: s
   return isMultipartBinaryFile(items) || (Predicate.isObject(items) && items.$ref === singleFileRef)
 }
 
+const combineJsonResponseSchemas = (
+  entries: ReadonlyArray<readonly [string, { readonly schema: unknown }]>
+): JsonSchema.JsonSchema => {
+  const schemas = entries.map(([, mediaType]) => mediaType.schema as JsonSchema.JsonSchema)
+  return schemas.length === 1
+    ? schemas[0]
+    : {
+      anyOf: schemas
+    }
+}
+
+const findContentEntriesByMediaType = (
+  content: Record<string, unknown> | undefined,
+  predicate: (contentType: string) => boolean
+): Array<readonly [string, { readonly schema: unknown }]> => {
+  if (Predicate.isUndefined(content)) {
+    return []
+  }
+
+  const matches: Array<readonly [string, { readonly schema: unknown }]> = []
+  for (const [contentType, mediaType] of Object.entries(content)) {
+    if (
+      predicate(contentType.toLowerCase()) &&
+      Predicate.isObject(mediaType) &&
+      Predicate.isNotUndefined(mediaType.schema)
+    ) {
+      matches.push([contentType, mediaType as { readonly schema: unknown }])
+    }
+  }
+  return matches
+}
+
 const isJsonMediaType = (contentType: string): boolean =>
   contentType === "application/json" ||
   (contentType.startsWith("application/") && contentType.endsWith("+json"))
@@ -912,6 +963,12 @@ const isTextMediaType = (contentType: string): boolean => contentType.startsWith
 
 const isBinaryMediaType = (contentType: string): boolean =>
   contentType === "application/octet-stream" ||
+  contentType === "application/zip" ||
+  contentType === "application/gzip" ||
+  contentType === "application/pdf" ||
+  contentType.startsWith("image/") ||
+  contentType.startsWith("audio/") ||
+  contentType.startsWith("video/") ||
   (contentType.startsWith("application/") && (contentType.includes("binary") || contentType.endsWith("+octet-stream")))
 
 const getRequestMediaTypeEncoding = (
