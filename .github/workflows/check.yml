@@ -126,7 +126,8 @@ jobs:
           docker pull ghcr.io/tursodatabase/libsql-server:main@sha256:718825e7eea0619b827ff5ee21a17087eb93957470bb73d64735a58d0b121efc &
           docker pull postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15 &
           docker pull mysql:9.7.2@sha256:257388edf9c84dbc04c763625446d5f3fa6ed60d1b0873bc552c614ba0a7ab4e &
-          docker pull vitess/vttestserver:v24.0.2-mysql80@sha256:3f9a449099acd4c1b25fd62a25a01c9b56a306e02cb9651e3b414c7be9cc9181 &
+          # Vitess 25.0.0-SNAPSHOT / MySQL 8.0.43-Vitess
+          docker pull vitess/vttestserver:mysql80@sha256:ba3cc1596a2c3ebe991675e28ee29ebd08de32c01ccf387e8ec073bfa08d23ae &
           docker pull redis:8.8.1-alpine@sha256:8096655e437712b07503796fb64d81359256cfcff0ab29d95a7da72863786efb &
           wait
 

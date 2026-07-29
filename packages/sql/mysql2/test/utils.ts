@@ -52,7 +52,7 @@ export class MysqlContainer extends Context.Service<
       Effect.tryPromise({
         try: () =>
           new MySqlContainer(
-            "vitess/vttestserver:v24.0.2-mysql80@sha256:3f9a449099acd4c1b25fd62a25a01c9b56a306e02cb9651e3b414c7be9cc9181"
+            "vitess/vttestserver:mysql80@sha256:ba3cc1596a2c3ebe991675e28ee29ebd08de32c01ccf387e8ec073bfa08d23ae"
           ).withEnvironment({
             KEYSPACES: "test,unsharded",
             NUM_SHARDS: "1,1",
