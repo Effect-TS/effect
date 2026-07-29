@@ -138,8 +138,9 @@ export const make = Effect.fnUntraced(function*(
       }
 
       yield* Scope.addFinalizerExit(serveScope, () => {
-        handlerStack.pop()
-        currentHandler = handlerStack[handlerStack.length - 1]
+        const index = handlerStack.lastIndexOf(handler)
+        if (index !== -1) handlerStack.splice(index, 1)
+        currentHandler = handlerStack[handlerStack.length - 1] ?? notFound
         return preemptiveShutdown
       })
       handlerStack.push(handler)
@@ -228,7 +229,7 @@ export const layerServer: (
  */
 export const layerHttpServices: Layer.Layer<HttpPlatform | Etag.Generator | DenoServices.DenoServices> = Layer.mergeAll(
   Platform.layer,
-  Etag.layer,
+  Etag.layerWeak,
   DenoServices.layer
 )
 
@@ -463,7 +464,27 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
         this.resolve(upgrade.response)
 
         return Effect.callback<Socket.Socket, Error.HttpServerError>((resume) => {
+          const cleanup = () => {
+            upgrade.socket.removeEventListener("open", onOpen)
+            upgrade.socket.removeEventListener("error", onFailure)
+            upgrade.socket.removeEventListener("close", onFailure)
+          }
+          const onFailure = (cause: Event) => {
+            cleanup()
+            upgrade.socket.removeEventListener("message", buffer)
+            buffered.length = 0
+            resume(Effect.fail(
+              new Error.HttpServerError({
+                reason: new Error.RequestParseError({
+                  request: this,
+                  cause,
+                  description: "WebSocket upgrade failed before open"
+                })
+              })
+            ))
+          }
           const onOpen = () => {
+            cleanup()
             resume(Socket.fromWebSocket(
               Effect.acquireRelease(
                 Effect.succeed(upgrade.socket),
@@ -478,6 +499,13 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
             ))
           }
           upgrade.socket.addEventListener("open", onOpen, { once: true })
+          upgrade.socket.addEventListener("error", onFailure, { once: true })
+          upgrade.socket.addEventListener("close", onFailure, { once: true })
+          return Effect.sync(() => {
+            cleanup()
+            upgrade.socket.removeEventListener("message", buffer)
+            buffered.length = 0
+          })
         })
       }
     )
@@ -485,8 +513,9 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
 }
 
 const cancelResponseBody = (body: HttpBody.HttpBody): Effect.Effect<void> => {
-  if ((body._tag === "Raw" || body._tag === "Uint8Array") && (body as any).body instanceof ReadableStream) {
-    return Effect.promise(() => (body as any).body.cancel())
+  const stream = (body as any).body
+  if ((body._tag === "Raw" || body._tag === "Uint8Array") && stream instanceof ReadableStream) {
+    return Effect.ignoreCause(Effect.promise(() => stream.cancel()))
   }
   return Effect.void
 }

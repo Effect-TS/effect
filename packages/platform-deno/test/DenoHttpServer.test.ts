@@ -12,6 +12,7 @@ import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Tracer from "effect/Tracer"
 import * as Cookies from "effect/unstable/http/Cookies"
+import * as Etag from "effect/unstable/http/Etag"
 import * as FetchHttpClient from "effect/unstable/http/FetchHttpClient"
 import * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpClient from "effect/unstable/http/HttpClient"
@@ -51,6 +52,13 @@ describe("DenoHttpServer", () => {
       )
       assert.deepStrictEqual(todo, { id: 1, title: "test" })
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
+  it.effect("exports a weak ETag generator", () =>
+    Effect.gen(function*() {
+      const generator = yield* Etag.Generator
+      const etag = yield* generator.fromFileWeb(new File(["test"], "test.txt", { lastModified: 0 }))
+      assert.strictEqual(etag._tag, "Weak")
+    }).pipe(Effect.provide(DenoHttpServer.layerHttpServices)))
 
   it.effect("formData", () =>
     Effect.gen(function*() {
@@ -204,10 +212,12 @@ describe("DenoHttpServer", () => {
             })
         }))
       )).pipe(Effect.succeed, HttpServer.serveEffect())
-      const response = yield* HttpClient.get("/")
+      const response = yield* HttpClient.get("/", {
+        headers: { "accept-encoding": "identity" }
+      })
       assert.strictEqual(response.status, 200)
       assert.strictEqual(response.headers["content-type"], "text/plain; charset=UTF-8")
-      assert.strictEqual(response.headers.etag, "W/\"etag\"")
+      assert.strictEqual(response.headers.etag, "\"etag\"")
       assert.strictEqual((yield* response.text).trim(), "lorem ipsum dolar sit amet")
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
@@ -609,6 +619,22 @@ describe("DenoHttpServer", () => {
       assert.strictEqual(response.status, 200)
       assert(cancelled)
     }).pipe(Effect.provide(DenoHttpServer.layerTest)))
+
+  it.effect("ignores cancellation errors for HEAD response bodies", () => {
+    const body = new ReadableStream<Uint8Array>()
+    const reader = body.getReader()
+    return Effect.gen(function*() {
+      yield* HttpServerResponse.raw(body).pipe(
+        Effect.succeed,
+        HttpServer.serveEffect()
+      )
+      const response = yield* HttpClient.head("/")
+      assert.strictEqual(response.status, 200)
+    }).pipe(
+      Effect.ensuring(Effect.sync(() => reader.releaseLock())),
+      Effect.provide(DenoHttpServer.layerTest)
+    )
+  })
 
   it.effect("round trips WebSocket frames and closes cleanly", () =>
     Effect.gen(function*() {
