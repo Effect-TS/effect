@@ -65,6 +65,7 @@
     "lalph": "^0.3.139",
     "madge": "^8.0.0",
     "oxlint": "^1.76.0",
+    "pkg-pr-new": "0.0.78",
     "playwright": "^1.62.0",
     "rollup": "^4.62.3",
     "rollup-plugin-bundle-stats": "^4.22.2",
