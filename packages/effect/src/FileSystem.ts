@@ -341,9 +341,15 @@ export interface FileSystem {
     mtime: Date | number
   ) => Effect.Effect<void, PlatformError>
   /**
-   * Watch a directory or file for changes
+   * Watch a directory or file for changes.
+   *
+   * **Details**
+   *
+   * By default, only changes to the direct children of the directory are
+   * reported. Set the `recursive` option to `true` to watch for changes in
+   * subdirectories as well.
    */
-  readonly watch: (path: string) => Stream.Stream<WatchEvent, PlatformError>
+  readonly watch: (path: string, options?: WatchOptions) => Stream.Stream<WatchEvent, PlatformError>
   /**
    * Write data to a file at `path`.
    */
@@ -1248,6 +1254,19 @@ export declare namespace File {
 export type SeekMode = "start" | "current"
 
 /**
+ * Options for watching files or directories.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WatchOptions {
+  /**
+   * When `true`, changes in subdirectories are also reported.
+   */
+  readonly recursive?: boolean | undefined
+}
+
+/**
  * Represents file system events emitted when watching files or directories.
  *
  * **When to use**
@@ -1363,5 +1382,9 @@ export declare namespace WatchEvent {
  * @since 4.0.0
  */
 export class WatchBackend extends Context.Service<WatchBackend, {
-  readonly register: (path: string, stat: File.Info) => Option.Option<Stream.Stream<WatchEvent, PlatformError>>
+  readonly register: (
+    path: string,
+    stat: File.Info,
+    options?: WatchOptions
+  ) => Option.Option<Stream.Stream<WatchEvent, PlatformError>>
 }>()("effect/platform/FileSystem/WatchBackend") {}
