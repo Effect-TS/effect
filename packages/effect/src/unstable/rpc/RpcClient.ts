@@ -1049,11 +1049,12 @@ export const makeProtocolSocket = (options?: {
                 pinger.onPong()
                 return Effect.void
               }
-              if ("requestId" in response) {
-                const clientId = requestClientMap.get(response.requestId)
+              if (Object.hasOwn(response, "requestId")) {
+                const requestId = (response as FromServerEncoded & { readonly requestId: string | number }).requestId
+                const clientId = requestClientMap.get(requestId)
                 if (clientId !== undefined) {
                   if (response._tag === "Exit") {
-                    requestClientMap.delete(response.requestId)
+                    requestClientMap.delete(requestId)
                   }
                   return writeResponse(clientId, response)
                 }

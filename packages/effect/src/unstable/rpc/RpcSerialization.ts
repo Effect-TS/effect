@@ -212,12 +212,13 @@ function decodeJsonRpcRaw(
 }
 
 function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded {
-  if ("method" in decoded) {
-    if (Predicate.isNullish(decoded.id) && decoded.method.startsWith("@effect/rpc/")) {
-      const tag = decoded.method.slice("@effect/rpc/".length) as
+  if (Object.hasOwn(decoded, "method")) {
+    const request = decoded as JsonRpcRequest
+    if (Predicate.isNullish(request.id) && request.method.startsWith("@effect/rpc/")) {
+      const tag = request.method.slice("@effect/rpc/".length) as
         | RpcMessage.FromServerEncoded["_tag"]
         | Exclude<RpcMessage.FromClientEncoded["_tag"], "Request">
-      const requestId = (decoded as any).params?.requestId
+      const requestId = (request as any).params?.requestId
       return requestId ?
         {
           _tag: tag,
@@ -227,46 +228,49 @@ function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEnc
     }
     return {
       _tag: "Request",
-      id: decoded.id ?? "",
-      tag: decoded.method,
-      payload: decoded.params ?? null,
-      headers: decoded.headers ?? [],
-      ...(decoded.spanId ?
+      id: request.id ?? "",
+      tag: request.method,
+      payload: request.params ?? null,
+      headers: request.headers ?? [],
+      ...(request.spanId ?
         {
-          traceId: decoded.traceId,
-          spanId: decoded.spanId!,
-          sampled: decoded.sampled!
+          traceId: request.traceId,
+          spanId: request.spanId!,
+          sampled: request.sampled!
         } :
         {})
     }
-  } else if (decoded.error && decoded.error._tag === "Defect") {
+  }
+  const response = decoded as JsonRpcResponse
+  const hasError = Object.hasOwn(response, "error")
+  if (hasError && response.error && response.error._tag === "Defect") {
     return {
       _tag: "Defect",
-      defect: decoded.error.data
+      defect: response.error.data
     }
-  } else if (decoded.chunk === true) {
+  } else if (Object.hasOwn(response, "chunk") && response.chunk === true) {
     return {
       _tag: "Chunk",
-      requestId: decoded.id ?? "",
-      values: decoded.result as any
+      requestId: response.id ?? "",
+      values: response.result as any
     }
   }
   return {
     _tag: "Exit",
-    requestId: decoded.id ?? "",
-    exit: decoded.error != null ?
+    requestId: response.id ?? "",
+    exit: hasError && response.error != null ?
       {
         _tag: "Failure",
-        cause: decoded.error._tag === "Cause" ?
-          decoded.error.data as any :
+        cause: response.error._tag === "Cause" ?
+          response.error.data as any :
           [{
             _tag: "Die",
-            defect: decoded.error
+            defect: response.error
           }]
       } :
       {
         _tag: "Success",
-        value: decoded.result
+        value: response.result
       }
   }
 }
