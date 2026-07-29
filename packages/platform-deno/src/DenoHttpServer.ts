@@ -505,6 +505,7 @@ class DenoServerRequest extends Inspectable.Class implements ServerRequest.HttpS
             cleanup()
             upgrade.socket.removeEventListener("message", buffer)
             buffered.length = 0
+            upgrade.socket.close()
           })
         })
       }
