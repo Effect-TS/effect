@@ -77,8 +77,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
-      pull-requests: write
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
