@@ -861,6 +861,64 @@ describe.sequential("Atom", () => {
     expect(r.get(derived)).toEqual("2b")
   })
 
+  it.effect("retains method-form dependencies added during a batch rebuild", () =>
+    Effect.gen(function*() {
+      const registry = AtomRegistry.make()
+      const source = Atom.make(Option.none<string>())
+      const gate = yield* Latch.make()
+      const asyncAtom = Atom.make((get) =>
+        Effect.gen(function*() {
+          const value = get(source)
+          if (Option.isNone(value)) {
+            return yield* Effect.fail("SourceIsNone" as const)
+          }
+          yield* gate.await
+          return `computed-${value.value}`
+        })
+      )
+      const derived = Atom.make((get): unknown => {
+        const value = get.get(source)
+        if (Option.isNone(value)) {
+          return "empty"
+        }
+        return get.get(asyncAtom)
+      })
+
+      registry.subscribe(derived, () => {}, { immediate: true })
+      registry.subscribe(asyncAtom, () => {}, { immediate: true })
+
+      Atom.batch(() => registry.set(source, Option.some("a")))
+
+      yield* gate.open
+      yield* Effect.yieldNow
+
+      const result = registry.get(derived) as AsyncResult.AsyncResult<string, "SourceIsNone">
+      assert(AsyncResult.isSuccess(result))
+      assert.strictEqual(result.value, "computed-a")
+    }))
+
+  it("rebuilds an atom invalidated during its own batch rebuild", () => {
+    const registry = AtomRegistry.make()
+    const source = Atom.make(0)
+    const enabled = Atom.make(false)
+    const updateSource = Atom.make((get) => {
+      get.set(source, 1)
+    })
+    const derived = Atom.make((get) => {
+      const value = get(source)
+      if (get(enabled)) {
+        get(updateSource)
+      }
+      return value
+    })
+
+    registry.subscribe(derived, () => {}, { immediate: true })
+
+    Atom.batch(() => registry.set(enabled, true))
+
+    assert.strictEqual(registry.get(derived), 1)
+  })
+
   it("nested batch", async () => {
     const r = AtomRegistry.make()
     const state = Atom.make(1).pipe(Atom.keepAlive)
