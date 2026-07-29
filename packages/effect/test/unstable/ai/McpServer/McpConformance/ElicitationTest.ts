@@ -40,7 +40,7 @@ const request = {
 
 const runElicitation = <S extends Schema.ConstraintEncoder<Record<string, unknown>, unknown>>(
   client: McpTestPeer["client"],
-  protocolVersion: string,
+  protocolVersion: McpProtocol.ProtocolVersion,
   schema: S
 ) =>
   McpServer.elicit({

@@ -156,7 +156,10 @@ describe("McpServer initialization", () => {
 
               assert.strictEqual(response.status, 200)
               assert.strictEqual(message.id, 1)
-              assert.deepStrictEqual(message.result.capabilities, { completions: {} })
+              assert.deepStrictEqual(message.result.capabilities, {
+                completions: {},
+                logging: {}
+              })
               assert.deepStrictEqual(message.result.serverInfo, {
                 name: "LifecycleServer",
                 version: "1.0.0"
@@ -210,6 +213,7 @@ describe("McpServer initialization", () => {
               assert.deepStrictEqual(message.result.capabilities, {
                 completions: {},
                 extensions: { "example/lifecycle": { enabled: true } },
+                logging: {},
                 prompts: { listChanged: true },
                 resources: { listChanged: true, subscribe: false },
                 tools: { listChanged: true }
@@ -225,7 +229,10 @@ describe("McpServer initialization", () => {
               const sessionId = initialized.response.headers.get("Mcp-Session-Id")
               assert.isNotNull(sessionId)
 
-              const response = yield* post(pingRequest, { "Mcp-Session-Id": sessionId })
+              const response = yield* post(pingRequest, {
+                "Mcp-Session-Id": sessionId,
+                "Mcp-Protocol-Version": initialized.message.result.protocolVersion
+              })
 
               assert.strictEqual(response.status, 200)
               assert.strictEqual(response.headers.get("Mcp-Protocol-Version"), "2025-06-18")
