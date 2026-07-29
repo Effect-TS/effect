@@ -33,26 +33,40 @@ jobs:
         run: |
           max_bytes=48000
           max_lines=500
-          safe_stats="$(mktemp)"
-          tr '\140' '\047' < bundle-stats/stats.txt > "${safe_stats}"
+          stats_source="bundle-stats/stats.txt"
+          stats_file="$(mktemp)"
+          trap 'rm -f "${stats_file}"' EXIT
+          export LC_ALL=C
 
-          byte_count="$(wc -c < "${safe_stats}")"
-          line_count="$(awk 'END { print NR }' "${safe_stats}")"
+          source_valid=true
+          if [ -f "${stats_source}" ] && [ ! -L "${stats_source}" ]; then
+            head -c "$((max_bytes + 1))" "${stats_source}" > "${stats_file}"
+          else
+            source_valid=false
+          fi
+
+          byte_count="$(wc -c < "${stats_file}")"
+          line_count="$(awk 'END { print NR + 0 }' "${stats_file}")"
           delimiter="EOF_$(openssl rand -hex 16)"
 
           {
             echo "stats<<${delimiter}"
-            echo '```text'
-            head -n "${max_lines}" "${safe_stats}" | head -c "${max_bytes}" | iconv -c -f UTF-8 -t UTF-8 2>/dev/null || true
-            echo
-            if [ "${byte_count}" -gt "${max_bytes}" ] || [ "${line_count}" -gt "${max_lines}" ]; then
-              echo "[output truncated at ${max_lines} lines or ${max_bytes} bytes]"
+            if [ "${source_valid}" != true ]; then
+              echo "Bundle size report artifact was missing or invalid and was not displayed."
+            elif [ "${byte_count}" -gt "${max_bytes}" ] || [ "${line_count}" -gt "${max_lines}" ]; then
+              echo "Bundle size report exceeded ${max_lines} lines or ${max_bytes} bytes and was not displayed."
+            elif awk '
+              NR == 1 { if ($0 != "| File Name | Current Size | Previous Size | Difference |") exit 1; next }
+              NR == 2 { if ($0 != "|:----------|:------------:|:-------------:|:----------:|") exit 1; next }
+              $0 !~ /^\| `[[:alnum:]_.-]+` \| [0-9]+\.[0-9][0-9] KB \| [0-9]+\.[0-9][0-9] KB \| [+-]?[0-9]+\.[0-9][0-9] KB \([+-]?[0-9]+\.[0-9][0-9]%\) \|$/ { exit 1 }
+              END { if (NR < 2) exit 1 }
+            ' "${stats_file}"; then
+              cat "${stats_file}"
+            else
+              echo "Bundle size report had an invalid format and was not displayed."
             fi
-            echo '```'
             echo "${delimiter}"
           } >> "${GITHUB_OUTPUT}"
-
-          rm "${safe_stats}"
       # https://github.com/orgs/community/discussions/25220#discussioncomment-11300118
       - name: Get PR number
         id: pr-context
