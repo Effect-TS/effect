@@ -43,7 +43,7 @@ jobs:
           {
             echo "stats<<${delimiter}"
             echo '```text'
-            head -n "${max_lines}" "${safe_stats}" | head -c "${max_bytes}"
+            head -n "${max_lines}" "${safe_stats}" | head -c "${max_bytes}" | iconv -c -f UTF-8 -t UTF-8 2>/dev/null || true
             echo
             if [ "${byte_count}" -gt "${max_bytes}" ] || [ "${line_count}" -gt "${max_lines}" ]; then
               echo "[output truncated at ${max_lines} lines or ${max_bytes} bytes]"
