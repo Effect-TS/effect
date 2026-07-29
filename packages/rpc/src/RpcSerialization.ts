@@ -176,7 +176,7 @@ function decodeJsonRpcRaw(
 }
 
 function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded {
-  if ("method" in decoded) {
+  if (isJsonRpcRequest(decoded)) {
     if (!decoded.id && decoded.method.startsWith("@effect/rpc/")) {
       const tag = decoded.method.slice("@effect/rpc/".length) as
         | RpcMessage.FromServerEncoded["_tag"]
@@ -199,12 +199,12 @@ function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEnc
       spanId: decoded.spanId,
       sampled: decoded.sampled
     }
-  } else if (decoded.error && decoded.error._tag === "Defect") {
+  } else if (Object.hasOwn(decoded, "error") && decoded.error && decoded.error._tag === "Defect") {
     return {
       _tag: "Defect",
       defect: decoded.error.data
     }
-  } else if (decoded.chunk === true) {
+  } else if (Object.hasOwn(decoded, "chunk") && decoded.chunk === true) {
     return {
       _tag: "Chunk",
       requestId: String(decoded.id),
@@ -214,7 +214,7 @@ function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEnc
   return {
     _tag: "Exit",
     requestId: String(decoded.id),
-    exit: decoded.error != null ?
+    exit: Object.hasOwn(decoded, "error") && decoded.error != null ?
       {
         _tag: "Failure",
         cause: decoded.error._tag === "Cause" ?
@@ -229,6 +229,10 @@ function decodeJsonRpcMessage(decoded: JsonRpcMessage): RpcMessage.FromClientEnc
         value: decoded.result
       }
   }
+}
+
+function isJsonRpcRequest(decoded: JsonRpcMessage): decoded is JsonRpcRequest {
+  return Object.hasOwn(decoded, "method")
 }
 
 function encodeJsonRpcRaw(

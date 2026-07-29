@@ -29,7 +29,6 @@ import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import { type ParseError, TreeFormatter } from "effect/ParseResult"
-import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
 import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Schedule from "effect/Schedule"
@@ -653,7 +652,7 @@ export const make: <Rpcs extends Rpc.Any>(
 
     switch (request._tag) {
       case "Request": {
-        const tag = Predicate.hasProperty(request, "tag") ? request.tag as string : ""
+        const tag = Object.hasOwn(request, "tag") ? request.tag as string : ""
         const rpc = group.requests.get(tag)
         if (!rpc) {
           return sendDefect(client, `Unknown request tag: ${tag}`)
