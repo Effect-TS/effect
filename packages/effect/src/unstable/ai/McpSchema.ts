@@ -540,7 +540,7 @@ export const PARSE_ERROR_CODE = -32700 as const
  * @category errors
  * @since 4.0.0
  */
-export class ParseError extends Schema.ErrorClass<ParseError>("effect/ai/McpSchema/ParseError")({
+export class ParseError extends Schema.Error<ParseError>("effect/ai/McpSchema/ParseError")({
   ...McpErrorBase.fields,
   _tag: Schema.tag("ParseError"),
   code: Schema.tag(PARSE_ERROR_CODE)
@@ -561,7 +561,7 @@ export class ParseError extends Schema.ErrorClass<ParseError>("effect/ai/McpSche
  * @category errors
  * @since 4.0.0
  */
-export class InvalidRequest extends Schema.ErrorClass<InvalidRequest>("effect/ai/McpSchema/InvalidRequest")({
+export class InvalidRequest extends Schema.Error<InvalidRequest>("effect/ai/McpSchema/InvalidRequest")({
   ...McpErrorBase.fields,
   _tag: Schema.tag("InvalidRequest"),
   code: Schema.tag(INVALID_REQUEST_ERROR_CODE)
@@ -581,7 +581,7 @@ export class InvalidRequest extends Schema.ErrorClass<InvalidRequest>("effect/ai
  * @category errors
  * @since 4.0.0
  */
-export class MethodNotFound extends Schema.ErrorClass<MethodNotFound>("effect/ai/McpSchema/MethodNotFound")({
+export class MethodNotFound extends Schema.Error<MethodNotFound>("effect/ai/McpSchema/MethodNotFound")({
   ...McpErrorBase.fields,
   _tag: Schema.tag("MethodNotFound"),
   code: Schema.tag(METHOD_NOT_FOUND_ERROR_CODE)
@@ -602,7 +602,7 @@ export class MethodNotFound extends Schema.ErrorClass<MethodNotFound>("effect/ai
  * @category errors
  * @since 4.0.0
  */
-export class InvalidParams extends Schema.ErrorClass<InvalidParams>("effect/ai/McpSchema/InvalidParams")({
+export class InvalidParams extends Schema.Error<InvalidParams>("effect/ai/McpSchema/InvalidParams")({
   ...McpErrorBase.fields,
   _tag: Schema.tag("InvalidParams"),
   code: Schema.tag(INVALID_PARAMS_ERROR_CODE)
@@ -624,7 +624,7 @@ export class InvalidParams extends Schema.ErrorClass<InvalidParams>("effect/ai/M
  * @category errors
  * @since 4.0.0
  */
-export class InternalError extends Schema.ErrorClass<InternalError>("effect/ai/McpSchema/InternalError")({
+export class InternalError extends Schema.Error<InternalError>("effect/ai/McpSchema/InternalError")({
   ...McpErrorBase.fields,
   _tag: Schema.tag("InternalError"),
   code: Schema.tag(INTERNAL_ERROR_CODE)
@@ -2149,13 +2149,11 @@ export class Elicit extends Rpc.make("elicitation/create", {
  * @category schemas
  * @since 4.0.0
  */
-export class ElicitationDeclined
-  extends Schema.ErrorClass<ElicitationDeclined>("@effect/ai/McpSchema/ElicitationDeclined")({
-    _tag: Schema.tag("ElicitationDeclined"),
-    request: Elicit.payloadSchema,
-    cause: optional(Schema.Defect())
-  })
-{}
+export class ElicitationDeclined extends Schema.Error<ElicitationDeclined>("@effect/ai/McpSchema/ElicitationDeclined")({
+  _tag: Schema.tag("ElicitationDeclined"),
+  request: Elicit.payloadSchema,
+  cause: optional(Schema.Defect())
+}) {}
 
 // =============================================================================
 // McpServerClient

@@ -42,8 +42,8 @@ Effect.gen(function*() {
   })
 )
 
-// Use Schema.TaggedErrorClass to define a custom error
-export class FileProcessingError extends Schema.TaggedErrorClass<FileProcessingError>()("FileProcessingError", {
+// Use Schema.TaggedError to define a custom error
+export class FileProcessingError extends Schema.TaggedError<FileProcessingError>()("FileProcessingError", {
   message: Schema.String
 }) {}
 ```
@@ -82,8 +82,8 @@ export const effectFunction = Effect.fn("effectFunction")(
   })
 )
 
-// Use Schema.TaggedErrorClass to define a custom error
-export class SomeError extends Schema.TaggedErrorClass<SomeError>()("SomeError", {
+// Use Schema.TaggedError to define a custom error
+export class SomeError extends Schema.TaggedError<SomeError>()("SomeError", {
   message: Schema.String
 }) {}
 ```
@@ -150,7 +150,7 @@ export class Database extends Context.Service<Database, {
   )
 }
 
-export class DatabaseError extends Schema.TaggedErrorClass<DatabaseError>()("DatabaseError", {
+export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
   cause: Schema.Defect()
 }) {}
 
@@ -175,13 +175,13 @@ Defining custom errors and handling them with Effect.catch and Effect.catchTag.
 ```ts
 import { Effect, Schema } from "effect"
 
-// Define custom errors using Schema.TaggedErrorClass
-export class ParseError extends Schema.TaggedErrorClass<ParseError>()("ParseError", {
+// Define custom errors using Schema.TaggedError
+export class ParseError extends Schema.TaggedError<ParseError>()("ParseError", {
   input: Schema.String,
   message: Schema.String
 }) {}
 
-export class ReservedPortError extends Schema.TaggedErrorClass<ReservedPortError>()("ReservedPortError", {
+export class ReservedPortError extends Schema.TaggedError<ReservedPortError>()("ReservedPortError", {
   port: Schema.Int
 }) {}
 

@@ -699,7 +699,7 @@ export const fromJson = (data: string): Effect.Effect<
  * @category errors
  * @since 4.0.0
  */
-export class ChatNotFoundError extends Schema.ErrorClass<ChatNotFoundError>(
+export class ChatNotFoundError extends Schema.Error<ChatNotFoundError>(
   "effect/ai/Chat/ChatNotFoundError"
 )({
   _tag: Schema.tag("ChatNotFoundError"),

@@ -702,7 +702,7 @@ describe("HttpServer", () => {
   describe("HttpServerRespondable", () => {
     it.effect("error/schema", () =>
       Effect.gen(function*() {
-        class CustomError extends Schema.ErrorClass<CustomError>("CustomError")({
+        class CustomError extends Schema.Error<CustomError>("CustomError")({
           _tag: Schema.tag("CustomError"),
           name: Schema.String
         }) {

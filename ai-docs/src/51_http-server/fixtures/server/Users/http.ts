@@ -23,7 +23,7 @@ export const UsersApiHandlers = HttpApiBuilder.group(
         Effect.fn(function*({ payload }) {
           if (payload.search === "bad-request") {
             // You can use the built in error types like any other
-            // Schema.TaggedErrorClass
+            // Schema.TaggedError
             return yield* new HttpApiError.RequestTimeout()
           }
           return yield* users.list(payload.search).pipe(

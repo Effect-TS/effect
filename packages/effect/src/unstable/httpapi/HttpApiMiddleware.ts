@@ -404,7 +404,7 @@ function getError(error: ErrorConstraint | undefined): ReadonlySet<Schema.Top> {
  *   HttpApiMiddleware
  * } from "effect/unstable/httpapi"
  *
- * class CustomError extends Schema.TaggedErrorClass<CustomError>()("CustomError", {}) {}
+ * class CustomError extends Schema.TaggedError<CustomError>()("CustomError", {}) {}
  *
  * class ErrorHandler extends HttpApiMiddleware.Service<ErrorHandler>()("api/ErrorHandler", {
  *   error: CustomError
