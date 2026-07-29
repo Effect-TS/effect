@@ -10,4 +10,4 @@ has_toc: false
 
 This is the API reference for Effect v4.
 
-The previous major version remains available in the [Effect v3 API reference]({{ "/v3/" | relative_url }}).
+The previous major version remains available in the [Effect v3 API reference](https://v3.api.effect.website).

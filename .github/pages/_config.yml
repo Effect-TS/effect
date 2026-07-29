@@ -1,6 +1,6 @@
 remote_theme: mikearnaldi/just-the-docs
-url: https://effect-ts.github.io
-baseurl: /effect
+url: https://api.effect.website
+baseurl: ""
 search_enabled: true
 aux_links:
   "GitHub":

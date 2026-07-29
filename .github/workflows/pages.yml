@@ -1,4 +1,4 @@
-name: Pages
+name: API Reference
 
 on:
   workflow_dispatch:
@@ -33,83 +33,10 @@ jobs:
         with:
           source: ./docs
           destination: ./_site
-      - name: Upload site artifact
-        uses: actions/upload-artifact@v4
+      - name: Deploy to Cloudflare Pages
+        if: github.repository_owner == 'Effect-Ts' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v4
         with:
-          name: pages-v4
-          path: ./_site
-          include-hidden-files: true
-
-  publish:
-    if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    name: Publish
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v6
-      - name: Download site artifact
-        uses: actions/download-artifact@v8
-        with:
-          name: pages-v4
-          path: site
-      - name: Check out publication branch
-        run: |
-          if git fetch origin gh-pages:refs/remotes/origin/gh-pages; then
-            git worktree add --detach publication refs/remotes/origin/gh-pages
-            git -C publication switch -c gh-pages
-          else
-            git worktree add --detach publication
-            git -C publication switch --orphan gh-pages
-          fi
-      - name: Publish v4 documentation
-        run: |
-          git -C publication config user.name github-actions[bot]
-          git -C publication config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          for attempt in 1 2 3 4 5; do
-            if git fetch origin gh-pages:refs/remotes/origin/gh-pages; then
-              git -C publication reset --hard refs/remotes/origin/gh-pages
-            fi
-            rsync -a --delete --exclude=.git --exclude=v3 site/ publication/
-            git -C publication add --all
-            if git -C publication diff --cached --quiet; then
-              exit 0
-            fi
-            git -C publication commit -m "Publish v4 API documentation"
-            if git -C publication push origin HEAD:gh-pages; then
-              exit 0
-            fi
-            test "$attempt" -lt 5 || exit 1
-            sleep $((attempt * 2))
-          done
-
-  deploy:
-    if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    name: Deploy
-    needs: publish
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    concurrency:
-      group: github-pages-deployment
-      cancel-in-progress: false
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: gh-pages
-          path: publication
-      - name: Upload pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: publication
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./_site --project-name=effect-api-v4 --branch=main
