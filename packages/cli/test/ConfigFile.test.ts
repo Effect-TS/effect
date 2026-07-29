@@ -11,6 +11,15 @@ const runEffect = <E, A>(
 ): Promise<A> => Effect.provide(self, NodeContext.layer).pipe(Effect.runPromise)
 
 describe("ConfigFile", () => {
+  it("rejects file names containing path separators or '..' segments", () =>
+    Effect.gen(function*() {
+      for (const fileName of ["../config", "config\\file", ".."]) {
+        const error = yield* Effect.flip(ConfigFile.makeProvider(fileName))
+        assert.strictEqual(error._tag, "ConfigFileError")
+        assert.strictEqual(error.message, "fileName must not contain path separators or '..' segments")
+      }
+    }).pipe(runEffect))
+
   it("loads json files", () =>
     Effect.gen(function*() {
       const path = yield* Path.Path
@@ -24,6 +33,25 @@ describe("ConfigFile", () => {
         }))
       )
       assert.deepStrictEqual(result, [true, "baz"])
+    }).pipe(runEffect))
+
+  it("supports relative, absolute, and '..'-containing search paths", () =>
+    Effect.gen(function*() {
+      const path = yield* Path.Path
+      const fixtures = path.join(__dirname, "fixtures")
+      const searchPaths = [
+        path.relative(".", fixtures),
+        fixtures,
+        `${fixtures}${path.sep}..${path.sep}fixtures`
+      ]
+      const results = yield* Effect.forEach(searchPaths, (searchPath) =>
+        Config.boolean("foo").pipe(
+          Effect.provide(ConfigFile.layer("config", {
+            searchPaths: [searchPath],
+            formats: ["json"]
+          }))
+        ))
+      assert.deepStrictEqual(results, [true, true, true])
     }).pipe(runEffect))
 
   it("loads yaml", () =>
