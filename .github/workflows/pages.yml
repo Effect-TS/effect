@@ -7,6 +7,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
@@ -42,16 +46,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    concurrency:
-      group: github-pages-publication
-      cancel-in-progress: false
     permissions:
       contents: write
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v6
       - name: Download site artifact
@@ -61,21 +57,55 @@ jobs:
           path: site
       - name: Check out publication branch
         run: |
-          if git fetch origin gh-pages:refs/heads/gh-pages; then
-            git worktree add publication gh-pages
+          if git fetch origin gh-pages:refs/remotes/origin/gh-pages; then
+            git worktree add --detach publication refs/remotes/origin/gh-pages
+            git -C publication switch -c gh-pages
           else
             git worktree add --detach publication
             git -C publication switch --orphan gh-pages
           fi
-      - name: Update v4 documentation
-        run: rsync -a --delete --exclude=.git --exclude=v3 site/ publication/
-      - name: Push publication branch
+      - name: Publish v4 documentation
         run: |
           git -C publication config user.name github-actions[bot]
           git -C publication config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git -C publication add --all
-          git -C publication diff --cached --quiet || git -C publication commit -m "Publish v4 API documentation"
-          git -C publication push origin HEAD:gh-pages
+          for attempt in 1 2 3 4 5; do
+            if git fetch origin gh-pages:refs/remotes/origin/gh-pages; then
+              git -C publication reset --hard refs/remotes/origin/gh-pages
+            fi
+            rsync -a --delete --exclude=.git --exclude=v3 site/ publication/
+            git -C publication add --all
+            if git -C publication diff --cached --quiet; then
+              exit 0
+            fi
+            git -C publication commit -m "Publish v4 API documentation"
+            if git -C publication push origin HEAD:gh-pages; then
+              exit 0
+            fi
+            test "$attempt" -lt 5 || exit 1
+            sleep $((attempt * 2))
+          done
+
+  deploy:
+    if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Deploy
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: github-pages-deployment
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: publication
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
