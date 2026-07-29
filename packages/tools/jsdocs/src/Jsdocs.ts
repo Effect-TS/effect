@@ -4,7 +4,10 @@ AI prompt for writing Effect public API JSDoc:
 This package owns Effect public API JSDoc parsing, extraction, and model generation.
 */
 
-import { API as NativeTypeScriptAPI, type Diagnostic as NativeTypeScriptDiagnostic } from "@typescript/native/unstable/sync"
+import {
+  API as NativeTypeScriptAPI,
+  type Diagnostic as NativeTypeScriptDiagnostic
+} from "@typescript/native/unstable/sync"
 import * as Effect from "effect/Effect"
 import { globSync } from "glob"
 import * as crypto from "node:crypto"
@@ -2655,7 +2658,8 @@ function appendExampleTypeDiagnostics(
         located.packageRoot,
         `.effect-jsdocs-example-${hashSource(file.file).slice(0, 8)}-${index}.ts`
       )
-    })))
+    }))
+  )
   if (examples.length === 0) {
     if (filter !== undefined) throw new Error("No JSDoc examples matched the provided filters")
     return files
@@ -2664,19 +2668,22 @@ function appendExampleTypeDiagnostics(
   const virtualConfig = path.join(cwd, `.effect-jsdocs-${hashSource(tsconfigPath).slice(0, 8)}.json`)
   const virtualSources = new Map<string, string>([
     ...examples.map((example) => [path.resolve(example.virtualFile), example.example.code] as const),
-    [virtualConfig, JSON.stringify({
-      extends: tsconfigPath,
-      files: examples.map((example) => example.virtualFile),
-      compilerOptions: {
-        noEmit: true,
-        incremental: false,
-        composite: false,
-        declaration: false,
-        declarationMap: false,
-        sourceMap: false,
-        moduleDetection: "force"
-      }
-    })]
+    [
+      virtualConfig,
+      JSON.stringify({
+        extends: tsconfigPath,
+        files: examples.map((example) => example.virtualFile),
+        compilerOptions: {
+          noEmit: true,
+          incremental: false,
+          composite: false,
+          declaration: false,
+          declarationMap: false,
+          sourceMap: false,
+          moduleDetection: "force"
+        }
+      })
+    ]
   ])
   const nativePackageJson = import.meta.resolve("@typescript/native/package.json")
   const require = createRequire(nativePackageJson)

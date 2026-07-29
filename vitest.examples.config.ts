@@ -4,6 +4,7 @@ import * as Examples from "@effect/docgen/Examples"
 import { readFileSync } from "node:fs"
 import { relative, sep } from "node:path"
 import { fileURLToPath } from "node:url"
+import type { Plugin } from "vite"
 import { defineConfig } from "vitest/config"
 
 interface DocgenConfig {
@@ -53,7 +54,7 @@ const projects = model.packages.flatMap((pkg) => {
   const files = globalThis.Array.from(new Set(examples.map((example) => example.declarationPathname)))
   if (files.length === 0) return []
   return [{
-    plugins: [Examples.vitestPlugin(examples, reloadExamples)],
+    plugins: [Examples.vitestPlugin(examples, reloadExamples) as unknown as Plugin],
     test: {
       name: relative(import.meta.dirname, pkg.root),
       root: pkg.root,

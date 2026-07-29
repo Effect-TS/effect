@@ -13,6 +13,7 @@ const resolvedMarker = "effect-docgen"
 interface Request {
   readonly file: string
   readonly index?: number | undefined
+  readonly version?: string | undefined
 }
 
 const request = (prefix: string, id: string): Request | undefined => {
@@ -20,8 +21,13 @@ const request = (prefix: string, id: string): Request | undefined => {
   const parameters = new URLSearchParams(id.slice(prefix.length))
   const file = parameters.get("file")
   const index = parameters.get("index")
+  const version = parameters.get("version")
   if (file === null || (index !== null && !/^\d+$/.test(index))) return undefined
-  return { file, index: index === null ? undefined : Number(index) }
+  return {
+    file,
+    index: index === null ? undefined : Number(index),
+    version: version === null ? undefined : version
+  }
 }
 
 const resolvedRequest = (id: string): (Request & { readonly kind: "collector" | "example" }) | undefined => {
@@ -31,10 +37,12 @@ const resolvedRequest = (id: string): (Request & { readonly kind: "collector" | 
   const kind = parameters.get(resolvedMarker)
   if (kind !== "collector" && kind !== "example") return undefined
   const index = parameters.get("index")
+  const version = parameters.get("version")
   if (kind === "example" && (index === null || !/^\d+$/.test(index))) return undefined
   return {
     file: id.slice(0, query),
     index: index === null ? undefined : Number(index),
+    version: version === null ? undefined : version,
     kind
   }
 }
@@ -42,21 +50,29 @@ const resolvedRequest = (id: string): (Request & { readonly kind: "collector" | 
 const resolvedId = (kind: "collector" | "example", value: Request): string => {
   const parameters = new URLSearchParams({ [resolvedMarker]: kind })
   if (value.index !== undefined) parameters.set("index", String(value.index))
+  if (value.version !== undefined) parameters.set("version", value.version)
   return `${value.file}?${parameters}`
 }
 
 /** @internal */
-export const collectorId = (file: string): string => `${collectorPrefix}${new URLSearchParams({ file })}`
+export const collectorId = (file: string, version?: string | undefined): string => {
+  const parameters = new URLSearchParams({ file })
+  if (version !== undefined) parameters.set("version", version)
+  return `${collectorPrefix}${parameters}`
+}
 
-const exampleId = (file: string, index: number): string =>
-  `${examplePrefix}${new URLSearchParams({ file, index: String(index) })}`
+const exampleId = (file: string, index: number, version?: string | undefined): string => {
+  const parameters = new URLSearchParams({ file, index: String(index) })
+  if (version !== undefined) parameters.set("version", version)
+  return `${examplePrefix}${parameters}`
+}
 
-const collectorModule = (examples: ReadonlyArray<SemanticModel.Example>): string => {
+const collectorModule = (examples: ReadonlyArray<SemanticModel.Example>, version?: string | undefined): string => {
   const tests = examples.map((example, index) => {
     const metadata = ExampleMetadata.fromExample(example)
     return `test(${JSON.stringify(example.name)}, { meta: { docgenExample: ${
       JSON.stringify(metadata)
-    } } }, () => import(${JSON.stringify(exampleId(example.declarationPathname, index))}))`
+    } } }, () => import(${JSON.stringify(exampleId(example.declarationPathname, index, version))}))`
   })
   return `import { test } from "vitest"\n${tests.join("\n")}\n`
 }
@@ -80,21 +96,27 @@ export const vitestPlugin = (
   reload?: ((file: string) => Promise<ReadonlyArray<SemanticModel.Example>>) | undefined
 ): Plugin => {
   const byFile = new Map<string, ReadonlyArray<SemanticModel.Example>>()
-  const cache = new Map<string, Promise<ReadonlyArray<SemanticModel.Example>>>()
+  const cache = new Map<string, {
+    readonly version: string | undefined
+    readonly value: Promise<ReadonlyArray<SemanticModel.Example>>
+  }>()
   for (const example of examples) {
     const current = byFile.get(example.declarationPathname)
     byFile.set(example.declarationPathname, current === undefined ? [example] : [...current, example])
   }
-  for (const [file, examples] of byFile) cache.set(file, Promise.resolve(examples))
+  for (const [file, examples] of byFile) cache.set(file, { version: undefined, value: Promise.resolve(examples) })
 
-  const loadExamples = (file: string): Promise<ReadonlyArray<SemanticModel.Example>> => {
+  const loadExamples = (file: string, version?: string | undefined): Promise<ReadonlyArray<SemanticModel.Example>> => {
     const cached = cache.get(file)
-    if (cached !== undefined) return cached
+    if (cached !== undefined && (cached.version === version || cached.version === undefined)) {
+      if (cached.version === undefined && version !== undefined) cache.set(file, { version, value: cached.value })
+      return cached.value
+    }
     const loaded = (reload === undefined ? Promise.resolve(byFile.get(file) ?? []) : reload(file)).then((examples) => {
       byFile.set(file, examples)
       return examples
     })
-    cache.set(file, loaded)
+    cache.set(file, { version, value: loaded })
     return loaded
   }
 
@@ -116,8 +138,8 @@ export const vitestPlugin = (
       const loaded = resolvedRequest(id)
       if (loaded === undefined) return null
       this.addWatchFile(loaded.file)
-      const examples = await loadExamples(loaded.file)
-      if (loaded.kind === "collector") return collectorModule(examples)
+      const examples = await loadExamples(loaded.file, loaded.version)
+      if (loaded.kind === "collector") return collectorModule(examples, loaded.version)
       const example = loaded.index === undefined ? undefined : examples[loaded.index]
       if (example === undefined) throw new Error(`Unknown documentation example module '${id}'`)
       return example.source

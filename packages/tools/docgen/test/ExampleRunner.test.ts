@@ -112,13 +112,18 @@ describe("ExampleRunner", () => {
       }
       const context = { addWatchFile() {} } as never
       const collector = yield* Effect.promise(() =>
-        Promise.resolve(resolveId.call(context, Examples.collectorId(file), undefined, {} as never))
+        Promise.resolve(resolveId.call(context, Examples.collectorId(file, "first"), undefined, {} as never))
       )
       if (typeof collector !== "string") return assert.fail("expected resolved collector ID")
       yield* Effect.promise(() => Promise.resolve(load.call(context, collector, {} as never)))
 
       watchChange.call(context, file, { event: "update" })
-      const refreshed = yield* Effect.promise(() => Promise.resolve(load.call(context, collector, {} as never)))
+      const refreshedId = yield* Effect.promise(() =>
+        Promise.resolve(resolveId.call(context, Examples.collectorId(file, "second"), undefined, {} as never))
+      )
+      if (typeof refreshedId !== "string") return assert.fail("expected refreshed collector ID")
+      assert.notStrictEqual(refreshedId, collector)
+      const refreshed = yield* Effect.promise(() => Promise.resolve(load.call(context, refreshedId, {} as never)))
       if (typeof refreshed !== "string") return assert.fail("expected refreshed collector module")
       const encodedId = /import\((".*")\)/.exec(refreshed)?.[1]
       if (encodedId === undefined) return assert.fail("expected virtual example import")
