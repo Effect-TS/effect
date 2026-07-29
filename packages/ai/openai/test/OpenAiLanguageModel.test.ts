@@ -752,38 +752,37 @@ describe("OpenAiLanguageModel", () => {
           }
         }))))
 
-      for (const model of ["gpt-4.1", "gpt-5.6"] as const) {
-        it.effect(`maps stable web search action to tool call parameters with ${model}`, () =>
-          Effect.gen(function*() {
-            const toolkit = Toolkit.make(OpenAiTool.WebSearch({}))
-            const result = yield* LanguageModel.generateText({
-              prompt: "Search the web",
-              toolkit
-            }).pipe(Effect.provide(OpenAiLanguageModel.model(model)))
+      it.each(["gpt-4.1", "gpt-5.6"] as const)(
+        "maps stable web search action to tool call parameters with %s",
+        (model) =>
+          Effect.runPromise(
+            Effect.gen(function*() {
+              const toolkit = Toolkit.make(OpenAiTool.WebSearch({}))
+              const result = yield* LanguageModel.generateText({
+                prompt: "Search the web",
+                toolkit
+              }).pipe(Effect.provide(OpenAiLanguageModel.model(model)))
 
-            const toolCall = result.content.find((part) => part.type === "tool-call")
-            assert.isDefined(toolCall)
-            if (toolCall?.type === "tool-call") {
-              deepStrictEqual(toolCall.params, {
+              const toolCall = result.content.find((part) => part.type === "tool-call")
+              assert.isDefined(toolCall)
+              assert.deepStrictEqual(toolCall.params, {
                 action: { type: "search", query: "Effect TypeScript" }
               })
-            }
 
-            const toolResult = result.content.find((part) => part.type === "tool-result")
-            assert.isDefined(toolResult)
-            if (toolResult?.type === "tool-result") {
-              deepStrictEqual(toolResult.result, {
+              const toolResult = result.content.find((part) => part.type === "tool-result")
+              assert.isDefined(toolResult)
+              assert.deepStrictEqual(toolResult.result, {
                 action: { type: "search", query: "Effect TypeScript" },
                 status: "completed"
               })
-            }
-          }).pipe(Effect.provide(makeTestLayer({
-            body: {
-              model,
-              output: [makeWebSearchCall()]
-            }
-          }))))
-      }
+            }).pipe(Effect.provide(makeTestLayer({
+              body: {
+                model,
+                output: [makeWebSearchCall()]
+              }
+            })))
+          )
+      )
 
       it.effect("uses canonical OpenAiMcp name for mcp_approval_request", () =>
         Effect.gen(function*() {
@@ -1159,7 +1158,7 @@ describe("OpenAiLanguageModel", () => {
           }
         ] as unknown as ReadonlyArray<typeof Generated.ResponseStreamEvent.Type>
 
-        const partsChunk = yield* LanguageModel.streamText({
+        const parts = yield* LanguageModel.streamText({
           prompt: "Search the web",
           toolkit,
           disableToolCallResolution: true
@@ -1169,25 +1168,20 @@ describe("OpenAiLanguageModel", () => {
           Effect.provide(makeStreamTestLayer(streamEvents))
         )
 
-        const parts = globalThis.Array.from(partsChunk)
         const toolCalls = parts.filter((part) => part.type === "tool-call")
         strictEqual(toolCalls.length, 1)
         const toolCall = toolCalls[0]
         assert.isDefined(toolCall)
-        if (toolCall?.type === "tool-call") {
-          deepStrictEqual(toolCall.params, {
-            action: { type: "search", query: "Effect TypeScript" }
-          })
-        }
+        assert.deepStrictEqual(toolCall.params, {
+          action: { type: "search", query: "Effect TypeScript" }
+        })
 
         const toolResult = parts.find((part) => part.type === "tool-result")
         assert.isDefined(toolResult)
-        if (toolResult?.type === "tool-result") {
-          deepStrictEqual(toolResult.result, {
-            action: { type: "search", query: "Effect TypeScript" },
-            status: "completed"
-          })
-        }
+        assert.deepStrictEqual(toolResult.result, {
+          action: { type: "search", query: "Effect TypeScript" },
+          status: "completed"
+        })
       }))
 
     it.effect("handles reasoning summary events when reasoning state is missing", () =>
