@@ -17,7 +17,7 @@ export function toRepresentation(
 export function toRepresentations(
   asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
 ): SchemaRepresentation.MultiDocument {
-  return lowerASTs(asts, [])
+  return lowerASTs(asts)
 }
 
 type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
@@ -26,27 +26,6 @@ type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnn
 
 function annotationsField<A>(annotations: A | undefined): { readonly annotations: A } | undefined {
   return annotations === undefined ? undefined : { annotations }
-}
-
-/** @internal */
-export function fromSchemaMultiDocument(
-  document: SchemaRepresentation.SchemaMultiDocument
-): SchemaRepresentation.MultiDocument {
-  const definitions = Object.entries(document.definitions).map(([key, schema]) => {
-    const original = schema.ast
-    const encoded = SchemaAST.getLastEncoding(original)
-    const body = SchemaAST.isSuspend(encoded) ? encoded.thunk() : encoded
-    return { key, original, encoded, body }
-  })
-  const asts = Arr.map(document.schemas, (schema) => schema.ast)
-  return lowerASTs(asts, definitions)
-}
-
-interface ExternalDefinition {
-  readonly key: string
-  readonly original: SchemaAST.AST
-  readonly encoded: SchemaAST.AST
-  readonly body: SchemaAST.AST
 }
 
 // Preserve repeated structural nodes as references without adding noise for leaf nodes.
@@ -80,32 +59,19 @@ function hasSameReferenceOwner(self: SchemaAST.AST, that: SchemaAST.AST): boolea
 }
 
 function lowerASTs(
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
-  externalDefinitions: ReadonlyArray<ExternalDefinition>
+  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
 ): SchemaRepresentation.MultiDocument {
   const references: Record<string, SchemaRepresentation.Representation> = {}
   const referenceMap = new Map<SchemaAST.AST, string>()
   const fallbackReferences: Array<readonly [SchemaAST.AST, string]> = []
   const referenceOwners = new Map<string, SchemaAST.AST>()
-  const externalReferences = new Set(externalDefinitions.map((definition) => definition.key))
   const visiting = new Set<SchemaAST.AST>()
   const visited = new Set<SchemaAST.AST>()
   const shared = new Set<SchemaAST.AST>()
 
-  for (const definition of externalDefinitions) {
-    referenceOwners.set(definition.key, definition.body)
-    referenceMap.set(definition.original, definition.key)
-    referenceMap.set(definition.encoded, definition.key)
-  }
-
   for (const ast of asts) visit(ast)
-  for (const definition of externalDefinitions) visit(definition.body)
 
   const representations = Arr.map(asts, (ast) => recur(ast))
-
-  for (const definition of externalDefinitions) {
-    InternalRecord.assignProperty(references, definition.key, recur(definition.body, definition.key))
-  }
 
   return { representations, references }
 
@@ -165,31 +131,28 @@ function lowerASTs(
     })
   }
 
-  function recur(
-    ast: SchemaAST.AST,
-    ownedReference?: string
-  ): SchemaRepresentation.Representation {
+  function recur(ast: SchemaAST.AST): SchemaRepresentation.Representation {
     const found = referenceMap.get(ast)
-    if (found !== undefined && found !== ownedReference) {
+    if (found !== undefined) {
       return { _tag: "Reference", $ref: found }
     }
 
     const projected = SchemaAST.getLastEncoding(ast)
     if (projected !== ast) {
-      return recur(projected, ownedReference)
+      return recur(projected)
     }
 
-    const referenceIdentifier = ownedReference === undefined ? resolveReferenceIdentifier(ast) : undefined
+    const referenceIdentifier = resolveReferenceIdentifier(ast)
     if (referenceIdentifier !== undefined) {
       const reference = getReference(referenceIdentifier, ast)
       referenceMap.set(ast, reference)
-      if (!Object.hasOwn(references, reference) && !externalReferences.has(reference)) {
+      if (!Object.hasOwn(references, reference)) {
         InternalRecord.assignProperty(references, reference, on(ast))
       }
       return { _tag: "Reference", $ref: reference }
     }
 
-    if (ownedReference === undefined && shared.has(ast)) {
+    if (shared.has(ast)) {
       const reference = generateReference(`${ast._tag}_`, ast)
       referenceMap.set(ast, reference)
       InternalRecord.assignProperty(references, reference, on(ast))
@@ -207,7 +170,7 @@ function lowerASTs(
     visiting.delete(ast)
 
     const reference = referenceMap.get(ast)
-    if (reference !== undefined && reference !== ownedReference) {
+    if (reference !== undefined) {
       InternalRecord.assignProperty(references, reference, representation)
       return { _tag: "Reference", $ref: reference }
     }

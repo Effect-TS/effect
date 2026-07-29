@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Schema } from "effect"
-import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
+import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 
 describe("OpenApi representation v2 consumer", () => {
   it("uses canonical JSON codecs for additional declaration schemas", () => {
@@ -23,6 +23,45 @@ describe("OpenApi representation v2 consumer", () => {
     assert.deepStrictEqual(
       OpenApi.fromApi(Api).paths["/date"]?.get?.responses[200]?.content?.["application/json"]?.schema,
       { type: "string" }
+    )
+  })
+
+  it("deduplicates JSON encoding definitions across regular and SSE responses", () => {
+    const Content = Schema.Struct({ text: Schema.String }).annotate({ identifier: "Tool.Content" })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("content", "/content", {
+          success: Schema.fromJsonString(Content)
+        }),
+        HttpApiEndpoint.get("stream", "/stream", {
+          success: HttpApiSchema.StreamSse({ data: Content })
+        })
+      )
+    )
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.components.schemas, {
+      "Tool.ContentJsonEncoding": {
+        type: "string",
+        contentMediaType: "application/json"
+      }
+    })
+    assert.deepStrictEqual(
+      spec.paths["/content"]?.get?.responses[200]?.content?.["application/json"]?.schema,
+      { $ref: "#/components/schemas/Tool.ContentJsonEncoding" }
+    )
+    assert.deepStrictEqual(
+      spec.paths["/stream"]?.get?.responses[200]?.content?.["text/event-stream"]?.schema,
+      {
+        type: "object",
+        properties: {
+          id: { anyOf: [{ type: "string" }, { type: "null" }] },
+          event: { type: "string" },
+          data: { $ref: "#/components/schemas/Tool.ContentJsonEncoding" }
+        },
+        required: ["id", "event", "data"],
+        additionalProperties: false
+      }
     )
   })
 
