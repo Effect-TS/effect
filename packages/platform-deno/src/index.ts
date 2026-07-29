@@ -37,6 +37,11 @@ export * as DenoKeyValueStore from "./DenoKeyValueStore.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoMultipart from "./DenoMultipart.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoPath from "./DenoPath.ts"
 
 /**
