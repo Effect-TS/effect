@@ -6433,6 +6433,22 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       deepStrictEqual(Effect.runSync(A.makeEffect()), new A())
     })
 
+    it("decoding validates the class struct once", () => {
+      let checks = 0
+      const schema = Schema.Struct({
+        a: Schema.String
+      }).check(Schema.makeFilter(() => {
+        checks++
+        return true
+      }))
+      class A extends Schema.Class<A>("A")(schema) {}
+
+      const instance = Schema.decodeUnknownSync(A)({ a: "a" })
+
+      assertTrue(instance instanceof A)
+      strictEqual(checks, 1)
+    })
+
     it("suspend before initialization", async () => {
       const schema = Schema.suspend(() => string)
       class A extends Schema.Class<A>("A")(Schema.Struct({ a: schema })) {}
@@ -6750,6 +6766,33 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
 
         const decoding = asserts.decoding()
         await decoding.succeed({ a: "a", b: 2 }, new B({ a: "a", b: 2 }))
+      })
+
+      it("decoding validates the extended struct once", () => {
+        let baseChecks = 0
+        let extensionChecks = 0
+        class A extends Schema.Class<A>("A")(
+          Schema.Struct({
+            a: Schema.String
+          }).check(Schema.makeFilter(() => {
+            baseChecks++
+            return true
+          }))
+        ) {}
+        class B extends A.extend<B>("B")(
+          Schema.Struct({
+            b: Schema.Number
+          }).check(Schema.makeFilter(() => {
+            extensionChecks++
+            return true
+          }))
+        ) {}
+
+        const instance = Schema.decodeUnknownSync(B)({ a: "a", b: 1 })
+
+        assertTrue(instance instanceof B)
+        strictEqual(baseChecks, 1)
+        strictEqual(extensionChecks, 1)
       })
 
       it("constructor preserves subclass fields while ignoring excess properties by default", () => {
