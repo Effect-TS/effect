@@ -106,11 +106,7 @@ export const jsonRpc = (options?: {
           return decodeJsonRpcRaw(decoded, batches)
         },
         encode: (response) => {
-          if (Array.isArray(response)) {
-            if (response.length === 0) return undefined
-            return JSON.stringify(response.map(encodeJsonRpcMessage))
-          }
-          const encoded = encodeJsonRpcRaw(response as any, batches)
+          const encoded = encodeJsonRpcResponse(response as any, batches)
           return encoded && JSON.stringify(encoded)
         }
       }
@@ -146,10 +142,7 @@ export const ndJsonRpc = (options?: {
           return messages
         },
         encode: (response) => {
-          if (Array.isArray(response)) {
-            return parser.encode(response.map(encodeJsonRpcMessage))
-          }
-          const encoded = encodeJsonRpcRaw(response as any, batches)
+          const encoded = encodeJsonRpcResponse(response as any, batches)
           return encoded && parser.encode(encoded)
         }
       })
@@ -171,6 +164,7 @@ function decodeJsonRpcRaw(
     const messages: Array<RpcMessage.FromClientEncoded | RpcMessage.FromServerEncoded> = []
     for (let i = 0; i < decoded.length; i++) {
       const message = decodeJsonRpcMessage(decoded[i])
+      messages.push(message)
       if (message._tag === "Request") {
         batch.size++
         batches.set(message.id, batch)
@@ -257,6 +251,48 @@ function encodeJsonRpcRaw(
     return undefined
   }
   return encodeJsonRpcMessage(response)
+}
+
+function encodeJsonRpcResponse(
+  response:
+    | RpcMessage.FromServerEncoded
+    | RpcMessage.FromClientEncoded
+    | Array<RpcMessage.FromServerEncoded | RpcMessage.FromClientEncoded>,
+  batches: Map<string, {
+    readonly size: number
+    readonly responses: Map<string, RpcMessage.FromServerEncoded>
+  }>
+) {
+  if (Array.isArray(response) === false) {
+    return encodeJsonRpcRaw(response, batches)
+  }
+  if (response.length === 0) {
+    return undefined
+  }
+  const encoded: Array<JsonRpcMessage | Array<JsonRpcMessage>> = []
+  for (let i = 0; i < response.length; i++) {
+    const current = encodeJsonRpcRaw(response[i], batches)
+    if (current !== undefined) {
+      encoded.push(current)
+    }
+  }
+  if (encoded.length === 0) {
+    return undefined
+  }
+  if (encoded.length === 1) {
+    return encoded[0]
+  }
+  const messages: Array<JsonRpcMessage> = []
+  for (let i = 0; i < encoded.length; i++) {
+    const current = encoded[i]
+    if (Array.isArray(current)) {
+      // eslint-disable-next-line no-restricted-syntax
+      messages.push(...current)
+    } else {
+      messages.push(current)
+    }
+  }
+  return messages
 }
 
 function encodeJsonRpcMessage(response: RpcMessage.FromServerEncoded | RpcMessage.FromClientEncoded): JsonRpcMessage {

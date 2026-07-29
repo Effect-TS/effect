@@ -1,7 +1,62 @@
 import { RpcSerialization } from "@effect/rpc"
 import { assert, describe, it } from "@effect/vitest"
 
+const responseExitSuccess = (requestId: string, value: unknown) => ({
+  _tag: "Exit",
+  requestId,
+  exit: {
+    _tag: "Success",
+    value
+  }
+})
+
+const parseResponses = (encoded: string) => {
+  const responses = encoded.trim().split("\n").map((response) => JSON.parse(response))
+  return responses.length === 1 && Array.isArray(responses[0]) ? responses[0] : responses
+}
+
+const assertBatchRoundTrip = (parser: RpcSerialization.Parser, frame: string) => {
+  const decoded = parser.decode(frame)
+  assert.deepStrictEqual(decoded.map((message: any) => message.id), ["1", "2"])
+
+  const encoded = parser.encode([
+    responseExitSuccess("1", "one"),
+    responseExitSuccess("2", "two")
+  ])
+  assert(encoded !== undefined)
+  assert.deepStrictEqual(parseResponses(encoded as string), [
+    { jsonrpc: "2.0", id: 1, result: "one" },
+    { jsonrpc: "2.0", id: 2, result: "two" }
+  ])
+
+  const afterBatch = parser.encode(responseExitSuccess("1", "after batch"))
+  assert(afterBatch !== undefined)
+  assert.deepStrictEqual(parseResponses(afterBatch as string), [{
+    jsonrpc: "2.0",
+    id: 1,
+    result: "after batch"
+  }])
+}
+
 describe("RpcSerialization", () => {
+  describe("jsonRpc", () => {
+    it("dispatches batched requests and clears completed batch state", () => {
+      assertBatchRoundTrip(
+        RpcSerialization.jsonRpc().unsafeMake(),
+        "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"one\"},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"two\"}]"
+      )
+    })
+  })
+
+  describe("ndJsonRpc", () => {
+    it("dispatches batched requests and clears completed batch state", () => {
+      assertBatchRoundTrip(
+        RpcSerialization.ndJsonRpc().unsafeMake(),
+        "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"one\"},{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"two\"}]\n"
+      )
+    })
+  })
+
   describe("msgPack", () => {
     it("encode and decode correctly", () => {
       const parser = RpcSerialization.msgPack.unsafeMake()
