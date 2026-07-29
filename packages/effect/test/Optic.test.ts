@@ -27,12 +27,130 @@ describe("Optic", () => {
     }
   })
 
+  it("preserves __proto__ as an own property", () => {
+    const value = { polluted: true }
+    const optics: ReadonlyArray<readonly [Optic.Optional<any, any>, object]> = [
+      [Optic.id<Record<string, unknown>>().key("__proto__"), {}],
+      [Optic.id<Record<string, unknown>>().optionalKey("__proto__"), {}],
+      [Optic.id<Record<string, unknown>>().at("__proto__"), { ["__proto__"]: 0 }]
+    ]
+
+    for (const [optic, source] of optics) {
+      const out = optic.replace(value, source)
+      strictEqual(Object.getPrototypeOf(out), Object.prototype)
+      assertTrue(Object.hasOwn(out, "__proto__"))
+      strictEqual(out["__proto__"], value)
+    }
+  })
+
   it("id", () => {
     const iso = Optic.id<number>()
 
     strictEqual(iso.get(1), 1)
     strictEqual(iso.set(1), 1)
     strictEqual(iso.modify(addOne)(1), 2)
+  })
+
+  describe("compose", () => {
+    it("sets through composed isos without reading a source", () => {
+      const value = Optic.makeIso<{ readonly value: number }, number>(
+        (s) => s.value,
+        (value) => ({ value })
+      )
+      const text = Optic.makeIso<number, string>(
+        String,
+        Number
+      )
+      const optic = value.compose(text)
+
+      deepStrictEqual(optic.set("2"), { value: 2 })
+      deepStrictEqual(optic.replace("2", { value: 1 }), { value: 2 })
+    })
+
+    it("sets through composed prisms without reading a source", () => {
+      const value = Optic.makePrism<{ readonly value: number }, number>(
+        (s) => Result.succeed(s.value),
+        (value) => ({ value })
+      )
+      const text = Optic.makePrism<number, string>(
+        (n) => Result.succeed(String(n)),
+        Number
+      )
+      const optic = value.compose(text)
+
+      deepStrictEqual(optic.set("2"), { value: 2 })
+    })
+
+    it("preserves capabilities and behavior across every optic kind", () => {
+      const optics = {
+        Iso: Optic.makeIso<number, number>((n) => n, (n) => n),
+        Lens: Optic.makeLens<number, number>((n) => n, (n) => n),
+        Prism: Optic.makePrism<number, number>(Result.succeed, (n) => n),
+        Optional: Optic.makeOptional<number, number>(Result.succeed, (n) => Result.succeed(n))
+      } as const
+      const expected = {
+        Iso: { Iso: "Iso", Lens: "Lens", Prism: "Prism", Optional: "Optional" },
+        Lens: { Iso: "Lens", Lens: "Lens", Prism: "Optional", Optional: "Optional" },
+        Prism: { Iso: "Prism", Lens: "Optional", Prism: "Prism", Optional: "Optional" },
+        Optional: { Iso: "Optional", Lens: "Optional", Prism: "Optional", Optional: "Optional" }
+      } as const
+
+      for (const left of Object.keys(optics) as Array<keyof typeof optics>) {
+        for (const right of Object.keys(optics) as Array<keyof typeof optics>) {
+          const optic: any = optics[left].compose(optics[right] as any)
+          const kind = expected[left][right]
+
+          strictEqual("get" in optic, kind === "Iso" || kind === "Lens")
+          strictEqual("set" in optic, kind === "Iso" || kind === "Prism")
+          assertSuccess(optic.getResult(1), 1)
+          assertSuccess(optic.replaceResult(2, 1), 2)
+        }
+      }
+    })
+
+    it("preserves optional setter failures", () => {
+      const optic = Optic.makeOptional<number, number>(
+        Result.succeed,
+        () => Result.fail("cannot replace")
+      ).compose(Optic.makeIso<number, number>((n) => n, (n) => n))
+
+      assertFailure(optic.replaceResult(2, 1), "cannot replace")
+      strictEqual(optic.replace(2, 1), 1)
+      strictEqual(optic.modify(addOne)(1), 1)
+    })
+
+    it("composes identity in both directions", () => {
+      const value = Optic.makeIso<number, string>(String, Number)
+      const left = Optic.id<number>().compose(value)
+      const right = value.compose(Optic.id<string>())
+      const identity = Optic.id<number>().compose(Optic.id<number>())
+
+      strictEqual(left.get(1), "1")
+      strictEqual(right.get(1), "1")
+      strictEqual(left.set("2"), 2)
+      strictEqual(right.set("2"), 2)
+      strictEqual(identity.get(1), 1)
+      strictEqual(identity.set(2), 2)
+    })
+
+    it("is independent of composition grouping", () => {
+      const wrapped = Optic.makeIso<{ readonly value: number }, number>(
+        (s) => s.value,
+        (value) => ({ value })
+      )
+      const text = Optic.makeIso<number, string>(String, Number)
+      const chars = Optic.makeIso<string, ReadonlyArray<string>>(
+        (s) => [...s],
+        (chars) => chars.join("")
+      )
+      const left = wrapped.compose(text).compose(chars)
+      const right = wrapped.compose(text.compose(chars))
+
+      deepStrictEqual(left.get({ value: 12 }), ["1", "2"])
+      deepStrictEqual(right.get({ value: 12 }), ["1", "2"])
+      deepStrictEqual(left.set(["3", "4"]), { value: 34 })
+      deepStrictEqual(right.set(["3", "4"]), { value: 34 })
+    })
   })
 
   describe("key", () => {
@@ -224,6 +342,18 @@ Expected a value greater than 0, got -1.1`
       deepStrictEqual(optic.modify(addOne)(1.1), 1.1)
       deepStrictEqual(optic.modify(addOne)(-1.1), -1.1)
     })
+
+    it("combines checks across successive calls", () => {
+      const optic = Optic.id<number>()
+        .check(Schema.isInt())
+        .check(Schema.isGreaterThan(0))
+
+      assertFailure(
+        optic.getResult(-1.1),
+        `Expected an integer, got -1.1
+Expected a value greater than 0, got -1.1`
+      )
+    })
   })
 
   it("refine", () => {
@@ -332,6 +462,29 @@ Expected a value greater than 0, got -1.1`
         { a: 0, b: 2, c: 0 }
       )
     })
+
+    it("fails when the replacement count does not match", () => {
+      const optic = Optic.id<ReadonlyArray<number>>().forEach((element) => element)
+
+      assertFailure(
+        optic.replaceResult([2], [1, 2]),
+        "each: replacement length mismatch: 1 !== 2"
+      )
+    })
+
+    it("fails when an inner setter fails", () => {
+      const optic = Optic.id<ReadonlyArray<number>>().forEach(() =>
+        Optic.makeOptional<number, number>(
+          Result.succeed,
+          () => Result.fail("cannot replace")
+        )
+      )
+
+      assertFailure(
+        optic.replaceResult([2], [1]),
+        "each: could not set element 0"
+      )
+    })
   })
 
   describe("modifyAll", () => {
@@ -361,6 +514,17 @@ Expected a value greater than 0, got -1.1`
         { a: 0, b: 2, c: 0 }
       )
     })
+
+    it("returns the original source when the traversal fails", () => {
+      type S = { readonly values?: ReadonlyArray<number> }
+      const optic: Optic.Traversal<S, number> = Optic.makeOptional(
+        (s) => s.values === undefined ? Result.fail("missing values") : Result.succeed(s.values),
+        (values, s) => s.values === undefined ? Result.fail("missing values") : Result.succeed({ ...s, values })
+      )
+      const source: S = {}
+
+      strictEqual(optic.modifyAll(addOne)(source), source)
+    })
   })
 
   it("notUndefined", () => {
@@ -380,6 +544,15 @@ Expected a value greater than 0, got -1.1`
     const getAll = Optic.getAll(optic)
     deepStrictEqual(getAll({ a: [1, 2, 3] }), [1, 2, 3])
     deepStrictEqual(getAll({ a: [1, -2, 3] }), [1, 3])
+  })
+
+  it("getAll returns an empty array when the traversal fails", () => {
+    const optic: Optic.Traversal<number, number> = Optic.makeOptional<number, ReadonlyArray<number>>(
+      () => Result.fail("cannot focus"),
+      () => Result.fail("cannot replace")
+    )
+
+    deepStrictEqual(Optic.getAll(optic)(1), [])
   })
 
   it("replace copies only objects and arrays along the focused path", () => {
@@ -427,12 +600,14 @@ Expected a value greater than 0, got -1.1`
       const optic = Optic.id<Option.Option<number>>().compose(Optic.some())
       assertSuccess(optic.getResult(Option.some(1)), 1)
       assertFailure(optic.getResult(Option.none()), `Expected a Some value, got none()`)
+      deepStrictEqual(optic.set(2), Option.some(2))
     })
 
     it("none", () => {
       const optic = Optic.id<Option.Option<number>>().compose(Optic.none())
       assertSuccess(optic.getResult(Option.none()), undefined)
       assertFailure(optic.getResult(Option.some(1)), `Expected a None value, got some(1)`)
+      deepStrictEqual(optic.set(undefined), Option.none())
     })
   })
 
@@ -441,12 +616,14 @@ Expected a value greater than 0, got -1.1`
       const optic = Optic.id<Result.Result<number, string>>().compose(Optic.success())
       assertSuccess(optic.getResult(Result.succeed(1)), 1)
       assertFailure(optic.getResult(Result.fail("error")), `Expected a Result.Success value, got failure("error")`)
+      deepStrictEqual(optic.set(2), Result.succeed(2))
     })
 
     it("failure", () => {
       const optic = Optic.id<Result.Result<number, string>>().compose(Optic.failure())
       assertSuccess(optic.getResult(Result.fail("error")), "error")
       assertFailure(optic.getResult(Result.succeed(1)), `Expected a Result.Failure value, got success(1)`)
+      deepStrictEqual(optic.set("new error"), Result.fail("new error"))
     })
   })
 })
