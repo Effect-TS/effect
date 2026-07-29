@@ -606,6 +606,8 @@ class NodeImpl<A> {
   children = new Set<NodeImpl<any>>()
   listeners = new Set<() => void>()
   skipInvalidation = false
+  building = false
+  invalidatedDuringBuild = false
 
   currentState() {
     switch (this.state) {
@@ -628,7 +630,13 @@ class NodeImpl<A> {
   value(): A {
     if ((this.state & NodeFlags.waitingForValue) !== 0) {
       this.lifetime = makeLifetime(this)
-      const value = this.atom.read(this.lifetime)
+      this.building = true
+      let value: A
+      try {
+        value = this.atom.read(this.lifetime)
+      } finally {
+        this.building = false
+      }
       if ((this.state & NodeFlags.waitingForValue) !== 0) {
         if (this.preserveInitialValueOnBuild) {
           this.preserveInitialValueOnBuild = false
@@ -735,6 +743,9 @@ class NodeImpl<A> {
   }
 
   invalidate(): void {
+    if (this.building && batchState.phase === BatchPhase.collect) {
+      this.invalidatedDuringBuild = true
+    }
     if (this.state === NodeState.valid) {
       this.state = NodeState.stale
       this.disposeLifetime()
@@ -860,8 +871,9 @@ const LifetimeProto: Omit<Lifetime<any>, "node" | "finalizers" | "disposed" | "i
       return this.node.registry.get(atom)
     }
     const parent = this.node.registry.ensureNode(atom)
+    const value = parent.value()
     this.node.addParent(parent)
-    return parent.value()
+    return value
   },
 
   result<A, E>(this: Lifetime<any>, atom: Atom.Atom<Result.AsyncResult<A, E>>, options?: {
@@ -1110,7 +1122,12 @@ export function batch(f: () => void): void {
 
 function batchRebuildNode(node: NodeImpl<any>) {
   if (node.state === NodeState.valid) {
-    return
+    if (!node.invalidatedDuringBuild) {
+      return
+    }
+    node.invalidatedDuringBuild = false
+    node.state = NodeState.stale
+    node.disposeLifetime()
   }
 
   for (const parent of node.parents) {
