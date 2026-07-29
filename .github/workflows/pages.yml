@@ -26,8 +26,6 @@ jobs:
         uses: ./.github/actions/setup
       - name: Generate documentation
         run: pnpm docgen
-      - name: Configure site
-        run: cp .github/pages/{_config.yml,index.md} docs/
       - name: Build pages Jekyll
         uses: actions/jekyll-build-pages@v1
         with:
