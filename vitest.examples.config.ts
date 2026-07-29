@@ -1,65 +1,68 @@
-import * as Configuration from "@effect/docgen/Configuration"
-import * as Core from "@effect/docgen/Core"
 import * as Examples from "@effect/docgen/Examples"
-import { readFileSync } from "node:fs"
-import { relative, sep } from "node:path"
+import * as SourceExamples from "@effect/docgen/SourceExamples"
+import { globSync } from "glob"
+import { existsSync, readFileSync } from "node:fs"
+import { dirname, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 import type { Plugin } from "vite"
 import { defineConfig } from "vitest/config"
 
-interface DocgenConfig {
-  readonly projectHomepage: string
-  readonly srcLink: string
-  readonly outDir: string
-  readonly theme: string
-  readonly enableSearch: boolean
-  readonly enforceDescriptions: boolean
-  readonly enforceExamples: boolean
-  readonly enforceVersion: boolean
-  readonly frontend: "source" | "declaration"
-  readonly workspace: boolean
-  readonly packageHomepages: Readonly<Record<string, string>>
-  readonly exclude: ReadonlyArray<string>
-}
-
-const docgen = JSON.parse(readFileSync(new URL("./docgen.json", import.meta.url), "utf8")) as DocgenConfig
-
+const exampleFence = /\/\*\*[\s\S]*?(?:```|~~~)\s*(?:ts|typescript)/i
 const runner = fileURLToPath(new URL("./packages/tools/docgen/src/ExampleRunner.ts", import.meta.url))
-const config = Configuration.Configuration.of({
-  projectName: "Workspace",
-  projectHomepage: docgen.projectHomepage,
-  srcLink: docgen.srcLink,
-  srcDir: "src",
-  outDir: docgen.outDir,
-  theme: docgen.theme,
-  enableSearch: docgen.enableSearch,
-  enforceDescriptions: docgen.enforceDescriptions,
-  enforceExamples: docgen.enforceExamples,
-  enforceVersion: docgen.enforceVersion,
-  generateDocs: true,
-  frontend: docgen.frontend,
-  workspace: docgen.workspace,
-  packageHomepages: docgen.packageHomepages,
-  exclude: docgen.exclude,
-  parseCompilerOptions: Configuration.defaultCompilerOptions
-})
+const patternIndex = process.argv.findIndex((argument) => argument === "-t" || argument === "--testNamePattern")
+const inlinePattern = process.argv.find((argument) => argument.startsWith("--testNamePattern="))?.slice(18)
+const testNamePattern = inlinePattern ?? (patternIndex === -1 ? undefined : process.argv[patternIndex + 1])
+const testNameRegex = testNamePattern === undefined ? undefined : new RegExp(testNamePattern)
+const matchesTestName = (name: string): boolean => {
+  if (testNameRegex === undefined) return true
+  testNameRegex.lastIndex = 0
+  return testNameRegex.test(name)
+}
+const packages = globSync(["packages/*/package.json", "packages/*/*/package.json"], {
+  absolute: true,
+  cwd: import.meta.dirname
+}).map((manifest) => {
+  const root = dirname(manifest)
+  const metadata = JSON.parse(readFileSync(manifest, "utf8"))
+  const files = existsSync(`${root}/src`)
+    ? globSync("src/**/*.ts", { absolute: true, cwd: root }).filter((file) =>
+      exampleFence.test(readFileSync(file, "utf8"))
+    )
+    : []
+  return { files, name: metadata.name as string, root }
+}).filter((pkg) => pkg.files.length > 0)
 
-const model = await Core.analyzeWithNode(config)
-const reloadExamples = (file: string) =>
-  Core.analyzeWithNode(config, {
-    paths: [relative(import.meta.dirname, file).split(sep).join("/")]
-  }).then((model) => model.examples)
-const projects = model.packages.flatMap((pkg) => {
-  const examples = model.examples.filter((example) => example.packageName === pkg.name)
-  const files = globalThis.Array.from(new Set(examples.map((example) => example.declarationPathname)))
+const projects = packages.flatMap((pkg) => {
+  const options = (file: string) => ({
+    file,
+    packageName: pkg.name,
+    packageRoot: pkg.root,
+    workspaceRoot: import.meta.dirname
+  })
+  const examples = pkg.files.flatMap((file) =>
+    SourceExamples.extract({
+      ...options(file),
+      source: readFileSync(file, "utf8")
+    })
+  )
+  const files = testNameRegex === undefined
+    ? pkg.files
+    : pkg.files.filter((file) =>
+      examples.some((example) => example.declarationPathname === file && matchesTestName(example.name))
+    )
   if (files.length === 0) return []
-  return [{
-    plugins: [Examples.vitestPlugin(examples, reloadExamples) as unknown as Plugin],
+  const selectedExamples = examples.filter((example) => matchesTestName(example.name))
+  return {
+    plugins: [Examples.vitestPlugin(selectedExamples, (file) =>
+      SourceExamples.extractFile({
+        ...options(file)
+      }).then((examples) => examples.filter((example) => matchesTestName(example.name)))) as unknown as Plugin],
     test: {
-      name: relative(import.meta.dirname, pkg.root),
+      name: pkg.name,
       root: pkg.root,
       include: files.map((file) => relative(pkg.root, file)),
       exclude: [],
+      passWithNoTests: true,
       runner,
       environment: "node",
       coverage: { enabled: false },
@@ -70,8 +73,18 @@ const projects = model.packages.flatMap((pkg) => {
       sequence: { concurrent: false, shuffle: false },
       experimental: { viteModuleRunner: true }
     }
-  }]
+  }
 })
+const configuredProjects = projects.length === 0 ?
+  [{
+    test: {
+      name: "examples",
+      root: import.meta.dirname,
+      include: [],
+      passWithNoTests: true
+    }
+  }] :
+  projects
 
 export default defineConfig({
   root: import.meta.dirname,
@@ -79,6 +92,7 @@ export default defineConfig({
     coverage: { enabled: false },
     fileParallelism: false,
     maxWorkers: 1,
-    projects
+    passWithNoTests: true,
+    projects: configuredProjects
   }
 })

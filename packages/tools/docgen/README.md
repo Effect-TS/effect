@@ -78,7 +78,7 @@ pnpm jsdocs
 pnpm exec vitest run --config vitest.examples.config.ts
 ```
 
-The custom runner represents every source-backed example as one metadata-named test without importing the documented source module during collection. A Vite plugin provides each example directly from the semantic model as a virtual TypeScript module. Package-specific Vitest projects preserve package-local dependency resolution, and each runner invocation reads the current source without regenerating intermediate files.
+The custom runner represents every source-backed example as one metadata-named test without importing the documented source module during collection. Candidate files are selected with a lightweight fence scan, then a syntax-only TypeScript parser extracts examples from every JSDoc comment without requiring exports, workspace analysis, or type checking. A Vite plugin provides each example as a virtual TypeScript module, and package-specific Vitest projects preserve package-local dependency resolution.
 
 ## Example Configuration
 

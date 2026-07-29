@@ -126,7 +126,9 @@ export const vitestPlugin = (
     perEnvironmentWatchChangeDuringDev: true,
     resolveId(source, importer, options) {
       const collector = request(collectorPrefix, source)
-      if (collector !== undefined && byFile.has(collector.file)) return resolvedId("collector", collector)
+      if (collector !== undefined && (reload !== undefined || byFile.has(collector.file))) {
+        return resolvedId("collector", collector)
+      }
       const example = request(examplePrefix, source)
       if (example !== undefined && byFile.has(example.file)) return resolvedId("example", example)
 
