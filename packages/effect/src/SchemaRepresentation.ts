@@ -617,7 +617,8 @@ export const makeFilterGroupReviver: <P>(
  *
  * Patterns with potentially unsafe nested unbounded repetition are rejected by default. Set `unsafeAllowComplexPatterns`
  * to `true` only when imported documents are trusted; such patterns use the runtime's native regular expression engine
- * and may block validation for an unbounded amount of time.
+ * and may block validation for an unbounded amount of time. The screen is a heuristic that detects a subset of
+ * catastrophic patterns, not a guarantee that accepted patterns are safe.
  *
  * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass
  * through unchanged.
@@ -629,7 +630,7 @@ export interface FromJsonSchemaOptions {
   readonly onEnter?: ((schema: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
   /**
    * Allows patterns with potentially unsafe nested unbounded repetition. Enable only for trusted documents. Defaults to
-   * `false`.
+   * `false`. The default screen is heuristic and does not guarantee that accepted patterns are safe.
    */
   readonly unsafeAllowComplexPatterns?: boolean | undefined
 }

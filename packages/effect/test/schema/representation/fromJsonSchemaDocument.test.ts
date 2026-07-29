@@ -922,6 +922,26 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
+      it("rejects overlapping mandatory atoms", () => {
+        throws(
+          () =>
+            SchemaRepresentation.fromJsonSchemaDocument(
+              JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "(x+x+)+y" })
+            ),
+          `Potentially unsafe pattern with nested unbounded repetition
+  at ["schema"]["pattern"]`
+        )
+      })
+
+      it("allows disjoint delimiters between repetitions", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(\\d+,)*\\d+$" })
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("1,2,3"))
+        assertFalse(is("1,a"))
+      })
+
       it("allows opting out for trusted documents", () => {
         const schema = SchemaRepresentation.fromJsonSchemaDocument(
           JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(a+)+$" }),

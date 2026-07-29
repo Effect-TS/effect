@@ -1,6 +1,7 @@
 import { unescapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import { remainder } from "../../Number.ts"
+import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
@@ -124,29 +125,138 @@ function addNumberCheck(
   }
 }
 
-// A mandatory atom separates repetitions. Without one, nested unbounded
-// repetition can partition the same input exponentially many ways.
+type PatternCharacterSetCategory = "digit" | "nonDigit" | "word" | "nonWord" | "space" | "nonSpace"
+
+interface PatternCharacterSet {
+  readonly ascii: bigint
+  readonly onlyAscii: boolean
+  readonly category: PatternCharacterSetCategory | undefined
+}
+
+function patternCharacterSetCategory(source: string): PatternCharacterSetCategory | undefined {
+  switch (source) {
+    case "\\d":
+      return "digit"
+    case "\\D":
+      return "nonDigit"
+    case "\\w":
+      return "word"
+    case "\\W":
+      return "nonWord"
+    case "\\s":
+      return "space"
+    case "\\S":
+      return "nonSpace"
+    default:
+      return undefined
+  }
+}
+
+function patternCharacterSet(source: string, onlyAscii: boolean): PatternCharacterSet | undefined {
+  const result = Result.try(() => new RegExp(`^(?:${source})$`))
+  if (Result.isFailure(result)) return undefined
+  let ascii = BigInt(0)
+  for (let code = 0; code < 128; code++) {
+    if (result.success.test(String.fromCharCode(code))) {
+      ascii |= BigInt(1) << BigInt(code)
+    }
+  }
+  return { ascii, onlyAscii, category: patternCharacterSetCategory(source) }
+}
+
+function isOnlyAsciiCharacterClass(source: string): boolean {
+  if (source[1] === "^") return false
+  for (let index = 1; index < source.length - 1; index++) {
+    const character = source[index]
+    if (character.charCodeAt(0) > 127) return false
+    if (character === "\\") {
+      const escaped = source[++index]
+      if (escaped === "d" || escaped === "w" || escaped !== undefined && !/[A-Za-z0-9]/.test(escaped)) {
+        continue
+      }
+      return false
+    }
+  }
+  return true
+}
+
+function isOnlyAsciiAtom(source: string): boolean {
+  if (source.length === 1) return source !== "." && source.charCodeAt(0) < 128
+  if (source === "\\d" || source === "\\w") return true
+  if (source.length === 2 && source[0] === "\\") {
+    return source.charCodeAt(1) < 128 && !/[A-Za-z0-9]/.test(source[1])
+  }
+  return source[0] === "[" && isOnlyAsciiCharacterClass(source)
+}
+
+function areDisjoint(left: PatternCharacterSet, right: PatternCharacterSet): boolean {
+  if ((left.ascii & right.ascii) !== BigInt(0)) return false
+  if (left.onlyAscii || right.onlyAscii) return true
+  return left.category === "digit" && right.category === "nonDigit" ||
+    left.category === "nonDigit" && right.category === "digit" ||
+    left.category === "word" && right.category === "nonWord" ||
+    left.category === "nonWord" && right.category === "word" ||
+    left.category === "space" && right.category === "nonSpace" ||
+    left.category === "nonSpace" && right.category === "space"
+}
+
+function unionCharacterSets(
+  sets: ReadonlyArray<PatternCharacterSet | undefined>
+): PatternCharacterSet | undefined {
+  if (sets.length === 0 || sets.some((set) => set === undefined)) return undefined
+  let ascii = BigInt(0)
+  let onlyAscii = true
+  for (const set of sets as ReadonlyArray<PatternCharacterSet>) {
+    ascii |= set.ascii
+    onlyAscii &&= set.onlyAscii
+  }
+  return { ascii, onlyAscii, category: undefined }
+}
+
+// A mandatory atom only separates repetitions when its character set cannot
+// overlap the repeated atoms in neighboring iterations.
 function hasNestedUnboundedRepetition(pattern: string): boolean {
+  interface Atom {
+    readonly characterSet: PatternCharacterSet | undefined
+    readonly repeatedCharacterSets: Array<PatternCharacterSet | undefined>
+    isMandatory: boolean
+  }
   interface Branch {
-    mandatoryAtoms: number
-    hasUnboundedRepetition: boolean
+    atoms: Array<Atom>
   }
   interface Group {
     branches: Array<Branch>
     branch: Branch
-    lastAtomWasMandatory: boolean
   }
   function makeGroup(): Group {
     return {
       branches: [],
-      branch: { mandatoryAtoms: 0, hasUnboundedRepetition: false },
-      lastAtomWasMandatory: false
+      branch: { atoms: [] }
     }
   }
-  function addAtom(group: Group, hasUnboundedRepetition = false): void {
-    group.branch.mandatoryAtoms++
-    group.branch.hasUnboundedRepetition ||= hasUnboundedRepetition
-    group.lastAtomWasMandatory = true
+  function addAtom(
+    group: Group,
+    characterSet: PatternCharacterSet | undefined,
+    repeatedCharacterSets: Array<PatternCharacterSet | undefined> = []
+  ): void {
+    group.branch.atoms.push({ characterSet, repeatedCharacterSets, isMandatory: true })
+  }
+  function isUnsafeToRepeat(branch: Branch): boolean {
+    if (!branch.atoms.some((atom) => atom.repeatedCharacterSets.length > 0)) return false
+    const mandatoryAtoms = branch.atoms.filter((atom) => atom.isMandatory)
+    if (mandatoryAtoms.length <= 1) return true
+    return !mandatoryAtoms.some((candidate) => {
+      if (candidate.characterSet === undefined) return false
+      let compared = false
+      for (const atom of branch.atoms) {
+        if (atom === candidate) continue
+        for (const repeated of atom.repeatedCharacterSets) {
+          compared = true
+          if (repeated === undefined || !areDisjoint(candidate.characterSet, repeated)) return false
+        }
+      }
+      return compared
+    })
   }
 
   const groups = [makeGroup()]
@@ -155,17 +265,20 @@ function hasNestedUnboundedRepetition(pattern: string): boolean {
   for (let index = 0; index < pattern.length; index++) {
     const character = pattern[index]
     if (character === "\\") {
-      addAtom(groups[groups.length - 1])
-      index++
+      const source = pattern.slice(index, index + 2)
+      addAtom(groups[groups.length - 1], patternCharacterSet(source, isOnlyAsciiAtom(source)))
+      index += source.length - 1
       previousWasClosedGroup = false
       continue
     }
     if (character === "[") {
+      const start = index
       for (index++; index < pattern.length; index++) {
         if (pattern[index] === "\\") index++
         else if (pattern[index] === "]") break
       }
-      addAtom(groups[groups.length - 1])
+      const source = pattern.slice(start, index + 1)
+      addAtom(groups[groups.length - 1], patternCharacterSet(source, isOnlyAsciiAtom(source)))
       previousWasClosedGroup = false
       continue
     }
@@ -187,19 +300,21 @@ function hasNestedUnboundedRepetition(pattern: string): boolean {
     if (character === ")" && groups.length > 1) {
       const closed = groups.pop() as Group
       closed.branches.push(closed.branch)
-      const hasUnboundedRepetition = closed.branches.some((branch) => branch.hasUnboundedRepetition)
-      closedGroupIsUnsafeToRepeat = closed.branches.some((branch) =>
-        branch.hasUnboundedRepetition && branch.mandatoryAtoms <= 1
+      const repeatedCharacterSets = closed.branches.flatMap((branch) =>
+        branch.atoms.flatMap((atom) => atom.repeatedCharacterSets)
       )
-      addAtom(groups[groups.length - 1], hasUnboundedRepetition)
+      const characterSet = unionCharacterSets(
+        closed.branches.flatMap((branch) => branch.atoms.map((atom) => atom.characterSet))
+      )
+      closedGroupIsUnsafeToRepeat = closed.branches.some(isUnsafeToRepeat)
+      addAtom(groups[groups.length - 1], characterSet, repeatedCharacterSets)
       previousWasClosedGroup = true
       continue
     }
     const group = groups[groups.length - 1]
     if (character === "|") {
       group.branches.push(group.branch)
-      group.branch = { mandatoryAtoms: 0, hasUnboundedRepetition: false }
-      group.lastAtomWasMandatory = false
+      group.branch = { atoms: [] }
       previousWasClosedGroup = false
       continue
     }
@@ -221,13 +336,17 @@ function hasNestedUnboundedRepetition(pattern: string): boolean {
     }
     if (isQuantifier) {
       if (isUnbounded && previousWasClosedGroup && closedGroupIsUnsafeToRepeat) return true
-      if (minimum === 0 && group.lastAtomWasMandatory) {
-        group.branch.mandatoryAtoms--
-        group.lastAtomWasMandatory = false
+      const atom = group.branch.atoms[group.branch.atoms.length - 1]
+      // A lazy modifier `?` is treated as a quantifier, under-counting mandatory atoms over-conservatively.
+      if (minimum === 0 && atom !== undefined) {
+        atom.isMandatory = false
       }
-      group.branch.hasUnboundedRepetition ||= isUnbounded
+      if (isUnbounded && atom !== undefined) {
+        atom.repeatedCharacterSets.push(atom.characterSet)
+      }
     } else if (character !== "^" && character !== "$") {
-      addAtom(group)
+      const source = pattern[index]
+      addAtom(group, patternCharacterSet(source, isOnlyAsciiAtom(source)))
     }
     previousWasClosedGroup = false
   }
