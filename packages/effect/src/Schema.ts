@@ -10682,6 +10682,10 @@ const errorClassImpl: {
  * `YieldableError` interface, so instances can be yielded directly inside
  * `Effect.gen`.
  *
+ * When passing `Schema.Error` to a generic higher-order function, wrap the call
+ * (for example, `(options) => Schema.Error(options)`) because TypeScript infers
+ * a bare overloaded function value from its last overload.
+ *
  * **Example** (JavaScript error schema)
  *
  * ```ts
