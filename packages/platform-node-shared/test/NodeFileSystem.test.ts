@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect"
 import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Stream from "effect/Stream"
+import * as TestClock from "effect/testing/TestClock"
 import { testLayer } from "../../effect/test/FileSystem.test-utils.ts"
 
 const startWatch = <E, R>(
@@ -26,8 +27,9 @@ const startWatch = <E, R>(
       Effect.flatMap(Effect.fromOption),
       Effect.forkChild
     )
-    const signalFiber = yield* fs.writeFileString(`${root}/${readyName}`, "").pipe(
-      Effect.andThen(Effect.sleep("10 millis")),
+    const signalFiber = yield* Effect.sleep("10 millis").pipe(
+      TestClock.withLive,
+      Effect.andThen(fs.writeFileString(`${root}/${readyName}`, "")),
       Effect.forever,
       Effect.forkChild
     )
