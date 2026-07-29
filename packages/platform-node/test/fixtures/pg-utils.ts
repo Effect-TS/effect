@@ -9,7 +9,10 @@ export class ContainerError extends Data.TaggedError("ContainerError")<{
 export class PgContainer extends Context.Service<PgContainer>()("test/PgContainer", {
   make: Effect.acquireRelease(
     Effect.tryPromise({
-      try: () => new PostgreSqlContainer("postgres:alpine").start(),
+      try: () =>
+        new PostgreSqlContainer(
+          "postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15"
+        ).start(),
       catch: (cause) => new ContainerError({ cause })
     }),
     (container) => Effect.promise(() => container.stop())

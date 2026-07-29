@@ -9,7 +9,11 @@ import * as PersistedQueueTest from "../../effect/test/unstable/persistence/Pers
 const RedisLayer = Layer.unwrap(
   Effect.gen(function*() {
     const container = yield* Effect.acquireRelease(
-      Effect.promise(() => new RedisContainer("redis:alpine").start()),
+      Effect.promise(() =>
+        new RedisContainer(
+          "redis:8.8.1-alpine@sha256:8096655e437712b07503796fb64d81359256cfcff0ab29d95a7da72863786efb"
+        ).start()
+      ),
       (container) => Effect.promise(() => container.stop())
     )
     return DenoRedis.layer({

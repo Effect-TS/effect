@@ -26,7 +26,9 @@ export class LibsqlContainer extends Context.Service<
   static readonly layer = Layer.effect(this)(
     Effect.acquireRelease(
       Effect.promise(async () => {
-        const container = await new GenericContainer("ghcr.io/tursodatabase/libsql-server:main")
+        const container = await new GenericContainer(
+          "ghcr.io/tursodatabase/libsql-server:main@sha256:718825e7eea0619b827ff5ee21a17087eb93957470bb73d64735a58d0b121efc"
+        )
           .withExposedPorts(8080)
           .withEnvironment({ SQLD_NODE: "primary" })
           .withCommand(["sqld", "--no-welcome", "--http-listen-addr", "0.0.0.0:8080"]).start()

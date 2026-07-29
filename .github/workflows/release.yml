@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
       - name: Upgrade npm for OIDC support
-        run: npm install -g npm@11
+        run: npm install -g npm@11.18.0
       - name: Set strip internals config
         run: |
           sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
