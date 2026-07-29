@@ -22,7 +22,6 @@ import { reportCauseUnsafe } from "../../internal/effect.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
-import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
 import * as Queue from "../../Queue.ts"
 import * as Schedule from "../../Schedule.ts"
@@ -688,7 +687,7 @@ export const make: <Rpcs extends Rpc.Any>(
 
     switch (request._tag) {
       case "Request": {
-        const tag = Predicate.hasProperty(request, "tag") ? (request.tag as string) : ""
+        const tag = Object.hasOwn(request, "tag") ? (request.tag as string) : ""
         let requestId: RequestId
         switch (typeof request.id) {
           case "number":
