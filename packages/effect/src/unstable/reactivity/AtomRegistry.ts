@@ -631,12 +631,8 @@ class NodeImpl<A> {
     if ((this.state & NodeFlags.waitingForValue) !== 0) {
       this.lifetime = makeLifetime(this)
       this.building = true
-      let value: A
-      try {
-        value = this.atom.read(this.lifetime)
-      } finally {
-        this.building = false
-      }
+      const value = this.atom.read(this.lifetime)
+      this.building = false
       if ((this.state & NodeFlags.waitingForValue) !== 0) {
         if (this.preserveInitialValueOnBuild) {
           this.preserveInitialValueOnBuild = false
