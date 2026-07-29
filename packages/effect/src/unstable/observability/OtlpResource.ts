@@ -80,11 +80,10 @@ export const make = (options: {
  * **Details**
  *
  * Explicit `serviceName` and `serviceVersion` options take precedence over
- * matching explicit attributes and environment variables. Explicit attributes
- * take precedence over `OTEL_SERVICE_NAME`, `OTEL_SERVICE_VERSION`, and
- * `OTEL_RESOURCE_ATTRIBUTES` for service identity. Other attributes from
- * `OTEL_RESOURCE_ATTRIBUTES` override explicit attributes. Missing required
- * configuration is converted to a defect.
+ * matching explicit attributes. Explicit attributes take precedence over
+ * environment variables. `OTEL_SERVICE_NAME` and `OTEL_SERVICE_VERSION` take
+ * precedence over matching attributes in `OTEL_RESOURCE_ATTRIBUTES`. Missing
+ * required configuration is converted to a defect.
  *
  * @category constructors
  * @since 4.0.0
@@ -117,8 +116,8 @@ export const fromConfig: (
     ?? env?.["service.version"] as string | undefined
 
   const attributes = {
-    ...options?.attributes,
-    ...env
+    ...env,
+    ...options?.attributes
   }
 
   delete attributes["service.name"]

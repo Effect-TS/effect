@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Prefer explicit OTLP resource service names and versions over environment configuration.
+Prefer explicit OTLP resource configuration over environment configuration.

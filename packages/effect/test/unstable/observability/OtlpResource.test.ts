@@ -37,7 +37,7 @@ describe("OtlpResource", () => {
         )
       ))
 
-    it.effect("uses explicit service attributes before environment variables", () =>
+    it.effect("uses explicit attributes before environment variables", () =>
       Effect.gen(function*() {
         const resource = yield* OtlpResource.fromConfig({
           attributes: {
@@ -48,7 +48,7 @@ describe("OtlpResource", () => {
         })
 
         assert.deepStrictEqual(attributesRecord(resource), {
-          "custom.attribute": "env",
+          "custom.attribute": "explicit",
           "service.name": "explicit-attribute-service",
           "service.version": "explicit-attribute-version"
         })
