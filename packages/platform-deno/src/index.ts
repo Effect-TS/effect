@@ -32,6 +32,16 @@ export * as DenoHttpPlatform from "./DenoHttpPlatform.ts"
 /**
  * @since 4.0.0
  */
+export * as DenoHttpServer from "./DenoHttpServer.ts"
+
+/**
+ * @since 4.0.0
+ */
+export * as DenoHttpServerRequest from "./DenoHttpServerRequest.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as DenoKeyValueStore from "./DenoKeyValueStore.ts"
 
 /**
