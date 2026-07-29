@@ -571,39 +571,44 @@ describe("DenoHttpServer", () => {
   it.effect("cancels a file body for HEAD requests", () =>
     Effect.gen(function*() {
       let cancelled = false
-      yield* replaceDenoOpenSync((path, options) => {
-        const file = originalOpenSync(path, options)
-        return new Proxy(file, {
-          get(target, property) {
-            if (property !== "readable") {
-              const value = Reflect.get(target, property, target)
-              return typeof value === "function" ? value.bind(target) : value
-            }
-            const readable = Reflect.get(target, property, target) as ReadableStream<Uint8Array>
-            const reader = readable.getReader()
-            return new ReadableStream<Uint8Array>({
-              pull(controller) {
-                return reader.read().then(({ done, value }) => {
-                  if (done) controller.close()
-                  else controller.enqueue(value)
-                })
-              },
-              cancel(reason) {
-                cancelled = true
-                return reader.cancel(reason)
-              }
+      const fileResponse = yield* HttpServerResponse.file(fixture).pipe(
+        Effect.updateService(HttpPlatform.HttpPlatform, (platform) => ({
+          ...platform,
+          fileResponse: (path, options) =>
+            Effect.map(platform.fileResponse(path, options), (response) => {
+              assert.strictEqual(response.body._tag, "Raw")
+              const source = (response.body as HttpBody.Raw).body
+              assert(source instanceof ReadableStream)
+              const reader = source.getReader()
+              const body = new ReadableStream<Uint8Array>({
+                pull(controller) {
+                  return reader.read().then(({ done, value }) => {
+                    if (done) controller.close()
+                    else controller.enqueue(value)
+                  })
+                },
+                cancel(reason) {
+                  cancelled = true
+                  return reader.cancel(reason)
+                }
+              })
+              return HttpServerResponse.raw(body, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers,
+                cookies: response.cookies
+              })
             })
-          }
-        }) as Deno.FsFile
-      })
-      yield* (yield* HttpServerResponse.file(fixture)).pipe(
+        }))
+      )
+      yield* fileResponse.pipe(
         Effect.succeed,
         HttpServer.serveEffect()
       )
       const response = yield* HttpClient.head("/")
       assert.strictEqual(response.status, 200)
       assert(cancelled)
-    }).pipe(Effect.scoped, Effect.provide(DenoHttpServer.layerTest)))
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 
   it.effect("round trips WebSocket frames and closes cleanly", () =>
     Effect.gen(function*() {
@@ -701,16 +706,4 @@ const connectWebSocket = (url: string, onOpen: (socket: WebSocket) => void, mess
         return messages
       }),
     (socket) => Effect.sync(() => socket.close())
-  )
-
-const originalOpenSync = Deno.openSync
-
-const replaceDenoOpenSync = (openSync: typeof Deno.openSync) =>
-  Effect.acquireRelease(
-    Effect.sync(() => {
-      const descriptor = Object.getOwnPropertyDescriptor(Deno, "openSync")!
-      Object.defineProperty(Deno, "openSync", { ...descriptor, value: openSync })
-      return descriptor
-    }),
-    (descriptor) => Effect.sync(() => Object.defineProperty(Deno, "openSync", descriptor))
   )
