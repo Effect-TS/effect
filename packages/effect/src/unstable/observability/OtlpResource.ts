@@ -70,10 +70,20 @@ export const make = (options: {
  * Creates an OTLP resource from explicit options and OpenTelemetry
  * configuration.
  *
+ * **When to use**
+ *
+ * Use when resource metadata may be configured in code or by the deployment
+ * environment. To let operators set the service identity, omit `serviceName`,
+ * `serviceVersion`, and their matching attributes, then use
+ * `OTEL_SERVICE_NAME` and `OTEL_RESOURCE_ATTRIBUTES`.
+ *
  * **Details**
  *
- * `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_SERVICE_NAME`, and
- * `OTEL_SERVICE_VERSION` override explicit options; missing required
+ * Explicit `serviceName` and `serviceVersion` options take precedence over
+ * matching explicit attributes and environment variables. Explicit attributes
+ * take precedence over `OTEL_SERVICE_NAME`, `OTEL_SERVICE_VERSION`, and
+ * `OTEL_RESOURCE_ATTRIBUTES` for service identity. Other attributes from
+ * `OTEL_RESOURCE_ATTRIBUTES` override explicit attributes. Missing required
  * configuration is converted to a defect.
  *
  * @category constructors
@@ -95,16 +105,16 @@ export const fromConfig: (
     "OTEL_RESOURCE_ATTRIBUTES"
   )
 
-  const serviceName = (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_NAME"))
-    ?? env?.["service.name"] as string | undefined
+  const serviceName = options?.serviceName
     ?? options?.attributes?.["service.name"] as string | undefined
-    ?? options?.serviceName
+    ?? (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_NAME"))
+    ?? env?.["service.name"] as string | undefined
     ?? (yield* Config.string("OTEL_SERVICE_NAME"))
 
-  const serviceVersion = (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_VERSION"))
-    ?? env?.["service.version"] as string | undefined
+  const serviceVersion = options?.serviceVersion
     ?? options?.attributes?.["service.version"] as string | undefined
-    ?? options?.serviceVersion
+    ?? (yield* Config.schema(Schema.UndefinedOr(Schema.String), "OTEL_SERVICE_VERSION"))
+    ?? env?.["service.version"] as string | undefined
 
   const attributes = {
     ...options?.attributes,
