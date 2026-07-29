@@ -1,5 +1,6 @@
 {
   "tsconfig": "tsconfig.packages.json",
+  "examplesTsconfig": "tsconfig.examples.json",
   "include": [
     "packages/**/src/*.ts",
     "packages/**/src/**/*.ts"

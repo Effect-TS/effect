@@ -97,18 +97,12 @@ describe("docgen semantic compiler", () => {
       })
     ))
 
-  it.effect("declaration projections can be enabled independently", () =>
+  it.effect("declaration generation can omit Markdown output", () =>
     declarationFixture((root) =>
       Effect.gen(function*() {
         const noDocs = yield* runDocgen(root, ["--no-docs"])
         assert.strictEqual(noDocs.exitCode, 0, `${noDocs.stdout}\n${noDocs.stderr}`)
         assert.isFalse(yield* exists(join(root, "docs")))
-        assert.isTrue(yield* exists(join(root, "examples", ".effect-docgen")))
-
-        yield* Effect.promise(() => rm(join(root, "examples"), { recursive: true }))
-        const noExamples = yield* runDocgen(root, ["--no-examples"])
-        assert.strictEqual(noExamples.exitCode, 0, `${noExamples.stdout}\n${noExamples.stderr}`)
-        assert.isTrue(yield* exists(join(root, "docs", "modules", "index.ts.md")))
         assert.isFalse(yield* exists(join(root, "examples")))
       })
     ))
@@ -130,7 +124,7 @@ describe("docgen semantic compiler", () => {
       })
     ))
 
-  it.effect("ordinary generation writes both projections and launches neither tsc nor Vitest", () =>
+  it.effect("ordinary generation writes Markdown and launches neither tsc nor Vitest", () =>
     fixture((root) =>
       Effect.gen(function*() {
         const result = yield* runDocgen(root, [])
@@ -138,7 +132,7 @@ describe("docgen semantic compiler", () => {
         assert.strictEqual(result.exitCode, 0, `${result.stdout}\n${result.stderr}`)
         assert.notMatch(result.stdout, /Typechecking examples|Running examples|RUN  v/)
         assert.isTrue(yield* exists(join(root, "packages", "example", "docs", "modules", "index.ts.md")))
-        assert.isTrue(yield* exists(join(root, "packages", "example", "examples", ".effect-docgen")))
+        assert.isFalse(yield* exists(join(root, "packages", "example", "examples")))
         assert.isFalse(yield* exists(join(root, ".docgen")))
       })
     ))
@@ -147,7 +141,7 @@ describe("docgen semantic compiler", () => {
     fixture((root) =>
       Effect.gen(function*() {
         const outputFile = join(root, "artifacts", "docgen.json")
-        const result = yield* runDocgen(root, ["--no-docs", "--no-examples", "--json", outputFile])
+        const result = yield* runDocgen(root, ["--no-docs", "--json", outputFile])
 
         assert.strictEqual(result.exitCode, 0, `${result.stdout}\n${result.stderr}`)
         const output = JSON.parse(yield* Effect.promise(() => readFile(outputFile, "utf8")))
@@ -169,7 +163,6 @@ describe("docgen semantic compiler", () => {
         const outputFile = join(root, "artifacts", "package-docgen.json")
         const result = yield* runDocgen(join(root, "packages", "example"), [
           "--no-docs",
-          "--no-examples",
           "--json",
           outputFile
         ])
@@ -183,52 +176,15 @@ describe("docgen semantic compiler", () => {
       })
     ))
 
-  it.effect("disables documentation and examples independently", () =>
+  it.effect("disabling documentation still analyzes and validates without output", () =>
     fixture((root) =>
       Effect.gen(function*() {
         const noDocs = yield* runDocgen(root, ["--no-docs"])
         assert.strictEqual(noDocs.exitCode, 0, `${noDocs.stdout}\n${noDocs.stderr}`)
-        assert.isFalse(yield* exists(join(root, "packages", "example", "docs")))
-        assert.isTrue(yield* exists(join(root, "packages", "example", "examples", ".effect-docgen")))
-
-        yield* Effect.promise(() => rm(join(root, "packages", "example", "examples"), { recursive: true }))
-        const noExamples = yield* runDocgen(root, ["--no-examples"])
-        assert.strictEqual(noExamples.exitCode, 0, `${noExamples.stdout}\n${noExamples.stderr}`)
-        assert.isTrue(yield* exists(join(root, "packages", "example", "docs", "modules", "index.ts.md")))
-        assert.isFalse(yield* exists(join(root, "packages", "example", "examples")))
-      })
-    ))
-
-  it.effect("disabling both projections still analyzes and validates without output", () =>
-    fixture((root) =>
-      Effect.gen(function*() {
-        const result = yield* runDocgen(root, ["--no-docs", "--no-examples"])
-        assert.strictEqual(result.exitCode, 0, `${result.stdout}\n${result.stderr}`)
-        assert.match(result.stdout, /Parsing .* source file/)
-        assert.match(result.stdout, /Checking modules/)
+        assert.match(noDocs.stdout, /Parsing .* source file/)
+        assert.match(noDocs.stdout, /Checking modules/)
         assert.isFalse(yield* exists(join(root, "packages", "example", "docs")))
         assert.isFalse(yield* exists(join(root, "packages", "example", "examples")))
-      })
-    ))
-
-  it.effect("refreshes selected marker-owned examples and preserves rejected unowned directories", () =>
-    fixture((root) =>
-      Effect.gen(function*() {
-        const owned = join(root, "packages", "example", "examples")
-        yield* Effect.promise(() => mkdir(owned, { recursive: true }))
-        yield* Effect.promise(() => writeFile(join(owned, ".effect-docgen"), "generated by @effect/docgen\n"))
-        yield* Effect.promise(() => writeFile(join(owned, "stale.ts"), "stale"))
-        const refreshed = yield* runDocgen(root, ["--no-docs"])
-        assert.strictEqual(refreshed.exitCode, 0, `${refreshed.stdout}\n${refreshed.stderr}`)
-        assert.isFalse(yield* exists(join(owned, "stale.ts")))
-
-        yield* Effect.promise(() => rm(owned, { recursive: true }))
-        yield* Effect.promise(() => mkdir(owned, { recursive: true }))
-        yield* Effect.promise(() => writeFile(join(owned, "sentinel"), "unowned"))
-        const rejected = yield* runDocgen(root, ["--no-docs"])
-        assert.notStrictEqual(rejected.exitCode, 0)
-        assert.match(`${rejected.stdout}\n${rejected.stderr}`, /Refusing to overwrite unowned example directory/)
-        assert.strictEqual(yield* Effect.promise(() => readFile(join(owned, "sentinel"), "utf8")), "unowned")
       })
     ))
 })

@@ -120,6 +120,56 @@ export const makeValue = () => 1
     })
   })
 
+  it("type checks examples without writing source files", () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-"))
+    fs.mkdirSync(path.join(cwd, "src"), { recursive: true })
+    fs.writeFileSync(
+      path.join(cwd, "tsconfig.json"),
+      JSON.stringify({
+        compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext", target: "ES2022", strict: true },
+        include: ["src/**/*.ts"]
+      })
+    )
+    fs.writeFileSync(
+      path.join(cwd, "package.json"),
+      JSON.stringify({
+        name: "@effect/sample",
+        type: "module",
+        exports: { ".": "./src/index.ts", "./*": "./src/*.ts" }
+      })
+    )
+    fs.writeFileSync(path.join(cwd, "src/index.ts"), `export * as Foo from "./Foo.ts"\n`)
+    const source = `/**
+ * Creates a value.
+ *
+ * **Example** (Using the value)
+ *
+ * \`\`\`ts
+ * import { Foo } from "@effect/sample"
+ *
+ * const value: string = Foo.makeValue()
+ * \`\`\`
+ *
+ * @category constructors
+ * @since 1.0.0
+ */
+export const makeValue = () => 1
+`
+    fs.writeFileSync(path.join(cwd, "src/Foo.ts"), source)
+
+    const model = extractJSDocsSync({
+      cwd,
+      tsconfig: "tsconfig.json",
+      include: ["src/**/*.ts"],
+      output: ".data/jsdocs.json"
+    })
+    const diagnostic = model.files[0]?.diagnostics.find((diagnostic) => diagnostic.code === "example-typecheck")
+
+    assert.match(diagnostic?.message ?? "", /TS2322: Type 'number' is not assignable to type 'string'/)
+    assert.deepStrictEqual(diagnostic?.range, [0, source.indexOf("*/") + 2])
+    assert.deepStrictEqual(fs.readdirSync(cwd).sort(), ["package.json", "src", "tsconfig.json"])
+  })
+
   it("stores a stable input hash for cache checks", () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "jsdocs-"))
     fs.mkdirSync(path.join(cwd, "src"), { recursive: true })

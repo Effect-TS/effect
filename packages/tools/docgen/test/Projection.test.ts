@@ -1,8 +1,6 @@
 import * as Configuration from "@effect/docgen/Configuration"
 import * as Documentation from "@effect/docgen/Documentation"
 import * as Domain from "@effect/docgen/Domain"
-import * as ExampleMetadata from "@effect/docgen/ExampleMetadata"
-import * as Examples from "@effect/docgen/Examples"
 import * as SemanticModel from "@effect/docgen/SemanticModel"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
@@ -23,7 +21,6 @@ const config: Configuration.ConfigurationShape = {
   enforceExamples: false,
   enforceVersion: true,
   generateDocs: true,
-  generateExamples: true,
   frontend: "source",
   workspace: true,
   packageHomepages: {},
@@ -42,23 +39,12 @@ const makeModel = SemanticModel.fromSourceFiles([
 ], [{ name: "@effect/example", root: packageRoot }])
 
 describe("output projections", () => {
-  it.effect("projects Markdown and example files from the same semantic model", () =>
+  it.effect("projects Markdown from the semantic model", () =>
     Effect.gen(function*() {
       const model = yield* makeModel
       const markdown = yield* Documentation.project(model)
-      const examples = yield* Examples.project(model)
 
       assert.isTrue(markdown.some((file) => file.path.endsWith("docs-projection-test/modules/index.ts.md")))
-      assert.strictEqual(examples.length, model.examples.length)
-      assert.match(examples[1].path, /examples\/-effect-example-src-index\.ts-constant-example-0\.ts$/)
-      assert.deepStrictEqual(ExampleMetadata.decode(examples[1].content), {
-        name: "@effect/example/index.example example 1",
-        packageName: "@effect/example",
-        sourcePath: "packages/example/src/index.ts",
-        declaration: "example",
-        index: 1
-      })
-      assert.strictEqual(examples[1].content.split("\n").slice(1).join("\n"), model.examples[1].source)
     }).pipe(
       Effect.provideService(Configuration.Configuration, config),
       Effect.provideService(

@@ -83,11 +83,6 @@ const noDocs = Flag.boolean("no-docs").pipe(
   Flag.optional
 )
 
-const noExamples = Flag.boolean("no-examples").pipe(
-  Flag.withDescription("Disable extracted TypeScript example generation"),
-  Flag.optional
-)
-
 const json = Flag.file("json").pipe(
   Flag.withDescription("Write the renderer-independent semantic model to a JSON file"),
   Flag.optional
@@ -166,7 +161,6 @@ const options = {
   noEnforceVersion,
   enforceVersionAlias,
   noDocs,
-  noExamples,
   json,
   frontend,
   exclude,
@@ -192,7 +186,6 @@ export const loadConfiguration = Effect.fnUntraced(function*(
     enforceVersionAlias,
     noEnforceVersion,
     noDocs,
-    noExamples,
     json: _json,
     parseCompilerOptionsFile,
     parseCompilerOptionsInline,
@@ -222,7 +215,6 @@ export const loadConfiguration = Effect.fnUntraced(function*(
   )
   const configuredEnforceVersion = yield* Config.boolean("enforceVersion").pipe(Effect.orElseSucceed(() => true))
   const configuredGenerateDocs = yield* Config.boolean("generateDocs").pipe(Effect.orElseSucceed(() => true))
-  const configuredGenerateExamples = yield* Config.boolean("generateExamples").pipe(Effect.orElseSucceed(() => true))
   return yield* Configuration.load({
     ...config,
     enableSearch: Option.match(disableSearch, {
@@ -237,10 +229,6 @@ export const loadConfiguration = Effect.fnUntraced(function*(
     }),
     generateDocs: Option.match(noDocs, {
       onNone: () => configuredGenerateDocs,
-      onSome: (disabled) => !disabled
-    }),
-    generateExamples: Option.match(noExamples, {
-      onNone: () => configuredGenerateExamples,
       onSome: (disabled) => !disabled
     }),
     parseCompilerOptions: Option.orElse(parseCompilerOptionsFile, () => parseCompilerOptionsInline)

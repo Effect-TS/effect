@@ -27,7 +27,6 @@ const defaultConfig: Configuration.ConfigurationShape = {
   enforceExamples: false,
   enforceVersion: true,
   generateDocs: true,
-  generateExamples: true,
   frontend: "source",
   workspace: false,
   packageHomepages: {},

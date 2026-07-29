@@ -74,6 +74,7 @@
   },
   "peerDependencies": {
     "typescript": ">=5.8.2 <7.0.0",
+    "vite": ">=7.3.0 <8.0.0",
     "vitest": ">=4.1.10 <4.2.0"
   },
   "devDependencies": {
@@ -82,6 +83,7 @@
     "@types/doctrine": "0.0.9",
     "@types/node": "^26.1.1",
     "typescript": "^6.0.3",
+    "vite": "7.3.6",
     "vitest": "4.1.10"
   }
 }

@@ -77,10 +77,6 @@ export const ConfigurationSchema = Schema.Struct({
     description: "Whether docgen should generate Markdown documentation.",
     default: true
   })),
-  generateExamples: Schema.optional(Schema.Boolean.annotate({
-    description: "Whether docgen should generate extracted TypeScript example modules.",
-    default: true
-  })),
   frontend: Schema.optional(
     Schema.Literals(["source", "declaration"]).annotate({
       description: "The deterministic TypeScript input frontend.",
@@ -125,7 +121,6 @@ export interface ConfigurationShape {
   readonly enforceExamples: boolean
   readonly enforceVersion: boolean
   readonly generateDocs: boolean
-  readonly generateExamples: boolean
   readonly frontend: "source" | "declaration"
   readonly workspace: boolean
   readonly packageHomepages: Readonly<Record<string, string>>
@@ -299,7 +294,6 @@ export const load = (args: {
   readonly enforceExamples: boolean
   readonly enforceVersion: boolean
   readonly generateDocs: boolean
-  readonly generateExamples: boolean
   readonly frontend: "source" | "declaration"
   readonly exclude: ReadonlyArray<string>
   readonly parseCompilerOptions: Option.Option<string | Record<string, unknown>>

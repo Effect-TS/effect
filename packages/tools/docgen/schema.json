@@ -56,14 +56,12 @@
           "description": "Whether docgen should generate Markdown documentation.",
           "default": true
         },
-        "generateExamples": {
-          "type": "boolean",
-          "description": "Whether docgen should generate extracted TypeScript example modules.",
-          "default": true
-        },
         "frontend": {
           "type": "string",
-          "enum": ["source", "declaration"],
+          "enum": [
+            "source",
+            "declaration"
+          ],
           "description": "The deterministic TypeScript input frontend.",
           "default": "source"
         },

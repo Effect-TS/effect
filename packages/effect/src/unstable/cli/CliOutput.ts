@@ -55,13 +55,14 @@ export interface Formatter {
    * **Example** (Formatting help documents)
    *
    * ```ts
-   * import { Option as O } from "effect"
+   * import { Context, Option as O } from "effect"
    * import { CliOutput } from "effect/unstable/cli"
    * import type { HelpDoc } from "effect/unstable/cli"
    *
-   * const helpDoc: HelpDoc = {
+   * const helpDoc: HelpDoc.HelpDoc = {
    *   usage: "myapp [options] <file>",
    *   description: "Process files with various options",
+   *   annotations: Context.empty(),
    *   flags: [
    *     {
    *       name: "verbose",
@@ -98,17 +99,15 @@ export interface Formatter {
    * **Example** (Formatting CLI errors)
    *
    * ```ts
-   * import { Data } from "effect"
-   * import { CliOutput } from "effect/unstable/cli"
-   *
-   * class InvalidOption extends Data.TaggedError("InvalidOption")<{
-   *   readonly message: string
-   * }> {}
+   * import { CliError, CliOutput } from "effect/unstable/cli"
    *
    * const formatter = CliOutput.defaultFormatter()
-   * const error = new InvalidOption({ message: "Unknown flag '--invalid'" })
+   * const error = new CliError.UnrecognizedOption({
+   *   option: "--invalid",
+   *   suggestions: []
+   * })
    * const errorMessage = formatter.formatCliError(error)
-   * console.log(errorMessage) // "Unknown flag '--invalid'"
+   * console.log(errorMessage) // "Unrecognized flag: --invalid"
    * ```
    *
    * @since 4.0.0
@@ -121,23 +120,24 @@ export interface Formatter {
    * **Example** (Formatting error sections)
    *
    * ```ts
-   * import { Data } from "effect"
-   * import { CliOutput } from "effect/unstable/cli"
-   *
-   * class ValidationError extends Data.TaggedError("ValidationError")<{
-   *   readonly message: string
-   * }> {}
+   * import { CliError, CliOutput } from "effect/unstable/cli"
    *
    * const colorFormatter = CliOutput.defaultFormatter({ colors: true })
    * const noColorFormatter = CliOutput.defaultFormatter({ colors: false })
    *
-   * const error = new ValidationError({ message: "Value must be positive" })
+   * const error = new CliError.InvalidValue({
+   *   option: "count",
+   *   value: "-1",
+   *   expected: "positive number",
+   *   kind: "flag"
+   * })
    *
    * const coloredError = colorFormatter.formatError(error)
-   * console.log(coloredError) // "\n\x1b[1m\x1b[31mERROR\x1b[0m\n  Value must be positive\x1b[0m"
+   * console.log(coloredError) // Includes ANSI color escapes
    *
    * const plainError = noColorFormatter.formatError(error)
-   * console.log(plainError) // "\nERROR\n  Value must be positive"
+   * console.log(plainError)
+   * // "\nERROR\n  Invalid value for flag --count: \"-1\". Expected: positive number"
    * ```
    *
    * @since 4.0.0

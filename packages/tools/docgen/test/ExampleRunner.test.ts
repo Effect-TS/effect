@@ -1,53 +1,74 @@
-import * as ExampleMetadata from "@effect/docgen/ExampleMetadata"
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
-import { dirname, join } from "node:path"
+import { dirname, join, relative } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const packageRoot = fileURLToPath(new URL("..", import.meta.url))
 const vitest = fileURLToPath(new URL("../node_modules/vitest/vitest.mjs", import.meta.url))
 
-const header = (name: string, packageName: string, sourcePath: string) =>
-  ExampleMetadata.encode({ name, packageName, sourcePath, declaration: "example", index: 1 })
+interface Example {
+  readonly source: string
+  readonly packageName: string
+  readonly sourcePath: string
+  readonly declarationPathname: string
+  readonly modulePath: ReadonlyArray<string>
+  readonly declarationPath: ReadonlyArray<string>
+  readonly declarationKind: "constant"
+  readonly index: number
+  readonly name: string
+}
+
+const example = (file: string, name: string, source: string): Example => ({
+  source,
+  packageName: "fixture",
+  sourcePath: relative(dirname(dirname(file)), file),
+  declarationPathname: file,
+  modulePath: ["src", file.slice(file.lastIndexOf("/") + 1)],
+  declarationPath: ["example"],
+  declarationKind: "constant",
+  index: 1,
+  name
+})
 
 const write = (path: string, content: string) =>
   Effect.promise(() => mkdir(dirname(path), { recursive: true }).then(() => writeFile(path, content)))
 
-const writeConfig = (root: string, files: ReadonlyArray<string>) => {
+const writeConfig = (root: string, examples: ReadonlyArray<Example>) => {
   const path = join(root, "vitest.config.ts")
   const runner = fileURLToPath(new URL("../src/ExampleRunner.ts", import.meta.url))
-  const projects = globalThis.Array.from(new Set(files.map((file) => dirname(dirname(file))))).map((root) => ({
-    test: {
-      name: root,
-      root,
-      include: ["examples/*.ts"],
-      exclude: [],
-      runner,
-      environment: "node",
-      coverage: { enabled: false },
-      isolate: false,
-      fileParallelism: false,
-      maxWorkers: 1,
-      minWorkers: 1,
-      maxConcurrency: 1,
-      sequence: { concurrent: false, shuffle: false }
+  const roots = globalThis.Array.from(new Set(examples.map((example) => dirname(dirname(example.declarationPathname)))))
+  const projects = roots.map((projectRoot) => {
+    const selected = examples.filter((example) => example.declarationPathname.startsWith(`${projectRoot}/`))
+    return {
+      plugins: `plugins: [vitestPlugin(${JSON.stringify(selected)})]`,
+      test: {
+        name: projectRoot,
+        root: projectRoot,
+        include: globalThis.Array.from(
+          new Set(selected.map((example) => relative(projectRoot, example.declarationPathname)))
+        ),
+        exclude: [],
+        runner,
+        environment: "node",
+        coverage: { enabled: false },
+        isolate: false,
+        fileParallelism: false,
+        maxWorkers: 1,
+        minWorkers: 1,
+        maxConcurrency: 1,
+        sequence: { concurrent: false, shuffle: false },
+        experimental: { viteModuleRunner: true }
+      }
     }
-  }))
+  })
+  const projectSource = projects.map(({ plugins, test }) => `{ ${plugins}, test: ${JSON.stringify(test)} }`).join(",\n")
   return write(
     path,
-    `import { defineConfig } from "vitest/config"\n\nexport default defineConfig(${
-      JSON.stringify({
-        root: packageRoot,
-        test: {
-          coverage: { enabled: false },
-          fileParallelism: false,
-          maxWorkers: 1,
-          projects
-        }
-      })
-    })\n`
+    `import { vitestPlugin } from ${JSON.stringify(fileURLToPath(new URL("../src/Examples.ts", import.meta.url)))}\n` +
+      `import { defineConfig } from "vitest/config"\n\n` +
+      `export default defineConfig({ test: { projects: [${projectSource}] } })\n`
   ).pipe(Effect.as(path))
 }
 
@@ -73,23 +94,21 @@ const run = (command: "list" | "run", config: string) =>
   })
 
 describe("ExampleRunner", () => {
-  it.effect("collects one metadata-named task per module without executing examples", () =>
+  it.effect("collects source-backed examples without importing their source files", () =>
     fixture((root) =>
       Effect.gen(function*() {
-        const first = join(root, "first", "examples", "same.ts")
-        const second = join(root, "second", "examples", "same.ts")
+        const first = join(root, "first", "src", "same.ts")
+        const second = join(root, "second", "src", "same.ts")
         const sideEffect = join(root, "executed")
         yield* write(
           first,
-          `${header("first/example example 1", "first", "packages/first/src/index.ts")}\n` +
-            `import { writeFile } from "node:fs/promises"\nawait writeFile(${JSON.stringify(sideEffect)}, "yes")\n`
+          `import { writeFile } from "node:fs/promises"\nawait writeFile(${JSON.stringify(sideEffect)}, "yes")\n`
         )
-        yield* write(
-          second,
-          `${header("second/example example 1", "second", "packages/second/src/index.ts")}\n` +
-            "export const value = 1\n"
-        )
-        const config = yield* writeConfig(root, [first, second])
+        yield* write(second, "export const value = 1\n")
+        const config = yield* writeConfig(root, [
+          example(first, "first/example example 1", "export const value = 1"),
+          example(second, "second/example example 1", "export const value = 2")
+        ])
 
         const result = yield* run("list", config)
 
@@ -110,30 +129,30 @@ describe("ExampleRunner", () => {
       })
     ))
 
-  it.effect("runs modules with static imports, top-level await, and package-local dependencies", () =>
+  it.effect("runs virtual modules with static imports, top-level await, and package-local dependencies", () =>
     fixture((root) =>
       Effect.gen(function*() {
-        const packageRoot = join(root, "package")
-        const example = join(packageRoot, "examples", "passing.ts")
-        yield* write(join(packageRoot, "helper.ts"), "export const local = 1\n")
+        const rootPackage = join(root, "package")
+        const source = join(rootPackage, "src", "passing.ts")
+        yield* write(source, "export const example = true\n")
+        yield* write(join(rootPackage, "src", "helper.ts"), "export const local = 1\n")
         yield* write(
-          join(packageRoot, "node_modules", "fixture-dependency", "package.json"),
+          join(rootPackage, "node_modules", "fixture-dependency", "package.json"),
           JSON.stringify({ name: "fixture-dependency", type: "module", exports: "./index.js" })
         )
         yield* write(
-          join(packageRoot, "node_modules", "fixture-dependency", "index.js"),
+          join(rootPackage, "node_modules", "fixture-dependency", "index.js"),
           "export const dependency = 2\n"
         )
-        yield* write(
-          example,
-          `${header("fixture/passing example 1", "fixture", "packages/fixture/src/index.ts")}\n` +
-            "import { dependency } from \"fixture-dependency\"\n" +
-            "import { local } from \"../helper.ts\"\n" +
+        const config = yield* writeConfig(root, [example(
+          source,
+          "fixture/passing example 1",
+          "import { dependency } from \"fixture-dependency\"\n" +
+            "import { local } from \"./helper.ts\"\n" +
             "await Promise.resolve()\n" +
             "if (dependency + local !== 3) throw new Error(\"bad resolution\")\n" +
             "export const value = dependency + local\n"
-        )
-        const config = yield* writeConfig(root, [example])
+        )])
 
         const result = yield* run("run", config)
 
@@ -142,22 +161,21 @@ describe("ExampleRunner", () => {
       })
     ))
 
-  it.effect("attributes synchronous and top-level-await failures to metadata names", () =>
+  it.effect("attributes synchronous and top-level-await failures to example names", () =>
     fixture((root) =>
       Effect.gen(function*() {
-        const sync = join(root, "examples", "sync.ts")
-        const rejected = join(root, "examples", "rejected.ts")
-        yield* write(
-          sync,
-          `${header("fixture/sync failure example 1", "fixture", "sync.ts")}\n` +
-            "throw new Error(\"sync failure\")\n"
-        )
-        yield* write(
-          rejected,
-          `${header("fixture/rejected failure example 1", "fixture", "rejected.ts")}\n` +
-            "await Promise.reject(new Error(\"top-level rejected\"))\n"
-        )
-        const config = yield* writeConfig(root, [sync, rejected])
+        const sync = join(root, "package", "src", "sync.ts")
+        const rejected = join(root, "package", "src", "rejected.ts")
+        yield* write(sync, "export const example = true\n")
+        yield* write(rejected, "export const example = true\n")
+        const config = yield* writeConfig(root, [
+          example(sync, "fixture/sync failure example 1", "throw new Error(\"sync failure\")"),
+          example(
+            rejected,
+            "fixture/rejected failure example 1",
+            "await Promise.reject(new Error(\"top-level rejected\"))"
+          )
+        ])
 
         const result = yield* run("run", config)
 
@@ -166,20 +184,6 @@ describe("ExampleRunner", () => {
         assert.match(result.stdout, /fixture\/rejected failure example 1/)
         assert.match(`${result.stdout}\n${result.stderr}`, /sync failure/)
         assert.match(`${result.stdout}\n${result.stderr}`, /top-level rejected/)
-      })
-    ))
-
-  it.effect("reports missing metadata in generated example directories", () =>
-    fixture((root) =>
-      Effect.gen(function*() {
-        const example = join(root, "examples", "missing.ts")
-        yield* write(example, "export const value = 1\n")
-        const config = yield* writeConfig(root, [example])
-
-        const result = yield* run("list", config)
-
-        assert.notStrictEqual(result.exitCode, 0)
-        assert.match(`${result.stdout}\n${result.stderr}`, /missing.*metadata header/)
       })
     ))
 })

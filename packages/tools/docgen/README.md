@@ -61,24 +61,24 @@ Declaration maps are used when present to recover original source links and vali
 
 ## Output Projections
 
-Ordinary generation writes package-local `docs` and `examples` directories from one semantic documentation model. Pass `--no-docs` or `--no-examples` to disable either projection independently. The equivalent configuration fields are `generateDocs` and `generateExamples`.
+Ordinary generation writes package-local `docs` directories from one semantic documentation model. Pass `--no-docs` to disable Markdown output. The equivalent configuration field is `generateDocs`.
 
 Pass `--json <file>` to write the renderer-independent semantic model as one JSON file for the entire run. The JSON projection contains the selected packages, modules, and extracted examples, but excludes validation diagnostics. It can be generated independently of the built-in projections:
 
 ```shell
-docgen --no-docs --no-examples --json artifacts/docgen.json
+docgen --no-docs --json artifacts/docgen.json
 ```
 
-Examples retain their original TypeScript module source, including static imports, exports, module scope, and top-level await. The next docgen run removes and recreates marker-owned selected package output, preventing stale examples. Docgen refuses to overwrite an unowned `examples` directory.
+Extracted examples retain their original TypeScript module source, including static imports, exports, module scope, and top-level await.
 
-Docgen does not typecheck or execute generated examples. Repositories should provide checked-in TypeScript and Vitest configuration for those separate development workflows. This repository uses:
+Docgen does not typecheck or execute examples during documentation generation. Repositories should provide checked-in JSDoc and Vitest configuration for those separate development workflows. This repository uses:
 
 ```shell
-pnpm exec tsc --noEmit --project tsconfig.examples.json
+pnpm jsdocs
 pnpm exec vitest run --config vitest.examples.config.ts
 ```
 
-The custom runner represents every generated module as one metadata-named test without executing it during collection. Package-specific Vitest projects preserve package-local dependency resolution, and generated modules remain available for manual editing and reruns.
+The custom runner represents every source-backed example as one metadata-named test without importing the documented source module during collection. A Vite plugin provides each example directly from the semantic model as a virtual TypeScript module. Package-specific Vitest projects preserve package-local dependency resolution, and each runner invocation reads the current source without regenerating intermediate files.
 
 ## Example Configuration
 
@@ -109,7 +109,7 @@ The `docgen.json` configuration file allows you to customize `docgen`'s behavior
 | Tag           | Description                                                                                                                                                                                                                   | Default   |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | `@category`   | Groups associated module exports together in the generated documentation.                                                                                                                                                     | `'utils'` |
-| `@example`    | Allows usage examples to be provided for your source code and extracted as package-local TypeScript modules.                                                                                                                  |           |
+| `@example`    | Allows usage examples to be provided for your source code and extracted for documentation, type checking, and source-backed runtime tests.                                                                                    |           |
 | `@since`      | Allows for documenting most recent library version in which a given piece of source code was updated.                                                                                                                         |           |
 | `@deprecated` | Marks source code as deprecated, which will ~~strikethrough~~ the name of the annotated module or function in the generated documentation.                                                                                    | `false`   |
 | `@internal`   | Prevents `docgen` from generating documentation for the annotated block of code. Additionally, if the `stripInternal` flag is set to `true` in `tsconfig.json`, TypeScript will not emit declarations for the annotated code. |           |
@@ -135,7 +135,6 @@ interface Config {
   readonly enforceExamples?: boolean
   readonly enforceVersion?: boolean
   readonly generateDocs?: boolean
-  readonly generateExamples?: boolean
   readonly frontend?: "source" | "declaration"
   readonly workspace?: boolean
   readonly packageHomepages?: Readonly<Record<string, string>>
@@ -158,7 +157,6 @@ The following table describes each configuration parameter, its purpose, and its
 | enforceExamples      | Whether or not `@example` tags for each module export should be required. (**Note**: examples will not be enforced in module documentation)                                         | `false`                            |
 | enforceVersion       | Whether or not `@since` tags for each module export should be required.                                                                                                             | `true`                             |
 | generateDocs         | Whether to generate Markdown documentation.                                                                                                                                         | `true`                             |
-| generateExamples     | Whether to generate extracted TypeScript example modules.                                                                                                                           | `true`                             |
 | frontend             | Whether to analyze TypeScript source or published declaration files.                                                                                                                | `'source'`                         |
 | workspace            | Whether to analyze publishable packages in the current workspace.                                                                                                                   | `false`                            |
 | packageHomepages     | Package-specific homepage overrides used during workspace generation.                                                                                                               | `{}`                               |

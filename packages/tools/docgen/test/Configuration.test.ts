@@ -150,7 +150,6 @@ describe("Configuration", () => {
         enforceExamples: false,
         enforceVersion: true,
         generateDocs: true,
-        generateExamples: true,
         frontend: "source",
         workspace: false,
         packageHomepages: {},
@@ -185,7 +184,6 @@ describe("Configuration", () => {
         enforceExamples: false,
         enforceVersion: true,
         generateDocs: true,
-        generateExamples: true,
         frontend: "source",
         workspace: false,
         packageHomepages: {},
@@ -261,33 +259,16 @@ describe("Configuration", () => {
     )
   })
 
-  it.effect("projection opt-outs override true environment configuration", () => {
+  it.effect("documentation opt-out overrides true environment configuration", () => {
     const program = Effect.gen(function*() {
       const config = yield* Configuration.Configuration
       assert.isFalse(config.generateDocs)
-      assert.isFalse(config.generateExamples)
     })
     return testCliFor(program)([
-      "--no-docs",
-      "--no-examples"
+      "--no-docs"
     ]).pipe(Effect.provide(makeTestLive({
-      DOCGEN_GENERATE_DOCS: "true",
-      DOCGEN_GENERATE_EXAMPLES: "true"
+      DOCGEN_GENERATE_DOCS: "true"
     })))
-  })
-
-  it.effect("projection configuration is retained without CLI opt-outs", () => {
-    const program = Effect.gen(function*() {
-      const config = yield* Configuration.Configuration
-      assert.isFalse(config.generateExamples)
-    })
-    return testCliFor(program)([]).pipe(
-      Effect.provide(
-        makeTestLive().pipe(
-          Layer.provide(makeDocgenJson({ generateExamples: false }))
-        )
-      )
-    )
   })
 
   it.effect("CLI directory flags override docgen.json", () => {

@@ -2,10 +2,12 @@
  * @since 0.6.0
  */
 
+import * as NodeServices from "@effect/platform-node/NodeServices"
 import * as WorkspaceInventory from "@effect/workspace/Workspace"
 import chalk from "chalk"
 import * as Array from "effect/Array"
 import * as Effect from "effect/Effect"
+import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import * as Glob from "glob"
 import * as Checker from "./Checker.ts"
@@ -13,7 +15,6 @@ import * as Configuration from "./Configuration.ts"
 import * as DeclarationFrontend from "./DeclarationFrontend.ts"
 import * as Documentation from "./Documentation.ts"
 import * as Domain from "./Domain.ts"
-import * as Examples from "./Examples.ts"
 import type { DocumentationFrontend } from "./Frontend.ts"
 import * as JsonOutput from "./JsonOutput.ts"
 import type * as SemanticModel from "./SemanticModel.ts"
@@ -39,7 +40,7 @@ interface PackageContext {
   readonly files: ReadonlyArray<Domain.SourceFile>
 }
 
-const analyze = <R>(frontend: DocumentationFrontend<R>) => frontend.analyze
+const runFrontend = <R>(frontend: DocumentationFrontend<R>) => frontend.analyze
 
 const compile = Effect.fnUntraced(function*(packages: ReadonlyArray<PackageContext>) {
   const files = packages.flatMap((pkg) => pkg.files)
@@ -66,10 +67,6 @@ const project = Effect.fnUntraced(function*(
         Effect.mapError((error) => new Domain.DocgenError({ message: `[${pkg.name}] ${error.message}` }))
       )
     }
-  }
-  if (config.generateExamples) {
-    yield* Effect.logInfo("Generating TypeScript examples...")
-    yield* Examples.write(model)
   }
   if (options.jsonFile !== undefined) {
     yield* Effect.logInfo("Generating JSON semantic model...")
@@ -156,6 +153,41 @@ const compileDeclarations = Effect.fnUntraced(function*(options: {
 })
 
 /** @internal */
+export const analyze = (options: {
+  readonly packages?: ReadonlyArray<string>
+  readonly paths?: ReadonlyArray<string>
+} = {}) =>
+  Effect.gen(function*() {
+    const config = yield* Configuration.Configuration
+    const sourcePackages = config.frontend === "source"
+      ? config.workspace ? yield* workspacePackages(options) : yield* nonWorkspacePackages
+      : undefined
+    return sourcePackages === undefined
+      ? yield* runFrontend({ analyze: compileDeclarations(options) })
+      : yield* runFrontend({ analyze: compile(sourcePackages) })
+  })
+
+/**
+ * Analyzes documentation sources with the Node.js runtime services.
+ *
+ * @category constructors
+ * @since 0.6.0
+ */
+export const analyzeWithNode = (
+  config: Configuration.ConfigurationShape,
+  options: {
+    readonly packages?: ReadonlyArray<string>
+    readonly paths?: ReadonlyArray<string>
+  } = {}
+): Promise<SemanticModel.SemanticModel> =>
+  Effect.runPromise(
+    analyze(options).pipe(
+      Effect.provideService(Configuration.Configuration, config),
+      Effect.provide(Layer.mergeAll(Domain.Process.layer, NodeServices.layer))
+    )
+  )
+
+/** @internal */
 export const program = (options: {
   readonly jsonFile?: string | undefined
   readonly packages?: ReadonlyArray<string>
@@ -171,15 +203,10 @@ export const program = (options: {
     if (hasFilters && !config.workspace) {
       return yield* new Domain.DocgenError({ message: "Package and path filters require workspace mode" })
     }
-    const sourcePackages = config.frontend === "source"
-      ? config.workspace ? yield* workspacePackages(options) : yield* nonWorkspacePackages
-      : undefined
-    const model = sourcePackages === undefined
-      ? yield* analyze({ analyze: compileDeclarations(options) })
-      : yield* analyze({ analyze: compile(sourcePackages) })
+    const model = yield* analyze(options)
     const process = yield* Domain.Process
     const cwd = yield* process.cwd
-    const packages = sourcePackages ?? model.packages.map((pkg) => ({
+    const packages = model.packages.map((pkg) => ({
       name: pkg.name,
       root: pkg.root,
       config: config.workspace ? Configuration.forPackage(config, pkg, cwd) : config,

@@ -249,7 +249,7 @@ export interface Service {
    * const streamingChat = Effect.gen(function*() {
    *   const chat = yield* Chat.empty
    *
-   *   const stream = yield* chat.streamText({
+   *   const stream = chat.streamText({
    *     prompt: "Write a short story about space exploration"
    *   })
    *
@@ -327,10 +327,10 @@ export interface Service {
    *     schema: ContactSchema
    *   })
    *
-   *   console.log(contact.object)
+   *   console.log(contact.value)
    *   // { name: "John Doe", email: "john@example.com", phone: "555-1234" }
    *
-   *   return contact.object
+   *   return contact.value
    * })
    * ```
    */
