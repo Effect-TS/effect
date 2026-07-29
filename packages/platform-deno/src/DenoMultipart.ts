@@ -24,18 +24,17 @@ import * as Multipart from "effect/unstable/http/Multipart"
  */
 export const stream = (source: Request): Stream.Stream<Multipart.Part, Multipart.MultipartError> =>
   Stream.fromReadableStream({
-    evaluate: () => source.body ?? emptyReadableStream,
+    evaluate: () =>
+      source.body ?? new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array())
+          controller.close()
+        }
+      }),
     onError: (cause) => Multipart.MultipartError.fromReason("InternalError", cause)
   }).pipe(
     Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(source.headers)))
   )
-
-const emptyReadableStream = new ReadableStream({
-  start(controller) {
-    controller.enqueue(new Uint8Array())
-    controller.close()
-  }
-})
 
 /**
  * Parses and persists multipart data from a web `Request`, requiring file-system, path, and scope services.
