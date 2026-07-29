@@ -1,0 +1,7 @@
+remote_theme: mikearnaldi/just-the-docs
+url: https://effect-ts.github.io
+baseurl: /effect
+search_enabled: true
+aux_links:
+  "GitHub":
+    - "//github.com/effect-ts/effect"

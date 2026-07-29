@@ -1,0 +1,85 @@
+name: Pages
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions: {}
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Generate documentation
+        run: pnpm docgen
+      - name: Configure site
+        run: cp .github/pages/{_config.yml,index.md} docs/
+      - name: Build pages Jekyll
+        uses: actions/jekyll-build-pages@v1
+        with:
+          source: ./docs
+          destination: ./_site
+      - name: Upload site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pages-v4
+          path: ./_site
+          include-hidden-files: true
+
+  publish:
+    if: github.repository_owner == 'Effect-Ts' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: Publish
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: github-pages-publication
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Download site artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: pages-v4
+          path: site
+      - name: Check out publication branch
+        run: |
+          if git fetch origin gh-pages:refs/heads/gh-pages; then
+            git worktree add publication gh-pages
+          else
+            git worktree add --detach publication
+            git -C publication switch --orphan gh-pages
+          fi
+      - name: Update v4 documentation
+        run: rsync -a --delete --exclude=.git --exclude=v3 site/ publication/
+      - name: Push publication branch
+        run: |
+          git -C publication config user.name github-actions[bot]
+          git -C publication config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git -C publication add --all
+          git -C publication diff --cached --quiet || git -C publication commit -m "Publish v4 API documentation"
+          git -C publication push origin HEAD:gh-pages
+      - name: Upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: publication
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
