@@ -615,13 +615,23 @@ export const makeFilterGroupReviver: <P>(
  *
  * **Gotchas**
  *
- * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass through unchanged.
+ * Patterns with potentially unsafe nested unbounded repetition are rejected by default. Set `unsafeAllowComplexPatterns`
+ * to `true` only when imported documents are trusted; such patterns use the runtime's native regular expression engine
+ * and may block validation for an unbounded amount of time.
+ *
+ * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass
+ * through unchanged.
  *
  * @category models
  * @since 4.0.0
  */
 export interface FromJsonSchemaOptions {
   readonly onEnter?: ((schema: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
+  /**
+   * Allows patterns with potentially unsafe nested unbounded repetition. Enable only for trusted documents. Defaults to
+   * `false`.
+   */
+  readonly unsafeAllowComplexPatterns?: boolean | undefined
 }
 
 /**
@@ -1166,7 +1176,10 @@ export function fromRepresentations(
  *
  * **Gotchas**
  *
- * Import is best-effort. Built-in declarations and checks are reconstructed with importer-owned revivers. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * Import is best-effort. Built-in declarations and checks are reconstructed with importer-owned revivers. Patterns with
+ * potentially unsafe nested unbounded repetition are rejected by default because validation uses the runtime's native
+ * regular expression engine. Use `unsafeAllowComplexPatterns` only for trusted documents. Callback results are used
+ * directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaMultiDocument} for multiple roots sharing definitions
  * @see {@link toRepresentation} for converting the result to a representation document
@@ -1190,7 +1203,10 @@ export function fromJsonSchemaDocument(
  *
  * **Gotchas**
  *
- * Every definition is translated, including definitions that no root references. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * Every definition is translated, including definitions that no root references. Patterns with potentially unsafe nested
+ * unbounded repetition are rejected by default because validation uses the runtime's native regular expression engine.
+ * Use `unsafeAllowComplexPatterns` only for trusted documents. Callback results are used directly, and exceptions raised
+ * by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaDocument} for a single root
  * @see {@link fromSchemaMultiDocument} for converting the result to a representation document

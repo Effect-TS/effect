@@ -124,6 +124,116 @@ function addNumberCheck(
   }
 }
 
+// A mandatory atom separates repetitions. Without one, nested unbounded
+// repetition can partition the same input exponentially many ways.
+function hasNestedUnboundedRepetition(pattern: string): boolean {
+  interface Branch {
+    mandatoryAtoms: number
+    hasUnboundedRepetition: boolean
+  }
+  interface Group {
+    branches: Array<Branch>
+    branch: Branch
+    lastAtomWasMandatory: boolean
+  }
+  function makeGroup(): Group {
+    return {
+      branches: [],
+      branch: { mandatoryAtoms: 0, hasUnboundedRepetition: false },
+      lastAtomWasMandatory: false
+    }
+  }
+  function addAtom(group: Group, hasUnboundedRepetition = false): void {
+    group.branch.mandatoryAtoms++
+    group.branch.hasUnboundedRepetition ||= hasUnboundedRepetition
+    group.lastAtomWasMandatory = true
+  }
+
+  const groups = [makeGroup()]
+  let closedGroupIsUnsafeToRepeat = false
+  let previousWasClosedGroup = false
+  for (let index = 0; index < pattern.length; index++) {
+    const character = pattern[index]
+    if (character === "\\") {
+      addAtom(groups[groups.length - 1])
+      index++
+      previousWasClosedGroup = false
+      continue
+    }
+    if (character === "[") {
+      for (index++; index < pattern.length; index++) {
+        if (pattern[index] === "\\") index++
+        else if (pattern[index] === "]") break
+      }
+      addAtom(groups[groups.length - 1])
+      previousWasClosedGroup = false
+      continue
+    }
+    if (character === "(") {
+      groups.push(makeGroup())
+      if (pattern[index + 1] === "?") {
+        if (pattern[index + 2] === "<" && pattern[index + 3] !== "=" && pattern[index + 3] !== "!") {
+          const end = pattern.indexOf(">", index + 3)
+          if (end !== -1) index = end
+        } else if (pattern[index + 2] === "<") {
+          index += 3
+        } else {
+          index += 2
+        }
+      }
+      previousWasClosedGroup = false
+      continue
+    }
+    if (character === ")" && groups.length > 1) {
+      const closed = groups.pop() as Group
+      closed.branches.push(closed.branch)
+      const hasUnboundedRepetition = closed.branches.some((branch) => branch.hasUnboundedRepetition)
+      closedGroupIsUnsafeToRepeat = closed.branches.some((branch) =>
+        branch.hasUnboundedRepetition && branch.mandatoryAtoms <= 1
+      )
+      addAtom(groups[groups.length - 1], hasUnboundedRepetition)
+      previousWasClosedGroup = true
+      continue
+    }
+    const group = groups[groups.length - 1]
+    if (character === "|") {
+      group.branches.push(group.branch)
+      group.branch = { mandatoryAtoms: 0, hasUnboundedRepetition: false }
+      group.lastAtomWasMandatory = false
+      previousWasClosedGroup = false
+      continue
+    }
+    let isQuantifier = character === "*" || character === "+" || character === "?"
+    let isUnbounded = character === "*" || character === "+"
+    let minimum = character === "*" || character === "?" ? 0 : 1
+    if (character === "{") {
+      const end = pattern.indexOf("}", index + 1)
+      if (end !== -1) {
+        const content = pattern.slice(index + 1, end)
+        const match = /^(\d+)(?:,(\d*))?$/.exec(content)
+        if (match !== null) {
+          isQuantifier = true
+          minimum = Number(match[1])
+          isUnbounded = content.includes(",") && match[2] === ""
+          index = end
+        }
+      }
+    }
+    if (isQuantifier) {
+      if (isUnbounded && previousWasClosedGroup && closedGroupIsUnsafeToRepeat) return true
+      if (minimum === 0 && group.lastAtomWasMandatory) {
+        group.branch.mandatoryAtoms--
+        group.lastAtomWasMandatory = false
+      }
+      group.branch.hasUnboundedRepetition ||= isUnbounded
+    } else if (character !== "^" && character !== "$") {
+      addAtom(group)
+    }
+    previousWasClosedGroup = false
+  }
+  return false
+}
+
 function jsonSchemaAnnotations(
   schema: JsonSchema.JsonSchema
 ): Schema.Annotations.Annotations | undefined {
@@ -741,7 +851,7 @@ function translateJsonSchemaMultiDocument(
       case "string":
         return {
           _tag: "String",
-          checks: collectStringChecks(schema)
+          checks: collectStringChecks(schema, path)
         }
       case "number":
       case "integer":
@@ -786,11 +896,14 @@ function translateJsonSchemaMultiDocument(
     }
   }
 
-  function collectStringChecks(schema: JsonSchema.JsonSchema): Array<Check> {
+  function collectStringChecks(schema: JsonSchema.JsonSchema, path: Path): Array<Check> {
     const checks: Array<Check> = []
     addNumberCheck(checks, schema.minLength, "effect/schema/isMinLength", "minLength")
     addNumberCheck(checks, schema.maxLength, "effect/schema/isMaxLength", "maxLength")
     if (typeof schema.pattern === "string") {
+      if (options?.unsafeAllowComplexPatterns !== true && hasNestedUnboundedRepetition(schema.pattern)) {
+        throw errorWithPath("Potentially unsafe pattern with nested unbounded repetition", [...path, "pattern"])
+      }
       checks.push(jsonSchemaFilter("effect/schema/isPattern", { source: schema.pattern, flags: "" }))
     }
     return checks
@@ -849,6 +962,13 @@ function translateJsonSchemaMultiDocument(
       !Array.isArray(schema.patternProperties)
     ) {
       for (const [pattern, value] of Object.entries(schema.patternProperties)) {
+        if (options?.unsafeAllowComplexPatterns !== true && hasNestedUnboundedRepetition(pattern)) {
+          throw errorWithPath("Potentially unsafe pattern with nested unbounded repetition", [
+            ...path,
+            "patternProperties",
+            pattern
+          ])
+        }
         signatures.push({
           parameter: {
             _tag: "String",

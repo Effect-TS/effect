@@ -6437,6 +6437,11 @@ Import is best-effort: JSON Schema constructs are translated to Effect schemas w
 lossless reconstruction of an original Effect schema. The optional `onEnter` callback can normalize each JSON Schema node
 before it is translated.
 
+Imported `pattern` and `patternProperties` values are executed by the runtime's native regular expression engine during
+validation. The importer rejects patterns with potentially unsafe nested unbounded repetition by default. Set
+`unsafeAllowComplexPatterns: true` only when importing trusted documents and accepting the risk of validation blocking for
+an unbounded amount of time.
+
 ## Code generation
 
 ### `toCodeDocument`

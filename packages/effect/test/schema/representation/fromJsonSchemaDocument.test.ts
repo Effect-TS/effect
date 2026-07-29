@@ -844,7 +844,7 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
-      it("pattern", () => {
+      it("round-trips ordinary patterns", () => {
         assertFromJsonSchema(
           { schema: { type: "string", pattern: "a*" } },
           {
@@ -909,6 +909,27 @@ describe("fromJsonSchemaDocument", () => {
             "references": {}
           }
         )
+      })
+
+      it("rejects patterns with nested unbounded repetition", () => {
+        throws(
+          () =>
+            SchemaRepresentation.fromJsonSchemaDocument(
+              JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(a+)+$" })
+            ),
+          `Potentially unsafe pattern with nested unbounded repetition
+  at ["schema"]["pattern"]`
+        )
+      })
+
+      it("allows opting out for trusted documents", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(a+)+$" }),
+          { unsafeAllowComplexPatterns: true }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertFalse(is("a!"))
       })
     })
   })
@@ -2073,6 +2094,20 @@ describe("fromJsonSchemaDocument", () => {
           },
           "references": {}
         }
+      )
+    })
+
+    it("rejects unsafe patternProperties", () => {
+      throws(
+        () =>
+          SchemaRepresentation.fromJsonSchemaDocument(
+            JsonSchema.fromSchemaDraft2020_12({
+              type: "object",
+              patternProperties: { "^(a+)+$": { type: "string" } }
+            })
+          ),
+        `Potentially unsafe pattern with nested unbounded repetition
+  at ["schema"]["patternProperties"]["^(a+)+$"]`
       )
     })
 
