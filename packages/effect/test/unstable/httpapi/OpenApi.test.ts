@@ -138,6 +138,37 @@ describe("OpenApi", () => {
     assert.property(streamExtension, "errorSchema")
   })
 
+  it("deduplicates JSON string schemas across JSON and SSE data responses", () => {
+    const Content = Schema.Struct({ text: Schema.String }).annotate({ identifier: "Tool.Content" })
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("content", "/content", { success: Schema.fromJsonString(Content) }),
+        HttpApiEndpoint.get("stream", "/stream", {
+          success: HttpApiSchema.StreamSse({ data: Content })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.components.schemas, {
+      "Tool.ContentJsonEncoding": {
+        type: "string",
+        contentMediaType: "application/json"
+      }
+    })
+    assert.deepStrictEqual(
+      spec.paths["/content"]?.get?.responses[200]?.content?.["application/json"]?.schema,
+      { $ref: "#/components/schemas/Tool.ContentJsonEncoding" }
+    )
+    const streamSchema = spec.paths["/stream"]?.get?.responses[200]?.content?.["text/event-stream"]?.schema
+    assert.isDefined(streamSchema)
+    assert.deepStrictEqual(
+      (streamSchema as { readonly properties?: Record<string, unknown> }).properties?.data,
+      { $ref: "#/components/schemas/Tool.ContentJsonEncoding" }
+    )
+  })
+
   it("rejects duplicate method and path pairs", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
