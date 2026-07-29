@@ -14145,7 +14145,14 @@ function makeClass<
 
 function getClassTransformation(self: new(...args: ReadonlyArray<any>) => any) {
   return new SchemaTransformation.Transformation<any, any, never, never>(
-    SchemaGetter.transform((input) => new self(input)),
+    SchemaGetter.transform((input) =>
+      new self(input, {
+        "~payload": {
+          token: payloadToken,
+          value: input
+        }
+      })
+    ),
     SchemaGetter.passthrough()
   )
 }
