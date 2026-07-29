@@ -6,7 +6,7 @@ import { describe, expect, it } from "tstyche"
 describe("HttpApiSchema", () => {
   describe("status", () => {
     it("preserves schema services when used with pipe", () => {
-      class NotFound extends Schema.TaggedErrorClass<NotFound>()("NotFound", {}) {}
+      class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {}) {}
 
       const schema = NotFound.pipe(HttpApiSchema.status(404))
 

@@ -398,7 +398,7 @@ function getError(error: ErrorConstraint | undefined): ReadonlySet<Schema.Top> {
  * import { Effect, Schema } from "effect"
  * import { HttpApiMiddleware } from "effect/unstable/httpapi"
  *
- * export class CustomError extends Schema.TaggedErrorClass<CustomError>()("CustomError", {}) {}
+ * export class CustomError extends Schema.TaggedError<CustomError>()("CustomError", {}) {}
  *
  * export class ErrorHandler extends HttpApiMiddleware.Service<ErrorHandler>()("api/ErrorHandler", {
  *   error: CustomError

@@ -100,7 +100,7 @@ const ErrorTypeId: ErrorTypeId = "~effect/persistence/Redis/RedisError"
  * @category errors
  * @since 4.0.0
  */
-export class RedisError extends Schema.ErrorClass<RedisError>(ErrorTypeId)({
+export class RedisError extends Schema.Error<RedisError>(ErrorTypeId)({
   _tag: Schema.tag("RedisError"),
   cause: Schema.Defect()
 }) {

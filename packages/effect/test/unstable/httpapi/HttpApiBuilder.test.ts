@@ -475,7 +475,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
 
   it.effect("does not try another security scheme after the handler fails", () =>
     Effect.gen(function*() {
-      class HandlerFailure extends Schema.TaggedErrorClass<HandlerFailure>()("HandlerFailure", {
+      class HandlerFailure extends Schema.TaggedError<HandlerFailure>()("HandlerFailure", {
         message: Schema.String
       }, { httpApiStatus: 418 }) {}
 

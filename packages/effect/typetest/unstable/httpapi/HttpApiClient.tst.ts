@@ -843,7 +843,7 @@ describe("HttpApiClient", () => {
     })
 
     it("preserves custom client errors when normalizing HttpClientError", () => {
-      class CustomClientError extends Schema.ErrorClass<CustomClientError>("CustomClientError")({
+      class CustomClientError extends Schema.Error<CustomClientError>("CustomClientError")({
         _tag: Schema.tag("CustomClientError")
       }) {}
 
@@ -957,10 +957,10 @@ describe("HttpApiClient", () => {
     })
 
     it("selects within the requested group when endpoint identifiers overlap", () => {
-      class UsersEndpointError extends Schema.TaggedErrorClass<UsersEndpointError>()("UsersEndpointError", {}) {}
-      class AdminsEndpointError extends Schema.TaggedErrorClass<AdminsEndpointError>()("AdminsEndpointError", {}) {}
-      class UsersClientError extends Schema.TaggedErrorClass<UsersClientError>()("UsersClientError", {}) {}
-      class AdminsClientError extends Schema.TaggedErrorClass<AdminsClientError>()("AdminsClientError", {}) {}
+      class UsersEndpointError extends Schema.TaggedError<UsersEndpointError>()("UsersEndpointError", {}) {}
+      class AdminsEndpointError extends Schema.TaggedError<AdminsEndpointError>()("AdminsEndpointError", {}) {}
+      class UsersClientError extends Schema.TaggedError<UsersClientError>()("UsersClientError", {}) {}
+      class AdminsClientError extends Schema.TaggedError<AdminsClientError>()("AdminsClientError", {}) {}
 
       class UsersMiddleware extends HttpApiMiddleware.Service<UsersMiddleware, {
         clientError: UsersClientError
@@ -1117,7 +1117,7 @@ describe("HttpApiClient", () => {
         readonly customService: "customService"
       }
 
-      class CustomClientError extends Schema.ErrorClass<CustomClientError>("CustomClientError")({
+      class CustomClientError extends Schema.Error<CustomClientError>("CustomClientError")({
         _tag: Schema.tag("CustomClientError")
       }) {}
 
@@ -1159,11 +1159,11 @@ describe("HttpApiClient", () => {
 
   describe("client middleware", () => {
     it("requires layers and includes errors for required client middleware", () => {
-      class RequiredClientError extends Schema.ErrorClass<RequiredClientError>("RequiredClientError")({
+      class RequiredClientError extends Schema.Error<RequiredClientError>("RequiredClientError")({
         _tag: Schema.tag("RequiredClientError")
       }) {}
 
-      class OptionalClientError extends Schema.ErrorClass<OptionalClientError>("OptionalClientError")({
+      class OptionalClientError extends Schema.Error<OptionalClientError>("OptionalClientError")({
         _tag: Schema.tag("OptionalClientError")
       }) {}
 
@@ -1212,7 +1212,7 @@ describe("HttpApiClient", () => {
     })
 
     it("enforces required middleware for makeWith, group, and endpoint", () => {
-      class RequiredClientError extends Schema.ErrorClass<RequiredClientError>("RequiredClientError")({
+      class RequiredClientError extends Schema.Error<RequiredClientError>("RequiredClientError")({
         _tag: Schema.tag("RequiredClientError")
       }) {}
 

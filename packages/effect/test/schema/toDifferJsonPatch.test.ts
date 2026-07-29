@@ -231,7 +231,7 @@ describe("Schema.toDifferJsonPatch", () => {
       class B extends Schema.Class<B>("B")({ a: A }) {}
       roundtrip(B)
 
-      class E extends Schema.ErrorClass<E>("E")({ message: Schema.String }) {}
+      class E extends Schema.Error<E>("E")({ message: Schema.String }) {}
       roundtrip(E)
     })
   })

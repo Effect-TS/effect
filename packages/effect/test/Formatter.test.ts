@@ -161,8 +161,8 @@ describe("Formatter", () => {
       strictEqual(format(new A({ a: "a" })), `A({"a":"a"})`)
     })
 
-    it("Schema.ErrorClass", () => {
-      class E extends Schema.ErrorClass<E>("E")({
+    it("Schema.Error", () => {
+      class E extends Schema.Error<E>("E")({
         a: Schema.String
       }) {}
       strictEqual(format(new E({ a: "a" })), `E`)

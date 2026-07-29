@@ -999,8 +999,8 @@ describe("Serializers", () => {
         await decoding.succeed({ a: 0 }, new A({ a: 0 }))
       })
 
-      it("ErrorClass", async () => {
-        class E extends Schema.ErrorClass<E>("E")({
+      it("Error", async () => {
+        class E extends Schema.Error<E>("E")({
           a: Schema.Finite
         }) {}
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(Schema.toType(E)))
@@ -1488,7 +1488,7 @@ describe("Serializers", () => {
       })
 
       it("Error", async () => {
-        class E extends Schema.ErrorClass<E>("E")({
+        class E extends Schema.Error<E>("E")({
           a: FiniteFromDate
         }) {}
         const asserts = new TestSchema.Asserts(Schema.toCodecJson(E))
@@ -2557,8 +2557,8 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         await decoding.succeed({ a: "0" }, new A({ a: 0 }))
       })
 
-      it("ErrorClass", async () => {
-        class E extends Schema.ErrorClass<E>("E")({
+      it("Error", async () => {
+        class E extends Schema.Error<E>("E")({
           a: Schema.Finite
         }) {}
         const asserts = new TestSchema.Asserts(Schema.toCodecStringTree(Schema.toType(E)))

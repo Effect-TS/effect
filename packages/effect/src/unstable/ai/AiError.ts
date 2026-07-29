@@ -78,7 +78,7 @@ const redactHeaders = (headers: Record<string, string>): Record<string, string> 
  * @category reason
  * @since 4.0.0
  */
-export class NetworkError extends Schema.ErrorClass<NetworkError>(
+export class NetworkError extends Schema.Error<NetworkError>(
   "effect/ai/AiError/NetworkError"
 )({
   _tag: Schema.tag("NetworkError"),
@@ -366,7 +366,7 @@ export const HttpContext = Schema.Struct({
  * @category reason
  * @since 4.0.0
  */
-export class RateLimitError extends Schema.ErrorClass<RateLimitError>(
+export class RateLimitError extends Schema.Error<RateLimitError>(
   "effect/ai/AiError/RateLimitError"
 )({
   _tag: Schema.tag("RateLimitError"),
@@ -419,7 +419,7 @@ export class RateLimitError extends Schema.ErrorClass<RateLimitError>(
  * @category reason
  * @since 4.0.0
  */
-export class QuotaExhaustedError extends Schema.ErrorClass<QuotaExhaustedError>(
+export class QuotaExhaustedError extends Schema.Error<QuotaExhaustedError>(
   "effect/ai/AiError/QuotaExhaustedError"
 )({
   _tag: Schema.tag("QuotaExhaustedError"),
@@ -474,7 +474,7 @@ export class QuotaExhaustedError extends Schema.ErrorClass<QuotaExhaustedError>(
  * @category reason
  * @since 4.0.0
  */
-export class AuthenticationError extends Schema.ErrorClass<AuthenticationError>(
+export class AuthenticationError extends Schema.Error<AuthenticationError>(
   "effect/ai/AiError/AuthenticationError"
 )({
   _tag: Schema.tag("AuthenticationError"),
@@ -534,7 +534,7 @@ export class AuthenticationError extends Schema.ErrorClass<AuthenticationError>(
  * @category reason
  * @since 4.0.0
  */
-export class ContentPolicyError extends Schema.ErrorClass<ContentPolicyError>(
+export class ContentPolicyError extends Schema.Error<ContentPolicyError>(
   "effect/ai/AiError/ContentPolicyError"
 )({
   _tag: Schema.tag("ContentPolicyError"),
@@ -589,7 +589,7 @@ export class ContentPolicyError extends Schema.ErrorClass<ContentPolicyError>(
  * @category reason
  * @since 4.0.0
  */
-export class InvalidRequestError extends Schema.ErrorClass<InvalidRequestError>(
+export class InvalidRequestError extends Schema.Error<InvalidRequestError>(
   "effect/ai/AiError/InvalidRequestError"
 )({
   _tag: Schema.tag("InvalidRequestError"),
@@ -648,7 +648,7 @@ export class InvalidRequestError extends Schema.ErrorClass<InvalidRequestError>(
  * @category reason
  * @since 4.0.0
  */
-export class InternalProviderError extends Schema.ErrorClass<InternalProviderError>(
+export class InternalProviderError extends Schema.Error<InternalProviderError>(
   "effect/ai/AiError/InternalProviderError"
 )({
   _tag: Schema.tag("InternalProviderError"),
@@ -701,7 +701,7 @@ export class InternalProviderError extends Schema.ErrorClass<InternalProviderErr
  * @category reason
  * @since 4.0.0
  */
-export class InvalidOutputError extends Schema.ErrorClass<InvalidOutputError>(
+export class InvalidOutputError extends Schema.Error<InvalidOutputError>(
   "effect/ai/AiError/InvalidOutputError"
 )({
   _tag: Schema.tag("InvalidOutputError"),
@@ -778,7 +778,7 @@ export class InvalidOutputError extends Schema.ErrorClass<InvalidOutputError>(
  * @category reason
  * @since 4.0.0
  */
-export class StructuredOutputError extends Schema.ErrorClass<StructuredOutputError>(
+export class StructuredOutputError extends Schema.Error<StructuredOutputError>(
   "effect/ai/AiError/StructuredOutputError"
 )({
   _tag: Schema.tag("StructuredOutputError"),
@@ -858,7 +858,7 @@ export class StructuredOutputError extends Schema.ErrorClass<StructuredOutputErr
  * @category reason
  * @since 4.0.0
  */
-export class UnsupportedSchemaError extends Schema.ErrorClass<UnsupportedSchemaError>(
+export class UnsupportedSchemaError extends Schema.Error<UnsupportedSchemaError>(
   "effect/ai/AiError/UnsupportedSchemaError"
 )({
   _tag: Schema.tag("UnsupportedSchemaError"),
@@ -910,7 +910,7 @@ export class UnsupportedSchemaError extends Schema.ErrorClass<UnsupportedSchemaE
  * @category reason
  * @since 4.0.0
  */
-export class UnknownError extends Schema.ErrorClass<UnknownError>(
+export class UnknownError extends Schema.Error<UnknownError>(
   "effect/ai/AiError/UnknownError"
 )({
   _tag: Schema.tag("UnknownError"),
@@ -969,7 +969,7 @@ export class UnknownError extends Schema.ErrorClass<UnknownError>(
  * @category reason
  * @since 4.0.0
  */
-export class ToolNotFoundError extends Schema.ErrorClass<ToolNotFoundError>(
+export class ToolNotFoundError extends Schema.Error<ToolNotFoundError>(
   "effect/ai/AiError/ToolNotFoundError"
 )({
   _tag: Schema.tag("ToolNotFoundError"),
@@ -1025,7 +1025,7 @@ export class ToolNotFoundError extends Schema.ErrorClass<ToolNotFoundError>(
  * @category reason
  * @since 4.0.0
  */
-export class ToolParameterValidationError extends Schema.ErrorClass<ToolParameterValidationError>(
+export class ToolParameterValidationError extends Schema.Error<ToolParameterValidationError>(
   "effect/ai/AiError/ToolParameterValidationError"
 )({
   _tag: Schema.tag("ToolParameterValidationError"),
@@ -1081,7 +1081,7 @@ export class ToolParameterValidationError extends Schema.ErrorClass<ToolParamete
  * @category reason
  * @since 4.0.0
  */
-export class InvalidToolResultError extends Schema.ErrorClass<InvalidToolResultError>(
+export class InvalidToolResultError extends Schema.Error<InvalidToolResultError>(
   "effect/ai/AiError/InvalidToolResultError"
 )({
   _tag: Schema.tag("InvalidToolResultError"),
@@ -1136,7 +1136,7 @@ export class InvalidToolResultError extends Schema.ErrorClass<InvalidToolResultE
  * @category reason
  * @since 4.0.0
  */
-export class ToolResultEncodingError extends Schema.ErrorClass<ToolResultEncodingError>(
+export class ToolResultEncodingError extends Schema.Error<ToolResultEncodingError>(
   "effect/ai/AiError/ToolResultEncodingError"
 )({
   _tag: Schema.tag("ToolResultEncodingError"),
@@ -1191,7 +1191,7 @@ export class ToolResultEncodingError extends Schema.ErrorClass<ToolResultEncodin
  * @category reason
  * @since 4.0.0
  */
-export class ToolConfigurationError extends Schema.ErrorClass<ToolConfigurationError>(
+export class ToolConfigurationError extends Schema.Error<ToolConfigurationError>(
   "effect/ai/AiError/ToolConfigurationError"
 )({
   _tag: Schema.tag("ToolConfigurationError"),
@@ -1244,7 +1244,7 @@ export class ToolConfigurationError extends Schema.ErrorClass<ToolConfigurationE
  * @category reason
  * @since 4.0.0
  */
-export class ToolkitRequiredError extends Schema.ErrorClass<ToolkitRequiredError>(
+export class ToolkitRequiredError extends Schema.Error<ToolkitRequiredError>(
   "effect/ai/AiError/ToolkitRequiredError"
 )({
   _tag: Schema.tag("ToolkitRequiredError"),
@@ -1299,7 +1299,7 @@ export class ToolkitRequiredError extends Schema.ErrorClass<ToolkitRequiredError
  * @category reason
  * @since 4.0.0
  */
-export class InvalidUserInputError extends Schema.ErrorClass<InvalidUserInputError>(
+export class InvalidUserInputError extends Schema.Error<InvalidUserInputError>(
   "effect/ai/AiError/InvalidUserInputError"
 )({
   _tag: Schema.tag("InvalidUserInputError"),
@@ -1459,7 +1459,7 @@ const TypeId = "~effect/unstable/ai/AiError/AiError" as const
  * @category schemas
  * @since 4.0.0
  */
-export class AiError extends Schema.ErrorClass<AiError>(
+export class AiError extends Schema.Error<AiError>(
   "effect/ai/AiError/AiError"
 )({
   _tag: Schema.tag("AiError"),

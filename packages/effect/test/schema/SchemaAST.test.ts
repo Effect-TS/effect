@@ -286,8 +286,8 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.collectSentinels(ast), [{ key: "_tag", literal: "A" }])
     })
 
-    it("ErrorClass", () => {
-      class E extends Schema.ErrorClass<E>("E")({
+    it("Error", () => {
+      class E extends Schema.Error<E>("E")({
         type: Schema.Literal("E"),
         e: Schema.String
       }) {}
@@ -295,8 +295,8 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.collectSentinels(ast), [{ key: "type", literal: "E" }])
     })
 
-    it("TaggedErrorClass", () => {
-      class E extends Schema.TaggedErrorClass<E>()("E", {
+    it("TaggedError", () => {
+      class E extends Schema.TaggedError<E>()("E", {
         e: Schema.String
       }) {}
       const ast = E.ast

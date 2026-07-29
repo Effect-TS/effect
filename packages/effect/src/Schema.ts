@@ -10627,22 +10627,101 @@ const getErrorOptions = (key: ErrorOptionsKey): NormalizedErrorOptions | undefin
 
 const errorSchemaCache: Array<Error | undefined> = []
 
+const errorClassImpl: {
+  <Self = never, Brand = {}>(identifier: string): {
+    <const Fields extends Struct.Fields>(
+      fields: Fields,
+      annotations?: Annotations.Declaration<Self, readonly [Struct<Fields>]>
+    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.Error">
+      : Class<Self, Struct<Fields>, Cause_.YieldableError & Brand>
+    <S extends Struct<Struct.Fields>>(
+      schema: S,
+      annotations?: Annotations.Declaration<Self, readonly [S]>
+    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.Error"> : Class<Self, S, Cause_.YieldableError & Brand>
+  }
+} = <Self, Brand = {}>(identifier: string) =>
+(
+  schema: Struct.Fields | Struct<Struct.Fields>,
+  annotations?: Annotations.Declaration<Self, readonly [Struct<Struct.Fields>]>
+): [Self] extends [never] ? MissingSelfGeneric<"Schema.Error">
+  : Class<Self, Struct<Struct.Fields>, Cause_.YieldableError & Brand> =>
+{
+  const struct = isStruct(schema) ? schema : Struct(schema)
+  const self = makeClass(
+    core.Error,
+    identifier,
+    struct,
+    annotations,
+    (identifier) => ({
+      name: identifier
+    })
+  )
+  return self
+}
+
 /**
- * Schema for JavaScript `Error` objects.
+ * Creates either a schema for JavaScript `Error` objects or a schema-backed,
+ * yieldable error class.
+ *
+ * **When to use**
+ *
+ * Use when you need either a schema for `globalThis.Error` values or a typed,
+ * schema-backed error class. Call `Schema.Error()` with optional
+ * {@link ErrorOptions} for the instance schema, or call
+ * `Schema.Error<Self>(identifier)` with a string identifier for the error class.
  *
  * **Details**
  *
- * Default JSON serializer:
+ * The instance schema encodes an `Error` as an object with `message`, optional
+ * `name`, and optional `cause` properties, and decodes that object back into an
+ * `Error`. Stack traces are omitted by default for security. Pass
+ * `{ includeStack: true }` to include stack traces, or
+ * `{ excludeCause: true }` to omit causes.
  *
- * Encodes an `Error` as an object with `message`, optional `name`, and optional
- * `cause` properties, and decodes that object back into an `Error`. Stack
- * traces are omitted by default for security. Pass `{ includeStack: true }` to
- * include stack traces, or `{ excludeCause: true }` to omit causes.
+ * The class constructor combines {@link Class} validation with the
+ * `YieldableError` interface, so instances can be yielded directly inside
+ * `Effect.gen`.
+ *
+ * **Example** (JavaScript error schema)
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ *
+ * const ErrorSchema = Schema.Error({ includeStack: true })
+ * ```
+ *
+ * **Example** (Schema-backed error class)
+ *
+ * ```ts
+ * import { Effect, Schema } from "effect"
+ *
+ * class NotFound extends Schema.Error<NotFound>("NotFound")({
+ *   id: Schema.Number
+ * }) {}
+ *
+ * const program = Effect.gen(function*() {
+ *   yield* new NotFound({ id: 1 })
+ * })
+ * ```
  *
  * @category constructors
  * @since 4.0.0
  */
-export function Error(options?: ErrorOptions): Error {
+export const Error: {
+  (options?: ErrorOptions): Error
+  <Self = never, Brand = {}>(identifier: string): {
+    <const Fields extends Struct.Fields>(
+      fields: Fields,
+      annotations?: Annotations.Declaration<Self, readonly [Struct<Fields>]>
+    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.Error">
+      : Class<Self, Struct<Fields>, Cause_.YieldableError & Brand>
+    <S extends Struct<Struct.Fields>>(
+      schema: S,
+      annotations?: Annotations.Declaration<Self, readonly [S]>
+    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.Error"> : Class<Self, S, Cause_.YieldableError & Brand>
+  }
+} = function Error(options?: ErrorOptions | string): any {
+  if (Predicate.isString(options)) return errorClassImpl(options)
   const key = getErrorOptionsKey(options)
   const cached = errorSchemaCache[key]
   if (cached !== undefined) {
@@ -14255,8 +14334,8 @@ type MissingSelfGeneric<Usage extends string> =
  * ```
  *
  * @see {@link TaggedClass} for adding a `_tag` literal field to the class schema
- * @see {@link ErrorClass} for defining schema-backed error classes
- * @see {@link TaggedErrorClass} for defining tagged schema-backed error classes
+ * @see {@link Error} for defining schema-backed error classes
+ * @see {@link TaggedError} for defining tagged schema-backed error classes
  *
  * @category constructors
  * @since 3.10.0
@@ -14357,61 +14436,6 @@ export const TaggedClass: {
 }
 
 /**
- * Creates a schema-backed error class that can be used as a typed,
- * yieldable error in Effect programs. Combines {@link Class} validation with
- * the `YieldableError` interface so instances can be yielded directly inside
- * `Effect.gen`.
- *
- * **Example** (Schema-backed error)
- *
- * ```ts
- * import { Effect, Schema } from "effect"
- *
- * class NotFound extends Schema.ErrorClass<NotFound>("NotFound")({
- *   id: Schema.Number
- * }) {}
- *
- * const program = Effect.gen(function*() {
- *   yield* new NotFound({ id: 1 })
- * })
- * ```
- *
- * @category constructors
- * @since 4.0.0
- */
-export const ErrorClass: {
-  <Self = never, Brand = {}>(identifier: string): {
-    <const Fields extends Struct.Fields>(
-      fields: Fields,
-      annotations?: Annotations.Declaration<Self, readonly [Struct<Fields>]>
-    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.ErrorClass">
-      : Class<Self, Struct<Fields>, Cause_.YieldableError & Brand>
-    <S extends Struct<Struct.Fields>>(
-      schema: S,
-      annotations?: Annotations.Declaration<Self, readonly [S]>
-    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.ErrorClass"> : Class<Self, S, Cause_.YieldableError & Brand>
-  }
-} = <Self, Brand = {}>(identifier: string) =>
-(
-  schema: Struct.Fields | Struct<Struct.Fields>,
-  annotations?: Annotations.Declaration<Self, readonly [Struct<Struct.Fields>]>
-): [Self] extends [never] ? MissingSelfGeneric<"Schema.ErrorClass">
-  : Class<Self, Struct<Struct.Fields>, Cause_.YieldableError & Brand> =>
-{
-  const struct = isStruct(schema) ? schema : Struct(schema)
-  const self = makeClass(
-    core.Error,
-    identifier,
-    struct,
-    annotations,
-    (identifier) => ({
-      name: identifier
-    })
-  )
-  return self
-}
-
-/**
  * Defines a schema-backed yieldable error class with an automatically populated
  * `_tag` field.
  *
@@ -14425,7 +14449,7 @@ export const ErrorClass: {
  * ```ts
  * import { Effect, Schema } from "effect"
  *
- * class NotFound extends Schema.TaggedErrorClass<NotFound>()("NotFound", {
+ * class NotFound extends Schema.TaggedError<NotFound>()("NotFound", {
  *   id: Schema.Number
  * }) {}
  *
@@ -14437,13 +14461,13 @@ export const ErrorClass: {
  * @category constructors
  * @since 3.10.0
  */
-export const TaggedErrorClass: {
+export const TaggedError: {
   <Self = never, Brand = {}>(identifier?: string): {
     <Tag extends string, const Fields extends Struct.Fields>(
       tag: Tag,
       fields: Fields,
       annotations?: Annotations.Declaration<Self, readonly [TaggedStruct<Tag, Fields>]>
-    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.TaggedErrorClass">
+    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.TaggedError">
       : Class<Self, TaggedStruct<Tag, Fields>, Cause_.YieldableError & Brand>
     <Tag extends string, S extends Struct<Struct.Fields>>(
       tag: Tag,
@@ -14452,7 +14476,7 @@ export const TaggedErrorClass: {
         Self,
         readonly [Struct<Simplify<{ readonly _tag: tag<Tag> } & S["fields"]>>]
       >
-    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.TaggedErrorClass">
+    ): [Self] extends [never] ? MissingSelfGeneric<"Schema.TaggedError">
       : Class<Self, Struct<Simplify<{ readonly _tag: tag<Tag> } & S["fields"]>>, Cause_.YieldableError & Brand>
   }
 } = (identifier?: string) => {
@@ -14466,7 +14490,7 @@ export const TaggedErrorClass: {
         unsafePreserveChecks: true
       }) :
       TaggedStruct(tagValue, schema)
-    return ErrorClass<any, {}>(identifier ?? tagValue)(
+    return errorClassImpl<any, {}>(identifier ?? tagValue)(
       struct,
       annotations as Annotations.Declaration<any, readonly [typeof struct]>
     )

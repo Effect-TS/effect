@@ -6417,7 +6417,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Error.TypeId` -> `none`: The PlatformError runtime marker is internal in v4; use the PlatformError class/tag.
 
-- `Error.TypeIdError` -> `Data.TaggedError or Schema.ErrorClass`: The platform-specific error-class factory was removed; define tagged data errors or schema-backed error classes directly.
+- `Error.TypeIdError` -> `Data.TaggedError or Schema.Error`: The platform-specific error-class factory was removed; define tagged data errors or schema-backed error classes directly.
 
 - `Error.isPlatformError` -> `value instanceof PlatformError.PlatformError`: PlatformError is a class in v4; use an instanceof check or match its PlatformError tag.
 
@@ -6729,11 +6729,11 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpApiSchema.Empty` -> `effect/unstable/httpapi/HttpApiSchema#Empty`: The API remains and returns Schema.Void annotated with the supplied status.
 
-- `HttpApiSchema.EmptyError` -> `effect/Schema#ErrorClass`: Define a normal schema error with httpApiStatus, then derive its no-content wire schema with asNoContent.
+- `HttpApiSchema.EmptyError` -> `effect/Schema#Error`: Define a normal schema error with httpApiStatus, then derive its no-content wire schema with asNoContent.
 
-- `HttpApiSchema.EmptyErrorClass` -> `effect/Schema#ErrorClass`: The class and no-content codec are separate in v4; combine ErrorClass with HttpApiSchema.asNoContent.
+- `HttpApiSchema.EmptyErrorClass` -> `effect/Schema#Error`: The class and no-content codec are separate in v4; combine Schema.Error with HttpApiSchema.asNoContent.
 
-- `HttpApiSchema.EmptyErrorUnify` -> `none`: Removed with EmptyError; Schema.ErrorClass instances already support yieldable-error behavior.
+- `HttpApiSchema.EmptyErrorUnify` -> `none`: Removed with EmptyError; Schema.Error instances already support yieldable-error behavior.
 
 - `HttpApiSchema.EmptyErrorUnifyIgnore` -> `none`: Removed with EmptyError; do not recreate the old Unify marker.
 
@@ -13804,9 +13804,9 @@ Schema.toFormatter(schema)
 
 - `Schema.TaggedClass` -> `Schema.TaggedClass`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 
-- `Schema.TaggedError` -> `Schema.TaggedErrorClass`: Rename the tagged error class constructor.
+- `Schema.TaggedError` -> `Schema.TaggedError`: The tagged error class constructor retains its v3 name.
 
-- `Schema.TaggedErrorClass` -> `Schema.TaggedErrorClass`: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+- `Schema.TaggedErrorClass` -> `Schema.TaggedError`: Rename the tagged error class constructor.
 
 - `Schema.TaggedRequest` -> `effect/unstable/rpc/Rpc.make`: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
 

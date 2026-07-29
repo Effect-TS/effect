@@ -307,7 +307,7 @@ describe("HttpApi", () => {
     })
 
     it.effect("required client middleware can fail with typed clientError", () => {
-      class ClientFailure extends Schema.ErrorClass<ClientFailure>("ClientFailure")({
+      class ClientFailure extends Schema.Error<ClientFailure>("ClientFailure")({
         _tag: Schema.tag("ClientFailure")
       }) {}
 
@@ -1421,7 +1421,7 @@ describe("HttpApi", () => {
     })
 
     it.effect("error from plain text", () => {
-      class RateLimitError extends Schema.ErrorClass<RateLimitError>("RateLimitError")({
+      class RateLimitError extends Schema.Error<RateLimitError>("RateLimitError")({
         _tag: Schema.tag("RateLimitError"),
         message: Schema.String
       }) {}
@@ -1488,17 +1488,17 @@ describe("HttpApi", () => {
   })
 })
 
-class UserError extends Schema.ErrorClass<UserError>("UserError")({
+class UserError extends Schema.Error<UserError>("UserError")({
   _tag: Schema.tag("UserError")
 }, {
   httpApiStatus: 400
 }) {}
-class GroupError extends Schema.ErrorClass<GroupError>("GroupError")({
+class GroupError extends Schema.Error<GroupError>("GroupError")({
   _tag: Schema.tag("GroupError")
 }, {
   httpApiStatus: 418
 }) {}
-class NoStatusError extends Schema.ErrorClass<NoStatusError>("NoStatusError")({
+class NoStatusError extends Schema.Error<NoStatusError>("NoStatusError")({
   _tag: Schema.tag("NoStatusError")
 }) {}
 
