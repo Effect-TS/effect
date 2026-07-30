@@ -9,7 +9,7 @@ patchedDependencies:
     hash: 29cf7a343aefd3c59ad238a4cb067f0a1a0adbeed07b6d57d6f31d6c80a5e25e
     path: patches/@changesets__assemble-release-plan.patch
   '@changesets/get-github-info':
-    hash: 314478eeae7ab2776d847d3b2b7ea1cd4231c65907e85597dacd0bea56355bc9
+    hash: b115194683c42c3551e1f0977acf715c8903aaf832147bd626d8f079a517a85b
     path: patches/@changesets__get-github-info.patch
 
 importers:
@@ -7553,7 +7553,7 @@ snapshots:
 
   '@changesets/changelog-github@0.7.0':
     dependencies:
-      '@changesets/get-github-info': 0.8.0(patch_hash=314478eeae7ab2776d847d3b2b7ea1cd4231c65907e85597dacd0bea56355bc9)
+      '@changesets/get-github-info': 0.8.0(patch_hash=b115194683c42c3551e1f0977acf715c8903aaf832147bd626d8f079a517a85b)
       '@changesets/types': 6.1.0
       dotenv: 8.6.0
     transitivePeerDependencies:
@@ -7612,7 +7612,7 @@ snapshots:
       picocolors: 1.1.1
       semver: 7.8.5
 
-  '@changesets/get-github-info@0.8.0(patch_hash=314478eeae7ab2776d847d3b2b7ea1cd4231c65907e85597dacd0bea56355bc9)':
+  '@changesets/get-github-info@0.8.0(patch_hash=b115194683c42c3551e1f0977acf715c8903aaf832147bd626d8f079a517a85b)':
     dependencies:
       dataloader: 1.4.0
       node-fetch: 2.7.0
