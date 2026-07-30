@@ -729,7 +729,7 @@ const daysInMonth = (date: Date): number =>
  *
  * // Get next run from current time
  * const nextFromNow = Cron.next(cron)
- * console.log(nextFromNow) // > 2026-08-08T04:00:00.000Z
+ * console.log(nextFromNow) // > <next run from current time>
  * ```
  *
  * @see {@link prev} for finding the previous scheduled occurrence

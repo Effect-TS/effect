@@ -1104,7 +1104,7 @@ export const zoneMakeNamedEffect: (zoneId: string) => Effect.Effect<TimeZone.Nam
  * import { DateTime } from "effect"
  *
  * const localZone = DateTime.zoneMakeLocal()
- * console.log(DateTime.zoneToString(localZone)) // > Europe/Berlin
+ * console.log(DateTime.zoneToString(localZone)) // > <system time zone>
  * ```
  *
  * @category time zones
@@ -1463,8 +1463,8 @@ export const isFuture: (self: DateTime) => Effect.Effect<boolean> = Internal.isF
  * const now = DateTime.nowUnsafe()
  * const futureDate = DateTime.add(now, { hours: 1 })
  *
- * console.log(DateTime.isFutureUnsafe(futureDate)) // > true
- * console.log(DateTime.isFutureUnsafe(now)) // > false
+ * console.log(DateTime.isFutureUnsafe(futureDate)) // > <live-clock future comparison>
+ * console.log(DateTime.isFutureUnsafe(now)) // > <live-clock future comparison>
  * ```
  *
  * @category comparisons
@@ -1516,8 +1516,8 @@ export const isPast: (self: DateTime) => Effect.Effect<boolean> = Internal.isPas
  * const now = DateTime.nowUnsafe()
  * const pastDate = DateTime.subtract(now, { hours: 1 })
  *
- * console.log(DateTime.isPastUnsafe(pastDate)) // > true
- * console.log(DateTime.isPastUnsafe(now)) // > false
+ * console.log(DateTime.isPastUnsafe(pastDate)) // > <live-clock past comparison>
+ * console.log(DateTime.isPastUnsafe(now)) // > <live-clock past comparison>
  * ```
  *
  * @category comparisons
@@ -2076,7 +2076,7 @@ export const nowInCurrentZone: Effect.Effect<Zoned, never, CurrentTimeZone> = Ef
  *   date.setMinutes(30) // Set to 30 minutes
  * })
  *
- * console.log(DateTime.formatIso(modified)) // > 2024-01-01T14:30:00.000Z
+ * console.log(DateTime.formatIso(modified)) // > <local date mutation result>
  * ```
  *
  * @category mapping
@@ -2547,7 +2547,7 @@ export const format: {
  *   minute: "2-digit"
  * })
  *
- * console.log(local) // > June 15, 2024 at 04:30 PM
+ * console.log(local) // > <local date and time>
  * ```
  *
  * @category formatting
@@ -2597,7 +2597,7 @@ export const formatLocal: {
  *   timeZoneName: "short"
  * })
  *
- * console.log(utcFormatted) // > 06/15/2024, 02:30 PM UTC
+ * console.log(utcFormatted) // > <localized UTC date and time>
  * ```
  *
  * @category formatting

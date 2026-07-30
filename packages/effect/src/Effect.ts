@@ -8904,9 +8904,9 @@ export interface RunOptions {
  * //      ▼
  * const fiber = Effect.runFork(program)
  *
- * setTimeout(() => {
- *   Effect.runFork(Fiber.interrupt(fiber))
- * }, 500)
+ * await Effect.runPromise(
+ *   Effect.sleep("500 millis").pipe(Effect.andThen(Fiber.interrupt(fiber)))
+ * )
  * ```
  *
  * @category running

@@ -185,8 +185,8 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
  * // Same object always returns the same hash
  * console.log(Hash.random(obj1) === Hash.random(obj1)) // > true
  *
- * // Different objects get different hashes
- * console.log(Hash.random(obj1) === Hash.random(obj2)) // > false
+ * // Different objects typically get different hashes
+ * console.log(Hash.random(obj1) === Hash.random(obj2)) // > <random hash comparison>
  * ```
  *
  * @category hashing

@@ -28,6 +28,8 @@ const methods = [
   "warn"
 ] as const
 
+const isWildcard = (line: string): boolean => /^<[^<>]+>$/.test(line)
+
 const assert = async (
   run: () => unknown | PromiseLike<unknown>,
   expected: string
@@ -67,7 +69,16 @@ const assert = async (
     }
   }
 
-  expect(output.join("").replace(/\r?\n$/, "")).toStrictEqual(expected)
+  const actual = output.join("").replace(/\r?\n$/, "")
+  const expectedLines = expected.split("\n")
+  if (!expectedLines.some(isWildcard)) {
+    expect(actual).toStrictEqual(expected)
+    return
+  }
+
+  const actualLines = actual.split("\n")
+  expect(actualLines.map((line, index) => isWildcard(expectedLines[index] ?? "") ? expectedLines[index] : line))
+    .toStrictEqual(expectedLines)
 }
 
 /**
