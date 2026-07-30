@@ -610,13 +610,15 @@ const parseOpenApi = (
         if (!isHttpApi && Predicate.isUndefined(op.sseSchema) && Predicate.isNotUndefined(sseResponseSchema)) {
           const statusMajorNumber = Number(parsedStatus[0])
           if (!Number.isNaN(statusMajorNumber) && statusMajorNumber < 4) {
-            op.sseSchemaMode = Predicate.isObject(sseMediaType) && getEffectStreamEncoding(sseMediaType) === "sse"
-              ? "event"
-              : "data"
+            const effectStream = sseMediaType["x-effect-stream"]
+            op.sseSchemaMode = getEffectStreamEncoding(sseMediaType) === "sse" ? "event" : "data"
             op.sseSchema = addSchema(
               `${schemaId}${status}Sse`,
               op.sseSchemaMode === "event"
-                ? makeSseEventSchema(resolveReference(sseResponseSchema, resolveRef), sseMediaType)
+                ? makeSseEventSchema(
+                  resolveReference(sseResponseSchema, resolveRef),
+                  effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined
+                )
                 : sseResponseSchema,
               op
             )
@@ -983,11 +985,10 @@ const getEffectStreamErrorSchema = (mediaType: object): JsonSchema.JsonSchema | 
 
 const makeSseEventSchema = (
   input: JsonSchema.JsonSchema,
-  mediaType: object
+  failureEvent: string | undefined
 ): JsonSchema.JsonSchema => {
   const eventSchema = normalizeSseEventSchema(input)
-  const stream = (mediaType as Record<string, unknown>)["x-effect-stream"]
-  if (!Predicate.isObject(stream) || typeof stream.failureEvent !== "string") {
+  if (failureEvent === undefined) {
     return eventSchema
   }
   return {
@@ -997,7 +998,7 @@ const makeSseEventSchema = (
         type: "object",
         properties: {
           id: { type: "string" },
-          event: { const: stream.failureEvent },
+          event: { const: failureEvent },
           data: { type: "string" }
         },
         required: ["event", "data"],
