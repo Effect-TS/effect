@@ -14964,24 +14964,7 @@ const toCodecJsonASTBase = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
 })
 
 /** @internal */
-export const toCodecJsonAST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
-  const identifier = InternalAnnotations.resolveIdentifier(ast)
-  const out = toCodecJsonASTBase(ast)
-  if (identifier === undefined || out.encoding === undefined) return out
-
-  const encoded = SchemaAST.getLastEncoding(out)
-  if (
-    InternalAnnotations.resolveIdentifier(encoded) !== undefined ||
-    InternalAnnotations.resolveIdentifierFallback(encoded) === identifier
-  ) {
-    return out
-  }
-
-  const annotated = SchemaAST.annotate(encoded, {
-    [InternalAnnotations.IDENTIFIER_FALLBACK_KEY]: identifier
-  })
-  return SchemaAST.applyToSelfOrLastLinkEncoding(() => annotated)(out)
-})
+export const toCodecJsonAST = memoize(toCodecJsonASTBase)
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
   return context.defaultValue === undefined ?

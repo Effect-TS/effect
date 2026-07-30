@@ -439,7 +439,7 @@ describe("LanguageModel", () => {
         required: ["name"],
         additionalProperties: false,
         $defs: {
-          "PersonJsonEncoding": {
+          "PersonEncoded": {
             type: "object",
             properties: {
               name: {

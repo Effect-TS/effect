@@ -20,7 +20,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
         ],
         "type": "object",
       },
-      "GroupJsonEncoding": {
+      "GroupEncoded": {
         "additionalProperties": false,
         "properties": {
           "id": {
@@ -36,7 +36,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
         ],
         "type": "object",
       },
-      "NoStatusErrorJsonEncoding": {
+      "NoStatusErrorEncoded": {
         "additionalProperties": false,
         "properties": {
           "_tag": {
@@ -51,22 +51,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
         ],
         "type": "object",
       },
-      "UserErrorJsonEncoding": {
-        "additionalProperties": false,
-        "properties": {
-          "_tag": {
-            "enum": [
-              "UserError",
-            ],
-            "type": "string",
-          },
-        },
-        "required": [
-          "_tag",
-        ],
-        "type": "object",
-      },
-      "UserJsonEncoding": {
+      "UserEncoded": {
         "additionalProperties": false,
         "properties": {
           "createdAt": {
@@ -93,6 +78,21 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
           "id",
           "name",
           "createdAt",
+        ],
+        "type": "object",
+      },
+      "UserErrorEncoded": {
+        "additionalProperties": false,
+        "properties": {
+          "_tag": {
+            "enum": [
+              "UserError",
+            ],
+            "type": "string",
+          },
+        },
+        "required": [
+          "_tag",
         ],
         "type": "object",
       },
@@ -168,7 +168,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GroupJsonEncoding",
+                  "$ref": "#/components/schemas/GroupEncoded",
                 },
               },
             },
@@ -325,7 +325,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GroupJsonEncoding",
+                  "$ref": "#/components/schemas/GroupEncoded",
                 },
               },
             },
@@ -397,7 +397,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/UserJsonEncoding",
+                    "$ref": "#/components/schemas/UserEncoded",
                   },
                   "type": "array",
                 },
@@ -409,7 +409,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/NoStatusErrorJsonEncoding",
+                  "$ref": "#/components/schemas/NoStatusErrorEncoded",
                 },
               },
             },
@@ -477,7 +477,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserJsonEncoding",
+                  "$ref": "#/components/schemas/UserEncoded",
                 },
               },
             },
@@ -489,10 +489,10 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
                 "schema": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/UserErrorJsonEncoding",
+                      "$ref": "#/components/schemas/UserErrorEncoded",
                     },
                     {
-                      "$ref": "#/components/schemas/UserErrorJsonEncoding",
+                      "$ref": "#/components/schemas/UserErrorEncoded",
                     },
                   ],
                 },
@@ -668,7 +668,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserJsonEncoding",
+                  "$ref": "#/components/schemas/UserEncoded",
                 },
               },
             },
@@ -678,7 +678,7 @@ exports[`HttpApi > original tests > OpenAPI spec > fixture 1`] = `
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UserErrorJsonEncoding",
+                  "$ref": "#/components/schemas/UserErrorEncoded",
                 },
               },
             },

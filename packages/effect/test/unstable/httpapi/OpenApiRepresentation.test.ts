@@ -8,8 +8,8 @@ describe("OpenApi representation v2 consumer", () => {
     const Api = HttpApi.make("Api").annotate(HttpApi.AdditionalSchemas, [AdditionalDate])
 
     assert.deepStrictEqual(OpenApi.fromApi(Api).components.schemas, {
-      AdditionalDate: { $ref: "#/components/schemas/AdditionalDateJsonEncoding" },
-      AdditionalDateJsonEncoding: { type: "string" }
+      AdditionalDate: { $ref: "#/components/schemas/AdditionalDateEncoded" },
+      AdditionalDateEncoded: { type: "string" }
     })
   })
 
@@ -41,14 +41,14 @@ describe("OpenApi representation v2 consumer", () => {
     const spec = OpenApi.fromApi(Api)
 
     assert.deepStrictEqual(spec.components.schemas, {
-      "Tool.ContentJsonEncoding": {
+      "Tool.ContentEncoded": {
         type: "string",
         contentMediaType: "application/json"
       }
     })
     assert.deepStrictEqual(
       spec.paths["/content"]?.get?.responses[200]?.content?.["application/json"]?.schema,
-      { $ref: "#/components/schemas/Tool.ContentJsonEncoding" }
+      { $ref: "#/components/schemas/Tool.ContentEncoded" }
     )
     assert.deepStrictEqual(
       spec.paths["/stream"]?.get?.responses[200]?.content?.["text/event-stream"]?.schema,
@@ -57,7 +57,7 @@ describe("OpenApi representation v2 consumer", () => {
         properties: {
           id: { anyOf: [{ type: "string" }, { type: "null" }] },
           event: { type: "string" },
-          data: { $ref: "#/components/schemas/Tool.ContentJsonEncoding" }
+          data: { $ref: "#/components/schemas/Tool.ContentEncoded" }
         },
         required: ["id", "event", "data"],
         additionalProperties: false
