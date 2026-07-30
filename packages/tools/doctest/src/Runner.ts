@@ -4,7 +4,6 @@
 
 import { createHash } from "node:crypto"
 import { readFile } from "node:fs/promises"
-import { createFilter } from "vite"
 import { TestRunner } from "vitest"
 import * as Protocol from "./Protocol.ts"
 
@@ -14,19 +13,18 @@ import * as Protocol from "./Protocol.ts"
  * @category testing
  * @since 4.0.0
  */
-export const wrap = (
-  Base: typeof TestRunner,
-  include: ReadonlyArray<string> = [],
-  root?: string | undefined
-): typeof TestRunner => {
-  const isRegularTest = include.length === 0
-    ? () => false
-    : createFilter(include, undefined, root === undefined ? undefined : { resolve: root })
+export const wrap = (Base: typeof TestRunner): typeof TestRunner => {
   return class DoctestRunner extends Base {
     override importFile(filepath: string, source: "collect" | "setup"): unknown {
-      if (source !== "collect" || isRegularTest(filepath)) return super.importFile(filepath, source)
+      if (source !== "collect") {
+        return super.importFile(filepath, source)
+      }
+
       return readFile(filepath).then((contents) => {
-        if (!contents.includes("import.meta.vitest")) return super.importFile(filepath, source)
+        if (!contents.includes("import.meta.vitest")) {
+          return super.importFile(filepath, source)
+        }
+
         const version = createHash("sha256").update(contents).digest("hex").slice(0, 16)
         return super.importFile(Protocol.collectorId(filepath, version), source)
       })

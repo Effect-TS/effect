@@ -22,4 +22,9 @@ export * as Runner from "./Runner.ts"
 /**
  * @since 4.0.0
  */
+export * as Runtime from "./Runtime.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as Source from "./Source.ts"

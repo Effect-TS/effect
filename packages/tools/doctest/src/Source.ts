@@ -14,6 +14,7 @@ export interface Snippet {
   readonly source: string
   readonly line: number
   readonly name: string | undefined
+  readonly expected: string | undefined
 }
 
 /**
@@ -28,12 +29,14 @@ const jsdocPattern = /\/\*\*[\s\S]*?\*\//g
 const fencePattern = /(?:```|~~~)(.*?)\n([\s\S]*?)(?:(?:```|~~~)|$)/g
 const runnableMarker = "import.meta.vitest"
 const namePattern = /(?:^|\s)name=(?:"([^"]+)"|'([^']+)'|([^\s]+))/
+const outputPattern = /^[ \t]*\/\/ >(?: (.*))?$/gm
 
 const lineNumberAt = (source: string): (offset: number) => number => {
   const starts = [0]
   for (let index = 0; index < source.length; index++) {
     if (source.charCodeAt(index) === 10) starts.push(index + 1)
   }
+
   return (offset) => {
     let low = 0
     let high = starts.length
@@ -52,16 +55,21 @@ const snippets = (
   lineAt: (offset: number) => number,
   jsdoc = false
 ): ReadonlyArray<Snippet> => {
-  return globalThis.Array.from(text.matchAll(fencePattern)).flatMap((match) => {
+  return Array.from(text.matchAll(fencePattern)).flatMap((match) => {
     const metadata = match[1].toLowerCase()
     if ((!metadata.startsWith("ts") && !metadata.startsWith("typescript")) || !metadata.includes(runnableMarker)) {
       return []
     }
+
     const name = namePattern.exec(match[1])
+    const source = jsdoc ? match[2].replace(/^[ \t]*\* ?/gm, "").trim() : match[2].trim()
+    const output = Array.from(source.matchAll(outputPattern), (match) => match[1] ?? "")
+
     return [{
-      source: jsdoc ? match[2].replace(/^[ \t]*\* ?/gm, "").trim() : match[2].trim(),
+      source,
       line: lineAt(offset + (match.index ?? 0)),
-      name: name?.[1] ?? name?.[2] ?? name?.[3]
+      name: name?.[1] ?? name?.[2] ?? name?.[3],
+      expected: output.length === 0 ? undefined : output.join("\n")
     }]
   })
 }
@@ -77,13 +85,14 @@ const snippets = (
  * @since 4.0.0
  */
 export const extract = (source: string, format: SourceFormat = "jsdoc"): ReadonlyArray<Snippet> => {
-  if (!source.includes(runnableMarker)) return []
+  if (!source.includes(runnableMarker)) {
+    return []
+  }
+
   const lineAt = lineNumberAt(source)
   return format === "markdown"
     ? snippets(source, 0, lineAt)
-    : globalThis.Array.from(source.matchAll(jsdocPattern)).flatMap((match) =>
-      snippets(match[0], match.index ?? 0, lineAt, true)
-    )
+    : Array.from(source.matchAll(jsdocPattern)).flatMap((match) => snippets(match[0], match.index ?? 0, lineAt, true))
 }
 
 /**

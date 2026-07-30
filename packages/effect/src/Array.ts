@@ -4540,7 +4540,7 @@ export const dedupe = <S extends Iterable<any>>(
  * import { Array } from "effect"
  *
  * console.log(Array.dedupeAdjacentWith([1, 1, 2, 2, 3, 3], (a, b) => a === b))
- * // [1, 2, 3]
+ * // > [ 1, 2, 3 ]
  * ```
  *
  * @see {@link dedupeAdjacent} — uses default equality

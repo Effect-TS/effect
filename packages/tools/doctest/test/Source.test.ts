@@ -1,0 +1,127 @@
+import * as Source from "@effect/doctest/Source"
+import { assert, describe, it } from "@effect/vitest"
+
+describe("Source", () => {
+  describe("JSDoc", () => {
+    it("extracts marked TypeScript fences in source order", () => {
+      const source = [
+        "/**",
+        " * First example.",
+        " * ```ts import.meta.vitest name=first",
+        " * const first = 1",
+        " * ```",
+        " */",
+        "const first = 1",
+        "/**",
+        " * ~~~typescript import.meta.vitest name='second example'",
+        " * const second = 2",
+        " * ~~~",
+        " */",
+        "const second = 2"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source), [
+        { source: "const first = 1", line: 3, name: "first", expected: undefined },
+        { source: "const second = 2", line: 9, name: "second example", expected: undefined }
+      ])
+    })
+
+    it("ignores fences outside JSDoc comments", () => {
+      const source = [
+        "```ts import.meta.vitest",
+        "const outside = true",
+        "```",
+        "/**",
+        " * ```ts import.meta.vitest",
+        " * const inside = true",
+        " * ```",
+        " */"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source), [
+        { source: "const inside = true", line: 5, name: undefined, expected: undefined }
+      ])
+    })
+
+    it("ignores unmarked and non-TypeScript fences", () => {
+      const source = [
+        "/**",
+        " * ```ts",
+        " * const unmarked = true",
+        " * ```",
+        " * ```js import.meta.vitest",
+        " * const javascript = true",
+        " * ```",
+        " */"
+      ].join("\n")
+
+      assert.isEmpty(Source.extract(source))
+    })
+
+    it("extracts expected console output", () => {
+      const source = [
+        "/**",
+        " * ```ts import.meta.vitest",
+        " * console.log({ value: 1 })",
+        " * // > {",
+        " * // >   value: 1",
+        " * // > }",
+        " * ```",
+        " */"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source), [{
+        source: [
+          "console.log({ value: 1 })",
+          "// > {",
+          "// >   value: 1",
+          "// > }"
+        ].join("\n"),
+        line: 2,
+        name: undefined,
+        expected: "{\n  value: 1\n}"
+      }])
+    })
+
+    it("ignores explanatory and inline comments", () => {
+      const source = [
+        "/**",
+        " * ```ts import.meta.vitest",
+        " * // Explain the output to the reader.",
+        " * console.log(1) // > not an output marker",
+        " * ```",
+        " */"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source), [{
+        source: [
+          "// Explain the output to the reader.",
+          "console.log(1) // > not an output marker"
+        ].join("\n"),
+        line: 2,
+        name: undefined,
+        expected: undefined
+      }])
+    })
+  })
+
+  describe("Markdown", () => {
+    it("extracts only marked TypeScript fences", () => {
+      const source = [
+        "# Examples",
+        "",
+        "```ts",
+        "const ignored = true",
+        "```",
+        "",
+        "~~~typescript import.meta.vitest name=example",
+        "const value = 1",
+        "~~~"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source, "markdown"), [
+        { source: "const value = 1", line: 7, name: "example", expected: undefined }
+      ])
+    })
+  })
+})
