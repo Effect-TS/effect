@@ -1,15 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, strictEqual } from "@effect/vitest/utils"
+import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Schema from "effect/Schema"
 import * as Sink from "effect/Sink"
 import * as Stdio from "effect/Stdio"
 import * as Stream from "effect/Stream"
 import * as AiError from "effect/unstable/ai/AiError"
-import * as InternalMcpProtocol from "effect/unstable/ai/internal/mcpProtocol"
 import * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as McpServer from "effect/unstable/ai/McpServer"
@@ -20,9 +21,11 @@ import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpRouter from "effect/unstable/http/HttpRouter"
 import { RpcSerialization } from "effect/unstable/rpc"
-import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
-import { makeServerLayer, makeWebHandler } from "./McpServer/utils.ts"
+import type * as RpcMessage from "effect/unstable/rpc/RpcMessage"
+import * as RpcServer from "effect/unstable/rpc/RpcServer"
+import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
+import { makeServerLayer } from "./TestUtils/McpServerLayer.ts"
 
 const OptionalStringTool = Tool.make("OptionalStringTool", {
   parameters: Schema.Struct({ signature: Schema.optional(Schema.String) }),
@@ -93,30 +96,22 @@ const pingBody = {
   id: 0
 }
 
-const makeTestClientWith = Effect.fnUntraced(function*<A>(
-  serverLayer: Layer.Layer<A, never, HttpRouter.HttpRouter>,
+const makeTestClientWith = Effect.fnUntraced(function*<A, E>(
+  serverLayer: Layer.Layer<A, E, HttpRouter.HttpRouter>,
   options?: {
     readonly routerLayer?: Layer.Layer<never, never, HttpRouter.HttpRouter> | undefined
   } | undefined
 ) {
-  const responses: Array<Response> = []
-  const handler = yield* makeWebHandler(serverLayer, options)
+  const harness = yield* makeHttpHarness(serverLayer, options)
 
-  let sessionId: string | null = null
-  const customFetch: typeof fetch = async (input, init) => {
-    const request = input instanceof Request ? input : new Request(input, init)
-    if (sessionId) {
-      request.headers.set("Mcp-Session-Id", sessionId)
-    }
-    const response = await handler(request)
-    sessionId = response.headers.get("Mcp-Session-Id") ?? sessionId
-    responses.push(response.clone())
-    return response
-  }
-
-  const clientLayer = RpcClient.layerProtocolHttp({ url: "http://localhost/mcp" }).pipe(
+  const clientLayer = RpcClient.layerProtocolHttp({
+    url: "http://localhost/mcp",
+    transformClient: HttpClient.mapRequest(
+      HttpClientRequest.setHeader("accept", "application/json, text/event-stream")
+    )
+  }).pipe(
     Layer.provideMerge([FetchHttpClient.layer, RpcSerialization.layerJsonRpc()]),
-    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, customFetch))
+    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, harness.fetch))
   )
   const client = yield* RpcClient.make(McpSchema.ClientRpcs).pipe(
     Effect.provide(clientLayer)
@@ -126,7 +121,7 @@ const makeTestClientWith = Effect.fnUntraced(function*<A>(
     Effect.provide(clientLayer)
   )
 
-  return { client, responses, httpClient }
+  return { client, responses: harness.responses, httpClient }
 })
 
 const makeTestClient = makeTestClientWith(TestServerLayer)
@@ -158,81 +153,31 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
   return content.text
 }
 
-const makeTestProtocol = (protocolVersion: string, field: "a" | "b") => {
-  const Ping = Rpc.make("ping", {
-    payload: Schema.Struct({
-      [field]: field === "a" ? Schema.String : Schema.Number
-    }),
-    success: Schema.Struct({})
-  })
-  return InternalMcpProtocol.make({
-    protocolVersion,
-    clientRpcs: McpSchema.ClientRpcs.omit("ping").add(Ping),
-    clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
-    serverRequestRpcs: McpSchema.ServerRequestRpcs,
-    serverNotificationRpcs: McpSchema.ServerNotificationRpcs
-  })
-}
-
-const makeRawHttpServer = (
-  protocols: ReadonlyArray<InternalMcpProtocol.AnyProtocolAdapter>
-) =>
-  Effect.gen(function*() {
-    const serverLayer = McpServer.layerHttp({
-      name: "TestServer",
-      version: "1.0.0",
-      path: "/mcp",
-      protocols: protocols as unknown as [
-        McpProtocol.ProtocolAdapter,
-        ...Array<McpProtocol.ProtocolAdapter>
-      ]
-    })
-    const { dispose, handler } = HttpRouter.toWebHandler(serverLayer, { disableLogger: true })
-    yield* Effect.addFinalizer(() => Effect.promise(() => dispose()))
-
-    const request = (
-      body: unknown,
-      sessionId?: string
-    ) =>
-      Effect.promise(() =>
-        handler(
-          new Request("http://localhost/mcp", {
-            method: "POST",
-            headers: {
-              "content-type": "application/json",
-              ...(sessionId ? { "mcp-session-id": sessionId } : {})
-            },
-            body: JSON.stringify(body)
-          })
-        )
-      )
-
-    const initialize = Effect.fnUntraced(function*(protocolVersion: string, id: number) {
-      const response = yield* request({
-        jsonrpc: "2.0",
-        id,
-        method: "initialize",
-        params: {
-          protocolVersion,
-          capabilities: {},
-          clientInfo: {
-            name: "TestClient",
-            version: "1.0.0"
-          }
-        }
-      })
-      const sessionId = response.headers.get("mcp-session-id")
-      if (sessionId === null) {
-        return yield* Effect.die("MCP initialize response did not include a session id")
-      }
-      return { response, sessionId }
-    })
-
-    return { initialize, request }
-  })
-
 describe("McpServer", () => {
-  it.effect("should replay the negotiated protocol header when a session is initialized", () =>
+  it.effect("should reject browser Origins by default while accepting Origin-less clients", () =>
+    Effect.gen(function*() {
+      const harness = yield* makeHttpHarness(TestServerLayer)
+      assert.strictEqual(
+        (yield* harness.post({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: initializePayload
+        })).status,
+        200
+      )
+      assert.strictEqual(
+        (yield* harness.post({
+          jsonrpc: "2.0",
+          id: 2,
+          method: "initialize",
+          params: initializePayload
+        }, { origin: "https://browser.example" })).status,
+        403
+      )
+    }))
+
+  it.effect("should replay the selected protocol header when a session is initialized", () =>
     Effect.gen(function*() {
       const { client, responses } = yield* makeTestClient
 
@@ -252,16 +197,17 @@ describe("McpServer", () => {
       strictEqual(responses[1].headers.get("Mcp-Protocol-Version"), "2025-06-18")
     }))
 
-  it.effect("should return 404 when a non-initialize request omits the MCP session id", () =>
+  it.effect("should return 400 when a non-initialize request omits the MCP session id", () =>
     Effect.gen(function*() {
       const { httpClient } = yield* makeTestClient
 
       const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", method: "ping", params: {}, id: 0 }),
         httpClient.execute
       )
 
-      strictEqual(response.status, 404)
+      strictEqual(response.status, 400)
     }))
   describe("registerToolkit", () => {
     it.effect("lists output schemas only for structured tool results", () =>
@@ -299,22 +245,16 @@ describe("McpServer", () => {
           }
         }))
 
-        const result = yield* client["tools/call"]({
+        const error = yield* client["tools/call"]({
           name: "OptionalStringTool",
           arguments: { signature: null }
-        })
+        }).pipe(Effect.flip)
 
         assert.isFalse(handlerInvoked)
-        assert.strictEqual(result.isError, true)
-
-        const text = toolResultText(result)
-        assert.match(text, /Invalid parameters for tool 'OptionalStringTool'/)
-        assert.match(text, /Expected string \| undefined, got null/)
-        assert.match(text, /at \["signature"\]/)
-        assert.isFalse(/effect\/ai\//.test(text))
-        assert.isFalse(/\[cause\]/.test(text))
-        assert.isFalse(/\n {4}at /.test(text))
-        assert.isFalse(/(?:file:\/\/)?\/(?:[^/\s]+\/)+[^/\s]+\.ts:\d+:\d+/.test(text))
+        assert.instanceOf(error, McpSchema.InvalidParams)
+        assert.match(error.message, /Invalid parameters for tool 'OptionalStringTool'/)
+        assert.match(error.message, /Expected string \| undefined, got null/)
+        assert.match(error.message, /at \["signature"\]/)
       }))
 
     it.effect("preserves successful results when optional parameters are omitted", () =>
@@ -424,6 +364,7 @@ describe("McpServer", () => {
       yield* client.initialize(initializePayload)
 
       const notificationResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe({
           jsonrpc: "2.0",
           method: "notifications/initialized",
@@ -438,6 +379,7 @@ describe("McpServer", () => {
       strictEqual(notificationResponse.headers["mcp-protocol-version"], "2025-06-18")
 
       const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, result: {} }),
         httpClient.execute
       )
@@ -445,6 +387,7 @@ describe("McpServer", () => {
       strictEqual(yield* responseOnly.text, "")
 
       const pingResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe(pingBody),
         httpClient.execute
       )
@@ -460,6 +403,7 @@ describe("McpServer", () => {
       yield* client.initialize(initializePayload)
 
       const unsupportedResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe(pingBody),
         HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
         httpClient.execute
@@ -469,6 +413,7 @@ describe("McpServer", () => {
       strictEqual(unsupportedResponse.headers["access-control-allow-origin"], "*")
 
       const responseOnly = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe({ jsonrpc: "2.0", id: 1, result: {} }),
         HttpClientRequest.setHeader("Mcp-Protocol-Version", "9999-01-01"),
         httpClient.execute
@@ -477,6 +422,7 @@ describe("McpServer", () => {
       strictEqual(yield* responseOnly.text, "")
 
       const absentVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe(pingBody),
         httpClient.execute
       )
@@ -484,6 +430,7 @@ describe("McpServer", () => {
 
       for (const protocolVersion of ["2025-03-26", "2024-11-05", "2024-10-07"]) {
         const response = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+          HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
           HttpClientRequest.bodyJsonUnsafe(pingBody),
           HttpClientRequest.setHeader("Mcp-Protocol-Version", protocolVersion),
           httpClient.execute
@@ -492,6 +439,7 @@ describe("McpServer", () => {
       }
 
       const declaredVersionResponse = yield* HttpClientRequest.post("http://localhost/mcp").pipe(
+        HttpClientRequest.setHeader("accept", "application/json, text/event-stream"),
         HttpClientRequest.bodyJsonUnsafe(pingBody),
         HttpClientRequest.setHeader("Mcp-Protocol-Version", "2025-06-18"),
         httpClient.execute
@@ -499,58 +447,129 @@ describe("McpServer", () => {
       strictEqual(declaredVersionResponse.status, 200)
     }))
   describe("protocol selection", () => {
-    for (const offeredVersion of ["2025-03-26", "2024-11-05", "2024-10-07"]) {
-      it.effect(`should select June when ${offeredVersion} is offered`, () =>
-        Effect.gen(function*() {
-          const { client, responses } = yield* makeTestClient
-
-          const result = yield* client.initialize({
-            protocolVersion: offeredVersion,
-            capabilities: {},
-            clientInfo: {
-              name: "TestClient",
-              version: "1.0.0"
-            }
-          })
-
-          strictEqual(result.protocolVersion, "2025-06-18")
-          strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
-        }))
-    }
-
-    it.effect("should decode with the pinned adapter when sessions use incompatible schemas", () =>
+    it.effect("should select June when an unsupported version is offered", () =>
       Effect.gen(function*() {
-        const protocolA = makeTestProtocol("test-a", "a")
-        const protocolB = makeTestProtocol("test-b", "b")
-        const { initialize, request } = yield* makeRawHttpServer([protocolA, protocolB])
-        const sessionA = yield* initialize("test-a", 1)
-        const sessionB = yield* initialize("test-b", 2)
+        const { client, responses } = yield* makeTestClient
 
-        const wrongForA = yield* request({
-          jsonrpc: "2.0",
-          id: 3,
-          method: "ping",
-          params: { b: 1 }
-        }, sessionA.sessionId)
-        const validForA = yield* request({
-          jsonrpc: "2.0",
-          id: 4,
-          method: "ping",
-          params: { a: "selected" }
-        }, sessionA.sessionId)
-        const validForB = yield* request({
-          jsonrpc: "2.0",
-          id: 5,
-          method: "ping",
-          params: { b: 1 }
-        }, sessionB.sessionId)
+        const result = yield* client.initialize({
+          protocolVersion: "2024-10-07",
+          capabilities: {},
+          clientInfo: {
+            name: "TestClient",
+            version: "1.0.0"
+          }
+        })
 
-        const invalidBody = (yield* Effect.promise(() => wrongForA.json())) as Record<string, unknown>
-        const validABody = (yield* Effect.promise(() => validForA.json())) as Record<string, unknown>
-        const validBBody = (yield* Effect.promise(() => validForB.json())) as Record<string, unknown>
-        assert.property(invalidBody, "error")
-        assert.deepStrictEqual(validABody, { jsonrpc: "2.0", id: 4, result: {} })
-        assert.deepStrictEqual(validBBody, { jsonrpc: "2.0", id: 5, result: {} })
+        strictEqual(result.protocolVersion, "2025-06-18")
+        strictEqual(responses[0].headers.get("Mcp-Protocol-Version"), "2025-06-18")
+      }))
+  })
+
+  describe("resource subscriptions", () => {
+    it.effect("should isolate resource update subscriptions between sessions", () =>
+      Effect.gen(function*() {
+        const clientIds = new Set([1, 2])
+        const client1Outbound = yield* Queue.unbounded<
+          RpcMessage.FromServerEncoded | RpcMessage.RequestEncoded
+        >()
+        const client2Outbound = yield* Queue.unbounded<
+          RpcMessage.FromServerEncoded | RpcMessage.RequestEncoded
+        >()
+        const disconnects = yield* Queue.unbounded<number>()
+        const writeRequest = yield* Deferred.make<
+          (clientId: number, message: RpcMessage.FromClientEncoded) => Effect.Effect<void>
+        >()
+        const protocol = yield* RpcServer.Protocol.make((write) =>
+          Deferred.succeed(writeRequest, write).pipe(
+            Effect.as({
+              disconnects,
+              send: (clientId, message) =>
+                Queue.offer(clientId === 1 ? client1Outbound : client2Outbound, message).pipe(Effect.asVoid),
+              end: (_clientId) => Effect.void,
+              clientIds: Effect.succeed(clientIds),
+              initialMessage: Effect.succeedNone,
+              supportsAck: false,
+              supportsTransferables: false,
+              supportsSpanPropagation: false
+            })
+          )
+        )
+        const ready = yield* Deferred.make<McpServer.McpServer["Service"]>()
+        yield* Effect.gen(function*() {
+          const context = yield* Layer.build(
+            McpServer.resource({
+              uri: "file:///target",
+              name: "Target",
+              content: Effect.succeed("target")
+            }).pipe(
+              Layer.provideMerge(
+                McpServer.layer({
+                  name: "TestServer",
+                  version: "1.0.0",
+                  protocols: [McpProtocol.v2025_06_18]
+                }).pipe(Layer.provide(Layer.succeed(RpcServer.Protocol, protocol)))
+              )
+            )
+          )
+          yield* Deferred.succeed(ready, Context.get(context, McpServer.McpServer))
+          return yield* Effect.never
+        }).pipe(Effect.scoped, Effect.forkScoped)
+        const server = yield* Deferred.await(ready)
+        const send = yield* Deferred.await(writeRequest)
+        const nextResponse = Effect.fnUntraced(function*(clientId: number, requestId: number) {
+          while (true) {
+            const message = yield* Queue.take(clientId === 1 ? client1Outbound : client2Outbound)
+            if (message._tag === "Exit" && message.requestId === requestId) {
+              return message
+            }
+          }
+        })
+        const nextResourceUpdate = Effect.fnUntraced(function*(clientId: number) {
+          while (true) {
+            const message = yield* Queue.take(clientId === 1 ? client1Outbound : client2Outbound)
+            if (message._tag === "Request" && message.tag === "notifications/resources/updated") {
+              return yield* Schema.decodeUnknownEffect(
+                McpSchema.ResourceUpdatedNotification.payloadSchema
+              )(message.payload)
+            }
+          }
+        })
+        const request = Effect.fnUntraced(function*(
+          clientId: number,
+          id: number,
+          method: string,
+          payload: unknown,
+          isNotification = false
+        ) {
+          yield* send(clientId, {
+            _tag: "Request",
+            id,
+            tag: method,
+            payload,
+            headers: [],
+            ...(isNotification ? { isNotification: true as const } : {})
+          })
+          if (!isNotification) {
+            yield* nextResponse(clientId, id)
+          }
+        })
+        const initialize = (clientId: number) =>
+          request(clientId, clientId, "initialize", initializePayload).pipe(
+            Effect.andThen(request(clientId, clientId + 10, "notifications/initialized", {}, true))
+          )
+
+        yield* initialize(1)
+        yield* initialize(2)
+        yield* request(1, 21, "resources/subscribe", { uri: "file:///target" })
+        yield* request(2, 22, "resources/subscribe", { uri: "file:///sentinel" })
+
+        yield* server.notifications["notifications/resources/updated"]({ uri: "file:///target" })
+        yield* server.notifications["notifications/resources/updated"]({ uri: "file:///sentinel" })
+
+        assert.strictEqual((yield* nextResourceUpdate(1)).uri, "file:///target")
+        assert.strictEqual((yield* nextResourceUpdate(2)).uri, "file:///sentinel")
+        assert.isTrue(Option.isNone(yield* Queue.poll(client1Outbound)))
+        assert.isTrue(Option.isNone(yield* Queue.poll(client2Outbound)))
       }))
   })
 
@@ -611,7 +630,8 @@ describe("McpServer", () => {
           result: {
             protocolVersion: "2025-06-18",
             capabilities: {
-              completions: {}
+              completions: {},
+              logging: {}
             },
             serverInfo: {
               name: "TestServer",

@@ -15,6 +15,10 @@ import * as McpSchema from "./McpSchema.ts"
  */
 export const v2025_06_18: ProtocolAdapter = Internal.make({
   protocolVersion: "2025-06-18",
+  transport: {
+    acceptsJsonRpcBatches: false,
+    requiresVersionHeader: true
+  },
   clientRpcs: McpSchema.ClientRpcs,
   clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
   serverRequestRpcs: McpSchema.ServerRequestRpcs,

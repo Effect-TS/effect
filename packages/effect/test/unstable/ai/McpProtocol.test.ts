@@ -26,6 +26,10 @@ const makeTestProtocol = <
 
   return McpProtocol.make({
     protocolVersion,
+    transport: {
+      acceptsJsonRpcBatches: true,
+      requiresVersionHeader: false
+    },
     clientRpcs: RpcGroup.make(TestRequest),
     clientNotificationRpcs: RpcGroup.make(),
     serverRequestRpcs: RpcGroup.make(),

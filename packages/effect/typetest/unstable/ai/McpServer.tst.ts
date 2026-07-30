@@ -2,6 +2,7 @@ import type * as Cause from "effect/Cause"
 import type * as Effect from "effect/Effect"
 import type * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
+import type * as Scope from "effect/Scope"
 import { McpProtocol, McpSchema, McpServer } from "effect/unstable/ai"
 import * as McpProtocolInternal from "effect/unstable/ai/internal/mcpProtocol"
 import * as Rpc from "effect/unstable/rpc/Rpc"
@@ -22,7 +23,8 @@ describe("McpServer", () => {
       expect(McpServer.layerStdio).type.toBeCallableWith(serverOptions)
       expect(McpServer.layerHttp).type.toBeCallableWith({
         ...serverOptions,
-        path: "/mcp"
+        path: "/mcp",
+        allowedOrigins: ["https://mcp.example"]
       })
     })
 
@@ -68,8 +70,9 @@ describe("McpServer", () => {
       })
     })
 
-    it("should expose only June and newer adapters when using the phase one built-ins", () => {
-      expect<keyof typeof McpProtocol>().type.toBe<"v2025_06_18">()
+    it("should expose the supported protocol adapter", () => {
+      expect<"v2025_06_18">().type.toBeAssignableTo<keyof typeof McpProtocol>()
+      expect<McpProtocol.ProtocolVersion>().type.toBe<"2025-06-18">()
     })
 
     it("should expose invalid protocol declarations as typed constructor failures", () => {
@@ -85,6 +88,18 @@ describe("McpServer", () => {
     it("should expose the selected protocol version when a handler reads its client", () => {
       expect(McpSchema.McpServerClient.useSync((client) => client.protocolVersion)).type.toBe<
         Effect.Effect<McpProtocol.ProtocolVersion, never, McpSchema.McpServerClient>
+      >()
+    })
+
+    it("should expose initialization data and the generated reverse RPC client", () => {
+      expect(McpSchema.McpServerClient.useSync((client) => client.initializePayload.capabilities)).type.toBe<
+        Effect.Effect<McpSchema.ClientCapabilities, never, McpSchema.McpServerClient>
+      >()
+      expect(McpSchema.McpServerClient.useSync((client) => client.initializePayload.clientInfo)).type.toBe<
+        Effect.Effect<McpSchema.Implementation, never, McpSchema.McpServerClient>
+      >()
+      expect(McpSchema.McpServerClient.use((client) => client.getClient)).type.toBeAssignableTo<
+        Effect.Effect<object, never, McpSchema.McpServerClient | Scope.Scope>
       >()
     })
   })

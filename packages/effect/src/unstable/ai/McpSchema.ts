@@ -1069,6 +1069,7 @@ export class ResourceListChangedNotification extends Rpc.make("notifications/res
  * @since 4.0.0
  */
 export class Subscribe extends Rpc.make("resources/subscribe", {
+  success: Schema.Struct({}),
   error: McpError,
   payload: {
     ...RequestMeta.fields,
@@ -1089,6 +1090,7 @@ export class Subscribe extends Rpc.make("resources/subscribe", {
  * @since 4.0.0
  */
 export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
+  success: Schema.Struct({}),
   error: McpError,
   payload: {
     ...RequestMeta.fields,
@@ -1643,6 +1645,7 @@ export class SetLevel extends Rpc.make("logging/setLevel", {
      */
     level: LoggingLevel
   },
+  success: Schema.Struct({}),
   error: McpError
 }) {}
 
@@ -1790,6 +1793,7 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
 export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
   "@effect/ai/McpSchema/CreateMessageResult"
 )({
+  ...SamplingMessage.fields,
   /**
    * The name of the model that generated the message.
    */
@@ -1825,7 +1829,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
      * The server's preferences for which model to select. The client MAY ignore
      * these preferences.
      */
-    modelPreferences: optional(ModelPreferences),
+    modelPreferences: optional(Schema.Struct(ModelPreferences.fields)),
     /**
      * An optional system prompt the server wants to use for sampling. The
      * client MAY modify or omit this prompt.
