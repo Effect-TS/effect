@@ -7,6 +7,7 @@ import type { Row } from "@effect/sql/SqlConnection"
 import type { SqlError } from "@effect/sql/SqlError"
 import * as Arr from "effect/Array"
 import * as Effect from "effect/Effect"
+import * as Encoding from "effect/Encoding"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
 import * as Schedule from "effect/Schedule"
@@ -48,6 +49,22 @@ export const make = Effect.fnUntraced(function*(options?: {
 
   const repliesTable = table("replies")
   const repliesTableSql = sql(repliesTable)
+
+  const encoder = new TextEncoder()
+  const messageIdForPrimaryKey = (primaryKey: string): Effect.Effect<string> =>
+    primaryKey.length <= 255
+      ? Effect.succeed(primaryKey)
+      : Effect.promise(() => globalThis.crypto.subtle.digest("SHA-256", encoder.encode(primaryKey))).pipe(
+        Effect.map((digest) => Encoding.encodeHex(new Uint8Array(digest)))
+      )
+
+  const messageIdEnforcesWidth = sql.onDialectOrElse({
+    mssql: () => true,
+    mysql: () => true,
+    pg: () => true,
+    orElse: () => false
+  })
+  const mayHaveLegacyRow = (primaryKey: string): boolean => !messageIdEnforcesWidth && primaryKey.length > 255
 
   const envelopeToRow = (
     envelope: Envelope.Envelope.Encoded,
@@ -199,6 +216,14 @@ export const make = Effect.fnUntraced(function*(options?: {
   const sqlFalse = sql.literal(supportsBooleans ? "FALSE" : "0")
   const sqlTrue = sql.literal(supportsBooleans ? "TRUE" : "1")
 
+  const selectByMessageId = (message_id: string): Effect.Effect<ReadonlyArray<Row>, SqlError> =>
+    sql`
+      SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
+      FROM ${messagesTableSql} m
+      LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
+      WHERE m.message_id = ${message_id}
+    `
+
   const insertEnvelope: (
     row: MessageRow,
     message_id: string
@@ -211,12 +236,7 @@ export const make = Effect.fnUntraced(function*(options?: {
       `.pipe(Effect.flatMap((rows) => {
         // inserted a new row
         if (rows.length > 0) return Effect.succeed([])
-        return sql`
-          SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-          FROM ${messagesTableSql} m
-          LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-          WHERE m.message_id = ${message_id}
-        `
+        return selectByMessageId(message_id)
       })),
     mysql: () => (row, message_id) =>
       Effect.flatMap(
@@ -225,12 +245,7 @@ export const make = Effect.fnUntraced(function*(options?: {
           if (row.affectedRows > 0) {
             return Effect.succeed([])
           }
-          return sql`
-            SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-            FROM ${messagesTableSql} m
-            LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-            WHERE m.message_id = ${message_id}
-          `
+          return selectByMessageId(message_id)
         }
       ),
     mssql: () => (row, message_id) =>
@@ -272,12 +287,7 @@ export const make = Effect.fnUntraced(function*(options?: {
           END as reply_sequence;
       `,
     orElse: () => (row, message_id) =>
-      sql`
-        SELECT m.id, r.id as reply_id, r.kind as reply_kind, r.payload as reply_payload, r.sequence as reply_sequence
-        FROM ${messagesTableSql} m
-        LEFT JOIN ${repliesTableSql} r ON r.id = m.last_reply_id
-        WHERE m.message_id = ${message_id}
-      `.pipe(
+      selectByMessageId(message_id).pipe(
         Effect.tap(sql`INSERT OR IGNORE INTO ${messagesTableSql} ${sql.insert(row)}`),
         sql.withTransaction,
         Effect.retry({ times: 3 })
@@ -367,10 +377,21 @@ export const make = Effect.fnUntraced(function*(options?: {
   return yield* MessageStorage.makeEncoded({
     saveEnvelope: ({ deliverAt, envelope, primaryKey }) =>
       Effect.suspend(() => {
-        const row = envelopeToRow(envelope, primaryKey, deliverAt)
-        let insert = primaryKey
-          ? insertEnvelope(row, primaryKey)
-          : Effect.as(sql`INSERT INTO ${messagesTableSql} ${sql.insert(row)}`.unprepared, [])
+        let insert = primaryKey !== null
+          ? Effect.flatMap(messageIdForPrimaryKey(primaryKey), (messageId) => {
+            const row = envelopeToRow(envelope, messageId, deliverAt)
+            if (!mayHaveLegacyRow(primaryKey)) {
+              return insertEnvelope(row, messageId)
+            }
+            return Effect.flatMap(
+              selectByMessageId(primaryKey),
+              (rows) => rows.length > 0 ? Effect.succeed(rows) : insertEnvelope(row, messageId)
+            )
+          })
+          : Effect.as(
+            sql`INSERT INTO ${messagesTableSql} ${sql.insert(envelopeToRow(envelope, null, deliverAt))}`.unprepared,
+            []
+          )
         if (envelope._tag === "AckChunk") {
           insert = sql`UPDATE ${repliesTableSql} SET acked = ${sqlTrue} WHERE id = ${envelope.replyId}`.pipe(
             Effect.andThen(
@@ -443,7 +464,15 @@ export const make = Effect.fnUntraced(function*(options?: {
     ),
 
     requestIdForPrimaryKey: (primaryKey) =>
-      sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`.pipe(
+      messageIdForPrimaryKey(primaryKey).pipe(
+        Effect.flatMap((messageId) =>
+          sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${messageId}`
+        ),
+        Effect.flatMap((rows) =>
+          rows.length === 0 && mayHaveLegacyRow(primaryKey)
+            ? sql<{ id: string | bigint }>`SELECT id FROM ${messagesTableSql} WHERE message_id = ${primaryKey}`
+            : Effect.succeed(rows)
+        ),
         Effect.map((rows) =>
           Option.fromNullable(rows[0]?.id).pipe(
             Option.map(Snowflake.Snowflake)
