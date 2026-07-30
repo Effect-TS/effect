@@ -107,6 +107,38 @@ describe("HttpClient", () => {
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-drop"), undefined)
         assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-keep"), "keep")
       }))
+
+    it.effect("filters the same header name independently by phase", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(
+            HttpClientResponse.fromWeb(
+              request,
+              new Response(null, {
+                headers: { "x-phase-filter": "response" }
+              })
+            )
+          )
+        )
+
+        yield* client.get("http://test/", {
+          headers: { "x-phase-filter": "request" }
+        }).pipe(
+          Effect.provideService(HttpClient.TracerHeaderFilter, (_name, phase) => phase === "response"),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), "response")
+      }))
   })
 
   describe("followRedirects", () => {

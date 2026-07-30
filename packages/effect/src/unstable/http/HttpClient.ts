@@ -690,7 +690,7 @@ export const make = (
             const headerFilter = fiber.getRef(TracerHeaderFilter)
             const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
             for (const name in redactedHeaders) {
-              if (!headerFilter(name)) continue
+              if (!headerFilter(name, "request")) continue
               span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
             }
             request = fiber.getRef(TracerPropagationEnabled)
@@ -704,7 +704,7 @@ export const make = (
                     span.attribute("http.response.status_code", response.status)
                     const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
                     for (const name in redactedHeaders) {
-                      if (!headerFilter(name)) continue
+                      if (!headerFilter(name, "response")) continue
                       span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
                     }
 
