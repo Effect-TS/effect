@@ -108,9 +108,10 @@ export const make = Effect.fnUntraced(function*<
   const mailboxCapacity = options.mailboxCapacity ?? config.entityMailboxCapacity
   const clock = yield* Effect.clock
   const context = yield* Effect.context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | RX>()
-  const retryDriver = yield* Schedule.driver(
-    options.defectRetryPolicy ? Schedule.andThen(options.defectRetryPolicy, defaultRetryPolicy) : defaultRetryPolicy
-  )
+  const defectRetryPolicy = options.defectRetryPolicy
+    ? Schedule.andThen(options.defectRetryPolicy, defaultRetryPolicy)
+    : defaultRetryPolicy
+  const retryDriver = yield* Schedule.driver(defectRetryPolicy)
   const entityRpcs = new Map(entity.protocol.requests)
 
   // add internal rpcs
@@ -154,15 +155,24 @@ export const make = Effect.fnUntraced(function*<
       Effect.fnUntraced(function*(scope) {
         let isShuttingDown = false
 
+        const handlerContext = context.pipe(
+          Context.add(CurrentAddress, address),
+          Context.add(CurrentRunnerAddress, options.runnerAddress),
+          Context.add(KeepAliveLatch, keepAliveLatch),
+          Context.add(Scope.Scope, scope)
+        )
+
         // Initiate the behavior for the entity
-        const handlers = yield* (entity.protocol.toHandlersContext(buildHandlers).pipe(
-          Effect.provide(context.pipe(
-            Context.add(CurrentAddress, address),
-            Context.add(CurrentRunnerAddress, options.runnerAddress),
-            Context.add(KeepAliveLatch, keepAliveLatch),
-            Context.add(Scope.Scope, scope)
-          )),
-          Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty())
+        const handlers = yield* ((entity.protocol.toHandlersContext(buildHandlers) as Effect.Effect<
+          Context.Context<Rpc.ToHandler<Rpcs>>,
+          never,
+          any
+        >).pipe(
+          Effect.mapInputContext<never, any>(() => handlerContext as Context.Context<any>),
+          Effect.locally(FiberRef.currentLogAnnotations, HashMap.empty()),
+          Effect.sandbox,
+          Effect.tapError((cause) => Effect.logError("Defect building entity handlers", cause)),
+          Effect.retry(defectRetryPolicy)
         ) as Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>)
 
         const server = yield* RpcServer.makeNoSerialization(entity.protocol, {
@@ -276,7 +286,7 @@ export const make = Effect.fnUntraced(function*<
           }
         }).pipe(
           Scope.extend(scope),
-          Effect.provide(handlers)
+          Effect.mapInputContext<never, any>(() => Context.merge(handlerContext, handlers) as Context.Context<any>)
         )
 
         yield* Scope.addFinalizer(

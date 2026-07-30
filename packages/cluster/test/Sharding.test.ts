@@ -24,7 +24,15 @@ import {
   TestClock
 } from "effect"
 import * as RunnerHealth from "../src/RunnerHealth.js"
-import { TestEntity, TestEntityNoState, TestEntityState, User } from "./TestEntity.js"
+import {
+  CallerId,
+  ContextBleedEntity,
+  ContextBleedLayer,
+  TestEntity,
+  TestEntityNoState,
+  TestEntityState,
+  User
+} from "./TestEntity.js"
 
 describe.concurrent("Sharding", () => {
   it.scoped("delivers a message", () =>
@@ -35,6 +43,22 @@ describe.concurrent("Sharding", () => {
       const user = yield* client.GetUserVolatile({ id: 1 })
       expect(user).toEqual(new User({ id: 1, name: "User 1" }))
     }).pipe(Effect.provide(TestSharding)))
+
+  it.scoped("does not freeze the first caller's context into the entity server", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const makeClient = yield* ContextBleedEntity.client
+      const client = makeClient("1")
+
+      const first = yield* client.ReadCaller().pipe(Effect.provideService(CallerId, "A"))
+      assert.strictEqual(first, "A")
+
+      const second = yield* client.ReadCaller()
+      assert.strictEqual(second, "none")
+
+      const durable = yield* client.ReadCallerPersisted()
+      assert.strictEqual(durable, "none")
+    }).pipe(Effect.provide(ContextBleedSharding)))
 
   it.scoped("delivers a message via storage", () =>
     Effect.gen(function*() {
@@ -512,6 +536,20 @@ describe.concurrent("Sharding", () => {
       expect(state.layerBuilds.current).toEqual(2)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.scoped("retries defects when building handlers", () =>
+    Effect.gen(function*() {
+      yield* TestClock.adjust(1)
+      const state = yield* TestEntityState
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("handler-build-defect")
+
+      MutableRef.set(state.handlerBuildDefectTrigger, true)
+      const result = yield* client.GetUserVolatile({ id: 123 })
+
+      assert.deepStrictEqual(result, new User({ id: 123, name: "User 123" }))
+      assert.strictEqual(state.layerBuilds.current, 2)
+    }).pipe(Effect.provide(TestSharding)))
+
   it.effect("replays in-flight requests when restarting after a defect", () =>
     Effect.gen(function*() {
       yield* TestClock.adjust(1)
@@ -561,3 +599,5 @@ const TestSharding = TestShardingWithoutStorage.pipe(
   Layer.provideMerge(MessageStorage.layerMemory),
   Layer.provide(TestShardingConfig)
 )
+
+const ContextBleedSharding = ContextBleedLayer.pipe(Layer.provideMerge(TestSharding))

@@ -2,7 +2,7 @@ import type { Envelope } from "@effect/cluster"
 import { ClusterSchema, Entity } from "@effect/cluster"
 import type { RpcGroup } from "@effect/rpc"
 import { Rpc, RpcSchema } from "@effect/rpc"
-import { Effect, Layer, Mailbox, MutableRef, Option, PrimaryKey, Schedule, Schema, Stream } from "effect"
+import { Context, Effect, Layer, Mailbox, MutableRef, Option, PrimaryKey, Schedule, Schema, Stream } from "effect"
 
 export class User extends Schema.Class<User>("User")({
   id: Schema.Number,
@@ -59,6 +59,7 @@ export class TestEntityState extends Effect.Service<TestEntityState>()("TestEnti
         : never
     >()
     const defectTrigger = MutableRef.make(false)
+    const handlerBuildDefectTrigger = MutableRef.make(false)
     const layerBuilds = MutableRef.make(0)
 
     return {
@@ -67,6 +68,7 @@ export class TestEntityState extends Effect.Service<TestEntityState>()("TestEnti
       envelopes,
       interrupts,
       defectTrigger,
+      handlerBuildDefectTrigger,
       layerBuilds
     } as const
   })
@@ -77,6 +79,10 @@ export const TestEntityNoState = TestEntity.toLayer(
     const state = yield* TestEntityState
 
     MutableRef.update(state.layerBuilds, (count) => count + 1)
+    if (state.handlerBuildDefectTrigger.current) {
+      MutableRef.set(state.handlerBuildDefectTrigger, false)
+      yield* Effect.die("Handler build defect")
+    }
 
     const never = (envelope: any) =>
       Effect.suspend(() => {
@@ -129,3 +135,17 @@ export const TestEntityNoState = TestEntity.toLayer(
 )
 
 export const TestEntityLayer = TestEntityNoState.pipe(Layer.provideMerge(TestEntityState.Default))
+
+export class CallerId extends Context.Tag("effect/test/cluster/CallerId")<CallerId, string>() {}
+
+export const ContextBleedEntity = Entity.make("ContextBleedEntity", [
+  Rpc.make("ReadCaller", { success: Schema.String }).annotate(ClusterSchema.Persisted, false),
+  Rpc.make("ReadCallerPersisted", { success: Schema.String }).annotate(ClusterSchema.Persisted, true)
+])
+
+const readCaller = () => Effect.map(Effect.serviceOption(CallerId), Option.getOrElse(() => "none"))
+
+export const ContextBleedLayer = ContextBleedEntity.toLayer({
+  ReadCaller: readCaller,
+  ReadCallerPersisted: readCaller
+})

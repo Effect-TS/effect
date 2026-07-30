@@ -1017,144 +1017,147 @@ const make = Effect.gen(function*() {
       MailboxFull | AlreadyProcessingMessage
     >,
     never
-  > = yield* ResourceMap.make(Effect.fnUntraced(function*(entity: Entity<string, any>) {
-    const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
-      spanPrefix: `${entity.type}.client`,
-      disableTracing: !Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled),
-      supportsAck: true,
-      generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
-      flatten: true,
-      onFromClient(options): Effect.Effect<
-        void,
-        MailboxFull | AlreadyProcessingMessage | PersistenceError
-      > {
-        const address = Context.unsafeGet(options.context, ClientAddressTag)
-        switch (options.message._tag) {
-          case "Request": {
-            const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
-            const id = Snowflake.Snowflake(options.message.id)
-            const rpc = entity.protocol.requests.get(options.message.tag)!
-            let respond: (reply: Reply.Reply<any>) => Effect.Effect<void>
-            if (!options.discard) {
-              const entry: ClientRequestEntry = {
-                rpc: rpc as any,
-                services: fiber.currentContext
+  > = yield* ResourceMap.make(
+    Effect.fnUntraced(function*(entity: Entity<string, any>) {
+      const client = yield* RpcClient.makeNoSerialization(entity.protocol, {
+        spanPrefix: `${entity.type}.client`,
+        disableTracing: !Context.get(entity.protocol.annotations, ClusterSchema.ClientTracingEnabled),
+        supportsAck: true,
+        generateRequestId: () => RequestId(snowflakeGen.unsafeNext()),
+        flatten: true,
+        onFromClient(options): Effect.Effect<
+          void,
+          MailboxFull | AlreadyProcessingMessage | PersistenceError
+        > {
+          const address = Context.unsafeGet(options.context, ClientAddressTag)
+          switch (options.message._tag) {
+            case "Request": {
+              const fiber = Option.getOrThrow(Fiber.getCurrentFiber())
+              const id = Snowflake.Snowflake(options.message.id)
+              const rpc = entity.protocol.requests.get(options.message.tag)!
+              let respond: (reply: Reply.Reply<any>) => Effect.Effect<void>
+              if (!options.discard) {
+                const entry: ClientRequestEntry = {
+                  rpc: rpc as any,
+                  services: fiber.currentContext
+                }
+                clientRequests.set(id, entry)
+                respond = makeClientRespond(entry, client.write)
+              } else {
+                respond = clientRespondDiscard
               }
-              clientRequests.set(id, entry)
-              respond = makeClientRespond(entry, client.write)
-            } else {
-              respond = clientRespondDiscard
-            }
-            return sendOutgoing(
-              new Message.OutgoingRequest({
-                envelope: Envelope.makeRequest({
-                  requestId: id,
-                  address,
-                  tag: options.message.tag,
-                  payload: options.message.payload,
-                  headers: options.message.headers,
-                  traceId: options.message.traceId,
-                  spanId: options.message.spanId,
-                  sampled: options.message.sampled
+              return sendOutgoing(
+                new Message.OutgoingRequest({
+                  envelope: Envelope.makeRequest({
+                    requestId: id,
+                    address,
+                    tag: options.message.tag,
+                    payload: options.message.payload,
+                    headers: options.message.headers,
+                    traceId: options.message.traceId,
+                    spanId: options.message.spanId,
+                    sampled: options.message.sampled
+                  }),
+                  lastReceivedReply: Option.none(),
+                  rpc,
+                  context: fiber.currentContext as Context.Context<any>,
+                  respond
                 }),
-                lastReceivedReply: Option.none(),
-                rpc,
-                context: fiber.currentContext as Context.Context<any>,
-                respond
-              }),
-              options.discard
-            )
-          }
-          case "Ack": {
-            const requestId = Snowflake.Snowflake(options.message.requestId)
-            const entry = clientRequests.get(requestId)
-            if (!entry) return Effect.void
-            return sendOutgoing(
-              new Message.OutgoingEnvelope({
-                envelope: new Envelope.AckChunk({
-                  id: snowflakeGen.unsafeNext(),
-                  address,
-                  requestId,
-                  replyId: entry.lastChunkId!
-                }),
-                rpc: entry.rpc
-              }),
-              false
-            )
-          }
-          case "Interrupt": {
-            const requestId = Snowflake.Snowflake(options.message.requestId)
-            const entry = clientRequests.get(requestId)!
-            if (!entry) return Effect.void
-            clientRequests.delete(requestId)
-            if (Uninterruptible.forClient(entry.rpc.annotations)) {
-              return Effect.void
+                options.discard
+              )
             }
-            // for durable messages, we ignore interrupts on shutdown or as a
-            // result of a shard being resassigned
-            const isTransientInterrupt = MutableRef.get(isShutdown) ||
-              options.message.interruptors.some((id) => internalInterruptors.has(id))
-            if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
-              return Effect.void
-            }
-            return Effect.ignore(sendOutgoing(
-              new Message.OutgoingEnvelope({
-                envelope: new Envelope.Interrupt({
-                  id: snowflakeGen.unsafeNext(),
-                  address,
-                  requestId
+            case "Ack": {
+              const requestId = Snowflake.Snowflake(options.message.requestId)
+              const entry = clientRequests.get(requestId)
+              if (!entry) return Effect.void
+              return sendOutgoing(
+                new Message.OutgoingEnvelope({
+                  envelope: new Envelope.AckChunk({
+                    id: snowflakeGen.unsafeNext(),
+                    address,
+                    requestId,
+                    replyId: entry.lastChunkId!
+                  }),
+                  rpc: entry.rpc
                 }),
-                rpc: entry.rpc
-              }),
-              false,
-              3
-            ))
+                false
+              )
+            }
+            case "Interrupt": {
+              const requestId = Snowflake.Snowflake(options.message.requestId)
+              const entry = clientRequests.get(requestId)!
+              if (!entry) return Effect.void
+              clientRequests.delete(requestId)
+              if (Uninterruptible.forClient(entry.rpc.annotations)) {
+                return Effect.void
+              }
+              // for durable messages, we ignore interrupts on shutdown or as a
+              // result of a shard being resassigned
+              const isTransientInterrupt = MutableRef.get(isShutdown) ||
+                options.message.interruptors.some((id) => internalInterruptors.has(id))
+              if (isTransientInterrupt && Context.get(entry.rpc.annotations, Persisted)) {
+                return Effect.void
+              }
+              return Effect.ignore(sendOutgoing(
+                new Message.OutgoingEnvelope({
+                  envelope: new Envelope.Interrupt({
+                    id: snowflakeGen.unsafeNext(),
+                    address,
+                    requestId
+                  }),
+                  rpc: entry.rpc
+                }),
+                false,
+                3
+              ))
+            }
           }
+          return Effect.void
         }
-        return Effect.void
-      }
-    })
-
-    yield* Scope.addFinalizer(
-      yield* Effect.scope,
-      Effect.fiberIdWith((fiberId) => {
-        internalInterruptors.add(fiberId)
-        return Effect.void
       })
-    )
 
-    return (entityId: string) => {
-      const id = makeEntityId(entityId)
-      const address = ClientAddressTag.context(makeEntityAddress({
-        shardId: getShardId(id, entity.getShardGroup(entityId as EntityId)),
-        entityId: id,
-        entityType: entity.type
-      }))
-      const clientFn = function(tag: string, payload: any, options?: {
-        readonly context?: Context.Context<never>
-      }) {
-        const context = options?.context ? Context.merge(options.context, address) : address
-        return client.client(tag, payload, {
-          ...options,
-          context
+      yield* Scope.addFinalizer(
+        yield* Effect.scope,
+        Effect.fiberIdWith((fiberId) => {
+          internalInterruptors.add(fiberId)
+          return Effect.void
+        })
+      )
+
+      return (entityId: string) => {
+        const id = makeEntityId(entityId)
+        const address = ClientAddressTag.context(makeEntityAddress({
+          shardId: getShardId(id, entity.getShardGroup(entityId as EntityId)),
+          entityId: id,
+          entityType: entity.type
+        }))
+        const clientFn = function(tag: string, payload: any, options?: {
+          readonly context?: Context.Context<never>
+        }) {
+          const context = options?.context ? Context.merge(options.context, address) : address
+          return client.client(tag, payload, {
+            ...options,
+            context
+          })
+        }
+        const proxyClient: any = {}
+        return new Proxy(proxyClient, {
+          has(_, p) {
+            return entity.protocol.requests.has(p as string)
+          },
+          get(target, p) {
+            if (p in target) {
+              return target[p]
+            } else if (!entity.protocol.requests.has(p as string)) {
+              return undefined
+            }
+            return target[p] = (payload: any, options?: {}) => clientFn(p as string, payload, options)
+          }
         })
       }
-      const proxyClient: any = {}
-      return new Proxy(proxyClient, {
-        has(_, p) {
-          return entity.protocol.requests.has(p as string)
-        },
-        get(target, p) {
-          if (p in target) {
-            return target[p]
-          } else if (!entity.protocol.requests.has(p as string)) {
-            return undefined
-          }
-          return target[p] = (payload: any, options?: {}) => clientFn(p as string, payload, options)
-        }
-      })
-    }
-  }))
+    }),
+    { referential: true }
+  )
 
   const makeClient = <Type extends string, Rpcs extends Rpc.Any>(entity: Entity<Type, Rpcs>): Effect.Effect<
     (

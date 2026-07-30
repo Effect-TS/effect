@@ -326,6 +326,41 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.strictEqual(envelope.sampled, span.sampled)
     }).pipe(Effect.scoped, Effect.provide(TestWorkflowEngine)))
 
+  it.effect("routes activities to the workflow shard group after a partial client is cached", () =>
+    Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const engine = yield* WorkflowEngine
+      const payload = { id: "partial-client-before-execute" }
+      const executionId = yield* ShardedDeferredWorkflow.executionId(payload)
+      const token = DurableDeferred.tokenFromExecutionId(ShardedDeferred, {
+        workflow: ShardedDeferredWorkflow,
+        executionId
+      })
+
+      const pendingDone = yield* DurableDeferred.done(ShardedDeferred, {
+        token,
+        exit: Exit.void
+      }).pipe(Effect.fork)
+
+      yield* engine.register(ShardedDeferredWorkflow, () =>
+        Activity.make({
+          name: "ShardedActivity",
+          execute: Effect.void
+        }))
+      yield* Fiber.join(pendingDone)
+
+      const journalLength = driver.journal.length
+      yield* ShardedDeferredWorkflow.execute(payload).pipe(Effect.fork)
+      yield* TestClock.adjust(1)
+      const envelope = driver.journal.slice(journalLength).find((envelope) =>
+        envelope._tag === "Request" &&
+        envelope.address.entityType === "Workflow/ShardedDeferredWorkflow" &&
+        envelope.tag === "activity"
+      )
+      assert.exists(envelope)
+      assert.strictEqual(envelope.address.shardId.group, "workflow")
+    }).pipe(Effect.scoped, Effect.provide(TestWorkflowEngine)))
+
   it.effect("SuspendOnFailure", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
