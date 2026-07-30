@@ -80,8 +80,8 @@ export type Matcher<Input, Filters, RemainingApplied, Result, Provided, Return =
  *   Match.exhaustive
  * )
  *
- * console.log(matcher("hello")) // "String: hello"
- * console.log(matcher(42)) // "Number: 42"
+ * console.log(matcher("hello")) // > String: hello
+ * console.log(matcher(42)) // > Number: 42
  * ```
  *
  * @category models
@@ -123,7 +123,7 @@ export interface TypeMatcher<in Input, out Filters, out Remaining, out Result, o
  *   Match.orElse(() => "Unknown type")
  * )
  *
- * console.log(result) // "User: Alice"
+ * console.log(result) // > User: Alice
  * ```
  *
  * @category models
@@ -187,8 +187,8 @@ export type Case = When | Not
  *   Match.exhaustive
  * )
  *
- * console.log(stringMatcher("hello")) // "Got string: hello"
- * console.log(stringMatcher(42)) // "Got number: 42"
+ * console.log(stringMatcher("hello")) // > Got string: hello
+ * console.log(stringMatcher(42)) // > Got number: 42
  * ```
  *
  * @category models
@@ -221,8 +221,8 @@ export interface When {
  *   Match.orElse(() => "This string is forbidden")
  * )
  *
- * console.log(matcher("hello")) // "Allowed: hello"
- * console.log(matcher("forbidden")) // "This string is forbidden"
+ * console.log(matcher("hello")) // > Allowed: hello
+ * console.log(matcher("forbidden")) // > This string is forbidden
  * ```
  *
  * @category models
@@ -351,7 +351,7 @@ export const value: <const I>(
  *   Success: (result) => `Success: ${result.data}`
  * })
  *
- * console.log(message) // "Success: Hello"
+ * console.log(message) // > Success: Hello
  * ```
  *
  * @category constructors
@@ -744,9 +744,9 @@ export const discriminator: <D extends string>(
  *   Match.orElse((_) => 3 as const)
  * )
  *
- * console.log(match({ type: "A" })) // 1
- * console.log(match({ type: "B" })) // 2
- * console.log(match({ type: "A.A" })) // 1
+ * console.log(match({ type: "A" })) // > 1
+ * console.log(match({ type: "B" })) // > 2
+ * console.log(match({ type: "A.A" })) // > 1
  * ```
  *
  * @see {@link discriminator} for matching exact discriminator values
@@ -976,9 +976,9 @@ export const tag: <
  *   Match.orElse((_) => 3 as const)
  * )
  *
- * console.log(match({ _tag: "A" })) // 1
- * console.log(match({ _tag: "B" })) // 2
- * console.log(match({ _tag: "A.A" })) // 1
+ * console.log(match({ _tag: "A" })) // > 1
+ * console.log(match({ _tag: "B" })) // > 2
+ * console.log(match({ _tag: "A.A" })) // > 1
  * ```
  *
  * @category Defining patterns
@@ -1270,9 +1270,9 @@ export const is: <
  *   Match.exhaustive
  * )
  *
- * console.log(processValue("hello")) // "String: HELLO"
- * console.log(processValue(42)) // "Number: 84"
- * console.log(processValue(true)) // "Boolean: yes"
+ * console.log(processValue("hello")) // > String: HELLO
+ * console.log(processValue(42)) // > Number: 84
+ * console.log(processValue(true)) // > Boolean: yes
  * ```
  *
  * @category predicates
@@ -1308,10 +1308,10 @@ export const string: Predicate.Refinement<unknown, string> = Predicate.isString
  *   Match.orElse(() => "Not a number type")
  * )
  *
- * console.log(categorizeNumber(42)) // "Integer: 42"
- * console.log(categorizeNumber(3.14)) // "Float: 3.14"
- * console.log(categorizeNumber(NaN)) // "Not a number"
- * console.log(categorizeNumber("hello")) // "Not a number type"
+ * console.log(categorizeNumber(42)) // > Integer: 42
+ * console.log(categorizeNumber(3.14)) // > Float: 3.14
+ * console.log(categorizeNumber(NaN)) // > Not a number
+ * console.log(categorizeNumber("hello")) // > Not a number type
  * ```
  *
  * @see {@link bigint} for matching primitive bigint values
@@ -1451,10 +1451,10 @@ export const defined: <A>(u: A) => u is A & {} = internal.defined
  *   Match.orElse(() => "Some other truthy value")
  * )
  *
- * console.log(describeTruthiness(true)) // "Definitely true"
- * console.log(describeTruthiness(false)) // "Definitely false"
- * console.log(describeTruthiness(0)) // "Falsy number"
- * console.log(describeTruthiness(1)) // "Some other truthy value"
+ * console.log(describeTruthiness(true)) // > Definitely true
+ * console.log(describeTruthiness(false)) // > Definitely false
+ * console.log(describeTruthiness(0)) // > Falsy number
+ * console.log(describeTruthiness(1)) // > Some other truthy value
  * ```
  *
  * @see {@link is} for matching specific literal boolean values
@@ -1538,10 +1538,10 @@ export {
  *   Match.orElse(() => "Not a numeric type")
  * )
  *
- * console.log(processLargeNumber(123n)) // "BigInt: 123"
- * console.log(processLargeNumber(9007199254740992n)) // "Large integer: 9007199254740992"
- * console.log(processLargeNumber(123)) // "Regular number: 123"
- * console.log(processLargeNumber("123")) // "Not a numeric type"
+ * console.log(processLargeNumber(123n)) // > BigInt: 123
+ * console.log(processLargeNumber(9007199254740992n)) // > Large integer: 9007199254740992
+ * console.log(processLargeNumber(123)) // > Regular number: 123
+ * console.log(processLargeNumber("123")) // > Not a numeric type
  * ```
  *
  * @see {@link number} for matching primitive number values
@@ -1579,9 +1579,9 @@ export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
  *   Match.orElse(() => "Not a symbol")
  * )
  *
- * console.log(handleSymbol(mySymbol)) // "Symbol with description: my-symbol"
- * console.log(handleSymbol(Symbol())) // "Symbol without description"
- * console.log(handleSymbol("string")) // "Not a symbol"
+ * console.log(handleSymbol(mySymbol)) // > Symbol with description: my-symbol
+ * console.log(handleSymbol(Symbol())) // > Symbol without description
+ * console.log(handleSymbol("string")) // > Not a symbol
  * ```
  *
  * @category predicates
@@ -1618,10 +1618,10 @@ export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
  *   Match.orElse(() => "Not a date-related value")
  * )
  *
- * console.log(processDateValue(new Date("2024-01-01"))) // "Date: 2024-01-01"
- * console.log(processDateValue(new Date("invalid"))) // "Invalid date"
- * console.log(processDateValue("2024-01-01")) // "Date string: 2024-01-01"
- * console.log(processDateValue(1704067200000)) // "Not a date-related value"
+ * console.log(processDateValue(new Date("2024-01-01"))) // > Date: 2024-01-01
+ * console.log(processDateValue(new Date("invalid"))) // > Invalid date
+ * console.log(processDateValue("2024-01-01")) // > Date string: 2024-01-01
+ * console.log(processDateValue(1704067200000)) // > Not a date-related value
  * ```
  *
  * @see {@link instanceOf} for matching instances of any constructor
@@ -1721,10 +1721,10 @@ export const record: Predicate.Refinement<unknown, { [x: PropertyKey]: unknown }
  *     Match.orElse((value) => `Other: ${typeof value}`)
  *   )
  *
- * console.log(handleValue(new CustomError("Failed", 404))) // "Custom error: Failed (code: 404)"
- * console.log(handleValue(new Error("Generic error"))) // "Standard error: Generic error"
- * console.log(handleValue([1, 2, 3])) // "Array with 3 items"
- * console.log(handleValue(new Map([["count", 1]]))) // "Map with 1 entries"
+ * console.log(handleValue(new CustomError("Failed", 404))) // > Custom error: Failed (code: 404)
+ * console.log(handleValue(new Error("Generic error"))) // > Standard error: Generic error
+ * console.log(handleValue([1, 2, 3])) // > Array with 3 items
+ * console.log(handleValue(new Map([["count", 1]]))) // > Map with 1 entries
  * ```
  *
  * @see {@link instanceOfUnsafe} for constructor matching without the same type-safety guarantee
@@ -1859,8 +1859,8 @@ export const orElse: <RA, Ret, F extends (_: RA) => Ret>(
  *   Match.orElseAbsurd
  * )
  *
- * console.log(strictMatcher("a")) // "Found A"
- * console.log(strictMatcher("b")) // "Found B"
+ * console.log(strictMatcher("a")) // > Found A
+ * console.log(strictMatcher("b")) // > Found B
  *
  * // This would throw an error at runtime:
  * // strictMatcher("c" as any) // throws

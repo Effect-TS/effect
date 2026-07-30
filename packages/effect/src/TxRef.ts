@@ -116,8 +116,8 @@ export const make = <A>(initial: A) => Effect.sync(() => makeUnsafe(initial))
  * const config = TxRef.makeUnsafe({ timeout: 5000, retries: 3 })
  *
  * // These are now ready to use in transactions
- * console.log(counter.value) // 0
- * console.log(config.value) // { timeout: 5000, retries: 3 }
+ * console.log(counter.value) // > 0
+ * console.log(config.value) // > { timeout: 5000, retries: 3 }
  * ```
  *
  * @category constructors

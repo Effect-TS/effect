@@ -399,8 +399,8 @@ export const keyValuePair = (name: string): Flag<Record<string, string>> => Para
  * const makeValueFlag = (includeValue: boolean) =>
  *   includeValue ? Flag.string("value") : Flag.none
  *
- * console.log(makeValueFlag(true) === Flag.none) // false
- * console.log(makeValueFlag(false) === Flag.none) // true
+ * console.log(makeValueFlag(true) === Flag.none) // > false
+ * console.log(makeValueFlag(false) === Flag.none) // > true
  * ```
  *
  * @category constructors

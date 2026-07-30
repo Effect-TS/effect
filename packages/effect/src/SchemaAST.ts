@@ -1252,7 +1252,7 @@ export type LiteralValue = string | number | boolean | bigint
  * import { SchemaAST } from "effect"
  *
  * const ast = new SchemaAST.Literal("active")
- * console.log(ast.literal) // "active"
+ * console.log(ast.literal) // > active
  * ```
  *
  * @see {@link LiteralValue}
@@ -1633,8 +1633,8 @@ export const bigInt = new BigInt()
  * const ast = schema.ast
  *
  * if (SchemaAST.isArrays(ast)) {
- *   console.log(ast.elements.length) // 2
- *   console.log(ast.rest.length)     // 0
+ *   console.log(ast.elements.length) // > 2
+ *   console.log(ast.rest.length) // > 0
  * }
  * ```
  *
@@ -2720,8 +2720,8 @@ export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyAr
  * const ast = schema.ast
  *
  * if (SchemaAST.isUnion(ast)) {
- *   console.log(ast.types.length) // 2
- *   console.log(ast.mode)         // "anyOf"
+ *   console.log(ast.types.length) // > 2
+ *   console.log(ast.mode) // > anyOf
  * }
  * ```
  *
@@ -3553,7 +3553,7 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
  *
  * const schema = Schema.NumberFromString
  * const typeAst = SchemaAST.toType(schema.ast)
- * console.log(typeAst._tag) // "Number"
+ * console.log(typeAst._tag) // > Number
  * ```
  *
  * @see {@link toEncoded}
@@ -3600,7 +3600,7 @@ export const toType = memoize(<A extends AST>(ast: A): A => {
  *
  * const schema = Schema.NumberFromString
  * const encodedAst = SchemaAST.toEncoded(schema.ast)
- * console.log(encodedAst._tag) // "String"
+ * console.log(encodedAst._tag) // > String
  * ```
  *
  * @see {@link toType}
@@ -3973,7 +3973,7 @@ export const ClassTypeId = "~effect/Schema/Class"
  *
  * const schema = Schema.String.annotate({ title: "Name" })
  * const annotations = SchemaAST.resolve(schema.ast)
- * console.log(annotations?.title) // "Name"
+ * console.log(annotations?.title) // > Name
  * ```
  *
  * @see {@link resolveAt}

@@ -61,8 +61,8 @@ export interface FunctionTypeLambda extends TypeLambda {
  *   (self: number, that: number) => number
  * >(2, (self, that) => self + that)
  *
- * console.log(sum(2, 3)) // 5
- * console.log(pipe(2, sum(3))) // 5
+ * console.log(sum(2, 3)) // > 5
+ * console.log(pipe(2, sum(3))) // > 5
  * ```
  *
  * **Example** (Defining overloads with call signatures)
@@ -75,8 +75,8 @@ export interface FunctionTypeLambda extends TypeLambda {
  *   (self: number, that: number): number
  * } = Function.dual(2, (self: number, that: number): number => self + that)
  *
- * console.log(sum(2, 3)) // 5
- * console.log(pipe(2, sum(3))) // 5
+ * console.log(sum(2, 3)) // > 5
+ * console.log(pipe(2, sum(3))) // > 5
  * ```
  *
  * **Example** (Selecting data-first or data-last style with a predicate)
@@ -92,8 +92,8 @@ export interface FunctionTypeLambda extends TypeLambda {
  *   (self, that) => self + that
  * )
  *
- * console.log(sum(2, 3)) // 5
- * console.log(pipe(2, sum(3))) // 5
+ * console.log(sum(2, 3)) // > 5
+ * console.log(pipe(2, sum(3))) // > 5
  * ```
  *
  * @category combinators
@@ -603,7 +603,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *   (n) => `result: ${n}`
  * )
  *
- * console.log(result) // "result: 4"
+ * console.log(result) // > result: 4
  * ```
  *
  * **Example** (Chaining methods before conversion)
@@ -615,7 +615,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *
  * const result = numbers.map(double).filter(greaterThanFour)
  *
- * console.log(result) // [6, 8]
+ * console.log(result) // > [ 6, 8 ]
  * ```
  *
  * **Example** (Rewriting method chains with pipe)
@@ -635,7 +635,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *   Array.filter(greaterThanFour)
  * )
  *
- * console.log(result) // [6, 8]
+ * console.log(result) // > [ 6, 8 ]
  * ```
  *
  * **Example** (Chaining arithmetic operations)
@@ -668,7 +668,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *   (x) => x.toString() // "11"
  * )
  *
- * console.log(result) // "11"
+ * console.log(result) // > 11
  * ```
  *
  * @category combinators
@@ -1347,7 +1347,7 @@ export function flow(
  *   name: hole<string>()
  * })
  *
- * console.log(typeof buildUser) // "function"
+ * console.log(typeof buildUser) // > function
  * ```
  *
  * @category utility types

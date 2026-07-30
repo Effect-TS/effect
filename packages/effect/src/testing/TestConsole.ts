@@ -104,7 +104,7 @@ export declare namespace TestConsole {
    *
    * const method: TestConsole.TestConsole.Method = "log"
    *
-   * console.log(method) // "log"
+   * console.log(method) // > log
    * ```
    *
    * @category models
@@ -130,8 +130,8 @@ export declare namespace TestConsole {
    *   parameters: ["not found"]
    * }
    *
-   * console.log(entry.method) // "error"
-   * console.log(entry.parameters) // ["not found"]
+   * console.log(entry.method) // > error
+   * console.log(entry.parameters) // > [ 'not found' ]
    * ```
    *
    * @category models

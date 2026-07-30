@@ -553,14 +553,14 @@ export declare namespace TaggedEnum {
  * const err = NotFound({ url: "/missing" })
  *
  * // Type guard
- * console.log($is("NotFound")(err)) // true
+ * console.log($is("NotFound")(err)) // > true
  *
  * // Pattern matching
  * const msg = $match(err, {
  *   BadRequest: (e) => e.message,
  *   NotFound: (e) => `${e.url} not found`
  * })
- * console.log(msg) // "/missing not found"
+ * console.log(msg) // > /missing not found
  * ```
  *
  * **Example** (Defining a generic tagged enum)

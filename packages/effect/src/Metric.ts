@@ -2102,10 +2102,10 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
  * const gauge = Metric.gauge("temperature")
  * const notAMetric = { name: "fake-metric" }
  *
- * console.log(Metric.isMetric(counter)) // true
- * console.log(Metric.isMetric(gauge)) // true
- * console.log(Metric.isMetric(notAMetric)) // false
- * console.log(Metric.isMetric(null)) // false
+ * console.log(Metric.isMetric(counter)) // > false
+ * console.log(Metric.isMetric(gauge)) // > false
+ * console.log(Metric.isMetric(notAMetric)) // > false
+ * console.log(Metric.isMetric(null)) // > false
  * ```
  *
  * @category guards
@@ -3303,7 +3303,7 @@ const attributesToString = (attributes: Metric.AttributeSet): string => {
  *   500,
  *   1000
  * ])
- * console.log(customBoundaries) // [10, 25, 50, 100, 250, 500, 1000, Infinity]
+ * console.log(customBoundaries) // > [ 10, 25, 50, 100, 250, 500, 1000, Infinity ]
  *
  * // Automatically removes duplicates and negative values
  * const messyBoundaries = Metric.boundariesFromIterable([
@@ -3316,13 +3316,13 @@ const attributesToString = (attributes: Metric.AttributeSet): string => {
  *   50,
  *   -1
  * ])
- * console.log(messyBoundaries) // [10, 25, 50, Infinity]
+ * console.log(messyBoundaries) // > [ 10, 25, 50, Infinity ]
  *
  * // Works with any iterable (Set, generator functions, etc.)
  * const setBoundaries = Metric.boundariesFromIterable(
  *   new Set([100, 200, 300, 200, 100])
  * )
- * console.log(setBoundaries) // [100, 200, 300, Infinity]
+ * console.log(setBoundaries) // > [ 100, 200, 300, Infinity ]
  *
  * // Use with histogram metric
  * const responseTimeHistogram = Metric.histogram("response_times", {
@@ -3371,7 +3371,7 @@ export const boundariesFromIterable = (iterable: Iterable<number>): ReadonlyArra
  *   width: 100, // Offset used for the first boundary
  *   count: 5 // Creates 4 boundaries + infinity
  * })
- * console.log(responseBoundaries) // [100, 101, 102, 103, Infinity]
+ * console.log(responseBoundaries) // > [ 100, 101, 102, 103, Infinity ]
  *
  * // Create a histogram using these boundaries
  * const responseTimeHistogram = Metric.histogram("api_response_time", {
@@ -3424,7 +3424,7 @@ export const linearBoundaries = (options: {
  *   factor: 2, // Each boundary doubles the previous
  *   count: 5 // Creates 4 boundaries + infinity
  * })
- * console.log(sizeBoundaries) // [1, 2, 4, 8, Infinity]
+ * console.log(sizeBoundaries) // > [ 1, 2, 4, 8, Infinity ]
  *
  * // Create a histogram for tracking request payload sizes
  * const requestSizeHistogram = Metric.histogram("request_size_kb", {

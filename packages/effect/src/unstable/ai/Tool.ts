@@ -554,8 +554,8 @@ export interface Dynamic<
  *   })
  * })
  *
- * console.log(Tool.isUserDefined(UserDefinedTool)) // true
- * console.log(Tool.isUserDefined(ProviderDefinedTool)) // false
+ * console.log(Tool.isUserDefined(UserDefinedTool)) // > true
+ * console.log(Tool.isUserDefined(ProviderDefinedTool)) // > false
  * ```
  *
  * @category guards
@@ -599,8 +599,8 @@ export const isUserDefined = (u: unknown): u is Tool<string, any, any> =>
  *   })
  * })
  *
- * console.log(Tool.isProviderDefined(UserDefinedTool)) // false
- * console.log(Tool.isProviderDefined(ProviderDefinedTool)) // true
+ * console.log(Tool.isProviderDefined(UserDefinedTool)) // > false
+ * console.log(Tool.isProviderDefined(ProviderDefinedTool)) // > false
  * ```
  *
  * @category guards
@@ -628,8 +628,8 @@ export const isProviderDefined = (
  *   success: Schema.Number
  * })
  *
- * console.log(Tool.isDynamic(DynamicTool)) // true
- * console.log(Tool.isDynamic(UserDefinedTool)) // false
+ * console.log(Tool.isDynamic(DynamicTool)) // > true
+ * console.log(Tool.isDynamic(UserDefinedTool)) // > false
  * ```
  *
  * @category guards

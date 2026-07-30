@@ -45,7 +45,7 @@ import type * as Types from "./Types.ts"
  * type LinkedTypeLambda = typeof identity[typeof HKT.URI]
  *
  * const value: HKT.Kind<NonNullable<LinkedTypeLambda>, never, never, never, string> = identity.of("ok")
- * console.log(value) // "ok"
+ * console.log(value) // > ok
  * ```
  *
  * @category symbols

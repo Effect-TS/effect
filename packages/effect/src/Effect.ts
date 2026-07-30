@@ -220,8 +220,8 @@ export type Services<T> = T extends Effect<infer _A, infer _E, infer _R> ? _R
  * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * console.log(Effect.isEffect(Effect.succeed(1))) // true
- * console.log(Effect.isEffect("hello")) // false
+ * console.log(Effect.isEffect(Effect.succeed(1))) // > true
+ * console.log(Effect.isEffect("hello")) // > false
  * ```
  *
  * @category guards
@@ -5905,7 +5905,7 @@ export const contextWith: <R, A, E, R2>(
  *
  * const provided = Effect.provide(program, DatabaseLive)
  *
- * Effect.runPromise(provided).then(console.log)
+ * console.log(await Effect.runPromise(provided))
  * // Output: "Result for: SELECT * FROM users"
  * ```
  *
@@ -6403,7 +6403,7 @@ export const provideService: {
  *   createConnection
  * )
  *
- * Effect.runPromise(withDatabase).then(console.log)
+ * console.log(await Effect.runPromise(withDatabase))
  * // Output:
  * // Establishing database connection...
  * // Database connected!
@@ -6734,7 +6734,7 @@ export const acquireDisposable: <A extends AsyncDisposable | Disposable, E, R>(
  *     })
  * )
  *
- * Effect.runPromise(program)
+ * await Effect.runPromise(program)
  * // Output:
  * // Connecting to database...
  * // Connected to db://localhost:5432
@@ -7133,7 +7133,7 @@ export const onExitFilter: {
  *   yield* cached.pipe(Effect.andThen(Console.log))
  * })
  *
- * Effect.runFork(program)
+ * await Effect.runPromise(program)
  * // Output:
  * // non-cached version:
  * // expensive task...
@@ -8904,9 +8904,9 @@ export interface RunOptions {
  * //      ▼
  * const fiber = Effect.runFork(program)
  *
- * setTimeout(() => {
- *   Effect.runFork(Fiber.interrupt(fiber))
- * }, 500)
+ * await Effect.runPromise(
+ *   Effect.sleep("500 millis").pipe(Effect.andThen(Fiber.interrupt(fiber)))
+ * )
  * ```
  *
  * @category running
@@ -9320,7 +9320,7 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = internal.runSync
  * })
  *
  * const result = Effect.runSyncWith(context)(program)
- * console.log(result) // 5
+ * console.log(result) // > 5
  * ```
  *
  * @category running

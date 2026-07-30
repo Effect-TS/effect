@@ -29,7 +29,7 @@ const jsdocPattern = /\/\*\*[\s\S]*?\*\//g
 const fencePattern = /(?:```|~~~)(.*?)\n([\s\S]*?)(?:(?:```|~~~)|$)/g
 const runnableMarker = "import.meta.vitest"
 const namePattern = /(?:^|\s)name=(?:"([^"]+)"|'([^']+)'|([^\s]+))/
-const outputPattern = /^[ \t]*\/\/ >(?: (.*))?$/gm
+const outputPattern = /\/\/ >(?: (.*))?$/gm
 
 const lineNumberAt = (source: string): (offset: number) => number => {
   const starts = [0]

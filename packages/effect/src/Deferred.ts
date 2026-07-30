@@ -837,7 +837,7 @@ export const sync: {
  *
  * const deferred = Deferred.makeUnsafe<number>()
  * const success = Deferred.doneUnsafe(deferred, Effect.succeed(42))
- * console.log(success) // true
+ * console.log(success) // > true
  * ```
  *
  * @category unsafe

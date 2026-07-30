@@ -40,10 +40,10 @@ import * as Reducer from "./Reducer.ts"
  * import { BigInt } from "effect"
  *
  * const bigInt = BigInt.BigInt(123)
- * console.log(bigInt) // 123n
+ * console.log(bigInt) // > 123n
  *
  * const fromString = BigInt.BigInt("456")
- * console.log(fromString) // 456n
+ * console.log(fromString) // > 456n
  * ```
  *
  * @category constructors
@@ -310,8 +310,8 @@ export const Order: order.Order<bigint> = order.BigInt
  * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
- * console.log(BigInt.Equivalence(1n, 1n)) // true
- * console.log(BigInt.Equivalence(1n, 2n)) // false
+ * console.log(BigInt.Equivalence(1n, 1n)) // > true
+ * console.log(BigInt.Equivalence(1n, 2n)) // > false
  * ```
  *
  * @category instances

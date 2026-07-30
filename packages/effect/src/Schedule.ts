@@ -246,10 +246,10 @@ const ScheduleProto = {
  * const schedule = Schedule.exponential("100 millis")
  * const notSchedule = { foo: "bar" }
  *
- * console.log(Schedule.isSchedule(schedule)) // true
- * console.log(Schedule.isSchedule(notSchedule)) // false
- * console.log(Schedule.isSchedule(null)) // false
- * console.log(Schedule.isSchedule(undefined)) // false
+ * console.log(Schedule.isSchedule(schedule)) // > true
+ * console.log(Schedule.isSchedule(notSchedule)) // > false
+ * console.log(Schedule.isSchedule(null)) // > false
+ * console.log(Schedule.isSchedule(undefined)) // > false
  * ```
  *
  * @category guards

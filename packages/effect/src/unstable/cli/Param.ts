@@ -298,8 +298,8 @@ export const isParam = (u: unknown): u is Param<any, ParamKind> => Predicate.has
  * const nameParam = Param.string(Param.flagKind, "name")
  * const optionalParam = Param.optional(nameParam)
  *
- * console.log(Param.isSingle(nameParam)) // true
- * console.log(Param.isSingle(optionalParam)) // false
+ * console.log(Param.isSingle(nameParam)) // > true
+ * console.log(Param.isSingle(optionalParam)) // > false
  * ```
  *
  * @category refinements
@@ -886,8 +886,8 @@ export const keyValuePair = <Kind extends ParamKind>(
  * const makeDebugParam = (enableDebug: boolean) =>
  *   enableDebug ? Param.string(Param.flagKind, "debug") : disabledDebugParam
  *
- * console.log(makeDebugParam(true) === disabledDebugParam) // false
- * console.log(makeDebugParam(false) === disabledDebugParam) // true
+ * console.log(makeDebugParam(true) === disabledDebugParam) // > false
+ * console.log(makeDebugParam(false) === disabledDebugParam) // > true
  * ```
  *
  * @category constructors

@@ -125,7 +125,7 @@ export type Assign<T, U> = Simplify<keyof T & keyof U extends never ? T & U : Om
  * import { pipe, Struct } from "effect"
  *
  * const name = pipe({ name: "Alice", age: 30 }, Struct.get("name"))
- * console.log(name) // "Alice"
+ * console.log(name) // > Alice
  * ```
  *
  * @see {@link keys} – list all string keys of a struct
@@ -158,7 +158,7 @@ export const get: {
  * const user = { name: "Alice", age: 30, [Symbol.for("id")]: 1 }
  *
  * const k: Array<"name" | "age"> = Struct.keys(user)
- * console.log(k) // ["name", "age"]
+ * console.log(k) // > [ 'name', 'age' ]
  * ```
  *
  * @see {@link get} – access a single key's value
@@ -187,7 +187,7 @@ export const keys = <S extends object>(self: S): Array<(keyof S) & string> =>
  *
  * const user = { name: "Alice", age: 30, admin: true }
  * const nameAndAge = pipe(user, Struct.pick(["name", "age"]))
- * console.log(nameAndAge) // { name: "Alice", age: 30 }
+ * console.log(nameAndAge) // > { name: 'Alice', age: 30 }
  * ```
  *
  * @see {@link omit} – the inverse (exclude keys instead)
@@ -225,7 +225,7 @@ export const pick: {
  *
  * const user = { name: "Alice", age: 30, password: "secret" }
  * const safe = pipe(user, Struct.omit(["password"]))
- * console.log(safe) // { name: "Alice", age: 30 }
+ * console.log(safe) // > { name: 'Alice', age: 30 }
  * ```
  *
  * @see {@link pick} – the inverse (keep only specified keys)
@@ -264,7 +264,7 @@ export const omit: {
  * const defaults = { theme: "light", lang: "en" }
  * const overrides = { theme: "dark", fontSize: 14 }
  * const config = pipe(defaults, Struct.assign(overrides))
- * console.log(config) // { theme: "dark", lang: "en", fontSize: 14 }
+ * console.log(config) // > { theme: 'dark', lang: 'en', fontSize: 14 }
  * ```
  *
  * @see {@link Assign} – the type-level equivalent
@@ -313,7 +313,7 @@ type Evolved<S, E> = Simplify<
  *     age: (n) => n + 1
  *   })
  * )
- * console.log(result) // { name: "ALICE", age: 31, active: true }
+ * console.log(result) // > { name: 'ALICE', age: 31, active: true }
  * ```
  *
  * @see {@link evolveKeys} – transform keys instead of values
@@ -362,7 +362,7 @@ type KeyEvolved<S, E> = Simplify<
  *     name: (k) => k.toUpperCase()
  *   })
  * )
- * console.log(result) // { NAME: "Alice", age: 30 }
+ * console.log(result) // > { NAME: 'Alice', age: 30 }
  * ```
  *
  * @see {@link renameKeys} – rename keys with a static mapping
@@ -418,7 +418,7 @@ type EntryEvolved<S, E> = {
  *     label: (k, v) => [k, v.toUpperCase()]
  *   })
  * )
- * console.log(result) // { amountCents: 10000, label: "TOTAL" }
+ * console.log(result) // > { amountCents: 10000, label: 'TOTAL' }
  * ```
  *
  * @see {@link evolve} – transform values only
@@ -457,7 +457,7 @@ export const evolveEntries: {
  *   { firstName: "Alice", lastName: "Smith", age: 30 },
  *   Struct.renameKeys({ firstName: "first", lastName: "last" })
  * )
- * console.log(result) // { first: "Alice", last: "Smith", age: 30 }
+ * console.log(result) // > { first: 'Alice', last: 'Smith', age: 30 }
  * ```
  *
  * @see {@link evolveKeys} – rename keys using functions
@@ -647,7 +647,7 @@ export type Apply<L extends Lambda, V> = (L & { readonly "~lambda.in": V })["~la
  *
  * const asArray = Struct.lambda<AsArray>((a) => [a])
  * const result = pipe({ x: 1, y: "hello" }, Struct.map(asArray))
- * console.log(result) // { x: [1], y: ["hello"] }
+ * console.log(result) // > { x: [ 1 ], y: [ 'hello' ] }
  * ```
  *
  * @see {@link Lambda} – the type-level interface
@@ -683,7 +683,7 @@ export const lambda = <L extends (a: any) => any>(
  *
  * const asArray = Struct.lambda<AsArray>((a) => [a])
  * const result = pipe({ width: 10, height: 20 }, Struct.map(asArray))
- * console.log(result) // { width: [10], height: [20] }
+ * console.log(result) // > { width: [ 10 ], height: [ 20 ] }
  * ```
  *
  * @see {@link mapPick} – apply a lambda only to selected keys
@@ -730,7 +730,7 @@ export const map: {
  *   { x: 1, y: 2, z: 3 },
  *   Struct.mapPick(["x", "z"], asArray)
  * )
- * console.log(result) // { x: [1], y: 2, z: [3] }
+ * console.log(result) // > { x: [ 1 ], y: 2, z: [ 3 ] }
  * ```
  *
  * @see {@link map} – apply a lambda to all keys
@@ -784,7 +784,7 @@ export const mapPick: {
  *   { x: 1, y: 2, z: 3 },
  *   Struct.mapOmit(["y"], asArray)
  * )
- * console.log(result) // { x: [1], y: 2, z: [3] }
+ * console.log(result) // > { x: [ 1 ], y: 2, z: [ 3 ] }
  * ```
  *
  * @see {@link map} – apply a lambda to all keys
@@ -869,7 +869,7 @@ function buildStruct<
  * })
  *
  * const result = C.combine({ n: 1, s: "hello" }, { n: 2, s: " world" })
- * console.log(result) // { n: 3, s: "hello world" }
+ * console.log(result) // > { n: 3, s: 'hello world' }
  * ```
  *
  * @see {@link makeReducer} – like `makeCombiner` but with an initial value
@@ -926,7 +926,7 @@ export function makeCombiner<A>(
  *   { n: 2, s: "b" },
  *   { n: 3, s: "c" }
  * ])
- * console.log(result) // { n: 6, s: "abc" }
+ * console.log(result) // > { n: 6, s: 'abc' }
  * ```
  *
  * @see {@link makeCombiner} – like `makeReducer` but without an initial value
@@ -962,7 +962,7 @@ export function makeReducer<A>(
  * import { Struct } from "effect"
  *
  * const record = Struct.Record(["a", "b"], "value")
- * console.log(record) // { a: "value", b: "value" }
+ * console.log(record) // > { a: 'value', b: 'value' }
  * ```
  *
  * @category constructors

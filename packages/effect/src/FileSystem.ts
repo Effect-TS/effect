@@ -450,7 +450,7 @@ export type SizeInput = bigint | number | Size
  *
  * // From number
  * const size1 = FileSystem.Size(1024)
- * console.log(typeof size1) // "bigint"
+ * console.log(typeof size1) // > bigint
  *
  * // From bigint
  * const size2 = FileSystem.Size(BigInt(2048))

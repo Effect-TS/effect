@@ -53,7 +53,7 @@ export const symbol = "~effect/interfaces/PrimaryKey"
  * }
  *
  * const productId = new ProductId("electronics", 42)
- * console.log(PrimaryKey.value(productId)) // "electronics-42"
+ * console.log(PrimaryKey.value(productId)) // > electronics-42
  * ```
  *
  * @category models
@@ -108,13 +108,13 @@ export const isPrimaryKey = (u: unknown): u is PrimaryKey => hasProperty(u, symb
  * }
  *
  * const orderId = new OrderId(1640995200000, 1)
- * console.log(PrimaryKey.value(orderId)) // "order_1640995200000_1"
+ * console.log(PrimaryKey.value(orderId)) // > order_1640995200000_1
  *
  * // Can also be used with simple string-based implementations
  * const simpleKey = {
  *   [PrimaryKey.symbol]: () => "simple-key-123"
  * }
- * console.log(PrimaryKey.value(simpleKey)) // "simple-key-123"
+ * console.log(PrimaryKey.value(simpleKey)) // > simple-key-123
  * ```
  *
  * @category accessors

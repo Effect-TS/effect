@@ -39,8 +39,8 @@ const TypeId = "~effect/Config"
  * ```ts import.meta.vitest
  * import { Config } from "effect"
  *
- * console.log(Config.isConfig(Config.string("HOST"))) // true
- * console.log(Config.isConfig("not a config"))        // false
+ * console.log(Config.isConfig(Config.string("HOST"))) // > true
+ * console.log(Config.isConfig("not a config")) // > false
  * ```
  *
  * @category guards

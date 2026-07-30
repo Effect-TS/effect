@@ -108,7 +108,7 @@ export interface Formatter {
    * const formatter = CliOutput.defaultFormatter()
    * const error = new InvalidOption({ message: "Unknown flag '--invalid'" })
    * const errorMessage = formatter.formatCliError(error)
-   * console.log(errorMessage) // "Unknown flag '--invalid'"
+   * console.log(errorMessage) // > Unknown flag '--invalid'
    * ```
    *
    * @since 4.0.0
@@ -159,10 +159,10 @@ export interface Formatter {
    * const version = "1.2.3"
    *
    * const coloredVersion = colorFormatter.formatVersion(appName, version)
-   * console.log(coloredVersion) // "\x1b[1mmy-awesome-tool\x1b[0m \x1b[2mv\x1b[0m\x1b[1m1.2.3\x1b[0m"
+   * console.log(coloredVersion) // > [1mmy-awesome-tool[0m [2mv[0m[1m1.2.3[0m
    *
    * const plainVersion = noColorFormatter.formatVersion(appName, version)
-   * console.log(plainVersion) // "my-awesome-tool v1.2.3"
+   * console.log(plainVersion) // > my-awesome-tool v1.2.3
    * ```
    *
    * @since 4.0.0

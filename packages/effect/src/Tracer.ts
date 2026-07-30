@@ -80,8 +80,8 @@ export interface EffectPrimitive<X> {
  *   exit: Exit.succeed("result")
  * }
  *
- * console.log(startedStatus._tag) // "Started"
- * console.log(endedStatus.endTime - endedStatus.startTime) // 500000000n
+ * console.log(startedStatus._tag) // > Started
+ * console.log(endedStatus.endTime - endedStatus.startTime) // > 500000000n
  * ```
  *
  * @category models
@@ -138,7 +138,7 @@ export type AnySpan = Span | ExternalSpan
  * import { Tracer } from "effect"
  *
  * // The key used to identify parent spans in the context
- * console.log(Tracer.ParentSpanKey) // "effect/Tracer/ParentSpan"
+ * console.log(Tracer.ParentSpanKey) // > effect/Tracer/ParentSpan
  * ```
  *
  * @category constants
