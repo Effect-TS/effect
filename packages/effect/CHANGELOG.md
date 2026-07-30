@@ -1,5 +1,21 @@
 # effect
 
+## 3.22.1
+
+### Patch Changes
+
+- [#6443](https://github.com/Effect-TS/effect/pull/6443) [`7ccbd9c`](https://github.com/Effect-TS/effect/commit/7ccbd9cfc78c5e0d71c75c06fb69c80ba5a0b0ac) Thanks @coyaSONG! - Clarify that `Context.GenericTag` requires a key.
+
+- [#6673](https://github.com/Effect-TS/effect/pull/6673) [`ab2af6d`](https://github.com/Effect-TS/effect/commit/ab2af6d702d0fcd06a5f1657bed3408168305245) Thanks @tim-smart! - Fix zero-capacity `Mailbox` rendezvous behavior for `take` and `takeN`.
+
+- [#6761](https://github.com/Effect-TS/effect/pull/6761) [`3cc3c6e`](https://github.com/Effect-TS/effect/commit/3cc3c6e1a64cbdc360e9d28e44f3ec3ce0ece6e3) Thanks @tim-smart! - Use a linear matcher when decoding template literals containing only string spans.
+
+- [#6507](https://github.com/Effect-TS/effect/pull/6507) [`3d390f2`](https://github.com/Effect-TS/effect/commit/3d390f232bdbc3f0d3d6a2ae3c775084f494b547) Thanks @tim-smart! - Disable unhandled error logging for fibers spawned by `Effect.timeout`.
+
+- [#6762](https://github.com/Effect-TS/effect/pull/6762) [`fcabf08`](https://github.com/Effect-TS/effect/commit/fcabf08c8af32ae6f8c7ab8c177cf58029a61e25) Thanks @tim-smart! - Redact errors from wrapped config parsers and avoid JSON key path collisions.
+
+- [#6669](https://github.com/Effect-TS/effect/pull/6669) [`735d81b`](https://github.com/Effect-TS/effect/commit/735d81ba80b17f03ff337845cc089c2497e31f67) Thanks @tim-smart! - Fix `Stream.asyncPush` termination with bounded dropping and sliding buffers.
+
 ## 3.22.0
 
 ### Minor Changes
