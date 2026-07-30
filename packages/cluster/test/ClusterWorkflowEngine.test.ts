@@ -341,6 +341,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         token,
         exit: Exit.void
       }).pipe(Effect.fork)
+      yield* Effect.yieldNow()
 
       yield* engine.register(ShardedDeferredWorkflow, () =>
         Activity.make({
