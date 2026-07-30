@@ -109,6 +109,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      EFFECT_INTEGRATION_TESTS: "1"
     permissions:
       contents: read
     timeout-minutes: 10

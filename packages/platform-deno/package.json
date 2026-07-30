@@ -58,9 +58,7 @@
   },
   "scripts": {
     "codegen": "effect-utils codegen",
-    "check": "deno check",
-    "test": "vitest",
-    "coverage": "vitest --coverage"
+    "check": "deno check"
   },
   "dependencies": {
     "@db/redis": "jsr:^0.41.2",

@@ -13,8 +13,7 @@
     "effect-api-diff": "./src/bin.ts"
   },
   "scripts": {
-    "check": "tsc -b tsconfig.json",
-    "test": "vitest"
+    "check": "tsc -b tsconfig.json"
   },
   "dependencies": {
     "@effect/platform-node": "workspace:^",
