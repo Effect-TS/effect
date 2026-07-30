@@ -139,6 +139,15 @@ export const prefix: {
 } = internal.prefix
 
 /**
+ * Provides a file-backed key-value store in the specified directory.
+ *
+ * Keys are percent-encoded as single file names. Empty keys, `.` and `..` are
+ * rejected. Keys are only guaranteed to be distinct on case-sensitive file
+ * systems.
+ *
+ * `clear` removes the directory recursively, so it must not be shared with
+ * unrelated data.
+ *
  * @since 1.0.0
  * @category layers
  */
