@@ -206,7 +206,13 @@ export interface MssqlClientConfig {
   readonly domain?: string | undefined
   readonly server: string
   readonly instanceName?: string | undefined
+  /**
+   * Whether to encrypt traffic between the client and server. Defaults to `true`. Setting this to `false` disables transport encryption and transmits credentials in cleartext.
+   */
   readonly encrypt?: boolean | undefined
+  /**
+   * Whether to trust the server certificate without validating it. Defaults to `false`. Setting this to `true` disables TLS certificate validation.
+   */
   readonly trustServer?: boolean | undefined
   readonly port?: number | undefined
   readonly authType?: string | undefined
@@ -284,7 +290,7 @@ export const make = (
         options: {
           port: options.port,
           database: options.database,
-          trustServerCertificate: options.trustServer ?? true,
+          trustServerCertificate: options.trustServer ?? false,
           multiSubnetFailover: options.multiSubnetFailover,
           connectTimeout: options.connectTimeout
             ? Duration.toMillis(Duration.fromInputUnsafe(options.connectTimeout))
@@ -292,7 +298,7 @@ export const make = (
           rowCollectionOnRequestCompletion: true,
           useColumnNames: false,
           instanceName: options.instanceName,
-          encrypt: options.encrypt ?? false,
+          encrypt: options.encrypt ?? true,
           cancelTimeout: options.cancelTimeout
             ? Duration.toMillis(Duration.fromInputUnsafe(options.cancelTimeout))
             : undefined,
