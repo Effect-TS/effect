@@ -14224,6 +14224,16 @@ type MissingSelfGeneric<Usage extends string> =
  * Pass the desired class type as the first type parameter. The second optional
  * type parameter can be used to add nominal brands.
  *
+ * The `identifier` is the schema's stable runtime name. It is exposed on the
+ * class, stored in the schema AST, and used to label diagnostics and generated
+ * references as well as to format class instances.
+ *
+ * It also derives a runtime marker that recognizes instances across hot module
+ * reloads, where `instanceof` can fail because the constructor has been
+ * replaced. The identifier is explicit because the outer JavaScript class name
+ * is not available while the `extends` expression is evaluated and may change
+ * through renaming or minification.
+ *
  * **Gotchas**
  *
  * Passing `disableChecks` in the options skips constructor validation.

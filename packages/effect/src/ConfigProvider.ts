@@ -17,6 +17,7 @@ import { format } from "./Formatter.ts"
 import { dual, flow } from "./Function.ts"
 import { PipeInspectableProto } from "./internal/core.ts"
 import * as Layer from "./Layer.ts"
+import * as Option from "./Option.ts"
 import * as Path_ from "./Path.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import type { PlatformError } from "./PlatformError.ts"
@@ -40,6 +41,10 @@ import * as Str from "./String.ts"
  * whose immediate child keys are known and may carry an optional co-located
  * `value`. `Array` is an indexed container with a known `length` and may also
  * carry an optional co-located `value`.
+ *
+ * Provider lookups use `Option<Node>` because a missing node is an outcome of
+ * the lookup. Within a node that was found, `value: undefined` has a narrower
+ * structural meaning: the container exists but has no co-located scalar value.
  *
  * @see {@link makeValue} – construct a `Value` node
  * @see {@link makeRecord} – construct a `Record` node
@@ -176,7 +181,7 @@ export function makeArray(length: number, value?: string): Node {
  * **Gotchas**
  *
  * Do not use `SourceError` for "key not found". That case is represented by
- * returning `undefined` from `load`.
+ * returning `Option.none()` from `load`.
  *
  * **Example** (Failing with a SourceError)
  *
@@ -236,29 +241,64 @@ export type Path = ReadonlyArray<string | number>
  *
  * `load(path)` is the semantic lookup operation used by the `Config` module.
  * It applies provider transformations and composition before consulting the
- * underlying source. `undefined` means "not found" and `SourceError` means the
- * source itself failed.
+ * underlying source. `Option.none()` means "not found", `Option.some(node)`
+ * means the path exists, and `SourceError` means the source itself failed.
+ *
+ * `mapInput(f)` is the provider's path-transformation capability. Keeping this
+ * capability on the provider allows source and composite providers to preserve
+ * their own lookup behavior without exposing an internal representation.
+ * Transformations compose in application order: `f` receives the path produced
+ * by earlier transformations.
+ *
+ * `load` deliberately accepts only a `Path`. Path transformation is modeled by
+ * returning another provider through `mapInput`, rather than by adding a
+ * transformation callback to every lookup. Custom implementations therefore
+ * expose lookup and transformation behavior, but no source or composition
+ * state.
  *
  * @see {@link make} – construct a provider from a lookup function
  * @see {@link orElse} – compose providers with fallback
  *
  * @category models
- * @since 2.0.0
+ * @since 4.0.0
  */
 export interface ConfigProvider extends Pipeable {
   /**
-   * Returns the node found at `path`, or `undefined` if it does not exist.
-   * Fails with `SourceError` when the underlying source cannot be read.
+   * Returns `Option.some(node)` when `path` exists or `Option.none()` when it
+   * does not. Fails with `SourceError` when the underlying source cannot be
+   * read.
    *
    * **When to use**
    *
    * Use to resolve a path through this provider's path transformations before
    * reading the backing source.
+   *
+   * **Details**
+   *
+   * Lookup absence uses `Option` because it controls provider composition,
+   * such as whether {@link orElse} consults its fallback. An optional `value`
+   * inside a found `Record` or `Array` node remains `undefined` because it
+   * describes the shape of that node rather than the outcome of the lookup.
    */
-  readonly load: (path: Path) => Effect.Effect<Node | undefined, SourceError>
+  readonly load: (path: Path) => Effect.Effect<Option.Option<Node>, SourceError>
 
-  /** @internal */
-  readonly state: ProviderState
+  /**
+   * Returns a provider that applies `f` to lookup paths after any existing path
+   * transformations.
+   *
+   * **When to use**
+   *
+   * Use to implement provider-specific path transformation behavior. Most
+   * callers should use the pipeable {@link mapInput} combinator.
+   *
+   * **Details**
+   *
+   * This capability is part of the provider interface so composite providers
+   * can distribute transformations to their operands while preserving each
+   * operand's behavior. Providers created with {@link make} implement it
+   * automatically.
+   */
+  readonly mapInput: (f: (path: Path) => Path) => ConfigProvider
 }
 
 /**
@@ -291,7 +331,7 @@ export interface ConfigProvider extends Pipeable {
  * @see {@link layerAdd} – add a fallback provider as a Layer
  *
  * @category services
- * @since 2.0.0
+ * @since 4.0.0
  */
 export const ConfigProvider: Context.Reference<ConfigProvider> = Context.Reference<ConfigProvider>(
   "effect/ConfigProvider",
@@ -307,55 +347,37 @@ const Proto = {
   }
 }
 
-type SourceState = {
-  readonly _tag: "Source"
-  readonly get: (path: Path) => Effect.Effect<Node | undefined, SourceError>
-  readonly transform: (path: Path) => Path
-}
-
-type OrElseState = {
-  readonly _tag: "OrElse"
-  readonly first: ConfigProvider
-  readonly second: ConfigProvider
-}
-
-type ProviderState = SourceState | OrElseState
-
 const identityPath = (path: Path): Path => path
 
 function makeProvider(
-  state: ProviderState,
-  load: (path: Path) => Effect.Effect<Node | undefined, SourceError>
+  load: (path: Path) => Effect.Effect<Option.Option<Node>, SourceError>,
+  mapInput: (f: (path: Path) => Path) => ConfigProvider
 ): ConfigProvider {
   const self = Object.create(Proto)
-  self.state = state
   self.load = load
+  self.mapInput = mapInput
   return self
 }
 
 function makeSource(
-  get: (path: Path) => Effect.Effect<Node | undefined, SourceError>,
+  get: (path: Path) => Effect.Effect<Option.Option<Node>, SourceError>,
   transform: (path: Path) => Path
 ): ConfigProvider {
-  const state: SourceState = {
-    _tag: "Source",
-    get,
-    transform
-  }
-  return makeProvider(state, (path) => state.get(state.transform(path)))
+  return makeProvider(
+    (path) => get(transform(path)),
+    (f) => makeSource(get, flow(transform, f))
+  )
 }
 
 function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvider {
-  const state: OrElseState = {
-    _tag: "OrElse",
-    first,
-    second
-  }
-  return makeProvider(state, (path) =>
-    Effect.flatMap(
-      state.first.load(path),
-      (node) => node ? Effect.succeed(node) : state.second.load(path)
-    ))
+  return makeProvider(
+    (path) =>
+      Effect.flatMap(
+        first.load(path),
+        (node) => Option.isSome(node) ? Effect.succeed(node) : second.load(path)
+      ),
+    (f) => makeOrElse(first.mapInput(f), second.mapInput(f))
+  )
 }
 
 /**
@@ -369,13 +391,18 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  * **Details**
  *
  * The `get` callback receives a `Path` and must return
- * `Effect<Node | undefined, SourceError>`. Return `undefined` when the path
- * does not exist; fail with `SourceError` only for actual I/O errors.
+ * `Effect<Option<Node>, SourceError>`. Return `Option.none()` when the path
+ * does not exist, `Option.some(node)` when it does, and fail with `SourceError`
+ * only when the source cannot be read.
+ *
+ * Providers created by `make` also implement the path-transformation
+ * capability used by {@link mapInput}, {@link constantCase}, and
+ * {@link nested}.
  *
  * **Example** (Creating a simple in-memory provider)
  *
  * ```ts
- * import { ConfigProvider, Effect } from "effect"
+ * import { ConfigProvider, Effect, Option } from "effect"
  *
  * const data: Record<string, string> = {
  *   host: "localhost",
@@ -386,7 +413,9 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  *   const key = path.join(".")
  *   const value = data[key]
  *   return Effect.succeed(
- *     value !== undefined ? ConfigProvider.makeValue(value) : undefined
+ *     value !== undefined
+ *       ? Option.some(ConfigProvider.makeValue(value))
+ *       : Option.none()
  *   )
  * })
  * ```
@@ -395,14 +424,14 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  * @see {@link fromUnknown} – pre-built provider for JSON objects
  *
  * @category constructors
- * @since 2.0.0
+ * @since 4.0.0
  */
-export function make(get: (path: Path) => Effect.Effect<Node | undefined, SourceError>): ConfigProvider {
+export function make(get: (path: Path) => Effect.Effect<Option.Option<Node>, SourceError>): ConfigProvider {
   return makeSource(get, identityPath)
 }
 
 /**
- * Returns a provider that falls back to `that` when `self` returns `undefined`
+ * Returns a provider that falls back to `that` when `self` returns `None`
  * for a path.
  *
  * **When to use**
@@ -418,7 +447,7 @@ export function make(get: (path: Path) => Effect.Effect<Node | undefined, Source
  *
  * **Gotchas**
  *
- * The fallback only runs when the path is not found (`undefined`). A
+ * The fallback only runs when the path is not found (`Option.none()`). A
  * `SourceError` from `self` is not caught; it propagates immediately.
  *
  * **Example** (Falling back to a default provider)
@@ -463,6 +492,10 @@ export const orElse: {
  * `f` runs. For providers composed with {@link orElse}, the transformation is
  * applied to each operand.
  *
+ * The combinator delegates transformation to the provider itself. Use
+ * {@link make} for custom sources so this capability is implemented
+ * automatically.
+ *
  * **Example** (Uppercasing path segments)
  *
  * ```ts
@@ -490,15 +523,7 @@ export const mapInput: {
   (self: ConfigProvider, f: (path: Path) => Path): ConfigProvider
 } = dual(
   2,
-  (self: ConfigProvider, f: (path: Path) => Path): ConfigProvider => {
-    const state = self.state
-    switch (state._tag) {
-      case "Source":
-        return makeSource(state.get, flow(state.transform, f))
-      case "OrElse":
-        return makeOrElse(mapInput(state.first, f), mapInput(state.second, f))
-    }
-  }
+  (self: ConfigProvider, f: (path: Path) => Path): ConfigProvider => self.mapInput(f)
 )
 
 /**
@@ -583,13 +608,7 @@ export const nested: {
   2,
   (self: ConfigProvider, prefix: string | Path): ConfigProvider => {
     const path = typeof prefix === "string" ? [prefix] : prefix
-    const state = self.state
-    switch (state._tag) {
-      case "Source":
-        return makeSource(state.get, flow(state.transform, (input) => [...path, ...input]))
-      case "OrElse":
-        return makeOrElse(nested(state.first, path), nested(state.second, path))
-    }
+    return mapInput(self, (input) => [...path, ...input])
   }
 )
 
@@ -646,8 +665,8 @@ export const layer = <E = never, R = never>(
  * **Details**
  *
  * By default, the new provider acts as a fallback and is consulted only when
- * the current provider returns `undefined`. Set `asPrimary: true` to make the
- * new provider the primary source, with the existing one as fallback.
+ * the current provider returns `Option.none()`. Set `asPrimary: true` to make
+ * the new provider the primary source, with the existing one as fallback.
  *
  * **Example** (Adding default values)
  *
@@ -695,8 +714,8 @@ export const layerAdd = <E = never, R = never>(
  * **Details**
  *
  * Path traversal follows standard JS rules: string segments index into object
- * keys, numeric segments index into arrays. Returns `undefined` for any path
- * that cannot be resolved. Never fails with `SourceError`.
+ * keys, numeric segments index into arrays. Returns `Option.none()` for any
+ * path that cannot be resolved. Never fails with `SourceError`.
  *
  * Primitive values (`number`, `boolean`, `bigint`) are stringified via
  * `String(...)`.
@@ -740,7 +759,7 @@ export function fromUnknown(root: unknown, options?: {
   readonly preserveEmptyStrings?: boolean | undefined
 }): ConfigProvider {
   const preserveEmptyStrings = options?.preserveEmptyStrings === true
-  return make((path) => Effect.succeed(nodeAtJson(root, path, preserveEmptyStrings)))
+  return make((path) => Effect.succeed(Option.fromUndefinedOr(nodeAtJson(root, path, preserveEmptyStrings))))
 }
 
 function nodeAtJson(root: unknown, path: Path, preserveEmptyStrings: boolean): Node | undefined {
@@ -856,7 +875,7 @@ export function fromEnv(options?: {
   const preserveEmptyStrings = options?.preserveEmptyStrings === true
   const trie = buildEnvTrie(env)
 
-  return make((path) => Effect.succeed(nodeAtEnv(trie, env, path, preserveEmptyStrings)))
+  return make((path) => Effect.succeed(Option.fromUndefinedOr(nodeAtEnv(trie, env, path, preserveEmptyStrings))))
 }
 
 type EnvTrieNode = {
@@ -1133,7 +1152,7 @@ export const fromDotEnv: (options?: {
  * Resolution tries a regular file first and returns a `Value` node for
  * non-empty trimmed file contents. If the file read fails, it tries a directory
  * and returns a `Record` node with immediate child names as keys. If both fail
- * with `NotFound`, it returns `undefined`. Other platform failures return
+ * with `NotFound`, it returns `Option.none()`. Other platform failures return
  * `SourceError`.
  *
  * Requires `Path` and `FileSystem` in the Effect context. Defaults to root
@@ -1204,7 +1223,8 @@ export const fromDir: (options?: {
           message: `Failed to read file at ${platformPath.join(rootPath, ...path.map(String))}`,
           cause
         })
-      )
+      ),
+      Effect.map(Option.fromUndefinedOr)
     )
   })
 })

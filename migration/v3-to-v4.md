@@ -9059,7 +9059,7 @@ Schema.toArbitraryLazy(schema)
 
 ### `effect/ConfigProvider`
 
-- `ConfigProvider.ConfigProvider` -> `ConfigProvider.ConfigProvider`: The model remains but now exposes load(path), returning a raw Node or undefined, and has one unified provider representation.
+- `ConfigProvider.ConfigProvider` -> `ConfigProvider.ConfigProvider`: The model remains but now exposes `load(path)`, returning `Effect<Option<Node>, SourceError>`, and `mapInput(f)` for provider-owned path transformation. `Option.none()` means the path is missing; `Option.some(node)` means it exists.
 
 - `ConfigProvider.ConfigProvider.Flat` -> `ConfigProvider.ConfigProvider`: Flat providers were removed; implement the unified path-based provider with ConfigProvider.make.
 
@@ -9081,7 +9081,7 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigProvider.fromEnv` -> `ConfigProvider.fromEnv`: The constructor remains; pass env and preserveEmptyStrings options. Paths use underscore semantics, while sequence separators belong on Config schemas.
 
-- `ConfigProvider.fromFlat` -> `ConfigProvider.make`: Flat providers were unified with ConfigProvider; implement load by returning Value, Record, or Array nodes for each path.
+- `ConfigProvider.fromFlat` -> `ConfigProvider.make`: Flat providers were unified with ConfigProvider; implement lookup by returning `Option.some(node)` for a found `Value`, `Record`, or `Array` node, or `Option.none()` when missing.
 
 - `ConfigProvider.fromJson` -> `ConfigProvider.fromUnknown`: Renamed to reflect support for any in-memory JavaScript value.
 
@@ -9091,9 +9091,9 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigProvider.lowerCase` -> `ConfigProvider.mapInput((path) => path.map((part) => typeof part === "string" ? part.toLowerCase() : part))`: Transform string path segments explicitly with mapInput.
 
-- `ConfigProvider.make` -> `ConfigProvider.make`: The constructor now takes a path lookup returning Effect\<Node | undefined, SourceError\>, rather than a full Config loader and flattened provider.
+- `ConfigProvider.make` -> `ConfigProvider.make`: The constructor now takes a path lookup returning `Effect<Option<Node>, SourceError>`, rather than a full Config loader and flattened provider. Use `Option.none()` for a missing path and `Option.some(node)` for a found node.
 
-- `ConfigProvider.makeFlat` -> `ConfigProvider.make`: The flat-provider constructor was removed; return Value, Record, or Array nodes from the unified path lookup.
+- `ConfigProvider.makeFlat` -> `ConfigProvider.make`: The flat-provider constructor was removed; return `Option.some(node)` for a found `Value`, `Record`, or `Array` node, or `Option.none()` when missing.
 
 - `ConfigProvider.mapInputPath` -> `ConfigProvider.mapInput`: Renamed and generalized: the callback receives and returns the complete Path, including numeric array indexes.
 
