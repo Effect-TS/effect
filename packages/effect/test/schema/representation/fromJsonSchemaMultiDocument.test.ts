@@ -1,7 +1,16 @@
 import { assert } from "@effect/vitest"
-import { SchemaRepresentation } from "effect"
+import { type SchemaAST, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
 import { deepStrictEqual, throws } from "../../utils/assert.ts"
+
+function importAndLower(
+  document: Parameters<typeof SchemaRepresentation.fromJsonSchemaMultiDocument>[0]
+): SchemaRepresentation.MultiDocument {
+  const schemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document)
+  return SchemaRepresentation.toRepresentations(
+    schemas.map((schema) => schema.ast) as [SchemaAST.AST, ...Array<SchemaAST.AST>]
+  )
+}
 
 describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
   it("preserves an onEnter exception by identity", () => {
@@ -26,28 +35,26 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
   })
 
   it("preserves contentSchema as an annotation without traversing it", () => {
-    const document = SchemaRepresentation.fromSchemaMultiDocument(
-      SchemaRepresentation.fromJsonSchemaMultiDocument({
-        dialect: "draft-2020-12",
-        schemas: [{
-          type: "string",
-          contentMediaType: "application/json",
-          contentSchema: { $ref: "#/$defs/Payload" }
-        }],
-        definitions: {
-          Payload: {
-            type: "object",
-            properties: { value: { type: "number" } },
-            required: ["value"],
-            additionalProperties: false
-          }
+    const document = importAndLower({
+      dialect: "draft-2020-12",
+      schemas: [{
+        type: "string",
+        contentMediaType: "application/json",
+        contentSchema: { $ref: "#/$defs/Payload" }
+      }],
+      definitions: {
+        Payload: {
+          type: "object",
+          properties: { value: { type: "number" } },
+          required: ["value"],
+          additionalProperties: false
         }
-      })
-    )
+      }
+    })
 
     const content = document.representations[0]
     assert.strictEqual(content._tag, "String")
-    assert.deepStrictEqual(Object.keys(document.references), ["Payload"])
+    assert.deepStrictEqual(document.references, {})
     if (content._tag === "String") {
       assert.deepStrictEqual(content.annotations, {
         contentMediaType: "application/json",
@@ -56,8 +63,25 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
     }
   })
 
+  it("does not import unreachable definitions", () => {
+    const schemas = SchemaRepresentation.fromJsonSchemaMultiDocument({
+      dialect: "draft-2020-12",
+      schemas: [{ type: "string" }],
+      definitions: {
+        Unused: { type: "number", description: "unused" }
+      }
+    }, {
+      onEnter: (schema) => {
+        if (schema.description === "unused") throw new Error("unreachable")
+        return schema
+      }
+    })
+
+    assert.strictEqual(schemas[0].ast._tag, "String")
+  })
+
   it("preserves root order and shares definitions", () => {
-    const document = SchemaRepresentation.fromSchemaMultiDocument(SchemaRepresentation.fromJsonSchemaMultiDocument({
+    const document = importAndLower({
       dialect: "draft-2020-12",
       schemas: [
         { $ref: "#/$defs/A" },
@@ -68,7 +92,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
       definitions: {
         A: { type: "string", minLength: 1 }
       }
-    }))
+    })
 
     deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
       representations: [
@@ -115,7 +139,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
   })
 
   it("resolves alias chains when combining a reference", () => {
-    const document = SchemaRepresentation.fromSchemaMultiDocument(SchemaRepresentation.fromJsonSchemaMultiDocument({
+    const document = importAndLower({
       dialect: "draft-2020-12",
       schemas: [{ $ref: "#/$defs/A", description: "root" }],
       definitions: {
@@ -123,7 +147,7 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
         B: { $ref: "#/$defs/C" },
         C: { type: "number" }
       }
-    }))
+    })
 
     deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
       representations: [{
@@ -145,46 +169,20 @@ describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
             },
             aborted: false
           }]
-        },
-        B: {
-          _tag: "Number",
-          checks: [{
-            _tag: "Filter",
-            representation: { id: "effect/schema/isFinite", payload: null },
-            annotations: {
-              identifier: "B",
-              expected: "a finite number",
-              arbitrary: { constraint: { noInfinity: true, noNaN: true } }
-            },
-            aborted: false
-          }]
-        },
-        C: {
-          _tag: "Number",
-          checks: [{
-            _tag: "Filter",
-            representation: { id: "effect/schema/isFinite", payload: null },
-            annotations: {
-              identifier: "C",
-              expected: "a finite number",
-              arbitrary: { constraint: { noInfinity: true, noNaN: true } }
-            },
-            aborted: false
-          }]
         }
       }
     })
   })
 
   it("tracks recursive definitions independently", () => {
-    const document = SchemaRepresentation.fromSchemaMultiDocument(SchemaRepresentation.fromJsonSchemaMultiDocument({
+    const document = importAndLower({
       dialect: "draft-2020-12",
       schemas: [{ $ref: "#/$defs/A" }, { $ref: "#/$defs/B" }],
       definitions: {
         A: { $ref: "#/$defs/A" },
         B: { $ref: "#/$defs/B" }
       }
-    }))
+    })
 
     deepStrictEqual(SchemaRepresentation.toJsonMultiDocument(document), {
       representations: [

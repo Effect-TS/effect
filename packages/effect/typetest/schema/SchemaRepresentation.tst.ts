@@ -11,9 +11,6 @@ describe("SchemaRepresentation persisted wire", () => {
         asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
       ) => SchemaRepresentation.MultiDocument
     >()
-    expect(SchemaRepresentation.fromSchemaMultiDocument).type.toBe<
-      (document: SchemaRepresentation.SchemaMultiDocument) => SchemaRepresentation.MultiDocument
-    >()
   })
 
   it("keeps projection explicit for single and multi documents", () => {

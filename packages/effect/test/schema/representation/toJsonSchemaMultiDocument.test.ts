@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, SchemaRepresentation } from "effect"
+import { Schema, SchemaRepresentation, SchemaTransformation } from "effect"
 import { throws } from "../../utils/assert.ts"
 
 function expectError(thunk: () => void, expected: string | Error): void {
@@ -18,7 +18,323 @@ const StringRepresentation: SchemaRepresentation.Representation = {
   checks: []
 }
 
+const stringIdentityTransformation = SchemaTransformation.transform({
+  decode: (value: string) => value,
+  encode: (value: string) => value
+})
+
 describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
+  it("deduplicates equivalent fallback definitions", () => {
+    const Content = Schema.Struct({ text: Schema.String }).annotate({ identifier: "Tool.Content" })
+    const first = Schema.toCodecJson(Schema.fromJsonString(Content))
+    const second = Schema.toCodecJson(Schema.fromJsonString(Content))
+    const document = SchemaRepresentation.toRepresentations([first.ast, second.ast])
+
+    assert.deepStrictEqual(SchemaRepresentation.toJsonSchemaMultiDocument(document), {
+      dialect: "draft-2020-12",
+      schemas: [
+        { $ref: "#/$defs/Tool.ContentJsonEncoding" },
+        { $ref: "#/$defs/Tool.ContentJsonEncoding" }
+      ],
+      definitions: {
+        "Tool.ContentJsonEncoding": {
+          type: "string",
+          contentMediaType: "application/json"
+        }
+      }
+    })
+  })
+
+  it("does not deduplicate different fallback definitions", () => {
+    const Content = Schema.String.annotate({ identifier: "Fallback" })
+    const string = Schema.toCodecJson(
+      Schema.String.pipe(Schema.decodeTo(Content, stringIdentityTransformation))
+    )
+    const boolean = Schema.toCodecJson(
+      Schema.Boolean.pipe(
+        Schema.decodeTo(
+          Content,
+          SchemaTransformation.transform({
+            decode: (value) => String(value),
+            encode: (value) => value === "true"
+          })
+        )
+      )
+    )
+    const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+      SchemaRepresentation.toRepresentations([string.ast, boolean.ast])
+    )
+
+    assert.deepStrictEqual(output.schemas, [
+      { $ref: "#/$defs/FallbackJsonEncoding" },
+      { $ref: "#/$defs/FallbackJsonEncoding1" }
+    ])
+    assert.deepStrictEqual(output.definitions, {
+      FallbackJsonEncoding: { type: "string" },
+      FallbackJsonEncoding1: { type: "boolean" }
+    })
+  })
+
+  it("does not deduplicate explicit identifiers", () => {
+    const ExplicitA = Schema.String.annotate({ identifier: "ExplicitA" })
+    const ExplicitB = Schema.String.annotate({ identifier: "ExplicitB" })
+    const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+      SchemaRepresentation.toRepresentations([ExplicitA.ast, ExplicitB.ast])
+    )
+
+    assert.deepStrictEqual(output.schemas, [
+      { $ref: "#/$defs/ExplicitA" },
+      { $ref: "#/$defs/ExplicitB" }
+    ])
+    assert.deepStrictEqual(output.definitions, {
+      ExplicitA: { type: "string" },
+      ExplicitB: { type: "string" }
+    })
+  })
+
+  it("deduplicates fallback definitions after linking their dependencies", () => {
+    const Child = Schema.String.annotate({ identifier: "Child" })
+    const Parent = Schema.Struct({ child: Child }).annotate({ identifier: "Parent" })
+    const make = () => {
+      const encoded = Schema.Struct({
+        child: Schema.fromJsonString(Child)
+      })
+      return Schema.toCodecJson(
+        encoded.pipe(
+          Schema.decodeTo(
+            Parent,
+            SchemaTransformation.transform({
+              decode: ({ child }) => ({ child }),
+              encode: ({ child }) => ({ child })
+            })
+          )
+        )
+      )
+    }
+    const first = make()
+    const second = make()
+    const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+      SchemaRepresentation.toRepresentations([first.ast, second.ast])
+    )
+
+    assert.deepStrictEqual(output.schemas, [
+      { $ref: "#/$defs/ParentJsonEncoding" },
+      { $ref: "#/$defs/ParentJsonEncoding" }
+    ])
+    assert.deepStrictEqual(output.definitions, {
+      ChildJsonEncoding: {
+        type: "string",
+        contentMediaType: "application/json"
+      },
+      ParentJsonEncoding: {
+        type: "object",
+        properties: {
+          child: { $ref: "#/$defs/ChildJsonEncoding" }
+        },
+        required: ["child"],
+        additionalProperties: false
+      }
+    })
+  })
+
+  it("escapes canonical fallback references", () => {
+    const Content = Schema.String.annotate({ identifier: "Child/~" })
+    const first = Schema.toCodecJson(Schema.fromJsonString(Content))
+    const second = Schema.toCodecJson(Schema.fromJsonString(Content))
+    const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+      SchemaRepresentation.toRepresentations([first.ast, second.ast])
+    )
+
+    assert.deepStrictEqual(output.schemas, [
+      { $ref: "#/$defs/Child~1~0JsonEncoding" },
+      { $ref: "#/$defs/Child~1~0JsonEncoding" }
+    ])
+    assert.deepStrictEqual(output.definitions, {
+      "Child/~JsonEncoding": {
+        type: "string",
+        contentMediaType: "application/json"
+      }
+    })
+  })
+
+  it("compiles fallback definitions once before deduplicating them", () => {
+    let visits = 0
+    const Content = Schema.String.annotate({ identifier: "Callback" })
+    const make = (reverse: boolean) => {
+      const encoded = Schema.String.check(
+        Schema.makeFilter<string>(() => true, {
+          toJsonSchema: () => {
+            visits++
+            return reverse ? { maxLength: 10, minLength: 1 } : { minLength: 1, maxLength: 10 }
+          }
+        })
+      )
+      return Schema.toCodecJson(
+        encoded.pipe(Schema.decodeTo(Content, stringIdentityTransformation))
+      )
+    }
+    const first = make(false)
+    const second = make(true)
+    const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+      SchemaRepresentation.toRepresentations([first.ast, second.ast])
+    )
+
+    assert.strictEqual(visits, 2)
+    assert.deepStrictEqual(output.schemas, [
+      { $ref: "#/$defs/CallbackJsonEncoding" },
+      { $ref: "#/$defs/CallbackJsonEncoding" }
+    ])
+    assert.deepStrictEqual(output.definitions, {
+      CallbackJsonEncoding: {
+        type: "string",
+        allOf: [{ minLength: 1, maxLength: 10 }]
+      }
+    })
+  })
+
+  it("reuses a compiled definition when extracting an index signature pattern", () => {
+    let visits = 0
+    const Key = Schema.String.check(
+      Schema.makeFilter<string>(() => true, {
+        identifier: "Key",
+        toJsonSchema: () => {
+          visits++
+          return { pattern: "^key$" }
+        }
+      })
+    )
+    const Root = Schema.Record(Key, Schema.String)
+    const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+      SchemaRepresentation.toRepresentations([Root.ast])
+    )
+
+    assert.strictEqual(visits, 1)
+    assert.deepStrictEqual(output.schemas, [{
+      type: "object",
+      patternProperties: {
+        "^key$": { type: "string" }
+      }
+    }])
+  })
+
+  it("deduplicates fallback definitions that share a recursive dependency", () => {
+    interface OptionalNode {
+      readonly next?: OptionalNode | undefined
+    }
+    const Encoded: Schema.Codec<OptionalNode> = Schema.suspend(() =>
+      Schema.Struct({
+        next: Schema.optional(Encoded)
+      })
+    )
+    const Content = Encoded.annotate({ identifier: "Node" })
+    const make = () =>
+      Schema.toCodecJson(
+        Encoded.pipe(
+          Schema.decodeTo(
+            Content,
+            SchemaTransformation.transform({
+              decode: (node) => node,
+              encode: (node) => node
+            })
+          )
+        )
+      )
+    const first = make()
+    const second = make()
+    const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+      SchemaRepresentation.toRepresentations([first.ast, second.ast])
+    )
+
+    assert.deepStrictEqual(output.schemas, [
+      { $ref: "#/$defs/NodeJsonEncoding" },
+      { $ref: "#/$defs/NodeJsonEncoding" }
+    ])
+    assert.deepStrictEqual(output.definitions, {
+      Objects_: {
+        type: "object",
+        properties: {
+          next: {
+            anyOf: [
+              { $ref: "#/$defs/Objects_" },
+              { type: "null" }
+            ]
+          }
+        },
+        additionalProperties: false
+      },
+      NodeJsonEncoding: { $ref: "#/$defs/Objects_" }
+    })
+  })
+
+  it("does not deduplicate fallback definitions with distinct recursive dependencies", () => {
+    interface RequiredNode {
+      readonly next: RequiredNode
+    }
+    const Content: Schema.Codec<RequiredNode> = Schema.Struct({
+      next: Schema.suspend(() => Content)
+    }).annotate({ identifier: "Node" })
+    const make = () => {
+      const Encoded: Schema.Codec<RequiredNode> = Schema.Struct({
+        next: Schema.suspend(() => Encoded)
+      })
+      return Schema.toCodecJson(
+        Encoded.pipe(
+          Schema.decodeTo(
+            Content,
+            SchemaTransformation.transform({
+              decode: (node) => node,
+              encode: (node) => node
+            })
+          )
+        )
+      )
+    }
+    const first = make()
+    const second = make()
+    const output = SchemaRepresentation.toJsonSchemaMultiDocument(
+      SchemaRepresentation.toRepresentations([first.ast, second.ast])
+    )
+
+    assert.deepStrictEqual(output.schemas, [
+      { $ref: "#/$defs/NodeJsonEncoding" },
+      { $ref: "#/$defs/NodeJsonEncoding1" }
+    ])
+    assert.deepStrictEqual(output.definitions, {
+      Suspend_: {
+        type: "object",
+        properties: {
+          next: { $ref: "#/$defs/Suspend_" }
+        },
+        required: ["next"],
+        additionalProperties: false
+      },
+      NodeJsonEncoding: {
+        type: "object",
+        properties: {
+          next: { $ref: "#/$defs/Suspend_" }
+        },
+        required: ["next"],
+        additionalProperties: false
+      },
+      Suspend_1: {
+        type: "object",
+        properties: {
+          next: { $ref: "#/$defs/Suspend_1" }
+        },
+        required: ["next"],
+        additionalProperties: false
+      },
+      NodeJsonEncoding1: {
+        type: "object",
+        properties: {
+          next: { $ref: "#/$defs/Suspend_1" }
+        },
+        required: ["next"],
+        additionalProperties: false
+      }
+    })
+  })
+
   it("should handle multiple schemas", () => {
     const A = Schema.String.annotate({ identifier: "A", description: "a" })
     const B = Schema.String.annotate({ identifier: "B", description: "b" })
