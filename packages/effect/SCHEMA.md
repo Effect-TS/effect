@@ -6300,10 +6300,10 @@ Repeated structural nodes, identifiers, and recursive schemas are placed in `ref
 wraps a single document when a compiler requires multiple roots.
 
 An explicit `identifier` requests a reference name within a conversion. Reusing the same schema shares its reference. Copies
-of the same AST that differ only by property-key context are canonicalized and also share a reference. Otherwise, when
-referentially distinct schemas request the same name, the first schema keeps it and later schemas receive numeric suffixes
-in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation hints; their
-generated names use the `Encoded` suffix and follow the same collision rules.
+whose AST fields are referentially identical once property-key context is ignored are canonicalized and also share a
+reference. Otherwise, when referentially distinct schemas request the same name, the first schema keeps it and later schemas
+receive numeric suffixes in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback
+allocation hints; their generated names use the `Encoded` suffix and follow the same collision rules.
 
 ## JSON persistence
 
