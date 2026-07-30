@@ -1,0 +1,26 @@
+name: Cluster Integration
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      EFFECT_CLUSTER_INTEGRATION_TESTS: "1"
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Pre-pull test container images
+        run: |
+          docker pull testcontainers/ryuk:0.14.0 &
+          docker pull postgres:alpine &
+          wait
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Test
+        run: pnpm test --run packages/platform-node/test/cluster-integration

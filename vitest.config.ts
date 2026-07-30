@@ -9,6 +9,7 @@ const isNode = typeof process !== "undefined" &&
   !isDeno &&
   !isBun
 const integrationTestsEnabled = process.env.EFFECT_INTEGRATION_TESTS === "1"
+const clusterIntegrationTestsEnabled = process.env.EFFECT_CLUSTER_INTEGRATION_TESTS === "1"
 
 const project = (name: string, directory: string, include: boolean = true, config: ViteUserConfig = {}) => {
   if (!include) {
@@ -32,6 +33,7 @@ export const exclude = [
   "**/typetest/**",
   "**/coverage/**",
   "**/test/utils/**",
+  ...(!clusterIntegrationTestsEnabled ? ["**/cluster-integration/**"] : []),
   ...(!integrationTestsEnabled ? ["**/*.integration.test.{ts,tsx}"] : []),
   "**/*.d.ts",
   "**/*.config.*",
