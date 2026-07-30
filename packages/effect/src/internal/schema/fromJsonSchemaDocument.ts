@@ -741,7 +741,7 @@ function translateJsonSchemaMultiDocument(
       case "string":
         return {
           _tag: "String",
-          checks: collectStringChecks(schema)
+          ...collectString(schema, path)
         }
       case "number":
       case "integer":
@@ -786,14 +786,33 @@ function translateJsonSchemaMultiDocument(
     }
   }
 
-  function collectStringChecks(schema: JsonSchema.JsonSchema): Array<Check> {
+  function importPattern(pattern: string, path: Path): {
+    readonly check?: Check | undefined
+    readonly annotations?: Schema.Annotations.Annotations | undefined
+  } {
+    switch (options?.patterns ?? "ignore") {
+      case "ignore":
+        return { annotations: { ignoredJsonSchemaPattern: pattern } }
+      case "apply":
+        return { check: jsonSchemaFilter("effect/schema/isPattern", { source: pattern, flags: "" }) }
+      case "error":
+        throw errorWithPath(`Pattern encountered while patterns is set to "error"`, path)
+    }
+  }
+
+  function collectString(schema: JsonSchema.JsonSchema, path: Path): {
+    readonly checks: Array<Check>
+    readonly annotations?: Schema.Annotations.Annotations | undefined
+  } {
     const checks: Array<Check> = []
     addNumberCheck(checks, schema.minLength, "effect/schema/isMinLength", "minLength")
     addNumberCheck(checks, schema.maxLength, "effect/schema/isMaxLength", "maxLength")
     if (typeof schema.pattern === "string") {
-      checks.push(jsonSchemaFilter("effect/schema/isPattern", { source: schema.pattern, flags: "" }))
+      const imported = importPattern(schema.pattern, [...path, "pattern"])
+      if (imported.check !== undefined) checks.push(imported.check)
+      return { checks, annotations: imported.annotations }
     }
-    return checks
+    return { checks }
   }
 
   function collectNumberChecks(schema: JsonSchema.JsonSchema): Array<Check> {
@@ -849,10 +868,12 @@ function translateJsonSchemaMultiDocument(
       !Array.isArray(schema.patternProperties)
     ) {
       for (const [pattern, value] of Object.entries(schema.patternProperties)) {
+        const imported = importPattern(pattern, [...path, "patternProperties", pattern])
         signatures.push({
           parameter: {
             _tag: "String",
-            checks: [jsonSchemaFilter("effect/schema/isPattern", { source: pattern, flags: "" })]
+            checks: imported.check === undefined ? [] : [imported.check],
+            ...imported.annotations === undefined ? undefined : { annotations: imported.annotations }
           },
           type: recur(value, [...path, "patternProperties", pattern])
         })

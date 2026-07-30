@@ -6,14 +6,16 @@ function toSchemaFromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): Schema.Top {
-  return SchemaRepresentation.fromJsonSchemaDocument(document, options)
+  return SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options })
 }
 
 function fromJsonSchemaRepresentation(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): SchemaRepresentation.Document {
-  return SchemaRepresentation.toRepresentation(SchemaRepresentation.fromJsonSchemaDocument(document, options).ast)
+  return SchemaRepresentation.toRepresentation(
+    SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options }).ast
+  )
 }
 
 describe("fromJsonSchemaDocument", () => {
@@ -25,7 +27,7 @@ describe("fromJsonSchemaDocument", () => {
     expected: Schema.Json
   ) {
     const jsonDocument = JsonSchema.fromSchemaDraft2020_12(input.schema)
-    const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, input.options)
+    const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, { patterns: "apply", ...input.options })
     const document = SchemaRepresentation.toRepresentation(schema.ast)
     deepStrictEqual(SchemaRepresentation.toJson(document), expected)
     return schema
@@ -844,7 +846,7 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
-      it("pattern", () => {
+      it("round-trips ordinary patterns", () => {
         assertFromJsonSchema(
           { schema: { type: "string", pattern: "a*" } },
           {
@@ -909,6 +911,68 @@ describe("fromJsonSchemaDocument", () => {
             "references": {}
           }
         )
+      })
+
+      it("ignores patterns by default and annotates the skip", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" })
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertTrue(is("bbb"))
+        deepStrictEqual(Schema.resolveAnnotations(schema), { ignoredJsonSchemaPattern: "^a+$" })
+
+        const object = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            patternProperties: { "^a+$": { type: "string" } },
+            additionalProperties: false
+          })
+        )
+        const representation = SchemaRepresentation.toRepresentation(object.ast).representation
+        strictEqual(representation._tag, "Objects")
+        if (representation._tag === "Objects") {
+          const parameter = representation.indexSignatures[0].parameter
+          strictEqual(parameter._tag, "String")
+          if (parameter._tag === "String") {
+            deepStrictEqual(parameter.annotations, { ignoredJsonSchemaPattern: "^a+$" })
+          }
+        }
+      })
+
+      it("applies patterns explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" }),
+          { patterns: "apply" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertFalse(is("bbb"))
+      })
+
+      it("rejects patterns explicitly", () => {
+        for (
+          const [schema, path] of [
+            [{ type: "string", pattern: "^a+$" }, `["schema"]["pattern"]`],
+            [
+              { type: "object", patternProperties: { "^a+$": { type: "string" } } },
+              `["schema"]["patternProperties"]["^a+$"]`
+            ],
+            [
+              { type: "object", propertyNames: { pattern: "^a+$" } },
+              `["schema"]["propertyNames"]["pattern"]`
+            ]
+          ] as const
+        ) {
+          throws(
+            () =>
+              SchemaRepresentation.fromJsonSchemaDocument(
+                JsonSchema.fromSchemaDraft2020_12(schema),
+                { patterns: "error" }
+              ),
+            `Pattern encountered while patterns is set to "error"\n  at ${path}`
+          )
+        }
       })
     })
   })

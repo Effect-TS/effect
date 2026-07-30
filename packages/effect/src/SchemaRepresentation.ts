@@ -615,13 +615,26 @@ export const makeFilterGroupReviver: <P>(
  *
  * **Gotchas**
  *
- * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass through unchanged.
+ * JSON Schema patterns are ignored by default and their source is retained in an `ignoredJsonSchemaPattern` annotation.
+ * Use `patterns: "apply"` only for trusted documents because validation uses the runtime's native regular expression
+ * engine and may block for an unbounded amount of time. Use `patterns: "error"` to reject documents containing patterns
+ * instead of weakening validation.
+ *
+ * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass
+ * through unchanged.
  *
  * @category models
  * @since 4.0.0
  */
 export interface FromJsonSchemaOptions {
   readonly onEnter?: ((schema: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
+  /**
+   * Controls how `pattern`, `patternProperties`, and patterns nested in `propertyNames` are imported. Defaults to
+   * `"ignore"`, which records the skipped source in an `ignoredJsonSchemaPattern` annotation. `"apply"` compiles and
+   * enforces patterns with the runtime's native regular expression engine. `"error"` rejects a document containing a
+   * pattern.
+   */
+  readonly patterns?: "ignore" | "apply" | "error" | undefined
 }
 
 /**
@@ -1166,7 +1179,11 @@ export function fromRepresentations(
  *
  * **Gotchas**
  *
- * Import is best-effort. Built-in declarations and checks are reconstructed with importer-owned revivers. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * Import is best-effort. Built-in declarations and checks are reconstructed with importer-owned revivers. Patterns are
+ * ignored by default and recorded in an `ignoredJsonSchemaPattern` annotation. Use `patterns: "apply"` only for trusted
+ * documents because validation uses the runtime's native regular expression engine, or `patterns: "error"` to reject
+ * documents containing patterns. Callback results are used directly, and exceptions raised by a callback pass through
+ * unchanged.
  *
  * @see {@link fromJsonSchemaMultiDocument} for multiple roots sharing definitions
  * @see {@link toRepresentation} for converting the result to a representation document
@@ -1190,7 +1207,10 @@ export function fromJsonSchemaDocument(
  *
  * **Gotchas**
  *
- * Every definition is translated, including definitions that no root references. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * Every definition is translated, including definitions that no root references. Patterns are ignored by default and
+ * recorded in an `ignoredJsonSchemaPattern` annotation. Use `patterns: "apply"` only for trusted documents because
+ * validation uses the runtime's native regular expression engine, or `patterns: "error"` to reject documents containing
+ * patterns. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaDocument} for a single root
  * @see {@link fromSchemaMultiDocument} for converting the result to a representation document
