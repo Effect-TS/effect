@@ -403,8 +403,8 @@ const make = (input: number | bigint): Duration => {
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.isDuration(Duration.seconds(1))) // true
- * console.log(Duration.isDuration(1000)) // false
+ * console.log(Duration.isDuration(Duration.seconds(1))) // > true
+ * console.log(Duration.isDuration(1000)) // > false
  * ```
  *
  * @category guards
@@ -420,8 +420,8 @@ export const isDuration = (u: unknown): u is Duration => hasProperty(u, TypeId)
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.isFinite(Duration.seconds(5))) // true
- * console.log(Duration.isFinite(Duration.infinity)) // false
+ * console.log(Duration.isFinite(Duration.seconds(5))) // > true
+ * console.log(Duration.isFinite(Duration.infinity)) // > false
  * ```
  *
  * @category guards
@@ -438,8 +438,8 @@ export const isFinite = (self: Duration): boolean =>
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.isZero(Duration.zero)) // true
- * console.log(Duration.isZero(Duration.seconds(1))) // false
+ * console.log(Duration.isZero(Duration.zero)) // > true
+ * console.log(Duration.isZero(Duration.seconds(1))) // > false
  * ```
  *
  * @category guards
@@ -465,9 +465,9 @@ export const isZero = (self: Duration): boolean => {
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.isNegative(Duration.seconds(-5))) // true
- * console.log(Duration.isNegative(Duration.zero)) // false
- * console.log(Duration.isNegative(Duration.negativeInfinity)) // true
+ * console.log(Duration.isNegative(Duration.seconds(-5))) // > true
+ * console.log(Duration.isNegative(Duration.zero)) // > false
+ * console.log(Duration.isNegative(Duration.negativeInfinity)) // > true
  * ```
  *
  * @category guards
@@ -494,9 +494,9 @@ export const isNegative = (self: Duration): boolean => {
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.isPositive(Duration.seconds(5))) // true
- * console.log(Duration.isPositive(Duration.zero)) // false
- * console.log(Duration.isPositive(Duration.infinity)) // true
+ * console.log(Duration.isPositive(Duration.seconds(5))) // > true
+ * console.log(Duration.isPositive(Duration.zero)) // > false
+ * console.log(Duration.isPositive(Duration.infinity)) // > true
  * ```
  *
  * @category guards
@@ -578,7 +578,7 @@ export const negate = (self: Duration): Duration => {
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toMillis(Duration.zero)) // 0
+ * console.log(Duration.toMillis(Duration.zero)) // > 0
  * ```
  *
  * @category constructors
@@ -594,7 +594,7 @@ export const zero: Duration = make(0)
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toMillis(Duration.infinity)) // Infinity
+ * console.log(Duration.toMillis(Duration.infinity)) // > Infinity
  * ```
  *
  * @category constructors
@@ -610,7 +610,7 @@ export const infinity: Duration = make(Infinity)
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toMillis(Duration.negativeInfinity)) // -Infinity
+ * console.log(Duration.toMillis(Duration.negativeInfinity)) // > -Infinity
  * ```
  *
  * @category constructors
@@ -627,7 +627,7 @@ export const negativeInfinity: Duration = make(-Infinity)
  * import { Duration } from "effect"
  *
  * const duration = Duration.nanos(BigInt(500_000_000))
- * console.log(Duration.toMillis(duration)) // 500
+ * console.log(Duration.toMillis(duration)) // > 500
  * ```
  *
  * @category constructors
@@ -644,7 +644,7 @@ export const nanos = (nanos: bigint): Duration => make(nanos)
  * import { Duration } from "effect"
  *
  * const duration = Duration.micros(BigInt(500_000))
- * console.log(Duration.toMillis(duration)) // 500
+ * console.log(Duration.toMillis(duration)) // > 500
  * ```
  *
  * @category constructors
@@ -661,7 +661,7 @@ export const micros = (micros: bigint): Duration => make(micros * bigint1e3)
  * import { Duration } from "effect"
  *
  * const duration = Duration.millis(1000)
- * console.log(Duration.toMillis(duration)) // 1000
+ * console.log(Duration.toMillis(duration)) // > 1000
  * ```
  *
  * @category constructors
@@ -678,7 +678,7 @@ export const millis = (millis: number): Duration => make(millis)
  * import { Duration } from "effect"
  *
  * const duration = Duration.seconds(30)
- * console.log(Duration.toMillis(duration)) // 30000
+ * console.log(Duration.toMillis(duration)) // > 30000
  * ```
  *
  * @category constructors
@@ -695,7 +695,7 @@ export const seconds = (seconds: number): Duration => make(seconds * 1000)
  * import { Duration } from "effect"
  *
  * const duration = Duration.minutes(5)
- * console.log(Duration.toMillis(duration)) // 300000
+ * console.log(Duration.toMillis(duration)) // > 300000
  * ```
  *
  * @category constructors
@@ -712,7 +712,7 @@ export const minutes = (minutes: number): Duration => make(minutes * 60_000)
  * import { Duration } from "effect"
  *
  * const duration = Duration.hours(2)
- * console.log(Duration.toMillis(duration)) // 7200000
+ * console.log(Duration.toMillis(duration)) // > 7200000
  * ```
  *
  * @category constructors
@@ -729,7 +729,7 @@ export const hours = (hours: number): Duration => make(hours * 3_600_000)
  * import { Duration } from "effect"
  *
  * const duration = Duration.days(1)
- * console.log(Duration.toMillis(duration)) // 86400000
+ * console.log(Duration.toMillis(duration)) // > 86400000
  * ```
  *
  * @category constructors
@@ -746,7 +746,7 @@ export const days = (days: number): Duration => make(days * 86_400_000)
  * import { Duration } from "effect"
  *
  * const duration = Duration.weeks(1)
- * console.log(Duration.toMillis(duration)) // 604800000
+ * console.log(Duration.toMillis(duration)) // > 604800000
  * ```
  *
  * @category constructors
@@ -762,8 +762,8 @@ export const weeks = (weeks: number): Duration => make(weeks * 604_800_000)
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toMillis(Duration.seconds(5))) // 5000
- * console.log(Duration.toMillis(Duration.minutes(2))) // 120000
+ * console.log(Duration.toMillis(Duration.seconds(5))) // > 5000
+ * console.log(Duration.toMillis(Duration.minutes(2))) // > 120000
  * ```
  *
  * @category getters
@@ -785,8 +785,8 @@ export const toMillis = (self: Input): number =>
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toSeconds(Duration.millis(5000))) // 5
- * console.log(Duration.toSeconds(Duration.minutes(2))) // 120
+ * console.log(Duration.toSeconds(Duration.millis(5000))) // > 5
+ * console.log(Duration.toSeconds(Duration.minutes(2))) // > 120
  * ```
  *
  * @category getters
@@ -808,8 +808,8 @@ export const toSeconds = (self: Input): number =>
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toMinutes(Duration.seconds(120))) // 2
- * console.log(Duration.toMinutes(Duration.hours(1))) // 60
+ * console.log(Duration.toMinutes(Duration.seconds(120))) // > 2
+ * console.log(Duration.toMinutes(Duration.hours(1))) // > 60
  * ```
  *
  * @category getters
@@ -831,8 +831,8 @@ export const toMinutes = (self: Input): number =>
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toHours(Duration.minutes(120))) // 2
- * console.log(Duration.toHours(Duration.days(1))) // 24
+ * console.log(Duration.toHours(Duration.minutes(120))) // > 2
+ * console.log(Duration.toHours(Duration.days(1))) // > 24
  * ```
  *
  * @category getters
@@ -854,8 +854,8 @@ export const toHours = (self: Input): number =>
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toDays(Duration.hours(48))) // 2
- * console.log(Duration.toDays(Duration.weeks(1))) // 7
+ * console.log(Duration.toDays(Duration.hours(48))) // > 2
+ * console.log(Duration.toDays(Duration.weeks(1))) // > 7
  * ```
  *
  * @category getters
@@ -877,8 +877,8 @@ export const toDays = (self: Input): number =>
  * ```ts import.meta.vitest
  * import { Duration } from "effect"
  *
- * console.log(Duration.toWeeks(Duration.days(14))) // 2
- * console.log(Duration.toWeeks(Duration.days(7))) // 1
+ * console.log(Duration.toWeeks(Duration.days(14))) // > 2
+ * console.log(Duration.toWeeks(Duration.days(7))) // > 1
  * ```
  *
  * @category getters
@@ -916,7 +916,7 @@ export const toWeeks = (self: Input): number =>
  *
  * const duration = Duration.seconds(2)
  * const nanos = Duration.toNanosUnsafe(duration)
- * console.log(nanos) // 2000000000n
+ * console.log(nanos) // > 2000000000n
  *
  * // Duration.toNanosUnsafe(Duration.infinity)
  * // throws Error: "Cannot convert infinite duration to nanos"
@@ -971,7 +971,7 @@ export const toNanos: (self: Input) => Option.Option<bigint> = Option.liftThrowa
  *
  * const duration = Duration.millis(1500)
  * const hrtime = Duration.toHrTime(duration)
- * console.log(hrtime) // [1, 500000000]
+ * console.log(hrtime) // > [ 1, 500000000 ]
  * ```
  *
  * @category getters
@@ -1010,7 +1010,7 @@ export const toHrTime = (input: Input): [seconds: number, nanos: number] => {
  *   onNanos: (nanos) => `${nanos} nanoseconds`,
  *   onInfinity: () => "infinite"
  * })
- * console.log(result) // "5000 milliseconds"
+ * console.log(result) // > 5000 milliseconds
  * ```
  *
  * @category pattern matching
@@ -1068,7 +1068,7 @@ export const match: {
  *   onNanos: (a, b) => Number(a + b),
  *   onInfinity: () => Infinity
  * })
- * console.log(sum) // 5000
+ * console.log(sum) // > 5000
  * ```
  *
  * @category pattern matching
@@ -1132,7 +1132,7 @@ export const matchPair: {
  *   Duration.seconds(2)
  * ]
  * const sorted = durations.sort((a, b) => Duration.Order(a, b))
- * console.log(sorted.map(Duration.toSeconds)) // [1, 2, 3]
+ * console.log(sorted.map(Duration.toSeconds)) // > [ 1, 2, 3 ]
  * ```
  *
  * @category instances
@@ -1180,7 +1180,7 @@ export const Order: order.Order<Duration> = order.make((self, that) =>
  *   minimum: Duration.seconds(2),
  *   maximum: Duration.seconds(5)
  * })
- * console.log(isInRange) // true
+ * console.log(isInRange) // > true
  * ```
  *
  * @see {@link clamp} for constraining a duration to a range
@@ -1204,7 +1204,7 @@ export const between: {
  * import { Duration } from "effect"
  *
  * const isEqual = Duration.Equivalence(Duration.seconds(5), Duration.millis(5000))
- * console.log(isEqual) // true
+ * console.log(isEqual) // > true
  * ```
  *
  * @category instances
@@ -1226,7 +1226,7 @@ export const Equivalence: Equ.Equivalence<Duration> = (self, that) =>
  * import { Duration } from "effect"
  *
  * const shorter = Duration.min(Duration.seconds(5), Duration.seconds(3))
- * console.log(Duration.toSeconds(shorter)) // 3
+ * console.log(Duration.toSeconds(shorter)) // > 3
  * ```
  *
  * @category ordering
@@ -1246,7 +1246,7 @@ export const min: {
  * import { Duration } from "effect"
  *
  * const longer = Duration.max(Duration.seconds(5), Duration.seconds(3))
- * console.log(Duration.toSeconds(longer)) // 5
+ * console.log(Duration.toSeconds(longer)) // > 5
  * ```
  *
  * @category ordering
@@ -1269,7 +1269,7 @@ export const max: {
  *   minimum: Duration.seconds(2),
  *   maximum: Duration.seconds(5)
  * })
- * console.log(Duration.toSeconds(clamped)) // 5
+ * console.log(Duration.toSeconds(clamped)) // > 5
  * ```
  *
  * @category ordering
@@ -1295,7 +1295,7 @@ export const clamp: {
  * import { Duration, Option } from "effect"
  *
  * const d = Duration.divide(Duration.seconds(10), 2)
- * console.log(Option.map(d, Duration.toSeconds)) // Some(5)
+ * console.log(Option.map(d, Duration.toSeconds)) // > { _id: 'Option', _tag: 'Some', value: 5 }
  *
  * Duration.divide(Duration.seconds(10), 0) // None
  * ```
@@ -1349,10 +1349,10 @@ export const divide: {
  * import { Duration } from "effect"
  *
  * const half = Duration.divideUnsafe(Duration.seconds(10), 2)
- * console.log(Duration.toSeconds(half)) // 5
+ * console.log(Duration.toSeconds(half)) // > 5
  *
  * const infinite = Duration.divideUnsafe(Duration.seconds(10), 0)
- * console.log(Duration.toMillis(infinite)) // Infinity
+ * console.log(Duration.toMillis(infinite)) // > Infinity
  * ```
  *
  * @category math
@@ -1403,7 +1403,7 @@ export const divideUnsafe: {
  * import { Duration } from "effect"
  *
  * const doubled = Duration.times(Duration.seconds(5), 2)
- * console.log(Duration.toSeconds(doubled)) // 10
+ * console.log(Duration.toSeconds(doubled)) // > 10
  * ```
  *
  * @category math
@@ -1441,7 +1441,7 @@ export const times: {
  * import { Duration } from "effect"
  *
  * const result = Duration.subtract(Duration.seconds(10), Duration.seconds(3))
- * console.log(Duration.toSeconds(result)) // 7
+ * console.log(Duration.toSeconds(result)) // > 7
  * ```
  *
  * @category math
@@ -1485,7 +1485,7 @@ export const subtract: {
  * import { Duration } from "effect"
  *
  * const total = Duration.sum(Duration.seconds(5), Duration.seconds(3))
- * console.log(Duration.toSeconds(total)) // 8
+ * console.log(Duration.toSeconds(total)) // > 8
  * ```
  *
  * @category math
@@ -1522,7 +1522,7 @@ export const sum: {
  * import { Duration } from "effect"
  *
  * const isLess = Duration.isLessThan(Duration.seconds(3), Duration.seconds(5))
- * console.log(isLess) // true
+ * console.log(isLess) // > true
  * ```
  *
  * @category predicates
@@ -1545,7 +1545,7 @@ export const isLessThan: {
  *   Duration.seconds(5),
  *   Duration.seconds(5)
  * )
- * console.log(isLessOrEqual) // true
+ * console.log(isLessOrEqual) // > true
  * ```
  *
  * @category predicates
@@ -1565,7 +1565,7 @@ export const isLessThanOrEqualTo: {
  * import { Duration } from "effect"
  *
  * const isGreater = Duration.isGreaterThan(Duration.seconds(5), Duration.seconds(3))
- * console.log(isGreater) // true
+ * console.log(isGreater) // > true
  * ```
  *
  * @category predicates
@@ -1588,7 +1588,7 @@ export const isGreaterThan: {
  *   Duration.seconds(5),
  *   Duration.seconds(5)
  * )
- * console.log(isGreaterOrEqual) // true
+ * console.log(isGreaterOrEqual) // > true
  * ```
  *
  * @category predicates
@@ -1608,7 +1608,7 @@ export const isGreaterThanOrEqualTo: {
  * import { Duration } from "effect"
  *
  * const isEqual = Duration.equals(Duration.seconds(5), Duration.millis(5000))
- * console.log(isEqual) // true
+ * console.log(isEqual) // > true
  * ```
  *
  * @category predicates

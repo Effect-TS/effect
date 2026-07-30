@@ -151,8 +151,8 @@ export const Order: Ord.Order<LogLevel> = effect.LogLevelOrder
  * ```ts import.meta.vitest
  * import { LogLevel } from "effect"
  *
- * console.log(LogLevel.Equivalence("Error", "Error")) // true
- * console.log(LogLevel.Equivalence("Error", "Info")) // false
+ * console.log(LogLevel.Equivalence("Error", "Error")) // > true
+ * console.log(LogLevel.Equivalence("Error", "Info")) // > false
  * ```
  *
  * @see {@link Order} for severity ordering rather than exact level equality
@@ -208,21 +208,21 @@ export const getOrdinal = (self: LogLevel): number => effect.logLevelToOrder(sel
  * import { LogLevel } from "effect"
  *
  * // Check if Error is more severe than Info
- * console.log(LogLevel.isGreaterThan("Error", "Info")) // true
- * console.log(LogLevel.isGreaterThan("Debug", "Error")) // false
+ * console.log(LogLevel.isGreaterThan("Error", "Info")) // > true
+ * console.log(LogLevel.isGreaterThan("Debug", "Error")) // > false
  *
  * // Use with filtering
  * const isFatal = LogLevel.isGreaterThan("Fatal", "Warn")
  * const isError = LogLevel.isGreaterThan("Error", "Warn")
  * const isDebug = LogLevel.isGreaterThan("Debug", "Warn")
- * console.log(isFatal) // true
- * console.log(isError) // true
- * console.log(isDebug) // false
+ * console.log(isFatal) // > true
+ * console.log(isError) // > true
+ * console.log(isDebug) // > false
  *
  * // Curried usage
  * const isMoreSevereThanInfo = LogLevel.isGreaterThan("Info")
- * console.log(isMoreSevereThanInfo("Error")) // true
- * console.log(isMoreSevereThanInfo("Debug")) // false
+ * console.log(isMoreSevereThanInfo("Error")) // > true
+ * console.log(isMoreSevereThanInfo("Debug")) // > false
  * ```
  *
  * @category ordering

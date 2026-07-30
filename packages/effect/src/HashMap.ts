@@ -38,11 +38,11 @@ const TypeId = internal.HashMapTypeId
  * const valueD = HashMap.get(map, "d") // Option.none()
  *
  * // Check if key exists
- * console.log(HashMap.has(map, "b")) // true
+ * console.log(HashMap.has(map, "b")) // > true
  *
  * // Add/update values (returns new HashMap)
  * const updated = HashMap.set(map, "d", 4)
- * console.log(HashMap.size(updated)) // 4
+ * console.log(HashMap.size(updated)) // > 4
  * ```
  *
  * @category models
@@ -104,7 +104,7 @@ export declare namespace HashMap {
    *   Option.isSome(option) ? Option.some(option.value + 1) : Option.some(1)
    *
    * const updated = HashMap.modifyAt(map, "a", updateFn)
-   * console.log(HashMap.get(updated, "a")) // Option.some(2)
+   * console.log(HashMap.get(updated, "a")) // > { _id: 'Option', _tag: 'Some', value: 2 }
    * ```
    *
    * @category models
@@ -131,7 +131,7 @@ export declare namespace HashMap {
    *
    * // Use the extracted type in functions
    * const getUserById = (id: UserKey) => HashMap.get(userMap, id)
-   * console.log(getUserById("alice")) // Option.some({ name: "Alice", age: 30 })
+   * console.log(getUserById("alice")) // > { _id: 'Option', _tag: 'Some', value: { name: 'Alice', age: 30 } }
    * ```
    *
    * @category utility types
@@ -194,7 +194,7 @@ export declare namespace HashMap {
    *
    * // Convert to entries, process, and sort for deterministic output
    * const descriptions = HashMap.toEntries(catalog).map(processEntry).sort()
-   * console.log(descriptions) // ["book: $29 (education)", "laptop: $999 (electronics)"]
+   * console.log(descriptions) // > [ 'book: $29 (education)', 'laptop: $999 (electronics)' ]
    * ```
    *
    * @category utility types
@@ -214,9 +214,9 @@ export declare namespace HashMap {
  * const map = HashMap.make(["a", 1], ["b", 2])
  * const notMap = { a: 1 }
  *
- * console.log(HashMap.isHashMap(map)) // true
- * console.log(HashMap.isHashMap(notMap)) // false
- * console.log(HashMap.isHashMap(null)) // false
+ * console.log(HashMap.isHashMap(map)) // > true
+ * console.log(HashMap.isHashMap(notMap)) // > false
+ * console.log(HashMap.isHashMap(null)) // > false
  * ```
  *
  * @category refinements
@@ -236,8 +236,8 @@ export const isHashMap: {
  * import { HashMap } from "effect"
  *
  * const map = HashMap.empty<string, number>()
- * console.log(HashMap.isEmpty(map)) // true
- * console.log(HashMap.size(map)) // 0
+ * console.log(HashMap.isEmpty(map)) // > true
+ * console.log(HashMap.size(map)) // > 0
  * ```
  *
  * @category constructors
@@ -254,8 +254,8 @@ export const empty: <K = never, V = never>() => HashMap<K, V> = internal.empty
  * import { HashMap } from "effect"
  *
  * const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
- * console.log(HashMap.size(map)) // 3
- * console.log(HashMap.get(map, "b")) // Option.some(2)
+ * console.log(HashMap.size(map)) // > 3
+ * console.log(HashMap.get(map, "b")) // > { _id: 'Option', _tag: 'Some', value: 2 }
  * ```
  *
  * @category constructors
@@ -278,8 +278,8 @@ export const make: <Entries extends ReadonlyArray<readonly [any, any]>>(
  *
  * const entries = [["a", 1], ["b", 2], ["c", 3]] as const
  * const map = HashMap.fromIterable(entries)
- * console.log(HashMap.size(map)) // 3
- * console.log(HashMap.get(map, "a")) // Option.some(1)
+ * console.log(HashMap.size(map)) // > 3
+ * console.log(HashMap.get(map, "a")) // > { _id: 'Option', _tag: 'Some', value: 1 }
  * ```
  *
  * @category constructors
@@ -298,8 +298,8 @@ export const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => HashMap
  * const emptyMap = HashMap.empty<string, number>()
  * const nonEmptyMap = HashMap.make(["a", 1])
  *
- * console.log(HashMap.isEmpty(emptyMap)) // true
- * console.log(HashMap.isEmpty(nonEmptyMap)) // false
+ * console.log(HashMap.isEmpty(emptyMap)) // > true
+ * console.log(HashMap.isEmpty(nonEmptyMap)) // > false
  * ```
  *
  * @category elements
@@ -318,12 +318,12 @@ export const isEmpty: <K, V>(self: HashMap<K, V>) => boolean = internal.isEmpty
  *
  * const map = HashMap.make(["a", 1], ["b", 2])
  *
- * console.log(HashMap.get(map, "a")) // Option.some(1)
- * console.log(HashMap.get(map, "c")) // Option.none()
+ * console.log(HashMap.get(map, "a")) // > { _id: 'Option', _tag: 'Some', value: 1 }
+ * console.log(HashMap.get(map, "c")) // > { _id: 'Option', _tag: 'None' }
  *
  * // Using pipe syntax
  * const value = HashMap.get("b")(map)
- * console.log(value) // Option.some(2)
+ * console.log(value) // > { _id: 'Option', _tag: 'Some', value: 2 }
  * ```
  *
  * @category elements
@@ -426,12 +426,12 @@ export const getUnsafe: {
  *
  * const map = HashMap.make(["a", 1], ["b", 2])
  *
- * console.log(HashMap.has(map, "a")) // true
- * console.log(HashMap.has(map, "c")) // false
+ * console.log(HashMap.has(map, "a")) // > true
+ * console.log(HashMap.has(map, "c")) // > false
  *
  * // Using pipe syntax
  * const hasB = HashMap.has("b")(map)
- * console.log(hasB) // true
+ * console.log(hasB) // > true
  * ```
  *
  * @category elements
@@ -459,14 +459,14 @@ export const has: {
  *
  * // Check with exact hash
  * const exactHash = Hash.string("Admin")
- * console.log(HashMap.hasHash(userMap, "Admin", exactHash)) // true
+ * console.log(HashMap.hasHash(userMap, "Admin", exactHash)) // > true
  *
  * // A matching hash does not override key equality
- * console.log(HashMap.hasHash(userMap, "admin", exactHash)) // false
+ * console.log(HashMap.hasHash(userMap, "admin", exactHash)) // > false
  *
  * // A different hash also cannot find the existing key
  * const lowercaseHash = Hash.string("admin")
- * console.log(HashMap.hasHash(userMap, "Admin", lowercaseHash)) // false
+ * console.log(HashMap.hasHash(userMap, "Admin", lowercaseHash)) // > false
  * ```
  *
  * @category elements
@@ -510,11 +510,11 @@ export const hasBy: {
  * const map1 = HashMap.make(["a", 1])
  * const map2 = HashMap.set(map1, "b", 2)
  *
- * console.log(HashMap.size(map2)) // 2
- * console.log(HashMap.get(map2, "b")) // Option.some(2)
+ * console.log(HashMap.size(map2)) // > 2
+ * console.log(HashMap.get(map2, "b")) // > { _id: 'Option', _tag: 'Some', value: 2 }
  *
  * // Original map is unchanged
- * console.log(HashMap.size(map1)) // 1
+ * console.log(HashMap.size(map1)) // > 1
  * ```
  *
  * @category transforming
@@ -535,7 +535,7 @@ export const set: {
  *
  * const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * const keys = Array.from(HashMap.keys(map))
- * console.log(keys.sort()) // ["a", "b", "c"]
+ * console.log(keys.sort()) // > [ 'a', 'b', 'c' ]
  * ```
  *
  * @category getters
@@ -553,7 +553,7 @@ export const keys: <K, V>(self: HashMap<K, V>) => IterableIterator<K> = internal
  *
  * const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * const values = Array.from(HashMap.values(map))
- * console.log(values.sort()) // [1, 2, 3]
+ * console.log(values.sort()) // > [ 1, 2, 3 ]
  * ```
  *
  * @category getters
@@ -577,15 +577,15 @@ export const values: <K, V>(self: HashMap<K, V>) => IterableIterator<V> = intern
  *
  * // Extract all employee records
  * const allEmployees = HashMap.toValues(employees)
- * console.log(allEmployees.length) // 3
+ * console.log(allEmployees.length) // > 3
  *
  * // Calculate total salary
  * const totalSalary = allEmployees.reduce((sum, emp) => sum + emp.salary, 0)
- * console.log(totalSalary) // 260000
+ * console.log(totalSalary) // > 260000
  *
  * // Filter by department
  * const engineers = allEmployees.filter((emp) => emp.department === "engineering")
- * console.log(engineers.length) // 2
+ * console.log(engineers.length) // > 2
  * ```
  *
  * @category getters
@@ -671,8 +671,8 @@ export const toEntries = <K, V>(self: HashMap<K, V>): Array<[K, V]> => Array.fro
  * const emptyMap = HashMap.empty<string, number>()
  * const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  *
- * console.log(HashMap.size(emptyMap)) // 0
- * console.log(HashMap.size(map)) // 3
+ * console.log(HashMap.size(emptyMap)) // > 0
+ * console.log(HashMap.size(map)) // > 3
  * ```
  *
  * @category getters
@@ -705,7 +705,7 @@ export const size: <K, V>(self: HashMap<K, V>) => number = internal.size
  *
  * // End mutation to get final immutable result
  * const result = HashMap.endMutation(mutable)
- * console.log(HashMap.size(result)) // 2
+ * console.log(HashMap.size(result)) // > 2
  * ```
  *
  * @category mutations
@@ -735,9 +735,9 @@ export const beginMutation: <K, V>(self: HashMap<K, V>) => HashMap<K, V> = inter
  * // End mutation to get final immutable result
  * const final = HashMap.endMutation(mutable)
  *
- * console.log(HashMap.size(final)) // 3
- * console.log(HashMap.has(final, "x")) // false
- * console.log(HashMap.get(final, "z")) // Option.some(30)
+ * console.log(HashMap.size(final)) // > 3
+ * console.log(HashMap.has(final, "x")) // > false
+ * console.log(HashMap.get(final, "z")) // > { _id: 'Option', _tag: 'Some', value: 30 }
  * ```
  *
  * @category mutations
@@ -796,7 +796,7 @@ export const mutate: {
  *   Option.isSome(option) ? Option.some(option.value + 1) : Option.some(1)
  *
  * const updated = HashMap.modifyAt(map, "a", updateFn)
- * console.log(HashMap.get(updated, "a")) // Option.some(2)
+ * console.log(HashMap.get(updated, "a")) // > { _id: 'Option', _tag: 'Some', value: 2 }
  * ```
  *
  * @category transforming
@@ -840,7 +840,7 @@ export const modifyAt: {
  *   cachedHash,
  *   incrementCounter
  * )
- * console.log(HashMap.get(updated, "downloads")) // Option.some(101)
+ * console.log(HashMap.get(updated, "downloads")) // > { _id: 'Option', _tag: 'Some', value: 101 }
  *
  * // Add new metric with precomputed hash
  * const newMetric = "clicks"
@@ -851,7 +851,7 @@ export const modifyAt: {
  *   clicksHash,
  *   incrementCounter
  * )
- * console.log(HashMap.get(withClicks, "clicks")) // Option.some(1)
+ * console.log(HashMap.get(withClicks, "clicks")) // > { _id: 'Option', _tag: 'Some', value: 1 }
  * ```
  *
  * @category transforming
@@ -873,8 +873,8 @@ export const modifyHash: {
  * const map1 = HashMap.make(["a", 1], ["b", 2])
  * const map2 = HashMap.modify(map1, "a", (value) => value * 3)
  *
- * console.log(HashMap.get(map2, "a")) // Option.some(3)
- * console.log(HashMap.get(map2, "b")) // Option.some(2)
+ * console.log(HashMap.get(map2, "a")) // > { _id: 'Option', _tag: 'Some', value: 3 }
+ * console.log(HashMap.get(map2, "b")) // > { _id: 'Option', _tag: 'Some', value: 2 }
  * ```
  *
  * @category transforming
@@ -926,9 +926,9 @@ export const union: {
  * const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * const map2 = HashMap.remove(map1, "b")
  *
- * console.log(HashMap.size(map2)) // 2
- * console.log(HashMap.has(map2, "b")) // false
- * console.log(HashMap.has(map2, "a")) // true
+ * console.log(HashMap.size(map2)) // > 2
+ * console.log(HashMap.has(map2, "b")) // > false
+ * console.log(HashMap.has(map2, "a")) // > true
  * ```
  *
  * @category transforming
@@ -950,9 +950,9 @@ export const remove: {
  * const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3], ["d", 4])
  * const map2 = HashMap.removeMany(map1, ["b", "d"])
  *
- * console.log(HashMap.size(map2)) // 2
- * console.log(HashMap.has(map2, "a")) // true
- * console.log(HashMap.has(map2, "c")) // true
+ * console.log(HashMap.size(map2)) // > 2
+ * console.log(HashMap.has(map2, "a")) // > true
+ * console.log(HashMap.has(map2, "c")) // > true
  * ```
  *
  * @category transforming
@@ -975,9 +975,9 @@ export const removeMany: {
  * const newEntries = [["c", 3], ["d", 4], ["a", 10]] as const // "a" will be overwritten
  * const map2 = HashMap.setMany(map1, newEntries)
  *
- * console.log(HashMap.size(map2)) // 4
- * console.log(HashMap.get(map2, "a")) // Option.some(10)
- * console.log(HashMap.get(map2, "c")) // Option.some(3)
+ * console.log(HashMap.size(map2)) // > 4
+ * console.log(HashMap.get(map2, "a")) // > { _id: 'Option', _tag: 'Some', value: 10 }
+ * console.log(HashMap.get(map2, "c")) // > { _id: 'Option', _tag: 'Some', value: 3 }
  * ```
  *
  * @category transforming
@@ -999,8 +999,8 @@ export const setMany: {
  * const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * const map2 = HashMap.map(map1, (value, key) => `${key}:${value * 2}`)
  *
- * console.log(HashMap.get(map2, "a")) // Option.some("a:2")
- * console.log(HashMap.get(map2, "b")) // Option.some("b:4")
+ * console.log(HashMap.get(map2, "a")) // > { _id: 'Option', _tag: 'Some', value: 'a:2' }
+ * console.log(HashMap.get(map2, "b")) // > { _id: 'Option', _tag: 'Some', value: 'b:4' }
  * ```
  *
  * @category mapping
@@ -1029,9 +1029,9 @@ export const map: {
  *   (value, key) => HashMap.make([key + "1", value], [key + "2", value * 2])
  * )
  *
- * console.log(HashMap.size(map2)) // 4
- * console.log(HashMap.get(map2, "a1")) // Option.some(1)
- * console.log(HashMap.get(map2, "b2")) // Option.some(4)
+ * console.log(HashMap.size(map2)) // > 4
+ * console.log(HashMap.get(map2, "a1")) // > { _id: 'Option', _tag: 'Some', value: 1 }
+ * console.log(HashMap.get(map2, "b2")) // > { _id: 'Option', _tag: 'Some', value: 4 }
  * ```
  *
  * @category sequencing
@@ -1057,7 +1057,7 @@ export const flatMap: {
  *   collected.push([key, value])
  * })
  *
- * console.log(collected.sort()) // [["a", 1], ["b", 2]]
+ * console.log(collected.sort()) // > [ [ 'a', 1 ], [ 'b', 2 ] ]
  * ```
  *
  * @category traversing
@@ -1079,7 +1079,7 @@ export const forEach: {
  * const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * const sum = HashMap.reduce(map, 0, (acc, value) => acc + value)
  *
- * console.log(sum) // 6
+ * console.log(sum) // > 6
  * ```
  *
  * @category folding
@@ -1101,10 +1101,10 @@ export const reduce: {
  * const map1 = HashMap.make(["a", 1], ["b", 2], ["c", 3], ["d", 4])
  * const map2 = HashMap.filter(map1, (value) => value % 2 === 0)
  *
- * console.log(HashMap.size(map2)) // 2
- * console.log(HashMap.has(map2, "b")) // true
- * console.log(HashMap.has(map2, "d")) // true
- * console.log(HashMap.has(map2, "a")) // false
+ * console.log(HashMap.size(map2)) // > 2
+ * console.log(HashMap.has(map2, "b")) // > true
+ * console.log(HashMap.has(map2, "d")) // > true
+ * console.log(HashMap.has(map2, "a")) // > false
  * ```
  *
  * @category filtering
@@ -1130,9 +1130,9 @@ export const filter: {
  * )
  * const map2 = HashMap.compact(map1)
  *
- * console.log(HashMap.size(map2)) // 2
- * console.log(HashMap.get(map2, "a")) // Option.some(1)
- * console.log(HashMap.has(map2, "b")) // false
+ * console.log(HashMap.size(map2)) // > 2
+ * console.log(HashMap.get(map2, "a")) // > { _id: 'Option', _tag: 'Some', value: 1 }
+ * console.log(HashMap.has(map2, "b")) // > false
  * ```
  *
  * @category filtering
@@ -1155,9 +1155,9 @@ export const compact: <K, A>(self: HashMap<K, Option<A>>) => HashMap<K, A> = int
  *   (value) => value % 2 === 0 ? Result.succeed(value * 2) : Result.failVoid
  * )
  *
- * console.log(HashMap.size(map2)) // 2
- * console.log(HashMap.get(map2, "b")) // Option.some(4)
- * console.log(HashMap.get(map2, "d")) // Option.some(8)
+ * console.log(HashMap.size(map2)) // > 2
+ * console.log(HashMap.get(map2, "b")) // > { _id: 'Option', _tag: 'Some', value: 4 }
+ * console.log(HashMap.get(map2, "d")) // > { _id: 'Option', _tag: 'Some', value: 8 }
  * ```
  *
  * @category filtering
@@ -1179,8 +1179,8 @@ export const filterMap: {
  *
  * const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  * const result = HashMap.findFirst(map, (value, key) => key === "b" && value > 1)
- * console.log(result) // Option.some(["b", 2])
- * console.log(Option.getOrElse(result, () => ["", 0])) // ["b", 2]
+ * console.log(result) // > { _id: 'Option', _tag: 'Some', value: [ 'b', 2 ] }
+ * console.log(Option.getOrElse(result, () => ["", 0])) // > [ 'b', 2 ]
  * ```
  *
  * @category elements
@@ -1201,8 +1201,8 @@ export const findFirst: {
  *
  * const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  *
- * console.log(HashMap.some(map, (value) => value > 2)) // true
- * console.log(HashMap.some(map, (value) => value > 5)) // false
+ * console.log(HashMap.some(map, (value) => value > 2)) // > true
+ * console.log(HashMap.some(map, (value) => value > 5)) // > false
  * ```
  *
  * @category elements
@@ -1223,8 +1223,8 @@ export const some: {
  *
  * const map = HashMap.make(["a", 1], ["b", 2], ["c", 3])
  *
- * console.log(HashMap.every(map, (value) => value > 0)) // true
- * console.log(HashMap.every(map, (value) => value > 1)) // false
+ * console.log(HashMap.every(map, (value) => value > 0)) // > true
+ * console.log(HashMap.every(map, (value) => value > 1)) // > false
  * ```
  *
  * @category elements

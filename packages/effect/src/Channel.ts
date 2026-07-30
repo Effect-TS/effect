@@ -72,8 +72,8 @@ export const TypeId: TypeId = "~effect/Channel"
  * import { Channel } from "effect"
  *
  * const channel = Channel.succeed(42)
- * console.log(Channel.isChannel(channel)) // true
- * console.log(Channel.isChannel("not a channel")) // false
+ * console.log(Channel.isChannel(channel)) // > true
+ * console.log(Channel.isChannel("not a channel")) // > false
  * ```
  *
  * @category guards
@@ -437,7 +437,7 @@ export const toTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env
  * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
- * console.log(Channel.DefaultChunkSize) // 4096
+ * console.log(Channel.DefaultChunkSize) // > 4096
  * ```
  *
  * @category constants

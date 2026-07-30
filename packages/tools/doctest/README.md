@@ -18,14 +18,13 @@ The optional `name="..."` metadata labels the test without appearing in the exam
 
 ## Expected console output
 
-Add standalone `// >` comments to assert the complete console output of a snippet:
+Add inline or standalone `// >` comments to assert the complete console output of a snippet:
 
 ````ts
 /**
  * ```ts import.meta.vitest
- * console.log("Hello")
+ * console.log("Hello") // > Hello
  * console.log({ value: 1 })
- * // > Hello
  * // > { value: 1 }
  * ```
  */
@@ -36,7 +35,7 @@ Each `// >` comment represents one line of expected output. When a snippet conta
 
 Avoid asserting output from methods such as `console.trace`, `console.timeLog`, and `console.timeEnd`, whose output can depend on stack traces or timing.
 
-Markers must occupy their own lines so ordinary explanatory and inline comments are ignored. Snippets without markers continue to run without asserting their console output. Await asynchronous work so all output occurs before the snippet module finishes evaluating.
+Inline markers are convenient for single-line output. Move a marker to the next line when keeping it inline would make the source line longer than 120 characters. Use standalone markers for multiline output or when grouping the complete expected output improves readability. Ordinary comments without `// >` are ignored. Snippets without markers continue to run without asserting their console output. Await asynchronous work so all output occurs before the snippet module finishes evaluating.
 
 Regular tests can use `include` in the same project. Documentation sources use `includeSource`, which lets Vitest discard files without the marker before collection. The plugin resolves imports relative to each example's original TypeScript or Markdown file:
 

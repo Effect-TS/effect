@@ -200,8 +200,8 @@ const SinkProto = {
  * const sink = Sink.never
  * const notStream = { data: [1, 2, 3] }
  *
- * console.log(Sink.isSink(sink)) // true
- * console.log(Sink.isSink(notStream)) // false
+ * console.log(Sink.isSink(sink)) // > true
+ * console.log(Sink.isSink(notStream)) // > false
  * ```
  *
  * @category guards

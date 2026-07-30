@@ -839,7 +839,7 @@ export const succeed = <A>(value: A): Stream<A> => fromChannel(Channel.succeed(A
  *
  * const program = Effect.gen(function*() {
  *   const values = yield* Stream.runCollect(stream)
- *   yield* Console.log(values) // [ 1, 2, 3 ]
+ *   yield* Console.log(values) // > [ 1, 2, 3 ]
  * })
  *
  * Effect.runPromise(program)
@@ -11329,7 +11329,7 @@ export const toReadableStream: {
  *
  * const effect = Effect.gen(function*() {
  *   const readableStream = yield* Stream.toReadableStreamEffect(stream)
- *   yield* Console.log(readableStream instanceof ReadableStream) // true
+ *   yield* Console.log(readableStream instanceof ReadableStream) // > true
  * })
  *
  * Effect.runPromise(effect)

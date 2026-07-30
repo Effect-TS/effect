@@ -263,8 +263,8 @@ const memoMapReuse = <RIn, E, ROut>(
  * })
  * const notALayer = { someProperty: "value" }
  *
- * console.log(Layer.isLayer(dbLayer)) // true
- * console.log(Layer.isLayer(notALayer)) // false
+ * console.log(Layer.isLayer(dbLayer)) // > true
+ * console.log(Layer.isLayer(notALayer)) // > false
  * ```
  *
  * @category getters

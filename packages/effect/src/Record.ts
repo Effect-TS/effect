@@ -157,11 +157,11 @@ export interface ReadonlyRecordTypeLambda<K extends string = string> extends Typ
  *
  * // Create an empty record
  * const emptyRecord = Record.empty<string, number>()
- * console.log(emptyRecord) // {}
+ * console.log(emptyRecord) // > {}
  *
  * // The type ensures type safety for future operations
  * const withValue = Record.set(emptyRecord, "count", 42)
- * console.log(withValue) // { count: 42 }
+ * console.log(withValue) // > { count: 42 }
  * ```
  *
  * @category constructors
@@ -1574,7 +1574,7 @@ export function makeReducerIntersection<K extends string, A>(
  *   record,
  *   (value, key) => value > 1 && key !== "b"
  * )
- * console.log(result) // Option.Some(["c", 3])
+ * console.log(result) // > { _id: 'Option', _tag: 'Some', value: [ 'c', 3 ] }
  * ```
  *
  * @category elements

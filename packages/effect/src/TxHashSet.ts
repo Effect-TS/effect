@@ -134,7 +134,7 @@ export declare namespace TxHashSet {
    *   return `Processing ${fruit}`
    * }
    *
-   * console.log(processFruit("apple")) // Processing apple
+   * console.log(processFruit("apple")) // > Processing apple
    * ```
    *
    * @category utility types

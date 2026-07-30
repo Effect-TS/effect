@@ -144,7 +144,7 @@ const RefProto = {
  *
  * // Get the current value
  * const value = Ref.getUnsafe(counter)
- * console.log(value) // 0
+ * console.log(value) // > 0
  *
  * // Note: This is unsafe and should be used carefully
  * // Prefer Ref.make for Effect-wrapped creation
@@ -789,7 +789,7 @@ export const updateSomeAndGet = dual<
  *
  * // Get the value synchronously
  * const value = Ref.getUnsafe(counter)
- * console.log(value) // 42
+ * console.log(value) // > 42
  *
  * // Note: This is unsafe and should be used carefully
  * // Prefer Ref.get for Effect-wrapped access

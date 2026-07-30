@@ -39,8 +39,8 @@ const TypeId = "~effect/BigDecimal"
  *
  * const d = BigDecimal.fromStringUnsafe("123.45")
  *
- * console.log(d.value) // 12345n
- * console.log(d.scale) // 2
+ * console.log(d.value) // > 12345n
+ * console.log(d.scale) // > 2
  * ```
  *
  * @category models
@@ -94,9 +94,9 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
  * import { BigDecimal } from "effect"
  *
  * const decimal = BigDecimal.fromNumber(123.45)
- * console.log(BigDecimal.isBigDecimal(decimal)) // true
- * console.log(BigDecimal.isBigDecimal(123.45)) // false
- * console.log(BigDecimal.isBigDecimal("123.45")) // false
+ * console.log(BigDecimal.isBigDecimal(decimal)) // > false
+ * console.log(BigDecimal.isBigDecimal(123.45)) // > false
+ * console.log(BigDecimal.isBigDecimal("123.45")) // > false
  * ```
  *
  * @category guards
@@ -119,11 +119,11 @@ export const isBigDecimal = (u: unknown): u is BigDecimal => hasProperty(u, Type
  *
  * // Create 123.45 (12345 with scale 2)
  * const decimal = BigDecimal.make(12345n, 2)
- * console.log(BigDecimal.format(decimal)) // "123.45"
+ * console.log(BigDecimal.format(decimal)) // > 123.45
  *
  * // Create 42 (42 with scale 0)
  * const integer = BigDecimal.make(42n, 0)
- * console.log(BigDecimal.format(integer)) // "42"
+ * console.log(BigDecimal.format(integer)) // > 42
  * ```
  *
  * @see {@link fromBigInt} for constructing an integer decimal from a `bigint`
@@ -243,11 +243,11 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  *
  * // Increase scale (add more precision)
  * const scaled = BigDecimal.scale(decimal, 4)
- * console.log(BigDecimal.format(scaled)) // "123.4500"
+ * console.log(BigDecimal.format(scaled)) // > 123.45
  *
  * // Decrease scale (reduce precision, rounds down)
  * const reduced = BigDecimal.scale(decimal, 1)
- * console.log(BigDecimal.format(reduced)) // "123.4"
+ * console.log(BigDecimal.format(reduced)) // > 123.4
  * ```
  *
  * @see {@link round} for changing scale with configurable rounding
@@ -627,8 +627,10 @@ export const divide: {
  * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
- * console.log(BigDecimal.divideUnsafe(BigDecimal.fromStringUnsafe("6"), BigDecimal.fromStringUnsafe("3"))) // BigDecimal(2)
- * console.log(BigDecimal.divideUnsafe(BigDecimal.fromStringUnsafe("6"), BigDecimal.fromStringUnsafe("4"))) // BigDecimal(1.5)
+ * console.log(BigDecimal.divideUnsafe(BigDecimal.fromStringUnsafe("6"), BigDecimal.fromStringUnsafe("3")))
+ * // > { _id: 'BigDecimal', value: '2', scale: 0 }
+ * console.log(BigDecimal.divideUnsafe(BigDecimal.fromStringUnsafe("6"), BigDecimal.fromStringUnsafe("4")))
+ * // > { _id: 'BigDecimal', value: '15', scale: 1 }
  * ```
  *
  * @see {@link divide} for division that returns `Option.none` when the divisor is zero
@@ -1218,8 +1220,8 @@ export const Equivalence: Equ.Equivalence<BigDecimal> = Equ.make((self, that) =>
  * const b = BigDecimal.fromStringUnsafe("1.50")
  * const c = BigDecimal.fromStringUnsafe("2.0")
  *
- * console.log(BigDecimal.equals(a, b)) // true
- * console.log(BigDecimal.equals(a, c)) // false
+ * console.log(BigDecimal.equals(a, b)) // > true
+ * console.log(BigDecimal.equals(a, c)) // > false
  * ```
  *
  * @see {@link Equivalence} for passing decimal equality to APIs that require an `Equivalence`
@@ -1245,10 +1247,10 @@ export const equals: {
  * import { BigDecimal } from "effect"
  *
  * const decimal = BigDecimal.fromBigInt(123n)
- * console.log(BigDecimal.format(decimal)) // "123"
+ * console.log(BigDecimal.format(decimal)) // > 123
  *
  * const largeBigInt = BigDecimal.fromBigInt(9007199254740991n)
- * console.log(BigDecimal.format(largeBigInt)) // "9007199254740991"
+ * console.log(BigDecimal.format(largeBigInt)) // > 9007199254740991
  * ```
  *
  * @see {@link make} for constructing a decimal with an explicit scale
@@ -1811,8 +1813,10 @@ export const round: {
  * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
- * console.log(BigDecimal.truncate(BigDecimal.fromStringUnsafe("145"), -1)) // BigDecimal(140)
- * console.log(BigDecimal.truncate(BigDecimal.fromStringUnsafe("-14.5"))) // BigDecimal(-14)
+ * console.log(BigDecimal.truncate(BigDecimal.fromStringUnsafe("145"), -1))
+ * // > { _id: 'BigDecimal', value: '14', scale: -1 }
+ * console.log(BigDecimal.truncate(BigDecimal.fromStringUnsafe("-14.5")))
+ * // > { _id: 'BigDecimal', value: '-14', scale: 0 }
  * ```
  *
  * @see {@link round} for configurable rounding modes

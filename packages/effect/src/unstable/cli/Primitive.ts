@@ -711,17 +711,17 @@ export const none: Primitive<never> = makePrimitive("None", () => Effect.fail("T
  * ```ts import.meta.vitest
  * import { Primitive } from "effect/unstable/cli"
  *
- * console.log(Primitive.getTypeName(Primitive.string)) // "string"
- * console.log(Primitive.getTypeName(Primitive.integer)) // "integer"
- * console.log(Primitive.getTypeName(Primitive.boolean)) // "boolean"
- * console.log(Primitive.getTypeName(Primitive.date)) // "date"
- * console.log(Primitive.getTypeName(Primitive.keyValuePair)) // "key=value"
+ * console.log(Primitive.getTypeName(Primitive.string)) // > string
+ * console.log(Primitive.getTypeName(Primitive.integer)) // > integer
+ * console.log(Primitive.getTypeName(Primitive.boolean)) // > boolean
+ * console.log(Primitive.getTypeName(Primitive.date)) // > date
+ * console.log(Primitive.getTypeName(Primitive.keyValuePair)) // > key=value
  *
  * const logLevelChoice = Primitive.choice([
  *   ["debug", "debug"],
  *   ["info", "info"]
  * ])
- * console.log(Primitive.getTypeName(logLevelChoice)) // "choice"
+ * console.log(Primitive.getTypeName(logLevelChoice)) // > choice
  * ```
  *
  * @category getters

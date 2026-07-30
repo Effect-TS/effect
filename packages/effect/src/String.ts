@@ -68,9 +68,9 @@ export const isString: Refinement<unknown, string> = predicate.isString
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.Order("apple", "banana")) // -1
- * console.log(String.Order("banana", "apple")) // 1
- * console.log(String.Order("apple", "apple")) // 0
+ * console.log(String.Order("apple", "banana")) // > -1
+ * console.log(String.Order("banana", "apple")) // > 1
+ * console.log(String.Order("apple", "apple")) // > 0
  * ```
  *
  * @category instances
@@ -86,8 +86,8 @@ export const Order: order.Order<string> = order.String
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.Equivalence("hello", "hello")) // true
- * console.log(String.Equivalence("hello", "world")) // false
+ * console.log(String.Equivalence("hello", "hello")) // > true
+ * console.log(String.Equivalence("hello", "world")) // > false
  * ```
  *
  * @category instances
@@ -107,8 +107,8 @@ export const Equivalence: Equ.Equivalence<string> = Equ.String
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.empty) // ""
- * console.log(String.isEmpty(String.empty)) // true
+ * console.log(String.empty) // >
+ * console.log(String.isEmpty(String.empty)) // > true
  * ```
  *
  * @category constants
@@ -142,10 +142,10 @@ export type Concat<A extends string, B extends string> = `${A}${B}`
  * import { pipe, String } from "effect"
  *
  * const result1 = String.concat("hello", "world")
- * console.log(result1) // "helloworld"
+ * console.log(result1) // > helloworld
  *
  * const result2 = pipe("hello", String.concat("world"))
- * console.log(result2) // "helloworld"
+ * console.log(result2) // > helloworld
  * ```
  *
  * @category combining
@@ -694,10 +694,10 @@ export const localeCompare =
  * const match = pipe("hello", String.match(/l+/))
  *
  * if (Option.isSome(match)) {
- *   console.log(`${match.value[0]}@${match.value.index}`) // "ll@2"
+ *   console.log(`${match.value[0]}@${match.value.index}`) // > ll@2
  * }
  *
- * console.log(Option.isNone(pipe("hello", String.match(/x/)))) // true
+ * console.log(Option.isNone(pipe("hello", String.match(/x/)))) // > true
  * ```
  *
  * @category searching
@@ -964,7 +964,7 @@ const LF = 0x0a
  * import { String } from "effect"
  *
  * const lines = String.linesIterator("hello\nworld\n")
- * console.log(Array.from(lines)) // ["hello", "world"]
+ * console.log(Array.from(lines)) // > [ 'hello', 'world' ]
  * ```
  *
  * @category splitting
@@ -982,7 +982,7 @@ export const linesIterator = (self: string): LinesIterator => linesSeparated(sel
  * import { String } from "effect"
  *
  * const lines = String.linesWithSeparators("hello\nworld\n")
- * console.log(Array.from(lines)) // ["hello\n", "world\n"]
+ * console.log(Array.from(lines)) // > [ 'hello\n', 'world\n' ]
  * ```
  *
  * @category splitting
@@ -1056,8 +1056,8 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToCamel("hello_world")) // "helloWorld"
- * console.log(String.snakeToCamel("foo_bar_baz")) // "fooBarBaz"
+ * console.log(String.snakeToCamel("hello_world")) // > helloWorld
+ * console.log(String.snakeToCamel("foo_bar_baz")) // > fooBarBaz
  * ```
  *
  * @category transforming
@@ -1079,8 +1079,8 @@ export const snakeToCamel = (self: string): string => {
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToPascal("hello_world")) // "HelloWorld"
- * console.log(String.snakeToPascal("foo_bar_baz")) // "FooBarBaz"
+ * console.log(String.snakeToPascal("hello_world")) // > HelloWorld
+ * console.log(String.snakeToPascal("foo_bar_baz")) // > FooBarBaz
  * ```
  *
  * @category transforming
@@ -1102,8 +1102,8 @@ export const snakeToPascal = (self: string): string => {
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToKebab("hello_world")) // "hello-world"
- * console.log(String.snakeToKebab("foo_bar_baz")) // "foo-bar-baz"
+ * console.log(String.snakeToKebab("hello_world")) // > hello-world
+ * console.log(String.snakeToKebab("foo_bar_baz")) // > foo-bar-baz
  * ```
  *
  * @category transforming
@@ -1119,8 +1119,8 @@ export const snakeToKebab = (self: string): string => self.replace(/_/g, "-")
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.camelToSnake("helloWorld")) // "hello_world"
- * console.log(String.camelToSnake("fooBarBaz")) // "foo_bar_baz"
+ * console.log(String.camelToSnake("helloWorld")) // > hello_world
+ * console.log(String.camelToSnake("fooBarBaz")) // > foo_bar_baz
  * ```
  *
  * @category transforming
@@ -1136,8 +1136,8 @@ export const camelToSnake = (self: string): string => self.replace(/([A-Z])/g, "
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.pascalToSnake("HelloWorld")) // "hello_world"
- * console.log(String.pascalToSnake("FooBarBaz")) // "foo_bar_baz"
+ * console.log(String.pascalToSnake("HelloWorld")) // > hello_world
+ * console.log(String.pascalToSnake("FooBarBaz")) // > foo_bar_baz
  * ```
  *
  * @category transforming
@@ -1154,8 +1154,8 @@ export const pascalToSnake = (self: string): string =>
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.kebabToSnake("hello-world")) // "hello_world"
- * console.log(String.kebabToSnake("foo-bar-baz")) // "foo_bar_baz"
+ * console.log(String.kebabToSnake("hello-world")) // > hello_world
+ * console.log(String.kebabToSnake("foo-bar-baz")) // > foo_bar_baz
  * ```
  *
  * @category transforming

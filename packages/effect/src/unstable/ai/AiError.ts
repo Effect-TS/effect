@@ -359,8 +359,8 @@ export const HttpContext = Schema.Struct({
  *   retryAfter: Duration.seconds(60)
  * })
  *
- * console.log(rateLimitError.isRetryable) // true
- * console.log(rateLimitError.message) // "Rate limit exceeded. Retry after 1 minute"
+ * console.log(rateLimitError.isRetryable) // > true
+ * console.log(rateLimitError.message) // > Rate limit exceeded. Retry after 1m
  * ```
  *
  * @category reason
@@ -1516,8 +1516,8 @@ export type AiErrorEncoded = typeof AiError["Encoded"]
  *   reason: new AiError.RateLimitError({})
  * })
  *
- * console.log(AiError.isAiError(someError)) // false
- * console.log(AiError.isAiError(aiError)) // true
+ * console.log(AiError.isAiError(someError)) // > false
+ * console.log(AiError.isAiError(aiError)) // > true
  * ```
  *
  * @category guards
@@ -1536,8 +1536,8 @@ export const isAiError = (u: unknown): u is AiError => Predicate.hasProperty(u, 
  * const rateLimitError = new AiError.RateLimitError({})
  * const genericError = new Error("generic error")
  *
- * console.log(AiError.isAiErrorReason(rateLimitError)) // true
- * console.log(AiError.isAiErrorReason(genericError)) // false
+ * console.log(AiError.isAiErrorReason(rateLimitError)) // > true
+ * console.log(AiError.isAiErrorReason(genericError)) // > false
  * ```
  *
  * @category guards
@@ -1593,7 +1593,7 @@ export const make = (params: {
  *   body: { error: "Rate limit exceeded" }
  * })
  *
- * console.log(reason._tag) // "RateLimitError"
+ * console.log(reason._tag) // > RateLimitError
  * ```
  *
  * @category constructors

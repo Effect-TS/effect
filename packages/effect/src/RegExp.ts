@@ -29,8 +29,8 @@ import * as predicate from "./Predicate.ts"
  * const pattern = new RegExp.RegExp("hello", "i")
  *
  * // Test the pattern
- * console.log(pattern.test("Hello World")) // true
- * console.log(pattern.test("goodbye")) // false
+ * console.log(pattern.test("Hello World")) // > true
+ * console.log(pattern.test("goodbye")) // > false
  * ```
  *
  * @category constructors

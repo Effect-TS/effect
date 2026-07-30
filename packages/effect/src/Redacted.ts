@@ -119,7 +119,7 @@ export declare namespace Redacted {
    *   token: `${value.token}:rotated`
    * })
    *
-   * console.log(rotate({ token: "secret" })) // { token: "secret:rotated" }
+   * console.log(rotate({ token: "secret" })) // > { token: 'secret:rotated' }
    * ```
    *
    * @category utility types
@@ -148,8 +148,8 @@ export declare namespace Redacted {
  * const secret = Redacted.make("my-secret")
  * const plainString = "not-secret"
  *
- * console.log(Redacted.isRedacted(secret)) // true
- * console.log(Redacted.isRedacted(plainString)) // false
+ * console.log(Redacted.isRedacted(secret)) // > true
+ * console.log(Redacted.isRedacted(plainString)) // > false
  * ```
  *
  * @category refinements

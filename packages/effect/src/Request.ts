@@ -242,8 +242,8 @@ export const RequestPrototype: Request<any, any, any> = {
  * const GetUser = Request.tagged<GetUser>("GetUser")
  *
  * const request = GetUser({ id: "123" })
- * console.log(Request.isRequest(request)) // true
- * console.log(Request.isRequest("not a request")) // false
+ * console.log(Request.isRequest(request)) // > true
+ * console.log(Request.isRequest("not a request")) // > false
  * ```
  *
  * @category guards
@@ -318,8 +318,8 @@ export const of = <R extends Request<any, any, any>>(): Constructor<R> => (args)
  * const postRequest = GetPost({ id: "post-456" })
  *
  * // _tag is automatically set
- * console.log(userRequest._tag) // "GetUser"
- * console.log(postRequest._tag) // "GetPost"
+ * console.log(userRequest._tag) // > GetUser
+ * console.log(postRequest._tag) // > GetPost
  * ```
  *
  * @category constructors
@@ -352,7 +352,7 @@ export const tagged = <R extends Request<any, any, any> & { _tag: string }>(
  * }
  *
  * const getUserRequest = new GetUser(123)
- * console.log(getUserRequest.id) // 123
+ * console.log(getUserRequest.id) // > 123
  * ```
  *
  * @category constructors
@@ -389,8 +389,8 @@ export const Class: new<A extends Record<string, any>, Success, Error = never, C
  * {}
  *
  * const request = new GetUserById({ id: 123 })
- * console.log(request._tag) // "GetUserById"
- * console.log(request.id) // 123
+ * console.log(request._tag) // > GetUserById
+ * console.log(request.id) // > 123
  * ```
  *
  * @category constructors

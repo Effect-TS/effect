@@ -1144,7 +1144,7 @@ export {
    *   Schema.decodeUnknownSync(Schema.Number)("oops")
    * } catch (err) {
    *   if (Schema.isSchemaError(err)) {
-   *     console.log(err._tag) // "SchemaError"
+   *     console.log(err._tag) // > SchemaError
    *   }
    * }
    * ```
@@ -1385,14 +1385,14 @@ export function toStandardJSONSchemaV1<S extends Constraint>(
  *
  * const isString = Schema.is(Schema.String)
  *
- * console.log(isString("hello")) // true
- * console.log(isString(42)) // false
+ * console.log(isString("hello")) // > true
+ * console.log(isString(42)) // > false
  *
  * // Type narrowing in action
  * const value: unknown = "hello"
  * if (isString(value)) {
  *   // value is now typed as string
- *   console.log(value.toUpperCase()) // "HELLO"
+ *   console.log(value.toUpperCase()) // > HELLO
  * }
  * ```
  *
@@ -14249,8 +14249,8 @@ type MissingSelfGeneric<Usage extends string> =
  * }) {}
  *
  * const alice = new Person({ name: "Alice", age: 30 })
- * console.log(alice.name) // "Alice"
- * console.log(`${alice}`) // "Person({ name: Alice, age: 30 })"
+ * console.log(alice.name) // > Alice
+ * console.log(`${alice}`) // > Person({"name":"Alice","age":30})
  * ```
  *
  * **Example** (Extending a class)
@@ -14267,8 +14267,8 @@ type MissingSelfGeneric<Usage extends string> =
  * }) {}
  *
  * const dog = new Dog({ name: "Rex", breed: "Labrador" })
- * console.log(dog.name) // "Rex"
- * console.log(dog.breed) // "Labrador"
+ * console.log(dog.name) // > Rex
+ * console.log(dog.breed) // > Labrador
  * ```
  *
  * @see {@link TaggedClass} for adding a `_tag` literal field to the class schema
@@ -14331,8 +14331,8 @@ export const Class: {
  * }) {}
  *
  * const c = new Circle({ radius: 5 })
- * console.log(c._tag) // "Circle"
- * console.log(c.radius) // 5
+ * console.log(c._tag) // > Circle
+ * console.log(c.radius) // > 5
  * ```
  *
  * @category constructors
@@ -14546,7 +14546,7 @@ export function toArbitraryLazy<S extends Constraint>(schema: S): LazyArbitrary<
  *
  * // Sample a random value
  * const sample = FastCheck.sample(PersonArb, 1)[0]
- * console.log(typeof sample.name) // "string"
+ * console.log(typeof sample.name) // > string
  * ```
  *
  * @category Arbitrary
@@ -14778,8 +14778,8 @@ export function overrideToEquivalence<S extends Top>(toEquivalence: () => Equiva
  *
  * const eq = Schema.toEquivalence(Schema.Struct({ id: Schema.Number, name: Schema.String }))
  *
- * console.log(eq({ id: 1, name: "Alice" }, { id: 1, name: "Alice" })) // true
- * console.log(eq({ id: 1, name: "Alice" }, { id: 2, name: "Alice" })) // false
+ * console.log(eq({ id: 1, name: "Alice" }, { id: 1, name: "Alice" })) // > true
+ * console.log(eq({ id: 1, name: "Alice" }, { id: 2, name: "Alice" })) // > false
  * ```
  *
  * @category instances
@@ -15913,7 +15913,7 @@ export interface JsonObject {
  * import { Schema } from "effect"
  *
  * const result = Schema.decodeUnknownOption(Schema.Json)({ key: [1, true, null] })
- * console.log(result._tag) // "Some"
+ * console.log(result._tag) // > Some
  * ```
  *
  * @category schemas

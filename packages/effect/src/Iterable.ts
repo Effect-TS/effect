@@ -208,12 +208,12 @@ export const fromRecord = <K extends string, A>(self: Readonly<Record<K, A>>): I
  *
  * const numbers = [2, 3, 4]
  * const withOne = Iterable.prepend(numbers, 1)
- * console.log(Array.from(withOne)) // [1, 2, 3, 4]
+ * console.log(Array.from(withOne)) // > [ 1, 2, 3, 4 ]
  *
  * // Works with any iterable
  * const letters = "abc"
  * const withZ = Iterable.prepend(letters, "z")
- * console.log(Array.from(withZ)) // ["z", "a", "b", "c"]
+ * console.log(Array.from(withZ)) // > [ 'z', 'a', 'b', 'c' ]
  * ```
  *
  * @category combining
@@ -275,14 +275,14 @@ export const prependAll: {
  *
  * const numbers = [1, 2, 3]
  * const withFour = Iterable.append(numbers, 4)
- * console.log(Array.from(withFour)) // [1, 2, 3, 4]
+ * console.log(Array.from(withFour)) // > [ 1, 2, 3, 4 ]
  *
  * // Chain multiple appends
  * const result = Iterable.append(
  *   Iterable.append([1, 2], 3),
  *   4
  * )
- * console.log(Array.from(result)) // [1, 2, 3, 4]
+ * console.log(Array.from(result)) // > [ 1, 2, 3, 4 ]
  * ```
  *
  * @see {@link prepend} for adding one element before the existing elements
@@ -321,19 +321,19 @@ export const append: {
  * const first = [1, 2, 3]
  * const second = [4, 5, 6]
  * const combined = Iterable.appendAll(first, second)
- * console.log(Array.from(combined)) // [1, 2, 3, 4, 5, 6]
+ * console.log(Array.from(combined)) // > [ 1, 2, 3, 4, 5, 6 ]
  *
  * // Works with different iterable types
  * const numbers = [1, 2]
  * const letters = "abc"
  * const mixed = Iterable.appendAll(numbers, letters)
- * console.log(Array.from(mixed)) // [1, 2, "a", "b", "c"]
+ * console.log(Array.from(mixed)) // > [ 1, 2, 'a', 'b', 'c' ]
  *
  * // Lazy evaluation - only consumes what's needed
  * const infinite = Iterable.range(1)
  * const finite = [0, -1, -2]
  * const result = Iterable.take(Iterable.appendAll(finite, infinite), 5)
- * console.log(Array.from(result)) // [0, -1, -2, 1, 2]
+ * console.log(Array.from(result)) // > [ 0, -1, -2, 1, 2 ]
  * ```
  *
  * @see {@link append} for appending one value instead of another iterable
@@ -381,17 +381,17 @@ export const appendAll: {
  * // Running sum of numbers
  * const numbers = [1, 2, 3, 4, 5]
  * const runningSum = Iterable.scan(numbers, 0, (acc, n) => acc + n)
- * console.log(Array.from(runningSum)) // [0, 1, 3, 6, 10, 15]
+ * console.log(Array.from(runningSum)) // > [ 0, 1, 3, 6, 10, 15 ]
  *
  * // Build strings progressively
  * const letters = ["a", "b", "c"]
  * const progressive = Iterable.scan(letters, "", (acc, letter) => acc + letter)
- * console.log(Array.from(progressive)) // ["", "a", "ab", "abc"]
+ * console.log(Array.from(progressive)) // > [ '', 'a', 'ab', 'abc' ]
  *
  * // Track maximum values seen so far
  * const values = [3, 1, 4, 1, 5, 9, 2]
  * const runningMax = Iterable.scan(values, -Infinity, Math.max)
- * console.log(Array.from(runningMax)) // [-Infinity, 3, 3, 4, 4, 5, 9, 9]
+ * console.log(Array.from(runningMax)) // > [ -Infinity, 3, 3, 4, 4, 5, 9, 9 ]
  * ```
  *
  * @category folding
@@ -450,18 +450,18 @@ export const isEmpty = <A>(self: Iterable<A>): self is Iterable<never> => {
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
- * console.log(Iterable.size(numbers)) // 5
+ * console.log(Iterable.size(numbers)) // > 5
  *
  * const empty = Iterable.empty<number>()
- * console.log(Iterable.size(empty)) // 0
+ * console.log(Iterable.size(empty)) // > 0
  *
  * // Works with any iterable
  * const letters = "hello"
- * console.log(Iterable.size(letters)) // 5
+ * console.log(Iterable.size(letters)) // > 5
  *
  * // Note: This consumes the entire iterable
  * const range = Iterable.range(1, 100)
- * console.log(Iterable.size(range)) // 100
+ * console.log(Iterable.size(range)) // > 100
  * ```
  *
  * @category getters
@@ -485,20 +485,20 @@ export const size = <A>(self: Iterable<A>): number => {
  * import { Iterable, Option } from "effect"
  *
  * const numbers = [1, 2, 3]
- * console.log(Iterable.head(numbers)) // Option.some(1)
+ * console.log(Iterable.head(numbers)) // > { _id: 'Option', _tag: 'Some', value: 1 }
  *
  * const empty = Iterable.empty<number>()
- * console.log(Iterable.head(empty)) // Option.none()
+ * console.log(Iterable.head(empty)) // > { _id: 'Option', _tag: 'None' }
  *
  * // Safe way to get first element
  * const firstEven = Iterable.head(
  *   Iterable.filter([1, 3, 4, 5], (x) => x % 2 === 0)
  * )
- * console.log(firstEven) // Option.some(4)
+ * console.log(firstEven) // > { _id: 'Option', _tag: 'Some', value: 4 }
  *
  * // Use with Option methods
  * const doubled = Option.map(Iterable.head([5, 10, 15]), (x) => x * 2)
- * console.log(doubled) // Option.some(10)
+ * console.log(doubled) // > { _id: 'Option', _tag: 'Some', value: 10 }
  * ```
  *
  * @category getters
@@ -528,17 +528,17 @@ export const head = <A>(self: Iterable<A>): Option<A> => {
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3]
- * console.log(Iterable.headUnsafe(numbers)) // 1
+ * console.log(Iterable.headUnsafe(numbers)) // > 1
  *
  * const letters = "hello"
- * console.log(Iterable.headUnsafe(letters)) // "h"
+ * console.log(Iterable.headUnsafe(letters)) // > h
  *
  * // Iterable.headUnsafe(Iterable.empty<number>())
  * // throws Error: "headUnsafe: empty iterable"
  *
  * // Use only when you're certain the iterable is non-empty
  * const nonEmpty = Iterable.range(1, 10)
- * console.log(Iterable.headUnsafe(nonEmpty)) // 1
+ * console.log(Iterable.headUnsafe(nonEmpty)) // > 1
  * ```
  *
  * @category getters
@@ -565,20 +565,20 @@ export const headUnsafe = <A>(self: Iterable<A>): A => {
  *
  * const numbers = [1, 2, 3, 4, 5]
  * const firstThree = Iterable.take(numbers, 3)
- * console.log(Array.from(firstThree)) // [1, 2, 3]
+ * console.log(Array.from(firstThree)) // > [ 1, 2, 3 ]
  *
  * // Taking more than available returns all elements
  * const firstTen = Iterable.take(numbers, 10)
- * console.log(Array.from(firstTen)) // [1, 2, 3, 4, 5]
+ * console.log(Array.from(firstTen)) // > [ 1, 2, 3, 4, 5 ]
  *
  * // Taking 0 or negative returns empty
  * const none = Iterable.take(numbers, 0)
- * console.log(Array.from(none)) // []
+ * console.log(Array.from(none)) // > []
  *
  * // Useful with infinite iterables
  * const naturals = Iterable.range(1)
  * const firstFive = Iterable.take(naturals, 5)
- * console.log(Array.from(firstFive)) // [1, 2, 3, 4, 5]
+ * console.log(Array.from(firstFive)) // > [ 1, 2, 3, 4, 5 ]
  * ```
  *
  * @category getters
@@ -673,19 +673,19 @@ export const takeWhile: {
  *
  * const numbers = [1, 2, 3, 4, 5]
  * const withoutFirstTwo = Iterable.drop(numbers, 2)
- * console.log(Array.from(withoutFirstTwo)) // [3, 4, 5]
+ * console.log(Array.from(withoutFirstTwo)) // > [ 3, 4, 5 ]
  *
  * // Dropping more than available returns empty
  * const withoutFirstTen = Iterable.drop(numbers, 10)
- * console.log(Array.from(withoutFirstTen)) // []
+ * console.log(Array.from(withoutFirstTen)) // > []
  *
  * // Dropping 0 or negative returns all elements
  * const all = Iterable.drop(numbers, 0)
- * console.log(Array.from(all)) // [1, 2, 3, 4, 5]
+ * console.log(Array.from(all)) // > [ 1, 2, 3, 4, 5 ]
  *
  * // Combine with take for slicing
  * const slice = Iterable.take(Iterable.drop(numbers, 1), 3)
- * console.log(Array.from(slice)) // [2, 3, 4]
+ * console.log(Array.from(slice)) // > [ 2, 3, 4 ]
  * ```
  *
  * @category getters
@@ -724,15 +724,15 @@ export const drop: {
  *
  * const numbers = [1, 3, 4, 6, 8]
  * const firstEven = Iterable.findFirst(numbers, (x) => x % 2 === 0)
- * console.log(firstEven) // Option.some(4)
+ * console.log(firstEven) // > { _id: 'Option', _tag: 'Some', value: 4 }
  *
  * const firstGreaterThan10 = Iterable.findFirst(numbers, (x) => x > 10)
- * console.log(firstGreaterThan10) // Option.none()
+ * console.log(firstGreaterThan10) // > { _id: 'Option', _tag: 'None' }
  *
  * // With index
  * const letters = ["a", "b", "c", "d"]
  * const atEvenIndex = Iterable.findFirst(letters, (_, i) => i % 2 === 0)
- * console.log(atEvenIndex) // Option.some("a")
+ * console.log(atEvenIndex) // > { _id: 'Option', _tag: 'Some', value: 'a' }
  *
  * // Type refinement
  * const mixed: Array<string | number> = [1, "hello", 2, "world"]
@@ -740,14 +740,14 @@ export const drop: {
  *   mixed,
  *   (x): x is string => typeof x === "string"
  * )
- * console.log(firstString) // Option.some("hello")
+ * console.log(firstString) // > { _id: 'Option', _tag: 'Some', value: 'hello' }
  *
  * // Transform during search
  * const findSquareRoot = Iterable.findFirst([1, 4, 9, 16], (x) => {
  *   const sqrt = Math.sqrt(x)
  *   return Number.isInteger(sqrt) ? Option.some(sqrt) : Option.none()
  * })
- * console.log(findSquareRoot) // Option.some(1)
+ * console.log(findSquareRoot) // > { _id: 'Option', _tag: 'Some', value: 1 }
  * ```
  *
  * @category elements
@@ -853,25 +853,25 @@ export const findLast: {
  * const numbers = [1, 2, 3]
  * const letters = ["a", "b", "c"]
  * const zipped = Iterable.zip(numbers, letters)
- * console.log(Array.from(zipped)) // [[1, "a"], [2, "b"], [3, "c"]]
+ * console.log(Array.from(zipped)) // > [ [ 1, 'a' ], [ 2, 'b' ], [ 3, 'c' ] ]
  *
  * // Different lengths - shorter one determines result length
  * const short = [1, 2]
  * const long = ["a", "b", "c", "d"]
  * const partial = Iterable.zip(short, long)
- * console.log(Array.from(partial)) // [[1, "a"], [2, "b"]]
+ * console.log(Array.from(partial)) // > [ [ 1, 'a' ], [ 2, 'b' ] ]
  *
  * // Works with any iterables
  * const range = Iterable.range(1, 3)
  * const word = "abc"
  * const mixed = Iterable.zip(range, word)
- * console.log(Array.from(mixed)) // [[1, "a"], [2, "b"], [3, "c"]]
+ * console.log(Array.from(mixed)) // > [ [ 1, 'a' ], [ 2, 'b' ], [ 3, 'c' ] ]
  *
  * // Create indexed pairs
  * const values = ["apple", "banana", "cherry"]
  * const indices = Iterable.range(0, 2)
  * const indexed = Iterable.zip(indices, values)
- * console.log(Array.from(indexed)) // [[0, "apple"], [1, "banana"], [2, "cherry"]]
+ * console.log(Array.from(indexed)) // > [ [ 0, 'apple' ], [ 1, 'banana' ], [ 2, 'cherry' ] ]
  * ```
  *
  * @category zipping
@@ -898,7 +898,7 @@ export const zip: {
  * const a = [1, 2, 3, 4]
  * const b = [10, 20, 30, 40]
  * const sums = Iterable.zipWith(a, b, (x, y) => x + y)
- * console.log(Array.from(sums)) // [11, 22, 33, 44]
+ * console.log(Array.from(sums)) // > [ 11, 22, 33, 44 ]
  *
  * // Combine strings
  * const firstNames = ["John", "Jane", "Bob"]
@@ -908,7 +908,7 @@ export const zip: {
  *   lastNames,
  *   (first, last) => `${first} ${last}`
  * )
- * console.log(Array.from(fullNames)) // ["John Doe", "Jane Smith", "Bob Johnson"]
+ * console.log(Array.from(fullNames)) // > [ 'John Doe', 'Jane Smith', 'Bob Johnson' ]
  *
  * // Different lengths - stops at shorter
  * const short = [1, 2]
@@ -918,7 +918,7 @@ export const zip: {
  *   long,
  *   (num, letter) => `${num}${letter}`
  * )
- * console.log(Array.from(combined)) // ["1a", "2b"]
+ * console.log(Array.from(combined)) // > [ '1a', '2b' ]
  *
  * // Complex transformations
  * const prices = [10.99, 25.50, 5.00]
@@ -926,7 +926,7 @@ export const zip: {
  * const totals = Iterable.zipWith(prices, quantities, (price, qty) => {
  *   return Math.round(price * qty * 100) / 100 // round to 2 decimal places
  * })
- * console.log(Array.from(totals)) // [21.98, 25.5, 15]
+ * console.log(Array.from(totals)) // > [ 21.98, 25.5, 15 ]
  * ```
  *
  * @category zipping
@@ -1087,22 +1087,22 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
- * console.log(Iterable.contains(numbers, 3)) // true
- * console.log(Iterable.contains(numbers, 6)) // false
+ * console.log(Iterable.contains(numbers, 3)) // > true
+ * console.log(Iterable.contains(numbers, 6)) // > false
  *
  * const letters = "hello"
- * console.log(Iterable.contains(letters, "l")) // true
- * console.log(Iterable.contains(letters, "x")) // false
+ * console.log(Iterable.contains(letters, "l")) // > true
+ * console.log(Iterable.contains(letters, "x")) // > false
  *
  * // Works with any iterable
  * const range = Iterable.range(1, 100)
- * console.log(Iterable.contains(range, 50)) // true
- * console.log(Iterable.contains(range, 150)) // false
+ * console.log(Iterable.contains(range, 50)) // > true
+ * console.log(Iterable.contains(range, 150)) // > false
  *
  * // Curried version
  * const containsThree = Iterable.contains(3)
- * console.log(containsThree([1, 2, 3])) // true
- * console.log(containsThree([4, 5, 6])) // false
+ * console.log(containsThree([1, 2, 3])) // > true
+ * console.log(containsThree([4, 5, 6])) // > false
  * ```
  *
  * @category elements
@@ -1398,8 +1398,8 @@ const constEmptyIterator: Iterator<never> = {
  * import { Iterable } from "effect"
  *
  * const empty = Iterable.empty<string>()
- * console.log(Array.from(empty)) // []
- * console.log(Iterable.isEmpty(empty)) // true
+ * console.log(Array.from(empty)) // > []
+ * console.log(Iterable.isEmpty(empty)) // > true
  *
  * // Useful as base case for reductions
  * const hasData = true
@@ -1427,7 +1427,7 @@ export const empty = <A = never>(): Iterable<A> => constEmpty
  * import { Iterable } from "effect"
  *
  * const single = Iterable.of(42)
- * console.log(Array.from(single)) // [42]
+ * console.log(Array.from(single)) // > [ 42 ]
  *
  * // Useful for creating homogeneous sequences
  * const sequences = [
@@ -1442,7 +1442,7 @@ export const empty = <A = never>(): Iterable<A> => constEmpty
  *   numbers,
  *   (n) => n % 2 === 0 ? Iterable.of(n) : Iterable.empty()
  * )
- * console.log(Array.from(evensOnly)) // [2, 4]
+ * console.log(Array.from(evensOnly)) // > [ 2, 4 ]
  * ```
  *
  * @category constructors
@@ -1468,18 +1468,18 @@ export const of = <A>(a: A): Iterable<A> => [a]
  * // Transform numbers to their squares
  * const numbers = [1, 2, 3, 4, 5]
  * const squares = Iterable.map(numbers, (x) => x * x)
- * console.log(Array.from(squares)) // [1, 4, 9, 16, 25]
+ * console.log(Array.from(squares)) // > [ 1, 4, 9, 16, 25 ]
  *
  * // Use index in transformation
  * const indexed = Iterable.map(["a", "b", "c"], (char, i) => `${i}: ${char}`)
- * console.log(Array.from(indexed)) // ["0: a", "1: b", "2: c"]
+ * console.log(Array.from(indexed)) // > [ '0: a', '1: b', '2: c' ]
  *
  * // Chain transformations
  * const result = Iterable.map(
  *   Iterable.map([1, 2, 3], (x) => x * 2),
  *   (x) => x + 1
  * )
- * console.log(Array.from(result)) // [3, 5, 7]
+ * console.log(Array.from(result)) // > [ 3, 5, 7 ]
  * ```
  *
  * @category mapping
@@ -1517,12 +1517,12 @@ export const map: {
  * // Expand each number to a range
  * const numbers = [1, 2, 3]
  * const expanded = Iterable.flatMap(numbers, (n) => Iterable.range(1, n))
- * console.log(Array.from(expanded)) // [1, 1, 2, 1, 2, 3]
+ * console.log(Array.from(expanded)) // > [ 1, 1, 2, 1, 2, 3 ]
  *
  * // Split strings into characters
  * const words = ["hi", "bye"]
  * const chars = Iterable.flatMap(words, (word) => word)
- * console.log(Array.from(chars)) // ["h", "i", "b", "y", "e"]
+ * console.log(Array.from(chars)) // > [ 'h', 'i', 'b', 'y', 'e' ]
  *
  * // Conditional expansion with empty iterables
  * const values = [1, 2, 3, 4, 5]
@@ -1530,7 +1530,7 @@ export const map: {
  *   values,
  *   (n) => n % 2 === 0 ? [n, n * 2, n * 3] : []
  * )
- * console.log(Array.from(evenMultiples)) // [2, 4, 6, 4, 8, 12]
+ * console.log(Array.from(evenMultiples)) // > [ 2, 4, 6, 4, 8, 12 ]
  *
  * // Use index in transformation
  * const letters = ["a", "b", "c"]
@@ -1538,7 +1538,7 @@ export const map: {
  *   letters,
  *   (letter, i) => Iterable.replicate(letter, i + 1)
  * )
- * console.log(Array.from(indexed)) // ["a", "b", "b", "c", "c", "c"]
+ * console.log(Array.from(indexed)) // > [ 'a', 'b', 'b', 'c', 'c', 'c' ]
  * ```
  *
  * @category sequencing
@@ -1962,7 +1962,7 @@ export const filter: {
  *   const num = parseInt(s)
  *   return isNaN(num) ? null : num * 2
  * })
- * console.log(Array.from(parsed)) // [2, 4, 8]
+ * console.log(Array.from(parsed)) // > [ 2, 4, 8 ]
  *
  * // Safe property access
  * const objects = [
@@ -1972,7 +1972,7 @@ export const filter: {
  *   {}
  * ]
  * const values = Iterable.flatMapNullishOr(objects, (obj) => obj.nested?.value)
- * console.log(Array.from(values)) // [10, 20]
+ * console.log(Array.from(values)) // > [ 10, 20 ]
  *
  * // Working with Map.get (returns undefined for missing keys)
  * const map = new Map([
@@ -1982,7 +1982,7 @@ export const filter: {
  * ])
  * const keys = ["a", "x", "b", "y", "c"]
  * const foundValues = Iterable.flatMapNullishOr(keys, (key) => map.get(key))
- * console.log(Array.from(foundValues)) // [1, 2, 3]
+ * console.log(Array.from(foundValues)) // > [ 1, 2, 3 ]
  * ```
  *
  * @category sequencing
@@ -2178,12 +2178,12 @@ export const forEach: {
  * // Sum all numbers
  * const numbers = [1, 2, 3, 4, 5]
  * const sum = Iterable.reduce(numbers, 0, (acc, n) => acc + n)
- * console.log(sum) // 15
+ * console.log(sum) // > 15
  *
  * // Find maximum value
  * const values = [3, 1, 4, 1, 5, 9, 2]
  * const max = Iterable.reduce(values, -Infinity, Math.max)
- * console.log(max) // 9
+ * console.log(max) // > NaN
  *
  * // Build an object from key-value pairs
  * const pairs = [["a", 1], ["b", 2], ["c", 3]] as const
@@ -2195,7 +2195,7 @@ export const forEach: {
  *     return acc
  *   }
  * )
- * console.log(obj) // { a: 1, b: 2, c: 3 }
+ * console.log(obj) // > { a: 1, b: 2, c: 3 }
  *
  * // Use index in the reducer
  * const letters = ["a", "b", "c"]
@@ -2207,7 +2207,7 @@ export const forEach: {
  *     return acc
  *   }
  * )
- * console.log(indexed) // ["0: a", "1: b", "2: c"]
+ * console.log(indexed) // > [ '0: a', '1: b', '2: c' ]
  * ```
  *
  * @category folding
@@ -2239,14 +2239,14 @@ export const reduce: {
  * // Remove adjacent duplicates with custom equality
  * const numbers = [1, 1, 2, 2, 3, 1, 1]
  * const dedupedNumbers = Iterable.dedupeAdjacentWith(numbers, (a, b) => a === b)
- * console.log(Array.from(dedupedNumbers)) // [1, 2, 3, 1]
+ * console.log(Array.from(dedupedNumbers)) // > [ 1, 2, 3, 1 ]
  *
  * // Case-insensitive deduplication
  * const words = ["Hello", "HELLO", "world", "World", "test"]
  * const caseInsensitive = (a: string, b: string) =>
  *   a.toLowerCase() === b.toLowerCase()
  * const dedupedWords = Iterable.dedupeAdjacentWith(words, caseInsensitive)
- * console.log(Array.from(dedupedWords)) // ["Hello", "world", "test"]
+ * console.log(Array.from(dedupedWords)) // > [ 'Hello', 'world', 'test' ]
  *
  * // Deduplication by object property
  * const users = [
@@ -2258,13 +2258,13 @@ export const reduce: {
  * ]
  * const byId = (a: typeof users[0], b: typeof users[0]) => a.id === b.id
  * const dedupedUsers = Iterable.dedupeAdjacentWith(users, byId)
- * console.log(Array.from(dedupedUsers).map((u) => u.id)) // [1, 2, 3]
+ * console.log(Array.from(dedupedUsers).map((u) => u.id)) // > [ 1, 2, 3 ]
  *
  * // Approximate numeric equality
  * const floats = [1.0, 1.01, 1.02, 2.0, 2.01, 3.0]
  * const approxEqual = (a: number, b: number) => Math.abs(a - b) < 0.1
  * const dedupedFloats = Iterable.dedupeAdjacentWith(floats, approxEqual)
- * console.log(Array.from(dedupedFloats)) // [1.0, 2.0, 3.0]
+ * console.log(Array.from(dedupedFloats)) // > [ 1, 2, 3 ]
  * ```
  *
  * @category filtering
@@ -2310,12 +2310,12 @@ export const dedupeAdjacentWith: {
  * // Remove adjacent duplicate numbers
  * const numbers = [1, 1, 2, 2, 2, 3, 1, 1]
  * const deduped = Iterable.dedupeAdjacent(numbers)
- * console.log(Array.from(deduped)) // [1, 2, 3, 1]
+ * console.log(Array.from(deduped)) // > [ 1, 2, 3, 1 ]
  *
  * // Remove adjacent duplicate characters
  * const letters = "aabbccaa"
  * const dedupedLetters = Iterable.dedupeAdjacent(letters)
- * console.log(Array.from(dedupedLetters)) // ["a", "b", "c", "a"]
+ * console.log(Array.from(dedupedLetters)) // > [ 'a', 'b', 'c', 'a' ]
  *
  * // Works with objects using deep equality
  * const objects = [
@@ -2326,12 +2326,12 @@ export const dedupeAdjacentWith: {
  *   { type: "A" }
  * ]
  * const dedupedObjects = Iterable.dedupeAdjacent(objects)
- * console.log(Array.from(dedupedObjects).map((o) => o.type)) // ["A", "B", "A"]
+ * console.log(Array.from(dedupedObjects).map((o) => o.type)) // > [ 'A', 'B', 'A' ]
  *
  * // Clean up streaming data
  * const sensorData = [100, 100, 100, 101, 101, 102, 102, 102, 100]
  * const cleanedData = Iterable.dedupeAdjacent(sensorData)
- * console.log(Array.from(cleanedData)) // [100, 101, 102, 100]
+ * console.log(Array.from(cleanedData)) // > [ 100, 101, 102, 100 ]
  * ```
  *
  * @category filtering
@@ -2486,7 +2486,7 @@ export const cartesian: {
  * import { Iterable } from "effect"
  *
  * const result = Iterable.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0)
- * console.log(result) // 2
+ * console.log(result) // > 2
  * ```
  *
  * @category folding

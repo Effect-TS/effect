@@ -32,8 +32,8 @@ import * as Reducer from "./Reducer.ts"
  *
  * const numberEq: Equivalence.Equivalence<number> = (a, b) => a === b
  *
- * console.log(numberEq(1, 1)) // true
- * console.log(numberEq(1, 2)) // false
+ * console.log(numberEq(1, 1)) // > true
+ * console.log(numberEq(1, 2)) // > false
  * ```
  *
  * **Example** (Defining custom object equivalence)
@@ -49,7 +49,7 @@ import * as Reducer from "./Reducer.ts"
  * const pointEq: Equivalence.Equivalence<Point> = (a, b) =>
  *   a.x === b.x && a.y === b.y
  *
- * console.log(pointEq({ x: 1, y: 2 }, { x: 1, y: 2 })) // true
+ * console.log(pointEq({ x: 1, y: 2 }, { x: 1, y: 2 })) // > true
  * ```
  *
  * @see {@link make}
@@ -135,8 +135,8 @@ export interface EquivalenceTypeLambda extends TypeLambda {
  *
  * const tolerance = Equivalence.make<number>((a, b) => Math.abs(a - b) < 0.0001)
  *
- * console.log(tolerance(1.0, 1.001)) // false
- * console.log(tolerance(1.0, 1.00001)) // true
+ * console.log(tolerance(1.0, 1.001)) // > false
+ * console.log(tolerance(1.0, 1.00001)) // > true
  * ```
  *
  * @see {@link strictEqual}
@@ -210,8 +210,8 @@ export const strictEqual: <A>() => Equivalence<A> = () => isStrictEquivalent
  * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
- * console.log(Equivalence.String("hello", "hello")) // true
- * console.log(Equivalence.String("hello", "world")) // false
+ * console.log(Equivalence.String("hello", "hello")) // > true
+ * console.log(Equivalence.String("hello", "world")) // > false
  * ```
  *
  * @category instances
@@ -231,9 +231,9 @@ export const String: Equivalence<string> = isStrictEquivalent
  * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
- * console.log(Equivalence.Number(1, 1)) // true
- * console.log(Equivalence.Number(1, 2)) // false
- * console.log(Equivalence.Number(NaN, NaN)) // true
+ * console.log(Equivalence.Number(1, 1)) // > true
+ * console.log(Equivalence.Number(1, 2)) // > false
+ * console.log(Equivalence.Number(NaN, NaN)) // > true
  * ```
  *
  * @category instances
@@ -255,8 +255,8 @@ export const Number: Equivalence<number> = make((self, that) =>
  * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
- * console.log(Equivalence.Boolean(true, true)) // true
- * console.log(Equivalence.Boolean(true, false)) // false
+ * console.log(Equivalence.Boolean(true, true)) // > true
+ * console.log(Equivalence.Boolean(true, false)) // > false
  * ```
  *
  * @category instances
@@ -276,8 +276,8 @@ export const Boolean: Equivalence<boolean> = isStrictEquivalent
  * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
- * console.log(Equivalence.BigInt(1n, 1n)) // true
- * console.log(Equivalence.BigInt(1n, 2n)) // false
+ * console.log(Equivalence.BigInt(1n, 1n)) // > true
+ * console.log(Equivalence.BigInt(1n, 2n)) // > false
  * ```
  *
  * @category instances
@@ -395,7 +395,7 @@ export const combine: {
  *
  * // Empty collection always returns true
  * const alwaysEq = Equivalence.combineAll([])
- * console.log(alwaysEq("anything", "else")) // true
+ * console.log(alwaysEq("anything", "else")) // > true
  * ```
  *
  * @see {@link combine}
@@ -464,8 +464,8 @@ export const combineAll = <A>(collection: Iterable<Equivalence<A>>): Equivalence
  *   (s: string) => s.toLowerCase()
  * )
  *
- * console.log(caseInsensitiveEq("Hello", "HELLO")) // true
- * console.log(caseInsensitiveEq("Hello", "World")) // false
+ * console.log(caseInsensitiveEq("Hello", "HELLO")) // > true
+ * console.log(caseInsensitiveEq("Hello", "World")) // > false
  * ```
  *
  * @see {@link combine}
@@ -681,7 +681,7 @@ export {
  * // Only compares name and age, ignores other properties
  * const obj1 = { name: "Alice", age: 30, extra: "ignored" }
  * const obj2 = { name: "Alice", age: 30, extra: "different" }
- * console.log(nameAgeEq(obj1, obj2)) // true
+ * console.log(nameAgeEq(obj1, obj2)) // > true
  * ```
  *
  * @see {@link Record}
@@ -747,8 +747,8 @@ export function Struct<R extends Record<string, Equivalence<any>>>(
  * const scores2 = { alice: 100, bob: 85 }
  * const scores3 = { alice: 100, bob: 90 }
  *
- * console.log(numberRecordEq(scores1, scores2)) // true
- * console.log(numberRecordEq(scores1, scores3)) // false
+ * console.log(numberRecordEq(scores1, scores2)) // > true
+ * console.log(numberRecordEq(scores1, scores3)) // > false
  * ```
  *
  * @category combinators
@@ -840,10 +840,10 @@ export function makeReducer<A>() {
  * const invalidDate1 = new Date("foo")
  * const invalidDate2 = new Date("bar")
  *
- * console.log(Equivalence.Date(d1, d2)) // true
- * console.log(Equivalence.Date(d1, d3)) // false
- * console.log(Equivalence.Date(invalidDate1, invalidDate2)) // true
- * console.log(Equivalence.Date(invalidDate1, d1)) // false
+ * console.log(Equivalence.Date(d1, d2)) // > true
+ * console.log(Equivalence.Date(d1, d3)) // > false
+ * console.log(Equivalence.Date(invalidDate1, invalidDate2)) // > true
+ * console.log(Equivalence.Date(invalidDate1, d1)) // > false
  * ```
  *
  * **Example** (Comparing reference and value equality)

@@ -518,7 +518,7 @@ export const isZoned: (self: DateTime) => self is Zoned = Internal.isZoned
  *   timeZone: "Europe/London"
  * })
  *
- * console.log(DateTime.Equivalence(utc, zoned)) // true
+ * console.log(DateTime.Equivalence(utc, zoned)) // > true
  * ```
  *
  * @category instances
@@ -608,7 +608,7 @@ export const clamp: {
  * const date = new Date("2024-01-01T12:00:00Z")
  * const dateTime = DateTime.fromDateUnsafe(date)
  *
- * console.log(DateTime.formatIso(dateTime)) // "2024-01-01T12:00:00.000Z"
+ * console.log(DateTime.formatIso(dateTime)) // > 2024-01-01T12:00:00.000Z
  * ```
  *
  * @category constructors
@@ -639,15 +639,15 @@ export const fromDateUnsafe: (date: Date) => Utc = Internal.fromDateUnsafe
  *
  * // from Date
  * const fromDate = DateTime.makeUnsafe(new Date("2024-01-01T12:00:00Z"))
- * console.log(DateTime.formatIso(fromDate)) // "2024-01-01T12:00:00.000Z"
+ * console.log(DateTime.formatIso(fromDate)) // > 2024-01-01T12:00:00.000Z
  *
  * // from parts
  * const fromParts = DateTime.makeUnsafe({ year: 2024 })
- * console.log(DateTime.formatIso(fromParts)) // "2024-01-01T00:00:00.000Z"
+ * console.log(DateTime.formatIso(fromParts)) // > 2024-01-01T00:00:00.000Z
  *
  * // from string
  * const fromString = DateTime.makeUnsafe("2024-01-01")
- * console.log(DateTime.formatIso(fromString)) // "2024-01-01T00:00:00.000Z"
+ * console.log(DateTime.formatIso(fromString)) // > 2024-01-01T00:00:00.000Z
  * ```
  *
  * @category constructors
@@ -685,7 +685,7 @@ export const makeUnsafe: <A extends DateTime.Input>(input: A) => DateTime.Preser
  *   timeZone: "Europe/London"
  * })
  *
- * console.log(DateTime.formatIsoZoned(zoned)) // "2024-06-15T15:30:00.000+01:00[Europe/London]"
+ * console.log(DateTime.formatIsoZoned(zoned)) // > 2024-06-15T15:30:00.000+01:00[Europe/London]
  * ```
  *
  * @category constructors
@@ -727,9 +727,9 @@ export const makeZonedUnsafe: (input: DateTime.Input, options?: {
  *   timeZone: "Europe/London"
  * })
  *
- * console.log(result._tag) // "Some"
+ * console.log(result._tag) // > Some
  * if (result._tag === "Some") {
- *   console.log(DateTime.formatIsoZoned(result.value)) // "2024-06-15T15:30:00.000+01:00[Europe/London]"
+ *   console.log(DateTime.formatIsoZoned(result.value)) // > 2024-06-15T15:30:00.000+01:00[Europe/London]
  * }
  * ```
  *
@@ -767,18 +767,18 @@ export const makeZoned: (
  *
  * // from Date
  * const fromDate = DateTime.make(new Date("2024-01-01T12:00:00Z"))
- * console.log(fromDate._tag) // "Some"
+ * console.log(fromDate._tag) // > Some
  *
  * // from parts
  * const fromParts = DateTime.make({ year: 2024 })
- * console.log(fromParts._tag) // "Some"
+ * console.log(fromParts._tag) // > Some
  *
  * // from string
  * const fromString = DateTime.make("2024-01-01")
- * console.log(fromString._tag) // "Some"
+ * console.log(fromString._tag) // > Some
  *
  * const invalid = DateTime.make("not a date")
- * console.log(invalid._tag) // "None"
+ * console.log(invalid._tag) // > None
  * ```
  *
  * @category constructors
@@ -804,13 +804,13 @@ export const make: <A extends DateTime.Input>(input: A) => Option.Option<DateTim
  * const result1 = DateTime.makeZonedFromString(
  *   "2024-01-01T12:00:00+02:00[Europe/Berlin]"
  * )
- * console.log(result1._tag === "Some") // true
+ * console.log(result1._tag === "Some") // > true
  *
  * const result2 = DateTime.makeZonedFromString("2024-01-01T12:00:00Z")
- * console.log(result2._tag === "Some") // true
+ * console.log(result2._tag === "Some") // > false
  *
  * const invalid = DateTime.makeZonedFromString("invalid")
- * console.log(invalid._tag === "None") // true
+ * console.log(invalid._tag === "None") // > true
  * ```
  *
  * @category constructors
@@ -1000,10 +1000,10 @@ export const setZoneOffset: {
  * import { DateTime } from "effect"
  *
  * const londonZone = DateTime.zoneMakeNamedUnsafe("Europe/London")
- * console.log(DateTime.zoneToString(londonZone)) // "Europe/London"
+ * console.log(DateTime.zoneToString(londonZone)) // > Europe/London
  *
  * const tokyoZone = DateTime.zoneMakeNamedUnsafe("Asia/Tokyo")
- * console.log(DateTime.zoneToString(tokyoZone)) // "Asia/Tokyo"
+ * console.log(DateTime.zoneToString(tokyoZone)) // > Asia/Tokyo
  *
  * // This would throw an IllegalArgumentError:
  * // DateTime.zoneMakeNamedUnsafe("Invalid/Zone")
@@ -1053,10 +1053,10 @@ export const zoneMakeOffset: (offset: number) => TimeZone.Offset = Internal.zone
  * import { DateTime } from "effect"
  *
  * const validZone = DateTime.zoneMakeNamed("Europe/London")
- * console.log(validZone._tag === "Some") // true
+ * console.log(validZone._tag === "Some") // > true
  *
  * const invalidZone = DateTime.zoneMakeNamed("Invalid/Zone")
- * console.log(invalidZone._tag === "None") // true
+ * console.log(invalidZone._tag === "None") // > true
  * ```
  *
  * @category time zones
@@ -1104,7 +1104,7 @@ export const zoneMakeNamedEffect: (zoneId: string) => Effect.Effect<TimeZone.Nam
  * import { DateTime } from "effect"
  *
  * const localZone = DateTime.zoneMakeLocal()
- * console.log(DateTime.zoneToString(localZone)) // Output depends on system time zone
+ * console.log(DateTime.zoneToString(localZone)) // > Europe/Berlin
  * ```
  *
  * @category time zones
@@ -1128,9 +1128,9 @@ export const zoneMakeLocal: () => TimeZone.Named = Internal.zoneMakeLocal
  * const offsetZone = DateTime.zoneFromString("+03:00")
  * const invalid = DateTime.zoneFromString("invalid")
  *
- * console.log(namedZone._tag === "Some") // true
- * console.log(offsetZone._tag === "Some") // true
- * console.log(invalid._tag === "None") // true
+ * console.log(namedZone._tag === "Some") // > true
+ * console.log(offsetZone._tag === "Some") // > true
+ * console.log(invalid._tag === "None") // > true
  * ```
  *
  * @category time zones
@@ -1311,8 +1311,8 @@ export const max: {
  * const date1 = DateTime.makeUnsafe("2024-02-01")
  * const date2 = DateTime.makeUnsafe("2024-01-01")
  *
- * console.log(DateTime.isGreaterThan(date1, date2)) // true
- * console.log(DateTime.isGreaterThan(date2, date1)) // false
+ * console.log(DateTime.isGreaterThan(date1, date2)) // > true
+ * console.log(DateTime.isGreaterThan(date2, date1)) // > false
  * ```
  *
  * @category comparisons
@@ -1335,9 +1335,9 @@ export const isGreaterThan: {
  * const date2 = DateTime.makeUnsafe("2024-01-01")
  * const date3 = DateTime.makeUnsafe("2024-02-01")
  *
- * console.log(DateTime.isGreaterThanOrEqualTo(date1, date2)) // true
- * console.log(DateTime.isGreaterThanOrEqualTo(date3, date1)) // true
- * console.log(DateTime.isGreaterThanOrEqualTo(date1, date3)) // false
+ * console.log(DateTime.isGreaterThanOrEqualTo(date1, date2)) // > true
+ * console.log(DateTime.isGreaterThanOrEqualTo(date3, date1)) // > true
+ * console.log(DateTime.isGreaterThanOrEqualTo(date1, date3)) // > false
  * ```
  *
  * @category comparisons
@@ -1359,8 +1359,8 @@ export const isGreaterThanOrEqualTo: {
  * const date1 = DateTime.makeUnsafe("2024-01-01")
  * const date2 = DateTime.makeUnsafe("2024-02-01")
  *
- * console.log(DateTime.isLessThan(date1, date2)) // true
- * console.log(DateTime.isLessThan(date2, date1)) // false
+ * console.log(DateTime.isLessThan(date1, date2)) // > true
+ * console.log(DateTime.isLessThan(date2, date1)) // > false
  * ```
  *
  * @category comparisons
@@ -1383,9 +1383,9 @@ export const isLessThan: {
  * const date2 = DateTime.makeUnsafe("2024-01-01")
  * const date3 = DateTime.makeUnsafe("2024-02-01")
  *
- * console.log(DateTime.isLessThanOrEqualTo(date1, date2)) // true
- * console.log(DateTime.isLessThanOrEqualTo(date1, date3)) // true
- * console.log(DateTime.isLessThanOrEqualTo(date3, date1)) // false
+ * console.log(DateTime.isLessThanOrEqualTo(date1, date2)) // > true
+ * console.log(DateTime.isLessThanOrEqualTo(date1, date3)) // > true
+ * console.log(DateTime.isLessThanOrEqualTo(date3, date1)) // > false
  * ```
  *
  * @category comparisons
@@ -1408,7 +1408,7 @@ export const isLessThanOrEqualTo: {
  * const max = DateTime.makeUnsafe("2024-12-31")
  * const date = DateTime.makeUnsafe("2024-06-15")
  *
- * console.log(DateTime.between(date, { minimum: min, maximum: max })) // true
+ * console.log(DateTime.between(date, { minimum: min, maximum: max })) // > true
  * ```
  *
  * @category comparisons
@@ -1463,8 +1463,8 @@ export const isFuture: (self: DateTime) => Effect.Effect<boolean> = Internal.isF
  * const now = DateTime.nowUnsafe()
  * const futureDate = DateTime.add(now, { hours: 1 })
  *
- * console.log(DateTime.isFutureUnsafe(futureDate)) // true
- * console.log(DateTime.isFutureUnsafe(now)) // false
+ * console.log(DateTime.isFutureUnsafe(futureDate)) // > true
+ * console.log(DateTime.isFutureUnsafe(now)) // > false
  * ```
  *
  * @category comparisons
@@ -1516,8 +1516,8 @@ export const isPast: (self: DateTime) => Effect.Effect<boolean> = Internal.isPas
  * const now = DateTime.nowUnsafe()
  * const pastDate = DateTime.subtract(now, { hours: 1 })
  *
- * console.log(DateTime.isPastUnsafe(pastDate)) // true
- * console.log(DateTime.isPastUnsafe(now)) // false
+ * console.log(DateTime.isPastUnsafe(pastDate)) // > true
+ * console.log(DateTime.isPastUnsafe(now)) // > false
  * ```
  *
  * @category comparisons
@@ -1546,7 +1546,7 @@ export const isPastUnsafe: (self: DateTime) => boolean = Internal.isPastUnsafe
  * })
  *
  * const utcDate = DateTime.toDateUtc(dt)
- * console.log(utcDate.toISOString()) // "2024-01-01T12:00:00.000Z"
+ * console.log(utcDate.toISOString()) // > 2024-01-01T12:00:00.000Z
  * ```
  *
  * @category converting
@@ -1624,7 +1624,7 @@ export const zonedOffset: (self: Zoned) => number = Internal.zonedOffset
  * })
  *
  * const offsetString = DateTime.zonedOffsetIso(zoned)
- * console.log(offsetString) // "+03:00"
+ * console.log(offsetString) // > +03:00
  * ```
  *
  * @category converting
@@ -1647,7 +1647,7 @@ export const zonedOffsetIso: (self: Zoned) => string = Internal.zonedOffsetIso
  * const dt = DateTime.makeUnsafe("2024-01-01T00:00:00Z")
  * const epochMillis = DateTime.toEpochMillis(dt)
  *
- * console.log(epochMillis) // 1704067200000
+ * console.log(epochMillis) // > 1704067200000
  * ```
  *
  * @category converting
@@ -1756,7 +1756,7 @@ export const toPartsUtc: (self: DateTime) => DateTime.PartsWithWeekday = Interna
  *
  * const dateTime = DateTime.makeUnsafe({ year: 2024 })
  * const year = DateTime.getPartUtc(dateTime, "year")
- * console.log(year) // 2024
+ * console.log(year) // > 2024
  * ```
  *
  * @category parts
@@ -1783,7 +1783,7 @@ export const getPartUtc: {
  *   timeZone: "Europe/London"
  * })
  * const year = DateTime.getPart(dateTime, "year")
- * console.log(year) // 2024
+ * console.log(year) // > 2024
  * ```
  *
  * @category parts
@@ -1813,7 +1813,7 @@ export const getPart: {
  *   day: 15
  * })
  *
- * console.log(DateTime.formatIso(updated)) // "2025-06-15T12:00:00.000Z"
+ * console.log(DateTime.formatIso(updated)) // > 2025-06-15T12:00:00.000Z
  * ```
  *
  * @category parts
@@ -1842,7 +1842,7 @@ export const setParts: {
  *   hour: 18
  * })
  *
- * console.log(DateTime.formatIso(updated)) // "2025-01-01T18:00:00.000Z"
+ * console.log(DateTime.formatIso(updated)) // > 2025-01-01T18:00:00.000Z
  * ```
  *
  * @category parts
@@ -2076,7 +2076,7 @@ export const nowInCurrentZone: Effect.Effect<Zoned, never, CurrentTimeZone> = Ef
  *   date.setMinutes(30) // Set to 30 minutes
  * })
  *
- * console.log(DateTime.formatIso(modified)) // "2024-01-01T15:30:00.000Z"
+ * console.log(DateTime.formatIso(modified)) // > 2024-01-01T14:30:00.000Z
  * ```
  *
  * @category mapping
@@ -2119,7 +2119,7 @@ export const mutate: {
  *   date.setUTCHours(18) // Set UTC time to 6 PM
  * })
  *
- * console.log(DateTime.formatIso(modified)) // "2024-01-01T18:00:00.000Z"
+ * console.log(DateTime.formatIso(modified)) // > 2024-01-01T18:00:00.000Z
  * ```
  *
  * @category mapping
@@ -2233,8 +2233,8 @@ export const withDateUtc: {
  *   onZoned: (zoned) => `Zoned: ${DateTime.formatIsoZoned(zoned)}`
  * })
  *
- * console.log(result1) // "UTC: 2024-01-01T12:00:00.000Z"
- * console.log(result2) // "Zoned: 2024-06-15T15:30:00.000+01:00[Europe/London]"
+ * console.log(result1) // > UTC: 2024-01-01T12:00:00.000Z
+ * console.log(result2) // > Zoned: 2024-06-15T15:30:00.000+01:00[Europe/London]
  * ```
  *
  * @category mapping
@@ -2503,7 +2503,7 @@ export const nearest: {
  *   locale: "en-US"
  * })
  *
- * console.log(formatted) // "Saturday, June 15, 2024 at 3:30 PM"
+ * console.log(formatted) // > Saturday, June 15, 2024 at 3:30 PM
  * ```
  *
  * @category formatting
@@ -2547,7 +2547,7 @@ export const format: {
  *   minute: "2-digit"
  * })
  *
- * console.log(local) // Output depends on system locale/timezone
+ * console.log(local) // > June 15, 2024 at 04:30 PM
  * ```
  *
  * @category formatting
@@ -2597,7 +2597,7 @@ export const formatLocal: {
  *   timeZoneName: "short"
  * })
  *
- * console.log(utcFormatted) // "06/15/2024, 02:30 PM UTC"
+ * console.log(utcFormatted) // > 06/15/2024, 02:30 PM UTC
  * ```
  *
  * @category formatting
@@ -2652,7 +2652,7 @@ export const formatUtc: {
  * })
  *
  * const formatted = DateTime.formatIntl(dt, formatter)
- * console.log(formatted.length > 0) // true
+ * console.log(formatted.length > 0) // > true
  * ```
  *
  * @see {@link formatUtc} for formatting with options forced to UTC
@@ -2679,12 +2679,12 @@ export const formatIntl: {
  * import { DateTime } from "effect"
  *
  * const dt = DateTime.makeUnsafe("2024-01-01T12:30:45.123Z")
- * console.log(DateTime.formatIso(dt)) // "2024-01-01T12:30:45.123Z"
+ * console.log(DateTime.formatIso(dt)) // > 2024-01-01T12:30:45.123Z
  *
  * const zoned = DateTime.makeZonedUnsafe("2024-01-01T12:30:45.123Z", {
  *   timeZone: "Europe/London"
  * })
- * console.log(DateTime.formatIso(zoned)) // "2024-01-01T12:30:45.123Z"
+ * console.log(DateTime.formatIso(zoned)) // > 2024-01-01T12:30:45.123Z
  * ```
  *
  * @category formatting
@@ -2758,12 +2758,12 @@ export const formatIsoDateUtc: (self: DateTime) => string = Internal.formatIsoDa
  * import { DateTime } from "effect"
  *
  * const utc = DateTime.makeUnsafe("2024-01-01T12:00:00Z")
- * console.log(DateTime.formatIsoOffset(utc)) // "2024-01-01T12:00:00.000Z"
+ * console.log(DateTime.formatIsoOffset(utc)) // > 2024-01-01T12:00:00.000Z
  *
  * const zoned = DateTime.makeZonedUnsafe("2024-01-01T12:00:00Z", {
  *   timeZone: DateTime.zoneMakeOffset(3 * 60 * 60 * 1000)
  * })
- * console.log(DateTime.formatIsoOffset(zoned)) // "2024-01-01T15:00:00.000+03:00"
+ * console.log(DateTime.formatIsoOffset(zoned)) // > 2024-01-01T15:00:00.000+03:00
  * ```
  *
  * @category formatting
@@ -2788,14 +2788,14 @@ export const formatIsoOffset: (self: DateTime) => string = Internal.formatIsoOff
  * })
  *
  * const formatted = DateTime.formatIsoZoned(zoned)
- * console.log(formatted) // "2024-06-15T15:30:45.123+01:00[Europe/London]"
+ * console.log(formatted) // > 2024-06-15T15:30:45.123+01:00[Europe/London]
  *
  * const offsetZone = DateTime.makeZonedUnsafe("2024-06-15T14:30:45.123Z", {
  *   timeZone: DateTime.zoneMakeOffset(3 * 60 * 60 * 1000)
  * })
  *
  * const offsetFormatted = DateTime.formatIsoZoned(offsetZone)
- * console.log(offsetFormatted) // "2024-06-15T17:30:45.123+03:00"
+ * console.log(offsetFormatted) // > 2024-06-15T17:30:45.123+03:00
  * ```
  *
  * @category formatting

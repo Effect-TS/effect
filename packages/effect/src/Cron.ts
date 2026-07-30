@@ -57,7 +57,7 @@ const TypeId = "~effect/time/Cron"
  *
  * // Check if a date matches the schedule
  * const matches = Cron.match(weekdayMorning, new Date("2023-06-05T09:00:00"))
- * console.log(matches) // true if it's 9 AM on a weekday
+ * console.log(matches) // > true
  * ```
  *
  * @see {@link make} for creating a schedule from explicit field constraints
@@ -193,9 +193,9 @@ const CronProto = {
  *   weekdays: [1, 2, 3, 4, 5]
  * })
  *
- * console.log(Cron.isCron(cron)) // true
- * console.log(Cron.isCron({})) // false
- * console.log(Cron.isCron("not a cron")) // false
+ * console.log(Cron.isCron(cron)) // > true
+ * console.log(Cron.isCron({})) // > false
+ * console.log(Cron.isCron("not a cron")) // > false
  * ```
  *
  * @see {@link make} for constructing a `Cron` value directly
@@ -450,8 +450,8 @@ const CronParseErrorTypeId = "~effect/time/Cron/CronParseError"
  * const result = Cron.parse("invalid expression")
  * if (Result.isFailure(result)) {
  *   const error: Cron.CronParseError = result.failure
- *   console.log(error.message) // "Invalid number of segments in cron expression"
- *   console.log(error.input) // "invalid expression"
+ *   console.log(error.message) // > Invalid number of segments in cron expression
+ *   console.log(error.input) // > invalid expression
  * }
  * ```
  *
@@ -489,11 +489,11 @@ export class CronParseError extends Data.TaggedError("CronParseError")<{
  * const result = Cron.parse("invalid cron expression")
  * if (Result.isFailure(result)) {
  *   const error = result.failure
- *   console.log(Cron.isCronParseError(error)) // true
+ *   console.log(Cron.isCronParseError(error)) // > true
  * }
  *
- * console.log(Cron.isCronParseError(new Error("regular error"))) // false
- * console.log(Cron.isCronParseError("not an error")) // false
+ * console.log(Cron.isCronParseError(new Error("regular error"))) // > false
+ * console.log(Cron.isCronParseError("not an error")) // > false
  * ```
  *
  * @see {@link CronParseError} for the parse error type
@@ -725,11 +725,11 @@ const daysInMonth = (date: Date): number =>
  * // Get next run after a specific date
  * const after = new Date("2021-01-01T00:00:00Z")
  * const nextRun = Cron.next(cron, after)
- * console.log(nextRun.toISOString()) // 2021-01-08T04:00:00.000Z
+ * console.log(nextRun.toISOString()) // > 2021-01-08T04:00:00.000Z
  *
  * // Get next run from current time
  * const nextFromNow = Cron.next(cron)
- * console.log(nextFromNow) // Next occurrence from now
+ * console.log(nextFromNow) // > 2026-08-08T04:00:00.000Z
  * ```
  *
  * @see {@link prev} for finding the previous scheduled occurrence
@@ -1023,7 +1023,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  *   weekdays: [1, 2, 3, 4, 5]
  * })
  *
- * console.log(Cron.Equivalence(cron1, cron2)) // true
+ * console.log(Cron.Equivalence(cron1, cron2)) // > true
  * ```
  *
  * @see {@link equals} for directly comparing two `Cron` values

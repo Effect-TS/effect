@@ -147,8 +147,8 @@ export const Order: order.Order<boolean> = order.Boolean
  * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  *
- * console.log(Boolean.Equivalence(true, true)) // true
- * console.log(Boolean.Equivalence(true, false)) // false
+ * console.log(Boolean.Equivalence(true, true)) // > true
+ * console.log(Boolean.Equivalence(true, false)) // > false
  * ```
  *
  * @category instances

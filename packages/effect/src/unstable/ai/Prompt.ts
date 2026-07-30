@@ -1887,7 +1887,7 @@ const decodeMessagesSync = Schema.decodeSync(Schema.Array(Message))
  * import { Prompt } from "effect/unstable/ai"
  *
  * const emptyPrompt = Prompt.empty
- * console.log(emptyPrompt.content) // []
+ * console.log(emptyPrompt.content) // > []
  * ```
  *
  * @category constructors

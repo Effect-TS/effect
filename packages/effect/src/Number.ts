@@ -36,10 +36,10 @@ import * as Reducer from "./Reducer.ts"
  * import { Number as N } from "effect"
  *
  * const num = N.Number("42")
- * console.log(num) // 42
+ * console.log(num) // > 42
  *
  * const float = N.Number("3.14")
- * console.log(float) // 3.14
+ * console.log(float) // > 3.14
  * ```
  *
  * @category constructors
@@ -192,7 +192,7 @@ export const divide: {
  * ```ts import.meta.vitest
  * import { Number } from "effect"
  *
- * console.log(Number.divideUnsafe(6, 3)) // 2
+ * console.log(Number.divideUnsafe(6, 3)) // > 2
  *
  * // Passing 0 as the divisor throws a RangeError("Division by zero").
  * ```
@@ -266,9 +266,9 @@ export const decrement = (n: number): number => n - 1
  * ```ts import.meta.vitest
  * import { Number } from "effect"
  *
- * console.log(Number.Order(1, 2)) // -1
- * console.log(Number.Order(2, 1)) // 1
- * console.log(Number.Order(1, 1)) // 0
+ * console.log(Number.Order(1, 2)) // > -1
+ * console.log(Number.Order(2, 1)) // > 1
+ * console.log(Number.Order(1, 1)) // > 0
  * ```
  *
  * @category instances
@@ -289,9 +289,9 @@ export const Order: order.Order<number> = order.Number
  * ```ts import.meta.vitest
  * import { Number } from "effect"
  *
- * console.log(Number.Equivalence(1, 1)) // true
- * console.log(Number.Equivalence(1, 2)) // false
- * console.log(Number.Equivalence(NaN, NaN)) // true
+ * console.log(Number.Equivalence(1, 1)) // > true
+ * console.log(Number.Equivalence(1, 2)) // > false
+ * console.log(Number.Equivalence(NaN, NaN)) // > true
  * ```
  *
  * @category instances

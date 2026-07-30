@@ -83,12 +83,13 @@ describe("Source", () => {
       }])
     })
 
-    it("ignores explanatory and inline comments", () => {
+    it("extracts inline output and ignores explanatory comments", () => {
       const source = [
         "/**",
         " * ```ts import.meta.vitest",
         " * // Explain the output to the reader.",
-        " * console.log(1) // > not an output marker",
+        " * const value = 0 // ordinary inline comment",
+        " * console.log(1) // > 1",
         " * ```",
         " */"
       ].join("\n")
@@ -96,11 +97,12 @@ describe("Source", () => {
       assert.deepStrictEqual(Source.extract(source), [{
         source: [
           "// Explain the output to the reader.",
-          "console.log(1) // > not an output marker"
+          "const value = 0 // ordinary inline comment",
+          "console.log(1) // > 1"
         ].join("\n"),
         line: 2,
         name: undefined,
-        expected: undefined
+        expected: "1"
       }])
     })
   })
