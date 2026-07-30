@@ -499,7 +499,7 @@ const dump: (
   provider,
   path
 ) {
-  const stat = yield* provider.load(path)
+  const stat = Option.getOrUndefined(yield* provider.load(path))
   if (stat === undefined) return undefined
   switch (stat._tag) {
     case "Value":
@@ -532,7 +532,7 @@ const recur: (
   function*(ast, provider, path) {
     switch (ast._tag) {
       case "Objects": {
-        const stat = yield* provider.load(path)
+        const stat = Option.getOrUndefined(yield* provider.load(path))
         if (stat === undefined && path.length > 0) return undefined
         const out: Record<string, Schema.StringTree> = {}
         for (const ps of ast.propertySignatures) {
@@ -558,7 +558,7 @@ const recur: (
         return out
       }
       case "Arrays": {
-        const stat = yield* provider.load(path)
+        const stat = Option.getOrUndefined(yield* provider.load(path))
         if (stat === undefined) return undefined
         if (stat && stat._tag === "Value") return stat.value === "" ? [] : stat.value.split(",")
         if (stat && stat._tag === "Array" && stat.value !== undefined) {
@@ -581,7 +581,7 @@ const recur: (
         return yield* recur(ast.thunk(), provider, path)
       default: {
         // Base primitives / string-like encoded nodes.
-        const stat = yield* provider.load(path)
+        const stat = Option.getOrUndefined(yield* provider.load(path))
         if (stat === undefined) return undefined
         if (stat._tag === "Value") return stat.value
         if (stat._tag === "Record" && stat.value !== undefined) return stat.value
