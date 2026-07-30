@@ -577,6 +577,35 @@ describe.concurrent("Doc", () => {
   })
 
   describe.concurrent("utility combinators", () => {
+    it("sanitize", () => {
+      const controls = globalThis.String.fromCharCode(
+        ...[
+          ...Array.from({ length: 9 }, (_, index) => index),
+          ...Array.from({ length: 21 }, (_, index) => index + 0x0b),
+          ...Array.from({ length: 33 }, (_, index) => index + 0x7f)
+        ]
+      )
+      const doc = Doc.sanitize(Doc.text(`left${controls}\tright 世界`))
+
+      expect(Doc.render(doc, { style: "pretty" })).toBe("left\tright 世界")
+    })
+
+    it("sanitize reconstructs shortened leaves", () => {
+      expect(Doc.isEmpty(Doc.sanitize(Doc.char("\u001b")))).toBe(true)
+      expect(Doc.isChar(Doc.sanitize(Doc.text("\u001ba")))).toBe(true)
+      expect(Doc.isText(Doc.sanitize(Doc.text("\u001bab")))).toBe(true)
+    })
+
+    it("sanitize traverses reactive documents", () => {
+      const doc = Doc.sanitize(Doc.hcat([
+        Doc.column(() => Doc.text("\u001bcolumn")),
+        Doc.pageWidth(() => Doc.text("\u001bwidth")),
+        Doc.nesting(() => Doc.text("\u001bnesting"))
+      ]))
+
+      expect(Doc.render(doc, { style: "pretty" })).toBe("columnwidthnesting")
+    })
+
     it("punctuate", () => {
       const docs = Doc.punctuate(Doc.words("lorem ipsum dolor sit amet"), Doc.comma)
       expect(Doc.render(Doc.hsep(docs), { style: "pretty" })).toBe("lorem, ipsum, dolor, sit, amet")
