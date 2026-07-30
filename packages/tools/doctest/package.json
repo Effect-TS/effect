@@ -1,0 +1,65 @@
+{
+  "name": "@effect/doctest",
+  "version": "4.0.0-beta.102",
+  "type": "module",
+  "license": "MIT",
+  "description": "Runs TypeScript JSDoc examples as Vitest tests",
+  "homepage": "https://effect.website",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Effect-TS/effect.git",
+    "directory": "packages/tools/doctest"
+  },
+  "sideEffects": [],
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/Examples.ts",
+    "./Examples": "./src/Examples.ts",
+    "./Runner": "./src/Runner.ts",
+    "./SourceExamples": "./src/SourceExamples.ts",
+    "./internal/*": null
+  },
+  "files": [
+    "README.md",
+    "src/**/*.ts",
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.ts.map"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      "./package.json": "./package.json",
+      ".": "./dist/Examples.js",
+      "./Examples": "./dist/Examples.js",
+      "./Runner": "./dist/Runner.js",
+      "./SourceExamples": "./dist/SourceExamples.js",
+      "./internal/*": null
+    }
+  },
+  "scripts": {
+    "build": "tsc -b tsconfig.json && pnpm babel",
+    "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
+    "check": "tsc -b tsconfig.json",
+    "test": "vitest",
+    "coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "doctrine": "^3.0.0",
+    "typescript-compiler": "npm:typescript@6.0.3"
+  },
+  "peerDependencies": {
+    "vite": ">=7.3.0 <9.0.0",
+    "vitest": ">=4.1.10 <5.0.0"
+  },
+  "devDependencies": {
+    "@effect/vitest": "workspace:^",
+    "@types/doctrine": "0.0.9",
+    "@types/node": "^26.1.2",
+    "effect": "workspace:^",
+    "vite": "^8.1.5",
+    "vitest": "4.1.10"
+  }
+}
