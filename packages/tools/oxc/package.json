@@ -58,7 +58,6 @@
     "coverage": "vitest --coverage"
   },
   "dependencies": {
-    "@effect/jsdocs": "workspace:^",
     "@oxlint/plugins": "^1.76.0"
   },
   "peerDependencies": {

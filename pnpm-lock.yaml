@@ -908,9 +908,6 @@ importers:
 
   packages/tools/oxc:
     dependencies:
-      '@effect/jsdocs':
-        specifier: workspace:^
-        version: link:../jsdocs
       '@oxlint/plugins':
         specifier: ^1.76.0
         version: 1.76.0
