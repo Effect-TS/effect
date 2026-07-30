@@ -446,7 +446,7 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
  *
  * **Example** (Registering routes during layer construction)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Layer } from "effect"
  * import { HttpRouter } from "effect/unstable/http"
  *
@@ -469,7 +469,7 @@ export const use = <A, E, R>(
  *
  * **Example** (Adding a GET route)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
  *
@@ -501,7 +501,7 @@ export const add = <E = never, R = never>(
  *
  * **Example** (Adding multiple routes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
  *
@@ -867,7 +867,7 @@ export interface Middleware<
  *
  * **Example** (Applying route and global middleware)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  * import { HttpMiddleware, HttpRouter, HttpServerResponse } from "effect/unstable/http"
  *
@@ -1166,7 +1166,7 @@ export const cors = (
  *
  * **Example** (Disabling route logging)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Layer } from "effect"
  * import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
  *

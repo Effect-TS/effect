@@ -32,7 +32,7 @@ import * as Reducer from "./Reducer.ts"
  *
  * **Example** (Flattening an intersection)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Struct } from "effect"
  *
  * type Original = { a: string } & { b: number }
@@ -63,7 +63,7 @@ export type Simplify<T> = { [K in keyof T]: T[K] } & {}
  *
  * **Example** (Making a readonly type mutable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Struct } from "effect"
  *
  * type ReadOnly = { readonly a: string; readonly b: number }
@@ -92,7 +92,7 @@ export type Mutable<T> = { -readonly [K in keyof T]: T[K] } & {}
  *
  * **Example** (Merging two types with overlapping keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Struct } from "effect"
  *
  * type A = { a: string; b: number }
@@ -121,7 +121,7 @@ export type Assign<T, U> = Simplify<keyof T & keyof U extends never ? T & U : Om
  *
  * **Example** (Extracting a property in a pipeline)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * const name = pipe({ name: "Alice", age: 30 }, Struct.get("name"))
@@ -152,7 +152,7 @@ export const get: {
  *
  * **Example** (Reading typed keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Struct } from "effect"
  *
  * const user = { name: "Alice", age: 30, [Symbol.for("id")]: 1 }
@@ -182,7 +182,7 @@ export const keys = <S extends object>(self: S): Array<(keyof S) & string> =>
  *
  * **Example** (Selecting specific properties)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * const user = { name: "Alice", age: 30, admin: true }
@@ -220,7 +220,7 @@ export const pick: {
  *
  * **Example** (Removing a property)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * const user = { name: "Alice", age: 30, password: "secret" }
@@ -258,7 +258,7 @@ export const omit: {
  *
  * **Example** (Merging structs with overlapping keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * const defaults = { theme: "light", lang: "en" }
@@ -303,7 +303,7 @@ type Evolved<S, E> = Simplify<
  *
  * **Example** (Transforming selected values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * const result = pipe(
@@ -353,7 +353,7 @@ type KeyEvolved<S, E> = Simplify<
  *
  * **Example** (Renaming keys with functions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * const result = pipe(
@@ -408,7 +408,7 @@ type EntryEvolved<S, E> = {
  *
  * **Example** (Transforming keys and values together)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * const result = pipe(
@@ -450,7 +450,7 @@ export const evolveEntries: {
  *
  * **Example** (Renaming keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * const result = pipe(
@@ -495,7 +495,7 @@ export const renameKeys: {
  *
  * **Example** (Comparing structs for equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Struct } from "effect"
  *
  * const PersonEquivalence = Struct.makeEquivalence({
@@ -532,7 +532,7 @@ export const makeEquivalence = Equivalence.Struct
  *
  * **Example** (Ordering structs by name then age)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, String, Struct } from "effect"
  *
  * const PersonOrder = Struct.makeOrder({
@@ -567,7 +567,7 @@ export const makeOrder = order.Struct
  *
  * **Example** (Defining a lambda type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Struct } from "effect"
  *
  * interface ToString extends Struct.Lambda {
@@ -602,7 +602,7 @@ export interface Lambda {
  *
  * **Example** (Computing the output type of a lambda)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Struct } from "effect"
  *
  * interface ToString extends Struct.Lambda {
@@ -637,7 +637,7 @@ export type Apply<L extends Lambda, V> = (L & { readonly "~lambda.in": V })["~la
  *
  * **Example** (Wrapping values in arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * interface AsArray extends Struct.Lambda {
@@ -673,7 +673,7 @@ export const lambda = <L extends (a: any) => any>(
  *
  * **Example** (Wrapping every value in an array)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * interface AsArray extends Struct.Lambda {
@@ -717,7 +717,7 @@ export const map: {
  *
  * **Example** (Wrapping only selected values in arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * interface AsArray extends Struct.Lambda {
@@ -771,7 +771,7 @@ export const mapPick: {
  *
  * **Example** (Wrapping all values except one in arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct } from "effect"
  *
  * interface AsArray extends Struct.Lambda {
@@ -860,7 +860,7 @@ function buildStruct<
  *
  * **Example** (Combining struct properties)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, String, Struct } from "effect"
  *
  * const C = Struct.makeCombiner<{ readonly n: number; readonly s: string }>({
@@ -913,7 +913,7 @@ export function makeCombiner<A>(
  *
  * **Example** (Reducing a collection of structs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, String, Struct } from "effect"
  *
  * const R = Struct.makeReducer<{ readonly n: number; readonly s: string }>({
@@ -958,7 +958,7 @@ export function makeReducer<A>(
  *
  * **Example** (Creating a record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Struct } from "effect"
  *
  * const record = Struct.Record(["a", "b"], "value")

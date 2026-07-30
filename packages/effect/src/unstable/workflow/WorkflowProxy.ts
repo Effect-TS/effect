@@ -22,7 +22,7 @@ import type * as Workflow from "./Workflow.ts"
  *
  * **Example** (Deriving RPC endpoints from workflows)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Layer, Schema } from "effect"
  * import { RpcServer } from "effect/unstable/rpc"
  * import { Workflow, WorkflowProxy, WorkflowProxyServer } from "effect/unstable/workflow"
@@ -103,7 +103,7 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
  *
  * **Example** (Deriving HTTP API endpoints from workflows)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Layer, Schema } from "effect"
  * import { HttpApi, HttpApiBuilder } from "effect/unstable/httpapi"
  * import { Workflow, WorkflowProxy, WorkflowProxyServer } from "effect/unstable/workflow"

@@ -42,7 +42,7 @@ import type { IsUnion } from "./Types.ts"
  *
  * **Example** (Converting between Celsius and Fahrenheit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic } from "effect"
  *
  * const fahrenheit = Optic.makeIso<number, number>(
@@ -80,7 +80,7 @@ export interface Iso<in out S, in out A> extends Lens<S, A>, Prism<S, A> {}
  *
  * **Example** (Wrapping and unwrapping a branded type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic } from "effect"
  *
  * type Meters = { readonly value: number }
@@ -124,7 +124,7 @@ export function makeIso<S, A>(get: (s: S) => A, set: (a: A) => S): Iso<S, A> {
  *
  * **Example** (Focusing on a struct field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic } from "effect"
  *
  * type Person = { readonly name: string; readonly age: number }
@@ -161,7 +161,7 @@ export interface Lens<in out S, in out A> extends Optional<S, A> {
  *
  * **Example** (Focusing on the first element of a pair)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic } from "effect"
  *
  * const _first = Optic.makeLens<readonly [string, number], string>(
@@ -207,7 +207,7 @@ export function makeLens<S, A>(get: (s: S) => A, replace: (a: A, s: S) => S): Le
  *
  * **Example** (Narrowing a tagged union)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Result } from "effect"
  *
  * type Shape =
@@ -248,7 +248,7 @@ export interface Prism<in out S, in out A> extends Optional<S, A> {
  *
  * **Example** (Parsing a string to a number)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Result } from "effect"
  *
  * const numeric = Optic.makePrism<string, number>(
@@ -293,7 +293,7 @@ export function makePrism<S, A>(getResult: (s: S) => Result.Result<A, string>, s
  *
  * **Example** (Creating a positive integer prism)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Result, Schema } from "effect"
  *
  * const posInt = Optic.fromChecks<number>(
@@ -429,7 +429,7 @@ type ForbidUnion<A, Message extends string> = IsUnion<A> extends true ? [Message
  *
  * **Example** (Focusing on an optional record key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Result } from "effect"
  *
  * type Env = { [key: string]: string }
@@ -476,7 +476,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Composing a lens with a prism)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic, Option } from "effect"
    *
    * type State = { value: Option.Option<number> }
@@ -498,7 +498,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Incrementing a nested field)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic } from "effect"
    *
    * type S = { readonly a: { readonly b: number } }
@@ -522,7 +522,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Drilling into nested structs)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic } from "effect"
    *
    * type S = { readonly a: { readonly b: number } }
@@ -554,7 +554,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Deleting an optional key)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic } from "effect"
    *
    * type S = { readonly a?: number }
@@ -589,7 +589,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Focusing only on positive numbers)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic, Result, Schema } from "effect"
    *
    * const _pos = Optic.id<number>().check(Schema.isGreaterThan(0))
@@ -620,7 +620,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Narrowing a union)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic, Result } from "effect"
    *
    * type B = { readonly _tag: "b"; readonly b: number }
@@ -660,7 +660,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Focusing a tagged variant)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic, Result } from "effect"
    *
    * type Shape =
@@ -701,7 +701,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Accessing records safely)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic, Result } from "effect"
    *
    * type Env = { [key: string]: number }
@@ -733,7 +733,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Picking keys)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic } from "effect"
    *
    * type S = { readonly a: string; readonly b: number; readonly c: boolean }
@@ -768,7 +768,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Omitting keys)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic } from "effect"
    *
    * type S = { readonly a: string; readonly b: number; readonly c: boolean }
@@ -800,7 +800,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Filtering undefined values)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic, Result } from "effect"
    *
    * const _defined = Optic.id<number | undefined>().notUndefined()
@@ -834,7 +834,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Incrementing liked posts)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic, Schema } from "effect"
    *
    * type Post = { title: string; likes: number }
@@ -873,7 +873,7 @@ export interface Optional<in out S, in out A> {
    *
    * **Example** (Doubling all focused values)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Optic, Schema } from "effect"
    *
    * type S = { readonly items: ReadonlyArray<number> }
@@ -910,7 +910,7 @@ export interface Optional<in out S, in out A> {
  *
  * **Example** (Accessing record keys safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Result } from "effect"
  *
  * const atKey = (key: string) =>
@@ -962,7 +962,7 @@ export function makeOptional<S, A>(
  *
  * **Example** (Traversing array elements with a filter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Schema } from "effect"
  *
  * type S = { readonly items: ReadonlyArray<number> }
@@ -1308,7 +1308,7 @@ function composeKind(a: Kind, b: Kind): Kind {
  *
  * **Example** (Collecting positive numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Schema } from "effect"
  *
  * type S = { readonly values: ReadonlyArray<number> }
@@ -1360,7 +1360,7 @@ const identityIso = make([])
  *
  * **Example** (Starting an optic chain)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic } from "effect"
  *
  * type S = { readonly x: number }
@@ -1397,7 +1397,7 @@ export function id<S>(): Iso<S, S> {
  *
  * **Example** (Traversing record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Schema } from "effect"
  *
  * const _positiveValues = Optic.entries<number>()
@@ -1434,7 +1434,7 @@ export function entries<A>(): Iso<Record<string, A>, ReadonlyArray<readonly [str
  *
  * **Example** (Accessing Some value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Option, Result } from "effect"
  *
  * const _some = Optic.id<Option.Option<number>>().compose(Optic.some())
@@ -1482,7 +1482,7 @@ export function some<A>(): Prism<Option.Option<A>, A> {
  *
  * **Example** (Matching None)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Option, Result } from "effect"
  *
  * const _none = Optic.id<Option.Option<number>>().compose(Optic.none())
@@ -1527,7 +1527,7 @@ export function none<A>(): Prism<Option.Option<A>, undefined> {
  *
  * **Example** (Accessing success)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Result } from "effect"
  *
  * const _ok = Optic.id<Result.Result<number, string>>().compose(Optic.success())
@@ -1572,7 +1572,7 @@ export function success<A, E>(): Prism<Result.Result<A, E>, A> {
  *
  * **Example** (Accessing failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Optic, Result } from "effect"
  *
  * const _err = Optic.id<Result.Result<number, string>>().compose(Optic.failure())

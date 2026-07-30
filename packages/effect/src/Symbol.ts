@@ -18,7 +18,7 @@ import * as predicate from "./Predicate.ts"
  *
  * **Example** (Checking for symbols)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Symbol } from "effect"
  *
  * console.log(Symbol.isSymbol(globalThis.Symbol.for("a"))) // true

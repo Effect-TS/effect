@@ -30,7 +30,7 @@ import type * as Schema from "./Schema.ts"
  *
  * **Example** (Defining all operation types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonPatch } from "effect"
  *
  * const addOp: JsonPatch.JsonPatchOperation = {
@@ -159,7 +159,7 @@ export type JsonPatch = ReadonlyArray<JsonPatchOperation>
  *
  * **Example** (Computing object diff)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonPatch } from "effect"
  *
  * const oldValue = { users: [{ id: 1, name: "Alice" }], count: 1 }
@@ -263,7 +263,7 @@ function getLoop(
  *
  * **Example** (Applying a patch)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonPatch } from "effect"
  *
  * const document = { items: [1, 2, 3], total: 6 }

@@ -49,7 +49,7 @@ export interface Argument<A> extends Param.Param<typeof Param.argumentKind, A> {
  *
  * **Example** (Creating a string argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const filename = Argument.string("filename")
@@ -65,7 +65,7 @@ export const string = (name: string): Argument<string> => Param.string(Param.arg
  *
  * **Example** (Creating an integer argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const count = Argument.integer("count")
@@ -81,7 +81,7 @@ export const integer = (name: string): Argument<number> => Param.integer(Param.a
  *
  * **Example** (Creating file path arguments)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const inputFile = Argument.file("input", { mustExist: true }) // Must exist
@@ -100,7 +100,7 @@ export const file = (name: string, options?: {
  *
  * **Example** (Creating a directory path argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const workspace = Argument.directory("workspace", { mustExist: true }) // Must exist
@@ -118,7 +118,7 @@ export const directory = (name: string, options?: {
  *
  * **Example** (Creating a float argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const ratio = Argument.float("ratio")
@@ -134,7 +134,7 @@ export const float = (name: string): Argument<number> => Param.float(Param.argum
  *
  * **Example** (Creating a date argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const startDate = Argument.date("start-date")
@@ -150,7 +150,7 @@ export const date = (name: string): Argument<Date> => Param.date(Param.argumentK
  *
  * **Example** (Creating a choice argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const environment = Argument.choice("environment", ["dev", "staging", "prod"])
@@ -169,7 +169,7 @@ export const choice = <const Choices extends ReadonlyArray<string>>(
  *
  * **Example** (Creating a path argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const configPath = Argument.path("config")
@@ -188,7 +188,7 @@ export const path = (name: string, options?: {
  *
  * **Example** (Creating a redacted argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const secret = Argument.redacted("secret")
@@ -204,7 +204,7 @@ export const redacted = (name: string): Argument<Redacted.Redacted<string>> => P
  *
  * **Example** (Reading file text)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const config = Argument.fileText("config-file")
@@ -226,7 +226,7 @@ export const fileText = (name: string): Argument<string> => Param.fileText(Param
  *
  * **Example** (Parsing file content)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const config = Argument.fileParse("config", { format: "json" })
@@ -245,7 +245,7 @@ export const fileParse = (
  *
  * **Example** (Validating file content with a schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Argument } from "effect/unstable/cli"
  *
@@ -271,7 +271,7 @@ export const fileSchema = <A>(
  *
  * **Example** (Creating a sentinel argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * // Used as a placeholder or default in combinators
@@ -292,7 +292,7 @@ export const none: Argument<never> = Param.none(Param.argumentKind)
  *
  * **Example** (Making an argument optional)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const optionalVersion = Argument.string("version").pipe(Argument.optional)
@@ -308,7 +308,7 @@ export const optional = <A>(arg: Argument<A>): Argument<Option.Option<A>> => Par
  *
  * **Example** (Adding an argument description)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const filename = Argument.string("filename").pipe(
@@ -329,7 +329,7 @@ export const withDescription: {
  *
  * **Example** (Providing a default value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const port = Argument.integer("port").pipe(Argument.withDefault(8080))
@@ -353,7 +353,7 @@ export const withDefault: {
  *
  * **Example** (Loading a fallback config)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config } from "effect"
  * import { Argument } from "effect/unstable/cli"
  *
@@ -375,7 +375,7 @@ export const withFallbackConfig: {
  *
  * **Example** (Showing a fallback prompt)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument, Prompt } from "effect/unstable/cli"
  *
  * const filename = Argument.string("filename").pipe(
@@ -396,7 +396,7 @@ export const withFallbackPrompt: {
  *
  * **Example** (Accepting multiple values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * // Accept any number of files
@@ -429,7 +429,7 @@ export const variadic: {
  *
  * **Example** (Mapping parsed values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const port = Argument.integer("port").pipe(
@@ -450,7 +450,7 @@ export const map: {
  *
  * **Example** (Validating values effectfully)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Argument, CliError } from "effect/unstable/cli"
  *
@@ -488,7 +488,7 @@ export const mapEffect: {
  *
  * **Example** (Mapping values that may throw)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const json = Argument.string("data").pipe(
@@ -520,7 +520,7 @@ export const mapTryCatch: {
  *
  * **Example** (Requiring a minimum number of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const files = Argument.string("files").pipe(Argument.atLeast(1))
@@ -539,7 +539,7 @@ export const atLeast: {
  *
  * **Example** (Limiting the maximum number of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const files = Argument.string("files").pipe(Argument.atMost(5))
@@ -558,7 +558,7 @@ export const atMost: {
  *
  * **Example** (Requiring a range of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const files = Argument.string("files").pipe(Argument.between(1, 5))
@@ -577,7 +577,7 @@ export const between: {
  *
  * **Example** (Validating parsed values with a schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Argument } from "effect/unstable/cli"
  *
@@ -603,7 +603,7 @@ export const withSchema: {
  *
  * **Example** (Mapping choices to values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const logLevel = Argument.choiceWithValue("level", [
@@ -636,7 +636,7 @@ export const choiceWithValue = <const Choices extends ReadonlyArray<readonly [st
  *
  * **Example** (Setting a metavar)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const port = Argument.integer("port").pipe(
@@ -657,7 +657,7 @@ export const withMetavar: {
  *
  * **Example** (Filtering parsed values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const positiveInt = Argument.integer("count").pipe(
@@ -686,7 +686,7 @@ export const filter: {
  *
  * **Example** (Filtering and mapping parsed values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  * import { Argument } from "effect/unstable/cli"
  *
@@ -715,7 +715,7 @@ export const filterMap: {
  *
  * **Example** (Providing a fallback argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const value = Argument.integer("value").pipe(
@@ -736,7 +736,7 @@ export const orElse: {
  *
  * **Example** (Returning which fallback succeeded)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Argument } from "effect/unstable/cli"
  *
  * const source = Argument.file("source").pipe(

@@ -28,7 +28,7 @@ import type { NoInfer } from "./Types.ts"
  *
  * **Example** (Defining a readonly record type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Record } from "effect"
  *
  * // Creating a readonly record type
@@ -53,7 +53,7 @@ export type ReadonlyRecord<in out K extends string | symbol, out A> = {
  *
  * **Example** (Using readonly record helper types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Record } from "effect"
  *
  * // Using NonLiteralKey to convert literal keys to generic types
@@ -77,7 +77,7 @@ export declare namespace ReadonlyRecord {
    *
    * **Example** (Converting literal keys to non-literal keys)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Record } from "effect"
    *
    * // For literal string keys, this becomes 'string'
@@ -99,7 +99,7 @@ export declare namespace ReadonlyRecord {
    *
    * **Example** (Intersecting record keys)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Record } from "effect"
    *
    * // Intersection of literal keys
@@ -123,7 +123,7 @@ export declare namespace ReadonlyRecord {
  *
  * **Example** (Applying a readonly record type lambda)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { HKT, Record } from "effect"
  *
  * type Settings = HKT.Kind<
@@ -152,7 +152,7 @@ export interface ReadonlyRecordTypeLambda<K extends string = string> extends Typ
  *
  * **Example** (Creating an empty record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * // Create an empty record
@@ -177,7 +177,7 @@ export const empty = <K extends string | symbol = never, V = never>(): Record<
  *
  * **Example** (Checking for an empty record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -196,7 +196,7 @@ export const isEmptyRecord = <K extends string, A>(self: Record<K, A>): self is 
  *
  * **Example** (Checking for an empty readonly record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -217,7 +217,7 @@ export const isEmptyReadonlyRecord: <K extends string, A>(
  *
  * **Example** (Building a record from mapped iterable values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -260,7 +260,7 @@ export const fromIterableWith: {
  *
  * **Example** (Building a record keyed by iterable values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -307,7 +307,7 @@ export const fromIterableBy: {
  *
  * **Example** (Building a record from entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -328,7 +328,7 @@ export const fromEntries: <Entry extends readonly [string | symbol, any]>(
  *
  * **Example** (Collecting mapped record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -361,7 +361,7 @@ export const collect: {
  *
  * **Example** (Converting a record to entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -382,7 +382,7 @@ export const toEntries: <K extends string, A>(self: ReadonlyRecord<K, A>) => Arr
  *
  * **Example** (Getting the record size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -399,7 +399,7 @@ export const size = <K extends string, A>(self: ReadonlyRecord<K, A>): number =>
  *
  * **Example** (Checking key membership)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -431,7 +431,7 @@ export const has: {
  *
  * **Example** (Getting a value as an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Record as R } from "effect"
  * import * as assert from "node:assert"
  *
@@ -459,7 +459,7 @@ export const get: {
  *
  * **Example** (Modifying a value at a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * const f = (x: number) => x * 2
@@ -506,7 +506,7 @@ export const modify: {
  *
  * **Example** (Replacing a value at a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * Record.replace({ a: 1, b: 2, c: 3 }, "a", 10) // Option.some({ a: 10, b: 2, c: 3 })
@@ -549,7 +549,7 @@ export const replace: {
  *
  * **Example** (Removing a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -581,7 +581,7 @@ export const remove: {
  *
  * **Example** (Popping a value and removing its key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * const input: Record<string, number> = { a: 1, b: 2 }
@@ -612,7 +612,7 @@ export const pop: {
  *
  * **Example** (Mapping record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -647,7 +647,7 @@ export const map: {
  *
  * **Example** (Mapping record keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -688,7 +688,7 @@ export const mapKeys: {
  *
  * **Example** (Mapping record entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -730,7 +730,7 @@ export const mapEntries: {
  *
  * **Example** (Filtering and mapping with Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -772,7 +772,7 @@ export const filterMap: {
  *
  * **Example** (Filtering record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -820,7 +820,7 @@ export const filter: {
  *
  * **Example** (Extracting Some values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -854,7 +854,7 @@ export const getSomes: <K extends string, A>(
  *
  * **Example** (Extracting Result failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -891,7 +891,7 @@ export const getFailures = <K extends string, A, E>(
  *
  * **Example** (Extracting Result successes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -933,7 +933,7 @@ export const getSuccesses = <K extends string, A, E>(
  *
  * **Example** (Partitioning with Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -981,7 +981,7 @@ export const partition: {
  *
  * **Example** (Separating Result values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1003,7 +1003,7 @@ export const separate: <K extends string, A, B>(
  *
  * **Example** (Getting record keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1021,7 +1021,7 @@ export const keys = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): 
  *
  * **Example** (Getting record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1038,7 +1038,7 @@ export const values = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<A
  *
  * **Example** (Setting a record value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1085,7 +1085,7 @@ export const set: {
  *
  * **Example** (Assigning an external key safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1114,7 +1114,7 @@ export const assignProperty: (self: object, key: PropertyKey, value: unknown) =>
  *
  * **Example** (Checking subrecords with a custom equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Record } from "effect"
  *
  * const isSubrecord = Record.isSubrecordBy(
@@ -1164,7 +1164,7 @@ export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
  *
  * **Example** (Checking subrecords)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1191,7 +1191,7 @@ export const isSubrecord: {
  *
  * **Example** (Reducing record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1230,7 +1230,7 @@ export const reduce: {
  *
  * **Example** (Checking every record value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1271,7 +1271,7 @@ export const every: {
  *
  * **Example** (Checking for any matching value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1303,7 +1303,7 @@ export const some: {
  *
  * **Example** (Merging records with union)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1362,7 +1362,7 @@ export const union: {
  *
  * **Example** (Merging intersecting keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1411,7 +1411,7 @@ export const intersection: {
  *
  * **Example** (Keeping keys unique to each record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1462,7 +1462,7 @@ export const difference: {
  *
  * **Example** (Comparing records with a value equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1487,7 +1487,7 @@ export const makeEquivalence = <K extends string, A>(
  *
  * **Example** (Creating a singleton record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1566,7 +1566,7 @@ export function makeReducerIntersection<K extends string, A>(
  *
  * **Example** (Finding the first matching entry)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * const record = { a: 1, b: 2, c: 3 }

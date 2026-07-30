@@ -57,7 +57,7 @@ import * as Prompt from "./Prompt.ts"
  *
  * **Example** (Defining CLI commands)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console } from "effect"
  * import { Argument, Command, Flag } from "effect/unstable/cli"
  *
@@ -194,7 +194,7 @@ export declare namespace Command {
    *
    * **Example** (Configuring command input)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Argument, Flag } from "effect/unstable/cli"
    * import type { Command as CliCommand } from "effect/unstable/cli"
    *
@@ -261,7 +261,7 @@ export declare namespace Command {
      *
      * **Example** (Inferring command input)
      *
-     * ```ts
+     * ```ts import.meta.vitest
      * import { Flag } from "effect/unstable/cli"
      * import type { Command as CliCommand } from "effect/unstable/cli"
      *
@@ -399,7 +399,7 @@ export type Services<C> = C extends Command<
  *
  * **Example** (Accessing parent command context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { Command, Flag } from "effect/unstable/cli"
  *
@@ -478,7 +478,7 @@ export const isCommand = (u: unknown): u is Command.Any => Predicate.hasProperty
  *
  * **Example** (Creating commands)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { Argument, Command, Flag } from "effect/unstable/cli"
  *
@@ -558,7 +558,7 @@ export const make: {
  *
  * **Example** (Adding command handlers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console } from "effect"
  * import { Command, Flag } from "effect/unstable/cli"
  *
@@ -656,7 +656,7 @@ const normalizeSubcommandEntries = (
  *
  * **Example** (Adding subcommands)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { Command, Flag } from "effect/unstable/cli"
  *
@@ -960,7 +960,7 @@ type ExtractSubcommandContext<T extends ReadonlyArray<Command.SubcommandEntry>> 
  *
  * **Example** (Setting descriptions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { Command, Flag } from "effect/unstable/cli"
  *
@@ -1050,7 +1050,7 @@ export const withAlias: {
  *
  * **Example** (Hiding a subcommand)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Command } from "effect/unstable/cli"
  *
  * // `experimental` still runs when invoked as `mycli experimental`,
@@ -1166,7 +1166,7 @@ export const annotateMerge: {
  *
  * **Example** (Adding usage examples)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Command } from "effect/unstable/cli"
  *
  * const login = Command.make("login").pipe(
@@ -1212,7 +1212,7 @@ const mapHandler = <Name extends string, Input, E, R, ContextInput, E2, R2>(
  *
  * **Example** (Providing command services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem, PlatformError } from "effect"
  * import { Command, Flag } from "effect/unstable/cli"
  *
@@ -1381,7 +1381,7 @@ export const provideEffectDiscard: {
  *
  * **Example** (Constructing command arguments)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { Command } from "effect/unstable/cli"
  *
@@ -1466,7 +1466,7 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
  *
  * **Example** (Running commands with standard input)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { Command, Flag } from "effect/unstable/cli"
  *
@@ -1523,7 +1523,7 @@ export const run: {
  *
  * **Example** (Running commands with explicit arguments)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { Command, Flag } from "effect/unstable/cli"
  *

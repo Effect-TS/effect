@@ -26,9 +26,6 @@
     "./bin": null
   },
   "files": [
-    "CHANGELOG.md",
-    "LICENSE",
-    "README.md",
     "src/**/*.ts",
     "schema.json",
     "dist/**/*.js",

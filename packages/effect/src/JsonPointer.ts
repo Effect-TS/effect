@@ -27,7 +27,7 @@
  *
  * **Example** (Escaping special characters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonPointer } from "effect"
  *
  * JsonPointer.escapeToken("a/b") // "a~1b"
@@ -63,7 +63,7 @@ export function escapeToken(token: string): string {
  *
  * **Example** (Unescaping special characters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonPointer } from "effect"
  *
  * JsonPointer.unescapeToken("a~1b") // "a/b"

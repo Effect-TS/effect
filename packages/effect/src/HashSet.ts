@@ -26,7 +26,7 @@ const TypeId = internal.HashSetTypeId
  *
  * **Example** (Creating and updating a HashSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * // Create a HashSet
@@ -58,7 +58,7 @@ export interface HashSet<out Value> extends Iterable<Value>, Equal, Pipeable, In
  *
  * **Example** (Extracting value types from a HashSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * // Create a concrete HashSet for type extraction
@@ -85,7 +85,7 @@ export declare namespace HashSet {
    *
    * **Example** (Extracting a HashSet value type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { HashSet } from "effect"
    *
    * const numbers = HashSet.make(1, 2, 3, 4, 5)
@@ -107,7 +107,7 @@ export declare namespace HashSet {
  *
  * **Example** (Creating an empty HashSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const set = HashSet.empty<string>()
@@ -130,7 +130,7 @@ export const empty: <V = never>() => HashSet<V> = internal.empty
  *
  * **Example** (Creating a HashSet from values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const fruits = HashSet.make("apple", "banana", "cherry")
@@ -155,7 +155,7 @@ export const make: <Values extends ReadonlyArray<any>>(
  *
  * **Example** (Creating a HashSet from an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const fromArray = HashSet.fromIterable(["a", "b", "c", "b", "a"])
@@ -178,7 +178,7 @@ export const fromIterable: <V>(values: Iterable<V>) => HashSet<V> = internal.fro
  *
  * **Example** (Checking for a HashSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const set = HashSet.make(1, 2, 3)
@@ -202,7 +202,7 @@ export const isHashSet: {
  *
  * **Example** (Adding values to a HashSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const set = HashSet.make("a", "b")
@@ -233,7 +233,7 @@ export const add: {
  *
  * **Example** (Checking HashSet membership)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Hash, HashSet } from "effect"
  *
  * // Works with any type that implements Equal
@@ -275,7 +275,7 @@ export const has: {
  *
  * **Example** (Removing values from a HashSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const set = HashSet.make("a", "b", "c")
@@ -306,7 +306,7 @@ export const remove: {
  *
  * **Example** (Getting the HashSet size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const empty = HashSet.empty<string>()
@@ -329,7 +329,7 @@ export const size: <V>(self: HashSet<V>) => number = internal.size
  *
  * **Example** (Checking whether a HashSet is empty)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const empty = HashSet.empty<string>()
@@ -349,7 +349,7 @@ export const isEmpty: <V>(self: HashSet<V>) => boolean = internal.isEmpty
  *
  * **Example** (Combining HashSets)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const set1 = HashSet.make("a", "b")
@@ -376,7 +376,7 @@ export const union: {
  *
  * **Example** (Finding common HashSet values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const set1 = HashSet.make("a", "b", "c")
@@ -403,7 +403,7 @@ export const intersection: {
  *
  * **Example** (Finding HashSet differences)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const set1 = HashSet.make("a", "b", "c")
@@ -430,7 +430,7 @@ export const difference: {
  *
  * **Example** (Checking subset relationships)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const small = HashSet.make("a", "b")
@@ -459,7 +459,7 @@ export const isSubset: {
  *
  * **Example** (Mapping HashSet values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const numbers = HashSet.make(1, 2, 3)
@@ -490,7 +490,7 @@ export const map: {
  *
  * **Example** (Filtering HashSet values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const numbers = HashSet.make(1, 2, 3, 4, 5, 6)
@@ -524,7 +524,7 @@ export const filter: {
  *
  * **Example** (Testing whether some values match)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const numbers = HashSet.make(1, 2, 3, 4, 5)
@@ -552,7 +552,7 @@ export const some: {
  *
  * **Example** (Testing whether every value matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const numbers = HashSet.make(2, 4, 6, 8)
@@ -580,7 +580,7 @@ export const every: {
  *
  * **Example** (Reducing HashSet values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
  * const numbers = HashSet.make(1, 2, 3, 4, 5)

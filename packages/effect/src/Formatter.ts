@@ -25,7 +25,7 @@ import { getRedacted, redact, symbolRedactable } from "./Redactable.ts"
  *
  * **Example** (Defining a custom formatter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Formatter } from "effect"
  *
  * const upper: Formatter.Formatter<string> = (s) => s.toUpperCase()
@@ -75,7 +75,7 @@ export interface Formatter<in Value, out Format = string> {
  *
  * **Example** (Formatting compact output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
  * console.log(Formatter.format({ a: 1, b: [2, 3] }))
@@ -84,7 +84,7 @@ export interface Formatter<in Value, out Format = string> {
  *
  * **Example** (Pretty-printed output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
  * console.log(Formatter.format({ a: 1, b: [2, 3] }, { space: 2 }))
@@ -99,7 +99,7 @@ export interface Formatter<in Value, out Format = string> {
  *
  * **Example** (Handling circular references)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
  * const obj: any = { name: "loop" }
@@ -259,7 +259,7 @@ function safeToString(input: any): string {
  *
  * **Example** (Formatting compact JSON)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
  * console.log(Formatter.formatJson({ name: "Alice", age: 30 }))
@@ -268,7 +268,7 @@ function safeToString(input: any): string {
  *
  * **Example** (Handling circular references)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
  * const obj: any = { name: "test" }
@@ -279,7 +279,7 @@ function safeToString(input: any): string {
  *
  * **Example** (Pretty-printed JSON)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
  * console.log(Formatter.formatJson({ name: "Alice", age: 30 }, { space: 2 }))

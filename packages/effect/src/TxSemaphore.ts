@@ -34,7 +34,7 @@ const TypeId = "~effect/transactions/TxSemaphore"
  *
  * **Example** (Managing permits transactionally)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSemaphore } from "effect"
  *
  * // Create a semaphore with 3 permits for managing concurrent database connections
@@ -98,7 +98,7 @@ const makeTxSemaphore = (permitsRef: TxRef.TxRef<number>, capacity: number): TxS
  *
  * **Example** (Creating a semaphore)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * // Create a semaphore for managing concurrent access to a resource pool
@@ -142,7 +142,7 @@ export const make = (permits: number): Effect.Effect<TxSemaphore> =>
  *
  * **Example** (Checking available permits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -178,7 +178,7 @@ export const available = (self: TxSemaphore): Effect.Effect<number> => TxRef.get
  *
  * **Example** (Checking semaphore capacity)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -212,7 +212,7 @@ export const capacity = (self: TxSemaphore): Effect.Effect<number> => Effect.suc
  *
  * **Example** (Acquiring a permit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -267,7 +267,7 @@ export const acquire = (self: TxSemaphore): Effect.Effect<void> =>
  *
  * **Example** (Acquiring multiple permits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -313,7 +313,7 @@ export const acquireN = (self: TxSemaphore, n: number): Effect.Effect<void> => {
  *
  * **Example** (Trying to acquire a permit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -355,7 +355,7 @@ export const tryAcquire = (self: TxSemaphore): Effect.Effect<boolean> =>
  *
  * **Example** (Trying to acquire multiple permits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -404,7 +404,7 @@ export const tryAcquireN = (self: TxSemaphore, n: number): Effect.Effect<boolean
  *
  * **Example** (Releasing a permit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -448,7 +448,7 @@ export const release = (self: TxSemaphore): Effect.Effect<void> =>
  *
  * **Example** (Releasing multiple permits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -499,7 +499,7 @@ export const releaseN = (self: TxSemaphore, n: number): Effect.Effect<void> => {
  *
  * **Example** (Running an effect with a permit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -570,7 +570,7 @@ export const withPermit: {
  *
  * **Example** (Running an effect with multiple permits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -636,7 +636,7 @@ export const withPermits: {
  *
  * **Example** (Acquiring a scoped permit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -681,7 +681,7 @@ export const withPermitScoped = (self: TxSemaphore): Effect.Effect<void, never, 
  *
  * **Example** (Checking semaphore values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSemaphore } from "effect"
  *
  * const program = Effect.gen(function*() {

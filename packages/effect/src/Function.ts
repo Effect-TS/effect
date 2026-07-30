@@ -21,7 +21,7 @@ import { pipeArguments } from "./Pipeable.ts"
  *
  * **Example** (Creating a function type with a type lambda)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Function, HKT } from "effect"
  *
  * // Create a function type using the type lambda
@@ -53,7 +53,7 @@ export interface FunctionTypeLambda extends TypeLambda {
  *
  * **Example** (Selecting data-first or data-last style by arity)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function, pipe } from "effect"
  *
  * const sum = Function.dual<
@@ -67,7 +67,7 @@ export interface FunctionTypeLambda extends TypeLambda {
  *
  * **Example** (Defining overloads with call signatures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function, pipe } from "effect"
  *
  * const sum: {
@@ -81,7 +81,7 @@ export interface FunctionTypeLambda extends TypeLambda {
  *
  * **Example** (Selecting data-first or data-last style with a predicate)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function, pipe } from "effect"
  *
  * const sum = Function.dual<
@@ -169,7 +169,7 @@ export const dual: {
  *
  * **Example** (Applying an argument to a function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function, pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -192,7 +192,7 @@ export const apply = <A>(a: A) => <B>(self: (a: A) => B): B => self(a)
  *
  * **Example** (Creating a lazy argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  *
  * const constNull: Function.LazyArg<null> = Function.constant(null)
@@ -213,7 +213,7 @@ export type LazyArg<A> = () => A
  *
  * **Example** (Typing a variadic function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -235,7 +235,7 @@ export type FunctionN<A extends ReadonlyArray<unknown>, B> = (...args: A) => B
  *
  * **Example** (Returning the same value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { identity } from "effect"
  * import * as assert from "node:assert"
  *
@@ -258,7 +258,7 @@ export const identity = <A>(a: A): A => a
  *
  * **Example** (Checking an expression against a type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -308,7 +308,7 @@ export const cast: <A, B>(a: A) => B = identity as any
  *
  * **Example** (Creating a constant thunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -332,7 +332,7 @@ export const constant = <A>(value: A): LazyArg<A> => () => value
  *
  * **Example** (Returning true from a thunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -353,7 +353,7 @@ export const constTrue: LazyArg<boolean> = constant(true)
  *
  * **Example** (Returning false from a thunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -374,7 +374,7 @@ export const constFalse: LazyArg<boolean> = constant(false)
  *
  * **Example** (Returning null from a thunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -395,7 +395,7 @@ export const constNull: LazyArg<null> = constant(null)
  *
  * **Example** (Returning undefined from a thunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -417,7 +417,7 @@ export const constUndefined: LazyArg<undefined> = constant(undefined)
  *
  * **Example** (Returning void from a thunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -439,7 +439,7 @@ export const constVoid: LazyArg<void> = constUndefined
  *
  * **Example** (Flipping curried arguments)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -467,7 +467,7 @@ export const flip = <A extends Array<unknown>, B extends Array<unknown>, C>(
  *
  * **Example** (Composing two functions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -504,7 +504,7 @@ export const compose: {
  *
  * **Example** (Handling impossible values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { absurd } from "effect"
  *
  * const handleNever = (value: never) => {
@@ -528,7 +528,7 @@ export const absurd = <A>(_: never): A => {
  *
  * **Example** (Converting arguments to a tuple)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -553,7 +553,7 @@ export const tupled = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B): 
  *
  * **Example** (Converting a tuple to arguments)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *
@@ -593,7 +593,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * In this example, `1` is passed to the first function, and each result becomes
  * the input for the next function.
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe } from "effect"
  *
  * const result = pipe(
@@ -608,7 +608,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *
  * **Example** (Chaining methods before conversion)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * const numbers = [1, 2, 3, 4]
  * const double = (n: number) => n * 2
  * const greaterThanFour = (n: number) => n > 4
@@ -622,7 +622,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *
  * The same transformation can be written with data-last functions.
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, pipe } from "effect"
  *
  * const numbers = [1, 2, 3, 4]
@@ -640,7 +640,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *
  * **Example** (Chaining arithmetic operations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe } from "effect"
  *
  * // Define simple arithmetic operations
@@ -657,7 +657,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *
  * **Example** (Building a simple transformation pipeline)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe } from "effect"
  *
  * // Simple transformation pipeline
@@ -1141,7 +1141,7 @@ export function pipe(a: unknown, ...args: Array<any>): unknown {
  *
  * **Example** (Composing functions left to right)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { flow } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1338,7 +1338,7 @@ export function flow(
  *
  * **Example** (Creating a development placeholder)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { hole } from "effect"
  *
  * // Intentionally not called: `hole` throws if the placeholder is evaluated.
@@ -1366,7 +1366,7 @@ export const hole: <T>() => T = cast(absurd)
  *
  * **Example** (Discarding the first argument)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function } from "effect"
  * import * as assert from "node:assert"
  *

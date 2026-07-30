@@ -86,7 +86,7 @@ export type Node =
  *
  * **Example** (Creating a value node)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const node = ConfigProvider.makeValue("3000")
@@ -120,7 +120,7 @@ export function makeValue(value: string): Node {
  *
  * **Example** (Creating a record node)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const node = ConfigProvider.makeRecord(new Set(["host", "port"]))
@@ -153,7 +153,7 @@ export function makeRecord(keys: ReadonlySet<string>, value?: string): Node {
  *
  * **Example** (Creating an array node)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const node = ConfigProvider.makeArray(3)
@@ -185,7 +185,7 @@ export function makeArray(length: number, value?: string): Node {
  *
  * **Example** (Failing with a SourceError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider, Effect } from "effect"
  *
  * const provider = ConfigProvider.make((_path) =>
@@ -218,7 +218,7 @@ export class SourceError extends Data.TaggedError("SourceError")<{
  *
  * **Example** (A typical config path)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { ConfigProvider } from "effect"
  *
  * const path: ConfigProvider.Path = ["database", "replicas", 0, "host"]
@@ -314,7 +314,7 @@ export interface ConfigProvider extends Pipeable {
  *
  * **Example** (Providing a custom provider)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider, Effect } from "effect"
  *
  * const provider = ConfigProvider.fromUnknown({ port: 8080 })
@@ -401,7 +401,7 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  *
  * **Example** (Creating a simple in-memory provider)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider, Effect, Option } from "effect"
  *
  * const data: Record<string, string> = {
@@ -452,7 +452,7 @@ export function make(get: (path: Path) => Effect.Effect<Option.Option<Node>, Sou
  *
  * **Example** (Falling back to a default provider)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const envProvider = ConfigProvider.fromEnv({
@@ -498,7 +498,7 @@ export const orElse: {
  *
  * **Example** (Uppercasing path segments)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
@@ -542,7 +542,7 @@ export const mapInput: {
  *
  * **Example** (Resolving camelCase keys to env vars)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
@@ -585,7 +585,7 @@ export const constantCase: (self: ConfigProvider) => ConfigProvider = mapInput((
  *
  * **Example** (Nesting under a prefix)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
@@ -627,7 +627,7 @@ export const nested: {
  *
  * **Example** (Reading config from a JSON object)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect, Layer } from "effect"
  *
  * const TestLayer = ConfigProvider.layer(
@@ -670,7 +670,7 @@ export const layer = <E = never, R = never>(
  *
  * **Example** (Adding default values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const defaults = ConfigProvider.fromUnknown({
@@ -732,7 +732,7 @@ export const layerAdd = <E = never, R = never>(
  *
  * **Example** (Providing config from a plain object)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const provider = ConfigProvider.fromUnknown({
@@ -841,7 +841,7 @@ function emptyStringAsMissing(value: string | undefined, preserveEmptyStrings: b
  *
  * **Example** (Reading from a custom env record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
@@ -965,7 +965,7 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  *
  * **Example** (Parsing .env contents)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
  * const contents = `
@@ -1111,7 +1111,7 @@ function searchLast(str: string, rgx: RegExp): number {
  *
  * **Example** (Loading a .env file)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1165,7 +1165,7 @@ export const fromDotEnv: (options?: {
  *
  * **Example** (Reading config from a directory)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ConfigProvider, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {

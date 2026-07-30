@@ -37,7 +37,7 @@ const TypeId = "~effect/transactions/TxDeferred"
  *
  * **Example** (Completing a transactional deferred)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxDeferred } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -95,7 +95,7 @@ const makeTxDeferred = <A, E>(ref: TxRef.TxRef<Option<Result<A, E>>>): TxDeferre
  *
  * **Example** (Creating a transactional deferred)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, TxDeferred } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -117,7 +117,7 @@ export const make = <A, E = never>(): Effect.Effect<TxDeferred<A, E>> =>
  *
  * **Example** (Awaiting a deferred value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxDeferred } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -170,7 +170,7 @@ export {
  *
  * **Example** (Polling a deferred)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Result, TxDeferred } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -199,7 +199,7 @@ export const poll = <A, E>(self: TxDeferred<A, E>): Effect.Effect<Option<Result<
  *
  * **Example** (Completing with a result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Result, TxDeferred } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -238,7 +238,7 @@ export const done: {
  *
  * **Example** (Completing with a success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxDeferred } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -271,7 +271,7 @@ export const succeed: {
  *
  * **Example** (Completing with a failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxDeferred } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -303,7 +303,7 @@ export const fail: {
  *
  * **Example** (Checking transactional deferreds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxDeferred } from "effect"
  *
  * const program = Effect.gen(function*() {

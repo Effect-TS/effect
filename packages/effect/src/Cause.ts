@@ -63,7 +63,7 @@ export const ReasonTypeId: "~effect/Cause/Reason" = core.CauseReasonTypeId
  *
  * **Example** (Creating and inspecting a cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.fail("Something went wrong")
@@ -84,7 +84,7 @@ export interface Cause<out E> extends Pipeable, Inspectable, Equal {
  *
  * **Example** (Checking the runtime type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.isCause(Cause.fail("error"))) // true
@@ -101,7 +101,7 @@ export const isCause: (self: unknown) => self is Cause<unknown> = core.isCause
  *
  * **Example** (Checking the runtime type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const reason = Cause.fail("error").reasons[0]
@@ -131,7 +131,7 @@ export const isReason: (self: unknown) => self is Reason<unknown> = core.isCause
  *
  * **Example** (Narrowing a reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const reason = Cause.fail("error").reasons[0]
@@ -155,7 +155,7 @@ export type Reason<E> = Fail<E> | Die | Interrupt
  *
  * **Example** (Filtering fail reasons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.fail("error")
@@ -181,7 +181,7 @@ export const isFailReason: <E>(self: Reason<E>) => self is Fail<E> = core.isFail
  *
  * **Example** (Filtering die reasons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.die("defect")
@@ -207,7 +207,7 @@ export const isDieReason: <E>(self: Reason<E>) => self is Die = core.isDieReason
  *
  * **Example** (Filtering interrupt reasons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.interrupt(123)
@@ -234,7 +234,7 @@ export declare namespace Cause {
    *
    * **Example** (Extracting the error type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Cause } from "effect"
    *
    * // string
@@ -280,7 +280,7 @@ export declare namespace Reason {
    *
    * **Example** (Extracting the error type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Cause } from "effect"
    *
    * // string
@@ -309,7 +309,7 @@ export declare namespace Reason {
  *
  * **Example** (Accessing the defect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.die("Unexpected")
@@ -344,7 +344,7 @@ export interface Die extends Cause.ReasonProto<"Die"> {
  *
  * **Example** (Accessing the error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.fail("Something went wrong")
@@ -374,7 +374,7 @@ export interface Fail<out E> extends Cause.ReasonProto<"Fail"> {
  *
  * **Example** (Accessing the fiber ID)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.interrupt(123)
@@ -412,7 +412,7 @@ export interface Interrupt extends Cause.ReasonProto<"Interrupt"> {
  *
  * **Example** (Building a cause from reasons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const reasons = [
@@ -447,7 +447,7 @@ export const fromReasons: <E>(
  *
  * **Example** (Combining with the empty cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.combine(Cause.empty, Cause.fail("boom"))
@@ -473,7 +473,7 @@ export const empty: Cause<never> = core.causeEmpty
  *
  * **Example** (Creating a fail cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.fail("Something went wrong")
@@ -499,7 +499,7 @@ export const fail: <E>(error: E) => Cause<E> = core.causeFail
  *
  * **Example** (Creating a die cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.die("Unexpected")
@@ -521,7 +521,7 @@ export const die: (defect: unknown) => Cause<never> = core.causeDie
  *
  * **Example** (Creating an interrupt cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.interrupt(123)
@@ -547,7 +547,7 @@ export const interrupt: (fiberId?: number | undefined) => Cause<never> = effect.
  *
  * **Example** (Creating a Fail reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const reason = Cause.makeFailReason("error")
@@ -573,7 +573,7 @@ export const makeFailReason = <E>(error: E): Fail<E> => new core.Fail(error)
  *
  * **Example** (Creating a Die reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const reason = Cause.makeDieReason("bug")
@@ -600,7 +600,7 @@ export const makeDieReason = (defect: unknown): Die => new core.Die(defect)
  *
  * **Example** (Creating an Interrupt reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const reason = Cause.makeInterruptReason(42)
@@ -626,7 +626,7 @@ export const makeInterruptReason: (fiberId?: number | undefined) => Interrupt = 
  *
  * **Example** (Checking interrupt-only causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.hasInterruptsOnly(Cause.interrupt(123))) // true
@@ -659,7 +659,7 @@ export const hasInterruptsOnly: <E>(self: Cause<E>) => boolean = effect.hasInter
  *
  * **Example** (Mapping errors to uppercase)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.fail("error")
@@ -694,7 +694,7 @@ export const map: {
  *
  * **Example** (Combining two causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause1 = Cause.fail("error1")
@@ -740,7 +740,7 @@ export const combine: {
  *
  * **Example** (Squashing a cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.squash(Cause.fail("error")))    // "error"
@@ -765,7 +765,7 @@ export const squash: <E>(self: Cause<E>) => unknown = effect.causeSquash
  *
  * **Example** (Checking for typed errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.hasFails(Cause.fail("error"))) // true
@@ -793,7 +793,7 @@ export const hasFails: <E>(self: Cause<E>) => boolean = effect.hasFails
  *
  * **Example** (Extracting the first Fail reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Result } from "effect"
  *
  * const result = Cause.findFail(Cause.fail("error"))
@@ -823,7 +823,7 @@ export const findFail: <E>(self: Cause<E>) => Result.Result<Fail<E>, Cause<never
  *
  * **Example** (Extracting the first error value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Result } from "effect"
  *
  * const result = Cause.findError(Cause.fail("error"))
@@ -851,7 +851,7 @@ export const findError: <E>(self: Cause<E>) => Result.Result<E, Cause<never>> = 
  *
  * **Example** (Extracting an error as Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Option } from "effect"
  *
  * const some = Cause.findErrorOption(Cause.fail("error"))
@@ -878,7 +878,7 @@ export const findErrorOption: <E>(input: Cause<E>) => Option<E> = effect.findErr
  *
  * **Example** (Checking for defects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.hasDies(Cause.die("defect"))) // true
@@ -905,7 +905,7 @@ export const hasDies: <E>(self: Cause<E>) => boolean = effect.hasDies
  *
  * **Example** (Extracting the first Die reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Result } from "effect"
  *
  * const result = Cause.findDie(Cause.die("defect"))
@@ -934,7 +934,7 @@ export const findDie: <E>(self: Cause<E>) => Result.Result<Die, Cause<E>> = effe
  *
  * **Example** (Extracting the first defect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Result } from "effect"
  *
  * const result = Cause.findDefect(Cause.die("defect"))
@@ -956,7 +956,7 @@ export const findDefect: <E>(self: Cause<E>) => Result.Result<unknown, Cause<E>>
  *
  * **Example** (Checking for interruptions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.hasInterrupts(Cause.interrupt(123))) // true
@@ -984,7 +984,7 @@ export const hasInterrupts: <E>(self: Cause<E>) => boolean = effect.hasInterrupt
  *
  * **Example** (Extracting the first interrupt)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Result } from "effect"
  *
  * const result = Cause.findInterrupt(Cause.interrupt(42))
@@ -1012,7 +1012,7 @@ export const findInterrupt: <E>(self: Cause<E>) => Result.Result<Interrupt, Caus
  *
  * **Example** (Collecting interruptors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.combine(
@@ -1048,7 +1048,7 @@ export const interruptors: <E>(self: Cause<E>) => ReadonlySet<number> = effect.c
  *
  * **Example** (Extracting interruptors with Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Result } from "effect"
  *
  * const result = Cause.filterInterruptors(Cause.interrupt(1))
@@ -1094,7 +1094,7 @@ export const filterInterruptors: <E>(self: Cause<E>) => Result.Result<Set<number
  *
  * **Example** (Converting a cause to errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const cause = Cause.fail(new Error("boom"))
@@ -1144,7 +1144,7 @@ export const prettyErrors: <E>(self: Cause<E>, options?: {
  *
  * **Example** (Rendering a cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const rendered = Cause.pretty(Cause.fail("something went wrong"))
@@ -1171,7 +1171,7 @@ export const pretty: <E>(cause: Cause<E>) => string = effect.causePretty
  *
  * **Example** (Yielding an error in Effect.gen)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect } from "effect"
  *
  * const error = new Cause.NoSuchElementError("not found")
@@ -1194,7 +1194,7 @@ export interface YieldableError extends Error, Pipeable, Inspectable {
  *
  * **Example** (Checking the runtime type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.isNoSuchElementError(new Cause.NoSuchElementError())) // true
@@ -1235,7 +1235,7 @@ export const NoSuchElementErrorTypeId: "~effect/Cause/NoSuchElementError" = core
  *
  * **Example** (Creating and checking a NoSuchElementError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.NoSuchElementError("Element not found")
@@ -1261,7 +1261,7 @@ export interface NoSuchElementError extends YieldableError {
  *
  * **Example** (Creating a NoSuchElementError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.NoSuchElementError("Element not found")
@@ -1280,7 +1280,7 @@ export const NoSuchElementError: new(message?: string) => NoSuchElementError = c
  *
  * **Example** (Checking the runtime type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.isDone(Cause.Done())) // true
@@ -1317,7 +1317,7 @@ export const DoneTypeId: "~effect/Cause/Done" = core.DoneTypeId
  *
  * **Example** (Signaling queue completion)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1387,7 +1387,7 @@ export const Done: <A = void>(value?: A) => Done<A> = core.Done
  *
  * **Example** (Failing with Done)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect } from "effect"
  *
  * const program = Cause.done("finished")
@@ -1417,7 +1417,7 @@ export const TimeoutErrorTypeId: "~effect/Cause/TimeoutError" = effect.TimeoutEr
  *
  * **Example** (Checking the runtime type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.isTimeoutError(new Cause.TimeoutError())) // true
@@ -1439,7 +1439,7 @@ export const isTimeoutError: (u: unknown) => u is TimeoutError = effect.isTimeou
  *
  * **Example** (Creating and checking a TimeoutError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.TimeoutError("Operation timed out")
@@ -1460,7 +1460,7 @@ export interface TimeoutError extends YieldableError {
  *
  * **Example** (Creating a TimeoutError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.TimeoutError("Operation timed out")
@@ -1485,7 +1485,7 @@ export const IllegalArgumentErrorTypeId: "~effect/Cause/IllegalArgumentError" = 
  *
  * **Example** (Checking the runtime type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.isIllegalArgumentError(new Cause.IllegalArgumentError())) // true
@@ -1507,7 +1507,7 @@ export const isIllegalArgumentError: (u: unknown) => u is IllegalArgumentError =
  *
  * **Example** (Creating and checking an IllegalArgumentError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.IllegalArgumentError("Expected positive number")
@@ -1528,7 +1528,7 @@ export interface IllegalArgumentError extends YieldableError {
  *
  * **Example** (Creating an IllegalArgumentError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.IllegalArgumentError("Invalid argument")
@@ -1545,7 +1545,7 @@ export const IllegalArgumentError: new(message?: string) => IllegalArgumentError
  *
  * **Example** (Checking the runtime type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.isExceededCapacityError(new Cause.ExceededCapacityError())) // true
@@ -1580,7 +1580,7 @@ export const ExceededCapacityErrorTypeId: "~effect/Cause/ExceededCapacityError" 
  *
  * **Example** (Creating and checking an ExceededCapacityError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.ExceededCapacityError("Queue full")
@@ -1605,7 +1605,7 @@ export interface ExceededCapacityError extends YieldableError {
  *
  * **Example** (Creating an ExceededCapacityError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.ExceededCapacityError("Queue full")
@@ -1725,7 +1725,7 @@ export const UnknownErrorTypeId: "~effect/Cause/UnknownError" = effect.UnknownEr
  *
  * **Example** (Checking the runtime type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * console.log(Cause.isUnknownError(new Cause.UnknownError("x"))) // true
@@ -1748,7 +1748,7 @@ export const isUnknownError: (u: unknown) => u is UnknownError = effect.isUnknow
  *
  * **Example** (Creating and checking an UnknownError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.UnknownError("original", "Something unknown")
@@ -1771,7 +1771,7 @@ export interface UnknownError extends YieldableError {
  *
  * **Example** (Creating an UnknownError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause } from "effect"
  *
  * const error = new Cause.UnknownError({ raw: true }, "Unexpected value")
@@ -1802,7 +1802,7 @@ export const UnknownError: new(cause: unknown, message?: string) => UnknownError
  *
  * **Example** (Annotating a cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Context } from "effect"
  *
  * class RequestId extends Context.Service<RequestId, string>()("RequestId") {}
@@ -1841,7 +1841,7 @@ export const annotate: {
  *
  * **Example** (Reading reason annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Context } from "effect"
  *
  * class RequestId extends Context.Service<RequestId, string>()("RequestId") {}
@@ -1873,7 +1873,7 @@ export const reasonAnnotations: <E>(self: Reason<E>) => Context.Context<never> =
  *
  * **Example** (Reading merged annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Context } from "effect"
  *
  * class RequestId extends Context.Service<RequestId, string>()("RequestId") {}

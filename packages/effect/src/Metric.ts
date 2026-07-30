@@ -49,7 +49,7 @@ import type { Contravariant, Covariant } from "./Types.ts"
  *
  * **Example** (Using multiple metric types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class MetricExample extends Data.TaggedError("MetricExample")<{
@@ -128,7 +128,7 @@ export interface Metric<in Input, out State> extends Pipeable {
  *
  * **Example** (Using counter metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class CounterInterfaceError extends Data.TaggedError("CounterInterfaceError")<{
@@ -191,7 +191,7 @@ export interface Counter<in Input extends number | bigint> extends Metric<Input,
  *
  * **Example** (Reading counter state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class CounterStateError extends Data.TaggedError("CounterStateError")<{
@@ -262,7 +262,7 @@ export interface CounterState<in Input extends number | bigint> {
  *
  * **Example** (Using frequency metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class FrequencyInterfaceError
@@ -341,7 +341,7 @@ export interface Frequency extends Metric<string, FrequencyState> {}
  *
  * **Example** (Reading frequency state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class FrequencyStateError extends Data.TaggedError("FrequencyStateError")<{
@@ -433,7 +433,7 @@ export interface FrequencyState {
  *
  * **Example** (Using gauge metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class GaugeInterfaceError extends Data.TaggedError("GaugeInterfaceError")<{
@@ -489,7 +489,7 @@ export interface Gauge<in Input extends number | bigint> extends Metric<Input, G
  *
  * **Example** (Reading gauge state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class GaugeStateError extends Data.TaggedError("GaugeStateError")<{
@@ -565,7 +565,7 @@ export interface GaugeState<in Input extends number | bigint> {
  *
  * **Example** (Using histogram metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class HistogramInterfaceError
@@ -649,7 +649,7 @@ export interface Histogram<Input> extends Metric<Input, HistogramState> {}
  *
  * **Example** (Reading histogram state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class HistogramStateError extends Data.TaggedError("HistogramStateError")<{
@@ -748,7 +748,7 @@ export interface HistogramState {
  *
  * **Example** (Using summary metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class SummaryInterfaceError extends Data.TaggedError("SummaryInterfaceError")<{
@@ -842,7 +842,7 @@ export interface Summary<Input> extends Metric<Input, SummaryState> {}
  *
  * **Example** (Reading summary state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class SummaryStateError extends Data.TaggedError("SummaryStateError")<{
@@ -931,7 +931,7 @@ export interface SummaryState {
  *
  * **Example** (Collecting application metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class MetricsError extends Data.TaggedError("MetricsError")<{
@@ -976,7 +976,7 @@ export declare namespace Metric {
    *
    * **Example** (Inspecting metric types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data, Effect, Metric } from "effect"
    *
    * class MetricTypeError extends Data.TaggedError("MetricTypeError")<{
@@ -1057,7 +1057,7 @@ export declare namespace Metric {
    *
    * **Example** (Providing attributes in different formats)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data, Effect, Metric } from "effect"
    *
    * class AttributesError extends Data.TaggedError("AttributesError")<{
@@ -1133,7 +1133,7 @@ export declare namespace Metric {
    *
    * **Example** (Combining metric attribute sets)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data, Effect, Metric } from "effect"
    *
    * class AttributeSetError extends Data.TaggedError("AttributeSetError")<{
@@ -1211,7 +1211,7 @@ export declare namespace Metric {
    *
    * **Example** (Extracting metric input types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Metric } from "effect"
    *
    * // Create various metric types
@@ -1262,7 +1262,7 @@ export declare namespace Metric {
    *
    * **Example** (Extracting metric state types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Metric } from "effect"
    *
    * // Create various metric types
@@ -1322,7 +1322,7 @@ export declare namespace Metric {
    *
    * **Example** (Using metric hooks)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data, Effect, Metric } from "effect"
    *
    * class HooksError extends Data.TaggedError("HooksError")<{
@@ -1371,7 +1371,7 @@ export declare namespace Metric {
    *
    * **Example** (Inspecting metric metadata)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data, Effect, Metric } from "effect"
    *
    * class MetadataError extends Data.TaggedError("MetadataError")<{
@@ -1439,7 +1439,7 @@ export declare namespace Metric {
    *
    * **Example** (Inspecting metric snapshot protocols)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data, Effect, Metric } from "effect"
    *
    * class SnapshotProtoError extends Data.TaggedError("SnapshotProtoError")<{
@@ -1512,7 +1512,7 @@ export declare namespace Metric {
    *
    * **Example** (Analyzing metric snapshots)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data, Effect, Metric } from "effect"
    *
    * class SnapshotError extends Data.TaggedError("SnapshotError")<{
@@ -1589,7 +1589,7 @@ export declare namespace Metric {
  *
  * **Example** (Accessing the current metric attributes key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class AttributesKeyError extends Data.TaggedError("AttributesKeyError")<{
@@ -1652,7 +1652,7 @@ export const CurrentMetricAttributesKey = "effect/Metric/CurrentMetricAttributes
  *
  * **Example** (Providing current metric attributes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class AttributesError extends Data.TaggedError("AttributesError")<{
@@ -2095,7 +2095,7 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
  *
  * **Example** (Checking metric values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Metric } from "effect"
  *
  * const counter = Metric.counter("requests")
@@ -2128,7 +2128,7 @@ export const isMetric = (u: unknown): u is Metric<unknown, never> =>
  *
  * **Example** (Creating counter metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class CounterError extends Data.TaggedError("CounterError")<{
@@ -2210,7 +2210,7 @@ export const counter: {
  *
  * **Example** (Creating gauge metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class GaugeError extends Data.TaggedError("GaugeError")<{
@@ -2289,7 +2289,7 @@ export const gauge: {
  *
  * **Example** (Creating frequency metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class FrequencyError extends Data.TaggedError("FrequencyError")<{
@@ -2371,7 +2371,7 @@ export const frequency = (name: string, options?: {
  *
  * **Example** (Creating histogram metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class HistogramError extends Data.TaggedError("HistogramError")<{
@@ -2452,7 +2452,7 @@ export const histogram = (name: string, options: {
  *
  * **Example** (Creating summary metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Duration, Effect, Metric } from "effect"
  *
  * class SummaryError extends Data.TaggedError("SummaryError")<{
@@ -2550,7 +2550,7 @@ export const summary = (name: string, options: {
  *
  * **Example** (Creating summaries with explicit timestamps)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Metric } from "effect"
  *
  * const responseTimesSummary = Metric.summaryWithTimestamp(
@@ -2589,7 +2589,7 @@ export const summaryWithTimestamp = (name: string, options: {
  *
  * **Example** (Recording durations with a timer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Duration, Effect, Metric } from "effect"
  *
  * class TimerError extends Data.TaggedError("TimerError")<{
@@ -2647,7 +2647,7 @@ export const timer = (name: string, options?: {
  *
  * **Example** (Reading metric state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const requestCounter = Metric.counter("requests")
@@ -2698,7 +2698,7 @@ export const value = <Input, State>(
  *
  * **Example** (Modifying metric values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const temperatureGauge = Metric.gauge("temperature")
@@ -2752,7 +2752,7 @@ export const modify: {
  *
  * **Example** (Updating metric values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const cpuUsage = Metric.gauge("cpu_usage_percent")
@@ -2809,7 +2809,7 @@ export const update: {
  *
  * **Example** (Mapping metric inputs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class MetricError extends Data.TaggedError("MetricError")<{
@@ -2875,7 +2875,7 @@ export const mapInput: {
  *
  * **Example** (Ignoring inputs with a constant value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class MetricError extends Data.TaggedError("MetricError")<{
@@ -2923,7 +2923,7 @@ export const withConstantInput: {
  *
  * **Example** (Applying metric attributes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const requestCounter = Metric.counter("http_requests_total", {
@@ -2999,7 +2999,7 @@ export const withAttributes: {
  *
  * **Example** (Capturing metric snapshots)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Metric } from "effect"
  *
  * class SnapshotError extends Data.TaggedError("SnapshotError")<{
@@ -3057,7 +3057,7 @@ export const snapshot: Effect<ReadonlyArray<Metric.Snapshot>> = InternalEffect.m
  *
  * **Example** (Dumping metrics as text)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Metric } from "effect"
  *
  * class DumpError extends Data.TaggedError("DumpError")<{
@@ -3154,7 +3154,7 @@ export const dump: Effect<string> = InternalEffect.flatMap(InternalEffect.contex
  *
  * **Example** (Capturing snapshots from a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class UnsafeSnapshotError extends Data.TaggedError("UnsafeSnapshotError")<{
@@ -3286,7 +3286,7 @@ const attributesToString = (attributes: Metric.AttributeSet): string => {
  *
  * **Example** (Creating boundaries from values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class BoundaryError extends Data.TaggedError("BoundaryError")<{
@@ -3358,7 +3358,7 @@ export const boundariesFromIterable = (iterable: Iterable<number>): ReadonlyArra
  *
  * **Example** (Creating linear boundaries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class BoundaryError extends Data.TaggedError("BoundaryError")<{
@@ -3410,7 +3410,7 @@ export const linearBoundaries = (options: {
  *
  * **Example** (Creating exponential boundaries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class BoundaryError extends Data.TaggedError("BoundaryError")<{
@@ -3483,7 +3483,7 @@ const fiberFailures = counter("child_fiber_failures", {
  *
  * **Example** (Accessing the fiber runtime metrics key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Layer, Metric } from "effect"
  *
  * class MetricsError extends Data.TaggedError("MetricsError")<{
@@ -3523,7 +3523,7 @@ export const FiberRuntimeMetricsKey: "effect/observability/Metric/FiberRuntimeMe
  *
  * **Example** (Providing a custom fiber metrics service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Layer, Metric } from "effect"
  * import type { Context, Exit } from "effect"
  *
@@ -3579,7 +3579,7 @@ export interface FiberRuntimeMetricsService {
  *
  * **Example** (Accessing the fiber runtime metrics service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class MetricsError extends Data.TaggedError("MetricsError")<{
@@ -3630,7 +3630,7 @@ export const FiberRuntimeMetrics = Context.Reference<FiberRuntimeMetricsService 
  *
  * **Example** (Accessing the default fiber metrics implementation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Layer, Metric } from "effect"
  *
  * class MetricsError extends Data.TaggedError("MetricsError")<{
@@ -3696,7 +3696,7 @@ export const FiberRuntimeMetricsImpl: FiberRuntimeMetricsService = {
  *
  * **Example** (Enabling runtime metrics with a layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Layer, Metric } from "effect"
  *
  * class AppError extends Data.TaggedError("AppError")<{
@@ -3790,7 +3790,7 @@ export const enableRuntimeMetricsLayer = Layer.succeed(FiberRuntimeMetrics)(Fibe
  *
  * **Example** (Disabling runtime metrics with a layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class MetricsError extends Data.TaggedError("MetricsError")<{
@@ -3837,7 +3837,7 @@ export const disableRuntimeMetricsLayer = Layer.succeed(FiberRuntimeMetrics)(und
  *
  * **Example** (Enabling runtime metrics for an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Layer, Metric } from "effect"
  *
  * class RuntimeMetricsError extends Data.TaggedError("RuntimeMetricsError")<{
@@ -3923,7 +3923,7 @@ export const enableRuntimeMetrics: <A, E, R>(self: Effect<A, E, R>) => Effect<A,
  *
  * **Example** (Disabling runtime metrics for an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Layer, Metric } from "effect"
  *
  * class DisableMetricsError extends Data.TaggedError("DisableMetricsError")<{

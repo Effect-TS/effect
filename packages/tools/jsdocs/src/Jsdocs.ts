@@ -858,7 +858,9 @@ export function findLeadingJSDoc(
  *
  * **Example** (Parsing a block)
  *
- * ```ts
+ * ```ts import.meta.vitest
+ * import { parseJSDoc } from "@effect/jsdocs"
+ *
  * const rawBlock = [
  *   "/" + "**",
  *   " * A value.",
@@ -1183,7 +1185,7 @@ function parseSection(lines: Array<string>, headingIndex: number): {
   while (index < lines.length) {
     const trimmed = lines[index].trim()
     if (trimmed.startsWith("```")) {
-      if (trimmed === "```ts") {
+      if (isTypeScriptFence(trimmed)) {
         diagnostics.push(diagnostic("loose-ts-fence", "TypeScript examples must use **Example** (Title) sections"))
       }
       inFence = !inFence
@@ -1212,6 +1214,8 @@ function parseSection(lines: Array<string>, headingIndex: number): {
   return { body: joinBody(bodyLines), nextIndex: index, diagnostics }
 }
 
+const isTypeScriptFence = (line: string): boolean => /^```ts(?:\s.*)?$/.test(line)
+
 function parseExample(lines: Array<string>, headingIndex: number): {
   readonly example?: ParsedExample
   readonly nextIndex: number
@@ -1232,7 +1236,7 @@ function parseExample(lines: Array<string>, headingIndex: number): {
   let fenceIndex = -1
   while (index < lines.length) {
     const trimmed = lines[index].trim()
-    if (trimmed === "```ts") {
+    if (isTypeScriptFence(trimmed)) {
       fenceIndex = index
       break
     }
@@ -1265,7 +1269,7 @@ function parseExample(lines: Array<string>, headingIndex: number): {
   index = fenceIndex + 1
   const codeStart = index
   while (index < lines.length && lines[index].trim() !== "```") {
-    if (lines[index].trim() === "```ts") {
+    if (isTypeScriptFence(lines[index].trim())) {
       diagnostics.push(diagnostic("malformed-example", "Examples must contain exactly one TypeScript code fence"))
     }
     index++

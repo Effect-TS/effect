@@ -183,34 +183,36 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * import { expect, layer } from "@effect/vitest"
  * import { Effect, Layer, Context } from "effect"
  *
- * class Foo extends Context.Service("Foo")<Foo, "foo">() {
+ * class Foo extends Context.Service<Foo, "foo">()("Foo") {
  *   static Live = Layer.succeed(Foo, "foo")
  * }
  *
- * class Bar extends Context.Service("Bar")<Bar, "bar">() {
+ * class Bar extends Context.Service<Bar, "bar">()("Bar") {
  *   static Live = Layer.effect(
  *     Bar,
  *     Effect.map(Foo, () => "bar" as const)
  *   )
  * }
  *
- * layer(Foo.Live)("layer", (it) => {
- *   it.effect("adds context", () =>
- *     Effect.gen(function*() {
- *       const foo = yield* Foo
- *       expect(foo).toEqual("foo")
- *     }))
- *
- *   it.layer(Bar.Live)("nested", (it) => {
+ * const tests = () => {
+ *   layer(Foo.Live)("layer", (it) => {
  *     it.effect("adds context", () =>
  *       Effect.gen(function*() {
  *         const foo = yield* Foo
- *         const bar = yield* Bar
  *         expect(foo).toEqual("foo")
- *         expect(bar).toEqual("bar")
  *       }))
+ *
+ *     it.layer(Bar.Live)("nested", (it) => {
+ *       it.effect("adds context", () =>
+ *         Effect.gen(function*() {
+ *           const foo = yield* Foo
+ *           const bar = yield* Bar
+ *           expect(foo).toEqual("foo")
+ *           expect(bar).toEqual("bar")
+ *         }))
+ *     })
  *   })
- * })
+ * }
  * ```
  */
 export const layer: <R, E>(

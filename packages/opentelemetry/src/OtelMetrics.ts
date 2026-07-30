@@ -99,12 +99,12 @@ export const registerProducer = (
  *
  * **Example** (Creating a metrics layer with temporality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { OtelMetrics } from "@effect/opentelemetry"
  * import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics"
  * import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http"
  *
- * const metricExporter = new OTLPMetricExporter({ url: "<your-otel-url>" })
+ * const metricExporter = new OTLPMetricExporter({ url: "http://localhost:4318/v1/metrics" })
  *
  * // Use delta temporality for backends like Datadog or Dynatrace
  * const metricsLayer = OtelMetrics.layer(

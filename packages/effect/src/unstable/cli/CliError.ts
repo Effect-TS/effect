@@ -25,7 +25,7 @@ const TypeId = "~effect/cli/CliError"
  *
  * **Example** (Checking CLI errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError } from "effect/unstable/cli"
  *
@@ -57,7 +57,7 @@ export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u
  *
  * **Example** (Handling CLI errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { CliError } from "effect/unstable/cli"
  *
  * const handleCliError = (error: CliError.CliError): void => {
@@ -100,7 +100,7 @@ export type CliError =
  *
  * **Example** (Creating unrecognized option errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError } from "effect/unstable/cli"
  *
@@ -163,7 +163,7 @@ export class UnrecognizedOption extends Schema.TaggedErrorClass<UnrecognizedOpti
  *
  * **Example** (Creating duplicate option errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { CliError } from "effect/unstable/cli"
  *
  * const duplicateError = new CliError.DuplicateOption({
@@ -210,7 +210,7 @@ export class DuplicateOption extends Schema.TaggedErrorClass<DuplicateOption>(
  *
  * **Example** (Creating missing option errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError } from "effect/unstable/cli"
  *
@@ -262,7 +262,7 @@ export class MissingOption extends Schema.TaggedErrorClass<MissingOption>(
  *
  * **Example** (Creating missing argument errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError } from "effect/unstable/cli"
  *
@@ -314,7 +314,7 @@ export class MissingArgument extends Schema.TaggedErrorClass<MissingArgument>(
  *
  * **Example** (Reporting unexpected arguments)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { CliError } from "effect/unstable/cli"
  *
  * const error = new CliError.UnexpectedArgument({
@@ -356,7 +356,7 @@ export class UnexpectedArgument extends Schema.TaggedErrorClass<UnexpectedArgume
  *
  * **Example** (Creating invalid value errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError } from "effect/unstable/cli"
  *
@@ -424,7 +424,7 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
  *
  * **Example** (Creating unknown subcommand errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError } from "effect/unstable/cli"
  *
@@ -489,7 +489,7 @@ export class UnknownSubcommand extends Schema.TaggedErrorClass<UnknownSubcommand
  *
  * **Example** (Wrapping user errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError } from "effect/unstable/cli"
  *

@@ -29,7 +29,7 @@ const TypeId = "~effect/Request"
  *
  * **Example** (Defining typed requests)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Request } from "effect"
  *
  * // Define a request that fetches a user by ID
@@ -99,7 +99,7 @@ export interface Variance<out A, out E, out R> {
  *
  * **Example** (Using generated request constructors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Request } from "effect"
  *
  * interface GetUser extends Request.Request<string, Error> {
@@ -124,7 +124,7 @@ export interface Constructor<R extends Request<any, any, any>, T extends keyof R
  *
  * **Example** (Extracting a request error type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Request } from "effect"
  *
  * interface GetUser extends Request.Request<string, Error> {
@@ -145,7 +145,7 @@ export type Error<T extends Request<any, any, any>> = [T] extends [Request<infer
  *
  * **Example** (Extracting a request success type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Request } from "effect"
  *
  * interface GetUser extends Request.Request<string, Error> {
@@ -177,7 +177,7 @@ export type Services<T extends Request<any, any, any>> = [T] extends [Request<in
  *
  * **Example** (Extracting a request result type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Request } from "effect"
  *
  * interface GetUser extends Request.Request<string, Error> {
@@ -227,7 +227,7 @@ export const RequestPrototype: Request<any, any, any> = {
  *
  * **Example** (Checking request values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Request } from "effect"
  *
  * declare const User: unique symbol
@@ -256,7 +256,7 @@ export const isRequest = (u: unknown): u is Request<unknown, unknown, unknown> =
  *
  * **Example** (Creating untagged request constructors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Request } from "effect"
  *
  * declare const UserProfile: unique symbol
@@ -289,7 +289,7 @@ export const of = <R extends Request<any, any, any>>(): Constructor<R> => (args)
  *
  * **Example** (Creating tagged request constructors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Request } from "effect"
  *
  * declare const User: unique symbol
@@ -342,7 +342,7 @@ export const tagged = <R extends Request<any, any, any> & { _tag: string }>(
  *
  * **Example** (Defining request classes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Request } from "effect"
  *
  * class GetUser extends Request.Class<{ id: number }, string, Error> {
@@ -381,7 +381,7 @@ export const Class: new<A extends Record<string, any>, Success, Error = never, C
  *
  * **Example** (Defining tagged request classes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Request } from "effect"
  *
  * class GetUserById

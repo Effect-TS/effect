@@ -30,7 +30,7 @@ import * as FastCheck from "../testing/FastCheck.ts"
  *
  * **Example** (Decoding and encoding a struct)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { TestSchema } from "effect/testing"
  *
@@ -64,7 +64,7 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * **Example** (Comparing struct fields)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
@@ -104,7 +104,7 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * **Example** (Testing make)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
@@ -157,11 +157,11 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * **Example** (Verifying round trips)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
-   * const asserts = new TestSchema.Asserts(Schema.NumberFromString)
+   * const asserts = new TestSchema.Asserts(Schema.String)
    * await asserts.verifyLosslessTransformation()
    * ```
    *
@@ -200,7 +200,7 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * **Example** (Decoding assertions)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
@@ -231,7 +231,7 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * **Example** (Encoding assertions)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
@@ -262,7 +262,7 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * **Example** (Verifying arbitrary generation)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
@@ -300,7 +300,7 @@ export class Asserts<S extends Schema.Constraint> {
  *
  * **Example** (Decoding with service provision)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { TestSchema } from "effect/testing"
  *
@@ -341,7 +341,7 @@ export class Decoding<S extends Schema.Constraint> {
    *
    * **Example** (Testing identity and transformed decoding)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
@@ -384,7 +384,7 @@ export class Decoding<S extends Schema.Constraint> {
    *
    * **Example** (Asserting a decoding failure)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
@@ -440,7 +440,7 @@ export class Decoding<S extends Schema.Constraint> {
  *
  * **Example** (Encoding assertions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { TestSchema } from "effect/testing"
  *
@@ -481,7 +481,7 @@ export class Encoding<S extends Schema.Constraint> {
    *
    * **Example** (Testing identity and transformed encoding)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *
@@ -524,7 +524,7 @@ export class Encoding<S extends Schema.Constraint> {
    *
    * **Example** (Asserting an encoding failure)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { TestSchema } from "effect/testing"
    *

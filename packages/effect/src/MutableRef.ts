@@ -32,7 +32,7 @@ const TypeId = "~effect/MutableRef"
  *
  * **Example** (Creating and updating refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * // Create a mutable reference
@@ -90,7 +90,7 @@ const MutableRefProto: Omit<MutableRef<unknown>, "current"> = {
  *
  * **Example** (Creating mutable refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * // Create a counter reference
@@ -128,7 +128,7 @@ export const make = <T>(value: T): MutableRef<T> => {
  *
  * **Example** (Comparing and setting values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("initial")
@@ -182,7 +182,7 @@ export const compareAndSet: {
  *
  * **Example** (Decrementing numeric refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -219,7 +219,7 @@ export const decrement = (self: MutableRef<number>): MutableRef<number> => updat
  *
  * **Example** (Decrementing and reading refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -255,7 +255,7 @@ export const decrementAndGet = (self: MutableRef<number>): number => updateAndGe
  *
  * **Example** (Reading current values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("hello")
@@ -289,7 +289,7 @@ export const get = <T>(self: MutableRef<T>): T => self.current
  *
  * **Example** (Reading before decrementing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -326,7 +326,7 @@ export const getAndDecrement = (self: MutableRef<number>): number => getAndUpdat
  *
  * **Example** (Reading before incrementing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -372,7 +372,7 @@ export const getAndIncrement = (self: MutableRef<number>): number => getAndUpdat
  *
  * **Example** (Reading before setting)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("old")
@@ -425,7 +425,7 @@ export const getAndSet: {
  *
  * **Example** (Reading before updating)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -479,7 +479,7 @@ export const getAndUpdate: {
  *
  * **Example** (Incrementing numeric refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -519,7 +519,7 @@ export const increment = (self: MutableRef<number>): MutableRef<number> => updat
  *
  * **Example** (Incrementing and reading refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -560,7 +560,7 @@ export const incrementAndGet = (self: MutableRef<number>): number => updateAndGe
  *
  * **Example** (Setting values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("initial")
@@ -615,7 +615,7 @@ export const set: {
  *
  * **Example** (Setting and reading values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("old")
@@ -667,7 +667,7 @@ export const setAndGet: {
  *
  * **Example** (Updating values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -724,7 +724,7 @@ export const update: {
  *
  * **Example** (Updating and reading values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -783,7 +783,7 @@ export const updateAndGet: {
  *
  * **Example** (Toggling boolean refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const flag = MutableRef.make(false)

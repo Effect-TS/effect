@@ -629,7 +629,7 @@ export const endpoint = <
  *
  * **Example** (Building typed URLs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup } from "effect/unstable/httpapi"
  *

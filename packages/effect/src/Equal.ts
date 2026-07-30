@@ -28,7 +28,7 @@ import { hasProperty } from "./Predicate.ts"
  *
  * **Example** (Implementing Equal on a class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Hash } from "effect"
  *
  * class UserId implements Equal.Equal {
@@ -76,7 +76,7 @@ export const symbol = "~effect/interfaces/Equal"
  *
  * **Example** (Comparing coordinates by value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Hash } from "effect"
  *
  * class Coordinate implements Equal.Equal {
@@ -139,7 +139,7 @@ export interface Equal extends Hash.Hash {
  *
  * **Example** (Comparing values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal } from "effect"
  *
  * // Primitives
@@ -406,7 +406,7 @@ const compareSets = makeCompareSet(compareBoth)
  *
  * **Example** (Checking Equal values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Hash } from "effect"
  *
  * class Token implements Equal.Equal {
@@ -447,7 +447,7 @@ export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol)
  *
  * **Example** (Deduplicating with Equal semantics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Equal } from "effect"
  *
  * const eq = Equal.asEquivalence<number>()
@@ -481,7 +481,7 @@ export const asEquivalence: <A>() => Equivalence<A> = () => equals
  *
  * **Example** (Opting out of structural equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal } from "effect"
  *
  * const a = { x: 1 }
@@ -526,7 +526,7 @@ export const byReference = <T extends object>(obj: T): T => byReferenceUnsafe(ne
  *
  * **Example** (Marking an object for reference equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal } from "effect"
  *
  * const obj1 = { a: 1, b: 2 }

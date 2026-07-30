@@ -27,7 +27,7 @@ import * as Reducer from "./Reducer.ts"
  *
  * **Example** (Defining simple number equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Equivalence } from "effect"
  *
  * const numberEq: Equivalence.Equivalence<number> = (a, b) => a === b
@@ -38,7 +38,7 @@ import * as Reducer from "./Reducer.ts"
  *
  * **Example** (Defining custom object equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Equivalence } from "effect"
  *
  * interface Point {
@@ -73,7 +73,7 @@ export type Equivalence<in A> = (self: A, that: A) => boolean
  *
  * **Example** (Type-level usage)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Equivalence, HKT } from "effect"
  *
  * // Used internally for type-level computations
@@ -113,7 +113,7 @@ export interface EquivalenceTypeLambda extends TypeLambda {
  *
  * **Example** (Case-insensitive string equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const caseInsensitive = Equivalence.make<string>((a, b) =>
@@ -130,7 +130,7 @@ export interface EquivalenceTypeLambda extends TypeLambda {
  *
  * **Example** (Comparing numbers with tolerance)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const tolerance = Equivalence.make<number>((a, b) => Math.abs(a - b) < 0.0001)
@@ -169,7 +169,7 @@ const isStrictEquivalent = (x: unknown, y: unknown) => x === y
  *
  * **Example** (Comparing primitive types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const strictEq = Equivalence.strictEqual<number>()
@@ -181,7 +181,7 @@ const isStrictEquivalent = (x: unknown, y: unknown) => x === y
  *
  * **Example** (Comparing objects by reference)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const obj = { value: 42 }
@@ -207,7 +207,7 @@ export const strictEqual: <A>() => Equivalence<A> = () => isStrictEquivalent
  *
  * **Example** (Comparing strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * console.log(Equivalence.String("hello", "hello")) // true
@@ -228,7 +228,7 @@ export const String: Equivalence<string> = isStrictEquivalent
  *
  * **Example** (Comparing numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * console.log(Equivalence.Number(1, 1)) // true
@@ -252,7 +252,7 @@ export const Number: Equivalence<number> = make((self, that) =>
  *
  * **Example** (Comparing booleans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * console.log(Equivalence.Boolean(true, true)) // true
@@ -273,7 +273,7 @@ export const Boolean: Equivalence<boolean> = isStrictEquivalent
  *
  * **Example** (Comparing bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * console.log(Equivalence.BigInt(1n, 1n)) // true
@@ -301,7 +301,7 @@ export const BigInt: Equivalence<bigint> = isStrictEquivalent
  *
  * **Example** (Combining name and age equivalences)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * interface Person {
@@ -356,7 +356,7 @@ export const combine: {
  *
  * **Example** (Combining multiple field equivalences)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * interface Point3D {
@@ -390,7 +390,7 @@ export const combine: {
  *
  * **Example** (Handling empty collections)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * // Empty collection always returns true
@@ -431,7 +431,7 @@ export const combineAll = <A>(collection: Iterable<Equivalence<A>>): Equivalence
  *
  * **Example** (Deriving equivalence from an object property)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * interface User {
@@ -456,7 +456,7 @@ export const combineAll = <A>(collection: Iterable<Equivalence<A>>): Equivalence
  *
  * **Example** (Case-insensitive string equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const caseInsensitiveEq = Equivalence.mapInput(
@@ -499,7 +499,7 @@ export const mapInput: {
  *
  * **Example** (Comparing homogeneous tuples)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const stringTupleEq = Equivalence.Tuple([
@@ -518,7 +518,7 @@ export const mapInput: {
  *
  * **Example** (Comparing tuples with custom equivalences)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const caseInsensitive = Equivalence.mapInput(
@@ -588,7 +588,7 @@ export {
    *
    * **Example** (Comparing number arrays)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Equivalence } from "effect"
    *
    * const numberArrayEq = Equivalence.Array(Equivalence.strictEqual<number>())
@@ -600,7 +600,7 @@ export {
    *
    * **Example** (Case-insensitive string array)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Equivalence } from "effect"
    *
    * const caseInsensitive = Equivalence.mapInput(
@@ -640,7 +640,7 @@ export {
  *
  * **Example** (Comparing structs with different equivalences per field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * interface Person {
@@ -670,7 +670,7 @@ export {
  *
  * **Example** (Comparing specific fields)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const nameAgeEq = Equivalence.Struct({
@@ -721,7 +721,7 @@ export function Struct<R extends Record<string, Equivalence<any>>>(
  *
  * **Example** (Defining records with string values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const stringRecordEq = Equivalence.Record(Equivalence.strictEqual<string>())
@@ -738,7 +738,7 @@ export function Struct<R extends Record<string, Equivalence<any>>>(
  *
  * **Example** (Defining records with number values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const numberRecordEq = Equivalence.Record(Equivalence.strictEqual<number>())
@@ -787,7 +787,7 @@ export function Record<A>(value: Equivalence<A>): Equivalence<Record<PropertyKey
  *
  * **Example** (Creating a Reducer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const reducer = Equivalence.makeReducer<number>()
@@ -831,7 +831,7 @@ export function makeReducer<A>() {
  *
  * **Example** (Comparing Date values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const d1 = new Date("2020-01-01T00:00:00.000Z")
@@ -848,7 +848,7 @@ export function makeReducer<A>() {
  *
  * **Example** (Comparing reference and value equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence } from "effect"
  *
  * const d1 = new Date(0)

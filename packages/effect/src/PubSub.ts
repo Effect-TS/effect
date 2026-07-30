@@ -35,7 +35,7 @@ const TypeId = "~effect/PubSub"
  *
  * **Example** (Publishing and subscribing to messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -204,7 +204,7 @@ const SubscriptionTypeId = "~effect/PubSub/Subscription"
  *
  * **Example** (Taking messages from a subscription)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -253,7 +253,7 @@ export interface Subscription<out A> extends Pipeable {
  *
  * **Example** (Creating a PubSub with a custom strategy)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -301,7 +301,7 @@ export const make = <A>(
  *
  * **Example** (Creating a bounded PubSub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -340,7 +340,7 @@ export const bounded = <A>(
  *
  * **Example** (Dropping messages when full)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -393,7 +393,7 @@ export const dropping = <A>(
  *
  * **Example** (Sliding old messages when full)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -440,7 +440,7 @@ export const sliding = <A>(
  *
  * **Example** (Creating an unbounded PubSub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -552,7 +552,7 @@ export const makeAtomicUnbounded = <A>(options?: {
  *
  * **Example** (Getting PubSub capacity)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -582,7 +582,7 @@ export const capacity = <A>(self: PubSub<A>): number => self.pubsub.capacity
  *
  * **Example** (Getting PubSub size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -656,7 +656,7 @@ export const sizeUnsafe = <A>(self: PubSub<A>): number => {
  *
  * **Example** (Checking whether a PubSub is full)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -692,7 +692,7 @@ export const isFull = <A>(self: PubSub<A>): Effect.Effect<boolean> =>
  *
  * **Example** (Checking whether a PubSub is empty)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -733,7 +733,7 @@ export const isEmpty = <A>(self: PubSub<A>): Effect.Effect<boolean> => Effect.ma
  *
  * **Example** (Shutting down a PubSub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -770,7 +770,7 @@ export const shutdown = <A>(self: PubSub<A>): Effect.Effect<void> =>
  *
  * **Example** (Checking whether a PubSub is shut down)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -830,7 +830,7 @@ export const isShutdownUnsafe = <A>(self: PubSub<A>): boolean => self.shutdownFl
  *
  * **Example** (Waiting for shutdown)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -877,7 +877,7 @@ export const awaitShutdown = <A>(self: PubSub<A>): Effect.Effect<void> => self.s
  *
  * **Example** (Publishing a message)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -984,7 +984,7 @@ export const publishUnsafe: {
  *
  * **Example** (Publishing multiple messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1048,7 +1048,7 @@ export const publishAll: {
  *
  * **Example** (Subscribing to messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1130,7 +1130,7 @@ const unsubscribe = <A>(self: Subscription<A>): Effect.Effect<void> =>
  *
  * **Example** (Taking a message)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1183,7 +1183,7 @@ export const take = <A>(self: Subscription<A>): Effect.Effect<A> =>
  *
  * **Example** (Taking all available messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1254,7 +1254,7 @@ const pollForItem = <A>(self: Subscription<A>) => {
  *
  * **Example** (Taking up to a maximum number of messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1310,7 +1310,7 @@ export const takeUpTo: {
  *
  * **Example** (Taking between a minimum and maximum)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1395,7 +1395,7 @@ const takeRemainderLoop = <A>(
  *
  * **Example** (Checking remaining messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2481,7 +2481,7 @@ export class BackPressureStrategy<in out A> implements PubSub.Strategy<A> {
  *
  * **Example** (Applying a dropping strategy)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2568,7 +2568,7 @@ export class DroppingStrategy<in out A> implements PubSub.Strategy<A> {
  *
  * **Example** (Applying a sliding strategy)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, PubSub } from "effect"
  *
  * const program = Effect.gen(function*() {

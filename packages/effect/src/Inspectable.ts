@@ -28,7 +28,7 @@ import { redact } from "./Redactable.ts"
  *
  * **Example** (Defining custom Node inspection)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Inspectable } from "effect"
  *
  * class CustomObject {
@@ -59,7 +59,7 @@ export const NodeInspectSymbol = Symbol.for("nodejs.util.inspect.custom")
  *
  * **Example** (Typing custom Node inspection)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Inspectable } from "effect"
  *
  * class CustomObject {
@@ -94,7 +94,7 @@ export type NodeInspectSymbol = typeof NodeInspectSymbol
  *
  * **Example** (Implementing inspectable objects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Formatter, Inspectable } from "effect"
  *
  * class Result implements Inspectable.Inspectable {
@@ -208,7 +208,7 @@ export const toStringUnknown = (u: unknown, whitespace: number | string | undefi
  *
  * **Example** (Using the base inspectable prototype)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Inspectable } from "effect"
  *
  * // Use as prototype
@@ -256,7 +256,7 @@ export const BaseProto: Inspectable = {
  *
  * **Example** (Extending the inspectable base class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Inspectable } from "effect"
  *
  * class User extends Inspectable.Class {

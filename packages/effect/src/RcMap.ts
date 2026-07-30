@@ -39,7 +39,7 @@ const TypeId = "~effect/RcMap"
  *
  * **Example** (Inspecting a reference-counted map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcMap } from "effect"
  *
  * Effect.gen(function*() {
@@ -205,7 +205,7 @@ const makeUnsafe = <K, A, E>(options: {
  *
  * **Example** (Creating a reference-counted map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcMap } from "effect"
  *
  * Effect.gen(function*() {
@@ -299,7 +299,7 @@ export const make: {
  *
  * **Example** (Acquiring a resource)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcMap } from "effect"
  *
  * Effect.gen(function*() {
@@ -427,7 +427,7 @@ const release = <K, A, E>(self: RcMap<K, A, E>, key: K, entry: State.Entry<A, E>
  *
  * **Example** (Listing keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcMap } from "effect"
  *
  * Effect.gen(function*() {
@@ -467,7 +467,7 @@ export const keys = <K, A, E>(self: RcMap<K, A, E>): Effect.Effect<Iterable<K>> 
  *
  * **Example** (Invalidating a resource)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcMap } from "effect"
  *
  * Effect.gen(function*() {
@@ -561,7 +561,7 @@ export const has: {
  *
  * **Example** (Extending resource idle time)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcMap } from "effect"
  *
  * Effect.gen(function*() {

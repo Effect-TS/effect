@@ -1522,7 +1522,7 @@ export const setLazy: {
  *
  * **Example** (Comparing values structurally)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Atom } from "effect/unstable/reactivity"
  *
  * const point = Atom.make({ x: 0, y: 0 }).pipe(

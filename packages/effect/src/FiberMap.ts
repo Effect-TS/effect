@@ -35,7 +35,7 @@ const TypeId = "~effect/FiberMap"
  *
  * **Example** (Managing fibers in a map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * // Create a FiberMap with string keys
@@ -77,7 +77,7 @@ export interface FiberMap<in out K, out A = unknown, out E = unknown>
  *
  * **Example** (Checking if a value is a FiberMap)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -133,7 +133,7 @@ const makeUnsafe = <K, A = unknown, E = unknown>(
  *
  * **Example** (Creating a scoped FiberMap)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * Effect.gen(function*() {
@@ -183,7 +183,7 @@ export const make = <K, A = unknown, E = unknown>(): Effect.Effect<FiberMap<K, A
  *
  * **Example** (Creating a scoped runtime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -240,7 +240,7 @@ export const makeRuntime = <R, K, E = unknown, A = unknown>(): Effect.Effect<
  *
  * **Example** (Creating a promise runtime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -302,7 +302,7 @@ const isInternalInterruption = Filter.toPredicate(Filter.compose(
  *
  * **Example** (Adding a fiber unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect, Fiber, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -402,7 +402,7 @@ export const setUnsafe: {
  *
  * **Example** (Adding a fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect, Fiber, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -462,7 +462,7 @@ export const set: {
  *
  * **Example** (Retrieving a fiber unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect, Fiber, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -506,7 +506,7 @@ export const getUnsafe: {
  *
  * **Example** (Retrieving a fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect, Fiber, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -545,7 +545,7 @@ export const get: {
  *
  * **Example** (Checking if a key exists unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -578,7 +578,7 @@ export const hasUnsafe: {
  *
  * **Example** (Checking if a key exists)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -612,7 +612,7 @@ export const has: {
  *
  * **Example** (Removing a fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -662,7 +662,7 @@ export const remove: {
  *
  * **Example** (Clearing all fibers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -713,7 +713,7 @@ const constInterruptedFiber = (function() {
  *
  * **Example** (Forking effects into a map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -798,7 +798,7 @@ const runImpl = <K, A, E, R, XE extends E, XA extends A>(
  *
  * **Example** (Capturing a runtime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, FiberMap } from "effect"
  *
  * interface Users {
@@ -878,7 +878,7 @@ export const runtime: <K, A, E>(
  *
  * **Example** (Running effects as promises)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -941,7 +941,7 @@ export const runtimePromise = <K, A, E>(self: FiberMap<K, A, E>): <R = never>() 
  *
  * **Example** (Checking the map size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -975,7 +975,7 @@ export const size = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<number> =>
  *
  * **Example** (Joining failing fibers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * Effect.gen(function*() {
@@ -999,7 +999,7 @@ export const join = <K, A, E>(self: FiberMap<K, A, E>): Effect.Effect<void, E> =
  *
  * **Example** (Waiting for an empty map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberMap } from "effect"
  *
  * const program = Effect.gen(function*() {

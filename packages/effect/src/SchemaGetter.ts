@@ -45,7 +45,7 @@ import * as Str from "./String.ts"
  *
  * **Example** (Creating and composing getters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const parseNumber = SchemaGetter.transform<number, string>((s) => Number(s))
@@ -105,7 +105,7 @@ export class Getter<out T, in E, R = never> extends Pipeable.Class {
  *
  * **Example** (Returning a constant getter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const alwaysZero = SchemaGetter.succeed(0)
@@ -137,7 +137,7 @@ export function succeed<const T, E>(t: T): Getter<T, E> {
  *
  * **Example** (Defining an always-failing getter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, SchemaGetter, SchemaIssue } from "effect"
  *
  * const rejectAll = SchemaGetter.fail<string, string>(
@@ -171,7 +171,7 @@ export function fail<T, E>(f: (oe: Option.Option<E>) => SchemaIssue.Issue): Gett
  *
  * **Example** (Forbidding a decode direction)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const noEncode = SchemaGetter.forbidden<string, number>(
@@ -211,7 +211,7 @@ function isPassthrough<T, E, R>(getter: Getter<T, E, R>): getter is typeof passt
  *
  * **Example** (Passing through identity transformations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaGetter } from "effect"
  *
  * // No transformation needed — types already match
@@ -250,7 +250,7 @@ export function passthrough<T>(): Getter<T, T> {
  *
  * **Example** (Passing through supertypes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * // string extends string, so this is valid
@@ -282,7 +282,7 @@ export function passthroughSupertype<T>(): Getter<T, T> {
  *
  * **Example** (Passing through subtypes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * // "hello" extends string, so E extends T
@@ -317,7 +317,7 @@ export function passthroughSubtype<T>(): Getter<T, T> {
  *
  * **Example** (Providing a default timestamp for a missing field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const withTimestamp = SchemaGetter.onNone<number>(() =>
@@ -354,7 +354,7 @@ export function onNone<T, E extends T = T, R = never>(
  *
  * **Example** (Defining a required struct field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const mustExist = SchemaGetter.required<string>()
@@ -387,7 +387,7 @@ export function required<T, E extends T = T>(annotations?: Schema.Annotations.Ke
  *
  * **Example** (Transforming only present values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const parseIfPresent = SchemaGetter.onSome<number, string>(
@@ -430,7 +430,7 @@ export function onSome<T, E, R = never>(
  *
  * **Example** (Validating effectfully)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SchemaGetter } from "effect"
  *
  * const nonNegative = SchemaGetter.checkEffect<number>((n) =>
@@ -479,7 +479,7 @@ export function checkEffect<T, R = never>(
  *
  * **Example** (Transforming strings to numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaGetter } from "effect"
  *
  * const NumberFromString = Schema.String.pipe(
@@ -517,7 +517,7 @@ export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
  *
  * **Example** (Parsing with failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SchemaGetter, SchemaIssue } from "effect"
  *
  * const safeParseInt = SchemaGetter.transformOrFail<number, string>(
@@ -557,7 +557,7 @@ export function transformOrFail<T, E, R = never>(
  *
  * **Example** (Filtering out empty strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, SchemaGetter } from "effect"
  *
  * const skipEmpty = SchemaGetter.transformOptional<string, string>((o) =>
@@ -590,7 +590,7 @@ export function transformOptional<T, E>(f: (oe: Option.Option<E>) => Option.Opti
  *
  * **Example** (Omitting a field during encoding)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const omitField = SchemaGetter.omit<string>()
@@ -622,7 +622,7 @@ export function omit<T>(): Getter<never, T> {
  *
  * **Example** (Providing a default value for an optional field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SchemaGetter } from "effect"
  *
  * const withZero = SchemaGetter.withDefault(Effect.succeed(0))
@@ -658,7 +658,7 @@ export function withDefault<T, R = never>(
  *
  * **Example** (Coercing to a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const toString = SchemaGetter.String<number>()
@@ -689,7 +689,7 @@ export function String<E>(): Getter<string, E> {
  *
  * **Example** (Coercing to a number)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const toNumber = SchemaGetter.Number<string>()
@@ -719,7 +719,7 @@ export function Number<E>(): Getter<number, E> {
  *
  * **Example** (Coercing to a boolean)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const toBool = SchemaGetter.Boolean<string>()
@@ -748,7 +748,7 @@ export function Boolean<E>(): Getter<boolean, E> {
  *
  * **Example** (Coercing to a bigint)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const toBigInt = SchemaGetter.BigInt<string>()
@@ -777,7 +777,7 @@ export function BigInt<E extends string | number | bigint | boolean>(): Getter<b
  *
  * **Example** (Coercing to a Date)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const toDate = SchemaGetter.Date<string>()
@@ -802,7 +802,7 @@ export function Date<E extends string | number | Date>(): Getter<Date, E> {
  *
  * **Example** (Trimming whitespace)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const trimmed = SchemaGetter.trim<string>()
@@ -824,7 +824,7 @@ export function trim<E extends string>(): Getter<string, E> {
  *
  * **Example** (Capitalizing a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const cap = SchemaGetter.capitalize<string>()
@@ -846,7 +846,7 @@ export function capitalize<E extends string>(): Getter<string, E> {
  *
  * **Example** (Uncapitalizing a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const uncap = SchemaGetter.uncapitalize<string>()
@@ -868,7 +868,7 @@ export function uncapitalize<E extends string>(): Getter<string, E> {
  *
  * **Example** (Converting snake case to camel case)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const toCamel = SchemaGetter.snakeToCamel<string>()
@@ -892,7 +892,7 @@ export function snakeToCamel<E extends string>(): Getter<string, E> {
  *
  * **Example** (Converting camel case to snake case)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const toSnake = SchemaGetter.camelToSnake<string>()
@@ -916,7 +916,7 @@ export function camelToSnake<E extends string>(): Getter<string, E> {
  *
  * **Example** (Converting to lowercase)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const lower = SchemaGetter.toLowerCase<string>()
@@ -940,7 +940,7 @@ export function toLowerCase<E extends string>(): Getter<string, E> {
  *
  * **Example** (Converting to uppercase)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const upper = SchemaGetter.toUpperCase<string>()
@@ -976,7 +976,7 @@ type ParseJsonOptions = {
  *
  * **Example** (Parsing JSON)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const parse = SchemaGetter.parseJson<string>()
@@ -1033,7 +1033,7 @@ type StringifyJsonOptions = {
  *
  * **Example** (Stringifying JSON)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const stringify = SchemaGetter.stringifyJson()
@@ -1076,7 +1076,7 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  *
  * **Example** (Parsing a key-value string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const parse = SchemaGetter.splitKeyValue<string>()
@@ -1122,7 +1122,7 @@ export function splitKeyValue<E extends string>(options?: {
  *
  * **Example** (Joining key-value records)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const join = SchemaGetter.joinKeyValue()
@@ -1160,7 +1160,7 @@ export function joinKeyValue<E extends Record<PropertyKey, string>>(options?: {
  *
  * **Example** (Splitting a comma-separated string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const splitComma = SchemaGetter.split<string>()
@@ -1189,7 +1189,7 @@ export function split<E extends string>(options?: {
  *
  * **Example** (Encoding to Base64)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeBase64<Uint8Array>()
@@ -1215,7 +1215,7 @@ export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E>
  *
  * **Example** (Encoding to Base64Url)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeBase64Url<Uint8Array>()
@@ -1241,7 +1241,7 @@ export function encodeBase64Url<E extends Uint8Array | string>(): Getter<string,
  *
  * **Example** (Encoding to hex)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeHex<Uint8Array>()
@@ -1266,7 +1266,7 @@ export function encodeHex<E extends Uint8Array | string>(): Getter<string, E> {
  *
  * **Example** (Decoding Base64 to bytes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeBase64<string>()
@@ -1297,7 +1297,7 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
  *
  * **Example** (Decoding Base64 to string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeBase64String<string>()
@@ -1328,7 +1328,7 @@ export function decodeBase64String<E extends string>(): Getter<string, E> {
  *
  * **Example** (Decoding Base64Url to bytes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeBase64Url<string>()
@@ -1359,7 +1359,7 @@ export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
  *
  * **Example** (Decoding Base64Url to string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeBase64UrlString<string>()
@@ -1390,7 +1390,7 @@ export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
  *
  * **Example** (Decoding hex to bytes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeHex<string>()
@@ -1421,7 +1421,7 @@ export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
  *
  * **Example** (Decoding hex to string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeHexString<string>()
@@ -1454,7 +1454,7 @@ export function decodeHexString<E extends string>(): Getter<string, E> {
  *
  * **Example** (Encoding a URI component)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeUriComponent<string>()
@@ -1478,7 +1478,7 @@ export function encodeUriComponent<E extends string>(): Getter<string, E> {
  *
  * **Example** (Decoding a URI component)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeUriComponent<string>()
@@ -1523,7 +1523,7 @@ export function decodeUriComponent<E extends string>(): Getter<string, E> {
  *
  * **Example** (Parsing DateTime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const parseDate = SchemaGetter.dateTimeUtcFromInput<string>()
@@ -1561,7 +1561,7 @@ export function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): Gette
  *
  * **Example** (Decoding FormData)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeFormData()
@@ -1599,7 +1599,7 @@ const collectFormDataEntries = collectBracketPathEntries((value): value is strin
  *
  * **Example** (Encoding to FormData)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeFormData()
@@ -1642,7 +1642,7 @@ export function encodeFormData(): Getter<FormData, unknown> {
  *
  * **Example** (Decoding URLSearchParams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeURLSearchParams()
@@ -1677,7 +1677,7 @@ const collectURLSearchParamsEntries = collectBracketPathEntries(Predicate.isStri
  *
  * **Example** (Encoding to URLSearchParams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeURLSearchParams()
@@ -1747,7 +1747,7 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
  *
  * **Example** (Building a tree from bracket paths)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
  * const tree = SchemaGetter.makeTreeRecord([
@@ -1844,7 +1844,7 @@ export function makeTreeRecord<A>(
  *
  * **Example** (Flattening an object to bracket paths)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate, SchemaGetter } from "effect"
  *
  * const collectStrings = SchemaGetter.collectBracketPathEntries(Predicate.isString)

@@ -133,6 +133,7 @@ export default defineConfig({
       ...project("@effect/sql-sqlite-wasm", "packages/sql/sqlite-wasm"),
       ...project("@effect/api-diff", "packages/tools/api-diff"),
       ...project("@effect/bundle", "packages/tools/bundle"),
+      ...project("@effect/doctest", "packages/tools/doctest"),
       ...project("@effect/docgen", "packages/tools/docgen"),
       ...project("@effect/jsdocs", "packages/tools/jsdocs"),
       ...project("@effect/openapi-generator", "packages/tools/openapi-generator"),

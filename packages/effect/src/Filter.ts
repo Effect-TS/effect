@@ -28,7 +28,7 @@ import type { EqualsWith, ExcludeTag, ExtractReason, ExtractTag, ReasonTags, Tag
  *
  * **Example** (Defining a positive number filter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
  * // A filter that only passes positive numbers
@@ -56,7 +56,7 @@ export interface Filter<in Input, out Pass = Input, out Fail = Input> {
  *
  * **Example** (Defining an effectful user filter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Filter, Result } from "effect"
  *
  * // An effectful filter that validates user data
@@ -103,7 +103,7 @@ export interface FilterEffect<
  *
  * **Example** (Creating custom filters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
  * // Create a filter for positive numbers
@@ -133,7 +133,7 @@ export const make = <Input, Pass, Fail>(
  *
  * **Example** (Creating effectful filters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Filter, Result } from "effect"
  *
  * // Create an effectful filter that validates async
@@ -201,7 +201,7 @@ export {
  *
  * **Example** (Creating filters from predicates)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
  * // Create filter from predicate
@@ -259,7 +259,7 @@ export const toPredicate = <A, Pass, Fail>(
  *
  * **Example** (Filtering strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
  * console.log(Filter.string("hello")) // Result.succeed("hello")
@@ -350,7 +350,7 @@ export const instanceOf =
  *
  * **Example** (Filtering numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
  * console.log(Filter.number(42)) // Result.succeed(42)
@@ -617,7 +617,7 @@ export const zipWith: {
  *
  * **Example** (Zipping filters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter } from "effect"
  *
  * const positiveNumbers = Filter.fromPredicate((n: number) => n > 0)
@@ -650,7 +650,7 @@ export const zip: {
  *
  * **Example** (Keeping the left filter result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter } from "effect"
  *
  * const positiveNumbers = Filter.fromPredicate((n: number) => n > 0)
@@ -682,7 +682,7 @@ export const andLeft: {
  *
  * **Example** (Keeping the right filter result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
  * const positiveNumbers = Filter.fromPredicate((n: number) => n > 0)
@@ -716,7 +716,7 @@ export const andRight: {
  *
  * **Example** (Composing filters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
  * const stringFilter = Filter.string

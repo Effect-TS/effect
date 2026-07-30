@@ -33,7 +33,7 @@ import type { NoInfer } from "./Types.ts"
  *
  * **Example** (Generating values by index)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Generate first 5 even numbers
@@ -83,7 +83,7 @@ export const makeBy = <A>(f: (i: number) => A, options?: {
  *
  * **Example** (Creating a range)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  * import * as assert from "node:assert"
  *
@@ -111,7 +111,7 @@ export const range = (start: number, end?: number): Iterable<number> => {
  *
  * **Example** (Repeating a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  * import * as assert from "node:assert"
  *
@@ -174,7 +174,7 @@ export const forever = <A>(self: Iterable<A>): Iterable<A> => repeat(self, Infin
  *
  * **Example** (Converting a record to entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  * import * as assert from "node:assert"
  *
@@ -203,7 +203,7 @@ export const fromRecord = <K extends string, A>(self: Readonly<Record<K, A>>): I
  *
  * **Example** (Prepending an element)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [2, 3, 4]
@@ -229,7 +229,7 @@ export const prepend: {
  *
  * **Example** (Prepending another iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  * import * as assert from "node:assert"
  *
@@ -270,7 +270,7 @@ export const prependAll: {
  *
  * **Example** (Appending an element)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -315,7 +315,7 @@ export const append: {
  *
  * **Example** (Concatenating iterables)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const first = [1, 2, 3]
@@ -375,7 +375,7 @@ export const appendAll: {
  *
  * **Example** (Tracking running results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Running sum of numbers
@@ -425,7 +425,7 @@ export const scan: {
  *
  * **Example** (Checking for emptiness)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  * import * as assert from "node:assert"
  *
@@ -446,7 +446,7 @@ export const isEmpty = <A>(self: Iterable<A>): self is Iterable<never> => {
  *
  * **Example** (Counting iterable elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -481,7 +481,7 @@ export const size = <A>(self: Iterable<A>): number => {
  *
  * **Example** (Getting the first element)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable, Option } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -524,7 +524,7 @@ export const head = <A>(self: Iterable<A>): Option<A> => {
  *
  * **Example** (Getting the first element unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -560,7 +560,7 @@ export const headUnsafe = <A>(self: Iterable<A>): A => {
  *
  * **Example** (Taking from the start)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -609,7 +609,7 @@ export const take: {
  *
  * **Example** (Taking while a predicate holds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [2, 4, 6, 8, 3, 10, 12]
@@ -668,7 +668,7 @@ export const takeWhile: {
  *
  * **Example** (Dropping from the start)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -719,7 +719,7 @@ export const drop: {
  *
  * **Example** (Finding the first match)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable, Option } from "effect"
  *
  * const numbers = [1, 3, 4, 6, 8]
@@ -786,7 +786,7 @@ export const findFirst: {
  *
  * **Example** (Finding the last match)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 3, 4, 6, 8, 2]
@@ -847,7 +847,7 @@ export const findLast: {
  *
  * **Example** (Zipping iterables)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -891,7 +891,7 @@ export const zip: {
  *
  * **Example** (Zipping with a combining function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Add corresponding elements
@@ -965,7 +965,7 @@ export const zipWith: {
  *
  * **Example** (Interspersing separators)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Join numbers with separator
@@ -1027,7 +1027,7 @@ export const intersperse: {
  *
  * **Example** (Checking membership with custom equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Custom equivalence for objects
@@ -1083,7 +1083,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  *
  * **Example** (Checking membership)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -1119,7 +1119,7 @@ export const contains: {
  *
  * **Example** (Chunking an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -1188,7 +1188,7 @@ export const chunksOf: {
  *
  * **Example** (Grouping consecutive elements with custom equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Group consecutive equal numbers
@@ -1267,7 +1267,7 @@ export const groupWith: {
  *
  * **Example** (Grouping consecutive elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 1, 2, 2, 2, 3, 1, 1]
@@ -1310,7 +1310,7 @@ export const group: <A>(self: Iterable<A>) => Iterable<NonEmptyArray<A>> = group
  *
  * **Example** (Grouping by a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Group by string length
@@ -1394,7 +1394,7 @@ const constEmptyIterator: Iterator<never> = {
  *
  * **Example** (Creating an empty iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const empty = Iterable.empty<string>()
@@ -1423,7 +1423,7 @@ export const empty = <A = never>(): Iterable<A> => constEmpty
  *
  * **Example** (Wrapping a single value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const single = Iterable.of(42)
@@ -1462,7 +1462,7 @@ export const of = <A>(a: A): Iterable<A> => [a]
  *
  * **Example** (Mapping elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Transform numbers to their squares
@@ -1511,7 +1511,7 @@ export const map: {
  *
  * **Example** (Flat mapping iterables)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Expand each number to a range
@@ -1559,7 +1559,7 @@ export const flatMap: {
  *
  * **Example** (Flattening nested iterables)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Flatten nested arrays
@@ -1621,7 +1621,7 @@ export const flatten = <A>(self: Iterable<Iterable<A>>): Iterable<A> => ({
  *
  * **Example** (Filtering and transforming Result values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable, Result } from "effect"
  *
  * // Parse strings to numbers, keeping only valid ones
@@ -1689,7 +1689,7 @@ export const filterMap: {
  *
  * **Example** (Filtering and transforming until failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable, Result } from "effect"
  *
  * // Parse numbers until we hit an invalid one
@@ -1748,7 +1748,7 @@ export const filterMapWhile: {
  *
  * **Example** (Extracting Some values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable, Option } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1789,7 +1789,7 @@ export const getSomes = <A>(self: Iterable<Option<A>>): Iterable<A> => {
  *
  * **Example** (Extracting failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1834,7 +1834,7 @@ export const getFailures = <R0, L>(self: Iterable<Result<R0, L>>): Iterable<L> =
  *
  * **Example** (Extracting successes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1884,7 +1884,7 @@ export const getSuccesses = <R0, L>(self: Iterable<Result<R0, L>>): Iterable<R0>
  *
  * **Example** (Filtering elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Filter even numbers
@@ -1953,7 +1953,7 @@ export const filter: {
  *
  * **Example** (Flat mapping nullable results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Extract valid elements from nullable function results
@@ -2005,7 +2005,7 @@ export const flatMapNullishOr: {
  *
  * **Example** (Checking whether some element matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 3, 5, 7, 8]
@@ -2069,7 +2069,7 @@ export const some: {
  *
  * **Example** (Unfolding state into values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable, Option } from "effect"
  *
  * // Generate Fibonacci sequence
@@ -2119,7 +2119,7 @@ export const unfold = <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>): Iterab
  *
  * **Example** (Iterating with side effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Print each element
@@ -2172,7 +2172,7 @@ export const forEach: {
  *
  * **Example** (Reducing an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Sum all numbers
@@ -2233,7 +2233,7 @@ export const reduce: {
  *
  * **Example** (Deduplicating adjacent elements with custom equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Remove adjacent duplicates with custom equality
@@ -2304,7 +2304,7 @@ export const dedupeAdjacentWith: {
  *
  * **Example** (Deduplicating adjacent elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Remove adjacent duplicate numbers
@@ -2344,7 +2344,7 @@ export const dedupeAdjacent: <A>(self: Iterable<A>) => Iterable<A> = dedupeAdjac
  *
  * **Example** (Combining cartesian products)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // Create coordinate pairs
@@ -2433,7 +2433,7 @@ export const cartesianWith: {
  *
  * **Example** (Generating cartesian pairs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * // All pairs of numbers and letters
@@ -2482,7 +2482,7 @@ export const cartesian: {
  *
  * **Example** (Counting matching elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
  * const result = Iterable.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0)

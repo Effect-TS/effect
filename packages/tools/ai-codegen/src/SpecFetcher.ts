@@ -18,7 +18,7 @@ import type { SpecSource } from "./Config.ts"
  *
  * **Example** (Creating a spec fetch error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as SpecFetcher from "@effect/ai-codegen/SpecFetcher"
  *
  * const error = new SpecFetcher.SpecFetchError({

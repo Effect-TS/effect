@@ -464,7 +464,7 @@ export const toString = (input: Input): string => new URLSearchParams(fromInput(
  *
  * **Example** (Converting parameters to a record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { UrlParams } from "effect/unstable/http"
  * import * as assert from "node:assert"
  *
@@ -530,7 +530,7 @@ export interface schemaJsonField extends Schema.decodeTo<Schema.fromJsonString<S
  *
  * **Example** (Decoding JSON parameter fields)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { UrlParams } from "effect/unstable/http"
  *
@@ -592,7 +592,7 @@ export interface schemaRecord extends
  *
  * **Example** (Decoding URL parameters to a record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { UrlParams } from "effect/unstable/http"
  *

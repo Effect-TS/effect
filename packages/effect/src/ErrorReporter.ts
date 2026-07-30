@@ -99,7 +99,7 @@ export interface ErrorReporter {
  *
  * **Example** (Forwarding errors to the console)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ErrorReporter } from "effect"
  *
  * // Forward every failure to the console
@@ -185,7 +185,7 @@ export const CurrentErrorReporters: Context.Reference<ReadonlySet<ErrorReporter>
  *
  * **Example** (Providing error reporters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, ErrorReporter } from "effect"
  *
  * const consoleReporter = ErrorReporter.make(({ error, severity }) => {
@@ -255,7 +255,7 @@ export const layer = <
  *
  * **Example** (Reporting a cause manually)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, ErrorReporter } from "effect"
  *
  * // Log the cause for monitoring, then continue with a fallback
@@ -347,7 +347,7 @@ export type ignore = "~effect/ErrorReporter/ignore"
  *
  * **Example** (Marking errors as ignored)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, ErrorReporter } from "effect"
  *
  * class NotFoundError extends Data.TaggedError("NotFoundError")<{}> {
@@ -414,7 +414,7 @@ export type severity = "~effect/ErrorReporter/severity"
  *
  * **Example** (Setting error severity annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, ErrorReporter } from "effect"
  *
  * class DeprecationWarning extends Data.TaggedError("DeprecationWarning")<{}> {
@@ -488,7 +488,7 @@ export type attributes = "~effect/ErrorReporter/attributes"
  *
  * **Example** (Setting error attributes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, ErrorReporter } from "effect"
  *
  * class PaymentError extends Data.TaggedError("PaymentError")<{

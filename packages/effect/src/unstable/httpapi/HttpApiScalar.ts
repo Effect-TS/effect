@@ -89,7 +89,7 @@ export type ScalarConfig = {
    *
    * **Example** (Setting a relative favicon)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * const favicon = "/favicon.svg"
    * ```
    *
@@ -109,7 +109,7 @@ export type ScalarConfig = {
    *
    * **Example** (Setting a local server URL)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * const baseServerURL = "http://localhost:3000"
    * ```
    *

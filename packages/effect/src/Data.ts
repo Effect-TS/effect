@@ -31,7 +31,7 @@ import type { Unify } from "./Unify.ts"
  *
  * **Example** (Defining a value class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Equal } from "effect"
  *
  * class Person extends Data.Class<{ readonly name: string }> {}
@@ -75,7 +75,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  *
  * **Example** (Defining a tagged class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data } from "effect"
  *
  * class Person extends Data.TaggedClass("Person")<{
@@ -121,7 +121,7 @@ export const TaggedClass = <Tag extends string>(
  *
  * **Example** (Defining a tagged enum)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data } from "effect"
  *
  * type HttpError = Data.TaggedEnum<{
@@ -198,7 +198,7 @@ export declare namespace TaggedEnum {
    *
    * **Example** (Defining a generic tagged enum)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data } from "effect"
    *
    * type MyResult<E, A> = Data.TaggedEnum<{
@@ -242,7 +242,7 @@ export declare namespace TaggedEnum {
    *
    * **Example** (Applying generics)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Data } from "effect"
    *
    * type Option<A> = Data.TaggedEnum<{
@@ -291,7 +291,7 @@ export declare namespace TaggedEnum {
    *
    * **Example** (Extracting variant args)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Data } from "effect"
    *
    * type Result =
@@ -328,7 +328,7 @@ export declare namespace TaggedEnum {
    *
    * **Example** (Extracting a variant type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Data } from "effect"
    *
    * type Result =
@@ -368,7 +368,7 @@ export declare namespace TaggedEnum {
    *
    * **Example** (Using the constructor object)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data } from "effect"
    *
    * type Shape =
@@ -540,7 +540,7 @@ export declare namespace TaggedEnum {
  *
  * **Example** (Creating and matching tagged enum values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data } from "effect"
  *
  * type HttpError = Data.TaggedEnum<{
@@ -565,7 +565,7 @@ export declare namespace TaggedEnum {
  *
  * **Example** (Defining a generic tagged enum)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data } from "effect"
  *
  * type MyResult<E, A> = Data.TaggedEnum<{
@@ -699,7 +699,7 @@ function taggedMatch<
  *
  * **Example** (Defining a yieldable error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class NetworkError extends Data.Error<{
@@ -741,7 +741,7 @@ export const Error: new<A extends Record<string, any> = {}>(
  *
  * **Example** (Recovering by tag)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class NotFound extends Data.TaggedError("NotFound")<{

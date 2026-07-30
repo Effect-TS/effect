@@ -104,7 +104,7 @@ export const TypeId: TypeId = "~effect/Stream"
  *
  * **Example** (Creating and consuming streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -156,7 +156,7 @@ export interface StreamUnifyIgnore {
  *
  * **Example** (Using the stream type lambda)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { HKT, Stream } from "effect"
  *
  * // Create a Stream type using the type lambda
@@ -208,7 +208,7 @@ export interface VarianceStruct<out A, out E, out R> {
  *
  * **Example** (Extracting the success type from a Stream type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Stream } from "effect"
  *
  * type NumberStream = Stream.Stream<number, string, never>
@@ -226,7 +226,7 @@ export type Success<T extends Stream<any, any, any>> = [T] extends [Stream<infer
  *
  * **Example** (Extracting the error type from a Stream type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Stream } from "effect"
  *
  * type NumberStream = Stream.Stream<number, string, never>
@@ -244,7 +244,7 @@ export type Error<T extends Stream<any, any, any>> = [T] extends [Stream<infer _
  *
  * **Example** (Extracting the services type from a Stream type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Stream } from "effect"
  *
  * interface Database {
@@ -266,7 +266,7 @@ export type Services<T extends Stream<any, any, any>> = [T] extends [Stream<infe
  *
  * **Example** (Checking whether a value is a Stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -292,7 +292,7 @@ export const isStream = (u: unknown): u is Stream<unknown, unknown, unknown> => 
  *
  * **Example** (Reading the default chunk size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -321,7 +321,7 @@ export type HaltStrategy = Channel.HaltStrategy
  *
  * **Example** (Creating a stream from an array-emitting channel)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -346,7 +346,7 @@ export const fromChannel: <Arr extends Arr.NonEmptyReadonlyArray<any>, E, R>(
  *
  * **Example** (Creating a stream from an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -370,7 +370,7 @@ export const fromEffect = <A, E, R>(effect: Effect.Effect<A, E, R>): Stream<A, E
  *
  * **Example** (Accessing a service as a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Stream } from "effect"
  *
  * class Greeter extends Context.Service<Greeter, {
@@ -410,7 +410,7 @@ export const service = <I, S>(service: Context.Key<I, S>): Stream<S, never, I> =
  *
  * **Example** (Accessing an optional service as a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Option, Stream } from "effect"
  *
  * class Greeter extends Context.Service<Greeter, {
@@ -450,7 +450,7 @@ export const serviceOption = <I, S>(service: Context.Key<I, S>): Stream<Option.O
  *
  * **Example** (Draining an effect into a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -474,7 +474,7 @@ export const fromEffectDrain = <A, E, R>(effect: Effect.Effect<A, E, R>): Stream
  *
  * **Example** (Repeating an effect forever)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Random, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -501,7 +501,7 @@ export const fromEffectRepeat = <A, E, R>(effect: Effect.Effect<A, E, R>): Strea
  *
  * **Example** (Repeating an effect with a schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -550,7 +550,7 @@ export const fromEffectSchedule = <A, E, R, X, AS extends A, ES, RS>(
  *
  * **Example** (Emitting ticks on an interval)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -592,7 +592,7 @@ export const tick = (interval: Duration.Input): Stream<void> =>
  *
  * **Example** (Creating a stream from a pull effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.scoped(
@@ -621,7 +621,7 @@ export const fromPull = <A, E, R, EX, RX>(
  *
  * **Example** (Transforming a pull effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -664,7 +664,7 @@ export const transformPull = <A, E, R, B, E2, R2, EX, RX>(
  *
  * **Example** (Transforming a stream by effectfully transforming its pull effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Scope, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -714,7 +714,7 @@ export const transformPullBracket = <A, E, R, B, E2, R2, EX, RX>(
  *
  * **Example** (Converting a stream to a channel)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -749,7 +749,7 @@ export const toChannel = <A, E, R>(
  *
  * **Example** (Creating a stream from a callback that can emit values into a queue)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Queue, Stream } from "effect"
  *
  * const stream = Stream.callback<number>((queue) =>
@@ -769,7 +769,7 @@ export const toChannel = <A, E, R>(
  *   // [ 1, 2, 3 ]
  * })
  *
- * Effect.runPromise(program)
+ * await Effect.runPromise(program)
  * ```
  *
  * @category constructors
@@ -788,7 +788,7 @@ export const callback = <A, E = never, R = never>(
  *
  * **Example** (Creating an empty stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -810,7 +810,7 @@ export const empty: Stream<never> = fromChannel(Channel.empty)
  *
  * **Example** (Creating a single-valued pure stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -832,7 +832,7 @@ export const succeed = <A>(value: A): Stream<A> => fromChannel(Channel.succeed(A
  *
  * **Example** (Creating a stream from a sequence of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -859,7 +859,7 @@ export const make = <const As extends ReadonlyArray<any>>(...values: As): Stream
  *
  * **Example** (Evaluating a value synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -885,7 +885,7 @@ export const sync = <A>(evaluate: LazyArg<A>): Stream<A> => fromChannel(Channel.
  *
  * **Example** (Creating a lazily constructed stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -908,7 +908,7 @@ export const suspend = <A, E, R>(stream: LazyArg<Stream<A, E, R>>): Stream<A, E,
  *
  * **Example** (Failing a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -931,7 +931,7 @@ export const fail = <E>(error: E): Stream<never, E> => fromChannel(Channel.fail(
  *
  * **Example** (Failing a stream lazily)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.failSync(() => "Uh oh!")
@@ -956,7 +956,7 @@ export const failSync = <E>(evaluate: LazyArg<E>): Stream<never, E> => fromChann
  *
  * **Example** (Failing with a cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.failCause(Cause.fail("Database connection failed")).pipe(
@@ -982,7 +982,7 @@ export const failCause = <E>(cause: Cause.Cause<E>): Stream<never, E> => fromCha
  *
  * **Example** (Dying with a defect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Console, Effect, Exit, Stream } from "effect"
  *
  * const defect = new Error("Boom")
@@ -1015,7 +1015,7 @@ export const die = (defect: unknown): Stream<never> => fromChannel(Channel.die(d
  *
  * **Example** (Failing with a lazy cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.failCauseSync(() =>
@@ -1047,7 +1047,7 @@ export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Stream<neve
  *
  * **Example** (Consuming values from an iterator)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * function* numbers() {
@@ -1082,7 +1082,7 @@ export const fromIteratorSucceed = <A>(iterator: IterableIterator<A>, maxChunkSi
  *
  * **Example** (Creating a stream from an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const numbers = [1, 2, 3]
@@ -1120,7 +1120,7 @@ export const fromIterable = <A>(
  *
  * **Example** (Creating a stream from an iterable effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Stream } from "effect"
  *
  * class UserRepo extends Context.Service<UserRepo, {
@@ -1158,7 +1158,7 @@ export const fromIterableEffect = <A, E, R>(iterable: Effect.Effect<Iterable<A>,
  *
  * **Example** (Repeating an iterable effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1185,7 +1185,7 @@ export const fromIterableEffectRepeat = <A, E, R>(
  *
  * **Example** (Creating a stream from an array of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1214,7 +1214,7 @@ export const fromArray = <A>(array: ReadonlyArray<A>): Stream<A> =>
  *
  * **Example** (Creating a stream from an effect that produces an array of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1239,7 +1239,7 @@ export const fromArrayEffect = <A, E, R>(
  *
  * **Example** (Creating a stream from an arbitrary number of arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1269,22 +1269,22 @@ export const fromArrays = <Arr extends ReadonlyArray<ReadonlyArray<any>>>(
  *
  * **Example** (Creating a stream from a queue of values)
  *
- * ```ts
- * import { Console, Effect, Queue, Stream } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Console, Effect, Queue, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   const queue = yield* Queue.unbounded<number>()
+ *   const queue = yield* Queue.unbounded<number, Cause.Done>()
  *   yield* Queue.offer(queue, 1)
  *   yield* Queue.offer(queue, 2)
  *   yield* Queue.offer(queue, 3)
- *   yield* Queue.shutdown(queue)
+ *   yield* Queue.end(queue)
  *
  *   const stream = Stream.fromQueue(queue)
  *   const values = yield* Stream.runCollect(stream)
  *   yield* Console.log(values)
  * })
  *
- * Effect.runPromise(program)
+ * await Effect.runPromise(program)
  * // Output: [ 1, 2, 3 ]
  * ```
  *
@@ -1299,11 +1299,11 @@ export const fromQueue = <A, E>(queue: Queue.Dequeue<A, E>): Stream<A, Exclude<E
  *
  * **Example** (Creating a stream from a subscription to a PubSub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Fiber, PubSub, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   const pubsub = yield* PubSub.unbounded<number>()
+ *   const pubsub = yield* PubSub.unbounded<number>({ replay: 3 })
  *
  *   const fiber = yield* Stream.fromPubSub(pubsub).pipe(
  *     Stream.take(3),
@@ -1319,7 +1319,7 @@ export const fromQueue = <A, E>(queue: Queue.Dequeue<A, E>): Stream<A, Exclude<E
  *   yield* Console.log(values)
  * })
  *
- * Effect.runPromise(program)
+ * await Effect.runPromise(program)
  * // Output: [ 1, 2, 3 ]
  * ```
  *
@@ -1337,7 +1337,7 @@ export const fromPubSub = <A>(pubsub: PubSub.PubSub<A>): Stream<A> => fromChanne
  *
  * **Example** (Creating a stream from PubSub takes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, PubSub, Stream, Take } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1353,7 +1353,7 @@ export const fromPubSub = <A>(pubsub: PubSub.PubSub<A>): Stream<A> => fromChanne
  *   yield* Console.log(values)
  * })
  *
- * Effect.runPromise(program)
+ * await Effect.runPromise(program)
  * // Output: [ 1, 2 ]
  * ```
  *
@@ -1374,7 +1374,7 @@ export const fromPubSubTake = <A, E>(pubsub: PubSub.PubSub<Take.Take<A, E>>): St
  *
  * **Example** (Creating a stream from a ReadableStream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Stream } from "effect"
  *
  * class StreamError extends Data.TaggedError("StreamError")<{ readonly cause: unknown }> {}
@@ -1417,7 +1417,7 @@ export const fromReadableStream = <A, E>(
  *
  * **Example** (Creating a stream from an AsyncIterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Stream } from "effect"
  *
  * class StreamError extends Data.TaggedError("StreamError")<{ readonly cause: unknown }> {}
@@ -1451,7 +1451,7 @@ export const fromAsyncIterable = <A, E>(
  *
  * **Example** (Creating a stream from a schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1489,7 +1489,7 @@ export const fromSchedule = <O, E, R>(schedule: Schedule.Schedule<O, unknown, E,
  *
  * **Example** (Creating a stream from a PubSub subscription)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, PubSub, Stream } from "effect"
  *
  * const program = Effect.scoped(Effect.gen(function*() {
@@ -1545,7 +1545,7 @@ export interface EventListener<A> {
  *
  * **Example** (Creating a stream from an event listener)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
  * class NumberTarget implements Stream.EventListener<number> {
@@ -1604,7 +1604,7 @@ export const fromEventListener = <A = unknown>(
  *
  * **Example** (Unfolding stream state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1648,7 +1648,7 @@ export const unfold = <S, A, E, R>(
  *
  * **Example** (Paginating stream state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Option, Stream } from "effect"
  *
  * const stream = Stream.paginate(0, (n: number) =>
@@ -1694,7 +1694,7 @@ export const paginate = <S, A, E = never, R = never>(
  *
  * **Example** (Iterating from a seed value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.iterate(1, (n) => n + 1).pipe(Stream.take(3))
@@ -1724,7 +1724,7 @@ export const iterate = <A>(value: A, next: (value: A) => A): Stream<A> =>
  *
  * **Example** (Creating a numeric range)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1766,7 +1766,7 @@ export const range = (
  *
  * **Example** (Creating a never-ending stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
  * const program = Stream.never.pipe(
@@ -1788,7 +1788,7 @@ export const never: Stream<never> = fromChannel(Channel.never)
  *
  * **Example** (Unwrapping a stream effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const effect = Effect.succeed(Stream.make(1, 2, 3))
@@ -1815,7 +1815,7 @@ export const unwrap = <A, E2, R2, E, R>(
  *
  * **Example** (Scoping a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.scoped(
@@ -1845,7 +1845,7 @@ export const scoped = <A, E, R>(
  *
  * **Example** (Mapping stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.fromArray([1, 2, 3]).pipe(Stream.map((n, i) => n + i))
@@ -1877,7 +1877,7 @@ export const map: {
  *
  * **Example** (Mapping both the failure and success channels of a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const mapper = {
@@ -1930,7 +1930,7 @@ export const mapBoth: {
  *
  * **Example** (Mapping stream chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1972,7 +1972,7 @@ export const mapArray: {
  *
  * **Example** (Effectfully mapping stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -2043,7 +2043,7 @@ export const mapEffect: {
  *
  * **Example** (Flattening a stream of Effect values into a stream of their results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(Effect.succeed(1), Effect.succeed(2), Effect.succeed(3))
@@ -2097,7 +2097,7 @@ export const flattenEffect: <
  *
  * **Example** (Effectfully mapping stream chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2140,7 +2140,7 @@ export const mapArrayEffect: {
  *
  * **Example** (Converting failures to results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Result, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2174,7 +2174,7 @@ export const result = <A, E, R>(self: Stream<A, E, R>): Stream<Result.Result<A, 
  *
  * **Example** (Tapping stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2234,7 +2234,7 @@ export const tap: {
  *
  * **Example** (Tapping values and errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2295,7 +2295,7 @@ export const tapBoth: {
  *
  * **Example** (Tapping values with a sink)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Ref, Sink, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2400,7 +2400,7 @@ export const tapSink: {
  *
  * **Example** (Flat mapping stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2454,7 +2454,7 @@ export const flatMap: {
  *
  * **Example** (Switching to the latest stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Stream.make(1, 2, 3).pipe(
@@ -2514,7 +2514,7 @@ export const switchMap: {
  *
  * **Example** (Flattening nested streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const streamOfStreams = Stream.make(
@@ -2566,7 +2566,7 @@ export const flatten: <
  *
  * **Example** (Flattening a stream of non-empty arrays into a stream of elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(Array.make(1, 2), Array.make(3))
@@ -2591,7 +2591,7 @@ export const flattenArray = <A, E, R>(self: Stream<Arr.NonEmptyReadonlyArray<A>,
  *
  * **Example** (Draining stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2614,7 +2614,7 @@ export const drain = <A, E, R>(self: Stream<A, E, R>): Stream<never, E, R> => fr
  *
  * **Example** (Draining a stream in the background)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const foreground = Stream.make(1, 2)
@@ -2650,7 +2650,7 @@ export const drainFork: {
  *
  * **Example** (Repeating a stream on a schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const program = Effect.gen(function* () {
@@ -2699,7 +2699,7 @@ export const repeat: {
  *
  * **Example** (Scheduling stream elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2742,7 +2742,7 @@ export const schedule: {
  *
  * **Example** (Timing out a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2872,7 +2872,7 @@ export const timeoutOrElse: {
  *
  * **Example** (Repeating stream elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2940,7 +2940,7 @@ export const repeatElements: {
  *
  * **Example** (Repeating a stream forever)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make("A", "B").pipe(
@@ -2967,7 +2967,7 @@ export const forever = <A, E, R>(self: Stream<A, E, R>): Stream<A, E, R> => from
  *
  * **Example** (Flattening iterable values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2992,7 +2992,7 @@ export const flattenIterable = <A, E, R>(self: Stream<Iterable<A>, E, R>): Strea
  *
  * **Example** (Flattening Take values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Console, Effect, Exit, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3026,7 +3026,7 @@ export const flattenTake = <A, E, E2, R>(self: Stream<Take.Take<A, E>, E2, R>): 
  *
  * **Example** (Concatenating streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.concat(Stream.make(1, 2, 3), Stream.make(4, 5, 6))
@@ -3055,7 +3055,7 @@ export const concat: {
  *
  * **Example** (Prepending values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3092,7 +3092,7 @@ export const prepend: {
  *
  * **Example** (Merging stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const fast = Stream.make(1, 2, 3)
@@ -3150,7 +3150,7 @@ export const merge: {
  *
  * **Example** (Merging with a background effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3194,7 +3194,7 @@ export const mergeEffect: {
  *
  * **Example** (Merging streams into results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Result, Stream } from "effect"
  *
  * const left = Stream.fromEffect(Effect.succeed("left"))
@@ -3255,7 +3255,7 @@ export const mergeResult: {
  *
  * **Example** (Merging streams while keeping left values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3297,7 +3297,7 @@ export const mergeLeft: {
  *
  * **Example** (Merging streams while keeping right values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const left = Stream.make("left-1", "left-2").pipe(
@@ -3344,7 +3344,7 @@ export const mergeRight: {
  *
  * **Example** (Merging streams with bounded concurrency)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const streams = [
@@ -3401,7 +3401,7 @@ export const mergeAll: {
  *
  * **Example** (Computing cartesian products)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3437,7 +3437,7 @@ export const cross: {
  *
  * **Example** (Combining cartesian products)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3476,7 +3476,7 @@ export const crossWith: {
  *
  * **Example** (Zipping streams with a function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream1 = Stream.make(1, 2, 3, 4, 5, 6)
@@ -3538,7 +3538,7 @@ const zipArrays = <AL, AR, A>(
  *
  * **Example** (Zipping stream chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Console, Effect, Stream } from "effect"
  *
  * const left = Stream.fromArrays([1, 2, 3], [4, 5])
@@ -3647,7 +3647,7 @@ export const zipWithArray: {
  *
  * **Example** (Zipping streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream1 = Stream.make(1, 2, 3)
@@ -3688,7 +3688,7 @@ export const zip: {
  *
  * **Example** (Zipping streams while keeping left values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream1 = Stream.make(1, 2, 3, 4)
@@ -3730,7 +3730,7 @@ export const zipLeft: {
  *
  * **Example** (Zipping streams while keeping right values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream1 = Stream.make(1, 2)
@@ -3777,7 +3777,7 @@ export const zipRight: {
  *
  * **Example** (Zipping and flattening tuples)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3820,7 +3820,7 @@ export const zipFlatten: {
  *
  * **Example** (Zipping elements with indices)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3846,7 +3846,7 @@ export const zipWithIndex = <A, E, R>(self: Stream<A, E, R>): Stream<[A, number]
  *
  * **Example** (Zipping elements with next values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.zipWithNext(Stream.make(1, 2, 3, 4))
@@ -3891,7 +3891,7 @@ export const zipWithNext = <A, E, R>(self: Stream<A, E, R>): Stream<[A, Option.O
  *
  * **Example** (Zipping elements with previous values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.zipWithPrevious(Stream.make(1, 2, 3, 4))
@@ -3929,7 +3929,7 @@ export const zipWithPrevious = <A, E, R>(self: Stream<A, E, R>): Stream<[Option.
  *
  * **Example** (Zipping elements with neighbors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Option, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -3995,7 +3995,7 @@ export const zipWithPreviousAndNext = <A, E, R>(
  *
  * **Example** (Zipping latest values from many streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.zipLatestAll(
@@ -4071,7 +4071,7 @@ export const zipLatestAll = <T extends ReadonlyArray<Stream<any, any, any>>>(
  *
  * **Example** (Zipping latest values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -4121,7 +4121,7 @@ export const zipLatest: {
  *
  * **Example** (Zipping latest values with a function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * Effect.gen(function*() {
@@ -4173,7 +4173,7 @@ export const zipLatestWith: {
  *
  * **Example** (Racing multiple streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -4232,7 +4232,7 @@ export const raceAll = <S extends ReadonlyArray<Stream<any, any, any>>>(
  *
  * **Example** (Racing two streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const stream = Stream.race(
@@ -4270,7 +4270,7 @@ export const race: {
  *
  * **Example** (Filtering stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -4344,7 +4344,7 @@ export const filterMap: {
  *
  * **Example** (Effectfully filtering stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3, 4).pipe(Stream.filterEffect((n) => Effect.succeed(n > 2)))
@@ -4425,7 +4425,7 @@ export const filterMapEffect: {
  *
  * **Example** (Partitioning a stream into queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Result, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -4626,7 +4626,7 @@ export const partitionEffect: {
  *
  * **Example** (Partitioning a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Result, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -4689,7 +4689,7 @@ export const partition: {
  *
  * **Example** (Conditionally keeping a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -4733,7 +4733,7 @@ export const when: {
  *
  * **Example** (Peeling a stream with a sink)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Sink, Stream } from "effect"
  *
  * const stream = Stream.fromArrays([1, 2, 3], [4, 5, 6])
@@ -4800,7 +4800,7 @@ export const peel: {
  *
  * **Example** (Buffering stream elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -4853,7 +4853,7 @@ export const buffer: {
  *
  * **Example** (Buffering stream chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -4899,7 +4899,7 @@ export const bufferArray: {
  *
  * **Example** (Catching stream causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2).pipe(
@@ -4946,7 +4946,7 @@ export const catchCause: {
  *
  * **Example** (Tapping stream causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2).pipe(
@@ -5004,7 +5004,7 @@ export {
    *
    * **Example** (Catching stream failures)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Console, Effect, Stream } from "effect"
    *
    * const stream = Stream.make(1, 2).pipe(
@@ -5032,7 +5032,7 @@ export {
  *
  * **Example** (Effectfully peeking at errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2).pipe(
@@ -5083,7 +5083,7 @@ export const tapError: {
  *
  * **Example** (Catching matching failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2).pipe(
@@ -5232,7 +5232,7 @@ export const catchFilter: {
  *
  * **Example** (Catching tagged failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Stream } from "effect"
  *
  * class HttpError extends Data.TaggedError("HttpError")<{ message: string }> {}
@@ -5340,7 +5340,7 @@ export const catchTag: {
  *
  * **Example** (Catching tagged failures with handlers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * class NotFound {
@@ -5463,7 +5463,7 @@ export const catchTags: {
  *
  * **Example** (Catching a tagged error reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Stream } from "effect"
  *
  * class RateLimitError extends Data.TaggedError("RateLimitError")<{
@@ -5598,7 +5598,7 @@ export const catchReason: {
  *
  * **Example** (Catching tagged error reasons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Stream } from "effect"
  *
  * class RateLimitError extends Data.TaggedError("RateLimitError")<{
@@ -5743,7 +5743,7 @@ export const catchReasons: {
  *
  * **Example** (Mapping stream errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -5776,7 +5776,7 @@ export const mapError: {
  *
  * **Example** (Catching matching causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -5876,7 +5876,7 @@ export const catchCauseFilter: {
  *
  * **Example** (Switching on empty streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -5916,7 +5916,7 @@ export const orElseIfEmpty: {
  *
  * **Example** (Recovering with a fallback value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -5953,7 +5953,7 @@ export const orElseSucceed: {
  *
  * **Example** (Turning failures into defects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -5989,7 +5989,7 @@ export const orDie = <A, E, R>(self: Stream<A, E, R>): Stream<A, never, R> => fr
  *
  * **Example** (Ignoring stream failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6007,7 +6007,7 @@ export const orDie = <A, E, R>(self: Stream<A, E, R>): Stream<A, never, R> => fr
  *
  * **Example** (Configuring ignore logging)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
  * Effect.runPromise(Effect.gen(function*() {
@@ -6056,7 +6056,7 @@ export const ignore: <
  *
  * **Example** (Ignoring stream failure causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
  * Effect.runPromise(Effect.gen(function*() {
@@ -6107,7 +6107,7 @@ export const ignoreCause: <
  *
  * **Example** (Retrying stream failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6168,7 +6168,7 @@ export const retry: {
  *
  * **Example** (Applying an execution plan)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, ExecutionPlan, Layer, Stream } from "effect"
  *
  * class Service extends Context.Service<Service>()("Service", {
@@ -6293,7 +6293,7 @@ export const withExecutionPlan: {
  *
  * **Example** (Taking values from the left)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6326,7 +6326,7 @@ export const take: {
  *
  * **Example** (Truncating at a byte limit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
  * const program = Stream.make(
@@ -6383,7 +6383,7 @@ export const limitBytes: {
  *
  * **Example** (Taking elements from the right)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6429,7 +6429,7 @@ export const takeRight: {
  *
  * **Example** (Taking until a predicate matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.range(1, 5)
@@ -6496,7 +6496,7 @@ export const takeUntil: {
  *
  * **Example** (Taking until an effectful predicate matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6558,7 +6558,7 @@ export const takeUntilEffect: {
  *
  * **Example** (Taking while a predicate holds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.range(1, 5).pipe(
@@ -6671,7 +6671,7 @@ export const takeWhileFilter: {
  *
  * **Example** (Effectfully taking while a predicate holds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6712,7 +6712,7 @@ export const takeWhileEffect: {
  *
  * **Example** (Dropping values from the left)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
@@ -6757,7 +6757,7 @@ export const drop: {
  *
  * **Example** (Dropping until a predicate matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
@@ -6791,7 +6791,7 @@ export const dropUntil: {
  *
  * **Example** (Dropping until an effectful predicate matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6834,7 +6834,7 @@ export const dropUntilEffect: {
  *
  * **Example** (Dropping while a predicate holds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6917,7 +6917,7 @@ export const dropWhileFilter: {
  *
  * **Example** (Effectfully dropping while a predicate holds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -6976,7 +6976,7 @@ export const dropWhileEffect: {
  *
  * **Example** (Dropping values from the right)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7020,7 +7020,7 @@ export const dropRight: {
  *
  * **Example** (Exposing stream chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7054,7 +7054,7 @@ export const chunks = <A, E, R>(self: Stream<A, E, R>): Stream<Arr.NonEmptyReado
  *
  * **Example** (Rechunking stream elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7127,7 +7127,7 @@ export const rechunk: {
  *
  * **Example** (Emitting sliding windows)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, pipe, Stream } from "effect"
  *
  * Effect.gen(function*() {
@@ -7158,7 +7158,7 @@ export const sliding: {
  *
  * **Example** (Emitting sliding windows with a step size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7231,7 +7231,7 @@ export const slidingSize: {
  *
  * **Example** (Splitting on matching values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7293,7 +7293,7 @@ export const split: {
  *
  * **Example** (Combining streams with state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.combine(
@@ -7374,7 +7374,7 @@ export const combine: {
  *
  * **Example** (Combining stream chunks with state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2).pipe(
@@ -7443,7 +7443,7 @@ export const combineArray: {
  *
  * **Example** (Statefully mapping stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7520,7 +7520,7 @@ export const mapAccum: {
  *
  * **Example** (Statefully mapping stream chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7603,7 +7603,7 @@ const emptyArr = Arr.empty<never>()
  *
  * **Example** (Effectfully mapping stream values with state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7688,7 +7688,7 @@ export const mapAccumEffect: {
  *
  * **Example** (Effectfully mapping stream chunks with state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7764,7 +7764,7 @@ export const mapAccumArrayEffect: {
  *
  * **Example** (Scanning stream state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7818,7 +7818,7 @@ export const scan: {
  *
  * **Example** (Effectfully scanning stream state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7861,7 +7861,7 @@ export const scanEffect: {
  *
  * **Example** (Debouncing stream elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Duration, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3).pipe(
@@ -7973,7 +7973,7 @@ export const debounce: {
  *
  * **Example** (Throttling stream chunks effectfully)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const stream = Stream.fromSchedule(Schedule.spaced("50 millis")).pipe(
@@ -8137,7 +8137,7 @@ const throttleShapeEffect = <A, E, R, E2, R2>(
  *
  * **Example** (Throttling stream chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Stream } from "effect"
  *
  * const stream = Stream.fromSchedule(Schedule.spaced("50 millis")).pipe(
@@ -8205,7 +8205,7 @@ export const throttle: {
  *
  * **Example** (Grouping elements by size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -8237,7 +8237,7 @@ export const grouped: {
  *
  * **Example** (Grouping elements by size or time)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -8277,7 +8277,7 @@ export const groupedWithin: {
  *
  * **Example** (Grouping elements into keyed substreams using an effectful classifier)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -8349,7 +8349,7 @@ export const groupBy: {
  *
  * **Example** (Grouping elements by key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -8555,7 +8555,7 @@ export const groupAdjacentBy: {
  *
  * **Example** (Transducing with a sink)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Sink, Stream } from "effect"
  *
  * const program = Effect.gen(function* () {
@@ -8629,7 +8629,7 @@ export const transduce = dual<
  *
  * **Example** (Aggregating with a sink)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Sink, Stream } from "effect"
  *
  * Effect.runPromise(Effect.gen(function* () {
@@ -8670,7 +8670,7 @@ export const aggregate: {
  *
  * **Example** (Aggregating with a sink and schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule, Sink, Stream } from "effect"
  *
  * Effect.runPromise(Effect.gen(function* () {
@@ -8797,7 +8797,7 @@ export const aggregateWithin: {
  *
  * **Example** (Broadcasting to two consumers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.scoped(
@@ -8914,7 +8914,7 @@ const makePubSub = <A>(
  *
  * **Example** (Broadcasting a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.scoped(
@@ -8985,7 +8985,7 @@ export const broadcast: {
  *
  * **Example** (Sharing a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * Effect.runPromise(
@@ -9065,7 +9065,7 @@ export const share: {
  *
  * **Example** (Piping through a channel)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Channel, Console, Effect, Stream } from "effect"
  *
  * type NumberChunk = readonly [number, ...Array<number>]
@@ -9114,7 +9114,7 @@ export const pipeThroughChannel: {
  *
  * **Example** (Piping through a channel with failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Channel, Effect, Stream } from "effect"
  *
  * type NumberChunk = readonly [number, ...Array<number>]
@@ -9160,7 +9160,7 @@ export const pipeThroughChannelOrFail: {
  *
  * **Example** (Piping through a sink)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Sink, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9197,7 +9197,7 @@ export const pipeThrough: {
  *
  * **Example** (Collecting values into a stream element)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -9221,7 +9221,7 @@ export const collect = <A, E, R>(self: Stream<A, E, R>): Stream<Array<A>, E, R> 
  *
  * **Example** (Accumulating stream elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9252,7 +9252,7 @@ export const accumulate = <A, E, R>(self: Stream<A, E, R>): Stream<Arr.NonEmptyA
  *
  * **Example** (Emitting changed values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9278,7 +9278,7 @@ export const changes = <A, E, R>(self: Stream<A, E, R>): Stream<A, E, R> => chan
  *
  * **Example** (Emitting values that changed by equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make("A", "a", "B", "b", "b").pipe(
@@ -9336,7 +9336,7 @@ export const changesWith: {
  *
  * **Example** (Effectfully emitting changed values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9404,7 +9404,7 @@ export const changesWithEffect: {
  *
  * **Example** (Decoding Uint8Array chunks into strings using TextDecoder with an optional encoding)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const encoder = new TextEncoder()
@@ -9456,7 +9456,7 @@ export const decodeText: <
  *
  * **Example** (Encoding a stream of strings into UTF-8 Uint8Array chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make("Hello", " ", "World")
@@ -9485,7 +9485,7 @@ export const encodeText = <E, R>(self: Stream<string, E, R>): Stream<Uint8Array,
  *
  * **Example** (Splitting streamed text into lines)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * Effect.runPromise(Effect.gen(function* () {
@@ -9511,7 +9511,7 @@ export const splitLines = <E, R>(self: Stream<string, E, R>): Stream<string, E, 
  *
  * **Example** (Interspersing stream elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9553,7 +9553,7 @@ export const intersperse: {
  *
  * **Example** (Interspersing stream affixes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make("a", "b", "c").pipe(
@@ -9596,7 +9596,7 @@ export const intersperseAffixes: {
  *
  * **Example** (Interleaving streams)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.interleave(
@@ -9639,7 +9639,7 @@ export const interleave: {
  *
  * **Example** (Interleaving two streams deterministically by following a boolean decider stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9729,7 +9729,7 @@ export const interleaveWith: {
  *
  * **Example** (Interrupting when an effect completes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Deferred, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9784,7 +9784,7 @@ export const interruptWhen: {
  *
  * **Example** (Halting a stream after an effect completes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Deferred, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9819,7 +9819,7 @@ export const haltWhen: {
  *
  * **Example** (Running a finalizer on exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3).pipe(
@@ -9863,7 +9863,7 @@ export const onExit: {
  *
  * **Example** (Running an effect on errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9901,7 +9901,7 @@ export const onError: {
  *
  * **Example** (Running an effect on start)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -9940,7 +9940,7 @@ export const onStart: {
  *
  * **Example** (Running an effect on the first value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * Effect.runPromise(Effect.gen(function* () {
@@ -9973,7 +9973,7 @@ export const onFirst: {
  *
  * **Example** (Running an effect on end)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -10010,7 +10010,7 @@ export const onEnd: {
  *
  * **Example** (Ensuring finalization)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.fromArray([1, 2]).pipe(
@@ -10046,7 +10046,7 @@ export const ensuring: {
  *
  * **Example** (Providing stream requirements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Layer, Stream } from "effect"
  *
  * class Env extends Context.Service<Env, { readonly name: string }>()("Env") {}
@@ -10103,7 +10103,7 @@ export const provide: {
  *
  * **Example** (Providing multiple services to the stream using a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Stream } from "effect"
  *
  * class Config extends Context.Service<Config, { readonly prefix: string }>()("Config") {}
@@ -10148,7 +10148,7 @@ export const provideContext: {
  *
  * **Example** (Providing a stream service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Stream } from "effect"
  *
  * class Greeter extends Context.Service<Greeter, {
@@ -10202,7 +10202,7 @@ export const provideService: {
  *
  * **Example** (Providing a stream service effectfully)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Stream } from "effect"
  *
  * class ApiConfig extends Context.Service<ApiConfig, { readonly baseUrl: string }>()("ApiConfig") {}
@@ -10260,7 +10260,7 @@ export const provideServiceEffect: {
  *
  * **Example** (Updating the stream context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Stream } from "effect"
  *
  * class Logger extends Context.Service<Logger, { prefix: string }>()("Logger") {}
@@ -10314,7 +10314,7 @@ export const updateContext: {
  *
  * **Example** (Updating a stream service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Stream } from "effect"
  *
  * class Counter extends Context.Service<Counter, { count: number }>()("Counter") {}
@@ -10364,7 +10364,7 @@ export const updateService: {
  *
  * **Example** (Wrapping a stream in a span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.fromArray([1, 2, 3]).pipe(Stream.withSpan("numbers"))
@@ -10400,7 +10400,7 @@ export const withSpan: {
  *
  * **Example** (Starting stream do notation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, pipe, Stream } from "effect"
  *
  * const program = pipe(
@@ -10445,7 +10445,7 @@ export {
    *
    * **Example** (Adding a computed field)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Console, Effect, Stream } from "effect"
    *
    * const stream = Stream.Do.pipe(
@@ -10473,7 +10473,7 @@ export {
  *
  * **Example** (Binding a stream value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Stream.Do.pipe(
@@ -10524,7 +10524,7 @@ export const bind: {
  *
  * **Example** (Binding an effect value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.Do.pipe(
@@ -10581,7 +10581,7 @@ export const bindEffect: {
  *
  * **Example** (Binding values to a record key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3).pipe(Stream.bindTo("value"))
@@ -10608,7 +10608,7 @@ export const bindTo: {
  *
  * **Example** (Running a stream with a sink)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Sink, Stream } from "effect"
  *
  * const program = Stream.run(Stream.make(1, 2, 3), Sink.sum)
@@ -10644,7 +10644,7 @@ export const run: {
  *
  * **Example** (Collecting stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
@@ -10678,7 +10678,7 @@ export const runCollect = <A, E, R>(self: Stream<A, E, R>): Effect.Effect<Array<
  *
  * **Example** (Counting stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
@@ -10703,7 +10703,7 @@ export const runCount = <A, E, R>(self: Stream<A, E, R>): Effect.Effect<number, 
  *
  * **Example** (Summing stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -10731,7 +10731,7 @@ export const runSum = <E, R>(self: Stream<number, E, R>): Effect.Effect<number, 
  *
  * **Example** (Folding stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -10784,7 +10784,7 @@ export const runFold: {
  *
  * **Example** (Effectfully folding stream values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -10841,7 +10841,7 @@ export const runFoldEffect: {
  *
  * **Example** (Getting the first stream value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Option, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -10891,7 +10891,7 @@ export const runLast = <A, E, R>(self: Stream<A, E, R>): Effect.Effect<Option.Op
  *
  * **Example** (Running an effect for each value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -10936,7 +10936,7 @@ export const runForEach: {
  *
  * **Example** (Running effects while a predicate holds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -10992,7 +10992,7 @@ export const runForEachWhile: {
  *
  * **Example** (Consuming stream chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
@@ -11028,7 +11028,7 @@ export const runForEachArray: {
  *
  * **Example** (Draining a stream run)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -11060,7 +11060,7 @@ export const runDrain = <A, E, R>(self: Stream<A, E, R>): Effect.Effect<void, E,
  *
  * **Example** (Creating a scoped pull)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -11089,7 +11089,7 @@ export const toPull = <A, E, R>(
  *
  * **Example** (Joining strings from a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make("Hello", " ", "World", "!")
@@ -11117,7 +11117,7 @@ export const mkString = <E, R>(self: Stream<string, E, R>): Effect.Effect<string
  *
  * **Example** (Joining byte chunks into an ArrayBuffer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
  * const program = Stream.make(
@@ -11171,7 +11171,7 @@ export const mkArrayBuffer = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effe
  *
  * **Example** (Joining Uint8Array chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(new Uint8Array([1, 2]), new Uint8Array([3, 4]))
@@ -11204,7 +11204,7 @@ export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effec
  *
  * **Example** (Converting to a ReadableStream with services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
@@ -11280,7 +11280,7 @@ export const toReadableStreamWith = dual<
  *
  * **Example** (Converting a stream to a ReadableStream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Stream } from "effect"
  *
  * const readableStream = Stream.toReadableStream(Stream.make(1, 2, 3))
@@ -11322,7 +11322,7 @@ export const toReadableStream: {
  *
  * **Example** (Creating a ReadableStream effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3, 4, 5)
@@ -11370,7 +11370,7 @@ export const toReadableStreamEffect: {
  *
  * **Example** (Converting to an AsyncIterable with services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -11484,7 +11484,7 @@ export const toAsyncIterableWith: {
  *
  * **Example** (Creating an AsyncIterable effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -11519,7 +11519,7 @@ export const toAsyncIterableEffect = <A, E, R>(self: Stream<A, E, R>): Effect.Ef
  *
  * **Example** (Converting to an async iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Stream } from "effect"
  *
  * const stream = Stream.make(1, 2, 3)
@@ -11553,7 +11553,7 @@ export const toAsyncIterable = <A, E>(self: Stream<A, E>): AsyncIterable<A> =>
  *
  * **Example** (Running a stream into a PubSub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, PubSub, Stream } from "effect"
  *
  * const program = Effect.scoped(Effect.gen(function* () {
@@ -11609,7 +11609,7 @@ export const runIntoPubSub: {
  *
  * **Example** (Converting a stream to a PubSub for concurrent consumption)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, PubSub, Stream } from "effect"
  *
  * const program = Effect.scoped(Effect.gen(function* () {
@@ -11678,7 +11678,7 @@ export const toPubSub: {
  *
  * **Example** (Converting to a PubSub of takes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, PubSub, Stream } from "effect"
  *
  * const program = Effect.gen(function* () {
@@ -11747,7 +11747,7 @@ export const toPubSubTake: {
  *
  * **Example** (Converting a stream to a Queue for concurrent consumption)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue, Stream } from "effect"
  *
  * const program = Effect.gen(function* () {
@@ -11798,7 +11798,7 @@ export const toQueue: {
  *
  * **Example** (Running a stream into a queue)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue, Stream } from "effect"
  *
  * const program = Effect.gen(function*() {

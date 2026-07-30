@@ -38,7 +38,7 @@ const TypeId = "~effect/platform/FileSystem"
  *
  * **Example** (Accessing file system operations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -386,7 +386,7 @@ export interface FileSystem {
  *
  * **Example** (Creating branded file sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * // Create sizes using the Size constructor
@@ -416,7 +416,7 @@ export type Size = Brand.Branded<bigint, "Size">
  *
  * **Example** (Using size inputs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -445,7 +445,7 @@ export type SizeInput = bigint | number | Size
  *
  * **Example** (Converting size inputs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * // From number
@@ -483,7 +483,7 @@ export const Size = (bytes: SizeInput): Size => typeof bytes === "bigint" ? byte
  *
  * **Example** (Creating kibibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -516,7 +516,7 @@ export const KiB = (n: number): Size => Size(n * 1024)
  *
  * **Example** (Creating mebibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -553,7 +553,7 @@ export const MiB = (n: number): Size => Size(n * 1024 * 1024)
  *
  * **Example** (Creating gibibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -588,7 +588,7 @@ export const GiB = (n: number): Size => Size(n * 1024 * 1024 * 1024)
  *
  * **Example** (Creating tebibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -628,7 +628,7 @@ const bigintPiB = bigint1024 * bigint1024 * bigint1024 * bigint1024 * bigint1024
  *
  * **Example** (Creating pebibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -674,7 +674,7 @@ export const PiB = (n: number): Size => Size(BigInt(n) * bigintPiB)
  *
  * **Example** (Opening files with flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -876,7 +876,7 @@ const notFound = (method: string, path: string) =>
  *
  * **Example** (Creating a no-op FileSystem)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem, PlatformError } from "effect"
  *
  * // Create a test filesystem that only allows reading specific files
@@ -1021,7 +1021,7 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
  *
  * **Example** (Providing a no-op FileSystem layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * // Create a test layer with specific behaviors
@@ -1096,7 +1096,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  *
  * **Example** (Working with file handles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1180,7 +1180,7 @@ export declare namespace File {
    *
    * **Example** (Inspecting file information)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, FileSystem, Option } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -1352,7 +1352,7 @@ export declare namespace WatchEvent {
  *
  * **Example** (Providing a custom watch backend)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem, Option, Stream } from "effect"
  *
  * // Custom watch backend implementation

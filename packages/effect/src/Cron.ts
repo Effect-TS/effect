@@ -43,7 +43,7 @@ const TypeId = "~effect/time/Cron"
  *
  * **Example** (Creating a cron schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron } from "effect"
  *
  * // Create a cron that runs at 9 AM on weekdays
@@ -182,7 +182,7 @@ const CronProto = {
  *
  * **Example** (Checking cron values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron } from "effect"
  *
  * const cron = Cron.make({
@@ -225,7 +225,7 @@ export const isCron = (u: unknown): u is Cron => hasProperty(u, TypeId)
  *
  * **Example** (Creating schedules from constraints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron } from "effect"
  *
  * // Every day at midnight
@@ -444,7 +444,7 @@ const CronParseErrorTypeId = "~effect/time/Cron/CronParseError"
  *
  * **Example** (Handling cron parse failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron, Result } from "effect"
  *
  * const result = Cron.parse("invalid expression")
@@ -483,7 +483,7 @@ export class CronParseError extends Data.TaggedError("CronParseError")<{
  *
  * **Example** (Checking cron parse errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron, Result } from "effect"
  *
  * const result = Cron.parse("invalid cron expression")
@@ -524,7 +524,7 @@ export const isCronParseError = (u: unknown): u is CronParseError => hasProperty
  *
  * **Example** (Parsing cron expressions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -598,7 +598,7 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string): Result.Res
  *
  * **Example** (Parsing cron expressions unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron } from "effect"
  *
  * // At 04:00 on every day-of-month from 8 through 14
@@ -635,7 +635,7 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
  *
  * **Example** (Matching dates against a schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron, Result } from "effect"
  *
  * const cron = Result.getOrThrow(Cron.parse("0 0 4 8-14 * *", "UTC"))
@@ -717,7 +717,7 @@ const daysInMonth = (date: Date): number =>
  *
  * **Example** (Finding the next occurrence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron, Result } from "effect"
  *
  * const cron = Result.getOrThrow(Cron.parse("0 0 4 8-14 * *", "UTC"))
@@ -964,7 +964,7 @@ const stepCron = (cron: Cron, now: DateTime.DateTime.Input | undefined, directio
  *
  * **Example** (Iterating scheduled occurrences)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron, Result } from "effect"
  *
  * const cron = Result.getOrThrow(Cron.parse("0 0 9 * * 1-5", "UTC")) // 9 AM weekdays
@@ -1004,7 +1004,7 @@ export const sequence = function*(cron: Cron, now?: DateTime.DateTime.Input): It
  *
  * **Example** (Comparing schedules with equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron } from "effect"
  *
  * const cron1 = Cron.make({
@@ -1062,7 +1062,7 @@ const restrictionsEquals = (self: ReadonlySet<number>, that: ReadonlySet<number>
  *
  * **Example** (Checking schedule equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cron } from "effect"
  *
  * const cron1 = Cron.make({

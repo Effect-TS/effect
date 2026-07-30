@@ -48,7 +48,7 @@ const TypeId = "~effect/Fiber"
  *
  * **Example** (Awaiting a forked fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -105,7 +105,7 @@ export interface Fiber<out A, out E = never> extends Pipeable {
  *
  * **Example** (Working with fiber types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -177,7 +177,7 @@ export {
    *
    * **Example** (Awaiting a fiber exit)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Fiber } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -212,7 +212,7 @@ export {
  *
  * **Example** (Awaiting multiple fiber exits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -253,7 +253,7 @@ export const awaitAll: <A extends Fiber<any, any>>(
  *
  * **Example** (Joining a fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -324,7 +324,7 @@ export const joinAll: <A extends Iterable<Fiber<any, any>>>(
  *
  * **Example** (Interrupting a fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -364,7 +364,7 @@ export const interrupt: <A, E>(self: Fiber<A, E>) => Effect<void> = effect.fiber
  *
  * **Example** (Interrupting a fiber as another fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -416,7 +416,7 @@ export const interruptAs: {
  *
  * **Example** (Interrupting multiple fibers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -484,7 +484,7 @@ export const interruptAll: <A extends Iterable<Fiber<any, any>>>(
  *
  * **Example** (Interrupting multiple fibers as another fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -542,7 +542,7 @@ export const interruptAllAs: {
  *
  * **Example** (Checking for fibers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -587,7 +587,7 @@ export const isFiber = (
  *
  * **Example** (Getting the current fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
