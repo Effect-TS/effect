@@ -1472,6 +1472,10 @@ export class Tool extends Schema.Class<Tool>(
    */
   inputSchema: Schema.Any,
   /**
+   * An optional JSON Schema object defining the expected output of the tool.
+   */
+  outputSchema: optional(Schema.Any),
+  /**
    * Optional additional tool information.
    */
   annotations: optional(ToolAnnotations),

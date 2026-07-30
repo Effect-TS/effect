@@ -884,10 +884,12 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
     const annotations = tool.annotations
     const toolMeta = Context.getOrUndefined(annotations, Tool.Meta)
     const isDeclaredFailure = Schema.is(tool.failureSchema)
+    const outputSchema = Tool.getJsonSchemaFromSchema(tool.successSchema)
     const mcpTool = new McpTool({
       name: tool.name,
       description: Tool.getDescription(tool),
       inputSchema: Tool.getJsonSchema(tool),
+      ...(outputSchema.type === "object" ? { outputSchema } : {}),
       annotations: {
         ...(Context.getOption(tool.annotations, Tool.Title).pipe(
           Option.map((title) => ({ title })),
