@@ -61,6 +61,7 @@ export class TestEntityState extends Effect.Service<TestEntityState>()("TestEnti
     const defectTrigger = MutableRef.make(false)
     const handlerBuildDefectTrigger = MutableRef.make(false)
     const layerBuilds = MutableRef.make(0)
+    const buildLatch = Effect.unsafeMakeLatch(true)
 
     return {
       messages,
@@ -69,7 +70,8 @@ export class TestEntityState extends Effect.Service<TestEntityState>()("TestEnti
       interrupts,
       defectTrigger,
       handlerBuildDefectTrigger,
-      layerBuilds
+      layerBuilds,
+      buildLatch
     } as const
   })
 }) {}
@@ -79,6 +81,7 @@ export const TestEntityNoState = TestEntity.toLayer(
     const state = yield* TestEntityState
 
     MutableRef.update(state.layerBuilds, (count) => count + 1)
+    yield* state.buildLatch.await
     if (state.handlerBuildDefectTrigger.current) {
       MutableRef.set(state.handlerBuildDefectTrigger, false)
       yield* Effect.die("Handler build defect")
