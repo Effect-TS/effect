@@ -25,14 +25,36 @@ import * as SchemaTransformation from "../../SchemaTransformation.ts"
 const SseErrorTypeId = "~effect/encoding/Sse/SseError"
 
 /**
+ * Error reason raised when pending Server-Sent Events state exceeds the
+ * configured maximum size.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class EventTooLarge extends Data.TaggedError("EventTooLarge")<{
+  readonly maxEventSize: number
+}> {
+  override get message() {
+    return `Pending SSE event exceeded the maximum size of ${this.maxEventSize}`
+  }
+}
+
+/**
+ * Union of Server-Sent Events decoding error reasons.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export type SseErrorReason = EventTooLarge
+
+/**
  * Error raised when decoding a Server-Sent Events stream fails.
  *
  * @category errors
  * @since 4.0.0
  */
 export class SseError extends Data.TaggedError("SseError")<{
-  readonly reason: "EventTooLarge"
-  readonly maxEventSize: number
+  readonly reason: SseErrorReason
 }> {
   /**
    * Marks this value as an SSE decoding error.
@@ -42,12 +64,12 @@ export class SseError extends Data.TaggedError("SseError")<{
   readonly [SseErrorTypeId] = SseErrorTypeId
 
   /**
-   * Describes the pending event size limit that was exceeded.
+   * Delegates the public message to the underlying SSE error reason.
    *
    * @since 4.0.0
    */
   override get message() {
-    return `Pending SSE event exceeded the maximum size of ${this.maxEventSize}`
+    return this.reason.message
   }
 }
 
@@ -325,7 +347,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     }
 
     if (buffer.length + data.length > maxEventSize) {
-      const error = new SseError({ reason: "EventTooLarge", maxEventSize })
+      const error = new SseError({ reason: new EventTooLarge({ maxEventSize }) })
       reset()
       return error
     }

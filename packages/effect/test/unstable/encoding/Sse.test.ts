@@ -69,8 +69,8 @@ describe("Sse", () => {
       )
 
       assert.instanceOf(error, Sse.SseError)
-      assert.strictEqual(error.reason, "EventTooLarge")
-      assert.strictEqual(error.maxEventSize, 4)
+      assert.instanceOf(error.reason, Sse.EventTooLarge)
+      assert.strictEqual(error.reason.maxEventSize, 4)
     }))
 
   it.effect("fails when pending data exceeds maxEventSize", () =>
@@ -82,8 +82,8 @@ describe("Sse", () => {
       )
 
       assert.instanceOf(error, Sse.SseError)
-      assert.strictEqual(error.reason, "EventTooLarge")
-      assert.strictEqual(error.maxEventSize, 3)
+      assert.instanceOf(error.reason, Sse.EventTooLarge)
+      assert.strictEqual(error.reason.maxEventSize, 3)
     }))
 
   it.effect("parses pending state just under maxEventSize", () =>
