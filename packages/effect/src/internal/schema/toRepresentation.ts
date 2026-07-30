@@ -110,7 +110,7 @@ function fromASTs(
       canonicalByKey.set(key, ast)
       return ast
     }
-    return canonical.context === ast.context ? ast : canonical
+    return canonical
   }
 
   function annotateReference(

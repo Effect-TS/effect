@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Schema, SchemaRepresentation } from "effect"
+import { Schema, SchemaAST, SchemaRepresentation } from "effect"
 
 describe("SchemaRepresentation.toRepresentations", () => {
   describe("root identity and sharing", () => {
@@ -59,6 +59,28 @@ describe("SchemaRepresentation.toRepresentations", () => {
               contentMediaType: "application/json",
               "~identifier": "Tool.Content"
             },
+            checks: []
+          }
+        }
+      })
+    })
+
+    it("shares copies of the same AST with the same Context", () => {
+      const ast = Schema.String.annotate({ identifier: "Value" }).ast
+      const context = new SchemaAST.Context(false, false)
+      const first = SchemaAST.replaceContext(ast, context)
+      const second = SchemaAST.replaceContext(ast, context)
+
+      assert.notStrictEqual(first, second)
+      assert.deepStrictEqual(SchemaRepresentation.toRepresentations([first, second]), {
+        representations: [
+          { _tag: "Reference", $ref: "Value" },
+          { _tag: "Reference", $ref: "Value" }
+        ],
+        references: {
+          Value: {
+            _tag: "String",
+            annotations: { identifier: "Value" },
             checks: []
           }
         }
