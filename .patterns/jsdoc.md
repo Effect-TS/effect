@@ -55,6 +55,7 @@ Keep these distinctions:
 ## Example Best Practices
 
 - Mark runnable TypeScript examples with `````ts import.meta.vitest`` so `pnpm doctest` executes them.
+- Use standalone `// >` comments to assert the complete console output of a runnable example. Each marker represents one expected output line; examples without markers remain execution-only.
 - Keep runnable examples complete, deterministic, bounded, and independent of external services or machine-specific state. Await asynchronous work so failures and cleanup remain inside the doctest.
 - Import public APIs and include all required setup. Do not use undeclared placeholders or rely on declarations from surrounding prose.
 - Use `````ts import.meta.vitest suite`` for examples that register Vitest tests or suites, such as `@effect/vitest` helpers. Invoke the registration API directly; the `suite` marker runs the example during collection.

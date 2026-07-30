@@ -12,10 +12,10 @@ describe("Protocol", () => {
     })
   })
 
-  it("round-trips example requests", () => {
-    const id = Protocol.exampleId("/src/example.ts", 3, "version-1")
+  it("round-trips snippet requests", () => {
+    const id = Protocol.snippetId("/src/example.ts", 3, "version-1")
 
-    assert.deepStrictEqual(Protocol.request(Protocol.examplePrefix, id), {
+    assert.deepStrictEqual(Protocol.request(Protocol.snippetPrefix, id), {
       file: "/src/example.ts",
       index: 3,
       version: "version-1"
@@ -26,12 +26,12 @@ describe("Protocol", () => {
     for (
       const id of [
         "other:file",
-        Protocol.examplePrefix,
-        `${Protocol.examplePrefix}file=example.ts&index=-1`,
-        `${Protocol.examplePrefix}file=example.ts&index=1.5`
+        Protocol.snippetPrefix,
+        `${Protocol.snippetPrefix}file=example.ts&index=-1`,
+        `${Protocol.snippetPrefix}file=example.ts&index=1.5`
       ]
     ) {
-      assert.isUndefined(Protocol.request(Protocol.examplePrefix, id))
+      assert.isUndefined(Protocol.request(Protocol.snippetPrefix, id))
     }
   })
 
@@ -49,8 +49,8 @@ describe("Protocol", () => {
     })
   })
 
-  it("round-trips resolved example identifiers", () => {
-    const id = Protocol.resolvedId("example", {
+  it("round-trips resolved snippet identifiers", () => {
+    const id = Protocol.resolvedId("snippet", {
       file: "/src/example.ts",
       index: 2
     })
@@ -59,7 +59,7 @@ describe("Protocol", () => {
       file: "/src/example.ts",
       index: 2,
       version: undefined,
-      kind: "example"
+      kind: "snippet"
     })
   })
 
@@ -68,8 +68,8 @@ describe("Protocol", () => {
       const id of [
         "/src/example.ts",
         "/src/example.ts?effect-doctest=unknown",
-        "/src/example.ts?effect-doctest=example",
-        "/src/example.ts?effect-doctest=example&index=one"
+        "/src/example.ts?effect-doctest=snippet",
+        "/src/example.ts?effect-doctest=snippet&index=one"
       ]
     ) {
       assert.isUndefined(Protocol.resolvedRequest(id))

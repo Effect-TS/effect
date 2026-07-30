@@ -21,8 +21,8 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [
-        { source: "const first = 1", line: 3, name: "first" },
-        { source: "const second = 2", line: 9, name: "second example" }
+        { source: "const first = 1", line: 3, name: "first", expected: undefined },
+        { source: "const second = 2", line: 9, name: "second example", expected: undefined }
       ])
     })
 
@@ -39,7 +39,7 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [
-        { source: "const inside = true", line: 5, name: undefined }
+        { source: "const inside = true", line: 5, name: undefined, expected: undefined }
       ])
     })
 
@@ -56,6 +56,52 @@ describe("Source", () => {
       ].join("\n")
 
       assert.isEmpty(Source.extract(source))
+    })
+
+    it("extracts expected console output", () => {
+      const source = [
+        "/**",
+        " * ```ts import.meta.vitest",
+        " * console.log({ value: 1 })",
+        " * // > {",
+        " * // >   value: 1",
+        " * // > }",
+        " * ```",
+        " */"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source), [{
+        source: [
+          "console.log({ value: 1 })",
+          "// > {",
+          "// >   value: 1",
+          "// > }"
+        ].join("\n"),
+        line: 2,
+        name: undefined,
+        expected: "{\n  value: 1\n}"
+      }])
+    })
+
+    it("ignores explanatory and inline comments", () => {
+      const source = [
+        "/**",
+        " * ```ts import.meta.vitest",
+        " * // Explain the output to the reader.",
+        " * console.log(1) // > not an output marker",
+        " * ```",
+        " */"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source), [{
+        source: [
+          "// Explain the output to the reader.",
+          "console.log(1) // > not an output marker"
+        ].join("\n"),
+        line: 2,
+        name: undefined,
+        expected: undefined
+      }])
     })
   })
 
@@ -74,7 +120,7 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source, "markdown"), [
-        { source: "const value = 1", line: 7, name: "example" }
+        { source: "const value = 1", line: 7, name: "example", expected: undefined }
       ])
     })
   })

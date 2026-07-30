@@ -13,7 +13,7 @@
     "bundle-compare-selected": "bash scripts/bundle-compare-selected.sh",
     "circular": "node scripts/circular.mjs",
     "test": "vitest",
-    "doctest": "vitest run --config vitest.docs.ts",
+    "doctest": "vitest --config vitest.docs.ts",
     "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",
     "typeperf": "pnpm --dir packages/effect exec node typeperf/run.mjs",

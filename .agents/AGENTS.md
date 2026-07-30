@@ -90,7 +90,7 @@ Use the narrowest validation that still covers the change:
 | JSDoc example changes            | `pnpm lint`; package-local `pnpm docgen`; root `pnpm doctest` for runnable examples |
 | Docs-only changes                | `pnpm lint-fix`; no tests required unless examples or code changed                 |
 
-Never run the whole test suite. A bare `pnpm test` runs every package in watch mode and will not
+Never run the whole test suite. A bare `pnpm test` or `pnpm doctest` runs every package in watch mode and will not
 exit; always pass `--run` and the specific test files covering your change. CI runs the full suite
 on push, so leave that to CI.
 
