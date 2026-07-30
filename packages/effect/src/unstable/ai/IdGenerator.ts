@@ -32,7 +32,7 @@ import * as Random from "../../Random.ts"
  *
  * **Example** (Accessing the ID generator service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { IdGenerator } from "effect/unstable/ai"
  *
@@ -61,7 +61,7 @@ export class IdGenerator extends Context.Service<IdGenerator, Service>()(
  *
  * **Example** (Implementing a custom ID generator)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import type { IdGenerator } from "effect/unstable/ai"
  *
@@ -90,7 +90,7 @@ export interface Service {
  *
  * **Example** (Configuring generated IDs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { IdGenerator } from "effect/unstable/ai"
  *
  * // Configuration for tool call IDs
@@ -162,7 +162,7 @@ const makeGenerator = ({
  *
  * **Example** (Generating default IDs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { IdGenerator } from "effect/unstable/ai"
  *
@@ -198,7 +198,7 @@ export const defaultIdGenerator: Service = {
  *
  * **Example** (Creating a custom generator)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { IdGenerator } from "effect/unstable/ai"
  *
@@ -219,7 +219,7 @@ export const defaultIdGenerator: Service = {
  *
  * **Example** (Handling invalid generator options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { IdGenerator } from "effect/unstable/ai"
  *
@@ -273,7 +273,7 @@ export const make = Effect.fnUntraced(function*({
  *
  * **Example** (Providing an ID generator layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { IdGenerator } from "effect/unstable/ai"
  *

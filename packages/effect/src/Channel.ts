@@ -68,7 +68,7 @@ export const TypeId: TypeId = "~effect/Channel"
  *
  * **Example** (Checking for channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const channel = Channel.succeed(42)
@@ -110,7 +110,7 @@ export const isChannel = (
  *
  * **Example** (Typing channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Channel } from "effect"
  *
  * // A channel that outputs numbers and requires no environment
@@ -265,7 +265,7 @@ const ChannelProto = {
  *
  * **Example** (Creating channels from transforms)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * const channel = Channel.fromTransform((upstream, scope) =>
@@ -301,7 +301,7 @@ export const fromTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, E
  *
  * **Example** (Transforming pull behavior)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * // Transform a channel by modifying its pull behavior
@@ -355,7 +355,7 @@ export const transformPull = <
  *
  * **Example** (Creating channels from pulls)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * const channel = Channel.fromPull(
@@ -411,7 +411,7 @@ export const fromTransformBracket = <OutElem, OutErr, OutDone, InElem, InErr, In
  *
  * **Example** (Extracting channel transforms)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const channel = Channel.succeed(42)
@@ -434,7 +434,7 @@ export const toTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env
  *
  * **Example** (Reading the default chunk size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * console.log(Channel.DefaultChunkSize) // 4096
@@ -466,7 +466,7 @@ const asyncQueue = <A, E = never, R = never>(
  *
  * **Example** (Creating channels from callbacks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect, Queue } from "effect"
  *
  * const channel = Channel.callback<number>((queue) =>
@@ -495,7 +495,7 @@ export const callback = <A, E = never, R = never>(
  *
  * **Example** (Creating array channels from callbacks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect, Queue } from "effect"
  *
  * const channel = Channel.callbackArray<number>(Effect.fn(function*(queue) {
@@ -522,7 +522,7 @@ export const callbackArray = <A, E = never, R = never>(
  *
  * **Example** (Suspending channel creation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const channel = Channel.suspend(() => Channel.succeed(42))
@@ -549,7 +549,7 @@ export const suspend = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
  *
  * **Example** (Managing resources with acquire-use-release)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * const channel = Channel.acquireUseRelease(
@@ -592,7 +592,7 @@ export const acquireUseRelease = <A, E, R, OutElem, OutErr, OutDone, InElem, InE
  *
  * **Example** (Managing resources with acquire-release)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * const channel = Channel.acquireRelease(
@@ -626,7 +626,7 @@ export const acquireRelease: {
  *
  * **Example** (Creating channels from iterators)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -653,7 +653,7 @@ export const fromIterator = <A, L>(iterator: LazyArg<Iterator<A, L>>): Channel<A
  *
  * **Example** (Creating channels from arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const channel = Channel.fromArray([1, 2, 3, 4, 5])
@@ -674,7 +674,7 @@ export const fromArray = <A>(array: ReadonlyArray<A>): Channel<A> =>
  *
  * **Example** (Creating channels from chunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Chunk } from "effect"
  *
  * const chunk = Chunk.make(1, 2, 3)
@@ -692,7 +692,7 @@ export const fromChunk = <A>(chunk: Chunk.Chunk<A>): Channel<A> => fromArray(Chu
  *
  * **Example** (Batching iterator output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create a channel from a simple iterator
@@ -714,7 +714,7 @@ export const fromChunk = <A>(chunk: Chunk.Chunk<A>): Channel<A> => fromArray(Chu
  *
  * **Example** (Batching generator output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create channel from a generator function
@@ -765,7 +765,7 @@ export const fromIteratorArray = <A, L>(
  *
  * **Example** (Creating channels from iterables)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const set = new Set([1, 2, 3])
@@ -784,7 +784,7 @@ export const fromIterable = <A, L>(iterable: Iterable<A, L>): Channel<A, never, 
  *
  * **Example** (Batching iterable output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const numbers = [1, 2, 3, 4, 5]
@@ -805,7 +805,7 @@ export const fromIterableArray = <A, L>(
  *
  * **Example** (Creating channels that succeed)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const channel = Channel.succeed(42)
@@ -822,7 +822,7 @@ export const succeed = <A>(value: A): Channel<A> => fromEffect(Effect.succeed(va
  *
  * **Example** (Ending with a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * const channel = Channel.end("done")
@@ -848,7 +848,7 @@ export const endSync = <A>(evaluate: LazyArg<A>): Channel<never, never, A> =>
  *
  * **Example** (Computing values lazily)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * let requests = 0
@@ -870,7 +870,7 @@ export const sync = <A>(evaluate: LazyArg<A>): Channel<A> => fromEffect(Effect.s
  *
  * **Example** (Creating empty channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create an empty channel
@@ -895,7 +895,7 @@ export const empty: Channel<never> = fromPull(Effect.succeed(Cause.done()))
  *
  * **Example** (Creating non-terminating channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create a channel that never completes
@@ -922,7 +922,7 @@ export const never: Channel<never, never, never> = fromPull(Effect.succeed(Effec
  *
  * **Example** (Failing with an error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create a channel that fails with a string error
@@ -960,7 +960,7 @@ export const fail = <E>(error: E): Channel<never, E, never> => fromPull(Effect.s
  *
  * **Example** (Failing with a lazy error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create a channel that fails with a lazily computed error
@@ -998,7 +998,7 @@ export const failSync = <E>(evaluate: LazyArg<E>): Channel<never, E, never> => f
  *
  * **Example** (Failing with causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Channel } from "effect"
  *
  * // Create a channel that fails with a simple cause
@@ -1025,7 +1025,7 @@ export const failCause = <E>(cause: Cause.Cause<E>): Channel<never, E, never> =>
  *
  * **Example** (Failing with lazy causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Channel } from "effect"
  *
  * // Create a channel that fails with a lazily computed cause
@@ -1054,7 +1054,7 @@ export const failCauseSync = <E>(
  *
  * **Example** (Dying with defects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create a channel that dies with a string defect
@@ -1080,7 +1080,7 @@ export const die = (defect: unknown): Channel<never, never, never> => failCause(
  *
  * **Example** (Creating channels from effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect } from "effect"
  *
  * class DatabaseError extends Data.TaggedError("DatabaseError")<{
@@ -1174,7 +1174,7 @@ export const fromEffectTake = <A, E, Done, E2, R>(
  *
  * **Example** (Creating channels from queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect, Queue } from "effect"
  *
  * class QueueError extends Data.TaggedError("QueueError")<{
@@ -1217,7 +1217,7 @@ export const fromQueue = <A, E>(
  *
  * **Example** (Creating batched channels from queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect, Queue } from "effect"
  *
  * class ProcessingError extends Data.TaggedError("ProcessingError")<{
@@ -1274,7 +1274,7 @@ export const identity = <Elem, Err, Done>(): Channel<Elem, Err, Done, Elem, Err,
  *
  * **Example** (Creating channels from subscriptions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect, PubSub } from "effect"
  *
  * class SubscriptionError extends Data.TaggedError("SubscriptionError")<{
@@ -1328,7 +1328,7 @@ export const fromSubscription = <A>(
  *
  * **Example** (Batching subscription values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect, PubSub } from "effect"
  *
  * class StreamError extends Data.TaggedError("StreamError")<{
@@ -1355,7 +1355,7 @@ export const fromSubscription = <A>(
  *
  * **Example** (Processing subscription values in batches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect, PubSub } from "effect"
  *
  * class BatchProcessingError extends Data.TaggedError("BatchProcessingError")<{
@@ -1381,7 +1381,7 @@ export const fromSubscription = <A>(
  *
  * **Example** (Aggregating subscription metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect, PubSub } from "effect"
  *
  * const metricsAggregator = Effect.gen(function*() {
@@ -1435,7 +1435,7 @@ export const fromSubscriptionArray = <A>(
  *
  * **Example** (Creating channels from PubSubs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect, PubSub } from "effect"
  *
  * class StreamError extends Data.TaggedError("StreamError")<{
@@ -1460,7 +1460,7 @@ export const fromSubscriptionArray = <A>(
  *
  * **Example** (Streaming PubSub notifications)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect, PubSub } from "effect"
  *
  * const notificationService = Effect.gen(function*() {
@@ -1483,7 +1483,7 @@ export const fromSubscriptionArray = <A>(
  *
  * **Example** (Processing PubSub events)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect, PubSub } from "effect"
  *
  * interface DomainEvent {
@@ -1532,7 +1532,7 @@ export const fromPubSub = <A>(
  *
  * **Example** (Batching PubSub values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect, PubSub } from "effect"
  *
  * class BatchError extends Data.TaggedError("BatchError")<{
@@ -1558,7 +1558,7 @@ export const fromPubSub = <A>(
  *
  * **Example** (Processing PubSub orders in batches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect, PubSub } from "effect"
  *
  * interface Order {
@@ -1597,7 +1597,7 @@ export const fromPubSub = <A>(
  *
  * **Example** (Processing PubSub logs in batches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect, PubSub } from "effect"
  *
  * interface LogEntry {
@@ -1677,7 +1677,7 @@ export const fromSchedule = <O, E, R>(
  *
  * **Example** (Reading from a Web stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * const channel = Channel.fromReadableStream({
@@ -1762,7 +1762,7 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
  *
  * **Example** (Writing channel input)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * const written: Array<number> = []
@@ -1803,7 +1803,7 @@ export const fromWritableStream = <IE, E, A>(options: {
  *
  * **Example** (Transforming channel input)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * const transform = Channel.fromTransformStream<never, number, number, Error>({
@@ -1951,7 +1951,7 @@ export const fromAsyncIterableArray = <A, D, E>(
  *
  * **Example** (Mapping channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class TransformError extends Data.TaggedError("TransformError")<{
@@ -2088,7 +2088,7 @@ const concurrencyIsSequential = (
  *
  * **Example** (Mapping channel output with effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect } from "effect"
  *
  * class NetworkError extends Data.TaggedError("NetworkError")<{
@@ -2350,7 +2350,7 @@ export const mapInputError: {
  *
  * **Example** (Tapping channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Console, Data } from "effect"
  *
  * class LogError extends Data.TaggedError("LogError")<{
@@ -2414,7 +2414,7 @@ export const tap: {
  *
  * **Example** (Flat mapping channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class ProcessError extends Data.TaggedError("ProcessError")<{
@@ -2620,7 +2620,7 @@ const flatMapConcurrent = <
  *
  * **Example** (Concatenating with completion values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class ConcatError extends Data.TaggedError("ConcatError")<{
@@ -2733,7 +2733,7 @@ export const concatWith: {
  *
  * **Example** (Concatenating channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class ConcatError extends Data.TaggedError("ConcatError")<{
@@ -3057,7 +3057,7 @@ export const orElseIfEmpty: {
  *
  * **Example** (Flattening nested channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class FlattenError extends Data.TaggedError("FlattenError")<{
@@ -3112,7 +3112,7 @@ export const flatten = <
  *
  * **Example** (Flattening arrays of channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class FlattenError extends Data.TaggedError("FlattenError")<{
@@ -3207,7 +3207,7 @@ export const flattenTake = <
  *
  * **Example** (Draining channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create a channel that outputs values
@@ -3365,7 +3365,7 @@ export const schedule: {
  *
  * **Example** (Filtering channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create a channel with mixed numbers
@@ -3575,7 +3575,7 @@ export const filterMapEffect: {
  *
  * **Example** (Filtering array output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Channel } from "effect"
  *
  * const nonEmptyArrayPredicate = Array.isReadonlyArrayNonEmpty
@@ -3780,7 +3780,7 @@ export const filterMapArrayEffect: {
  *
  * **Example** (Mapping with accumulated state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * // Create a channel with numbers
@@ -3922,7 +3922,7 @@ export const mapAccum: {
  *
  * **Example** (Scanning channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel } from "effect"
  *
  * // Create a channel with numbers
@@ -3986,7 +3986,7 @@ export const scan: {
  *
  * **Example** (Scanning channel output with effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect } from "effect"
  *
  * class ScanError extends Data.TaggedError("ScanError")<{
@@ -4078,7 +4078,7 @@ export const scanEffect: {
  *
  * **Example** (Recovering from failure causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Channel, Data } from "effect"
  *
  * class ProcessError extends Data.TaggedError("ProcessError")<{
@@ -5298,7 +5298,7 @@ export const catchTag: {
  *
  * **Example** (Recovering from nested reasons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class RateLimitError extends Data.TaggedError("RateLimitError")<{
@@ -5683,7 +5683,7 @@ export const catchReasons: {
  *
  * **Example** (Promoting nested reasons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class RateLimitError extends Data.TaggedError("RateLimitError")<{
@@ -5803,7 +5803,7 @@ export const mapError: {
  *
  * **Example** (Converting failures to defects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class ValidationError extends Data.TaggedError("ValidationError")<{
@@ -6017,7 +6017,7 @@ export const retry: {
  *
  * **Example** (Switching mapped channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class SwitchError extends Data.TaggedError("SwitchError")<{
@@ -6141,7 +6141,7 @@ export const switchMap: {
  *
  * **Example** (Merging nested channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class MergeAllError extends Data.TaggedError("MergeAllError")<{
@@ -6328,7 +6328,7 @@ export const mergeAll: {
  *
  * **Example** (Choosing merge halt strategies)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Channel } from "effect"
  *
  * // Different halt strategies for channel merging
@@ -6349,7 +6349,7 @@ export type HaltStrategy = "left" | "right" | "both" | "either"
  *
  * **Example** (Merging channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class MergeError extends Data.TaggedError("MergeError")<{
@@ -6559,7 +6559,7 @@ export const mergeEffect: {
  *
  * **Example** (Splitting string chunks into lines)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
  * Effect.runPromise(Effect.gen(function*() {
@@ -6737,7 +6737,7 @@ export const encodeText = <Err, Done>(): Channel<
  *
  * **Example** (Piping one channel into another)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class PipeError extends Data.TaggedError("PipeError")<{
@@ -6785,7 +6785,7 @@ export const pipeTo: {
  *
  * **Example** (Piping while preserving failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class SourceError extends Data.TaggedError("SourceError")<{
@@ -6847,7 +6847,7 @@ export const pipeToOrFail: {
  *
  * **Example** (Unwrapping channel effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect } from "effect"
  *
  * class UnwrapError extends Data.TaggedError("UnwrapError")<{
@@ -6911,7 +6911,7 @@ export const scoped = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
  *
  * **Example** (Embedding custom input handling)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
  *
  * // Create a base channel
@@ -7205,7 +7205,7 @@ export const onError: {
  *
  * **Example** (Running exit finalizers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Console, Data, Exit } from "effect"
  *
  * class ExitError extends Data.TaggedError("ExitError")<{
@@ -7353,7 +7353,7 @@ export const onEnd: {
  *
  * **Example** (Ensuring cleanup runs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Console, Data } from "effect"
  *
  * class EnsureError extends Data.TaggedError("EnsureError")<{
@@ -7914,7 +7914,7 @@ export const bindTo: {
  *
  * **Example** (Counting channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class CountError extends Data.TaggedError("CountError")<{
@@ -7942,7 +7942,7 @@ export const runCount = <OutElem, OutErr, OutDone, Env>(
  *
  * **Example** (Draining channel output at runtime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class DrainError extends Data.TaggedError("DrainError")<{
@@ -7974,7 +7974,7 @@ export const runDrain = <OutElem, OutErr, OutDone, Env>(
  *
  * **Example** (Running effects for each output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Console, Data } from "effect"
  *
  * class ForEachError extends Data.TaggedError("ForEachError")<{
@@ -8056,7 +8056,7 @@ export const runForEachWhile: {
  *
  * **Example** (Collecting channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class CollectError extends Data.TaggedError("CollectError")<{
@@ -8157,7 +8157,7 @@ export const runLast = <OutElem, OutErr, OutDone, Env>(
  *
  * **Example** (Folding channel output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class FoldError extends Data.TaggedError("FoldError")<{
@@ -8273,7 +8273,7 @@ export const runFoldEffect: {
  *
  * **Example** (Converting channels to pulls)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect } from "effect"
  *
  * class PullError extends Data.TaggedError("PullError")<{
@@ -8322,7 +8322,7 @@ export const toPull: <OutElem, OutErr, OutDone, Env>(
  *
  * **Example** (Converting channels to scoped pulls)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data, Effect, Scope } from "effect"
  *
  * class ScopedPullError extends Data.TaggedError("ScopedPullError")<{
@@ -8445,7 +8445,7 @@ export const runIntoQueueArray: {
  *
  * **Example** (Converting channels to queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Channel, Data } from "effect"
  *
  * class QueueError extends Data.TaggedError("QueueError")<{

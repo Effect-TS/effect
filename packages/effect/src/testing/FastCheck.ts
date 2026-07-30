@@ -20,7 +20,7 @@
  *
  * **Example** (Checking an array reversal property)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { FastCheck } from "effect/testing"
  *
  * // Property: reverse of reverse should equal original
@@ -39,7 +39,7 @@
  *
  * **Example** (Checking string concatenation properties)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { FastCheck } from "effect/testing"
  *
  * // Test string concatenation properties
@@ -59,7 +59,7 @@
  *
  * **Example** (Generating record data for properties)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { FastCheck } from "effect/testing"
  *
  * // Generate random data for testing

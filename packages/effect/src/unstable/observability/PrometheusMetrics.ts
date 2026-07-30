@@ -19,7 +19,7 @@ import * as HttpServerResponse from "../http/HttpServerResponse.ts"
  *
  * **Example** (Mapping metric names)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { PrometheusMetrics } from "effect/unstable/observability"
  *
  * // Convert camelCase to snake_case
@@ -68,7 +68,7 @@ export interface HttpOptions extends FormatOptions {
  *
  * **Example** (Formatting metrics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  * import { PrometheusMetrics } from "effect/unstable/observability"
  *
@@ -156,7 +156,7 @@ export const formatUnsafe = (
  *
  * **Example** (Serving metrics over HTTP)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { PrometheusMetrics } from "effect/unstable/observability"
  *
  * // Create a layer that adds /metrics endpoint to the router

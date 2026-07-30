@@ -44,10 +44,6 @@ function replaceJSDocLinks(text: string): string {
 /**
  * Removes all extra metadata from fenced code blocks in a Markdown string.
  * For each code fence, only the first token (the language identifier) is preserved.
- *
- * Examples:
- *   Input:  "```ts skip-type-checking a=1\nexport const a: string = 1\n```"
- *   Output: "```ts\nexport const a: string = 1\n```"
  */
 function removeFenceMetadata(markdown: string): string {
   return markdown.replace(/^(`{3,})([^\n]*)/gm, (_match, fence, info) => {

@@ -34,7 +34,7 @@ const TypeId = "~effect/BigDecimal"
  *
  * **Example** (Inspecting BigDecimal storage)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * const d = BigDecimal.fromStringUnsafe("123.45")
@@ -90,7 +90,7 @@ const BigDecimalProto: Omit<BigDecimal, "value" | "scale" | "normalized"> = {
  *
  * **Example** (Checking BigDecimal values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * const decimal = BigDecimal.fromNumber(123.45)
@@ -114,7 +114,7 @@ export const isBigDecimal = (u: unknown): u is BigDecimal => hasProperty(u, Type
  *
  * **Example** (Creating decimals from bigint and scale)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * // Create 123.45 (12345 with scale 2)
@@ -173,7 +173,7 @@ const one = makeNormalizedUnsafe(bigint1, 0)
  *
  * **Example** (Normalizing trailing zeros)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -236,7 +236,7 @@ export const normalize = (self: BigDecimal): BigDecimal => {
  *
  * **Example** (Scaling decimal precision)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * const decimal = BigDecimal.fromNumberUnsafe(123.45)
@@ -280,7 +280,7 @@ export const scale: {
  *
  * **Example** (Adding decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -328,7 +328,7 @@ export const sum: {
  *
  * **Example** (Adding multiple decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -360,7 +360,7 @@ export const sumAll = (collection: Iterable<BigDecimal>): BigDecimal => {
  *
  * **Example** (Multiplying decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -395,7 +395,7 @@ export const multiply: {
  *
  * **Example** (Multiplying multiple decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -430,7 +430,7 @@ export const multiplyAll = (collection: Iterable<BigDecimal>): BigDecimal => {
  *
  * **Example** (Subtracting decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -550,7 +550,7 @@ export const roundTerminal = (n: bigint): bigint => {
  *
  * **Example** (Dividing decimals safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal, Option } from "effect"
  *
  * console.log(
@@ -624,7 +624,7 @@ export const divide: {
  *
  * **Example** (Dividing decimals unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * console.log(BigDecimal.divideUnsafe(BigDecimal.fromStringUnsafe("6"), BigDecimal.fromStringUnsafe("3"))) // BigDecimal(2)
@@ -665,7 +665,7 @@ export const divideUnsafe: {
  *
  * **Example** (Comparing decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * const a = BigDecimal.fromNumberUnsafe(1.5)
@@ -706,7 +706,7 @@ export const Order: order.Order<BigDecimal> = order.make((self, that) => {
  *
  * **Example** (Checking less-than comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -741,7 +741,7 @@ export const isLessThan: {
  *
  * **Example** (Checking less-than-or-equal comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -776,7 +776,7 @@ export const isLessThanOrEqualTo: {
  *
  * **Example** (Checking greater-than comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -811,7 +811,7 @@ export const isGreaterThan: {
  *
  * **Example** (Checking greater-than-or-equal comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -846,7 +846,7 @@ export const isGreaterThanOrEqualTo: {
  *
  * **Example** (Checking decimal ranges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -891,7 +891,7 @@ export const between: {
  *
  * **Example** (Clamping decimals to a range)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -939,7 +939,7 @@ export const clamp: {
  *
  * **Example** (Selecting the smaller decimal)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -968,7 +968,7 @@ export const min: {
  *
  * **Example** (Selecting the larger decimal)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -997,7 +997,7 @@ export const max: {
  *
  * **Example** (Reading decimal signs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1020,7 +1020,7 @@ export const sign = (n: BigDecimal): Ordering => n.value === bigint0 ? 0 : n.val
  *
  * **Example** (Calculating absolute values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1043,7 +1043,7 @@ export const abs = (n: BigDecimal): BigDecimal => n.value < bigint0 ? make(-n.va
  *
  * **Example** (Negating decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1071,7 +1071,7 @@ export const negate = (n: BigDecimal): BigDecimal => make(-n.value, n.scale)
  *
  * **Example** (Computing remainders safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal, Option } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1131,7 +1131,7 @@ export const remainder: {
  *
  * **Example** (Computing remainders unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1176,7 +1176,7 @@ export const remainderUnsafe: {
  *
  * **Example** (Checking decimal equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * const a = BigDecimal.fromStringUnsafe("1.50")
@@ -1211,7 +1211,7 @@ export const Equivalence: Equ.Equivalence<BigDecimal> = Equ.make((self, that) =>
  *
  * **Example** (Checking decimal equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * const a = BigDecimal.fromStringUnsafe("1.5")
@@ -1241,7 +1241,7 @@ export const equals: {
  *
  * **Example** (Creating decimals from bigint)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * const decimal = BigDecimal.fromBigInt(123n)
@@ -1274,7 +1274,7 @@ export const fromBigInt = (n: bigint): BigDecimal => make(n, 0)
  *
  * **Example** (Creating decimals from finite numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1310,7 +1310,7 @@ export const fromNumberUnsafe = (n: number): BigDecimal => {
  *
  * **Example** (Creating decimals from numbers safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal, Option } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1357,7 +1357,7 @@ export const fromNumber = (n: number): Option.Option<BigDecimal> => {
  *
  * **Example** (Parsing decimal strings safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal, Option } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1435,7 +1435,7 @@ export const fromString = (s: string): Option.Option<BigDecimal> => {
  *
  * **Example** (Parsing decimal strings unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1468,7 +1468,7 @@ export const fromStringUnsafe = (s: string): BigDecimal => {
  *
  * **Example** (Formatting decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1522,7 +1522,7 @@ export const format = (n: BigDecimal): string => {
  *
  * **Example** (Formatting decimals exponentially)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1569,7 +1569,7 @@ export const toExponential = (n: BigDecimal): string => {
  *
  * **Example** (Converting decimals to numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1592,7 +1592,7 @@ export const toNumberUnsafe = (n: BigDecimal): number => Number(format(n))
  *
  * **Example** (Checking integer decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1615,7 +1615,7 @@ export const isInteger = (n: BigDecimal): boolean => normalize(n).scale <= 0
  *
  * **Example** (Checking zero decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1637,7 +1637,7 @@ export const isZero = (n: BigDecimal): boolean => n.value === bigint0
  *
  * **Example** (Checking negative decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1660,7 +1660,7 @@ export const isNegative = (n: BigDecimal): boolean => n.value < bigint0
  *
  * **Example** (Checking positive decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1808,7 +1808,7 @@ export const round: {
  *
  * **Example** (Truncating decimals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigDecimal } from "effect"
  *
  * console.log(BigDecimal.truncate(BigDecimal.fromStringUnsafe("145"), -1)) // BigDecimal(140)

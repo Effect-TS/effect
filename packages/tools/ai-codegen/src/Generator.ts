@@ -21,7 +21,7 @@ import type { DiscoveredProvider } from "./Discovery.ts"
  *
  * **Example** (Creating a generation error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as Generator from "@effect/ai-codegen/Generator"
  *
  * const error = new Generator.GenerationError({
@@ -43,7 +43,7 @@ export class GenerationError extends Data.TaggedError("GenerationError")<{
  *
  * **Example** (Creating a patch error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as Generator from "@effect/ai-codegen/Generator"
  *
  * const error = new Generator.PatchError({

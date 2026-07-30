@@ -52,7 +52,7 @@ import * as Toolkit from "./Toolkit.ts"
  *
  * **Example** (Accessing the language model service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { LanguageModel } from "effect/unstable/ai"
  *
@@ -337,7 +337,7 @@ export type ToolChoice<ToolName extends string> =
  *
  * **Example** (Inspecting a text response)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { LanguageModel } from "effect/unstable/ai"
  *
@@ -448,7 +448,7 @@ export class GenerateTextResponse<Tools extends Record<string, Tool.Any>> {
  *
  * **Example** (Inspecting an object response)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  * import { LanguageModel } from "effect/unstable/ai"
  *
@@ -1606,7 +1606,7 @@ export const make: (params: {
  *
  * **Example** (Generating text with options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { LanguageModel } from "effect/unstable/ai"
  *
@@ -1675,7 +1675,7 @@ export const generateText: {
  *
  * **Example** (Generating an object)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  * import { LanguageModel } from "effect/unstable/ai"
  *
@@ -1732,7 +1732,7 @@ export const generateObject = <
  *
  * **Example** (Streaming text deltas)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Stream } from "effect"
  * import { LanguageModel } from "effect/unstable/ai"
  *

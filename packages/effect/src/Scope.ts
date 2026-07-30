@@ -25,7 +25,7 @@ const CloseableTypeId = effect.ScopeCloseableTypeId
  *
  * **Example** (Managing scoped resources)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Scope } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -55,7 +55,7 @@ export interface Scope {
  *
  * **Example** (Closing a scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Scope } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -83,7 +83,7 @@ export interface Closeable extends Scope {
  *
  * **Example** (Checking scope states)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Scope } from "effect"
  *
  * // Example of checking scope states
@@ -118,7 +118,7 @@ export declare namespace State {
    *
    * **Example** (Inspecting an empty scope state)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Scope } from "effect"
    *
    * const scope = Scope.makeUnsafe()
@@ -142,7 +142,7 @@ export declare namespace State {
    *
    * **Example** (Inspecting an open scope state)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Scope } from "effect"
    *
    * const scope = Scope.makeUnsafe()
@@ -167,7 +167,7 @@ export declare namespace State {
    *
    * **Example** (Inspecting a closed scope state)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Exit, Scope } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -203,7 +203,7 @@ export declare namespace State {
  *
  * **Example** (Accessing the scope service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Scope } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -228,7 +228,7 @@ export const Scope: Context.Service<Scope, Scope> = effect.scopeTag
  *
  * **Example** (Creating a scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Scope } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -262,7 +262,7 @@ export const make: (finalizerStrategy?: "sequential" | "parallel") => Effect<Clo
  *
  * **Example** (Creating a scope synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Scope } from "effect"
  *
  * // Create a scope immediately
@@ -294,7 +294,7 @@ export const makeUnsafe: (finalizerStrategy?: "sequential" | "parallel") => Clos
  *
  * **Example** (Providing a scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Scope } from "effect"
  *
  * // An effect that requires a Scope
@@ -335,7 +335,7 @@ export const provide: {
  *
  * **Example** (Adding an exit-aware finalizer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Scope } from "effect"
  *
  * const withResource = Effect.gen(function*() {
@@ -377,7 +377,7 @@ export const addFinalizerExit: (scope: Scope, finalizer: (exit: Exit<any, any>) 
  *
  * **Example** (Adding finalizers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Scope } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -412,7 +412,7 @@ export const addFinalizer: (scope: Scope, finalizer: Effect<unknown>) => Effect<
  *
  * **Example** (Creating a child scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Scope } from "effect"
  *
  * const nestedScopes = Effect.gen(function*() {
@@ -457,7 +457,7 @@ export const fork: (
  *
  * **Example** (Creating a child scope synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Scope } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -494,7 +494,7 @@ export const forkUnsafe: (scope: Scope, finalizerStrategy?: "sequential" | "para
  *
  * **Example** (Running scope finalizers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Exit, Scope } from "effect"
  *
  * const resourceManagement = Effect.gen(function*() {

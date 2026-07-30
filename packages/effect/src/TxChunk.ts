@@ -35,7 +35,7 @@ const TypeId = "~effect/transactions/TxChunk"
  *
  * **Example** (Using a transactional chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -100,7 +100,7 @@ const TxChunkProto = {
  *
  * **Example** (Creating a TxChunk from a chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -130,7 +130,7 @@ export const make = <A>(initial: Chunk.Chunk<A>): Effect.Effect<TxChunk<A>> =>
  *
  * **Example** (Creating an empty TxChunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -165,7 +165,7 @@ export const empty = <A = never>(): Effect.Effect<TxChunk<A>> =>
  *
  * **Example** (Creating from an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -205,7 +205,7 @@ export const fromIterable = <A>(iterable: Iterable<A>): Effect.Effect<TxChunk<A>
  *
  * **Example** (Wrapping an existing TxRef)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, TxChunk, TxRef } from "effect"
  *
  * // Create a TxChunk from an existing TxRef (advanced usage)
@@ -233,7 +233,7 @@ export const makeUnsafe = <A>(ref: TxRef.TxRef<Chunk.Chunk<A>>): TxChunk<A> => {
  *
  * **Example** (Modifying while returning a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -281,7 +281,7 @@ export const modify: {
  *
  * **Example** (Updating the stored chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -314,7 +314,7 @@ export const update: {
  *
  * **Example** (Reading the current chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -345,7 +345,7 @@ export const get = <A>(self: TxChunk<A>): Effect.Effect<Chunk.Chunk<A>> => TxRef
  *
  * **Example** (Replacing the stored chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -381,7 +381,7 @@ export const set: {
  *
  * **Example** (Appending an element)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -416,7 +416,7 @@ export const append: {
  *
  * **Example** (Prepending an element)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -446,7 +446,7 @@ export const prepend: {
  *
  * **Example** (Getting the size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -474,7 +474,7 @@ export const size = <A>(self: TxChunk<A>): Effect.Effect<number> =>
  *
  * **Example** (Checking for an empty chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -501,7 +501,7 @@ export const isEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>
  *
  * **Example** (Checking for a non-empty chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -533,7 +533,7 @@ export const isNonEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>
  *
  * **Example** (Taking leading elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -568,7 +568,7 @@ export const take: {
  *
  * **Example** (Dropping leading elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -603,7 +603,7 @@ export const drop: {
  *
  * **Example** (Taking a slice)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -640,7 +640,7 @@ export const slice: {
  *
  * **Example** (Mapping elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -675,7 +675,7 @@ export const map: {
  *
  * **Example** (Filtering elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -713,7 +713,7 @@ export const filter: {
  *
  * **Example** (Appending another chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -750,7 +750,7 @@ export const appendAll: {
  *
  * **Example** (Prepending another chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -787,7 +787,7 @@ export const prependAll: {
  *
  * **Example** (Concatenating TxChunks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Chunk, Effect, TxChunk } from "effect"
  *
  * const program = Effect.gen(function*() {

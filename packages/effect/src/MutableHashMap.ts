@@ -39,7 +39,7 @@ const TypeId = "~effect/collections/MutableHashMap"
  *
  * **Example** (Using a mutable hash map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * // Create a mutable hash map with string keys and number values
@@ -133,7 +133,7 @@ const MutableHashMapProto: Omit<MutableHashMap<unknown, unknown>, "backing" | "b
  *
  * **Example** (Creating an empty map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.empty<string, number>()
@@ -167,7 +167,7 @@ export const empty = <K, V>(): MutableHashMap<K, V> => {
  *
  * **Example** (Creating a map from entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.make(
@@ -202,7 +202,7 @@ export const make: <Entries extends Array<readonly [any, any]>>(
  *
  * **Example** (Creating a map from an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const entries = [
@@ -249,7 +249,7 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): MutableH
  *
  * **Example** (Getting a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.make(["key1", 42], ["key2", 100])
@@ -304,7 +304,7 @@ const isSimpleKey = (u: unknown): boolean => typeof u !== "object" && typeof u !
  *
  * **Example** (Reading keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.make(
@@ -337,7 +337,7 @@ export const keys = <K, V>(self: MutableHashMap<K, V>): Iterable<K> => self.back
  *
  * **Example** (Reading values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.make(
@@ -390,7 +390,7 @@ const getFromBucket = <K, V>(
  *
  * **Example** (Checking for a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.make(["key1", 42], ["key2", 100])
@@ -427,7 +427,7 @@ export const has: {
  *
  * **Example** (Setting key-value pairs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.empty<string, number>()
@@ -513,7 +513,7 @@ const getRefKey = <K>(
  *
  * **Example** (Modifying existing values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.make(["count", 5], ["total", 100])
@@ -586,7 +586,7 @@ export const modify: {
  *
  * **Example** (Updating or removing a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap, Option } from "effect"
  *
  * const map = MutableHashMap.make(["count", 5])
@@ -663,7 +663,7 @@ export const modifyAt: {
  *
  * **Example** (Removing a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.make(
@@ -737,7 +737,7 @@ export const remove: {
  *
  * **Example** (Clearing all entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.make(
@@ -780,7 +780,7 @@ export const clear = <K, V>(self: MutableHashMap<K, V>) => {
  *
  * **Example** (Checking map size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashMap } from "effect"
  *
  * const map = MutableHashMap.empty<string, number>()

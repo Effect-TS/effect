@@ -129,7 +129,7 @@ export const make = <A>(value: A): Effect.Effect<SubscriptionRef<A>> =>
  *
  * **Example** (Streaming changes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect, Fiber, Stream, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -175,7 +175,7 @@ export const changes = <A>(self: SubscriptionRef<A>): Stream.Stream<A> => Stream
  *
  * **Example** (Reading the current value unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -196,7 +196,7 @@ export const getUnsafe = <A>(self: SubscriptionRef<A>): A => self.value
  *
  * **Example** (Reading the current value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -218,7 +218,7 @@ export const get = <A>(self: SubscriptionRef<A>): Effect.Effect<A> => Effect.syn
  *
  * **Example** (Getting and setting a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -256,7 +256,7 @@ const setUnsafe = <A>(self: SubscriptionRef<A>, value: A) => {
  *
  * **Example** (Getting and updating a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -290,7 +290,7 @@ export const getAndUpdate: {
  *
  * **Example** (Getting and updating with an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -341,7 +341,7 @@ export const getAndUpdateEffect: {
  *
  * **Example** (Getting and conditionally updating a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -394,7 +394,7 @@ export const getAndUpdateSome: {
  *
  * **Example** (Getting and conditionally updating with an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -441,7 +441,7 @@ export const getAndUpdateSomeEffect: {
  *
  * **Example** (Modifying a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -481,7 +481,7 @@ export const modify: {
  *
  * **Example** (Modifying with an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -536,7 +536,7 @@ export const modifyEffect: {
  *
  * **Example** (Conditionally modifying a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -592,7 +592,7 @@ export const modifySome: {
  *
  * **Example** (Conditionally modifying with an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -643,7 +643,7 @@ export const modifySomeEffect: {
  *
  * **Example** (Setting a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -673,7 +673,7 @@ export const set: {
  *
  * **Example** (Setting and reading the new value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -702,7 +702,7 @@ export const setAndGet: {
  *
  * **Example** (Updating a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -733,7 +733,7 @@ export const update: {
  *
  * **Example** (Updating with an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -766,7 +766,7 @@ export const updateEffect: {
  *
  * **Example** (Updating and reading the new value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -797,7 +797,7 @@ export const updateAndGet: {
  *
  * **Example** (Updating with an effect and reading the new value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -835,7 +835,7 @@ export const updateAndGetEffect: {
  *
  * **Example** (Conditionally updating a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -883,7 +883,7 @@ export const updateSome: {
  *
  * **Example** (Conditionally updating with an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -937,7 +937,7 @@ export const updateSomeEffect: {
  *
  * **Example** (Conditionally updating and reading the new value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -985,7 +985,7 @@ export const updateSomeAndGet: {
  *
  * **Example** (Conditionally updating with an effect and reading the new value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, SubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {

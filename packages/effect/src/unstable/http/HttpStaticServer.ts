@@ -26,7 +26,7 @@ import * as HttpServerResponse from "./HttpServerResponse.ts"
  *
  * **Example** (Serving files from a directory)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { HttpStaticServer } from "effect/unstable/http"
  *
@@ -179,7 +179,7 @@ export const make: (options: {
  *
  * **Example** (Mounting static files on a router)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Layer } from "effect"
  * import { HttpRouter, HttpServerResponse, HttpStaticServer } from "effect/unstable/http"
  *

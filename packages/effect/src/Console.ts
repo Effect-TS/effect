@@ -58,7 +58,7 @@ export interface Console {
  *
  * **Example** (Accessing the current console)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Console.consoleWith((console) =>
@@ -80,7 +80,7 @@ export const Console: Context.Reference<Console> = effect.ConsoleRef
  *
  * **Example** (Accessing the current console service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Console.consoleWith((console) =>
@@ -102,7 +102,7 @@ export const consoleWith = <A, E, R>(f: (console: Console) => Effect.Effect<A, E
  *
  * **Example** (Logging failed assertions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -136,7 +136,7 @@ export const assert = (condition: boolean, ...args: ReadonlyArray<any>): Effect.
  *
  * **Example** (Clearing console output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -160,7 +160,7 @@ export const clear: Effect.Effect<void> = consoleWith((console) =>
  *
  * **Example** (Counting repeated calls)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -185,7 +185,7 @@ export const count = (label?: string): Effect.Effect<void> =>
  *
  * **Example** (Resetting a counter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -217,7 +217,7 @@ export const countReset = (label?: string): Effect.Effect<void> =>
  *
  * **Example** (Writing debug messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -241,7 +241,7 @@ export const debug = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  *
  * **Example** (Inspecting an object)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -266,7 +266,7 @@ export const dir = (item: any, options?: any): Effect.Effect<void> =>
  *
  * **Example** (Inspecting XML-like data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -293,7 +293,7 @@ export const dirxml = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  *
  * **Example** (Writing error messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -320,7 +320,7 @@ export const error = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  *
  * **Example** (Grouping scoped output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -363,7 +363,7 @@ export const group = (
  *
  * **Example** (Writing informational messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -390,7 +390,7 @@ export const info = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  *
  * **Example** (Writing log messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -415,7 +415,7 @@ export const log = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  *
  * **Example** (Displaying tabular data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -444,7 +444,7 @@ export const table = (tabularData: any, properties?: ReadonlyArray<string>): Eff
  *
  * **Example** (Timing scoped work)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -480,7 +480,7 @@ export const time = (label?: string | undefined): Effect.Effect<void, never, Sco
  *
  * **Example** (Logging timer progress)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -512,7 +512,7 @@ export const timeLog = (label?: string, ...args: ReadonlyArray<any>): Effect.Eff
  *
  * **Example** (Writing stack traces)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -537,7 +537,7 @@ export const trace = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  *
  * **Example** (Writing warning messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -563,7 +563,7 @@ export const warn = (...args: ReadonlyArray<any>): Effect.Effect<void> =>
  *
  * **Example** (Wrapping an effect in a group)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -618,7 +618,7 @@ export const withGroup = dual<
  *
  * **Example** (Timing an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {

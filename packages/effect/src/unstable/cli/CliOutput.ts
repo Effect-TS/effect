@@ -22,7 +22,7 @@ import type { HelpDoc } from "./HelpDoc.ts"
  *
  * **Example** (Customizing CLI output formatting)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliOutput } from "effect/unstable/cli"
  *
@@ -54,7 +54,7 @@ export interface Formatter {
    *
    * **Example** (Formatting help documents)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Option as O } from "effect"
    * import { CliOutput } from "effect/unstable/cli"
    * import type { HelpDoc } from "effect/unstable/cli"
@@ -97,7 +97,7 @@ export interface Formatter {
    *
    * **Example** (Formatting CLI errors)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data } from "effect"
    * import { CliOutput } from "effect/unstable/cli"
    *
@@ -120,7 +120,7 @@ export interface Formatter {
    *
    * **Example** (Formatting error sections)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data } from "effect"
    * import { CliOutput } from "effect/unstable/cli"
    *
@@ -149,7 +149,7 @@ export interface Formatter {
    *
    * **Example** (Formatting version output)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { CliOutput } from "effect/unstable/cli"
    *
    * const colorFormatter = CliOutput.defaultFormatter({ colors: true })
@@ -174,7 +174,7 @@ export interface Formatter {
    *
    * **Example** (Formatting grouped errors)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { CliError, CliOutput } from "effect/unstable/cli"
    *
    * const formatter = CliOutput.defaultFormatter({ colors: false })
@@ -203,7 +203,7 @@ export interface Formatter {
  *
  * **Example** (Accessing the output formatter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliOutput } from "effect/unstable/cli"
  *
@@ -235,7 +235,7 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  *
  * **Example** (Providing a custom formatter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { CliOutput } from "effect/unstable/cli"
  *
@@ -279,7 +279,7 @@ const escapeControlCharacters = (text: string): string =>
  *
  * **Example** (Creating default formatters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError, CliOutput } from "effect/unstable/cli"
  *

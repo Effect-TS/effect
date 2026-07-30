@@ -109,7 +109,7 @@ export interface Definitions extends Record<string, JsonSchema> {}
  *
  * **Example** (Inspecting a parsed document)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -224,7 +224,7 @@ const RE_COMPONENTS_SCHEMAS = /^#\/components\/schemas(?=\/|$)/
  *
  * **Example** (Parsing a Draft-07 schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -370,7 +370,7 @@ export function fromSchemaDraft07(js: JsonSchema): Document<"draft-2020-12"> {
  *
  * **Example** (Parsing a Draft-2020-12 schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -413,7 +413,7 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  *
  * **Example** (Parsing an OpenAPI 3.1 schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -455,7 +455,7 @@ export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12"> 
  *
  * **Example** (Parsing an OpenAPI 3.0 nullable schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -499,7 +499,7 @@ export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-1
  *
  * **Example** (Converting to Draft-07)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const doc = JsonSchema.fromSchemaDraft2020_12({
@@ -647,7 +647,7 @@ function toSchemaDraft07(schema: JsonSchema): JsonSchema {
  *
  * **Example** (Converting to OpenAPI 3.1)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const multi: JsonSchema.MultiDocument<"draft-2020-12"> = {
@@ -873,7 +873,7 @@ function widen_type(node: Record<string, unknown>): Record<string, unknown> {
  *
  * **Example** (Resolving a $ref)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const definitions: JsonSchema.Definitions = {
@@ -915,7 +915,7 @@ export function resolve$ref($ref: string, definitions: Definitions): JsonSchema 
  *
  * **Example** (Resolving a top-level $ref)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const doc: JsonSchema.Document<"draft-2020-12"> = {

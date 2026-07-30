@@ -44,7 +44,7 @@ export const symbol = "~effect/interfaces/Hash"
  *
  * **Example** (Implementing Hash)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * class MyClass implements Hash.Hash {
@@ -90,7 +90,7 @@ export interface Hash {
  *
  * **Example** (Hashing different values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * // Hash primitive values
@@ -176,7 +176,7 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
  *
  * **Example** (Hashing objects by reference)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const obj1 = { a: 1 }
@@ -214,7 +214,7 @@ export const random: <A extends object>(self: A) => number = (self) => {
  *
  * **Example** (Combining hash values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash, pipe } from "effect"
  *
  * // Can also be used with pipe
@@ -253,7 +253,7 @@ export const combine: {
  *
  * **Example** (Optimizing a hash value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const rawHash = 1234567890
@@ -283,7 +283,7 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  *
  * **Example** (Checking for Hash support)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * class MyHashable implements Hash.Hash {
@@ -318,7 +318,7 @@ export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol)
  *
  * **Example** (Hashing numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * console.log(Hash.number(42)) // hash of 42
@@ -369,7 +369,7 @@ export const number = (n: number) => {
  *
  * **Example** (Hashing strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * console.log(Hash.string("hello")) // hash of "hello"
@@ -406,7 +406,7 @@ export const string = (str: string) => {
  *
  * **Example** (Hashing selected object keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const person = { name: "John", age: 30, city: "New York" }
@@ -449,7 +449,7 @@ export const structureKeys = (o: object, keys: Iterable<PropertyKey>) => {
  *
  * **Example** (Hashing object structures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const obj1 = { name: "John", age: 30 }
@@ -496,7 +496,7 @@ const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<a
  *
  * **Example** (Hashing arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const arr1 = [1, 2, 3]

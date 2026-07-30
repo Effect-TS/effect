@@ -29,7 +29,7 @@ const clientErrors = [
  *
  * **Example** (Deriving RPC endpoints from an entity)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Layer, Schema } from "effect"
  * import { ClusterSchema, Entity, EntityProxy, EntityProxyServer } from "effect/unstable/cluster"
  * import { Rpc, RpcServer } from "effect/unstable/rpc"
@@ -147,7 +147,7 @@ const entityIdPath = {
  *
  * **Example** (Deriving HTTP API endpoints from an entity)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Layer, Schema } from "effect"
  * import { ClusterSchema, Entity, EntityProxy, EntityProxyServer } from "effect/unstable/cluster"
  * import { HttpApi, HttpApiBuilder } from "effect/unstable/httpapi"

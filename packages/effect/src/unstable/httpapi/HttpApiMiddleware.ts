@@ -394,7 +394,7 @@ function getError(error: ErrorConstraint | undefined): ReadonlySet<Schema.Top> {
  *
  * **Example** (Mapping schema errors to custom errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  * import { HttpApiMiddleware } from "effect/unstable/httpapi"
  *

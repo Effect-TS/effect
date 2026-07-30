@@ -482,7 +482,7 @@ export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = nev
  *
  * **Example** (Constructing by kind)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const makeGraph = Graph.make("directed")
@@ -525,7 +525,7 @@ export const make =
  *
  * **Example** (Creating a directed graph)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * // Directed graph with initial nodes and edges
@@ -550,7 +550,7 @@ export const directed: <N, E>(
  *
  * **Example** (Creating an undirected graph)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * // Undirected graph with initial nodes and edges
@@ -579,7 +579,7 @@ export const undirected: <N, E>(
  *
  * **Example** (Beginning a mutation scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>()
@@ -621,7 +621,7 @@ export const beginMutation = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Ending a mutation scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>()
@@ -673,7 +673,7 @@ const mutateScoped = <N, E, T extends Kind>(
  *
  * **Example** (Applying scoped mutations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>()
@@ -875,7 +875,7 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  *
  * **Example** (Combining graphs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const left = Graph.directed<{ id: string }, string>((mutable) => {
@@ -967,7 +967,7 @@ export const compose: {
  *
  * **Example** (Finding shared structure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const left = Graph.directed<string, string>((mutable) => {
@@ -1063,7 +1063,7 @@ export const intersection: {
  *
  * **Example** (Removing shared edges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const left = Graph.directed<string, string>((mutable) => {
@@ -1149,7 +1149,7 @@ export const difference: {
  *
  * **Example** (Finding differing edges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const left = Graph.directed<string, string>((mutable) => {
@@ -1239,7 +1239,7 @@ export const symmetricDifference: {
  *
  * **Example** (Finding missing relationships)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, string>((mutable) => {
@@ -1328,7 +1328,7 @@ export interface NeighborhoodConfig {
  *
  * **Example** (Getting a local neighborhood)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, string>((mutable) => {
@@ -1456,7 +1456,7 @@ export const sum: {
  *
  * **Example** (Adding nodes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -1501,7 +1501,7 @@ export const addNode = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Getting node data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph, Option } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -1540,7 +1540,7 @@ export const getNode: {
  *
  * **Example** (Checking node existence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -1572,7 +1572,7 @@ export const hasNode: {
  *
  * **Example** (Counting nodes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const emptyGraph = Graph.directed<string, number>()
@@ -1599,7 +1599,7 @@ export const nodeCount = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Finding the first matching node)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -1644,7 +1644,7 @@ export const findNode: {
  *
  * **Example** (Finding matching nodes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -1690,7 +1690,7 @@ export const findNodes: {
  *
  * **Example** (Finding the first matching edge)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -1737,7 +1737,7 @@ export const findEdge: {
  *
  * **Example** (Finding matching edges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -1786,7 +1786,7 @@ export const findEdges: {
  *
  * **Example** (Updating node data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -1824,7 +1824,7 @@ export const updateNode = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Updating edge data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -1868,7 +1868,7 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Mapping node data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -1904,7 +1904,7 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Mapping edge data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -1973,7 +1973,7 @@ const rebuildAdjacency = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Reversing edge directions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -2026,7 +2026,7 @@ export const reverse = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Filtering and mapping nodes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -2083,7 +2083,7 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Filtering and mapping edges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -2146,7 +2146,7 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Filtering nodes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -2193,7 +2193,7 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Filtering edges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -2286,7 +2286,7 @@ const invalidateCycleFlagOnAddition = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Adding edges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -2367,7 +2367,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Removing a node)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -2434,7 +2434,7 @@ export const removeNode = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Removing an edge)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -2530,7 +2530,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Getting edge data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -2570,7 +2570,7 @@ export const getEdge: {
  *
  * **Example** (Checking edge existence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -2634,7 +2634,7 @@ export const hasEdge: {
  *
  * **Example** (Counting edges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const emptyGraph = Graph.directed<string, number>()
@@ -2695,7 +2695,7 @@ const getDirectedNeighbors = <N, E>(
  *
  * **Example** (Getting outgoing neighbors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -2826,7 +2826,7 @@ export const predecessors: {
  *
  * **Example** (Traversing directed neighbors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, string>((mutable) => {
@@ -2886,7 +2886,7 @@ export const neighborsDirected: {
  *
  * **Example** (Configuring GraphViz labels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Graph } from "effect"
  *
  * // Basic options with custom labels
@@ -2934,7 +2934,7 @@ const escapeGraphVizString = (value: string): string =>
  *
  * **Example** (Exporting GraphViz DOT)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
@@ -3025,7 +3025,7 @@ export const toGraphViz: {
  *
  * **Example** (Selecting Mermaid node shapes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Graph } from "effect"
  *
  * // Shape selector function for different node types
@@ -3068,7 +3068,7 @@ export type MermaidNodeShape =
  *
  * **Example** (Configuring Mermaid directions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Graph } from "effect"
  *
  * // Horizontal workflow diagram
@@ -3111,7 +3111,7 @@ export type MermaidDirection =
  *
  * **Example** (Selecting Mermaid diagram types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Graph } from "effect"
  *
  * // Force flowchart format (even for undirected graphs)
@@ -3151,7 +3151,7 @@ export type MermaidDiagramType =
  *
  * **Example** (Configuring Mermaid output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Graph } from "effect"
  *
  * // Basic options with custom labels
@@ -3271,7 +3271,7 @@ const formatMermaidNode = (
  *
  * **Example** (Exporting a directed Mermaid diagram)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * // Basic directed graph export
@@ -3295,7 +3295,7 @@ const formatMermaidNode = (
  *
  * **Example** (Exporting an undirected Mermaid diagram)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * // Undirected graph with custom labels and direction
@@ -3323,7 +3323,7 @@ const formatMermaidNode = (
  *
  * **Example** (Customizing Mermaid node shapes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * // Advanced styling with node shapes for flowchart
@@ -3375,7 +3375,7 @@ const formatMermaidNode = (
  *
  * **Example** (Visualizing dependency graphs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * // Real-world example: Software dependency graph
@@ -3522,7 +3522,7 @@ export type Direction = "outgoing" | "incoming"
  *
  * **Example** (Traversing by direction)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, string>((mutable) => {
@@ -3567,7 +3567,7 @@ export type TraversalDirection = Direction | "undirected"
  *
  * **Example** (Checking cycles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * // Acyclic directed graph (DAG)
@@ -3727,7 +3727,7 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Checking bipartite graphs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * // Bipartite graph (alternating coloring possible)
@@ -3864,7 +3864,7 @@ const getTraversableNeighbor = <N, E, T extends Kind>(
  *
  * **Example** (Finding connected components)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.undirected<string, string>((mutable) => {
@@ -3928,7 +3928,7 @@ export const connectedComponents = <N, E>(
  *
  * **Example** (Finding strongly connected components)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, string>((mutable) => {
@@ -4174,7 +4174,7 @@ export interface DijkstraConfig<E> {
  *
  * **Example** (Finding shortest paths with Dijkstra)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -4370,7 +4370,7 @@ export interface AllPairsResult<E> {
  *
  * **Example** (Finding all-pairs shortest paths)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -4565,7 +4565,7 @@ export interface AstarConfig<E, N> {
  *
  * **Example** (Finding shortest paths with A-star)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<{ x: number; y: number }, number>((mutable) => {
@@ -4795,7 +4795,7 @@ export interface BellmanFordConfig<E> {
  *
  * **Example** (Finding shortest paths with Bellman-Ford)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -4967,7 +4967,7 @@ export const bellmanFord: {
  *
  * **Example** (Working with node walkers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5008,7 +5008,7 @@ export class Walker<T, N> implements Iterable<[T, N]> {
    *
    * **Example** (Visiting walker elements)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Graph } from "effect"
    *
    * const graph = Graph.directed<string, number>((mutable) => {
@@ -5044,7 +5044,7 @@ export class Walker<T, N> implements Iterable<[T, N]> {
      *
      * **Example** (Visiting walker elements)
      *
-     * ```ts
+     * ```ts import.meta.vitest
      * import { Graph } from "effect"
      *
      * const graph = Graph.directed<string, number>((mutable) => {
@@ -5117,7 +5117,7 @@ export type EdgeWalker<E> = Walker<EdgeIndex, Edge<E>>
  *
  * **Example** (Iterating walker indices)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5141,7 +5141,7 @@ export const indices = <T, N>(walker: Walker<T, N>): Iterable<T> => walker.visit
  *
  * **Example** (Iterating walker values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5165,7 +5165,7 @@ export const values = <T, N>(walker: Walker<T, N>): Iterable<N> => walker.visit(
  *
  * **Example** (Iterating walker entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5231,7 +5231,7 @@ export interface SearchConfig {
  *
  * **Example** (Traversing depth-first)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5368,7 +5368,7 @@ export const dfs: {
  *
  * **Example** (Traversing breadth-first)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5489,7 +5489,7 @@ export interface TopoConfig {
  *
  * **Example** (Sorting topologically)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5653,7 +5653,7 @@ export const topo: {
  *
  * **Example** (Traversing in postorder)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5767,7 +5767,7 @@ export const dfsPostOrder: {
  *
  * **Example** (Iterating all nodes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5815,7 +5815,7 @@ export const nodes = <N, E, T extends Kind = "directed">(
  *
  * **Example** (Iterating all edges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
@@ -5889,7 +5889,7 @@ export interface ExternalsConfig {
  *
  * **Example** (Iterating external nodes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {

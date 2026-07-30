@@ -36,7 +36,7 @@ const TypeId = "~effect/collections/MutableHashSet"
  *
  * **Example** (Using a mutable hash set)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * // Create a mutable hash set
@@ -132,7 +132,7 @@ const fromHashMap = <V>(keyMap: MutableHashMap.MutableHashMap<V, boolean>): Muta
  *
  * **Example** (Creating an empty set)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * const set = MutableHashSet.empty<string>()
@@ -165,7 +165,7 @@ export const empty = <K = never>(): MutableHashSet<K> => fromHashMap(MutableHash
  *
  * **Example** (Creating a set from an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * const values = ["apple", "banana", "apple", "cherry", "banana"]
@@ -199,7 +199,7 @@ export const fromIterable = <K = never>(keys: Iterable<K>): MutableHashSet<K> =>
  *
  * **Example** (Creating a set from values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * const set = MutableHashSet.make("apple", "banana", "apple", "cherry")
@@ -234,7 +234,7 @@ export const make = <Keys extends ReadonlyArray<unknown>>(
  *
  * **Example** (Adding values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * const set = MutableHashSet.empty<string>()
@@ -281,7 +281,7 @@ export const add: {
  *
  * **Example** (Checking for a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * const set = MutableHashSet.make("apple", "banana", "cherry")
@@ -322,7 +322,7 @@ export const has: {
  *
  * **Example** (Removing a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * const set = MutableHashSet.make("apple", "banana", "cherry")
@@ -364,7 +364,7 @@ export const remove: {
  *
  * **Example** (Checking set size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * const set = MutableHashSet.empty<string>()
@@ -397,7 +397,7 @@ export const size = <V>(self: MutableHashSet<V>): number => MutableHashMap.size(
  *
  * **Example** (Clearing all values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableHashSet } from "effect"
  *
  * const set = MutableHashSet.make("apple", "banana", "cherry")

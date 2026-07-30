@@ -36,7 +36,7 @@ const TypeId = "~effect/Config"
  *
  * **Example** (Checking Config values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config } from "effect"
  *
  * console.log(Config.isConfig(Config.string("HOST"))) // true
@@ -147,7 +147,7 @@ function make<T>(
  *
  * **Example** (Uppercasing a string config)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const upper = Config.string("name").pipe(
@@ -180,7 +180,7 @@ export const map: {
  *
  * **Example** (Wrapping a value in an effectful transformation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, Effect } from "effect"
  *
  * const trimmed = Config.string("name").pipe(
@@ -216,7 +216,7 @@ export const mapOrFail: {
  *
  * **Example** (Falling back to a literal)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config } from "effect"
  *
  * const hostConfig = Config.string("HOST").pipe(
@@ -252,7 +252,7 @@ export const orElse: {
  *
  * **Example** (Combining configs as a struct)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const dbConfig = Config.all({
@@ -340,7 +340,7 @@ function isMissingDataOnly(issue: SchemaIssue.Issue): boolean {
  *
  * **Example** (Defaulting a missing port)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const port = Config.number("port").pipe(Config.withDefault(3000))
@@ -385,7 +385,7 @@ export const withDefault: {
  *
  * **Example** (Reading optional config)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const maybePort = Config.option(Config.number("port"))
@@ -461,7 +461,7 @@ type IsPlainObject<A> = [A] extends [Record<string, any>]
  *
  * **Example** (Unwrapping a record of configs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config } from "effect"
  *
  * interface Options {
@@ -615,7 +615,7 @@ const recur: (
  *
  * **Example** (Reading a structured config)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect, Schema } from "effect"
  *
  * const DbConfig = Config.schema(
@@ -746,7 +746,7 @@ export const LogLevel = Schema.Literals(LogLevel_.values)
  *
  * **Example** (Parsing a comma-separated record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect, Schema } from "effect"
  *
  * const schema = Config.Record(Schema.String, Schema.String)
@@ -859,7 +859,7 @@ export function fail(err: SourceError | Schema.SchemaError) {
  *
  * **Example** (Returning a constant fallback)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config } from "effect"
  *
  * const host = Config.string("HOST").pipe(
@@ -887,7 +887,7 @@ export function succeed<T>(value: T) {
  *
  * **Example** (Reading a string config)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const host = Config.string("HOST")
@@ -1004,7 +1004,7 @@ export function int(name?: string) {
  *
  * **Example** (Restricting to a literal)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config } from "effect"
  *
  * const env = Config.literal("production", "ENV")
@@ -1031,7 +1031,7 @@ export function literal<L extends SchemaAST.LiteralValue>(literal: L, name?: str
  *
  * **Example** (Restricting to a set of literals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config } from "effect"
  *
  * const env = Config.literals(["development", "production"], "ENV")
@@ -1063,7 +1063,7 @@ export function literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
  *
  * **Example** (Reading a boolean flag)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1109,7 +1109,7 @@ export function boolean(name?: string) {
  *
  * **Example** (Reading a duration)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1151,7 +1151,7 @@ export function duration(name?: string) {
  *
  * **Example** (Reading a port)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1197,7 +1197,7 @@ export function port(name?: string) {
  *
  * **Example** (Reading a log level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1241,7 +1241,7 @@ export function logLevel(name?: string) {
  *
  * **Example** (Reading a secret)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1287,7 +1287,7 @@ export function redacted(name?: string) {
  *
  * **Example** (Reading a URL)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1347,7 +1347,7 @@ export function url(name?: string) {
  *
  * **Example** (Reading a date)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const createdAt = Config.date("CREATED_AT")
@@ -1382,7 +1382,7 @@ export function date(name?: string) {
  *
  * **Example** (Nesting a struct config under `"database"`)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const dbConfig = Config.all({
@@ -1399,7 +1399,7 @@ export function date(name?: string) {
  *
  * **Example** (Reading env vars with a nested prefix)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const host = Config.string("host").pipe(Config.nested("database"))

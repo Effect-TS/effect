@@ -249,7 +249,7 @@ export interface ManagedRuntime<in R, out ER> {
  *
  * **Example** (Creating a managed runtime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, ManagedRuntime } from "effect"
  *
  * class Notifications extends Context.Service<Notifications, {

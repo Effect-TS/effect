@@ -32,7 +32,7 @@ import type { Apply, Lambda } from "./Struct.ts"
  *
  * **Example** (Creating a tuple)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tuple } from "effect"
  *
  * const point = Tuple.make(10, 20, "red")
@@ -61,7 +61,7 @@ type Indices<T extends ReadonlyArray<unknown>> = Exclude<Partial<T>["length"], T
  *
  * **Example** (Extracting an element by index)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Tuple } from "effect"
  *
  * const last = pipe(Tuple.make(1, true, "hello"), Tuple.get(2))
@@ -107,7 +107,7 @@ type PickTuple<T extends ReadonlyArray<unknown>, K> = _BuildTuple<T, K>
  *
  * **Example** (Selecting elements by index)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tuple } from "effect"
  *
  * const result = Tuple.pick(["a", "b", "c", "d"], [0, 2, 3])
@@ -152,7 +152,7 @@ type OmitTuple<T extends ReadonlyArray<unknown>, K> = _BuildTuple<T, Exclude<Ind
  *
  * **Example** (Removing elements by index)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tuple } from "effect"
  *
  * const result = Tuple.omit(["a", "b", "c", "d"], [1, 3])
@@ -196,7 +196,7 @@ export const omit: {
  *
  * **Example** (Appending an element)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Tuple } from "effect"
  *
  * const result = pipe(Tuple.make(1, 2), Tuple.appendElement("end"))
@@ -226,7 +226,7 @@ export const appendElement: {
  *
  * **Example** (Concatenating tuples)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Tuple } from "effect"
  *
  * const result = pipe(Tuple.make(1, 2), Tuple.appendElements(["a", "b"] as const))
@@ -270,7 +270,7 @@ type Evolved<T, E> = { [I in keyof T]: I extends keyof E ? (E[I] extends (...a: 
  *
  * **Example** (Transforming selected elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Tuple } from "effect"
  *
  * const result = pipe(
@@ -317,7 +317,7 @@ export const evolve: {
  *
  * **Example** (Swapping elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Tuple } from "effect"
  *
  * const result = pipe(
@@ -367,7 +367,7 @@ export const renameIndices: {
  *
  * **Example** (Wrapping every element in an array)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct, Tuple } from "effect"
  *
  * interface AsArray extends Struct.Lambda {
@@ -414,7 +414,7 @@ export const map: {
  *
  * **Example** (Wrapping only selected elements in arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct, Tuple } from "effect"
  *
  * interface AsArray extends Struct.Lambda {
@@ -470,7 +470,7 @@ export const mapPick: {
  *
  * **Example** (Wrapping all elements except one in arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Struct, Tuple } from "effect"
  *
  * interface AsArray extends Struct.Lambda {
@@ -530,7 +530,7 @@ export const mapOmit: {
  *
  * **Example** (Comparing tuples for equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Tuple } from "effect"
  *
  * const eq = Tuple.makeEquivalence([
@@ -564,7 +564,7 @@ export const makeEquivalence = Equivalence.Tuple
  *
  * **Example** (Ordering tuples)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, String, Tuple } from "effect"
  *
  * const ord = Tuple.makeOrder([String.Order, Number.Order])
@@ -600,7 +600,7 @@ export {
    *
    * **Example** (Checking exact length)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Tuple } from "effect"
    *
    * const arr: Array<number> = [1, 2, 3]
@@ -635,7 +635,7 @@ export {
    *
    * **Example** (Checking minimum length)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Tuple } from "effect"
    *
    * const arr: Array<number> = [1, 2, 3, 4]
@@ -664,7 +664,7 @@ export {
  *
  * **Example** (Combining tuple elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, String, Tuple } from "effect"
  *
  * const C = Tuple.makeCombiner<readonly [number, string]>([
@@ -705,7 +705,7 @@ export function makeCombiner<A extends ReadonlyArray<unknown>>(
  *
  * **Example** (Reducing a collection of tuples)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, String, Tuple } from "effect"
  *
  * const R = Tuple.makeReducer<readonly [number, string]>([

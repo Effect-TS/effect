@@ -135,7 +135,7 @@ export {
  *
  * **Example** (Managing log annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, References } from "effect"
  *
  * const logAnnotationExample = Effect.gen(function*() {
@@ -202,7 +202,7 @@ export const CurrentLogAnnotations: Context.Reference<ReadonlyRecord<string, unk
  *
  * **Example** (Changing the current log level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, References } from "effect"
  *
  * const dynamicLogging = Effect.gen(function*() {
@@ -251,7 +251,7 @@ export const CurrentLogLevel: Context.Reference<Severity> = references.CurrentLo
  *
  * **Example** (Tracking log spans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, References } from "effect"
  *
  * const logSpanExample = Effect.gen(function*() {
@@ -340,7 +340,7 @@ export const CurrentStackFrame: Context.Reference<StackFrame | undefined> = refe
  *
  * **Example** (Setting the minimum log level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, References } from "effect"
  *
  * const configureMinimumLogging = Effect.gen(function*() {
@@ -396,7 +396,7 @@ export const MinimumLogLevel: Context.Reference<LogLevel> = references.MinimumLo
  *
  * **Example** (Toggling tracing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, References } from "effect"
  *
  * const tracingControl = Effect.gen(function*() {
@@ -447,7 +447,7 @@ export const TracerEnabled: Context.Reference<boolean> = references.TracerEnable
  *
  * **Example** (Managing span annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, References } from "effect"
  *
  * const spanAnnotationExample = Effect.gen(function*() {
@@ -505,7 +505,7 @@ export const TracerSpanAnnotations: Context.Reference<ReadonlyRecord<string, unk
  *
  * **Example** (Managing span links)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, References, Tracer } from "effect"
  *
  * const spanLinksExample = Effect.gen(function*() {
@@ -573,7 +573,7 @@ export const TracerSpanLinks: Context.Reference<ReadonlyArray<SpanLink>> = refer
  *
  * **Example** (Toggling trace timing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, References } from "effect"
  *
  * const tracingControl = Effect.gen(function*() {
@@ -710,7 +710,7 @@ export {
    *
    * **Example** (Providing a custom scheduler)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, References, Scheduler } from "effect"
    *
    * const customScheduling = Effect.gen(function*() {

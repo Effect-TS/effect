@@ -107,7 +107,7 @@ export const allShort = [
  *
  * **Example** (Checking HTTP method values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { HttpMethod } from "effect/unstable/http"
  *
  * console.log(HttpMethod.isHttpMethod("GET"))

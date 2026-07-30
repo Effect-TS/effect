@@ -29,7 +29,7 @@ import type { TupleOf, TupleOfAtLeast } from "./Types.ts"
  *
  * **Example** (Defining a predicate)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isPositive: Predicate.Predicate<number> = (n) => n > 0
@@ -62,7 +62,7 @@ export interface Predicate<in A> {
  *
  * **Example** (Type-level usage)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * type P = Predicate.Predicate<number>
@@ -93,7 +93,7 @@ export interface PredicateTypeLambda extends TypeLambda {
  *
  * **Example** (Narrowing unknown values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isString: Predicate.Refinement<unknown, string> = (u): u is string => typeof u === "string"
@@ -129,7 +129,7 @@ export interface Refinement<in A, out B extends A> {
  *
  * **Example** (Extracting predicate input)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * type IsString = Predicate.Predicate<string>
@@ -156,7 +156,7 @@ export declare namespace Predicate {
    *
    * **Example** (Inferring the input type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Predicate } from "effect"
    *
    * type P = Predicate.Predicate<number>
@@ -183,7 +183,7 @@ export declare namespace Predicate {
    *
    * **Example** (Using generic constraints)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Predicate } from "effect"
    *
    * type AnyPredicate = Predicate.Predicate.Any
@@ -211,7 +211,7 @@ export declare namespace Predicate {
  *
  * **Example** (Extracting refinement types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * type IsString = Predicate.Refinement<unknown, string>
@@ -238,7 +238,7 @@ export declare namespace Refinement {
    *
    * **Example** (Inferring the input type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Predicate } from "effect"
    *
    * type R = Predicate.Refinement<unknown, string>
@@ -267,7 +267,7 @@ export declare namespace Refinement {
    *
    * **Example** (Inferring the output type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Predicate } from "effect"
    *
    * type R = Predicate.Refinement<unknown, string>
@@ -293,7 +293,7 @@ export declare namespace Refinement {
    *
    * **Example** (Using generic constraints)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Predicate } from "effect"
    *
    * type AnyRefinement = Predicate.Refinement.Any
@@ -322,7 +322,7 @@ export declare namespace Refinement {
  *
  * **Example** (Checking string length)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isLongerThan2 = Predicate.mapInput((s: string) => s.length)(
@@ -358,7 +358,7 @@ export const mapInput: {
  *
  * **Example** (Checking exact length)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isPair = Predicate.isTupleOf(2)
@@ -391,7 +391,7 @@ export const isTupleOf: {
  *
  * **Example** (Checking minimum length)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const hasAtLeast2 = Predicate.isTupleOfAtLeast(2)
@@ -424,7 +424,7 @@ export const isTupleOfAtLeast: {
  *
  * **Example** (Filtering truthy values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const values = [0, 1, "", "ok", false]
@@ -455,7 +455,7 @@ export function isTruthy(input: unknown): boolean {
  *
  * **Example** (Guarding a Set)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = new Set([1, 2])
@@ -487,7 +487,7 @@ export function isSet(input: unknown): input is Set<unknown> {
  *
  * **Example** (Guarding a Map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = new Map([["a", 1]])
@@ -520,7 +520,7 @@ export function isMap(input: unknown): input is Map<unknown, unknown> {
  *
  * **Example** (Guarding strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = "hi"
@@ -554,7 +554,7 @@ export function isString(input: unknown): input is string {
  *
  * **Example** (Guarding numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = 42
@@ -587,7 +587,7 @@ export function isNumber(input: unknown): input is number {
  *
  * **Example** (Guarding booleans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = true
@@ -620,7 +620,7 @@ export function isBoolean(input: unknown): input is boolean {
  *
  * **Example** (Guarding bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = 1n
@@ -652,7 +652,7 @@ export function isBigInt(input: unknown): input is bigint {
  *
  * **Example** (Guarding symbols)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = Symbol.for("id")
@@ -684,7 +684,7 @@ export function isSymbol(input: unknown): input is symbol {
  *
  * **Example** (Guarding property keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const key: unknown = "name"
@@ -719,7 +719,7 @@ export function isPropertyKey(u: unknown): u is PropertyKey {
  *
  * **Example** (Guarding functions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = () => 1
@@ -751,7 +751,7 @@ export function isFunction(input: unknown): input is Function {
  *
  * **Example** (Guarding undefined values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = undefined
@@ -782,7 +782,7 @@ export function isUndefined(input: unknown): input is undefined {
  *
  * **Example** (Filtering undefined values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const values = [1, undefined, 2]
@@ -813,7 +813,7 @@ export function isNotUndefined<A>(input: A): input is Exclude<A, undefined> {
  *
  * **Example** (Guarding null values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = null
@@ -844,7 +844,7 @@ export function isNull(input: unknown): input is null {
  *
  * **Example** (Filtering null values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const values = [1, null, 2]
@@ -875,7 +875,7 @@ export function isNotNull<A>(input: A): input is Exclude<A, null> {
  *
  * **Example** (Guarding nullish values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const values = [0, null, "", undefined]
@@ -908,7 +908,7 @@ export function isNullish<A>(input: A): input is A & (null | undefined) {
  *
  * **Example** (Filtering non-nullish values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const values = [0, null, "", undefined]
@@ -936,7 +936,7 @@ export function isNotNullish<A>(input: A): input is NonNullable<A> {
  *
  * **Example** (Matching no values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * console.log(Predicate.isNever("anything"))
@@ -959,7 +959,7 @@ export function isNever(_: unknown): _ is never {
  *
  * **Example** (Matching every value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * console.log(Predicate.isUnknown(123))
@@ -987,7 +987,7 @@ export function isUnknown(_: unknown): _ is unknown {
  *
  * **Example** (Checking objects or arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * console.log(Predicate.isObjectOrArray([]))
@@ -1018,7 +1018,7 @@ export function isObjectOrArray(input: unknown): input is { [x: PropertyKey]: un
  *
  * **Example** (Guarding objects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * console.log(Predicate.isObject({ a: 1 }))
@@ -1051,7 +1051,7 @@ export function isObject(input: unknown): input is { [x: PropertyKey]: unknown }
  *
  * **Example** (Checking readonly objects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = { a: 1 }
@@ -1081,7 +1081,7 @@ export function isReadonlyObject(input: unknown): input is { readonly [x: Proper
  *
  * **Example** (Checking object keywords)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * console.log(Predicate.isObjectKeyword(() => 1))
@@ -1112,7 +1112,7 @@ export function isObjectKeyword(input: unknown): input is object {
  *
  * **Example** (Guarding object properties)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const hasName = Predicate.hasProperty("name")
@@ -1151,7 +1151,7 @@ export const hasProperty: {
  *
  * **Example** (Guarding tagged values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isOk = Predicate.isTagged("Ok")
@@ -1184,7 +1184,7 @@ export const isTagged: {
  *
  * **Example** (Guarding errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = new Error("boom")
@@ -1213,7 +1213,7 @@ export function isError(input: unknown): input is Error {
  *
  * **Example** (Guarding Uint8Array values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = new Uint8Array([1, 2])
@@ -1243,7 +1243,7 @@ export function isUint8Array(input: unknown): input is Uint8Array {
  *
  * **Example** (Guarding Date values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = new Date()
@@ -1272,7 +1272,7 @@ export function isDate(input: unknown): input is Date {
  *
  * **Example** (Guarding iterables)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = [1, 2, 3]
@@ -1302,7 +1302,7 @@ export function isIterable(input: unknown): input is Iterable<unknown> {
  *
  * **Example** (Guarding promises)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = Promise.resolve(1)
@@ -1332,7 +1332,7 @@ export function isPromise(input: unknown): input is Promise<unknown> {
  *
  * **Example** (Guarding promise-like values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = { then: () => {} }
@@ -1361,7 +1361,7 @@ export function isPromiseLike(input: unknown): input is PromiseLike<unknown> {
  *
  * **Example** (Guarding RegExp values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const data: unknown = /abc/
@@ -1392,7 +1392,7 @@ export function isRegExp(input: unknown): input is RegExp {
  *
  * **Example** (Composing refinements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isNumber: Predicate.Refinement<unknown, number> = (u): u is number => typeof u === "number"
@@ -1434,7 +1434,7 @@ export const compose: {
  *
  * **Example** (Checking tuples)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const tupleCheck = Predicate.Tuple([(n: number) => n > 0, Predicate.isString])
@@ -1480,7 +1480,7 @@ export function Tuple<const T extends ReadonlyArray<Predicate.Any>>(
  *
  * **Example** (Checking structs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const userCheck = Predicate.Struct({
@@ -1528,7 +1528,7 @@ export function Struct<R extends Record<string, Predicate.Any>>(
  *
  * **Example** (Negating a predicate)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isNotString = Predicate.not(Predicate.isString)
@@ -1561,7 +1561,7 @@ export function not<A>(self: Predicate<A>): Predicate<A> {
  *
  * **Example** (Checking either condition)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isStringOrNumber = Predicate.or(Predicate.isString, Predicate.isNumber)
@@ -1597,7 +1597,7 @@ export const or: {
  *
  * **Example** (Checking both conditions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const hasAAndB = Predicate.and(
@@ -1638,7 +1638,7 @@ export const and: {
  *
  * **Example** (Checking exclusive-or conditions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isEven = (n: number) => n % 2 === 0
@@ -1671,7 +1671,7 @@ export const xor: {
  *
  * **Example** (Defining equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isEven = (n: number) => n % 2 === 0
@@ -1704,7 +1704,7 @@ export const eqv: {
  *
  * **Example** (Checking implication)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const isAdult = (age: number) => age >= 18
@@ -1740,7 +1740,7 @@ export const implies: {
  *
  * **Example** (Checking NOR conditions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const neither = Predicate.nor(Predicate.isString, Predicate.isNumber)
@@ -1774,7 +1774,7 @@ export const nor: {
  *
  * **Example** (Checking NAND conditions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const notBoth = Predicate.nand(Predicate.isString, Predicate.isNumber)
@@ -1809,7 +1809,7 @@ export const nand: {
  *
  * **Example** (Checking all predicates)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const allChecks = Predicate.every([Predicate.isNumber, (n: number) => n > 0])
@@ -1847,7 +1847,7 @@ export function every<A>(collection: Iterable<Predicate<A>>): Predicate<A> {
  *
  * **Example** (Checking any predicate)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
  * const anyCheck = Predicate.some([Predicate.isString, Predicate.isNumber])

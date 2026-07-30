@@ -41,7 +41,7 @@ export const symbol = "~effect/interfaces/PrimaryKey"
  *
  * **Example** (Implementing a primary key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { PrimaryKey } from "effect"
  *
  * class ProductId implements PrimaryKey.PrimaryKey {
@@ -96,7 +96,7 @@ export const isPrimaryKey = (u: unknown): u is PrimaryKey => hasProperty(u, symb
  *
  * **Example** (Reading primary key values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { PrimaryKey } from "effect"
  *
  * class OrderId implements PrimaryKey.PrimaryKey {

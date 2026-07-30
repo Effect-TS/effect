@@ -448,7 +448,7 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  *
  * **Example** (Schema for a parametric `Box<A>` type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Schema, SchemaIssue as Issue, SchemaParser } from "effect"
  *
  * interface Box<A> {
@@ -525,7 +525,7 @@ export interface declare<T, Iso = T> extends declareConstructor<T, T, readonly [
  *
  * **Example** (Defining a schema for a custom `UserId` branded type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * type UserId = string & { readonly _tag: "UserId" }
@@ -570,7 +570,7 @@ export function declare<T, Iso = T>(
  *
  * **Example** (Inspecting all type parameters of a schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.String
@@ -621,7 +621,7 @@ export function revealBottom<S extends Top>(
  *
  * **Example** (Adding a title and description)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const Age = Schema.Natural.pipe(
@@ -653,7 +653,7 @@ export function annotate<S extends Top>(annotations: Annotations.Bottom<S["Type"
  *
  * **Example** (Adding a title to the encoded representation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.NumberFromString.pipe(
@@ -689,7 +689,7 @@ export function annotateEncoded<S extends Top>(annotations: Annotations.Bottom<S
  *
  * **Example** (Customizing the missing-key message for a required field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Struct({
@@ -881,7 +881,7 @@ export declare namespace Schema {
    *
    * **Example** (Extracting the decoded type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
@@ -941,7 +941,7 @@ export declare namespace Codec {
    *
    * **Example** (Extracting the encoded type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * const schema = Schema.NumberFromString
@@ -959,7 +959,7 @@ export declare namespace Codec {
    *
    * **Example** (Checking decoding service requirements)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * const schema = Schema.String
@@ -977,7 +977,7 @@ export declare namespace Codec {
    *
    * **Example** (Checking encoding service requirements)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * const schema = Schema.String
@@ -1089,7 +1089,7 @@ export interface Encoder<out E, out RE = never> extends Schema<unknown> {
  *
  * **Example** (Recovering encoded type from a schema variable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema: Schema.Schema<number> = Schema.NumberFromString
@@ -1137,7 +1137,7 @@ export {
    *
    * **Example** (Narrowing Schema errors in a catch block)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * try {
@@ -1168,7 +1168,7 @@ export {
    *
    * **Example** (Catching a SchemaError)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * try {
@@ -1206,7 +1206,7 @@ function makeStandardResult<A>(exit: Exit_.Exit<StandardSchemaV1.Result<A>>): St
  *
  * **Example** (Creating a standard schema from a regular schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * // Define custom hook functions for error formatting
@@ -1380,7 +1380,7 @@ export function toStandardJSONSchemaV1<S extends Constraint>(
  *
  * **Example** (Defining a basic type guard)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const isString = Schema.is(Schema.String)
@@ -1423,7 +1423,7 @@ export const is = SchemaParser.is
  *
  * **Example** (Asserting and narrowing an input)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const input: unknown = "hello"
@@ -1847,7 +1847,7 @@ export const decodePromise: <S extends ConstraintDecoder<unknown>>(
  *
  * **Example** (Decoding with a transformation schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const NumberFromString = Schema.NumberFromString
@@ -1923,7 +1923,7 @@ export const decodeSync: <S extends ConstraintDecoder<unknown>>(
  *
  * **Example** (Encoding a value to a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
  * const NumberFromString = Schema.NumberFromString
@@ -2377,7 +2377,7 @@ interface optionalKeyLambda extends Lambda {
  *
  * **Example** (Creating a struct with optional key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Struct({
@@ -2444,7 +2444,7 @@ interface optionalLambda extends Lambda {
  *
  * **Example** (Defining an optional field accepting undefined)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Struct({
@@ -2679,7 +2679,7 @@ function isFlip$(schema: Top): schema is flip<any> {
  *
  * **Example** (Flipping a number-from-string schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * // NumberFromString: decodes string → number
@@ -2716,7 +2716,7 @@ export interface Literal<L extends SchemaAST.LiteralValue>
  *
  * **Example** (Defining a string literal)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Literal("hello")
@@ -2848,7 +2848,7 @@ function templateLiteralFromParts<Parts extends TemplateLiteral.Parts>(parts: Pa
  *
  * **Example** (Defining a URL path pattern)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.TemplateLiteral(["/user/", Schema.Number])
@@ -2927,7 +2927,7 @@ export interface TemplateLiteralParser<Parts extends TemplateLiteral.Parts> exte
  *
  * **Example** (Parsing path parameters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.TemplateLiteralParser(["/user/", Schema.NumberFromString])
@@ -2961,7 +2961,7 @@ export interface Enum<A extends { [x: string]: string | number }>
  *
  * **Example** (Defining a direction enum)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * enum Direction {
@@ -3239,7 +3239,7 @@ export interface UniqueSymbol<sym extends symbol>
  *
  * **Example** (Defining a specific symbol)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const mySymbol = Symbol.for("mySymbol")
@@ -3436,7 +3436,7 @@ export interface Struct<Fields extends Struct.Fields> extends BottomLazy<SchemaA
    *
    * **Example** (Reusing fields across structs)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * const Timestamped = Schema.Struct({
@@ -3505,7 +3505,7 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
  *
  * **Example** (Defining a basic struct)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const Person = Schema.Struct({
@@ -3552,7 +3552,7 @@ interface fieldsAssign<NewFields extends Struct.Fields> extends Lambda {
  *
  * **Example** (Adding fields to a union of structs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, Tuple } from "effect"
  *
  * // Add a new field to all members of a union of structs
@@ -3607,7 +3607,7 @@ const canonicalPropertyKey = (key: PropertyKey): string | symbol =>
  *
  * **Example** (Renaming `name` to `full_name` in the encoded form)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const Person = Schema.Struct({ name: Schema.String, age: Schema.Number })
@@ -3668,7 +3668,7 @@ export function encodeKeys<
  *
  * **Example** (Adding a computed `fullName` field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Schema } from "effect"
  *
  * const Person = Schema.Struct({ first: Schema.String, last: Schema.String })
@@ -3893,7 +3893,7 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  *
  * **Example** (Defining a string-keyed record of numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Record(Schema.String, Schema.Number)
@@ -4057,7 +4057,7 @@ export declare namespace StructWithRest {
    *
    * **Example** (Checking record compatibility)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * const user = Schema.Struct({ id: Schema.String })
@@ -4128,7 +4128,7 @@ export interface StructWithRest<
  *
  * **Example** (Defining structs with string-indexed extra keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.StructWithRest(
@@ -4349,7 +4349,7 @@ function makeTuple<Elements extends Tuple.Elements>(ast: SchemaAST.Arrays, eleme
  *
  * **Example** (Defining a pair of string and number)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Tuple([Schema.String, Schema.Number])
@@ -4527,7 +4527,7 @@ export interface TupleWithRest<
  *
  * **Example** (Defining tuples with rest elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * // [string, number, ...boolean[]]
@@ -4592,7 +4592,7 @@ export {
    *
    * **Example** (Defining an array of strings)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * const schema = Schema.Array(Schema.String)
@@ -4769,7 +4769,7 @@ interface mutableLambda extends Lambda {
  *
  * **Example** (Defining mutable arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.mutable(Schema.Array(Schema.Number))
@@ -4863,7 +4863,7 @@ function makeUnion<Members extends ReadonlyArray<Constraint>>(
  *
  * **Example** (Defining a string or number union)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Union([Schema.String, Schema.Number])
@@ -4910,7 +4910,7 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
  *
  * **Example** (Defining status codes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Literals(["active", "inactive", "pending"])
@@ -5046,7 +5046,7 @@ export interface suspend<S extends Constraint> extends
  *
  * **Example** (Defining recursive tree schemas)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * interface Tree {
@@ -5073,7 +5073,7 @@ export function suspend<S extends Constraint>(f: () => S): suspend<S> {
  *
  * **Example** (Adding checks to a schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const AgeSchema = Schema.Finite.pipe(
@@ -5250,7 +5250,7 @@ export interface middlewareDecoding<S extends Constraint, RD> extends
  *
  * **Example** (Logging decode failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
  * const Logged = Schema.String.pipe(
@@ -5316,7 +5316,7 @@ export interface middlewareEncoding<S extends Constraint, RE> extends
  *
  * **Example** (Logging encode failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
  * const Logged = Schema.String.pipe(
@@ -5353,7 +5353,7 @@ export function middlewareEncoding<S extends Constraint, RE>(
  *
  * **Example** (Returning a default on decode failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Schema } from "effect"
  *
  * const schema = Schema.Number.pipe(
@@ -5508,7 +5508,7 @@ export interface compose<To extends Constraint, From extends Constraint> extends
  *
  * **Example** (Transforming strings to numbers with a schema transformation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaGetter } from "effect"
  *
  * const NumberFromString = Schema.String.pipe(
@@ -5584,7 +5584,7 @@ export function decodeTo<To extends Constraint, From extends Constraint, RD = ne
  *
  * **Example** (Trimming string values during encoding/decoding)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaGetter } from "effect"
  *
  * const Trimmed = Schema.String.pipe(
@@ -5625,7 +5625,7 @@ export function decode<S extends Constraint, RD = never, RE = never>(transformat
  *
  * **Example** (Encoding a number back to a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaGetter } from "effect"
  *
  * const NumberFromString = Schema.Number.pipe(
@@ -5674,7 +5674,7 @@ export function encodeTo<To extends Constraint, From extends Constraint, RD = ne
  *
  * **Example** (Upper-casing encoded strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaGetter } from "effect"
  *
  * const UpperFromLower = Schema.String.pipe(
@@ -5749,7 +5749,7 @@ export interface withConstructorDefault<S extends Constraint & WithoutConstructo
  *
  * **Example** (Defining an optional field with a static default)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
  * const MySchema = Schema.Struct({
@@ -5827,7 +5827,7 @@ export type DecodingDefaultOptions = {
  *
  * **Example** (Providing a default for a missing struct key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
  * const MySchema = Schema.Struct({
@@ -5935,7 +5935,7 @@ export interface withDecodingDefault<S extends Constraint, R = never> extends de
  *
  * **Example** (Providing a default for an optional field value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
  * const MySchema = Schema.Struct({
@@ -6030,7 +6030,7 @@ export interface tag<Tag extends SchemaAST.LiteralValue> extends withConstructor
  *
  * **Example** (Defining a discriminated union tag)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const A = Schema.Struct({ _tag: Schema.tag("A"), value: Schema.Number })
@@ -6064,7 +6064,7 @@ export function tag<Tag extends SchemaAST.LiteralValue>(literal: Tag): tag<Tag> 
  *
  * **Example** (Omitting tags during encoding)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const A = Schema.Struct({
@@ -6110,7 +6110,7 @@ export type TaggedStruct<Tag extends SchemaAST.LiteralValue, Fields extends Stru
  *
  * **Example** (Defining a tagged struct shorthand)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * // Defines a struct with a fixed `_tag` field
@@ -6127,7 +6127,7 @@ export type TaggedStruct<Tag extends SchemaAST.LiteralValue, Fields extends Stru
  *
  * **Example** (Accessing the literal value of the tag)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const tagged = Schema.TaggedStruct("A", {
@@ -6210,7 +6210,7 @@ export type toTaggedUnion<
  *
  * **Example** (Adding tagged-union utilities to an existing union)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const A = Schema.TaggedStruct("A", { value: Schema.Number })
@@ -6332,7 +6332,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
  *
  * **Example** (Pattern matching a discriminated union)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const Shape = Schema.TaggedUnion({
@@ -6401,7 +6401,7 @@ export interface Opaque<Self, S extends Top, Brand> extends
  *
  * **Example** (Defining opaque structs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * class Person extends Schema.Opaque<Person>()(
@@ -6440,7 +6440,7 @@ export interface instanceOf<T, Iso = T> extends declare<T, Iso> {
  *
  * **Example** (Defining a schema for a built-in class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const DateSchema = Schema.instanceOf(Date)
@@ -6498,7 +6498,7 @@ export function link<T>() {
  *
  * **Example** (Reporting failure at a nested path)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Struct({ password: Schema.String, confirmPassword: Schema.String }).check(
@@ -6516,7 +6516,7 @@ export function link<T>() {
  *
  * **Example** (Reporting multiple failures at once)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Struct({ a: Schema.Finite, b: Schema.Finite, c: Schema.Finite }).check(
@@ -8748,7 +8748,7 @@ export const isBetweenBigDecimal = makeIsBetween({
  *
  * **Example** (Checking minimum length)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const NonEmptyStringSchema = Schema.String.check(Schema.isMinLength(1))
@@ -11825,7 +11825,7 @@ const DateString = String.annotate({ expected: "a string that will be decoded as
  *
  * **Example** (Defining a Date schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * Schema.decodeUnknownSync(Schema.Date)(new Date("2024-01-01"))
@@ -11979,7 +11979,7 @@ export interface Duration extends declare<Duration_.Duration> {
  *
  * **Example** (Defining a Duration schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Duration, Schema } from "effect"
  *
  * Schema.decodeUnknownSync(Schema.Duration)(Duration.seconds(5))
@@ -12398,7 +12398,7 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
  *
  * **Example** (Formatting encoded JSON)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.Struct({ a: Schema.Number })
@@ -12630,7 +12630,7 @@ export interface fromFormData<S extends Constraint> extends decodeTo<S, FormData
  *
  * **Example** (Decoding a flat structure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.fromFormData(
@@ -12649,7 +12649,7 @@ export interface fromFormData<S extends Constraint> extends decodeTo<S, FormData
  *
  * **Example** (Decoding nested fields)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.fromFormData(
@@ -12673,7 +12673,7 @@ export interface fromFormData<S extends Constraint> extends decodeTo<S, FormData
  *
  * **Example** (Parsing non-string values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.fromFormData(
@@ -12787,7 +12787,7 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
  *
  * **Example** (Decoding a flat structure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.fromURLSearchParams(
@@ -12804,7 +12804,7 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
  *
  * **Example** (Decoding nested fields)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.fromURLSearchParams(
@@ -12825,7 +12825,7 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
  *
  * **Example** (Parsing non-string values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.fromURLSearchParams(
@@ -13111,7 +13111,7 @@ export interface StringFromUriComponent extends decodeTo<String, String> {
  *
  * **Example** (Decoding URI component strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const PaginationSchema = Schema.Struct({
@@ -14240,7 +14240,7 @@ type MissingSelfGeneric<Usage extends string> =
  *
  * **Example** (Defining a basic class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * class Person extends Schema.Class<Person>("Person")({
@@ -14255,7 +14255,7 @@ type MissingSelfGeneric<Usage extends string> =
  *
  * **Example** (Extending a class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * class Animal extends Schema.Class<Animal>("Animal")({
@@ -14323,7 +14323,7 @@ export const Class: {
  *
  * **Example** (Defining a tagged class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * class Circle extends Schema.TaggedClass<Circle>()("Circle", {
@@ -14381,7 +14381,7 @@ export const TaggedClass: {
  *
  * **Example** (Schema-backed error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
  * class NotFound extends Schema.ErrorClass<NotFound>("NotFound")({
@@ -14439,7 +14439,7 @@ export const ErrorClass: {
  *
  * **Example** (Defining a tagged error class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
  * class NotFound extends Schema.TaggedErrorClass<NotFound>()("NotFound", {
@@ -14536,7 +14536,7 @@ export function toArbitraryLazy<S extends Constraint>(schema: S): LazyArbitrary<
  *
  * **Example** (Generating arbitrary values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import * as FastCheck from "fast-check"
  *
@@ -14773,7 +14773,7 @@ export function overrideToEquivalence<S extends Top>(toEquivalence: () => Equiva
  *
  * **Example** (Comparing structs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const eq = Schema.toEquivalence(Schema.Struct({ id: Schema.Number, name: Schema.String }))
@@ -14862,7 +14862,7 @@ export interface ToJsonSchemaOptions {
    *
    * **Example** (Including custom annotations)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * const schema = Schema.String.annotate({
@@ -15909,7 +15909,7 @@ export interface JsonObject {
  *
  * **Example** (Validating a JSON value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const result = Schema.decodeUnknownOption(Schema.Json)({ key: [1, true, null] })
@@ -16065,7 +16065,7 @@ export declare namespace Annotations {
    *
    * **Example** (Defining your own annotations)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    *
    * // Extend the Annotations interface with a custom `version` annotation

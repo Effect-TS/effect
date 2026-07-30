@@ -52,7 +52,7 @@ const TypeId = "~effect/RequestResolver"
  *
  * **Example** (Defining a request resolver)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, RequestResolver } from "effect"
  * import type { Request } from "effect"
  *
@@ -202,7 +202,7 @@ const defaultKey = (_request: unknown): unknown => defaultKeyObject
  *
  * **Example** (Creating a request resolver)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * // Define a request type
@@ -248,7 +248,7 @@ export const make = <A extends Request.Any>(
  *
  * **Example** (Grouping requests by key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * interface GetUserByRole extends Request.Request<string, Error> {
@@ -305,7 +305,7 @@ const hashGroupKey = <A, K>(get: (entry: Request.Entry<A>) => K) => {
  *
  * **Example** (Creating a resolver from a pure function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Request, RequestResolver } from "effect"
  *
  * interface GetSquareRequest extends Request.Request<number> {
@@ -350,7 +350,7 @@ export const fromFunction = <A extends Request.Any>(
  *
  * **Example** (Batching pure request handling)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Request, RequestResolver } from "effect"
  *
  * interface GetDoubleRequest extends Request.Request<number> {
@@ -393,7 +393,7 @@ export const fromFunctionBatched = <A extends Request.Any>(
  *
  * **Example** (Creating a resolver from an effectful function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Request, RequestResolver } from "effect"
  *
  * interface GetUserFromAPIRequest extends Request.Request<string> {
@@ -456,7 +456,7 @@ export const fromEffect = <A extends Request.Any>(
  *
  * **Example** (Handling tagged request batches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RequestResolver } from "effect"
  * import type { Request } from "effect"
  *
@@ -534,7 +534,7 @@ export const fromEffectTagged = <A extends Request.Any & { readonly _tag: string
  *
  * **Example** (Setting an effectful batch delay)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * interface GetDataRequest extends Request.Request<string> {
@@ -580,7 +580,7 @@ export const setDelayEffect: {
  *
  * **Example** (Setting a batch delay)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * interface GetDataRequest extends Request.Request<string> {
@@ -623,7 +623,7 @@ export const setDelay: {
  *
  * **Example** (Running effects around request resolution)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * interface GetDataRequest extends Request.Request<string> {
@@ -716,7 +716,7 @@ export const never: RequestResolver<never> = make(() => Effect.never)
  *
  * **Example** (Limiting parallel request batches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * interface GetDataRequest extends Request.Request<string> {
@@ -762,7 +762,7 @@ export const batchN: {
  *
  * **Example** (Grouping resolver requests)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * interface GetUserRequest extends Request.Request<string> {
@@ -830,7 +830,7 @@ export const grouped: {
  *
  * **Example** (Racing request resolvers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * interface GetDataRequest extends Request.Request<string> {
@@ -888,7 +888,7 @@ export const race: {
  *
  * **Example** (Adding a tracing span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Request, RequestResolver } from "effect"
  *
  * interface GetDataRequest extends Request.Request<string> {

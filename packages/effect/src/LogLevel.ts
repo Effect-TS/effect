@@ -36,7 +36,7 @@ import * as References from "./References.ts"
  *
  * **Example** (Using log levels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // Using log levels with Effect logging
@@ -120,7 +120,7 @@ export const values: ReadonlyArray<LogLevel> = ["All", "Fatal", "Error", "Warn",
  *
  * **Example** (Ordering log levels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { LogLevel } from "effect"
  *
  * // Compare log levels using Order
@@ -148,7 +148,7 @@ export const Order: Ord.Order<LogLevel> = effect.LogLevelOrder
  *
  * **Example** (Comparing log levels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { LogLevel } from "effect"
  *
  * console.log(LogLevel.Equivalence("Error", "Error")) // true
@@ -204,7 +204,7 @@ export const getOrdinal = (self: LogLevel): number => effect.logLevelToOrder(sel
  *
  * **Example** (Checking higher severity)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { LogLevel } from "effect"
  *
  * // Check if Error is more severe than Info
@@ -247,7 +247,7 @@ export const isGreaterThan: {
  *
  * **Example** (Filtering by minimum log level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Logger, LogLevel } from "effect"
  *
  * // Check if level meets minimum threshold
@@ -297,7 +297,7 @@ export const isGreaterThanOrEqualTo: {
  *
  * **Example** (Checking lower severity)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { LogLevel } from "effect"
  *
  * // Check if Debug is less severe than Info
@@ -340,7 +340,7 @@ export const isLessThan: {
  *
  * **Example** (Filtering by maximum log level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Logger, LogLevel } from "effect"
  *
  * // Check if level is at or below threshold
@@ -390,7 +390,7 @@ export const isLessThanOrEqualTo: {
  *
  * **Example** (Checking current fiber log level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, LogLevel, References } from "effect"
  *
  * const program = Effect.gen(function*() {

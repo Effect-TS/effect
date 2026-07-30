@@ -61,7 +61,7 @@ export interface DurableQueue<
  *
  * **Example** (Defining a durable queue with workers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  * import { DurableQueue, Workflow } from "effect/unstable/workflow"
  *

@@ -155,7 +155,7 @@ export type AllPartsEncoded =
  *
  * **Example** (Building a response parts schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Response, Tool, Toolkit } from "effect/unstable/ai"
  *
@@ -493,7 +493,7 @@ const BasePart = Schema.Struct({
  *
  * **Example** (Creating response content parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const textPart = Response.makePart("text", {
@@ -557,7 +557,7 @@ export type ConstructorParams<Part extends AnyPart> =
  *
  * **Example** (Creating a text part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const textPart: Response.TextPart = Response.makePart("text", {
@@ -813,7 +813,7 @@ export const TextEndPart: Schema.Struct<{
  *
  * **Example** (Creating a reasoning part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const reasoningPart: Response.ReasoningPart = Response.makePart("reasoning", {
@@ -1295,7 +1295,7 @@ export const ToolParamsEndPart: Schema.Struct<{
  *
  * **Example** (Creating a tool call part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Response } from "effect/unstable/ai"
  *
@@ -1503,7 +1503,7 @@ export interface ToolResultFailure<Name extends string, Failure> extends BaseToo
  *
  * **Example** (Creating a tool result part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * interface WeatherData {
@@ -1723,7 +1723,7 @@ export const toolResultPart = <const Params extends ConstructorParams<ToolResult
  *
  * **Example** (Creating an approval request part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const approvalRequest: Response.ToolApprovalRequestPart = Response.makePart(
@@ -1824,7 +1824,7 @@ export const toolApprovalRequestPart = (
  *
  * **Example** (Creating a file part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const imagePart: Response.FilePart = Response.makePart("file", {
@@ -2116,7 +2116,7 @@ export const UrlSourcePart: Schema.Struct<{
  *
  * **Example** (Describing an HTTP request)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Response } from "effect/unstable/ai"
  *
  * const requestDetails: typeof Response.HttpRequestDetails.Type = {
@@ -2156,7 +2156,7 @@ export const HttpRequestDetails = Schema.Struct({
  *
  * **Example** (Describing an HTTP response)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Response } from "effect/unstable/ai"
  *
  * const responseDetails: typeof Response.HttpResponseDetails.Type = {
@@ -2191,7 +2191,7 @@ export const HttpResponseDetails = Schema.Struct({
  *
  * **Example** (Creating a metadata part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { DateTime } from "effect"
  * import { Response } from "effect/unstable/ai"
  *
@@ -2406,7 +2406,7 @@ export class Usage extends Schema.Class<Usage>("effect/ai/AiResponse/Usage")({
  *
  * **Example** (Creating a finish part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const finishPart: Response.FinishPart = Response.makePart("finish", {
@@ -2522,7 +2522,7 @@ export const FinishPart: Schema.Struct<{
  *
  * **Example** (Creating an error part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const errorPart: Response.ErrorPart = Response.makePart("error", {

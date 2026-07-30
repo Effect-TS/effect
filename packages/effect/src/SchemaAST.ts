@@ -1248,7 +1248,7 @@ export type LiteralValue = string | number | boolean | bigint
  *
  * **Example** (Creating a literal AST)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaAST } from "effect"
  *
  * const ast = new SchemaAST.Literal("active")
@@ -1626,7 +1626,7 @@ export const bigInt = new BigInt()
  *
  * **Example** (Inspecting a tuple AST)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaAST } from "effect"
  *
  * const schema = Schema.Tuple([Schema.String, Schema.Number])
@@ -2034,7 +2034,7 @@ export class IndexSignature {
  *
  * **Example** (Inspecting a struct AST)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaAST } from "effect"
  *
  * const schema = Schema.Struct({ name: Schema.String })
@@ -2713,7 +2713,7 @@ export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyAr
  *
  * **Example** (Inspecting a union AST)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaAST } from "effect"
  *
  * const schema = Schema.Union([Schema.String, Schema.Number])
@@ -2936,7 +2936,7 @@ export function memoizeThunk<A>(f: () => A): () => A {
  *
  * **Example** (Defining recursive schema ASTs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaAST } from "effect"
  *
  * interface Category {
@@ -3179,7 +3179,7 @@ export const finite = appendChecks(number, [isFinite()])
  *
  * **Example** (Validating an email pattern)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaAST } from "effect"
  *
  * const emailFilter = SchemaAST.isPattern(/^[^@]+@[^@]+$/)
@@ -3548,7 +3548,7 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
  *
  * **Example** (Getting the type AST)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaAST } from "effect"
  *
  * const schema = Schema.NumberFromString
@@ -3595,7 +3595,7 @@ export const toType = memoize(<A extends AST>(ast: A): A => {
  *
  * **Example** (Getting the encoded AST)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaAST } from "effect"
  *
  * const schema = Schema.NumberFromString
@@ -3968,7 +3968,7 @@ export const ClassTypeId = "~effect/Schema/Class"
  *
  * **Example** (Reading annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema, SchemaAST } from "effect"
  *
  * const schema = Schema.String.annotate({ title: "Name" })

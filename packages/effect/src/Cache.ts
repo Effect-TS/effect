@@ -32,7 +32,7 @@ const TypeId = "~effect/Cache"
  *
  * **Example** (Creating a basic cache)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Basic cache with string keys and number values
@@ -53,7 +53,7 @@ const TypeId = "~effect/Cache"
  *
  * **Example** (Handling lookup failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Cache with error handling
@@ -76,7 +76,7 @@ const TypeId = "~effect/Cache"
  *
  * **Example** (Using complex keys with TTL)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Data, Duration, Effect } from "effect"
  *
  * // Cache with complex key types and TTL
@@ -148,7 +148,7 @@ export interface Entry<A, E> {
  *
  * **Example** (Configuring dynamic time to live)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect, Exit } from "effect"
  *
  * // Cache with TTL based on computed value
@@ -215,7 +215,7 @@ export const makeWith = <
  *
  * **Example** (Creating a basic cache)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Basic cache with string keys
@@ -233,7 +233,7 @@ export const makeWith = <
  *
  * **Example** (Creating a cache with TTL)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -318,7 +318,7 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  *
  * **Example** (Getting cached values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -341,7 +341,7 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  *
  * **Example** (Handling lookup failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Error handling when lookup fails
@@ -366,7 +366,7 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  *
  * **Example** (Sharing concurrent lookups)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Concurrent access - multiple gets of same key only invoke lookup once
@@ -487,7 +487,7 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  *
  * **Example** (Reading cached values without lookup)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -513,7 +513,7 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  *
  * **Example** (Skipping expired entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -543,7 +543,7 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  *
  * **Example** (Waiting for pending lookups)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Deferred, Effect, Fiber } from "effect"
  *
  * // Waits for ongoing computation to complete
@@ -642,7 +642,7 @@ export const getSuccess: {
  *
  * **Example** (Setting values directly)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -660,7 +660,7 @@ export const getSuccess: {
  *
  * **Example** (Overwriting cached values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Overwriting existing cached values
@@ -683,7 +683,7 @@ export const getSuccess: {
  *
  * **Example** (Applying TTL to set values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -707,7 +707,7 @@ export const getSuccess: {
  *
  * **Example** (Enforcing capacity when setting values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Capacity enforcement with set operations
@@ -766,7 +766,7 @@ export const set: {
  *
  * **Example** (Checking for cached keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -786,7 +786,7 @@ export const set: {
  *
  * **Example** (Checking TTL expiration)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -814,7 +814,7 @@ export const set: {
  *
  * **Example** (Checking multiple keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Checking multiple keys efficiently
@@ -862,7 +862,7 @@ export const has: {
  *
  * **Example** (Invalidating cached entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -916,7 +916,7 @@ export const invalidate: {
  *
  * **Example** (Invalidating entries conditionally)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1009,7 +1009,7 @@ export const invalidateWhen: {
  *
  * **Example** (Refreshing cached values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Force refresh of existing cached values
@@ -1040,7 +1040,7 @@ export const invalidateWhen: {
  *
  * **Example** (Resetting TTL on refresh)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -1069,7 +1069,7 @@ export const invalidateWhen: {
  *
  * **Example** (Refreshing missing keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Refresh non-existent keys
@@ -1130,7 +1130,7 @@ export const refresh: {
  *
  * **Example** (Invalidating all entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Clear all cached entries at once
@@ -1178,7 +1178,7 @@ export const invalidateAll = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.E
  *
  * **Example** (Reading cache size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1215,7 +1215,7 @@ export const size = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<num
  *
  * **Example** (Reading active keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * // Basic key enumeration
@@ -1258,7 +1258,7 @@ export const keys = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<Ite
  *
  * **Example** (Reading all cached values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cache, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {

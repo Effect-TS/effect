@@ -42,7 +42,7 @@ export const TypeId: TypeId = "~@effect/atom-react/ScopedAtom"
  *
  * **Example** (Providing and reading a scoped atom)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { make, useAtomValue } from "@effect/atom-react"
  * import { Atom } from "effect/unstable/reactivity"
  * import * as React from "react"
@@ -92,7 +92,7 @@ export interface ScopedAtom<A extends Atom.Atom<any>, Input = never> {
  *
  * **Example** (Creating a scoped atom with input)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { make, useAtomValue } from "@effect/atom-react"
  * import { Atom } from "effect/unstable/reactivity"
  * import * as React from "react"

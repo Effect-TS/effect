@@ -34,7 +34,7 @@ export const SpecSourceConfig = Schema.Struct({
  *
  * **Example** (Decoding a codegen configuration)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as Config from "@effect/ai-codegen/Config"
  * import { Schema } from "effect"
  *
@@ -179,7 +179,7 @@ export declare namespace SpecSource {
  *
  * **Example** (Creating spec sources)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as Config from "@effect/ai-codegen/Config"
  *
  * // Create a URL-based source
@@ -252,7 +252,7 @@ export const SpecSource = {
  *
  * **Example** (Creating a config parse error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as Config from "@effect/ai-codegen/Config"
  *
  * const error = new Config.ConfigParseError({
@@ -274,7 +274,7 @@ export class ConfigParseError extends Data.TaggedError("ConfigParseError")<{
  *
  * **Example** (Creating a config not found error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as Config from "@effect/ai-codegen/Config"
  *
  * const error = new Config.ConfigNotFoundError({

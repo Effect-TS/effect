@@ -229,7 +229,7 @@ export type WellKnownSystem =
  *
  * **Example** (Prefixing telemetry attributes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Telemetry } from "effect/unstable/ai"
  *
  * type RequestAttrs = {
@@ -264,7 +264,7 @@ export type AttributesWithPrefix<Attributes extends Record<string, any>, Prefix 
  *
  * **Example** (Formatting attribute names)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Telemetry } from "effect/unstable/ai"
  *
  * type Formatted1 = Telemetry.FormatAttributeName<"modelName"> // "model_name"
@@ -358,7 +358,7 @@ const addSpanUsageAttributes = addSpanAttributes("gen_ai.usage", String.camelToS
  *
  * **Example** (Configuring GenAI telemetry attributes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Telemetry } from "effect/unstable/ai"
  *
  * const telemetryOptions: Telemetry.GenAITelemetryAttributeOptions = {
@@ -428,7 +428,7 @@ export type GenAITelemetryAttributeOptions = BaseAttributes & {
  *
  * **Example** (Adding GenAI telemetry annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Telemetry } from "effect/unstable/ai"
  *
@@ -468,7 +468,7 @@ export const addGenAIAnnotations: {
  *
  * **Example** (Transforming AI spans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Telemetry } from "effect/unstable/ai"
  *
  * const customTransformer: Telemetry.SpanTransformer = ({ response, span }) => {

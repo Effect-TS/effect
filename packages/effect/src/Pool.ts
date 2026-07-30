@@ -250,7 +250,7 @@ export const make = <A, E, R>(options: {
  *
  * **Example** (Creating a connection pool)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Duration, Effect, Pool } from "effect"
  *
  * interface Connection {

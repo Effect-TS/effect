@@ -22,7 +22,7 @@ const TypeId = "~effect/SchemaError/SchemaError"
  *
  * **Example** (Catching a SchemaError)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * try {

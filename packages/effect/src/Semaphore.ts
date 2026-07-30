@@ -33,7 +33,7 @@ import type * as Option from "./Option.ts"
  *
  * **Example** (Controlling concurrent access)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Semaphore } from "effect"
  *
  * // Create and use a semaphore for controlling concurrent access
@@ -162,7 +162,7 @@ export interface Semaphore {
  *
  * **Example** (Creating an unsafe semaphore)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Semaphore } from "effect"
  *
  * const semaphore = Semaphore.makeUnsafe(3)
@@ -305,7 +305,7 @@ class SemaphoreImpl implements Semaphore {
  *
  * **Example** (Creating a semaphore)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Semaphore } from "effect"
  *
  * const program = Effect.gen(function*() {

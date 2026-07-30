@@ -28,7 +28,7 @@ import * as internal from "./internal/effect.ts"
  *
  * **Example** (Coordinating fibers with a latch)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Latch } from "effect"
  *
  * // Create and use a latch for coordination between fibers
@@ -138,7 +138,7 @@ export interface Latch {
  *
  * **Example** (Creating a latch unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Latch } from "effect"
  *
  * const latch = Latch.makeUnsafe(false)
@@ -178,7 +178,7 @@ export const makeUnsafe: (open?: boolean | undefined) => Latch = internal.makeLa
  *
  * **Example** (Creating a latch)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Latch } from "effect"
  *
  * const program = Effect.gen(function*() {

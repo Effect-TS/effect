@@ -33,7 +33,7 @@ const TypeId = "~effect/ai/Toolkit" as const
  *
  * **Example** (Defining AI toolkits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool, Toolkit } from "effect/unstable/ai"
  *
@@ -459,7 +459,7 @@ export const empty: Toolkit<{}> = makeProto({})
  *
  * **Example** (Creating a toolkit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool, Toolkit } from "effect/unstable/ai"
  *
@@ -530,7 +530,7 @@ export type MergedTools<Toolkits extends ReadonlyArray<Any>> = SimplifyRecord<
  *
  * **Example** (Merging toolkits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool, Toolkit } from "effect/unstable/ai"
  *

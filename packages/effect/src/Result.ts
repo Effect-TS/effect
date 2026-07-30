@@ -47,7 +47,7 @@ const TypeId = "~effect/data/Result"
  *
  * **Example** (Creating and matching a Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const success = Result.succeed(42)
@@ -81,7 +81,7 @@ export type Result<A, E = never> = Success<A, E> | Failure<A, E>
  *
  * **Example** (Accessing the failure value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const failure = Result.fail("Network error")
@@ -144,7 +144,7 @@ export interface ResultIterator<T extends Result<any, any>> {
  *
  * **Example** (Accessing the success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const success = Result.succeed(42)
@@ -226,7 +226,7 @@ export interface ResultTypeLambda extends TypeLambda {
  *
  * **Example** (Extracting inner types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Result } from "effect"
  *
  * type R = Result.Result<number, string>
@@ -267,7 +267,7 @@ export declare namespace Result {
  *
  * **Example** (Wrapping a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const result = Result.succeed(42)
@@ -297,7 +297,7 @@ export const succeed: <A>(right: A) => Result<A> = result.succeed
  *
  * **Example** (Creating a failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const result = Result.fail("Something went wrong")
@@ -331,7 +331,7 @@ export {
    *
    * **Example** (Referencing void results)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Result } from "effect"
    *
    * const result: Result.Result<void> = Result.void
@@ -364,7 +364,7 @@ export {
  *
  * **Example** (Failing without a payload)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const result = Result.failVoid
@@ -397,7 +397,7 @@ export const failVoid: Result<never, void> = fail(void 0)
  *
  * **Example** (Handling nullable values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.fromNullishOr(1, () => "fallback"))
@@ -438,7 +438,7 @@ export const fromNullishOr: {
  *
  * **Example** (Converting an Option to a Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * const some = Result.fromOption(Option.some(1), () => "missing")
@@ -504,7 +504,7 @@ export {
    *
    * **Example** (Catching JSON parse errors)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Result } from "effect"
    *
    * const ok = Result.try(() => JSON.parse('{"name": "Alice"}'))
@@ -542,7 +542,7 @@ export {
  *
  * **Example** (Checking if a value is a Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.isResult(Result.succeed(1)))
@@ -573,7 +573,7 @@ export const isResult: (input: unknown) => input is Result<unknown, unknown> = r
  *
  * **Example** (Narrowing to failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const result = Result.fail("oops")
@@ -606,7 +606,7 @@ export const isFailure: <A, E>(self: Result<A, E>) => self is Failure<A, E> = re
  *
  * **Example** (Narrowing to success)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const result = Result.succeed(42)
@@ -640,7 +640,7 @@ export const isSuccess: <A, E>(self: Result<A, E>) => self is Success<A, E> = re
  *
  * **Example** (Extracting the success as an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * console.log(Result.getSuccess(Result.succeed("ok")))
@@ -673,7 +673,7 @@ export const getSuccess: <A, E>(self: Result<A, E>) => Option<A> = result.getSuc
  *
  * **Example** (Extracting the failure as an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * console.log(Result.getFailure(Result.succeed("ok")))
@@ -702,7 +702,7 @@ export const getFailure: <A, E>(self: Result<A, E>) => Option<E> = result.getFai
  *
  * **Example** (Comparing Results for equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Result } from "effect"
  *
  * const eq = Result.makeEquivalence(
@@ -745,7 +745,7 @@ export const makeEquivalence = <A, E>(
  *
  * **Example** (Mapping both channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -797,7 +797,7 @@ export const mapBoth: {
  *
  * **Example** (Adding context to an error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -839,7 +839,7 @@ export const mapError: {
  *
  * **Example** (Doubling the success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -882,7 +882,7 @@ export const map: {
  *
  * **Example** (Folding to a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const format = Result.match({
@@ -937,7 +937,7 @@ export const match: {
  *
  * **Example** (Validating a number)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const ensurePositive = pipe(
@@ -998,7 +998,7 @@ export const liftPredicate: {
  *
  * **Example** (Filtering a success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -1051,7 +1051,7 @@ export const filterOrFail: {
  *
  * **Example** (Extracting the inner value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.merge(Result.succeed(42)))
@@ -1085,7 +1085,7 @@ export const merge: <A, E>(self: Result<A, E>) => E | A = match({ onFailure: ide
  *
  * **Example** (Providing a fallback)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.getOrElse(Result.succeed(1), () => 0))
@@ -1127,7 +1127,7 @@ export const getOrElse: {
  *
  * **Example** (Unwrapping to nullable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.getOrNull(Result.succeed(1)))
@@ -1160,7 +1160,7 @@ export const getOrNull: <A, E>(self: Result<A, E>) => A | null = getOrElse(const
  *
  * **Example** (Unwrapping to optional)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.getOrUndefined(Result.succeed(1)))
@@ -1193,7 +1193,7 @@ export const getOrUndefined: <A, E>(self: Result<A, E>) => A | undefined = getOr
  *
  * **Example** (Throwing a custom error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(
@@ -1239,7 +1239,7 @@ export const getOrThrowWith: {
  *
  * **Example** (Unwrapping or throwing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.getOrThrow(Result.succeed(1)))
@@ -1273,7 +1273,7 @@ export const getOrThrow: <A, E>(self: Result<A, E>) => A = getOrThrowWith(identi
  *
  * **Example** (Recovering from a failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -1316,7 +1316,7 @@ export const orElse: {
  *
  * **Example** (Validating sequentially)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -1364,7 +1364,7 @@ export const flatMap: {
  *
  * **Example** (Chaining Result values with different argument types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * // With a function returning a Result
@@ -1431,7 +1431,7 @@ export const andThen: {
  *
  * **Example** (Collecting a tuple and a struct)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * // Tuple
@@ -1504,7 +1504,7 @@ export const all: <const I extends Iterable<Result<any, any>> | Record<string, R
  *
  * **Example** (Swapping channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.flip(Result.succeed(42)))
@@ -1539,7 +1539,7 @@ export const flip = <A, E>(self: Result<A, E>): Result<E, A> =>
  *
  * **Example** (Composing multiple Results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const result = Result.gen(function*() {
@@ -1593,7 +1593,7 @@ export const gen: Gen.Gen<ResultTypeLambda> = (...args) => {
  *
  * **Example** (Building an object step by step)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -1634,7 +1634,7 @@ export const Do: Result<{}> = succeed({})
  *
  * **Example** (Binding Result values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -1681,7 +1681,7 @@ export const bind: {
  *
  * **Example** (Wrapping a value into a named field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
@@ -1732,7 +1732,7 @@ export {
    *
    * **Example** (Adding a computed field)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { pipe, Result } from "effect"
    *
    * const result = pipe(
@@ -1770,7 +1770,7 @@ export {
  *
  * **Example** (Transposing an Option of a Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * const some = Option.some(Result.succeed(42))
@@ -1810,7 +1810,7 @@ export const transposeOption = <A = never, E = never>(
  *
  * **Example** (Mapping and transposing in one step)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * const parse = (s: string) =>
@@ -1855,7 +1855,7 @@ export const transposeMapOption = dual<
  *
  * **Example** (Succeeding with None)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * console.log(Result.isSuccess(Result.succeedNone))
@@ -1881,7 +1881,7 @@ export const succeedNone = succeed(option_.none)
  *
  * **Example** (Wrapping a value in Some inside a Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  *
  * const result = Result.succeedSome(42)
@@ -1908,7 +1908,7 @@ export const succeedSome = <A, E = never>(a: A): Result<Option<A>, E> => succeed
  *
  * **Example** (Logging a success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, Result } from "effect"
  *
  * const result = pipe(
