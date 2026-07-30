@@ -324,7 +324,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
         envelope.address.entityType === "Workflow/ShardedDeferredWorkflow" &&
         envelope.tag === "deferred"
       )
-      assert(envelope)
+      assert(envelope?._tag === "Request")
       assert(callerSpan)
       assert.strictEqual(envelope.traceId, callerSpan.traceId)
       assert.strictEqual(envelope.spanId, callerSpan.spanId)
