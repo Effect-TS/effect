@@ -1,5 +1,17 @@
 # @effect/printer-ansi
 
+## 0.51.0
+
+### Minor Changes
+
+- [#6775](https://github.com/Effect-TS/effect/pull/6775) [`fcbe828`](https://github.com/Effect-TS/effect/commit/fcbe828dda11e0e32866364e691a50a31bab1d43) Thanks @tim-smart! - Add `Doc.sanitize` for removing terminal control characters from untrusted document subtrees.
+
+### Patch Changes
+
+- Updated dependencies [[`fcbe828`](https://github.com/Effect-TS/effect/commit/fcbe828dda11e0e32866364e691a50a31bab1d43), [`7ccbd9c`](https://github.com/Effect-TS/effect/commit/7ccbd9cfc78c5e0d71c75c06fb69c80ba5a0b0ac), [`ab2af6d`](https://github.com/Effect-TS/effect/commit/ab2af6d702d0fcd06a5f1657bed3408168305245), [`3cc3c6e`](https://github.com/Effect-TS/effect/commit/3cc3c6e1a64cbdc360e9d28e44f3ec3ce0ece6e3), [`3d390f2`](https://github.com/Effect-TS/effect/commit/3d390f232bdbc3f0d3d6a2ae3c775084f494b547), [`fcabf08`](https://github.com/Effect-TS/effect/commit/fcabf08c8af32ae6f8c7ab8c177cf58029a61e25), [`735d81b`](https://github.com/Effect-TS/effect/commit/735d81ba80b17f03ff337845cc089c2497e31f67)]:
+  - @effect/printer@0.51.0
+  - effect@3.22.1
+
 ## 0.50.0
 
 ### Patch Changes
