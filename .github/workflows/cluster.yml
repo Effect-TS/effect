@@ -8,19 +8,22 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     env:
-      EFFECT_CLUSTER_INTEGRATION_TESTS: "1"
+      EFFECT_CLUSTER_TESTS: "1"
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v6
+
       - name: Pre-pull test container images
         run: |
           docker pull testcontainers/ryuk:0.14.0 &
           docker pull postgres:alpine &
+          docker pull mysql:lts &
           wait
+
       - name: Install dependencies
         uses: ./.github/actions/setup
       - name: Test
-        run: pnpm test --run packages/platform-node/test/cluster-integration
+        run: pnpm test-cluster
