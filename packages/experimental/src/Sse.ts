@@ -36,12 +36,12 @@ export type SseErrorReason = EventTooLarge
  * @category errors
  */
 export class SseError extends Data.TaggedError("SseError")<{
-  readonly reason: SseErrorReason
+  readonly cause: SseErrorReason
 }> {
   readonly [SseErrorTypeId] = SseErrorTypeId
 
   override get message() {
-    return this.reason.message
+    return this.cause.message
   }
 }
 
@@ -248,7 +248,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     }
 
     if (buffer.length + data.length > maxEventSize) {
-      const error = new SseError({ reason: new EventTooLarge({ maxEventSize }) })
+      const error = new SseError({ cause: new EventTooLarge({ maxEventSize }) })
       reset()
       return error
     }

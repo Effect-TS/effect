@@ -14,8 +14,8 @@ describe("Sse", () => {
       assert(Exit.isFailure(exit))
       const [error] = Cause.defects(exit.cause)
       assert.instanceOf(error, Sse.SseError)
-      assert.instanceOf(error.reason, Sse.EventTooLarge)
-      assert.strictEqual(error.reason.maxEventSize, 4)
+      assert.instanceOf(error.cause, Sse.EventTooLarge)
+      assert.strictEqual(error.cause.maxEventSize, 4)
     }))
 
   it.effect("fails when pending data exceeds maxEventSize", () =>
@@ -29,8 +29,8 @@ describe("Sse", () => {
       assert(Exit.isFailure(exit))
       const [error] = Cause.defects(exit.cause)
       assert.instanceOf(error, Sse.SseError)
-      assert.instanceOf(error.reason, Sse.EventTooLarge)
-      assert.strictEqual(error.reason.maxEventSize, 3)
+      assert.instanceOf(error.cause, Sse.EventTooLarge)
+      assert.strictEqual(error.cause.maxEventSize, 3)
     }))
 
   it.effect("parses pending state just under maxEventSize", () =>
