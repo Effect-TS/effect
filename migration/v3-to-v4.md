@@ -4,7 +4,7 @@
 
 Base: `v3` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `main` (`0a532e503f165fdea485a5343fc2f420917e8376`)
+Head: `main` (`24e0e93dc307dc2c2ae86caacb7289e1dab3c103`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5971,6 +5971,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RequestResolver.dataLoader` -> `effect/RequestResolver#setDelay + effect/RequestResolver#batchN`: Pipe the resolver through setDelay(options.window) and batchN(options.maxBatchSize ?? Infinity); the transformation is now pure.
 
+- `RequestResolver.persisted` -> `effect/RequestResolver#persisted`: Retained after moving to core RequestResolver; requests now implement Persistable and use Persistence.Persistence, timeToLive is optional, and staleWhileRevalidate is supported.
+
 ### `@effect/experimental/Sse`
 
 - `Sse.RetryTypeId` -> `none`: The Retry identifier is private in v4; use effect/unstable/encoding/Sse#Retry and Retry.is instead of inspecting the brand.
@@ -6439,6 +6441,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.CopyOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["copy"]>[2]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
+- `FileSystem.File.Descriptor` -> `none`: Native file descriptors are no longer part of the portable File interface; use the File methods and keep any platform handle private in custom implementations.
+
+- `FileSystem.FileDescriptor` -> `none`: The descriptor branding constructor was removed with the public fd field; use File operations instead of exposing a native descriptor.
+
 - `FileSystem.FileTypeId` -> `typeof FileSystem.FileTypeId`: The runtime marker remains exported, but the separate type alias was removed.
 
 - `FileSystem.MakeDirectoryOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["makeDirectory"]>[1]>`: Operation option interfaces are inline in the v4 FileSystem service.
@@ -6463,7 +6469,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `FileSystem.WatchEventUpdate` -> `FileSystem.WatchEvent.Update`: The constructor was removed; construct a tagged object with \_tag: "Update" and path.
 
-- `FileSystem.WatchOptions` -> `none`: FileSystem.watch now accepts only a path; the recursive watch option was removed.
+- `FileSystem.WatchOptions` -> `FileSystem.WatchOptions`: Retained after moving the module to effect/FileSystem; pass `{ recursive: true }` as the optional second argument to FileSystem.watch.
 
 - `FileSystem.WriteFileOptions` -> `NonNullable<Parameters<FileSystem.FileSystem["writeFile"]>[2]>`: Operation option interfaces are inline in the v4 FileSystem service.
 
@@ -7493,6 +7499,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Rpc.make` -> `effect/unstable/rpc/Rpc#make`: Retained; schemas use v4 Schema.Top constraints and the defect option accepts Rpc.DefectSchema.
 
+- `Rpc.wrap` -> `effect/unstable/rpc/Rpc#wrap`: Retained after the module move; it still applies fork and uninterruptible handler options, while the return type is now uniformly Rpc.Wrapper.
+
 ### `@effect/rpc/RpcClient`
 
 - `RpcClient.Protocol` -> `effect/unstable/rpc/RpcClient#Protocol`: Retained as a Context.Service; custom transports now route multiple client ids through run and send.
@@ -7726,6 +7734,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Model.DateTimeFromDate` -> `effect/Schema#DateTimeUtcFromDate`: Moved to core Schema and retains Date to DateTime.Utc conversion.
 
 - `Model.Generated` -> `effect/unstable/schema/Model#GeneratedByDb`: Renamed and now read-only, with select and json variants only. Use Model.Field with select, update, and json to preserve writable v3 behavior.
+
+- `Model.extract` -> `effect/unstable/schema/Model#extract`: Retained after moving the model variant helpers into core Effect's unstable schema package.
 
 - `Model.fieldFromKey` -> `effect/Schema#encodeKeys`: The field helper was removed; apply encodeKeys to each concrete struct or model-variant schema that crosses the naming boundary.
 

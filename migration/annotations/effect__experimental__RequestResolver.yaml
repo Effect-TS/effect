@@ -7,3 +7,6 @@
 "@effect/experimental/RequestResolver#PersistedRequest.Any":
   replacement: effect/Request#Any & effect/unstable/persistence/Persistable#Any
   note: Intersect the Request and Persistable helper types for an arbitrary persisted request.
+"@effect/experimental/RequestResolver#persisted":
+  replacement: effect/RequestResolver#persisted
+  note: Retained after moving to core RequestResolver; requests now implement Persistable and use Persistence.Persistence, timeToLive is optional, and staleWhileRevalidate is supported.
