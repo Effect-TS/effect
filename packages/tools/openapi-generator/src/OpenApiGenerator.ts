@@ -605,11 +605,21 @@ const parseOpenApi = (
           }
         }
 
-        const sseResponseSchema = content?.["text/event-stream"]?.schema
+        const sseMediaType = content?.["text/event-stream"]
+        const sseResponseSchema = sseMediaType?.schema
         if (!isHttpApi && Predicate.isUndefined(op.sseSchema) && Predicate.isNotUndefined(sseResponseSchema)) {
           const statusMajorNumber = Number(parsedStatus[0])
           if (!Number.isNaN(statusMajorNumber) && statusMajorNumber < 4) {
-            op.sseSchema = addSchema(`${schemaId}${status}Sse`, sseResponseSchema, op)
+            op.sseSchemaMode = Predicate.isObject(sseMediaType) && getEffectStreamEncoding(sseMediaType) === "sse"
+              ? "event"
+              : "data"
+            op.sseSchema = addSchema(
+              `${schemaId}${status}Sse`,
+              op.sseSchemaMode === "event"
+                ? makeSseEventSchema(resolveReference(sseResponseSchema, resolveRef), sseMediaType)
+                : sseResponseSchema,
+              op
+            )
           }
         }
 
@@ -969,6 +979,60 @@ const getEffectStreamErrorSchema = (mediaType: object): JsonSchema.JsonSchema | 
     return
   }
   return stream.errorSchema as JsonSchema.JsonSchema
+}
+
+const makeSseEventSchema = (
+  input: JsonSchema.JsonSchema,
+  mediaType: object
+): JsonSchema.JsonSchema => {
+  const eventSchema = normalizeSseEventSchema(input)
+  const stream = (mediaType as Record<string, unknown>)["x-effect-stream"]
+  if (!Predicate.isObject(stream) || typeof stream.failureEvent !== "string") {
+    return eventSchema
+  }
+  return {
+    anyOf: [
+      eventSchema,
+      {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          event: { const: stream.failureEvent },
+          data: { type: "string" }
+        },
+        required: ["event", "data"],
+        additionalProperties: false
+      }
+    ]
+  }
+}
+
+const normalizeSseEventSchema = (input: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
+  const schema = { ...input } as Record<string, any>
+  for (const key of ["allOf", "anyOf", "oneOf"] as const) {
+    if (Array.isArray(schema[key])) {
+      schema[key] = schema[key].map(normalizeSseEventSchema)
+    }
+  }
+  if (
+    schema.type !== "object" ||
+    !Predicate.isObject(schema.properties) ||
+    !Object.hasOwn(schema.properties, "id") ||
+    !Object.hasOwn(schema.properties, "event") ||
+    !Object.hasOwn(schema.properties, "data")
+  ) {
+    return schema as JsonSchema.JsonSchema
+  }
+
+  // OpenAPI represents `undefined` as required nullable; restore the SSE parser's optional wire field.
+  schema.properties = {
+    ...schema.properties,
+    id: { type: "string" }
+  }
+  if (Array.isArray(schema.required)) {
+    schema.required = schema.required.filter((name: unknown) => name !== "id")
+  }
+  return schema as JsonSchema.JsonSchema
 }
 
 const resolveReference = (input: unknown, resolveRef: (ref: string) => unknown): any => {
