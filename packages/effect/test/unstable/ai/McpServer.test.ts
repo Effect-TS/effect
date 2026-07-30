@@ -44,7 +44,18 @@ const DefectTool = Tool.make("DefectTool", {
 
 const UntypedTool = Tool.make("UntypedTool")
 
-const TestToolkit = Toolkit.make(OptionalStringTool, PublicFailureTool, InternalAiErrorTool, DefectTool, UntypedTool)
+const AnnotatedVoidTool = Tool.make("AnnotatedVoidTool", {
+  success: Schema.Void.annotate({ description: "No output" })
+})
+
+const TestToolkit = Toolkit.make(
+  OptionalStringTool,
+  PublicFailureTool,
+  InternalAiErrorTool,
+  DefectTool,
+  UntypedTool,
+  AnnotatedVoidTool
+)
 type TestToolkitHandlers = Toolkit.HandlersFrom<Toolkit.Tools<typeof TestToolkit>>
 
 const testToolkitHandlers = TestToolkit.of({
@@ -52,7 +63,8 @@ const testToolkitHandlers = TestToolkit.of({
   PublicFailureTool: () => Effect.fail(new Error("Public failure")),
   InternalAiErrorTool: () => Effect.fail(new AiError.RateLimitError({})),
   DefectTool: () => Effect.die("private defect details"),
-  UntypedTool: () => Effect.void
+  UntypedTool: () => Effect.void,
+  AnnotatedVoidTool: () => Effect.void
 })
 
 const INTERNAL_TOOL_ERROR_MESSAGE = "Tool execution failed due to an internal server error."
@@ -253,10 +265,13 @@ describe("McpServer", () => {
         const result = yield* client["tools/list"]({})
         const typedTool = result.tools.find((tool) => tool.name === "OptionalStringTool")
         const untypedTool = result.tools.find((tool) => tool.name === "UntypedTool")
+        const annotatedVoidTool = result.tools.find((tool) => tool.name === "AnnotatedVoidTool")
 
         assert.deepStrictEqual(typedTool?.outputSchema, { type: "string" })
         assertTrue(untypedTool !== undefined)
         assert.isFalse("outputSchema" in untypedTool)
+        assertTrue(annotatedVoidTool !== undefined)
+        assert.isFalse("outputSchema" in annotatedVoidTool)
       }))
 
     it.effect("returns concise parameter-validation errors without invoking the handler", () =>

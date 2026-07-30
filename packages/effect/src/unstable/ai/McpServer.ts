@@ -888,7 +888,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
       name: tool.name,
       description: Tool.getDescription(tool),
       inputSchema: Tool.getJsonSchema(tool),
-      ...(tool.successSchema === Schema.Void || tool.successSchema === Schema.Unknown ? {} : {
+      ...(SchemaAST.isVoid(tool.successSchema.ast) || SchemaAST.isUnknown(tool.successSchema.ast) ? {} : {
         outputSchema: Tool.getJsonSchemaFromSchema(tool.successSchema)
       }),
       annotations: {
