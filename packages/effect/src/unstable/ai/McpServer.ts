@@ -47,6 +47,7 @@ import * as McpProtocolRegistry from "./internal/mcpProtocolRegistry.ts"
 import type * as McpProtocol from "./McpProtocol.ts"
 import {
   CallToolResult,
+  CancelledNotification,
   ClientRpcs,
   Elicit,
   ElicitationDeclined,
@@ -387,6 +388,11 @@ export class McpServer extends Context.Service<McpServer, {
 const MCP_SESSION_ID_HEADER = "mcp-session-id"
 const MCP_PROTOCOL_VERSION_HEADER = "mcp-protocol-version"
 const MCP_INVALID_BATCH_METHOD = "invalid/json-rpc-batch"
+const decodeCancelledNotification = Schema.decodeUnknownEffect(
+  Schema.toCodecJson(CancelledNotification.payloadSchema)
+)
+
+const requestKey = (requestId: string | number): string => `${typeof requestId}:${requestId}`
 
 type SessionLogLevel =
   | {
@@ -483,6 +489,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   const isHttp = Option.isSome(yield* Effect.serviceOption(HttpRouter.HttpRouter))
   const sessions = protocolState.sessions
   const clientProtocols = new Map<number, McpProtocol.ProtocolAdapter>()
+  const cancelledRequests = new Map<number, Set<string>>()
   const handlers = yield* Layer.build(layerHandlers(options, {
     sessions,
     protocolRegistry
@@ -568,6 +575,18 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
 
   const patchedProtocol = RpcServer.Protocol.of({
     ...protocol,
+    send: (clientId, response) => {
+      if (response._tag === "Exit") {
+        const requests = cancelledRequests.get(clientId)
+        if (requests?.delete(requestKey(response.requestId)) === true) {
+          if (requests.size === 0) {
+            cancelledRequests.delete(clientId)
+          }
+          return Effect.void
+        }
+      }
+      return protocol.send(clientId, response)
+    },
     run: (f) =>
       protocol.run((clientId, request_) => {
         const fiber = Fiber.getCurrent()!
@@ -648,15 +667,22 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
                 }
                 return Effect.void
               }
-              const decode = selectedProtocol.payloadCodecs(rpc).decode(request.payload)
-              return decode.pipe(
-                Effect.flatMap((payload) => {
-                  if (request.tag === "notifications/cancelled") {
+              if (request.tag === "notifications/cancelled") {
+                return decodeCancelledNotification(request.payload).pipe(
+                  Effect.flatMap(({ requestId }) => {
+                    const requests = cancelledRequests.get(clientId) ?? new Set<string>()
+                    requests.add(requestKey(requestId))
+                    cancelledRequests.set(clientId, requests)
                     return f(clientId, {
                       _tag: "Interrupt",
-                      requestId: String((payload as any).requestId)
+                      requestId: RpcMessage.RequestId(requestId)
                     })
-                  }
+                  }),
+                  Effect.catchCause(() => Effect.void)
+                )
+              }
+              return selectedProtocol.payloadCodecs(rpc).decode(request.payload).pipe(
+                Effect.flatMap((payload) => {
                   if (
                     request.tag === "notifications/roots/list_changed" &&
                     session.initializePayload.capabilities.roots?.listChanged === true
@@ -724,7 +750,9 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           case "Ping":
           case "Ack":
           case "Interrupt":
+            return f(clientId, request)
           case "Eof":
+            cancelledRequests.delete(clientId)
             return f(clientId, request)
           case "Pong":
           case "Exit":
