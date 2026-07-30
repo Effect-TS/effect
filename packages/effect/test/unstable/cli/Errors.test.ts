@@ -167,7 +167,94 @@ describe("Command errors", () => {
       }).pipe(Effect.provide(TestLayer)))
   })
 
-  describe("formatErrors", () => {
+  describe("error formatting", () => {
+    it("escapes control characters in an unrecognized flag", () => {
+      const formatter = CliOutput.defaultFormatter({ colors: false })
+      const error = new CliError.UnrecognizedOption({
+        option: "--foo\x1b]52;c;bWFsaWNpb3Vz\x07",
+        suggestions: []
+      })
+
+      assert.strictEqual(
+        formatter.formatCliError(error),
+        "Unrecognized flag: --foo\\x1b]52;c;bWFsaWNpb3Vz\\x07"
+      )
+    })
+
+    it("escapes control characters in an unknown subcommand with colors enabled", () => {
+      const formatter = CliOutput.defaultFormatter({ colors: true })
+      const error = new CliError.UnknownSubcommand({
+        subcommand: "deplyo\x1b]8;;https://example.com\x07",
+        suggestions: []
+      })
+
+      assert.strictEqual(
+        formatter.formatError(error),
+        `\n\x1b[1m\x1b[31mERROR\x1b[0m\n  Unknown subcommand "deplyo\\x1b]8;;https://example.com\\x07"\x1b[0m`
+      )
+    })
+
+    it("escapes control characters in an invalid argument value without colors", () => {
+      const formatter = CliOutput.defaultFormatter({ colors: false })
+      const error = new CliError.InvalidValue({
+        option: "count",
+        value: "12\x1b]52;c;bWFsaWNpb3Vz\x07\x7f",
+        expected: "an integer",
+        kind: "argument"
+      })
+
+      assert.strictEqual(
+        formatter.formatErrors([error]),
+        `\nERROR\n  Invalid value for argument <count>: "12\\x1b]52;c;bWFsaWNpb3Vz\\x07\\x7f". Expected: an integer`
+      )
+    })
+
+    it("preserves multi-line suggestion blocks", () => {
+      const formatter = CliOutput.defaultFormatter({ colors: false })
+      const errors = [
+        new CliError.UnrecognizedOption({
+          option: "--deplyo",
+          suggestions: ["--deploy"]
+        }),
+        new CliError.UnknownSubcommand({
+          subcommand: "usrs",
+          parent: ["app"],
+          suggestions: ["users"]
+        })
+      ]
+
+      assert.strictEqual(
+        formatter.formatErrors(errors),
+        [
+          "",
+          "ERRORS",
+          "  Unrecognized flag: --deplyo",
+          "",
+          "  Did you mean this?",
+          "    --deploy",
+          "  Unknown subcommand \"usrs\" for \"app\"",
+          "",
+          "  Did you mean this?",
+          "    users"
+        ].join("\n")
+      )
+    })
+
+    it("preserves line feeds and tabs in error messages", () => {
+      const formatter = CliOutput.defaultFormatter({ colors: false })
+      const error = new CliError.InvalidValue({
+        option: "count",
+        value: "twelve",
+        expected: "one line\n\tcontinuation",
+        kind: "argument"
+      })
+
+      assert.strictEqual(
+        formatter.formatCliError(error),
+        "Invalid value for argument <count>: \"twelve\". Expected: one line\n\tcontinuation"
+      )
+    })
+
     it("formats single error with ERROR header", () => {
       const formatter = CliOutput.defaultFormatter({ colors: false })
       const error = new CliError.MissingOption({ option: "value" })
