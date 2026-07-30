@@ -241,11 +241,26 @@ function hasNestedUnboundedRepetition(pattern: string): boolean {
   ): void {
     group.branch.atoms.push({ characterSet, repeatedCharacterSets, isMandatory: true })
   }
+  function boundaryCharacterSets(branch: Branch, fromStart: boolean): Array<PatternCharacterSet | undefined> {
+    const sets: Array<PatternCharacterSet | undefined> = []
+    for (let index = 0; index < branch.atoms.length; index++) {
+      const atom = branch.atoms[fromStart ? index : branch.atoms.length - index - 1]
+      sets.push(atom.characterSet)
+      if (atom.isMandatory) break
+    }
+    return sets
+  }
+  function hasDisjointIterationBoundaries(branch: Branch): boolean {
+    const start = boundaryCharacterSets(branch, true)
+    const end = boundaryCharacterSets(branch, false)
+    return start.length > 0 && end.length > 0 &&
+      start.every((left) => left !== undefined && end.every((right) => right !== undefined && areDisjoint(left, right)))
+  }
   function isUnsafeToRepeat(branch: Branch): boolean {
     if (!branch.atoms.some((atom) => atom.repeatedCharacterSets.length > 0)) return false
     const mandatoryAtoms = branch.atoms.filter((atom) => atom.isMandatory)
     if (mandatoryAtoms.length <= 1) return true
-    return !mandatoryAtoms.some((candidate) => {
+    const hasDisjointSeparator = mandatoryAtoms.some((candidate) => {
       if (candidate.characterSet === undefined) return false
       let compared = false
       for (const atom of branch.atoms) {
@@ -257,6 +272,7 @@ function hasNestedUnboundedRepetition(pattern: string): boolean {
       }
       return compared
     })
+    return !hasDisjointSeparator || !hasDisjointIterationBoundaries(branch)
   }
 
   const groups = [makeGroup()]

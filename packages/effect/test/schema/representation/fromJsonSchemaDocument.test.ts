@@ -933,13 +933,44 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
-      it("allows disjoint delimiters between repetitions", () => {
-        const schema = SchemaRepresentation.fromJsonSchemaDocument(
-          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(\\d+,)*\\d+$" })
+      it("rejects overlapping iteration boundaries", () => {
+        for (const pattern of ["^(a+ba*)+$", "^(\\w+-\\w*)+$"]) {
+          throws(
+            () =>
+              SchemaRepresentation.fromJsonSchemaDocument(
+                JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern })
+              ),
+            `Potentially unsafe pattern with nested unbounded repetition
+  at ["schema"]["pattern"]`
+          )
+        }
+      })
+
+      it("allows disjoint iteration boundaries", () => {
+        for (
+          const [pattern, input] of [
+            ["^(\\d+,)*\\d+$", "1,2,3"],
+            ["^(\\d+,\\s*)+$", "1, 2,"],
+            ["^(a+b+)+$", "aababb"]
+          ]
+        ) {
+          const schema = SchemaRepresentation.fromJsonSchemaDocument(
+            JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern })
+          )
+          assertTrue(Schema.is(schema)(input))
+        }
+      })
+
+      it("rejects ambiguous class delimiters", () => {
+        // `_` is part of `\\w`, so this separator class overlaps the repeated word atoms.
+        throws(
+          () =>
+            SchemaRepresentation.fromJsonSchemaDocument(
+              JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(\\w+[-_.])*\\w+$" })
+            ),
+          `Potentially unsafe pattern with nested unbounded repetition
+  at ["schema"]["pattern"]`
         )
-        const is = Schema.is(schema)
-        assertTrue(is("1,2,3"))
-        assertFalse(is("1,a"))
       })
 
       it("allows opting out for trusted documents", () => {
