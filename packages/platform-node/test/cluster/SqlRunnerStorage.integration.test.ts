@@ -211,6 +211,34 @@ describe("SqlRunnerStorage", () => {
       Effect.provide(layer)
     )
   }, 60_000)
+
+  it.effect("isolates advisory shard locks by prefix", () =>
+    Effect.gen(function*() {
+      const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+      const storageB = yield* SqlRunnerStorage.make({ prefix: "other" })
+      const shard = ShardId.make("default", 1)
+
+      expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+      expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([shard])
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(PgContainer.layerClient),
+      Effect.provide(ShardingConfig.layer())
+    ), 60_000)
+
+  it.effect("excludes other storages using the same prefix", () =>
+    Effect.gen(function*() {
+      const storageA = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+      const storageB = yield* SqlRunnerStorage.make({ prefix: "cluster" })
+      const shard = ShardId.make("default", 1)
+
+      expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
+      expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(PgContainer.layerClient),
+      Effect.provide(ShardingConfig.layer())
+    ), 60_000)
   ;([
     ["pg", Layer.orDie(PgContainer.layerClient)],
     ["mysql", Layer.orDie(MysqlContainer.layerClient)],
@@ -286,6 +314,7 @@ describe("SqlRunnerStorage", () => {
 })
 
 const runnerAddress1 = RunnerAddress.make("localhost", 1234)
+const runnerAddress2 = RunnerAddress.make("localhost", 5678)
 
 interface PartitionState {
   current: boolean
