@@ -51,3 +51,12 @@ Keep these distinctions:
 - `errors` are error data types, while `error handling` is for APIs that handle failures.
 - `models` describe domain/API data structures, while `schemas` are schema values/combinators and `utility types` are type-level helpers/contracts.
 - `guards` are TypeScript type guards, `predicates` are boolean tests, and `filtering` is for filtering operations.
+
+## Example Best Practices
+
+- Mark runnable TypeScript examples with `````ts import.meta.vitest`` so `pnpm doctest` executes them.
+- Keep runnable examples complete, deterministic, bounded, and independent of external services or machine-specific state. Await asynchronous work so failures and cleanup remain inside the doctest.
+- Import public APIs and include all required setup. Do not use undeclared placeholders or rely on declarations from surrounding prose.
+- Use `````ts import.meta.vitest suite`` for examples that register Vitest tests or suites, such as `@effect/vitest` helpers. Invoke the registration API directly; the `suite` marker runs the example during collection.
+- Leave intentionally non-executable snippets as plain `````ts`` fences.
+- Run `pnpm doctest` from the repository root after changing runnable examples. Also run `pnpm docgen` from the affected package directory because docgen typechecks examples while doctest executes marked examples.
