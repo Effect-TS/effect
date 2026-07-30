@@ -1518,7 +1518,7 @@ export const TracerDisabledWhen = Context.Reference<
  * @since 4.0.0
  */
 export const TracerHeaderFilter = Context.Reference<
-  Predicate.Predicate<string>
+  (headerName: string, phase: "request" | "response") => boolean
 >("effect/http/HttpClient/TracerHeaderFilter", {
   defaultValue: () => constTrue
 })
