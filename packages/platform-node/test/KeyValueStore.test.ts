@@ -23,11 +23,11 @@ describe("KeyValueStore / layerFileSystem", () => {
 
         for (const key of ["", ".", ".."]) {
           const operations = [
-            ["get", store.get(key)],
-            ["getUint8Array", store.getUint8Array(key)],
-            ["set", store.set(key, "value")],
-            ["remove", store.remove(key)],
-            ["has", store.has(key)]
+            ["get", Effect.asVoid(store.get(key))],
+            ["getUint8Array", Effect.asVoid(store.getUint8Array(key))],
+            ["set", Effect.asVoid(store.set(key, "value"))],
+            ["remove", Effect.asVoid(store.remove(key))],
+            ["has", Effect.asVoid(store.has(key))]
           ] as const
 
           for (const [method, operation] of operations) {
