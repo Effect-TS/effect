@@ -22,6 +22,7 @@ const startWatch = <E, R>(
           ? Deferred.succeed(ready, undefined)
           : Effect.void
       ),
+      Stream.dropUntil((event) => event.path === readyName),
       Stream.filter((event) => event.path !== readyName),
       Stream.runHead,
       Effect.flatMap(Effect.fromOption),

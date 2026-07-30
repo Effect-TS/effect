@@ -55,9 +55,7 @@
     "codegen": "effect-utils codegen",
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-    "check": "tsc -b tsconfig.json",
-    "test": "vitest",
-    "coverage": "vitest --coverage"
+    "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260708.1",
