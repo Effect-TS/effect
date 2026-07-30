@@ -6299,10 +6299,10 @@ const multiDocument = SchemaRepresentation.toRepresentations([
 Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. `toMultiDocument(document)`
 wraps a single document when a compiler requires multiple roots.
 
-An explicit `identifier` uniquely names one schema within a conversion. Reusing the same schema shares its reference, but
-two distinct schemas with the same explicit `identifier` cause `toRepresentation` or `toRepresentations` to throw a
-`Duplicate identifier` error. Internal `~identifier` annotations are allocation hints rather than uniqueness claims; when
-a derived name is already occupied, the generated reference receives a numeric suffix.
+An explicit `identifier` requests a reference name within a conversion. Reusing the same schema shares its reference. When
+referentially distinct schemas request the same name, the first schema keeps it and later schemas receive numeric suffixes
+in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation hints; their
+generated names use the `Encoded` suffix and follow the same collision rules.
 
 ## JSON persistence
 

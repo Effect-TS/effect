@@ -222,6 +222,66 @@ describe("SchemaRepresentation.toRepresentation", () => {
     })
   })
 
+  it("uses a type-side identifier as a fallback for the encoded representation", () => {
+    const schema = Schema.NumberFromString.annotate({ identifier: "Finite" })
+
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
+      representation: { _tag: "Reference", $ref: "FiniteEncoded" },
+      references: {
+        FiniteEncoded: {
+          _tag: "String",
+          annotations: {
+            expected: "a string that will be decoded as a number",
+            "~identifier": "Finite"
+          },
+          checks: []
+        }
+      }
+    })
+  })
+
+  it("prefers an explicit encoded-side identifier over a type-side identifier", () => {
+    const schema = Schema.NumberFromString.pipe(
+      Schema.annotateEncoded({ identifier: "EncodedFinite" }),
+      Schema.annotate({ identifier: "Finite" })
+    )
+
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
+      representation: { _tag: "Reference", $ref: "EncodedFinite" },
+      references: {
+        EncodedFinite: {
+          _tag: "String",
+          annotations: {
+            expected: "a string that will be decoded as a number",
+            identifier: "EncodedFinite"
+          },
+          checks: []
+        }
+      }
+    })
+  })
+
+  it("overrides an encoded-side fallback with the type-side identifier", () => {
+    const schema = Schema.NumberFromString.pipe(
+      Schema.annotateEncoded({ "~identifier": "Previous" }),
+      Schema.annotate({ identifier: "Finite" })
+    )
+
+    assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
+      representation: { _tag: "Reference", $ref: "FiniteEncoded" },
+      references: {
+        FiniteEncoded: {
+          _tag: "String",
+          annotations: {
+            expected: "a string that will be decoded as a number",
+            "~identifier": "Finite"
+          },
+          checks: []
+        }
+      }
+    })
+  })
+
   it("uses the type side when the caller projects it", () => {
     assert.deepStrictEqual(
       SchemaRepresentation.toRepresentation(SchemaAST.toType(Schema.NumberFromString.ast)),
@@ -679,7 +739,7 @@ describe("SchemaRepresentation.toRepresentation", () => {
     })
   })
 
-  it("rejects recursive schemas with duplicate identifiers", () => {
+  it("suffixes duplicate identifiers on recursive schemas", () => {
     interface First {
       readonly next?: First
     }
@@ -693,9 +753,53 @@ describe("SchemaRepresentation.toRepresentation", () => {
       next: Schema.optionalKey(Schema.suspend((): Schema.Codec<Second> => Second))
     }).annotate({ identifier: "Node" })
 
-    assert.throws(
-      () => SchemaRepresentation.toRepresentation(Schema.Tuple([First, Second]).ast),
-      /Duplicate identifier: "Node"/
+    assert.deepStrictEqual(
+      SchemaRepresentation.toRepresentation(Schema.Tuple([First, Second]).ast),
+      {
+        representation: {
+          _tag: "Arrays",
+          elements: [
+            { isOptional: false, type: { _tag: "Reference", $ref: "Node" } },
+            { isOptional: false, type: { _tag: "Reference", $ref: "Node_1" } }
+          ],
+          rest: [],
+          checks: []
+        },
+        references: {
+          Node: {
+            _tag: "Objects",
+            propertySignatures: [{
+              name: "next",
+              type: {
+                _tag: "Suspend",
+                checks: [],
+                thunk: { _tag: "Reference", $ref: "Node" }
+              },
+              isOptional: true,
+              isMutable: false
+            }],
+            indexSignatures: [],
+            checks: [],
+            annotations: { identifier: "Node" }
+          },
+          Node_1: {
+            _tag: "Objects",
+            propertySignatures: [{
+              name: "next",
+              type: {
+                _tag: "Suspend",
+                checks: [],
+                thunk: { _tag: "Reference", $ref: "Node_1" }
+              },
+              isOptional: true,
+              isMutable: false
+            }],
+            indexSignatures: [],
+            checks: [],
+            annotations: { identifier: "Node_1" }
+          }
+        }
+      }
     )
   })
 
@@ -718,9 +822,9 @@ describe("SchemaRepresentation.toRepresentation", () => {
     const schema = Schema.String.annotate({ "~identifier": "Person" })
 
     assert.deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast), {
-      representation: { _tag: "Reference", $ref: "PersonJsonEncoding" },
+      representation: { _tag: "Reference", $ref: "PersonEncoded" },
       references: {
-        PersonJsonEncoding: {
+        PersonEncoded: {
           _tag: "String",
           checks: [],
           annotations: { "~identifier": "Person" }

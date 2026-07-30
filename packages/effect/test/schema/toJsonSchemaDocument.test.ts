@@ -452,12 +452,23 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
-    it("should reject duplicate identifiers on different schemas", () => {
+    it("should suffix duplicate identifiers on different schemas", () => {
       const S = Schema.Union([
         Schema.String.annotate({ identifier: "id", description: "a" }),
         Schema.String.annotate({ identifier: "id", description: "b" })
       ])
-      throws(() => Schema.toJsonSchemaDocument(S), `Duplicate identifier: "id"`)
+      assertJsonSchemaDocument(S, {
+        schema: {
+          anyOf: [
+            { $ref: "#/$defs/id" },
+            { $ref: "#/$defs/id_1" }
+          ]
+        },
+        definitions: {
+          id: { type: "string", description: "a" },
+          id_1: { type: "string", description: "b" }
+        }
+      })
     })
 
     it("should handle duplicate identifiers on different schemas with the same representation", () => {
@@ -3624,10 +3635,10 @@ describe("toJsonSchemaDocument", () => {
         Schema.fromJsonString(MyEvent),
         {
           schema: {
-            "$ref": "#/$defs/MyEventJsonEncoding"
+            "$ref": "#/$defs/MyEventEncoded"
           },
           definitions: {
-            "MyEventJsonEncoding": {
+            "MyEventEncoded": {
               "type": "string",
               "contentMediaType": "application/json"
             }
@@ -3669,10 +3680,10 @@ describe("toJsonSchemaDocument", () => {
       A,
       {
         schema: {
-          "$ref": "#/$defs/AJsonEncoding"
+          "$ref": "#/$defs/AEncoded"
         },
         definitions: {
-          "AJsonEncoding": {
+          "AEncoded": {
             "type": "object",
             "properties": {
               "a": { "type": "string" }
@@ -3692,10 +3703,10 @@ describe("toJsonSchemaDocument", () => {
     }) {}
     assertJsonSchemaDocument(E, {
       schema: {
-        "$ref": "#/$defs/EJsonEncoding"
+        "$ref": "#/$defs/EEncoded"
       },
       definitions: {
-        "EJsonEncoding": {
+        "EEncoded": {
           "type": "object",
           "properties": {
             "a": { "type": "string" }

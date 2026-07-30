@@ -654,7 +654,7 @@ describe("toCodecOpenAI", () => {
       "required": ["name"],
       "additionalProperties": false,
       "$defs": {
-        "PersonJsonEncoding": {
+        "PersonEncoded": {
           "type": "object",
           "properties": {
             "name": { "type": "string" }

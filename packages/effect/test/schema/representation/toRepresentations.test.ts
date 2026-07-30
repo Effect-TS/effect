@@ -38,6 +38,32 @@ describe("SchemaRepresentation.toRepresentations", () => {
     })
   })
 
+  it("shares a fallback reference between distinct roots with the same encoded AST", () => {
+    const Content = Schema.Struct({ text: Schema.String }).annotate({ identifier: "Tool.Content" })
+    const first = Schema.toCodecJson(Schema.fromJsonString(Content))
+    const second = Schema.toCodecJson(Schema.fromJsonString(Content))
+    const document = SchemaRepresentation.toRepresentations([first.ast, second.ast])
+
+    assert.notStrictEqual(first.ast, second.ast)
+    assert.deepStrictEqual(document, {
+      representations: [
+        { _tag: "Reference", $ref: "Tool.ContentEncoded" },
+        { _tag: "Reference", $ref: "Tool.ContentEncoded" }
+      ],
+      references: {
+        "Tool.ContentEncoded": {
+          _tag: "String",
+          annotations: {
+            expected: "a string that will be decoded as JSON",
+            contentMediaType: "application/json",
+            "~identifier": "Tool.Content"
+          },
+          checks: []
+        }
+      }
+    })
+  })
+
   it("does not conflate an identified schema with a checked derivative", () => {
     const base = Schema.String.annotate({ identifier: "Text" })
     const refined = base.pipe(Schema.check(Schema.isMinLength(1)))
@@ -89,53 +115,87 @@ describe("SchemaRepresentation.toRepresentations", () => {
     })
   })
 
-  it("rejects different schemas with the same identifier", () => {
+  it("suffixes different schemas with the same identifier", () => {
     const first = Schema.String.annotate({ identifier: "Value", description: "first" })
     const second = Schema.Number.annotate({ identifier: "Value", description: "second" })
 
-    assert.throws(
-      () => SchemaRepresentation.toRepresentations([first.ast, second.ast]),
-      /Duplicate identifier: "Value"/
+    assert.deepStrictEqual(
+      SchemaRepresentation.toRepresentations([first.ast, second.ast]),
+      {
+        representations: [
+          { _tag: "Reference", $ref: "Value" },
+          { _tag: "Reference", $ref: "Value_1" }
+        ],
+        references: {
+          Value: {
+            _tag: "String",
+            annotations: { identifier: "Value", description: "first" },
+            checks: []
+          },
+          Value_1: {
+            _tag: "Number",
+            annotations: { identifier: "Value_1", description: "second" },
+            checks: []
+          }
+        }
+      }
     )
   })
 
-  it("rejects equivalent schemas with the same identifier", () => {
+  it("suffixes referentially distinct schemas with the same identifier", () => {
     const first = Schema.String.annotate({ identifier: "Value" })
     const second = Schema.String.annotate({ identifier: "Value" })
 
-    assert.throws(
-      () => SchemaRepresentation.toRepresentations([first.ast, second.ast]),
-      /Duplicate identifier: "Value"/
+    assert.deepStrictEqual(
+      SchemaRepresentation.toRepresentations([first.ast, second.ast]),
+      {
+        representations: [
+          { _tag: "Reference", $ref: "Value" },
+          { _tag: "Reference", $ref: "Value_1" }
+        ],
+        references: {
+          Value: {
+            _tag: "String",
+            annotations: { identifier: "Value" },
+            checks: []
+          },
+          Value_1: {
+            _tag: "String",
+            annotations: { identifier: "Value_1" },
+            checks: []
+          }
+        }
+      }
     )
   })
 
-  it("suffixes fallback identifiers without displacing an explicit identifier", () => {
+  it("suffixes fallback and explicit identifier collisions in encounter order", () => {
     const first = Schema.String.annotate({ "~identifier": "Person" })
     const second = Schema.Number.annotate({ "~identifier": "Person" })
-    const explicit = Schema.Boolean.annotate({ identifier: "PersonJsonEncoding" })
+    const explicit = Schema.Boolean.annotate({ identifier: "PersonEncoded" })
 
     assert.deepStrictEqual(
       SchemaRepresentation.toRepresentations([first.ast, second.ast, explicit.ast]),
       {
         representations: [
-          { _tag: "Reference", $ref: "PersonJsonEncoding1" },
-          { _tag: "Reference", $ref: "PersonJsonEncoding2" },
-          { _tag: "Reference", $ref: "PersonJsonEncoding" }
+          { _tag: "Reference", $ref: "PersonEncoded" },
+          { _tag: "Reference", $ref: "PersonEncoded_1" },
+          { _tag: "Reference", $ref: "PersonEncoded_2" }
         ],
         references: {
-          PersonJsonEncoding1: {
+          PersonEncoded: {
             _tag: "String",
             annotations: { "~identifier": "Person" },
             checks: []
           },
-          PersonJsonEncoding2: {
+          PersonEncoded_1: {
             _tag: "Number",
             annotations: { "~identifier": "Person" },
             checks: []
           },
-          PersonJsonEncoding: {
+          PersonEncoded_2: {
             _tag: "Boolean",
-            annotations: { identifier: "PersonJsonEncoding" },
+            annotations: { identifier: "PersonEncoded_2" },
             checks: []
           }
         }

@@ -33,11 +33,11 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
     assert.deepStrictEqual(SchemaRepresentation.toJsonSchemaMultiDocument(document), {
       dialect: "draft-2020-12",
       schemas: [
-        { $ref: "#/$defs/Tool.ContentJsonEncoding" },
-        { $ref: "#/$defs/Tool.ContentJsonEncoding" }
+        { $ref: "#/$defs/Tool.ContentEncoded" },
+        { $ref: "#/$defs/Tool.ContentEncoded" }
       ],
       definitions: {
-        "Tool.ContentJsonEncoding": {
+        "Tool.ContentEncoded": {
           type: "string",
           contentMediaType: "application/json"
         }
@@ -66,12 +66,12 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
     )
 
     assert.deepStrictEqual(output.schemas, [
-      { $ref: "#/$defs/FallbackJsonEncoding" },
-      { $ref: "#/$defs/FallbackJsonEncoding1" }
+      { $ref: "#/$defs/FallbackEncoded" },
+      { $ref: "#/$defs/FallbackEncoded_1" }
     ])
     assert.deepStrictEqual(output.definitions, {
-      FallbackJsonEncoding: { type: "string" },
-      FallbackJsonEncoding1: { type: "boolean" }
+      FallbackEncoded: { type: "string" },
+      FallbackEncoded_1: { type: "boolean" }
     })
   })
 
@@ -118,18 +118,18 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
     )
 
     assert.deepStrictEqual(output.schemas, [
-      { $ref: "#/$defs/ParentJsonEncoding" },
-      { $ref: "#/$defs/ParentJsonEncoding" }
+      { $ref: "#/$defs/ParentEncoded" },
+      { $ref: "#/$defs/ParentEncoded" }
     ])
     assert.deepStrictEqual(output.definitions, {
-      ChildJsonEncoding: {
+      ChildEncoded: {
         type: "string",
         contentMediaType: "application/json"
       },
-      ParentJsonEncoding: {
+      ParentEncoded: {
         type: "object",
         properties: {
-          child: { $ref: "#/$defs/ChildJsonEncoding" }
+          child: { $ref: "#/$defs/ChildEncoded" }
         },
         required: ["child"],
         additionalProperties: false
@@ -146,11 +146,11 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
     )
 
     assert.deepStrictEqual(output.schemas, [
-      { $ref: "#/$defs/Child~1~0JsonEncoding" },
-      { $ref: "#/$defs/Child~1~0JsonEncoding" }
+      { $ref: "#/$defs/Child~1~0Encoded" },
+      { $ref: "#/$defs/Child~1~0Encoded" }
     ])
     assert.deepStrictEqual(output.definitions, {
-      "Child/~JsonEncoding": {
+      "Child/~Encoded": {
         type: "string",
         contentMediaType: "application/json"
       }
@@ -181,11 +181,11 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
 
     assert.strictEqual(visits, 2)
     assert.deepStrictEqual(output.schemas, [
-      { $ref: "#/$defs/CallbackJsonEncoding" },
-      { $ref: "#/$defs/CallbackJsonEncoding" }
+      { $ref: "#/$defs/CallbackEncoded" },
+      { $ref: "#/$defs/CallbackEncoded" }
     ])
     assert.deepStrictEqual(output.definitions, {
-      CallbackJsonEncoding: {
+      CallbackEncoded: {
         type: "string",
         allOf: [{ minLength: 1, maxLength: 10 }]
       }
@@ -246,8 +246,8 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
     )
 
     assert.deepStrictEqual(output.schemas, [
-      { $ref: "#/$defs/NodeJsonEncoding" },
-      { $ref: "#/$defs/NodeJsonEncoding" }
+      { $ref: "#/$defs/NodeEncoded" },
+      { $ref: "#/$defs/NodeEncoded" }
     ])
     assert.deepStrictEqual(output.definitions, {
       Objects_: {
@@ -262,7 +262,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
         },
         additionalProperties: false
       },
-      NodeJsonEncoding: { $ref: "#/$defs/Objects_" }
+      NodeEncoded: { $ref: "#/$defs/Objects_" }
     })
   })
 
@@ -296,8 +296,8 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
     )
 
     assert.deepStrictEqual(output.schemas, [
-      { $ref: "#/$defs/NodeJsonEncoding" },
-      { $ref: "#/$defs/NodeJsonEncoding1" }
+      { $ref: "#/$defs/NodeEncoded" },
+      { $ref: "#/$defs/NodeEncoded_1" }
     ])
     assert.deepStrictEqual(output.definitions, {
       Suspend_: {
@@ -308,7 +308,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
         required: ["next"],
         additionalProperties: false
       },
-      NodeJsonEncoding: {
+      NodeEncoded: {
         type: "object",
         properties: {
           next: { $ref: "#/$defs/Suspend_" }
@@ -324,7 +324,7 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
         required: ["next"],
         additionalProperties: false
       },
-      NodeJsonEncoding1: {
+      NodeEncoded_1: {
         type: "object",
         properties: {
           next: { $ref: "#/$defs/Suspend_1" }
