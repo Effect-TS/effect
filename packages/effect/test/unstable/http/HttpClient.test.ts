@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Clock, Duration, Effect, Fiber, Layer, Ref, Stream } from "effect"
 import { TestClock } from "effect/testing"
+import * as Tracer from "effect/Tracer"
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { RateLimiter } from "effect/unstable/persistence"
 
@@ -37,6 +38,109 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
 describe("HttpClient", () => {
+  describe("tracer", () => {
+    it.effect("includes request and response headers by default", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(
+            HttpClientResponse.fromWeb(
+              request,
+              new Response(null, {
+                headers: { "x-response-default": "response" }
+              })
+            )
+          )
+        )
+
+        yield* client.get("http://test/", {
+          headers: { "x-request-default": "request" }
+        }).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), "request")
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), "response")
+      }))
+
+    it.effect("filters request and response header span attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(
+            HttpClientResponse.fromWeb(
+              request,
+              new Response(null, {
+                headers: {
+                  "x-response-drop": "drop",
+                  "x-response-keep": "keep"
+                }
+              })
+            )
+          )
+        )
+
+        yield* client.get("http://test/", {
+          headers: {
+            "x-request-drop": "drop",
+            "x-request-keep": "keep"
+          }
+        }).pipe(
+          Effect.provideService(HttpClient.TracerHeaderFilter, (name) => name.endsWith("-keep")),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-drop"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-keep"), "keep")
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-drop"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-keep"), "keep")
+      }))
+
+    it.effect("filters the same header name independently by phase", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(
+            HttpClientResponse.fromWeb(
+              request,
+              new Response(null, {
+                headers: { "x-phase-filter": "response" }
+              })
+            )
+          )
+        )
+
+        yield* client.get("http://test/", {
+          headers: { "x-phase-filter": "request" }
+        }).pipe(
+          Effect.provideService(HttpClient.TracerHeaderFilter, (_name, phase) => phase === "response"),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), "response")
+      }))
+  })
+
   describe("followRedirects", () => {
     it.effect("preserves credential headers on same-origin redirects", () =>
       Effect.gen(function*() {
