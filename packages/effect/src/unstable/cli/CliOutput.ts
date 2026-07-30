@@ -269,6 +269,11 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  */
 export const layer = (formatter: Formatter): Layer.Layer<never> => Layer.succeed(Formatter)(formatter)
 
+const escapeControlCharacters = (text: string): string =>
+  // oxlint-disable-next-line no-control-regex
+  text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, (character) =>
+    `\\x${character.charCodeAt(0).toString(16).padStart(2, "0")}`)
+
 /**
  * Creates a default formatter with configurable options.
  *
@@ -349,14 +354,14 @@ export const defaultFormatter = (options?: { colors?: boolean }): Formatter => {
 
   return {
     formatHelpDoc: (doc: HelpDoc): string => formatHelpDocImpl(doc, colors),
-    formatCliError: (error): string => error.message,
+    formatCliError: (error): string => escapeControlCharacters(error.message),
     formatError: (error): string => {
-      return `\n${bold}${red}ERROR${reset}\n  ${error.message}${reset}`
+      return `\n${bold}${red}ERROR${reset}\n  ${escapeControlCharacters(error.message)}${reset}`
     },
     formatErrors: (errors): string => {
       if (errors.length === 0) return ""
       if (errors.length === 1) {
-        return `\n${bold}${red}ERROR${reset}\n  ${errors[0].message}${reset}`
+        return `\n${bold}${red}ERROR${reset}\n  ${escapeControlCharacters(errors[0].message)}${reset}`
       }
 
       // Group errors by _tag
@@ -373,7 +378,7 @@ export const defaultFormatter = (options?: { colors?: boolean }): Formatter => {
 
       for (const [, group] of grouped) {
         for (const error of group) {
-          sections.push(`  ${error.message}${reset}`)
+          sections.push(`  ${escapeControlCharacters(error.message)}${reset}`)
         }
       }
 
