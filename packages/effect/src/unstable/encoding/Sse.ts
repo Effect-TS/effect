@@ -22,6 +22,50 @@ import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
 
+const SseErrorTypeId = "~effect/encoding/Sse/SseError"
+
+/**
+ * Error raised when decoding a Server-Sent Events stream fails.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class SseError extends Data.TaggedError("SseError")<{
+  readonly reason: "EventTooLarge"
+  readonly maxEventSize: number
+}> {
+  /**
+   * Marks this value as an SSE decoding error.
+   *
+   * @since 4.0.0
+   */
+  readonly [SseErrorTypeId] = SseErrorTypeId
+
+  /**
+   * Describes the pending event size limit that was exceeded.
+   *
+   * @since 4.0.0
+   */
+  override get message() {
+    return `Pending SSE event exceeded the maximum size of ${this.maxEventSize}`
+  }
+}
+
+/**
+ * Options for decoding Server-Sent Events streams.
+ *
+ * @category decoding
+ * @since 4.0.0
+ */
+export interface DecodeOptions {
+  /**
+   * Maximum number of string code units retained for a pending event. The default is 10 MiB.
+   */
+  readonly maxEventSize?: number | undefined
+}
+
+const defaultMaxEventSize = 10 * 1024 * 1024
+
 /**
  * Creates a channel that parses Server-Sent Events text chunks into `Event` values.
  *
@@ -33,9 +77,9 @@ import * as SchemaTransformation from "../../SchemaTransformation.ts"
  * @category decoding
  * @since 4.0.0
  */
-export const decode = <IE, Done>(): Channel.Channel<
+export const decode = <IE, Done>(options?: DecodeOptions): Channel.Channel<
   NonEmptyReadonlyArray<Event>,
-  IE | Retry,
+  IE | Retry | SseError,
   Done,
   NonEmptyReadonlyArray<string>,
   IE,
@@ -51,16 +95,19 @@ export const decode = <IE, Done>(): Channel.Channel<
         } else {
           buffer.push(event)
         }
-      })
+      }, options)
 
       const pump = Effect.flatMap(upstream, (arr) => {
         for (let i = 0; i < arr.length; i++) {
-          parser.feed(arr[i])
+          const error = parser.feed(arr[i])
+          if (error !== undefined) {
+            return Effect.fail(error)
+          }
         }
         return Effect.void
       })
 
-      return Effect.suspend(function loop(): Pull.Pull<NonEmptyReadonlyArray<Event>, IE | Retry, Done> {
+      return Effect.suspend(function loop(): Pull.Pull<NonEmptyReadonlyArray<Event>, IE | Retry | SseError, Done> {
         if (Arr.isArrayNonEmpty(buffer)) {
           const out = buffer
           buffer = []
@@ -108,10 +155,11 @@ export const decodeSchema = <
   IE,
   Done
 >(
-  schema: S
+  schema: S,
+  options?: DecodeOptions
 ): Channel.Channel<
   NonEmptyReadonlyArray<S["Type"]>,
-  IE | Retry | Schema.SchemaError,
+  IE | Retry | SseError | Schema.SchemaError,
   Done,
   NonEmptyReadonlyArray<string>,
   IE,
@@ -119,7 +167,7 @@ export const decodeSchema = <
   S["DecodingServices"]
 > =>
   Channel.pipeTo(
-    decode<IE, Done>(),
+    decode<IE, Done>(options),
     ChannelSchema.decode(EventEncoded.pipe(
       Schema.decodeTo(schema)
     ))()
@@ -137,14 +185,15 @@ export const decodeSchema = <
  * @since 4.0.0
  */
 export const decodeDataSchema = <Type, DecodingServices, IE, Done>(
-  schema: Schema.ConstraintDecoder<Type, DecodingServices>
+  schema: Schema.ConstraintDecoder<Type, DecodingServices>,
+  options?: DecodeOptions
 ): Channel.Channel<
   NonEmptyReadonlyArray<{
     readonly event: string
     readonly id: string | undefined
     readonly data: Type
   }>,
-  IE | Retry | Schema.SchemaError,
+  IE | Retry | SseError | Schema.SchemaError,
   Done,
   NonEmptyReadonlyArray<string>,
   IE,
@@ -156,7 +205,7 @@ export const decodeDataSchema = <Type, DecodingServices, IE, Done>(
     data: Schema.fromJsonString(schema)
   })
   return Channel.pipeTo(
-    decode<IE, Done>(),
+    decode<IE, Done>(options),
     Channel.map(
       ChannelSchema.decode(eventSchema)(),
       Arr.map((event) => ({ ...event, id: event.id }))
@@ -170,12 +219,15 @@ export const decodeDataSchema = <Type, DecodingServices, IE, Done>(
  * **Details**
  *
  * Call `feed` with text chunks to parse `Event` and `Retry` values through the
- * callback, and call `reset` to clear any buffered event state.
+ * callback, and call `reset` to clear any buffered event state. `feed` returns
+ * an `SseError` if the pending event exceeds `maxEventSize`.
  *
  * @category decoding
  * @since 4.0.0
  */
-export function makeParser(onParse: (event: AnyEvent) => void): Parser {
+export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeOptions): Parser {
+  const maxEventSize = options?.maxEventSize ?? defaultMaxEventSize
+
   // Processing state
   let isFirstChunk: boolean
   let buffer: string
@@ -202,7 +254,7 @@ export function makeParser(onParse: (event: AnyEvent) => void): Parser {
     data = ""
   }
 
-  function feed(chunk: string): void {
+  function feed(chunk: string): SseError | undefined {
     buffer = buffer ? buffer + chunk : chunk
 
     // Strip any UTF8 byte order mark (BOM) at the start of the stream.
@@ -271,6 +323,12 @@ export function makeParser(onParse: (event: AnyEvent) => void): Parser {
       // portion of the buffer only
       buffer = buffer.slice(position)
     }
+
+    if (buffer.length + data.length > maxEventSize) {
+      const error = new SseError({ reason: "EventTooLarge", maxEventSize })
+      reset()
+      return error
+    }
   }
 
   function parseEventStreamLine(
@@ -338,13 +396,15 @@ function hasBom(buffer: string) {
  *
  * **Details**
  *
- * `feed` accepts additional text chunks and `reset` clears buffered parser state.
+ * `feed` accepts additional text chunks and returns an `SseError` when the
+ * configured pending event size is exceeded. `reset` clears buffered parser
+ * state.
  *
  * @category decoding
  * @since 4.0.0
  */
 export interface Parser {
-  feed(chunk: string): void
+  feed(chunk: string): SseError | undefined
   reset(): void
 }
 

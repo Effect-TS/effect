@@ -186,7 +186,7 @@ ${clientErrorSource(name)}`
       ? `typeof ${operation.sseSchema}.Type`
       : `{ readonly event: string; readonly id: string | undefined; readonly data: typeof ${operation.sseSchema}.Type }`
     const returnType =
-      `Stream.Stream<${value}, HttpClientError.HttpClientError | SchemaError | Sse.Retry, typeof ${operation.sseSchema}.DecodingServices>`
+      `Stream.Stream<${value}, HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError, typeof ${operation.sseSchema}.DecodingServices>`
     return `${jsdoc}${methodKey}: (${parameters}) => ${returnType}`
   }
 
@@ -938,7 +938,7 @@ const sseRequestSource = (_importName: string) =>
       request: HttpClientRequest.HttpClientRequest
     ): Stream.Stream<
       { readonly event: string; readonly id: string | undefined; readonly data: Type },
-      HttpClientError.HttpClientError | SchemaError | Sse.Retry,
+      HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
       DecodingServices
     > =>
       HttpClient.filterStatusOk(httpClient).execute(request).pipe(
@@ -953,7 +953,7 @@ const sseEventRequestSource = `const sseEventRequest = <S extends Sse.EventCodec
       request: HttpClientRequest.HttpClientRequest
     ): Stream.Stream<
       S["Type"],
-      HttpClientError.HttpClientError | SchemaError | Sse.Retry,
+      HttpClientError.HttpClientError | SchemaError | Sse.Retry | Sse.SseError,
       S["DecodingServices"]
     > =>
       HttpClient.filterStatusOk(httpClient).execute(request).pipe(

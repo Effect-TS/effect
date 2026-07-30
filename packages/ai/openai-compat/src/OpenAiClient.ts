@@ -218,6 +218,7 @@ export const make = Effect.fnUntraced(
         Stream.takeUntil((event) => event === "[DONE]"),
         Stream.catchTags({
           Retry: (error) => Stream.die(error),
+          SseError: (error) => Stream.fail(Errors.mapSseError(error, "createResponseStream")),
           HttpClientError: (error) => Stream.fromEffect(Errors.mapHttpClientError(error, "createResponseStream"))
         })
       ) as any
