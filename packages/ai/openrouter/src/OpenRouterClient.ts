@@ -228,6 +228,7 @@ export const make = Effect.fnUntraced(
         Stream.catchTags({
           // TODO: handle SSE retries
           Retry: (error) => Stream.die(error),
+          SseError: (error) => Stream.fail(Errors.mapSseError(error, "createChatCompletionStream")),
           HttpClientError: (error) => Stream.fromEffect(Errors.mapHttpClientError(error, "createChatCompletionStream")),
           SchemaError: (error) => Stream.fail(Errors.mapSchemaError(error, "createChatCompletionStream"))
         })

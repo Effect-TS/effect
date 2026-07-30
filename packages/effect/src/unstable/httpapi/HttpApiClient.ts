@@ -75,7 +75,7 @@ type SuccessType<S> = S extends HttpApiSchema.StreamSse<
   infer _Value
 > ? Stream.Stream<
     _Value,
-    _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry,
+    _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
     never
   >
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
