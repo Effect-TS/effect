@@ -221,6 +221,7 @@ export interface ParsedOperation {
   readonly voidSchemas: ReadonlySet<string>
   // SSE streaming response schema (text/event-stream)
   readonly sseSchema?: string
+  readonly sseSchemaMode: "data" | "event"
   // Binary stream response (application/octet-stream)
   readonly binaryResponse: boolean
 }
@@ -273,5 +274,6 @@ export const makeDeepMutable = (options: {
   errorSchemas: new Map(),
   voidSchemas: new Set(),
   paramsOptional: true,
+  sseSchemaMode: "data",
   binaryResponse: false
 })

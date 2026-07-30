@@ -525,6 +525,67 @@ export const TestClientError = <Tag extends string, E>(
         ]
       ))
 
+    it.effect("annotated sse operation decodes the full event schema", () =>
+      assertRuntimeIncludes(
+        {
+          openapi: "3.1.0",
+          info: {
+            title: "Test API",
+            version: "1.0.0"
+          },
+          paths: {
+            "/events": {
+              get: {
+                operationId: "streamEvents",
+                parameters: [],
+                responses: {
+                  200: {
+                    description: "Events streamed successfully",
+                    content: {
+                      "text/event-stream": {
+                        schema: {
+                          type: "object",
+                          properties: {
+                            id: {
+                              anyOf: [{ type: "string" }, { type: "null" }]
+                            },
+                            event: { const: "message" },
+                            data: { type: "string" }
+                          },
+                          required: ["id", "event", "data"],
+                          additionalProperties: false
+                        },
+                        "x-effect-stream": {
+                          encoding: "sse",
+                          errorSchema: {},
+                          causeSchema: {},
+                          failureEvent: "effect/httpapi/stream/failure"
+                        }
+                      }
+                    }
+                  }
+                },
+                tags: ["Events"],
+                security: []
+              }
+            }
+          },
+          components: {
+            schemas: {},
+            securitySchemes: {}
+          },
+          security: [],
+          tags: []
+        },
+        [
+          `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("message"), "data": Schema.String`,
+          `"id": Schema.optionalKey(Schema.String), "event": Schema.Literal("effect/httpapi/stream/failure"), "data": Schema.String`,
+          `readonly "streamEventsSse": () => Stream.Stream<typeof StreamEvents200Sse.Type, HttpClientError.HttpClientError | SchemaError | Sse.Retry, typeof StreamEvents200Sse.DecodingServices>`,
+          `sseEventRequest(StreamEvents200Sse)`,
+          `Stream.pipeThroughChannel(Sse.decodeSchema(schema))`
+        ]
+      ))
+
     it.effect("form-urlencoded request body generates bodyUrlParams", () =>
       assertRuntimeIncludes(
         {
