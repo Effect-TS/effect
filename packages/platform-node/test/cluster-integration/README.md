@@ -16,12 +16,13 @@ prefix, and every runner listens on an operating-system-assigned port.
 
 `harness.ts` exposes:
 
-- `make({ backend, entities, lockMode })` to create a scoped cluster harness.
-- `start(count)` to start in-process socket runners and a client over msgpack.
+- `make({ backend, entities, lockMode, config })` to create a scoped cluster harness.
+- `start(count, { assignedShardGroups, runnerShardWeight })` to start in-process socket runners and a client over msgpack.
 - `stop(runner)` for graceful deregistration and shard handoff.
 - `kill(runner)` for abrupt teardown without deregistration or explicit lock cleanup.
 - `freeze(runner)` to suspend SQL heartbeats and lock refresh while leaving the runner's sockets and reserved SQL connection open.
 - `waitUntil`, `waitForStableAssignments`, and `waitForEntityOwner` for deadline-based polling with cluster diagnostics on failure.
+- `clientSharding` and `ownersOfShard` for direct shard ownership assertions.
 - `messageCounts`, `unprocessedMessageCount`, `repliedMessageCount`, and `failedMessageCount` for storage assertions scoped to the cluster prefix.
 
 Advisory locks are owned by the reserved database session. A frozen advisory-lock

@@ -29,6 +29,7 @@ export type LockMode = "advisory" | "row"
 export interface ClusterRunner {
   readonly address: RunnerAddress.RunnerAddress
   readonly index: number
+  readonly shardGroups: ReadonlyArray<string>
   readonly sharding: Sharding.Sharding["Service"]
   readonly state: () => "frozen" | "killed" | "running" | "stopped"
 }
@@ -41,9 +42,19 @@ export interface MessageCounts {
 
 export interface MakeOptions {
   readonly backend: Backend
+  readonly config?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
   readonly entities: Layer.Layer<never, never, Sharding.Sharding>
   readonly lockMode?: LockMode | undefined
   readonly runnerLayer?: RunnerLayer | undefined
+}
+
+export interface StartOptions {
+  readonly assignedShardGroups?: ReadonlyArray<string> | undefined
+  readonly runnerShardWeight?: number | undefined
+}
+
+type HarnessConfig = Partial<ShardingConfig.ShardingConfig["Service"]> & {
+  readonly shardLockDisableAdvisory: boolean
 }
 
 interface RegistrationRow {
@@ -138,7 +149,7 @@ export const socketRunnerLayer = (
   address: RunnerAddress.RunnerAddress,
   entities: Layer.Layer<never, never, Sharding.Sharding>,
   socketServer: SocketServer.SocketServer["Service"],
-  config: typeof clusterConfig & { readonly shardLockDisableAdvisory: boolean }
+  config: HarnessConfig
 ) =>
   entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
@@ -154,9 +165,7 @@ export const socketRunnerLayer = (
 
 export type RunnerLayer = typeof socketRunnerLayer
 
-const clientLayer = (
-  config: typeof clusterConfig & { readonly shardLockDisableAdvisory: boolean }
-) =>
+const clientLayer = (config: HarnessConfig) =>
   SocketRunner.layerClientOnly.pipe(
     Layer.provide(NodeClusterSocket.layerClientProtocol),
     Layer.provide(ShardingConfig.layer(config)),
@@ -173,6 +182,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   const prefix = `cluster_${process.pid}_${nextCluster++}`
   const config = {
     ...clusterConfig,
+    ...options.config,
     shardLockDisableAdvisory: options.lockMode === "row"
   }
   const databases = inject("clusterDatabases")
@@ -190,9 +200,12 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   const shared = Context.merge(database, messageStorage)
   const runners: Array<RunnerEntry> = []
 
-  const makeRunnerStorage = Effect.fnUntraced(function*(scope: Scope.Closeable) {
+  const makeRunnerStorage = Effect.fnUntraced(function*(
+    scope: Scope.Closeable,
+    storageConfig: HarnessConfig = config
+  ) {
     return yield* SqlRunnerStorage.layerWith({ prefix }).pipe(
-      Layer.provide(ShardingConfig.layer(config)),
+      Layer.provide(ShardingConfig.layer(storageConfig)),
       Layer.orDie,
       Layer.buildWithScope(scope),
       Effect.provide(database)
@@ -205,8 +218,19 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     Layer.buildWithScope(clientScope),
     Effect.provide(Context.merge(shared, clientStorage))
   )
-  const startRunner = Effect.fnUntraced(function*(index: number) {
+  const clientSharding = Context.get(client, Sharding.Sharding)
+  let nextRunnerIndex = 0
+  const startRunner = Effect.fnUntraced(function*(index: number, startOptions?: StartOptions) {
     const scope = yield* Scope.fork(parentScope)
+    const runnerConfig: HarnessConfig = {
+      ...config,
+      ...(startOptions?.assignedShardGroups === undefined
+        ? undefined
+        : { assignedShardGroups: startOptions.assignedShardGroups }),
+      ...(startOptions?.runnerShardWeight === undefined
+        ? undefined
+        : { runnerShardWeight: startOptions.runnerShardWeight })
+    }
     const serverContext = yield* NodeSocketServer.layer({ host: "127.0.0.1", port: 0 }).pipe(
       Layer.buildWithScope(scope)
     )
@@ -215,14 +239,14 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
       return yield* Effect.die("Expected a TCP socket server")
     }
     const address = RunnerAddress.make("127.0.0.1", socketServer.address.port)
-    const rawStorageContext = yield* makeRunnerStorage(scope)
+    const rawStorageContext = yield* makeRunnerStorage(scope, runnerConfig)
     const controller = makeRunnerStorageController(Context.get(rawStorageContext, RunnerStorage.RunnerStorage))
     const storage = Context.make(RunnerStorage.RunnerStorage, controller.controlled)
     const context = yield* (options.runnerLayer ?? socketRunnerLayer)(
       address,
       options.entities,
       socketServer,
-      config
+      runnerConfig
     ).pipe(
       Layer.buildWithScope(scope),
       Effect.provide(Context.mergeAll(shared, storage))
@@ -233,6 +257,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
       address,
       controller,
       index,
+      shardGroups: runnerConfig.assignedShardGroups ?? ShardingConfig.defaults.assignedShardGroups,
       scope,
       setState(next) {
         state = next
@@ -244,10 +269,10 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     return runner as ClusterRunner
   })
 
-  const start = Effect.fnUntraced(function*(runnerCount: number) {
+  const start = Effect.fnUntraced(function*(runnerCount: number, startOptions?: StartOptions) {
     return yield* Effect.forEach(
-      Array.from({ length: runnerCount }, (_, index) => index),
-      startRunner
+      Array.from({ length: runnerCount }, () => nextRunnerIndex++),
+      (index) => startRunner(index, startOptions)
     )
   })
 
@@ -278,14 +303,21 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
 
   const assignmentMap = () => {
     const assignments: Record<string, ReadonlyArray<string>> = {}
-    for (let id = 1; id <= ShardingConfig.defaults.shardsPerGroup; id++) {
-      const shard = ShardId.make("default", id)
-      assignments[shard.toString()] = runners
-        .filter((runner) => runner.state() === "running" && runner.sharding.hasShardId(shard))
-        .map((runner) => `${runner.address.host}:${runner.address.port}`)
+    const groups = config.availableShardGroups ?? ShardingConfig.defaults.availableShardGroups
+    const shardsPerGroup = config.shardsPerGroup ?? ShardingConfig.defaults.shardsPerGroup
+    for (const group of groups) {
+      for (let id = 1; id <= shardsPerGroup; id++) {
+        const shard = ShardId.make(group, id)
+        assignments[shard.toString()] = runners
+          .filter((runner) => runner.state() === "running" && runner.sharding.hasShardId(shard))
+          .map((runner) => `${runner.address.host}:${runner.address.port}`)
+      }
     }
     return assignments
   }
+
+  const ownersOfShard = (shard: ShardId.ShardId, includeInactive = false) =>
+    runners.filter((runner) => (includeInactive || runner.state() === "running") && runner.sharding.hasShardId(shard))
 
   const messageCounts = Effect.fnUntraced(function*() {
     const messages = sql(`${prefix}_messages`)
@@ -363,11 +395,16 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     return assignmentMap()
   })
 
+  const shardOfEntity = <Type extends string, Rpcs extends Rpc.Any>(
+    entity: Entity.Entity<Type, Rpcs>,
+    entityId: string
+  ) => entity.getShardId(EntityId.make(entityId)).pipe(Effect.provide(client))
+
   const ownerOfEntity = Effect.fnUntraced(function*<Type extends string, Rpcs extends Rpc.Any>(
     entity: Entity.Entity<Type, Rpcs>,
     entityId: string
   ) {
-    const shardId = yield* entity.getShardId(EntityId.make(entityId)).pipe(Effect.provide(client))
+    const shardId = yield* shardOfEntity(entity, entityId)
     return runners.find((runner) => runner.state() === "running" && runner.sharding.hasShardId(shardId)) as
       | ClusterRunner
       | undefined
@@ -391,6 +428,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
   return {
     assignmentMap,
     backend: options.backend,
+    clientSharding,
     diagnostics,
     failedMessageCount: Effect.map(messageCounts(), (counts) => counts.failed),
     freeze,
@@ -399,9 +437,11 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     lockMode: options.lockMode ?? "advisory",
     messageCounts,
     ownerOfEntity,
+    ownersOfShard,
     prefix,
     repliedMessageCount: Effect.map(messageCounts(), (counts) => counts.replied),
     runners: runners as ReadonlyArray<ClusterRunner>,
+    shardOfEntity,
     start,
     stop,
     unprocessedMessageCount: Effect.map(messageCounts(), (counts) => counts.unprocessed),

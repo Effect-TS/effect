@@ -42,7 +42,6 @@ describe("cluster integration smoke", () => {
           Effect.map(cluster.ownerOfEntity(TestEntity, "entity-1"), (owner) => owner !== undefined)
         )
         const owner = yield* cluster.ownerOfEntity(TestEntity, "entity-1")
-        yield* cluster.freeze(owner!)
         yield* cluster.kill(owner!)
         yield* cluster.waitForStableAssignments()
 
