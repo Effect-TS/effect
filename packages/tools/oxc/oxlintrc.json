@@ -21,7 +21,6 @@
     "effect/no-js-extension-imports": "error",
     "effect/no-opaque-instance-fields": "error",
     "effect/no-unused-internal": "error",
-    "effect/jsdocs": "error",
     // Tune native rules
     // Import rules
     "typescript/consistent-type-imports": ["error", {
