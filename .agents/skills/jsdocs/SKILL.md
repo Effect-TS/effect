@@ -39,7 +39,7 @@ Use a normal multiline JSDoc comment in TypeScript source:
  *
  * Optional prose explaining the example.
  *
- * ```ts
+ * ```ts import.meta.vitest
  * const result = example()
  * ```
  *
@@ -150,6 +150,14 @@ A good example:
 - uses explanatory prose only when the code cannot communicate an important
   choice or caveat on its own.
 
+### Executable examples
+
+- Mark runnable TypeScript fences with `import.meta.vitest`. Running `pnpm doctest` from the repository root executes every marked example.
+- Write each marked example as a complete isolated module. Import public APIs, define every runtime value, await asynchronous work, and keep execution deterministic and bounded.
+- Use `suite` metadata when the example registers Vitest tests or suites: `````ts import.meta.vitest suite``. Call the registration API directly so the nested tests and assertions are collected and executed.
+- Keep documentation-only snippets as plain `````ts`` fences.
+- Treat `pnpm doctest` and package-local `pnpm docgen` as complementary checks: doctest executes marked examples, while docgen typechecks documentation examples.
+
 When reviewing existing examples:
 
 1. Derive the example's use case and behavior from repository evidence. Inspect
@@ -244,6 +252,7 @@ When refining an existing public API module, always do a dedicated `**Gotchas**`
 
 Run the narrowest validation that matches the change:
 
+- For runnable JSDoc example changes, run `pnpm doctest` from the repository root.
 - For JSDoc or example changes in a package with generated docs, run `pnpm docgen` from that package directory.
 - Run `pnpm lint` because the linter includes the custom rule that checks public API JSDoc.
 - Do not run broad validation for prose-only skill edits.

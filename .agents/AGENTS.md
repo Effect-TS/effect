@@ -87,7 +87,7 @@ Use the narrowest validation that still covers the change:
 | Tests-only changes               | `pnpm lint-fix`, targeted `pnpm test --run <test_file.ts>`, `pnpm check`           |
 | Type-level/API type changes      | Targeted `pnpm test-types <filename>`, plus `pnpm check` when source types changed |
 | JSDoc text/category/link changes | `pnpm lint`                                                                        |
-| JSDoc example changes            | `pnpm lint`; from the changed package directory, run `pnpm docgen`                 |
+| JSDoc example changes            | `pnpm lint`; package-local `pnpm docgen`; root `pnpm doctest` for runnable examples |
 | Docs-only changes                | `pnpm lint-fix`; no tests required unless examples or code changed                 |
 
 Never run the whole test suite. A bare `pnpm test` runs every package in watch mode and will not
@@ -132,7 +132,10 @@ Read `.patterns/testing.md` before writing or changing tests.
 
 - For AI documentation, read `ai-docs/README.md` very carefully before writing examples.
 - AI documentation changes may include explanatory comments when useful.
-- For public JSDoc `@category` guidance, read `.patterns/jsdoc.md`.
+- For public JSDoc categories and example best practices, read `.patterns/jsdoc.md`.
+- Mark runnable TypeScript examples with `````ts import.meta.vitest``. Use the additional `suite` metadata when an example registers Vitest tests or suites, and invoke those registration APIs directly.
+- Keep marked examples self-contained, deterministic, bounded, and free of external-service dependencies. Await asynchronous work.
+- Run `pnpm doctest` from the repository root to execute marked examples. Package-local `pnpm docgen` remains required to typecheck documentation examples.
 - When JSDoc examples are localized to a single package, run `pnpm docgen` from that package directory instead of the repository root.
 
 ## Generated Files
