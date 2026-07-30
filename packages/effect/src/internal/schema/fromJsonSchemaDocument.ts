@@ -1,7 +1,6 @@
 import { unescapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import { remainder } from "../../Number.ts"
-import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import type * as SchemaRepresentation from "../../SchemaRepresentation.ts"
@@ -123,250 +122,6 @@ function addNumberCheck(
   if (typeof value === "number") {
     checks.push(jsonSchemaFilter(id, { [key]: value }))
   }
-}
-
-type PatternCharacterSetCategory = "digit" | "nonDigit" | "word" | "nonWord" | "space" | "nonSpace"
-
-interface PatternCharacterSet {
-  readonly ascii: bigint
-  readonly onlyAscii: boolean
-  readonly category: PatternCharacterSetCategory | undefined
-}
-
-function patternCharacterSetCategory(source: string): PatternCharacterSetCategory | undefined {
-  switch (source) {
-    case "\\d":
-      return "digit"
-    case "\\D":
-      return "nonDigit"
-    case "\\w":
-      return "word"
-    case "\\W":
-      return "nonWord"
-    case "\\s":
-      return "space"
-    case "\\S":
-      return "nonSpace"
-    default:
-      return undefined
-  }
-}
-
-function patternCharacterSet(source: string, onlyAscii: boolean): PatternCharacterSet | undefined {
-  const result = Result.try(() => new RegExp(`^(?:${source})$`))
-  if (Result.isFailure(result)) return undefined
-  let ascii = BigInt(0)
-  for (let code = 0; code < 128; code++) {
-    if (result.success.test(String.fromCharCode(code))) {
-      ascii |= BigInt(1) << BigInt(code)
-    }
-  }
-  return { ascii, onlyAscii, category: patternCharacterSetCategory(source) }
-}
-
-function isOnlyAsciiCharacterClass(source: string): boolean {
-  if (source[1] === "^") return false
-  for (let index = 1; index < source.length - 1; index++) {
-    const character = source[index]
-    if (character.charCodeAt(0) > 127) return false
-    if (character === "\\") {
-      const escaped = source[++index]
-      if (escaped === "d" || escaped === "w" || escaped !== undefined && !/[A-Za-z0-9]/.test(escaped)) {
-        continue
-      }
-      return false
-    }
-  }
-  return true
-}
-
-function isOnlyAsciiAtom(source: string): boolean {
-  if (source.length === 1) return source !== "." && source.charCodeAt(0) < 128
-  if (source === "\\d" || source === "\\w") return true
-  if (source.length === 2 && source[0] === "\\") {
-    return source.charCodeAt(1) < 128 && !/[A-Za-z0-9]/.test(source[1])
-  }
-  return source[0] === "[" && isOnlyAsciiCharacterClass(source)
-}
-
-function areDisjoint(left: PatternCharacterSet, right: PatternCharacterSet): boolean {
-  if ((left.ascii & right.ascii) !== BigInt(0)) return false
-  if (left.onlyAscii || right.onlyAscii) return true
-  return left.category === "digit" && right.category === "nonDigit" ||
-    left.category === "nonDigit" && right.category === "digit" ||
-    left.category === "word" && right.category === "nonWord" ||
-    left.category === "nonWord" && right.category === "word" ||
-    left.category === "space" && right.category === "nonSpace" ||
-    left.category === "nonSpace" && right.category === "space"
-}
-
-function unionCharacterSets(
-  sets: ReadonlyArray<PatternCharacterSet | undefined>
-): PatternCharacterSet | undefined {
-  if (sets.length === 0 || sets.some((set) => set === undefined)) return undefined
-  let ascii = BigInt(0)
-  let onlyAscii = true
-  for (const set of sets as ReadonlyArray<PatternCharacterSet>) {
-    ascii |= set.ascii
-    onlyAscii &&= set.onlyAscii
-  }
-  return { ascii, onlyAscii, category: undefined }
-}
-
-// A mandatory atom only separates repetitions when its character set cannot
-// overlap the repeated atoms in neighboring iterations.
-function hasNestedUnboundedRepetition(pattern: string): boolean {
-  interface Atom {
-    readonly characterSet: PatternCharacterSet | undefined
-    readonly repeatedCharacterSets: Array<PatternCharacterSet | undefined>
-    isMandatory: boolean
-  }
-  interface Branch {
-    atoms: Array<Atom>
-  }
-  interface Group {
-    branches: Array<Branch>
-    branch: Branch
-  }
-  function makeGroup(): Group {
-    return {
-      branches: [],
-      branch: { atoms: [] }
-    }
-  }
-  function addAtom(
-    group: Group,
-    characterSet: PatternCharacterSet | undefined,
-    repeatedCharacterSets: Array<PatternCharacterSet | undefined> = []
-  ): void {
-    group.branch.atoms.push({ characterSet, repeatedCharacterSets, isMandatory: true })
-  }
-  function boundaryCharacterSets(branch: Branch, fromStart: boolean): Array<PatternCharacterSet | undefined> {
-    const sets: Array<PatternCharacterSet | undefined> = []
-    for (let index = 0; index < branch.atoms.length; index++) {
-      const atom = branch.atoms[fromStart ? index : branch.atoms.length - index - 1]
-      sets.push(atom.characterSet)
-      if (atom.isMandatory) break
-    }
-    return sets
-  }
-  function hasDisjointIterationBoundaries(branch: Branch): boolean {
-    const start = boundaryCharacterSets(branch, true)
-    const end = boundaryCharacterSets(branch, false)
-    return start.length > 0 && end.length > 0 &&
-      start.every((left) => left !== undefined && end.every((right) => right !== undefined && areDisjoint(left, right)))
-  }
-  function isUnsafeToRepeat(branch: Branch): boolean {
-    if (!branch.atoms.some((atom) => atom.repeatedCharacterSets.length > 0)) return false
-    const mandatoryAtoms = branch.atoms.filter((atom) => atom.isMandatory)
-    if (mandatoryAtoms.length <= 1) return true
-    const hasDisjointSeparator = mandatoryAtoms.some((candidate) => {
-      if (candidate.characterSet === undefined) return false
-      let compared = false
-      for (const atom of branch.atoms) {
-        if (atom === candidate) continue
-        for (const repeated of atom.repeatedCharacterSets) {
-          compared = true
-          if (repeated === undefined || !areDisjoint(candidate.characterSet, repeated)) return false
-        }
-      }
-      return compared
-    })
-    return !hasDisjointSeparator || !hasDisjointIterationBoundaries(branch)
-  }
-
-  const groups = [makeGroup()]
-  let closedGroupIsUnsafeToRepeat = false
-  let previousWasClosedGroup = false
-  for (let index = 0; index < pattern.length; index++) {
-    const character = pattern[index]
-    if (character === "\\") {
-      const source = pattern.slice(index, index + 2)
-      addAtom(groups[groups.length - 1], patternCharacterSet(source, isOnlyAsciiAtom(source)))
-      index += source.length - 1
-      previousWasClosedGroup = false
-      continue
-    }
-    if (character === "[") {
-      const start = index
-      for (index++; index < pattern.length; index++) {
-        if (pattern[index] === "\\") index++
-        else if (pattern[index] === "]") break
-      }
-      const source = pattern.slice(start, index + 1)
-      addAtom(groups[groups.length - 1], patternCharacterSet(source, isOnlyAsciiAtom(source)))
-      previousWasClosedGroup = false
-      continue
-    }
-    if (character === "(") {
-      groups.push(makeGroup())
-      if (pattern[index + 1] === "?") {
-        if (pattern[index + 2] === "<" && pattern[index + 3] !== "=" && pattern[index + 3] !== "!") {
-          const end = pattern.indexOf(">", index + 3)
-          if (end !== -1) index = end
-        } else if (pattern[index + 2] === "<") {
-          index += 3
-        } else {
-          index += 2
-        }
-      }
-      previousWasClosedGroup = false
-      continue
-    }
-    if (character === ")" && groups.length > 1) {
-      const closed = groups.pop() as Group
-      closed.branches.push(closed.branch)
-      const repeatedCharacterSets = closed.branches.flatMap((branch) =>
-        branch.atoms.flatMap((atom) => atom.repeatedCharacterSets)
-      )
-      const characterSet = unionCharacterSets(
-        closed.branches.flatMap((branch) => branch.atoms.map((atom) => atom.characterSet))
-      )
-      closedGroupIsUnsafeToRepeat = closed.branches.some(isUnsafeToRepeat)
-      addAtom(groups[groups.length - 1], characterSet, repeatedCharacterSets)
-      previousWasClosedGroup = true
-      continue
-    }
-    const group = groups[groups.length - 1]
-    if (character === "|") {
-      group.branches.push(group.branch)
-      group.branch = { atoms: [] }
-      previousWasClosedGroup = false
-      continue
-    }
-    let isQuantifier = character === "*" || character === "+" || character === "?"
-    let isUnbounded = character === "*" || character === "+"
-    let minimum = character === "*" || character === "?" ? 0 : 1
-    if (character === "{") {
-      const end = pattern.indexOf("}", index + 1)
-      if (end !== -1) {
-        const content = pattern.slice(index + 1, end)
-        const match = /^(\d+)(?:,(\d*))?$/.exec(content)
-        if (match !== null) {
-          isQuantifier = true
-          minimum = Number(match[1])
-          isUnbounded = content.includes(",") && match[2] === ""
-          index = end
-        }
-      }
-    }
-    if (isQuantifier) {
-      if (isUnbounded && previousWasClosedGroup && closedGroupIsUnsafeToRepeat) return true
-      const atom = group.branch.atoms[group.branch.atoms.length - 1]
-      // A lazy modifier `?` is treated as a quantifier, under-counting mandatory atoms over-conservatively.
-      if (minimum === 0 && atom !== undefined) {
-        atom.isMandatory = false
-      }
-      if (isUnbounded && atom !== undefined) {
-        atom.repeatedCharacterSets.push(atom.characterSet)
-      }
-    } else if (character !== "^" && character !== "$") {
-      const source = pattern[index]
-      addAtom(group, patternCharacterSet(source, isOnlyAsciiAtom(source)))
-    }
-    previousWasClosedGroup = false
-  }
-  return false
 }
 
 function jsonSchemaAnnotations(
@@ -986,7 +741,7 @@ function translateJsonSchemaMultiDocument(
       case "string":
         return {
           _tag: "String",
-          checks: collectStringChecks(schema, path)
+          ...collectString(schema, path)
         }
       case "number":
       case "integer":
@@ -1031,17 +786,33 @@ function translateJsonSchemaMultiDocument(
     }
   }
 
-  function collectStringChecks(schema: JsonSchema.JsonSchema, path: Path): Array<Check> {
+  function importPattern(pattern: string, path: Path): {
+    readonly check?: Check | undefined
+    readonly annotations?: Schema.Annotations.Annotations | undefined
+  } {
+    switch (options?.patterns ?? "ignore") {
+      case "ignore":
+        return { annotations: { ignoredJsonSchemaPattern: pattern } }
+      case "apply":
+        return { check: jsonSchemaFilter("effect/schema/isPattern", { source: pattern, flags: "" }) }
+      case "error":
+        throw errorWithPath(`Pattern encountered while patterns is set to "error"`, path)
+    }
+  }
+
+  function collectString(schema: JsonSchema.JsonSchema, path: Path): {
+    readonly checks: Array<Check>
+    readonly annotations?: Schema.Annotations.Annotations | undefined
+  } {
     const checks: Array<Check> = []
     addNumberCheck(checks, schema.minLength, "effect/schema/isMinLength", "minLength")
     addNumberCheck(checks, schema.maxLength, "effect/schema/isMaxLength", "maxLength")
     if (typeof schema.pattern === "string") {
-      if (options?.unsafeAllowComplexPatterns !== true && hasNestedUnboundedRepetition(schema.pattern)) {
-        throw errorWithPath("Potentially unsafe pattern with nested unbounded repetition", [...path, "pattern"])
-      }
-      checks.push(jsonSchemaFilter("effect/schema/isPattern", { source: schema.pattern, flags: "" }))
+      const imported = importPattern(schema.pattern, [...path, "pattern"])
+      if (imported.check !== undefined) checks.push(imported.check)
+      return { checks, annotations: imported.annotations }
     }
-    return checks
+    return { checks }
   }
 
   function collectNumberChecks(schema: JsonSchema.JsonSchema): Array<Check> {
@@ -1097,17 +868,12 @@ function translateJsonSchemaMultiDocument(
       !Array.isArray(schema.patternProperties)
     ) {
       for (const [pattern, value] of Object.entries(schema.patternProperties)) {
-        if (options?.unsafeAllowComplexPatterns !== true && hasNestedUnboundedRepetition(pattern)) {
-          throw errorWithPath("Potentially unsafe pattern with nested unbounded repetition", [
-            ...path,
-            "patternProperties",
-            pattern
-          ])
-        }
+        const imported = importPattern(pattern, [...path, "patternProperties", pattern])
         signatures.push({
           parameter: {
             _tag: "String",
-            checks: [jsonSchemaFilter("effect/schema/isPattern", { source: pattern, flags: "" })]
+            checks: imported.check === undefined ? [] : [imported.check],
+            ...imported.annotations === undefined ? undefined : { annotations: imported.annotations }
           },
           type: recur(value, [...path, "patternProperties", pattern])
         })

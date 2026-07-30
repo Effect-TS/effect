@@ -6,14 +6,16 @@ function toSchemaFromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): Schema.Top {
-  return SchemaRepresentation.fromJsonSchemaDocument(document, options)
+  return SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options })
 }
 
 function fromJsonSchemaRepresentation(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): SchemaRepresentation.Document {
-  return SchemaRepresentation.toRepresentation(SchemaRepresentation.fromJsonSchemaDocument(document, options).ast)
+  return SchemaRepresentation.toRepresentation(
+    SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options }).ast
+  )
 }
 
 describe("fromJsonSchemaDocument", () => {
@@ -25,7 +27,7 @@ describe("fromJsonSchemaDocument", () => {
     expected: Schema.Json
   ) {
     const jsonDocument = JsonSchema.fromSchemaDraft2020_12(input.schema)
-    const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, input.options)
+    const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, { patterns: "apply", ...input.options })
     const document = SchemaRepresentation.toRepresentation(schema.ast)
     deepStrictEqual(SchemaRepresentation.toJson(document), expected)
     return schema
@@ -911,76 +913,66 @@ describe("fromJsonSchemaDocument", () => {
         )
       })
 
-      it("rejects patterns with nested unbounded repetition", () => {
-        throws(
-          () =>
-            SchemaRepresentation.fromJsonSchemaDocument(
-              JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(a+)+$" })
-            ),
-          `Potentially unsafe pattern with nested unbounded repetition
-  at ["schema"]["pattern"]`
-        )
-      })
-
-      it("rejects overlapping mandatory atoms", () => {
-        throws(
-          () =>
-            SchemaRepresentation.fromJsonSchemaDocument(
-              JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "(x+x+)+y" })
-            ),
-          `Potentially unsafe pattern with nested unbounded repetition
-  at ["schema"]["pattern"]`
-        )
-      })
-
-      it("rejects overlapping iteration boundaries", () => {
-        for (const pattern of ["^(a+ba*)+$", "^(\\w+-\\w*)+$"]) {
-          throws(
-            () =>
-              SchemaRepresentation.fromJsonSchemaDocument(
-                JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern })
-              ),
-            `Potentially unsafe pattern with nested unbounded repetition
-  at ["schema"]["pattern"]`
-          )
-        }
-      })
-
-      it("allows disjoint iteration boundaries", () => {
-        for (
-          const [pattern, input] of [
-            ["^(\\d+,)*\\d+$", "1,2,3"],
-            ["^(\\d+,\\s*)+$", "1, 2,"],
-            ["^(a+b+)+$", "aababb"]
-          ]
-        ) {
-          const schema = SchemaRepresentation.fromJsonSchemaDocument(
-            JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern })
-          )
-          assertTrue(Schema.is(schema)(input))
-        }
-      })
-
-      it("rejects ambiguous class delimiters", () => {
-        // `_` is part of `\\w`, so this separator class overlaps the repeated word atoms.
-        throws(
-          () =>
-            SchemaRepresentation.fromJsonSchemaDocument(
-              JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(\\w+[-_.])*\\w+$" })
-            ),
-          `Potentially unsafe pattern with nested unbounded repetition
-  at ["schema"]["pattern"]`
-        )
-      })
-
-      it("allows opting out for trusted documents", () => {
+      it("ignores patterns by default and annotates the skip", () => {
         const schema = SchemaRepresentation.fromJsonSchemaDocument(
-          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^(a+)+$" }),
-          { unsafeAllowComplexPatterns: true }
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" })
         )
         const is = Schema.is(schema)
         assertTrue(is("aaa"))
-        assertFalse(is("a!"))
+        assertTrue(is("bbb"))
+        deepStrictEqual(Schema.resolveAnnotations(schema), { ignoredJsonSchemaPattern: "^a+$" })
+
+        const object = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            patternProperties: { "^a+$": { type: "string" } },
+            additionalProperties: false
+          })
+        )
+        const representation = SchemaRepresentation.toRepresentation(object.ast).representation
+        strictEqual(representation._tag, "Objects")
+        if (representation._tag === "Objects") {
+          const parameter = representation.indexSignatures[0].parameter
+          strictEqual(parameter._tag, "String")
+          if (parameter._tag === "String") {
+            deepStrictEqual(parameter.annotations, { ignoredJsonSchemaPattern: "^a+$" })
+          }
+        }
+      })
+
+      it("applies patterns explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" }),
+          { patterns: "apply" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertFalse(is("bbb"))
+      })
+
+      it("rejects patterns explicitly", () => {
+        for (
+          const [schema, path] of [
+            [{ type: "string", pattern: "^a+$" }, `["schema"]["pattern"]`],
+            [
+              { type: "object", patternProperties: { "^a+$": { type: "string" } } },
+              `["schema"]["patternProperties"]["^a+$"]`
+            ],
+            [
+              { type: "object", propertyNames: { pattern: "^a+$" } },
+              `["schema"]["propertyNames"]["pattern"]`
+            ]
+          ] as const
+        ) {
+          throws(
+            () =>
+              SchemaRepresentation.fromJsonSchemaDocument(
+                JsonSchema.fromSchemaDraft2020_12(schema),
+                { patterns: "error" }
+              ),
+            `Pattern encountered while patterns is set to "error"\n  at ${path}`
+          )
+        }
       })
     })
   })
@@ -2145,20 +2137,6 @@ describe("fromJsonSchemaDocument", () => {
           },
           "references": {}
         }
-      )
-    })
-
-    it("rejects unsafe patternProperties", () => {
-      throws(
-        () =>
-          SchemaRepresentation.fromJsonSchemaDocument(
-            JsonSchema.fromSchemaDraft2020_12({
-              type: "object",
-              patternProperties: { "^(a+)+$": { type: "string" } }
-            })
-          ),
-        `Potentially unsafe pattern with nested unbounded repetition
-  at ["schema"]["patternProperties"]["^(a+)+$"]`
       )
     })
 
