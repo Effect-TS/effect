@@ -122,6 +122,7 @@ export const make = Effect.gen(function*() {
       if (!entity) {
         return yield* Effect.dieMessage(`Workflow ${workflowName} not registered`)
       }
+      yield* RcMap.invalidate(clientsPartial, workflowName)
       return yield* entity.client
     }),
     idleTimeToLive: "5 minutes"
@@ -157,12 +158,18 @@ export const make = Effect.gen(function*() {
     const payload = options.rpc.payloadSchema.make
       ? options.rpc.payloadSchema.make(options.payload)
       : options.payload
+    const span = yield* Effect.option(Effect.currentSpan)
     const envelope = Envelope.makeRequest<any>({
       requestId: yield* sharding.getSnowflake,
       address: options.address,
       tag: options.rpc._tag as any,
       payload,
-      headers: Headers.empty
+      headers: Headers.empty,
+      ...(Option.isSome(span) && {
+        traceId: span.value.traceId,
+        spanId: span.value.spanId,
+        sampled: span.value.sampled
+      })
     })
     yield* sharding.sendOutgoing(
       new Message.OutgoingRequest({

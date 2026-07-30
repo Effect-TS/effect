@@ -1,14 +1,16 @@
-import { Message, MessageStorage, ShardingConfig, Snowflake, SqlMessageStorage } from "@effect/cluster"
+import { Envelope, Message, MessageStorage, ShardingConfig, Snowflake, SqlMessageStorage } from "@effect/cluster"
 import { FileSystem } from "@effect/platform"
 import { NodeFileSystem } from "@effect/platform-node"
 import { Rpc } from "@effect/rpc"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { SqlClient } from "@effect/sql/SqlClient"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect, Fiber, Layer, TestClock } from "effect"
+import { Effect, Fiber, Layer, Option, TestClock } from "effect"
 import { MysqlContainer } from "./fixtures/utils-mysql.js"
 import { PgContainer } from "./fixtures/utils-pg.js"
 import {
+  LongKeyRpc,
+  LongKeyTest,
   makeAckChunk,
   makeChunkReply,
   makeReply,
@@ -138,6 +140,103 @@ describe("SqlMessageStorage", () => {
           )
           expect(result._tag).toEqual("Duplicate")
         }))
+
+      it.effect("hashes primary keys longer than the message_id column", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const storage = yield* MessageStorage.MessageStorage
+          const longId = "long-key-".repeat(50)
+          const request = yield* makeRequest({
+            rpc: LongKeyRpc,
+            payload: new LongKeyTest({ id: longId })
+          })
+          const result = yield* storage.saveRequest(request)
+          expect(result._tag).toEqual("Success")
+
+          const duplicate = yield* storage.saveRequest(
+            yield* makeRequest({ rpc: LongKeyRpc, payload: new LongKeyTest({ id: longId }) })
+          )
+          expect(duplicate._tag).toEqual("Duplicate")
+
+          const requestId = yield* storage.requestIdForPrimaryKey({
+            address: request.envelope.address,
+            tag: request.envelope.tag,
+            id: longId
+          })
+          expect(requestId).toEqual(Option.some(request.envelope.requestId))
+
+          const sql = yield* SqlClient
+          const rows = yield* sql<{ message_id: string }>`SELECT message_id FROM cluster_messages`
+          expect(rows).toHaveLength(1)
+          expect(rows[0].message_id).toMatch(/^[0-9a-f]{64}$/)
+        }))
+
+      it.effect("keeps primary keys within the column width as plaintext", () =>
+        Effect.gen(function*() {
+          yield* truncate
+
+          const sql = yield* SqlClient
+          const storage = yield* MessageStorage.MessageStorage
+          const request = yield* makeRequest({
+            rpc: Rpc.fromTaggedRequest(PrimaryKeyTest),
+            payload: new PrimaryKeyTest({ id: 456 })
+          })
+          yield* storage.saveRequest(request)
+
+          const plaintext = Envelope.primaryKey(request.envelope)!
+          const rows = yield* sql<{ message_id: string }>`SELECT message_id FROM cluster_messages`
+          expect(rows).toHaveLength(1)
+          expect(rows[0].message_id).toEqual(plaintext)
+
+          const result = yield* storage.saveRequest(
+            yield* makeRequest({
+              rpc: Rpc.fromTaggedRequest(PrimaryKeyTest),
+              payload: new PrimaryKeyTest({ id: 456 })
+            })
+          )
+          assert(result._tag === "Duplicate")
+          expect(result.originalId).toEqual(request.envelope.requestId)
+
+          const requestId = yield* storage.requestIdForPrimaryKey({
+            address: request.envelope.address,
+            tag: request.envelope.tag,
+            id: "456"
+          })
+          expect(requestId).toEqual(Option.some(request.envelope.requestId))
+        }))
+
+      if (label === "sqlite") {
+        it.effect("detects duplicates for legacy long-key plaintext rows", () =>
+          Effect.gen(function*() {
+            yield* truncate
+
+            const sql = yield* SqlClient
+            const storage = yield* MessageStorage.MessageStorage
+            const longId = "legacy-long-key-".repeat(30)
+            const request = yield* makeRequest({ rpc: LongKeyRpc, payload: new LongKeyTest({ id: longId }) })
+            yield* storage.saveRequest(request)
+
+            const plaintext = Envelope.primaryKey(request.envelope)!
+            expect(plaintext.length).toBeGreaterThan(255)
+            yield* sql`UPDATE cluster_messages SET message_id = ${plaintext} WHERE id = ${
+              String(request.envelope.requestId)
+            }`
+
+            const result = yield* storage.saveRequest(
+              yield* makeRequest({ rpc: LongKeyRpc, payload: new LongKeyTest({ id: longId }) })
+            )
+            assert(result._tag === "Duplicate")
+            expect(result.originalId).toEqual(request.envelope.requestId)
+
+            const requestId = yield* storage.requestIdForPrimaryKey({
+              address: request.envelope.address,
+              tag: request.envelope.tag,
+              id: longId
+            })
+            expect(requestId).toEqual(Option.some(request.envelope.requestId))
+          }))
+      }
 
       it.effect("unprocessedMessages", () =>
         Effect.gen(function*() {

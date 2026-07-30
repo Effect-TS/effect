@@ -1,9 +1,10 @@
 /**
  * @since 1.0.0
  */
+import type * as Rpc from "@effect/rpc/Rpc"
 import * as RpcServer from "@effect/rpc/RpcServer"
 import * as Effect from "effect/Effect"
-import type * as Exit from "effect/Exit"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { constant } from "effect/Function"
 import * as Layer from "effect/Layer"
@@ -21,6 +22,25 @@ import * as Sharding from "./Sharding.js"
 import { ShardingConfig } from "./ShardingConfig.js"
 
 const constVoid = constant(Effect.void)
+
+const serializeDefectReply = <R extends Rpc.Any>(
+  reply: Reply.ReplyWithContext<R>,
+  defect: unknown
+): Effect.Effect<Reply.ReplyEncoded<any>> =>
+  Effect.orDie(Reply.serialize(Reply.ReplyWithContext.fromDefect({
+    id: reply.reply.id,
+    requestId: reply.reply.requestId,
+    defect
+  })))
+
+const serializeReply = <R extends Rpc.Any>(
+  reply: Reply.ReplyWithContext<R>
+): Effect.Effect<Reply.ReplyEncoded<any>> =>
+  Effect.catchTag(
+    Reply.serialize(reply),
+    "MalformedMessage",
+    (error) => serializeDefectReply(reply, error)
+  )
 
 /**
  * @since 1.0.0
@@ -56,7 +76,7 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
         envelope: request,
         lastSentReply: Option.none(),
         respond(reply) {
-          resume(Effect.orDie(Reply.serialize(reply)))
+          resume(serializeReply(reply))
           return Effect.void
         }
       })
@@ -111,17 +131,27 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
             envelope: request,
             lastSentReply: Option.none(),
             respond(reply) {
-              return Effect.flatMap(Reply.serialize(reply), (reply) => {
-                mailbox.unsafeOffer(reply)
-                return Effect.void
-              })
+              return Reply.serialize(reply).pipe(
+                Effect.flatMap((reply) => {
+                  mailbox.unsafeOffer(reply)
+                  return Effect.void
+                }),
+                Effect.catchTag("MalformedMessage", (error) =>
+                  Effect.flatMap(serializeDefectReply(reply, error), (reply) => {
+                    mailbox.unsafeOffer(reply)
+                    mailbox.unsafeDone(Exit.void)
+                    return Effect.void
+                  }))
+              )
             }
           })
           return Effect.as(
             persisted ?
               Effect.zipRight(
                 storage.registerReplyHandler(message).pipe(
-                  Effect.onError((cause) => mailbox.failCause(cause)),
+                  Effect.onError((cause) =>
+                    mailbox.failCause(cause)
+                  ),
                   Effect.forkScoped,
                   Effect.interruptible
                 ),
@@ -153,7 +183,8 @@ export const layer: Layer.Layer<
   RpcServer.Protocol | Sharding.Sharding | MessageStorage.MessageStorage
 > = RpcServer.layer(Runners.Rpcs, {
   spanPrefix: "RunnerServer",
-  disableTracing: true
+  disableTracing: true,
+  disableFatalDefects: true
 }).pipe(Layer.provide(layerHandlers))
 
 /**

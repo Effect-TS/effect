@@ -516,11 +516,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
   const entityMap = new Map<string, {
     readonly context: Context.Context<Rpc.Context<Rpcs> | Rpc.Middleware<Rpcs> | LR>
     readonly concurrency: number | "unbounded"
-    readonly build: Effect.Effect<
-      Context.Context<Rpc.ToHandler<Rpcs>>,
-      never,
-      Scope | CurrentAddress
-    >
+    readonly build: Effect.Effect<Context.Context<Rpc.ToHandler<Rpcs>>>
   }>()
   const sharding = shardingTag.of({
     ...({} as Sharding["Type"]),
@@ -529,12 +525,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
         entityMap.set(entity.type, {
           context: context as any,
           concurrency: options?.concurrency ?? 1,
-          build: entity.protocol.toHandlersContext(handlers).pipe(
-            Effect.provide(context.pipe(
-              Context.add(CurrentRunnerAddress, runnerAddress),
-              Context.omit(Scope)
-            ))
-          ) as any
+          build: entity.protocol.toHandlersContext(handlers) as any
         })
       })
   })
@@ -550,8 +541,14 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
       entityId: entityId as EntityId,
       shardId: makeShardId(entityId)
     })
+    const scope = yield* Effect.scope
+    const handlerContext = entityEntry.context.pipe(
+      Context.add(CurrentRunnerAddress, runnerAddress),
+      Context.add(CurrentAddress, address),
+      Context.add(Scope, scope)
+    )
     const handlers = yield* entityEntry.build.pipe(
-      Effect.provideService(CurrentAddress, address)
+      Effect.mapInputContext<never, never>(() => handlerContext as Context.Context<never>)
     )
 
     // eslint-disable-next-line prefer-const
@@ -561,7 +558,9 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
       onFromServer(response) {
         return client.write(response)
       }
-    }).pipe(Effect.provide(handlers))
+    }).pipe(
+      Effect.mapInputContext<never, any>(() => Context.merge(handlerContext, handlers) as Context.Context<any>)
+    )
 
     client = yield* RpcClient.makeNoSerialization(entity.protocol, {
       supportsAck: true,
