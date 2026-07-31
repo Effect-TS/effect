@@ -133,61 +133,61 @@ const makeBatch = (options: {
   readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
   readonly getClient: () => D1Client
 }): D1Client["batch"] =>
-  Effect.fnUntraced(function*<const Statements extends ReadonlyArray<Statement.Statement<any>>>(
-    statements: Statements
-  ) {
-    if (statements.length === 0) {
-      return [] as unknown as BatchResults<Statements>
-    }
-    return yield* Effect.useSpan(
-      "sql.execute",
-      { kind: "client" },
-      (span) =>
-        Effect.withFiber(Effect.fnUntraced(function*(fiber) {
-          const transformer = yield* Statement.CurrentTransformer
-          const prepared: Array<D1PreparedStatement> = []
-          const transforms: Array<TransformRows | undefined> = []
-          const queryTexts: Array<string> = []
+<const Statements extends ReadonlyArray<Statement.Statement<any>>>(
+  statements: Statements
+) => {
+  if (statements.length === 0) {
+    return Effect.succeed([] as unknown as BatchResults<Statements>)
+  }
+  return Effect.useSpan(
+    "sql.execute",
+    { kind: "client" },
+    (span) =>
+      Effect.withFiber(Effect.fnUntraced(function*(fiber) {
+        const transformer = fiber.getRef(Statement.CurrentTransformer)
+        const prepared: Array<D1PreparedStatement> = []
+        const transforms: Array<TransformRows | undefined> = []
+        const queryTexts: Array<string> = []
 
-          for (const original of statements) {
-            const statement = transformer === undefined
-              ? original
-              : yield* transformer(original, options.getClient(), fiber, span)
-            const [sql, params] = statement.compile()
-            queryTexts.push(sql)
-            transforms.push((statement as StatementWithTransformRows).transformRows)
-            prepared.push((yield* Cache.get(options.prepareCache, sql)).bind(...params))
-          }
+        for (const original of statements) {
+          const statement = transformer === undefined
+            ? original
+            : yield* transformer(original, options.getClient(), fiber, span)
+          const [sql, params] = statement.compile()
+          queryTexts.push(sql)
+          transforms.push((statement as StatementWithTransformRows).transformRows)
+          prepared.push((yield* Cache.get(options.prepareCache, sql)).bind(...params))
+        }
 
-          for (const [key, value] of options.spanAttributes) {
-            span.attribute(key, value)
-          }
-          span.attribute(ATTR_DB_OPERATION_NAME, "batch")
-          span.attribute(ATTR_DB_QUERY_TEXT, queryTexts.join("; "))
+        for (const [key, value] of options.spanAttributes) {
+          span.attribute(key, value)
+        }
+        span.attribute(ATTR_DB_OPERATION_NAME, "batch")
+        span.attribute(ATTR_DB_QUERY_TEXT, queryTexts.join("; "))
 
-          // D1 batches execute on the binding directly and intentionally cannot participate in SqlClient transactions.
-          const responses = yield* Effect.tryPromise({
-            try: () =>
-              options.db.batch<Record<string, unknown>>(prepared).then((responses) => {
-                for (const response of responses) {
-                  if (response.error) {
-                    throw response.error
-                  }
+        // D1 batches execute on the binding directly and intentionally cannot participate in SqlClient transactions.
+        const responses = yield* Effect.tryPromise({
+          try: () =>
+            options.db.batch<Record<string, unknown>>(prepared).then((responses) => {
+              for (const response of responses) {
+                if (response.error) {
+                  throw response.error
                 }
-                return responses
-              }),
-            catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute batch", "execute") })
-          })
+              }
+              return responses
+            }),
+          catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute batch", "execute") })
+        })
 
-          const results = responses.map((response, index) => {
-            const rows = response.results || []
-            const transformRows = transforms[index]
-            return transformRows ? transformRows(rows) : rows
-          })
-          return results as BatchResults<Statements>
-        }))
-    )
-  })
+        const results = responses.map((response, index) => {
+          const rows = response.results || []
+          const transformRows = transforms[index]
+          return transformRows ? transformRows(rows) : rows
+        })
+        return results as BatchResults<Statements>
+      }))
+  )
+}
 
 /**
  * Creates a scoped Cloudflare D1 SQL client. Prepared statements are cached, while transactions and streaming queries are not supported by this driver.
