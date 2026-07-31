@@ -6028,10 +6028,10 @@ const monotonicNowNanos = (function() {
   if (typeof performance !== "undefined" && typeof performance.now === "function") {
     return () => BigInt(Math.round(performance.now() * 1_000_000))
   }
-  let previous: bigint | undefined
+  let previous = BigInt(0)
   return () => {
     const current = BigInt(Date.now()) * nanosPerMilli
-    if (previous === undefined || current > previous) {
+    if (current > previous) {
       previous = current
     }
     return previous
@@ -6039,19 +6039,14 @@ const monotonicNowNanos = (function() {
 })()
 
 const wallTimeNanos = (function() {
-  const checkIntervalMillis = 1_000
   const reanchorThresholdNanos = BigInt(1_000_000_000)
   let origin: bigint | undefined
-  let lastCheckMillis = 0
   return () => {
     const monotonic = monotonicNowNanos()
-    const wallMillis = Date.now()
-    const wall = BigInt(wallMillis) * nanosPerMilli
+    const wall = BigInt(Date.now()) * nanosPerMilli
     if (origin === undefined) {
       origin = wall - monotonic
-      lastCheckMillis = wallMillis
-    } else if (wallMillis < lastCheckMillis || wallMillis - lastCheckMillis >= checkIntervalMillis) {
-      lastCheckMillis = wallMillis
+    } else {
       const projected = origin + monotonic
       const skew = wall > projected ? wall - projected : projected - wall
       if (skew > reanchorThresholdNanos) {

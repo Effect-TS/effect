@@ -242,6 +242,8 @@ export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
  *
  * The value can move backward or forward when the system wall clock is
  * corrected, so it is not suitable for measuring elapsed time.
+ * The live clock allows up to one second of drift from `Date.now()` before
+ * re-anchoring.
  *
  * **Example** (Reading nanoseconds)
  *

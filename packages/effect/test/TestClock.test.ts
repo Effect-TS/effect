@@ -82,6 +82,16 @@ describe("TestClock", () => {
       assert.strictEqual(testClock.monotonicTimeNanosUnsafe(), 2_500_000_000n)
     }))
 
+  it.effect("setTime - preserves nanosecond precision for far-future timestamps", () =>
+    Effect.gen(function*() {
+      const testClock = yield* TestClock.make()
+      const farFuture = 1_000_000_000_000
+      yield* testClock.setTime(farFuture)
+      const before = testClock.monotonicTimeNanosUnsafe()
+      yield* testClock.setTime(farFuture + 1)
+      assert.strictEqual(testClock.monotonicTimeNanosUnsafe() - before, 1_000_000n)
+    }))
+
   it.effect("adjust - advances monotonic time to intermediate sleep deadlines", () =>
     Effect.gen(function*() {
       const testClock = yield* TestClock.make()

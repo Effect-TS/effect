@@ -324,9 +324,9 @@ export const make = Effect.fnUntraced(function*(
     yield* Fiber.await(yield* Effect.forkChild(Effect.yieldNow))
     const endTimestamp = step(currentTimestamp)
     const advanceTo = (timestamp: number) => {
-      if (timestamp > currentTimestamp && Number.isFinite(timestamp) && Number.isFinite(currentTimestamp)) {
-        currentMonotonicNanos += BigInt(Math.floor(timestamp * 1_000_000)) -
-          BigInt(Math.floor(currentTimestamp * 1_000_000))
+      const deltaMillis = timestamp - currentTimestamp
+      if (deltaMillis > 0 && Number.isFinite(deltaMillis)) {
+        currentMonotonicNanos += BigInt(Math.round(deltaMillis * 1_000_000))
       }
       currentTimestamp = timestamp
     }
