@@ -133,7 +133,9 @@ Read `.patterns/testing.md` before writing or changing tests.
 - For AI documentation, read `ai-docs/README.md` very carefully before writing examples.
 - AI documentation changes may include explanatory comments when useful.
 - For public JSDoc categories and example best practices, read `.patterns/jsdoc.md`.
-- Mark runnable TypeScript examples with `````ts import.meta.vitest``. Use the additional `suite` metadata when an example registers Vitest tests or suites, and invoke those registration APIs directly.
+- Mark runnable TypeScript examples with `````ts import.meta.vitest``. Leave examples that register Vitest tests or suites
+  as plain `````ts`` fences because the doctest collector executes runnable snippets inside tests; invoke registration
+  APIs directly to show their intended top-level usage.
 - Prefer direct trailing value assertions such as `operation() // => Option.some(1)`. Keep bindings only for reuse or meaningful multi-step setup, separate later assertion blocks with a blank line, use dense expected arrays such as `[1, 2]`, and keep a call on one line when the complete line is at most 120 characters.
 - Assert semantic values rather than console formatting. Preserve `import.meta.vitest` on type-level examples without adding tautological runtime assertions.
 - Keep marked examples self-contained, deterministic, bounded, and free of external-service dependencies. Await asynchronous work.

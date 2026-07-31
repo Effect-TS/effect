@@ -138,7 +138,7 @@ export interface Refinement<in A, out B extends A> {
  * type IsString = Predicate.Predicate<string>
  * type Input = Predicate.Predicate.In<IsString>
  *
- * const input: Input = "value" // => "value"
+ * const input: Input = "value"
  * ```
  *
  * @see {@link Predicate}
@@ -167,7 +167,7 @@ export declare namespace Predicate {
    * type P = Predicate.Predicate<number>
    * type Input = Predicate.Predicate.In<P>
    *
-   * const input: Input = 1 // => 1
+   * const input: Input = 1
    * ```
    *
    * @see {@link Predicate.Any}
@@ -228,7 +228,7 @@ export declare namespace Predicate {
  * type Input = Predicate.Refinement.In<IsString>
  * type Output = Predicate.Refinement.Out<IsString>
  *
- * const output: Output = "value" // => "value"
+ * const output: Output = "value"
  * ```
  *
  * @see {@link Refinement}
@@ -256,7 +256,7 @@ export declare namespace Refinement {
    * type R = Predicate.Refinement<unknown, string>
    * type Input = Predicate.Refinement.In<R>
    *
-   * const input: Input = "value" // => "value"
+   * const input: Input = "value"
    * ```
    *
    * @see {@link Refinement.Out}
@@ -287,7 +287,7 @@ export declare namespace Refinement {
    * type R = Predicate.Refinement<unknown, string>
    * type Output = Predicate.Refinement.Out<R>
    *
-   * const output: Output = "value" // => "value"
+   * const output: Output = "value"
    * ```
    *
    * @see {@link Refinement.In}

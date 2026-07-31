@@ -1807,7 +1807,7 @@ export const tapCause: {
  * **Example** (Converting layer failures to defects)
  *
  * ```ts import.meta.vitest
- * import { Context, Data, Effect, Layer } from "effect"
+ * import { Context, Data, Effect, Exit, Layer } from "effect"
  *
  * class DatabaseError extends Data.TaggedError("DatabaseError")<{
  *   message: string
@@ -1818,9 +1818,10 @@ export const tapCause: {
  * }>()("Database") {}
  *
  * // Layer that can fail during construction
+ * const error = new DatabaseError({ message: "Connection failed" })
  * const flakyDatabaseLayer = Layer.effect(
  *   Database,
- *   Effect.fail(new DatabaseError({ message: "Connection failed" }))
+ *   Effect.fail(error)
  * )
  *
  * // Convert failures to fiber death - removes error from type
@@ -1834,7 +1835,7 @@ export const tapCause: {
  *   Effect.provide(reliableDatabaseLayer)
  * )
  *
- * Effect.runSync(Effect.exit(program))._tag // => "Failure"
+ * Effect.runSync(Effect.exit(program)) // => Exit.die(error)
  * ```
  *
  * @category error handling
@@ -2376,7 +2377,6 @@ const ChannelTypeId: Channel.TypeId = "~effect/Channel"
  *
  * // This works - Layer<42, never, never> extends Layer<number, never, never>
  * const validLayer = satisfiesNumber(numberLayer)
- * Layer.isLayer(validLayer) // => true
  * ```
  *
  * @category utility types
@@ -2405,8 +2405,6 @@ export const satisfiesSuccessType =
  *
  * // This works - Layer<never, TypeError, never> extends Layer<never, Error, never>
  * const validLayer = satisfiesError(typeErrorLayer)
- * Layer.isLayer(validLayer) // => true
- * Effect.runSync(Effect.exit(Effect.scoped(Layer.build(validLayer))))._tag // => "Failure"
  * ```
  *
  * @category utility types
@@ -2436,7 +2434,6 @@ export const satisfiesErrorType =
  *
  * // This works - Layer<never, never, 42> extends Layer<never, never, number>
  * const validLayer = satisfiesNumber(numberLayer)
- * Layer.isLayer(validLayer) // => true
  * ```
  *
  * @category utility types

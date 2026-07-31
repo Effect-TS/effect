@@ -105,7 +105,6 @@ export declare namespace Exit {
  * const success = Exit.succeed(42)
  *
  * if (Exit.isSuccess(success)) {
- *   success._tag // => "Success"
  *   success.value // => 42
  * }
  * ```
@@ -142,7 +141,6 @@ export interface Success<out A, out E = never> extends Exit.Proto<A, E> {
  * const failure = Exit.fail("something went wrong")
  *
  * if (Exit.isFailure(failure)) {
- *   failure._tag // => "Failure"
  *   failure.cause // => Cause.fail("something went wrong")
  * }
  * ```

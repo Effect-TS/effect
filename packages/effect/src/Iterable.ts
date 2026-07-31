@@ -264,15 +264,7 @@ export const prependAll: {
  * import { Iterable } from "effect"
  *
  * const numbers = [1, 2, 3]
- * const withFour = Iterable.append(numbers, 4)
- * Array.from(withFour) // => [1, 2, 3, 4]
- *
- * // Chain multiple appends
- * const result = Iterable.append(
- *   Iterable.append([1, 2], 3),
- *   4
- * )
- * Array.from(result) // => [1, 2, 3, 4]
+ * Array.from(Iterable.append(numbers, 4)) // => [1, 2, 3, 4]
  * ```
  *
  * @see {@link prepend} for adding one element before the existing elements
@@ -308,10 +300,7 @@ export const append: {
  * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
- * const first = [1, 2, 3]
- * const second = [4, 5, 6]
- * const combined = Iterable.appendAll(first, second)
- * Array.from(combined) // => [1, 2, 3, 4, 5, 6]
+ * Array.from(Iterable.appendAll([1, 2, 3], [4, 5, 6])) // => [1, 2, 3, 4, 5, 6]
  *
  * // Works with different iterable types
  * const numbers = [1, 2]
@@ -322,8 +311,7 @@ export const append: {
  * // Lazy evaluation - only consumes what's needed
  * const infinite = Iterable.range(1)
  * const finite = [0, -1, -2]
- * const result = Iterable.take(Iterable.appendAll(finite, infinite), 5)
- * Array.from(result) // => [0, -1, -2, 1, 2]
+ * Array.from(Iterable.take(Iterable.appendAll(finite, infinite), 5)) // => [0, -1, -2, 1, 2]
  * ```
  *
  * @see {@link append} for appending one value instead of another iterable
@@ -1370,16 +1358,7 @@ const constEmptyIterator: Iterator<never> = {
  * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
- * const empty = Iterable.empty<string>()
- * Array.from(empty) // => []
- * Iterable.isEmpty(empty) // => true
- *
- * // Useful as base case for reductions
- * const hasData = true
- * const result = hasData
- *   ? Iterable.range(1, 5)
- *   : Iterable.empty<number>()
- * Array.from(result) // => [1, 2, 3, 4, 5]
+ * Array.from(Iterable.empty<string>()) // => []
  * ```
  *
  * @category constructors
@@ -1448,12 +1427,10 @@ export const of = <A>(a: A): Iterable<A> => [a]
  * const indexed = Iterable.map(["a", "b", "c"], (char, i) => `${i}: ${char}`)
  * Array.from(indexed) // => ["0: a", "1: b", "2: c"]
  *
- * // Chain transformations
- * const result = Iterable.map(
+ * Array.from(Iterable.map(
  *   Iterable.map([1, 2, 3], (x) => x * 2),
  *   (x) => x + 1
- * )
- * Array.from(result) // => [3, 5, 7]
+ * )) // => [3, 5, 7]
  * ```
  *
  * @category mapping
@@ -1725,8 +1702,7 @@ export const filterMapWhile: {
  * ```ts import.meta.vitest
  * import { Iterable, Option } from "effect"
  *
- * const values = Iterable.getSomes([Option.some(1), Option.none(), Option.some(2)])
- * Array.from(values) // => [1, 2]
+ * Array.from(Iterable.getSomes([Option.some(1), Option.none(), Option.some(2)])) // => [1, 2]
  * ```
  *
  * @category filtering
@@ -1761,12 +1737,11 @@ export const getSomes = <A>(self: Iterable<Option<A>>): Iterable<A> => {
  * ```ts import.meta.vitest
  * import { Iterable, Result } from "effect"
  *
- * const failures = Iterable.getFailures([
+ * Array.from(Iterable.getFailures([
  *   Result.succeed(1),
  *   Result.fail("err"),
  *   Result.succeed(2)
- * ])
- * Array.from(failures) // => ["err"]
+ * ])) // => ["err"]
  * ```
  *
  * @category filtering
@@ -1801,12 +1776,11 @@ export const getFailures = <R0, L>(self: Iterable<Result<R0, L>>): Iterable<L> =
  * ```ts import.meta.vitest
  * import { Iterable, Result } from "effect"
  *
- * const successes = Iterable.getSuccesses([
+ * Array.from(Iterable.getSuccesses([
  *   Result.succeed(1),
  *   Result.fail("err"),
  *   Result.succeed(2)
- * ])
- * Array.from(successes) // => [1, 2]
+ * ])) // => [1, 2]
  * ```
  *
  * @category filtering
@@ -2144,8 +2118,7 @@ export const forEach: {
  *
  * // Find maximum value
  * const values = [3, 1, 4, 1, 5, 9, 2]
- * const max = Iterable.reduce(values, -Infinity, Math.max)
- * max // => NaN
+ * Iterable.reduce(values, -Infinity, (max, value) => Math.max(max, value)) // => 9
  *
  * // Build an object from key-value pairs
  * const pairs = [["a", 1], ["b", 2], ["c", 3]] as const
@@ -2435,8 +2408,7 @@ export const cartesian: {
  * ```ts import.meta.vitest
  * import { Iterable } from "effect"
  *
- * const result = Iterable.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0)
- * result // => 2
+ * Iterable.countBy([1, 2, 3, 4, 5], (n) => n % 2 === 0) // => 2
  * ```
  *
  * @category folding

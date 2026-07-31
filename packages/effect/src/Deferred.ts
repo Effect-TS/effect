@@ -605,16 +605,18 @@ export const dieSync: {
  * **Example** (Interrupting a Deferred)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
+ * import { Deferred, Effect, Exit } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   const success = yield* Deferred.interrupt(deferred)
- *   const done = yield* Deferred.isDone(deferred)
- *   return [success, done]
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [success, exit] as const
  * })
  *
- * await Effect.runPromise(program) // => [true, true]
+ * const [success, exit] = await Effect.runPromise(program)
+ * success // => true
+ * Exit.hasInterrupts(exit) // => true
  * ```
  *
  * @category completion
@@ -729,9 +731,7 @@ export const isDoneUnsafe = <A, E>(self: Deferred<A, E>): boolean => self.effect
  *   const beforeCompletion = yield* Deferred.poll(deferred)
  *   yield* Deferred.succeed(deferred, 42)
  *   const afterCompletion = yield* Deferred.poll(deferred)
- *   const afterValue = afterCompletion._tag === "Some"
- *     ? Option.some(yield* afterCompletion.value)
- *     : Option.none()
+ *   const afterValue = yield* Effect.transposeOption(afterCompletion)
  *   return [beforeCompletion, afterValue]
  * })
  *

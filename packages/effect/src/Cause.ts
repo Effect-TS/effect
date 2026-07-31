@@ -1191,16 +1191,6 @@ export const NoSuchElementErrorTypeId: "~effect/Cause/NoSuchElementError" = core
  * expected case. This error is mainly for APIs that intentionally turn absence
  * into a thrown value or failed effect.
  *
- * **Example** (Creating and checking a NoSuchElementError)
- *
- * ```ts import.meta.vitest
- * import { Cause } from "effect"
- *
- * const value = new Cause.NoSuchElementError("Element not found")
- * value._tag // => "NoSuchElementError"
- * value.message // => "Element not found"
- * ```
- *
  * @category errors
  * @since 4.0.0
  */
@@ -1395,16 +1385,6 @@ export const isTimeoutError: (u: unknown) => u is TimeoutError = effect.isTimeou
  * Produced by `Effect.timeout` and related APIs. Implements
  * `YieldableError`.
  *
- * **Example** (Creating and checking a TimeoutError)
- *
- * ```ts import.meta.vitest
- * import { Cause } from "effect"
- *
- * const value = new Cause.TimeoutError("Operation timed out")
- * value._tag // => "TimeoutError"
- * value.message // => "Operation timed out"
- * ```
- *
  * @category errors
  * @since 4.0.0
  */
@@ -1461,16 +1441,6 @@ export const isIllegalArgumentError: (u: unknown) => u is IllegalArgumentError =
  * **Details**
  *
  * Implements `YieldableError`.
- *
- * **Example** (Creating and checking an IllegalArgumentError)
- *
- * ```ts import.meta.vitest
- * import { Cause } from "effect"
- *
- * const value = new Cause.IllegalArgumentError("Expected positive number")
- * value._tag // => "IllegalArgumentError"
- * value.message // => "Expected positive number"
- * ```
  *
  * @category errors
  * @since 4.0.0
@@ -1533,16 +1503,6 @@ export const ExceededCapacityErrorTypeId: "~effect/Cause/ExceededCapacityError" 
  * **Details**
  *
  * Implements `YieldableError`.
- *
- * **Example** (Creating and checking an ExceededCapacityError)
- *
- * ```ts import.meta.vitest
- * import { Cause } from "effect"
- *
- * const value = new Cause.ExceededCapacityError("Queue full")
- * value._tag // => "ExceededCapacityError"
- * value.message // => "Queue full"
- * ```
  *
  * @category errors
  * @since 4.0.0
@@ -1625,7 +1585,6 @@ export const isAsyncFiberError: (u: unknown) => u is AsyncFiberError = effect.is
  *
  * const value = new Cause.AsyncFiberError(fiber)
  * const isSameFiber = value.fiber === fiber
- * value._tag // => "AsyncFiberError"
  * isSameFiber // => true
  * ```
  *
@@ -1697,16 +1656,6 @@ export const isUnknownError: (u: unknown) => u is UnknownError = effect.isUnknow
  * Used when a thrown or rejected value is not represented by a more specific
  * typed error. The original value is stored in the `cause` property inherited
  * from `Error`. Implements `YieldableError`.
- *
- * **Example** (Creating and checking an UnknownError)
- *
- * ```ts import.meta.vitest
- * import { Cause } from "effect"
- *
- * const value = new Cause.UnknownError("original", "Something unknown")
- * value._tag // => "UnknownError"
- * value.message // => "Something unknown"
- * ```
  *
  * @category errors
  * @since 4.0.0
