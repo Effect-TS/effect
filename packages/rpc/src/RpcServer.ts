@@ -29,6 +29,7 @@ import * as Layer from "effect/Layer"
 import * as Mailbox from "effect/Mailbox"
 import * as Option from "effect/Option"
 import { type ParseError, TreeFormatter } from "effect/ParseResult"
+import * as Predicate from "effect/Predicate"
 import * as Runtime from "effect/Runtime"
 import * as RuntimeFlags from "effect/RuntimeFlags"
 import * as Schedule from "effect/Schedule"
@@ -1484,8 +1485,8 @@ const makeSocketProtocol = Effect.gen(function*() {
           step: constVoid
         })
       } catch (cause) {
-        if (cause instanceof RpcSerialization.RpcSerializationError) {
-          return writeRaw(new Socket.CloseEvent(1009, cause.message))
+        if (Predicate.isTagged(cause, "RpcSerializationError")) {
+          return writeRaw(new Socket.CloseEvent(1009, (cause as RpcSerialization.RpcSerializationError).message))
         }
         return writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
       }

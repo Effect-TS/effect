@@ -35,14 +35,10 @@ export interface StreamOptions {
   readonly maxBufferSize?: number | "unbounded" | undefined
 }
 
-const ensureBufferSize = (bufferSize: number, maxBufferSize: number | "unbounded") => {
-  if (maxBufferSize === "unbounded" || bufferSize <= maxBufferSize) return
-  throw new RpcSerializationError({
-    reason: "BufferSizeExceeded",
-    maxBufferSize,
-    bufferSize
-  })
-}
+const isBufferSizeExceeded = (
+  bufferSize: number,
+  maxBufferSize: number | "unbounded"
+): maxBufferSize is number => maxBufferSize !== "unbounded" && bufferSize > maxBufferSize
 
 /**
  * @since 1.0.0
@@ -98,11 +94,14 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Type"] =>
           let nlIndex = buffer.indexOf("\n", position)
           const items: Array<unknown> = []
           while (nlIndex !== -1) {
-            try {
-              ensureBufferSize(nlIndex - position, maxBufferSize)
-            } catch (error) {
+            const bufferSize = nlIndex - position
+            if (isBufferSizeExceeded(bufferSize, maxBufferSize)) {
               buffer = ""
-              throw error
+              throw new RpcSerializationError({
+                reason: "BufferSizeExceeded",
+                maxBufferSize,
+                bufferSize
+              })
             }
             const item = JSON.parse(buffer.slice(position, nlIndex))
             items.push(item)
@@ -110,11 +109,14 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Type"] =>
             nlIndex = buffer.indexOf("\n", position)
           }
           buffer = buffer.slice(position)
-          try {
-            ensureBufferSize(buffer.length, maxBufferSize)
-          } catch (error) {
+          const bufferSize = buffer.length
+          if (isBufferSizeExceeded(bufferSize, maxBufferSize)) {
             buffer = ""
-            throw error
+            throw new RpcSerializationError({
+              reason: "BufferSizeExceeded",
+              maxBufferSize,
+              bufferSize
+            })
           }
           return items
         },
@@ -485,7 +487,14 @@ export const makeMsgPack = (
             const error = error_ as any
             if (error.incomplete) {
               const nextIncomplete = buf.subarray(error.lastPosition)
-              ensureBufferSize(nextIncomplete.length, maxBufferSize)
+              const bufferSize = nextIncomplete.length
+              if (isBufferSizeExceeded(bufferSize, maxBufferSize)) {
+                throw new RpcSerializationError({
+                  reason: "BufferSizeExceeded",
+                  maxBufferSize,
+                  bufferSize
+                })
+              }
               incomplete = nextIncomplete
               return error.values ?? []
             }
