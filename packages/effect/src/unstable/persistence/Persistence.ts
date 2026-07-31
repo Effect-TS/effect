@@ -18,7 +18,6 @@ import { identity } from "../../Function.ts"
 import { sqlCleanupBatchSize } from "../../internal/persistence.ts"
 import * as Layer from "../../Layer.ts"
 import * as PrimaryKey from "../../PrimaryKey.ts"
-import * as Result from "../../Result.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
@@ -575,29 +574,27 @@ export const layerBackingSql: Layer.Layer<
             AND table_name = 'effect_persistence'
             AND index_name = 'effect_persistence_expires_idx'
         `.pipe(
-          Effect.map((rows) => Number(rows[0].count) > 0),
-          Effect.orDie
+          Effect.map((rows) => Number(rows[0].count) > 0)
         )
-        if (yield* indexExists) return
 
-        const createIndexResult = yield* sql`CREATE INDEX effect_persistence_expires_idx ON ${table} (expires)`
-          .pipe(Effect.result)
-        if (!(yield* indexExists)) {
-          if (Result.isFailure(createIndexResult)) {
-            return yield* Effect.die(createIndexResult.failure)
-          }
-          return yield* Effect.die(new Error("Failed to create effect_persistence_expires_idx"))
-        }
-      }),
+        yield* sql`CREATE INDEX effect_persistence_expires_idx ON ${table} (expires)`.pipe(
+          Effect.catch((error) => Effect.flatMap(indexExists, (exists) => exists ? Effect.void : Effect.fail(error)))
+        )
+      }).pipe(Effect.orDie),
     mssql: () =>
-      sql`
-        IF NOT EXISTS (
-          SELECT * FROM sys.indexes
+      Effect.gen(function*() {
+        const indexExists = sql<{ readonly count: number }>`
+          SELECT COUNT(*) AS count FROM sys.indexes
           WHERE name = N'effect_persistence_expires_idx'
             AND object_id = OBJECT_ID(N'effect_persistence')
+        `.pipe(
+          Effect.map((rows) => Number(rows[0].count) > 0)
         )
-        CREATE INDEX effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL
-      `.pipe(Effect.orDie, Effect.asVoid),
+
+        yield* sql`CREATE INDEX effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`.pipe(
+          Effect.catch((error) => Effect.flatMap(indexExists, (exists) => exists ? Effect.void : Effect.fail(error)))
+        )
+      }).pipe(Effect.orDie),
     // sqlite
     orElse: () =>
       sql`CREATE INDEX IF NOT EXISTS effect_persistence_expires_idx ON ${table} (expires) WHERE expires IS NOT NULL`
@@ -609,30 +606,32 @@ export const layerBackingSql: Layer.Layer<
 
   const deleteExpiredBatch = sql.onDialectOrElse({
     pg: () => (expiresAtOrBefore: number) =>
-      sql<{ readonly tupleId: string }>`
-        WITH expired_entries AS (
-          SELECT ctid FROM ${table}
-          WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
-          ORDER BY expires
-          LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
+      sql<{ readonly count: number }>`
+        WITH deleted_entries AS (
+          DELETE FROM ${table}
+          WHERE ctid IN (
+            SELECT ctid FROM ${table}
+            WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
+            LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
+          )
+          RETURNING 1
         )
-        DELETE FROM ${table}
-        WHERE ctid IN (SELECT ctid FROM expired_entries)
-        RETURNING ctid::text AS "tupleId"
-      `.pipe(Effect.map((deletedEntries) => deletedEntries.length)),
+        SELECT COUNT(*)::INT AS count FROM deleted_entries
+      `.pipe(Effect.map((rows) => rows[0].count)),
     mysql: () =>
       Effect.fnUntraced(
         function*(expiresAtOrBefore: number) {
-          yield* sql`
+          const connection = yield* sql.reserve
+          const [statement, parameters] = sql`
             DELETE FROM ${table}
             WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
-            ORDER BY expires
             LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
-          `
-          const rows = yield* sql<{ readonly count: number }>`SELECT ROW_COUNT() AS count`
-          return Number(rows[0].count)
+          `.compile()
+          yield* connection.execute(statement, parameters, undefined)
+          const rows = yield* connection.executeValues("SELECT ROW_COUNT()", [])
+          return Number(rows[0][0])
         },
-        (effect) => effect.pipe(sql.withTransaction)
+        Effect.scoped
       ),
     mssql: () => (expiresAtOrBefore: number) =>
       sql<{ readonly store_id: string }>`
@@ -640,7 +639,6 @@ export const layerBackingSql: Layer.Layer<
           SELECT TOP ${sql.literal(String(sqlCleanupBatchSize))} store_id, id FROM ${table}
           WITH (UPDLOCK, READPAST, READCOMMITTEDLOCK)
           WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
-          ORDER BY expires
         )
         DELETE persistence
         OUTPUT DELETED.store_id
@@ -651,34 +649,28 @@ export const layerBackingSql: Layer.Layer<
       `.pipe(Effect.map((deletedEntries) => deletedEntries.length)),
     // Some sqlite clients do not support interactive transactions, so use one bounded statement.
     orElse: () => (expiresAtOrBefore: number) =>
-      sql<{ readonly store_id: string }>`
+      sql<{ readonly deleted: number }>`
         DELETE FROM ${table}
         WHERE rowid IN (
           SELECT rowid FROM ${table}
           WHERE expires IS NOT NULL AND expires <= ${expiresAtOrBefore}
-          ORDER BY expires
           LIMIT ${sql.literal(String(sqlCleanupBatchSize))}
         )
-        RETURNING store_id
+        RETURNING 1 AS deleted
       `.pipe(Effect.map((deletedEntries) => deletedEntries.length))
   })
 
-  // Delay between batches and stop once a batch deletes no rows.
-  const deleteExpiredSchedule = Schedule.forever.pipe(
-    Schedule.setInputType<number>(),
-    Schedule.passthrough,
-    Schedule.while(({ input: deletedCount }) => deletedCount !== 0),
-    Schedule.addDelay(() => Effect.succeed(cleanupBatchDelay))
-  )
-
-  const deleteExpired = Effect.fnUntraced(function*() {
+  const deleteExpired = Effect.gen(function*() {
     const expiresAtOrBefore = yield* Clock.currentTimeMillis
     return yield* deleteExpiredBatch(expiresAtOrBefore).pipe(
-      Effect.repeat(deleteExpiredSchedule)
+      Effect.repeat({
+        while: (deletedCount) => deletedCount === sqlCleanupBatchSize,
+        schedule: Schedule.spaced(cleanupBatchDelay)
+      })
     )
   })
 
-  yield* deleteExpired().pipe(
+  yield* deleteExpired.pipe(
     Effect.catch((cause) => Effect.logWarning("Failed to clean up expired persistence entries", cause)),
     Effect.repeat(Schedule.spaced(cleanupInterval)),
     Effect.forkScoped

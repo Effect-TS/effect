@@ -3,6 +3,8 @@ import { sqlCleanupBatchSize } from "effect/internal/persistence"
 import { TestClock } from "effect/testing"
 
 export const expiredEntryCount = sqlCleanupBatchSize + 1
+export const expiredAtEpoch = 0
+export const futureExpiresAt = Number.MAX_SAFE_INTEGER
 export const cleanupBatchDelay = Duration.millis(10)
 export const testTimeout = 30_000
 

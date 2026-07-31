@@ -128,12 +128,12 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("Persistence SQL cl
         store_id: "expired",
         id: String(i),
         value: "{}",
-        expires: 0
+        expires: SqlCleanupTest.expiredAtEpoch
       }))
       yield* sql`INSERT INTO ${table} ${sql.insert(entries)}`.unprepared
       yield* sql`
         INSERT INTO ${table} (store_id, id, value, expires)
-        VALUES ('live', 'live', '{}', NULL), ('live', 'future', '{}', 1000000)
+        VALUES ('live', 'live', '{}', NULL), ('live', 'future', '{}', ${SqlCleanupTest.futureExpiresAt})
       `
 
       yield* Layer.build(Persistence.layerBackingSql)
