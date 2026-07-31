@@ -1,5 +1,11 @@
 # @effect/rpc
 
+## 0.76.2
+
+### Patch Changes
+
+- [#6803](https://github.com/Effect-TS/effect/pull/6803) [`9c4d4b5`](https://github.com/Effect-TS/effect/commit/9c4d4b5ae57627b1fbab274e15de093f52531c2a) Thanks @tim-smart! - Cap NDJSON and MessagePack streaming decoder buffers with configurable limits.
+
 ## 0.76.1
 
 ### Patch Changes
