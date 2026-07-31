@@ -62,16 +62,16 @@ export declare const nonEmpty: unique symbol
  *   2,
  *   3
  * ) as unknown as NonEmptyIterable.NonEmptyIterable<number>
- * const firstNumber = getFirst(numbers) // 1
+ * getFirst(numbers) // => 1
  *
  * const chars = "hello" as unknown as NonEmptyIterable.NonEmptyIterable<string>
- * const firstChar = getFirst(chars) // "h"
+ * getFirst(chars) // => "h"
  *
  * const entries = new Map([["a", 1], [
  *   "b",
  *   2
  * ]]) as unknown as NonEmptyIterable.NonEmptyIterable<[string, number]>
- * const firstEntry = getFirst(entries) // ["a", 1]
+ * getFirst(entries) // => ["a", 1]
  *
  * // Custom generator
  * function* countdown(): Generator<number> {
@@ -79,11 +79,7 @@ export declare const nonEmpty: unique symbol
  *   yield 2
  *   yield 1
  * }
- * const firstCount = getFirst(
- *   Chunk.fromIterable(
- *     countdown()
- *   ) as unknown as NonEmptyIterable.NonEmptyIterable<number>
- * ) // 3
+ * getFirst(Chunk.fromIterable(countdown()) as unknown as NonEmptyIterable.NonEmptyIterable<number>) // => 3
  * ```
  *
  * @category models
@@ -112,13 +108,6 @@ export interface NonEmptyIterable<out A> extends Iterable<A> {
  * ```ts import.meta.vitest
  * import { Array, Chunk, NonEmptyIterable } from "effect"
  *
- * // Helper to make iterator iterable for Array.from
- * const iteratorToIterable = <T>(iterator: Iterator<T>): Iterable<T> => ({
- *   [Symbol.iterator]() {
- *     return iterator
- *   }
- * })
- *
  * // With NonEmptyArray from Array.make (cast to NonEmptyIterable)
  * const numbers = Array.make(
  *   1,
@@ -128,14 +117,14 @@ export interface NonEmptyIterable<out A> extends Iterable<A> {
  *   5
  * ) as unknown as NonEmptyIterable.NonEmptyIterable<number>
  * const [first, rest] = NonEmptyIterable.unprepend(numbers)
- * console.log(first) // 1
- * console.log(globalThis.Array.from(iteratorToIterable(rest))) // [2, 3, 4, 5]
+ * first // => 1
+ * globalThis.Array.from({ [Symbol.iterator]: () => rest }) // => [2, 3, 4, 5]
  *
  * // With strings (assert when known to be non-empty)
  * const text = "hello" as unknown as NonEmptyIterable.NonEmptyIterable<string>
  * const [firstChar, restChars] = NonEmptyIterable.unprepend(text)
- * console.log(firstChar) // "h"
- * console.log(globalThis.Array.from(iteratorToIterable(restChars)).join("")) // "ello"
+ * firstChar // => "h"
+ * globalThis.Array.from({ [Symbol.iterator]: () => restChars }) // => ["e", "l", "l", "o"]
  *
  * // With Sets (assert when known to be non-empty)
  * const uniqueNumbers = new Set([
@@ -144,8 +133,8 @@ export interface NonEmptyIterable<out A> extends Iterable<A> {
  *   30
  * ]) as unknown as NonEmptyIterable.NonEmptyIterable<number>
  * const [firstUnique, restUnique] = NonEmptyIterable.unprepend(uniqueNumbers)
- * console.log(firstUnique) // 10 (or any element, Set order is not guaranteed)
- * console.log(globalThis.Array.from(iteratorToIterable(restUnique))) // [20, 30] (in some order)
+ * firstUnique // => 10
+ * globalThis.Array.from({ [Symbol.iterator]: () => restUnique }) // => [20, 30]
  *
  * // With Maps (assert when known to be non-empty)
  * const keyValuePairs = new Map([["a", 1], ["b", 2], [
@@ -153,8 +142,8 @@ export interface NonEmptyIterable<out A> extends Iterable<A> {
  *   3
  * ]]) as unknown as NonEmptyIterable.NonEmptyIterable<[string, number]>
  * const [firstPair, restPairs] = NonEmptyIterable.unprepend(keyValuePairs)
- * console.log(firstPair) // ["a", 1]
- * console.log(globalThis.Array.from(iteratorToIterable(restPairs))) // [["b", 2], ["c", 3]]
+ * firstPair // => ["a", 1]
+ * globalThis.Array.from({ [Symbol.iterator]: () => restPairs }) // => [["b", 2], ["c", 3]]
  *
  * // With custom generators
  * function* fibonacci(): Generator<number> {
@@ -172,8 +161,8 @@ export interface NonEmptyIterable<out A> extends Iterable<A> {
  *   fibonacci()
  * ) as unknown as NonEmptyIterable.NonEmptyIterable<number>
  * const [firstFib, restFib] = NonEmptyIterable.unprepend(generator)
- * console.log(firstFib) // 1
- * console.log(globalThis.Array.from(iteratorToIterable(restFib))) // [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
+ * firstFib // => 1
+ * globalThis.Array.from({ [Symbol.iterator]: () => restFib }) // => [1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
  *
  * // Practical usage: implementing reduce for non-empty iterables
  * function reduceNonEmpty<A, B>(
@@ -203,7 +192,7 @@ export interface NonEmptyIterable<out A> extends Iterable<A> {
  *   3,
  *   4
  * ) as unknown as NonEmptyIterable.NonEmptyIterable<number>
- * const sum = reduceNonEmpty(data, (acc, x) => acc + x, 0) // 10
+ * reduceNonEmpty(data, (acc, x) => acc + x, 0) // => 10
  * ```
  *
  * @category getters

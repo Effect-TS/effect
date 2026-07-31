@@ -9,6 +9,14 @@ describe("SubscriptionRef", () => {
       assert.isFalse(SubscriptionRef.isSubscriptionRef([0]))
     }))
 
+  it.effect("getAndUpdateEffect", () =>
+    Effect.gen(function*() {
+      const ref = yield* SubscriptionRef.make(1)
+      const previous = yield* SubscriptionRef.getAndUpdateEffect(ref, (value) => Effect.succeed(value + 1))
+      assert.strictEqual(previous, 1)
+      assert.strictEqual(yield* SubscriptionRef.get(ref), 2)
+    }))
+
   it.effect("multiple subscribers can receive changes", () =>
     Effect.gen(function*() {
       const ref = yield* SubscriptionRef.make(0)

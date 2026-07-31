@@ -45,26 +45,27 @@ import * as Semaphore from "../Semaphore.ts"
  * Tests `Effect.timeout` using `TestClock`.
  *
  * ```ts import.meta.vitest
- * import { Effect, Fiber, Option, pipe } from "effect"
+ * import { Effect, Exit, Fiber, pipe } from "effect"
  * import { TestClock } from "effect/testing"
- * import * as assert from "node:assert"
  *
- * Effect.gen(function*() {
+ * const program = Effect.gen(function*() {
  *   const fiber = yield* pipe(
  *     Effect.sleep("5 minutes"),
  *     Effect.timeout("1 minute"),
  *     Effect.forkChild
  *   )
  *   yield* TestClock.adjust("1 minute")
- *   const result = yield* Fiber.join(fiber)
- *   assert.deepStrictEqual(result, Option.none())
+ *   const exit = yield* Fiber.await(fiber)
+ *   Exit.isFailure(exit) // => true
  * })
+ *
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
  * **Example** (Advancing time deterministically)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Fiber } from "effect"
  * import { TestClock } from "effect/testing"
  *
  * const program = Effect.gen(function*() {
@@ -78,10 +79,13 @@ import * as Semaphore from "../Semaphore.ts"
  *
  *   // Advance the test clock by 1 hour
  *   yield* TestClock.adjust("1 hour")
+ *   yield* Fiber.join(fiber)
  *
  *   // The effect should now be executed
- *   console.log(executed) // true
+ *   executed // => true
  * })
+ *
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
  * @category models
@@ -123,8 +127,10 @@ export interface TestClock extends Clock.Clock {
  *
  *   // Access the current state
  *   const currentTime = testClock.currentTimeMillisUnsafe()
- *   console.log(currentTime) // 0 (starts at epoch)
+ *   currentTime // => 0
  * })
+ *
+ * await Effect.runPromise(Effect.scoped(program))
  * ```
  *
  * @since 2.0.0
@@ -149,7 +155,10 @@ export declare namespace TestClock {
    *
    *   // Use the TestClock in your test
    *   yield* testClock.adjust("1 hour")
+   *   testClock.currentTimeMillisUnsafe() // => 3_600_000
    * })
+   *
+   * await Effect.runPromise(Effect.scoped(program))
    * ```
    *
    * @category options
@@ -215,8 +224,10 @@ const SleepOrder = Order.flip(Order.Struct({
  *   // Use the TestClock to control time in tests
  *   yield* testClock.adjust("1 hour")
  *   const currentTime = testClock.currentTimeMillisUnsafe()
- *   console.log(currentTime) // Time advanced by 1 hour
+ *   currentTime // => 3_600_000
  * })
+ *
+ * await Effect.runPromise(Effect.scoped(program))
  * ```
  *
  * @category constructors
@@ -370,7 +381,13 @@ export const make = Effect.fnUntraced(function*(
  * const program = Effect.gen(function*() {
  *   // Use the layer in your program
  *   yield* TestClock.adjust("1 hour")
- * }).pipe(Effect.provide(testClockLayer))
+ *   return yield* TestClock.testClockWith((testClock) =>
+ *     Effect.succeed(testClock.currentTimeMillisUnsafe())
+ *   )
+ * })
+ *
+ * await Effect.runPromise(Effect.provide(program, testClockLayer)) // => 3_600_000
+ * await Effect.runPromise(Effect.provide(program, customTestClockLayer)) // => 3_600_000
  * ```
  *
  * @category layers
@@ -400,8 +417,10 @@ export const layer: (options?: TestClock.Options) => Layer.Layer<TestClock> = fl
  *   // Adjust time using the TestClock instance
  *   yield* TestClock.testClockWith((testClock) => testClock.adjust("2 hours"))
  *
- *   console.log(currentTime) // Initial time
+ *   currentTime // => 0
  * })
+ *
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
  * @category testing
@@ -419,7 +438,7 @@ export const testClockWith = <A, E, R>(
  * **Example** (Advancing the test clock)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Fiber } from "effect"
  * import { TestClock } from "effect/testing"
  *
  * const program = Effect.gen(function*() {
@@ -433,10 +452,13 @@ export const testClockWith = <A, E, R>(
  *
  *   // Advance the clock by 30 minutes
  *   yield* TestClock.adjust("30 minutes")
+ *   yield* Fiber.join(fiber)
  *
  *   // The effect should now be executed
- *   console.log(executed) // true
+ *   executed // => true
  * })
+ *
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
  * @category testing
@@ -452,7 +474,7 @@ export const adjust = (duration: Duration.Input): Effect.Effect<void> =>
  * **Example** (Setting the test clock time)
  *
  * ```ts import.meta.vitest
- * import { Duration, Effect } from "effect"
+ * import { Duration, Effect, Fiber } from "effect"
  * import { TestClock } from "effect/testing"
  *
  * const program = Effect.gen(function*() {
@@ -467,10 +489,13 @@ export const adjust = (duration: Duration.Input): Effect.Effect<void> =>
  *   // Set the clock to a specific timestamp (2 hours from epoch)
  *   const targetTime = Duration.toMillis(Duration.hours(2))
  *   yield* TestClock.setTime(targetTime)
+ *   yield* Fiber.join(fiber)
  *
  *   // The effect should now be executed
- *   console.log(executed) // true
+ *   executed // => true
  * })
+ *
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
  * @category testing
@@ -492,19 +517,21 @@ export const setTime = (timestamp: number): Effect.Effect<void> =>
  * const program = Effect.gen(function*() {
  *   // Get the current test time (starts at epoch)
  *   const testTime = yield* Clock.currentTimeMillis
- *   console.log(testTime) // 0
+ *   testTime // => 0
  *
  *   // Get the actual system time using withLive
  *   const realTime = yield* TestClock.withLive(Clock.currentTimeMillis)
- *   console.log(realTime) // Actual system timestamp
+ *   Number.isFinite(realTime) // => true
  *
  *   // Advance test time
  *   yield* TestClock.adjust("1 hour")
  *
  *   // Test time is now 1 hour ahead
  *   const newTestTime = yield* Clock.currentTimeMillis
- *   console.log(newTestTime) // 3600000 (1 hour in milliseconds)
+ *   newTestTime // => 3_600_000
  * })
+ *
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer()))
  * ```
  *
  * @category testing

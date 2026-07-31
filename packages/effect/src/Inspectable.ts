@@ -40,7 +40,7 @@ import { redact } from "./Redactable.ts"
  * }
  *
  * const obj = new CustomObject("hello")
- * console.log(obj) // > CustomObject(hello)
+ * obj[Inspectable.NodeInspectSymbol]() // => "CustomObject(hello)"
  * ```
  *
  * @category symbols
@@ -71,7 +71,7 @@ export const NodeInspectSymbol = Symbol.for("nodejs.util.inspect.custom")
  * }
  *
  * const obj = new CustomObject("test")
- * console.log(obj) // > CustomObject(test)
+ * obj[Inspectable.NodeInspectSymbol]() // => "CustomObject(test)"
  * ```
  *
  * @category symbols
@@ -117,7 +117,7 @@ export type NodeInspectSymbol = typeof NodeInspectSymbol
  * }
  *
  * const success = new Result("Success", 42)
- * console.log(success.toString()) // > {"_tag":"Success","value":42}
+ * success.toString() // => "{\"_tag\":\"Success\",\"value\":42}"
  * ```
  *
  * @category models
@@ -216,7 +216,7 @@ export const toStringUnknown = (u: unknown, whitespace: number | string | undefi
  * myObject.name = "example"
  * myObject.value = 42
  *
- * console.log(myObject.toString()) // > "[toJSON threw]"
+ * myObject.toString() // => "\"[toJSON threw]\""
  *
  * // Or extend in a constructor
  * function MyClass(this: any, name: string) {
@@ -279,8 +279,8 @@ export const BaseProto: Inspectable = {
  * }
  *
  * const user = new User(1, "Alice", "alice@example.com")
- * console.log(user.toString()) // > {"_tag":"User","id":1,"name":"Alice","email":"alice@example.com"}
- * console.log(user) // > { _tag: 'User', id: 1, name: 'Alice', email: 'alice@example.com' }
+ * user.toString() // => "{\"_tag\":\"User\",\"id\":1,\"name\":\"Alice\",\"email\":\"alice@example.com\"}"
+ * user[Inspectable.NodeInspectSymbol]() // => { _tag: "User", id: 1, name: "Alice", email: "alice@example.com" }
  * ```
  *
  * @category classes

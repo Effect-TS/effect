@@ -50,6 +50,7 @@ const clientErrors = [
  * const RpcServerLayer = RpcServer.layer(MyRpcs).pipe(
  *   Layer.provide(EntityProxyServer.layerRpcHandlers(Counter))
  * )
+ * const result = [MyRpcs.requests.size, Layer.isLayer(RpcServerLayer)] // => [2, true]
  * ```
  *
  * @category constructors
@@ -175,6 +176,7 @@ const entityIdPath = {
  * const ApiLayer = HttpApiBuilder.layer(MyApi).pipe(
  *   Layer.provide(EntityProxyServer.layerHttpApi(MyApi, "counter", Counter))
  * )
+ * const result = [Object.keys(MyApi.groups.counter.endpoints).length, Layer.isLayer(ApiLayer)] // => [2, true]
  * ```
  *
  * @category constructors

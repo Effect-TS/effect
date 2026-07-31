@@ -48,10 +48,9 @@ export const String = globalThis.String
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.isString("a"), true)
- * assert.deepStrictEqual(String.isString(1), false)
+ * String.isString("a") // => true
+ * String.isString(1) // => false
  * ```
  *
  * @category guards
@@ -68,9 +67,9 @@ export const isString: Refinement<unknown, string> = predicate.isString
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.Order("apple", "banana")) // > -1
- * console.log(String.Order("banana", "apple")) // > 1
- * console.log(String.Order("apple", "apple")) // > 0
+ * String.Order("apple", "banana") // => -1
+ * String.Order("banana", "apple") // => 1
+ * String.Order("apple", "apple") // => 0
  * ```
  *
  * @category instances
@@ -86,8 +85,8 @@ export const Order: order.Order<string> = order.String
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.Equivalence("hello", "hello")) // > true
- * console.log(String.Equivalence("hello", "world")) // > false
+ * String.Equivalence("hello", "hello") // => true
+ * String.Equivalence("hello", "world") // => false
  * ```
  *
  * @category instances
@@ -107,8 +106,8 @@ export const Equivalence: Equ.Equivalence<string> = Equ.String
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.empty) // >
- * console.log(String.isEmpty(String.empty)) // > true
+ * String.empty // => ""
+ * String.isEmpty(String.empty) // => true
  * ```
  *
  * @category constants
@@ -126,6 +125,8 @@ export const empty: "" = "" as const
  *
  * // Type-level concatenation
  * type Result = String.Concat<"hello", "world"> // "helloworld"
+ *
+ * const witness: Result = "helloworld" // => "helloworld"
  * ```
  *
  * @category models
@@ -141,11 +142,8 @@ export type Concat<A extends string, B extends string> = `${A}${B}`
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
- * const result1 = String.concat("hello", "world")
- * console.log(result1) // > helloworld
- *
- * const result2 = pipe("hello", String.concat("world"))
- * console.log(result2) // > helloworld
+ * String.concat("hello", "world") // => "helloworld"
+ * pipe("hello", String.concat("world")) // => "helloworld"
  * ```
  *
  * @category combining
@@ -163,10 +161,9 @@ export const concat: {
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("a", String.toUpperCase), "A")
- * assert.deepStrictEqual(String.toUpperCase("hello"), "HELLO")
+ * pipe("a", String.toUpperCase) // => "A"
+ * String.toUpperCase("hello") // => "HELLO"
  * ```
  *
  * @category transforming
@@ -181,10 +178,9 @@ export const toUpperCase = <S extends string>(self: S): Uppercase<S> => self.toU
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("A", String.toLowerCase), "a")
- * assert.deepStrictEqual(String.toLowerCase("HELLO"), "hello")
+ * pipe("A", String.toLowerCase) // => "a"
+ * String.toLowerCase("HELLO") // => "hello"
  * ```
  *
  * @category transforming
@@ -199,10 +195,9 @@ export const toLowerCase = <T extends string>(self: T): Lowercase<T> => self.toL
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("abc", String.capitalize), "Abc")
- * assert.deepStrictEqual(String.capitalize("hello"), "Hello")
+ * pipe("abc", String.capitalize) // => "Abc"
+ * String.capitalize("hello") // => "Hello"
  * ```
  *
  * @category transforming
@@ -221,10 +216,9 @@ export const capitalize = <T extends string>(self: T): Capitalize<T> => {
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("ABC", String.uncapitalize), "aBC")
- * assert.deepStrictEqual(String.uncapitalize("Hello"), "hello")
+ * pipe("ABC", String.uncapitalize) // => "aBC"
+ * String.uncapitalize("Hello") // => "hello"
  * ```
  *
  * @category transforming
@@ -248,13 +242,9 @@ export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("abc", String.replace("b", "d")), "adc")
- * assert.deepStrictEqual(
- *   pipe("hello world", String.replace("world", "Effect")),
- *   "hello Effect"
- * )
+ * pipe("abc", String.replace("b", "d")) // => "adc"
+ * pipe("hello world", String.replace("world", "Effect")) // => "hello Effect"
  * ```
  *
  * @category transforming
@@ -272,6 +262,8 @@ export const replace = (searchValue: string | RegExp, replaceValue: string) => (
  * import type { String } from "effect"
  *
  * type Result = String.Trim<"  hello  "> // "hello"
+ *
+ * const witness: Result = "hello" // => "hello"
  * ```
  *
  * @category models
@@ -286,10 +278,9 @@ export type Trim<A extends string> = TrimEnd<TrimStart<A>>
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.trim(" a "), "a")
- * assert.deepStrictEqual(String.trim("  hello world  "), "hello world")
+ * String.trim(" a ") // => "a"
+ * String.trim("  hello world  ") // => "hello world"
  * ```
  *
  * @category transforming
@@ -306,6 +297,8 @@ export const trim = <A extends string>(self: A): Trim<A> => self.trim() as Trim<
  * import type { String } from "effect"
  *
  * type Result = String.TrimStart<"  hello"> // "hello"
+ *
+ * const witness: Result = "hello" // => "hello"
  * ```
  *
  * @category models
@@ -320,10 +313,9 @@ export type TrimStart<A extends string> = A extends `${" " | "\n" | "\t" | "\r"}
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.trimStart(" a "), "a ")
- * assert.deepStrictEqual(String.trimStart("  hello world"), "hello world")
+ * String.trimStart(" a ") // => "a "
+ * String.trimStart("  hello world") // => "hello world"
  * ```
  *
  * @category transforming
@@ -340,6 +332,8 @@ export const trimStart = <A extends string>(self: A): TrimStart<A> => self.trimS
  * import type { String } from "effect"
  *
  * type Result = String.TrimEnd<"hello  "> // "hello"
+ *
+ * const witness: Result = "hello" // => "hello"
  * ```
  *
  * @category models
@@ -354,10 +348,9 @@ export type TrimEnd<A extends string> = A extends `${infer B}${" " | "\n" | "\t"
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.trimEnd(" a "), " a")
- * assert.deepStrictEqual(String.trimEnd("hello world  "), "hello world")
+ * String.trimEnd(" a ") // => " a"
+ * String.trimEnd("hello world  ") // => "hello world"
  * ```
  *
  * @category transforming
@@ -372,10 +365,9 @@ export const trimEnd = <A extends string>(self: A): TrimEnd<A> => self.trimEnd()
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("abcd", String.slice(1, 3)), "bc")
- * assert.deepStrictEqual(pipe("hello world", String.slice(0, 5)), "hello")
+ * pipe("abcd", String.slice(1, 3)) // => "bc"
+ * pipe("hello world", String.slice(0, 5)) // => "hello"
  * ```
  *
  * @category transforming
@@ -390,10 +382,9 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.isEmpty(""), true)
- * assert.deepStrictEqual(String.isEmpty("a"), false)
+ * String.isEmpty("") // => true
+ * String.isEmpty("a") // => false
  * ```
  *
  * @category predicates
@@ -408,10 +399,9 @@ export const isEmpty = (self: string): self is "" => self.length === 0
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.isNonEmpty(""), false)
- * assert.deepStrictEqual(String.isNonEmpty("a"), true)
+ * String.isNonEmpty("") // => false
+ * String.isNonEmpty("a") // => true
  * ```
  *
  * @category guards
@@ -426,9 +416,8 @@ export const isNonEmpty = (self: string): boolean => self.length > 0
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.length("abc"), 3)
+ * String.length("abc") // => 3
  * ```
  *
  * @category getters
@@ -443,11 +432,10 @@ export const length = (self: string): number => self.length
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("abc", String.split("")), ["a", "b", "c"])
- * assert.deepStrictEqual(pipe("", String.split("")), [""])
- * assert.deepStrictEqual(String.split("hello,world", ","), ["hello", "world"])
+ * pipe("abc", String.split("")) // => ["a", "b", "c"]
+ * pipe("", String.split("")) // => [""]
+ * String.split("hello,world", ",") // => ["hello", "world"]
  * ```
  *
  * @category transforming
@@ -469,10 +457,9 @@ export const split: {
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("hello world", String.includes("world")), true)
- * assert.deepStrictEqual(pipe("hello world", String.includes("foo")), false)
+ * pipe("hello world", String.includes("world")) // => true
+ * pipe("hello world", String.includes("foo")) // => false
  * ```
  *
  * @category predicates
@@ -488,10 +475,9 @@ export const includes = (searchString: string, position?: number) => (self: stri
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("hello world", String.startsWith("hello")), true)
- * assert.deepStrictEqual(pipe("hello world", String.startsWith("world")), false)
+ * pipe("hello world", String.startsWith("hello")) // => true
+ * pipe("hello world", String.startsWith("world")) // => false
  * ```
  *
  * @category predicates
@@ -507,10 +493,9 @@ export const startsWith = (searchString: string, position?: number) => (self: st
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("hello world", String.endsWith("world")), true)
- * assert.deepStrictEqual(pipe("hello world", String.endsWith("hello")), false)
+ * pipe("hello world", String.endsWith("world")) // => true
+ * pipe("hello world", String.endsWith("hello")) // => false
  * ```
  *
  * @category predicates
@@ -525,10 +510,10 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
  * **Example** (Reading character codes)
  *
  * ```ts import.meta.vitest
- * import { String } from "effect"
+ * import { Option, String } from "effect"
  *
- * String.charCodeAt("abc", 1) // Option.some(98)
- * String.charCodeAt("abc", 4) // Option.none()
+ * String.charCodeAt("abc", 1) // => Option.some(98)
+ * String.charCodeAt("abc", 4) // => Option.none()
  * ```
  *
  * @category elements
@@ -551,8 +536,8 @@ export const charCodeAt: {
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
- * pipe("abcd", String.substring(1)) // "bcd"
- * pipe("abcd", String.substring(1, 3)) // "bc"
+ * pipe("abcd", String.substring(1)) // => "bcd"
+ * pipe("abcd", String.substring(1, 3)) // => "bc"
  * ```
  *
  * @category transforming
@@ -566,10 +551,10 @@ export const substring = (start: number, end?: number) => (self: string): string
  * **Example** (Accessing characters safely)
  *
  * ```ts import.meta.vitest
- * import { pipe, String } from "effect"
+ * import { Option, pipe, String } from "effect"
  *
- * pipe("abc", String.at(1)) // Option.some("b")
- * pipe("abc", String.at(4)) // Option.none()
+ * pipe("abc", String.at(1)) // => Option.some("b")
+ * pipe("abc", String.at(4)) // => Option.none()
  * ```
  *
  * @category elements
@@ -586,10 +571,10 @@ export const at: {
  * **Example** (Reading characters safely)
  *
  * ```ts import.meta.vitest
- * import { pipe, String } from "effect"
+ * import { Option, pipe, String } from "effect"
  *
- * pipe("abc", String.charAt(1)) // Option.some("b")
- * pipe("abc", String.charAt(4)) // Option.none()
+ * pipe("abc", String.charAt(1)) // => Option.some("b")
+ * pipe("abc", String.charAt(4)) // => Option.none()
  * ```
  *
  * @category elements
@@ -609,10 +594,10 @@ export const charAt: {
  * **Example** (Reading code points)
  *
  * ```ts import.meta.vitest
- * import { pipe, String } from "effect"
+ * import { Option, pipe, String } from "effect"
  *
- * pipe("abc", String.codePointAt(1)) // Option.some(98)
- * pipe("abc", String.codePointAt(10)) // Option.none()
+ * pipe("abc", String.codePointAt(1)) // => Option.some(98)
+ * pipe("abc", String.codePointAt(10)) // => Option.none()
  * ```
  *
  * @category elements
@@ -629,10 +614,10 @@ export const codePointAt: {
  * **Example** (Finding the first substring index)
  *
  * ```ts import.meta.vitest
- * import { pipe, String } from "effect"
+ * import { Option, pipe, String } from "effect"
  *
- * pipe("abbbc", String.indexOf("b")) // Option.some(1)
- * pipe("abbbc", String.indexOf("z")) // Option.none()
+ * pipe("abbbc", String.indexOf("b")) // => Option.some(1)
+ * pipe("abbbc", String.indexOf("z")) // => Option.none()
  * ```
  *
  * @category searching
@@ -647,10 +632,10 @@ export const indexOf = (searchString: string) => (self: string): Option.Option<n
  * **Example** (Finding the last substring index)
  *
  * ```ts import.meta.vitest
- * import { pipe, String } from "effect"
+ * import { Option, pipe, String } from "effect"
  *
- * pipe("abbbc", String.lastIndexOf("b")) // Option.some(3)
- * pipe("abbbc", String.lastIndexOf("d")) // Option.none()
+ * pipe("abbbc", String.lastIndexOf("b")) // => Option.some(3)
+ * pipe("abbbc", String.lastIndexOf("d")) // => Option.none()
  * ```
  *
  * @category searching
@@ -668,11 +653,10 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("a", String.localeCompare("b")), -1)
- * assert.deepStrictEqual(pipe("b", String.localeCompare("a")), 1)
- * assert.deepStrictEqual(pipe("a", String.localeCompare("a")), 0)
+ * pipe("a", String.localeCompare("b")) // => -1
+ * pipe("b", String.localeCompare("a")) // => 1
+ * pipe("a", String.localeCompare("a")) // => 0
  * ```
  *
  * @category comparing
@@ -691,13 +675,12 @@ export const localeCompare =
  * ```ts import.meta.vitest
  * import { Option, pipe, String } from "effect"
  *
- * const match = pipe("hello", String.match(/l+/))
- *
- * if (Option.isSome(match)) {
- *   console.log(`${match.value[0]}@${match.value.index}`) // > ll@2
- * }
- *
- * console.log(Option.isNone(pipe("hello", String.match(/x/)))) // > true
+ * pipe(
+ *   "hello",
+ *   String.match(/l+/),
+ *   Option.map((match) => [match[0], match.index])
+ * ) // => Option.some(["ll", 2])
+ * pipe("hello", String.match(/x/)) // => Option.none()
  * ```
  *
  * @category searching
@@ -716,9 +699,8 @@ export const match = (regExp: RegExp | string) => (self: string): Option.Option<
  * import { pipe, String } from "effect"
  *
  * const matches = pipe("hello world", String.matchAll(/l/g))
- * console.log(
- *   Array.from(matches, (match) => `${match[0]}@${match.index}`).join(", ")
- * ) // "l@2, l@3, l@9"
+ *
+ * Array.from(matches, (match) => [match[0], match.index]) // => [["l", 2], ["l", 3], ["l", 9]]
  * ```
  *
  * @category searching
@@ -733,17 +715,19 @@ export const matchAll = (regExp: RegExp) => (self: string): IterableIterator<Reg
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
  * const str = "\u1E9B\u0323"
- * assert.deepStrictEqual(pipe(str, String.normalize()), "\u1E9B\u0323")
- * assert.deepStrictEqual(pipe(str, String.normalize("NFC")), "\u1E9B\u0323")
- * assert.deepStrictEqual(pipe(str, String.normalize("NFD")), "\u017F\u0323\u0307")
- * assert.deepStrictEqual(pipe(str, String.normalize("NFKC")), "\u1E69")
- * assert.deepStrictEqual(
+ * Array.from(pipe(str, String.normalize()), (character) => character.codePointAt(0)) // => [0x1e9b, 0x323]
+ * Array.from(pipe(str, String.normalize("NFC")), (character) => character.codePointAt(0)) // => [0x1e9b, 0x323]
+ * Array.from(
+ *   pipe(str, String.normalize("NFD")),
+ *   (character) => character.codePointAt(0)
+ * ) // => [0x17f, 0x323, 0x307]
+ * Array.from(pipe(str, String.normalize("NFKC")), (character) => character.codePointAt(0)) // => [0x1e69]
+ * Array.from(
  *   pipe(str, String.normalize("NFKD")),
- *   "\u0073\u0323\u0307"
- * )
+ *   (character) => character.codePointAt(0)
+ * ) // => [0x73, 0x323, 0x307]
  * ```
  *
  * @category transforming
@@ -758,10 +742,9 @@ export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: stri
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("a", String.padEnd(5)), "a    ")
- * assert.deepStrictEqual(pipe("a", String.padEnd(5, "_")), "a____")
+ * pipe("a", String.padEnd(5)) // => "a    "
+ * pipe("a", String.padEnd(5, "_")) // => "a____"
  * ```
  *
  * @category transforming
@@ -777,10 +760,9 @@ export const padEnd = (maxLength: number, fillString?: string) => (self: string)
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("a", String.padStart(5)), "    a")
- * assert.deepStrictEqual(pipe("a", String.padStart(5, "_")), "____a")
+ * pipe("a", String.padStart(5)) // => "    a"
+ * pipe("a", String.padStart(5, "_")) // => "____a"
  * ```
  *
  * @category transforming
@@ -796,10 +778,9 @@ export const padStart = (maxLength: number, fillString?: string) => (self: strin
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("a", String.repeat(5)), "aaaaa")
- * assert.deepStrictEqual(pipe("hello", String.repeat(3)), "hellohellohello")
+ * pipe("a", String.repeat(5)) // => "aaaaa"
+ * pipe("hello", String.repeat(3)) // => "hellohellohello"
  * ```
  *
  * @category transforming
@@ -814,10 +795,9 @@ export const repeat = (count: number) => (self: string): string => self.repeat(c
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe("ababb", String.replaceAll("b", "c")), "acacc")
- * assert.deepStrictEqual(pipe("ababb", String.replaceAll(/ba/g, "cc")), "accbb")
+ * pipe("ababb", String.replaceAll("b", "c")) // => "acacc"
+ * pipe("ababb", String.replaceAll(/ba/g, "cc")) // => "accbb"
  * ```
  *
  * @category transforming
@@ -833,11 +813,11 @@ export const replaceAll = (searchValue: string | RegExp, replaceValue: string) =
  * **Example** (Searching strings)
  *
  * ```ts import.meta.vitest
- * import { String } from "effect"
+ * import { Option, String } from "effect"
  *
- * String.search("ababb", "b") // Option.some(1)
- * String.search("ababb", /abb/) // Option.some(2)
- * String.search("ababb", "d") // Option.none()
+ * String.search("ababb", "b") // => Option.some(1)
+ * String.search("ababb", /abb/) // => Option.some(2)
+ * String.search("ababb", "d") // => Option.none()
  * ```
  *
  * @category searching
@@ -859,10 +839,9 @@ export const search: {
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
  * const str = "\u0130"
- * assert.deepStrictEqual(pipe(str, String.toLocaleLowerCase("tr")), "i")
+ * pipe(str, String.toLocaleLowerCase("tr")) // => "i"
  * ```
  *
  * @category transforming
@@ -878,10 +857,9 @@ export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: str
  *
  * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
  * const str = "i\u0307"
- * assert.deepStrictEqual(pipe(str, String.toLocaleUpperCase("lt-LT")), "I")
+ * pipe(str, String.toLocaleUpperCase("lt-LT")) // => "I"
  * ```
  *
  * @category transforming
@@ -906,9 +884,8 @@ export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: str
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.takeLeft("Hello World", 5), "Hello")
+ * String.takeLeft("Hello World", 5) // => "Hello"
  * ```
  *
  * @category transforming
@@ -935,9 +912,8 @@ export const takeLeft: {
  *
  * ```ts import.meta.vitest
  * import { String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(String.takeRight("Hello World", 5), "World")
+ * String.takeRight("Hello World", 5) // => "World"
  * ```
  *
  * @category transforming
@@ -963,8 +939,7 @@ const LF = 0x0a
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * const lines = String.linesIterator("hello\nworld\n")
- * console.log(Array.from(lines)) // > [ 'hello', 'world' ]
+ * Array.from(String.linesIterator("hello\nworld\n")) // => ["hello", "world"]
  * ```
  *
  * @category splitting
@@ -981,8 +956,7 @@ export const linesIterator = (self: string): LinesIterator => linesSeparated(sel
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * const lines = String.linesWithSeparators("hello\nworld\n")
- * console.log(Array.from(lines)) // > [ 'hello\n', 'world\n' ]
+ * Array.from(String.linesWithSeparators("hello\nworld\n")) // => ["hello\n", "world\n"]
  * ```
  *
  * @category splitting
@@ -999,9 +973,7 @@ export const linesWithSeparators = (s: string): LinesIterator => linesSeparated(
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * const text = "  |hello\n  |world"
- * const result = String.stripMarginWith(text, "|")
- * console.log(result) // "hello\nworld"
+ * String.stripMarginWith("  |hello\n  |world", "|") // => "hello\nworld"
  * ```
  *
  * @category transforming
@@ -1038,9 +1010,7 @@ export const stripMarginWith: {
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * const text = "  |hello\n  |world"
- * const result = String.stripMargin(text)
- * console.log(result) // "hello\nworld"
+ * String.stripMargin("  |hello\n  |world") // => "hello\nworld"
  * ```
  *
  * @category transforming
@@ -1056,8 +1026,8 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToCamel("hello_world")) // > helloWorld
- * console.log(String.snakeToCamel("foo_bar_baz")) // > fooBarBaz
+ * String.snakeToCamel("hello_world") // => "helloWorld"
+ * String.snakeToCamel("foo_bar_baz") // => "fooBarBaz"
  * ```
  *
  * @category transforming
@@ -1079,8 +1049,8 @@ export const snakeToCamel = (self: string): string => {
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToPascal("hello_world")) // > HelloWorld
- * console.log(String.snakeToPascal("foo_bar_baz")) // > FooBarBaz
+ * String.snakeToPascal("hello_world") // => "HelloWorld"
+ * String.snakeToPascal("foo_bar_baz") // => "FooBarBaz"
  * ```
  *
  * @category transforming
@@ -1102,8 +1072,8 @@ export const snakeToPascal = (self: string): string => {
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToKebab("hello_world")) // > hello-world
- * console.log(String.snakeToKebab("foo_bar_baz")) // > foo-bar-baz
+ * String.snakeToKebab("hello_world") // => "hello-world"
+ * String.snakeToKebab("foo_bar_baz") // => "foo-bar-baz"
  * ```
  *
  * @category transforming
@@ -1119,8 +1089,8 @@ export const snakeToKebab = (self: string): string => self.replace(/_/g, "-")
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.camelToSnake("helloWorld")) // > hello_world
- * console.log(String.camelToSnake("fooBarBaz")) // > foo_bar_baz
+ * String.camelToSnake("helloWorld") // => "hello_world"
+ * String.camelToSnake("fooBarBaz") // => "foo_bar_baz"
  * ```
  *
  * @category transforming
@@ -1136,8 +1106,8 @@ export const camelToSnake = (self: string): string => self.replace(/([A-Z])/g, "
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.pascalToSnake("HelloWorld")) // > hello_world
- * console.log(String.pascalToSnake("FooBarBaz")) // > foo_bar_baz
+ * String.pascalToSnake("HelloWorld") // => "hello_world"
+ * String.pascalToSnake("FooBarBaz") // => "foo_bar_baz"
  * ```
  *
  * @category transforming
@@ -1154,8 +1124,8 @@ export const pascalToSnake = (self: string): string =>
  * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.kebabToSnake("hello-world")) // > hello_world
- * console.log(String.kebabToSnake("foo-bar-baz")) // > foo_bar_baz
+ * String.kebabToSnake("hello-world") // => "hello_world"
+ * String.kebabToSnake("foo-bar-baz") // => "foo_bar_baz"
  * ```
  *
  * @category transforming

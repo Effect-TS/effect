@@ -42,9 +42,11 @@ import * as Layer from "../Layer.ts"
  *   const logs = yield* TestConsole.logLines
  *   const errors = yield* TestConsole.errorLines
  *
- *   console.log(logs) // [["Hello, World!"]]
- *   console.log(errors) // [["An error occurred"]]
+ *   logs // => ["Hello, World!"]
+ *   errors // => ["An error occurred"]
  * }).pipe(Effect.provide(TestConsole.layer))
+ *
+ * await Effect.runPromise(program)
  * ```
  *
  * @see {@link layer} for providing `TestConsole` to an effect
@@ -104,7 +106,7 @@ export declare namespace TestConsole {
    *
    * const method: TestConsole.TestConsole.Method = "log"
    *
-   * console.log(method) // > log
+   * method // => "log"
    * ```
    *
    * @category models
@@ -130,8 +132,7 @@ export declare namespace TestConsole {
    *   parameters: ["not found"]
    * }
    *
-   * console.log(entry.method) // > error
-   * console.log(entry.parameters) // > [ 'not found' ]
+   * entry // => { method: "error", parameters: ["not found"] }
    * ```
    *
    * @category models
@@ -165,9 +166,11 @@ export declare namespace TestConsole {
  *   const logs = yield* TestConsole.logLines
  *   const errors = yield* TestConsole.errorLines
  *
- *   console.log("Captured logs:", logs)
- *   console.log("Captured errors:", errors)
+ *   logs // => ["Debug message"]
+ *   errors // => ["Error occurred"]
  * }).pipe(Effect.provide(TestConsole.layer))
+ *
+ * await Effect.runPromise(program)
  * ```
  *
  * @see {@link layer} for providing a `TestConsole` as a `Layer`
@@ -237,10 +240,12 @@ export const make = Effect.gen(function*() {
  *     const logs = yield* testConsole.logLines
  *     const errors = yield* testConsole.errorLines
  *
- *     console.log("Logs:", logs) // [["Test message"]]
- *     console.log("Errors:", errors) // [["Test error"]]
+ *     logs // => ["Test message"]
+ *     errors // => ["Test error"]
  *   })
  * ).pipe(Effect.provide(TestConsole.layer))
+ *
+ * await Effect.runPromise(program)
  * ```
  *
  * @see {@link layer} for providing the test console service
@@ -275,9 +280,11 @@ export const testConsoleWith = <A, E, R>(f: (console: TestConsole) => Effect.Eff
  *   const logs = yield* TestConsole.logLines
  *   const errors = yield* TestConsole.errorLines
  *
- *   console.log("Captured logs:", logs)
- *   console.log("Captured errors:", errors)
+ *   logs // => ["This will be captured"]
+ *   errors // => ["This error will be captured"]
  * }).pipe(Effect.provide(TestConsole.layer))
+ *
+ * await Effect.runPromise(program)
  * ```
  *
  * @see {@link make} for constructing the service value directly
@@ -310,13 +317,10 @@ export const layer: Layer.Layer<TestConsole> = Layer.effect(Console.Console)(mak
  *
  *   const logs = yield* TestConsole.logLines
  *
- *   console.log(logs)
- *   // [
- *   //   ["First message"],
- *   //   ["Second message", { key: "value" }],
- *   //   ["Third message", 42, true]
- *   // ]
+ *   logs // => ["First message", "Second message", { key: "value" }, "Third message", 42, true]
  * }).pipe(Effect.provide(TestConsole.layer))
+ *
+ * await Effect.runPromise(program)
  * ```
  *
  * @see {@link errorLines} for reading captured `Console.error` output
@@ -350,12 +354,11 @@ export const logLines: Effect.Effect<ReadonlyArray<unknown>, never, never> = tes
  *
  *   const errors = yield* TestConsole.errorLines
  *
- *   console.log(errors)
- *   // [
- *   //   ["Error message"],
- *   //   ["Another error", Error: Something went wrong]
- *   // ]
+ *   const messages = [errors[0], errors[1], errors[2] instanceof Error ? errors[2].message : undefined]
+ *   messages // => ["Error message", "Another error", "Something went wrong"]
  * }).pipe(Effect.provide(TestConsole.layer))
+ *
+ * await Effect.runPromise(program)
  * ```
  *
  * @see {@link logLines} for reading captured `Console.log` output

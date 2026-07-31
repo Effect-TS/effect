@@ -474,6 +474,7 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  *   )
  *
  * const schema = Box(Schema.Number)
+ * Effect.runSync(Schema.decodeUnknownEffect(schema)({ value: 1 })) // => { value: 1 }
  * ```
  *
  * @category constructors
@@ -537,6 +538,7 @@ export interface declare<T, Iso = T> extends declareConstructor<T, T, readonly [
  *   title: "UserId",
  *   description: "A user identifier starting with 'user_'"
  * })
+ * Schema.decodeUnknownSync(UserId)("user_123") // => "user_123"
  * ```
  *
  * @see {@link declareConstructor} for creating schemas for parametric types.
@@ -630,6 +632,7 @@ export function revealBottom<S extends Top>(
  *     description: "A non-negative integer representing age in years"
  *   })
  * )
+ * Schema.resolveAnnotations(Age)?.title // => "Age"
  * ```
  *
  * @see {@link annotateEncoded} to annotate the encoded side instead.
@@ -662,8 +665,7 @@ export function annotate<S extends Top>(annotations: Annotations.Bottom<S["Type"
  *   })
  * )
  *
- * console.log(Schema.toEncoded(schema).ast.annotations?.title)
- * // "my title"
+ * Schema.toEncoded(schema).ast.annotations?.title // => "my title"
  * ```
  *
  * @see {@link annotate} to annotate the type side instead.
@@ -700,6 +702,7 @@ export function annotateEncoded<S extends Top>(annotations: Annotations.Bottom<S
  *     })
  *   )
  * })
+ * schema.fields.username.ast.context?.annotations?.messageMissingKey // => "Username is required"
  * ```
  *
  * @category annotations
@@ -910,13 +913,13 @@ export declare namespace Schema {
  *
  * **Example** (Accepting any schema decoding to `string`)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
- * declare function print(schema: Schema.Schema<string>): void
+ * const accept = (_schema: Schema.Schema<string>): void => {}
  *
- * print(Schema.String)            // ok
- * print(Schema.NonEmptyString)    // ok
+ * accept(Schema.String)
+ * accept(Schema.NonEmptyString)
  * ```
  *
  * @see {@link Codec} — also tracks Encoded, DecodingServices, EncodingServices
@@ -1008,12 +1011,13 @@ export declare namespace Codec {
  *
  * **Example** (Accepting a codec that decodes to `number` from `string`)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
- * declare function serialize<T>(codec: Schema.Codec<T, string>): string
+ * const serialize = <T>(codec: Schema.Codec<T, string>, value: T): string =>
+ *   Schema.encodeSync(codec)(value)
  *
- * serialize(Schema.NumberFromString) // ok — decodes number, encoded as string
+ * serialize(Schema.NumberFromString, 42) // => "42"
  * ```
  *
  * @see {@link Codec.Encoded} — extract the encoded type
@@ -1144,7 +1148,7 @@ export {
    *   Schema.decodeUnknownSync(Schema.Number)("oops")
    * } catch (err) {
    *   if (Schema.isSchemaError(err)) {
-   *     console.log(err._tag) // > SchemaError
+   *     err._tag // => "SchemaError"
    *   }
    * }
    * ```
@@ -1175,8 +1179,7 @@ export {
    *   Schema.decodeUnknownSync(Schema.Number)("not a number")
    * } catch (err) {
    *   if (Schema.isSchemaError(err)) {
-   *     console.log(err.message)
-   *     // Expected number, actual "not a number"
+   *     err.message // => "Expected number, got \"not a number\""
    *   }
    * }
    * ```
@@ -1244,13 +1247,18 @@ function makeStandardResult<A>(exit: Exit_.Exit<StandardSchemaV1.Result<A>>): St
  *   name: "Alice",
  *   age: 30
  * })
- * console.log(validResult) // { value: { name: "Alice", age: 30 } }
- *
  * const invalidResult = standardSchema["~standard"].validate({
  *   name: "",
  *   age: 200
  * })
- * console.log(invalidResult) // { issues: [{ path: ["name"], message: "..." }, { path: ["age"], message: "..." }] }
+ *
+ * if (validResult instanceof Promise || invalidResult instanceof Promise) {
+ *   throw new Error("Expected synchronous validation")
+ * }
+ * if ("value" in validResult) {
+ *   validResult.value // => { name: "Alice", age: 30 }
+ * }
+ * invalidResult.issues?.map((issue) => issue.path) // => [["name"], ["age"]]
  * ```
  *
  * @category Standard Schema
@@ -1385,14 +1393,14 @@ export function toStandardJSONSchemaV1<S extends Constraint>(
  *
  * const isString = Schema.is(Schema.String)
  *
- * console.log(isString("hello")) // > true
- * console.log(isString(42)) // > false
+ * isString("hello") // => true
+ * isString(42) // => false
  *
  * // Type narrowing in action
  * const value: unknown = "hello"
  * if (isString(value)) {
  *   // value is now typed as string
- *   console.log(value.toUpperCase()) // > HELLO
+ *   value.toUpperCase() // => "HELLO"
  * }
  * ```
  *
@@ -1424,20 +1432,22 @@ export const is = SchemaParser.is
  * **Example** (Asserting and narrowing an input)
  *
  * ```ts import.meta.vitest
- * import { Schema } from "effect"
+ * import { Schema, SchemaIssue } from "effect"
  *
  * const input: unknown = "hello"
  *
  * // This will pass silently (no return value) and narrow input to string
  * Schema.asserts(Schema.String, input)
- * console.log(input.toUpperCase())
+ * input.toUpperCase() // => "HELLO"
  *
  * // This will throw an error
  * try {
  *   const invalid: unknown = 123
  *   Schema.asserts(Schema.String, invalid)
  * } catch (error) {
- *   console.log("Non-string assertion failed as expected")
+ *   if (error instanceof Error) {
+ *     SchemaIssue.isIssue(error.cause) // => true
+ *   }
  * }
  * ```
  *
@@ -1852,14 +1862,7 @@ export const decodePromise: <S extends ConstraintDecoder<unknown>>(
  *
  * const NumberFromString = Schema.NumberFromString
  *
- * console.log(Schema.decodeUnknownSync(NumberFromString)("42"))
- * // Output: 42
- *
- * Schema.decodeUnknownSync(NumberFromString)("not a number")
- * // throws SchemaError: NumberFromString
- * //   └─ Encoded side transformation failure
- * //      └─ NumberFromString
- * //         └─ Expected a numeric string, actual "not a number"
+ * Schema.decodeUnknownSync(NumberFromString)("42") // => 42
  * ```
  *
  * @see {@link SchemaParser.decodeUnknownSync} for the adapter that throws an `Error` whose cause is `SchemaIssue.Issue`
@@ -1928,8 +1931,7 @@ export const decodeSync: <S extends ConstraintDecoder<unknown>>(
  *
  * const NumberFromString = Schema.NumberFromString
  *
- * Effect.runPromise(Schema.encodeUnknownEffect(NumberFromString)(42)).then(console.log)
- * // Output: "42"
+ * await Effect.runPromise(Schema.encodeUnknownEffect(NumberFromString)(42)) // => "42"
  * ```
  *
  * @see {@link SchemaParser.encodeUnknownEffect} for the adapter that fails with `SchemaIssue.Issue` directly
@@ -2684,7 +2686,7 @@ function isFlip$(schema: Top): schema is flip<any> {
  *
  * // NumberFromString: decodes string → number
  * const flipped = Schema.flip(Schema.NumberFromString)
- * // flipped: decodes number → string
+ * Schema.decodeSync(flipped)(42) // => "42"
  * ```
  *
  * @category transforming
@@ -2721,6 +2723,7 @@ export interface Literal<L extends SchemaAST.LiteralValue>
  *
  * const schema = Schema.Literal("hello")
  * // Type: Schema.Literal<"hello">
+ * Schema.decodeSync(schema)("hello") // => "hello"
  * ```
  *
  * @see {@link Literals} for a schema that represents a union of literals.
@@ -2852,7 +2855,7 @@ function templateLiteralFromParts<Parts extends TemplateLiteral.Parts>(parts: Pa
  * import { Schema } from "effect"
  *
  * const schema = Schema.TemplateLiteral(["/user/", Schema.Number])
- * // matches strings like "/user/123", "/user/42", etc.
+ * Schema.is(schema)("/user/123") // => true
  * ```
  *
  * @see {@link TemplateLiteralParser} for a schema that also parses matched parts into a tuple.
@@ -2931,7 +2934,7 @@ export interface TemplateLiteralParser<Parts extends TemplateLiteral.Parts> exte
  * import { Schema } from "effect"
  *
  * const schema = Schema.TemplateLiteralParser(["/user/", Schema.NumberFromString])
- * // decodes "/user/42" => readonly ["/user/", 42]
+ * Schema.decodeSync(schema)("/user/42") // => ["/user/", 42]
  * ```
  *
  * @see {@link TemplateLiteral} for a validation-only version that keeps the string encoded.
@@ -2970,7 +2973,7 @@ export interface Enum<A extends { [x: string]: string | number }>
  * }
  *
  * const schema = Schema.Enum(Direction)
- * // accepts "Up" or "Down"
+ * Schema.decodeSync(schema)(Direction.Up) // => "Up"
  * ```
  *
  * @category constructors
@@ -3244,6 +3247,7 @@ export interface UniqueSymbol<sym extends symbol>
  *
  * const mySymbol = Symbol.for("mySymbol")
  * const schema = Schema.UniqueSymbol(mySymbol)
+ * Schema.decodeSync(schema)(mySymbol) === mySymbol // => true
  * ```
  *
  * @see {@link Symbol} for a schema that accepts any symbol.
@@ -3449,6 +3453,7 @@ export interface Struct<Fields extends Struct.Fields> extends BottomLazy<SchemaA
    *   name: Schema.String,
    *   email: Schema.String
    * })
+   * Object.keys(User.fields) // => ["createdAt", "updatedAt", "name", "email"]
    * ```
    */
   readonly fields: Fields
@@ -3517,9 +3522,7 @@ function makeStruct<const Fields extends Struct.Fields>(ast: SchemaAST.Objects, 
  * // { readonly name: string; readonly age: number; readonly email?: string }
  * type Person = typeof Person.Type
  *
- * const alice = Schema.decodeUnknownSync(Person)({ name: "Alice", age: 30 })
- * console.log(alice)
- * // { name: 'Alice', age: 30 }
+ * Schema.decodeUnknownSync(Person)({ name: "Alice", age: 30 }) // => { name: "Alice", age: 30 }
  * ```
  *
  * @category constructors
@@ -3560,6 +3563,7 @@ interface fieldsAssign<NewFields extends Struct.Fields> extends Lambda {
  *   Schema.Struct({ a: Schema.String }),
  *   Schema.Struct({ b: Schema.Number })
  * ]).mapMembers(Tuple.map(Schema.fieldsAssign({ c: Schema.Number })))
+ * Schema.decodeSync(schema)({ a: "a", c: 1 }) // => { a: "a", c: 1 }
  * ```
  *
  * @category combinators
@@ -3614,9 +3618,7 @@ const canonicalPropertyKey = (key: PropertyKey): string | symbol =>
  * const Encoded = Person.pipe(Schema.encodeKeys({ name: "full_name" }))
  *
  * // Decodes { full_name: "Alice", age: 30 } → { name: "Alice", age: 30 }
- * const alice = Schema.decodeUnknownSync(Encoded)({ full_name: "Alice", age: 30 })
- * console.log(alice)
- * // { name: 'Alice', age: 30 }
+ * Schema.decodeUnknownSync(Encoded)({ full_name: "Alice", age: 30 }) // => { name: "Alice", age: 30 }
  * ```
  *
  * @category transforming
@@ -3680,8 +3682,7 @@ export function encodeKeys<
  * )
  *
  * const alice = Schema.decodeUnknownSync(Extended)({ first: "Alice", last: "Smith" })
- * console.log(alice.fullName)
- * // Alice Smith
+ * alice.fullName // => "Alice Smith"
  * ```
  *
  * @category transforming
@@ -3901,9 +3902,7 @@ export interface $Record<Key extends Record.Key, Value extends Constraint> exten
  * // { readonly [x: string]: number }
  * type R = typeof schema.Type
  *
- * const result = Schema.decodeUnknownSync(schema)({ a: 1, b: 2 })
- * console.log(result)
- * // { a: 1, b: 2 }
+ * Schema.decodeUnknownSync(schema)({ a: 1, b: 2 }) // => { a: 1, b: 2 }
  * ```
  *
  * @category constructors
@@ -4354,9 +4353,7 @@ function makeTuple<Elements extends Tuple.Elements>(ast: SchemaAST.Arrays, eleme
  *
  * const schema = Schema.Tuple([Schema.String, Schema.Number])
  *
- * const pair = Schema.decodeUnknownSync(schema)(["hello", 42])
- * console.log(pair)
- * // [ 'hello', 42 ]
+ * Schema.decodeUnknownSync(schema)(["hello", 42]) // => ["hello", 42]
  * ```
  *
  * @category constructors
@@ -4536,9 +4533,7 @@ export interface TupleWithRest<
  *   [Schema.Boolean]
  * )
  *
- * const result = Schema.decodeUnknownSync(schema)(["hello", 1, true, false])
- * console.log(result)
- * // [ 'hello', 1, true, false ]
+ * Schema.decodeUnknownSync(schema)(["hello", 1, true, false]) // => ["hello", 1, true, false]
  * ```
  *
  * @category constructors
@@ -4597,9 +4592,7 @@ export {
    *
    * const schema = Schema.Array(Schema.String)
    *
-   * const result = Schema.decodeUnknownSync(schema)(["a", "b", "c"])
-   * console.log(result)
-   * // [ 'a', 'b', 'c' ]
+   * Schema.decodeUnknownSync(schema)(["a", "b", "c"]) // => ["a", "b", "c"]
    * ```
    *
    * @category constructors
@@ -4641,13 +4634,12 @@ interface NonEmptyArrayLambda extends Lambda {
  *
  * **Example** (Defining a non-empty array of numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * const schema = Schema.NonEmptyArray(Schema.Number)
  *
- * Schema.decodeUnknownSync(schema)([1, 2, 3])  // ok
- * Schema.decodeUnknownSync(schema)([])          // throws
+ * Schema.decodeUnknownSync(schema)([1, 2, 3]) // => [1, 2, 3]
  * ```
  *
  * @category constructors
@@ -4776,6 +4768,9 @@ interface mutableLambda extends Lambda {
  *
  * // number[]   (mutable)
  * type T = typeof schema.Type
+ * const value: T = [1, 2]
+ * value.push(3)
+ * value // => [1, 2, 3]
  * ```
  *
  * @category transforming
@@ -4868,8 +4863,8 @@ function makeUnion<Members extends ReadonlyArray<Constraint>>(
  *
  * const schema = Schema.Union([Schema.String, Schema.Number])
  *
- * Schema.decodeUnknownSync(schema)("hello") // "hello"
- * Schema.decodeUnknownSync(schema)(42)       // 42
+ * Schema.decodeUnknownSync(schema)("hello") // => "hello"
+ * Schema.decodeUnknownSync(schema)(42) // => 42
  * ```
  *
  * @category constructors
@@ -4914,7 +4909,7 @@ export interface Literals<L extends ReadonlyArray<SchemaAST.LiteralValue>>
  * import { Schema } from "effect"
  *
  * const schema = Schema.Literals(["active", "inactive", "pending"])
- * // accepts "active", "inactive", or "pending"
+ * Schema.decodeSync(schema)("active") // => "active"
  * ```
  *
  * @see {@link Literal} for a schema that represents a single literal.
@@ -5058,6 +5053,7 @@ export interface suspend<S extends Constraint> extends
  *   value: Schema.Number,
  *   children: Schema.Array(Schema.suspend((): Schema.Codec<Tree> => Tree))
  * })
+ * Schema.decodeSync(Tree)({ value: 1, children: [] }) // => { value: 1, children: [] }
  * ```
  *
  * @category constructors
@@ -5079,6 +5075,8 @@ export function suspend<S extends Constraint>(f: () => S): suspend<S> {
  * const AgeSchema = Schema.Finite.pipe(
  *   Schema.check(Schema.isGreaterThanOrEqualTo(0), Schema.isLessThanOrEqualTo(120))
  * )
+ * Schema.is(AgeSchema)(42) // => true
+ * Schema.is(AgeSchema)(121) // => false
  * ```
  *
  * @category filtering
@@ -5255,9 +5253,10 @@ export interface middlewareDecoding<S extends Constraint, RD> extends
  *
  * const Logged = Schema.String.pipe(
  *   Schema.middlewareDecoding((effect) =>
- *     Effect.tapError(effect, (issue) => Effect.log("decode failed", issue))
+ *     Effect.tapError(effect, () => Effect.sync(() => console.log("decode failed")))
  *   )
  * )
+ * Effect.runSync(Effect.result(Schema.decodeUnknownEffect(Logged)(42)))
  * ```
  *
  * @see {@link catchDecoding} for a simpler error-recovery variant
@@ -5321,9 +5320,10 @@ export interface middlewareEncoding<S extends Constraint, RE> extends
  *
  * const Logged = Schema.String.pipe(
  *   Schema.middlewareEncoding((effect) =>
- *     Effect.tapError(effect, (issue) => Effect.log("encode failed", issue))
+ *     Effect.tapError(effect, () => Effect.sync(() => console.log("encode failed")))
  *   )
  * )
+ * Effect.runSync(Effect.result(Schema.encodeUnknownEffect(Logged)(42)))
  * ```
  *
  * @see {@link catchEncoding} for a simpler error-recovery variant
@@ -5359,6 +5359,7 @@ export function middlewareEncoding<S extends Constraint, RE>(
  * const schema = Schema.Number.pipe(
  *   Schema.catchDecoding((_issue) => Effect.succeed(Option.some(0)))
  * )
+ * Effect.runSync(Schema.decodeUnknownEffect(schema)("invalid")) // => 0
  * ```
  *
  * @see {@link catchDecodingWithContext} to add service requirements to the handler
@@ -5521,8 +5522,7 @@ export interface compose<To extends Constraint, From extends Constraint> extends
  *   )
  * )
  *
- * const result = Schema.decodeUnknownSync(NumberFromString)("123")
- * // result: 123
+ * Schema.decodeUnknownSync(NumberFromString)("123") // => 123
  * ```
  *
  * @category transforming
@@ -5594,8 +5594,7 @@ export function decodeTo<To extends Constraint, From extends Constraint, RD = ne
  *   })
  * )
  *
- * const result = Schema.decodeUnknownSync(Trimmed)("  hello  ")
- * // result: "hello"
+ * Schema.decodeUnknownSync(Trimmed)("  hello  ") // => "hello"
  * ```
  *
  * @category transforming
@@ -5634,6 +5633,7 @@ export function decode<S extends Constraint, RD = never, RE = never>(transformat
  *     encode: SchemaGetter.transform((n: number) => String(n))
  *   })
  * )
+ * Schema.decodeSync(NumberFromString)("42") // => 42
  * ```
  *
  * @category transforming
@@ -5683,6 +5683,7 @@ export function encodeTo<To extends Constraint, From extends Constraint, RD = ne
  *     encode: SchemaGetter.transform((s: string) => s.toUpperCase())
  *   })
  * )
+ * Schema.encodeSync(UpperFromLower)("hello") // => "HELLO"
  * ```
  *
  * @category transforming
@@ -5759,8 +5760,7 @@ export interface withConstructorDefault<S extends Constraint & WithoutConstructo
  *   )
  * })
  *
- * const value = MySchema.make({})
- * // value: { name: "anonymous" }
+ * MySchema.make({}).name // => "anonymous"
  * ```
  *
  * @category constructors
@@ -5834,8 +5834,7 @@ export type DecodingDefaultOptions = {
  *   name: Schema.String.pipe(Schema.withDecodingDefaultKey(Effect.succeed("anonymous")))
  * })
  *
- * const result = Schema.decodeUnknownSync(MySchema)({})
- * // result: { name: "anonymous" }
+ * Schema.decodeUnknownSync(MySchema)({}).name // => "anonymous"
  * ```
  *
  * @see {@link withDecodingDefault} for the value-level variant (key absent **or** `undefined`)
@@ -5942,8 +5941,7 @@ export interface withDecodingDefault<S extends Constraint, R = never> extends de
  *   name: Schema.String.pipe(Schema.optional, Schema.withDecodingDefault(Effect.succeed("anonymous")))
  * })
  *
- * const result = Schema.decodeUnknownSync(MySchema)({ name: undefined })
- * // result: { name: "anonymous" }
+ * Schema.decodeUnknownSync(MySchema)({ name: undefined }).name // => "anonymous"
  * ```
  *
  * @see {@link withDecodingDefaultKey} for the key-level variant (key absent only, not `undefined`)
@@ -6037,7 +6035,7 @@ export interface tag<Tag extends SchemaAST.LiteralValue> extends withConstructor
  *
  * // _tag is optional in make, auto-filled to "A"
  * const a = A.make({ value: 42 })
- * // a: { _tag: "A", value: 42 }
+ * a // => { _tag: "A", value: 42 }
  * ```
  *
  * @see {@link tagDefaultOmit} to also omit the tag during encoding
@@ -6073,8 +6071,7 @@ export function tag<Tag extends SchemaAST.LiteralValue>(literal: Tag): tag<Tag> 
  * })
  *
  * // Encode strips the _tag field
- * const encoded = Schema.encodeUnknownSync(A)({ _tag: "A", value: 1 })
- * // encoded: { value: 1 }
+ * Schema.encodeUnknownSync(A)({ _tag: "A", value: 1 }) // => { value: 1 }
  * ```
  *
  * @see {@link tag} for the variant that keeps the tag during encoding
@@ -6123,6 +6120,8 @@ export type TaggedStruct<Tag extends SchemaAST.LiteralValue, Fields extends Stru
  *   _tag: Schema.tag("A"),
  *   a: Schema.String
  * })
+ * void tagged
+ * void equivalent
  * ```
  *
  * **Example** (Accessing the literal value of the tag)
@@ -6134,8 +6133,7 @@ export type TaggedStruct<Tag extends SchemaAST.LiteralValue, Fields extends Stru
  *   a: Schema.String
  * })
  *
- * // literal: "A"
- * const literal = tagged.fields._tag.schema.literal
+ * tagged.fields._tag.schema.literal // => "A"
  * ```
  *
  * @category constructors
@@ -6223,6 +6221,7 @@ export type toTaggedUnion<
  *   A: (a) => `number: ${a.value}`,
  *   B: (b) => `name: ${b.name}`
  * })
+ * result // => "number: 1"
  * ```
  *
  * @see {@link TaggedUnion} for a shorthand that builds the union from scratch
@@ -6345,6 +6344,7 @@ export interface TaggedUnion<Cases extends Record<string, Constraint>> extends
  *   Circle: (c) => Math.PI * c.radius ** 2,
  *   Rectangle: (r) => r.width * r.height
  * })
+ * Math.round(area * 100) / 100 // => 78.54
  * ```
  *
  * @see {@link toTaggedUnion} to augment an existing union instead
@@ -6412,7 +6412,7 @@ export interface Opaque<Self, S extends Top, Brand> extends
  *
  * // Decoded value is Person, not { name: string }
  * const person = Schema.decodeUnknownSync(Person)({ name: "Alice" })
- * // person: Person
+ * person.name // => "Alice"
  * ```
  *
  * @category constructors
@@ -6446,7 +6446,7 @@ export interface instanceOf<T, Iso = T> extends declare<T, Iso> {
  * const DateSchema = Schema.instanceOf(Date)
  *
  * const decoded = Schema.decodeUnknownSync(DateSchema)(new Date("2024-01-01"))
- * // decoded: Date
+ * decoded.toISOString() // => "2024-01-01T00:00:00.000Z"
  * ```
  *
  * @category constructors
@@ -6499,7 +6499,7 @@ export function link<T>() {
  * **Example** (Reporting failure at a nested path)
  *
  * ```ts import.meta.vitest
- * import { Schema } from "effect"
+ * import { Result, Schema } from "effect"
  *
  * const schema = Schema.Struct({ password: Schema.String, confirmPassword: Schema.String }).check(
  *   Schema.makeFilter((o) =>
@@ -6509,15 +6509,16 @@ export function link<T>() {
  *   )
  * )
  *
- * console.log(String(Schema.decodeUnknownExit(schema)({ password: "123456", confirmPassword: "1234567" })))
- * // Failure(Cause([Fail(SchemaError: password and confirmPassword must match
- * //   at ["password"])]))
+ * const result = Schema.decodeUnknownResult(schema)({ password: "123456", confirmPassword: "1234567" })
+ * if (Result.isFailure(result) && result.failure._tag === "Filter" && result.failure.issue._tag === "Pointer") {
+ *   result.failure.issue.path // => ["password"]
+ * }
  * ```
  *
  * **Example** (Reporting multiple failures at once)
  *
  * ```ts import.meta.vitest
- * import { Schema } from "effect"
+ * import { Result, Schema } from "effect"
  *
  * const schema = Schema.Struct({ a: Schema.Finite, b: Schema.Finite, c: Schema.Finite }).check(
  *   Schema.makeFilter((o) => {
@@ -6530,11 +6531,10 @@ export function link<T>() {
  *   })
  * )
  *
- * console.log(String(Schema.decodeUnknownExit(schema)({ a: 1, b: 0, c: 0 })))
- * // Failure(Cause([Fail(SchemaError: b must be greater than 0
- * //   at ["b"]
- * // c must be greater than 0
- * //   at ["c"])]))
+ * const result = Schema.decodeUnknownResult(schema)({ a: 1, b: 0, c: 0 })
+ * if (Result.isFailure(result) && result.failure._tag === "Filter" && result.failure.issue._tag === "Composite") {
+ *   result.failure.issue.issues.map((issue) => issue._tag === "Pointer" ? issue.path : []) // => [["b"], ["c"]]
+ * }
  * ```
  *
  * @category constructors
@@ -8753,6 +8753,8 @@ export const isBetweenBigDecimal = makeIsBetween({
  *
  * const NonEmptyStringSchema = Schema.String.check(Schema.isMinLength(1))
  * const NonEmptyArraySchema = Schema.Array(Schema.Number).check(Schema.isMinLength(1))
+ * Schema.is(NonEmptyStringSchema)("a") // => true
+ * Schema.is(NonEmptyArraySchema)([1]) // => true
  * ```
  *
  * @category Length checks
@@ -11828,8 +11830,8 @@ const DateString = String.annotate({ expected: "a string that will be decoded as
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
- * Schema.decodeUnknownSync(Schema.Date)(new Date("2024-01-01"))
- * // => Date { 2024-01-01T00:00:00.000Z }
+ * const date = Schema.decodeUnknownSync(Schema.Date)(new Date("2024-01-01"))
+ * date.toISOString() // => "2024-01-01T00:00:00.000Z"
  * ```
  *
  * @see {@link DateFromString} for decoding strings into Date instances
@@ -11982,8 +11984,7 @@ export interface Duration extends declare<Duration_.Duration> {
  * ```ts import.meta.vitest
  * import { Duration, Schema } from "effect"
  *
- * Schema.decodeUnknownSync(Schema.Duration)(Duration.seconds(5))
- * // => Duration(5s)
+ * Schema.decodeUnknownSync(Schema.Duration)(Duration.seconds(5)) // => Duration.seconds(5)
  * ```
  *
  * @category Duration
@@ -12404,8 +12405,7 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
  * const schema = Schema.Struct({ a: Schema.Number })
  * const schemaFromJsonString = Schema.fromJsonString(schema, { space: 2 })
  *
- * Schema.encodeSync(schemaFromJsonString)({ a: 1 })
- * // => '{\n  "a": 1\n}'
+ * Schema.encodeSync(schemaFromJsonString)({ a: 1 }) // => "{\n  \"a\": 1\n}"
  * ```
  *
  * @category constructors
@@ -12643,8 +12643,7 @@ export interface fromFormData<S extends Constraint> extends decodeTo<S, FormData
  * formData.append("a", "1")
  * formData.append("b", "2")
  *
- * console.log(String(Schema.decodeUnknownExit(schema)(formData)))
- * // Success({"a":"1"})
+ * Schema.decodeUnknownSync(schema)(formData) // => { a: "1" }
  * ```
  *
  * **Example** (Decoding nested fields)
@@ -12667,8 +12666,7 @@ export interface fromFormData<S extends Constraint> extends decodeTo<S, FormData
  * formData.append("b[c]", "2")
  * formData.append("b[d]", "3")
  *
- * console.log(String(Schema.decodeUnknownExit(schema)(formData)))
- * // Success({"a":"1","b":{"c":"2","d":"3"}})
+ * Schema.decodeUnknownSync(schema)(formData) // => { a: "1", b: { c: "2", d: "3" } }
  * ```
  *
  * **Example** (Parsing non-string values)
@@ -12687,8 +12685,7 @@ export interface fromFormData<S extends Constraint> extends decodeTo<S, FormData
  * const formData = new FormData()
  * formData.append("a", "1")
  *
- * console.log(String(Schema.decodeUnknownExit(schema)(formData)))
- * // Success({"a":1}) // Note: the value is a number
+ * Schema.decodeUnknownSync(schema)(formData) // => { a: 1 }
  * ```
  *
  * @category decoding
@@ -12798,8 +12795,7 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
  *
  * const urlSearchParams = new URLSearchParams("a=1&b=2")
  *
- * console.log(String(Schema.decodeUnknownExit(schema)(urlSearchParams)))
- * // Success({"a":"1"})
+ * Schema.decodeUnknownSync(schema)(urlSearchParams) // => { a: "1" }
  * ```
  *
  * **Example** (Decoding nested fields)
@@ -12819,8 +12815,7 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
  *
  * const urlSearchParams = new URLSearchParams("a=1&b[c]=2&b[d]=3")
  *
- * console.log(String(Schema.decodeUnknownExit(schema)(urlSearchParams)))
- * // Success({"a":"1","b":{"c":"2","d":"3"}})
+ * Schema.decodeUnknownSync(schema)(urlSearchParams) // => { a: "1", b: { c: "2", d: "3" } }
  * ```
  *
  * **Example** (Parsing non-string values)
@@ -12838,8 +12833,7 @@ export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, U
  *
  * const urlSearchParams = new URLSearchParams("a=1&b=2")
  *
- * console.log(String(Schema.decodeUnknownExit(schema)(urlSearchParams)))
- * // Success({"a":1}) // Note: the value is a number
+ * Schema.decodeUnknownSync(schema)(urlSearchParams) // => { a: 1 }
  * ```
  *
  * @category decoding
@@ -13123,8 +13117,7 @@ export interface StringFromUriComponent extends decodeTo<String, String> {
  *   Schema.decodeTo(Schema.fromJsonString(PaginationSchema))
  * )
  *
- * console.log(Schema.encodeSync(UrlSchema)({ maxItemPerPage: 10, page: 1 }))
- * // %7B%22maxItemPerPage%22%3A10%2C%22page%22%3A1%7D
+ * Schema.encodeSync(UrlSchema)({ maxItemPerPage: 10, page: 1 }) // => "%7B%22maxItemPerPage%22%3A10%2C%22page%22%3A1%7D"
  * ```
  *
  * @category string
@@ -14249,8 +14242,8 @@ type MissingSelfGeneric<Usage extends string> =
  * }) {}
  *
  * const alice = new Person({ name: "Alice", age: 30 })
- * console.log(alice.name) // > Alice
- * console.log(`${alice}`) // > Person({"name":"Alice","age":30})
+ * alice.name // => "Alice"
+ * String(alice) // => "Person({\"name\":\"Alice\",\"age\":30})"
  * ```
  *
  * **Example** (Extending a class)
@@ -14267,8 +14260,8 @@ type MissingSelfGeneric<Usage extends string> =
  * }) {}
  *
  * const dog = new Dog({ name: "Rex", breed: "Labrador" })
- * console.log(dog.name) // > Rex
- * console.log(dog.breed) // > Labrador
+ * dog.name // => "Rex"
+ * dog.breed // => "Labrador"
  * ```
  *
  * @see {@link TaggedClass} for adding a `_tag` literal field to the class schema
@@ -14331,8 +14324,8 @@ export const Class: {
  * }) {}
  *
  * const c = new Circle({ radius: 5 })
- * console.log(c._tag) // > Circle
- * console.log(c.radius) // > 5
+ * c._tag // => "Circle"
+ * c.radius // => 5
  * ```
  *
  * @category constructors
@@ -14391,6 +14384,8 @@ export const TaggedClass: {
  * const program = Effect.gen(function*() {
  *   yield* new NotFound({ id: 1 })
  * })
+ * const error = await Effect.runPromise(Effect.flip(program))
+ * error.id // => 1
  * ```
  *
  * @category constructors
@@ -14449,6 +14444,9 @@ export const ErrorClass: {
  * const program = Effect.gen(function*() {
  *   yield* new NotFound({ id: 42 })
  * })
+ * const error = await Effect.runPromise(Effect.flip(program))
+ * error._tag // => "NotFound"
+ * error.id // => 42
  * ```
  *
  * @category constructors
@@ -14545,8 +14543,7 @@ export function toArbitraryLazy<S extends Constraint>(schema: S): LazyArbitrary<
  * )
  *
  * // Sample a random value
- * const sample = FastCheck.sample(PersonArb, 1)[0]
- * console.log(typeof sample.name) // > string
+ * FastCheck.sample(PersonArb, 1)
  * ```
  *
  * @category Arbitrary
@@ -14778,8 +14775,8 @@ export function overrideToEquivalence<S extends Top>(toEquivalence: () => Equiva
  *
  * const eq = Schema.toEquivalence(Schema.Struct({ id: Schema.Number, name: Schema.String }))
  *
- * console.log(eq({ id: 1, name: "Alice" }, { id: 1, name: "Alice" })) // > true
- * console.log(eq({ id: 1, name: "Alice" }, { id: 2, name: "Alice" })) // > false
+ * eq({ id: 1, name: "Alice" }, { id: 1, name: "Alice" }) // => true
+ * eq({ id: 1, name: "Alice" }, { id: 2, name: "Alice" }) // => false
  * ```
  *
  * @category instances
@@ -14875,12 +14872,7 @@ export interface ToJsonSchemaOptions {
    *     key === "markdownDescription" || key.startsWith("x-")
    * })
    *
-   * console.log(doc.schema)
-   * // {
-   * //   type: "string",
-   * //   description: "A name",
-   * //   markdownDescription: "The **name** field"
-   * // }
+   * doc.schema // => { type: "string", description: "A name", markdownDescription: "The **name** field" }
    * ```
    */
   readonly includeAnnotationKey?: ((key: string) => boolean) | undefined
@@ -15913,7 +15905,7 @@ export interface JsonObject {
  * import { Schema } from "effect"
  *
  * const result = Schema.decodeUnknownOption(Schema.Json)({ key: [1, true, null] })
- * console.log(result._tag) // > Some
+ * result._tag // => "Some"
  * ```
  *
  * @category schemas
@@ -16087,8 +16079,7 @@ export declare namespace Annotations {
    *
    * if (version) {
    *   // Access individual parts of the version
-   *   console.log(version[1])
-   *   // Output: 2
+   *   version[1] // => 2
    * }
    * ```
    *

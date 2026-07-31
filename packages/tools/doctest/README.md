@@ -7,8 +7,7 @@ Mark runnable fences with `import.meta.vitest`:
 ````ts
 /**
  * ```ts import.meta.vitest name="adds two numbers"
- * console.log(1 + 1)
- * // > 2
+ * 1 + 1 // => 2
  * ```
  */
 export const value = 1
@@ -16,38 +15,41 @@ export const value = 1
 
 The optional `name="..."` metadata labels the test without appearing in the example body. Unnamed examples use the opening fence line, such as `line 12`; Vitest displays the containing file alongside it.
 
-## Expected console output
+## Inline assertions
 
-Add inline or standalone `// >` comments to assert the complete console output of a snippet:
+Add a trailing `// =>` comment to assert the value of an expression:
 
 ````ts
 /**
  * ```ts import.meta.vitest
- * console.log("Hello") // > Hello
- * console.log({ value: 1 })
- * // > { value: 1 }
+ * import { Array, Option } from "effect"
+ *
+ * Array.get([1, 2, 3], 1) // => Option.some(2)
+ * Array.get([1, 2, 3], 10) // => Option.none()
  * ```
  */
 export const value = 1
 ````
 
-Each `// >` comment represents one line of expected output. When a snippet contains at least one marker, its markers are joined with newlines and compared with output from the Node.js console methods in call order. This includes methods such as `console.log`, `console.dir`, `console.table`, `console.warn`, and `console.error`. Calls through Effect's `Console` service are also captured when it uses the default console service.
+The expected value is a TypeScript expression evaluated in the same lexical scope. Values are compared with Effect's `Equal.equals` semantics, so the convention supports primitives, arrays, plain objects, and Effect data types such as `Option`, `Result`, `Exit`, and `HashMap` without converting them to console output.
 
-Use an angle-bracketed label such as `// > <system time zone>` to match exactly one output line whose value depends on the environment while keeping the surrounding lines exact. The label documents why that line is not asserted exactly.
+Prefer asserting the API call directly instead of introducing a binding used only by the assertion. Keep bindings for reuse or meaningful multi-step setup, with a blank line before a later assertion block. Keep the call and assertion on one line when it fits within 120 characters, and format expected arrays densely, for example `[1, 2]`, `[[1], [2]]`, and `Option.some([1, 2])`. Preserve runnable markers on type-level examples without adding tautological runtime assertions.
+
+An assertion may also trail a single initialized `const` declaration with an identifier binding. The initializer is evaluated once and the binding remains available to subsequent code:
 
 ````ts
 /**
  * ```ts import.meta.vitest
- * console.log("Zone:") // > Zone:
- * console.log(Intl.DateTimeFormat().resolvedOptions().timeZone) // > <system time zone>
+ * import { Effect, Option } from "effect"
+ *
+ * const result = await Effect.runPromise(Effect.succeed(Option.some(1))) // => Option.some(1)
+ * Option.isSome(result) // => true
  * ```
  */
 export const value = 1
 ````
 
-Avoid asserting output from methods such as `console.trace`, `console.timeLog`, and `console.timeEnd`, whose output can depend on stack traces or timing.
-
-Inline markers are convenient for single-line output. Move a marker to the next line when keeping it inline would make the source line longer than 120 characters. Use standalone markers for multiline output or when grouping the complete expected output improves readability. Ordinary comments without `// >` are ignored. Snippets without markers continue to run without asserting their console output. Prefer deterministic output; reserve angle-bracketed wildcard labels for unavoidable environment-dependent lines rather than using them to hide unstable examples. Await asynchronous work so all output occurs before the snippet module finishes evaluating.
+Markers must trail a complete expression statement or supported `const` declaration on the same line. Standalone markers, destructuring declarations, multiple declarations, and `let` or `var` declarations are not supported. The transform does not implicitly await promises, run Effects, or consume iterators; write those operations explicitly. Ordinary comments are ignored. Await asynchronous work so all assertions and cleanup occur before the snippet module finishes evaluating.
 
 Regular tests can use `include` in the same project. Documentation sources use `includeSource`, which lets Vitest discard files without the marker before collection. The plugin resolves imports relative to each example's original TypeScript or Markdown file:
 

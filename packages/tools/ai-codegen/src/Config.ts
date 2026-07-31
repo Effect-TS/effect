@@ -44,8 +44,7 @@ export const SpecSourceConfig = Schema.Struct({
  *   name: "MyClient"
  * })
  *
- * console.log(config.spec)
- * // "https://example.com/openapi.json"
+ * config.spec // => "https://example.com/openapi.json"
  * ```
  *
  * @category models
@@ -187,6 +186,9 @@ export declare namespace SpecSource {
  *
  * // Create a file-based source
  * const fileSource = Config.SpecSource.File("/path/to/spec.json")
+ *
+ * urlSource._tag // => "Url"
+ * fileSource._tag // => "File"
  * ```
  *
  * @category constructors
@@ -259,6 +261,9 @@ export const SpecSource = {
  *   path: "/path/to/codegen.json",
  *   cause: new Error("Invalid JSON")
  * })
+ *
+ * error._tag // => "ConfigParseError"
+ * error.path // => "/path/to/codegen.json"
  * ```
  *
  * @category errors
@@ -281,6 +286,9 @@ export class ConfigParseError extends Data.TaggedError("ConfigParseError")<{
  *   provider: "openai",
  *   expectedPath: "/path/to/packages/ai/openai/codegen.json"
  * })
+ *
+ * error._tag // => "ConfigNotFoundError"
+ * error.provider // => "openai"
  * ```
  *
  * @category errors

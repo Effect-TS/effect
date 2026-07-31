@@ -252,12 +252,14 @@ export interface ManagedRuntime<in R, out ER> {
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, ManagedRuntime } from "effect"
  *
+ * const notifications: Array<string> = []
+ *
  * class Notifications extends Context.Service<Notifications, {
  *   readonly notify: (message: string) => Effect.Effect<void>
  * }>()("Notifications") {
  *   static readonly layer = Layer.succeed(this)({
  *     notify: Effect.fn("Notifications.notify")((message) =>
- *       Effect.sync(() => console.log(message))
+ *       Effect.sync(() => notifications.push(message))
  *     )
  *   })
  * }
@@ -269,8 +271,8 @@ export interface ManagedRuntime<in R, out ER> {
  *   (_) => _.notify("Hello, world!")
  * ).pipe(Effect.ensuring(runtime.disposeEffect))
  *
- * runtime.runPromise(program)
- * // Hello, world!
+ * await runtime.runPromise(program)
+ * notifications // => ["Hello, world!"]
  * ```
  *
  * @see {@link ManagedRuntime} for the returned runtime interface

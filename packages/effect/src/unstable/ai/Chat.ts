@@ -49,16 +49,34 @@ import type * as Tool from "./Tool.ts"
  * **Example** (Accessing the Chat service)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
- * import { Chat } from "effect/unstable/ai"
+ * import { Effect, Layer, Stream } from "effect"
+ * import { Chat, LanguageModel } from "effect/unstable/ai"
+ *
+ * const FakeLanguageModel = Layer.effect(
+ *   LanguageModel.LanguageModel,
+ *   LanguageModel.make({
+ *     generateText: () =>
+ *       Effect.succeed([{
+ *         type: "text",
+ *         text: "Quantum computers use quantum states to process information."
+ *       }]),
+ *     streamText: () => Stream.empty
+ *   })
+ * )
+ *
+ * const ChatLayer = Layer.effect(Chat.Chat, Chat.empty)
  *
  * const program = Effect.gen(function*() {
- *   const chat = yield* Chat.empty
+ *   const chat = yield* Chat.Chat
  *   const response = yield* chat.generateText({
  *     prompt: "Explain quantum computing in simple terms"
  *   })
- *   return response.content
+ *   return response.text
  * })
+ *
+ * await Effect.runPromise(
+ *   program.pipe(Effect.provide(Layer.merge(ChatLayer, FakeLanguageModel)))
+ * ) // => "Quantum computers use quantum states to process information."
  * ```
  *
  * @category services
@@ -99,11 +117,12 @@ export interface Service {
    * import { Chat } from "effect/unstable/ai"
    *
    * const inspectHistory = Effect.gen(function*() {
-   *   const chat = yield* Chat.empty
+   *   const chat = yield* Chat.fromPrompt("Hello")
    *   const currentHistory = yield* Ref.get(chat.history)
-   *   console.log("Current conversation:", currentHistory)
-   *   return currentHistory
-   * })
+   *   return currentHistory.content.length
+ * })
+ *
+   * await Effect.runPromise(inspectHistory) // => 1
    * ```
    */
   readonly history: Ref.Ref<Prompt.Prompt>
@@ -123,14 +142,12 @@ export interface Service {
    * import { Chat } from "effect/unstable/ai"
    *
    * const saveChat = Effect.gen(function*() {
-   *   const chat = yield* Chat.empty
-   *   yield* chat.generateText({ prompt: "Hello!" })
-   *
+   *   const chat = yield* Chat.fromPrompt("Hello!")
    *   const exportedData = yield* chat.export
-   *
-   *   // Save to database or file system
-   *   return exportedData
-   * })
+   *   return typeof exportedData
+ * })
+ *
+   * await Effect.runPromise(saveChat) // => "object"
    * ```
    */
   readonly export: Effect.Effect<unknown, AiError.AiError>
@@ -150,16 +167,12 @@ export interface Service {
    * import { Chat } from "effect/unstable/ai"
    *
    * const backupChat = Effect.gen(function*() {
-   *   const chat = yield* Chat.empty
-   *
-   *   yield* chat.generateText({ prompt: "Explain photosynthesis" })
-   *
+   *   const chat = yield* Chat.fromPrompt("Explain photosynthesis")
    *   const jsonBackup = yield* chat.exportJson
-   *
-   *   yield* Effect.sync(() => localStorage.setItem("chat-backup", jsonBackup))
-   *
-   *   return jsonBackup
-   * })
+   *   return JSON.parse(jsonBackup).content.length
+ * })
+ *
+   * await Effect.runPromise(backupChat) // => 1
    * ```
    */
   readonly exportJson: Effect.Effect<string, AiError.AiError>
@@ -176,8 +189,22 @@ export interface Service {
    * **Example** (Generating chat responses)
    *
    * ```ts import.meta.vitest
-   * import { Effect } from "effect"
-   * import { Chat } from "effect/unstable/ai"
+   * import { Effect, Layer, Stream } from "effect"
+   * import { Chat, LanguageModel } from "effect/unstable/ai"
+   *
+   * const FakeLanguageModel = Layer.effect(
+   *   LanguageModel.LanguageModel,
+   *   LanguageModel.make({
+   *     generateText: (options) =>
+   *       Effect.succeed([{
+   *         type: "text",
+   *         text: options.prompt.content.length === 1
+   *           ? "The capital of France is Paris."
+   *           : "Paris has about 2.1 million residents."
+   *       }]),
+   *     streamText: () => Stream.empty
+   *   })
+   * )
    *
    * const chatWithAI = Effect.gen(function*() {
    *   const chat = yield* Chat.empty
@@ -185,13 +212,13 @@ export interface Service {
    *   const response1 = yield* chat.generateText({
    *     prompt: "What is the capital of France?"
    *   })
-   *
-   *   const response2 = yield* chat.generateText({
-   *     prompt: "What's the population of that city?"
-   *   })
-   *
-   *   return [response1.content, response2.content]
-   * })
+ *   const response2 = yield* chat.generateText({
+ *     prompt: "What's the population of that city?"
+ *   })
+   *   return [response1.text, response2.text]
+ * })
+ *
+   * await Effect.runPromise(chatWithAI.pipe(Effect.provide(FakeLanguageModel))) // => ["The capital of France is Paris.", "Paris has about 2.1 million residents."]
    * ```
    */
   readonly generateText: {
@@ -243,21 +270,34 @@ export interface Service {
    * **Example** (Streaming chat responses)
    *
    * ```ts import.meta.vitest
-   * import { Effect, Stream } from "effect"
-   * import { Chat } from "effect/unstable/ai"
+   * import { Effect, Layer, Stream } from "effect"
+   * import { Chat, LanguageModel } from "effect/unstable/ai"
+   *
+   * const FakeLanguageModel = Layer.effect(
+   *   LanguageModel.LanguageModel,
+   *   LanguageModel.make({
+   *     generateText: () => Effect.succeed([]),
+   *     streamText: () =>
+   *       Stream.make(
+   *         { type: "text-delta", id: "story", delta: "A small probe reached orbit." },
+   *         { type: "text-delta", id: "story", delta: " It sent back a picture of Earth." }
+   *       )
+   *   })
+   * )
    *
    * const streamingChat = Effect.gen(function*() {
    *   const chat = yield* Chat.empty
-   *
-   *   const stream = yield* chat.streamText({
+   *   const story = yield* chat.streamText({
    *     prompt: "Write a short story about space exploration"
-   *   })
-   *
-   *   yield* Stream.runForEach(stream, (part) =>
-   *     part.type === "text-delta"
-   *       ? Effect.sync(() => process.stdout.write(part.delta))
-   *       : Effect.void)
-   * })
+   *   }).pipe(
+   *     Stream.runFold(() => "", (text, part) =>
+   *       part.type === "text-delta" ? text + part.delta : text)
+   *   )
+   *   return story
+ * })
+ *
+   * const story = await Effect.runPromise(streamingChat.pipe(Effect.provide(FakeLanguageModel)))
+   * story // => "A small probe reached orbit. It sent back a picture of Earth."
    * ```
    */
   readonly streamText: {
@@ -310,8 +350,8 @@ export interface Service {
    * **Example** (Generating structured objects)
    *
    * ```ts import.meta.vitest
-   * import { Effect, Schema } from "effect"
-   * import { Chat } from "effect/unstable/ai"
+   * import { Effect, Layer, Schema, Stream } from "effect"
+   * import { Chat, LanguageModel } from "effect/unstable/ai"
    *
    * const ContactSchema = Schema.Struct({
    *   name: Schema.String,
@@ -319,19 +359,28 @@ export interface Service {
    *   phone: Schema.optional(Schema.String)
    * })
    *
+   * const FakeLanguageModel = Layer.effect(
+   *   LanguageModel.LanguageModel,
+   *   LanguageModel.make({
+   *     generateText: () =>
+   *       Effect.succeed([{
+   *         type: "text",
+   *         text: '{"name":"John Doe","email":"john@example.com","phone":"555-1234"}'
+   *       }]),
+   *     streamText: () => Stream.empty
+   *   })
+   * )
+   *
    * const extractContact = Effect.gen(function*() {
    *   const chat = yield* Chat.empty
-   *
    *   const contact = yield* chat.generateObject({
    *     prompt: "Extract contact info: John Doe, john@example.com, 555-1234",
    *     schema: ContactSchema
    *   })
-   *
-   *   console.log(contact.object)
-   *   // { name: "John Doe", email: "john@example.com", phone: "555-1234" }
-   *
-   *   return contact.object
-   * })
+   *   return [contact.value.name, contact.value.email, contact.value.phone]
+ * })
+ *
+   * await Effect.runPromise(extractContact.pipe(Effect.provide(FakeLanguageModel))) // => ["John Doe", "john@example.com", "555-1234"]
    * ```
    */
   readonly generateObject: <
@@ -470,15 +519,11 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
  *
  * const freshChat = Effect.gen(function*() {
  *   const chat = yield* Chat.empty
- *
- *   const response = yield* chat.generateText({
- *     prompt: "Hello! Can you introduce yourself?"
- *   })
- *
- *   console.log(response.content)
- *
- *   return chat
+ *   const history = yield* chat.export
+ *   return (history as { content: ReadonlyArray<unknown> }).content.length
  * })
+ *
+ * await Effect.runPromise(freshChat) // => 0
  * ```
  *
  * @category constructors
@@ -506,12 +551,11 @@ export const empty: Effect.Effect<Service> = Effect.sync(() => makeUnsafe(Ref.ma
  *     content: "You are a helpful assistant specialized in mathematics."
  *   }])
  *
- *   const response = yield* chat.generateText({
- *     prompt: "What is 2+2?"
- *   })
- *
- *   return response.content
+ *   const history = yield* chat.export
+ *   return (history as { content: ReadonlyArray<unknown> }).content.length
  * })
+ *
+ * await Effect.runPromise(chatWithSystemPrompt) // => 1
  * ```
  *
  * **Example** (Restoring chat history from a prompt)
@@ -537,12 +581,11 @@ export const empty: Effect.Effect<Service> = Effect.sync(() => makeUnsafe(Ref.ma
  *     }
  *   ])
  *
- *   const response = yield* chat.generateText({
- *     prompt: "I need help with TypeScript"
- *   })
- *
- *   return response
+ *   const history = yield* chat.export
+ *   return (history as { content: ReadonlyArray<unknown> }).content.length
  * })
+ *
+ * await Effect.runPromise(existingChat) // => 3
  * ```
  *
  * @category constructors
@@ -582,18 +625,20 @@ export const fromPrompt = (prompt: Prompt.RawInput) =>
  *   const restoredChat = yield* Chat.fromExport(exported)
  *   const restoredHistory = yield* Ref.get(restoredChat.history)
  *
- *   console.log(restoredHistory.content.map((message) => message.role))
- *   // ["user", "assistant"]
- *
  *   const restoredResponse = restoredHistory.content[1]
  *   if (restoredResponse?.role === "assistant") {
  *     const restoredText = restoredResponse.content[0]
  *     if (restoredText?.type === "text") {
- *       console.log(restoredText.text)
- *       // "The project uses Effect."
+ *       return {
+ *         roles: restoredHistory.content.map((message) => message.role),
+ *         text: restoredText.text
+ *       }
  *     }
  *   }
+ *   return undefined
  * })
+ *
+ * await Effect.runPromise(restoreChat) // => { roles: ["user", "assistant"], text: "The project uses Effect." }
  * ```
  *
  * @category constructors
@@ -616,28 +661,18 @@ export const fromExport = (data: unknown): Effect.Effect<
  * **Example** (Restoring chat history from JSON)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Ref } from "effect"
  * import { Chat } from "effect/unstable/ai"
  *
  * const restoreFromJson = Effect.gen(function*() {
- *   // Load JSON from localStorage or file system
- *   const jsonData = localStorage.getItem("my-chat-backup")
- *   if (!jsonData) return yield* Chat.empty
- *
+ *   const original = yield* Chat.fromPrompt("Hello")
+ *   const jsonData = yield* original.exportJson
  *   const restoredChat = yield* Chat.fromJson(jsonData)
+ *   const history = yield* Ref.get(restoredChat.history)
+ *   return history.content.length
+ * })
  *
- *   // Chat history is now restored
- *   const response = yield* restoredChat.generateText({
- *     prompt: "What were we talking about?"
- *   })
- *
- *   return response
- * }).pipe(
- *   Effect.catchTag("SchemaError", (error) => {
- *     console.log("Invalid JSON format:", error.message)
- *     return Chat.empty // Fallback to empty chat
- *   })
- * )
+ * await Effect.runPromise(restoreFromJson) // => 1
  * ```
  *
  * @category constructors

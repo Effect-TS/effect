@@ -14,7 +14,6 @@ export interface Snippet {
   readonly source: string
   readonly line: number
   readonly name: string | undefined
-  readonly expected: string | undefined
 }
 
 /**
@@ -29,7 +28,6 @@ const jsdocPattern = /\/\*\*[\s\S]*?\*\//g
 const fencePattern = /(?:```|~~~)(.*?)\n([\s\S]*?)(?:(?:```|~~~)|$)/g
 const runnableMarker = "import.meta.vitest"
 const namePattern = /(?:^|\s)name=(?:"([^"]+)"|'([^']+)'|([^\s]+))/
-const outputPattern = /\/\/ >(?: (.*))?$/gm
 
 const lineNumberAt = (source: string): (offset: number) => number => {
   const starts = [0]
@@ -63,13 +61,11 @@ const snippets = (
 
     const name = namePattern.exec(match[1])
     const source = jsdoc ? match[2].replace(/^[ \t]*\* ?/gm, "").trim() : match[2].trim()
-    const output = Array.from(source.matchAll(outputPattern), (match) => match[1] ?? "")
 
     return [{
       source,
       line: lineAt(offset + (match.index ?? 0)),
-      name: name?.[1] ?? name?.[2] ?? name?.[3],
-      expected: output.length === 0 ? undefined : output.join("\n")
+      name: name?.[1] ?? name?.[2] ?? name?.[3]
     }]
   })
 }

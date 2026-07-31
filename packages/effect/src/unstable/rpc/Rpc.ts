@@ -992,6 +992,8 @@ export const make = <
  * export const listAllRpc = makePaginated("listAll", {
  *   success: Schema.String
  * })
+ *
+ * const result = [listAllRpc._tag, Schema.isSchema(listAllRpc.successSchema)] // => ["listAll", true]
  * ```
  *
  * @category constructors

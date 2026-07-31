@@ -30,8 +30,7 @@ import { getRedacted, redact, symbolRedactable } from "./Redactable.ts"
  *
  * const upper: Formatter.Formatter<string> = (s) => s.toUpperCase()
  *
- * console.log(upper("hello"))
- * // HELLO
+ * upper("hello") // => "HELLO"
  * ```
  *
  * @see {@link format}
@@ -78,8 +77,7 @@ export interface Formatter<in Value, out Format = string> {
  * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
- * console.log(Formatter.format({ a: 1, b: [2, 3] }))
- * // {"a":1,"b":[2,3]}
+ * Formatter.format({ a: 1, b: [2, 3] }) // => "{\"a\":1,\"b\":[2,3]}"
  * ```
  *
  * **Example** (Pretty-printed output)
@@ -87,14 +85,8 @@ export interface Formatter<in Value, out Format = string> {
  * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
- * console.log(Formatter.format({ a: 1, b: [2, 3] }, { space: 2 }))
- * // {
- * //   "a": 1,
- * //   "b": [
- * //     2,
- * //     3
- * //   ]
- * // }
+ * const output = Formatter.format({ a: 1, b: [2, 3] }, { space: 2 })
+ * output // => "{\n  \"a\": 1,\n  \"b\": [\n    2,\n    3\n  ]\n}"
  * ```
  *
  * **Example** (Handling circular references)
@@ -104,8 +96,7 @@ export interface Formatter<in Value, out Format = string> {
  *
  * const obj: any = { name: "loop" }
  * obj.self = obj
- * console.log(Formatter.format(obj))
- * // {"name":"loop","self":[Circular]}
+ * Formatter.format(obj) // => "{\"name\":\"loop\",\"self\":[Circular]}"
  * ```
  *
  * @see {@link formatJson}
@@ -262,8 +253,7 @@ function safeToString(input: any): string {
  * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
- * console.log(Formatter.formatJson({ name: "Alice", age: 30 }))
- * // {"name":"Alice","age":30}
+ * Formatter.formatJson({ name: "Alice", age: 30 }) // => "{\"name\":\"Alice\",\"age\":30}"
  * ```
  *
  * **Example** (Handling circular references)
@@ -273,8 +263,7 @@ function safeToString(input: any): string {
  *
  * const obj: any = { name: "test" }
  * obj.self = obj
- * console.log(Formatter.formatJson(obj))
- * // {"name":"test"}
+ * Formatter.formatJson(obj) // => "{\"name\":\"test\"}"
  * ```
  *
  * **Example** (Pretty-printed JSON)
@@ -282,11 +271,8 @@ function safeToString(input: any): string {
  * ```ts import.meta.vitest
  * import { Formatter } from "effect"
  *
- * console.log(Formatter.formatJson({ name: "Alice", age: 30 }, { space: 2 }))
- * // {
- * //   "name": "Alice",
- * //   "age": 30
- * // }
+ * const output = Formatter.formatJson({ name: "Alice", age: 30 }, { space: 2 })
+ * output // => "{\n  \"name\": \"Alice\",\n  \"age\": 30\n}"
  * ```
  *
  * @see {@link format}

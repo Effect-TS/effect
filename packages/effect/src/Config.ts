@@ -39,8 +39,8 @@ const TypeId = "~effect/Config"
  * ```ts import.meta.vitest
  * import { Config } from "effect"
  *
- * console.log(Config.isConfig(Config.string("HOST"))) // > true
- * console.log(Config.isConfig("not a config")) // > false
+ * Config.isConfig(Config.string("HOST")) // => true
+ * Config.isConfig("not a config") // => false
  * ```
  *
  * @category guards
@@ -155,7 +155,7 @@ function make<T>(
  * )
  *
  * const provider = ConfigProvider.fromUnknown({ name: "alice" })
- * // Effect.runSync(upper.parse(provider)) // "ALICE"
+ * Effect.runSync(upper.parse(provider)) // => "ALICE"
  * ```
  *
  * @see {@link mapOrFail} – when the transformation can fail
@@ -181,11 +181,13 @@ export const map: {
  * **Example** (Wrapping a value in an effectful transformation)
  *
  * ```ts import.meta.vitest
- * import { Config, Effect } from "effect"
+ * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const trimmed = Config.string("name").pipe(
  *   Config.mapOrFail((s) => Effect.succeed(s.trim()))
  * )
+ * const provider = ConfigProvider.fromUnknown({ name: " Alice " })
+ * Effect.runSync(trimmed.parse(provider)) // => "Alice"
  * ```
  *
  * @see {@link map} – when the transformation cannot fail
@@ -217,11 +219,13 @@ export const mapOrFail: {
  * **Example** (Falling back to a literal)
  *
  * ```ts import.meta.vitest
- * import { Config } from "effect"
+ * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const hostConfig = Config.string("HOST").pipe(
  *   Config.orElse(() => Config.succeed("localhost"))
  * )
+ * const provider = ConfigProvider.fromUnknown({})
+ * Effect.runSync(hostConfig.parse(provider)) // => "localhost"
  * ```
  *
  * @see {@link withDefault} – fallback only on missing data
@@ -261,8 +265,7 @@ export const orElse: {
  * })
  *
  * const provider = ConfigProvider.fromUnknown({ host: "localhost", port: 5432 })
- * // Effect.runSync(dbConfig.parse(provider))
- * // { host: "localhost", port: 5432 }
+ * Effect.runSync(dbConfig.parse(provider)) // => { host: "localhost", port: 5432 }
  * ```
  *
  * @category combinators
@@ -346,7 +349,7 @@ function isMissingDataOnly(issue: SchemaIssue.Issue): boolean {
  * const port = Config.number("port").pipe(Config.withDefault(3000))
  *
  * const provider = ConfigProvider.fromUnknown({})
- * // Effect.runSync(port.parse(provider)) // 3000
+ * Effect.runSync(port.parse(provider)) // => 3000
  * ```
  *
  * @see {@link option} – returns `Option` instead of a default value
@@ -386,12 +389,12 @@ export const withDefault: {
  * **Example** (Reading optional config)
  *
  * ```ts import.meta.vitest
- * import { Config, ConfigProvider, Effect } from "effect"
+ * import { Config, ConfigProvider, Effect, Option } from "effect"
  *
  * const maybePort = Config.option(Config.number("port"))
  *
  * const provider = ConfigProvider.fromUnknown({})
- * // Effect.runSync(maybePort.parse(provider)) // { _tag: "None" }
+ * Effect.runSync(maybePort.parse(provider)) // => Option.none()
  * ```
  *
  * @see {@link withDefault} – provide a concrete fallback value instead
@@ -462,7 +465,7 @@ type IsPlainObject<A> = [A] extends [Record<string, any>]
  * **Example** (Unwrapping a record of configs)
  *
  * ```ts import.meta.vitest
- * import { Config } from "effect"
+ * import { Config, ConfigProvider, Effect } from "effect"
  *
  * interface Options {
  *   key: string
@@ -470,6 +473,10 @@ type IsPlainObject<A> = [A] extends [Record<string, any>]
  *
  * const makeConfig = (config: Config.Wrap<Options>): Config.Config<Options> =>
  *   Config.unwrap(config)
+ *
+ * const config = makeConfig({ key: Config.string("key") })
+ * const provider = ConfigProvider.fromUnknown({ key: "value" })
+ * Effect.runSync(config.parse(provider)) // => { key: "value" }
  * ```
  *
  * @see {@link Wrap} – the utility type accepted by this function
@@ -630,8 +637,7 @@ const recur: (
  *   db: { host: "localhost", port: 5432 }
  * })
  *
- * // Effect.runSync(DbConfig.parse(provider))
- * // { host: "localhost", port: 5432 }
+ * Effect.runSync(DbConfig.parse(provider)) // => { host: "localhost", port: 5432 }
  * ```
  *
  * @see {@link string} / {@link number} / {@link boolean} – shortcuts for
@@ -759,12 +765,10 @@ export const LogLevel = Schema.Literals(LogLevel_.values)
  *   }
  * })
  *
- * console.dir(Effect.runSync(config.parse(provider)))
- * // {
- * //   'service.name': 'my-service',
- * //   'service.version': '1.0.0',
- * //   'custom.attribute': 'value'
- * // }
+ * const result = Effect.runSync(config.parse(provider))
+ * result["service.name"] // => "my-service"
+ * result["service.version"] // => "1.0.0"
+ * result["custom.attribute"] // => "value"
  * ```
  *
  * @category schemas
@@ -860,11 +864,13 @@ export function fail(err: SourceError | Schema.SchemaError) {
  * **Example** (Returning a constant fallback)
  *
  * ```ts import.meta.vitest
- * import { Config } from "effect"
+ * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const host = Config.string("HOST").pipe(
  *   Config.orElse(() => Config.succeed("localhost"))
  * )
+ * const provider = ConfigProvider.fromUnknown({})
+ * Effect.runSync(host.parse(provider)) // => "localhost"
  * ```
  *
  * @category constructors
@@ -893,7 +899,7 @@ export function succeed<T>(value: T) {
  * const host = Config.string("HOST")
  *
  * const provider = ConfigProvider.fromUnknown({ HOST: "localhost" })
- * // Effect.runSync(host.parse(provider)) // "localhost"
+ * Effect.runSync(host.parse(provider)) // => "localhost"
  * ```
  *
  * @see {@link nonEmptyString} – rejects empty strings
@@ -1005,9 +1011,11 @@ export function int(name?: string) {
  * **Example** (Restricting to a literal)
  *
  * ```ts import.meta.vitest
- * import { Config } from "effect"
+ * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const env = Config.literal("production", "ENV")
+ * const provider = ConfigProvider.fromUnknown({ ENV: "production" })
+ * Effect.runSync(env.parse(provider)) // => "production"
  * ```
  *
  * @see {@link literals} – accepts multiple literal values
@@ -1032,9 +1040,11 @@ export function literal<L extends SchemaAST.LiteralValue>(literal: L, name?: str
  * **Example** (Restricting to a set of literals)
  *
  * ```ts import.meta.vitest
- * import { Config } from "effect"
+ * import { Config, ConfigProvider, Effect } from "effect"
  *
  * const env = Config.literals(["development", "production"], "ENV")
+ * const provider = ConfigProvider.fromUnknown({ ENV: "development" })
+ * Effect.runSync(env.parse(provider)) // => "development"
  * ```
  *
  * @see {@link literal} for accepting one specific literal value
@@ -1066,10 +1076,7 @@ export function literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
  * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const flag = yield* Config.boolean("FEATURE_FLAG")
- *   console.log(flag)
- * })
+ * const program = Config.boolean("FEATURE_FLAG")
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: {
@@ -1079,8 +1086,7 @@ export function literals<const L extends ReadonlyArray<SchemaAST.LiteralValue>>(
  *
  * Effect.runSync(
  *   program.pipe(Effect.provideService(ConfigProvider.ConfigProvider, provider))
- * )
- * // Output: true
+ * ) // => true
  * ```
  *
  * @see {@link Boolean} for the underlying boolean codec
@@ -1110,12 +1116,9 @@ export function boolean(name?: string) {
  * **Example** (Reading a duration)
  *
  * ```ts import.meta.vitest
- * import { Config, ConfigProvider, Effect } from "effect"
+ * import { Config, ConfigProvider, Duration, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const duration = yield* Config.duration("DURATION")
- *   console.log(duration)
- * })
+ * const program = Config.duration("DURATION").pipe(Effect.map(Duration.toMillis))
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: {
@@ -1125,8 +1128,7 @@ export function boolean(name?: string) {
  *
  * Effect.runSync(
  *   program.pipe(Effect.provideService(ConfigProvider.ConfigProvider, provider))
- * )
- * // Output: Duration { _tag: "millis", value: 10000 }
+ * ) // => 10000
  * ```
  *
  * @see {@link schema} for decoding configuration values with a custom codec
@@ -1154,10 +1156,7 @@ export function duration(name?: string) {
  * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const port = yield* Config.port("PORT")
- *   console.log(port)
- * })
+ * const program = Config.port("PORT")
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: {
@@ -1167,8 +1166,7 @@ export function duration(name?: string) {
  *
  * Effect.runSync(
  *   program.pipe(Effect.provideService(ConfigProvider.ConfigProvider, provider))
- * )
- * // Output: 8080
+ * ) // => 8080
  * ```
  *
  * @see {@link int} for integer config values outside the port range
@@ -1200,10 +1198,7 @@ export function port(name?: string) {
  * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const logLevel = yield* Config.logLevel("LOG_LEVEL")
- *   console.log(logLevel)
- * })
+ * const program = Config.logLevel("LOG_LEVEL")
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: {
@@ -1213,8 +1208,7 @@ export function port(name?: string) {
  *
  * Effect.runSync(
  *   program.pipe(Effect.provideService(ConfigProvider.ConfigProvider, provider))
- * )
- * // Output: "Info"
+ * ) // => "Info"
  * ```
  *
  * @see {@link LogLevel} for the underlying log-level codec
@@ -1244,10 +1238,7 @@ export function logLevel(name?: string) {
  * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const apiKey = yield* Config.redacted("API_KEY")
- *   console.log(apiKey)
- * })
+ * const program = Config.redacted("API_KEY").pipe(Effect.map(String))
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: {
@@ -1257,8 +1248,7 @@ export function logLevel(name?: string) {
  *
  * Effect.runSync(
  *   program.pipe(Effect.provideService(ConfigProvider.ConfigProvider, provider))
- * )
- * // Output: <redacted>
+ * ) // => "<redacted>"
  * ```
  *
  * @see {@link string} for non-secret string settings
@@ -1290,10 +1280,7 @@ export function redacted(name?: string) {
  * ```ts import.meta.vitest
  * import { Config, ConfigProvider, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const url = yield* Config.url("URL")
- *   console.log(url)
- * })
+ * const program = Config.url("URL").pipe(Effect.map((url) => url.href))
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: {
@@ -1303,22 +1290,7 @@ export function redacted(name?: string) {
  *
  * Effect.runSync(
  *   program.pipe(Effect.provideService(ConfigProvider.ConfigProvider, provider))
- * )
- * // Output:
- * // URL {
- * //   href: 'https://example.com/',
- * //   origin: 'https://example.com',
- * //   protocol: 'https:',
- * //   username: '',
- * //   password: '',
- * //   host: 'example.com',
- * //   hostname: 'example.com',
- * //   port: '',
- * //   pathname: '/',
- * //   search: '',
- * //   searchParams: URLSearchParams {},
- * //   hash: ''
- * // }
+ * ) // => "https://example.com/"
  * ```
  *
  * @see {@link schema} for decoding configuration values with a custom codec
@@ -1353,8 +1325,7 @@ export function url(name?: string) {
  * const createdAt = Config.date("CREATED_AT")
  *
  * const provider = ConfigProvider.fromUnknown({ CREATED_AT: "2024-01-15" })
- * // Effect.runSync(createdAt.parse(provider))
- * // Date("2024-01-15T00:00:00.000Z")
+ * Effect.runSync(createdAt.parse(provider)).toISOString() // => "2024-01-15T00:00:00.000Z"
  * ```
  *
  * @category constructors
@@ -1393,8 +1364,7 @@ export function date(name?: string) {
  * const provider = ConfigProvider.fromUnknown({
  *   database: { host: "localhost", port: "5432" }
  * })
- * // Effect.runSync(dbConfig.parse(provider))
- * // { host: "localhost", port: 5432 }
+ * Effect.runSync(dbConfig.parse(provider)) // => { host: "localhost", port: 5432 }
  * ```
  *
  * **Example** (Reading env vars with a nested prefix)
@@ -1407,7 +1377,7 @@ export function date(name?: string) {
  * const provider = ConfigProvider.fromEnv({
  *   env: { database_host: "localhost" }
  * })
- * // Effect.runSync(host.parse(provider)) // "localhost"
+ * Effect.runSync(host.parse(provider)) // => "localhost"
  * ```
  *
  * @see {@link all} – combine multiple configs into a struct

@@ -42,8 +42,13 @@ const TypeId = "~effect/Newtype"
  * interface UserId extends Newtype.Newtype<"UserId", number> {}
  * interface OrderId extends Newtype.Newtype<"OrderId", number> {}
  *
+ * const userId = Newtype.makeIso<UserId>().set(1)
  * // UserId and OrderId are not assignable to each other
  * // even though both wrap `number`.
+ * // @ts-expect-error
+ * const orderId: OrderId = userId
+ *
+ * Newtype.value(userId) // => 1
  * ```
  *
  * @see {@link makeIso} — create an iso to wrap and unwrap
@@ -133,7 +138,8 @@ export declare namespace Newtype {
  * const iso = Newtype.makeIso<Label>()
  * const label = iso.set("hello")
  *
- * const raw: string = Newtype.value(label) // "hello"
+ * const raw: string = Newtype.value(label)
+ * raw // => "hello"
  * ```
  *
  * @see {@link makeIso} — two-way conversion (wrap and unwrap)
@@ -166,7 +172,8 @@ export const value: <N extends Newtype.Any>(newtype: N) => Newtype.Carrier<N> = 
  * const labelIso = Newtype.makeIso<Label>()
  *
  * const label: Label = labelIso.set("world")
- * const str: string = labelIso.get(label) // "world"
+ * const str: string = labelIso.get(label)
+ * str // => "world"
  * ```
  *
  * @see {@link value} — unwrap only
@@ -202,8 +209,8 @@ export function makeIso<N extends Newtype.Any>(): Optic.Iso<N, Newtype.Carrier<N
  * const eq = Newtype.makeEquivalence<Label>(Equivalence.String)
  * const iso = Newtype.makeIso<Label>()
  *
- * eq(iso.set("a"), iso.set("a")) // true
- * eq(iso.set("a"), iso.set("b")) // false
+ * eq(iso.set("a"), iso.set("a")) // => true
+ * eq(iso.set("a"), iso.set("b")) // => false
  * ```
  *
  * @see {@link makeOrder} — lift an `Order` for the carrier
@@ -237,7 +244,7 @@ export const makeEquivalence: <N extends Newtype.Any>(
  * const ord = Newtype.makeOrder<Score>(Order.Number)
  * const iso = Newtype.makeIso<Score>()
  *
- * ord(iso.set(1), iso.set(2)) // -1
+ * ord(iso.set(1), iso.set(2)) // => -1
  * ```
  *
  * @see {@link makeEquivalence} — lift an `Equivalence` for the carrier
@@ -271,7 +278,7 @@ export const makeOrder: <N extends Newtype.Any>(order: Order.Order<Newtype.Carri
  * const iso = Newtype.makeIso<Amount>()
  *
  * const total = combiner.combine(iso.set(10), iso.set(20))
- * Newtype.value(total) // 30
+ * Newtype.value(total) // => 30
  * ```
  *
  * @see {@link makeReducer} — lift a `Reducer` for the carrier
@@ -307,7 +314,7 @@ export const makeCombiner: <N extends Newtype.Any>(
  * const iso = Newtype.makeIso<Score>()
  *
  * const total = reducer.combineAll([iso.set(1), iso.set(2), iso.set(3)])
- * Newtype.value(total) // 6
+ * Newtype.value(total) // => 6
  * ```
  *
  * @see {@link makeCombiner} — lift a `Combiner` for the carrier

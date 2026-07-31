@@ -48,6 +48,7 @@ export interface Flag<A> extends Param.Param<typeof Param.flagKind, A> {}
  *
  * const nameFlag = Flag.string("name")
  * // Usage: --name "John Doe"
+ * nameFlag.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -65,6 +66,7 @@ export const string = (name: string): Flag<string> => Param.string(Param.flagKin
  *
  * const verboseFlag = Flag.boolean("verbose")
  * // Usage: --verbose (true) or --no-verbose (false)
+ * verboseFlag.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -82,6 +84,7 @@ export const boolean = (name: string): Flag<boolean> => Param.boolean(Param.flag
  *
  * const portFlag = Flag.integer("port")
  * // Usage: --port 8080
+ * portFlag.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -99,6 +102,7 @@ export const integer = (name: string): Flag<number> => Param.integer(Param.flagK
  *
  * const rateFlag = Flag.float("rate")
  * // Usage: --rate 3.14
+ * rateFlag.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -116,6 +120,7 @@ export const float = (name: string): Flag<number> => Param.float(Param.flagKind,
  *
  * const startDateFlag = Flag.date("start-date")
  * // Usage: --start-date 2023-12-25
+ * startDateFlag.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -141,6 +146,7 @@ export const date = (name: string): Flag<Date> => Param.date(Param.flagKind, nam
  *   ["info", "Info" as const],
  *   ["error", "Error" as const]
  * ])
+ * const kinds = [color.kind, logLevel.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -196,6 +202,7 @@ export const choice = <const Choices extends ReadonlyArray<string>>(
  *   pathType: "directory",
  *   typeName: "OUTPUT_DIRECTORY"
  * })
+ * const kinds = [pathFlag.kind, fileFlag.kind, dirFlag.kind] // => ["flag", "flag", "flag"]
  * ```
  *
  * @category constructors
@@ -222,6 +229,7 @@ export const path = (name: string, options?: {
  * // File that must exist
  * const configFlag = Flag.file("config", { mustExist: true })
  * // Usage: --config ./config.yaml (file must exist)
+ * const kinds = [inputFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -246,6 +254,7 @@ export const file = (name: string, options?: {
  * // Directory that must exist
  * const sourceFlag = Flag.directory("source", { mustExist: true })
  * // Usage: --source ./src (directory must exist)
+ * const kinds = [outputFlag.kind, sourceFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -267,19 +276,38 @@ export const directory = (name: string, options?: {
  * **Example** (Creating redacted flags)
  *
  * ```ts import.meta.vitest
- * import { Effect, Redacted } from "effect"
+ * import { Effect, FileSystem, Layer, Path, Redacted, Stdio, Terminal } from "effect"
  * import { Flag } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
  *
  * const passwordFlag = Flag.redacted("password")
  *
  * const program = Effect.gen(function*() {
- *   const [leftover, password] = yield* passwordFlag.parse({
+ *   const [, password] = yield* passwordFlag.parse({
  *     arguments: [],
  *     flags: { "password": ["abc123"] }
  *   })
- *   const value = Redacted.value(password) // Access the underlying value
- *   console.log("Password length:", value.length)
+ *   return Redacted.value(password).length
  * })
+ *
+ * await Effect.runPromise(program.pipe(Effect.provide(CliTestLayer))) // => 6
  * ```
  *
  * @category constructors
@@ -297,6 +325,7 @@ export const redacted = (name: string): Flag<Redacted.Redacted<string>> => Param
  *
  * const config = Flag.fileText("config-file")
  * // --config-file ./app.json will read the file content
+ * config.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -323,6 +352,7 @@ export const fileText = (name: string): Flag<string> => Param.fileText(Param.fla
  *
  * // Will use the JSON parser
  * const jsonConfig = Flag.fileParse("json-config", { format: "json" })
+ * const kinds = [config.kind, jsonConfig.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -349,6 +379,7 @@ export const fileParse = (
  * })
  *
  * const config = Flag.fileSchema("config", ConfigSchema, { format: "json" })
+ * config.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -380,6 +411,7 @@ export const fileSchema = <A>(
  *
  * const env = Flag.keyValuePair("env")
  * // --env FOO=bar --env BAZ=qux will parse to { FOO: "bar", BAZ: "qux" }
+ * env.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -399,8 +431,8 @@ export const keyValuePair = (name: string): Flag<Record<string, string>> => Para
  * const makeValueFlag = (includeValue: boolean) =>
  *   includeValue ? Flag.string("value") : Flag.none
  *
- * console.log(makeValueFlag(true) === Flag.none) // > false
- * console.log(makeValueFlag(false) === Flag.none) // > true
+ * makeValueFlag(true) === Flag.none // => false
+ * makeValueFlag(false) === Flag.none // => true
  * ```
  *
  * @category constructors
@@ -430,6 +462,7 @@ export const none: Flag<never> = Param.none(Param.flagKind)
  *   Flag.withAlias("h"),
  *   Flag.withAlias("?")
  * )
+ * const kinds = [verboseFlag.kind, helpFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category aliasing
@@ -455,6 +488,7 @@ export const withAlias: {
  * const configFlag = Flag.file("config").pipe(
  *   Flag.withDescription("Path to the configuration file")
  * )
+ * const kinds = [portFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category help documentation
@@ -492,6 +526,7 @@ export const withDescription: {
  *   Flag.withMetavar("SECONDS")
  * )
  * // In help: --timeout SECONDS
+ * const kinds = [databaseFlag.kind, timeoutFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category metadata
@@ -521,6 +556,7 @@ export const withMetavar: {
  * const experimental = Flag.boolean("experimental-foo").pipe(
  *   Flag.withHidden
  * )
+ * experimental.kind // => "flag"
  * ```
  *
  * @category metadata
@@ -534,22 +570,38 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  * **Example** (Making flags optional)
  *
  * ```ts import.meta.vitest
- * import { Effect, Option } from "effect"
+ * import { Effect, FileSystem, Layer, Option, Path, Stdio, Terminal } from "effect"
  * import { Flag } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
  *
  * const optionalPort = Flag.optional(Flag.integer("port"))
  *
  * const program = Effect.gen(function*() {
- *   const [leftover, port] = yield* optionalPort.parse({
+ *   const [, port] = yield* optionalPort.parse({
  *     arguments: [],
  *     flags: { "port": ["4000"] }
  *   })
- *   if (Option.isSome(port)) {
- *     console.log("Port specified:", port.value)
- *   } else {
- *     console.log("No port specified, using default")
- *   }
+ *   return port
  * })
+ *
+ * await Effect.runPromise(program.pipe(Effect.provide(CliTestLayer))) // => Option.some(4000)
  * ```
  *
  * @category optionality
@@ -574,6 +626,7 @@ export const optional = <A>(param: Flag<A>): Flag<Option.Option<A>> => Param.opt
  *   Flag.withDefault("localhost")
  * )
  * // If --host is not provided, defaults to "localhost"
+ * const kinds = [portFlag.kind, hostFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category optionality
@@ -596,6 +649,7 @@ export const withDefault: {
  * const verbose = Flag.boolean("verbose").pipe(
  *   Flag.withFallbackConfig(Config.boolean("VERBOSE"))
  * )
+ * verbose.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -617,6 +671,7 @@ export const withFallbackConfig: {
  * const name = Flag.string("name").pipe(
  *   Flag.withFallbackPrompt(Prompt.text({ message: "Name" }))
  * )
+ * name.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -644,6 +699,7 @@ export const withFallbackPrompt: {
  * const urlFlag = Flag.integer("port").pipe(
  *   Flag.map((port) => `http://localhost:${port}`)
  * )
+ * const kinds = [nameFlag.kind, urlFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category mapping
@@ -660,17 +716,38 @@ export const map: {
  * **Example** (Mapping parsed values effectfully)
  *
  * ```ts import.meta.vitest
- * import { Effect, FileSystem } from "effect"
+ * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
  * import { Flag } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
  *
- * // Read file size from path flag
- * const fileSizeFlag = Flag.file("input").pipe(
- *   Flag.mapEffect(Effect.fnUntraced(function*(path) {
- *     const fs = yield* FileSystem.FileSystem
- *     const stats = yield* Effect.orDie(fs.stat(path))
- *     return stats.size
- *   }))
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
  * )
+ *
+ * const upperName = Flag.string("name").pipe(
+ *   Flag.mapEffect((name) => Effect.succeed(name.toUpperCase()))
+ * )
+ *
+ * const [, value] = await Effect.runPromise(
+ *   upperName.parse({
+ *     arguments: [],
+ *     flags: { name: ["alice"] }
+ *   }).pipe(Effect.provide(CliTestLayer))
+ * )
+ * value // => "ALICE"
  * ```
  *
  * @category mapping
@@ -695,7 +772,26 @@ export const mapEffect: {
  * **Example** (Mapping thrown errors)
  *
  * ```ts import.meta.vitest
+ * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
  * import { Flag } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
  *
  * // Parse JSON string with error handling
  * const jsonFlag = Flag.string("config").pipe(
@@ -712,6 +808,14 @@ export const mapEffect: {
  *     (error) => `Invalid URL: ${error}`
  *   )
  * )
+ *
+ * const [, value] = await Effect.runPromise(
+ *   jsonFlag.parse({
+ *     arguments: [],
+ *     flags: { config: ['{"enabled":true}'] }
+ *   }).pipe(Effect.provide(CliTestLayer))
+ * )
+ * value // => { enabled: true }
  * ```
  *
  * @category mapping
@@ -742,6 +846,7 @@ export const mapTryCatch: {
  *   Flag.atLeast(1)
  * )
  * // Requires at least 1 tag
+ * const kinds = [sourceFlag.kind, tagFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category repetition
@@ -768,6 +873,7 @@ export const atLeast: {
  *   Flag.atMost(1)
  * )
  * // Allows at most 1 debug flag
+ * const kinds = [warningFlag.kind, debugFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category repetition
@@ -794,6 +900,7 @@ export const atMost: {
  *   Flag.between(0, 5)
  * )
  * // Allows 0-5 exclude patterns
+ * const kinds = [hostFlag.kind, excludeFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category repetition
@@ -828,6 +935,7 @@ export const between: {
  *     (email) => `Invalid email address: ${email}`
  *   )
  * )
+ * const kinds = [positiveInt.kind, emailFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category filtering
@@ -865,6 +973,7 @@ export const filterMap: {
  *     () => "Name cannot be empty"
  *   )
  * )
+ * const kinds = [portFlag.kind, nameFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category filtering
@@ -898,6 +1007,7 @@ export const filter: {
  *   Flag.file("config"),
  *   () => Flag.string("config-url")
  * )
+ * const kinds = [valueFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category alternatives
@@ -914,26 +1024,41 @@ export const orElse: {
  * **Example** (Returning fallback results)
  *
  * ```ts import.meta.vitest
- * import { Effect, Result } from "effect"
+ * import { Effect, FileSystem, Layer, Path, Result, Stdio, Terminal } from "effect"
  * import { Flag } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
  *
- * // Try file path, fallback to URL
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
+ *
  * const sourceFlag = Flag.orElseResult(
- *   Flag.file("source"),
+ *   Flag.string("source"),
  *   () => Flag.string("source-url")
  * )
  *
  * const program = Effect.gen(function*() {
- *   const [leftover, source] = yield* sourceFlag.parse({
+ *   const [, source] = yield* sourceFlag.parse({
  *     arguments: [],
- *     flags: { "source-url": ["https://google.com"] }
+ *     flags: { "source-url": ["https://example.com"] }
  *   })
- *   if (Result.isSuccess(source)) {
- *     console.log("Using file:", source.success)
- *   } else {
- *     console.log("Using URL:", source.failure)
- *   }
+ *   return source
  * })
+ *
+ * await Effect.runPromise(program.pipe(Effect.provide(CliTestLayer))) // => Result.fail("https://example.com")
  * ```
  *
  * @category alternatives
@@ -976,6 +1101,7 @@ export const orElseResult: {
  * const configFlag = Flag.string("config").pipe(
  *   Flag.withSchema(ConfigSchema)
  * )
+ * const kinds = [emailFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
  * @category schemas

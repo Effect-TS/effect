@@ -46,6 +46,7 @@ export const TypeId: TypeId = "~@effect/atom-react/ScopedAtom"
  * import { make, useAtomValue } from "@effect/atom-react"
  * import { Atom } from "effect/unstable/reactivity"
  * import * as React from "react"
+ * import { renderToStaticMarkup } from "react-dom/server"
  *
  * const Counter = make(() => Atom.make(0))
  *
@@ -58,6 +59,8 @@ export const TypeId: TypeId = "~@effect/atom-react/ScopedAtom"
  * export function App() {
  *   return React.createElement(Counter.Provider, null, React.createElement(View))
  * }
+ *
+ * renderToStaticMarkup(React.createElement(App)) // => "<div>0</div>"
  * ```
  *
  * @category models
@@ -96,6 +99,7 @@ export interface ScopedAtom<A extends Atom.Atom<any>, Input = never> {
  * import { make, useAtomValue } from "@effect/atom-react"
  * import { Atom } from "effect/unstable/reactivity"
  * import * as React from "react"
+ * import { renderToStaticMarkup } from "react-dom/server"
  *
  * const User = make((name: string) => Atom.make(name))
  *
@@ -112,6 +116,8 @@ export interface ScopedAtom<A extends Atom.Atom<any>, Input = never> {
  *     React.createElement(UserName)
  *   )
  * }
+ *
+ * renderToStaticMarkup(React.createElement(App)) // => "<span>Ada</span>"
  * ```
  *
  * @category constructors

@@ -395,22 +395,69 @@ function getError(error: ErrorConstraint | undefined): ReadonlySet<Schema.Top> {
  * **Example** (Mapping schema errors to custom errors)
  *
  * ```ts import.meta.vitest
- * import { Effect, Schema } from "effect"
- * import { HttpApiMiddleware } from "effect/unstable/httpapi"
+ * import { Effect, Schema, type Types } from "effect"
+ * import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
+ * import {
+ *   HttpApiEndpoint,
+ *   HttpApiError,
+ *   HttpApiGroup,
+ *   HttpApiMiddleware
+ * } from "effect/unstable/httpapi"
  *
- * export class CustomError extends Schema.TaggedErrorClass<CustomError>()("CustomError", {}) {}
+ * class CustomError extends Schema.TaggedErrorClass<CustomError>()("CustomError", {}) {}
  *
- * export class ErrorHandler extends HttpApiMiddleware.Service<ErrorHandler>()("api/ErrorHandler", {
+ * class ErrorHandler extends HttpApiMiddleware.Service<ErrorHandler>()("api/ErrorHandler", {
  *   error: CustomError
  * }) {}
  *
- * export const ErrorHandlerLayer = HttpApiMiddleware.layerSchemaErrorTransform(
+ * const messages: Array<string> = []
+ * const ErrorHandlerLayer = HttpApiMiddleware.layerSchemaErrorTransform(
  *   ErrorHandler,
  *   (schemaError) =>
- *     Effect.log("Got SchemaError", schemaError).pipe(
+ *     Effect.sync(() => messages.push(`Mapping ${schemaError.kind} schema error`)).pipe(
  *       Effect.andThen(Effect.fail(new CustomError()))
  *     )
  * )
+ *
+ * const endpoint = HttpApiEndpoint.get("example", "/")
+ * const group = HttpApiGroup.make("examples").add(endpoint)
+ * const middlewareContext = {
+ *   endpoint: endpoint as unknown as HttpApiEndpoint.Top,
+ *   group: group as unknown as HttpApiGroup.Top
+ * }
+ * const Routes = HttpRouter.add(
+ *   "GET",
+ *   "/",
+ *   Effect.gen(function*() {
+ *     const applySchemaErrorTransform = yield* ErrorHandler
+ *     const schemaError = yield* HttpApiError.HttpApiSchemaError.wrap(
+ *       "Body",
+ *       Schema.decodeUnknownEffect(Schema.String)(42)
+ *     ).pipe(Effect.flip)
+ *     const failingResponse = Effect.fail(schemaError as unknown as Types.unhandled)
+ *     const result = yield* applySchemaErrorTransform(failingResponse, middlewareContext).pipe(
+ *       Effect.match({
+ *         onFailure: (error) => error instanceof CustomError ? error._tag : "UnexpectedError",
+ *         onSuccess: () => "Success"
+ *       })
+ *     )
+ *     return HttpServerResponse.text(result)
+ *   })
+ * ).pipe(HttpRouter.provideRequest(ErrorHandlerLayer))
+ *
+ * const program = Effect.acquireUseRelease(
+ *   Effect.sync(() => HttpRouter.toWebHandler(Routes, { disableLogger: true })),
+ *   ({ handler }) =>
+ *     Effect.gen(function*() {
+ *       const response = yield* Effect.promise(() => handler(new Request("http://localhost/")))
+ *       const body = yield* Effect.promise(() => response.text())
+ *       return body
+ *     }),
+ *   ({ dispose }) => Effect.promise(dispose)
+ * )
+ *
+ * const body = await Effect.runPromise(program)
+ * const result = [messages, body] // => [["Mapping Body schema error"], "CustomError"]
  * ```
  *
  * @category SchemaError transform

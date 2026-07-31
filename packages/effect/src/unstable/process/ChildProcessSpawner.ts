@@ -166,20 +166,31 @@ export interface ChildProcessHandle {
    *
    * **Example** (Temporarily unreferencing a child process)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect } from "effect"
-   * import { NodeServices } from "@effect/platform-node"
-   * import { ChildProcess } from "effect/unstable/process"
+   * import type { ChildProcessSpawner } from "effect/unstable/process"
+   *
+   * let referenced = true
+   *
+   * const unref: ChildProcessSpawner.ChildProcessHandle["unref"] = Effect.sync(() => {
+   *   referenced = false
+   *   const reref: ChildProcessSpawner.Reref = Effect.sync(() => {
+   *     referenced = true
+   *   })
+   *   return reref
+   * })
    *
    * const program = Effect.gen(function*() {
-   *   const handle = yield* ChildProcess.make`./server`
-   *   const reref = yield* handle.unref
-   *
-   *   yield* Effect.sleep("1 second")
+   *   const states = [] as Array<boolean>
+   *   const reref = yield* unref
+   *   states.push(referenced)
    *
    *   yield* reref
-   *   return yield* handle.exitCode
-   * }).pipe(Effect.scoped, Effect.provide(NodeServices.layer))
+   *   states.push(referenced)
+   *   return states
+   * })
+   *
+   * Effect.runSync(program) // => [false, true]
    * ```
    */
   readonly unref: Effect.Effect<Reref, PlatformError.PlatformError>

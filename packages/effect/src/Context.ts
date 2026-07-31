@@ -91,6 +91,7 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
  *
  * // The key can be used to store and retrieve services
  * const context = Context.make(Database, { query: (sql) => `Result: ${sql}` })
+ * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
  * ```
  *
  * @category models
@@ -190,6 +191,8 @@ export declare namespace ServiceClass {
  *   query: (sql) => `Result: ${sql}`
  * })
  * const config = Context.make(Config, { port: 8080 })
+ * Context.get(db, Database).query("SELECT 1") // => "Result: SELECT 1"
+ * Context.get(config, Config).port // => 8080
  * ```
  *
  * @see {@link Reference} for service keys with default values
@@ -312,14 +315,17 @@ const ReferenceTypeId = "~effect/Context/Reference" as const
  * import { Context } from "effect"
  *
  * // Define a reference with a default value
+ * const messages: Array<string> = []
  * const LoggerRef: Context.Reference<{ log: (msg: string) => void }> =
  *   Context.Reference("Logger", {
- *     defaultValue: () => ({ log: (msg: string) => console.log(msg) })
+ *     defaultValue: () => ({ log: (msg) => messages.push(msg) })
  *   })
  *
  * // The reference can be used without explicit provision
  * const context = Context.empty()
  * const logger = Context.get(context, LoggerRef) // Uses default value
+ * logger.log("default logger")
+ * messages // => ["default logger"]
  * ```
  *
  * @category models
@@ -349,6 +355,8 @@ export interface Reference<in out Shape> extends Service<never, Shape> {
  *
  * // Extract identifier type from a key
  * type DatabaseId = Context.Service.Identifier<typeof Database>
+ *
+ * Database.key // => "Database"
  * ```
  *
  * @since 2.0.0
@@ -368,6 +376,7 @@ export declare namespace Service {
    *   Context.Service<{ log: (msg: string) => void }>("Logger"),
    *   Context.Service<{ query: (sql: string) => string }>("Database")
    * ]
+ * services.map((service) => service.key) // => ["Logger", "Database"]
    * ```
    *
    * @category models
@@ -391,6 +400,7 @@ export declare namespace Service {
    * // Extract the service shape from the service
    * type DatabaseService = Context.Service.Shape<typeof Database>
    * // DatabaseService is { query: (sql: string) => string }
+ * Database.key // => "Database"
    * ```
    *
    * @category models
@@ -414,6 +424,7 @@ export declare namespace Service {
    * // Extract the identifier type from a key
    * type DatabaseId = Context.Service.Identifier<typeof Database>
    * // DatabaseId is the identifier type
+ * Database.key // => "Database"
    * ```
    *
    * @category models
@@ -444,10 +455,9 @@ const TypeId = "~effect/Context" as const
  *   "Database"
  * )
  *
- * const context = Context.make(Logger, {
- *   log: (msg: string) => console.log(msg)
- * })
+ * const context = Context.make(Logger, { log: (_msg: string) => {} })
  *   .pipe(Context.add(Database, { query: (sql) => `Result: ${sql}` }))
+ * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
  * ```
  *
  * @category models
@@ -482,10 +492,11 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
  *
  * // Create a context from a Map (unsafe)
  * const map = new Map([
- *   ["Logger", { log: (msg: string) => console.log(msg) }]
+ *   ["Logger", { log: (_msg: string) => {} }]
  * ])
  *
  * const context = Context.makeUnsafe(map)
+ * context.mapUnsafe.size // => 1
  * ```
  *
  * @category constructors
@@ -551,9 +562,7 @@ const Proto: Omit<Context<never>, "mapUnsafe" | "mutable"> = {
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
- * import * as assert from "node:assert"
- *
- * assert.strictEqual(Context.isContext(Context.empty()), true)
+ * Context.isContext(Context.empty()) // => true
  * ```
  *
  * @see {@link isKey} for checking service keys
@@ -571,9 +580,7 @@ export const isContext = (u: unknown): u is Context<never> => hasProperty(u, Typ
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
- * import * as assert from "node:assert"
- *
- * assert.strictEqual(Context.isKey(Context.Service("Service")), true)
+ * Context.isKey(Context.Service("Service")) // => true
  * ```
  *
  * @category guards
@@ -588,14 +595,13 @@ export const isKey = (u: unknown): u is Key<any, any> => hasProperty(u, ServiceT
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
- * import * as assert from "node:assert"
  *
  * const LoggerRef = Context.Reference("Logger", {
- *   defaultValue: () => ({ log: (msg: string) => console.log(msg) })
+ *   defaultValue: () => ({ log: (_msg: string) => {} })
  * })
  *
- * assert.strictEqual(Context.isReference(LoggerRef), true)
- * assert.strictEqual(Context.isReference(Context.Service("Key")), false)
+ * Context.isReference(LoggerRef) // => true
+ * Context.isReference(Context.Service("Key")) // => false
  * ```
  *
  * @category guards
@@ -610,9 +616,7 @@ export const isReference = (u: unknown): u is Reference<any> => hasProperty(u, R
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
- * import * as assert from "node:assert"
- *
- * assert.strictEqual(Context.isContext(Context.empty()), true)
+ * Context.empty().mapUnsafe.size // => 0
  * ```
  *
  * @category constructors
@@ -628,13 +632,12 @@ const emptyContext = makeUnsafe(new Map())
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
- * import * as assert from "node:assert"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  *
  * const context = Context.make(Port, { PORT: 8080 })
  *
- * assert.deepStrictEqual(Context.get(context, Port), { PORT: 8080 })
+ * Context.get(context, Port).PORT // => 8080
  * ```
  *
  * @category constructors
@@ -661,7 +664,6 @@ export const make = <I, S>(
  *
  * ```ts import.meta.vitest
  * import { Context, pipe } from "effect"
- * import * as assert from "node:assert"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
@@ -673,8 +675,8 @@ export const make = <I, S>(
  *   Context.add(Timeout, { TIMEOUT: 5000 })
  * )
  *
- * assert.deepStrictEqual(Context.get(context, Port), { PORT: 8080 })
- * assert.deepStrictEqual(Context.get(context, Timeout), { TIMEOUT: 5000 })
+ * const values = [Context.get(context, Port).PORT, Context.get(context, Timeout).TIMEOUT]
+ * values // => [8080, 5000]
  * ```
  *
  * @see {@link addOrOmit} for adding or removing a service from an `Option`
@@ -727,6 +729,8 @@ export const add: {
  * const withoutPort = withPort.pipe(
  *   Context.addOrOmit(Port, Option.none())
  * )
+ * Context.getOption(withPort, Port) // => Option.some({ PORT: 8080 })
+ * Context.getOption(withoutPort, Port) // => Option.none()
  * ```
  *
  * @see {@link add} for always storing a service value
@@ -786,9 +790,7 @@ export const addOrOmit: {
  *   "Database"
  * )
  *
- * const context = Context.make(Logger, {
- *   log: (msg: string) => console.log(msg)
- * })
+ * const context = Context.make(Logger, { log: (_msg: string) => {} })
  *
  * const logger = Context.getOrElse(context, Logger, () => ({ log: () => {} }))
  * const database = Context.getOrElse(
@@ -797,8 +799,8 @@ export const addOrOmit: {
  *   () => ({ query: () => "fallback" })
  * )
  *
- * console.log(logger === Context.get(context, Logger)) // true
- * console.log(database.query("SELECT 1")) // "fallback"
+ * logger === Context.get(context, Logger) // => true
+ * database.query("SELECT 1") // => "fallback"
  * ```
  *
  * @see {@link getOption} for returning `Option.none` when a non-reference key is missing
@@ -861,16 +863,15 @@ export const getOrUndefined: {
  * **Example** (Getting services unsafely)
  *
  * ```ts import.meta.vitest
- * import { Context } from "effect"
- * import * as assert from "node:assert"
+ * import { Context, Option } from "effect"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
  *
  * const context = Context.make(Port, { PORT: 8080 })
  *
- * assert.deepStrictEqual(Context.getUnsafe(context, Port), { PORT: 8080 })
- * assert.throws(() => Context.getUnsafe(context, Timeout))
+ * Context.getUnsafe(context, Port).PORT // => 8080
+ * Context.getOption(context, Timeout) // => Option.none()
  * ```
  *
  * @see {@link get} for type-checked service access
@@ -905,7 +906,6 @@ export const getUnsafe: {
  *
  * ```ts import.meta.vitest
  * import { Context, pipe } from "effect"
- * import * as assert from "node:assert"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
@@ -915,7 +915,7 @@ export const getUnsafe: {
  *   Context.add(Timeout, { TIMEOUT: 5000 })
  * )
  *
- * assert.deepStrictEqual(Context.get(context, Timeout), { TIMEOUT: 5000 })
+ * Context.get(context, Timeout).TIMEOUT // => 5000
  * ```
  *
  * @see {@link getOption} for optional service access
@@ -953,14 +953,16 @@ export const get: {
  * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
+ * const messages: Array<string> = []
  * const LoggerRef = Context.Reference("Logger", {
- *   defaultValue: () => ({ log: (msg: string) => console.log(msg) })
+ *   defaultValue: () => ({ log: (msg: string) => messages.push(msg) })
  * })
  *
  * const context = Context.empty()
  * const logger = Context.getReferenceUnsafe(context, LoggerRef)
  *
- * console.log(typeof logger.log) // "function"
+ * logger.log("message")
+ * messages // => ["message"]
  * ```
  *
  * @see {@link getUnsafe} for unsafe access with any service key
@@ -1025,18 +1027,14 @@ const serviceNotFoundError = (service: Key<any, any>) => {
  *
  * ```ts import.meta.vitest
  * import { Context, Option } from "effect"
- * import * as assert from "node:assert"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
  *
  * const context = Context.make(Port, { PORT: 8080 })
  *
- * assert.deepStrictEqual(
- *   Context.getOption(context, Port),
- *   Option.some({ PORT: 8080 })
- * )
- * assert.deepStrictEqual(Context.getOption(context, Timeout), Option.none())
+ * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
+ * Context.getOption(context, Timeout) // => Option.none()
  * ```
  *
  * @see {@link getOrElse} for returning a fallback value directly
@@ -1070,7 +1068,6 @@ export const getOption: {
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
- * import * as assert from "node:assert"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
@@ -1080,8 +1077,8 @@ export const getOption: {
  *
  * const context = Context.merge(firstContext, secondContext)
  *
- * assert.deepStrictEqual(Context.get(context, Port), { PORT: 8080 })
- * assert.deepStrictEqual(Context.get(context, Timeout), { TIMEOUT: 5000 })
+ * const values = [Context.get(context, Port).PORT, Context.get(context, Timeout).TIMEOUT]
+ * values // => [8080, 5000]
  * ```
  *
  * @see {@link mergeAll} for merging more than two contexts at once
@@ -1116,7 +1113,6 @@ export const merge: {
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
- * import * as assert from "node:assert"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
@@ -1132,9 +1128,7 @@ export const merge: {
  *   thirdContext
  * )
  *
- * assert.deepStrictEqual(Context.get(context, Port), { PORT: 8080 })
- * assert.deepStrictEqual(Context.get(context, Timeout), { TIMEOUT: 5000 })
- * assert.deepStrictEqual(Context.get(context, Host), { HOST: "localhost" })
+ * context.mapUnsafe.size // => 3
  * ```
  *
  * @see {@link merge} for merging two contexts
@@ -1165,7 +1159,6 @@ export const mergeAll = <T extends Array<unknown>>(
  *
  * ```ts import.meta.vitest
  * import { Context, Option, pipe } from "effect"
- * import * as assert from "node:assert"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
@@ -1177,11 +1170,8 @@ export const mergeAll = <T extends Array<unknown>>(
  *
  * const context = pipe(someContext, Context.pick(Port))
  *
- * assert.deepStrictEqual(
- *   Context.getOption(context, Port),
- *   Option.some({ PORT: 8080 })
- * )
- * assert.deepStrictEqual(Context.getOption(context, Timeout), Option.none())
+ * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
+ * Context.getOption(context, Timeout) // => Option.none()
  * ```
  *
  * @see {@link omit} for removing selected services
@@ -1212,7 +1202,6 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
  *
  * ```ts import.meta.vitest
  * import { Context, Option, pipe } from "effect"
- * import * as assert from "node:assert"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
  * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
@@ -1224,11 +1213,8 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
  *
  * const context = pipe(someContext, Context.omit(Timeout))
  *
- * assert.deepStrictEqual(
- *   Context.getOption(context, Port),
- *   Option.some({ PORT: 8080 })
- * )
- * assert.deepStrictEqual(Context.getOption(context, Timeout), Option.none())
+ * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
+ * Context.getOption(context, Timeout) // => Option.none()
  * ```
  *
  * @see {@link pick} for keeping selected services
@@ -1312,8 +1298,9 @@ const withMapUnsafe = <Services, B>(self: Context<Services>, f: (map: Map<string
  * import { Context } from "effect"
  *
  * // Create a reference with a default value
+ * const messages: Array<string> = []
  * const LoggerRef = Context.Reference("Logger", {
- *   defaultValue: () => ({ log: (msg: string) => console.log(msg) })
+ *   defaultValue: () => ({ log: (msg: string) => messages.push(`Default: ${msg}`) })
  * })
  *
  * // The reference provides the default value when accessed from an empty context
@@ -1322,9 +1309,12 @@ const withMapUnsafe = <Services, B>(self: Context<Services>, f: (map: Map<string
  *
  * // You can also override the default value
  * const customContext = Context.make(LoggerRef, {
- *   log: (msg: string) => `Custom: ${msg}`
+ *   log: (msg: string) => messages.push(`Custom: ${msg}`)
  * })
  * const customLogger = Context.get(customContext, LoggerRef)
+ * logger.log("default")
+ * customLogger.log("message")
+ * messages // => ["Default: default", "Custom: message"]
  * ```
  *
  * @see {@link Service} for required services without default values

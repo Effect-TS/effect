@@ -647,8 +647,7 @@ export const endpoint = <
  *
  * buildUrl.users.getUser({
  *   params: { id: "123" }
- * })
- * //=> "https://api.example.com/users/123"
+ * }) // => "https://api.example.com/users/123"
  * ```
  *
  * @category constructors

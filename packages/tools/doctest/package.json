@@ -42,8 +42,12 @@
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
     "check": "tsc -b tsconfig.json"
   },
+  "dependencies": {
+    "rolldown": "^1.1.5"
+  },
   "peerDependencies": {
-    "vite": ">=7.3.0 <9.0.0",
+    "effect": "workspace:^",
+    "vite": ">=8.0.0 <9.0.0",
     "vitest": ">=4.1.10 <5.0.0"
   },
   "devDependencies": {

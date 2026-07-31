@@ -165,6 +165,8 @@ const BasePart = Schema.Struct({
  *   fileName: "screenshot.png",
  *   data: new Uint8Array([1, 2, 3])
  * })
+ *
+ * const result = [textPart.type, filePart.type] // => ["text", "file"]
  * ```
  *
  * @category constructors
@@ -225,6 +227,7 @@ export type PartConstructorParams<P extends Part> = Omit<P, typeof PartTypeId | 
  * const textPart: Prompt.TextPart = Prompt.makePart("text", {
  *   text: "Hello, how can I help you today?"
  * })
+ * textPart.text // => "Hello, how can I help you today?"
  * ```
  *
  * @category models
@@ -308,6 +311,7 @@ export const textPart = (params: PartConstructorParams<TextPart>): TextPart => m
  *   text:
  *     "Summary: the response compares the requested options by price and availability."
  * })
+ * reasoningPart.type // => "reasoning"
  * ```
  *
  * @category models
@@ -401,6 +405,8 @@ export const reasoningPart = (params: PartConstructorParams<ReasoningPart>): Rea
  *   fileName: "report.pdf",
  *   data: new Uint8Array([1, 2, 3])
  * })
+ *
+ * const result = [imagePart.mediaType, documentPart.fileName] // => ["image/jpeg", "report.pdf"]
  * ```
  *
  * @category models
@@ -510,6 +516,7 @@ export const filePart = (params: PartConstructorParams<FilePart>): FilePart => m
  *   params: { city: "San Francisco", units: "celsius" },
  *   providerExecuted: false
  * })
+ * toolCallPart.name // => "get_weather"
  * ```
  *
  * @category models
@@ -627,6 +634,7 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
  *     humidity: 65
  *   }
  * })
+ * const result = [toolResultPart.name, toolResultPart.isFailure] // => ["get_weather", false]
  * ```
  *
  * @category models
@@ -755,6 +763,8 @@ export const toolResultPart = (params: PartConstructorParams<ToolResultPart>): T
  *     reason: "Operation not allowed"
  *   }
  * )
+ *
+ * const result = [approvalResponse.approved, denialResponse.approved] // => [true, false]
  * ```
  *
  * @category models
@@ -868,6 +878,7 @@ export const toolApprovalResponsePart = (
  *     toolCallId: "call_456"
  *   }
  * )
+ * const result = [approvalRequest.approvalId, approvalRequest.toolCallId] // => ["approval_123", "call_456"]
  * ```
  *
  * @category models
@@ -1048,6 +1059,7 @@ const BaseMessage = Schema.Struct({
  * const userMessage = Prompt.makeMessage("user", {
  *   content: [textPart]
  * })
+ * const result = [userMessage.role, userMessage.content.length] // => ["user", 1]
  * ```
  *
  * @category constructors
@@ -1129,6 +1141,7 @@ export const ContentFromString: Schema.decodeTo<
  *   content: "You are a helpful assistant specialized in mathematics. " +
  *     "Always show your work step by step."
  * })
+ * systemMessage.role // => "system"
  * ```
  *
  * @category models
@@ -1226,6 +1239,8 @@ export const systemMessage = (params: MessageConstructorParams<SystemMessage>): 
  *     })
  *   ]
  * })
+ *
+ * const result = [textUserMessage.content.length, multimodalUserMessage.content.length] // => [1, 2]
  * ```
  *
  * @category models
@@ -1414,6 +1429,7 @@ export const userMessage = (params: MessageConstructorParams<UserMessage>): User
  *     ]
  *   }
  * )
+ * assistantMessage.content.map((part) => part.type) // => ["text", "tool-call", "tool-result", "text"]
  * ```
  *
  * @category models
@@ -1616,6 +1632,7 @@ export const assistantMessage = (params: MessageConstructorParams<AssistantMessa
  *     })
  *   ]
  * })
+ * const result = [toolMessage.role, toolMessage.content[0].type] // => ["tool", "tool-result"]
  * ```
  *
  * @category models
@@ -1839,8 +1856,8 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
  *
  * **Example** (Accepting raw prompt input)
  *
- * ```ts
- * import type { Prompt } from "effect/unstable/ai"
+ * ```ts import.meta.vitest
+ * import { Prompt } from "effect/unstable/ai"
  *
  * // String input - creates a user message
  * const stringInput: Prompt.RawInput = "Hello, world!"
@@ -1851,9 +1868,9 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
  *   { role: "user", content: [{ type: "text", text: "Hi!" }] }
  * ]
  *
- * // Existing prompt
- * declare const existingPrompt: Prompt.Prompt
- * const promptInput: Prompt.RawInput = existingPrompt
+ * const promptInput: Prompt.RawInput = Prompt.empty
+ *
+ * const result = [typeof stringInput, Array.isArray(messagesInput), promptInput.content.length] // => ["string", true, 0]
  * ```
  *
  * @category models
@@ -1887,7 +1904,7 @@ const decodeMessagesSync = Schema.decodeSync(Schema.Array(Message))
  * import { Prompt } from "effect/unstable/ai"
  *
  * const emptyPrompt = Prompt.empty
- * console.log(emptyPrompt.content) // > []
+ * emptyPrompt.content // => []
  * ```
  *
  * @category constructors
@@ -1905,7 +1922,7 @@ export const empty: Prompt = makePrompt([])
  *
  * **Example** (Creating prompts from inputs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * // From string - creates a user message
@@ -1917,9 +1934,9 @@ export const empty: Prompt = makePrompt([])
  *   { role: "user", content: [{ type: "text", text: "Hi!" }] }
  * ])
  *
- * // From existing prompt
- * declare const existingPrompt: Prompt.Prompt
- * const copiedPrompt = Prompt.make(existingPrompt)
+ * const copiedPrompt = Prompt.make(Prompt.empty)
+ *
+ * const result = [textPrompt.content[0].role, structuredPrompt.content.length, copiedPrompt.content.length] // => ["user", 2, 0]
  * ```
  *
  * @category constructors
@@ -1959,6 +1976,7 @@ export const make = (input: RawInput): Prompt => {
  * ]
  *
  * const prompt = Prompt.fromMessages(messages)
+ * prompt.content.length // => 2
  * ```
  *
  * @category constructors
@@ -2000,6 +2018,7 @@ export const fromMessages = (messages: ReadonlyArray<Message>): Prompt => makePr
  *
  * const prompt = Prompt.fromResponseParts(responseParts)
  * // Creates an assistant message with the response content
+ * prompt.content.map((message) => message.role) // => ["assistant", "tool"]
  * ```
  *
  * @category constructors
@@ -2141,6 +2160,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
  * }])
  *
  * const merged = Prompt.concat(systemPrompt, "Hello, world!")
+ * merged.content.map((message) => message.role) // => ["system", "user"]
  * ```
  *
  * @category combinators
@@ -2191,6 +2211,7 @@ export const concat: {
  *   prompt,
  *   "You are an expert in programming"
  * )
+ * replaced.content[0].content // => "You are an expert in programming"
  * ```
  *
  * @category combinators
@@ -2234,6 +2255,7 @@ export const setSystem: {
  *   "You are a helpful assistant. "
  * )
  * // result content: "You are a helpful assistant. You are an expert in programming."
+ * replaced.content[0].content // => "You are a helpful assistant. You are an expert in programming."
  * ```
  *
  * @category combinators
@@ -2283,6 +2305,7 @@ export const prependSystem: {
  *   " You are a helpful assistant."
  * )
  * // result content: "You are an expert in programming. You are a helpful assistant."
+ * replaced.content[0].content // => "You are an expert in programming. You are a helpful assistant."
  * ```
  *
  * @category combinators

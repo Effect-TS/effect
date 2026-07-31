@@ -49,12 +49,15 @@ const TypeId = "~effect/Cache"
  *
  *   return [value1, value2, value3]
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [5, 5, 5]
  * ```
  *
  * **Example** (Handling lookup failures)
  *
  * ```ts import.meta.vitest
- * import { Cache, Effect } from "effect"
+ * import { Cache, Effect, Exit } from "effect"
  *
  * // Cache with error handling
  * const program = Effect.gen(function*() {
@@ -67,11 +70,14 @@ const TypeId = "~effect/Cache"
  *   })
  *
  *   // Handle successful and failed lookups
- *   const success = yield* Cache.get(cache, "test") // 4
- *   const failure = yield* Effect.exit(Cache.get(cache, "error")) // Exit.fail
+ *   const success = yield* Cache.get(cache, "test")
+ *   const failure = yield* Effect.exit(Cache.get(cache, "error"))
  *
- *   return { success, failure }
+ *   return [success, failure] as const
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [4, Exit.fail("Lookup failed")]
  * ```
  *
  * **Example** (Using complex keys with TTL)
@@ -92,8 +98,11 @@ const TypeId = "~effect/Cache"
  *   const userId = new UserId({ id: 123 })
  *   const userName = yield* Cache.get(userCache, userId)
  *
- *   return userName // "User-123"
+ *   return userName
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => "User-123"
  * ```
  *
  * @category models
@@ -152,7 +161,7 @@ export interface Entry<A, E> {
  * import { Cache, Effect, Exit } from "effect"
  *
  * // Cache with TTL based on computed value
- * const userCache = Effect.gen(function*() {
+ * const program = Effect.gen(function*() {
  *   const cache = yield* Cache.makeWith(
  *     (id: number) => Effect.succeed({ id, active: id % 2 === 0 }),
  *     {
@@ -167,8 +176,11 @@ export interface Entry<A, E> {
  *     }
  *   )
  *
- *   return cache
+ *   return cache.capacity
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => 1000
  * ```
  *
  * @see {@link make} for a simpler cache constructor with a fixed time-to-live for all entries
@@ -227,8 +239,11 @@ export const makeWith = <
  *
  *   const result1 = yield* Cache.get(cache, "hello")
  *   const result2 = yield* Cache.get(cache, "world")
- *   console.log({ result1, result2 }) // { result1: 5, result2: 5 }
+ *   return { result1, result2 }
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => { result1: 5, result2: 5 }
  * ```
  *
  * **Example** (Creating a cache with TTL)
@@ -259,11 +274,12 @@ export const makeWith = <
  *   })
  *
  *   const user1 = yield* Cache.get(cache, 123)
- *   console.log(user1) // { name: "Ada", email: "ada@example.com" }
- *
  *   const user2 = yield* Cache.get(cache, 123)
- *   console.log(user2) // { name: "Ada", email: "ada@example.com" }
+ *   return [user1, user2, user1 === user2] as const
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [{ name: "Ada", email: "ada@example.com" }, { name: "Ada", email: "ada@example.com" }, true]
  * ```
  *
  * @category constructors
@@ -329,20 +345,21 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  *
  *   // Cache miss - triggers lookup function
  *   const result1 = yield* Cache.get(cache, "hello")
- *   console.log(result1) // 5
  *
  *   // Cache hit - returns cached value without lookup
  *   const result2 = yield* Cache.get(cache, "hello")
- *   console.log(result2) // 5 (from cache)
  *
  *   return { result1, result2 }
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => { result1: 5, result2: 5 }
  * ```
  *
  * **Example** (Handling lookup failures)
  *
  * ```ts import.meta.vitest
- * import { Cache, Effect } from "effect"
+ * import { Cache, Effect, Exit } from "effect"
  *
  * // Error handling when lookup fails
  * const program = Effect.gen(function*() {
@@ -356,12 +373,14 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  *
  *   // Successful lookup
  *   const success = yield* Cache.get(cache, "hello")
- *   console.log(success) // 5
  *
  *   // Failed lookup - returns error
  *   const failure = yield* Effect.exit(Cache.get(cache, "error"))
- *   console.log(failure) // Exit.fail("Lookup failed")
+ *   return [success, failure] as const
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [5, Exit.fail("Lookup failed")]
  * ```
  *
  * **Example** (Sharing concurrent lookups)
@@ -388,9 +407,11 @@ const defaultTimeToLive = <A, E>(_: Exit.Exit<A, E>, _key: unknown): Duration.Du
  *     Cache.get(cache, "hello")
  *   ], { concurrency: "unbounded" })
  *
- *   console.log(results) // [5, 5, 5]
- *   console.log(lookupCount) // 1 (lookup called only once)
+ *   return { results, lookupCount }
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => { results: [5, 5, 5], lookupCount: 1 }
  * ```
  *
  * @category combinators
@@ -488,7 +509,7 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  * **Example** (Reading cached values without lookup)
  *
  * ```ts import.meta.vitest
- * import { Cache, Effect } from "effect"
+ * import { Cache, Effect, Option } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const cache = yield* Cache.make({
@@ -498,23 +519,23 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  *
  *   // No value in cache yet - returns None without lookup
  *   const empty = yield* Cache.getOption(cache, "hello")
- *   console.log(empty) // Option.none()
  *
  *   // Populate cache using get
  *   yield* Cache.get(cache, "hello")
  *
  *   // Now getOption returns the cached value
  *   const cached = yield* Cache.getOption(cache, "hello")
- *   console.log(cached) // Option.some(5)
- *
- *   return { empty, cached }
+ *   return [empty, cached] as const
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [Option.none(), Option.some(5)]
  * ```
  *
  * **Example** (Skipping expired entries)
  *
  * ```ts import.meta.vitest
- * import { Cache, Effect } from "effect"
+ * import { Cache, Effect, Option } from "effect"
  * import { TestClock } from "effect/testing"
  *
  * // Expired entries return None
@@ -530,21 +551,23 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  *
  *   // Value exists before expiration
  *   const beforeExpiry = yield* Cache.getOption(cache, "hello")
- *   console.log(beforeExpiry) // Option.some(5)
  *
  *   // Simulate time passing
  *   yield* TestClock.adjust("2 hours")
  *
  *   // Value expired - returns None
  *   const afterExpiry = yield* Cache.getOption(cache, "hello")
- *   console.log(afterExpiry) // Option.none()
+ *   return [beforeExpiry, afterExpiry] as const
  * })
+ *
+ * const actual = await Effect.runPromise(Effect.provide(program, TestClock.layer()))
+ * actual // => [Option.some(5), Option.none()]
  * ```
  *
  * **Example** (Waiting for pending lookups)
  *
  * ```ts import.meta.vitest
- * import { Cache, Deferred, Effect, Fiber } from "effect"
+ * import { Cache, Deferred, Effect, Fiber, Option } from "effect"
  *
  * // Waits for ongoing computation to complete
  * const program = Effect.gen(function*() {
@@ -564,11 +587,12 @@ const checkCapacity = <K, A, E, R>(self: Cache<K, A, E, R>) => {
  *   yield* Deferred.succeed(deferred, void 0)
  *
  *   const result = yield* Fiber.join(optionFiber)
- *   console.log(result) // Option.some(42)
- *
  *   const value = yield* Fiber.join(getFiber)
- *   console.log(value) // 42
+ *   return [result, value] as const
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [Option.some(42), 42]
  * ```
  *
  * @category combinators
@@ -653,9 +677,11 @@ export const getSuccess: {
  *
  *   // Set a value directly without invoking lookup
  *   yield* Cache.set(cache, "hello", 42)
- *   const result = yield* Cache.get(cache, "hello")
- *   console.log(result) // 42 (not 5 from lookup)
+ *   return yield* Cache.get(cache, "hello")
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => 42
  * ```
  *
  * **Example** (Overwriting cached values)
@@ -677,8 +703,11 @@ export const getSuccess: {
  *   yield* Cache.set(cache, "test", 999)
  *   const updated = yield* Cache.get(cache, "test") // 999
  *
- *   console.log({ original, updated })
+ *   return { original, updated }
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => { original: 4, updated: 999 }
  * ```
  *
  * **Example** (Applying TTL to set values)
@@ -697,12 +726,16 @@ export const getSuccess: {
  *
  *   // Set value with TTL applied
  *   yield* Cache.set(cache, "temporary", 123)
- *   console.log(yield* Cache.has(cache, "temporary")) // true
+ *   const beforeExpiry = yield* Cache.has(cache, "temporary")
  *
  *   // Advance time past TTL
  *   yield* TestClock.adjust("2 hours")
- *   console.log(yield* Cache.has(cache, "temporary")) // false
+ *   const afterExpiry = yield* Cache.has(cache, "temporary")
+ *   return [beforeExpiry, afterExpiry]
  * })
+ *
+ * const actual = await Effect.runPromise(Effect.provide(program, TestClock.layer()))
+ * actual // => [true, false]
  * ```
  *
  * **Example** (Enforcing capacity when setting values)
@@ -720,14 +753,18 @@ export const getSuccess: {
  *   // Fill cache to capacity
  *   yield* Cache.set(cache, "a", 1)
  *   yield* Cache.set(cache, "b", 2)
- *   console.log(yield* Cache.size(cache)) // 2
+ *   const sizeBeforeEviction = yield* Cache.size(cache)
  *
  *   // Adding another entry evicts oldest
  *   yield* Cache.set(cache, "c", 3)
- *   console.log(yield* Cache.size(cache)) // 2
- *   console.log(yield* Cache.has(cache, "a")) // false (evicted)
- *   console.log(yield* Cache.has(cache, "c")) // true
+ *   const sizeAfterEviction = yield* Cache.size(cache)
+ *   const hasOldest = yield* Cache.has(cache, "a")
+ *   const hasNewest = yield* Cache.has(cache, "c")
+ *   return [sizeBeforeEviction, sizeAfterEviction, hasOldest, hasNewest]
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [2, 2, false, true]
  * ```
  *
  * @category combinators
@@ -776,12 +813,16 @@ export const set: {
  *   })
  *
  *   // Check non-existent key
- *   console.log(yield* Cache.has(cache, "missing")) // false
+ *   const missing = yield* Cache.has(cache, "missing")
  *
  *   // Add entry and check existence
  *   yield* Cache.get(cache, "hello")
- *   console.log(yield* Cache.has(cache, "hello")) // true
+ *   const present = yield* Cache.has(cache, "hello")
+ *   return [missing, present]
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [false, true]
  * ```
  *
  * **Example** (Checking TTL expiration)
@@ -800,16 +841,20 @@ export const set: {
  *
  *   // Add entry with TTL
  *   yield* Cache.get(cache, "expires")
- *   console.log(yield* Cache.has(cache, "expires")) // true
+ *   const initial = yield* Cache.has(cache, "expires")
  *
  *   // Still valid before expiration
  *   yield* TestClock.adjust("30 minutes")
- *   console.log(yield* Cache.has(cache, "expires")) // true
+ *   const beforeExpiry = yield* Cache.has(cache, "expires")
  *
  *   // Expired after TTL
  *   yield* TestClock.adjust("31 minutes")
- *   console.log(yield* Cache.has(cache, "expires")) // false
+ *   const afterExpiry = yield* Cache.has(cache, "expires")
+ *   return [initial, beforeExpiry, afterExpiry]
  * })
+ *
+ * const actual = await Effect.runPromise(Effect.provide(program, TestClock.layer()))
+ * actual // => [true, true, false]
  * ```
  *
  * **Example** (Checking multiple keys)
@@ -830,16 +875,16 @@ export const set: {
  *
  *   // Check multiple keys
  *   const keys = ["apple", "banana", "cherry", "date"]
+ *   const results: Array<string> = []
  *   for (const key of keys) {
  *     const exists = yield* Cache.has(cache, key)
- *     console.log(`${key}: ${exists}`)
+ *     results.push(`${key}: ${exists}`)
  *   }
- *   // Output:
- *   // apple: true
- *   // banana: true
- *   // cherry: false
- *   // date: false
+ *   return results
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => ["apple: true", "banana: true", "cherry: false", "date: false"]
  * ```
  *
  * @category combinators
@@ -873,11 +918,11 @@ export const has: {
  *
  *   // Add a value to the cache
  *   yield* Cache.get(cache, "hello")
- *   console.log(yield* Cache.has(cache, "hello")) // true
+ *   const beforeInvalidation = yield* Cache.has(cache, "hello")
  *
  *   // Invalidate the entry
  *   yield* Cache.invalidate(cache, "hello")
- *   console.log(yield* Cache.has(cache, "hello")) // false
+ *   const afterInvalidation = yield* Cache.has(cache, "hello")
  *
  *   // Invalidating non-existent keys doesn't error
  *   yield* Cache.invalidate(cache, "nonexistent")
@@ -896,7 +941,11 @@ export const has: {
  *   yield* Cache.get(cache2, "test") // lookupCount = 1
  *   yield* Cache.invalidate(cache2, "test")
  *   yield* Cache.get(cache2, "test") // lookupCount = 2 (lookup called again)
+ *   return { beforeInvalidation, afterInvalidation, lookupCount }
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => { beforeInvalidation: true, afterInvalidation: false, lookupCount: 2 }
  * ```
  *
  * @category combinators
@@ -935,8 +984,7 @@ export const invalidate: {
  *     "hello",
  *     (value) => value === 5
  *   )
- *   console.log(invalidated1) // true
- *   console.log(yield* Cache.has(cache, "hello")) // false
+ *   const hasHello = yield* Cache.has(cache, "hello")
  *
  *   // Don't invalidate when predicate doesn't match
  *   const invalidated2 = yield* Cache.invalidateWhen(
@@ -944,8 +992,7 @@ export const invalidate: {
  *     "hi",
  *     (value) => value === 5
  *   )
- *   console.log(invalidated2) // false
- *   console.log(yield* Cache.has(cache, "hi")) // true (still present)
+ *   const hasHi = yield* Cache.has(cache, "hi")
  *
  *   // Returns false for non-existent keys
  *   const invalidated3 = yield* Cache.invalidateWhen(
@@ -953,7 +1000,6 @@ export const invalidate: {
  *     "nonexistent",
  *     () => true
  *   )
- *   console.log(invalidated3) // false
  *
  *   // Returns false for failed cached values
  *   const cacheWithErrors = yield* Cache.make<string, number, string>({
@@ -968,8 +1014,11 @@ export const invalidate: {
  *     "fail",
  *     () => true
  *   )
- *   console.log(invalidated4) // false (can't invalidate failed values)
+ *   return [invalidated1, hasHello, invalidated2, hasHi, invalidated3, invalidated4]
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [true, false, false, true, false, false]
  * ```
  *
  * @category combinators
@@ -1022,20 +1071,20 @@ export const invalidateWhen: {
  *
  *   // Initial cache population
  *   const value1 = yield* Cache.get(cache, "user")
- *   console.log(value1) // "user-1"
  *
  *   // Get from cache (no lookup)
  *   const value2 = yield* Cache.get(cache, "user")
- *   console.log(value2) // "user-1" (same value)
  *
  *   // Force refresh - always calls lookup
  *   const refreshed = yield* Cache.refresh(cache, "user")
- *   console.log(refreshed) // "user-2" (new value)
  *
  *   // Subsequent gets return refreshed value
  *   const value3 = yield* Cache.get(cache, "user")
- *   console.log(value3) // "user-2"
+ *   return [value1, value2, refreshed, value3, counter]
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => ["user-1", "user-1", "user-2", "user-2", 2]
  * ```
  *
  * **Example** (Resetting TTL on refresh)
@@ -1056,15 +1105,19 @@ export const invalidateWhen: {
  *   yield* TestClock.adjust("45 minutes")
  *
  *   // Entry would normally expire in 15 minutes
- *   console.log(yield* Cache.has(cache, "test")) // true
+ *   const beforeRefresh = yield* Cache.has(cache, "test")
  *
  *   // Refresh resets the TTL to full 1 hour
  *   yield* Cache.refresh(cache, "test")
  *   yield* TestClock.adjust("30 minutes")
  *
  *   // Still valid because TTL was reset
- *   console.log(yield* Cache.has(cache, "test")) // true
+ *   const afterRefresh = yield* Cache.has(cache, "test")
+ *   return [beforeRefresh, afterRefresh]
  * })
+ *
+ * const actual = await Effect.runPromise(Effect.provide(program, TestClock.layer()))
+ * actual // => [true, true]
  * ```
  *
  * **Example** (Refreshing missing keys)
@@ -1081,11 +1134,14 @@ export const invalidateWhen: {
  *
  *   // Refresh non-existent key creates new entry
  *   const result = yield* Cache.refresh(cache, "newKey")
- *   console.log(result) // "value-for-newKey"
  *
  *   // Verify it's now cached
- *   console.log(yield* Cache.has(cache, "newKey")) // true
+ *   const cached = yield* Cache.has(cache, "newKey")
+ *   return [result, cached]
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => ["value-for-newKey", true]
  * ```
  *
  * @category combinators
@@ -1145,18 +1201,29 @@ export const refresh: {
  *   yield* Cache.get(cache, "banana")
  *   yield* Cache.get(cache, "cherry")
  *
- *   console.log(yield* Cache.size(cache)) // 3
- *   console.log(yield* Cache.has(cache, "apple")) // true
+ *   const sizeBeforeInvalidation = yield* Cache.size(cache)
+ *   const hasAppleBeforeInvalidation = yield* Cache.has(cache, "apple")
  *
  *   // Clear all entries
  *   yield* Cache.invalidateAll(cache)
  *
  *   // Verify cache is empty
- *   console.log(yield* Cache.size(cache)) // 0
- *   console.log(yield* Cache.has(cache, "apple")) // false
- *   console.log(yield* Cache.has(cache, "banana")) // false
- *   console.log(yield* Cache.has(cache, "cherry")) // false
+ *   const sizeAfterInvalidation = yield* Cache.size(cache)
+ *   const hasAppleAfterInvalidation = yield* Cache.has(cache, "apple")
+ *   const hasBananaAfterInvalidation = yield* Cache.has(cache, "banana")
+ *   const hasCherryAfterInvalidation = yield* Cache.has(cache, "cherry")
+ *   return [
+ *     sizeBeforeInvalidation,
+ *     hasAppleBeforeInvalidation,
+ *     sizeAfterInvalidation,
+ *     hasAppleAfterInvalidation,
+ *     hasBananaAfterInvalidation,
+ *     hasCherryAfterInvalidation
+ *   ]
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [3, true, 0, false, false, false]
  * ```
  *
  * @category combinators
@@ -1189,19 +1256,20 @@ export const invalidateAll = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.E
  *
  *   // Empty cache has size 0
  *   const emptySize = yield* Cache.size(cache)
- *   console.log(emptySize) // 0
  *
  *   // Add entries and check size
  *   yield* Cache.get(cache, "hello")
  *   yield* Cache.get(cache, "world")
  *   const sizeAfterAdding = yield* Cache.size(cache)
- *   console.log(sizeAfterAdding) // 2
  *
  *   // Size decreases after invalidation
  *   yield* Cache.invalidate(cache, "hello")
  *   const sizeAfterInvalidation = yield* Cache.size(cache)
- *   console.log(sizeAfterInvalidation) // 1
+ *   return [emptySize, sizeAfterAdding, sizeAfterInvalidation]
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [0, 2, 1]
  * ```
  *
  * @category combinators
@@ -1232,9 +1300,11 @@ export const size = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<num
  *
  *   // Retrieve all active keys
  *   const keys = yield* Cache.keys(cache)
- *
- *   console.log(Array.from(keys).sort()) // ["cache", "hello", "world"]
+ *   return Array.from(keys).sort()
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => ["cache", "hello", "world"]
  * ```
  *
  * @category combinators
@@ -1274,10 +1344,11 @@ export const keys = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<Ite
  *
  *   // Retrieve all cached values
  *   const values = yield* Cache.values(cache)
- *   const valuesArray = Array.from(values).sort()
- *
- *   console.log(valuesArray) // [1, 2, 3]
+ *   return Array.from(values).sort()
  * })
+ *
+ * const actual = await Effect.runPromise(program)
+ * actual // => [1, 2, 3]
  * ```
  *
  * @category combinators

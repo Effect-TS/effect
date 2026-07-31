@@ -55,6 +55,8 @@ import type * as Option from "../../Option.ts"
  *     }
  *   ]
  * }
+ *
+ * deployCommandHelp.usage // => "myapp deploy [options] <target>"
  * ```
  *
  * @category models
@@ -145,6 +147,8 @@ export interface ExampleDoc {
  *   description: O.some("Port number to use"),
  *   required: true
  * }
+ *
+ * const names = [verboseFlag.name, portFlag.name] // => ["verbose", "port"]
  * ```
  *
  * @category models
@@ -211,6 +215,8 @@ export interface FlagDoc {
  *     commands: [deploySubcommand, buildSubcommand]
  *   }]
  * }
+ *
+ * mainCommandHelp.subcommands?.[0].commands.map((command) => command.name) // => ["deploy", "build"]
  * ```
  *
  * @category models
@@ -290,6 +296,8 @@ export interface SubcommandGroupDoc {
  *   flags: [],
  *   args: [sourceArg, filesArg]
  * }
+ *
+ * copyCommandHelp.args?.map((arg) => arg.name) // => ["source", "files"]
  * ```
  *
  * @category models

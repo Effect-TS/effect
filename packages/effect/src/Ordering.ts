@@ -37,9 +37,9 @@ import * as Reducer_ from "./Reducer.ts"
  *   return 0
  * }
  *
- * console.log(compareNumbers(5, 10)) // -1 (5 < 10)
- * console.log(compareNumbers(10, 5)) // 1 (10 > 5)
- * console.log(compareNumbers(5, 5)) // 0 (5 == 5)
+ * compareNumbers(5, 10) // => -1
+ * compareNumbers(10, 5) // => 1
+ * compareNumbers(5, 5) // => 0
  *
  * // Using with string comparison
  * const compareStrings = (a: string, b: string): Ordering.Ordering => {
@@ -67,9 +67,9 @@ export type Ordering = -1 | 0 | 1
  * import { Ordering } from "effect"
  *
  * // Basic reversal
- * console.log(Ordering.reverse(1)) // -1 (greater becomes less)
- * console.log(Ordering.reverse(-1)) // 1 (less becomes greater)
- * console.log(Ordering.reverse(0)) // 0 (equal stays equal)
+ * Ordering.reverse(1) // => -1
+ * Ordering.reverse(-1) // => 1
+ * Ordering.reverse(0) // => 0
  *
  * // Creating descending sort from ascending comparison
  * const compareNumbers = (a: number, b: number): Ordering.Ordering =>
@@ -105,7 +105,6 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
  *
  * ```ts import.meta.vitest
  * import { Function, Ordering } from "effect"
- * import * as assert from "node:assert"
  *
  * const toMessage = Ordering.match({
  *   onLessThan: Function.constant("less than"),
@@ -113,9 +112,9 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
  *   onGreaterThan: Function.constant("greater than")
  * })
  *
- * assert.deepStrictEqual(toMessage(-1), "less than")
- * assert.deepStrictEqual(toMessage(0), "equal")
- * assert.deepStrictEqual(toMessage(1), "greater than")
+ * toMessage(-1) // => "less than"
+ * toMessage(0) // => "equal"
+ * toMessage(1) // => "greater than"
  * ```
  *
  * @category pattern matching

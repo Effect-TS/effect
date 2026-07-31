@@ -97,17 +97,24 @@ export interface ErrorReporter {
  * and resolves the `ignore`, `severity`, and `attributes` annotations on
  * each error before invoking your callback.
  *
- * **Example** (Forwarding errors to the console)
+ * **Example** (Forwarding errors to a callback)
  *
  * ```ts import.meta.vitest
- * import { ErrorReporter } from "effect"
+ * import { Effect, ErrorReporter } from "effect"
  *
- * // Forward every failure to the console
- * const consoleReporter = ErrorReporter.make(
- *   ({ error, severity, attributes }) => {
- *     console.error(`[${severity}]`, error.message, attributes)
- *   }
+ * const reports: Array<{ message: string; severity: string; attributes: object }> = []
+ * const reporter = ErrorReporter.make(({ error, severity, attributes }) => {
+ *   reports.push({ message: error.message, severity, attributes })
+ * })
+ *
+ * const program = Effect.fail(new Error("boom")).pipe(
+ *   Effect.withErrorReporting,
+ *   Effect.provide(ErrorReporter.layer([reporter])),
+ *   Effect.exit
  * )
+ *
+ * await Effect.runPromise(program)
+ * reports // => [{ message: "boom", severity: "Info", attributes: {} }]
  * ```
  *
  * @see {@link layer} for registering reporters in the environment
@@ -188,30 +195,34 @@ export const CurrentErrorReporters: Context.Reference<ReadonlySet<ErrorReporter>
  * ```ts import.meta.vitest
  * import { Effect, ErrorReporter } from "effect"
  *
- * const consoleReporter = ErrorReporter.make(({ error, severity }) => {
- *   console.error(`[${severity}]`, error.message)
+ * const reports: Array<string> = []
+ * const firstReporter = ErrorReporter.make(({ error, severity }) => {
+ *   reports.push(`[${severity}] ${error.message}`)
  * })
- *
- * const metricsReporter = ErrorReporter.make(({ severity }) => {
- *   // increment an error counter by severity
+ * const secondReporter = ErrorReporter.make(({ error, severity }) => {
+ *   reports.push(`${severity}: ${error.message}`)
  * })
  *
  * // Replace all existing reporters
  * const ReporterLive = ErrorReporter.layer([
- *   consoleReporter,
- *   metricsReporter
+ *   firstReporter,
+ *   secondReporter
  * ])
  *
  * // Add to existing reporters instead of replacing
  * const ReporterMerged = ErrorReporter.layer(
- *   [metricsReporter],
+ *   [secondReporter],
  *   { mergeWithExisting: true }
  * )
  *
  * const program = Effect.fail("boom").pipe(
  *   Effect.withErrorReporting,
- *   Effect.provide(ReporterLive)
+ *   Effect.provide(ReporterLive),
+ *   Effect.exit
  * )
+ *
+ * await Effect.runPromise(program)
+ * reports // => ["[Info] boom", "Info: boom"]
  * ```
  *
  * @see {@link make} for creating an `ErrorReporter` from a callback
@@ -258,12 +269,18 @@ export const layer = <
  * ```ts import.meta.vitest
  * import { Cause, Effect, ErrorReporter } from "effect"
  *
- * // Log the cause for monitoring, then continue with a fallback
+ * const messages: Array<string> = []
  * const program = Effect.gen(function*() {
  *   const cause = Cause.fail("something went wrong")
  *   yield* ErrorReporter.report(cause)
  *   return "fallback value"
  * })
+ *
+ * const reporter = ErrorReporter.make(({ error }) => messages.push(error.message))
+ * const result = await Effect.runPromise(
+ *   Effect.provide(program, ErrorReporter.layer([reporter]))
+ * )
+ * Array.of(messages, result) // => [["something went wrong"], "fallback value"]
  * ```
  *
  * @category Reporting
@@ -353,6 +370,8 @@ export type ignore = "~effect/ErrorReporter/ignore"
  * class NotFoundError extends Data.TaggedError("NotFoundError")<{}> {
  *   readonly [ErrorReporter.ignore] = true
  * }
+ *
+ * ErrorReporter.isIgnored(new NotFoundError()) // => true
  * ```
  *
  * @see {@link isIgnored} for checking whether a value carries this annotation
@@ -420,6 +439,8 @@ export type severity = "~effect/ErrorReporter/severity"
  * class DeprecationWarning extends Data.TaggedError("DeprecationWarning")<{}> {
  *   readonly [ErrorReporter.severity] = "Warn" as const
  * }
+ *
+ * ErrorReporter.getSeverity(new DeprecationWarning()) // => "Warn"
  * ```
  *
  * @see {@link getSeverity} for reading the severity stored under this key
@@ -498,6 +519,8 @@ export type attributes = "~effect/ErrorReporter/attributes"
  *     orderId: this.orderId
  *   }
  * }
+ *
+ * ErrorReporter.getAttributes(new PaymentError({ orderId: "order-123" })) // => { orderId: "order-123" }
  * ```
  *
  * @see {@link ignore} for suppressing reports for expected object errors

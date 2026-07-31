@@ -1528,6 +1528,7 @@ export const setLazy: {
  * const point = Atom.make({ x: 0, y: 0 }).pipe(
  *   Atom.withEquality<{ x: number; y: number }>((a, b) => a.x === b.x && a.y === b.y)
  * )
+ * point.equals({ x: 1, y: 2 }, { x: 1, y: 2 }) // => true
  * ```
  *
  * @category combinators

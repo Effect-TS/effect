@@ -70,9 +70,7 @@ const redactHeaders = (headers: Record<string, string>): Record<string, string> 
  *   description: "Connection timeout after 30 seconds"
  * })
  *
- * console.log(error.isRetryable) // true
- * console.log(error.message)
- * // "Transport: Connection timeout after 30 seconds (POST https://api.openai.com/v1/completions)"
+ * const result = [error.reason, error.isRetryable] // => ["TransportError", true]
  * ```
  *
  * @category reason
@@ -107,13 +105,17 @@ export class NetworkError extends Schema.ErrorClass<NetworkError>(
    *
    * **Example** (Creating a network error from a request error)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { AiError } from "effect/unstable/ai"
-   * import type { HttpClientError } from "effect/unstable/http"
+   * import { HttpClientError, HttpClientRequest } from "effect/unstable/http"
    *
-   * declare const platformError: HttpClientError.RequestError
+   * const platformError = new HttpClientError.TransportError({
+   *   request: HttpClientRequest.get("https://example.com/models"),
+   *   description: "Connection refused"
+   * })
    *
    * const aiError = AiError.NetworkError.fromRequestError(platformError)
+   * aiError.reason // => "TransportError"
    * ```
    *
    * @since 4.0.0
@@ -192,6 +194,8 @@ export class NetworkError extends Schema.ErrorClass<NetworkError>(
  *   },
  *   anthropic: null
  * }
+ *
+ * const result = [metadata.openai.errorCode, metadata.anthropic] // => ["rate_limit_exceeded", null]
  * ```
  *
  * @category schemas
@@ -359,8 +363,7 @@ export const HttpContext = Schema.Struct({
  *   retryAfter: Duration.seconds(60)
  * })
  *
- * console.log(rateLimitError.isRetryable) // > true
- * console.log(rateLimitError.message) // > Rate limit exceeded. Retry after 1m
+ * const result = [rateLimitError._tag, rateLimitError.isRetryable] // => ["RateLimitError", true]
  * ```
  *
  * @category reason
@@ -411,9 +414,7 @@ export class RateLimitError extends Schema.ErrorClass<RateLimitError>(
  *
  * const quotaError = new AiError.QuotaExhaustedError({})
  *
- * console.log(quotaError.isRetryable) // false
- * console.log(quotaError.message)
- * // "Quota exhausted. Check your account billing and usage limits."
+ * const result = [quotaError._tag, quotaError.isRetryable] // => ["QuotaExhaustedError", false]
  * ```
  *
  * @category reason
@@ -466,9 +467,7 @@ export class QuotaExhaustedError extends Schema.ErrorClass<QuotaExhaustedError>(
  *   kind: "InvalidKey"
  * })
  *
- * console.log(authError.isRetryable) // false
- * console.log(authError.message)
- * // "InvalidKey: Verify your API key is correct"
+ * const result = [authError.kind, authError.isRetryable] // => ["InvalidKey", false]
  * ```
  *
  * @category reason
@@ -526,9 +525,7 @@ export class AuthenticationError extends Schema.ErrorClass<AuthenticationError>(
  *   description: "Input contains prohibited content"
  * })
  *
- * console.log(policyError.isRetryable) // false
- * console.log(policyError.message)
- * // "Content policy violation: Input contains prohibited content"
+ * const result = [policyError.description, policyError.isRetryable] // => ["Input contains prohibited content", false]
  * ```
  *
  * @category reason
@@ -581,9 +578,7 @@ export class ContentPolicyError extends Schema.ErrorClass<ContentPolicyError>(
  *   description: "Temperature value 5 is out of range"
  * })
  *
- * console.log(invalidRequestError.isRetryable) // false
- * console.log(invalidRequestError.message)
- * // "Invalid request: parameter 'temperature' must be between 0 and 2. Temperature value 5 is out of range"
+ * const result = [invalidRequestError.parameter, invalidRequestError.isRetryable] // => ["temperature", false]
  * ```
  *
  * @category reason
@@ -640,9 +635,7 @@ export class InvalidRequestError extends Schema.ErrorClass<InvalidRequestError>(
  *   description: "Server encountered an unexpected error"
  * })
  *
- * console.log(providerError.isRetryable) // true
- * console.log(providerError.message)
- * // "Internal provider error: Server encountered an unexpected error"
+ * const result = [providerError.description, providerError.isRetryable] // => ["Server encountered an unexpected error", true]
  * ```
  *
  * @category reason
@@ -693,9 +686,7 @@ export class InternalProviderError extends Schema.ErrorClass<InternalProviderErr
  *   description: "Expected a string but received a number"
  * })
  *
- * console.log(parseError.isRetryable) // true
- * console.log(parseError.message)
- * // "Invalid output: Expected a string but received a number"
+ * const result = [parseError.description, parseError.isRetryable] // => ["Expected a string but received a number", true]
  * ```
  *
  * @category reason
@@ -730,13 +721,15 @@ export class InvalidOutputError extends Schema.ErrorClass<InvalidOutputError>(
    *
    * **Example** (Creating an invalid output error from a schema error)
    *
-   * ```ts
-   * import { Schema } from "effect"
+   * ```ts import.meta.vitest
+   * import { Effect, Schema } from "effect"
    * import { AiError } from "effect/unstable/ai"
    *
-   * declare const schemaError: Schema.SchemaError
-   *
+   * const schemaError = await Effect.runPromise(
+   *   Schema.decodeUnknownEffect(Schema.Number)("not a number").pipe(Effect.flip)
+   * )
    * const parseError = AiError.InvalidOutputError.fromSchemaError(schemaError)
+   * parseError.description // => 'Expected number, got "not a number"'
    * ```
    *
    * @since 4.0.0
@@ -770,9 +763,7 @@ export class InvalidOutputError extends Schema.ErrorClass<InvalidOutputError>(
  *   responseText: "{\"foo\":}"
  * })
  *
- * console.log(error.isRetryable) // true
- * console.log(error.message)
- * // "Structured output validation failed: Expected a valid JSON object"
+ * const result = [error.description, error.responseText, error.isRetryable] // => ["Expected a valid JSON object", '{"foo":}', true]
  * ```
  *
  * @category reason
@@ -808,14 +799,15 @@ export class StructuredOutputError extends Schema.ErrorClass<StructuredOutputErr
    *
    * **Example** (Creating a structured output error from a schema error)
    *
-   * ```ts
-   * import { Schema } from "effect"
+   * ```ts import.meta.vitest
+   * import { Effect, Schema } from "effect"
    * import { AiError } from "effect/unstable/ai"
    *
-   * declare const schemaError: Schema.SchemaError
-   * declare const rawText: string
-   *
-   * const parseError = AiError.StructuredOutputError.fromSchemaError(schemaError, rawText)
+   * const schemaError = await Effect.runPromise(
+   *   Schema.decodeUnknownEffect(Schema.Struct({ name: Schema.String }))({}).pipe(Effect.flip)
+   * )
+   * const parseError = AiError.StructuredOutputError.fromSchemaError(schemaError, "{}")
+   * parseError.responseText // => "{}"
    * ```
    *
    * @since 4.0.0
@@ -850,9 +842,7 @@ export class StructuredOutputError extends Schema.ErrorClass<StructuredOutputErr
  *   description: "Unions are not supported in Anthropic structured output"
  * })
  *
- * console.log(error.isRetryable) // false
- * console.log(error.message)
- * // "Unsupported schema: Unions are not supported in Anthropic structured output"
+ * const result = [error.description, error.isRetryable] // => ["Unions are not supported in Anthropic structured output", false]
  * ```
  *
  * @category reason
@@ -902,9 +892,7 @@ export class UnsupportedSchemaError extends Schema.ErrorClass<UnsupportedSchemaE
  *   description: "An unexpected error occurred"
  * })
  *
- * console.log(unknownError.isRetryable) // false
- * console.log(unknownError.message)
- * // "An unexpected error occurred"
+ * const result = [unknownError.description, unknownError.isRetryable] // => ["An unexpected error occurred", false]
  * ```
  *
  * @category reason
@@ -961,9 +949,7 @@ export class UnknownError extends Schema.ErrorClass<UnknownError>(
  *   availableTools: ["GetWeather", "GetTime"]
  * })
  *
- * console.log(error.isRetryable) // true
- * console.log(error.message)
- * // "Tool 'unknownTool' not found. Available tools: GetWeather, GetTime"
+ * const result = [error.toolName, error.availableTools, error.isRetryable] // => ["unknownTool", ["GetWeather", "GetTime"], true]
  * ```
  *
  * @category reason
@@ -1017,9 +1003,7 @@ export class ToolNotFoundError extends Schema.ErrorClass<ToolNotFoundError>(
  *   description: "Expected string, got number"
  * })
  *
- * console.log(error.isRetryable) // true
- * console.log(error.message)
- * // "Invalid parameters for tool 'GetWeather': Expected string, got number"
+ * const result = [error.toolName, error.description, error.isRetryable] // => ["GetWeather", "Expected string, got number", true]
  * ```
  *
  * @category reason
@@ -1073,9 +1057,7 @@ export class ToolParameterValidationError extends Schema.ErrorClass<ToolParamete
  *   description: "Tool handler returned invalid result: missing 'temperature' field"
  * })
  *
- * console.log(error.isRetryable) // false
- * console.log(error.message)
- * // "Tool 'GetWeather' returned invalid result: missing 'temperature' field"
+ * const result = [error.toolName, error.isRetryable] // => ["GetWeather", false]
  * ```
  *
  * @category reason
@@ -1128,9 +1110,7 @@ export class InvalidToolResultError extends Schema.ErrorClass<InvalidToolResultE
  *   description: "Cannot encode bigint values as JSON"
  * })
  *
- * console.log(error.isRetryable) // false
- * console.log(error.message)
- * // "Failed to encode result for tool 'GetWeather': Cannot encode bigint values as JSON"
+ * const result = [error.toolName, error.description, error.isRetryable] // => ["GetWeather", "Cannot encode bigint values as JSON", false]
  * ```
  *
  * @category reason
@@ -1183,9 +1163,7 @@ export class ToolResultEncodingError extends Schema.ErrorClass<ToolResultEncodin
  *   description: "Invalid container ID format"
  * })
  *
- * console.log(error.isRetryable) // false
- * console.log(error.message)
- * // "Invalid configuration for tool 'OpenAiCodeInterpreter': Invalid container ID format"
+ * const result = [error.toolName, error.description, error.isRetryable] // => ["OpenAiCodeInterpreter", "Invalid container ID format", false]
  * ```
  *
  * @category reason
@@ -1236,9 +1214,7 @@ export class ToolConfigurationError extends Schema.ErrorClass<ToolConfigurationE
  *   pendingApprovals: ["GetWeather", "SendEmail"]
  * })
  *
- * console.log(error.isRetryable) // false
- * console.log(error.message)
- * // "Toolkit required to resolve pending tool approvals: GetWeather, SendEmail"
+ * const result = [error.pendingApprovals, error.isRetryable] // => [["GetWeather", "SendEmail"], false]
  * ```
  *
  * @category reason
@@ -1291,9 +1267,7 @@ export class ToolkitRequiredError extends Schema.ErrorClass<ToolkitRequiredError
  *   description: "Unsupported media type 'video/mp4'. Supported types include images, application/pdf, text/plain"
  * })
  *
- * console.log(error.isRetryable) // false
- * console.log(error.message)
- * // "Invalid user input: Unsupported media type 'video/mp4'. Supported types include images, application/pdf, text/plain"
+ * const result = [error._tag, error.isRetryable] // => ["InvalidUserInputError", false]
  * ```
  *
  * @category reason
@@ -1439,11 +1413,15 @@ const TypeId = "~effect/unstable/ai/AiError/AiError" as const
  *
  * **Example** (Handling an AI error by tag)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Duration, Effect } from "effect"
  * import { AiError } from "effect/unstable/ai"
  *
- * declare const aiOperation: Effect.Effect<string, AiError.AiError>
+ * const aiOperation = Effect.fail(new AiError.AiError({
+ *   module: "OpenAI",
+ *   method: "generateText",
+ *   reason: new AiError.RateLimitError({ retryAfter: Duration.seconds(30) })
+ * }))
  *
  * // Handle specific reason types
  * const handled = aiOperation.pipe(
@@ -1454,6 +1432,8 @@ const TypeId = "~effect/unstable/ai/AiError/AiError" as const
  *     return Effect.fail(error)
  *   })
  * )
+ *
+ * await Effect.runPromise(handled) // => "Retry after 30000 millis"
  * ```
  *
  * @category schemas
@@ -1516,8 +1496,7 @@ export type AiErrorEncoded = typeof AiError["Encoded"]
  *   reason: new AiError.RateLimitError({})
  * })
  *
- * console.log(AiError.isAiError(someError)) // > false
- * console.log(AiError.isAiError(aiError)) // > true
+ * const result = [AiError.isAiError(someError), AiError.isAiError(aiError)] // => [false, true]
  * ```
  *
  * @category guards
@@ -1536,8 +1515,7 @@ export const isAiError = (u: unknown): u is AiError => Predicate.hasProperty(u, 
  * const rateLimitError = new AiError.RateLimitError({})
  * const genericError = new Error("generic error")
  *
- * console.log(AiError.isAiErrorReason(rateLimitError)) // > true
- * console.log(AiError.isAiErrorReason(genericError)) // > false
+ * const result = [AiError.isAiErrorReason(rateLimitError), AiError.isAiErrorReason(genericError)] // => [true, false]
  * ```
  *
  * @category guards
@@ -1562,8 +1540,7 @@ export const isAiErrorReason = (u: unknown): u is AiErrorReason => Predicate.has
  *   })
  * })
  *
- * console.log(error.message)
- * // "OpenAI.completion: Rate limit exceeded. Retry after 1 minute"
+ * const result = [error.module, error.method, error.reason._tag] // => ["OpenAI", "completion", "RateLimitError"]
  * ```
  *
  * @category constructors
@@ -1593,7 +1570,7 @@ export const make = (params: {
  *   body: { error: "Rate limit exceeded" }
  * })
  *
- * console.log(reason._tag) // > RateLimitError
+ * reason._tag // => "RateLimitError"
  * ```
  *
  * @category constructors

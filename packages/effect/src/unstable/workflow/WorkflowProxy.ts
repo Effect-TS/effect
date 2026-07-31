@@ -46,6 +46,7 @@ import type * as Workflow from "./Workflow.ts"
  * const ApiLayer = RpcServer.layer(MyRpcs).pipe(
  *   Layer.provide(WorkflowProxyServer.layerRpcHandlers(myWorkflows))
  * )
+ * const result = [MyRpcs.requests.size, Layer.isLayer(ApiLayer)] // => [3, true]
  * ```
  *
  * @category constructors
@@ -131,6 +132,7 @@ export type ConvertRpcs<Workflows extends Workflow.Any, Prefix extends string> =
  *     WorkflowProxyServer.layerHttpApi(MyApi, "workflows", myWorkflows)
  *   )
  * )
+ * const result = [Object.keys(MyApi.groups.workflows.endpoints).length, Layer.isLayer(ApiLayer)] // => [3, true]
  * ```
  *
  * @category constructors

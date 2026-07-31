@@ -652,24 +652,31 @@ export declare namespace All {
  * **Example** (Collecting prompt results)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, FileSystem, Layer, Path, Terminal } from "effect"
  * import { Prompt } from "effect/unstable/cli"
  *
- * const username = Prompt.text({
- *   message: "Enter your username: "
+ * const terminal = Terminal.make({
+ *   columns: Effect.succeed(80),
+ *   rows: Effect.succeed(24),
+ *   readInput: Effect.succeed({} as never),
+ *   readLine: Effect.die("unused"),
+ *   display: () => Effect.void
  * })
+ * const services = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Layer.succeed(Terminal.Terminal, terminal)
+ * )
  *
- * const password = Prompt.password({
- *   message: "Enter your password: ",
- *   validate: (value) =>
- *     value.length === 0
- *       ? Effect.fail("Password cannot be empty")
- *       : Effect.succeed(value)
- * })
+ * const username = Prompt.succeed("alice")
+ * const password = Prompt.succeed("secret")
  *
  * const allWithTuple = Prompt.all([username, password])
  *
  * const allWithRecord = Prompt.all({ username, password })
+ *
+ * await Effect.runPromise(Effect.provide(allWithTuple, services)) // => ["alice", "secret"]
+ * await Effect.runPromise(Effect.provide(allWithRecord, services)) // => { username: "alice", password: "secret" }
  * ```
  *
  * @category collecting & elements
@@ -1147,6 +1154,8 @@ export const select = <const A>(options: SelectOptions<A>): Prompt<A> => {
  *     { title: "Kotlin", value: "kt" }
  *   ]
  * })
+ *
+ * Prompt.isPrompt(language) // => true
  * ```
  *
  * @category constructors

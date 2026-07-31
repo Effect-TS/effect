@@ -870,6 +870,8 @@ export function findLeadingJSDoc(
  *   " *" + "/"
  * ].join("\n")
  * const result = parseJSDoc(rawBlock)
+ *
+ * result._tag // => "Success"
  * ```
  *
  * @category parsing

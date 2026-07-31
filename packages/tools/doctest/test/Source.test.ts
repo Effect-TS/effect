@@ -21,8 +21,8 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [
-        { source: "const first = 1", line: 3, name: "first", expected: undefined },
-        { source: "const second = 2", line: 9, name: "second example", expected: undefined }
+        { source: "const first = 1", line: 3, name: "first" },
+        { source: "const second = 2", line: 9, name: "second example" }
       ])
     })
 
@@ -39,7 +39,7 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [
-        { source: "const inside = true", line: 5, name: undefined, expected: undefined }
+        { source: "const inside = true", line: 5, name: undefined }
       ])
     })
 
@@ -58,28 +58,19 @@ describe("Source", () => {
       assert.isEmpty(Source.extract(source))
     })
 
-    it("extracts expected console output", () => {
+    it("preserves assertion comments in snippet source", () => {
       const source = [
         "/**",
         " * ```ts import.meta.vitest",
-        " * console.log({ value: 1 })",
-        " * // > {",
-        " * // >   value: 1",
-        " * // > }",
+        " * const value = 1 // => 1",
         " * ```",
         " */"
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [{
-        source: [
-          "console.log({ value: 1 })",
-          "// > {",
-          "// >   value: 1",
-          "// > }"
-        ].join("\n"),
+        source: "const value = 1 // => 1",
         line: 2,
-        name: undefined,
-        expected: "{\n  value: 1\n}"
+        name: undefined
       }])
     })
 
@@ -101,8 +92,7 @@ describe("Source", () => {
           "console.log(1) // > 1"
         ].join("\n"),
         line: 2,
-        name: undefined,
-        expected: "1"
+        name: undefined
       }])
     })
   })
@@ -122,7 +112,7 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source, "markdown"), [
-        { source: "const value = 1", line: 7, name: "example", expected: undefined }
+        { source: "const value = 1", line: 7, name: "example" }
       ])
     })
   })

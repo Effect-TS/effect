@@ -49,6 +49,8 @@ import type * as Schema from "./Schema.ts"
  *   path: "/users/0/name",
  *   value: "Bob"
  * }
+ *
+ * Array.of(addOp.op, removeOp.op, replaceOp.op) // => ["add", "remove", "replace"]
  * ```
  *
  * @see {@link JsonPatch} for the array of operations forming a complete patch
@@ -114,7 +116,7 @@ export type JsonPatchOperation =
  *
  * **Example** (Defining a multi-operation patch)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonPatch } from "effect"
  *
  * const patch: JsonPatch.JsonPatch = [
@@ -123,8 +125,7 @@ export type JsonPatchOperation =
  *   { op: "remove", path: "/oldField" }
  * ]
  *
- * const result = JsonPatch.apply(patch, { count: 3, oldField: "value" })
- * // { count: 5, items: ["apple"] }
+ * JsonPatch.apply(patch, { items: [], count: 3, oldField: "value" }) // => { items: ["apple"], count: 5 }
  * ```
  *
  * @see {@link JsonPatchOperation} for individual operation types
@@ -166,11 +167,9 @@ export type JsonPatch = ReadonlyArray<JsonPatchOperation>
  * const newValue = { users: [{ id: 1, name: "Bob" }, { id: 2, name: "Charlie" }], count: 2 }
  *
  * const patch = JsonPatch.get(oldValue, newValue)
- * // [
- * //   { op: "replace", path: "/users/0/name", value: "Bob" },
- * //   { op: "add", path: "/users/1", value: { id: 2, name: "Charlie" } },
- * //   { op: "replace", path: "/count", value: 2 }
- * // ]
+ * patch[0] // => { op: "replace", path: "/count", value: 2 }
+ * patch[1] // => { op: "replace", path: "/users/0/name", value: "Bob" }
+ * patch[2] // => { op: "add", path: "/users/1", value: { id: 2, name: "Charlie" } }
  * ```
  *
  * @see {@link apply} to apply the generated patch to a document
@@ -272,8 +271,7 @@ function getLoop(
  *   { op: "replace", path: "/total", value: 10 }
  * ]
  *
- * const result = JsonPatch.apply(patch, document)
- * // { items: [1, 2, 3, 4], total: 10 }
+ * JsonPatch.apply(patch, document) // => { items: [1, 2, 3, 4], total: 10 }
  * ```
  *
  * @see {@link get} to generate patches from value differences

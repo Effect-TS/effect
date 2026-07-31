@@ -112,6 +112,7 @@ export type PipeToOption = "stdin" | `fd${number}`
  * const pipeline = ChildProcess.make`my-program`.pipe(
  *   ChildProcess.pipeTo(ChildProcess.make`grep error`, { from: "stderr" })
  * )
+ * const result = [pipeline._tag, pipeline.options.from] // => ["PipedCommand", "stderr"]
  * ```
  *
  * @category options
@@ -473,6 +474,8 @@ export interface CommandOptions extends KillOptions {
    *     fd3: { type: "input" }
    *   }
    * })
+   * const result = [cmd1.options.additionalFds?.fd3?.type, cmd2.options.additionalFds?.fd3?.type]
+   * result // => ["output", "input"]
    * ```
    */
   readonly additionalFds?: Record<`fd${number}`, AdditionalFdConfig> | undefined
@@ -582,6 +585,8 @@ const makePipedCommand = (
  *
  * // Array form
  * const cmd3 = ChildProcess.make("git", ["status"])
+ *
+ * const result = [cmd1.command, cmd2.options.cwd, cmd3.args[0]] // => ["echo", "/tmp", "status"]
  * ```
  *
  * @category constructors
@@ -669,6 +674,9 @@ export const make: {
  * const pipeline3 = ChildProcess.make`my-program`.pipe(
  *   ChildProcess.pipeTo(ChildProcess.make`tee output.log`, { from: "all" })
  * )
+ *
+ * const result = [pipeline1._tag, pipeline2.options.from, pipeline3.options.from]
+ * result // => ["PipedCommand", "stderr", "all"]
  * ```
  *
  * @category combinators
@@ -701,6 +709,8 @@ export const pipeTo: {
  * )
  *
  * // now prefixed will execute `time echo "foo"`
+ * const result = prefixed._tag === "StandardCommand" ? `${prefixed.command} ${prefixed.args[0]}` : prefixed._tag
+ * result // => "time echo"
  * ```
  *
  * @category combinators
@@ -765,6 +775,7 @@ const applyPrefix = (self: Command, prefixSpec: PrefixSpec): Command => {
  * const cmd = ChildProcess.make`ls -la`.pipe(
  *   ChildProcess.setCwd("/tmp")
  * )
+ * const result = cmd._tag === "StandardCommand" && cmd.options.cwd // => "/tmp"
  * ```
  *
  * @category combinators
@@ -803,6 +814,7 @@ export const setCwd: {
  * const cmd = ChildProcess.make`node script.js`.pipe(
  *   ChildProcess.setEnv({ NODE_ENV: "test" })
  * )
+ * const result = cmd._tag === "StandardCommand" && cmd.options.env?.NODE_ENV // => "test"
  * ```
  *
  * @category combinators

@@ -3,23 +3,16 @@
  *
  * **Example** (Using Deno path operations)
  *
- * ```ts
- * import { Path } from "effect";
- * import { DenoPath, DenoRuntime } from "@effect/platform-deno";
- * import { assertEquals } from "@std/assert";
- * import { Effect } from "effect";
+ * ```ts import.meta.vitest
+ * import { Effect, Path } from "effect"
+ * import { DenoPath } from "@effect/platform-deno"
  *
- * const program = Effect.gen(function* () {
- *   // Access the Path service
- *   const path = yield* Path.Path;
+ * const program = Effect.gen(function*() {
+ *   const path = yield* Path.Path
+ *   return path.extname("file.txt")
+ * }).pipe(Effect.provide(DenoPath.layer))
  *
- *   // Join parts of a path to create a complete file path
- *   const extension = path.extname("file.txt");
- *
- *   assertEquals(extension, ".txt");
- * });
- *
- * DenoRuntime.runMain(program.pipe(Effect.provide(DenoPath.layer)));
+ * Effect.runSync(program) // => ".txt"
  * ```
  *
  * @since 4.0.0

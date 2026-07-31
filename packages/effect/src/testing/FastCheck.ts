@@ -29,12 +29,13 @@
  *   (arr: Array<number>) => {
  *     const reversed = arr.slice().reverse()
  *     const doubleReversed = reversed.slice().reverse()
- *     return JSON.stringify(arr) === JSON.stringify(doubleReversed)
+ *     return arr.length === doubleReversed.length &&
+ *       arr.every((value, index) => value === doubleReversed[index])
  *   }
  * )
  *
  * // Run the property test
- * FastCheck.assert(reverseProp)
+ * FastCheck.assert(reverseProp, { seed: 1, numRuns: 100 }) // => undefined
  * ```
  *
  * **Example** (Checking string concatenation properties)
@@ -54,7 +55,7 @@
  *   }
  * )
  *
- * FastCheck.assert(concatProp)
+ * FastCheck.assert(concatProp, { seed: 2, numRuns: 100 }) // => undefined
  * ```
  *
  * **Example** (Generating record data for properties)
@@ -80,7 +81,7 @@
  *   }
  * )
  *
- * FastCheck.assert(validPersonProp)
+ * FastCheck.assert(validPersonProp, { seed: 3, numRuns: 100 }) // => undefined
  * ```
  *
  * @category re-exports

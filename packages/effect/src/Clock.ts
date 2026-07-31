@@ -25,13 +25,21 @@ import * as effect from "./internal/effect.ts"
  * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
+ * const testClock: Clock.Clock = {
+ *   currentTimeMillisUnsafe: () => 1_000,
+ *   currentTimeMillis: Effect.succeed(1_000),
+ *   currentTimeNanosUnsafe: () => 1_000_000_000n,
+ *   currentTimeNanos: Effect.succeed(1_000_000_000n),
+ *   sleep: () => Effect.void
+ * }
+ *
  * const clockOperations = Effect.gen(function*() {
  *   const currentTime = yield* Clock.currentTimeMillis
  *   const currentTimeNanos = yield* Clock.currentTimeNanos
- *
- *   console.log(`Current time (ms): ${currentTime}`)
- *   console.log(`Current time (ns): ${currentTimeNanos}`)
+ *   return [currentTime, currentTimeNanos] as const
  * })
+ *
+ * await Effect.runPromise(Effect.provideService(clockOperations, Clock.Clock, testClock)) // => [1_000, 1_000_000_000n]
  * ```
  *
  * @category models
@@ -95,10 +103,20 @@ export interface Clock {
  * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
+ * const testClock: Clock.Clock = {
+ *   currentTimeMillisUnsafe: () => 1_000,
+ *   currentTimeMillis: Effect.succeed(1_000),
+ *   currentTimeNanosUnsafe: () => 1_000_000_000n,
+ *   currentTimeNanos: Effect.succeed(1_000_000_000n),
+ *   sleep: () => Effect.void
+ * }
+ *
  * const program = Effect.gen(function*() {
  *   const clock = yield* Clock.Clock
  *   return clock.currentTimeMillisUnsafe()
  * })
+ *
+ * await Effect.runPromise(Effect.provideService(program, Clock.Clock, testClock)) // => 1_000
  * ```
  *
  * @see {@link clockWith} for using the current Clock service inside an effect
@@ -123,13 +141,17 @@ export const Clock: Context.Reference<Clock> = effect.ClockRef
  * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
- * const program = Clock.clockWith((clock) =>
- *   Effect.sync(() => {
- *     const currentTime = clock.currentTimeMillisUnsafe()
- *     console.log(`Current time: ${currentTime}`)
- *     return currentTime
- *   })
- * )
+ * const testClock: Clock.Clock = {
+ *   currentTimeMillisUnsafe: () => 1_000,
+ *   currentTimeMillis: Effect.succeed(1_000),
+ *   currentTimeNanosUnsafe: () => 1_000_000_000n,
+ *   currentTimeNanos: Effect.succeed(1_000_000_000n),
+ *   sleep: () => Effect.void
+ * }
+ *
+ * const program = Clock.clockWith((clock) => Effect.sync(() => clock.currentTimeMillisUnsafe()))
+ *
+ * await Effect.runPromise(Effect.provideService(program, Clock.Clock, testClock)) // => 1_000
  * ```
  *
  * @see {@link Clock} for the service reference
@@ -153,11 +175,15 @@ export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effec
  * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const currentTime = yield* Clock.currentTimeMillis
- *   console.log(`Current time: ${currentTime}ms`)
- *   return currentTime
- * })
+ * const testClock: Clock.Clock = {
+ *   currentTimeMillisUnsafe: () => 1_000,
+ *   currentTimeMillis: Effect.succeed(1_000),
+ *   currentTimeNanosUnsafe: () => 1_000_000_000n,
+ *   currentTimeNanos: Effect.succeed(1_000_000_000n),
+ *   sleep: () => Effect.void
+ * }
+ *
+ * await Effect.runPromise(Effect.provideService(Clock.currentTimeMillis, Clock.Clock, testClock)) // => 1_000
  * ```
  *
  * @see {@link currentTimeNanos} for nanosecond precision
@@ -181,11 +207,15 @@ export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
  * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const currentTime = yield* Clock.currentTimeNanos
- *   console.log(`Current time: ${currentTime}ns`)
- *   return currentTime
- * })
+ * const testClock: Clock.Clock = {
+ *   currentTimeMillisUnsafe: () => 1_000,
+ *   currentTimeMillis: Effect.succeed(1_000),
+ *   currentTimeNanosUnsafe: () => 1_000_000_000n,
+ *   currentTimeNanos: Effect.succeed(1_000_000_000n),
+ *   sleep: () => Effect.void
+ * }
+ *
+ * await Effect.runPromise(Effect.provideService(Clock.currentTimeNanos, Clock.Clock, testClock)) // => 1_000_000_000n
  * ```
  *
  * @category constructors

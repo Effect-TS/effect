@@ -49,7 +49,6 @@ const TypeId = "~effect/transactions/TxChunk"
  *   // Single operations - no explicit transaction needed
  *   yield* TxChunk.append(txChunk, 4)
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [1, 2, 3, 4]
  *
  *   // Multi-step atomic operation - use explicit transaction
  *   yield* Effect.tx(
@@ -60,8 +59,10 @@ const TypeId = "~effect/transactions/TxChunk"
  *   )
  *
  *   const finalResult = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(finalResult)) // [0, 1, 2, 3, 4, 5]
+ *   return [Chunk.toArray(result), Chunk.toArray(finalResult)]
  * })
+ *
+ * await Effect.runPromise(program) // => [[1, 2, 3, 4], [0, 1, 2, 3, 4, 5]]
  * ```
  *
  * @category models
@@ -110,8 +111,10 @@ const TxChunkProto = {
  *
  *   // Read the value - automatically transactional
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [1, 2, 3]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
  * @category constructors
@@ -139,14 +142,15 @@ export const make = <A>(initial: Chunk.Chunk<A>): Effect.Effect<TxChunk<A>> =>
  *
  *   // Check if it's empty - automatically transactional
  *   const isEmpty = yield* TxChunk.isEmpty(txChunk)
- *   console.log(isEmpty) // true
  *
  *   // Add elements - automatically transactional
  *   yield* TxChunk.append(txChunk, 42)
  *
  *   const isStillEmpty = yield* TxChunk.isEmpty(txChunk)
- *   console.log(isStillEmpty) // false
+ *   return [isEmpty, isStillEmpty]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, false]
  * ```
  *
  * @category constructors
@@ -174,7 +178,6 @@ export const empty = <A = never>(): Effect.Effect<TxChunk<A>> =>
  *
  *   // Read the contents - automatically transactional
  *   const chunk = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(chunk)) // [1, 2, 3, 4, 5]
  *
  *   // Multi-step atomic modification - use explicit transaction
  *   yield* Effect.tx(
@@ -185,8 +188,10 @@ export const empty = <A = never>(): Effect.Effect<TxChunk<A>> =>
  *   )
  *
  *   const updated = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(updated)) // [0, 1, 2, 3, 4, 5, 6]
+ *   return [Chunk.toArray(chunk), Chunk.toArray(updated)]
  * })
+ *
+ * await Effect.runPromise(program) // => [[1, 2, 3, 4, 5], [0, 1, 2, 3, 4, 5, 6]]
  * ```
  *
  * @category constructors
@@ -206,11 +211,12 @@ export const fromIterable = <A>(iterable: Iterable<A>): Effect.Effect<TxChunk<A>
  * **Example** (Wrapping an existing TxRef)
  *
  * ```ts import.meta.vitest
- * import { Chunk, TxChunk, TxRef } from "effect"
+ * import { Chunk, Effect, TxChunk, TxRef } from "effect"
  *
  * // Create a TxChunk from an existing TxRef (advanced usage)
  * const ref = TxRef.makeUnsafe(Chunk.fromIterable([1, 2, 3]))
  * const txChunk = TxChunk.makeUnsafe(ref)
+ * Chunk.toArray(await Effect.runPromise(TxChunk.get(txChunk))) // => [1, 2, 3]
  * ```
  *
  * @category constructors
@@ -245,11 +251,11 @@ export const makeUnsafe = <A>(ref: TxRef.TxRef<Chunk.Chunk<A>>): TxChunk<A> => {
  *     Chunk.append(chunk, 4) // new value
  *   ])
  *
- *   console.log(oldSize) // 3
- *
  *   const newChunk = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(newChunk)) // [1, 2, 3, 4]
+ *   return [oldSize, Chunk.toArray(newChunk)]
  * })
+ *
+ * await Effect.runPromise(program) // => [3, [1, 2, 3, 4]]
  * ```
  *
  * @category combinators
@@ -291,8 +297,10 @@ export const modify: {
  *   yield* TxChunk.update(txChunk, (chunk) => Chunk.reverse(chunk))
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [3, 2, 1]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [3, 2, 1]
  * ```
  *
  * @category combinators
@@ -322,12 +330,10 @@ export const update: {
  *
  *   // Read the current value within a transaction
  *   const chunk = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(chunk)) // [1, 2, 3]
- *
- *   // The value is tracked for conflict detection
- *   const size = Chunk.size(chunk)
- *   console.log(size) // 3
+ *   return [Chunk.toArray(chunk), Chunk.size(chunk)]
  * })
+ *
+ * await Effect.runPromise(program) // => [[1, 2, 3], 3]
  * ```
  *
  * @category combinators
@@ -356,8 +362,10 @@ export const get = <A>(self: TxChunk<A>): Effect.Effect<Chunk.Chunk<A>> => TxRef
  *   yield* TxChunk.set(txChunk, newChunk)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [10, 20, 30, 40]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [10, 20, 30, 40]
  * ```
  *
  * @category combinators
@@ -391,8 +399,10 @@ export const set: {
  *   yield* TxChunk.append(txChunk, 4)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [1, 2, 3, 4]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
  * @category combinators
@@ -426,8 +436,10 @@ export const append: {
  *   yield* TxChunk.prepend(txChunk, 1)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [1, 2, 3, 4]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
  * @category combinators
@@ -454,13 +466,14 @@ export const prepend: {
  *
  *   // Get the current size - automatically transactional
  *   const currentSize = yield* TxChunk.size(txChunk)
- *   console.log(currentSize) // 5
  *
  *   // Size is tracked for conflict detection
  *   yield* TxChunk.append(txChunk, 6)
  *   const newSize = yield* TxChunk.size(txChunk)
- *   console.log(newSize) // 6
+ *   return [currentSize, newSize]
  * })
+ *
+ * await Effect.runPromise(program) // => [5, 6]
  * ```
  *
  * @category combinators
@@ -485,9 +498,10 @@ export const size = <A>(self: TxChunk<A>): Effect.Effect<number> =>
  *   const isEmpty1 = yield* TxChunk.isEmpty(emptyChunk)
  *   const isEmpty2 = yield* TxChunk.isEmpty(nonEmptyChunk)
  *
- *   console.log(isEmpty1) // true
- *   console.log(isEmpty2) // false
+ *   return [isEmpty1, isEmpty2]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, false]
  * ```
  *
  * @category combinators
@@ -512,9 +526,10 @@ export const isEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>
  *   const isNonEmpty1 = yield* TxChunk.isNonEmpty(emptyChunk)
  *   const isNonEmpty2 = yield* TxChunk.isNonEmpty(nonEmptyChunk)
  *
- *   console.log(isNonEmpty1) // false
- *   console.log(isNonEmpty2) // true
+ *   return [isNonEmpty1, isNonEmpty2]
  * })
+ *
+ * await Effect.runPromise(program) // => [false, true]
  * ```
  *
  * @category combinators
@@ -543,8 +558,10 @@ export const isNonEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>
  *   yield* TxChunk.take(txChunk, 3)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [1, 2, 3]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
  * @category combinators
@@ -578,8 +595,10 @@ export const take: {
  *   yield* TxChunk.drop(txChunk, 2)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [3, 4, 5]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [3, 4, 5]
  * ```
  *
  * @category combinators
@@ -613,8 +632,10 @@ export const drop: {
  *   yield* TxChunk.slice(txChunk, 2, 5)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [3, 4, 5]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [3, 4, 5]
  * ```
  *
  * @category combinators
@@ -650,8 +671,10 @@ export const slice: {
  *   yield* TxChunk.map(txChunk, (n) => n * 2)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [2, 4, 6, 8]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [2, 4, 6, 8]
  * ```
  *
  * @category combinators
@@ -685,8 +708,10 @@ export const map: {
  *   yield* TxChunk.filter(txChunk, (n) => n % 2 === 0)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [2, 4, 6]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [2, 4, 6]
  * ```
  *
  * @category combinators
@@ -724,8 +749,10 @@ export const filter: {
  *   yield* TxChunk.appendAll(txChunk, otherChunk)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [1, 2, 3, 4, 5, 6]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [1, 2, 3, 4, 5, 6]
  * ```
  *
  * @category combinators
@@ -761,8 +788,10 @@ export const appendAll: {
  *   yield* TxChunk.prependAll(txChunk, otherChunk)
  *
  *   const result = yield* TxChunk.get(txChunk)
- *   console.log(Chunk.toReadonlyArray(result)) // [1, 2, 3, 4, 5, 6]
+ *   return Chunk.toArray(result)
  * })
+ *
+ * await Effect.runPromise(program) // => [1, 2, 3, 4, 5, 6]
  * ```
  *
  * @category combinators
@@ -798,12 +827,13 @@ export const prependAll: {
  *   yield* TxChunk.concat(txChunk1, txChunk2)
  *
  *   const result = yield* TxChunk.get(txChunk1)
- *   console.log(Chunk.toReadonlyArray(result)) // [1, 2, 3, 4, 5, 6]
  *
  *   // Original txChunk2 is unchanged
  *   const original = yield* TxChunk.get(txChunk2)
- *   console.log(Chunk.toReadonlyArray(original)) // [4, 5, 6]
+ *   return [Chunk.toArray(result), Chunk.toArray(original)]
  * })
+ *
+ * await Effect.runPromise(program) // => [[1, 2, 3, 4, 5, 6], [4, 5, 6]]
  * ```
  *
  * @category combinators

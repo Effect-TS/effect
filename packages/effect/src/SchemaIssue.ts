@@ -41,10 +41,8 @@ const TypeId = "~effect/SchemaIssue/Issue"
  * import { SchemaIssue } from "effect"
  *
  * const issue = new SchemaIssue.MissingKey(undefined)
- * console.log(SchemaIssue.isIssue(issue))
- * // true
- * console.log(SchemaIssue.isIssue("not an issue"))
- * // false
+ * SchemaIssue.isIssue(issue) // => true
+ * SchemaIssue.isIssue("not an issue") // => false
  * ```
  *
  * @see {@link Issue}
@@ -140,14 +138,21 @@ class Base {
  * **Example** (Matching a Filter issue)
  *
  * ```ts import.meta.vitest
- * import { SchemaIssue } from "effect"
+ * import { Option, SchemaAST, SchemaIssue } from "effect"
  *
  * function describe(issue: SchemaIssue.Issue): string {
  *   if (issue._tag === "Filter") {
- *     return `Filter failed on: ${JSON.stringify(issue.actual)}`
+ *     return `Filter failed on: ${String(issue.actual)}`
  *   }
  *   return String(issue)
  * }
+ *
+ * const issue = new SchemaIssue.Filter(
+ *   "invalid",
+ *   SchemaAST.isPattern(/^valid$/),
+ *   new SchemaIssue.InvalidValue(Option.some("invalid"))
+ * )
+ * describe(issue) // => "Filter failed on: invalid"
  * ```
  *
  * @see {@link Leaf} — terminal issue types that commonly appear as the inner `issue`
@@ -464,8 +469,7 @@ export class Composite extends Base {
  *   Schema.decodeUnknownSync(Schema.String)(42)
  * } catch (e) {
  *   if (Schema.isSchemaError(e)) {
- *     console.log(String(e.issue))
- *     // "Expected string, got 42"
+ *     String(e.issue) // => "Expected string, got 42"
  *   }
  * }
  * ```
@@ -528,8 +532,7 @@ export class InvalidType extends Base {
  *   Option.some(""),
  *   { message: "must not be empty" }
  * )
- * console.log(String(issue))
- * // "must not be empty"
+ * String(issue) // => "must not be empty"
  * ```
  *
  * @see {@link InvalidType} — the input has the wrong type entirely
@@ -590,8 +593,7 @@ export class InvalidValue extends Base {
  *   Option.none(),
  *   { message: "async operation not allowed in sync context" }
  * )
- * console.log(String(issue))
- * // "async operation not allowed in sync context"
+ * String(issue) // => "async operation not allowed in sync context"
  * ```
  *
  * @see {@link InvalidValue} — for value-constraint failures (not operation failures)
@@ -765,8 +767,7 @@ export class OneOf extends Base {
  * import { Option, SchemaIssue } from "effect"
  *
  * const issue = new SchemaIssue.MissingKey(undefined)
- * console.log(SchemaIssue.getActual(issue))
- * // { _tag: "None" }
+ * SchemaIssue.getActual(issue) // => Option.none()
  * ```
  *
  * @see {@link Issue}
@@ -887,6 +888,7 @@ export type LeafHook = (issue: Leaf) => string
  * const formatter = SchemaIssue.makeFormatterStandardSchemaV1({
  *   leafHook: SchemaIssue.defaultLeafHook
  * })
+ * formatter(new SchemaIssue.MissingKey(undefined)) // => { issues: [{ path: [], message: "Missing key" }] }
  * ```
  *
  * @see {@link LeafHook}
@@ -982,6 +984,7 @@ export const defaultCheckHook: CheckHook = (issue): string | undefined => {
  * import { SchemaIssue } from "effect"
  *
  * const formatter = SchemaIssue.makeFormatterStandardSchemaV1()
+ * formatter(new SchemaIssue.MissingKey(undefined)).issues[0].message // => "Missing key"
  * ```
  *
  * @see {@link makeFormatterDefault} — produces a plain string instead
@@ -1089,6 +1092,7 @@ function formatCheck<T>(check: SchemaAST.Check<T>): string {
  * import { SchemaIssue } from "effect"
  *
  * const formatter = SchemaIssue.makeFormatterDefault()
+ * formatter(new SchemaIssue.MissingKey(undefined)) // => "Missing key"
  * ```
  *
  * @see {@link makeFormatterStandardSchemaV1} — produces Standard Schema V1 format instead

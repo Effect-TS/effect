@@ -39,6 +39,8 @@ import { hasProperty } from "./Predicate.ts"
  *     return this.raw.slice(0, 4) + "..."
  *   }
  * }
+ *
+ * Redactable.redact(new ApiKey("secret-key")) // => "secr..."
  * ```
  *
  * @see {@link Redactable} for the interface this symbol belongs to
@@ -73,6 +75,8 @@ export const symbolRedactable: unique symbol = Symbol.for("~effect/Redactable")
  *     return this.raw.slice(0, 4) + "..."
  *   }
  * }
+ *
+ * Redactable.redact(new ApiKey("secret-key")) // => "secr..."
  * ```
  *
  * @see {@link symbolRedactable} for the symbol key to implement
