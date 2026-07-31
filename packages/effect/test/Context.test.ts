@@ -35,6 +35,35 @@ describe("Context", () => {
     ])
   })
 
+  it("supports slot-allocated services", () => {
+    const Slotted = Context.Service<number>("ContextTest/Slotted", { slot: true })
+    class SlottedClass extends Context.Service<SlottedClass, number>()("ContextTest/SlottedClass", { slot: true }) {}
+
+    const source = Context.make(A, 1)
+    const context = source.pipe(
+      Context.add(Slotted, 2),
+      Context.add(SlottedClass, 3)
+    )
+
+    strictEqual(Context.get(context, Slotted), 2)
+    strictEqual(Context.get(context, SlottedClass), 3)
+    assertTrue(Context.getOption(source, Slotted)._tag === "None")
+
+    const replaced = Context.add(context, Slotted, 4)
+    strictEqual(Context.get(replaced, Slotted), 4)
+    strictEqual(Context.get(context, Slotted), 2)
+
+    deepStrictEqual([...replaced.mapUnsafe], [
+      [A.key, 1],
+      [Slotted.key, 4],
+      [SlottedClass.key, 3]
+    ])
+    deepStrictEqual([...Context.omit(Slotted)(replaced).mapUnsafe], [
+      [A.key, 1],
+      [SlottedClass.key, 3]
+    ])
+  })
+
   it("distinguishes an undefined service from an absent service", () => {
     const Undefined = Context.Service<undefined>("ContextTest/Undefined")
     const Missing = Context.Service<undefined>("ContextTest/Missing")

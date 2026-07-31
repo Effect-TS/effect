@@ -182,6 +182,11 @@ export declare namespace ServiceClass {
  * declarations. The returned key can be yielded as an Effect and passed to
  * `Context.make`, `Context.add`, and the Context getter functions.
  *
+ * Pass `slot: true` to allocate a dense slab slot for the key, making reads
+ * O(1). Reserve this for services that are added and read on hot paths;
+ * every slotted key grows the array that slotted `Context.add`s copy.
+ * `Reference` keys always get a slot.
+ *
  * **Gotchas**
  *
  * The string key is the runtime identity of the service. Reusing the same key
@@ -218,7 +223,12 @@ export declare namespace ServiceClass {
  * @since 4.0.0
  */
 export const Service: {
-  <Identifier, Shape = Identifier>(key: string): Service<Identifier, Shape>
+  <Identifier, Shape = Identifier>(
+    key: string,
+    options?: {
+      readonly slot?: boolean | undefined
+    } | undefined
+  ): Service<Identifier, Shape>
   <Self, Shape>(): <
     const Identifier extends string,
     E,
@@ -227,7 +237,8 @@ export const Service: {
   >(
     id: Identifier,
     options?: {
-      readonly make: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
+      readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
+      readonly slot?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -240,6 +251,7 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
+      readonly slot?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -269,16 +281,22 @@ export const Service: {
     if (arguments[1]?.defaultValue) {
       self[ReferenceTypeId] = ReferenceTypeId
       self.defaultValue = arguments[1].defaultValue
+    }
+    if (arguments[1]?.defaultValue || arguments[1]?.slot) {
       allocateSlot(self)
     }
     return self
   }
   return function(key: string, options?: {
     readonly make?: any
+    readonly slot?: boolean
   }) {
     self.key = key
     if (options?.make) {
       ;(self as any).make = options.make
+    }
+    if (options?.slot) {
+      allocateSlot(self)
     }
     return self
   }
