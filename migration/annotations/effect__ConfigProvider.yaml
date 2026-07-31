@@ -1,6 +1,6 @@
 "effect/ConfigProvider#ConfigProvider":
   replacement: "ConfigProvider.ConfigProvider"
-  note: "The model remains but now exposes `load(path)`, returning `Effect<Option<Node>, SourceError>`, and `mapInput(f)` for provider-owned path transformation. `Option.none()` means the path is missing; `Option.some(node)` means it exists."
+  note: "The model remains but now exposes `load(path)`, returning `Effect<Node | undefined, SourceError>`, and `mapInput(f)` for provider-owned path transformation. `undefined` means the path is missing; a `Node` means it exists."
 "effect/ConfigProvider#ConfigProvider.Flat":
   replacement: "ConfigProvider.ConfigProvider"
   note: "Flat providers were removed; implement the unified path-based provider with ConfigProvider.make."
@@ -33,7 +33,7 @@
   note: "The constructor remains; pass env and preserveEmptyStrings options. Paths use underscore semantics, while sequence separators belong on Config schemas."
 "effect/ConfigProvider#fromFlat":
   replacement: "ConfigProvider.make"
-  note: "Flat providers were unified with ConfigProvider; implement lookup by returning `Option.some(node)` for a found `Value`, `Record`, or `Array` node, or `Option.none()` when missing."
+  note: "Flat providers were unified with ConfigProvider; return a `Value`, `Record`, or `Array` node for a found path, or `undefined` when missing."
 "effect/ConfigProvider#fromJson":
   replacement: "ConfigProvider.fromUnknown"
   note: "Renamed to reflect support for any in-memory JavaScript value."
@@ -48,10 +48,10 @@
   note: "Transform string path segments explicitly with mapInput."
 "effect/ConfigProvider#make":
   replacement: "ConfigProvider.make"
-  note: "The constructor now takes a path lookup returning `Effect<Option<Node>, SourceError>`, rather than a full Config loader and flattened provider. Use `Option.none()` for a missing path and `Option.some(node)` for a found node."
+  note: "The constructor now takes a path lookup returning `Effect<Node | undefined, SourceError>`, rather than a full Config loader and flattened provider. Return `undefined` for a missing path and a `Node` for a found path."
 "effect/ConfigProvider#makeFlat":
   replacement: "ConfigProvider.make"
-  note: "The flat-provider constructor was removed; return `Option.some(node)` for a found `Value`, `Record`, or `Array` node, or `Option.none()` when missing."
+  note: "The flat-provider constructor was removed; return a `Value`, `Record`, or `Array` node for a found path, or `undefined` when missing."
 "effect/ConfigProvider#mapInputPath":
   replacement: "ConfigProvider.mapInput"
   note: "Renamed and generalized: the callback receives and returns the complete Path, including numeric array indexes."

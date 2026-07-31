@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
-import { ConfigProvider, Effect, FileSystem, Layer, Option, Path, PlatformError, Result } from "effect"
+import { ConfigProvider, Effect, FileSystem, Layer, Path, PlatformError, Result } from "effect"
 
 const notFound = (method: string): PlatformError.PlatformError =>
   PlatformError.systemError({
@@ -15,7 +15,7 @@ async function assertSuccess(
   expected: ConfigProvider.Node
 ) {
   const r = Effect.result(provider.load(path))
-  deepStrictEqual(await Effect.runPromise(r), Result.succeed(Option.some(expected)))
+  deepStrictEqual(await Effect.runPromise(r), Result.succeed(expected))
 }
 
 async function assertMissing(
@@ -23,7 +23,7 @@ async function assertMissing(
   path: ConfigProvider.Path
 ) {
   const r = Effect.result(provider.load(path))
-  deepStrictEqual(await Effect.runPromise(r), Result.succeed(Option.none()))
+  deepStrictEqual(await Effect.runPromise(r), Result.succeed(undefined))
 }
 
 async function assertFailure(
@@ -37,7 +37,7 @@ async function assertFailure(
 
 describe("ConfigProvider", () => {
   describe("make", () => {
-    it.effect("exposes optional lookup and input transformation as provider behavior", () =>
+    it.effect("exposes lookup absence and input transformation as provider behavior", () =>
       Effect.gen(function*() {
         const provider = ConfigProvider.fromUnknown({
           APP: {
@@ -48,17 +48,17 @@ describe("ConfigProvider", () => {
 
         deepStrictEqual(
           yield* nested.load(["PORT"]),
-          Option.some(ConfigProvider.makeValue("3000"))
+          ConfigProvider.makeValue("3000")
         )
-        deepStrictEqual(yield* nested.load(["MISSING"]), Option.none())
+        deepStrictEqual(yield* nested.load(["MISSING"]), undefined)
       }))
 
     it("creates a provider from a lookup function", async () => {
       const provider = ConfigProvider.make((path) =>
         Effect.succeed(
           path.join(".") === "A.B"
-            ? Option.some(ConfigProvider.makeValue("value"))
-            : Option.none()
+            ? ConfigProvider.makeValue("value")
+            : undefined
         )
       )
 
@@ -1043,7 +1043,7 @@ DB_PASS=$PASSWORD`)
         )
       )
 
-      deepStrictEqual(result, Option.some(ConfigProvider.makeValue("value")))
+      deepStrictEqual(result, ConfigProvider.makeValue("value"))
     })
 
     it("layer accepts an Effect that produces a provider", async () => {
@@ -1053,7 +1053,7 @@ DB_PASS=$PASSWORD`)
         )
       )
 
-      deepStrictEqual(result, Option.some(ConfigProvider.makeValue("value")))
+      deepStrictEqual(result, ConfigProvider.makeValue("value"))
     })
 
     it("layerAdd adds an Effect-produced provider as fallback", async () => {
@@ -1078,9 +1078,9 @@ DB_PASS=$PASSWORD`)
       )
 
       deepStrictEqual(result, {
-        current: Option.some(ConfigProvider.makeValue("current")),
-        fallback: Option.some(ConfigProvider.makeValue("fallback")),
-        shared: Option.some(ConfigProvider.makeValue("current"))
+        current: ConfigProvider.makeValue("current"),
+        fallback: ConfigProvider.makeValue("fallback"),
+        shared: ConfigProvider.makeValue("current")
       })
     })
 
@@ -1106,9 +1106,9 @@ DB_PASS=$PASSWORD`)
       )
 
       deepStrictEqual(result, {
-        current: Option.some(ConfigProvider.makeValue("current")),
-        primary: Option.some(ConfigProvider.makeValue("primary")),
-        shared: Option.some(ConfigProvider.makeValue("primary"))
+        current: ConfigProvider.makeValue("current"),
+        primary: ConfigProvider.makeValue("primary"),
+        shared: ConfigProvider.makeValue("primary")
       })
     })
   })
