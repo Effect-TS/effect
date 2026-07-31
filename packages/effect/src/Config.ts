@@ -63,7 +63,7 @@ export const isConfig = (u: unknown): u is Config<unknown> => Predicate.hasPrope
  *   (wrong type, out of range, missing key, etc.).
  *
  * @see {@link orElse} – recover from a ConfigError
- * @see {@link withDefault} – provide a fallback for missing-data errors
+ * @see {@link withDefault} – provide a fallback when relevant input is absent
  *
  * @category errors
  * @since 4.0.0
@@ -94,9 +94,7 @@ export class ConfigError {
  * **Details**
  *
  * Key members:
- * - `parse(provider, pathPrefix?)` – runs the config against a specific provider.
- *   The optional path prefix is the logical scope accumulated from outer
- *   `Config.nested` calls.
+ * - `parse(provider)` – runs the config against a specific provider.
  * - Yieldable – can be yielded inside `Effect.gen`, which automatically
  *   resolves the current `ConfigProvider` from the context.
  * - Pipeable – supports `.pipe(Config.map(...))` etc.
@@ -108,10 +106,39 @@ export class ConfigError {
  */
 export interface Config<out T> extends Effect.Effect<T, ConfigError> {
   readonly [TypeId]: typeof TypeId
-  readonly parse: (
-    provider: ConfigProvider.ConfigProvider,
-    pathPrefix?: Path
-  ) => Effect.Effect<T, ConfigError>
+  readonly parse: (provider: ConfigProvider.ConfigProvider) => Effect.Effect<T, ConfigError>
+}
+
+// Config composition needs to distinguish an absent recipe from a hard failure
+// before the public Effect error channel is finalized. `hasInput` records
+// provider evidence separately from the value, because successful values such
+// as `undefined` and values supplied by defaults are not evidence of input.
+// Hard failures carry the same evidence so recovery cannot erase it.
+interface Resolved<out T> {
+  readonly _tag: "Resolved"
+  readonly value: T
+  readonly hasInput: boolean
+}
+
+interface Absent {
+  readonly _tag: "Absent"
+  readonly error: ConfigError
+}
+
+type Resolution<T> = Resolved<T> | Absent
+
+interface EvaluationFailure {
+  readonly error: ConfigError
+  readonly hasInput: boolean
+}
+
+type Evaluator<T> = (
+  provider: ConfigProvider.ConfigProvider,
+  pathPrefix: Path
+) => Effect.Effect<Resolution<T>, EvaluationFailure>
+
+interface ConfigImpl<out T> extends Config<T> {
+  readonly evaluator: Evaluator<T>
 }
 
 const Proto = {
@@ -130,11 +157,67 @@ const Proto = {
 }
 
 function make<T>(
-  parse: (provider: ConfigProvider.ConfigProvider, pathPrefix: Path) => Effect.Effect<T, ConfigError>
+  evaluator: Evaluator<T>
 ): Config<T> {
   const self = Object.create(Proto)
-  self.parse = (provider: ConfigProvider.ConfigProvider, pathPrefix: Path = []) => parse(provider, pathPrefix)
+  self.evaluator = evaluator
+  self.parse = (provider: ConfigProvider.ConfigProvider) =>
+    evaluator(provider, []).pipe(
+      Effect.mapErrorEager((failure) => failure.error),
+      Effect.flatMapEager((resolution) =>
+        resolution._tag === "Resolved" ? Effect.succeed(resolution.value) : Effect.fail(resolution.error)
+      )
+    )
   return self
+}
+
+const evaluateAt = <T>(
+  self: Config<T>,
+  provider: ConfigProvider.ConfigProvider,
+  pathPrefix: Path
+): Effect.Effect<Resolution<T>, EvaluationFailure> => (self as ConfigImpl<T>).evaluator(provider, pathPrefix)
+
+const resolved = <T>(value: T, hasInput: boolean): Resolution<T> => ({
+  _tag: "Resolved",
+  value,
+  hasInput
+})
+
+const absent = (error: ConfigError): Absent => ({
+  _tag: "Absent",
+  error
+})
+
+const evaluationFailure = (error: ConfigError, hasInput: boolean): EvaluationFailure => ({
+  error,
+  hasInput
+})
+
+const catchSourceError = <A, E, R>(
+  self: Effect.Effect<A, E, R>,
+  hasInput: boolean
+): Effect.Effect<A, E | EvaluationFailure, R> =>
+  self.pipe(
+    Effect.catchDefect((defect) =>
+      defect instanceof ConfigProvider.SourceError
+        ? Effect.fail(evaluationFailure(new ConfigError(defect), hasInput))
+        : Effect.die(defect)
+    )
+  )
+
+const preserveInputEvidence = <T>(
+  self: Effect.Effect<Resolution<T>, EvaluationFailure>,
+  hasInput: boolean
+): Effect.Effect<Resolution<T>, EvaluationFailure> => {
+  if (!hasInput) return self
+  return self.pipe(
+    Effect.mapErrorEager((failure) => evaluationFailure(failure.error, true)),
+    Effect.flatMapEager((resolution) =>
+      resolution._tag === "Resolved"
+        ? Effect.succeed(resolved(resolution.value, true))
+        : Effect.fail(evaluationFailure(resolution.error, true))
+    )
+  )
 }
 
 /**
@@ -167,7 +250,12 @@ export const map: {
   <A, B>(f: (a: A) => B): (self: Config<A>) => Config<B>
   <A, B>(self: Config<A>, f: (a: A) => B): Config<B>
 } = dual(2, <A, B>(self: Config<A>, f: (a: A) => B): Config<B> => {
-  return make((provider, pathPrefix) => Effect.map(self.parse(provider, pathPrefix), f))
+  return make((provider, pathPrefix) =>
+    Effect.map(evaluateAt(self, provider, pathPrefix), (resolution) =>
+      resolution._tag === "Resolved"
+        ? resolved(f(resolution.value), resolution.hasInput)
+        : resolution)
+  )
 })
 
 /**
@@ -199,7 +287,15 @@ export const mapOrFail: {
   <A, B>(f: (a: A) => Effect.Effect<B, ConfigError>): (self: Config<A>) => Config<B>
   <A, B>(self: Config<A>, f: (a: A) => Effect.Effect<B, ConfigError>): Config<B>
 } = dual(2, <A, B>(self: Config<A>, f: (a: A) => Effect.Effect<B, ConfigError>): Config<B> => {
-  return make((provider, pathPrefix) => Effect.flatMap(self.parse(provider, pathPrefix), f))
+  return make((provider, pathPrefix) =>
+    Effect.flatMap(evaluateAt(self, provider, pathPrefix), (resolution) =>
+      resolution._tag === "Resolved"
+        ? f(resolution.value).pipe(
+          Effect.mapEager((value) => resolved(value, resolution.hasInput)),
+          Effect.mapErrorEager((error) => evaluationFailure(error, resolution.hasInput))
+        )
+        : Effect.succeed(resolution))
+  )
 })
 
 /**
@@ -212,9 +308,16 @@ export const mapOrFail: {
  *
  * **Details**
  *
- * Unlike {@link withDefault}, this catches **all** `ConfigError`s (not just
- * missing data). The fallback function receives the error and returns a new
+ * Unlike {@link withDefault}, this handles both semantic absence and **all**
+ * `ConfigError`s. The fallback function receives the error and returns a new
  * `Config`.
+ *
+ * **Gotchas**
+ *
+ * Recovery preserves whether the primary config read provider input. When the
+ * recovered config is composed with {@link all}, invalid input in the primary
+ * branch still makes the enclosing group partially supplied, so an outer
+ * {@link withDefault} or {@link option} does not replace the whole group.
  *
  * **Example** (Falling back to a literal)
  *
@@ -228,7 +331,7 @@ export const mapOrFail: {
  * Effect.runSync(hostConfig.parse(provider)) // => "localhost"
  * ```
  *
- * @see {@link withDefault} – fallback only on missing data
+ * @see {@link withDefault} – fallback only on semantic absence
  *
  * @category combinators
  * @since 2.0.0
@@ -237,8 +340,18 @@ export const orElse: {
   <A2>(that: (error: ConfigError) => Config<A2>): <A>(self: Config<A>) => Config<A2 | A>
   <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2>
 } = dual(2, <A, A2>(self: Config<A>, that: (error: ConfigError) => Config<A2>): Config<A | A2> => {
-  return make((provider, pathPrefix) =>
-    Effect.catch(self.parse(provider, pathPrefix), (error) => that(error).parse(provider, pathPrefix))
+  return make<A | A2>((provider, pathPrefix) =>
+    Effect.matchEffect(evaluateAt(self, provider, pathPrefix), {
+      onFailure: (failure) =>
+        preserveInputEvidence(
+          evaluateAt(that(failure.error), provider, pathPrefix),
+          failure.hasInput
+        ),
+      onSuccess: (resolution): Effect.Effect<Resolution<A | A2>, EvaluationFailure> =>
+        resolution._tag === "Absent"
+          ? evaluateAt(that(resolution.error), provider, pathPrefix)
+          : Effect.succeed(resolution)
+    })
   )
 })
 
@@ -253,6 +366,16 @@ export const orElse: {
  *
  * Accepts a tuple (preserves positions), an iterable, or a record of configs.
  * Returns a config whose parsed value mirrors the input shape.
+ *
+ * A combined config is absent when at least one child cannot resolve and none
+ * of the other children read provider input. This lets {@link withDefault} and
+ * {@link option} handle a wholly absent group. Once any child reads input, a
+ * missing sibling makes the group incomplete and parsing fails. Values supplied
+ * by child defaults do not count as provider input.
+ *
+ * Unlike a `Schema.Struct` passed to {@link schema}, `all` only considers input
+ * read by its children. An explicitly present but empty parent container does
+ * not by itself make the group present.
  *
  * **Example** (Combining configs as a struct)
  *
@@ -290,46 +413,65 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
     : arg
   if (Array.isArray(configs)) {
     return make((provider, pathPrefix) =>
-      Effect.all(configs.map((config) => config.parse(provider, pathPrefix)))
+      Effect.flatMapEager(
+        Effect.all(configs.map((config) => evaluateAt(config, provider, pathPrefix))),
+        resolveArray
+      )
     ) as any
   } else {
     return make((provider, pathPrefix) =>
-      Effect.all(Rec.map(configs, (config) => config.parse(provider, pathPrefix)))
+      Effect.flatMapEager(
+        Effect.all(Rec.map(configs, (config) => evaluateAt(config, provider, pathPrefix))),
+        resolveRecord
+      )
     ) as any
   }
 }
 
-function isMissingDataOnly(issue: SchemaIssue.Issue): boolean {
-  switch (issue._tag) {
-    case "MissingKey":
-      return true
-    case "InvalidType":
-    case "InvalidValue":
-      return Option.isNone(issue.actual) || (Option.isSome(issue.actual) && issue.actual.value === undefined)
-    case "OneOf":
-      return issue.actual === undefined
-    case "Encoding":
-      return Option.isNone(issue.actual) || (Option.isSome(issue.actual) && issue.actual.value === undefined)
-        ? true
-        : isMissingDataOnly(issue.issue)
-    case "Pointer":
-      return isMissingDataOnly(issue.issue)
-    case "Filter":
-    case "UnexpectedKey":
-    case "Forbidden":
-      return false
-    case "Composite":
-      return issue.issues.every(isMissingDataOnly)
-    case "AnyOf":
-      if (issue.issues.length === 0) {
-        return issue.actual === undefined
-      }
-      return issue.issues.every(isMissingDataOnly)
+const resolveArray = (
+  resolutions: ReadonlyArray<Resolution<any>>
+): Effect.Effect<Resolution<Array<any>>, EvaluationFailure> => {
+  const values: Array<any> = []
+  let firstAbsent: Absent | undefined
+  let hasInput = false
+  for (const resolution of resolutions) {
+    if (resolution._tag === "Absent") {
+      firstAbsent ??= resolution
+    } else {
+      values.push(resolution.value)
+      hasInput = hasInput || resolution.hasInput
+    }
   }
+  if (firstAbsent !== undefined) {
+    return hasInput ? Effect.fail(evaluationFailure(firstAbsent.error, true)) : Effect.succeed(firstAbsent)
+  }
+  return Effect.succeed(resolved(values, hasInput))
+}
+
+const resolveRecord = (
+  resolutions: Record<string, Resolution<any>>
+): Effect.Effect<Resolution<Record<string, any>>, EvaluationFailure> => {
+  const values: Record<string, any> = {}
+  let firstAbsent: Absent | undefined
+  let hasInput = false
+  for (const key in resolutions) {
+    const resolution = resolutions[key]
+    if (resolution._tag === "Absent") {
+      firstAbsent ??= resolution
+    } else {
+      InternalRecord.assignProperty(values, key, resolution.value)
+      hasInput = hasInput || resolution.hasInput
+    }
+  }
+  if (firstAbsent !== undefined) {
+    return hasInput ? Effect.fail(evaluationFailure(firstAbsent.error, true)) : Effect.succeed(firstAbsent)
+  }
+  return Effect.succeed(resolved(values, hasInput))
 }
 
 /**
- * Provides a fallback value when the config fails due to missing data.
+ * Provides a fallback value when the config cannot resolve because none of its
+ * relevant input is present.
  *
  * **When to use**
  *
@@ -337,9 +479,11 @@ function isMissingDataOnly(issue: SchemaIssue.Issue): boolean {
  *
  * **Gotchas**
  *
- * Only applies when the error is a `SchemaError` caused exclusively by
- * missing data (missing keys, undefined values). Validation errors (wrong
- * type, out of range) still propagate.
+ * Validation errors and partially supplied groups still propagate. A schema
+ * that successfully decodes absent input also keeps its decoded value instead
+ * of using the default. Schema configs first represent a missing or
+ * incompatible provider shape as `undefined`; the default is used only when
+ * the schema rejects that value and no relevant input was found.
  *
  * **Example** (Defaulting a missing port)
  *
@@ -353,7 +497,7 @@ function isMissingDataOnly(issue: SchemaIssue.Issue): boolean {
  * ```
  *
  * @see {@link option} – returns `Option` instead of a default value
- * @see {@link orElse} – catches all errors, not just missing data
+ * @see {@link orElse} – catches all errors, not just absent input
  *
  * @category combinators
  * @since 2.0.0
@@ -362,20 +506,17 @@ export const withDefault: {
   <const A2>(defaultValue: A2): <A>(self: Config<A>) => Config<A2 | A>
   <A, const A2>(self: Config<A>, defaultValue: A2): Config<A | A2>
 } = dual(2, <A, const A2>(self: Config<A>, defaultValue: A2): Config<A | A2> => {
-  return orElse(self, (err) => {
-    if (Schema.isSchemaError(err.cause)) {
-      const issue = err.cause.issue
-      if (isMissingDataOnly(issue)) {
-        return succeed(defaultValue)
-      }
-    }
-    return fail(err.cause)
-  })
+  return make<A | A2>((provider, pathPrefix) =>
+    Effect.mapEager(
+      evaluateAt(self, provider, pathPrefix),
+      (resolution) => resolution._tag === "Absent" ? resolved(defaultValue, false) : resolution
+    )
+  )
 })
 
 /**
- * Makes a config optional: returns `Some(value)` on success and `None` when
- * data is missing.
+ * Makes a config optional: returns `Some(value)` on success and `None` when the
+ * config cannot resolve because none of its relevant input is present.
  *
  * **When to use**
  *
@@ -383,8 +524,11 @@ export const withDefault: {
  *
  * **Gotchas**
  *
- * Like {@link withDefault}, only missing-data errors produce `None`.
- * Validation errors still propagate.
+ * Validation errors and partially supplied groups still propagate. Successful
+ * values are always wrapped in `Some`, including `undefined` when the schema
+ * explicitly accepts it. Schema configs first represent a missing or
+ * incompatible provider shape as `undefined`; `None` is returned only when the
+ * schema rejects that value and no relevant input was found.
  *
  * **Example** (Reading optional config)
  *
@@ -486,119 +630,189 @@ type IsPlainObject<A> = [A] extends [Record<string, any>]
  */
 export const unwrap = <T>(wrapped: Wrap<T>): Config<T> => {
   if (isConfig(wrapped)) return wrapped
-  return make((provider, pathPrefix) => {
-    const entries = Object.entries(wrapped)
-    const configs = entries.map(([key, config]) =>
-      unwrap(config as any).parse(provider, pathPrefix).pipe(Effect.map((value) => [key, value] as const))
-    )
-    return Effect.all(configs).pipe(Effect.map(Object.fromEntries))
-  })
+  return all(Rec.map(wrapped as Record<string, Wrap<any>>, (config) => unwrap(config))) as Config<T>
 }
 
 // -----------------------------------------------------------------------------
 // schema
 // -----------------------------------------------------------------------------
 
-const dump: (
+interface ConfigCursor {
+  readonly provider: ConfigProvider.ConfigProvider
+  readonly path: Path
+  readonly node: Option.Option<ConfigProvider.Node>
+  readonly toString: () => string
+}
+
+const cursorToString = (): string => "<configuration>"
+
+const loadCursor: (
   provider: ConfigProvider.ConfigProvider,
   path: Path
-) => Effect.Effect<Schema.StringTree, SourceError> = Effect.fnUntraced(function*(
+) => Effect.Effect<ConfigCursor> = Effect.fnUntraced(function*(
   provider,
   path
 ) {
-  const stat = Option.getOrUndefined(yield* provider.load(path))
-  if (stat === undefined) return undefined
-  switch (stat._tag) {
-    case "Value":
-      return stat.value
-    case "Record": {
-      if (stat.value !== undefined) return stat.value
-      const out: Record<string, Schema.StringTree> = {}
-      for (const key of stat.keys) {
-        const child = yield* dump(provider, [...path, key])
-        if (child !== undefined) InternalRecord.assignProperty(out, key, child)
-      }
-      return out
-    }
-    case "Array": {
-      if (stat.value !== undefined) return stat.value
-      const out: Array<Schema.StringTree> = []
-      for (let i = 0; i < stat.length; i++) {
-        out.push(yield* dump(provider, [...path, i]))
-      }
-      return out
-    }
-  }
+  const node = yield* provider.load(path).pipe(Effect.orDie)
+  return { provider, path, node, toString: cursorToString }
 })
 
-const recur: (
-  ast: SchemaAST.AST,
-  provider: ConfigProvider.ConfigProvider,
-  path: Path
-) => Effect.Effect<Schema.StringTree, Schema.SchemaError | SourceError> = Effect.fnUntraced(
-  function*(ast, provider, path) {
-    switch (ast._tag) {
-      case "Objects": {
-        const stat = Option.getOrUndefined(yield* provider.load(path))
-        if (stat === undefined && path.length > 0) return undefined
-        const out: Record<string, Schema.StringTree> = {}
-        for (const ps of ast.propertySignatures) {
-          const name = ps.name
-          if (typeof name === "string") {
-            const value = yield* recur(ps.type, provider, [...path, name])
-            if (value !== undefined) InternalRecord.assignProperty(out, name, value)
-          }
+const loadChildCursor = (cursor: ConfigCursor, segment: string | number): Effect.Effect<ConfigCursor> =>
+  loadCursor(cursor.provider, [...cursor.path, segment])
+
+const getScalar = (node: Option.Option<ConfigProvider.Node>): string | undefined => {
+  if (Option.isNone(node)) return undefined
+  switch (node.value._tag) {
+    case "Value":
+      return node.value.value
+    case "Record":
+    case "Array":
+      return node.value.value
+  }
+}
+
+const materializeOpaque: (cursor: ConfigCursor) => Effect.Effect<Schema.StringTree, SchemaIssue.Issue> = Effect
+  .fnUntraced(function*(cursor) {
+    if (Option.isNone(cursor.node)) return undefined
+    const node = cursor.node.value
+    switch (node._tag) {
+      case "Value":
+        return node.value
+      case "Record": {
+        if (node.value !== undefined) {
+          return yield* Effect.fail(
+            new SchemaIssue.Forbidden(Option.none(), {
+              message: "Cannot materialize both the scalar and record representations"
+            })
+          )
         }
-        if (ast.indexSignatures.length > 0) {
-          if (stat && stat._tag === "Record") {
-            for (const is of ast.indexSignatures) {
-              const matches = SchemaParser._is(is.parameter)
-              for (const key of stat.keys) {
-                if (!Object.hasOwn(out, key) && matches(key)) {
-                  const value = yield* recur(is.type, provider, [...path, key])
-                  if (value !== undefined) InternalRecord.assignProperty(out, key, value)
-                }
-              }
-            }
-          }
+        const out: Record<string, Schema.StringTree> = {}
+        for (const key of node.keys) {
+          const child = yield* loadChildCursor(cursor, key)
+          const value = yield* materializeOpaque(child)
+          if (value !== undefined) InternalRecord.assignProperty(out, key, value)
         }
         return out
       }
-      case "Arrays": {
-        const stat = Option.getOrUndefined(yield* provider.load(path))
-        if (stat === undefined) return undefined
-        if (stat && stat._tag === "Value") return stat.value === "" ? [] : stat.value.split(",")
-        if (stat && stat._tag === "Array" && stat.value !== undefined) {
-          return stat.value === "" ? [] : stat.value.split(",")
+      case "Array": {
+        if (node.value !== undefined) {
+          return yield* Effect.fail(
+            new SchemaIssue.Forbidden(Option.none(), {
+              message: "Cannot materialize both the scalar and array representations"
+            })
+          )
         }
         const out: Array<Schema.StringTree> = []
-        const length = stat && stat._tag === "Array" ? stat.length : ast.elements.length
-        for (let i = 0; i < length; i++) {
-          const element = ast.elements[i] ?? ast.rest[0]
-          if (element !== undefined) {
-            out.push(yield* recur(element, provider, [...path, i]))
-          }
+        for (let i = 0; i < node.length; i++) {
+          out.push(yield* materializeOpaque(yield* loadChildCursor(cursor, i)))
         }
         return out
       }
-      case "Union":
-        // Let downstream decoding decide; dump can return a string, object, or array.
-        return yield* dump(provider, path)
-      case "Suspend":
-        return yield* recur(ast.thunk(), provider, path)
-      default: {
-        // Base primitives / string-like encoded nodes.
-        const stat = Option.getOrUndefined(yield* provider.load(path))
-        if (stat === undefined) return undefined
-        if (stat._tag === "Value") return stat.value
-        if (stat._tag === "Record" && stat.value !== undefined) return stat.value
-        if (stat._tag === "Array" && stat.value !== undefined) return stat.value
-        // Container without a co-located value cannot satisfy a scalar request.
-        return undefined
-      }
     }
+  })
+
+const decodeFromCursor = (
+  ast: SchemaAST.AST,
+  decode: (cursor: ConfigCursor) => Effect.Effect<unknown, SchemaIssue.Issue>
+): SchemaAST.AST =>
+  SchemaAST.decodeTo(
+    SchemaAST.unknown,
+    ast,
+    new SchemaTransformation.Transformation(
+      SchemaGetter.transformOrFail((input: unknown) => decode(input as ConfigCursor)),
+      SchemaGetter.forbidden(() => "Config cursor encoding is not supported")
+    )
+  )
+
+const isScalarInput = (ast: SchemaAST.AST): boolean => {
+  switch (ast._tag) {
+    case "Union":
+      return ast.types.every(isScalarInput)
+    case "Objects":
+    case "Arrays":
+    case "Suspend":
+    case "Declaration":
+    case "Any":
+      return false
+    default:
+      return true
   }
-)
+}
+
+const hasProviderInput = (
+  ast: SchemaAST.AST,
+  node: Option.Option<ConfigProvider.Node>
+): boolean => {
+  switch (ast._tag) {
+    case "Objects":
+      return Option.isSome(node) && node.value._tag === "Record"
+    case "Arrays":
+      return Option.isSome(node) && node.value._tag === "Array"
+    case "Union":
+      return ast.types.some((ast) => hasProviderInput(ast, node))
+    case "Suspend":
+      return hasProviderInput(ast.thunk(), node)
+    case "Declaration":
+    case "Any":
+      return Option.isSome(node)
+    default:
+      return getScalar(node) !== undefined
+  }
+}
+
+const toConfigCursorAST = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
+  switch (ast._tag) {
+    case "Objects": {
+      const matchesIndex = ast.indexSignatures.map((is) => SchemaParser._is(is.parameter))
+      const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
+        if (Option.isNone(cursor.node) || cursor.node.value._tag !== "Record") {
+          return undefined
+        }
+        const node = cursor.node.value
+        const keys = new Set<string>()
+        for (const property of ast.propertySignatures) {
+          if (typeof property.name === "string") keys.add(property.name)
+        }
+        if (matchesIndex.length > 0) {
+          for (const key of node.keys) {
+            if (matchesIndex.some((matches) => matches(key))) keys.add(key)
+          }
+        }
+        const out: Record<string, ConfigCursor> = {}
+        for (const key of keys) {
+          const child = yield* loadChildCursor(cursor, key)
+          if (Option.isSome(child.node)) InternalRecord.assignProperty(out, key, child)
+        }
+        return out
+      })
+      return decodeFromCursor(ast.recur(toConfigCursorAST, (ast) => ast), materialize)
+    }
+    case "Arrays": {
+      const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
+        if (Option.isNone(cursor.node) || cursor.node.value._tag !== "Array") {
+          return undefined
+        }
+        const out: Array<ConfigCursor> = []
+        for (let i = 0; i < cursor.node.value.length; i++) {
+          out.push(yield* loadChildCursor(cursor, i))
+        }
+        return out
+      })
+      return decodeFromCursor(ast.recur(toConfigCursorAST), materialize)
+    }
+    case "Union":
+      return isScalarInput(ast)
+        ? decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
+        : ast.recur(toConfigCursorAST)
+    case "Suspend":
+      return ast.recur(toConfigCursorAST)
+    case "Declaration":
+    case "Any":
+      return decodeFromCursor(ast, materializeOpaque)
+    default:
+      return decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
+  }
+})
 
 /**
  * Creates a `Config<T>` from a `Schema.Codec`.
@@ -617,8 +831,38 @@ const recur: (
  * Convenience constructors such as `string`, `number`, and `boolean` delegate
  * to this API.
  *
- * The codec is used to decode the raw `StringTree` produced by the provider
- * into `T`. Schema validation errors are wrapped in `ConfigError`.
+ * The codec is converted to its canonical `StringTree` form. Its encoded shape
+ * determines how provider data is loaded: scalar schemas read a co-located
+ * scalar value, object schemas read declared properties and matching record
+ * keys, and array schemas read indexed children. A mixed-shape union loads each
+ * member according to that member's shape before applying the union's mode and
+ * checks.
+ *
+ * At the config's lookup path, a missing node or a node that cannot provide the
+ * representation required by the schema is decoded as `undefined`. Missing
+ * object properties remain omitted so the schema's property semantics still
+ * apply. Decoding success always wins, even when no provider input was found.
+ * For example,
+ * `Schema.UndefinedOr(Schema.String)` decodes to `undefined` and is not replaced
+ * by {@link withDefault}. If decoding fails and no relevant representation was
+ * found, the config is absent. Invalid data in a relevant representation is a
+ * validation failure. Provider `SourceError`s are always failures.
+ *
+ * **Gotchas**
+ *
+ * Plain `Schema.Array` and `Schema.Record` schemas use structural provider
+ * input. Use {@link Array} or {@link Record} when a flat separated string must
+ * also be accepted.
+ *
+ * `Schema.Struct` and {@link all} describe different lookup models. An
+ * explicitly present empty object is relevant input for a struct and required
+ * fields are validated. The same empty parent container does not make an
+ * `all` group present when all of its child configs are absent.
+ *
+ * An opaque schema such as `Schema.Unknown` can recursively load an
+ * unambiguous subtree. It fails when a provider node contains both a scalar and
+ * a structural representation because the schema provides no shape with which
+ * to choose between them.
  *
  * **Example** (Reading a structured config)
  *
@@ -648,20 +892,31 @@ const recur: (
  */
 export function schema<T>(codec: Schema.ConstraintCodec<T, unknown>, path?: string | ConfigProvider.Path): Config<T> {
   const codecStringTree = Schema.toCodecStringTree(codec)
-  const decodeUnknownEffect = SchemaParser.decodeUnknownEffect(codecStringTree)
-  const codecStringTreeEncoded = SchemaAST.toEncoded(codecStringTree.ast)
+  const encodedAst = SchemaAST.toEncoded(codecStringTree.ast)
+  const decodeCursor = SchemaParser.decodeUnknownEffect(
+    Schema.make<Schema.Codec<T, ConfigCursor>>(toConfigCursorAST(codecStringTree.ast))
+  )
   const localPath = typeof path === "string" ? [path] : path ?? []
   return make((provider, pathPrefix) => {
     const fullPath = [...pathPrefix, ...localPath]
-    return recur(codecStringTreeEncoded, provider, fullPath).pipe(
-      Effect.flatMapEager((tree) =>
-        decodeUnknownEffect(tree).pipe(
-          Effect.mapErrorEager((issue) =>
-            new Schema.SchemaError(fullPath.length > 0 ? new SchemaIssue.Pointer(fullPath, issue) : issue)
-          )
+    return catchSourceError(loadCursor(provider, fullPath), false).pipe(
+      Effect.flatMapEager((cursor) => {
+        const hasInput = hasProviderInput(encodedAst, cursor.node)
+        return catchSourceError(
+          Effect.matchEffect(decodeCursor(cursor), {
+            onFailure: (issue) => {
+              const error = new ConfigError(
+                new Schema.SchemaError(fullPath.length > 0 ? new SchemaIssue.Pointer(fullPath, issue) : issue)
+              )
+              return hasInput
+                ? Effect.fail(evaluationFailure(error, true))
+                : Effect.succeed(absent(error))
+            },
+            onSuccess: (value) => Effect.succeed(resolved(value, hasInput))
+          }),
+          hasInput
         )
-      ),
-      Effect.mapErrorEager((cause) => new ConfigError(cause))
+      })
     )
   })
 }
@@ -771,6 +1026,8 @@ export const LogLevel = Schema.Literals(LogLevel_.values)
  * result["custom.attribute"] // => "value"
  * ```
  *
+ * @see {@link Array} for separated or structural array input
+ *
  * @category schemas
  * @since 4.0.0
  */
@@ -779,35 +1036,31 @@ export const Record = <K extends Schema.Record.Key, V extends Schema.Constraint>
   readonly keyValueSeparator?: string | undefined
 }) => {
   const record = Schema.Record(key, value)
+  const split = SchemaTransformation.splitKeyValue(options)
   const recordString = Schema.String.pipe(
-    Schema.decodeTo(
-      Schema.Record(Schema.String, Schema.String),
-      SchemaTransformation.splitKeyValue(options)
-    ),
-    Schema.decodeTo(record)
+    Schema.decodeTo(Schema.toCodecStringTree(record), {
+      decode: split.decode,
+      encode: SchemaGetter.passthrough<Record<string, string>, Schema.StringTree>({ strict: false }).compose(
+        split.encode
+      )
+    })
   )
 
   return Schema.Union([record, recordString])
 }
 
-/**
- * @category schemas
- * @since 4.0.0
- */
 const ArrayConfig = <V extends Schema.Constraint>(value: V, options?: {
   readonly separator?: string | undefined
 }) => {
   const array = Schema.Array(value)
   const separator = options?.separator ?? ","
   const arrayString = Schema.String.pipe(
-    Schema.decodeTo(
-      Schema.Array(Schema.String),
-      {
-        decode: SchemaGetter.split(options),
-        encode: SchemaGetter.transform((input: ReadonlyArray<string>) => input.join(separator))
-      }
-    ),
-    Schema.decodeTo(array)
+    Schema.decodeTo(Schema.toCodecStringTree(array), {
+      decode: SchemaGetter.split(options),
+      encode: SchemaGetter.passthrough<ReadonlyArray<string>, Schema.StringTree>({ strict: false }).compose(
+        SchemaGetter.transform((input) => input.join(separator))
+      )
+    })
   )
 
   return Schema.Union([arrayString, array])
@@ -826,6 +1079,8 @@ export {
    *
    * Accepts either a JSON-like array from the provider or a flat string like
    * `"a,b,c"`. The `separator` defaults to `","` and can be customized.
+   *
+   * @see {@link Record} for separated or structural record input
    *
    * @category schemas
    * @since 4.0.0
@@ -849,7 +1104,7 @@ export {
  * @since 2.0.0
  */
 export function fail(err: SourceError | Schema.SchemaError) {
-  return make(() => Effect.fail(new ConfigError(err)))
+  return make(() => Effect.fail(evaluationFailure(new ConfigError(err), false)))
 }
 
 /**
@@ -877,7 +1132,7 @@ export function fail(err: SourceError | Schema.SchemaError) {
  * @since 2.0.0
  */
 export function succeed<T>(value: T) {
-  return make(() => Effect.succeed(value))
+  return make(() => Effect.succeed(resolved(value, false)))
 }
 
 /**
@@ -1392,5 +1647,5 @@ export const nested: {
 } = dual(
   2,
   <A>(self: Config<A>, name: string): Config<A> =>
-    make((provider, pathPrefix) => self.parse(provider, [...pathPrefix, name]))
+    make((provider, pathPrefix) => evaluateAt(self, provider, [...pathPrefix, name]))
 )

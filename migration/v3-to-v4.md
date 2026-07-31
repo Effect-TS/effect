@@ -8947,7 +8947,7 @@ Schema.toArbitraryLazy(schema)
 
 ### `effect/Config`
 
-- `Config.Config` -> `Config.Config`: The model remains and is still a yieldable Effect; it now also exposes parse(provider, pathPrefix?).
+- `Config.Config` -> `Config.Config`: The model remains a yieldable Effect and exposes `parse(provider)`. Compose logical lookup paths with `Config.schema(..., path)` and `Config.nested`; parsing no longer accepts a public path prefix.
 
 - `Config.Config.IsPlainObject` -> `none`: This private conditional helper is no longer exposed; use Config.Wrap for the public recursive wrapping contract.
 
@@ -8959,7 +8959,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Config.LiteralValue` -> `SchemaAST.LiteralValue`: Use the literal value type shared by v4 Schema constructors.
 
-- `Config.all` -> `Config.all`: Unchanged; combine an iterable or record of Config values.
+- `Config.all` -> `Config.all`: Combine an iterable or record of Config values. A wholly absent product can use `Config.withDefault` or `Config.option`, while a partially supplied product fails.
 
 - `Config.array` -> `Config.schema(Config.Array(valueSchema), path)`: Array parsing is schema-based in v4; rebuild the element Config as a Schema and pass the optional path to Config.schema.
 
@@ -9037,7 +9037,7 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigError.InvalidData` -> `new Config.ConfigError(new Schema.SchemaError(issue))`: Invalid configuration is now expressed as a SchemaIssue wrapped by SchemaError and Config.ConfigError.
 
-- `ConfigError.MissingData` -> `new Config.ConfigError(new Schema.SchemaError(new SchemaIssue.MissingKey(...)))`: Missing configuration is represented by Schema issues, commonly MissingKey under one or more Pointer nodes.
+- `ConfigError.MissingData` -> `none`: There is no public missing-data error variant. A required absent config ultimately fails with a SchemaError, while `Config.withDefault` and `Config.option` handle semantic absence before it enters the public Effect error channel.
 
 - `ConfigError.Options` -> `none`: The shared constructor options type was removed; ConfigProvider.SourceError accepts message and optional cause, while Schema issues have issue-specific constructors.
 
@@ -9053,9 +9053,9 @@ Schema.toArbitraryLazy(schema)
 
 - `ConfigError.isInvalidData` -> `Schema.isSchemaError(error.cause)`: Parsing and validation failures are SchemaError causes; inspect the contained SchemaIssue for finer classification.
 
-- `ConfigError.isMissingData` -> `Schema.isSchemaError(error.cause)`: After narrowing to SchemaError, recursively inspect MissingKey, absent InvalidType/InvalidValue, Pointer, and aggregate issues; there is no public one-step guard.
+- `ConfigError.isMissingData` -> `none`: Do not infer semantic absence from a SchemaIssue. Use `Config.withDefault` or `Config.option`; they distinguish absent provider input from successful `undefined`, invalid input, and partial products.
 
-- `ConfigError.isMissingDataOnly` -> `Config.withDefault / Config.option`: The public classifier was removed; these combinators retain the supported missing-only fallback behavior.
+- `ConfigError.isMissingDataOnly` -> `Config.withDefault / Config.option`: The public classifier was removed. These combinators use provider lookup evidence rather than recursively classifying SchemaIssue values.
 
 - `ConfigError.isOr` -> `error.cause.issue._tag === "AnyOf"`: After narrowing cause with Schema.isSchemaError, inspect the SchemaIssue tag; the old Or node no longer exists.
 
