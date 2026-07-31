@@ -639,11 +639,6 @@ const Proto: Omit<
 }
 
 /** @internal */
-export const unsafeMakeSlot = (key: Key<any, any>): void => {
-  allocateSlot(key)
-}
-
-/** @internal */
 export const unsafeHasSameSlab = <Services, Services2>(
   self: Context<Services>,
   that: Context<Services2>
@@ -815,32 +810,27 @@ export const add: {
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
-  const slot = slotOf(key)
-  const grew = !has(impl, key)
 
   if (impl.mutable) {
-    const mutable = impl as any
-    if (slot !== undefined) {
-      while (mutable.slab.length <= slot) mutable.slab.push(Unset)
-      mutable.slab[slot] = service
-    }
-    ;(mutable.base as Map<string, any>).set(key.key, service)
-    mutable.size += grew ? 1 : 0
-    mutable._flat = undefined
+    ;(impl.base as Map<string, any>).set(key.key, service)
+    impl.size = impl.base.size
     return self as any
-  }
-
-  let slab = impl.slab
-  if (slot !== undefined) {
-    slab = impl.slab.slice()
-    while (slab.length <= slot) (slab as Array<unknown>).push(Unset)
-    ;(slab as Array<unknown>)[slot] = service
   }
 
   if (impl.depth >= MaxDepth) {
     const map = new Map(flatten(impl))
     map.set(key.key, service)
     return fromMap(map)
+  }
+
+  const grew = !has(impl, key)
+  let slab = impl.slab
+  const slot = slotOf(key)
+  if (slot !== undefined) {
+    const copy = impl.slab.slice()
+    while (copy.length <= slot) copy.push(Unset)
+    copy[slot] = service
+    slab = copy
   }
 
   return makeImpl(
@@ -1241,18 +1231,8 @@ export const merge: {
   if (thatImpl.size === 0) return self as any
   if (selfImpl.mutable) {
     const base = selfImpl.base as Map<string, any>
-    const slab = selfImpl.slab as Array<unknown>
-    flatten(thatImpl).forEach((value, key) => {
-      const grew = !base.has(key)
-      base.set(key, value)
-      const slot = slotByKey.get(key)
-      if (slot !== undefined) {
-        while (slab.length <= slot) slab.push(Unset)
-        slab[slot] = value
-      }
-      selfImpl.size += grew ? 1 : 0
-    })
-    selfImpl._flat = undefined
+    flatten(thatImpl).forEach((value, key) => base.set(key, value))
+    selfImpl.size = base.size
     return self as any
   }
   const map = new Map(flatten(selfImpl))
@@ -1350,15 +1330,10 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
   const impl = self as ContextImpl<Services>
   if (impl.mutable) {
     const base = impl.base as Map<string, any>
-    const slab = impl.slab as Array<unknown>
     base.forEach((_, key) => {
-      if (keep.has(key)) return
-      base.delete(key)
-      const slot = slotByKey.get(key)
-      if (slot !== undefined && slot < slab.length) slab[slot] = Unset
+      if (!keep.has(key)) base.delete(key)
     })
     impl.size = base.size
-    impl._flat = undefined
     return self as any
   }
   const map = new Map<string, any>()
@@ -1407,14 +1382,8 @@ export const omit = <S extends ReadonlyArray<Key<any, any>>>(
   const impl = self as ContextImpl<Services>
   if (impl.mutable) {
     const base = impl.base as Map<string, any>
-    const slab = impl.slab as Array<unknown>
-    drop.forEach((key) => {
-      if (!base.delete(key)) return
-      const slot = slotByKey.get(key)
-      if (slot !== undefined && slot < slab.length) slab[slot] = Unset
-    })
+    drop.forEach((key) => base.delete(key))
     impl.size = base.size
-    impl._flat = undefined
     return self as any
   }
   const map = new Map<string, any>()
@@ -1450,15 +1419,19 @@ export const mutate: {
 } = dual(
   2,
   <Services, B>(self: Context<Services>, f: (context: Context<Services>) => Context<B>): Context<B> => {
-    const next = fromMap<Services>(new Map(flatten(self as ContextImpl<Services>)))
-    next.mutable = true
+    // The scratch context gets an empty slab, so every operation on it reads
+    // and writes `base` alone; the slab is rebuilt once when sealing
+    const map = new Map(flatten(self as ContextImpl<Services>))
+    const scratch = makeImpl<Services>([], map, undefined, 0, map.size, map)
+    scratch.mutable = true
     let result: Context<B> | undefined
     try {
-      return result = f(next)
+      result = f(scratch)
     } finally {
-      next.mutable = false
+      scratch.mutable = false
       if (result !== undefined) result.mutable = false
     }
+    return result === (scratch as unknown) ? fromMap(map) : result
   }
 )
 
