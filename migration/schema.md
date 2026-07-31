@@ -903,11 +903,11 @@ import { Effect, Number, Option, Schema, SchemaGetter, SchemaIssue } from "effec
 const NumberFromString = Schema.String.pipe(
   Schema.decodeTo(Schema.Number, {
     decode: SchemaGetter.transformOrFail((s) => {
-      const n = parseFloat(s)
+      const parsed = parseFloat(s)
       if (isNaN(parsed)) {
         return Effect.fail(new SchemaIssue.InvalidValue(Option.some(s)))
       }
-      return Effect.succeed(n)
+      return Effect.succeed(parsed)
     }),
     encode: SchemaGetter.String()
   })
