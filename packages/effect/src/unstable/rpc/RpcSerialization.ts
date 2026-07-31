@@ -69,7 +69,7 @@ export class MaxBufferSizeExceeded extends Data.TaggedError("MaxBufferSizeExceed
  * @category serialization
  * @since 4.0.0
  */
-export interface StreamingOptions {
+export interface StreamOptions {
   /**
    * Maximum number of bytes or string code units retained for an incomplete frame.
    * The default is 16 MiB. Use `"unbounded"` to disable the limit.
@@ -114,7 +114,7 @@ export const json: RpcSerialization["Service"] = RpcSerialization.of({
  * @category serialization
  * @since 4.0.0
  */
-export const makeNdjson = (options?: StreamingOptions): RpcSerialization["Service"] => {
+export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"] => {
   const maxBufferSize = options?.maxBufferSize ?? defaultMaxBufferSize
   return RpcSerialization.of({
     contentType: "application/ndjson",
@@ -504,7 +504,7 @@ type JsonRpcMessage = JsonRpcRequest | JsonRpcResponse
  * @since 4.0.0
  */
 export const makeMsgPack = (
-  options?: (Msgpackr.Options & StreamingOptions) | undefined
+  options?: (Msgpackr.Options & StreamOptions) | undefined
 ): RpcSerialization["Service"] => {
   const { maxBufferSize = defaultMaxBufferSize, ...msgpackOptions } = options ?? {}
   return RpcSerialization.of({
@@ -596,7 +596,7 @@ export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeria
  * @category serialization
  * @since 4.0.0
  */
-export const layerNdjsonWith = (options?: StreamingOptions): Layer.Layer<RpcSerialization> =>
+export const layerNdjsonWith = (options?: StreamOptions): Layer.Layer<RpcSerialization> =>
   Layer.succeed(RpcSerialization)(makeNdjson(options))
 
 /**
@@ -641,5 +641,5 @@ export const layerMsgPack: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeri
  * @since 4.0.0
  */
 export const layerMsgPackWith = (
-  options?: (Msgpackr.Options & StreamingOptions) | undefined
+  options?: (Msgpackr.Options & StreamOptions) | undefined
 ): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(makeMsgPack(options))
