@@ -2,29 +2,6 @@ import { assert, describe, it } from "@effect/vitest"
 import { Array, Effect, Exit, Fiber, Latch, PubSub, Stream } from "effect"
 import { pipe } from "effect/Function"
 
-const retains = (root: object, target: object): boolean => {
-  const objects = [root]
-  const seen = new Set<object>()
-  while (objects.length > 0) {
-    const current = objects.pop()!
-    if (current === target) {
-      return true
-    }
-    if (seen.has(current)) {
-      continue
-    }
-    seen.add(current)
-    for (const key of Reflect.ownKeys(current)) {
-      const descriptor = Object.getOwnPropertyDescriptor(current, key)
-      const value = descriptor && "value" in descriptor ? descriptor.value : undefined
-      if (typeof value === "object" && value !== null) {
-        objects.push(value)
-      }
-    }
-  }
-  return false
-}
-
 describe("PubSub", () => {
   it.effect("publishAll - capacity 2 (BoundedPubSubPow2)", () => {
     const messages = [1, 2]
@@ -539,6 +516,20 @@ describe("PubSub", () => {
         const sub3 = yield* PubSub.subscribe(pubsub)
         assert.deepStrictEqual(yield* PubSub.takeAll(sub3), [14, 15, 16])
       }))
+
+    it.effect("sliding preserves publish order with a lagging subscriber", () =>
+      Effect.scoped(
+        Effect.gen(function*() {
+          const pubsub = yield* PubSub.sliding<number>({ capacity: 4, replay: 3 })
+          yield* PubSub.subscribe(pubsub)
+          yield* PubSub.publishAll(pubsub, [1, 2])
+          const subscription = yield* PubSub.subscribe(pubsub)
+          yield* PubSub.publishAll(pubsub, [3, 4, 5])
+
+          const values = yield* PubSub.takeAll(subscription)
+          assert.isTrue(values.every((value, index) => index === 0 || values[index - 1] <= value))
+        })
+      ))
   })
 
   it.effect("shutdown interrupts suspended subscribers", () =>
@@ -615,3 +606,26 @@ describe("PubSub", () => {
       })
     ))
 })
+
+const retains = (root: object, target: object): boolean => {
+  const objects = [root]
+  const seen = new Set<object>()
+  while (objects.length > 0) {
+    const current = objects.pop()!
+    if (current === target) {
+      return true
+    }
+    if (seen.has(current)) {
+      continue
+    }
+    seen.add(current)
+    for (const key of Reflect.ownKeys(current)) {
+      const descriptor = Object.getOwnPropertyDescriptor(current, key)
+      const value = descriptor && "value" in descriptor ? descriptor.value : undefined
+      if (typeof value === "object" && value !== null) {
+        objects.push(value)
+      }
+    }
+  }
+  return false
+}
