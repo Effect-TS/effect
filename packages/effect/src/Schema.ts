@@ -6510,8 +6510,8 @@ export function link<T>() {
  * )
  *
  * const result = Schema.decodeUnknownResult(schema)({ password: "123456", confirmPassword: "1234567" })
- * if (Result.isFailure(result) && result.failure._tag === "Filter" && result.failure.issue._tag === "Pointer") {
- *   result.failure.issue.path // => ["password"]
+ * if (Result.isFailure(result) && result.failure.issue._tag === "Filter" && result.failure.issue.issue._tag === "Pointer") {
+ *   result.failure.issue.issue.path // => ["password"]
  * }
  * ```
  *
@@ -6532,8 +6532,8 @@ export function link<T>() {
  * )
  *
  * const result = Schema.decodeUnknownResult(schema)({ a: 1, b: 0, c: 0 })
- * if (Result.isFailure(result) && result.failure._tag === "Filter" && result.failure.issue._tag === "Composite") {
- *   result.failure.issue.issues.map((issue) => issue._tag === "Pointer" ? issue.path : []) // => [["b"], ["c"]]
+ * if (Result.isFailure(result) && result.failure.issue._tag === "Filter" && result.failure.issue.issue._tag === "Composite") {
+ *   result.failure.issue.issue.issues.map((issue) => issue._tag === "Pointer" ? issue.path : []) // => [["b"], ["c"]]
  * }
  * ```
  *

@@ -354,7 +354,7 @@ export {
    * ```ts import.meta.vitest
    * import { Exit } from "effect"
    *
- * Exit.void // => Exit.succeed(undefined)
+   * Exit.void // => Exit.succeed(undefined)
    * ```
    *
    * @see {@link succeed} to create a success with a specific value

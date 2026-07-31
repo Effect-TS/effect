@@ -124,8 +124,10 @@ export function makeValue(value: string): Node {
  *
  * const node = ConfigProvider.makeRecord(new Set(["host", "port"]))
  * node._tag // => "Record"
- * node.keys // => new Set(["host", "port"])
- * node.value // => undefined
+ * if (node._tag === "Record") {
+ *   node.keys // => new Set(["host", "port"])
+ *   node.value // => undefined
+ * }
  * ```
  *
  * @see {@link makeValue} – for terminal leaves

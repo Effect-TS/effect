@@ -160,19 +160,19 @@ export declare namespace Path {
    *
    *   // Parse a path into its components
    *   const parsed = path.parse("/home/user/documents/file.txt")
-    *   // Format a path from its components
-    *   const formatted = path.format({
+   *   // Format a path from its components
+   *   const formatted = path.format({
    *     dir: "/home/user",
    *     name: "newfile",
    *     ext: ".ts"
    *   })
-    *   return { dir: parsed.dir, base: parsed.base, formatted }
-    * })
-    *
-    * const result = Effect.runSync(Effect.provide(program, Path.layer))
-    * result.dir // => "/home/user/documents"
-    * result.base // => "file.txt"
-    * result.formatted // => "/home/user/newfile.ts"
+   *   return { dir: parsed.dir, base: parsed.base, formatted }
+   * })
+   *
+   * const result = Effect.runSync(Effect.provide(program, Path.layer))
+   * result.dir // => "/home/user/documents"
+   * result.base // => "file.txt"
+   * result.formatted // => "/home/user/newfile.ts"
    * ```
    *
    * @category models

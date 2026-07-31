@@ -277,10 +277,11 @@ export const layer = <
  * })
  *
  * const reporter = ErrorReporter.make(({ error }) => messages.push(error.message))
- * const result = await Effect.runPromise(
+ * const output = await Effect.runPromise(
  *   Effect.provide(program, ErrorReporter.layer([reporter]))
  * )
- * Array.of(messages, result) // => [["something went wrong"], "fallback value"]
+ * messages // => ["something went wrong"]
+ * output // => "fallback value"
  * ```
  *
  * @category Reporting

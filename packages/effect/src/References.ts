@@ -666,19 +666,19 @@ export {
    * const customScheduling = Effect.gen(function*() {
    *   // Get current scheduler (default is MixedScheduler)
    *   const current = yield* References.Scheduler
- *   const isDefaultMixed = current instanceof Scheduler.MixedScheduler
+   *   const isDefaultMixed = current instanceof Scheduler.MixedScheduler
    *
    *   // Use a custom scheduler
- *   const isCustomMixed = yield* Effect.provideService(
- *     Effect.map(References.Scheduler, (scheduler) => scheduler instanceof Scheduler.MixedScheduler),
- *     References.Scheduler,
- *     new Scheduler.MixedScheduler()
- *   )
- *
- *   return [isDefaultMixed, isCustomMixed]
- * })
- *
- * await Effect.runPromise(customScheduling) // => [true, true]
+   *   const isCustomMixed = yield* Effect.provideService(
+   *     Effect.map(References.Scheduler, (scheduler) => scheduler instanceof Scheduler.MixedScheduler),
+   *     References.Scheduler,
+   *     new Scheduler.MixedScheduler()
+   *   )
+   *
+   *   return [isDefaultMixed, isCustomMixed]
+   * })
+   *
+   * await Effect.runPromise(customScheduling) // => [true, true]
    * ```
    *
    * @category references

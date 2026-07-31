@@ -120,8 +120,8 @@ export interface Service {
    *   const chat = yield* Chat.fromPrompt("Hello")
    *   const currentHistory = yield* Ref.get(chat.history)
    *   return currentHistory.content.length
- * })
- *
+   * })
+   *
    * await Effect.runPromise(inspectHistory) // => 1
    * ```
    */
@@ -145,8 +145,8 @@ export interface Service {
    *   const chat = yield* Chat.fromPrompt("Hello!")
    *   const exportedData = yield* chat.export
    *   return typeof exportedData
- * })
- *
+   * })
+   *
    * await Effect.runPromise(saveChat) // => "object"
    * ```
    */
@@ -170,8 +170,8 @@ export interface Service {
    *   const chat = yield* Chat.fromPrompt("Explain photosynthesis")
    *   const jsonBackup = yield* chat.exportJson
    *   return JSON.parse(jsonBackup).content.length
- * })
- *
+   * })
+   *
    * await Effect.runPromise(backupChat) // => 1
    * ```
    */
@@ -212,12 +212,12 @@ export interface Service {
    *   const response1 = yield* chat.generateText({
    *     prompt: "What is the capital of France?"
    *   })
- *   const response2 = yield* chat.generateText({
- *     prompt: "What's the population of that city?"
- *   })
+   *   const response2 = yield* chat.generateText({
+   *     prompt: "What's the population of that city?"
+   *   })
    *   return [response1.text, response2.text]
- * })
- *
+   * })
+   *
    * await Effect.runPromise(chatWithAI.pipe(Effect.provide(FakeLanguageModel))) // => ["The capital of France is Paris.", "Paris has about 2.1 million residents."]
    * ```
    */
@@ -294,8 +294,8 @@ export interface Service {
    *       part.type === "text-delta" ? text + part.delta : text)
    *   )
    *   return story
- * })
- *
+   * })
+   *
    * const story = await Effect.runPromise(streamingChat.pipe(Effect.provide(FakeLanguageModel)))
    * story // => "A small probe reached orbit. It sent back a picture of Earth."
    * ```
@@ -378,8 +378,8 @@ export interface Service {
    *     schema: ContactSchema
    *   })
    *   return [contact.value.name, contact.value.email, contact.value.phone]
- * })
- *
+   * })
+   *
    * await Effect.runPromise(extractContact.pipe(Effect.provide(FakeLanguageModel))) // => ["John Doe", "john@example.com", "555-1234"]
    * ```
    */

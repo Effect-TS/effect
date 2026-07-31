@@ -195,7 +195,7 @@ export class NetworkError extends Schema.ErrorClass<NetworkError>(
  *   anthropic: null
  * }
  *
- * const result = [metadata.openai.errorCode, metadata.anthropic] // => ["rate_limit_exceeded", null]
+ * Array.of(metadata.openai.errorCode, metadata.anthropic) // => ["rate_limit_exceeded", null]
  * ```
  *
  * @category schemas

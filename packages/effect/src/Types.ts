@@ -622,10 +622,10 @@ export declare namespace Invariant {
    * import type { Types } from "effect"
    *
    * type Inner = Types.Invariant.Type<Types.Invariant<number>>
- * // number
- *
- * const witness: Inner = 1
- * ```
+   * // number
+   *
+   * const witness: Inner = 1
+   * ```
    *
    * @see {@link Invariant}
    *
@@ -694,10 +694,10 @@ export declare namespace Covariant {
    * import type { Types } from "effect"
    *
    * type Inner = Types.Covariant.Type<Types.Covariant<string>>
- * // string
- *
- * const witness: Inner = "value"
- * ```
+   * // string
+   *
+   * const witness: Inner = "value"
+   * ```
    *
    * @see {@link Covariant}
    *
@@ -769,10 +769,10 @@ export declare namespace Contravariant {
    * import type { Types } from "effect"
    *
    * type Inner = Types.Contravariant.Type<Types.Contravariant<string>>
- * // string
- *
- * const witness: Inner = "value"
- * ```
+   * // string
+   *
+   * const witness: Inner = "value"
+   * ```
    *
    * @see {@link Contravariant}
    *

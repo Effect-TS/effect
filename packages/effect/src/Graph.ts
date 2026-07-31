@@ -4292,7 +4292,8 @@ export interface AllPairsResult<E> {
  * })
  *
  * const result = Graph.floydWarshall(graph, (edgeData) => edgeData)
- * Array.of(result.distances.get(0)?.get(2), result.paths.get(0)?.get(2)) // => [5, [0, 1, 2]]
+ * const shortest = { distance: result.distances.get(0)?.get(2), path: result.paths.get(0)?.get(2) }
+ * shortest // => { distance: 5, path: [0, 1, 2] }
  * ```
  *
  * @category algorithms

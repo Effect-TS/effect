@@ -1450,8 +1450,7 @@ export const fromSubscriptionArray = <A>(
  *   return processedChannel
  * })
  * const event = Effect.scoped(Effect.flatMap(eventProcessor, Channel.runHead))
- * const result = await Effect.runPromise(event)
- * Option.map(result, ({ type, timestamp, processed, processedAt }) => ({ type, timestamp, processed, processedAt })) // => Option.some({ type: "user.created", timestamp: 1, processed: true, processedAt: 2 })
+ * const result = await Effect.runPromise(event) // => Option.some({ type: "user.created", payload: {}, timestamp: 1, processed: true, processedAt: 2 })
  * ```
  *
  * @category constructors

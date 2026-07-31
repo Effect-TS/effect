@@ -112,7 +112,8 @@ export interface Variance<out A, out E, out R> {
  * const GetUser = Request.tagged<GetUser>("GetUser")
  * const request = GetUser({ id: 123 })
  *
- * Array.of(request._tag, request.id) // => ["GetUser", 123]
+ * request._tag // => "GetUser"
+ * request.id // => 123
  * ```
  *
  * @category models
@@ -282,7 +283,8 @@ export const isRequest = (u: unknown): u is Request<unknown, unknown, unknown> =
  *   includeSettings: true
  * })
  *
- * Array.of(request.id, request.includeSettings) // => ["user-123", true]
+ * request.id // => "user-123"
+ * request.includeSettings // => true
  * ```
  *
  * @category constructors
@@ -397,7 +399,8 @@ export const Class: new<A extends Record<string, any>, Success, Error = never, C
  *
  * const request = new GetUserById({ id: 123 })
  *
- * Array.of(request._tag, request.id) // => ["GetUserById", 123]
+ * request._tag // => "GetUserById"
+ * request.id // => 123
  * ```
  *
  * @category constructors

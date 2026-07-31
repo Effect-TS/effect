@@ -120,7 +120,7 @@ export declare namespace Redacted {
    *   token: `${value.token}:rotated`
    * })
    *
- * rotate({ token: "secret" }) // => { token: "secret:rotated" }
+   * rotate({ token: "secret" }) // => { token: "secret:rotated" }
    * ```
    *
    * @category utility types

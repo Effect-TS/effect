@@ -581,14 +581,12 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * ```ts import.meta.vitest
  * import { pipe } from "effect"
  *
- * const result = pipe(
+ * pipe(
  *   1,
  *   (n) => n + 1,
  *   (n) => n * 2,
  *   (n) => `result: ${n}`
- * )
- *
- * result // => "result: 4"
+ * ) // => "result: 4"
  * ```
  *
  * **Example** (Chaining methods before conversion)
@@ -598,9 +596,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * const double = (n: number) => n * 2
  * const greaterThanFour = (n: number) => n > 4
  *
- * const result = numbers.map(double).filter(greaterThanFour)
- *
- * result // => [6, 8]
+ * numbers.map(double).filter(greaterThanFour) // => [6, 8]
  * ```
  *
  * **Example** (Rewriting method chains with pipe)
@@ -614,13 +610,11 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * const double = (n: number) => n * 2
  * const greaterThanFour = (n: number) => n > 4
  *
- * const result = pipe(
+ * pipe(
  *   numbers,
  *   Array.map(double),
  *   Array.filter(greaterThanFour)
- * )
- *
- * result // => [6, 8]
+ * ) // => [6, 8]
  * ```
  *
  * **Example** (Chaining arithmetic operations)
@@ -634,9 +628,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * const subtractTen = (x: number) => x - 10
  *
  * // Sequentially apply these operations using `pipe`
- * const result = pipe(5, increment, double, subtractTen)
- *
- * result // => 2
+ * pipe(5, increment, double, subtractTen) // => 2
  * ```
  *
  * **Example** (Building a simple transformation pipeline)
@@ -645,14 +637,12 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * import { pipe } from "effect"
  *
  * // Simple transformation pipeline
- * const result = pipe(
+ * pipe(
  *   5,
  *   (x) => x * 2, // 10
  *   (x) => x + 1, // 11
  *   (x) => x.toString() // "11"
- * )
- *
- * result // => "11"
+ * ) // => "11"
  * ```
  *
  * @category combinators

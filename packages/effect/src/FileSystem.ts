@@ -1108,16 +1108,16 @@ export declare namespace File {
    *   blocks: Option.none()
    * }
    *
-    * info.type // => "File"
-    * info.size // => 5n
-    * info.mode.toString(8) // => "644"
+   * info.type // => "File"
+   * info.size // => 5n
+   * info.mode.toString(8) // => "644"
    *
    * const modified = Option.match(info.mtime, {
    *   onNone: () => "unavailable",
    *   onSome: (mtime) => mtime.toISOString()
    * })
-    * modified // => "unavailable"
-    * info.type === "File" // => true
+   * modified // => "unavailable"
+   * info.type === "File" // => true
    * ```
    *
    * @category file

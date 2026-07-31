@@ -39,7 +39,7 @@ import type * as Fiber from "./Fiber.ts"
  *   onExit(Exit.isSuccess(exit) ? 0 : 1)
  * }
  *
- * const completed = new Promise<readonly [Exit.Exit<string, never>, number]>((resolve) => {
+ * const completed = new Promise<readonly [Exit.Exit<unknown, unknown>, number]>((resolve) => {
  * // Use with makeRunMain
  *   const runMain = Runtime.makeRunMain(({ fiber, teardown }) => {
  *     fiber.addObserver((exit) => {
@@ -147,7 +147,7 @@ export const defaultTeardown: Teardown = <E, A>(
  * import { Effect, Exit, Runtime } from "effect"
  *
  * const events: Array<string> = []
- * const completed = new Promise<readonly [Exit.Exit<string, never>, number]>((resolve) => {
+ * const completed = new Promise<readonly [Exit.Exit<unknown, unknown>, number]>((resolve) => {
  * // Create a simple runner for a hypothetical platform
  *   const runMain = Runtime.makeRunMain(({ fiber, teardown }) => {
  *     // Handle fiber completion

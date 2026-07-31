@@ -318,7 +318,7 @@ const ReferenceTypeId = "~effect/Context/Reference" as const
  * const messages: Array<string> = []
  * const LoggerRef: Context.Reference<{ log: (msg: string) => void }> =
  *   Context.Reference("Logger", {
- *     defaultValue: () => ({ log: (msg) => messages.push(msg) })
+ *     defaultValue: () => ({ log: (msg) => { messages.push(msg) } })
  *   })
  *
  * // The reference can be used without explicit provision
@@ -376,7 +376,7 @@ export declare namespace Service {
    *   Context.Service<{ log: (msg: string) => void }>("Logger"),
    *   Context.Service<{ query: (sql: string) => string }>("Database")
    * ]
- * services.map((service) => service.key) // => ["Logger", "Database"]
+   * services.map((service) => service.key) // => ["Logger", "Database"]
    * ```
    *
    * @category models
@@ -400,7 +400,7 @@ export declare namespace Service {
    * // Extract the service shape from the service
    * type DatabaseService = Context.Service.Shape<typeof Database>
    * // DatabaseService is { query: (sql: string) => string }
- * Database.key // => "Database"
+   * Database.key // => "Database"
    * ```
    *
    * @category models
@@ -424,7 +424,7 @@ export declare namespace Service {
    * // Extract the identifier type from a key
    * type DatabaseId = Context.Service.Identifier<typeof Database>
    * // DatabaseId is the identifier type
- * Database.key // => "Database"
+   * Database.key // => "Database"
    * ```
    *
    * @category models

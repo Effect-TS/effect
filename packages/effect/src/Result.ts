@@ -1661,9 +1661,9 @@ export {
    * pipe(
    *   Result.Do,
    *   Result.bind("x", () => Result.succeed(2)),
- *   Result.bind("y", () => Result.succeed(3)),
- *   Result.let("sum", ({ x, y }) => x + y)
- * ) // => Result.succeed({ x: 2, y: 3, sum: 5 })
+   *   Result.bind("y", () => Result.succeed(3)),
+   *   Result.let("sum", ({ x, y }) => x + y)
+   * ) // => Result.succeed({ x: 2, y: 3, sum: 5 })
    * ```
    *
    * @see {@link Do} to start the do-notation chain

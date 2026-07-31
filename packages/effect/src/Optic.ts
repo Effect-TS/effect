@@ -1,14 +1,14 @@
 /**
  * Reads and updates focused parts of values without mutating the original
  * value.
-   *
+ *
  * An optic describes where to look inside a value, such as a record field, a
  * union variant, an optional value, or several values in a collection. Different
  * optic types describe different kinds of focus: some always find a value,
  * some may not, and some can find many. This module includes the optic types,
  * constructors, focusing helpers, and operations for replacing, modifying, or
  * collecting focused values.
-   *
+ *
  * @since 4.0.0
  */
 
@@ -26,13 +26,13 @@ import type { IsUnion } from "./Types.ts"
 
 /**
  * A lossless, reversible conversion between types `S` and `A`.
-   *
+ *
  * **When to use**
-   *
+ *
  * Use when you have a pair of functions that convert back and forth without losing
  *   information (e.g. `Record ↔ entries`, `Celsius ↔ Fahrenheit`).
  * - You want the strongest optic that can be composed with any other.
-   *
+ *
  * **Details**
  *
  * - `get(s)` always succeeds and returns an `A`.
@@ -544,7 +544,7 @@ export interface Optional<in out S, in out A> {
    * const _a = Optic.id<S>().optionalKey("a")
    *
    * _a.replace(undefined, { a: 1 }) // => {}
- *
+   *
    * _a.replace(2, {}) // => { a: 2 }
    * ```
    */
@@ -576,7 +576,7 @@ export interface Optional<in out S, in out A> {
    * const _pos = Optic.id<number>().check(Schema.isGreaterThan(0))
    *
    * _pos.getResult(5) // => Result.succeed(5)
- *
+   *
    * Result.isFailure(_pos.getResult(-1)) // => true
    * ```
    *
@@ -648,7 +648,7 @@ export interface Optional<in out S, in out A> {
    * const _radius = Optic.id<Shape>().tag("Circle").key("radius")
    *
    * _radius.getResult({ _tag: "Circle", radius: 5 }) // => Result.succeed(5)
- *
+   *
    * Result.isFailure(_radius.getResult({ _tag: "Rect", width: 10 })) // => true
    * ```
    *
@@ -684,7 +684,7 @@ export interface Optional<in out S, in out A> {
    * const _x = Optic.id<Env>().at("x")
    *
    * _x.getResult({ x: 1 }) // => Result.succeed(1)
- *
+   *
    * Result.isFailure(_x.getResult({ y: 2 })) // => true
    * ```
    *
@@ -778,7 +778,7 @@ export interface Optional<in out S, in out A> {
    * const _defined = Optic.id<number | undefined>().notUndefined()
    *
    * _defined.getResult(42) // => Result.succeed(42)
- *
+   *
    * Result.isFailure(_defined.getResult(undefined)) // => true
    * ```
    *
