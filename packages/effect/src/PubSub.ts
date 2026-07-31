@@ -2067,7 +2067,7 @@ class BoundedPubSubSingleSubscription<in out A> implements PubSub.BackingSubscri
 
 interface Node<out A> {
   value: A | AbsentValue
-  replayIndex?: number
+  replayIndex: number | undefined
   subscribers: number
   next: Node<A> | null
 }
@@ -2075,6 +2075,7 @@ interface Node<out A> {
 class UnboundedPubSub<in out A> implements PubSub.Atomic<A> {
   publisherHead: Node<A> = {
     value: AbsentValue,
+    replayIndex: undefined,
     subscribers: 0,
     next: null
   }
@@ -2111,11 +2112,9 @@ class UnboundedPubSub<in out A> implements PubSub.Atomic<A> {
     if (subscribers !== 0) {
       const node: Node<A> = {
         value,
+        replayIndex,
         subscribers,
         next: null
-      }
-      if (replayIndex !== undefined) {
-        node.replayIndex = replayIndex
       }
       this.publisherTail.next = node
       this.publisherTail = this.publisherTail.next
