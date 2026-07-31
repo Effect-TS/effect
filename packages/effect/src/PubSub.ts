@@ -139,6 +139,7 @@ export declare namespace PubSub {
     take(): A | undefined
     takeN(n: number): Array<A>
     takeAll(): Array<A>
+    close(): void
     readonly remaining: number
   }
 
@@ -1115,6 +1116,7 @@ const unsubscribe = <A>(self: Subscription<A>): Effect.Effect<void> =>
           Effect.sync(() => {
             self.subscribers.delete(self.subscription)
             self.subscription.unsubscribe()
+            self.replayWindow.close()
             self.strategy.onPubSubEmptySpaceUnsafe(self.pubsub, self.subscribers)
           })
         ),
@@ -1526,6 +1528,7 @@ const makeSubscriptionUnsafe = <A>(
 
 class BoundedPubSubArb<in out A> implements PubSub.Atomic<A> {
   array: Array<A>
+  replayIndices: Array<number>
   publisherIndex = 0
   subscribers: Array<number>
   subscriberCount = 0
@@ -1538,6 +1541,7 @@ class BoundedPubSubArb<in out A> implements PubSub.Atomic<A> {
     this.capacity = capacity
     this.replayBuffer = replayBuffer
     this.array = Array.from({ length: capacity })
+    this.replayIndices = replayBuffer ? Array.from({ length: capacity }) : []
     this.subscribers = Array.from({ length: capacity })
   }
 
@@ -1561,14 +1565,15 @@ class BoundedPubSubArb<in out A> implements PubSub.Atomic<A> {
     if (this.isFull()) {
       return false
     }
+    const replayIndex = this.replayBuffer?.offer(value)
     if (this.subscriberCount !== 0) {
       const index = this.publisherIndex % this.capacity
       this.array[index] = value
+      if (replayIndex !== undefined) {
+        this.replayIndices[index] = replayIndex
+      }
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
-    }
-    if (this.replayBuffer) {
-      this.replayBuffer.offer(value)
     }
     return true
   }
@@ -1594,11 +1599,12 @@ class BoundedPubSubArb<in out A> implements PubSub.Atomic<A> {
       const a = chunk[iteratorIndex++]
       const index = this.publisherIndex % this.capacity
       this.array[index] = a
+      const replayIndex = this.replayBuffer?.offer(a)
+      if (replayIndex !== undefined) {
+        this.replayIndices[index] = replayIndex
+      }
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
-      if (this.replayBuffer) {
-        this.replayBuffer.offer(a)
-      }
     }
     return chunk.slice(iteratorIndex)
   }
@@ -1606,12 +1612,11 @@ class BoundedPubSubArb<in out A> implements PubSub.Atomic<A> {
   slide(): void {
     if (this.subscribersIndex !== this.publisherIndex) {
       const index = this.subscribersIndex % this.capacity
+      const value = this.array[index]
       this.array[index] = AbsentValue as unknown as A
       this.subscribers[index] = 0
       this.subscribersIndex += 1
-    }
-    if (this.replayBuffer) {
-      this.replayBuffer.slide()
+      this.replayBuffer?.slide(value, this.replayIndices[index])
     }
   }
 
@@ -1717,6 +1722,7 @@ class BoundedPubSubArbSubscription<in out A> implements PubSub.BackingSubscripti
 
 class BoundedPubSubPow2<in out A> implements PubSub.Atomic<A> {
   array: Array<A>
+  replayIndices: Array<number>
   mask: number
   publisherIndex = 0
   subscribers: Array<number>
@@ -1730,6 +1736,7 @@ class BoundedPubSubPow2<in out A> implements PubSub.Atomic<A> {
     this.capacity = capacity
     this.replayBuffer = replayBuffer
     this.array = Array.from({ length: capacity })
+    this.replayIndices = replayBuffer ? Array.from({ length: capacity }) : []
     this.mask = capacity - 1
     this.subscribers = Array.from({ length: capacity })
   }
@@ -1754,14 +1761,15 @@ class BoundedPubSubPow2<in out A> implements PubSub.Atomic<A> {
     if (this.isFull()) {
       return false
     }
+    const replayIndex = this.replayBuffer?.offer(value)
     if (this.subscriberCount !== 0) {
       const index = this.publisherIndex & this.mask
       this.array[index] = value
+      if (replayIndex !== undefined) {
+        this.replayIndices[index] = replayIndex
+      }
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
-    }
-    if (this.replayBuffer) {
-      this.replayBuffer.offer(value)
     }
     return true
   }
@@ -1787,11 +1795,12 @@ class BoundedPubSubPow2<in out A> implements PubSub.Atomic<A> {
       const elem = chunk[iteratorIndex++]
       const index = this.publisherIndex & this.mask
       this.array[index] = elem
+      const replayIndex = this.replayBuffer?.offer(elem)
+      if (replayIndex !== undefined) {
+        this.replayIndices[index] = replayIndex
+      }
       this.subscribers[index] = this.subscriberCount
       this.publisherIndex += 1
-      if (this.replayBuffer) {
-        this.replayBuffer.offer(elem)
-      }
     }
     return chunk.slice(iteratorIndex)
   }
@@ -1799,12 +1808,11 @@ class BoundedPubSubPow2<in out A> implements PubSub.Atomic<A> {
   slide(): void {
     if (this.subscribersIndex !== this.publisherIndex) {
       const index = this.subscribersIndex & this.mask
+      const value = this.array[index]
       this.array[index] = AbsentValue as unknown as A
       this.subscribers[index] = 0
       this.subscribersIndex += 1
-    }
-    if (this.replayBuffer) {
-      this.replayBuffer.slide()
+      this.replayBuffer?.slide(value, this.replayIndices[index])
     }
   }
 
@@ -1912,6 +1920,7 @@ class BoundedPubSubSingle<in out A> implements PubSub.Atomic<A> {
   subscriberCount = 0
   subscribers = 0
   value: A = AbsentValue as unknown as A
+  replayIndex = 0
 
   readonly capacity = 1
   readonly replayBuffer: ReplayBuffer<A> | undefined
@@ -1944,13 +1953,14 @@ class BoundedPubSubSingle<in out A> implements PubSub.Atomic<A> {
     if (this.isFull()) {
       return false
     }
+    const replayIndex = this.replayBuffer?.offer(value)
     if (this.subscriberCount !== 0) {
       this.value = value
+      if (replayIndex !== undefined) {
+        this.replayIndex = replayIndex
+      }
       this.subscribers = this.subscriberCount
       this.publisherIndex += 1
-    }
-    if (this.replayBuffer) {
-      this.replayBuffer.offer(value)
     }
     return true
   }
@@ -1975,11 +1985,10 @@ class BoundedPubSubSingle<in out A> implements PubSub.Atomic<A> {
 
   slide(): void {
     if (this.isFull()) {
+      const value = this.value
       this.subscribers = 0
       this.value = AbsentValue as unknown as A
-    }
-    if (this.replayBuffer) {
-      this.replayBuffer.slide()
+      this.replayBuffer?.slide(value, this.replayIndex)
     }
   }
 
@@ -2058,6 +2067,7 @@ class BoundedPubSubSingleSubscription<in out A> implements PubSub.BackingSubscri
 
 interface Node<out A> {
   value: A | AbsentValue
+  replayIndex: number | undefined
   subscribers: number
   next: Node<A> | null
 }
@@ -2065,6 +2075,7 @@ interface Node<out A> {
 class UnboundedPubSub<in out A> implements PubSub.Atomic<A> {
   publisherHead: Node<A> = {
     value: AbsentValue,
+    replayIndex: undefined,
     subscribers: 0,
     next: null
   }
@@ -2096,18 +2107,18 @@ class UnboundedPubSub<in out A> implements PubSub.Atomic<A> {
   }
 
   publish(value: A): boolean {
+    const replayIndex = this.replayBuffer?.offer(value)
     const subscribers = this.publisherTail.subscribers
     if (subscribers !== 0) {
-      this.publisherTail.next = {
+      const node: Node<A> = {
         value,
+        replayIndex,
         subscribers,
         next: null
       }
+      this.publisherTail.next = node
       this.publisherTail = this.publisherTail.next
       this.publisherIndex += 1
-    }
-    if (this.replayBuffer) {
-      this.replayBuffer.offer(value)
     }
     return true
   }
@@ -2125,12 +2136,12 @@ class UnboundedPubSub<in out A> implements PubSub.Atomic<A> {
 
   slide(): void {
     if (this.publisherHead !== this.publisherTail) {
+      const node = this.publisherHead.next!
+      const value = node.value as A
       this.publisherHead = this.publisherHead.next!
       this.publisherHead.value = AbsentValue
       this.subscribersIndex += 1
-    }
-    if (this.replayBuffer) {
-      this.replayBuffer.slide()
+      this.replayBuffer?.slide(value, node.replayIndex!)
     }
   }
 
@@ -2702,27 +2713,40 @@ const strategyCompleteSubscribersUnsafe = <A>(
 
 interface ReplayNode<A> {
   value: A | AbsentValue
+  index: number
   next: ReplayNode<A> | null
 }
 
 class ReplayBuffer<A> {
   readonly capacity: number
-  head: ReplayNode<A> = { value: AbsentValue, next: null }
+  head: ReplayNode<A> = { value: AbsentValue, index: 0, next: null }
   tail: ReplayNode<A> = this.head
+  readonly slideValues: Array<{
+    readonly value: A
+    readonly index: number
+  }> = []
   size = 0
   index = 0
+  publisherIndex = 0
 
   constructor(capacity: number) {
     this.capacity = capacity
   }
 
-  slide() {
+  slide(value: A, publisherIndex: number): void {
+    this.slideValues[this.index % this.capacity] = {
+      value,
+      index: publisherIndex
+    }
     this.index++
   }
-  offer(a: A): void {
+  offer(a: A): number {
+    const index = this.publisherIndex++
     this.tail.value = a
+    this.tail.index = index
     this.tail.next = {
       value: AbsentValue,
+      index: 0,
       next: null
     }
     this.tail = this.tail.next
@@ -2731,6 +2755,7 @@ class ReplayBuffer<A> {
     } else {
       this.size += 1
     }
+    return index
   }
   offerAll(as: Iterable<A>): void {
     for (const a of as) {
@@ -2740,48 +2765,66 @@ class ReplayBuffer<A> {
 }
 
 class ReplayWindowImpl<A> implements PubSub.ReplayWindow<A> {
-  head: ReplayNode<A>
-  index: number
-  remaining: number
   readonly buffer: ReplayBuffer<A>
+  readonly values: Array<A>
+  index = 0
+  remaining: number
+  slideIndex: number
+  newestIndex = -1
 
   constructor(buffer: ReplayBuffer<A>) {
     this.buffer = buffer
-    this.index = buffer.index
     this.remaining = buffer.size
-    this.head = buffer.head
-  }
-  fastForward() {
-    while (this.index < this.buffer.index) {
-      this.head = this.head.next!
-      this.index++
+    this.slideIndex = buffer.index
+    this.values = new Array(this.remaining)
+    let node = buffer.head
+    for (let i = 0; i < this.remaining; i++) {
+      this.values[i] = node.value as A
+      this.newestIndex = node.index
+      node = node.next!
     }
+  }
+  close(): void {
+    this.values.length = 0
+    this.remaining = 0
+  }
+  sync(): void {
+    const slides = this.buffer.index - this.slideIndex
+    if (slides === 0 || this.remaining === 0) {
+      return
+    }
+    const count = Math.min(slides, this.buffer.capacity)
+    const start = this.buffer.index - count
+    for (let i = 0; i < count; i++) {
+      const entry = this.buffer.slideValues[(start + i) % this.buffer.capacity]
+      if (entry.index > this.newestIndex) {
+        this.index = (this.index + 1) % this.values.length
+        this.values[(this.index + this.remaining - 1) % this.values.length] = entry.value
+        this.newestIndex = entry.index
+      }
+    }
+    this.slideIndex = this.buffer.index
   }
   take(): A | undefined {
     if (this.remaining === 0) {
       return undefined
-    } else if (this.index < this.buffer.index) {
-      this.fastForward()
     }
+    this.sync()
+    const value = this.values[this.index]
+    this.values[this.index] = AbsentValue as unknown as A
+    this.index = (this.index + 1) % this.values.length
     this.remaining--
-    const value = this.head.value
-    this.head = this.head.next!
+    if (this.remaining === 0) {
+      this.close()
+    }
     return value as A
   }
   takeN(n: number): Array<A> {
-    if (this.remaining === 0) {
-      return []
-    } else if (this.index < this.buffer.index) {
-      this.fastForward()
-    }
     const len = Math.min(n, this.remaining)
     const items = new Array(len)
     for (let i = 0; i < len; i++) {
-      const value = this.head.value as A
-      this.head = this.head.next!
-      items[i] = value
+      items[i] = this.take()!
     }
-    this.remaining -= len
     return items
   }
   takeAll(): Array<A> {
@@ -2793,5 +2836,6 @@ const emptyReplayWindow: PubSub.ReplayWindow<never> = {
   remaining: 0,
   take: () => undefined,
   takeN: () => [],
-  takeAll: () => []
+  takeAll: () => [],
+  close: () => void 0
 }
