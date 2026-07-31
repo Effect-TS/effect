@@ -1,4 +1,6 @@
 /**
+ * Renders parsed documentation models as Markdown.
+ *
  * @since 0.6.0
  */
 import * as Array from "effect/Array"
@@ -310,6 +312,8 @@ const sortByName: <A extends { name: string }>(self: Iterable<A>) => Array<A> = 
 )
 
 /**
+ * Renders a parsed module as a Markdown documentation page.
+ *
  * @category printers
  * @since 0.6.0
  */
@@ -352,6 +356,8 @@ const defaultPrettierOptions: Prettier.Options = {
 }
 
 /**
+ * Renders the front matter for a generated module page.
+ *
  * @category printers
  * @since 0.6.0
  */
@@ -364,6 +370,8 @@ parent: Modules
 }
 
 /**
+ * Formats generated Markdown with the docgen Prettier settings.
+ *
  * @category printers
  * @since 0.6.0
  */

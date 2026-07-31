@@ -1088,6 +1088,20 @@ export function fromJsonMultiDocument(input: Schema.Json): MultiDocument {
  *
  * Revivers are resolved locally by `id`; none are installed implicitly. Reviver results are used directly, and exceptions raised by a reviver pass through unchanged.
  *
+ * **Example** (Restoring a persisted schema)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema, SchemaRepresentation } from "effect"
+ *
+ * const document = SchemaRepresentation.toRepresentation(Schema.Struct({ name: Schema.String }).ast)
+ * const persisted = SchemaRepresentation.toJson(document)
+ * const restored = SchemaRepresentation.fromJson(persisted)
+ * const schema = SchemaRepresentation.fromRepresentation(restored, { revivers: [] })
+ * const Person = Schema.make<Schema.Codec<{ readonly name: string }>>(schema.ast)
+ *
+ * Schema.decodeUnknownSync(Person)({ name: "Ada" }) // => { name: "Ada" }
+ * ```
+ *
  * @see {@link fromJson} for decoding a persisted document
  * @see {@link fromRepresentations} for multiple roots sharing references
  *

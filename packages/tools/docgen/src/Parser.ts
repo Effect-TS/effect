@@ -1,4 +1,6 @@
 /**
+ * Parses TypeScript declarations and JSDoc into docgen models.
+ *
  * @since 0.6.0
  */
 import * as doctrine from "doctrine"
@@ -15,6 +17,8 @@ import * as Configuration from "./Configuration.ts"
 import * as Domain from "./Domain.ts"
 
 /**
+ * Source file and path currently being parsed.
+ *
  * @category models
  * @since 0.6.0
  */
@@ -142,6 +146,8 @@ const parseInterfaceDeclarations = (interfaces: ReadonlyArray<ast.InterfaceDecla
 }
 
 /**
+ * Parses exported interfaces from the current source file.
+ *
  * @category parsers
  * @since 0.6.0
  */
@@ -249,6 +255,8 @@ const getFunctionDeclarations = Effect.gen(function*() {
 })
 
 /**
+ * Parses exported function declarations and function-valued variables.
+ *
  * @category parsers
  * @since 0.6.0
  */
@@ -294,6 +302,8 @@ const parseTypeAliasDeclarations = (typeAliases: ReadonlyArray<ast.TypeAliasDecl
 }
 
 /**
+ * Parses exported type aliases from the current source file.
+ *
  * @category parsers
  * @since 0.6.0
  */
@@ -324,6 +334,8 @@ const parseConstantVariableDeclaration = (vd: ast.VariableDeclaration) =>
   })
 
 /**
+ * Parses exported non-function constants from the current source file.
+ *
  * @category parsers
  * @since 0.6.0
  */
@@ -401,6 +413,8 @@ const parseNamedExports = (ed: ast.ExportDeclaration) => {
 }
 
 /**
+ * Parses explicit export declarations from the current source file.
+ *
  * @category parsers
  * @since 0.6.0
  */
@@ -447,6 +461,8 @@ const parseModuleDeclarations = (namespaces: ReadonlyArray<ast.ModuleDeclaration
 }
 
 /**
+ * Parses exported namespaces from the current source file.
+ *
  * @category parsers
  * @since 0.6.0
  */
@@ -594,6 +610,8 @@ const parseClass = (c: ast.ClassDeclaration) =>
   })
 
 /**
+ * Parses exported classes and their documented members from the current source file.
+ *
  * @category parsers
  * @since 0.6.0
  */
@@ -620,6 +638,8 @@ export const parseModuleDocumentation = Effect.gen(function*() {
 })
 
 /**
+ * Parses the current source file into a module documentation model.
+ *
  * @category parsers
  * @since 0.6.0
  */
@@ -695,6 +715,8 @@ const createProject = (files: ReadonlyArray<Domain.File>) =>
   })
 
 /**
+ * Parses source files into module documentation models sorted by path.
+ *
  * @category parsers
  * @since 0.6.0
  */

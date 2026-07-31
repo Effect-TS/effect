@@ -10,7 +10,7 @@ import * as Runtime from "effect/Runtime"
 /**
  * Run an Effect as the entrypoint to a Deno application.
  *
- * @category Runtime
+ * @category running
  * @since 4.0.0
  */
 

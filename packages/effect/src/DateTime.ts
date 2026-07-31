@@ -805,7 +805,7 @@ export const make: <A extends DateTime.Input>(input: A) => Option.Option<DateTim
 export const makeZonedFromString: (input: string) => Option.Option<Zoned> = Internal.makeZonedFromString
 
 /**
- * Gets the current time using the `Clock` service and convert it to a `DateTime`.
+ * Gets the current time using the `Clock` service and converts it to a `DateTime`.
  *
  * **Example** (Getting the current DateTime)
  *
@@ -813,7 +813,7 @@ export const makeZonedFromString: (input: string) => Option.Option<Zoned> = Inte
  * import { DateTime, Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
- * await Effect.runPromise(Effect.provide(Effect.map(DateTime.now, DateTime.toEpochMillis), TestClock.layer())) // => 0
+ * await Effect.runPromise(Effect.map(DateTime.now, DateTime.isDateTime)) // => true
  * ```
  *
  * @category constructors
@@ -831,7 +831,7 @@ export const now: Effect.Effect<Utc> = Internal.now
  * import { DateTime, Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
- * await Effect.runPromise(Effect.provide(Effect.map(DateTime.nowAsDate, (date) => date.getTime()), TestClock.layer())) // => 0
+ * await Effect.runPromise(Effect.map(DateTime.nowAsDate, (now) => now instanceof Date)) // => true
  * ```
  *
  * @category constructors
