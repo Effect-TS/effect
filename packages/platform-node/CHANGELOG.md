@@ -1,5 +1,15 @@
 # @effect/platform-node
 
+## 0.108.1
+
+### Patch Changes
+
+- [#6803](https://github.com/Effect-TS/effect/pull/6803) [`9c4d4b5`](https://github.com/Effect-TS/effect/commit/9c4d4b5ae57627b1fbab274e15de093f52531c2a) Thanks @tim-smart! - Allow configuring cluster RPC serialization buffer limits.
+
+- Updated dependencies [[`9c4d4b5`](https://github.com/Effect-TS/effect/commit/9c4d4b5ae57627b1fbab274e15de093f52531c2a), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c), [`af0f45b`](https://github.com/Effect-TS/effect/commit/af0f45bbc7de724306396319c5ccdda6c7c1fe2c)]:
+  - @effect/rpc@0.76.2
+  - @effect/cluster@0.60.2
+
 ## 0.108.0
 
 ### Patch Changes
