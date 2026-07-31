@@ -92,7 +92,7 @@ describe("cluster cron integration", () => {
         assert.strictEqual(new Set(firstFour.map((tick) => tick.scheduled)).size, firstFour.length)
         assertScheduledFromExecutionTime(everySecond, firstFour)
         assert.strictEqual(successfulAttempts, failingAttempts - 1)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: calculates the next run from the previous instant or the current time`, () =>
       Effect.gen(function*() {
@@ -148,7 +148,7 @@ describe("cluster cron integration", () => {
         assertScheduledFromExecutionTime(everySecond, currentTicks, 2)
         assert.isAtLeast(previousTicks[1].at - previousSecond, 2_000)
         assert.isAtMost(currentTicks[1].at - currentSecond, 1_000)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: catches up or skips stale runs and preserves the schedule across restart`, () =>
       Effect.gen(function*() {
@@ -217,7 +217,7 @@ describe("cluster cron integration", () => {
         assert.isAtLeast(firstCatchUp.at - DateTime.toEpochMillis(DateTime.makeUnsafe(firstCatchUp.scheduled)), 2_000)
         assert.isAtMost(firstAfterSkip.at - firstAfterSkipScheduledAt, 750)
         assertScheduledFromPrevious(everySecond, catchUpTicks)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: resumes without duplicate or missing ticks after the singleton owner dies`, () =>
       Effect.gen(function*() {
@@ -250,7 +250,7 @@ describe("cluster cron integration", () => {
         assertScheduledFromPrevious(everySecond, ticks)
         assert.strictEqual(new Set(ticks.map((tick) => tick.scheduled)).size, ticks.length)
         assert.isTrue(ticks.slice(afterKill).every((tick) => tick.runner !== addressString(owner!.address)))
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: assigns cron singletons and executions to their shard groups`, () =>
       Effect.gen(function*() {
@@ -292,6 +292,6 @@ describe("cluster cron integration", () => {
         )
         assert.isTrue(defaultTicks.every((tick) => tick.runner === addressString(defaultRunner.address)))
         assert.isTrue(specialTicks.every((tick) => tick.runner === addressString(specialRunner.address)))
-      }).pipe(Effect.scoped))
+      }))
   }
 })

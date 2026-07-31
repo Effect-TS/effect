@@ -300,7 +300,7 @@ describe("cluster workflow integration", () => {
         assert.strictEqual(yield* Fiber.join(first), 42)
         assert.strictEqual(yield* Fiber.join(second), 42)
         assert.strictEqual(endToEndRuns.get(id), 1)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: replays completed activities after the owner dies`, () =>
       Effect.gen(function*() {
@@ -322,7 +322,7 @@ describe("cluster workflow integration", () => {
 
         assert.deepStrictEqual(result.exit, Exit.succeed("resumed"))
         assert.strictEqual(replayRuns.get(id), 1)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: resumes deferred workflows across a whole-cluster restart from another runner`, () =>
       Effect.gen(function*() {
@@ -344,7 +344,7 @@ describe("cluster workflow integration", () => {
 
         const result = yield* waitForComplete(cluster, RestartWorkflow, executionId)
         assert.deepStrictEqual(result.exit, Exit.succeed("after-restart"))
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: applies activity retry policy and preserves the exhausted error`, () =>
       Effect.gen(function*() {
@@ -367,7 +367,7 @@ describe("cluster workflow integration", () => {
         assert.deepStrictEqual(retryAttempts.get(failureId), [1, 2, 3])
         assert.strictEqual(error._tag, "ClusterIntegrationRetryError")
         assert.strictEqual(error.attempt, 3)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: wakes a durable clock after a whole-cluster restart`, () =>
       Effect.gen(function*() {
@@ -385,7 +385,7 @@ describe("cluster workflow integration", () => {
         const result = yield* waitForComplete(cluster, ClockWorkflow, executionId)
         assert(Exit.isSuccess(result.exit))
         assert.isAtLeast(result.exit.value - started, 900)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: persists queued work across restart and consumes it once`, () =>
       Effect.gen(function*() {
@@ -402,7 +402,7 @@ describe("cluster workflow integration", () => {
         const result = yield* waitForComplete(cluster, QueueWorkflow, executionId)
         assert.deepStrictEqual(result.exit, Exit.succeed(`processed:${id}`))
         assert.strictEqual(queueRuns.get(id), 1)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: persists interruption across a whole-cluster restart`, () =>
       Effect.gen(function*() {
@@ -421,6 +421,6 @@ describe("cluster workflow integration", () => {
         assert(Exit.isFailure(result.exit))
         assert.isTrue(Exit.hasInterrupts(result.exit))
         assert.isTrue(Cause.hasInterrupts(result.exit.cause))
-      }).pipe(Effect.scoped))
+      }))
   }
 })

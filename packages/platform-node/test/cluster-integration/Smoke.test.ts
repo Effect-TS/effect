@@ -50,6 +50,6 @@ describe("cluster integration smoke", () => {
           "pong:request-2"
         )
         assert.strictEqual(yield* cluster.repliedMessageCount, 2)
-      }).pipe(Effect.scoped))
+      }))
   }
 })

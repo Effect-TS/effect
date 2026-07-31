@@ -181,7 +181,7 @@ describe("cluster entity integration", () => {
 
         const registrations = (yield* cluster.diagnostics()).registrations
         assert.strictEqual(registrations.length, runners.length)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: reports mailbox saturation and revives idle entities with fresh state`, () =>
       Effect.gen(function*() {
@@ -219,7 +219,7 @@ describe("cluster entity integration", () => {
         assert.strictEqual(first.generation, 1)
         assert.strictEqual(revived.generation, 2)
         assert.strictEqual(revived.value, 1)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: rebalances on runner addition, graceful stop, and abrupt death`, () =>
       Effect.gen(function*() {
@@ -273,7 +273,7 @@ describe("cluster entity integration", () => {
         assert.notStrictEqual(reply.runner, addressString(killed!.address))
         yield* cluster.waitForStableAssignments()
         assert.strictEqual((yield* cluster.messageCounts()).unprocessed, 0)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: transfers frozen row locks after expiry`, () =>
       Effect.gen(function*() {
@@ -296,7 +296,7 @@ describe("cluster entity integration", () => {
         const reply = yield* client(id).Increment(new Request({ id: `${backend}-freeze`, sequence: 0 }))
         assert.strictEqual(reply.runner, addressString(nextOwner!.address))
         yield* cluster.kill(oldOwner!)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: retains frozen advisory locks until the session closes`, () =>
       Effect.gen(function*() {
@@ -320,7 +320,7 @@ describe("cluster entity integration", () => {
           "The advisory lock was not handed over after its session closed",
           Effect.map(cluster.ownerOfEntity(StateEntity, id), (owner) => owner !== undefined && owner !== oldOwner)
         )
-      }).pipe(Effect.scoped))
+      }))
   }
 
   it.live("assigns annotated entities only to runners in their shard group", () =>
@@ -338,7 +338,7 @@ describe("cluster entity integration", () => {
       assert.strictEqual(yield* client("grouped").Runner(), addressString(specialRunner.address))
       assert.strictEqual(yield* cluster.ownerOfEntity(GroupEntity, "grouped"), specialRunner)
       assert.strictEqual(yield* cluster.ownerOfEntity(StateEntity, "default"), defaultRunner)
-    }).pipe(Effect.scoped))
+    }))
 
   it.live("runs one singleton and migrates it after owner death", () =>
     Effect.gen(function*() {
@@ -373,7 +373,7 @@ describe("cluster entity integration", () => {
         firstOwner
       )
       assert.strictEqual(singleton.maxActive, 1)
-    }).pipe(Effect.scoped))
+    }))
 
   it.live("keeps EntityResource alive during movement and releases it explicitly", () =>
     Effect.gen(function*() {
@@ -397,7 +397,7 @@ describe("cluster entity integration", () => {
         "The entity resource was not released",
         Effect.sync(() => resourceState.released === 1)
       )
-    }).pipe(Effect.scoped))
+    }))
 
   for (const backend of ["pg", "mysql"] satisfies ReadonlyArray<Backend>) {
     it.live(`${backend}: isolates clusters with different table prefixes`, () =>
@@ -423,6 +423,6 @@ describe("cluster entity integration", () => {
         )
         assert.strictEqual(firstReply.runner, addressString(firstRunner.address))
         assert.strictEqual(secondReply.runner, addressString(secondRunner.address))
-      }).pipe(Effect.scoped))
+      }))
   }
 })

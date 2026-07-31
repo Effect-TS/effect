@@ -210,7 +210,7 @@ describe("cluster message persistence integration", () => {
           replied: 1,
           unprocessed: 0
         })
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: serves primary-key duplicates from the stored reply`, () =>
       Effect.gen(function*() {
@@ -234,7 +234,7 @@ describe("cluster message persistence integration", () => {
           replied: 1,
           unprocessed: 0
         })
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: does not lose an uninterruptible request during runner shutdown`, () =>
       Effect.gen(function*() {
@@ -272,7 +272,7 @@ describe("cluster message persistence integration", () => {
         assert.strictEqual(yield* Fiber.join(replyFiber), `uninterruptible:${id}`)
         yield* Fiber.join(stopping)
         assert.strictEqual(yield* cluster.repliedMessageCount, 1)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: does not store or redeliver a volatile request after runner failure`, () =>
       Effect.gen(function*() {
@@ -314,7 +314,7 @@ describe("cluster message persistence integration", () => {
           replied: 0,
           unprocessed: 0
         })
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: persists typed failures and defects without wedging the mailbox`, () =>
       Effect.gen(function*() {
@@ -365,7 +365,7 @@ describe("cluster message persistence integration", () => {
           replied: 1,
           unprocessed: 0
         })
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: round-trips a chunked reply through storage`, () =>
       Effect.gen(function*() {
@@ -382,7 +382,7 @@ describe("cluster message persistence integration", () => {
           Effect.map(cluster.repliedMessageCount, (value) => value === 1)
         )
         assert.strictEqual(count("Streamed", id), 1)
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: resumes a persisted stream after its runner is killed`, () =>
       Effect.gen(function*() {
@@ -429,7 +429,7 @@ describe("cluster message persistence integration", () => {
           replied: 1,
           unprocessed: 0
         })
-      }).pipe(Effect.scoped))
+      }))
 
     it.live(`${backend}: delivers scheduled messages only after their deadline`, () =>
       Effect.gen(function*() {
@@ -464,6 +464,6 @@ describe("cluster message persistence integration", () => {
         const deliveredAt = yield* Fiber.join(replyFiber)
         assert.isAtLeast(deliveredAt, deliverAt)
         assert.strictEqual(state.scheduledDeliveries[0], deliveredAt)
-      }).pipe(Effect.scoped))
+      }))
   }
 })
