@@ -169,7 +169,7 @@ export const layer = <
     ),
     Layer.provide(ShardingConfig.layerFromEnv(options?.shardingConfig)),
     Layer.provide(
-      options?.serialization === "ndjson" ? RpcSerialization.layerNdjson : RpcSerialization.layerMsgPack
+      options?.serialization === "ndjson" ? RpcSerialization.layerNdjson() : RpcSerialization.layerMsgPack()
     )
   ) as any
 }

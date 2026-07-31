@@ -575,7 +575,8 @@ export const layerJson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeriali
  * @category serialization
  * @since 4.0.0
  */
-export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(ndjson())
+export const layerNdjson = (options?: StreamingOptions): Layer.Layer<RpcSerialization> =>
+  Layer.succeed(RpcSerialization)(ndjson(options))
 
 /**
  * RPC serialization layer that uses JSON-RPC for serialization.
@@ -610,4 +611,9 @@ export const layerNdJsonRpc = (options?: {
  * @category serialization
  * @since 4.0.0
  */
-export const layerMsgPack: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(msgPack)
+export const layerMsgPack = (
+  options?: (Msgpackr.Options & StreamingOptions) | undefined
+): Layer.Layer<RpcSerialization> =>
+  Layer.succeed(RpcSerialization)(
+    options === undefined ? msgPack : makeMsgPack({ useRecords: true, ...options })
+  )

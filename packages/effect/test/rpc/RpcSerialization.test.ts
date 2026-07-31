@@ -1,4 +1,5 @@
 import { afterEach, assert, describe, it } from "@effect/vitest"
+import { Effect } from "effect"
 import { RpcSerialization } from "effect/unstable/rpc"
 
 const responseExitSuccess = (requestId: string | number, value: unknown) => ({
@@ -95,6 +96,18 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode("34"), [])
     assertMaxBufferSizeExceeded(() => parser.decode("5"), 4)
   })
+
+  it.effect("layerNdjson forwards maxBufferSize to its decoder", () =>
+    Effect.gen(function*() {
+      const serialization = yield* RpcSerialization.RpcSerialization
+      const parser = serialization.makeUnsafe()
+
+      assert.deepStrictEqual(parser.decode("12"), [])
+      assert.deepStrictEqual(parser.decode("34"), [])
+      assertMaxBufferSizeExceeded(() => parser.decode("5"), 4)
+    }).pipe(
+      Effect.provide(RpcSerialization.layerNdjson({ maxBufferSize: 4 }))
+    ))
 
   it("ndJsonRpc forwards maxBufferSize to its ndjson framing parser", () => {
     const parser = RpcSerialization.ndJsonRpc({ maxBufferSize: 4 }).makeUnsafe()
@@ -257,4 +270,17 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode(incompleteFrame), [])
     assertMaxBufferSizeExceeded(() => parser.decode(incompleteFrame), 2)
   })
+
+  it.effect("layerMsgPack forwards maxBufferSize to its decoder", () =>
+    Effect.gen(function*() {
+      const serialization = yield* RpcSerialization.RpcSerialization
+      const parser = serialization.makeUnsafe()
+      const incompleteFrame = Uint8Array.of(0xd9)
+
+      assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+      assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+      assertMaxBufferSizeExceeded(() => parser.decode(incompleteFrame), 2)
+    }).pipe(
+      Effect.provide(RpcSerialization.layerMsgPack({ maxBufferSize: 2 }))
+    ))
 })
