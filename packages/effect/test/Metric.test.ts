@@ -366,6 +366,13 @@ describe("Metric", () => {
       )
     }))
 
+  it("creates evenly spaced linear boundaries", () => {
+    assert.deepStrictEqual(
+      Metric.linearBoundaries({ start: 10, width: 20, count: 5 }),
+      [10, 30, 50, 70, Number.POSITIVE_INFINITY]
+    )
+  })
+
   describe("Histogram", () => {
     it.effect("reports the maximum for negative-only observations", () =>
       Effect.gen(function*() {
