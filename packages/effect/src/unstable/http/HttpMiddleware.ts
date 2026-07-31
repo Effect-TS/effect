@@ -193,32 +193,6 @@ export const tracer: <E, R>(
       fiber.setContext(prevServices)
       const endTime = fiber.getRef(Clock).currentTimeNanosUnsafe()
       fiber.currentDispatcher.scheduleTask(() => {
-        const url = Request.toURL(request)
-        if (Option.isSome(url) && (url.value.username !== "" || url.value.password !== "")) {
-          url.value.username = "REDACTED"
-          url.value.password = "REDACTED"
-        }
-        const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
-        const requestHeaders = Headers.redact(request.headers, redactedHeaderNames)
-        span.attribute("http.request.method", request.method)
-        if (Option.isSome(url)) {
-          span.attribute("url.full", url.value.toString())
-          span.attribute("url.path", url.value.pathname)
-          const query = url.value.search.slice(1)
-          if (query !== "") {
-            span.attribute("url.query", url.value.search.slice(1))
-          }
-          span.attribute("url.scheme", url.value.protocol.slice(0, -1))
-        }
-        if (request.headers["user-agent"] !== undefined) {
-          span.attribute("user_agent.original", request.headers["user-agent"])
-        }
-        for (const name in requestHeaders) {
-          span.attribute(`http.request.header.${name}`, String(requestHeaders[name]))
-        }
-        if (Option.isSome(request.remoteAddress)) {
-          span.attribute("client.address", request.remoteAddress.value)
-        }
         let response: HttpServerResponse
         let spanExit = exit
         if (Exit.isFailure(exit)) {
@@ -228,10 +202,38 @@ export const tracer: <E, R>(
         } else {
           response = exit.value
         }
-        span.attribute("http.response.status_code", response.status)
-        const responseHeaders = Headers.redact(response.headers, redactedHeaderNames)
-        for (const name in responseHeaders) {
-          span.attribute(`http.response.header.${name}`, String(responseHeaders[name]))
+        if (span.sampled) {
+          const url = Request.toURL(request)
+          if (Option.isSome(url) && (url.value.username !== "" || url.value.password !== "")) {
+            url.value.username = "REDACTED"
+            url.value.password = "REDACTED"
+          }
+          const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
+          const requestHeaders = Headers.redact(request.headers, redactedHeaderNames)
+          span.attribute("http.request.method", request.method)
+          if (Option.isSome(url)) {
+            span.attribute("url.full", url.value.toString())
+            span.attribute("url.path", url.value.pathname)
+            const query = url.value.search.slice(1)
+            if (query !== "") {
+              span.attribute("url.query", url.value.search.slice(1))
+            }
+            span.attribute("url.scheme", url.value.protocol.slice(0, -1))
+          }
+          if (request.headers["user-agent"] !== undefined) {
+            span.attribute("user_agent.original", request.headers["user-agent"])
+          }
+          for (const name in requestHeaders) {
+            span.attribute(`http.request.header.${name}`, String(requestHeaders[name]))
+          }
+          if (Option.isSome(request.remoteAddress)) {
+            span.attribute("client.address", request.remoteAddress.value)
+          }
+          span.attribute("http.response.status_code", response.status)
+          const responseHeaders = Headers.redact(response.headers, redactedHeaderNames)
+          for (const name in responseHeaders) {
+            span.attribute(`http.response.header.${name}`, String(responseHeaders[name]))
+          }
         }
         span.end(endTime, spanExit)
       }, 0)

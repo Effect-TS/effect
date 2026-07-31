@@ -59,6 +59,70 @@ describe("HttpMiddleware", () => {
   })
 
   describe("tracer", () => {
+    it.effect("records attributes for sampled spans", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(
+          new Request("https://localhost:3000/todos/1?foo=bar", {
+            method: "POST",
+            headers: {
+              "user-agent": "test-agent",
+              "x-request": "request"
+            }
+          })
+        )
+        const response = HttpServerResponse.empty({
+          status: 201,
+          headers: { "x-response": "response" }
+        })
+
+        yield* HttpMiddleware.tracer(Effect.succeed(response)).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
+        assert.strictEqual(serverSpan.sampled, true)
+        assert.strictEqual(serverSpan.attributes.get("http.request.method"), "POST")
+        assert.strictEqual(serverSpan.attributes.get("url.path"), "/todos/1")
+        assert.strictEqual(serverSpan.attributes.get("url.query"), "foo=bar")
+        assert.strictEqual(serverSpan.attributes.get("user_agent.original"), "test-agent")
+        assert.strictEqual(serverSpan.attributes.get("http.request.header.x-request"), "request")
+        assert.strictEqual(serverSpan.attributes.get("http.response.status_code"), 201)
+        assert.strictEqual(serverSpan.attributes.get("http.response.header.x-response"), "response")
+      }))
+
+    it.effect("skips attributes for unsampled spans", () =>
+      Effect.gen(function*() {
+        let serverSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            serverSpan = new Tracer.NativeSpan(options)
+            return serverSpan
+          }
+        })
+        const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/unsampled"))
+
+        yield* HttpMiddleware.tracer(Effect.succeed(HttpServerResponse.empty({ status: 204 }))).pipe(
+          Effect.provideService(HttpServerRequest.HttpServerRequest, request),
+          Effect.provideService(Tracer.MinimumTraceLevel, "Fatal"),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+        yield* Effect.yieldNow
+
+        assert(serverSpan !== undefined)
+        assert.strictEqual(serverSpan.sampled, false)
+        assert.strictEqual(serverSpan.attributes.size, 0)
+        assert.strictEqual(serverSpan.status._tag, "Ended")
+      }))
+
     it.effect("excludes the sent response from a failed stream span", () =>
       Effect.gen(function*() {
         let serverSpan: Tracer.NativeSpan | undefined
