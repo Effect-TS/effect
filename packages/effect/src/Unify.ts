@@ -178,7 +178,7 @@ type FilterOut<A> = A extends any ? typeSymbol extends keyof A ? never : A : nev
  *
  * **Example** (Unifying protocol types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Unify } from "effect"
  *
  * // Example of types that can be unified
@@ -243,7 +243,7 @@ export type Unify<A> = Values<
  *
  * **Example** (Unifying values and function results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Unify } from "effect"
  *
  * // Unify a simple value

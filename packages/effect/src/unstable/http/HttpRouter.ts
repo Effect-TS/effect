@@ -446,7 +446,7 @@ export const schemaPathParams = <A, I extends Readonly<Record<string, string | u
  *
  * **Example** (Registering routes during layer construction)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Layer } from "effect"
  * import { HttpRouter } from "effect/unstable/http"
  *
@@ -469,7 +469,7 @@ export const use = <A, E, R>(
  *
  * **Example** (Adding a GET route)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
  *
@@ -501,7 +501,7 @@ export const add = <E = never, R = never>(
  *
  * **Example** (Adding multiple routes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
  *
@@ -867,7 +867,7 @@ export interface Middleware<
  *
  * **Example** (Applying route and global middleware)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  * import { HttpMiddleware, HttpRouter, HttpServerResponse } from "effect/unstable/http"
  *
@@ -1166,7 +1166,7 @@ export const cors = (
  *
  * **Example** (Disabling route logging)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Layer } from "effect"
  * import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
  *
@@ -1290,7 +1290,8 @@ export const toWebHandler = <
     | Request<"Error", any>
     | Request<"GlobalError", any>,
   HE,
-  HR = Exclude<Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>, A>
+  HR = Exclude<Request.Only<"Requires", R> | Request.Only<"GlobalRequires", R>, A>,
+  ReqR = Exclude<HR, A | Scope.Scope | HttpServerRequest.HttpServerRequest>
 >(
   appLayer: Layer.Layer<A, E, R>,
   options?: {
@@ -1319,11 +1320,11 @@ export const toWebHandler = <
     ) => Effect.Effect<HttpServerResponse.HttpServerResponse, HE, HR | GlobalProvided>
   }
 ): {
-  readonly handler: [Exclude<HR, GlobalProvided>] extends [never]
+  readonly handler: [ReqR] extends [never]
     ? ((request: globalThis.Request, context?: Context.Context<never> | undefined) => Promise<Response>)
     : ((
       request: globalThis.Request,
-      context: Context.Context<Exclude<HR, GlobalProvided>>
+      context: Context.Context<ReqR>
     ) => Promise<Response>)
   readonly dispose: () => Promise<void>
 } => {

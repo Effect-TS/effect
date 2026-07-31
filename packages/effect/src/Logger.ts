@@ -20,6 +20,7 @@ import * as Formatter from "./Formatter.ts"
 import { dual } from "./Function.ts"
 import { isEffect, withFiber } from "./internal/core.ts"
 import * as effect from "./internal/effect.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as Layer from "./Layer.ts"
 import type * as LogLevel from "./LogLevel.ts"
 import type { Pipeable } from "./Pipeable.ts"
@@ -41,7 +42,7 @@ const TypeId = "~effect/Logger"
  *
  * **Example** (Creating custom loggers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Create a custom logger that accepts unknown messages and returns void
@@ -77,7 +78,7 @@ export interface Logger<in Message, out Output> extends Pipeable {
  *
  * **Example** (Accessing logger options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Options interface provides all logging context
@@ -113,7 +114,7 @@ export interface Options<out Message> {
  *
  * **Example** (Checking logger values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Logger } from "effect"
  *
  * const myLogger = Logger.make((options) => {
@@ -141,7 +142,7 @@ export const isLogger = (u: unknown): u is Logger<unknown, unknown> => Predicate
  *
  * **Example** (Accessing current loggers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Access current loggers from fiber context
@@ -198,7 +199,7 @@ export const LogToStderr: Context.Reference<boolean> = effect.LogToStderr
  *
  * **Example** (Transforming logger output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Logger } from "effect"
  *
  * // Create a logger that outputs objects
@@ -247,7 +248,7 @@ export const map = dual<
  *
  * **Example** (Writing logger output with console.log)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Create a custom formatter
@@ -284,7 +285,7 @@ export const withConsoleLog = <Message, Output>(
  *
  * **Example** (Writing logger output with console.error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Create an error-specific formatter
@@ -325,7 +326,7 @@ export const withConsoleError = <Message, Output>(
  *
  * **Example** (Writing logs with level-based console methods)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * const formatter = Logger.make((options) =>
@@ -440,7 +441,7 @@ const format = (
  *
  * **Example** (Creating loggers from functions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger, References } from "effect"
  *
  * // Simple text logger
@@ -482,7 +483,7 @@ export const make: <Message, Output>(
  *
  * **Example** (Referencing the default logger)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the default logger (automatically used by Effect runtime)
@@ -518,7 +519,7 @@ export const defaultLogger: Logger<unknown, void> = effect.defaultLogger
  *
  * **Example** (Formatting logs as simple strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the simple format logger
@@ -554,7 +555,7 @@ export const formatSimple = effect.loggerMake(format(escapeDoubleQuotes))
  *
  * **Example** (Formatting logs as logfmt)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the logfmt format logger
@@ -594,7 +595,7 @@ export const formatLogFmt = effect.loggerMake(format(JSON.stringify, 0))
  *
  * **Example** (Formatting logs as structured objects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the structured format logger
@@ -637,13 +638,13 @@ export const formatStructured: Logger<unknown, {
 
   const annotations = fiber.getRef(CurrentLogAnnotations)
   for (const [key, value] of Object.entries(annotations)) {
-    annotationsObj[key] = effect.structuredMessage(value)
+    InternalRecord.assignProperty(annotationsObj, key, effect.structuredMessage(value))
   }
 
   const now = date.getTime()
   const spans = fiber.getRef(CurrentLogSpans)
   for (const [label, timestamp] of spans) {
-    spansObj[label] = now - timestamp
+    InternalRecord.assignProperty(spansObj, label, now - timestamp)
   }
 
   const messageArr = Array.ensure(message)
@@ -672,7 +673,7 @@ export const formatStructured: Logger<unknown, {
  *
  * **Example** (Formatting logs as JSON)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the JSON format logger
@@ -719,7 +720,7 @@ export const formatJson = map(formatStructured, Formatter.formatJson)
  *
  * **Example** (Batching logger output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Duration, Effect, Logger } from "effect"
  *
  * // Create a batched logger that flushes every 5 seconds
@@ -824,7 +825,7 @@ export const batched = dual<
  *
  * **Example** (Logging with pretty console output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the pretty console logger with default settings
@@ -878,7 +879,7 @@ export const consolePretty: (
  *
  * **Example** (Logging logfmt output to the console)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the console logfmt logger
@@ -926,7 +927,7 @@ export const consoleLogFmt: Logger<unknown, void> = withConsoleLog(formatLogFmt)
  *
  * **Example** (Logging structured output to the console)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the console structured logger
@@ -980,7 +981,7 @@ export const consoleStructured: Logger<unknown, void> = withConsoleLog(formatStr
  *
  * **Example** (Logging JSON output to the console)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Use the console JSON logger
@@ -1042,7 +1043,7 @@ export const consoleJson: Logger<unknown, void> = withConsoleLog(formatJson)
  *
  * **Example** (Recording logs as trace span events)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Tracer logger is included by default - logs automatically become span events
@@ -1094,7 +1095,7 @@ export const tracerLogger: Logger<unknown, void> = effect.tracerLogger
  *
  * **Example** (Providing logger layers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
  * // Single logger layer

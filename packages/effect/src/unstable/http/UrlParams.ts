@@ -16,6 +16,7 @@ import { dual } from "../../Function.ts"
 import * as Hash from "../../Hash.ts"
 import type { Inspectable } from "../../Inspectable.ts"
 import { PipeInspectableProto } from "../../internal/core.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import type { Pipeable } from "../../Pipeable.ts"
 import { hasProperty } from "../../Predicate.ts"
@@ -463,7 +464,7 @@ export const toString = (input: Input): string => new URLSearchParams(fromInput(
  *
  * **Example** (Converting parameters to a record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { UrlParams } from "effect/unstable/http"
  * import * as assert from "node:assert"
  *
@@ -487,13 +488,15 @@ export const toString = (input: Input): string => new URLSearchParams(fromInput(
 export const toRecord = (self: UrlParams): Record<string, string | Arr.NonEmptyArray<string>> => {
   const out: Record<string, string | Arr.NonEmptyArray<string>> = {}
   for (const [k, value] of self.params) {
-    const curr = out[k]
-    if (curr === undefined) {
-      out[k] = value
-    } else if (typeof curr === "string") {
-      out[k] = [curr, value]
+    if (!Object.hasOwn(out, k)) {
+      InternalRecord.assignProperty(out, k, value)
     } else {
-      curr.push(value)
+      const current = out[k]
+      if (typeof current === "string") {
+        InternalRecord.assignProperty(out, k, [current, value])
+      } else {
+        current.push(value)
+      }
     }
   }
   return out
@@ -519,7 +522,7 @@ export const toReadonlyRecord: (self: UrlParams) => ReadonlyRecord<string, strin
  * @category schemas
  * @since 4.0.0
  */
-export interface schemaJsonField extends Schema.decodeTo<Schema.UnknownFromJsonString, UrlParamsSchema> {}
+export interface schemaJsonField extends Schema.decodeTo<Schema.fromJsonString<Schema.Unknown>, UrlParamsSchema> {}
 
 /**
  * Extracts a JSON value from the first occurrence of the given `field` in the
@@ -527,7 +530,7 @@ export interface schemaJsonField extends Schema.decodeTo<Schema.UnknownFromJsonS
  *
  * **Example** (Decoding JSON parameter fields)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { UrlParams } from "effect/unstable/http"
  *
@@ -589,7 +592,7 @@ export interface schemaRecord extends
  *
  * **Example** (Decoding URL parameters to a record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { UrlParams } from "effect/unstable/http"
  *

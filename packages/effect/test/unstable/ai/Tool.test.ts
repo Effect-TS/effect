@@ -1048,6 +1048,34 @@ const HandlerRequired = Tool.providerDefined({
   })
 })
 
+describe("setNeedsApproval", () => {
+  it("sets a static approval requirement without mutating the original tool", () => {
+    const tool = Tool.make("TestTool", { needsApproval: true })
+    const updated = tool.setNeedsApproval(false)
+
+    strictEqual(tool.needsApproval, true)
+    strictEqual(updated.needsApproval, false)
+  })
+
+  it("sets a dynamic approval requirement", () => {
+    const needsApproval = (params: { readonly dangerous: boolean }) => params.dangerous
+    const tool = Tool.make("TestTool", {
+      parameters: Schema.Struct({ dangerous: Schema.Boolean })
+    }).setNeedsApproval(needsApproval)
+
+    strictEqual(tool.needsApproval, needsApproval)
+  })
+
+  it("preserves dynamic tool identity", () => {
+    const tool = Tool.dynamic("TestTool", {
+      parameters: { type: "object", properties: {} }
+    }).setNeedsApproval(true)
+
+    assertTrue(Tool.isDynamic(tool))
+    strictEqual(tool.needsApproval, true)
+  })
+})
+
 describe("Dynamic", () => {
   describe("isDynamic", () => {
     it.effect("returns true for dynamic tools with Effect Schema", () =>

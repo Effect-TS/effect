@@ -328,6 +328,39 @@ export const setHeaders: {
   ))
 
 /**
+ * Transforms the request headers with the provided function, returning a new request.
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const updateHeaders: {
+  (f: (headers: Headers.Headers) => Headers.Headers): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, f: (headers: Headers.Headers) => Headers.Headers): HttpClientRequest
+} = dual(2, (self: HttpClientRequest, f: (headers: Headers.Headers) => Headers.Headers): HttpClientRequest =>
+  makeWith(
+    self.method,
+    self.url,
+    self.urlParams,
+    self.hash,
+    f(self.headers),
+    self.body
+  ))
+
+/**
+ * Removes a single request header by name, returning a new request.
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const removeHeader: {
+  (key: string): (self: HttpClientRequest) => HttpClientRequest
+  (self: HttpClientRequest, key: string): HttpClientRequest
+} = dual(
+  2,
+  (self: HttpClientRequest, key: string): HttpClientRequest => updateHeaders(self, Headers.remove(key))
+)
+
+/**
  * Sets the `Authorization` header using HTTP Basic authentication credentials.
  *
  * @category combinators

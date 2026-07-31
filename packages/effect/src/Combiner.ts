@@ -26,7 +26,7 @@ import type * as Order from "./Order.ts"
  *
  * **Example** (Combining numbers with addition)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner } from "effect"
  *
  * const Sum = Combiner.make<number>((self, that) => self + that)
@@ -65,7 +65,7 @@ export interface Combiner<A> {
  *
  * **Example** (Multiplying numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner } from "effect"
  *
  * const Product = Combiner.make<number>((self, that) => self * that)
@@ -97,7 +97,7 @@ export function make<A>(combine: (self: A, that: A) => A): Combiner<A> {
  *
  * **Example** (Reversing string concatenation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner, String } from "effect"
  *
  * const Prepend = Combiner.flip(String.ReducerConcat)
@@ -130,7 +130,7 @@ export function flip<A>(combiner: Combiner<A>): Combiner<A> {
  *
  * **Example** (Selecting the minimum of two numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner, Number } from "effect"
  *
  * const Min = Combiner.min(Number.Order)
@@ -166,7 +166,7 @@ export function min<A>(order: Order.Order<A>): Combiner<A> {
  *
  * **Example** (Selecting the maximum of two numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner, Number } from "effect"
  *
  * const Max = Combiner.max(Number.Order)
@@ -199,7 +199,7 @@ export function max<A>(order: Order.Order<A>): Combiner<A> {
  *
  * **Example** (Keeping the first value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner } from "effect"
  *
  * const First = Combiner.first<number>()
@@ -229,7 +229,7 @@ export function first<A>(): Combiner<A> {
  *
  * **Example** (Keeping the last value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner } from "effect"
  *
  * const Last = Combiner.last<number>()
@@ -261,7 +261,7 @@ export function last<A>(): Combiner<A> {
  *
  * **Example** (Always returning zero)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner } from "effect"
  *
  * const Zero = Combiner.constant(0)
@@ -297,7 +297,7 @@ export function constant<A>(a: A): Combiner<A> {
  *
  * **Example** (Joining strings with a separator)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner, String } from "effect"
  *
  * const commaSep = Combiner.intercalate(",")(String.ReducerConcat)

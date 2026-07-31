@@ -125,52 +125,6 @@ export {
 }
 
 /**
- * Context reference for controlling the current concurrency limit. Can be set to "unbounded"
- * for unlimited concurrency or a specific number to limit concurrent operations.
- *
- * **When to use**
- *
- * Use to configure the default concurrency limit for operations that read
- * concurrency from the current context.
- *
- * **Example** (Setting current concurrency)
- *
- * ```ts
- * import { Effect, References } from "effect"
- *
- * const limitConcurrency = Effect.gen(function*() {
- *   // Get current setting
- *   const current = yield* References.CurrentConcurrency
- *   console.log(current) // "unbounded" (default)
- *
- *   // Run with limited concurrency
- *   yield* Effect.provideService(
- *     Effect.gen(function*() {
- *       const limited = yield* References.CurrentConcurrency
- *       console.log(limited) // 10
- *     }),
- *     References.CurrentConcurrency,
- *     10
- *   )
- *
- *   // Run with unlimited concurrency
- *   yield* Effect.provideService(
- *     Effect.gen(function*() {
- *       const unlimited = yield* References.CurrentConcurrency
- *       console.log(unlimited) // "unbounded"
- *     }),
- *     References.CurrentConcurrency,
- *     "unbounded"
- *   )
- * })
- * ```
- *
- * @category references
- * @since 4.0.0
- */
-export const CurrentConcurrency: Context.Reference<number | "unbounded"> = references.CurrentConcurrency
-
-/**
  * Context reference for managing log annotations that are automatically added to all log entries.
  * These annotations provide contextual metadata that appears in every log message.
  *
@@ -181,7 +135,7 @@ export const CurrentConcurrency: Context.Reference<number | "unbounded"> = refer
  *
  * **Example** (Managing log annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, References } from "effect"
  *
  * const logAnnotationExample = Effect.gen(function*() {
@@ -248,7 +202,7 @@ export const CurrentLogAnnotations: Context.Reference<ReadonlyRecord<string, unk
  *
  * **Example** (Changing the current log level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, References } from "effect"
  *
  * const dynamicLogging = Effect.gen(function*() {
@@ -297,7 +251,7 @@ export const CurrentLogLevel: Context.Reference<Severity> = references.CurrentLo
  *
  * **Example** (Tracking log spans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, References } from "effect"
  *
  * const logSpanExample = Effect.gen(function*() {
@@ -386,7 +340,7 @@ export const CurrentStackFrame: Context.Reference<StackFrame | undefined> = refe
  *
  * **Example** (Setting the minimum log level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, References } from "effect"
  *
  * const configureMinimumLogging = Effect.gen(function*() {
@@ -442,7 +396,7 @@ export const MinimumLogLevel: Context.Reference<LogLevel> = references.MinimumLo
  *
  * **Example** (Toggling tracing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, References } from "effect"
  *
  * const tracingControl = Effect.gen(function*() {
@@ -493,7 +447,7 @@ export const TracerEnabled: Context.Reference<boolean> = references.TracerEnable
  *
  * **Example** (Managing span annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, References } from "effect"
  *
  * const spanAnnotationExample = Effect.gen(function*() {
@@ -551,7 +505,7 @@ export const TracerSpanAnnotations: Context.Reference<ReadonlyRecord<string, unk
  *
  * **Example** (Managing span links)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, References, Tracer } from "effect"
  *
  * const spanLinksExample = Effect.gen(function*() {
@@ -619,7 +573,7 @@ export const TracerSpanLinks: Context.Reference<ReadonlyArray<SpanLink>> = refer
  *
  * **Example** (Toggling trace timing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, References } from "effect"
  *
  * const tracingControl = Effect.gen(function*() {
@@ -756,7 +710,7 @@ export {
    *
    * **Example** (Providing a custom scheduler)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, References, Scheduler } from "effect"
    *
    * const customScheduling = Effect.gen(function*() {

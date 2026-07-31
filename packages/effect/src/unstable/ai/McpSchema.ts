@@ -23,6 +23,7 @@ import type * as RpcClient from "../rpc/RpcClient.ts"
 import type { RpcClientError } from "../rpc/RpcClientError.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcMiddleware from "../rpc/RpcMiddleware.ts"
+import type * as McpProtocol from "./McpProtocol.ts"
 
 /**
  * Schema type returned by `optionalWithDefault`.
@@ -100,8 +101,8 @@ export const optional = <S extends Schema.Constraint>(
  */
 export const RequestId: Schema.Union<[
   typeof Schema.String,
-  typeof Schema.Number
-]> = Schema.Union([Schema.String, Schema.Number])
+  typeof Schema.Finite
+]> = Schema.Union([Schema.String, Schema.Finite])
 
 /**
  * Type represented by the JSON-RPC request identifier schema.
@@ -120,8 +121,8 @@ export type RequestId = typeof RequestId.Type
  */
 export const ProgressToken: Schema.Union<[
   typeof Schema.String,
-  typeof Schema.Number
-]> = Schema.Union([Schema.String, Schema.Number])
+  typeof Schema.Finite
+]> = Schema.Union([Schema.String, Schema.Finite])
 
 /**
  * Type represented by the MCP progress token schema.
@@ -299,7 +300,7 @@ export class Annotations extends Schema.Opaque<Annotations>()(Schema.Struct({
    * effectively required, while 0 means "least important," and indicates that
    * the data is entirely optional.
    */
-  priority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
+  priority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
 })) {}
 
 /**
@@ -449,7 +450,7 @@ export class McpErrorBase extends Schema.Class<McpErrorBase>(
   /**
    * The error type that occurred.
    */
-  code: Schema.Number,
+  code: Schema.Int,
   /**
    * A short description of the error. The message SHOULD be limited to a
    * concise single sentence.
@@ -797,11 +798,11 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
      * The progress thus far. This should increase every time progress is made,
      * even if the total is unknown.
      */
-    progress: optional(Schema.Number),
+    progress: optional(Schema.Finite),
     /**
      * Total number of items to process (or total progress required), if known.
      */
-    total: optional(Schema.Number),
+    total: optional(Schema.Finite),
     /**
      * An optional message describing the current progress.
      */
@@ -855,7 +856,7 @@ export class Resource extends Schema.Class<Resource>(
    * This can be used by Hosts to display file sizes and estimate context
    * window usage.
    */
-  size: optional(Schema.Number),
+  size: optional(Schema.Int),
   /**
    * Optional additional metadata for the client.
    *
@@ -1068,6 +1069,7 @@ export class ResourceListChangedNotification extends Rpc.make("notifications/res
  * @since 4.0.0
  */
 export class Subscribe extends Rpc.make("resources/subscribe", {
+  success: Schema.Struct({}),
   error: McpError,
   payload: {
     ...RequestMeta.fields,
@@ -1088,6 +1090,7 @@ export class Subscribe extends Rpc.make("resources/subscribe", {
  * @since 4.0.0
  */
 export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
+  success: Schema.Struct({}),
   error: McpError,
   payload: {
     ...RequestMeta.fields,
@@ -1471,6 +1474,10 @@ export class Tool extends Schema.Class<Tool>(
    */
   inputSchema: Schema.Any,
   /**
+   * An optional JSON Schema object defining the expected output of the tool.
+   */
+  outputSchema: optional(Schema.Any),
+  /**
    * Optional additional tool information.
    */
   annotations: optional(ToolAnnotations),
@@ -1638,6 +1645,7 @@ export class SetLevel extends Rpc.make("logging/setLevel", {
      */
     level: LoggingLevel
   },
+  success: Schema.Struct({}),
   error: McpError
 }) {}
 
@@ -1752,19 +1760,19 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
    * is not important, while a value of 1 means cost is the most important
    * factor.
    */
-  costPriority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
+  costPriority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
   /**
    * How much to prioritize sampling speed (latency) when selecting a model. A
    * value of 0 means speed is not important, while a value of 1 means speed is
    * the most important factor.
    */
-  speedPriority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
+  speedPriority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 }))),
   /**
    * How much to prioritize intelligence and capabilities when selecting a
    * model. A value of 0 means intelligence is not important, while a value of 1
    * means intelligence is the most important factor.
    */
-  intelligencePriority: optional(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
+  intelligencePriority: optional(Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: 1 })))
 }) {}
 
 /**
@@ -1785,6 +1793,7 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
 export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
   "@effect/ai/McpSchema/CreateMessageResult"
 )({
+  ...SamplingMessage.fields,
   /**
    * The name of the model that generated the message.
    */
@@ -1820,7 +1829,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
      * The server's preferences for which model to select. The client MAY ignore
      * these preferences.
      */
-    modelPreferences: optional(ModelPreferences),
+    modelPreferences: optional(Schema.Struct(ModelPreferences.fields)),
     /**
      * An optional system prompt the server wants to use for sampling. The
      * client MAY modify or omit this prompt.
@@ -1831,12 +1840,12 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
      * caller), to be attached to the prompt. The client MAY ignore this request.
      */
     includeContext: optional(Schema.Literals(["none", "thisServer", "allServers"])),
-    temperature: optional(Schema.Number),
+    temperature: optional(Schema.Finite),
     /**
      * The maximum number of tokens to sample, as requested by the server. The
      * client MAY choose to sample fewer tokens than requested.
      */
-    maxTokens: Schema.Number,
+    maxTokens: Schema.Int,
     stopSequences: optional(Schema.Array(Schema.String)),
     /**
      * Optional metadata to pass through to the LLM provider. The format of
@@ -1895,7 +1904,7 @@ export class CompleteResult extends Schema.Opaque<CompleteResult>()(Schema.Struc
      * The total number of completion options available. This can exceed the
      * number of values actually sent in the response.
      */
-    total: optional(Schema.Number),
+    total: optional(Schema.Int),
     /**
      * Indicates whether there are additional completion options beyond those
      * provided in the current response, even if the exact total is unknown.
@@ -2165,6 +2174,7 @@ export class ElicitationDeclined
  */
 export class McpServerClient extends Context.Service<McpServerClient, {
   readonly clientId: number
+  readonly protocolVersion: McpProtocol.ProtocolVersion
   readonly initializePayload: typeof Initialize.payloadSchema["Type"]
   readonly getClient: Effect.Effect<
     RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerRequestRpcs>, RpcClientError>,

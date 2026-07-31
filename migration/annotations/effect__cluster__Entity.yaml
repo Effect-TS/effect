@@ -1,0 +1,9 @@
+"@effect/cluster/Entity#Any":
+  replacement: "effect/unstable/cluster/Entity#Any"
+  note: "Moved into core Effect with the same erased entity type."
+"@effect/cluster/Entity#makeTestClient":
+  replacement: "effect/unstable/cluster/Entity#makeTestClient"
+  note: "Moved into core Effect; adapt its inputs and requirements to the v4 RPC, Layer, Scope, and Context APIs."
+"@effect/cluster/Entity#TypeId":
+  replacement: "none"
+  note: "The entity marker is private in v4. Use Entity.isEntity for runtime refinement."

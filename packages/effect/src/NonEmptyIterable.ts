@@ -46,7 +46,7 @@ export declare const nonEmpty: unique symbol
  *
  * **Example** (Working with non-empty iterables)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Chunk, NonEmptyIterable } from "effect"
  *
  * // Function that requires non-empty data
@@ -109,7 +109,7 @@ export interface NonEmptyIterable<out A> extends Iterable<A> {
  *
  * **Example** (Extracting first and remaining elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Chunk, NonEmptyIterable } from "effect"
  *
  * // Helper to make iterator iterable for Array.from

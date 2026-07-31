@@ -13,12 +13,12 @@ describe("Schema built-in BigInt revivers", () => {
 
     expect(revivers).type.toBe<ReadonlyArray<SchemaRepresentation.AnyReviver>>()
     expect(Schema.isGreaterThanBigIntReviver).type.toBe<
-      SchemaRepresentation.FilterReviver<{ readonly exclusiveMinimum: string }>
+      SchemaRepresentation.FilterReviver<{ readonly exclusiveMinimum: bigint }>
     >()
     expect(Schema.isBetweenBigIntReviver).type.toBe<
       SchemaRepresentation.FilterReviver<{
-        readonly minimum: string
-        readonly maximum: string
+        readonly minimum: bigint
+        readonly maximum: bigint
         readonly exclusiveMinimum?: true | undefined
         readonly exclusiveMaximum?: true | undefined
       }>

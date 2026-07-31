@@ -1,6 +1,6 @@
 {
   "name": "@effect/atom-solid",
-  "version": "4.0.0-beta.101",
+  "version": "4.0.0-beta.102",
   "type": "module",
   "license": "MIT",
   "description": "SolidJS bindings for the Effect Atom modules",
@@ -29,6 +29,7 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null,
+    "./index": null,
     "./*/index": null
   },
   "files": [
@@ -46,15 +47,14 @@
       ".": "./dist/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
+      "./index": null,
       "./*/index": null
     }
   },
   "scripts": {
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-    "check": "tsc -b tsconfig.json",
-    "test": "vitest",
-    "coverage": "vitest --coverage"
+    "check": "tsc -b tsconfig.json"
   },
   "peerDependencies": {
     "effect": "workspace:^",
@@ -63,9 +63,9 @@
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.0",
     "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/jest-dom": "^7.0.0",
     "effect": "workspace:^",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.0",
     "solid-js": "^1.9.14"
   }
 }

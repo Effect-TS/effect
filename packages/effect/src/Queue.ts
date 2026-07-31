@@ -142,7 +142,7 @@ export const asDequeue: <A, E>(self: Queue<A, E>) => Dequeue<A, E> = identity
  *
  * **Example** (Offering through enqueue handles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * // Function that only needs write access to a queue
@@ -206,7 +206,7 @@ export declare namespace Enqueue {
  *
  * **Example** (Taking through dequeue handles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -270,7 +270,7 @@ export declare namespace Dequeue {
  *
  * **Example** (Offering and taking queue values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -408,7 +408,7 @@ const QueueProto = {
  *
  * **Example** (Creating queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * Effect.gen(function*() {
@@ -470,7 +470,7 @@ export const make = <A, E = never>(
  *
  * **Example** (Creating bounded queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -501,7 +501,7 @@ export const bounded = <A, E = never>(capacity: number): Effect<Queue<A, E>> => 
  *
  * **Example** (Creating sliding queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -536,7 +536,7 @@ export const sliding = <A, E = never>(capacity: number): Effect<Queue<A, E>> => 
  *
  * **Example** (Creating dropping queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -572,7 +572,7 @@ export const dropping = <A, E = never>(capacity: number): Effect<Queue<A, E>> =>
  *
  * **Example** (Creating unbounded queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -609,7 +609,7 @@ export const unbounded = <A, E = never>(): Effect<Queue<A, E>> => make()
  *
  * **Example** (Offering a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -670,7 +670,7 @@ export const offer = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Eff
  *
  * **Example** (Offering a value synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * // Create a queue effect and extract the queue for unsafe operations
@@ -728,7 +728,7 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
  *
  * **Example** (Offering multiple values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -772,7 +772,7 @@ export const offerAll = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effe
  *
  * **Example** (Offering multiple values synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * // Create a bounded queue and use unsafe API
@@ -832,7 +832,7 @@ export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>)
  *
  * **Example** (Failing queues with an error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -859,7 +859,7 @@ export const fail = <A, E>(self: Enqueue<A, E>, error: E) => failCause(self, cor
  *
  * **Example** (Failing queues with a cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -902,7 +902,7 @@ export const failCause: {
  *
  * **Example** (Failing queues with a cause synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -952,7 +952,7 @@ export const failCauseUnsafe = <A, E>(self: Enqueue<A, E>, cause: Cause<E>): boo
  *
  * **Example** (Ending queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -999,7 +999,7 @@ export const end = <A, E>(self: Enqueue<A, E | Done>): Effect<boolean> => failCa
  *
  * **Example** (Ending queues synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * // Create a queue and use unsafe operations
@@ -1040,7 +1040,7 @@ export const endUnsafe = <A, E>(self: Enqueue<A, E | Done>) => failCauseUnsafe(s
  *
  * **Example** (Interrupting queues gracefully)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1088,7 +1088,7 @@ export const interrupt = <A, E>(self: Enqueue<A, E>): Effect<boolean> =>
  *
  * **Example** (Shutting down queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1142,7 +1142,7 @@ export const shutdown = <A, E>(self: Enqueue<A, E>): Effect<boolean> =>
  *
  * **Example** (Clearing queued values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1197,7 +1197,7 @@ export const clear = <A, E>(self: Dequeue<A, E>): Effect<Array<A>, Pull.ExcludeD
  *
  * **Example** (Taking all available values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1223,7 +1223,7 @@ export const takeAll = <A, E>(self: Dequeue<A, E>): Effect<Arr.NonEmptyArray<A>,
  *
  * **Example** (Collecting values until completion)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1275,7 +1275,7 @@ export const collect = <A, E>(self: Dequeue<A, E | Done>): Effect<Array<A>, Pull
  *
  * **Example** (Taking a fixed number of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1318,7 +1318,7 @@ export const takeN = <A, E>(
  *
  * **Example** (Taking a bounded batch of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1363,7 +1363,7 @@ export const takeBetween = <A, E>(
  *
  * **Example** (Taking one value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1409,7 +1409,7 @@ export const take = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
  *
  * **Example** (Polling without blocking)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1452,7 +1452,7 @@ export const poll = <A, E>(self: Dequeue<A, E>): Effect<Option.Option<A>> =>
  *
  * **Example** (Peeking at the next value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1495,7 +1495,7 @@ export const peek = <A, E>(self: Dequeue<A, E>): Effect<A, E> =>
  *
  * **Example** (Taking one value synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Queue } from "effect"
  *
  * // Create a queue and use unsafe operations
@@ -1598,7 +1598,7 @@ export {
  *
  * **Example** (Checking queue size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Option, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1634,7 +1634,7 @@ export const size = <A, E>(self: Dequeue<A, E>): Effect<number> => internalEffec
  *
  * **Example** (Checking if queues are full)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Option, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1669,7 +1669,7 @@ export const isFull = <A, E>(self: Dequeue<A, E>): Effect<boolean> => internalEf
  *
  * **Example** (Checking queue size synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Option, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1712,7 +1712,7 @@ export const sizeUnsafe = <A, E>(self: Dequeue<A, E>): number => self.state._tag
  *
  * **Example** (Checking fullness synchronously)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Option, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1738,7 +1738,7 @@ export const isFullUnsafe = <A, E>(self: Dequeue<A, E>): boolean => sizeUnsafe(s
  *
  * **Example** (Running effects into queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Queue } from "effect"
  *
  * const program = Effect.gen(function*() {

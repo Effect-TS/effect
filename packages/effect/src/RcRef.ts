@@ -33,7 +33,7 @@ const TypeId = "~effect/RcRef"
  *
  * **Example** (Sharing a lazily acquired resource)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcRef } from "effect"
  *
  * // Create an RcRef for a database connection
@@ -69,7 +69,7 @@ export interface RcRef<out A, out E = never> extends Pipeable {
  *
  * **Example** (Referencing namespace types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { RcRef } from "effect"
  *
  * // Use RcRef namespace types
@@ -121,7 +121,7 @@ export declare namespace RcRef {
  *
  * **Example** (Creating a reference-counted resource)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcRef } from "effect"
  *
  * Effect.gen(function*() {
@@ -172,7 +172,7 @@ export const make: <A, E, R>(
  *
  * **Example** (Sharing one acquired value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, RcRef } from "effect"
  *
  * const program = Effect.gen(function*() {

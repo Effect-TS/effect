@@ -31,7 +31,7 @@ import type * as Fiber from "./Fiber.ts"
  *
  * **Example** (Customizing teardown behavior)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Runtime } from "effect"
  *
  * // Custom teardown that logs completion status
@@ -90,7 +90,7 @@ export interface Teardown {
  *
  * **Example** (Referencing default teardown)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit, Runtime } from "effect"
  *
  * const logExitCode = (exit: Exit.Exit<any, any>) => {
@@ -152,7 +152,7 @@ export const defaultTeardown: Teardown = <E, A>(
  *
  * **Example** (Creating platform runners)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, Runtime } from "effect"
  *
  * // Create a simple runner for a hypothetical platform

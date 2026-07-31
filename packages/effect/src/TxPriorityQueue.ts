@@ -39,7 +39,7 @@ const TypeId = "~effect/transactions/TxPriorityQueue"
  *
  * **Example** (Dequeuing values by priority)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -107,7 +107,7 @@ const insertSorted = <A>(chunk: Chunk<A>, value: A, ord: Order<A>): Chunk<A> => 
  *
  * **Example** (Creating an empty priority queue)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -128,7 +128,7 @@ export const empty = <A>(order: Order<A>): Effect.Effect<TxPriorityQueue<A>> =>
  *
  * **Example** (Creating a priority queue from an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -160,7 +160,7 @@ export const fromIterable: {
  *
  * **Example** (Creating a priority queue from variadic values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -181,7 +181,7 @@ export const make = <A>(order: Order<A>) => (...elements: Array<A>): Effect.Effe
  *
  * **Example** (Getting the queue size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -201,7 +201,7 @@ export const size = <A>(self: TxPriorityQueue<A>): Effect.Effect<number> => Effe
  *
  * **Example** (Checking whether a queue is empty)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -221,7 +221,7 @@ export const isEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> => 
  *
  * **Example** (Checking whether a queue has elements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -246,7 +246,7 @@ export const isNonEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> 
  *
  * **Example** (Peeking at the next value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -279,7 +279,7 @@ export const peek = <A>(self: TxPriorityQueue<A>): Effect.Effect<A> =>
  *
  * **Example** (Peeking without retrying)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -300,7 +300,7 @@ export const peekOption = <A>(self: TxPriorityQueue<A>): Effect.Effect<Option<A>
  *
  * **Example** (Offering a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -329,7 +329,7 @@ export const offer: {
  *
  * **Example** (Offering multiple values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -360,7 +360,7 @@ export const offerAll: {
  *
  * **Example** (Taking the next value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -389,7 +389,7 @@ export const take = <A>(self: TxPriorityQueue<A>): Effect.Effect<A> =>
  *
  * **Example** (Taking all values in priority order)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -413,7 +413,7 @@ export const takeAll = <A>(self: TxPriorityQueue<A>): Effect.Effect<Array<A>> =>
  *
  * **Example** (Taking without retrying)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -440,7 +440,7 @@ export const takeOption = <A>(self: TxPriorityQueue<A>): Effect.Effect<Option<A>
  *
  * **Example** (Taking up to a limit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -474,7 +474,7 @@ export const takeUpTo: {
  *
  * **Example** (Removing matching values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -502,7 +502,7 @@ export const removeIf: {
  *
  * **Example** (Retaining matching values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -530,7 +530,7 @@ export const retainIf: {
  *
  * **Example** (Reading values in priority order)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -551,7 +551,7 @@ export const toArray = <A>(self: TxPriorityQueue<A>): Effect.Effect<Array<A>> =>
  *
  * **Example** (Checking for a TxPriorityQueue)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Order, TxPriorityQueue } from "effect"
  *
  * const program = Effect.gen(function*() {

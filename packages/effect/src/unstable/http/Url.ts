@@ -88,7 +88,7 @@ const baseUrl = (): string | undefined => {
  *
  * **Example** (Parsing absolute and relative URLs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Result } from "effect"
  * import { Url } from "effect/unstable/http"
  *
@@ -133,7 +133,7 @@ export const fromString: {
  *
  * **Example** (Mutating URL credentials)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Url } from "effect/unstable/http"
  *
  * const myUrl = new URL("https://example.com")
@@ -295,7 +295,7 @@ export const setUsername: {
  *
  * **Example** (Replacing query parameters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Url, UrlParams } from "effect/unstable/http"
  *
  * const myUrl = new URL("https://example.com?foo=bar")
@@ -332,7 +332,7 @@ export const setUrlParams: {
  *
  * **Example** (Reading query parameters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Url } from "effect/unstable/http"
  *
  * const myUrl = new URL("https://example.com?foo=bar")
@@ -361,7 +361,7 @@ export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(
  *
  * **Example** (Modifying query parameters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Url, UrlParams } from "effect/unstable/http"
  *
  * const myUrl = new URL("https://example.com?foo=bar")

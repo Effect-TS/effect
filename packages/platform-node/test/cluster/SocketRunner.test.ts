@@ -1,6 +1,7 @@
 import { NodeClusterSocket } from "@effect/platform-node"
-import { describe, it } from "@effect/vitest"
-import { BigDecimal, Effect, Layer, Option, PrimaryKey, Schema } from "effect"
+import { assert, describe, it } from "@effect/vitest"
+import { BigDecimal, Cause, Effect, Exit, Fiber, Layer, Option, PrimaryKey, Schema } from "effect"
+import type { Sharding } from "effect/unstable/cluster"
 import {
   ClusterSchema,
   Entity,
@@ -48,8 +49,8 @@ const SharedStorage = Layer.mergeAll(
   Layer.provide(ShardingConfig.layerDefaults)
 )
 
-const makeRunnerLayer = (port: number) =>
-  TestEntityLayer.pipe(
+const makeRunnerLayer = (port: number, entities: Layer.Layer<never, never, Sharding.Sharding>) =>
+  entities.pipe(
     Layer.provideMerge(SocketRunner.layer),
     Layer.provide(RunnerHealth.layerNoop),
     Layer.provide(NodeClusterSocket.layerSocketServer),
@@ -76,6 +77,30 @@ const makeClientLayer = (port: number) =>
     Layer.provide(RpcSerialization.layerMsgPack)
   )
 
+// An entity whose reply cannot be serialized: the handler returns a
+// non-integer for a `Schema.Int` success schema, so `Reply.serialize` fails
+// on the host runner when encoding the reply for the wire.
+const IsolationEntity = Entity
+  .make("IsolationEntity", [
+    Rpc.make("BadReply", {
+      payload: { id: Schema.Number },
+      success: Schema.Int
+    }),
+    Rpc.make("Slow", {
+      success: Schema.String
+    })
+  ])
+  .annotateRpcs(ClusterSchema.Persisted, false)
+
+const IsolationEntityLayer = IsolationEntity.toLayer(
+  Effect.succeed({
+    BadReply: () => Effect.succeed(1.5),
+    Slow: () => Effect.as(Effect.sleep("2 seconds"), "done")
+  })
+)
+
+const ISOLATION_PORT = 50_124
+
 // BigDecimal.normalize creates a circular `normalized` self-reference.
 // When a persisted message is sent with discard: true, the notify path in Runners.makeRpc
 // passes the raw envelope (with circular BigDecimal payload) to the runner via msgpack,
@@ -86,7 +111,7 @@ describe("SocketRunner", () => {
     () =>
       Effect.gen(function*() {
         // Start the runner (with socket server and entity handler)
-        yield* Layer.launch(makeRunnerLayer(RUNNER_PORT)).pipe(Effect.forkScoped)
+        yield* Layer.launch(makeRunnerLayer(RUNNER_PORT, TestEntityLayer)).pipe(Effect.forkScoped)
 
         // Give the runner time to start and acquire shards
         yield* Effect.sleep("2 seconds")
@@ -110,6 +135,51 @@ describe("SocketRunner", () => {
           )
         }).pipe(
           Effect.provide(makeClientLayer(RUNNER_PORT)),
+          Effect.scoped
+        )
+      }).pipe(Effect.provide(
+        SharedStorage
+      )),
+    30_000
+  )
+
+  it.live(
+    "a reply serialization failure fails only its own request",
+    () =>
+      Effect.gen(function*() {
+        // Start the runner hosting the entities
+        yield* Layer.launch(makeRunnerLayer(ISOLATION_PORT, IsolationEntityLayer)).pipe(Effect.forkScoped)
+        yield* Effect.sleep("2 seconds")
+
+        yield* Effect.gen(function*() {
+          const makeClient = yield* IsolationEntity.client
+          // Give the client time to discover the runner
+          yield* Effect.sleep("3 seconds")
+
+          // a sibling request in flight on the same runner-to-runner connection
+          const slowFiber = yield* makeClient("slow-entity").Slow().pipe(Effect.forkChild)
+          yield* Effect.sleep("300 millis")
+
+          const badExit = yield* makeClient("bad-entity").BadReply({ id: 1 }).pipe(Effect.exit)
+          assert.isTrue(Exit.isFailure(badExit), "the unencodable reply must fail the request")
+          const failure = Exit.isFailure(badExit) ? String(Cause.squash(badExit.cause)) : ""
+          assert.include(failure, "MalformedMessage", "the caller must receive the real encode error")
+          assert.notInclude(
+            failure,
+            "AlreadyProcessingMessage",
+            "the request must not be re-sent into the entity's dedup guard"
+          )
+
+          const slowExit = yield* Fiber.await(slowFiber)
+          assert.isTrue(
+            Exit.isSuccess(slowExit),
+            "a sibling in-flight request on the same connection must be unaffected"
+          )
+          if (Exit.isSuccess(slowExit)) {
+            assert.strictEqual(slowExit.value, "done")
+          }
+        }).pipe(
+          Effect.provide(makeClientLayer(ISOLATION_PORT)),
           Effect.scoped
         )
       }).pipe(Effect.provide(

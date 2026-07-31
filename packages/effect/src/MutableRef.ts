@@ -32,19 +32,19 @@ const TypeId = "~effect/MutableRef"
  *
  * **Example** (Creating and updating refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * // Create a mutable reference
  * const ref: MutableRef.MutableRef<number> = MutableRef.make(42)
  *
  * // Read the current value
- * console.log(ref.current) // 42
- * console.log(MutableRef.get(ref)) // 42
+ * console.log(ref.current) // > 42
+ * console.log(MutableRef.get(ref)) // > 42
  *
  * // Update the value
  * ref.current = 100
- * console.log(MutableRef.get(ref)) // 100
+ * console.log(MutableRef.get(ref)) // > 100
  *
  * // Use with complex types
  * interface Config {
@@ -59,7 +59,7 @@ const TypeId = "~effect/MutableRef"
  *
  * // Update through the interface
  * config.current = { timeout: 10000, retries: 5 }
- * console.log(config.current.timeout) // 10000
+ * console.log(config.current.timeout) // > 10000
  * ```
  *
  * @category models
@@ -90,21 +90,21 @@ const MutableRefProto: Omit<MutableRef<unknown>, "current"> = {
  *
  * **Example** (Creating mutable refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * // Create a counter reference
  * const counter = MutableRef.make(0)
- * console.log(MutableRef.get(counter)) // 0
+ * console.log(MutableRef.get(counter)) // > 0
  *
  * // Create a configuration reference
  * const config = MutableRef.make({ debug: false, timeout: 5000 })
- * console.log(MutableRef.get(config)) // { debug: false, timeout: 5000 }
+ * console.log(MutableRef.get(config)) // > { debug: false, timeout: 5000 }
  *
  * // Create a string reference
  * const status = MutableRef.make("idle")
  * MutableRef.set(status, "running")
- * console.log(MutableRef.get(status)) // "running"
+ * console.log(MutableRef.get(status)) // > running
  * ```
  *
  * @category constructors
@@ -128,7 +128,7 @@ export const make = <T>(value: T): MutableRef<T> => {
  *
  * **Example** (Comparing and setting values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("initial")
@@ -182,7 +182,7 @@ export const compareAndSet: {
  *
  * **Example** (Decrementing numeric refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -219,7 +219,7 @@ export const decrement = (self: MutableRef<number>): MutableRef<number> => updat
  *
  * **Example** (Decrementing and reading refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -255,24 +255,24 @@ export const decrementAndGet = (self: MutableRef<number>): number => updateAndGe
  *
  * **Example** (Reading current values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("hello")
- * console.log(MutableRef.get(ref)) // "hello"
+ * console.log(MutableRef.get(ref)) // > hello
  *
  * MutableRef.set(ref, "world")
- * console.log(MutableRef.get(ref)) // "world"
+ * console.log(MutableRef.get(ref)) // > world
  *
  * // Reading complex objects
  * const config = MutableRef.make({ port: 3000, host: "localhost" })
  * const currentConfig = MutableRef.get(config)
- * console.log(currentConfig.port) // 3000
+ * console.log(currentConfig.port) // > 3000
  *
  * // Multiple reads return the same value
  * const value1 = MutableRef.get(ref)
  * const value2 = MutableRef.get(ref)
- * console.log(value1 === value2) // true
+ * console.log(value1 === value2) // > true
  * ```
  *
  * @category general
@@ -289,7 +289,7 @@ export const get = <T>(self: MutableRef<T>): T => self.current
  *
  * **Example** (Reading before decrementing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -326,7 +326,7 @@ export const getAndDecrement = (self: MutableRef<number>): number => getAndUpdat
  *
  * **Example** (Reading before incrementing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -372,31 +372,31 @@ export const getAndIncrement = (self: MutableRef<number>): number => getAndUpdat
  *
  * **Example** (Reading before setting)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("old")
  *
  * // Set new value and get the previous one
  * const previous = MutableRef.getAndSet(ref, "new")
- * console.log(previous) // "old"
- * console.log(MutableRef.get(ref)) // "new"
+ * console.log(previous) // > old
+ * console.log(MutableRef.get(ref)) // > new
  *
  * // Swapping values
  * const counter = MutableRef.make(5)
  * const oldValue = MutableRef.getAndSet(counter, 10)
- * console.log(`Changed from ${oldValue} to ${MutableRef.get(counter)}`) // "Changed from 5 to 10"
+ * console.log(`Changed from ${oldValue} to ${MutableRef.get(counter)}`) // > Changed from 5 to 10
  *
  * // Pipe-able version
  * const setValue = MutableRef.getAndSet("final")
  * const previousValue = setValue(ref)
- * console.log(previousValue) // "new"
+ * console.log(previousValue) // > new
  *
  * // Useful for atomic swaps in algorithms
  * const buffer = MutableRef.make<Array<string>>(["a", "b", "c"])
  * const oldBuffer = MutableRef.getAndSet(buffer, [])
- * console.log(oldBuffer) // ["a", "b", "c"]
- * console.log(MutableRef.get(buffer)) // []
+ * console.log(oldBuffer) // > [ 'a', 'b', 'c' ]
+ * console.log(MutableRef.get(buffer)) // > []
  * ```
  *
  * @category general
@@ -425,37 +425,37 @@ export const getAndSet: {
  *
  * **Example** (Reading before updating)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
  *
  * // Increment and get the old value
  * const oldValue = MutableRef.getAndUpdate(counter, (n) => n + 1)
- * console.log(oldValue) // 5
- * console.log(MutableRef.get(counter)) // 6
+ * console.log(oldValue) // > 5
+ * console.log(MutableRef.get(counter)) // > 6
  *
  * // Double the value and get the previous one
  * const previous = MutableRef.getAndUpdate(counter, (n) => n * 2)
- * console.log(previous) // 6
- * console.log(MutableRef.get(counter)) // 12
+ * console.log(previous) // > 6
+ * console.log(MutableRef.get(counter)) // > 12
  *
  * // Transform string and get old value
  * const message = MutableRef.make("hello")
  * const oldMessage = MutableRef.getAndUpdate(message, (s) => s.toUpperCase())
- * console.log(oldMessage) // "hello"
- * console.log(MutableRef.get(message)) // "HELLO"
+ * console.log(oldMessage) // > hello
+ * console.log(MutableRef.get(message)) // > HELLO
  *
  * // Pipe-able version
  * const addOne = MutableRef.getAndUpdate((n: number) => n + 1)
  * const result = addOne(counter)
- * console.log(result) // Previous value before increment
+ * console.log(result) // > 12
  *
  * // Useful for implementing atomic operations
  * const list = MutableRef.make<Array<number>>([1, 2, 3])
  * const oldList = MutableRef.getAndUpdate(list, (arr) => [...arr, 4])
- * console.log(oldList) // [1, 2, 3]
- * console.log(MutableRef.get(list)) // [1, 2, 3, 4]
+ * console.log(oldList) // > [ 1, 2, 3 ]
+ * console.log(MutableRef.get(list)) // > [ 1, 2, 3, 4 ]
  * ```
  *
  * @category general
@@ -479,29 +479,29 @@ export const getAndUpdate: {
  *
  * **Example** (Incrementing numeric refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
  *
  * // Increment the counter
  * MutableRef.increment(counter)
- * console.log(MutableRef.get(counter)) // 6
+ * console.log(MutableRef.get(counter)) // > 6
  *
  * // Chain operations
  * MutableRef.increment(counter)
  * MutableRef.increment(counter)
- * console.log(MutableRef.get(counter)) // 8
+ * console.log(MutableRef.get(counter)) // > 8
  *
  * // Useful for simple counting
  * const visits = MutableRef.make(0)
  * MutableRef.increment(visits) // User visited
  * MutableRef.increment(visits) // Another visit
- * console.log(MutableRef.get(visits)) // 2
+ * console.log(MutableRef.get(visits)) // > 2
  *
  * // Returns the reference for chaining
  * const result = MutableRef.increment(counter)
- * console.log(result === counter) // true
+ * console.log(result === counter) // > true
  * ```
  *
  * @category numeric
@@ -519,7 +519,7 @@ export const increment = (self: MutableRef<number>): MutableRef<number> => updat
  *
  * **Example** (Incrementing and reading refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -560,7 +560,7 @@ export const incrementAndGet = (self: MutableRef<number>): number => updateAndGe
  *
  * **Example** (Setting values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("initial")
@@ -615,31 +615,31 @@ export const set: {
  *
  * **Example** (Setting and reading values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const ref = MutableRef.make("old")
  *
  * // Set and get the new value
  * const newValue = MutableRef.setAndGet(ref, "new")
- * console.log(newValue) // "new"
- * console.log(MutableRef.get(ref)) // "new"
+ * console.log(newValue) // > new
+ * console.log(MutableRef.get(ref)) // > new
  *
  * // Useful for assignments that need the value
  * const counter = MutableRef.make(0)
  * const currentValue = MutableRef.setAndGet(counter, 42)
- * console.log(`Counter set to: ${currentValue}`) // "Counter set to: 42"
+ * console.log(`Counter set to: ${currentValue}`) // > Counter set to: 42
  *
  * // Pipe-able version
  * const setValue = MutableRef.setAndGet("final")
  * const result = setValue(ref)
- * console.log(result) // "final"
+ * console.log(result) // > final
  *
  * // Difference from set: returns value instead of reference
  * const ref1 = MutableRef.make(1)
  * const returnedRef = MutableRef.set(ref1, 2) // Returns MutableRef
  * const returnedValue = MutableRef.setAndGet(ref1, 3) // Returns value
- * console.log(returnedValue) // 3
+ * console.log(returnedValue) // > 3
  * ```
  *
  * @category general
@@ -667,7 +667,7 @@ export const setAndGet: {
  *
  * **Example** (Updating values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -724,7 +724,7 @@ export const update: {
  *
  * **Example** (Updating and reading values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const counter = MutableRef.make(5)
@@ -783,7 +783,7 @@ export const updateAndGet: {
  *
  * **Example** (Toggling boolean refs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { MutableRef } from "effect"
  *
  * const flag = MutableRef.make(false)

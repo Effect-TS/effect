@@ -31,7 +31,7 @@ import * as Layer from "../Layer.ts"
  *
  * **Example** (Capturing console output in tests)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { TestConsole } from "effect/testing"
  *
@@ -99,12 +99,12 @@ export declare namespace TestConsole {
    *
    * **Example** (Typing captured console methods)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { TestConsole } from "effect/testing"
    *
    * const method: TestConsole.TestConsole.Method = "log"
    *
-   * console.log(method) // "log"
+   * console.log(method) // > log
    * ```
    *
    * @category models
@@ -122,7 +122,7 @@ export declare namespace TestConsole {
    *
    * **Example** (Typing captured console entries)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { TestConsole } from "effect/testing"
    *
    * const entry: TestConsole.TestConsole.Entry = {
@@ -130,8 +130,8 @@ export declare namespace TestConsole {
    *   parameters: ["not found"]
    * }
    *
-   * console.log(entry.method) // "error"
-   * console.log(entry.parameters) // ["not found"]
+   * console.log(entry.method) // > error
+   * console.log(entry.parameters) // > [ 'not found' ]
    * ```
    *
    * @category models
@@ -154,7 +154,7 @@ export declare namespace TestConsole {
  *
  * **Example** (Creating a test console)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { TestConsole } from "effect/testing"
  *
@@ -225,7 +225,7 @@ export const make = Effect.gen(function*() {
  *
  * **Example** (Accessing the test console service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { TestConsole } from "effect/testing"
  *
@@ -264,7 +264,7 @@ export const testConsoleWith = <A, E, R>(f: (console: TestConsole) => Effect.Eff
  *
  * **Example** (Providing a test console layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { TestConsole } from "effect/testing"
  *
@@ -299,7 +299,7 @@ export const layer: Layer.Layer<TestConsole> = Layer.effect(Console.Console)(mak
  *
  * **Example** (Reading captured log lines)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { TestConsole } from "effect/testing"
  *
@@ -340,7 +340,7 @@ export const logLines: Effect.Effect<ReadonlyArray<unknown>, never, never> = tes
  *
  * **Example** (Reading captured error lines)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { TestConsole } from "effect/testing"
  *

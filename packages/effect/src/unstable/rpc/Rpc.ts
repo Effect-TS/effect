@@ -956,7 +956,7 @@ export const make = <
  *
  * **Example** (Defining a paginated RPC constructor)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Rpc } from "effect/unstable/rpc"
  *

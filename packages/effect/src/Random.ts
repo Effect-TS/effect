@@ -33,7 +33,7 @@ import * as Predicate from "./Predicate.ts"
  *
  * **Example** (Accessing the random service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -68,7 +68,7 @@ const randomWith = <A>(f: (random: typeof Random["Service"]) => A): Effect.Effec
  *
  * **Example** (Generating a random number)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -91,7 +91,7 @@ export const next: Effect.Effect<number> = randomWith((r) => r.nextDoubleUnsafe(
  *
  * **Example** (Generating a random boolean)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -116,7 +116,7 @@ export const nextBoolean: Effect.Effect<boolean> = randomWith((r) => r.nextDoubl
  *
  * **Example** (Generating a random integer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -139,7 +139,7 @@ export const nextInt: Effect.Effect<number> = randomWith((r) => r.nextIntUnsafe(
  *
  * **Example** (Generating a bounded random number)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -169,7 +169,7 @@ export const nextBetween = (min: number, max: number): Effect.Effect<number> =>
  *
  * **Example** (Generating a bounded random integer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -204,7 +204,7 @@ export const nextIntBetween = (min: number, max: number, options?: {
  *
  * **Example** (Shuffling values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -243,7 +243,7 @@ export const shuffle = <A>(elements: Iterable<A>): Effect.Effect<Array<A>> =>
  *
  * **Example** (Choosing a random value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -285,7 +285,7 @@ export const choice: <Self extends Iterable<unknown>>(
  *
  * **Example** (Seeding random generation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Random } from "effect"
  *
  * const program = Effect.gen(function*() {

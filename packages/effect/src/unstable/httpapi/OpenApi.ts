@@ -338,7 +338,10 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
         tag.externalDocs = externalDocs
       })
       processAnnotation(group.annotations, Override, (override) => {
-        Object.assign(tag, override)
+        // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
+        for (const [key, value] of Object.entries(override)) {
+          InternalRecord.assignProperty(tag as any, key, value)
+        }
       })
       processAnnotation(group.annotations, Transform, (transformFn) => {
         tag = transformFn(tag) as OpenAPISpecTag
@@ -368,9 +371,9 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
       function processResponseBodies(bodies: ResponseBodies, defaultDescription: () => string) {
         for (const [status, { content, descriptions, streamContent }] of bodies) {
           const description = descriptions.size > 0 ? Array.from(descriptions).join(" | ") : defaultDescription()
-          op.responses[status] = {
+          InternalRecord.assignProperty(op.responses, status, {
             description
-          }
+          })
           if (content !== undefined) {
             content.forEach((map, encoding) => {
               map.forEach((schemas, contentType) => {
@@ -383,9 +386,9 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
                   path: ["paths", path, method, "responses", String(status), "content", contentType, "schema"]
                 })
                 op.responses[status].content ??= {}
-                op.responses[status].content[contentType] = {
+                InternalRecord.assignProperty(op.responses[status].content, contentType, {
                   schema: {}
-                }
+                })
               })
             })
           }
@@ -428,7 +431,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
                     "errorSchema"
                   ]
                 })
-                op.responses[status].content[contentType] = {
+                InternalRecord.assignProperty(op.responses[status].content, contentType, {
                   schema: {},
                   "x-effect-stream": {
                     encoding: "sse",
@@ -436,9 +439,9 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
                     errorSchema: {},
                     failureEvent: reservedStreamFailureEvent
                   }
-                }
+                })
               } else {
-                op.responses[status].content[contentType] = {
+                InternalRecord.assignProperty(op.responses[status].content, contentType, {
                   schema: {
                     type: "string",
                     format: "binary"
@@ -446,7 +449,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
                   "x-effect-stream": {
                     encoding: "uint8array"
                   }
-                }
+                })
               }
             })
           }
@@ -503,7 +506,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
       ) {
         const scheme = makeSecurityScheme(security)
         if (!Object.hasOwn(spec.components.securitySchemes, name)) {
-          InternalRecord.set(spec.components.securitySchemes, name, scheme)
+          InternalRecord.assignProperty(spec.components.securitySchemes, name, scheme)
           return
         }
         if (
@@ -542,9 +545,9 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
               ast: toEncodingAST(ast, encoding._tag),
               path: ["paths", path, method, "requestBody", "content", contentType, "schema"]
             })
-            content[contentType] = {
+            InternalRecord.assignProperty(content, contentType, {
               schema: {}
-            }
+            })
           }
           op.requestBody = { content, required: true }
         }
@@ -572,7 +575,10 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
       )
 
       processAnnotation(endpoint.annotations, Override, (override) => {
-        Object.assign(op, override)
+        // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
+        for (const [key, value] of Object.entries(override)) {
+          InternalRecord.assignProperty(op as any, key, value)
+        }
       })
       processAnnotation(endpoint.annotations, Transform, (transformFn) => {
         op = transformFn(op) as OpenAPISpecOperation
@@ -590,8 +596,8 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
         operationIds.add(operationId)
       }
       pathOperations.add(pathOperation)
-      if (!spec.paths[path]) {
-        spec.paths[path] = {}
+      if (!Object.hasOwn(spec.paths, path)) {
+        InternalRecord.assignProperty(spec.paths, path, {})
       }
       spec.paths[path][method] = op
     }
@@ -601,10 +607,10 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
     componentSchemas.forEach((componentSchema) => {
       const identifier = SchemaAST.resolveIdentifier(componentSchema.ast)
       if (identifier !== undefined) {
-        if (identifier in spec.components.schemas) {
+        if (Object.hasOwn(spec.components.schemas, identifier)) {
           throw new globalThis.Error(`Duplicate component schema identifier: ${identifier}`)
         }
-        spec.components.schemas[identifier] = {}
+        InternalRecord.assignProperty(spec.components.schemas, identifier, {})
         pathOps.push({
           _tag: "schema",
           ast: componentSchema.ast,
@@ -648,7 +654,10 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
   })
 
   processAnnotation(api.annotations, Override, (override) => {
-    Object.assign(spec, override)
+    // OpenAPI documents are JSON, so symbol keys are intentionally ignored.
+    for (const [key, value] of Object.entries(override)) {
+      InternalRecord.assignProperty(spec as any, key, value)
+    }
   })
   processAnnotation(api.annotations, Transform, (transformFn) => {
     spec = transformFn(spec) as OpenAPISpec

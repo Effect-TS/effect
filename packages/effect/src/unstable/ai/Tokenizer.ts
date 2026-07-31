@@ -31,7 +31,7 @@ import * as Prompt from "./Prompt.ts"
  *
  * **Example** (Accessing the Tokenizer service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Tokenizer } from "effect/unstable/ai"
  *
@@ -60,7 +60,7 @@ export class Tokenizer extends Context.Service<Tokenizer, Service>()(
  *
  * **Example** (Implementing a custom tokenizer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Prompt } from "effect/unstable/ai"
  * import type { Tokenizer } from "effect/unstable/ai"
@@ -112,7 +112,7 @@ export interface Service {
  *
  * **Example** (Creating a word tokenizer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Tokenizer } from "effect/unstable/ai"
  *

@@ -214,8 +214,8 @@ function translateJsonSchemaMultiDocument(
   options?: SchemaRepresentation.FromJsonSchemaOptions,
   singleRoot = false
 ): SchemaRepresentation.MultiDocument {
-  const definitionCache = new Map<string, ImportedJsonSchemaRepresentation>()
-  const definitionsInProgress = new Set<string>()
+  const definitionCache = new Map<string, ImportedJsonSchemaRepresentation | null>()
+  const reachableDefinitions = new Map<string, Path>()
   const annotatedReferences: Array<{
     readonly reference: SchemaRepresentation.Reference
     readonly path: Path
@@ -227,16 +227,17 @@ function translateJsonSchemaMultiDocument(
     recursiveReferenceError?: string
   ): ImportedJsonSchemaRepresentation {
     const cached = definitionCache.get(key)
-    if (cached !== undefined) return cached
+    if (cached !== undefined) {
+      if (cached === null) {
+        throw errorWithPath(recursiveReferenceError ?? `Invalid reference ${key}`, [...path, "$ref"])
+      }
+      return cached
+    }
     if (!Object.hasOwn(document.definitions, key)) {
       throw errorWithPath(`Invalid reference ${key}`, [...path, "$ref"])
     }
-    if (definitionsInProgress.has(key)) {
-      throw errorWithPath(recursiveReferenceError ?? `Invalid reference ${key}`, [...path, "$ref"])
-    }
-    definitionsInProgress.add(key)
+    definitionCache.set(key, null)
     const representation = recur(document.definitions[key], ["definitions", key])
-    definitionsInProgress.delete(key)
     definitionCache.set(key, representation)
     return representation
   }
@@ -696,6 +697,7 @@ function translateJsonSchemaMultiDocument(
     if (typeof schema.$ref === "string") {
       const $ref = jsonSchemaReferenceKey(schema.$ref)
       if ($ref !== undefined) {
+        if (!reachableDefinitions.has($ref)) reachableDefinitions.set($ref, path)
         return { _tag: "Reference", $ref }
       }
     }
@@ -890,12 +892,12 @@ function translateJsonSchemaMultiDocument(
   }
 
   const references: Record<string, Representation> = {}
-  for (const key of Object.keys(document.definitions)) {
-    InternalRecord.set(references, key, unknownJsonSchemas(translateDefinition(key, ["definitions", key])))
-  }
   const representations = document.schemas.map((schema, index) =>
     unknownJsonSchemas(recur(schema, singleRoot ? ["schema"] : ["schemas", index]))
   ) as [Representation, ...Array<Representation>]
+  for (const [key, path] of reachableDefinitions) {
+    InternalRecord.assignProperty(references, key, unknownJsonSchemas(translateDefinition(key, path)))
+  }
   for (const { reference, path } of annotatedReferences) {
     resolveReference(reference, path)
   }
@@ -952,6 +954,6 @@ export function fromJsonSchemaDocument(
 export function fromJsonSchemaMultiDocument(
   document: JsonSchema.MultiDocument<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
-): SchemaRepresentation.SchemaMultiDocument {
+): readonly [Schema.Top, ...Array<Schema.Top>] {
   return fromRepresentations(translateJsonSchemaMultiDocument(document, options), jsonSchemaRevivers)
 }

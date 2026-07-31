@@ -621,7 +621,7 @@ describe("HttpApiClient", () => {
       type StreamError = { readonly reason: string }
       type ClientStream = Stream.Stream<
         Event,
-        StreamError | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry
+        StreamError | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError
       >
 
       expect(f()).type.toBe<
@@ -663,7 +663,7 @@ describe("HttpApiClient", () => {
       type StreamError = { readonly reason: string }
       type ClientStream = Stream.Stream<
         Data,
-        StreamError | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry
+        StreamError | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError
       >
 
       expect(f()).type.toBe<
@@ -697,7 +697,7 @@ describe("HttpApiClient", () => {
       type Data = { readonly id: string }
       type ClientStream = Stream.Stream<
         Data,
-        HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry
+        HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError
       >
 
       expect(f()).type.toBe<
@@ -764,7 +764,7 @@ describe("HttpApiClient", () => {
 
       type ClientStream = Stream.Stream<
         Event,
-        StreamError | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry
+        StreamError | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError
       >
 
       expect(f({ responseMode: "decoded-only" })).type.toBe<

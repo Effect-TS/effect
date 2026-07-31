@@ -1,6 +1,6 @@
 {
   "name": "@effect/sql-d1",
-  "version": "4.0.0-beta.101",
+  "version": "4.0.0-beta.102",
   "type": "module",
   "license": "MIT",
   "description": "A Cloudflare D1 integration for Effect",
@@ -33,6 +33,7 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null,
+    "./index": null,
     "./*/index": null
   },
   "files": [
@@ -50,6 +51,7 @@
       ".": "./dist/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
+      "./index": null,
       "./*/index": null
     }
   },
@@ -57,9 +59,7 @@
     "codegen": "effect-utils codegen",
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-    "check": "tsc -b tsconfig.json",
-    "test": "vitest",
-    "coverage": "vitest --coverage"
+    "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
     "effect": "workspace:^",

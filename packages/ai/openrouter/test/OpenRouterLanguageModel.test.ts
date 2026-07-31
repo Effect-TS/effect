@@ -273,6 +273,7 @@ const makeDefaultResponse = (
   created: 1234567890,
   model: "google/gemini-2.5-flash",
   object: "chat.completion",
+  system_fingerprint: null,
   ...overrides
 })
 

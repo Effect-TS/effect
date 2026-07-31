@@ -163,8 +163,12 @@ export class SingleMessage
  */
 export class ChunkedMessage
   extends Schema.TaggedClass<ChunkedMessage>("effect/eventlog/EventLogRemote/ChunkedMessage")("Chunked", {
-    id: Schema.Number,
-    part: Schema.Tuple([Schema.Number, Schema.Number]),
+    id: Schema.Int,
+    part: Schema.Tuple([Schema.Natural, Schema.Natural]).check(
+      Schema.makeFilter(([index, total]) => index < total, {
+        expected: "a chunk part with an index less than its total"
+      })
+    ),
     data: Transferable.Uint8Array
   })
 {
@@ -220,6 +224,9 @@ export class ChunkedMessage
         bytes: 0
       }
       map.set(part.id, entry)
+    }
+    if (entry.parts[index] !== undefined) {
+      return
     }
     entry.parts[index] = part.data
     entry.count++
@@ -324,7 +331,7 @@ export class ChangesRpc extends Rpc.make("EventLog.Changes", {
   payload: {
     publicKey: Schema.String,
     storeId: StoreId,
-    startSequence: Schema.Number
+    startSequence: Schema.Natural
   },
   success: Schema.Union([SingleMessage, ChunkedMessage]),
   error: EventLogProtocolError,

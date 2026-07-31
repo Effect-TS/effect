@@ -210,7 +210,7 @@ const openFactory = (method: string): FileSystem.FileSystem["open"] => {
         nodeOpen(path, options?.flag ?? "r", options?.mode),
         (fd) => Effect.orDie(nodeClose(fd))
       ),
-      Effect.map((fd) => makeFile(FileSystem.FileDescriptor(fd), options?.flag?.startsWith("a") ?? false))
+      Effect.map((fd) => makeFile(fd, options?.flag?.startsWith("a") ?? false))
     )
 }
 const open = openFactory("open")
@@ -252,13 +252,13 @@ const makeFile = (() => {
 
   class FileImpl implements FileSystem.File {
     readonly [FileSystem.FileTypeId]: typeof FileSystem.FileTypeId
-    readonly fd: FileSystem.File.Descriptor
+    readonly fd: number
     private readonly append: boolean
 
     private position: bigint = BigInt(0)
 
     constructor(
-      fd: FileSystem.File.Descriptor,
+      fd: number,
       append: boolean
     ) {
       this[FileSystem.FileTypeId] = FileSystem.FileTypeId
@@ -386,7 +386,7 @@ const makeFile = (() => {
     }
   }
 
-  return (fd: FileSystem.File.Descriptor, append: boolean): FileSystem.File => new FileImpl(fd, append)
+  return (fd: number, append: boolean): FileSystem.File => new FileImpl(fd, append)
 })()
 
 // == makeTempFile
@@ -550,12 +550,12 @@ const utimes = (() => {
 
 // == watch
 
-const watchNode = (path: string) =>
+const watchNode = (path: string, options?: FileSystem.WatchOptions) =>
   Stream.callback<FileSystem.WatchEvent, Error.PlatformError>((queue) =>
     Effect.acquireRelease(
       Effect.sync(() => {
         const watcher = NFS.watch(path, {
-          recursive: true
+          recursive: options?.recursive ?? false
         }, (event, path) => {
           if (!path) return
           switch (event) {
@@ -595,12 +595,16 @@ const watchNode = (path: string) =>
     )
   )
 
-const watch = (backend: Option.Option<FileSystem.WatchBackend["Service"]>, path: string) =>
+const watch = (
+  backend: Option.Option<FileSystem.WatchBackend["Service"]>,
+  path: string,
+  options?: FileSystem.WatchOptions
+) =>
   stat(path).pipe(
     Effect.map((stat) =>
       backend.pipe(
-        Option.flatMap((_) => _.register(path, stat)),
-        Option.getOrElse(() => watchNode(path))
+        Option.flatMap((_) => _.register(path, stat, options)),
+        Option.getOrElse(() => watchNode(path, options))
       )
     ),
     Stream.unwrap
@@ -652,8 +656,8 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
     symlink,
     truncate,
     utimes,
-    watch(path) {
-      return watch(backend, path)
+    watch(path, options) {
+      return watch(backend, path, options)
     },
     writeFile
   }))

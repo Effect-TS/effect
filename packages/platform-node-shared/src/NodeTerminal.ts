@@ -35,25 +35,52 @@ export const make: (
   function*(shouldQuit: (input: Terminal.UserInput) => boolean = defaultShouldQuit) {
     const stdin = process.stdin
     const stdout = process.stdout
+    const lines = yield* Queue.make<string, Cause.Done>()
 
-    // Acquire readline interface with TTY setup/cleanup inside the scope
+    // stdin "end" fires once per process, so remember end-of-input for readers
+    // created after the event (Bun never sets `readableEnded`).
+    let inputEnded = stdin.readableEnded
+    let readlineActive = false
+    const onStdinEnd = () => {
+      inputEnded = true
+      if (!readlineActive) {
+        Queue.endUnsafe(lines)
+      }
+    }
+    stdin.once("end", onStdinEnd)
+    yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("end", onStdinEnd)))
+
     const rlRef = yield* RcRef.make({
       acquire: Effect.acquireRelease(
         Effect.sync(() => {
           const rl = readline.createInterface({ input: stdin, escapeCodeTimeout: 50 })
+          const onLine = (line: string) => Queue.offerUnsafe(lines, line)
+          const onClose = () => {
+            readlineActive = false
+            Queue.endUnsafe(lines)
+          }
+          readlineActive = true
           readline.emitKeypressEvents(stdin, rl)
+          rl.on("line", onLine)
+          rl.once("close", onClose)
 
           if (stdin.isTTY) {
             stdin.setRawMode(true)
           }
-          return rl
+          return { rl, onClose, onLine }
         }),
-        (rl) =>
+        ({ rl, onClose, onLine }) =>
           Effect.sync(() => {
+            readlineActive = false
+            rl.off("line", onLine)
+            rl.off("close", onClose)
             if (stdin.isTTY) {
               stdin.setRawMode(false)
             }
             rl.close()
+            if (inputEnded) {
+              Queue.endUnsafe(lines)
+            }
           })
       )
     })
@@ -62,7 +89,6 @@ export const make: (
     const rows = Effect.sync(() => stdout.rows ?? 0)
 
     const readInput = Effect.gen(function*() {
-      yield* RcRef.get(rlRef)
       const queue = yield* Queue.make<Terminal.UserInput, Cause.Done>()
       const handleKeypress = (s: string | undefined, k: readline.Key) => {
         const userInput = {
@@ -74,18 +100,40 @@ export const make: (
           Queue.endUnsafe(queue)
         }
       }
-      yield* Effect.addFinalizer(() => Effect.sync(() => stdin.off("keypress", handleKeypress)))
+      // Deno's `process.stdin` shim does not keep the event loop alive, so a
+      // program blocked on input can exit before `end` is ever delivered. A
+      // timer holds the loop open for as long as this reader is active.
+      const keepAlive = setInterval(() => {}, 2147483647)
+      // Without this, consumers (e.g. `Prompt.run`) hang forever on closed stdin.
+      const handleEnd = () => {
+        clearInterval(keepAlive)
+        Queue.endUnsafe(queue)
+      }
+      yield* Effect.addFinalizer(() =>
+        Effect.sync(() => {
+          clearInterval(keepAlive)
+          stdin.off("keypress", handleKeypress)
+          stdin.off("end", handleEnd)
+        })
+      )
       stdin.on("keypress", handleKeypress)
+      if (inputEnded) {
+        handleEnd()
+      } else {
+        yield* RcRef.get(rlRef)
+        stdin.once("end", handleEnd)
+      }
       return queue as Queue.Dequeue<Terminal.UserInput, Cause.Done>
     })
 
-    const readLine = Effect.scoped(
-      Effect.flatMap(RcRef.get(rlRef), (readlineInterface) =>
-        Effect.callback<string, Terminal.QuitError>((resume) => {
-          const onLine = (line: string) => resume(Effect.succeed(line))
-          readlineInterface.once("line", onLine)
-          return Effect.sync(() => readlineInterface.off("line", onLine))
-        }))
+    const readLine = Effect.suspend(() =>
+      Queue.poll(lines).pipe(
+        Effect.flatMap(Option.match({
+          onNone: () => Effect.scoped(Effect.andThen(RcRef.get(rlRef), Queue.take(lines))),
+          onSome: Effect.succeed
+        })),
+        Effect.mapError(() => new Terminal.QuitError({}))
+      )
     )
 
     const display = (prompt: string) =>

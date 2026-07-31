@@ -605,11 +605,23 @@ const parseOpenApi = (
           }
         }
 
-        const sseResponseSchema = content?.["text/event-stream"]?.schema
+        const sseMediaType = content?.["text/event-stream"]
+        const sseResponseSchema = sseMediaType?.schema
         if (!isHttpApi && Predicate.isUndefined(op.sseSchema) && Predicate.isNotUndefined(sseResponseSchema)) {
           const statusMajorNumber = Number(parsedStatus[0])
           if (!Number.isNaN(statusMajorNumber) && statusMajorNumber < 4) {
-            op.sseSchema = addSchema(`${schemaId}${status}Sse`, sseResponseSchema, op)
+            const effectStream = sseMediaType["x-effect-stream"]
+            op.sseSchemaMode = getEffectStreamEncoding(sseMediaType) === "sse" ? "event" : "data"
+            op.sseSchema = addSchema(
+              `${schemaId}${status}Sse`,
+              op.sseSchemaMode === "event"
+                ? makeSseEventSchema(
+                  resolveReference(sseResponseSchema, resolveRef),
+                  effectStream?.encoding === "sse" ? effectStream.failureEvent : undefined
+                )
+                : sseResponseSchema,
+              op
+            )
           }
         }
 
@@ -745,14 +757,14 @@ const buildParameterSchema = <
 
       for (const [name, propertySchema] of Object.entries(paramSchema.properties)) {
         const adjustedName = `${parameter.name}[${name}]`
-        schema.properties[adjustedName] = propertySchema as JsonSchema.JsonSchema
+        Rec.assignProperty(schema.properties, adjustedName, propertySchema as JsonSchema.JsonSchema)
         if (required.includes(name)) {
           schema.required.push(adjustedName)
         }
         added.push(adjustedName)
       }
     } else {
-      schema.properties[parameter.name] = parameter.schema as JsonSchema.JsonSchema
+      Rec.assignProperty(schema.properties, parameter.name, parameter.schema as JsonSchema.JsonSchema)
       if (parameter.required) {
         schema.required.push(parameter.name)
       }
@@ -875,7 +887,7 @@ const transformMultipartSchema = (
 
     const out: Record<string, unknown> = {}
     for (const [key, current] of Object.entries(value)) {
-      out[key] = visit(current)
+      Rec.assignProperty(out, key, visit(current))
     }
 
     if (isMultipartBinaryFiles(out, singleFileRef)) {
@@ -969,6 +981,59 @@ const getEffectStreamErrorSchema = (mediaType: object): JsonSchema.JsonSchema | 
     return
   }
   return stream.errorSchema as JsonSchema.JsonSchema
+}
+
+const makeSseEventSchema = (
+  input: JsonSchema.JsonSchema,
+  failureEvent: string | undefined
+): JsonSchema.JsonSchema => {
+  const eventSchema = normalizeSseEventSchema(input)
+  if (failureEvent === undefined) {
+    return eventSchema
+  }
+  return {
+    anyOf: [
+      eventSchema,
+      {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          event: { const: failureEvent },
+          data: { type: "string" }
+        },
+        required: ["event", "data"],
+        additionalProperties: false
+      }
+    ]
+  }
+}
+
+const normalizeSseEventSchema = (input: JsonSchema.JsonSchema): JsonSchema.JsonSchema => {
+  const schema = { ...input } as Record<string, any>
+  for (const key of ["allOf", "anyOf", "oneOf"] as const) {
+    if (Array.isArray(schema[key])) {
+      schema[key] = schema[key].map(normalizeSseEventSchema)
+    }
+  }
+  if (
+    schema.type !== "object" ||
+    !Predicate.isObject(schema.properties) ||
+    !Object.hasOwn(schema.properties, "id") ||
+    !Object.hasOwn(schema.properties, "event") ||
+    !Object.hasOwn(schema.properties, "data")
+  ) {
+    return schema as JsonSchema.JsonSchema
+  }
+
+  // OpenAPI represents `undefined` as required nullable; restore the SSE parser's optional wire field.
+  schema.properties = {
+    ...schema.properties,
+    id: { type: "string" }
+  }
+  if (Array.isArray(schema.required)) {
+    schema.required = schema.required.filter((name: unknown) => name !== "id")
+  }
+  return schema as JsonSchema.JsonSchema
 }
 
 const resolveReference = (input: unknown, resolveRef: (ref: string) => unknown): any => {

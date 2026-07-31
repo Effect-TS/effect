@@ -44,7 +44,7 @@ const emptyState: LockState = {
  *
  * **Example** (Using read and write locks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -91,7 +91,7 @@ const TxReentrantLockProto: Omit<TxReentrantLock, typeof TypeId | "stateRef"> = 
  *
  * **Example** (Creating a reentrant lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -124,7 +124,7 @@ export const make = (): Effect.Effect<TxReentrantLock> =>
  *
  * **Example** (Acquiring a read lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -178,7 +178,7 @@ export const acquireRead = (self: TxReentrantLock): Effect.Effect<number> =>
  *
  * **Example** (Acquiring a write lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -243,7 +243,7 @@ export const acquireWrite = (self: TxReentrantLock): Effect.Effect<number> =>
  *
  * **Example** (Releasing a read lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -289,7 +289,7 @@ export const releaseRead = (self: TxReentrantLock): Effect.Effect<number> =>
  *
  * **Example** (Releasing a write lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -327,7 +327,7 @@ export const releaseWrite = (self: TxReentrantLock): Effect.Effect<number> =>
  *
  * **Example** (Holding a scoped read lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -358,7 +358,7 @@ export const readLock = (self: TxReentrantLock): Effect.Effect<number, never, Sc
  *
  * **Example** (Holding a scoped write lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -389,7 +389,7 @@ export const writeLock = (self: TxReentrantLock): Effect.Effect<number, never, S
  *
  * **Example** (Running an effect with a read lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -432,7 +432,7 @@ export const withReadLock: {
  *
  * **Example** (Running an effect with a write lock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -479,7 +479,7 @@ export const withWriteLock: {
  *
  * **Example** (Running an effect with exclusive access)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -509,7 +509,7 @@ export const withLock: {
  *
  * **Example** (Counting read locks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -539,7 +539,7 @@ export const readLocks = (self: TxReentrantLock): Effect.Effect<number> =>
  *
  * **Example** (Counting write locks)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -563,7 +563,7 @@ export const writeLocks = (self: TxReentrantLock): Effect.Effect<number> =>
  *
  * **Example** (Checking whether a lock is held)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -587,7 +587,7 @@ export const locked = (self: TxReentrantLock): Effect.Effect<boolean> =>
  *
  * **Example** (Checking whether a read lock is held)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -611,7 +611,7 @@ export const readLocked = (self: TxReentrantLock): Effect.Effect<boolean> =>
  *
  * **Example** (Checking whether a write lock is held)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxReentrantLock } from "effect"
  *
  * const program = Effect.gen(function*() {

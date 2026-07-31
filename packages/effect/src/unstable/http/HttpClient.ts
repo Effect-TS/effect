@@ -34,6 +34,7 @@ import type { EqualsWith, ExcludeTag, ExtractTag, NoExcessProperties, NoInfer, T
 import type * as RateLimiter from "../persistence/RateLimiter.ts"
 import * as Cookies from "./Cookies.ts"
 import * as Headers from "./Headers.ts"
+import * as HttpBody from "./HttpBody.ts"
 import * as Error from "./HttpClientError.ts"
 import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpClientResponse from "./HttpClientResponse.ts"
@@ -686,8 +687,10 @@ export const make = (
               span.attribute("url.query", query)
             }
             const redactedHeaderNames = fiber.getRef(Headers.CurrentRedactedNames)
+            const headerFilter = fiber.getRef(TracerHeaderFilter)
             const redactedHeaders = Headers.redact(request.headers, redactedHeaderNames)
             for (const name in redactedHeaders) {
+              if (!headerFilter(name, "request")) continue
               span.attribute(`http.request.header.${name}`, String(redactedHeaders[name]))
             }
             request = fiber.getRef(TracerPropagationEnabled)
@@ -701,6 +704,7 @@ export const make = (
                     span.attribute("http.response.status_code", response.status)
                     const redactedHeaders = Headers.redact(response.headers, redactedHeaderNames)
                     for (const name in redactedHeaders) {
+                      if (!headerFilter(name, "response")) continue
                       span.attribute(`http.response.header.${name}`, String(redactedHeaders[name]))
                     }
 
@@ -1466,17 +1470,29 @@ export const followRedirects: {
       ): Effect.Effect<HttpClientResponse.HttpClientResponse, E, R> =>
         Effect.flatMap(
           self.postprocess(Effect.succeed(request)),
-          (response) =>
-            response.status >= 300 && response.status < 400 && response.headers.location &&
-              redirects < (maxRedirects ?? 10)
-              ? loop(
-                HttpClientRequest.setUrl(
-                  request,
-                  new URL(response.headers.location, response.request.url)
-                ),
-                redirects + 1
-              )
-              : Effect.succeed(response)
+          (response) => {
+            if (
+              response.status < 300 || response.status >= 400 || !response.headers.location ||
+              redirects >= (maxRedirects ?? 10)
+            ) {
+              return Effect.succeed(response)
+            }
+            const url = new URL(response.headers.location, response.request.url)
+            let nextRequest = request
+            if (
+              ((response.status === 301 || response.status === 302) && request.method === "POST") ||
+              (response.status === 303 && request.method !== "GET" && request.method !== "HEAD")
+            ) {
+              nextRequest = HttpClientRequest.setMethod(nextRequest, "GET")
+              nextRequest = HttpClientRequest.setBody(nextRequest, HttpBody.empty)
+            }
+            if (url.origin !== new URL(response.request.url).origin) {
+              nextRequest = HttpClientRequest.removeHeader(nextRequest, "authorization")
+              nextRequest = HttpClientRequest.removeHeader(nextRequest, "proxy-authorization")
+              nextRequest = HttpClientRequest.removeHeader(nextRequest, "cookie")
+            }
+            return loop(HttpClientRequest.setUrl(nextRequest, url), redirects + 1)
+          }
         )
       return Effect.flatMap(request, (request) => loop(request, 0))
     },
@@ -1493,6 +1509,18 @@ export const TracerDisabledWhen = Context.Reference<
   Predicate.Predicate<HttpClientRequest.HttpClientRequest>
 >("effect/http/HttpClient/TracerDisabledWhen", {
   defaultValue: () => constFalse
+})
+
+/**
+ * Context reference for filtering request and response headers added to client spans.
+ *
+ * @category references
+ * @since 4.0.0
+ */
+export const TracerHeaderFilter = Context.Reference<
+  (headerName: string, phase: "request" | "response") => boolean
+>("effect/http/HttpClient/TracerHeaderFilter", {
+  defaultValue: () => constTrue
 })
 
 /**

@@ -55,7 +55,7 @@ const TxHashSetProto = {
  *
  * **Example** (Using transactional hash sets)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -97,7 +97,7 @@ export interface TxHashSet<in out V> extends Inspectable, Pipeable {
  *
  * **Example** (Extracting value types inside transactions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -122,7 +122,7 @@ export declare namespace TxHashSet {
    *
    * **Example** (Extracting a TxHashSet value type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { TxHashSet } from "effect"
    *
    * type FruitSet = TxHashSet.TxHashSet<"apple" | "banana" | "cherry">
@@ -134,7 +134,7 @@ export declare namespace TxHashSet {
    *   return `Processing ${fruit}`
    * }
    *
-   * console.log(processFruit("apple")) // Processing apple
+   * console.log(processFruit("apple")) // > Processing apple
    * ```
    *
    * @category utility types
@@ -154,7 +154,7 @@ const makeTxHashSet = <V>(ref: TxRef.TxRef<HashSet.HashSet<V>>): TxHashSet<V> =>
  *
  * **Example** (Creating an empty transactional hash set)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -184,7 +184,7 @@ export const empty = <V = never>(): Effect.Effect<TxHashSet<V>> =>
  *
  * **Example** (Creating transactional hash sets from values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -216,7 +216,7 @@ export const make = <Values extends ReadonlyArray<any>>(
  *
  * **Example** (Creating a transactional hash set from an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -247,7 +247,7 @@ export const fromIterable = <V>(values: Iterable<V>): Effect.Effect<TxHashSet<V>
  *
  * **Example** (Creating a transactional hash set from a HashSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, HashSet, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -278,7 +278,7 @@ export const fromHashSet = <V>(hashSet: HashSet.HashSet<V>): Effect.Effect<TxHas
  *
  * **Example** (Checking for a TxHashSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, HashSet, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -307,7 +307,7 @@ export const isTxHashSet = (u: unknown): u is TxHashSet<unknown> => hasProperty(
  *
  * **Example** (Adding values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -343,7 +343,7 @@ export const add: {
  *
  * **Example** (Removing values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -384,7 +384,7 @@ export const remove: {
  *
  * **Example** (Checking membership)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Equal, Hash, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -431,7 +431,7 @@ export const has: {
  *
  * **Example** (Getting the set size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -460,7 +460,7 @@ export const size = <V>(self: TxHashSet<V>): Effect.Effect<number> =>
  *
  * **Example** (Checking whether a set is empty)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -490,7 +490,7 @@ export const isEmpty = <V>(self: TxHashSet<V>): Effect.Effect<boolean> =>
  *
  * **Example** (Clearing all values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -513,7 +513,7 @@ export const clear = <V>(self: TxHashSet<V>): Effect.Effect<void> => TxRef.set(s
  *
  * **Example** (Combining sets with union)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -554,7 +554,7 @@ export const union: {
  *
  * **Example** (Finding common values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -595,7 +595,7 @@ export const intersection: {
  *
  * **Example** (Finding values absent from another set)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -636,7 +636,7 @@ export const difference: {
  *
  * **Example** (Checking subset relationships)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -672,7 +672,7 @@ export const isSubset: {
  *
  * **Example** (Testing whether some values match)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -706,7 +706,7 @@ export const some: {
  *
  * **Example** (Testing whether every value matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -740,7 +740,7 @@ export const every: {
  *
  * **Example** (Mapping values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -780,7 +780,7 @@ export const map: {
  *
  * **Example** (Filtering values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -836,7 +836,7 @@ export const filter: {
  *
  * **Example** (Reducing values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -885,7 +885,7 @@ export const reduce: {
  *
  * **Example** (Taking a HashSet snapshot)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, HashSet, TxHashSet } from "effect"
  *
  * const program = Effect.gen(function*() {

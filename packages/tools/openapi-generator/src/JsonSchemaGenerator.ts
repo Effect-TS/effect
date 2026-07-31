@@ -54,10 +54,10 @@ export function make() {
 }
 
 function makeWithRepresentation() {
-  const store: Record<string, JsonSchema.JsonSchema> = {}
+  const store = Object.create(null) as Record<string, JsonSchema.JsonSchema>
 
   function addSchema(name: string, schema: JsonSchema.JsonSchema): string {
-    if (name in store) {
+    if (Object.hasOwn(store, name)) {
       throw new Error(`Schema ${name} already exists`)
     }
     store[name] = schema
@@ -220,10 +220,9 @@ function makeWithRepresentation() {
         return options?.onEnter === undefined ? out : options.onEnter(out)
       }
     }
+    const rootSchemas = SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
     const codeDocument = SchemaRepresentation.toCodeDocument(
-      SchemaRepresentation.fromSchemaMultiDocument(
-        SchemaRepresentation.fromJsonSchemaMultiDocument(document, importerOptions)
-      )
+      SchemaRepresentation.toRepresentations(Arr.map(rootSchemas, (schema) => schema.ast))
     )
 
     return {

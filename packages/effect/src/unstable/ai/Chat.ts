@@ -48,7 +48,7 @@ import type * as Tool from "./Tool.ts"
  *
  * **Example** (Accessing the Chat service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Chat } from "effect/unstable/ai"
  *
@@ -94,7 +94,7 @@ export interface Service {
    *
    * **Example** (Inspecting chat history)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Ref } from "effect"
    * import { Chat } from "effect/unstable/ai"
    *
@@ -118,7 +118,7 @@ export interface Service {
    *
    * **Example** (Exporting chat history)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect } from "effect"
    * import { Chat } from "effect/unstable/ai"
    *
@@ -145,7 +145,7 @@ export interface Service {
    *
    * **Example** (Exporting chat history as JSON)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect } from "effect"
    * import { Chat } from "effect/unstable/ai"
    *
@@ -175,7 +175,7 @@ export interface Service {
    *
    * **Example** (Generating chat responses)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect } from "effect"
    * import { Chat } from "effect/unstable/ai"
    *
@@ -242,7 +242,7 @@ export interface Service {
    *
    * **Example** (Streaming chat responses)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Stream } from "effect"
    * import { Chat } from "effect/unstable/ai"
    *
@@ -309,7 +309,7 @@ export interface Service {
    *
    * **Example** (Generating structured objects)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Schema } from "effect"
    * import { Chat } from "effect/unstable/ai"
    *
@@ -464,7 +464,7 @@ const makeUnsafe = (history: Ref.Ref<Prompt.Prompt>) => {
  *
  * **Example** (Creating an empty chat)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Chat } from "effect/unstable/ai"
  *
@@ -496,7 +496,7 @@ export const empty: Effect.Effect<Service> = Effect.sync(() => makeUnsafe(Ref.ma
  *
  * **Example** (Creating a chat from a system prompt)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Chat } from "effect/unstable/ai"
  *
@@ -516,7 +516,7 @@ export const empty: Effect.Effect<Service> = Effect.sync(() => makeUnsafe(Ref.ma
  *
  * **Example** (Restoring chat history from a prompt)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Chat } from "effect/unstable/ai"
  *
@@ -562,7 +562,7 @@ export const fromPrompt = (prompt: Prompt.RawInput) =>
  *
  * **Example** (Restoring chat data)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  * import { Chat } from "effect/unstable/ai"
  *
@@ -615,7 +615,7 @@ export const fromExport = (data: unknown): Effect.Effect<
  *
  * **Example** (Restoring chat history from JSON)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Chat } from "effect/unstable/ai"
  *

@@ -37,7 +37,7 @@ const TypeId = "~effect/SchemaIssue/Issue"
  *
  * **Example** (Type-guarding an unknown error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaIssue } from "effect"
  *
  * const issue = new SchemaIssue.MissingKey(undefined)
@@ -53,7 +53,7 @@ const TypeId = "~effect/SchemaIssue/Issue"
  * @since 4.0.0
  */
 export function isIssue(u: unknown): u is Issue {
-  return hasProperty(u, TypeId)
+  return hasProperty(u, TypeId) && u[TypeId] === TypeId
 }
 
 /**
@@ -139,7 +139,7 @@ class Base {
  *
  * **Example** (Matching a Filter issue)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaIssue } from "effect"
  *
  * function describe(issue: SchemaIssue.Issue): string {
@@ -457,7 +457,7 @@ export class Composite extends Base {
  *
  * **Example** (Formatting output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  *
  * try {
@@ -521,7 +521,7 @@ export class InvalidType extends Base {
  *
  * **Example** (Returning InvalidValue from a custom filter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, SchemaIssue } from "effect"
  *
  * const issue = new SchemaIssue.InvalidValue(
@@ -583,7 +583,7 @@ export class InvalidValue extends Base {
  *
  * **Example** (Creating a Forbidden issue)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, SchemaIssue } from "effect"
  *
  * const issue = new SchemaIssue.Forbidden(
@@ -761,7 +761,7 @@ export class OneOf extends Base {
  *
  * **Example** (Extracting the actual value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, SchemaIssue } from "effect"
  *
  * const issue = new SchemaIssue.MissingKey(undefined)
@@ -881,7 +881,7 @@ export type LeafHook = (issue: Leaf) => string
  *
  * **Example** (Formatting Standard Schema issues with defaultLeafHook)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaIssue } from "effect"
  *
  * const formatter = SchemaIssue.makeFormatterStandardSchemaV1({
@@ -978,7 +978,7 @@ export const defaultCheckHook: CheckHook = (issue): string | undefined => {
  *
  * **Example** (Creating a Standard Schema V1 formatter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaIssue } from "effect"
  *
  * const formatter = SchemaIssue.makeFormatterStandardSchemaV1()
@@ -1085,7 +1085,7 @@ function formatCheck<T>(check: SchemaAST.Check<T>): string {
  *
  * **Example** (Formatting an issue as a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { SchemaIssue } from "effect"
  *
  * const formatter = SchemaIssue.makeFormatterDefault()

@@ -242,6 +242,16 @@ For reusable codecs you can pass directly to `Config.schema`:
 
 The concrete built-in source providers `fromEnv`, `fromDotEnvContents`, `fromDotEnv`, `fromUnknown`, and `fromDir` treat literal empty strings as missing values by default when they are loaded as values. Container discovery still reflects the source structure, so a key or file can appear in a `Record` or `Array` node and then load as missing. Pass `{ preserveEmptyStrings: true }` to preserve empty strings as explicit values.
 
+At the raw provider interface, `load(path)` succeeds with an `Option<Node>`:
+`Option.some(node)` means the path exists, while `Option.none()` means it does
+not. A `SourceError` represents a failure to read the source and remains in the
+Effect error channel.
+
+This lookup-level `Option` is distinct from the `value` field of a found
+`Record` or `Array` node. Such a container can exist while
+`node.value === undefined`, which means that it has children but no co-located
+scalar value.
+
 ### `ConfigProvider.fromEnv` — Environment Variables (Default)
 
 This is the default provider. Path segments are joined with `_` for lookup.
@@ -360,14 +370,14 @@ const program = Effect.gen(function*() {
 
 Requires `Path` and `FileSystem` in the Effect context.
 
-Missing files and directories return `undefined`, so fallback providers can handle the path. Empty files also return `undefined` by default after trimming their contents, while directory listings still report the file names present on disk; pass `{ preserveEmptyStrings: true }` to preserve them as `Value("")`. Other file-system failures are reported as `SourceError`.
+Missing files and directories return `Option.none()`, so fallback providers can handle the path. Empty files also return `Option.none()` by default after trimming their contents, while directory listings still report the file names present on disk; pass `{ preserveEmptyStrings: true }` to preserve them as `Value("")`. Other file-system failures are reported as `SourceError`.
 
 ### `ConfigProvider.make` — Custom Sources
 
 Build a provider from any backing store:
 
 ```ts
-import { ConfigProvider, Effect } from "effect"
+import { ConfigProvider, Effect, Option } from "effect"
 
 const data: Record<string, string> = {
   host: "localhost",
@@ -378,18 +388,23 @@ const provider = ConfigProvider.make((path) => {
   const key = path.join(".")
   const value = data[key]
   return Effect.succeed(
-    value !== undefined ? ConfigProvider.makeValue(value) : undefined
+    value !== undefined
+      ? Option.some(ConfigProvider.makeValue(value))
+      : Option.none()
   )
 })
 ```
 
-Return `undefined` for "not found". Only fail with `SourceError` for actual I/O errors.
+Return `Option.none()` for "not found" and `Option.some(node)` for a node that
+exists. Only fail with `SourceError` when the source itself cannot be read.
+Providers created with `make` automatically support the path-transformation
+behavior used by `mapInput`, `constantCase`, and `nested`.
 
 ## ConfigProvider Combinators
 
 ### `ConfigProvider.orElse` — Fallback Sources
 
-Falls back to a second provider when the first returns `undefined` (path not found). Does **not** catch `SourceError`.
+Falls back to a second provider when the first returns `Option.none()` (path not found). Does **not** catch `SourceError`.
 
 ```ts
 import { ConfigProvider } from "effect"
@@ -511,6 +526,14 @@ const upper = ConfigProvider.mapInput(
   (path) => path.map((seg) => typeof seg === "string" ? seg.toUpperCase() : seg)
 )
 ```
+
+Path transformation is a capability of the `ConfigProvider` interface. The
+exported `ConfigProvider.mapInput` combinator delegates to that capability,
+rather than passing an extra transformation argument to `load`. This keeps
+ordinary lookup fixed as `load(path)` and allows composite providers to
+preserve their own behavior without exposing representation state. Custom
+source providers should normally be constructed with `ConfigProvider.make`,
+which implements this capability automatically.
 
 `mapInput` runs after earlier provider transformations, so it sees the full path produced so far:
 

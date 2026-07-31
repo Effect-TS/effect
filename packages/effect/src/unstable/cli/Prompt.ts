@@ -651,7 +651,7 @@ export declare namespace All {
  *
  * **Example** (Collecting prompt results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Prompt } from "effect/unstable/cli"
  *
@@ -1136,7 +1136,7 @@ export const select = <const A>(options: SelectOptions<A>): Prompt<A> => {
  *
  * **Example** (Filtering choices with autocomplete)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/cli"
  *
  * const language = Prompt.autoComplete({

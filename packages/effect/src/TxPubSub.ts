@@ -28,7 +28,7 @@ const TypeId = "~effect/transactions/TxPubSub"
  *
  * **Example** (Subscribing to a transactional pub/sub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -102,7 +102,7 @@ const makeTxPubSub = <A>(
  *
  * **Example** (Creating a bounded pub/sub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -135,7 +135,7 @@ export const bounded = <A = never>(capacity: number): Effect.Effect<TxPubSub<A>>
  *
  * **Example** (Creating a dropping pub/sub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -171,7 +171,7 @@ export const dropping = <A = never>(capacity: number): Effect.Effect<TxPubSub<A>
  *
  * **Example** (Creating a sliding pub/sub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -205,7 +205,7 @@ export const sliding = <A = never>(capacity: number): Effect.Effect<TxPubSub<A>>
  *
  * **Example** (Creating an unbounded pub/sub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -241,7 +241,7 @@ export const unbounded = <A = never>(): Effect.Effect<TxPubSub<A>> =>
  *
  * **Example** (Reading pub/sub capacity)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -260,7 +260,7 @@ export const capacity = <A>(self: TxPubSub<A>): number => self.capacity
  *
  * **Example** (Reading subscriber queue size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -297,7 +297,7 @@ export const size = <A>(self: TxPubSub<A>): Effect.Effect<number> =>
  *
  * **Example** (Checking whether a pub/sub is empty)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -317,7 +317,7 @@ export const isEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effect.
  *
  * **Example** (Checking whether a pub/sub is full)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -345,7 +345,7 @@ export const isFull = <A>(self: TxPubSub<A>): Effect.Effect<boolean> =>
  *
  * **Example** (Checking whether a pub/sub is shut down)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -374,7 +374,7 @@ export const isShutdown = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => TxRe
  *
  * **Example** (Publishing a message to subscribers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -428,7 +428,7 @@ export const publish: {
  *
  * **Example** (Publishing multiple messages to subscribers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -477,7 +477,7 @@ export const publishAll: {
  *
  * **Example** (Subscribing multiple queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -602,7 +602,7 @@ const makeSubscriberQueue = <A>(
  *
  * **Example** (Shutting down a pub/sub)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxPubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -637,15 +637,15 @@ export const shutdown = <A>(self: TxPubSub<A>): Effect.Effect<void> =>
  *
  * **Example** (Waiting for shutdown)
  *
- * ```ts
- * import { Effect, TxPubSub } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Fiber, TxPubSub } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const hub = yield* TxPubSub.unbounded<number>()
  *
  *   const fiber = yield* Effect.forkChild(TxPubSub.awaitShutdown(hub))
  *   yield* TxPubSub.shutdown(hub)
- *   yield* fiber.await
+ *   yield* Fiber.await(fiber)
  * })
  * ```
  *

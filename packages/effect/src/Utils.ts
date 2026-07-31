@@ -31,7 +31,7 @@ import type * as Types from "./Types.ts"
  *
  * **Example** (Yielding a wrapped value in a generator)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Utils } from "effect"
  *
  * const gen = new Utils.SingleShotGen<string, number>("hello")
@@ -113,7 +113,7 @@ export class SingleShotGen<T, A> implements IterableIterator<T, A> {
  *
  * **Example** (Declaring variance for a TypeLambda)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Option, Utils } from "effect"
  *
  * declare const variance: Utils.Variance<
@@ -152,7 +152,7 @@ export interface Variance<in out F extends TypeLambda, in R, out O, out E> {
  *
  * **Example** (Typing a gen function for Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Option, Utils } from "effect"
  *
  * declare const gen: Utils.Gen<Option.OptionTypeLambda>

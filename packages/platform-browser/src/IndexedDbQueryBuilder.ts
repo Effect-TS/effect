@@ -1331,7 +1331,6 @@ const FromProto: Omit<
   | "countCache"
   | "deleteCache"
 > = {
-  ...CommonProto,
   select<Index extends IndexedDbDatabase.IndexFromTable<any>>(
     this: IndexedDbQuery.From<any>,
     index?: Index
@@ -1392,7 +1391,8 @@ const FromProto: Omit<
       database: self.database.current,
       table: self.table
     })
-  }
+  },
+  ...CommonProto
 }
 
 const makeFrom = <
@@ -1951,7 +1951,6 @@ const QueryBuilderProto: Omit<
   | "IDBTransaction"
   | "reactivity"
 > = {
-  ...CommonProto,
   use(this: IndexedDbQueryBuilder<any>, f: (database: globalThis.IDBDatabase) => any) {
     return Effect.try({
       try: () => f(this.database.current),
@@ -1979,6 +1978,7 @@ const QueryBuilderProto: Omit<
     const self = this as IndexedDbQueryBuilder<any>
     return applyClearAll({ database: self.database.current })
   },
+  ...CommonProto,
   withTransaction(this: IndexedDbQueryBuilder<any>, options: {
     readonly tables: NonEmptyReadonlyArray<any>
     readonly mode: globalThis.IDBTransactionMode

@@ -1,0 +1,9 @@
+"@effect/cli/CliApp#CliApp":
+  replacement: "Command.Command"
+  note: "The separate application wrapper was folded into the runnable v4 Command tree."
+"@effect/cli/CliApp#CliApp.ConstructorArgs":
+  replacement: "none"
+  note: "Build the command with Command.make and withDescription, then pass version to Command.run; the old app constructor shape was removed."
+"@effect/cli/CliApp#make":
+  replacement: "Command.make"
+  note: "Build the executable Command directly; there is no separate CliApp wrapper."

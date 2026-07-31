@@ -1,6 +1,5 @@
-import { assert } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { DateTime, Effect, Option, Result, SchemaGetter } from "effect"
-import { describe, it } from "vitest"
 import { assertSome, deepStrictEqual } from "../utils/assert.ts"
 
 function makeAsserts<T, E>(getter: SchemaGetter.Getter<T, E>) {
@@ -16,6 +15,12 @@ function makeAsserts<T, E>(getter: SchemaGetter.Getter<T, E>) {
 }
 
 describe("SchemaGetter", () => {
+  it.effect("stringifyJson fails when JSON.stringify returns undefined", () =>
+    SchemaGetter.stringifyJson().run(Option.some(undefined), {}).pipe(
+      Effect.flip,
+      Effect.map((issue) => assert.strictEqual(issue._tag, "InvalidValue"))
+    ))
+
   it("map", () => {
     const getter = SchemaGetter.succeed(1).map((t) => t + 1)
     const result = Effect.runSync(getter.run(Option.some(1), {}))
@@ -31,6 +36,47 @@ describe("SchemaGetter", () => {
   })
 
   describe("makeTreeRecord", () => {
+    it("replaces conflicting leaf values with containers", () => {
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a", "x"],
+          ["a[b]", "y"]
+        ]),
+        { a: { b: "y" } }
+      )
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a", "x"],
+          ["a[0]", "y"]
+        ]),
+        { a: ["y"] }
+      )
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a", Object.freeze({ value: "x" })],
+          ["a[b]", { value: "y" }]
+        ]),
+        { a: { b: { value: "y" } } }
+      )
+    })
+
+    it("replaces conflicting object and array containers", () => {
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a[b]", "x"],
+          ["a[0]", "y"]
+        ]),
+        { a: ["y"] }
+      )
+      deepStrictEqual(
+        SchemaGetter.makeTreeRecord([
+          ["a[0]", "x"],
+          ["a[b]", "y"]
+        ]),
+        { a: { b: "y" } }
+      )
+    })
+
     it("reinitializes own undefined values before descending", () => {
       deepStrictEqual(
         SchemaGetter.makeTreeRecord([

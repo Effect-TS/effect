@@ -16,7 +16,7 @@ import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawne
  *
  * **Example** (Creating a post-process error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as PostProcess from "@effect/ai-codegen/PostProcess"
  *
  * const error = new PostProcess.PostProcessError({

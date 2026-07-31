@@ -192,7 +192,7 @@ const MemoMapTypeId = "~effect/Layer/MemoMap"
  *
  * **Example** (Sharing layer construction with a memo map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -251,7 +251,7 @@ const memoMapReuse = <RIn, E, ROut>(
  *
  * **Example** (Checking whether a value is a layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -263,8 +263,8 @@ const memoMapReuse = <RIn, E, ROut>(
  * })
  * const notALayer = { someProperty: "value" }
  *
- * console.log(Layer.isLayer(dbLayer)) // true
- * console.log(Layer.isLayer(notALayer)) // false
+ * console.log(Layer.isLayer(dbLayer)) // > true
+ * console.log(Layer.isLayer(notALayer)) // > false
  * ```
  *
  * @category getters
@@ -305,7 +305,7 @@ const fromBuildUnsafe = <ROut, E, RIn>(
  *
  * **Example** (Constructing a layer from a build function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -349,7 +349,7 @@ export const fromBuild = <ROut, E, RIn>(
  *
  * **Example** (Memoizing layer construction)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -451,7 +451,7 @@ class MemoMapImpl implements MemoMap {
  *
  * **Example** (Creating a memo map unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -501,7 +501,7 @@ export const forkMemoMapUnsafe = (parent: MemoMap): MemoMap => new MemoMapImpl(p
  *
  * **Example** (Creating a memo map in an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -577,7 +577,7 @@ export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("
  *
  * **Example** (Building layers with an explicit memo map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -645,7 +645,7 @@ export const buildWithMemoMap: {
  *
  * **Example** (Building a layer into a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -697,7 +697,7 @@ export const build = <RIn, E, ROut>(
  *
  * **Example** (Building a layer with an explicit scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Scope } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -755,7 +755,7 @@ export const buildWithScope: {
  *
  * **Example** (Creating a layer from a service implementation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -798,7 +798,7 @@ export const succeed: {
  *
  * **Example** (Providing multiple services from a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -870,7 +870,7 @@ export const empty: Layer<never> = succeedContext(Context.empty())
  *
  * **Example** (Lazily providing a service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -912,7 +912,7 @@ export const sync: {
  *
  * **Example** (Lazily providing a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -951,7 +951,7 @@ export const syncContext = <A>(evaluate: LazyArg<Context.Context<A>>): Layer<A> 
  *
  * **Example** (Creating a layer from an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -1008,7 +1008,7 @@ const effectImpl = <I, S, E, R>(
  *
  * **Example** (Creating a layer from an effectful context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<
@@ -1043,7 +1043,7 @@ export const effectContext = <A, E, R>(
  *
  * **Example** (Running an effect during layer construction)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Layer } from "effect"
  *
  * const initLayer = Layer.effectDiscard(
@@ -1071,7 +1071,7 @@ export const effectDiscard = <X, E, R>(effect: Effect<X, E, R>): Layer<never, E,
  *
  * **Example** (Choosing a layer lazily)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Layer } from "effect"
  *
  * class Config extends Context.Service<Config, string>()("Config") {}
@@ -1106,7 +1106,7 @@ export const suspend = <A, E, R>(evaluate: LazyArg<Layer<A, E, R>>): Layer<A, E,
  *
  * **Example** (Unwrapping an effectful layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -1165,7 +1165,7 @@ const mergeAllEffect = <Layers extends [Layer<never, any, any>, ...Array<Layer<n
  *
  * **Example** (Merging independent layers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -1216,7 +1216,7 @@ export const mergeAll = <Layers extends [Layer<never, any, any>, ...Array<Layer<
  *
  * **Example** (Merging two layers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -1310,7 +1310,7 @@ const provideWith = (
  *
  * **Example** (Providing layer dependencies)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -1419,7 +1419,7 @@ export const provide: {
  *
  * **Example** (Providing dependencies while retaining services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -1529,7 +1529,7 @@ export const provideMerge: {
  *
  * **Example** (Creating services from layer output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Config extends Context.Service<Config, {
@@ -1744,7 +1744,7 @@ export const tapCause: {
  *
  * **Example** (Converting layer failures to defects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Data, Effect, Layer } from "effect"
  *
  * class DatabaseError extends Data.TaggedError("DatabaseError")<{
@@ -1828,7 +1828,7 @@ export {
  *
  * **Example** (Recovering from tagged layer errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Data, Effect, Layer } from "effect"
  *
  * class ConfigError extends Data.TaggedError("ConfigError") {}
@@ -1919,7 +1919,7 @@ export const catchTag: {
  *
  * **Example** (Recovering from layer failures by cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Data, Effect, Layer } from "effect"
  *
  * class DatabaseError extends Data.TaggedError("DatabaseError")<{
@@ -2030,7 +2030,7 @@ export const updateService: {
  *
  * **Example** (Creating non-shared layer instances)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Ref } from "effect"
  *
  * class Counter extends Context.Service<Counter, {
@@ -2115,7 +2115,7 @@ export const fresh = <A, E, R>(self: Layer<A, E, R>): Layer<A, E, R> =>
  *
  * **Example** (Launching an application layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Layer } from "effect"
  *
  * class HttpServer extends Context.Service<HttpServer, {
@@ -2219,7 +2219,7 @@ type AnyEffectOrStream =
  *
  * **Example** (Mocking services for tests)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class UserService extends Context.Service<UserService, {
@@ -2468,7 +2468,7 @@ export interface SpanOptions extends Tracer.SpanOptions {
  *
  * **Example** (Tracing layer construction with a span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Layer } from "effect"
  * import type { Tracer } from "effect"
  *
@@ -2532,7 +2532,7 @@ export const span = (
  *
  * **Example** (Referencing an existing parent span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Layer, Tracer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -2576,7 +2576,7 @@ export const parentSpan = (span: Tracer.AnySpan): Layer<Tracer.ParentSpan> =>
  *
  * **Example** (Wrapping a layer with a span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -2684,7 +2684,7 @@ export const withSpan: {
  *
  * **Example** (Attaching layers to an existing parent span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, Tracer } from "effect"
  *
  * class Database extends Context.Service<Database, {

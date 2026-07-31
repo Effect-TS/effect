@@ -186,8 +186,8 @@ export const script = <Params extends ReadonlyArray<any>>(
   params: Params
   result: void
 }> =>
-  Object.assign(Object.create(ScriptProto), {
+  Object.setPrototypeOf({
     ...options,
     params: f,
     numberOfKeys: typeof options.numberOfKeys === "number" ? constant(options.numberOfKeys) : options.numberOfKeys
-  })
+  }, ScriptProto)

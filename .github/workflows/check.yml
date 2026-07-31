@@ -65,7 +65,7 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
         with:
-          deno-version: v2.8.3
+          deno-version: v2.9.4
       - name: Set strip internals config
         run: |
           sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
@@ -77,8 +77,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
-      pull-requests: write
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
@@ -111,6 +109,8 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    env:
+      EFFECT_INTEGRATION_TESTS: "1"
     permissions:
       contents: read
     timeout-minutes: 10
@@ -143,10 +143,23 @@ jobs:
         if: matrix.runtime == 'Deno'
         uses: ./.github/actions/setup
         with:
-          deno-version: v2.8.3
+          deno-version: v2.9.4
       - name: Test
         if: matrix.runtime == 'Deno'
         run: deno task test --shard ${{ matrix.shard }}
+
+  doctest:
+    name: Documentation Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - name: Test Documentation
+        run: pnpm doctest
 
   docgen:
     name: Documentation Generation

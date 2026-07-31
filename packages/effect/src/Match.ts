@@ -30,7 +30,7 @@ const TypeId = internal.TypeId
  *
  * **Example** (Matching string and number values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Simulated dynamic input that can be a string or a number
@@ -70,7 +70,7 @@ export type Matcher<Input, Filters, RemainingApplied, Result, Provided, Return =
  *
  * **Example** (Creating a type matcher)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Create a TypeMatcher for string | number
@@ -80,8 +80,8 @@ export type Matcher<Input, Filters, RemainingApplied, Result, Provided, Return =
  *   Match.exhaustive
  * )
  *
- * console.log(matcher("hello")) // "String: hello"
- * console.log(matcher(42)) // "Number: 42"
+ * console.log(matcher("hello")) // > String: hello
+ * console.log(matcher(42)) // > Number: 42
  * ```
  *
  * @category models
@@ -111,7 +111,7 @@ export interface TypeMatcher<in Input, out Filters, out Remaining, out Result, o
  *
  * **Example** (Creating a value matcher)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const input = { type: "user", name: "Alice", age: 30 }
@@ -123,7 +123,7 @@ export interface TypeMatcher<in Input, out Filters, out Remaining, out Result, o
  *   Match.orElse(() => "Unknown type")
  * )
  *
- * console.log(result) // "User: Alice"
+ * console.log(result) // > User: Alice
  * ```
  *
  * @category models
@@ -177,7 +177,7 @@ export type Case = When | Not
  *
  * **Example** (Creating positive match cases)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // When creates cases that match specific patterns
@@ -187,8 +187,8 @@ export type Case = When | Not
  *   Match.exhaustive
  * )
  *
- * console.log(stringMatcher("hello")) // "Got string: hello"
- * console.log(stringMatcher(42)) // "Got number: 42"
+ * console.log(stringMatcher("hello")) // > Got string: hello
+ * console.log(stringMatcher(42)) // > Got number: 42
  * ```
  *
  * @category models
@@ -211,7 +211,7 @@ export interface When {
  *
  * **Example** (Creating negative match cases)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Not creates cases that exclude specific patterns
@@ -221,8 +221,8 @@ export interface When {
  *   Match.orElse(() => "This string is forbidden")
  * )
  *
- * console.log(matcher("hello")) // "Allowed: hello"
- * console.log(matcher("forbidden")) // "This string is forbidden"
+ * console.log(matcher("hello")) // > Allowed: hello
+ * console.log(matcher("forbidden")) // > This string is forbidden
  * ```
  *
  * @category models
@@ -250,7 +250,7 @@ export interface Not {
  *
  * **Example** (Matching Numbers and Strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Create a matcher for values that are either strings or numbers
@@ -299,7 +299,7 @@ export const type: <I>() => Matcher<I, Types.Without<never>, I, never, never> = 
  *
  * **Example** (Matching an Object by Property)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const input = { name: "John", age: 30 }
@@ -339,7 +339,7 @@ export const value: <const I>(
  *
  * **Example** (Matching value tags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * type Status = { readonly _tag: "Success"; readonly data: string }
@@ -351,7 +351,7 @@ export const value: <const I>(
  *   Success: (result) => `Success: ${result.data}`
  * })
  *
- * console.log(message) // "Success: Hello"
+ * console.log(message) // > Success: Hello
  * ```
  *
  * @category constructors
@@ -383,7 +383,7 @@ export const valueTags: {
  *
  * **Example** (Matching type tags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * type Result =
@@ -453,7 +453,7 @@ export const typeTags: {
  *
  * **Example** (Validating return type consistency)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const match = Match.type<{ a: number } | { b: string }>().pipe(
@@ -493,7 +493,7 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _>(
  *
  * **Example** (Matching with values and predicates)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Create a matcher for objects with an "age" property
@@ -561,7 +561,7 @@ export const when: <
  *
  * **Example** (Matching one of several patterns)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * type ErrorType =
@@ -623,7 +623,7 @@ export const whenOr: <
  *
  * **Example** (Matching all provided patterns)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * type User = { readonly age: number; readonly role: "admin" | "user" }
@@ -681,7 +681,7 @@ export const whenAnd: <
  *
  * **Example** (Matching on a discriminator field)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match, pipe } from "effect"
  *
  * const match = pipe(
@@ -734,7 +734,7 @@ export const discriminator: <D extends string>(
  *
  * **Example** (Matching discriminator prefixes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match, pipe } from "effect"
  *
  * const match = pipe(
@@ -744,9 +744,9 @@ export const discriminator: <D extends string>(
  *   Match.orElse((_) => 3 as const)
  * )
  *
- * console.log(match({ type: "A" })) // 1
- * console.log(match({ type: "B" })) // 2
- * console.log(match({ type: "A.A" })) // 1
+ * console.log(match({ type: "A" })) // > 1
+ * console.log(match({ type: "B" })) // > 2
+ * console.log(match({ type: "A.A" })) // > 1
  * ```
  *
  * @see {@link discriminator} for matching exact discriminator values
@@ -790,7 +790,7 @@ export const discriminatorStartsWith: <D extends string>(
  *
  * **Example** (Mapping discriminator handlers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match, pipe } from "effect"
  *
  * const match = pipe(
@@ -854,7 +854,7 @@ export const discriminators: <D extends string>(
  *
  * **Example** (Handling all discriminator cases)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match, pipe } from "effect"
  *
  * const match = pipe(
@@ -907,7 +907,7 @@ export const discriminatorsExhaustive: <D extends string>(
  *
  * **Example** (Matching a discriminated union by tag)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * type Event =
@@ -966,7 +966,7 @@ export const tag: <
  *
  * **Example** (Matching tag prefixes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match, pipe } from "effect"
  *
  * const match = pipe(
@@ -976,9 +976,9 @@ export const tag: <
  *   Match.orElse((_) => 3 as const)
  * )
  *
- * console.log(match({ _tag: "A" })) // 1
- * console.log(match({ _tag: "B" })) // 2
- * console.log(match({ _tag: "A.A" })) // 1
+ * console.log(match({ _tag: "A" })) // > 1
+ * console.log(match({ _tag: "B" })) // > 2
+ * console.log(match({ _tag: "A.A" })) // > 1
  * ```
  *
  * @category Defining patterns
@@ -1016,7 +1016,7 @@ export const tagStartsWith: <
  *
  * **Example** (Mapping tag handlers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match, pipe } from "effect"
  *
  * const match = pipe(
@@ -1071,7 +1071,7 @@ export const tags: <
  *
  * **Example** (Handling all tag cases)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match, pipe } from "effect"
  *
  * const match = pipe(
@@ -1120,7 +1120,7 @@ export const tagsExhaustive: <
  *
  * **Example** (Ignoring a specific value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Create a matcher for string or number values
@@ -1176,7 +1176,7 @@ export const not: <
  *
  * **Example** (Matching non-empty strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const processInput = Match.type<string>()
@@ -1216,7 +1216,7 @@ export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptySt
  *
  * **Example** (Matching literal values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const handleStatus = Match.type<string | number>()
@@ -1260,7 +1260,7 @@ export const is: <
  *
  * **Example** (Matching string values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const processValue = Match.type<string | number | boolean>().pipe(
@@ -1270,9 +1270,9 @@ export const is: <
  *   Match.exhaustive
  * )
  *
- * console.log(processValue("hello")) // "String: HELLO"
- * console.log(processValue(42)) // "Number: 84"
- * console.log(processValue(true)) // "Boolean: yes"
+ * console.log(processValue("hello")) // > String: HELLO
+ * console.log(processValue(42)) // > Number: 84
+ * console.log(processValue(true)) // > Boolean: yes
  * ```
  *
  * @category predicates
@@ -1295,7 +1295,7 @@ export const string: Predicate.Refinement<unknown, string> = Predicate.isString
  *
  * **Example** (Matching number values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const categorizeNumber = Match.type<unknown>().pipe(
@@ -1308,10 +1308,10 @@ export const string: Predicate.Refinement<unknown, string> = Predicate.isString
  *   Match.orElse(() => "Not a number type")
  * )
  *
- * console.log(categorizeNumber(42)) // "Integer: 42"
- * console.log(categorizeNumber(3.14)) // "Float: 3.14"
- * console.log(categorizeNumber(NaN)) // "Not a number"
- * console.log(categorizeNumber("hello")) // "Not a number type"
+ * console.log(categorizeNumber(42)) // > Integer: 42
+ * console.log(categorizeNumber(3.14)) // > Float: 3.14
+ * console.log(categorizeNumber(NaN)) // > Not a number
+ * console.log(categorizeNumber("hello")) // > Not a number type
  * ```
  *
  * @see {@link bigint} for matching primitive bigint values
@@ -1341,7 +1341,7 @@ export const number: Predicate.Refinement<unknown, number> = Predicate.isNumber
  *
  * **Example** (Matching any remaining value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const describeValue = Match.type<unknown>()
@@ -1388,7 +1388,7 @@ export const any: SafeRefinement<unknown, any> = internal.any
  *
  * **Example** (Matching defined values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const processValue = Match.type<string | number | null | undefined>()
@@ -1437,7 +1437,7 @@ export const defined: <A>(u: A) => u is A & {} = internal.defined
  *
  * **Example** (Matching boolean values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const describeTruthiness = Match.type<unknown>().pipe(
@@ -1451,10 +1451,10 @@ export const defined: <A>(u: A) => u is A & {} = internal.defined
  *   Match.orElse(() => "Some other truthy value")
  * )
  *
- * console.log(describeTruthiness(true)) // "Definitely true"
- * console.log(describeTruthiness(false)) // "Definitely false"
- * console.log(describeTruthiness(0)) // "Falsy number"
- * console.log(describeTruthiness(1)) // "Some other truthy value"
+ * console.log(describeTruthiness(true)) // > Definitely true
+ * console.log(describeTruthiness(false)) // > Definitely false
+ * console.log(describeTruthiness(0)) // > Falsy number
+ * console.log(describeTruthiness(1)) // > Some other truthy value
  * ```
  *
  * @see {@link is} for matching specific literal boolean values
@@ -1524,7 +1524,7 @@ export {
  *
  * **Example** (Matching bigint values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const processLargeNumber = Match.type<unknown>().pipe(
@@ -1538,10 +1538,10 @@ export {
  *   Match.orElse(() => "Not a numeric type")
  * )
  *
- * console.log(processLargeNumber(123n)) // "BigInt: 123"
- * console.log(processLargeNumber(9007199254740992n)) // "Large integer: 9007199254740992"
- * console.log(processLargeNumber(123)) // "Regular number: 123"
- * console.log(processLargeNumber("123")) // "Not a numeric type"
+ * console.log(processLargeNumber(123n)) // > BigInt: 123
+ * console.log(processLargeNumber(9007199254740992n)) // > Large integer: 9007199254740992
+ * console.log(processLargeNumber(123)) // > Regular number: 123
+ * console.log(processLargeNumber("123")) // > Not a numeric type
  * ```
  *
  * @see {@link number} for matching primitive number values
@@ -1562,7 +1562,7 @@ export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
  *
  * **Example** (Matching symbol values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const mySymbol = Symbol("my-symbol")
@@ -1579,9 +1579,9 @@ export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
  *   Match.orElse(() => "Not a symbol")
  * )
  *
- * console.log(handleSymbol(mySymbol)) // "Symbol with description: my-symbol"
- * console.log(handleSymbol(Symbol())) // "Symbol without description"
- * console.log(handleSymbol("string")) // "Not a symbol"
+ * console.log(handleSymbol(mySymbol)) // > Symbol with description: my-symbol
+ * console.log(handleSymbol(Symbol())) // > Symbol without description
+ * console.log(handleSymbol("string")) // > Not a symbol
  * ```
  *
  * @category predicates
@@ -1604,7 +1604,7 @@ export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
  *
  * **Example** (Matching Date instances)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const processDateValue = Match.type<unknown>().pipe(
@@ -1618,10 +1618,10 @@ export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
  *   Match.orElse(() => "Not a date-related value")
  * )
  *
- * console.log(processDateValue(new Date("2024-01-01"))) // "Date: 2024-01-01"
- * console.log(processDateValue(new Date("invalid"))) // "Invalid date"
- * console.log(processDateValue("2024-01-01")) // "Date string: 2024-01-01"
- * console.log(processDateValue(1704067200000)) // "Not a date-related value"
+ * console.log(processDateValue(new Date("2024-01-01"))) // > Date: 2024-01-01
+ * console.log(processDateValue(new Date("invalid"))) // > Invalid date
+ * console.log(processDateValue("2024-01-01")) // > Date string: 2024-01-01
+ * console.log(processDateValue(1704067200000)) // > Not a date-related value
  * ```
  *
  * @see {@link instanceOf} for matching instances of any constructor
@@ -1647,7 +1647,7 @@ export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
  *
  * **Example** (Matching record objects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const analyzeValue = Match.type<unknown>().pipe(
@@ -1691,7 +1691,7 @@ export const record: Predicate.Refinement<unknown, { [x: PropertyKey]: unknown }
  *
  * **Example** (Matching class instances)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * class CustomError extends Error {
@@ -1721,10 +1721,10 @@ export const record: Predicate.Refinement<unknown, { [x: PropertyKey]: unknown }
  *     Match.orElse((value) => `Other: ${typeof value}`)
  *   )
  *
- * console.log(handleValue(new CustomError("Failed", 404))) // "Custom error: Failed (code: 404)"
- * console.log(handleValue(new Error("Generic error"))) // "Standard error: Generic error"
- * console.log(handleValue([1, 2, 3])) // "Array with 3 items"
- * console.log(handleValue(new Map([["count", 1]]))) // "Map with 1 entries"
+ * console.log(handleValue(new CustomError("Failed", 404))) // > Custom error: Failed (code: 404)
+ * console.log(handleValue(new Error("Generic error"))) // > Standard error: Generic error
+ * console.log(handleValue([1, 2, 3])) // > Array with 3 items
+ * console.log(handleValue(new Map([["count", 1]]))) // > Map with 1 entries
  * ```
  *
  * @see {@link instanceOfUnsafe} for constructor matching without the same type-safety guarantee
@@ -1752,7 +1752,7 @@ export const instanceOf: <A extends abstract new(...args: any) => any>(
  *
  * **Example** (Matching class instances unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * class CustomError extends Error {
@@ -1797,7 +1797,7 @@ export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
  *
  * **Example** (Providing a default value when no patterns match)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Create a matcher for string or number values
@@ -1849,7 +1849,7 @@ export const orElse: <RA, Ret, F extends (_: RA) => Ret>(
  *
  * **Example** (Throwing on unmatched input)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * const strictMatcher = Match.type<"a" | "b">().pipe(
@@ -1859,8 +1859,8 @@ export const orElse: <RA, Ret, F extends (_: RA) => Ret>(
  *   Match.orElseAbsurd
  * )
  *
- * console.log(strictMatcher("a")) // "Found A"
- * console.log(strictMatcher("b")) // "Found B"
+ * console.log(strictMatcher("a")) // > Found A
+ * console.log(strictMatcher("b")) // > Found B
  *
  * // This would throw an error at runtime:
  * // strictMatcher("c" as any) // throws
@@ -1893,7 +1893,7 @@ export const orElseAbsurd: <I, R, RA, A, Pr, Ret>(
  *
  * **Example** (Extracting a user role with `Match.result`)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * type User = { readonly role: "admin" | "editor" | "viewer" }
@@ -1939,7 +1939,7 @@ export const result: <I, F, R, A, Pr, Ret>(
  *
  * **Example** (Extracting a user role with `Match.option`)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * type User = { readonly role: "admin" | "editor" | "viewer" }
@@ -1983,7 +1983,7 @@ export const option: <I, F, R, A, Pr, Ret>(
  *
  * **Example** (Ensuring all cases are covered)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Create a matcher for string or number values
@@ -2017,7 +2017,7 @@ const SafeRefinementId = "~effect/match/Match/SafeRefinement"
  *
  * **Example** (Using safe refinements)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Match } from "effect"
  *
  * // Built-in safe refinements
@@ -2068,7 +2068,7 @@ export declare namespace Types {
    *
    * **Example** (Computing matched types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Match } from "effect"
    *
    * // WhenMatch computes the narrowed type after pattern matching
@@ -2113,7 +2113,7 @@ export declare namespace Types {
    *
    * **Example** (Computing unmatched types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Match } from "effect"
    *
    * // NotMatch computes what remains after exclusion
@@ -2146,7 +2146,7 @@ export declare namespace Types {
    *
    * **Example** (Resolving match patterns)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Match } from "effect"
    *
    * // PForMatch resolves patterns to their matched types
@@ -2174,7 +2174,7 @@ export declare namespace Types {
    *
    * **Example** (Computing excluded patterns)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Match } from "effect"
    *
    * // PForExclude computes what to exclude from type operations
@@ -2239,7 +2239,7 @@ export declare namespace Types {
    *
    * **Example** (Describing complex object patterns)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Match } from "effect"
    *
    * // PatternBase enables complex object patterns
@@ -2295,7 +2295,7 @@ export declare namespace Types {
    *
    * **Example** (Tracking excluded types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Match } from "effect"
    *
    * // Without is used internally when you write:
@@ -2325,7 +2325,7 @@ export declare namespace Types {
    *
    * **Example** (Tracking included types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Match } from "effect"
    *
    * // Only is used internally when you write:
@@ -2355,7 +2355,7 @@ export declare namespace Types {
    *
    * **Example** (Accumulating excluded types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Match } from "effect"
    *
    * // AddWithout is used when combining multiple exclusions:
@@ -2385,7 +2385,7 @@ export declare namespace Types {
    *
    * **Example** (Refining included types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Match } from "effect"
    *
    * // AddOnly is used when refining positive matches:
@@ -2416,7 +2416,7 @@ export declare namespace Types {
    *
    * **Example** (Applying accumulated filters)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Match } from "effect"
    *
    * // ApplyFilters computes the final narrowed type:
@@ -2451,7 +2451,7 @@ export declare namespace Types {
    *
    * **Example** (Extracting discriminator tags)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Match } from "effect"
    *
    * type Events =
@@ -2486,7 +2486,7 @@ export declare namespace Types {
    *
    * **Example** (Converting arrays to intersections)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Match } from "effect"
    *
    * type Combined = Match.Types.ArrayToIntersection<[
@@ -2520,7 +2520,7 @@ export declare namespace Types {
    *
    * **Example** (Extracting matched types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Match } from "effect"
    *
    * type StringExtract = Match.Types.ExtractMatch<

@@ -36,14 +36,14 @@ import * as Reducer from "./Reducer.ts"
  *
  * **Example** (Constructing bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
  * const bigInt = BigInt.BigInt(123)
- * console.log(bigInt) // 123n
+ * console.log(bigInt) // > 123n
  *
  * const fromString = BigInt.BigInt("456")
- * console.log(fromString) // 456n
+ * console.log(fromString) // > 456n
  * ```
  *
  * @category constructors
@@ -64,7 +64,7 @@ const bigint2 = BigInt(2)
  *
  * **Example** (Checking for bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -87,7 +87,7 @@ export const isBigInt: (u: unknown) => u is bigint = predicate.isBigInt
  *
  * **Example** (Adding bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -113,7 +113,7 @@ export const sum: {
  *
  * **Example** (Multiplying bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -139,7 +139,7 @@ export const multiply: {
  *
  * **Example** (Subtracting bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -169,7 +169,7 @@ export const subtract: {
  *
  * **Example** (Dividing bigints safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt, Option } from "effect"
  * import * as assert from "node:assert"
  *
@@ -210,7 +210,7 @@ export const divide: {
  *
  * **Example** (Dividing bigints unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -237,7 +237,7 @@ export const divideUnsafe: {
  *
  * **Example** (Incrementing a bigint)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -258,7 +258,7 @@ export const increment = (n: bigint): bigint => n + bigint1
  *
  * **Example** (Decrementing a bigint)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -280,7 +280,7 @@ export const decrement = (n: bigint): bigint => n - bigint1
  *
  * **Example** (Comparing bigints with Order)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
  * const a = 123n
@@ -307,11 +307,11 @@ export const Order: order.Order<bigint> = order.BigInt
  *
  * **Example** (Comparing bigints for equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
- * console.log(BigInt.Equivalence(1n, 1n)) // true
- * console.log(BigInt.Equivalence(1n, 2n)) // false
+ * console.log(BigInt.Equivalence(1n, 1n)) // > true
+ * console.log(BigInt.Equivalence(1n, 2n)) // > false
  * ```
  *
  * @category instances
@@ -328,7 +328,7 @@ export const Equivalence: Equ.Equivalence<bigint> = Equ.BigInt
  *
  * **Example** (Checking less-than comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -354,7 +354,7 @@ export const isLessThan: {
  *
  * **Example** (Checking less-than-or-equal comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -380,7 +380,7 @@ export const isLessThanOrEqualTo: {
  *
  * **Example** (Checking greater-than comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -406,7 +406,7 @@ export const isGreaterThan: {
  *
  * **Example** (Checking greater-than-or-equal comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -432,7 +432,7 @@ export const isGreaterThanOrEqualTo: {
  *
  * **Example** (Checking whether a bigint is within bounds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -474,7 +474,7 @@ export const between: {
  *
  * **Example** (Clamping a bigint to bounds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -510,7 +510,7 @@ export const clamp: {
  *
  * **Example** (Finding the minimum bigint)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -536,7 +536,7 @@ export const min: {
  *
  * **Example** (Finding the maximum bigint)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -562,7 +562,7 @@ export const max: {
  *
  * **Example** (Determining bigint signs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -585,7 +585,7 @@ export const sign = (n: bigint): Ordering => order.BigInt(n, bigint0)
  *
  * **Example** (Calculating absolute values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -608,7 +608,7 @@ export const abs = (n: bigint): bigint => (n < bigint0 ? -n : n)
  *
  * **Example** (Calculating greatest common divisors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -643,7 +643,7 @@ export const gcd: {
  *
  * **Example** (Calculating least common multiples)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -682,7 +682,7 @@ export const lcm: {
  *
  * **Example** (Calculating square roots unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -726,7 +726,7 @@ export const sqrtUnsafe = (n: bigint): bigint => {
  *
  * **Example** (Calculating square roots safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
  * BigInt.sqrt(4n) // Option.some(2n)
@@ -753,7 +753,7 @@ export const sqrt = (n: bigint): Option.Option<bigint> =>
  *
  * **Example** (Summing iterable bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -783,7 +783,7 @@ export const sumAll = (collection: Iterable<bigint>): bigint => {
  *
  * **Example** (Multiplying iterable bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  * import * as assert from "node:assert"
  *
@@ -822,7 +822,7 @@ export const multiplyAll = (collection: Iterable<bigint>): bigint => {
  *
  * **Example** (Converting bigints to numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt as BI } from "effect"
  *
  * BI.toNumber(42n) // Option.some(42)
@@ -856,7 +856,7 @@ export const toNumber = (b: bigint): Option.Option<number> => {
  *
  * **Example** (Parsing strings as bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
  * BigInt.fromString("42") // Option.some(42n)
@@ -894,7 +894,7 @@ export const fromString = (s: string): Option.Option<bigint> => {
  *
  * **Example** (Converting numbers to bigints)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
  * BigInt.fromNumber(42) // Option.some(42n)
@@ -935,7 +935,7 @@ export function fromNumber(n: number): Option.Option<bigint> {
  *
  * **Example** (Calculating remainders)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { BigInt } from "effect"
  *
  * BigInt.remainder(10n, 3n) // 1n

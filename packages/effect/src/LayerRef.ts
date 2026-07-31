@@ -92,7 +92,7 @@ export interface LayerRef<in out I, in out E = never> {
  *
  * **Example** (Sharing one layer-built service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerRef } from "effect"
  *
  * class Database extends Context.Service<Database, {
@@ -270,7 +270,7 @@ export interface TagClass<
  *
  * **Example** (Defining a refreshable service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerRef } from "effect"
  *
  * class Database extends Context.Service<Database, {

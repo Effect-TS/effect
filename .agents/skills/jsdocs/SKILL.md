@@ -39,7 +39,7 @@ Use a normal multiline JSDoc comment in TypeScript source:
  *
  * Optional prose explaining the example.
  *
- * ```ts
+ * ```ts import.meta.vitest
  * const result = example()
  * ```
  *
@@ -126,6 +126,60 @@ Use a normal multiline JSDoc comment in TypeScript source:
 - For low-level public values, prefer accurate categories such as `symbols`,
   `type IDs`, or `prototypes` over compensating with verbose descriptions.
 
+## Example quality
+
+Examples are optional. They should demonstrate:
+
+- behavior or constraints that are not clear from the signature;
+- meaningful composition with other public APIs;
+- a realistic use case supported by repository tests or call sites; or
+- useful type inference, narrowing, or overload behavior.
+
+A good example:
+
+- focuses on the documented API and includes only the context needed to
+  understand it;
+- is a complete, self-contained TypeScript module without placeholders or
+  omitted setup;
+- imports public APIs rather than internal modules or unrelated test helpers;
+- uses stable, deterministic, bounded behavior and does not require network
+  access, external services, timing assumptions, randomness, or machine-specific
+  state;
+- demonstrates the meaningful result, with a concise expected-output comment
+  when useful; and
+- uses explanatory prose only when the code cannot communicate an important
+  choice or caveat on its own.
+
+### Executable examples
+
+- Mark runnable TypeScript fences with `import.meta.vitest`. Running `pnpm doctest` from the repository root executes every marked example.
+- Write each marked example as a complete isolated module. Import public APIs, define every runtime value, await asynchronous work, and keep execution deterministic and bounded.
+- Use `suite` metadata when the example registers Vitest tests or suites: `````ts import.meta.vitest suite``. Call the registration API directly so the nested tests and assertions are collected and executed.
+- Keep documentation-only snippets as plain `````ts`` fences.
+- Treat `pnpm doctest` and package-local `pnpm docgen` as complementary checks: doctest executes marked examples, while docgen typechecks documentation examples.
+
+When reviewing existing examples:
+
+1. Derive the example's use case and behavior from repository evidence. Inspect
+   the declaration, implementation, tests, call sites, and related APIs. Do not
+   invent a scenario merely to retain an example.
+2. Keep a correct, clear, high-value example without gratuitous rewriting.
+3. Fix or replace an example when repository evidence supports a concise,
+   valuable version.
+4. Remove an example when it is trivial, misleading, contrived, or requires more
+   scaffolding than the insight justifies. Also remove it when a good replacement
+   would require guessing at a use case.
+
+Prefer readable output over assertions; public documentation should not look
+like a test suite. Type-level examples may demonstrate inference or assignability
+without runtime output. For lazy APIs such as `Effect`, execute enough of the
+program to demonstrate the behavior unless the example's value is specifically
+type-level or construction-oriented.
+
+If an example review exposes a likely implementation or type-definition bug,
+do not change runtime or API code as part of the documentation pass. Report the
+finding and do not present the suspected behavior as recommended usage.
+
 ## Tag rules
 
 When multiple tags are present, keep them in this order:
@@ -198,6 +252,7 @@ When refining an existing public API module, always do a dedicated `**Gotchas**`
 
 Run the narrowest validation that matches the change:
 
+- For runnable JSDoc example changes, run `pnpm doctest` from the repository root.
 - For JSDoc or example changes in a package with generated docs, run `pnpm docgen` from that package directory.
 - Run `pnpm lint` because the linter includes the custom rule that checks public API JSDoc.
 - Do not run broad validation for prose-only skill edits.

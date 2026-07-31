@@ -51,7 +51,7 @@ const TxHashMapProto = {
  *
  * **Example** (Using transactional hash maps)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -93,7 +93,7 @@ export interface TxHashMap<in out K, in out V> extends Inspectable, Pipeable {
  *
  * **Example** (Reusing extracted TxHashMap types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -128,7 +128,7 @@ export declare namespace TxHashMap {
    *
    * **Example** (Extracting key types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, TxHashMap } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -157,7 +157,7 @@ export declare namespace TxHashMap {
    *
    * **Example** (Extracting value types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, TxHashMap } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -190,7 +190,7 @@ export declare namespace TxHashMap {
    *
    * **Example** (Extracting entry types)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, TxHashMap } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -227,7 +227,7 @@ export declare namespace TxHashMap {
  *
  * **Example** (Creating an empty map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -262,7 +262,7 @@ export const empty = <K, V>(): Effect.Effect<TxHashMap<K, V>> =>
  *
  * **Example** (Creating a map from entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -303,7 +303,7 @@ export const make = <K, V>(
  *
  * **Example** (Creating a map from an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -347,7 +347,7 @@ export const fromIterable = <K, V>(
  *
  * **Example** (Looking up values safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -396,7 +396,7 @@ export const get: {
  *
  * **Example** (Setting values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -437,7 +437,7 @@ export const set: {
  *
  * **Example** (Checking for keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -485,7 +485,7 @@ export const has: {
  *
  * **Example** (Removing keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -541,7 +541,7 @@ export const remove: {
  *
  * **Example** (Clearing all entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -577,7 +577,7 @@ export const clear = <K, V>(self: TxHashMap<K, V>): Effect.Effect<void> => TxRef
  *
  * **Example** (Counting entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -616,7 +616,7 @@ export const size = <K, V>(self: TxHashMap<K, V>): Effect.Effect<number> =>
  *
  * **Example** (Checking for an empty map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -651,7 +651,7 @@ export const isEmpty = <K, V>(self: TxHashMap<K, V>): Effect.Effect<boolean> =>
  *
  * **Example** (Checking for a non-empty map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -683,7 +683,7 @@ export const isNonEmpty = <K, V>(self: TxHashMap<K, V>): Effect.Effect<boolean> 
  *
  * **Example** (Updating existing values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -755,7 +755,7 @@ export const modify: {
  *
  * **Example** (Updating values with Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -831,7 +831,7 @@ export const modifyAt: {
  *
  * **Example** (Reading keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -868,7 +868,7 @@ export const keys = <K, V>(self: TxHashMap<K, V>): Effect.Effect<Array<K>> =>
  *
  * **Example** (Reading values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -906,7 +906,7 @@ export const values = <K, V>(self: TxHashMap<K, V>): Effect.Effect<Array<V>> =>
  *
  * **Example** (Reading entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -947,7 +947,7 @@ export const entries = <K, V>(
  *
  * **Example** (Taking immutable snapshots)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, HashMap, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -992,7 +992,7 @@ export const snapshot = <K, V>(
  *
  * **Example** (Merging HashMaps)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, HashMap, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1057,7 +1057,7 @@ export const union: {
  *
  * **Example** (Removing multiple keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1111,7 +1111,7 @@ export const removeMany: {
  *
  * **Example** (Setting multiple entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1182,7 +1182,7 @@ export const setMany: {
  *
  * **Example** (Checking TxHashMap values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1222,7 +1222,7 @@ export const isTxHashMap = <K, V>(value: unknown): value is TxHashMap<K, V> => {
  *
  * **Example** (Looking up values with precomputed hashes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Hash, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1283,7 +1283,7 @@ export const getHash: {
  *
  * **Example** (Checking keys with precomputed hashes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Hash, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1348,7 +1348,7 @@ export const hasHash: {
  *
  * **Example** (Mapping values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1417,7 +1417,7 @@ export const map: {
  *
  * **Example** (Filtering entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1492,7 +1492,7 @@ export const filter: {
  *
  * **Example** (Reducing entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1571,7 +1571,7 @@ export const reduce: {
  *
  * **Example** (Filtering and mapping entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Result, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1646,7 +1646,7 @@ export const filterMap: {
  *
  * **Example** (Checking entries with a predicate)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1705,7 +1705,7 @@ export const hasBy: {
  *
  * **Example** (Finding the first matching entry)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1764,7 +1764,7 @@ export const findFirst: {
  *
  * **Example** (Checking whether some entries match)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1821,7 +1821,7 @@ export const some: {
  *
  * **Example** (Checking whether every entry matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1879,7 +1879,7 @@ export const every: {
  *
  * **Example** (Running effects for each entry)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1946,7 +1946,7 @@ export const forEach: {
  *
  * **Example** (Flat mapping entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2028,7 +2028,7 @@ export const flatMap: {
  *
  * **Example** (Compacting optional values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2082,7 +2082,7 @@ export const compact = <K, A>(
  *
  * **Example** (Converting to entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -2123,7 +2123,7 @@ export const toEntries = <K, V>(
  *
  * **Example** (Converting to values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxHashMap } from "effect"
  *
  * const program = Effect.gen(function*() {

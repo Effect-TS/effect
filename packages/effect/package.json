@@ -1,7 +1,7 @@
 {
   "name": "effect",
   "type": "module",
-  "version": "4.0.0-beta.101",
+  "version": "4.0.0-beta.102",
   "license": "MIT",
   "description": "The missing standard library for TypeScript, for writing production-grade software.",
   "homepage": "https://effect.website",
@@ -49,9 +49,10 @@
     "./unstable/workflow": "./src/unstable/workflow/index.ts",
     "./unstable/workers": "./src/unstable/workers/index.ts",
     "./*": "./src/*.ts",
-    "./internal/*": null,
     "./unstable/cli/internal/*": null,
     "./unstable/cluster/internal/*": null,
+    "./internal/*": null,
+    "./index": null,
     "./*/index": null
   },
   "files": [
@@ -90,6 +91,7 @@
       "./internal/*": null,
       "./unstable/cli/internal/*": null,
       "./unstable/cluster/internal/*": null,
+      "./index": null,
       "./*/index": null
     }
   },
@@ -97,15 +99,12 @@
     "codegen": "effect-utils codegen",
     "build": "tsc -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-    "check": "tsc -b tsconfig.json",
-    "test": "vitest --sequence.concurrent=false",
-    "coverage": "vitest --run --coverage --sequence.concurrent=false"
+    "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
     "@types/ini": "^4.1.1",
-    "@types/node": "^26.1.1",
+    "@types/node": "^26.1.2",
     "ajv": "^8.20.0",
-    "arktype": "^2.2.3",
     "ast-types": "^0.14.2",
     "immer": "^11.1.11",
     "tinybench": "^6.0.2",

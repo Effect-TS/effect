@@ -46,7 +46,7 @@ const TypeId = "~effect/Sink"
  *
  * **Example** (Running a sink with a stream)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Sink, Stream } from "effect"
  *
  * // Create a simple sink that always succeeds with a value
@@ -194,14 +194,14 @@ const SinkProto = {
  *
  * **Example** (Checking for a sink)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Sink } from "effect"
  *
  * const sink = Sink.never
  * const notStream = { data: [1, 2, 3] }
  *
- * console.log(Sink.isSink(sink)) // true
- * console.log(Sink.isSink(notStream)) // false
+ * console.log(Sink.isSink(sink)) // > true
+ * console.log(Sink.isSink(notStream)) // > false
  * ```
  *
  * @category guards
@@ -240,6 +240,45 @@ export const fromChannel = <L, In, E, A, R>(
   )
 
 /**
+ * Creates a sink that writes its input to a Web `WritableStream`.
+ *
+ * **Example** (Collecting values in a Web stream)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Sink, Stream } from "effect"
+ *
+ * const written: Array<number> = []
+ * const sink = Sink.fromWritableStream({
+ *   evaluate: () => new WritableStream<number>({
+ *     write(value) {
+ *       written.push(value)
+ *     }
+ *   }),
+ *   onError: (cause) => new Error(String(cause))
+ * })
+ *
+ * const program = Stream.run(Stream.make(1, 2, 3), sink)
+ *
+ * Effect.runPromise(program).then(() => console.log(written))
+ * // Output: [ 1, 2, 3 ]
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromWritableStream = <A, E>(options: {
+  readonly evaluate: LazyArg<WritableStream<A>>
+  readonly onError: (error: unknown) => E
+  readonly closeOnDone?: boolean | undefined
+}): Sink<void, A, never, E> =>
+  fromChannel(
+    Channel.mapDone(
+      Channel.fromWritableStream<never, E, A>(options),
+      (_) => [_]
+    )
+  )
+
+/**
  * Creates a `Sink` from a low-level transform function.
  *
  * **Details**
@@ -267,7 +306,7 @@ export const fromTransform = <In, A, E, R, L = never>(
  *
  * **Example** (Converting a sink to a channel)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Sink } from "effect"
  *
  * // Create a sink and extract its channel
@@ -494,7 +533,7 @@ export const fromPubSub = <A>(
  *
  * **Example** (Succeeding with a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Sink, Stream } from "effect"
  *
  * // Create a sink that always yields the same value
@@ -536,7 +575,7 @@ export const suspend = <A, In, L, E, R>(evaluate: LazyArg<Sink<A, In, L, E, R>>)
  *
  * **Example** (Failing with an error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Sink, Stream } from "effect"
  *
  * // Create a sink that always fails
@@ -560,7 +599,7 @@ export const fail = <E>(e: E): Sink<never, unknown, never, E> => fromEffectEnd(E
  *
  * **Example** (Failing with a lazy error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Sink, Stream } from "effect"
  *
  * // Create a sink that fails with a lazy error
@@ -585,7 +624,7 @@ export const failSync = <E>(evaluate: LazyArg<E>): Sink<never, unknown, never, E
  *
  * **Example** (Failing with a cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Sink, Stream } from "effect"
  *
  * // Create a sink that fails with a specific cause
@@ -610,7 +649,7 @@ export const failCause = <E>(cause: Cause.Cause<E>): Sink<never, unknown, never,
  *
  * **Example** (Failing with a lazy cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, Sink, Stream } from "effect"
  *
  * // Create a sink that fails with a lazy cause
@@ -635,7 +674,7 @@ export const failCauseSync = <E>(evaluate: LazyArg<Cause.Cause<E>>): Sink<never,
  *
  * **Example** (Dying with a defect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Sink, Stream } from "effect"
  *
  * // Create a sink that dies with a defect
@@ -1756,7 +1795,7 @@ export const takeUntilEffect = <In, E, R>(
  *
  * **Example** (Running effects for each item)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Sink, Stream } from "effect"
  *
  * // Create a sink that logs each item
@@ -1786,7 +1825,7 @@ export const forEach = <In, X, E, R>(
  *
  * **Example** (Running effects for each chunk)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Sink, Stream } from "effect"
  *
  * // Create a sink that processes chunks
@@ -1869,7 +1908,7 @@ export const forEachWhileArray = <In, E, R>(
  *
  * **Example** (Unwrapping a sink effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Sink, Stream } from "effect"
  *
  * // Create a sink from an effect that produces a sink

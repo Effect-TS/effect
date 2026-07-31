@@ -1289,6 +1289,100 @@ describe("Command", () => {
         assert.deepStrictEqual(captured, [["child", "--value", "x"]])
       }).pipe(Effect.provide(TestLayer)))
 
+    it.effect("should pass trailing operands to the selected subcommand", () =>
+      Effect.gen(function*() {
+        const captured: Array<ReadonlyArray<string>> = []
+
+        const child = Command.make("child", {
+          values: Argument.string("value").pipe(Argument.variadic())
+        }, ({ values }) => Effect.sync(() => captured.push(values)))
+
+        const cli = Command.make("tool").pipe(Command.withSubcommands([child]))
+
+        yield* Command.runWith(cli, { version: "1.0.0" })([
+          "child",
+          "--",
+          "value",
+          "--literal",
+          "-x"
+        ])
+
+        assert.deepStrictEqual(captured, [["value", "--literal", "-x"]])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should pass trailing operands through nested subcommands", () =>
+      Effect.gen(function*() {
+        const captured: Array<string> = []
+
+        const child = Command.make("child", {
+          value: Argument.string("value")
+        }, ({ value }) => Effect.sync(() => captured.push(value)))
+        const group = Command.make("group").pipe(Command.withSubcommands([child]))
+        const cli = Command.make("tool").pipe(Command.withSubcommands([group]))
+
+        yield* Command.runWith(cli, { version: "1.0.0" })(["group", "child", "--", "-literal"])
+
+        assert.deepStrictEqual(captured, ["-literal"])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should allow no trailing operands after -- for a subcommand", () =>
+      Effect.gen(function*() {
+        let invoked = false
+
+        const child = Command.make("child", {}, () =>
+          Effect.sync(() => {
+            invoked = true
+          }))
+        const cli = Command.make("tool").pipe(Command.withSubcommands([child]))
+
+        yield* Command.runWith(cli, { version: "1.0.0" })(["child", "--"])
+
+        assert.isTrue(invoked)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should preserve trailing operands for a leaf command", () =>
+      Effect.gen(function*() {
+        const captured: Array<ReadonlyArray<string>> = []
+
+        const command = Command.make("tool", {
+          values: Argument.string("value").pipe(Argument.variadic())
+        }, ({ values }) => Effect.sync(() => captured.push(values)))
+
+        yield* Command.runWith(command, { version: "1.0.0" })(["--", "--literal", "-x"])
+
+        assert.deepStrictEqual(captured, [["--literal", "-x"]])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should preserve inherited flags around a subcommand with trailing operands", () =>
+      Effect.gen(function*() {
+        const captured: Array<{ before: boolean; after: boolean; value: string }> = []
+
+        const root = Command.make("tool").pipe(
+          Command.withSharedFlags({
+            before: Flag.boolean("before"),
+            after: Flag.boolean("after")
+          })
+        )
+        const child = Command.make("child", {
+          value: Argument.string("value")
+        }, ({ value }) =>
+          Effect.gen(function*() {
+            const parent = yield* root
+            captured.push({ before: parent.before, after: parent.after, value })
+          }))
+        const cli = root.pipe(Command.withSubcommands([child]))
+
+        yield* Command.runWith(cli, { version: "1.0.0" })([
+          "--before",
+          "child",
+          "--after",
+          "--",
+          "-literal"
+        ])
+
+        assert.deepStrictEqual(captured, [{ before: true, after: true, value: "-literal" }])
+      }).pipe(Effect.provide(TestLayer)))
+
     it.effect("should coerce boolean flags to false when given falsey literals", () =>
       Effect.gen(function*() {
         const captured: Array<boolean> = []

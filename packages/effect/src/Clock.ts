@@ -22,7 +22,7 @@ import * as effect from "./internal/effect.ts"
  *
  * **Example** (Reading current time)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
  * const clockOperations = Effect.gen(function*() {
@@ -92,7 +92,7 @@ export interface Clock {
  *
  * **Example** (Accessing the Clock service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -120,7 +120,7 @@ export const Clock: Context.Reference<Clock> = effect.ClockRef
  *
  * **Example** (Accessing the current Clock service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
  * const program = Clock.clockWith((clock) =>
@@ -150,7 +150,7 @@ export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effec
  *
  * **Example** (Reading milliseconds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -178,7 +178,7 @@ export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
  *
  * **Example** (Reading nanoseconds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {

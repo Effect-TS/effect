@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { afterEach, assert, describe, it } from "@effect/vitest"
 import { RpcSerialization } from "effect/unstable/rpc"
 
 const responseExitSuccess = (requestId: string | number, value: unknown) => ({
@@ -10,7 +10,60 @@ const responseExitSuccess = (requestId: string | number, value: unknown) => ({
   }
 })
 
+const objectPrototype = Object.prototype as Record<string, unknown>
+
+const polluteObjectPrototype = (key: string, value: unknown) => {
+  Object.defineProperty(objectPrototype, key, {
+    configurable: true,
+    value
+  })
+}
+
+const decodeJsonRpcSuccess = () =>
+  RpcSerialization.jsonRpc().makeUnsafe().decode("{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"ok\"}")
+
+const expectedJsonRpcSuccess = [{
+  _tag: "Exit",
+  requestId: 1,
+  exit: {
+    _tag: "Success",
+    value: "ok"
+  }
+}]
+
 describe("RpcSerialization", () => {
+  describe.sequential("jsonRpc inherited properties", () => {
+    afterEach(() => {
+      delete objectPrototype["method"]
+      delete objectPrototype["error"]
+      delete objectPrototype["chunk"]
+    })
+
+    it("decodes a success response with a clean prototype", () => {
+      assert.deepStrictEqual(decodeJsonRpcSuccess(), expectedJsonRpcSuccess)
+    })
+
+    it("ignores an inherited method", () => {
+      polluteObjectPrototype("method", "attacker.evil")
+      assert.deepStrictEqual(decodeJsonRpcSuccess(), expectedJsonRpcSuccess)
+    })
+
+    it("ignores an inherited defect error", () => {
+      polluteObjectPrototype("error", { _tag: "Defect", data: "pwn" })
+      assert.deepStrictEqual(decodeJsonRpcSuccess(), expectedJsonRpcSuccess)
+    })
+
+    it("ignores an inherited chunk marker", () => {
+      polluteObjectPrototype("chunk", true)
+      assert.deepStrictEqual(decodeJsonRpcSuccess(), expectedJsonRpcSuccess)
+    })
+
+    it("ignores an inherited exit error", () => {
+      polluteObjectPrototype("error", { _tag: "Cause", data: [] })
+      assert.deepStrictEqual(decodeJsonRpcSuccess(), expectedJsonRpcSuccess)
+    })
+  })
+
   it("json decode keeps array payloads flat", () => {
     const parser = RpcSerialization.json.makeUnsafe()
     const decoded = parser.decode("[1,2,3]")

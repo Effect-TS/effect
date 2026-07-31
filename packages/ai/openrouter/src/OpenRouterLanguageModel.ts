@@ -62,7 +62,7 @@ export class Config extends Context.Service<
   Simplify<
     & Partial<
       Omit<
-        typeof Generated.ChatGenerationParams.Encoded,
+        typeof Generated.ChatRequest.Encoded,
         "messages" | "response_format" | "tools" | "tool_choice" | "stream" | "stream_options"
       >
     >
@@ -89,7 +89,7 @@ export class Config extends Context.Service<
  * @category models
  * @since 4.0.0
  */
-export type ReasoningDetails = Exclude<typeof Generated.AssistantMessage.Encoded["reasoning_details"], undefined>
+export type ReasoningDetails = Exclude<typeof Generated.ChatAssistantMessage.Encoded["reasoning_details"], undefined>
 
 /**
  * File annotations emitted on OpenRouter assistant messages and exposed in
@@ -99,7 +99,7 @@ export type ReasoningDetails = Exclude<typeof Generated.AssistantMessage.Encoded
  * @since 4.0.0
  */
 export type FileAnnotation = Extract<
-  NonNullable<typeof Generated.AssistantMessage.fields.annotations.Type>[number],
+  NonNullable<typeof Generated.ChatAssistantMessage.fields.annotations.Type>[number],
   { type: "file" }
 >
 
@@ -123,7 +123,7 @@ declare module "effect/unstable/ai/Prompt" {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
-      readonly cacheControl?: typeof Generated.ChatMessageContentItemCacheControl.Encoded | null
+      readonly cacheControl?: typeof Generated.ChatContentCacheControl.Encoded | null
     } | null
   }
 
@@ -146,7 +146,7 @@ declare module "effect/unstable/ai/Prompt" {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
-      readonly cacheControl?: typeof Generated.ChatMessageContentItemCacheControl.Encoded | null
+      readonly cacheControl?: typeof Generated.ChatContentCacheControl.Encoded | null
     } | null
   }
 
@@ -169,7 +169,7 @@ declare module "effect/unstable/ai/Prompt" {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
-      readonly cacheControl?: typeof Generated.ChatMessageContentItemCacheControl.Encoded | null
+      readonly cacheControl?: typeof Generated.ChatContentCacheControl.Encoded | null
       /**
        * Reasoning details associated with the assistant message.
        */
@@ -196,7 +196,7 @@ declare module "effect/unstable/ai/Prompt" {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
-      readonly cacheControl?: typeof Generated.ChatMessageContentItemCacheControl.Encoded | null
+      readonly cacheControl?: typeof Generated.ChatContentCacheControl.Encoded | null
     } | null
   }
 
@@ -218,7 +218,7 @@ declare module "effect/unstable/ai/Prompt" {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
-      readonly cacheControl?: typeof Generated.ChatMessageContentItemCacheControl.Encoded | null
+      readonly cacheControl?: typeof Generated.ChatContentCacheControl.Encoded | null
     } | null
   }
 
@@ -241,7 +241,7 @@ declare module "effect/unstable/ai/Prompt" {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
-      readonly cacheControl?: typeof Generated.ChatMessageContentItemCacheControl.Encoded | null
+      readonly cacheControl?: typeof Generated.ChatContentCacheControl.Encoded | null
       /**
        * Reasoning details associated with the reasoning part.
        */
@@ -272,7 +272,7 @@ declare module "effect/unstable/ai/Prompt" {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
-      readonly cacheControl?: typeof Generated.ChatMessageContentItemCacheControl.Encoded | null
+      readonly cacheControl?: typeof Generated.ChatContentCacheControl.Encoded | null
     } | null
   }
 
@@ -317,7 +317,7 @@ declare module "effect/unstable/ai/Prompt" {
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
-      readonly cacheControl?: typeof Generated.ChatMessageContentItemCacheControl.Encoded | null
+      readonly cacheControl?: typeof Generated.ChatContentCacheControl.Encoded | null
     } | null
   }
 }
@@ -466,7 +466,7 @@ declare module "effect/unstable/ai/Response" {
       /**
        * Raw token usage reported by OpenRouter.
        */
-      readonly usage?: typeof Generated.ChatGenerationTokenUsage.Encoded | null
+      readonly usage?: typeof Generated.ChatUsage.Encoded | null
       /**
        * File annotations returned by the provider.
        */
@@ -554,11 +554,11 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
     function*({ config, options }: {
       readonly config: typeof Config.Service
       readonly options: LanguageModel.ProviderOptions
-    }): Effect.fn.Return<typeof Generated.ChatGenerationParams.Encoded, AiError.AiError> {
+    }): Effect.fn.Return<typeof Generated.ChatRequest.Encoded, AiError.AiError> {
       const messages = yield* prepareMessages({ options })
       const { tools, toolChoice } = yield* prepareTools({ options, transformer: codecTransformer })
       const responseFormat = yield* getResponseFormat({ config, options, transformer: codecTransformer })
-      const request: typeof Generated.ChatGenerationParams.Encoded = {
+      const request: typeof Generated.ChatRequest.Encoded = {
         ...config,
         messages,
         ...(Predicate.isNotUndefined(responseFormat) ? { response_format: responseFormat } : undefined),
@@ -667,8 +667,8 @@ export const withConfigOverride: {
 const prepareMessages = Effect.fnUntraced(
   function*({ options }: {
     readonly options: LanguageModel.ProviderOptions
-  }): Effect.fn.Return<ReadonlyArray<typeof Generated.Message.Encoded>, AiError.AiError> {
-    const messages: Array<typeof Generated.Message.Encoded> = []
+  }): Effect.fn.Return<ReadonlyArray<typeof Generated.ChatMessages.Encoded>, AiError.AiError> {
+    const messages: Array<typeof Generated.ChatMessages.Encoded> = []
 
     const reasoningDetailsTracker = new ReasoningDetailsDuplicateTracker()
 
@@ -690,7 +690,7 @@ const prepareMessages = Effect.fnUntraced(
         }
 
         case "user": {
-          const content: Array<typeof Generated.ChatMessageContentItem.Encoded> = []
+          const content: Array<typeof Generated.ChatContentItems.Encoded> = []
 
           // Get the message-level cache control
           const messageCacheControl = getCacheControl(message)
@@ -824,7 +824,7 @@ const prepareMessages = Effect.fnUntraced(
         case "assistant": {
           let text = ""
           let reasoning = ""
-          const toolCalls: Array<typeof Generated.ChatMessageToolCall.Encoded> = []
+          const toolCalls: Array<typeof Generated.ChatToolCall.Encoded> = []
 
           for (const part of message.content) {
             switch (part.type) {
@@ -1588,8 +1588,8 @@ const prepareTools = Effect.fnUntraced(
     readonly options: LanguageModel.ProviderOptions
     readonly transformer: LanguageModel.CodecTransformer
   }): Effect.fn.Return<{
-    readonly tools: ReadonlyArray<typeof Generated.ToolDefinitionJson.Encoded> | undefined
-    readonly toolChoice: typeof Generated.ToolChoiceOption.Encoded | undefined
+    readonly tools: ReadonlyArray<typeof Generated.ChatFunctionTool.Encoded> | undefined
+    readonly toolChoice: typeof Generated.ChatToolChoice.Encoded | undefined
   }, AiError.AiError> {
     if (options.tools.length === 0) {
       return { tools: undefined, toolChoice: undefined }
@@ -1607,8 +1607,8 @@ const prepareTools = Effect.fnUntraced(
       })
     }
 
-    let tools: Array<typeof Generated.ToolDefinitionJson.Encoded> = []
-    let toolChoice: typeof Generated.ToolChoiceOption.Encoded | undefined = undefined
+    let tools: Array<Extract<typeof Generated.ChatFunctionTool.Encoded, { readonly type: "function" }>> = []
+    let toolChoice: typeof Generated.ChatToolChoice.Encoded | undefined = undefined
 
     for (const tool of options.tools) {
       const description = Tool.getDescription(tool)
@@ -1650,7 +1650,7 @@ const prepareTools = Effect.fnUntraced(
 
 const annotateRequest = (
   span: Span,
-  request: typeof Generated.ChatGenerationParams.Encoded
+  request: typeof Generated.ChatRequest.Encoded
 ): void => {
   addGenAIAnnotations(span, {
     system: "openrouter",
@@ -1717,7 +1717,7 @@ const getCacheControl = (
     | Prompt.ReasoningPart
     | Prompt.FilePart
     | Prompt.ToolResultPart
-): typeof Generated.ChatMessageContentItemCacheControl.Encoded | null => part.options.openrouter?.cacheControl ?? null
+): typeof Generated.ChatContentCacheControl.Encoded | null => part.options.openrouter?.cacheControl ?? null
 
 const findFirstReasoningDetails = (content: ReadonlyArray<Prompt.AssistantMessagePart>): ReasoningDetails | null => {
   for (const part of content) {
@@ -1786,7 +1786,7 @@ const getResponseFormat = Effect.fnUntraced(function*({ config, options, transfo
   readonly config: typeof Config.Service
   readonly options: LanguageModel.ProviderOptions
   readonly transformer: LanguageModel.CodecTransformer
-}): Effect.fn.Return<typeof Generated.ResponseFormatJSONSchema.Encoded | undefined, AiError.AiError> {
+}): Effect.fn.Return<typeof Generated.ChatFormatJsonSchemaConfig.Encoded | undefined, AiError.AiError> {
   if (options.responseFormat.type === "json") {
     const description = SchemaAST.resolveDescription(options.responseFormat.schema.ast)
     const jsonSchema = yield* tryJsonSchema(options.responseFormat.schema, "getResponseFormat", transformer)
@@ -1839,7 +1839,7 @@ const getBase64FromDataUrl = (dataUrl: string): string => {
   return match ? match[1]! : dataUrl
 }
 
-const getUsage = (usage: Generated.ChatGenerationTokenUsage | undefined): Response.Usage => {
+const getUsage = (usage: Generated.ChatUsage | undefined): Response.Usage => {
   if (Predicate.isUndefined(usage)) {
     return {
       inputTokens: { uncached: undefined, total: 0, cacheRead: undefined, cacheWrite: undefined },

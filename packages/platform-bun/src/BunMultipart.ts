@@ -24,18 +24,17 @@ import * as BunStream from "./BunStream.ts"
  */
 export const stream = (source: Request): Stream.Stream<Multipart.Part, Multipart.MultipartError> =>
   BunStream.fromReadableStream({
-    evaluate: () => source.body ?? emptyReadbleStream,
+    evaluate: () =>
+      source.body ?? new ReadableStream({
+        start(controller) {
+          controller.enqueue(new Uint8Array())
+          controller.close()
+        }
+      }),
     onError: (cause) => Multipart.MultipartError.fromReason("InternalError", cause)
   }).pipe(
     Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(source.headers)))
   )
-
-const emptyReadbleStream = new ReadableStream({
-  start(controller) {
-    controller.enqueue(new Uint8Array())
-    controller.close()
-  }
-})
 
 /**
  * Parses and persists multipart data from a Bun `Request`, requiring file-system, path, and scope services.

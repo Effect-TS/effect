@@ -3,6 +3,18 @@ import { Effect } from "effect"
 import { Redis } from "effect/unstable/persistence"
 
 describe("Redis", () => {
+  it("preserves __proto__ as an own script option", () => {
+    const value = { polluted: true }
+    const script = Redis.script(() => [], {
+      ["__proto__"]: value,
+      lua: "return nil",
+      numberOfKeys: 0
+    } as any)
+
+    assert.isTrue(Object.hasOwn(script, "__proto__"))
+    assert.strictEqual((script as any)["__proto__"], value)
+  })
+
   it.effect("retries script loading when SCRIPT LOAD fails", () =>
     Effect.gen(function*() {
       const commands: Array<readonly [command: string, args: ReadonlyArray<string>]> = []

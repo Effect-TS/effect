@@ -36,7 +36,7 @@ const TypeId = "~effect/transactions/TxRef"
  *
  * **Example** (Using a transactional reference)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -74,7 +74,7 @@ export interface TxRef<in out A> extends Pipeable {
  *
  * **Example** (Creating transactional references)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -108,7 +108,7 @@ export const make = <A>(initial: A) => Effect.sync(() => makeUnsafe(initial))
  *
  * **Example** (Creating transactional references unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { TxRef } from "effect"
  *
  * // Create a TxRef synchronously (unsafe - use make instead in Effect contexts)
@@ -116,8 +116,8 @@ export const make = <A>(initial: A) => Effect.sync(() => makeUnsafe(initial))
  * const config = TxRef.makeUnsafe({ timeout: 5000, retries: 3 })
  *
  * // These are now ready to use in transactions
- * console.log(counter.value) // 0
- * console.log(config.value) // { timeout: 5000, retries: 3 }
+ * console.log(counter.value) // > 0
+ * console.log(config.value) // > { timeout: 5000, retries: 3 }
  * ```
  *
  * @category constructors
@@ -143,7 +143,7 @@ export const makeUnsafe = <A>(initial: A): TxRef<A> => ({
  *
  * **Example** (Modifying transactional references)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -191,7 +191,7 @@ export const modify: {
  *
  * **Example** (Updating transactional references)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -226,7 +226,7 @@ export const update: {
  *
  * **Example** (Reading transactional references)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -255,7 +255,7 @@ export const get = <A>(self: TxRef<A>): Effect.Effect<A> => modify(self, (curren
  *
  * **Example** (Setting transactional references)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxRef } from "effect"
  *
  * const program = Effect.gen(function*() {

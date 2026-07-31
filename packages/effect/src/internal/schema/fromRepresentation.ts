@@ -12,7 +12,7 @@ type Path = ReadonlyArray<string | number>
 export function fromRepresentations(
   document: SchemaRepresentation.MultiDocument,
   revivers: ReadonlyArray<SchemaRepresentation.AnyReviver>
-): SchemaRepresentation.SchemaMultiDocument {
+): readonly [Schema.Top, ...Array<Schema.Top>] {
   return revivePersisted(document.representations, document.references, makeReviverMap(revivers), false)
 }
 
@@ -41,7 +41,10 @@ function makeReviverMap(
     if (out.has(reviver.id)) {
       throw errorWithPath(`Duplicate reviver for ${reviver.id}`, ["revivers", index, "id"])
     }
-    out.set(reviver.id, reviver)
+    out.set(reviver.id, {
+      ...reviver,
+      payloadSchema: Schema.toCodecJson(reviver.payloadSchema)
+    })
   }
 
   return out
@@ -55,18 +58,17 @@ function revivePersisted(
   references: SchemaRepresentation.References,
   reviverMap: ReadonlyMap<string, SchemaRepresentation.AnyReviver>,
   singleRoot: boolean
-): SchemaRepresentation.SchemaMultiDocument {
+): readonly [Schema.Top, ...Array<Schema.Top>] {
   const slots = new Map<string, ReferenceSlot>()
-  const referenceKeys = Object.keys(references)
-
-  for (const key of referenceKeys) {
-    slots.set(key, new ReferenceSlot(key))
-  }
 
   function resolveReference(key: string, path: Path): Schema.Top {
-    const slot = slots.get(key)
+    let slot = slots.get(key)
     if (slot === undefined) {
-      throw errorWithPath(`Invalid reference ${key}`, [...path, "$ref"])
+      if (!Object.hasOwn(references, key)) {
+        throw errorWithPath(`Invalid reference ${key}`, [...path, "$ref"])
+      }
+      slot = new ReferenceSlot(key)
+      slots.set(key, slot)
     }
     if (slot.body !== undefined) {
       return slot.body
@@ -295,7 +297,7 @@ function revivePersisted(
           if (property.isMutable) {
             schema = Schema.mutableKey(schema)
           }
-          InternalRecord.set(fields, property.name, schema)
+          InternalRecord.assignProperty(fields, property.name, schema)
         }
         const records = representation.indexSignatures.map((indexSignature, index) =>
           Schema.Record(
@@ -317,15 +319,10 @@ function revivePersisted(
     }
   }
 
-  const definitions: Record<string, Schema.Top> = {}
-  for (const key of referenceKeys) {
-    InternalRecord.set(definitions, key, resolveReference(key, ["references", key]))
-  }
-
   const schemas = representations.map((representation, index) =>
     recur(representation, singleRoot ? ["representation"] : ["representations", index])
   ) as [Schema.Top, ...Array<Schema.Top>]
-  return { schemas, definitions }
+  return schemas
 }
 
 /** @internal */
@@ -338,5 +335,5 @@ export function fromRepresentation(
     document.references,
     makeReviverMap(revivers),
     true
-  ).schemas[0]
+  )[0]
 }

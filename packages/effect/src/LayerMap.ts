@@ -33,7 +33,7 @@ type IdleTimeToLiveInput<K> = Duration.Input | ((key: K) => Duration.Input)
  *
  * **Example** (Managing keyed layers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
@@ -95,7 +95,7 @@ export interface LayerMap<in out K, in out I, in out E = never> {
  *
  * **Example** (Creating a layer map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
@@ -182,7 +182,7 @@ export const make: <
  *
  * **Example** (Creating a layer map from a record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define service keys
@@ -310,7 +310,7 @@ export interface TagClass<
  *
  * **Example** (Defining a layer map service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key

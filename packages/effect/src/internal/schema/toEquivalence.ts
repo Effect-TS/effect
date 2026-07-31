@@ -5,7 +5,6 @@ import * as Predicate from "../../Predicate.ts"
 import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaParser from "../../SchemaParser.ts"
-import { errorWithPath } from "../errors.ts"
 import * as InternalAnnotations from "./annotations.ts"
 
 /** @internal */
@@ -25,7 +24,7 @@ function recur(ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): Equivalenc
   }
   switch (ast._tag) {
     case "Never":
-      throw errorWithPath(`Unsupported AST ${ast._tag}`, path)
+      return Equivalence.strictEqual()
     case "Declaration":
     case "Null":
     case "Undefined":
@@ -133,18 +132,24 @@ function recur(ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): Equivalenc
         return true
       })
     }
-    case "Union":
+    case "Union": {
+      const types = SchemaAST.toType(ast).types
+      const compiled = new Map(
+        types.map((candidate, i) =>
+          [candidate, [SchemaParser._is(candidate), recur(ast.types[i], path)] as const] as const
+        )
+      )
       return Equivalence.make((a, b) => {
-        const candidates = SchemaAST.getCandidates(a, ast.types)
-        const types = candidates.map(SchemaParser._is)
+        const candidates = SchemaAST.getCandidates(a, types)
         for (let i = 0; i < candidates.length; i++) {
-          const is = types[i]
+          const [is, equivalence] = compiled.get(candidates[i])!
           if (is(a) && is(b)) {
-            return recur(candidates[i], path)(a, b)
+            return equivalence(a, b)
           }
         }
         return false
       })
+    }
     case "Suspend": {
       const get = SchemaAST.memoizeThunk(() => recur(ast.thunk(), path))
       return Equivalence.make((a, b) => get()(a, b))

@@ -13,6 +13,7 @@ import * as Data from "../../Data.ts"
 import * as Duration from "../../Duration.ts"
 import { dual } from "../../Function.ts"
 import * as Inspectable from "../../Inspectable.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
@@ -252,7 +253,7 @@ export const fromReadonlyRecord = (cookies: Record.ReadonlyRecord<string, Cookie
 export const fromIterable = (cookies: Iterable<Cookie>): Cookies => {
   const record: Record<string, Cookie> = {}
   for (const cookie of cookies) {
-    record[cookie.name] = cookie
+    InternalRecord.assignProperty(record, cookie.name, cookie)
   }
   return fromReadonlyRecord(record)
 }
@@ -425,6 +426,10 @@ export const isEmpty = (self: Cookies): boolean => Record.isEmptyRecord(self.coo
 
 // oxlint-disable-next-line no-control-regex
 const fieldContentRegExp = /^[\u0009\u0020-\u007e\u0080-\u00ff]+$/
+const cookieNameRegExp = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+// oxlint-disable-next-line no-control-regex
+const cookieDomainRegExp = /^[\u0009\u0020-\u003a\u003c-\u007e\u0080-\u00ff]+$/
+const cookiePathRegExp = /^[\u0020-\u003a\u003c-\u007e]+$/
 
 const CookieProto = {
   [CookieTypeId]: CookieTypeId,
@@ -454,26 +459,10 @@ export function makeCookie(
   value: string,
   options?: Cookie["options"] | undefined
 ): Result.Result<Cookie, CookiesError> {
-  if (!fieldContentRegExp.test(name)) {
-    return Result.fail(CookiesError.fromReason("InvalidCookieName"))
-  }
   const encodedValue = encodeURIComponent(value)
-  if (encodedValue && !fieldContentRegExp.test(encodedValue)) {
-    return Result.fail(CookiesError.fromReason("InvalidCookieValue"))
-  }
-
-  if (options !== undefined) {
-    if (options.domain !== undefined && !fieldContentRegExp.test(options.domain)) {
-      return Result.fail(CookiesError.fromReason("InvalidCookieDomain"))
-    }
-
-    if (options.path !== undefined && !fieldContentRegExp.test(options.path)) {
-      return Result.fail(CookiesError.fromReason("InvalidCookiePath"))
-    }
-
-    if (options.maxAge !== undefined && !Duration.isFinite(Duration.fromInputUnsafe(options.maxAge))) {
-      return Result.fail(CookiesError.fromReason("CookieInfinityMaxAge"))
-    }
+  const error = validateCookie(name, encodedValue, options)
+  if (error !== undefined) {
+    return Result.fail(error)
   }
 
   return Result.succeed(Object.assign(Object.create(CookieProto), {
@@ -482,6 +471,28 @@ export function makeCookie(
     valueEncoded: encodedValue,
     options
   }))
+}
+
+function validateCookie(
+  name: string,
+  encodedValue: string,
+  options: Cookie["options"] | undefined
+): CookiesError | undefined {
+  if (!cookieNameRegExp.test(name)) {
+    return CookiesError.fromReason("InvalidCookieName")
+  }
+  if (encodedValue && !fieldContentRegExp.test(encodedValue)) {
+    return CookiesError.fromReason("InvalidCookieValue")
+  }
+  if (options?.domain !== undefined && !cookieDomainRegExp.test(options.domain)) {
+    return CookiesError.fromReason("InvalidCookieDomain")
+  }
+  if (options?.path !== undefined && !cookiePathRegExp.test(options.path)) {
+    return CookiesError.fromReason("InvalidCookiePath")
+  }
+  if (options?.maxAge !== undefined && !Duration.isFinite(Duration.fromInputUnsafe(options.maxAge))) {
+    return CookiesError.fromReason("CookieInfinityMaxAge")
+  }
 }
 
 /**
@@ -527,7 +538,7 @@ export const setAllCookie: {
 } = dual(2, (self: Cookies, cookies: Iterable<Cookie>) => {
   const record = { ...self.cookies }
   for (const cookie of cookies) {
-    record[cookie.name] = cookie
+    InternalRecord.assignProperty(record, cookie.name, cookie)
   }
   return fromReadonlyRecord(record)
 })
@@ -569,7 +580,8 @@ export const get: {
   (self: Cookies, name: string): Option.Option<Cookie>
 } = dual(
   (args) => isCookies(args[0]),
-  (self: Cookies, name: string): Option.Option<Cookie> => Option.fromUndefinedOr(self.cookies[name])
+  (self: Cookies, name: string): Option.Option<Cookie> =>
+    Option.fromUndefinedOr(Object.hasOwn(self.cookies, name) ? self.cookies[name] : undefined)
 )
 
 /**
@@ -743,7 +755,7 @@ export const setAll: {
       if (Result.isFailure(result)) {
         return result as Result.Failure<never, CookiesError>
       }
-      record[name] = result.success
+      InternalRecord.assignProperty(record, name, result.success)
     }
     return Result.succeed(fromReadonlyRecord(record))
   }
@@ -777,6 +789,10 @@ export const setAllUnsafe: {
  * @since 4.0.0
  */
 export function serializeCookie(self: Cookie): string {
+  const error = validateCookie(self.name, self.valueEncoded, self.options)
+  if (error !== undefined) {
+    throw error
+  }
   let str = self.name + "=" + self.valueEncoded
 
   if (self.options === undefined) {
@@ -866,7 +882,7 @@ export const toRecord = (self: Cookies): Record<string, string> => {
   const cookies = Object.values(self.cookies)
   for (let index = 0; index < cookies.length; index++) {
     const cookie = cookies[index]
-    record[cookie.name] = cookie.value
+    InternalRecord.assignProperty(record, cookie.name, cookie.value)
   }
   return record
 }
@@ -927,14 +943,16 @@ export function parseHeader(header: string): Record<string, string> {
     }
 
     const key = header.substring(pos, eqIdx++).trim()
-    if (result[key] === undefined) {
+    if (!Object.hasOwn(result, key)) {
       const val = header.charCodeAt(eqIdx) === 0x22
         ? header.substring(eqIdx + 1, terminatorPos - 1).trim()
         : header.substring(eqIdx, terminatorPos).trim()
 
-      result[key] = !(val.indexOf("%") === -1)
-        ? tryDecodeURIComponent(val)
-        : val
+      InternalRecord.assignProperty(
+        result,
+        key,
+        !(val.indexOf("%") === -1) ? tryDecodeURIComponent(val) : val
+      )
     }
 
     pos = terminatorPos + 1

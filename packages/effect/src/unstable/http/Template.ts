@@ -154,7 +154,7 @@ export function make<A extends ReadonlyArray<Interpolated>>(
             values[index] = primitiveToString(value)
           })),
       {
-        concurrency: "inherit",
+        concurrency: "unbounded",
         discard: true
       }
     ),

@@ -77,6 +77,25 @@ describe("OpenAiSchema", () => {
     }
   })
 
+  it("decodes image generation lifecycle statuses", () => {
+    for (const status of ["generating", "failed"]) {
+      const decoded = Schema.decodeUnknownSync(OpenAiSchema.Response)({
+        ...makeResponse(),
+        output: [{
+          id: "image_1",
+          type: "image_generation_call",
+          status,
+          result: null
+        }]
+      })
+
+      assert.strictEqual(decoded.output[0].type, "image_generation_call")
+      if (decoded.output[0].type === "image_generation_call") {
+        assert.strictEqual(decoded.output[0].status, status)
+      }
+    }
+  })
+
   it("decodes required stream events", () => {
     const response = makeResponse({ status: "in_progress" })
     const applyPatchItem = {

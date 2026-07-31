@@ -44,7 +44,7 @@ export const symbol = "~effect/interfaces/Hash"
  *
  * **Example** (Implementing Hash)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * class MyClass implements Hash.Hash {
@@ -56,7 +56,7 @@ export const symbol = "~effect/interfaces/Hash"
  * }
  *
  * const instance = new MyClass(42)
- * console.log(instance[Hash.symbol]()) // hash value of 42
+ * console.log(instance[Hash.symbol]()) // > 42
  * ```
  *
  * @category models
@@ -90,7 +90,7 @@ export interface Hash {
  *
  * **Example** (Hashing different values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * // Hash primitive values
@@ -176,17 +176,17 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
  *
  * **Example** (Hashing objects by reference)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const obj1 = { a: 1 }
  * const obj2 = { a: 1 }
  *
  * // Same object always returns the same hash
- * console.log(Hash.random(obj1) === Hash.random(obj1)) // true
+ * console.log(Hash.random(obj1) === Hash.random(obj1)) // > true
  *
- * // Different objects get different hashes
- * console.log(Hash.random(obj1) === Hash.random(obj2)) // false
+ * // Different objects typically get different hashes
+ * console.log(Hash.random(obj1) === Hash.random(obj2)) // > <random hash comparison>
  * ```
  *
  * @category hashing
@@ -214,7 +214,7 @@ export const random: <A extends object>(self: A) => number = (self) => {
  *
  * **Example** (Combining hash values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash, pipe } from "effect"
  *
  * // Can also be used with pipe
@@ -253,12 +253,12 @@ export const combine: {
  *
  * **Example** (Optimizing a hash value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const rawHash = 1234567890
  * const optimizedHash = Hash.optimize(rawHash)
- * console.log(optimizedHash) // optimized hash value
+ * console.log(optimizedHash) // > 160826066
  *
  * // Often used internally by other hash functions
  * const stringHash = Hash.optimize(Hash.string("hello"))
@@ -283,7 +283,7 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  *
  * **Example** (Checking for Hash support)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * class MyHashable implements Hash.Hash {
@@ -293,9 +293,9 @@ export const optimize = (n: number): number => (n & 0xbfffffff) | ((n >>> 1) & 0
  * }
  *
  * const obj = new MyHashable()
- * console.log(Hash.isHash(obj)) // true
- * console.log(Hash.isHash({})) // false
- * console.log(Hash.isHash("string")) // false
+ * console.log(Hash.isHash(obj)) // > true
+ * console.log(Hash.isHash({})) // > false
+ * console.log(Hash.isHash("string")) // > false
  * ```
  *
  * @category guards
@@ -318,7 +318,7 @@ export const isHash = (u: unknown): u is Hash => hasProperty(u, symbol)
  *
  * **Example** (Hashing numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * console.log(Hash.number(42)) // hash of 42
@@ -369,15 +369,15 @@ export const number = (n: number) => {
  *
  * **Example** (Hashing strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
- * console.log(Hash.string("hello")) // hash of "hello"
- * console.log(Hash.string("world")) // hash of "world"
- * console.log(Hash.string("")) // hash of empty string
+ * console.log(Hash.string("hello")) // > 181380007
+ * console.log(Hash.string("world")) // > 164394279
+ * console.log(Hash.string("")) // > 5381
  *
  * // Same strings produce the same hash
- * console.log(Hash.string("test") === Hash.string("test")) // true
+ * console.log(Hash.string("test") === Hash.string("test")) // > true
  * ```
  *
  * @category hashing
@@ -406,7 +406,7 @@ export const string = (str: string) => {
  *
  * **Example** (Hashing selected object keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const person = { name: "John", age: 30, city: "New York" }
@@ -415,13 +415,13 @@ export const string = (str: string) => {
  * const hash1 = Hash.structureKeys(person, ["name", "age"])
  * const hash2 = Hash.structureKeys(person, ["name", "city"])
  *
- * console.log(hash1) // hash based on name and age
- * console.log(hash2) // hash based on name and city
+ * console.log(hash1) // > -590673747
+ * console.log(hash2) // > 284850673
  *
  * // Same keys produce the same hash
  * const person2 = { name: "John", age: 30, city: "Boston" }
  * const hash3 = Hash.structureKeys(person2, ["name", "age"])
- * console.log(hash1 === hash3) // true
+ * console.log(hash1 === hash3) // > true
  * ```
  *
  * @category hashing
@@ -449,19 +449,19 @@ export const structureKeys = (o: object, keys: Iterable<PropertyKey>) => {
  *
  * **Example** (Hashing object structures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const obj1 = { name: "John", age: 30 }
  * const obj2 = { name: "Jane", age: 25 }
  * const obj3 = { name: "John", age: 30 }
  *
- * console.log(Hash.structure(obj1)) // hash of obj1
- * console.log(Hash.structure(obj2)) // different hash
- * console.log(Hash.structure(obj3)) // same as obj1
+ * console.log(Hash.structure(obj1)) // > -590673747
+ * console.log(Hash.structure(obj2)) // > -590160631
+ * console.log(Hash.structure(obj3)) // > -590673747
  *
  * // Objects with same properties produce same hash
- * console.log(Hash.structure(obj1) === Hash.structure(obj3)) // true
+ * console.log(Hash.structure(obj1) === Hash.structure(obj3)) // > true
  * ```
  *
  * @category hashing
@@ -496,19 +496,19 @@ const iterableWith = (seed: number, f: (el: any) => number) => (iter: Iterable<a
  *
  * **Example** (Hashing arrays)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Hash } from "effect"
  *
  * const arr1 = [1, 2, 3]
  * const arr2 = [1, 2, 3]
  * const arr3 = [3, 2, 1]
  *
- * console.log(Hash.array(arr1)) // hash of [1, 2, 3]
- * console.log(Hash.array(arr2)) // same hash as arr1
- * console.log(Hash.array(arr3)) // may match reordered inputs
+ * console.log(Hash.array(arr1)) // > 6151
+ * console.log(Hash.array(arr2)) // > 6151
+ * console.log(Hash.array(arr3)) // > 6151
  *
- * console.log(Hash.array(arr1) === Hash.array(arr2)) // true
- * console.log(Hash.array(arr1) === Hash.array(arr3)) // true
+ * console.log(Hash.array(arr1) === Hash.array(arr2)) // > true
+ * console.log(Hash.array(arr1) === Hash.array(arr3)) // > true
  * ```
  *
  * @see {@link hash} for the general-purpose hash dispatcher

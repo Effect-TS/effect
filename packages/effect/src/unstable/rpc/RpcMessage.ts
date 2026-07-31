@@ -63,6 +63,7 @@ export interface RequestEncoded {
   readonly tag: string
   readonly payload: unknown
   readonly headers: ReadonlyArray<[string, string]>
+  readonly isNotification?: true
   readonly traceId?: string
   readonly spanId?: string
   readonly sampled?: boolean

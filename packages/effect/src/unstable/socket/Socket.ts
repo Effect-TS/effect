@@ -283,7 +283,7 @@ export class SocketOpenError extends Schema.ErrorClass<SocketOpenError>("effect/
  */
 export class SocketCloseError extends Schema.ErrorClass<SocketCloseError>("effect/socket/Socket/SocketCloseError")({
   _tag: Schema.tag("SocketCloseError"),
-  code: Schema.Number,
+  code: Schema.Int,
   closeReason: Schema.optional(Schema.String)
 }) {
   /**
@@ -608,10 +608,19 @@ export const fromWebSocket = <RO>(
   options?: {
     readonly closeCodeIsError?: ((code: number) => boolean) | undefined
     readonly openTimeout?: Duration.Input | undefined
+    /**
+     * Replays buffered events on the first run after the socket opens and before
+     * the run's `onOpen` effect.
+     *
+     * @category options
+     * @since 4.0.0
+     */
+    readonly onInitialRun?: ((ws: globalThis.WebSocket) => ReadonlyArray<MessageEvent>) | undefined
   } | undefined
 ): Effect.Effect<Socket, never, Exclude<RO, Scope.Scope>> =>
   Effect.withFiber((fiber) => {
     let currentWS: globalThis.WebSocket | undefined
+    let initial = true
     const latch = Latch.makeUnsafe(false)
     const acquireContext = fiber.context as Context.Context<RO>
     const closeCodeIsError = options?.closeCodeIsError ?? defaultCloseCodeIsError
@@ -638,7 +647,7 @@ export const fromWebSocket = <RO>(
             )
             return run(effect)
           }
-          const result = handler(event.data)
+          const result = handler(event.data instanceof ArrayBuffer ? new Uint8Array(event.data) : event.data)
           if (Effect.isEffect(result)) {
             run(result)
           }
@@ -708,6 +717,10 @@ export const fromWebSocket = <RO>(
         open = true
         currentWS = ws
         latch.openUnsafe()
+        if (initial && options?.onInitialRun) {
+          initial = false
+          for (const event of options.onInitialRun(ws)) onMessage(event)
+        }
         if (opts?.onOpen) yield* opts.onOpen
         return yield* Effect.catchFilter(
           FiberSet.join(fiberSet),

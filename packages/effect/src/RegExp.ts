@@ -22,15 +22,15 @@ import * as predicate from "./Predicate.ts"
  *
  * **Example** (Creating a regular expression)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { RegExp } from "effect"
  *
  * // Create a regular expression using Effect's RegExp constructor
  * const pattern = new RegExp.RegExp("hello", "i")
  *
  * // Test the pattern
- * console.log(pattern.test("Hello World")) // true
- * console.log(pattern.test("goodbye")) // false
+ * console.log(pattern.test("Hello World")) // > true
+ * console.log(pattern.test("goodbye")) // > false
  * ```
  *
  * @category constructors
@@ -47,7 +47,7 @@ export const RegExp = globalThis.RegExp
  *
  * **Example** (Checking for regular expressions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { RegExp } from "effect"
  * import * as assert from "node:assert"
  *
@@ -69,7 +69,7 @@ export const isRegExp: (input: unknown) => input is RegExp = predicate.isRegExp
  *
  * **Example** (Escaping a pattern string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { RegExp } from "effect"
  * import * as assert from "node:assert"
  *

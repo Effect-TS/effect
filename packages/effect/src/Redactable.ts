@@ -29,7 +29,7 @@ import { hasProperty } from "./Predicate.ts"
  *
  * **Example** (Masking an API key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Redactable } from "effect"
  *
  * class ApiKey {
@@ -63,7 +63,7 @@ export const symbolRedactable: unique symbol = Symbol.for("~effect/Redactable")
  *
  * **Example** (Masking an API key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Redactable } from "effect"
  *
  * class ApiKey {

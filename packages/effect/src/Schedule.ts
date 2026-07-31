@@ -34,7 +34,7 @@ const randomNext: Effect<number> = random.Random.useSync((random) => random.next
  *
  * **Example** (Defining retry and repeat schedules)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class NetworkError extends Data.TaggedError("NetworkError")<{
@@ -142,7 +142,7 @@ export declare namespace Schedule {
    *
    * **Example** (Understanding schedule variance)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Schedule } from "effect"
    *
    * // Understanding Schedule variance:
@@ -240,16 +240,16 @@ const ScheduleProto = {
  *
  * **Example** (Checking for schedules)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schedule } from "effect"
  *
  * const schedule = Schedule.exponential("100 millis")
  * const notSchedule = { foo: "bar" }
  *
- * console.log(Schedule.isSchedule(schedule)) // true
- * console.log(Schedule.isSchedule(notSchedule)) // false
- * console.log(Schedule.isSchedule(null)) // false
- * console.log(Schedule.isSchedule(undefined)) // false
+ * console.log(Schedule.isSchedule(schedule)) // > true
+ * console.log(Schedule.isSchedule(notSchedule)) // > false
+ * console.log(Schedule.isSchedule(null)) // > false
+ * console.log(Schedule.isSchedule(undefined)) // > false
  * ```
  *
  * @category guards
@@ -262,7 +262,7 @@ export const isSchedule = (u: unknown): u is Schedule<unknown, never, unknown, u
  *
  * **Example** (Creating a custom schedule from a step function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Duration, Effect, Schedule } from "effect"
  *
  * const schedule = Schedule.fromStep(Effect.sync(() => {
@@ -310,7 +310,7 @@ const metadataFn = () => {
  *
  * **Example** (Creating a metadata-aware schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Duration, Effect, Schedule } from "effect"
  *
  * const firstThreeInputs = Schedule.fromStepWithMetadata(Effect.succeed((metadata: Schedule.InputMetadata<string>) => {
@@ -345,7 +345,7 @@ export const fromStepWithMetadata = <Input, Output, EnvX, ErrorX, Error, Env>(
  *
  * **Example** (Extracting a schedule step function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schedule } from "effect"
  *
  * // Extract step function from an existing schedule
@@ -433,7 +433,7 @@ export const toStepWithMetadata = <Output, Input, Error, Env>(
  *
  * **Example** (Extracting a sleeping step function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schedule } from "effect"
  *
  * // Convert schedule to step function with automatic sleeping
@@ -476,7 +476,7 @@ export const toStepWithSleep = <Output, Input, Error, Env>(
  *
  * **Example** (Adding extra delay to a schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Duration, Effect, Schedule } from "effect"
  *
  * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
@@ -594,7 +594,7 @@ export const addDelay: {
  *
  * **Example** (Sequencing quick and slow retries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
@@ -656,7 +656,7 @@ export const andThen: {
  *
  * **Example** (Tracking sequential schedule phases)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Result, Schedule } from "effect"
  *
  * // Track which phase of the schedule we're in
@@ -756,7 +756,7 @@ export const andThenResult: {
  *
  * **Example** (Combining retry schedules by their maximum delay)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
@@ -841,7 +841,7 @@ const maxDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Dur
  *
  * **Example** (Scheduling work with cron expressions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class ScheduledTaskError extends Data.TaggedError("ScheduledTaskError")<{ readonly message: string }> {}
@@ -997,7 +997,7 @@ export const cron: {
  *
  * **Example** (Recurring once after a duration)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule } from "effect"
  *
  * const program = Effect.repeat(
@@ -1030,7 +1030,7 @@ export const duration = (durationInput: Duration.Input): Schedule<Duration.Durat
  *
  * **Example** (Repeating work during a duration)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
@@ -1136,7 +1136,7 @@ export const during = (duration: Duration.Input): Schedule<Duration.Duration> =>
  *
  * **Example** (Combining retry schedules by their minimum delay)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
@@ -1224,7 +1224,7 @@ const minDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Dur
  *
  * **Example** (Retrying with exponential backoff)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class RetryFailure extends Data.TaggedError("RetryFailure")<{ readonly message: string }> {}
@@ -1285,7 +1285,7 @@ export const exponential = (
  *
  * **Example** (Retrying with Fibonacci backoff)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
@@ -1382,7 +1382,7 @@ export const fibonacci = (one: Duration.Input): Schedule<Duration.Duration> => {
  *
  * **Example** (Repeating on fixed intervals)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule } from "effect"
  *
  * // Fixed interval schedule - recurs on a one-second cadence
@@ -1469,7 +1469,7 @@ export const fixed = (interval: Duration.Input): Schedule<number> => {
  *
  * **Example** (Mapping schedule outputs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule } from "effect"
  *
  * // Transform schedule output from number to string
@@ -1565,7 +1565,7 @@ export const map: {
  *
  * **Example** (Modifying delays from schedule metadata)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Duration, Effect, Schedule } from "effect"
  *
  * // Modify delays based on output - increase delay on high iteration counts
@@ -1656,7 +1656,7 @@ export const jittered = <Output, Input, Error, Env>(
  *
  * **Example** (Passing inputs through as outputs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule } from "effect"
  *
  * // Create a schedule that outputs the inputs instead of original outputs
@@ -1706,7 +1706,7 @@ export const passthrough = <Output, Input, Error, Env>(
  *
  * **Example** (Limiting recurrences)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
@@ -1773,7 +1773,7 @@ export const recurs = (times: number): Schedule<number> =>
  *
  * **Example** (Repeating with fixed spacing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule } from "effect"
  *
  * // Basic spaced schedule - runs every 2 seconds
@@ -1837,7 +1837,7 @@ export const spaced = (duration: Duration.Input): Schedule<number> => {
  *
  * **Example** (Tapping schedule metadata)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule } from "effect"
  *
  * const monitoredSchedule = Schedule.exponential("100 millis").pipe(
@@ -1902,7 +1902,7 @@ export const tap: {
  *
  * **Example** (Limiting by duration and recurrence count)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Data, Effect, Schedule } from "effect"
  *
  * class RetryAttemptError extends Data.TaggedError("RetryAttemptError")<{ readonly message: string }> {}
@@ -2067,7 +2067,7 @@ export {
  *
  * **Example** (Repeating on aligned windows)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule } from "effect"
  *
  * // Execute tasks at regular intervals aligned to window boundaries
@@ -2107,7 +2107,7 @@ export const windowed = (interval: Duration.Input): Schedule<number> => {
  *
  * **Example** (Repeating forever)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, Schedule } from "effect"
  *
  * // A schedule that runs forever with no delay
@@ -2171,7 +2171,7 @@ export {
  *
  * **Example** (Setting a schedule input type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schedule } from "effect"
  *
  * const schedule = Schedule.recurs(3).pipe(

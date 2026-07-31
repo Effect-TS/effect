@@ -21,7 +21,7 @@ import type * as Option from "../../Option.ts"
  *
  * **Example** (Defining command help documentation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Option as O } from "effect"
  * import type { HelpDoc } from "effect/unstable/cli"
  *
@@ -126,7 +126,7 @@ export interface ExampleDoc {
  *
  * **Example** (Documenting command flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option as O } from "effect"
  * import type { HelpDoc } from "effect/unstable/cli"
  *
@@ -182,7 +182,7 @@ export interface FlagDoc {
  *
  * **Example** (Documenting subcommands)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Option as O } from "effect"
  * import type { HelpDoc } from "effect/unstable/cli"
  *
@@ -262,7 +262,7 @@ export interface SubcommandGroupDoc {
  *
  * **Example** (Documenting positional arguments)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Option as O } from "effect"
  * import type { HelpDoc } from "effect/unstable/cli"
  *

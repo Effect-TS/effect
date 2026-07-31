@@ -33,7 +33,7 @@ const TypeId = "~effect/Deferred"
  *
  * **Example** (Creating a Deferred for inter-fiber communication)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect, Fiber } from "effect"
  *
  * // Create and use a Deferred for inter-fiber communication
@@ -140,7 +140,7 @@ const DeferredProto = {
  *
  * **Example** (Creating a Deferred unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred } from "effect"
  *
  * const deferred = Deferred.makeUnsafe<number>()
@@ -166,7 +166,7 @@ export const makeUnsafe = <A, E = never>(): Deferred<A, E> => {
  *
  * **Example** (Creating a Deferred)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -209,7 +209,7 @@ export {
    *
    * **Example** (Awaiting a Deferred value)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Deferred, Effect } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -246,7 +246,7 @@ export {
  *
  * **Example** (Completing a Deferred from an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -293,7 +293,7 @@ export const complete: {
  *
  * **Example** (Completing a Deferred with an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -336,7 +336,7 @@ export const completeWith: {
  *
  * **Example** (Completing a Deferred with an Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect, Exit } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -376,7 +376,7 @@ export const done: {
  *
  * **Example** (Failing a Deferred with an error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -411,7 +411,7 @@ export const fail: {
  *
  * **Example** (Failing a Deferred with a lazy error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -448,7 +448,7 @@ export const failSync: {
  *
  * **Example** (Failing a Deferred with a Cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -489,7 +489,7 @@ export const failCause: {
  *
  * **Example** (Failing a Deferred with a lazy Cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -529,7 +529,7 @@ export const failCauseSync: {
  *
  * **Example** (Killing a Deferred with a defect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -566,7 +566,7 @@ export const die: {
  *
  * **Example** (Killing a Deferred with a lazy defect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -607,7 +607,7 @@ export const dieSync: {
  *
  * **Example** (Interrupting a Deferred)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -639,7 +639,7 @@ export const interrupt = <A, E>(self: Deferred<A, E>): Effect<boolean> =>
  *
  * **Example** (Interrupting a Deferred with a fiber id)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -671,7 +671,7 @@ export const interruptWith: {
  *
  * **Example** (Checking Deferred completion)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -718,7 +718,7 @@ export const isDoneUnsafe = <A, E>(self: Deferred<A, E>): boolean => self.effect
  *
  * **Example** (Polling Deferred completion)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -754,7 +754,7 @@ export function poll<A, E>(self: Deferred<A, E>): Effect<Option.Option<Effect<A,
  *
  * **Example** (Completing a Deferred with a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -791,7 +791,7 @@ export const succeed: {
  *
  * **Example** (Completing a Deferred with a lazy value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -832,12 +832,12 @@ export const sync: {
  *
  * **Example** (Completing a Deferred unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const deferred = Deferred.makeUnsafe<number>()
  * const success = Deferred.doneUnsafe(deferred, Effect.succeed(42))
- * console.log(success) // true
+ * console.log(success) // > true
  * ```
  *
  * @category unsafe
@@ -873,7 +873,7 @@ export const doneUnsafe = <A, E>(self: Deferred<A, E>, effect: Effect<A, E>): bo
  *
  * **Example** (Completing a Deferred from an effect result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * // Define an effect that succeeds

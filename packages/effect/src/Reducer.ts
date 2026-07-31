@@ -37,7 +37,7 @@ import type * as Combiner from "./Combiner.ts"
  *
  * **Example** (String concatenation reducer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Reducer } from "effect"
  *
  * const Concat = Reducer.make<string>((a, b) => a + b, "")
@@ -89,7 +89,7 @@ export interface Reducer<A> extends Combiner.Combiner<A> {
  *
  * **Example** (Multiplying with short-circuit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Reducer } from "effect"
  *
  * const Product = Reducer.make<number>(
@@ -155,7 +155,7 @@ export function make<A>(
  *
  * **Example** (Reversing string concatenation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Reducer, String } from "effect"
  *
  * const Prepend = Reducer.flip(String.ReducerConcat)

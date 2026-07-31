@@ -146,7 +146,7 @@ export interface TxQueueState extends Inspectable {
  *
  * **Example** (Offering values through enqueue handles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  * import type { Cause } from "effect"
  *
@@ -183,7 +183,7 @@ export interface TxEnqueue<in A, in E = never> extends TxQueueState {
  *
  * **Example** (Taking values through dequeue handles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -216,7 +216,7 @@ export interface TxDequeue<out A, out E = never> extends TxQueueState {
  *
  * **Example** (Combining enqueue and dequeue operations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -344,7 +344,7 @@ const TxQueueProto = {
  *
  * **Example** (Creating bounded queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -390,7 +390,7 @@ export const bounded = <A = never, E = never>(
  *
  * **Example** (Creating unbounded queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -434,7 +434,7 @@ export const unbounded = <A = never, E = never>(): Effect.Effect<TxQueue<A, E>> 
  *
  * **Example** (Creating dropping queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -478,7 +478,7 @@ export const dropping = <A = never, E = never>(
  *
  * **Example** (Creating sliding queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -528,7 +528,7 @@ export const sliding = <A = never, E = never>(
  *
  * **Example** (Offering a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -595,7 +595,7 @@ export const offer: {
  *
  * **Example** (Offering multiple values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -641,7 +641,7 @@ export const offerAll: {
  *
  * **Example** (Taking a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -698,7 +698,7 @@ export const take = <A, E>(self: TxDequeue<A, E>): Effect.Effect<A, E> =>
  *
  * **Example** (Polling without blocking)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -743,7 +743,7 @@ export const poll = <A, E>(self: TxDequeue<A, E>): Effect.Effect<Option.Option<A
  *
  * **Example** (Taking all queued values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -808,7 +808,7 @@ export const takeAll = <A, E>(self: TxDequeue<A, E>): Effect.Effect<Arr.NonEmpty
  *
  * **Example** (Taking a fixed number of values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -898,7 +898,7 @@ export const takeN: {
  *
  * **Example** (Taking batches within bounds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -986,7 +986,7 @@ export const takeBetween: {
  *
  * **Example** (Peeking without removing values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1037,7 +1037,7 @@ export const peek = <A, E>(self: TxDequeue<A, E>): Effect.Effect<A, E> =>
  *
  * **Example** (Reading queue size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1059,7 +1059,7 @@ export const size = (self: TxQueueState): Effect.Effect<number> => TxChunk.size(
  *
  * **Example** (Checking whether a queue is empty)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1084,7 +1084,7 @@ export const isEmpty = (self: TxQueueState): Effect.Effect<boolean> => TxChunk.i
  *
  * **Example** (Checking whether a queue is full)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1116,7 +1116,7 @@ export const isFull = (self: TxQueueState): Effect.Effect<boolean> =>
  *
  * **Example** (Interrupting queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1144,7 +1144,7 @@ export const interrupt = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<boolean> =
  *
  * **Example** (Failing queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1189,7 +1189,7 @@ export const fail: {
  *
  * **Example** (Failing queues with causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1239,7 +1239,7 @@ export const failCause: {
  *
  * **Example** (Ending queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1274,7 +1274,7 @@ export const end = <A, E>(self: TxEnqueue<A, E | Cause.Done>): Effect.Effect<boo
  *
  * **Example** (Clearing queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1319,7 +1319,7 @@ export const clear = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<Array<A>, Excl
  *
  * **Example** (Shutting down queues)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1353,7 +1353,7 @@ export const shutdown = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<boolean> =>
  *
  * **Example** (Checking open state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1379,7 +1379,7 @@ export const isOpen = (self: TxQueueState): Effect.Effect<boolean> =>
  *
  * **Example** (Checking closing state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1406,7 +1406,7 @@ export const isClosing = (self: TxQueueState): Effect.Effect<boolean> =>
  *
  * **Example** (Checking done state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1432,7 +1432,7 @@ export const isDone = (self: TxQueueState): Effect.Effect<boolean> =>
  *
  * **Example** (Checking shutdown state)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1457,7 +1457,7 @@ export const isShutdown = (self: TxQueueState): Effect.Effect<boolean> => isDone
  *
  * **Example** (Awaiting queue completion)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue } from "effect"
  *
  * const program = Effect.gen(function*() {

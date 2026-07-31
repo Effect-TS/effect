@@ -81,7 +81,7 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
  *
  * **Example** (Defining a service key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * // Define an identifier for a database service
@@ -172,7 +172,7 @@ export declare namespace ServiceClass {
  *
  * **Example** (Creating service keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * // Create a simple service
@@ -308,7 +308,7 @@ const ReferenceTypeId = "~effect/Context/Reference" as const
  *
  * **Example** (Defining a reference with a default value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * // Define a reference with a default value
@@ -337,7 +337,7 @@ export interface Reference<in out Shape> extends Service<never, Shape> {
  *
  * **Example** (Extracting service types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * const Database = Context.Service<{
@@ -360,7 +360,7 @@ export declare namespace Service {
    *
    * **Example** (Typing any service key)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Context } from "effect"
    *
    * // Any represents any possible service type
@@ -381,7 +381,7 @@ export declare namespace Service {
    *
    * **Example** (Extracting a service shape)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Context } from "effect"
    *
    * const Database = Context.Service<{ query: (sql: string) => string }>(
@@ -404,7 +404,7 @@ export declare namespace Service {
    *
    * **Example** (Extracting a service identifier)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Context } from "effect"
    *
    * const Database = Context.Service<{ query: (sql: string) => string }>(
@@ -435,7 +435,7 @@ const TypeId = "~effect/Context" as const
  *
  * **Example** (Creating a context with multiple services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * // Create a context with multiple services
@@ -477,7 +477,7 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
  *
  * **Example** (Creating a context from a map)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * // Create a context from a Map (unsafe)
@@ -549,7 +549,7 @@ const Proto: Omit<Context<never>, "mapUnsafe" | "mutable"> = {
  *
  * **Example** (Checking for contexts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import * as assert from "node:assert"
  *
@@ -569,7 +569,7 @@ export const isContext = (u: unknown): u is Context<never> => hasProperty(u, Typ
  *
  * **Example** (Checking for keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import * as assert from "node:assert"
  *
@@ -586,7 +586,7 @@ export const isKey = (u: unknown): u is Key<any, any> => hasProperty(u, ServiceT
  *
  * **Example** (Checking for references)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import * as assert from "node:assert"
  *
@@ -608,7 +608,7 @@ export const isReference = (u: unknown): u is Reference<any> => hasProperty(u, R
  *
  * **Example** (Creating an empty context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import * as assert from "node:assert"
  *
@@ -626,7 +626,7 @@ const emptyContext = makeUnsafe(new Map())
  *
  * **Example** (Creating a context with one service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import * as assert from "node:assert"
  *
@@ -659,7 +659,7 @@ export const make = <I, S>(
  *
  * **Example** (Adding a service to a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, pipe } from "effect"
  * import * as assert from "node:assert"
  *
@@ -715,7 +715,7 @@ export const add: {
  *
  * **Example** (Adding optional services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Option } from "effect"
  *
  * const Port = Context.Service<{ PORT: number }>("Port")
@@ -778,7 +778,7 @@ export const addOrOmit: {
  *
  * **Example** (Falling back for missing services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * const Logger = Context.Service<{ log: (msg: string) => void }>("Logger")
@@ -860,7 +860,7 @@ export const getOrUndefined: {
  *
  * **Example** (Getting services unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import * as assert from "node:assert"
  *
@@ -903,7 +903,7 @@ export const getUnsafe: {
  *
  * **Example** (Getting a service from a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, pipe } from "effect"
  * import * as assert from "node:assert"
  *
@@ -950,7 +950,7 @@ export const get: {
  *
  * **Example** (Getting reference defaults unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * const LoggerRef = Context.Reference("Logger", {
@@ -1023,7 +1023,7 @@ const serviceNotFoundError = (service: Key<any, any>) => {
  *
  * **Example** (Getting optional services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Option } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1068,7 +1068,7 @@ export const getOption: {
  *
  * **Example** (Merging two contexts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1114,7 +1114,7 @@ export const merge: {
  *
  * **Example** (Merging multiple contexts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1163,7 +1163,7 @@ export const mergeAll = <T extends Array<unknown>>(
  *
  * **Example** (Picking services from a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Option, pipe } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1210,7 +1210,7 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
  *
  * **Example** (Omitting services from a context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Option, pipe } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1308,7 +1308,7 @@ const withMapUnsafe = <Services, B>(self: Context<Services>, f: (map: Map<string
  *
  * **Example** (Creating references with default values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
  * // Create a reference with a default value

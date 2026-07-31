@@ -31,7 +31,7 @@ const TypeId = "~effect/FiberSet"
  *
  * **Example** (Managing fibers in a set)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -67,7 +67,7 @@ export interface FiberSet<out A = unknown, out E = unknown>
  *
  * **Example** (Checking if a value is a FiberSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * Effect.gen(function*() {
@@ -122,7 +122,7 @@ const makeUnsafe = <A, E>(
  *
  * **Example** (Creating a scoped FiberSet)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * Effect.gen(function*() {
@@ -166,7 +166,7 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberSet<A, E>, 
  *
  * **Example** (Creating a scoped runtime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -216,7 +216,7 @@ export const makeRuntime = <R = never, A = unknown, E = unknown>(): Effect.Effec
  *
  * **Example** (Creating a promise runtime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -272,7 +272,7 @@ const isInternalInterruption = Filter.toPredicate(Filter.compose(
  *
  * **Example** (Adding a fiber unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -341,7 +341,7 @@ export const addUnsafe: {
  *
  * **Example** (Adding a fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -389,7 +389,7 @@ export const add: {
  *
  * **Example** (Clearing all fibers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -435,7 +435,7 @@ const constInterruptedFiber = (function() {
  *
  * **Example** (Forking effects into a set)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -504,7 +504,7 @@ const runImpl = <A, E, R, XE extends E, XA extends A>(
  *
  * **Example** (Capturing a runtime)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, FiberSet } from "effect"
  *
  * interface Users {
@@ -575,7 +575,7 @@ export const runtime: <A, E>(
  *
  * **Example** (Running effects as promises)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -634,7 +634,7 @@ export const runtimePromise = <A, E>(self: FiberSet<A, E>): <R = never>() => Eff
  *
  * **Example** (Checking the set size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -662,7 +662,7 @@ export const size = <A, E>(self: FiberSet<A, E>): Effect.Effect<number> =>
  *
  * **Example** (Joining failing fibers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * Effect.gen(function*() {
@@ -685,7 +685,7 @@ export const join = <A, E>(self: FiberSet<A, E>): Effect.Effect<void, E> =>
  *
  * **Example** (Waiting for an empty set)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberSet } from "effect"
  *
  * const program = Effect.gen(function*() {

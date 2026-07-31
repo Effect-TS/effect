@@ -105,7 +105,7 @@ export type PipeToOption = "stdin" | `fd${number}`
  *
  * **Example** (Piping stderr between commands)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ChildProcess } from "effect/unstable/process"
  *
  * // Pipe stderr instead of stdout
@@ -383,6 +383,11 @@ export interface CommandOptions extends KillOptions {
    * If `extendEnv` is set to `true`, the value of `env` will be merged with
    * the value of `globalThis.process.env`, prioritizing the values in `env`
    * when conflicts exist.
+   *
+   * **Gotchas**
+   *
+   * Without `extendEnv: true`, providing `env` replaces the inherited child
+   * environment. The child will not receive `PATH` unless `env` includes it.
    */
   readonly env?: Record<string, string | undefined> | undefined
   /**
@@ -392,7 +397,9 @@ export interface CommandOptions extends KillOptions {
    *
    * **Details**
    *
-   * If set to `false`, only the value of `env` is used.
+   * If set to `false` and `env` is provided, only the value of `env` is used.
+   *
+   * @default false
    */
   readonly extendEnv?: boolean | undefined
   /**
@@ -450,7 +457,7 @@ export interface CommandOptions extends KillOptions {
    *
    * **Example** (Configuring additional file descriptors)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { ChildProcess } from "effect/unstable/process"
    *
    * // Output fd3 - read data from child
@@ -564,7 +571,7 @@ const makePipedCommand = (
  *
  * **Example** (Creating commands)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ChildProcess } from "effect/unstable/process"
  *
  * // Template literal form
@@ -645,7 +652,7 @@ export const make: {
  *
  * **Example** (Piping command output)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ChildProcess } from "effect/unstable/process"
  *
  * // Pipe stdout (default)
@@ -684,7 +691,7 @@ export const pipeTo: {
  *
  * **Example** (Prefixing commands)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ChildProcess } from "effect/unstable/process"
  *
  * const command = ChildProcess.make`echo "foo"`
@@ -752,7 +759,7 @@ const applyPrefix = (self: Command, prefixSpec: PrefixSpec): Command => {
  *
  * **Example** (Setting command working directories)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ChildProcess } from "effect/unstable/process"
  *
  * const cmd = ChildProcess.make`ls -la`.pipe(
@@ -790,7 +797,7 @@ export const setCwd: {
  *
  * **Example** (Setting command environment variables)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { ChildProcess } from "effect/unstable/process"
  *
  * const cmd = ChildProcess.make`node script.js`.pipe(

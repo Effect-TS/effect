@@ -84,7 +84,6 @@ export class ModelName extends Context.Service<ModelName, string>()(
 ) {}
 
 const Proto = {
-  ...PipeInspectableProto,
   [TypeId]: TypeId,
   ["~effect/Layer"]: {
     _ROut: identity,
@@ -97,6 +96,7 @@ const Proto = {
       Effect.succeed(Layer.provide(self, Layer.succeedContext(context)))
     )
   },
+  ...PipeInspectableProto,
   toJSON(this: Model<any, any, any>): unknown {
     return {
       _id: "effect/ai/Model",

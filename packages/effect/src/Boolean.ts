@@ -31,7 +31,7 @@ import * as Reducer from "./Reducer.ts"
  *
  * **Example** (Coercing values to booleans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  *
  * const bool = Boolean.Boolean(1)
@@ -58,7 +58,7 @@ export const Boolean = globalThis.Boolean
  *
  * **Example** (Checking for booleans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -80,7 +80,7 @@ export const isBoolean: (input: unknown) => input is boolean = predicate.isBoole
  *
  * **Example** (Pattern matching on booleans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -121,7 +121,7 @@ export const match: {
  *
  * **Example** (Comparing booleans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  *
  * console.log(Boolean.Order(false, true)) // -1 (false < true)
@@ -144,11 +144,11 @@ export const Order: order.Order<boolean> = order.Boolean
  *
  * **Example** (Comparing booleans for equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  *
- * console.log(Boolean.Equivalence(true, true)) // true
- * console.log(Boolean.Equivalence(true, false)) // false
+ * console.log(Boolean.Equivalence(true, true)) // > true
+ * console.log(Boolean.Equivalence(true, false)) // > false
  * ```
  *
  * @category instances
@@ -165,7 +165,7 @@ export const Equivalence: Equ.Equivalence<boolean> = Equ.Boolean
  *
  * **Example** (Negating booleans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -191,7 +191,7 @@ export const not = (self: boolean): boolean => !self
  *
  * **Example** (Combining booleans with AND)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -218,7 +218,7 @@ export const and: {
  *
  * **Example** (Combining booleans with NAND)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -245,7 +245,7 @@ export const nand: {
  *
  * **Example** (Combining booleans with OR)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -272,7 +272,7 @@ export const or: {
  *
  * **Example** (Combining booleans with NOR)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -299,7 +299,7 @@ export const nor: {
  *
  * **Example** (Combining booleans with XOR)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -326,7 +326,7 @@ export const xor: {
  *
  * **Example** (Checking boolean equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -353,7 +353,7 @@ export const eqv: {
  *
  * **Example** (Checking boolean implication)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -380,7 +380,7 @@ export const implies: {
  *
  * **Example** (Checking every boolean)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *
@@ -412,7 +412,7 @@ export const every = (collection: Iterable<boolean>): boolean => {
  *
  * **Example** (Checking some booleans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  * import * as assert from "node:assert"
  *

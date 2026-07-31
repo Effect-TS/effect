@@ -39,7 +39,7 @@ const TypeId = "~effect/data/Redacted"
  *
  * **Example** (Creating redacted values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Redacted } from "effect"
  *
  * // Create a redacted value to protect sensitive information
@@ -65,7 +65,7 @@ export interface Redacted<out A = string> extends Redacted.Variance<A>, Equal.Eq
  *
  * **Example** (Using namespace utilities)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Redacted } from "effect"
  *
  * // Use the Redacted namespace for type-level operations
@@ -109,7 +109,7 @@ export declare namespace Redacted {
    *
    * **Example** (Extracting the redacted value type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Redacted } from "effect"
    *
    * type ApiKey = Redacted.Redacted<{ readonly token: string }>
@@ -119,7 +119,7 @@ export declare namespace Redacted {
    *   token: `${value.token}:rotated`
    * })
    *
-   * console.log(rotate({ token: "secret" })) // { token: "secret:rotated" }
+   * console.log(rotate({ token: "secret" })) // > { token: 'secret:rotated' }
    * ```
    *
    * @category utility types
@@ -142,14 +142,14 @@ export declare namespace Redacted {
  *
  * **Example** (Checking for redacted values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Redacted } from "effect"
  *
  * const secret = Redacted.make("my-secret")
  * const plainString = "not-secret"
  *
- * console.log(Redacted.isRedacted(secret)) // true
- * console.log(Redacted.isRedacted(plainString)) // false
+ * console.log(Redacted.isRedacted(secret)) // > true
+ * console.log(Redacted.isRedacted(plainString)) // > false
  * ```
  *
  * @category refinements
@@ -173,7 +173,7 @@ export const isRedacted = (u: unknown): u is Redacted<unknown> => hasProperty(u,
  *
  * **Example** (Creating a redacted value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Redacted } from "effect"
  *
  * const API_KEY = Redacted.make("1234567890")
@@ -229,7 +229,7 @@ const Proto = {
  *
  * **Example** (Retrieving a redacted value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Redacted } from "effect"
  * import * as assert from "node:assert"
  *
@@ -260,7 +260,7 @@ export const value: <T>(self: Redacted<T>) => T = redacted.value
  *
  * **Example** (Wiping a redacted value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Redacted } from "effect"
  * import * as assert from "node:assert"
  *
@@ -293,7 +293,7 @@ export const wipeUnsafe = <T>(self: Redacted<T>): boolean => redacted.redactedRe
  *
  * **Example** (Comparing redacted values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Redacted } from "effect"
  * import * as assert from "node:assert"
  *

@@ -27,7 +27,7 @@ import * as Reducer_ from "./Reducer.ts"
  *
  * **Example** (Defining comparison results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Ordering } from "effect"
  *
  * // Custom comparison function
@@ -63,7 +63,7 @@ export type Ordering = -1 | 0 | 1
  *
  * **Example** (Reversing comparison order)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Ordering } from "effect"
  *
  * // Basic reversal
@@ -103,7 +103,7 @@ export const reverse = (o: Ordering): Ordering => (o === -1 ? 1 : o === 1 ? -1 :
  *
  * **Example** (Pattern matching on orderings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Function, Ordering } from "effect"
  * import * as assert from "node:assert"
  *

@@ -22,7 +22,7 @@ import type { HelpDoc } from "./HelpDoc.ts"
  *
  * **Example** (Customizing CLI output formatting)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliOutput } from "effect/unstable/cli"
  *
@@ -54,7 +54,7 @@ export interface Formatter {
    *
    * **Example** (Formatting help documents)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Option as O } from "effect"
    * import { CliOutput } from "effect/unstable/cli"
    * import type { HelpDoc } from "effect/unstable/cli"
@@ -97,7 +97,7 @@ export interface Formatter {
    *
    * **Example** (Formatting CLI errors)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data } from "effect"
    * import { CliOutput } from "effect/unstable/cli"
    *
@@ -108,7 +108,7 @@ export interface Formatter {
    * const formatter = CliOutput.defaultFormatter()
    * const error = new InvalidOption({ message: "Unknown flag '--invalid'" })
    * const errorMessage = formatter.formatCliError(error)
-   * console.log(errorMessage) // "Unknown flag '--invalid'"
+   * console.log(errorMessage) // > Unknown flag '--invalid'
    * ```
    *
    * @since 4.0.0
@@ -120,7 +120,7 @@ export interface Formatter {
    *
    * **Example** (Formatting error sections)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data } from "effect"
    * import { CliOutput } from "effect/unstable/cli"
    *
@@ -149,7 +149,7 @@ export interface Formatter {
    *
    * **Example** (Formatting version output)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { CliOutput } from "effect/unstable/cli"
    *
    * const colorFormatter = CliOutput.defaultFormatter({ colors: true })
@@ -159,10 +159,10 @@ export interface Formatter {
    * const version = "1.2.3"
    *
    * const coloredVersion = colorFormatter.formatVersion(appName, version)
-   * console.log(coloredVersion) // "\x1b[1mmy-awesome-tool\x1b[0m \x1b[2mv\x1b[0m\x1b[1m1.2.3\x1b[0m"
+   * console.log(coloredVersion) // > [1mmy-awesome-tool[0m [2mv[0m[1m1.2.3[0m
    *
    * const plainVersion = noColorFormatter.formatVersion(appName, version)
-   * console.log(plainVersion) // "my-awesome-tool v1.2.3"
+   * console.log(plainVersion) // > my-awesome-tool v1.2.3
    * ```
    *
    * @since 4.0.0
@@ -174,7 +174,7 @@ export interface Formatter {
    *
    * **Example** (Formatting grouped errors)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { CliError, CliOutput } from "effect/unstable/cli"
    *
    * const formatter = CliOutput.defaultFormatter({ colors: false })
@@ -203,7 +203,7 @@ export interface Formatter {
  *
  * **Example** (Accessing the output formatter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliOutput } from "effect/unstable/cli"
  *
@@ -235,7 +235,7 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  *
  * **Example** (Providing a custom formatter)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect } from "effect"
  * import { CliOutput } from "effect/unstable/cli"
  *
@@ -269,12 +269,17 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  */
 export const layer = (formatter: Formatter): Layer.Layer<never> => Layer.succeed(Formatter)(formatter)
 
+const escapeControlCharacters = (text: string): string =>
+  // oxlint-disable-next-line no-control-regex
+  text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, (character) =>
+    `\\x${character.charCodeAt(0).toString(16).padStart(2, "0")}`)
+
 /**
  * Creates a default formatter with configurable options.
  *
  * **Example** (Creating default formatters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { CliError, CliOutput } from "effect/unstable/cli"
  *
@@ -349,14 +354,14 @@ export const defaultFormatter = (options?: { colors?: boolean }): Formatter => {
 
   return {
     formatHelpDoc: (doc: HelpDoc): string => formatHelpDocImpl(doc, colors),
-    formatCliError: (error): string => error.message,
+    formatCliError: (error): string => escapeControlCharacters(error.message),
     formatError: (error): string => {
-      return `\n${bold}${red}ERROR${reset}\n  ${error.message}${reset}`
+      return `\n${bold}${red}ERROR${reset}\n  ${escapeControlCharacters(error.message)}${reset}`
     },
     formatErrors: (errors): string => {
       if (errors.length === 0) return ""
       if (errors.length === 1) {
-        return `\n${bold}${red}ERROR${reset}\n  ${errors[0].message}${reset}`
+        return `\n${bold}${red}ERROR${reset}\n  ${escapeControlCharacters(errors[0].message)}${reset}`
       }
 
       // Group errors by _tag
@@ -373,7 +378,7 @@ export const defaultFormatter = (options?: { colors?: boolean }): Formatter => {
 
       for (const [, group] of grouped) {
         for (const error of group) {
-          sections.push(`  ${error.message}${reset}`)
+          sections.push(`  ${escapeControlCharacters(error.message)}${reset}`)
         }
       }
 

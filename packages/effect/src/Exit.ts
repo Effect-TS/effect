@@ -37,7 +37,7 @@ const TypeId = core.ExitTypeId
  *
  * **Example** (Pattern matching on an Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const success: Exit.Exit<number> = Exit.succeed(42)
@@ -99,14 +99,14 @@ export declare namespace Exit {
  *
  * **Example** (Accessing the success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const success = Exit.succeed(42)
  *
  * if (Exit.isSuccess(success)) {
- *   console.log(success._tag) // "Success"
- *   console.log(success.value) // 42
+ *   console.log(success._tag) // > Success
+ *   console.log(success.value) // > 42
  * }
  * ```
  *
@@ -136,7 +136,7 @@ export interface Success<out A, out E = never> extends Exit.Proto<A, E> {
  *
  * **Example** (Accessing the failure cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const failure = Exit.fail("something went wrong")
@@ -173,12 +173,12 @@ export interface Failure<out A, out E> extends Exit.Proto<A, E> {
  *
  * **Example** (Checking if a value is an Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
- * console.log(Exit.isExit(Exit.succeed(42))) // true
- * console.log(Exit.isExit(Exit.fail("err"))) // true
- * console.log(Exit.isExit("not an exit"))    // false
+ * console.log(Exit.isExit(Exit.succeed(42))) // > true
+ * console.log(Exit.isExit(Exit.fail("err"))) // > true
+ * console.log(Exit.isExit("not an exit")) // > false
  * ```
  *
  * @see {@link isSuccess} to check for a successful Exit
@@ -203,11 +203,11 @@ export const isExit: (u: unknown) => u is Exit<unknown, unknown> = core.isExit
  *
  * **Example** (Creating a successful Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exit = Exit.succeed(42)
- * console.log(Exit.isSuccess(exit)) // true
+ * console.log(Exit.isSuccess(exit)) // > true
  * ```
  *
  * @see {@link fail} to create a failed Exit
@@ -234,12 +234,12 @@ export const succeed: <A>(a: A) => Exit<A> = core.exitSucceed
  *
  * **Example** (Creating a failed Exit from a Cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Exit } from "effect"
  *
  * const cause = Cause.fail("Something went wrong")
  * const exit = Exit.failCause(cause)
- * console.log(Exit.isFailure(exit)) // true
+ * console.log(Exit.isFailure(exit)) // > true
  * ```
  *
  * @see {@link fail} to create a Failure from a plain error value
@@ -265,11 +265,11 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Exit<never, E> = core.exit
  *
  * **Example** (Creating a failed Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exit = Exit.fail("Something went wrong")
- * console.log(Exit.isFailure(exit)) // true
+ * console.log(Exit.isFailure(exit)) // > true
  * ```
  *
  * @see {@link succeed} to create a successful Exit
@@ -298,11 +298,11 @@ export const fail: <E>(e: E) => Exit<never, E> = core.exitFail
  *
  * **Example** (Creating a defect Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exit = Exit.die(new Error("Unexpected error"))
- * console.log(Exit.isFailure(exit)) // true
+ * console.log(Exit.isFailure(exit)) // > true
  * ```
  *
  * @see {@link fail} to create a Failure from a typed error
@@ -327,12 +327,12 @@ export const die: (defect: unknown) => Exit<never> = core.exitDie
  *
  * **Example** (Creating an interruption Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exit = Exit.interrupt(123)
- * console.log(Exit.isFailure(exit)) // true
- * console.log(Exit.hasInterrupts(exit)) // true
+ * console.log(Exit.isFailure(exit)) // > true
+ * console.log(Exit.hasInterrupts(exit)) // > true
  * ```
  *
  * @see {@link hasInterrupts} to check whether an Exit contains interruptions
@@ -358,11 +358,11 @@ export {
    *
    * **Example** (Referencing the void Exit)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Exit } from "effect"
    *
    * const exit = Exit.void
-   * console.log(Exit.isSuccess(exit)) // true
+   * console.log(Exit.isSuccess(exit)) // > true
    * ```
    *
    * @see {@link succeed} to create a success with a specific value
@@ -384,13 +384,13 @@ export {
  *
  * **Example** (Narrowing to success)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exit = Exit.succeed(42)
  *
  * if (Exit.isSuccess(exit)) {
- *   console.log(exit.value) // 42
+ *   console.log(exit.value) // > 42
  * }
  * ```
  *
@@ -412,7 +412,7 @@ export const isSuccess: <A, E>(self: Exit<A, E>) => self is Success<A, E> = effe
  *
  * **Example** (Narrowing to failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exit = Exit.fail("error")
@@ -444,12 +444,12 @@ export const isFailure: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = effe
  *
  * **Example** (Checking for typed errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
- * console.log(Exit.hasFails(Exit.fail("err")))           // true
- * console.log(Exit.hasFails(Exit.die(new Error("bug")))) // false
- * console.log(Exit.hasFails(Exit.succeed(42)))            // false
+ * console.log(Exit.hasFails(Exit.fail("err"))) // > true
+ * console.log(Exit.hasFails(Exit.die(new Error("bug")))) // > false
+ * console.log(Exit.hasFails(Exit.succeed(42))) // > false
  * ```
  *
  * @see {@link hasDies} to check for defects
@@ -474,12 +474,12 @@ export const hasFails: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = effec
  *
  * **Example** (Checking for defects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
- * console.log(Exit.hasDies(Exit.die(new Error("bug")))) // true
- * console.log(Exit.hasDies(Exit.fail("err")))           // false
- * console.log(Exit.hasDies(Exit.succeed(42)))            // false
+ * console.log(Exit.hasDies(Exit.die(new Error("bug")))) // > true
+ * console.log(Exit.hasDies(Exit.fail("err"))) // > false
+ * console.log(Exit.hasDies(Exit.succeed(42))) // > false
  * ```
  *
  * @see {@link hasFails} to check for typed errors
@@ -504,12 +504,12 @@ export const hasDies: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = effect
  *
  * **Example** (Checking for interruptions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
- * console.log(Exit.hasInterrupts(Exit.interrupt(1))) // true
- * console.log(Exit.hasInterrupts(Exit.fail("err")))  // false
- * console.log(Exit.hasInterrupts(Exit.succeed(42)))   // false
+ * console.log(Exit.hasInterrupts(Exit.interrupt(1))) // > true
+ * console.log(Exit.hasInterrupts(Exit.fail("err"))) // > false
+ * console.log(Exit.hasInterrupts(Exit.succeed(42))) // > false
  * ```
  *
  * @see {@link hasFails} to check for typed errors
@@ -540,13 +540,13 @@ export const hasInterrupts: <A, E>(self: Exit<A, E>) => self is Failure<A, E> = 
  *
  * **Example** (Filtering for success)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit, Result } from "effect"
  *
  * const exit = Exit.succeed(42)
  * const result = Exit.filterSuccess(exit)
  *
- * console.log(Result.isSuccess(result)) // true
+ * console.log(Result.isSuccess(result)) // > true
  * ```
  *
  * @see {@link filterFailure} for the inverse
@@ -580,13 +580,13 @@ export const filterSuccess: <A, E>(
  *
  * **Example** (Filtering for the value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit, Result } from "effect"
  *
  * const exit = Exit.succeed(42)
  * const result = Exit.filterValue(exit)
  *
- * console.log(Result.isSuccess(result) && result.success) // 42
+ * console.log(Result.isSuccess(result) && result.success) // > 42
  * ```
  *
  * @see {@link filterSuccess} to get the full Success object
@@ -617,13 +617,13 @@ export const filterValue: <A, E>(self: Exit<A, E>) => Result.Result<A, Failure<n
  *
  * **Example** (Filtering for failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit, Result } from "effect"
  *
  * const exit = Exit.fail("err")
  * const result = Exit.filterFailure(exit)
  *
- * console.log(Result.isSuccess(result)) // true
+ * console.log(Result.isSuccess(result)) // > true
  * ```
  *
  * @see {@link filterSuccess} for the inverse
@@ -655,13 +655,13 @@ export const filterFailure: <A, E>(self: Exit<A, E>) => Result.Result<Failure<ne
  *
  * **Example** (Filtering for the cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit, Result } from "effect"
  *
  * const exit = Exit.fail("err")
  * const result = Exit.filterCause(exit)
  *
- * console.log(Result.isSuccess(result)) // true
+ * console.log(Result.isSuccess(result)) // > true
  * ```
  *
  * @see {@link filterFailure} to get the full Failure object
@@ -692,16 +692,16 @@ export const filterCause: <A, E>(self: Exit<A, E>) => Result.Result<Cause.Cause<
  *
  * **Example** (Finding the first typed error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit, Result } from "effect"
  *
  * const exit = Exit.fail("not found")
  * const result = Exit.findError(exit)
- * console.log(Result.isSuccess(result) && result.success) // "not found"
+ * console.log(Result.isSuccess(result) && result.success) // > not found
  *
  * const defect = Exit.die(new Error("bug"))
  * const noError = Exit.findError(defect)
- * console.log(Result.isFailure(noError)) // true
+ * console.log(Result.isFailure(noError)) // > true
  * ```
  *
  * @see {@link findErrorOption} to get the error as an Option instead
@@ -732,16 +732,16 @@ export const findError: <A, E>(input: Exit<A, E>) => Result.Result<E, Exit<A, E>
  *
  * **Example** (Finding the first defect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit, Result } from "effect"
  *
  * const exit = Exit.die("boom")
  * const result = Exit.findDefect(exit)
- * console.log(Result.isSuccess(result) && result.success) // "boom"
+ * console.log(Result.isSuccess(result) && result.success) // > boom
  *
  * const typed = Exit.fail("err")
  * const noDefect = Exit.findDefect(typed)
- * console.log(Result.isFailure(noDefect)) // true
+ * console.log(Result.isFailure(noDefect)) // > true
  * ```
  *
  * @see {@link findError} to find typed errors instead
@@ -767,7 +767,7 @@ export const findDefect: <A, E>(input: Exit<A, E>) => Result.Result<unknown, Exi
  *
  * **Example** (Matching on an Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const success = Exit.succeed(42)
@@ -776,7 +776,7 @@ export const findDefect: <A, E>(input: Exit<A, E>) => Result.Result<unknown, Exi
  *   onSuccess: (value) => `Got: ${value}`,
  *   onFailure: () => "Failed"
  * })
- * console.log(result) // "Got: 42"
+ * console.log(result) // > Got: 42
  * ```
  *
  * @see {@link isSuccess} and {@link isFailure} for simple boolean checks
@@ -813,12 +813,12 @@ export const match: {
  *
  * **Example** (Mapping over a success)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exit = Exit.succeed(21)
  * const doubled = Exit.map(exit, (x) => x * 2)
- * console.log(Exit.isSuccess(doubled) && doubled.value) // 42
+ * console.log(Exit.isSuccess(doubled) && doubled.value) // > 42
  * ```
  *
  * @see {@link mapError} to transform the error
@@ -852,14 +852,14 @@ export const map: {
  *
  * **Example** (Mapping over an error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Exit } from "effect"
  *
  * class ExitError extends Data.TaggedError("ExitError")<{ readonly input: string }> {}
  *
  * const exit = Exit.fail("bad input")
  * const mapped = Exit.mapError(exit, (e) => new ExitError({ input: e }))
- * console.log(Exit.isFailure(mapped)) // true
+ * console.log(Exit.isFailure(mapped)) // > true
  * ```
  *
  * @see {@link map} to transform the success value
@@ -893,7 +893,7 @@ export const mapError: {
  *
  * **Example** (Mapping both channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Exit } from "effect"
  *
  * class ExitError extends Data.TaggedError("ExitError")<{ readonly input: string }> {}
@@ -903,7 +903,7 @@ export const mapError: {
  *   onSuccess: (x) => String(x),
  *   onFailure: (e: string) => new ExitError({ input: e })
  * })
- * console.log(Exit.isSuccess(mapped) && mapped.value) // "42"
+ * console.log(Exit.isSuccess(mapped) && mapped.value) // > 42
  * ```
  *
  * @see {@link map} to transform only the success value
@@ -938,12 +938,12 @@ export const mapBoth: {
  *
  * **Example** (Discarding the success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exit = Exit.succeed(42)
  * const voided = Exit.asVoid(exit)
- * console.log(Exit.isSuccess(voided)) // true
+ * console.log(Exit.isSuccess(voided)) // > true
  * ```
  *
  * @see {@link void_ void} for a pre-allocated void success
@@ -971,14 +971,14 @@ export const asVoid: <A, E>(self: Exit<A, E>) => Exit<void, E> = effect.exitAsVo
  *
  * **Example** (Combining exits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * const exits = [Exit.succeed(1), Exit.succeed(2), Exit.succeed(3)]
- * console.log(Exit.isSuccess(Exit.asVoidAll(exits))) // true
+ * console.log(Exit.isSuccess(Exit.asVoidAll(exits))) // > true
  *
  * const mixed = [Exit.succeed(1), Exit.fail("err"), Exit.succeed(3)]
- * console.log(Exit.isFailure(Exit.asVoidAll(mixed))) // true
+ * console.log(Exit.isFailure(Exit.asVoidAll(mixed))) // > true
  * ```
  *
  * @see {@link asVoid} to discard the value of a single Exit
@@ -1004,11 +1004,11 @@ export const asVoidAll: <I extends Iterable<Exit<any, any>>>(
  *
  * **Example** (Getting the success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
- * console.log(Exit.getSuccess(Exit.succeed(42))) // { _tag: "Some", value: 42 }
- * console.log(Exit.getSuccess(Exit.fail("err"))) // { _tag: "None" }
+ * console.log(Exit.getSuccess(Exit.succeed(42))) // > { _id: 'Option', _tag: 'Some', value: 42 }
+ * console.log(Exit.getSuccess(Exit.fail("err"))) // > { _id: 'Option', _tag: 'None' }
  * ```
  *
  * @see {@link getCause} to extract the Cause of a failure
@@ -1033,7 +1033,7 @@ export const getSuccess: <A, E>(self: Exit<A, E>) => Option<A> = effect.exitGetS
  *
  * **Example** (Getting the failure cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
  * console.log(Exit.getCause(Exit.fail("err"))) // { _tag: "Some", value: ... }
@@ -1068,12 +1068,12 @@ export const getCause: <A, E>(self: Exit<A, E>) => Option<Cause.Cause<E>> = effe
  *
  * **Example** (Getting the first error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  *
- * console.log(Exit.findErrorOption(Exit.fail("err")))           // { _tag: "Some", value: "err" }
- * console.log(Exit.findErrorOption(Exit.die(new Error("bug")))) // { _tag: "None" }
- * console.log(Exit.findErrorOption(Exit.succeed(42)))            // { _tag: "None" }
+ * console.log(Exit.findErrorOption(Exit.fail("err"))) // > { _id: 'Option', _tag: 'Some', value: 'err' }
+ * console.log(Exit.findErrorOption(Exit.die(new Error("bug")))) // > { _id: 'Option', _tag: 'None' }
+ * console.log(Exit.findErrorOption(Exit.succeed(42))) // > { _id: 'Option', _tag: 'None' }
  * ```
  *
  * @see {@link findError} for filter-pipeline usage

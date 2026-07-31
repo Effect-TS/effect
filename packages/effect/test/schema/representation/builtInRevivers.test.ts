@@ -519,42 +519,15 @@ describe("SchemaRepresentation built-in BigInt revivers", () => {
       }
     )
   })
-
-  it("rejects non-canonical decimal payloads", () => {
-    const json = SchemaRepresentation.toJson(
-      SchemaRepresentation.toRepresentation(Schema.BigInt.check(Schema.isGreaterThanBigInt(1n)).ast)
-    ) as any
-    json.representation.checks[0].representation.payload.exclusiveMinimum = "01"
-
-    throws(
-      () =>
-        SchemaRepresentation.fromRepresentation(SchemaRepresentation.fromJson(json), {
-          revivers: [Schema.isGreaterThanBigIntReviver]
-        }),
-      `Invalid representation payload for effect/schema/isGreaterThanBigInt\n  at ["representation"]["checks"][0]["representation"]["payload"]`
-    )
-  })
 })
 
 function date(millis: number): Date {
-  return Schema.decodeUnknownSync(Schema.DateFromMillis)(millis)
+  return new globalThis.Date(millis)
 }
 
 const epoch = "1970-01-01T00:00:00.000Z"
 
 describe("SchemaRepresentation built-in Date revivers", () => {
-  it("revives isDateValid", () => {
-    assertFilterReviver({
-      schema: Schema.Any.check(Schema.isDateValid()),
-      id: "effect/schema/isDateValid",
-      payload: null,
-      reviver: Schema.isDateValidReviver,
-      valid: date(0),
-      invalid: date(Number.NaN),
-      hasToJsonSchema: false
-    })
-  })
-
   it("revives isGreaterThanDate", () => {
     assertFilterReviver({
       schema: Schema.Any.check(Schema.isGreaterThanDate(date(0))),

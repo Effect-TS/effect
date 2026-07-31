@@ -349,7 +349,7 @@ const Proto = {
           ),
           Stream.unwrap
         )
-      const handlers: Record<string, any> = {}
+      const handlers: Record<string, any> = Object.create(null)
       for (const rpc_ of this.protocol.requests.values()) {
         const rpc = rpc_ as any as Rpc.AnyWithProps
         handlers[rpc._tag] = RpcSchema.isStreamSchema(rpc.successSchema) ? streamHandler : handler

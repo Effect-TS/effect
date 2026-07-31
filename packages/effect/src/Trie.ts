@@ -26,7 +26,7 @@ const TypeId = TR.TrieTypeId
  *
  * **Example** (Using a trie for prefix search)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  *
  * // Create a trie with string-to-number mappings
@@ -72,7 +72,7 @@ export interface Trie<in out Value> extends Iterable<[string, Value]>, Equal, Pi
  *
  * **Example** (Creating an empty trie)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -92,7 +92,7 @@ export const empty: <V = never>() => Trie<V> = TR.empty
  *
  * **Example** (Creating a trie from entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -126,7 +126,7 @@ export const fromIterable: <V>(entries: Iterable<readonly [string, V]>) => Trie<
  *
  * **Example** (Constructing a trie from entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -151,7 +151,7 @@ export const make: <Entries extends Array<readonly [string, any]>>(
  *
  * **Example** (Inserting entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -188,7 +188,7 @@ export const insert: {
  *
  * **Example** (Reading keys in alphabetical order)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -216,7 +216,7 @@ export const keys: <V>(self: Trie<V>) => IterableIterator<string> = TR.keys
  *
  * **Example** (Reading values by key order)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -244,7 +244,7 @@ export const values: <V>(self: Trie<V>) => IterableIterator<V> = TR.values
  *
  * **Example** (Reading entries in alphabetical order)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -271,7 +271,7 @@ export const entries: <V>(self: Trie<V>) => IterableIterator<[string, V]> = TR.e
  *
  * **Example** (Converting entries to an array)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -295,7 +295,7 @@ export const toEntries = <V>(self: Trie<V>): Array<[string, V]> => Array.from(en
  *
  * **Example** (Finding keys with a prefix)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -324,7 +324,7 @@ export const keysWithPrefix: {
  *
  * **Example** (Finding values with a prefix)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -355,7 +355,7 @@ export const valuesWithPrefix: {
  *
  * **Example** (Finding entries with a prefix)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -384,7 +384,7 @@ export const entriesWithPrefix: {
  *
  * **Example** (Converting prefixed entries to an array)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -413,7 +413,7 @@ export const toEntriesWithPrefix: {
  *
  * **Example** (Finding the longest prefix)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -446,7 +446,7 @@ export const longestPrefixOf: {
  *
  * **Example** (Getting the size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -468,7 +468,7 @@ export const size: <V>(self: Trie<V>) => number = TR.size
  *
  * **Example** (Looking up values safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -502,7 +502,7 @@ export const get: {
  *
  * **Example** (Checking key membership)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -536,7 +536,7 @@ export const has: {
  *
  * **Example** (Checking whether a trie is empty)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -567,7 +567,7 @@ export const isEmpty: <V>(self: Trie<V>) => boolean = TR.isEmpty
  *
  * **Example** (Looking up values unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -592,7 +592,7 @@ export const getUnsafe: {
  *
  * **Example** (Removing entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -624,7 +624,7 @@ export const remove: {
  *
  * **Example** (Reducing entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -667,7 +667,7 @@ export const reduce: {
  *
  * **Example** (Mapping entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -706,7 +706,7 @@ export const map: {
  *
  * **Example** (Filtering entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -748,7 +748,7 @@ export const filter: {
  *
  * **Example** (Filtering and mapping entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Result, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -799,7 +799,7 @@ export const filterMap: {
  *
  * **Example** (Compacting optional values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Option, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -827,7 +827,7 @@ export const compact: <A>(self: Trie<Option<A>>) => Trie<A> = TR.compact
  *
  * **Example** (Iterating over entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -858,7 +858,7 @@ export const forEach: {
  *
  * **Example** (Modifying an existing value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Option, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -889,7 +889,7 @@ export const modify: {
  *
  * **Example** (Removing multiple entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Trie } from "effect"
  * import * as assert from "node:assert"
  *
@@ -921,7 +921,7 @@ export const removeMany: {
  *
  * **Example** (Inserting multiple entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Trie } from "effect"
  * import * as assert from "node:assert"
  *

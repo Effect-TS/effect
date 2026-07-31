@@ -33,7 +33,7 @@ import type * as Option from "./Option.ts"
  *
  * **Example** (Controlling concurrent access)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Semaphore } from "effect"
  *
  * // Create and use a semaphore for controlling concurrent access
@@ -118,15 +118,27 @@ export interface Semaphore {
   ): <A, E, R>(self: Effect.Effect<A, E, R>) => Effect.Effect<Option.Option<A>, E, R>
 
   /**
-   * Acquires the specified number of permits and returns the resulting
-   * available permits, suspending the task if they are not yet available.
-   * Concurrent pending `take` calls are processed in a first-in, first-out manner.
+   * Acquires the specified number of permits and returns the acquired permit
+   * count, suspending the task if they are not yet available. Pending `take`
+   * calls are scanned in registration order, but a request is served only when
+   * enough permits are available, so a smaller later request may overtake a
+   * larger earlier request.
    *
    * **When to use**
    *
    * Use to manually acquire permits for lower-level coordination protocols.
    */
   take(this: Semaphore, permits: number): Effect.Effect<number>
+
+  /**
+   * Acquires the specified number of permits only if they are immediately
+   * available.
+   *
+   * **When to use**
+   *
+   * Use to manually acquire permits without waiting, paired with `release`.
+   */
+  takeIfAvailable(this: Semaphore, permits: number): Effect.Effect<boolean>
 
   /**
    * Releases the specified number of permits and returns the resulting
@@ -160,7 +172,7 @@ export interface Semaphore {
  *
  * **Example** (Creating an unsafe semaphore)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Semaphore } from "effect"
  *
  * const semaphore = Semaphore.makeUnsafe(3)
@@ -222,6 +234,14 @@ class SemaphoreImpl implements Semaphore {
       return internal.succeed(n)
     })
     return take
+  }
+
+  takeIfAvailable(n: number): Effect.Effect<boolean> {
+    return internal.suspend(() => {
+      if (this.free < n) return internal.succeed(false)
+      this.taken += n
+      return internal.succeed(true)
+    })
   }
 
   updateTakenUnsafe(fiber: Fiber<any, any>, f: (n: number) => number): number {
@@ -303,7 +323,7 @@ class SemaphoreImpl implements Semaphore {
  *
  * **Example** (Creating a semaphore)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Semaphore } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -456,6 +476,7 @@ export const withPermitsIfAvailable: {
  *
  * @see {@link withPermit} for automatically acquiring and releasing one permit around an effect
  * @see {@link withPermits} for automatically acquiring and releasing multiple permits around an effect
+ * @see {@link takeIfAvailable} for manually acquiring permits without waiting
  * @see {@link release} for returning manually acquired permits
  *
  * @category combinators
@@ -465,6 +486,33 @@ export const take: {
   (permits: number): (self: Semaphore) => Effect.Effect<number>
   (self: Semaphore, permits: number): Effect.Effect<number>
 } = dual(2, (self: Semaphore, permits: number) => self.take(permits))
+
+/**
+ * Acquires the specified number of permits only if they are immediately
+ * available.
+ *
+ * **When to use**
+ *
+ * Use when you need fail-fast manual permit acquisition for a lower-level
+ * protocol with explicit acquisition and release control.
+ *
+ * **Details**
+ *
+ * If enough permits are available, they are acquired and the effect returns
+ * `true`. Otherwise, the effect returns `false` immediately without acquiring
+ * any permits.
+ *
+ * @see {@link take} for the variant that waits until permits are available
+ * @see {@link release} for returning manually acquired permits
+ * @see {@link withPermitsIfAvailable} for automatic acquisition and release around an effect
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const takeIfAvailable: {
+  (permits: number): (self: Semaphore) => Effect.Effect<boolean>
+  (self: Semaphore, permits: number): Effect.Effect<boolean>
+} = dual(2, (self: Semaphore, permits: number) => self.takeIfAvailable(permits))
 
 /**
  * Releases the specified number of permits and returns the resulting available

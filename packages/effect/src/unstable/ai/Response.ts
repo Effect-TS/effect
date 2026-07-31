@@ -155,7 +155,7 @@ export type AllPartsEncoded =
  *
  * **Example** (Building a response parts schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Response, Tool, Toolkit } from "effect/unstable/ai"
  *
@@ -493,7 +493,7 @@ const BasePart = Schema.Struct({
  *
  * **Example** (Creating response content parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const textPart = Response.makePart("text", {
@@ -557,7 +557,7 @@ export type ConstructorParams<Part extends AnyPart> =
  *
  * **Example** (Creating a text part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const textPart: Response.TextPart = Response.makePart("text", {
@@ -813,7 +813,7 @@ export const TextEndPart: Schema.Struct<{
  *
  * **Example** (Creating a reasoning part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const reasoningPart: Response.ReasoningPart = Response.makePart("reasoning", {
@@ -1295,7 +1295,7 @@ export const ToolParamsEndPart: Schema.Struct<{
  *
  * **Example** (Creating a tool call part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Response } from "effect/unstable/ai"
  *
@@ -1503,7 +1503,7 @@ export interface ToolResultFailure<Name extends string, Failure> extends BaseToo
  *
  * **Example** (Creating a tool result part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * interface WeatherData {
@@ -1723,7 +1723,7 @@ export const toolResultPart = <const Params extends ConstructorParams<ToolResult
  *
  * **Example** (Creating an approval request part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const approvalRequest: Response.ToolApprovalRequestPart = Response.makePart(
@@ -1824,7 +1824,7 @@ export const toolApprovalRequestPart = (
  *
  * **Example** (Creating a file part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const imagePart: Response.FilePart = Response.makePart("file", {
@@ -2116,7 +2116,7 @@ export const UrlSourcePart: Schema.Struct<{
  *
  * **Example** (Describing an HTTP request)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Response } from "effect/unstable/ai"
  *
  * const requestDetails: typeof Response.HttpRequestDetails.Type = {
@@ -2135,7 +2135,7 @@ export const HttpRequestDetails = Schema.Struct({
   method: Schema.Literals(["GET", "POST", "PATCH", "PUT", "DELETE", "HEAD", "OPTIONS", "TRACE"]),
   url: Schema.String,
   urlParams: Schema.Array(Schema.Tuple([Schema.String, Schema.String])),
-  hash: Schema.UndefinedOr(Schema.String),
+  hash: Schema.optional(Schema.String),
   headers: Schema.Record(
     Schema.String,
     Schema.Union([
@@ -2156,7 +2156,7 @@ export const HttpRequestDetails = Schema.Struct({
  *
  * **Example** (Describing an HTTP response)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Response } from "effect/unstable/ai"
  *
  * const responseDetails: typeof Response.HttpResponseDetails.Type = {
@@ -2172,7 +2172,7 @@ export const HttpRequestDetails = Schema.Struct({
  * @since 4.0.0
  */
 export const HttpResponseDetails = Schema.Struct({
-  status: Schema.Number,
+  status: Schema.Int,
   headers: Schema.Record(
     Schema.String,
     Schema.Union([
@@ -2191,7 +2191,7 @@ export const HttpResponseDetails = Schema.Struct({
  *
  * **Example** (Creating a metadata part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { DateTime } from "effect"
  * import { Response } from "effect/unstable/ai"
  *
@@ -2213,19 +2213,19 @@ export interface ResponseMetadataPart extends BasePart<"response-metadata", Resp
   /**
    * Optional unique identifier for this specific response.
    */
-  readonly id: string | undefined
+  readonly id?: string | undefined
   /**
    * Optional identifier of the AI model that generated the response.
    */
-  readonly modelId: string | undefined
+  readonly modelId?: string | undefined
   /**
    * Optional timestamp when the response was generated.
    */
-  readonly timestamp: DateTime.Utc | undefined
+  readonly timestamp?: DateTime.Utc | undefined
   /**
    * Optional HTTP request details for the request made to the AI provider.
    */
-  readonly request: typeof HttpRequestDetails.Type | undefined
+  readonly request?: typeof HttpRequestDetails.Type | undefined
 }
 
 /**
@@ -2272,10 +2272,10 @@ export interface ResponseMetadataPartMetadata extends ProviderMetadata {}
  */
 export const ResponseMetadataPart: Schema.Struct<{
   readonly type: Schema.tag<"response-metadata">
-  readonly id: Schema.UndefinedOr<Schema.String>
-  readonly modelId: Schema.UndefinedOr<Schema.String>
-  readonly timestamp: Schema.UndefinedOr<Schema.DateTimeUtcFromString>
-  readonly request: Schema.UndefinedOr<typeof HttpRequestDetails>
+  readonly id: Schema.optional<Schema.String>
+  readonly modelId: Schema.optional<Schema.String>
+  readonly timestamp: Schema.optional<Schema.DateTimeUtcFromString>
+  readonly request: Schema.optional<typeof HttpRequestDetails>
   readonly "~effect/ai/Content/Part": Schema.withDecodingDefaultKey<Schema.tag<"~effect/ai/Content/Part">>
   readonly metadata: Schema.withDecodingDefault<
     Schema.$Record<Schema.String, Schema.Codec<Schema.Json>>
@@ -2283,10 +2283,10 @@ export const ResponseMetadataPart: Schema.Struct<{
 }> = Schema.Struct({
   ...BasePart.fields,
   type: Schema.tag("response-metadata"),
-  id: Schema.UndefinedOr(Schema.String),
-  modelId: Schema.UndefinedOr(Schema.String),
-  timestamp: Schema.UndefinedOr(Schema.DateTimeUtcFromString),
-  request: Schema.UndefinedOr(HttpRequestDetails)
+  id: Schema.optional(Schema.String),
+  modelId: Schema.optional(Schema.String),
+  timestamp: Schema.optional(Schema.DateTimeUtcFromString),
+  request: Schema.optional(HttpRequestDetails)
 }).annotate({ identifier: "ResponseMetadataPart" }) satisfies Schema.Codec<
   ResponseMetadataPart,
   ResponseMetadataPartEncoded
@@ -2368,19 +2368,19 @@ export class Usage extends Schema.Class<Usage>("effect/ai/AiResponse/Usage")({
     /**
      * The number of non-cached input (i.e. prompt) tokens used.
      */
-    uncached: Schema.UndefinedOr(Schema.Number),
+    uncached: Schema.optional(Schema.Int),
     /**
      * The total of number of input (i.e. prompt) tokens used.
      */
-    total: Schema.UndefinedOr(Schema.Number),
+    total: Schema.optional(Schema.Int),
     /**
      * The number of cached input (i.e. prompt) tokens read.
      */
-    cacheRead: Schema.UndefinedOr(Schema.Number),
+    cacheRead: Schema.optional(Schema.Int),
     /**
      * The number of cached input (i.e. prompt) tokens written.
      */
-    cacheWrite: Schema.UndefinedOr(Schema.Number)
+    cacheWrite: Schema.optional(Schema.Int)
   }),
   /**
    * Information about the output (i.e. response) tokens used.
@@ -2389,15 +2389,15 @@ export class Usage extends Schema.Class<Usage>("effect/ai/AiResponse/Usage")({
     /**
      * The total of number of output (i.e. response) tokens used.
      */
-    total: Schema.UndefinedOr(Schema.Number),
+    total: Schema.optional(Schema.Int),
     /**
      * The number of text tokens used.
      */
-    text: Schema.UndefinedOr(Schema.Number),
+    text: Schema.optional(Schema.Int),
     /**
      * The number of reasoning tokens used.
      */
-    reasoning: Schema.UndefinedOr(Schema.Number)
+    reasoning: Schema.optional(Schema.Int)
   })
 }) {}
 
@@ -2406,7 +2406,7 @@ export class Usage extends Schema.Class<Usage>("effect/ai/AiResponse/Usage")({
  *
  * **Example** (Creating a finish part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const finishPart: Response.FinishPart = Response.makePart("finish", {
@@ -2443,7 +2443,7 @@ export interface FinishPart extends BasePart<"finish", FinishPartMetadata> {
   /**
    * Optional HTTP response details from the AI provider.
    */
-  readonly response: typeof HttpResponseDetails.Type | undefined
+  readonly response?: typeof HttpResponseDetails.Type | undefined
 }
 
 /**
@@ -2500,7 +2500,7 @@ export const FinishPart: Schema.Struct<{
     "unknown"
   ]>
   readonly usage: typeof Usage
-  readonly response: Schema.UndefinedOr<typeof HttpResponseDetails>
+  readonly response: Schema.optional<typeof HttpResponseDetails>
   readonly "~effect/ai/Content/Part": Schema.withDecodingDefaultKey<Schema.tag<"~effect/ai/Content/Part">>
   readonly metadata: Schema.withDecodingDefault<
     Schema.$Record<Schema.String, Schema.Codec<Schema.Json>>
@@ -2510,7 +2510,7 @@ export const FinishPart: Schema.Struct<{
   type: Schema.tag("finish"),
   reason: FinishReason,
   usage: Usage,
-  response: Schema.UndefinedOr(HttpResponseDetails)
+  response: Schema.optional(HttpResponseDetails)
 }).annotate({ identifier: "FinishPart" }) satisfies Schema.Codec<FinishPart, FinishPartEncoded>
 
 // =============================================================================
@@ -2522,7 +2522,7 @@ export const FinishPart: Schema.Struct<{
  *
  * **Example** (Creating an error part)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Response } from "effect/unstable/ai"
  *
  * const errorPart: Response.ErrorPart = Response.makePart("error", {

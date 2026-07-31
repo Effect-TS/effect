@@ -145,7 +145,7 @@ const Proto = {
   ) {
     const groups = { ...this.groups }
     for (const group of toAdd) {
-      InternalRecord.set(groups, group.identifier, group)
+      InternalRecord.assignProperty(groups, group.identifier, group)
     }
     return makeProto({
       ...optionsFromApi(this),
@@ -157,9 +157,9 @@ const Proto = {
     api: Top
   ) {
     const newGroups = { ...this.groups }
-    for (const key in api.groups) {
+    for (const key of Object.keys(api.groups)) {
       const group = api.groups[key]
-      InternalRecord.set(
+      InternalRecord.assignProperty(
         newGroups,
         key,
         group.annotateMerge(Context.merge(api.annotations, group.annotations))

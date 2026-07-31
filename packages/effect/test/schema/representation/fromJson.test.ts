@@ -409,7 +409,7 @@ describe("SchemaRepresentation.fromJson", () => {
     const input = () => undefined
     throws(
       () => SchemaRepresentation.fromJson(input as never),
-      `Expected object, got () => void 0`
+      `Expected object, got () => undefined`
     )
   })
 

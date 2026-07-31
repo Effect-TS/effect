@@ -15,6 +15,7 @@ import * as Equal from "./Equal.ts"
 import type { Equivalence } from "./Equivalence.ts"
 import { dual, identity } from "./Function.ts"
 import type { TypeLambda } from "./HKT.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as Option from "./Option.ts"
 import * as Reducer from "./Reducer.ts"
 import type { Result } from "./Result.ts"
@@ -27,7 +28,7 @@ import type { NoInfer } from "./Types.ts"
  *
  * **Example** (Defining a readonly record type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Record } from "effect"
  *
  * // Creating a readonly record type
@@ -52,7 +53,7 @@ export type ReadonlyRecord<in out K extends string | symbol, out A> = {
  *
  * **Example** (Using readonly record helper types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { Record } from "effect"
  *
  * // Using NonLiteralKey to convert literal keys to generic types
@@ -76,7 +77,7 @@ export declare namespace ReadonlyRecord {
    *
    * **Example** (Converting literal keys to non-literal keys)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Record } from "effect"
    *
    * // For literal string keys, this becomes 'string'
@@ -98,7 +99,7 @@ export declare namespace ReadonlyRecord {
    *
    * **Example** (Intersecting record keys)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Record } from "effect"
    *
    * // Intersection of literal keys
@@ -122,7 +123,7 @@ export declare namespace ReadonlyRecord {
  *
  * **Example** (Applying a readonly record type lambda)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { HKT, Record } from "effect"
  *
  * type Settings = HKT.Kind<
@@ -151,16 +152,16 @@ export interface ReadonlyRecordTypeLambda<K extends string = string> extends Typ
  *
  * **Example** (Creating an empty record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * // Create an empty record
  * const emptyRecord = Record.empty<string, number>()
- * console.log(emptyRecord) // {}
+ * console.log(emptyRecord) // > {}
  *
  * // The type ensures type safety for future operations
  * const withValue = Record.set(emptyRecord, "count", 42)
- * console.log(withValue) // { count: 42 }
+ * console.log(withValue) // > { count: 42 }
  * ```
  *
  * @category constructors
@@ -176,7 +177,7 @@ export const empty = <K extends string | symbol = never, V = never>(): Record<
  *
  * **Example** (Checking for an empty record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -195,7 +196,7 @@ export const isEmptyRecord = <K extends string, A>(self: Record<K, A>): self is 
  *
  * **Example** (Checking for an empty readonly record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -216,7 +217,7 @@ export const isEmptyReadonlyRecord: <K extends string, A>(
  *
  * **Example** (Building a record from mapped iterable values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -248,7 +249,7 @@ export const fromIterableWith: {
     const out: Record<string, B> = empty()
     for (const a of self) {
       const [k, b] = f(a)
-      out[k] = b
+      InternalRecord.assignProperty(out, k, b)
     }
     return out
   }
@@ -259,7 +260,7 @@ export const fromIterableWith: {
  *
  * **Example** (Building a record keyed by iterable values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -280,10 +281,21 @@ export const fromIterableWith: {
  * @category constructors
  * @since 2.0.0
  */
-export const fromIterableBy = <A, K extends string | symbol>(
-  items: Iterable<A>,
-  f: (a: A) => K
-): Record<ReadonlyRecord.NonLiteralKey<K>, A> => fromIterableWith(items, (a) => [f(a), a])
+export const fromIterableBy: {
+  <A, K extends string | symbol>(
+    f: (a: A) => K
+  ): (items: Iterable<A>) => Record<ReadonlyRecord.NonLiteralKey<K>, A>
+  <A, K extends string | symbol>(
+    items: Iterable<A>,
+    f: (a: A) => K
+  ): Record<ReadonlyRecord.NonLiteralKey<K>, A>
+} = dual(
+  2,
+  <A, K extends string | symbol>(
+    items: Iterable<A>,
+    f: (a: A) => K
+  ): Record<ReadonlyRecord.NonLiteralKey<K>, A> => fromIterableWith(items, (a) => [f(a), a])
+)
 
 /**
  * Builds a record from an iterable of key-value pairs.
@@ -295,7 +307,7 @@ export const fromIterableBy = <A, K extends string | symbol>(
  *
  * **Example** (Building a record from entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -316,7 +328,7 @@ export const fromEntries: <Entry extends readonly [string | symbol, any]>(
  *
  * **Example** (Collecting mapped record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -349,7 +361,7 @@ export const collect: {
  *
  * **Example** (Converting a record to entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -370,7 +382,7 @@ export const toEntries: <K extends string, A>(self: ReadonlyRecord<K, A>) => Arr
  *
  * **Example** (Getting the record size)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -387,7 +399,7 @@ export const size = <K extends string, A>(self: ReadonlyRecord<K, A>): number =>
  *
  * **Example** (Checking key membership)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -419,7 +431,7 @@ export const has: {
  *
  * **Example** (Getting a value as an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Record as R } from "effect"
  * import * as assert from "node:assert"
  *
@@ -438,7 +450,7 @@ export const get: {
 } = dual(
   2,
   <K extends string | symbol, A>(self: ReadonlyRecord<K, A>, key: NoInfer<K>): Option.Option<A> =>
-    has(self, key) ? Option.some(self[key]) : Option.none()
+    Object.hasOwn(self, key) ? Option.some(self[key]) : Option.none()
 )
 
 /**
@@ -447,7 +459,7 @@ export const get: {
  *
  * **Example** (Modifying a value at a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * const f = (x: number) => x * 2
@@ -494,7 +506,7 @@ export const modify: {
  *
  * **Example** (Replacing a value at a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * Record.replace({ a: 1, b: 2, c: 3 }, "a", 10) // Option.some({ a: 10, b: 2, c: 3 })
@@ -537,7 +549,7 @@ export const replace: {
  *
  * **Example** (Removing a key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -569,7 +581,7 @@ export const remove: {
  *
  * **Example** (Popping a value and removing its key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * const input: Record<string, number> = { a: 1, b: 2 }
@@ -600,7 +612,7 @@ export const pop: {
  *
  * **Example** (Mapping record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -624,7 +636,7 @@ export const map: {
   <K extends string, A, B>(self: ReadonlyRecord<K, A>, f: (a: A, key: NoInfer<K>) => B): Record<K, B> => {
     const out: Record<K, B> = { ...self } as any
     for (const key of keys(self)) {
-      out[key] = f(self[key], key)
+      InternalRecord.assignProperty(out, key, f(self[key], key))
     }
     return out
   }
@@ -635,7 +647,7 @@ export const map: {
  *
  * **Example** (Mapping record keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -665,7 +677,7 @@ export const mapKeys: {
     const out: Record<K2, A> = {} as any
     for (const key of keys(self)) {
       const a = self[key]
-      out[f(key, a)] = a
+      InternalRecord.assignProperty(out, f(key, a), a)
     }
     return out
   }
@@ -676,7 +688,7 @@ export const mapKeys: {
  *
  * **Example** (Mapping record entries)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -706,7 +718,7 @@ export const mapEntries: {
     const out = {} as Record<K2, B>
     for (const key of keys(self)) {
       const [k, b] = f(self[key], key)
-      out[k] = b
+      InternalRecord.assignProperty(out, k, b)
     }
     return out
   }
@@ -718,7 +730,7 @@ export const mapEntries: {
  *
  * **Example** (Filtering and mapping with Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -748,7 +760,7 @@ export const filterMap: {
     for (const key of keys(self)) {
       const result = f(self[key], key)
       if (R.isSuccess(result)) {
-        out[key] = result.success
+        InternalRecord.assignProperty(out, key, result.success)
       }
     }
     return out
@@ -760,7 +772,7 @@ export const filterMap: {
  *
  * **Example** (Filtering record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -795,7 +807,7 @@ export const filter: {
     const out: Record<string, A> = empty()
     for (const key of keys(self)) {
       if (predicate(self[key], key)) {
-        out[key] = self[key]
+        InternalRecord.assignProperty(out, key, self[key])
       }
     }
     return out
@@ -808,7 +820,7 @@ export const filter: {
  *
  * **Example** (Extracting Some values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -830,7 +842,7 @@ export const getSomes: <K extends string, A>(
   for (const key of keys(self)) {
     const option = self[key]
     if (Option.isSome(option)) {
-      out[key] = option.value
+      InternalRecord.assignProperty(out, key, option.value)
     }
   }
   return out
@@ -842,7 +854,7 @@ export const getSomes: <K extends string, A>(
  *
  * **Example** (Extracting Result failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -866,7 +878,7 @@ export const getFailures = <K extends string, A, E>(
   for (const key of keys(self)) {
     const value = self[key]
     if (R.isFailure(value)) {
-      out[key] = value.failure
+      InternalRecord.assignProperty(out, key, value.failure)
     }
   }
 
@@ -879,7 +891,7 @@ export const getFailures = <K extends string, A, E>(
  *
  * **Example** (Extracting Result successes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -903,7 +915,7 @@ export const getSuccesses = <K extends string, A, E>(
   for (const key of keys(self)) {
     const value = self[key]
     if (R.isSuccess(value)) {
-      out[key] = value.success
+      InternalRecord.assignProperty(out, key, value.success)
     }
   }
 
@@ -921,7 +933,7 @@ export const getSuccesses = <K extends string, A, E>(
  *
  * **Example** (Partitioning with Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -954,9 +966,9 @@ export const partition: {
     for (const key of keys(self)) {
       const e = f(self[key], key)
       if (R.isFailure(e)) {
-        left[key] = e.failure
+        InternalRecord.assignProperty(left, key, e.failure)
       } else {
-        right[key] = e.success
+        InternalRecord.assignProperty(right, key, e.success)
       }
     }
     return [left, right]
@@ -969,7 +981,7 @@ export const partition: {
  *
  * **Example** (Separating Result values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record, Result } from "effect"
  * import * as assert from "node:assert"
  *
@@ -991,7 +1003,7 @@ export const separate: <K extends string, A, B>(
  *
  * **Example** (Getting record keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1009,7 +1021,7 @@ export const keys = <K extends string | symbol, A>(self: ReadonlyRecord<K, A>): 
  *
  * **Example** (Getting record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1026,7 +1038,7 @@ export const values = <K extends string, A>(self: ReadonlyRecord<K, A>): Array<A
  *
  * **Example** (Setting a record value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1059,12 +1071,50 @@ export const set: {
 )
 
 /**
+ * Mutates a record by assigning a value to a property.
+ *
+ * **When to use**
+ *
+ * Use when incrementally constructing a new record and copying it for every
+ * property would be unnecessary.
+ *
+ * **Gotchas**
+ *
+ * This function mutates `self`. When `key` is `"__proto__"`, it creates an
+ * own data property instead of changing the object's prototype.
+ *
+ * **Example** (Assigning an external key safely)
+ *
+ * ```ts import.meta.vitest
+ * import { Record } from "effect"
+ * import * as assert from "node:assert"
+ *
+ * const key: string = "__proto__" // Assume this comes from external input
+ * const value = { polluted: true }
+ *
+ * const unsafe: Record<string, unknown> = {}
+ * unsafe[key] = value
+ * assert.strictEqual(Object.getPrototypeOf(unsafe), value)
+ *
+ * const safe: Record<string, unknown> = {}
+ * Record.assignProperty(safe, key, value)
+ * assert.strictEqual(Object.getPrototypeOf(safe), Object.prototype)
+ * assert.strictEqual(safe[key], value)
+ * ```
+ *
+ * @see {@link set} for an immutable update
+ * @category mutations
+ * @since 4.0.0
+ */
+export const assignProperty: (self: object, key: PropertyKey, value: unknown) => void = InternalRecord.assignProperty
+
+/**
  * Checks whether all the keys and values in one record are also found in another record.
  * Uses the provided equivalence function to compare values.
  *
  * **Example** (Checking subrecords with a custom equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Record } from "effect"
  *
  * const isSubrecord = Record.isSubrecordBy(
@@ -1114,7 +1164,7 @@ export const isSubrecordBy = <A>(equivalence: Equivalence<A>): {
  *
  * **Example** (Checking subrecords)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1141,7 +1191,7 @@ export const isSubrecord: {
  *
  * **Example** (Reducing record values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1180,7 +1230,7 @@ export const reduce: {
  *
  * **Example** (Checking every record value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1221,7 +1271,7 @@ export const every: {
  *
  * **Example** (Checking for any matching value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1253,7 +1303,7 @@ export const some: {
  *
  * **Example** (Merging records with union)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1292,14 +1342,14 @@ export const union: {
     const out: Record<string, A | B | C> = empty()
     for (const key of keys(self)) {
       if (has(that, key as any)) {
-        out[key] = combine(self[key], that[key as unknown as K1])
+        InternalRecord.assignProperty(out, key, combine(self[key], that[key as unknown as K1]))
       } else {
-        out[key] = self[key]
+        InternalRecord.assignProperty(out, key, self[key])
       }
     }
     for (const key of keys(that)) {
       if (!has(out, key)) {
-        out[key] = that[key]
+        InternalRecord.assignProperty(out, key, that[key])
       }
     }
     return out
@@ -1312,7 +1362,7 @@ export const union: {
  *
  * **Example** (Merging intersecting keys)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1348,7 +1398,7 @@ export const intersection: {
     }
     for (const key of keys(self)) {
       if (has(that, key as any)) {
-        out[key] = combine(self[key], that[key as unknown as K1])
+        InternalRecord.assignProperty(out, key, combine(self[key], that[key as unknown as K1]))
       }
     }
     return out
@@ -1361,7 +1411,7 @@ export const intersection: {
  *
  * **Example** (Keeping keys unique to each record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1395,12 +1445,12 @@ export const difference: {
   const out = {} as Record<K0 | K1, A | B>
   for (const key of keys(self)) {
     if (!has(that, key as any)) {
-      out[key] = self[key]
+      InternalRecord.assignProperty(out, key, self[key])
     }
   }
   for (const key of keys(that)) {
     if (!has(self, key as any)) {
-      out[key] = that[key]
+      InternalRecord.assignProperty(out, key, that[key])
     }
   }
   return out
@@ -1412,7 +1462,7 @@ export const difference: {
  *
  * **Example** (Comparing records with a value equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1437,7 +1487,7 @@ export const makeEquivalence = <K extends string, A>(
  *
  * **Example** (Creating a singleton record)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  * import * as assert from "node:assert"
  *
@@ -1516,7 +1566,7 @@ export function makeReducerIntersection<K extends string, A>(
  *
  * **Example** (Finding the first matching entry)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
  * const record = { a: 1, b: 2, c: 3 }
@@ -1524,7 +1574,7 @@ export function makeReducerIntersection<K extends string, A>(
  *   record,
  *   (value, key) => value > 1 && key !== "b"
  * )
- * console.log(result) // Option.Some(["c", 3])
+ * console.log(result) // > { _id: 'Option', _tag: 'Some', value: [ 'c', 3 ] }
  * ```
  *
  * @category elements

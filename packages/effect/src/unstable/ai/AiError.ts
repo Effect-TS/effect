@@ -13,6 +13,7 @@
  */
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
+import * as InternalRecord from "../../internal/record.ts"
 import * as Option from "../../Option.ts"
 import * as Predicate from "../../Predicate.ts"
 import { redact } from "../../Redactable.ts"
@@ -34,7 +35,7 @@ const redactHeaders = (headers: Record<string, string>): Record<string, string> 
   const result: Record<string, string> = {}
   for (const key in redacted) {
     const value = redacted[key]
-    result[key] = Redacted.isRedacted(value) ? value.toString() : value
+    InternalRecord.assignProperty(result, key, Redacted.isRedacted(value) ? value.toString() : value)
   }
   return result
 }
@@ -54,7 +55,7 @@ const redactHeaders = (headers: Record<string, string>): Record<string, string> 
  *
  * **Example** (Creating a network error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.NetworkError({
@@ -183,7 +184,7 @@ export class NetworkError extends Schema.ErrorClass<NetworkError>(
  *
  * **Example** (Inspecting metadata shape)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * const metadata = {
  *   openai: {
  *     errorCode: "rate_limit_exceeded",
@@ -306,9 +307,9 @@ export interface UnknownErrorMetadata extends ProviderMetadata {}
  * @since 4.0.0
  */
 export const UsageInfo = Schema.Struct({
-  promptTokens: Schema.optional(Schema.Number),
-  completionTokens: Schema.optional(Schema.Number),
-  totalTokens: Schema.optional(Schema.Number)
+  promptTokens: Schema.optional(Schema.Int),
+  completionTokens: Schema.optional(Schema.Int),
+  totalTokens: Schema.optional(Schema.Int)
 }).annotate({ identifier: "UsageInfo" })
 
 /**
@@ -350,7 +351,7 @@ export const HttpContext = Schema.Struct({
  *
  * **Example** (Creating a rate limit error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Duration } from "effect"
  * import { AiError } from "effect/unstable/ai"
  *
@@ -358,8 +359,8 @@ export const HttpContext = Schema.Struct({
  *   retryAfter: Duration.seconds(60)
  * })
  *
- * console.log(rateLimitError.isRetryable) // true
- * console.log(rateLimitError.message) // "Rate limit exceeded. Retry after 1 minute"
+ * console.log(rateLimitError.isRetryable) // > true
+ * console.log(rateLimitError.message) // > Rate limit exceeded. Retry after 1m
  * ```
  *
  * @category reason
@@ -405,7 +406,7 @@ export class RateLimitError extends Schema.ErrorClass<RateLimitError>(
  *
  * **Example** (Creating a quota exhausted error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const quotaError = new AiError.QuotaExhaustedError({})
@@ -458,7 +459,7 @@ export class QuotaExhaustedError extends Schema.ErrorClass<QuotaExhaustedError>(
  *
  * **Example** (Creating an authentication error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const authError = new AiError.AuthenticationError({
@@ -518,7 +519,7 @@ export class AuthenticationError extends Schema.ErrorClass<AuthenticationError>(
  *
  * **Example** (Creating a content policy error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const policyError = new AiError.ContentPolicyError({
@@ -571,7 +572,7 @@ export class ContentPolicyError extends Schema.ErrorClass<ContentPolicyError>(
  *
  * **Example** (Creating an invalid request error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const invalidRequestError = new AiError.InvalidRequestError({
@@ -632,7 +633,7 @@ export class InvalidRequestError extends Schema.ErrorClass<InvalidRequestError>(
  *
  * **Example** (Creating an internal provider error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const providerError = new AiError.InternalProviderError({
@@ -685,7 +686,7 @@ export class InternalProviderError extends Schema.ErrorClass<InternalProviderErr
  *
  * **Example** (Creating an invalid output error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const parseError = new AiError.InvalidOutputError({
@@ -761,7 +762,7 @@ export class InvalidOutputError extends Schema.ErrorClass<InvalidOutputError>(
  *
  * **Example** (Creating a structured output error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.StructuredOutputError({
@@ -842,7 +843,7 @@ export class StructuredOutputError extends Schema.ErrorClass<StructuredOutputErr
  *
  * **Example** (Creating an unsupported schema error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.UnsupportedSchemaError({
@@ -894,7 +895,7 @@ export class UnsupportedSchemaError extends Schema.ErrorClass<UnsupportedSchemaE
  *
  * **Example** (Creating an unknown error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const unknownError = new AiError.UnknownError({
@@ -952,7 +953,7 @@ export class UnknownError extends Schema.ErrorClass<UnknownError>(
  *
  * **Example** (Creating a tool not found error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.ToolNotFoundError({
@@ -1007,7 +1008,7 @@ export class ToolNotFoundError extends Schema.ErrorClass<ToolNotFoundError>(
  *
  * **Example** (Creating a tool parameter validation error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.ToolParameterValidationError({
@@ -1064,7 +1065,7 @@ export class ToolParameterValidationError extends Schema.ErrorClass<ToolParamete
  *
  * **Example** (Creating an invalid tool result error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.InvalidToolResultError({
@@ -1118,7 +1119,7 @@ export class InvalidToolResultError extends Schema.ErrorClass<InvalidToolResultE
  *
  * **Example** (Creating a tool result encoding error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.ToolResultEncodingError({
@@ -1174,7 +1175,7 @@ export class ToolResultEncodingError extends Schema.ErrorClass<ToolResultEncodin
  *
  * **Example** (Creating a tool configuration error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.ToolConfigurationError({
@@ -1228,7 +1229,7 @@ export class ToolConfigurationError extends Schema.ErrorClass<ToolConfigurationE
  *
  * **Example** (Creating a toolkit required error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.ToolkitRequiredError({
@@ -1283,7 +1284,7 @@ export class ToolkitRequiredError extends Schema.ErrorClass<ToolkitRequiredError
  *
  * **Example** (Creating an invalid user input error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const error = new AiError.InvalidUserInputError({
@@ -1505,7 +1506,7 @@ export type AiErrorEncoded = typeof AiError["Encoded"]
  *
  * **Example** (Checking for an AI error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const someError = new Error("generic error")
@@ -1515,8 +1516,8 @@ export type AiErrorEncoded = typeof AiError["Encoded"]
  *   reason: new AiError.RateLimitError({})
  * })
  *
- * console.log(AiError.isAiError(someError)) // false
- * console.log(AiError.isAiError(aiError)) // true
+ * console.log(AiError.isAiError(someError)) // > false
+ * console.log(AiError.isAiError(aiError)) // > true
  * ```
  *
  * @category guards
@@ -1529,14 +1530,14 @@ export const isAiError = (u: unknown): u is AiError => Predicate.hasProperty(u, 
  *
  * **Example** (Checking for an AI error reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const rateLimitError = new AiError.RateLimitError({})
  * const genericError = new Error("generic error")
  *
- * console.log(AiError.isAiErrorReason(rateLimitError)) // true
- * console.log(AiError.isAiErrorReason(genericError)) // false
+ * console.log(AiError.isAiErrorReason(rateLimitError)) // > true
+ * console.log(AiError.isAiErrorReason(genericError)) // > false
  * ```
  *
  * @category guards
@@ -1549,7 +1550,7 @@ export const isAiErrorReason = (u: unknown): u is AiErrorReason => Predicate.has
  *
  * **Example** (Creating an AI error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Duration } from "effect"
  * import { AiError } from "effect/unstable/ai"
  *
@@ -1584,7 +1585,7 @@ export const make = (params: {
  *
  * **Example** (Mapping an HTTP status to a reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { AiError } from "effect/unstable/ai"
  *
  * const reason = AiError.reasonFromHttpStatus({
@@ -1592,7 +1593,7 @@ export const make = (params: {
  *   body: { error: "Rate limit exceeded" }
  * })
  *
- * console.log(reason._tag) // "RateLimitError"
+ * console.log(reason._tag) // > RateLimitError
  * ```
  *
  * @category constructors

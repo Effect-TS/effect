@@ -74,6 +74,14 @@ class AcquireReleaseDependency extends Context.Service<AcquireReleaseDependency,
   "AcquireReleaseDependency"
 ) {}
 
+class UpdateServiceScopedService extends Context.Service<UpdateServiceScopedService, number>()(
+  "UpdateServiceScopedService"
+) {}
+
+const UpdateServiceScopedReference = Context.Reference<number>("UpdateServiceScopedReference", {
+  defaultValue: () => 0
+})
+
 describe("Types", () => {
   describe("ReasonOf", () => {
     it("extracts reason type", () => {
@@ -597,6 +605,34 @@ describe("Effect.annotateLogsScoped", () => {
   it("returns a scoped effect for record input", () => {
     const result = Effect.annotateLogsScoped({ requestId: "req-123", attempt: 1 })
     expect(result).type.toBe<Effect.Effect<void, never, Scope.Scope>>()
+  })
+})
+
+describe("Effect.updateServiceScoped", () => {
+  it("adds a Context.Service to the requirements", () => {
+    const result = Effect.updateServiceScoped(UpdateServiceScopedService, (value) => value + 1)
+    expect(result).type.toBe<Effect.Effect<void, never, UpdateServiceScopedService | Scope.Scope>>()
+  })
+
+  it("does not add a Context.Reference to the requirements", () => {
+    const result = Effect.updateServiceScoped(UpdateServiceScopedReference, (value) => value + 1)
+    expect(result).type.toBe<Effect.Effect<void, never, Scope.Scope>>()
+  })
+
+  it("types the reset values from the service", () => {
+    const result = Effect.updateServiceScoped(
+      UpdateServiceScopedService,
+      (value) => value + 1,
+      {
+        reset: (original, updated, current) => {
+          expect(original).type.toBe<number>()
+          expect(updated).type.toBe<number>()
+          expect(current).type.toBe<number>()
+          return current
+        }
+      }
+    )
+    expect(result).type.toBe<Effect.Effect<void, never, UpdateServiceScopedService | Scope.Scope>>()
   })
 })
 

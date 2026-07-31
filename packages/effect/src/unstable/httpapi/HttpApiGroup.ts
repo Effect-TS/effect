@@ -308,7 +308,7 @@ const Proto = {
   add(this: Top, ...toAdd: NonEmptyReadonlyArray<HttpApiEndpoint.Top>) {
     const endpoints = { ...this.endpoints }
     for (const endpoint of toAdd) {
-      InternalRecord.set(endpoints, endpoint.identifier, endpoint)
+      InternalRecord.assignProperty(endpoints, endpoint.identifier, endpoint)
     }
     return makeProto({
       ...optionsFromGroup(this),

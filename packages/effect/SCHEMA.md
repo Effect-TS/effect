@@ -37,6 +37,39 @@ Use Schema to:
 13. **Integrations** — working examples for TanStack Form and Elysia.
 14. **Migration from v3** — API mapping from Schema v3 to v4.
 
+## Runtime Performance
+
+Effect Schema is benchmarked against the public
+[`schema-benchmarks`](https://github.com/open-circle/schema-benchmarks) suite.
+It exercises a realistic product schema across validation, parsing, error
+reporting, schema creation, and codecs.
+
+The table below compares Effect Schema with the Valibot and Zod cases available
+in the same suite.
+
+Values are microseconds per operation and lower is better. Results vary between
+machines, so they are most useful for understanding relative costs. A dash
+means that the library does not provide that benchmark.
+
+| Scenario                              | Effect Schema |    Valibot |      Zod 4 |
+| ------------------------------------- | ------------: | ---------: | ---------: |
+| Create a schema                       |        118.23 |  **40.24** |     318.56 |
+| Create a schema and parser            |    **130.50** |          — |          — |
+| Validate valid data                   |     **5.415** |       5.63 |          — |
+| Validate invalid data                 |         1.348 | **0.2431** |          — |
+| Parse valid data and collect errors   |         5.366 |   **5.22** |       7.16 |
+| Parse invalid data and collect errors |     **9.100** |      15.70 |      41.58 |
+| Parse valid data and stop early       |     **5.294** |       5.37 |          — |
+| Parse invalid data and stop early     |         1.352 | **0.2572** |          — |
+| Standard Schema, valid data           |         5.935 |       5.35 |   **3.83** |
+| Standard Schema, invalid data         |    **15.203** |      16.51 |      32.85 |
+| Standard Schema, valid, stop early    |     **5.843** |          — |          — |
+| Standard Schema, invalid, stop early  |     **2.244** |          — |          — |
+| Encode with a typed codec             |        0.3420 |          — | **0.0405** |
+| Decode with a typed codec             |        0.3762 |          — | **0.0463** |
+| Encode unknown input                  |    **0.3472** |          — |          — |
+| Decode unknown input                  |    **0.3637** |          — |          — |
+
 # Defining Elementary Schemas
 
 Schema provides built-in schemas for all common TypeScript types. These schemas represent a single value — like a string or a number — and they are the building blocks you combine into more complex shapes.
@@ -244,9 +277,8 @@ Schema.BigInt.check(isNonPositive)
 
 ## Dates
 
-The `Schema.Date` schema matches `Date` objects (even invalid dates).
-
-If you want to validate only valid dates, use `Schema.DateValid` instead.
+The `Schema.Date` schema matches valid `Date` objects and rejects invalid dates
+such as `new Date(NaN)`.
 
 ## Template literals
 
@@ -1638,9 +1670,12 @@ console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, c_d: 2 }))
 // { aB: 1, cD: 2 }
 ```
 
-By default, if a transformation results in duplicate keys, the last value wins.
+When parsing sequentially, transformed keys are applied in selection order, so
+the later selected property wins if a transformation produces a duplicate key.
+With concurrency greater than `1`, completion order determines which value is
+retained.
 
-**Example** (Merging transformed keys by keeping the last one)
+**Example** (Keeping the later selected value when parsing sequentially)
 
 ```ts
 import { Schema, SchemaTransformation } from "effect"
@@ -1651,35 +1686,6 @@ const schema = Schema.Record(SnakeToCamel, Schema.Number)
 
 console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
 // { aB: 2 }
-```
-
-You can customize how key conflicts are resolved by providing a `combine` function.
-
-**Example** (Combining values for conflicting keys)
-
-```ts
-import { Schema, SchemaTransformation } from "effect"
-
-const SnakeToCamel = Schema.String.pipe(Schema.decode(SchemaTransformation.snakeToCamel()))
-
-const schema = Schema.Record(SnakeToCamel, Schema.Number, {
-  keyValueCombiner: {
-    decode: {
-      // When decoding, combine values of conflicting keys by summing them
-      combine: ([_, v1], [k2, v2]) => [k2, v1 + v2] // you can pass a Semigroup to combine keys
-    },
-    encode: {
-      // Same logic applied when encoding
-      combine: ([_, v1], [k2, v2]) => [k2, v1 + v2]
-    }
-  }
-})
-
-console.log(Schema.decodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
-// { aB: 3 }
-
-console.log(Schema.encodeUnknownSync(schema)({ a_b: 1, aB: 2 }))
-// { a_b: 3 }
 ```
 
 ### Number Keys
@@ -3838,7 +3844,7 @@ g(A.make({ a: "a" })) // error: Argument of type 'A' is not assignable to parame
 
 ## Schema as a Class
 
-`Schema.asClass` turns any schema into a class that can be extended with `extends`. The resulting class inherits the full schema API (e.g. `annotate`) and supports static methods that reference `this`.
+Any schema can be extended directly with `extends`. The resulting class inherits the full schema API (e.g. `annotate`) and supports static methods that reference `this`.
 
 Unlike `Schema.Opaque`, it does **not** make the decoded type nominally distinct, and unlike `Schema.Class`, it does **not** create prototype-backed instances with methods or constructors. It is a lightweight way to attach custom static helpers to a schema.
 
@@ -3847,7 +3853,7 @@ Unlike `Schema.Opaque`, it does **not** make the decoded type nominally distinct
 ```ts
 import { Schema } from "effect"
 
-class MyString extends Schema.asClass(Schema.String) {
+class MyString extends Schema.String {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 
@@ -3860,9 +3866,7 @@ console.log(MyString.decodeUnknownSync("a"))
 ```ts
 import { Schema } from "effect"
 
-class MyStruct extends Schema.asClass(
-  Schema.Struct({ name: Schema.String })
-) {
+class MyStruct extends Schema.Struct({ name: Schema.String }) {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 
@@ -3872,12 +3876,12 @@ console.log(MyStruct.decodeUnknownSync({ name: "a" }))
 
 ### Subclassing
 
-You can extend an `asClass` class to layer on more static helpers:
+You can extend a schema class to layer on more static helpers:
 
 ```ts
 import { Schema } from "effect"
 
-class MyString extends Schema.asClass(Schema.FiniteFromString) {
+class MyString extends Schema.FiniteFromString {
   static readonly decodeUnknownSync = Schema.decodeUnknownSync(this)
 }
 
@@ -4035,7 +4039,7 @@ class PersonWithEmail extends Person {
 **Example** (Extending Data.Error)
 
 ```ts
-import { Data, Effect, identity, Schema, SchemaTransformation, SchemaUtils } from "effect"
+import { Data, Effect, identity, Schema, SchemaTransformation } from "effect"
 
 const Props = Schema.Struct({
   message: Schema.String
@@ -4081,9 +4085,6 @@ const schema = Schema.instanceOf(Err, {
     json: () => Schema.link<Err>()(Props, transformation)
   }
 }).pipe(Schema.encodeTo(Props, transformation))
-
-// built-in helper?
-const builtIn = SchemaUtils.getNativeClassSchema(Err, { encoding: Props })
 ```
 
 ### Class API
@@ -6184,7 +6185,6 @@ flowchart TD
     LD -->|toJsonSchemaDocument|JD["JsonSchema.Document (draft-2020-12)"]
     JD -->|fromJsonSchemaDocument|S
     LD -->|toMultiDocument|LMD["live MultiDocument"]
-    SMD[SchemaMultiDocument] -->|fromSchemaMultiDocument|LMD
     LMD -->|toCodeDocument|CodeDocument
     LMD -->|toJsonSchemaMultiDocument|JMD[JsonSchema.MultiDocument]
     LMD -->|toJsonMultiDocument|JSON
@@ -6211,20 +6211,6 @@ References let the representation share definitions and support recursion.
 A `MultiDocument` stores multiple root representations that share the same `references` table.
 
 This is useful if you want to serialize a set of schemas together, or if you want to generate code for multiple schemas while emitting shared definitions only once.
-
-### `SchemaMultiDocument`
-
-A `SchemaMultiDocument` contains live schemas plus a named definition map:
-
-```ts
-interface SchemaMultiDocument {
-  readonly schemas: readonly [Schema.Top, ...Array<Schema.Top>]
-  readonly definitions: Readonly<Record<string, Schema.Top>>
-}
-```
-
-`fromJsonSchemaMultiDocument` returns this form. `fromSchemaMultiDocument` projects it to a `MultiDocument` while
-preserving explicit definitions, including definitions that are not reachable from a root.
 
 ## Projection and persistence boundaries
 
@@ -6313,10 +6299,11 @@ const multiDocument = SchemaRepresentation.toRepresentations([
 Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. `toMultiDocument(document)`
 wraps a single document when a compiler requires multiple roots.
 
-An explicit `identifier` uniquely names one schema within a conversion. Reusing the same schema shares its reference, but
-two distinct schemas with the same explicit `identifier` cause `toRepresentation` or `toRepresentations` to throw a
-`Duplicate identifier` error. Internal `~identifier` annotations are allocation hints rather than uniqueness claims; when
-a derived name is already occupied, the generated reference receives a numeric suffix.
+An explicit `identifier` requests a reference name within a conversion. Reusing the same schema shares its reference. Copies
+whose AST fields are referentially identical once property-key context is ignored are canonicalized and also share a
+reference. Otherwise, when referentially distinct schemas request the same name, the first schema keeps it and later schemas
+receive numeric suffixes in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback
+allocation hints; their generated names use the `Encoded` suffix and follow the same collision rules.
 
 ## JSON persistence
 
@@ -6373,7 +6360,8 @@ Effect exports individual revivers next to the built-in declarations and checks 
 `Schema.OptionReviver`, `Schema.DateReviver`, and `Schema.isMinLengthReviver`. Supply every reviver required by the
 document; a missing or duplicate `id`, or a payload that does not satisfy its reviver's `payloadSchema`, is an error.
 
-`fromRepresentations` rebuilds every root and named definition in a `MultiDocument` and returns a `SchemaMultiDocument`.
+`fromRepresentations` rebuilds the ordered roots of a `MultiDocument` in a shared reference environment. Only references
+reachable from those roots are revived.
 
 ### Custom revivers
 
@@ -6429,8 +6417,8 @@ schema with revivers first.
 `SchemaRepresentation.fromJsonSchemaDocument` imports a JSON Schema Draft 2020-12 document as a runtime `Schema.Top`.
 It does not return a representation document.
 
-`fromJsonSchemaMultiDocument` returns a `SchemaMultiDocument` containing all root schemas and definitions. Use
-`fromSchemaMultiDocument` when that result must be passed to a representation compiler.
+`fromJsonSchemaMultiDocument` returns the ordered root schemas. It translates only definitions reachable from those
+roots. To pass the result to a representation compiler, call `toRepresentations` with the returned schemas' ASTs.
 
 Import is best-effort: JSON Schema constructs are translated to Effect schemas where possible, but the result is not a
 lossless reconstruction of an original Effect schema. The optional `onEnter` callback can normalize each JSON Schema node

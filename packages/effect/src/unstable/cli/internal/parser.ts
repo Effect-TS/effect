@@ -84,7 +84,7 @@ export const parseArgs = (
       }
     }
 
-    const subLex: LexResult = { tokens: result.childTokens, trailingOperands: [] }
+    const subLex: LexResult = { tokens: result.childTokens, trailingOperands: afterEndOfOptions }
     const subParsed = yield* parseArgs(
       subLex,
       result.sub,
@@ -94,7 +94,7 @@ export const parseArgs = (
     const allErrors = [...result.errors, ...(subParsed.errors ?? [])]
     return {
       flags: result.flags,
-      arguments: afterEndOfOptions,
+      arguments: [],
       subcommand: Option.some({ name: result.sub.name, parsedInput: subParsed }),
       ...(allErrors.length > 0 && { errors: allErrors })
     }

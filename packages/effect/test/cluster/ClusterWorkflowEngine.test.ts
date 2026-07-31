@@ -1,5 +1,5 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Cause, Context, DateTime, Duration, Effect, Exit, Fiber, Layer, Option, Result, Schema } from "effect"
+import { Cause, Context, DateTime, Duration, Effect, Exit, Fiber, Layer, Option, Result, Schema, Tracer } from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
@@ -291,6 +291,50 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert(envelope)
       assert.strictEqual(envelope.address.shardId.group, "workflow")
     }).pipe(Effect.scoped, Effect.provide(TestWorkflowEngine)))
+
+  it.effect("propagates trace context to persisted workflow requests", () => {
+    let callerSpan: Tracer.NativeSpan | undefined
+    const tracer = Tracer.make({
+      span(options) {
+        const span = new Tracer.NativeSpan(options)
+        if (options.name === "WorkflowEngine.deferredDone") {
+          callerSpan = span
+        }
+        return span
+      }
+    })
+    return Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const engine = yield* WorkflowEngine
+      yield* engine.register(ShardedDeferredWorkflow, () => Effect.void)
+
+      const executionId = yield* ShardedDeferredWorkflow.executionId({ id: "trace-context" })
+      const token = DurableDeferred.tokenFromExecutionId(ShardedDeferred, {
+        workflow: ShardedDeferredWorkflow,
+        executionId
+      })
+      const journalLength = driver.journal.length
+      yield* DurableDeferred.done(ShardedDeferred, {
+        token,
+        exit: Exit.void
+      })
+
+      const envelope = driver.journal.slice(journalLength).find((envelope) =>
+        envelope._tag === "Request" &&
+        envelope.address.entityType === "Workflow/ShardedDeferredWorkflow" &&
+        envelope.tag === "deferred"
+      )
+      assert(envelope?._tag === "Request")
+      assert(callerSpan)
+      assert.strictEqual(envelope.traceId, callerSpan.traceId)
+      assert.strictEqual(envelope.spanId, callerSpan.spanId)
+      assert.strictEqual(envelope.sampled, callerSpan.sampled)
+    }).pipe(
+      Effect.provideService(Tracer.Tracer, tracer),
+      Effect.scoped,
+      Effect.provide(TestWorkflowEngine)
+    )
+  })
 
   it.effect("routes activities to the workflow shard group after a partial client is cached", () =>
     Effect.gen(function*() {

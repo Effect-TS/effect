@@ -43,7 +43,7 @@ export interface Flag<A> extends Param.Param<typeof Param.flagKind, A> {}
  *
  * **Example** (Creating string flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const nameFlag = Flag.string("name")
@@ -60,7 +60,7 @@ export const string = (name: string): Flag<string> => Param.string(Param.flagKin
  *
  * **Example** (Creating boolean flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const verboseFlag = Flag.boolean("verbose")
@@ -77,7 +77,7 @@ export const boolean = (name: string): Flag<boolean> => Param.boolean(Param.flag
  *
  * **Example** (Creating integer flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const portFlag = Flag.integer("port")
@@ -94,7 +94,7 @@ export const integer = (name: string): Flag<number> => Param.integer(Param.flagK
  *
  * **Example** (Creating float flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const rateFlag = Flag.float("rate")
@@ -111,7 +111,7 @@ export const float = (name: string): Flag<number> => Param.float(Param.flagKind,
  *
  * **Example** (Creating date flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const startDateFlag = Flag.date("start-date")
@@ -129,7 +129,7 @@ export const date = (name: string): Flag<Date> => Param.date(Param.flagKind, nam
  *
  * **Example** (Creating flag choices with values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // simple enum like choice mapping directly to string union
@@ -179,7 +179,7 @@ export const choice = <const Choices extends ReadonlyArray<string>>(
  *
  * **Example** (Creating path flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Basic path flag
@@ -212,7 +212,7 @@ export const path = (name: string, options?: {
  *
  * **Example** (Creating file flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Basic file flag
@@ -236,7 +236,7 @@ export const file = (name: string, options?: {
  *
  * **Example** (Creating directory flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Basic directory flag
@@ -266,7 +266,7 @@ export const directory = (name: string, options?: {
  *
  * **Example** (Creating redacted flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Redacted } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *
@@ -292,7 +292,7 @@ export const redacted = (name: string): Flag<Redacted.Redacted<string>> => Param
  *
  * **Example** (Reading file text)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const config = Flag.fileText("config-file")
@@ -314,7 +314,7 @@ export const fileText = (name: string): Flag<string> => Param.fileText(Param.fla
  *
  * **Example** (Parsing file contents)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Will use the extension of the file passed on the command line to determine
@@ -339,7 +339,7 @@ export const fileParse = (
  *
  * **Example** (Validating file contents)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *
@@ -375,7 +375,7 @@ export const fileSchema = <A>(
  *
  * **Example** (Parsing key-value pairs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const env = Flag.keyValuePair("env")
@@ -393,14 +393,14 @@ export const keyValuePair = (name: string): Flag<Record<string, string>> => Para
  *
  * **Example** (Creating sentinel flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const makeValueFlag = (includeValue: boolean) =>
  *   includeValue ? Flag.string("value") : Flag.none
  *
- * console.log(makeValueFlag(true) === Flag.none) // false
- * console.log(makeValueFlag(false) === Flag.none) // true
+ * console.log(makeValueFlag(true) === Flag.none) // > false
+ * console.log(makeValueFlag(false) === Flag.none) // > true
  * ```
  *
  * @category constructors
@@ -417,7 +417,7 @@ export const none: Flag<never> = Param.none(Param.flagKind)
  *
  * **Example** (Adding flag aliases)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Flag can be used as both --verbose and -v
@@ -445,7 +445,7 @@ export const withAlias: {
  *
  * **Example** (Adding help descriptions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const portFlag = Flag.integer("port").pipe(
@@ -479,7 +479,7 @@ export const withDescription: {
  *
  * **Example** (Setting metavars)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const databaseFlag = Flag.string("database-url").pipe(
@@ -514,7 +514,7 @@ export const withMetavar: {
  *
  * **Example** (Hiding a flag from help)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Flag still parses --experimental-foo, but it does not appear in --help.
@@ -533,7 +533,7 @@ export const withHidden = <A>(self: Flag<A>): Flag<A> => Param.withHidden(self)
  *
  * **Example** (Making flags optional)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *
@@ -562,7 +562,7 @@ export const optional = <A>(param: Flag<A>): Flag<Option.Option<A>> => Param.opt
  *
  * **Example** (Providing default values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const portFlag = Flag.integer("port").pipe(
@@ -589,7 +589,7 @@ export const withDefault: {
  *
  * **Example** (Falling back to config)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Config } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *
@@ -611,7 +611,7 @@ export const withFallbackConfig: {
  *
  * **Example** (Falling back to prompts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag, Prompt } from "effect/unstable/cli"
  *
  * const name = Flag.string("name").pipe(
@@ -632,7 +632,7 @@ export const withFallbackPrompt: {
  *
  * **Example** (Mapping parsed values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Convert string to uppercase
@@ -659,7 +659,7 @@ export const map: {
  *
  * **Example** (Mapping parsed values effectfully)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *
@@ -694,7 +694,7 @@ export const mapEffect: {
  *
  * **Example** (Mapping thrown errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Parse JSON string with error handling
@@ -731,7 +731,7 @@ export const mapTryCatch: {
  *
  * **Example** (Requiring repeated values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const sourceFlag = Flag.atLeast(Flag.file("source"), 2)
@@ -757,7 +757,7 @@ export const atLeast: {
  *
  * **Example** (Limiting repeated values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const warningFlag = Flag.atMost(Flag.string("warning"), 3)
@@ -783,7 +783,7 @@ export const atMost: {
  *
  * **Example** (Bounding repeated values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * const hostFlag = Flag.between(Flag.string("host"), 1, 3)
@@ -809,7 +809,7 @@ export const between: {
  *
  * **Example** (Filtering and transforming values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *
@@ -847,7 +847,7 @@ export const filterMap: {
  *
  * **Example** (Filtering parsed values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Ensure port is in valid range
@@ -884,7 +884,7 @@ export const filter: {
  *
  * **Example** (Falling back to another flag)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Flag } from "effect/unstable/cli"
  *
  * // Try parsing as integer, fallback to string
@@ -913,7 +913,7 @@ export const orElse: {
  *
  * **Example** (Returning fallback results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Result } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *
@@ -949,7 +949,7 @@ export const orElseResult: {
  *
  * **Example** (Validating with schemas)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Flag } from "effect/unstable/cli"
  *

@@ -1,4 +1,5 @@
 import * as Arr from "../../Array.ts"
+import * as Equal from "../../Equal.ts"
 import { escapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
 import * as RegEx from "../../RegExp.ts"
@@ -59,7 +60,7 @@ function collectJsonSchemaAnnotations(
       ) {
         continue
       }
-      if (SchemaAST.isJson(value)) out[key] = value
+      if (SchemaAST.isJson(value)) InternalRecord.assignProperty(out, key, value)
     }
   }
 
@@ -142,11 +143,62 @@ function compileJsonSchema(
   options: Schema.ToJsonSchemaOptions | undefined
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
   const definitions: Record<string, JsonSchema.JsonSchema> = {}
-  for (const key of Object.keys(references)) {
-    InternalRecord.set(definitions, key, recur(references[key], ["references", key]))
+  // null = compiling, string = canonical key, object = compiled schema
+  const definitionStates = new Map<string, JsonSchema.JsonSchema | string | null>()
+  const compiledRepresentations = new WeakMap<SchemaRepresentation.Representation, JsonSchema.JsonSchema>()
+  const fallbackDefinitions = new Map<string, Array<string>>()
+  const referenceKeys = Object.keys(references)
+  for (const key of referenceKeys) {
+    compileDefinition(key, ["references", key])
+  }
+  for (const key of referenceKeys) {
+    const compiled = definitionStates.get(key)!
+    if (typeof compiled !== "string") {
+      InternalRecord.assignProperty(definitions, key, compiled)
+    }
   }
   const schemas = Arr.map(representations, (representation, index) => recur(representation, rootPaths[index]))
   return { dialect: "draft-2020-12", schemas, definitions }
+
+  function compileDefinition(key: string, path: Path): string {
+    const compiled = definitionStates.get(key)
+    if (compiled !== undefined) return typeof compiled === "string" ? compiled : key
+    if (!Object.hasOwn(references, key)) {
+      throw errorWithPath(`Invalid reference ${key}`, [...path, "$ref"])
+    }
+
+    definitionStates.set(key, null)
+    const representation = references[key]
+    const schema = recur(representation, ["references", key])
+
+    const fallback = getIdentifierFallback(representation)
+    if (fallback !== undefined) {
+      const candidates = fallbackDefinitions.get(fallback)
+      const match = candidates?.find((candidate) => Equal.equals(definitionStates.get(candidate), schema))
+      if (match === undefined) {
+        if (candidates === undefined) fallbackDefinitions.set(fallback, [key])
+        else candidates.push(key)
+      } else {
+        definitionStates.set(key, match)
+        return match
+      }
+    }
+    definitionStates.set(key, schema)
+    return key
+  }
+
+  function getIdentifierFallback(
+    representation: SchemaRepresentation.Representation
+  ): string | undefined {
+    if (representation._tag === "Reference") return undefined
+    const annotations = representation.checks.length === 0
+      ? representation.annotations
+      : representation.checks[representation.checks.length - 1].annotations
+    return typeof annotations?.identifier !== "string" &&
+        typeof annotations?.[InternalAnnotations.IDENTIFIER_FALLBACK_KEY] === "string"
+      ? annotations[InternalAnnotations.IDENTIFIER_FALLBACK_KEY]
+      : undefined
+  }
 
   function annotationSchemas(
     representation: CheckRepresentationAnnotation | undefined,
@@ -183,11 +235,11 @@ function compileJsonSchema(
     path: Path
   ): JsonSchema.JsonSchema {
     if (representation._tag === "Reference") {
-      if (!Object.hasOwn(references, representation.$ref)) {
-        throw errorWithPath(`Invalid reference ${representation.$ref}`, [...path, "$ref"])
-      }
-      return { $ref: `#/$defs/${escapeToken(representation.$ref)}` }
+      const canonical = compileDefinition(representation.$ref, path)
+      return { $ref: `#/$defs/${escapeToken(canonical)}` }
     }
+    const cached = compiledRepresentations.get(representation)
+    if (cached !== undefined) return cached
 
     let output = on(representation, path)
     const ordinary = collectJsonSchemaAnnotations(representation.annotations, options)
@@ -201,6 +253,7 @@ function compileJsonSchema(
         output = appendJsonSchema(output, check)
       }
     }
+    compiledRepresentations.set(representation, output)
     return output
   }
 
@@ -306,7 +359,11 @@ function compileJsonSchema(
           const name = property.name
           const compiled = recur(property.type, [...path, "propertySignatures", index, "type"])
           const annotations = collectJsonSchemaAnnotations(property.annotations, options)
-          properties[name] = annotations === undefined ? compiled : appendJsonSchema(compiled, annotations)
+          InternalRecord.assignProperty(
+            properties,
+            name,
+            annotations === undefined ? compiled : appendJsonSchema(compiled, annotations)
+          )
           if (!property.isOptional) required.push(name)
         }
         if (representation.propertySignatures.length > 0) out.properties = properties
@@ -328,7 +385,7 @@ function compileJsonSchema(
           if (patterns.length === 0) {
             out.additionalProperties = type
           } else {
-            for (const pattern of patterns) patternProperties[pattern] = type
+            for (const pattern of patterns) InternalRecord.assignProperty(patternProperties, pattern, type)
           }
         }
         if (Object.keys(patternProperties).length > 0) {
@@ -366,6 +423,7 @@ function compileJsonSchema(
         if (!Object.hasOwn(references, parameter.$ref)) {
           throw errorWithPath(`Invalid reference ${parameter.$ref}`, [...path, "$ref"])
         }
+        compileDefinition(parameter.$ref, path)
         if (seenReferences.has(parameter.$ref)) return []
         const next = new Set(seenReferences).add(parameter.$ref)
         return getParameterPatterns(references[parameter.$ref], ["references", parameter.$ref], next)

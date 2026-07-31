@@ -10,10 +10,7 @@ describe("JSON Schema importer", () => {
     const fromMultiDocument: (
       document: JsonSchema.MultiDocument<"draft-2020-12">,
       options?: SchemaRepresentation.FromJsonSchemaOptions
-    ) => SchemaRepresentation.SchemaMultiDocument = SchemaRepresentation.fromJsonSchemaMultiDocument
-    const fromSchemaMultiDocument: (
-      document: SchemaRepresentation.SchemaMultiDocument
-    ) => SchemaRepresentation.MultiDocument = SchemaRepresentation.fromSchemaMultiDocument
+    ) => readonly [Schema.Top, ...Array<Schema.Top>] = SchemaRepresentation.fromJsonSchemaMultiDocument
     expect(fromDocument).type.toBe<
       (
         document: JsonSchema.Document<"draft-2020-12">,
@@ -24,10 +21,7 @@ describe("JSON Schema importer", () => {
       (
         document: JsonSchema.MultiDocument<"draft-2020-12">,
         options?: SchemaRepresentation.FromJsonSchemaOptions
-      ) => SchemaRepresentation.SchemaMultiDocument
-    >()
-    expect(fromSchemaMultiDocument).type.toBe<
-      (document: SchemaRepresentation.SchemaMultiDocument) => SchemaRepresentation.MultiDocument
+      ) => readonly [Schema.Top, ...Array<Schema.Top>]
     >()
   })
 

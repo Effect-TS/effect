@@ -36,7 +36,7 @@ const TypeId = "~effect/Newtype"
  *
  * **Example** (Defining a newtype)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Newtype } from "effect"
  *
  * interface UserId extends Newtype.Newtype<"UserId", number> {}
@@ -125,7 +125,7 @@ export declare namespace Newtype {
  *
  * **Example** (Unwrapping a newtype)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Newtype } from "effect"
  *
  * interface Label extends Newtype.Newtype<"Label", string> {}
@@ -158,7 +158,7 @@ export const value: <N extends Newtype.Any>(newtype: N) => Newtype.Carrier<N> = 
  *
  * **Example** (Wrapping and unwrapping with an iso)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Newtype } from "effect"
  *
  * interface Label extends Newtype.Newtype<"Label", string> {}
@@ -194,7 +194,7 @@ export function makeIso<N extends Newtype.Any>(): Optic.Iso<N, Newtype.Carrier<N
  *
  * **Example** (Comparing newtypes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Newtype } from "effect"
  *
  * interface Label extends Newtype.Newtype<"Label", string> {}
@@ -229,7 +229,7 @@ export const makeEquivalence: <N extends Newtype.Any>(
  *
  * **Example** (Ordering newtypes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Newtype, Order } from "effect"
  *
  * interface Score extends Newtype.Newtype<"Score", number> {}
@@ -261,7 +261,7 @@ export const makeOrder: <N extends Newtype.Any>(order: Order.Order<Newtype.Carri
  *
  * **Example** (Combining newtypes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Combiner, Newtype } from "effect"
  *
  * interface Amount extends Newtype.Newtype<"Amount", number> {}
@@ -297,7 +297,7 @@ export const makeCombiner: <N extends Newtype.Any>(
  *
  * **Example** (Reducing newtypes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Newtype, Reducer } from "effect"
  *
  * interface Score extends Newtype.Newtype<"Score", number> {}

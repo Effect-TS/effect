@@ -46,7 +46,7 @@ export const String = globalThis.String
  *
  * **Example** (Checking for strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -65,12 +65,12 @@ export const isString: Refinement<unknown, string> = predicate.isString
  *
  * **Example** (Comparing strings lexicographically)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.Order("apple", "banana")) // -1
- * console.log(String.Order("banana", "apple")) // 1
- * console.log(String.Order("apple", "apple")) // 0
+ * console.log(String.Order("apple", "banana")) // > -1
+ * console.log(String.Order("banana", "apple")) // > 1
+ * console.log(String.Order("apple", "apple")) // > 0
  * ```
  *
  * @category instances
@@ -83,11 +83,11 @@ export const Order: order.Order<string> = order.String
  *
  * **Example** (Comparing strings for equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.Equivalence("hello", "hello")) // true
- * console.log(String.Equivalence("hello", "world")) // false
+ * console.log(String.Equivalence("hello", "hello")) // > true
+ * console.log(String.Equivalence("hello", "world")) // > false
  * ```
  *
  * @category instances
@@ -104,11 +104,11 @@ export const Equivalence: Equ.Equivalence<string> = Equ.String
  *
  * **Example** (Referencing the empty string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.empty) // ""
- * console.log(String.isEmpty(String.empty)) // true
+ * console.log(String.empty) // >
+ * console.log(String.isEmpty(String.empty)) // > true
  * ```
  *
  * @category constants
@@ -121,7 +121,7 @@ export const empty: "" = "" as const
  *
  * **Example** (Concatenating string literal types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { String } from "effect"
  *
  * // Type-level concatenation
@@ -138,14 +138,14 @@ export type Concat<A extends string, B extends string> = `${A}${B}`
  *
  * **Example** (Concatenating strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
  * const result1 = String.concat("hello", "world")
- * console.log(result1) // "helloworld"
+ * console.log(result1) // > helloworld
  *
  * const result2 = pipe("hello", String.concat("world"))
- * console.log(result2) // "helloworld"
+ * console.log(result2) // > helloworld
  * ```
  *
  * @category combining
@@ -161,7 +161,7 @@ export const concat: {
  *
  * **Example** (Converting strings to uppercase)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -179,7 +179,7 @@ export const toUpperCase = <S extends string>(self: S): Uppercase<S> => self.toU
  *
  * **Example** (Converting strings to lowercase)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -197,7 +197,7 @@ export const toLowerCase = <T extends string>(self: T): Lowercase<T> => self.toL
  *
  * **Example** (Capitalizing a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -219,7 +219,7 @@ export const capitalize = <T extends string>(self: T): Capitalize<T> => {
  *
  * **Example** (Uncapitalizing a string)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -246,7 +246,7 @@ export const uncapitalize = <T extends string>(self: T): Uncapitalize<T> => {
  *
  * **Example** (Replacing a substring)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -268,7 +268,7 @@ export const replace = (searchValue: string | RegExp, replaceValue: string) => (
  *
  * **Example** (Trimming whitespace at the type level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { String } from "effect"
  *
  * type Result = String.Trim<"  hello  "> // "hello"
@@ -284,7 +284,7 @@ export type Trim<A extends string> = TrimEnd<TrimStart<A>>
  *
  * **Example** (Trimming whitespace)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -302,7 +302,7 @@ export const trim = <A extends string>(self: A): Trim<A> => self.trim() as Trim<
  *
  * **Example** (Trimming leading whitespace at the type level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { String } from "effect"
  *
  * type Result = String.TrimStart<"  hello"> // "hello"
@@ -318,7 +318,7 @@ export type TrimStart<A extends string> = A extends `${" " | "\n" | "\t" | "\r"}
  *
  * **Example** (Trimming leading whitespace)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -336,7 +336,7 @@ export const trimStart = <A extends string>(self: A): TrimStart<A> => self.trimS
  *
  * **Example** (Trimming trailing whitespace at the type level)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import type { String } from "effect"
  *
  * type Result = String.TrimEnd<"hello  "> // "hello"
@@ -352,7 +352,7 @@ export type TrimEnd<A extends string> = A extends `${infer B}${" " | "\n" | "\t"
  *
  * **Example** (Trimming trailing whitespace)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -370,7 +370,7 @@ export const trimEnd = <A extends string>(self: A): TrimEnd<A> => self.trimEnd()
  *
  * **Example** (Slicing strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -388,7 +388,7 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  *
  * **Example** (Checking for empty strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -406,7 +406,7 @@ export const isEmpty = (self: string): self is "" => self.length === 0
  *
  * **Example** (Checking for non-empty strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -424,7 +424,7 @@ export const isNonEmpty = (self: string): boolean => self.length > 0
  *
  * **Example** (Getting string length)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -441,7 +441,7 @@ export const length = (self: string): number => self.length
  *
  * **Example** (Splitting strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -467,7 +467,7 @@ export const split: {
  *
  * **Example** (Checking for substrings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -486,7 +486,7 @@ export const includes = (searchString: string, position?: number) => (self: stri
  *
  * **Example** (Checking string prefixes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -505,7 +505,7 @@ export const startsWith = (searchString: string, position?: number) => (self: st
  *
  * **Example** (Checking string suffixes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -524,7 +524,7 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
  *
  * **Example** (Reading character codes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
  * String.charCodeAt("abc", 1) // Option.some(98)
@@ -548,7 +548,7 @@ export const charCodeAt: {
  *
  * **Example** (Extracting substrings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
  * pipe("abcd", String.substring(1)) // "bcd"
@@ -565,7 +565,7 @@ export const substring = (start: number, end?: number) => (self: string): string
  *
  * **Example** (Accessing characters safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
  * pipe("abc", String.at(1)) // Option.some("b")
@@ -585,7 +585,7 @@ export const at: {
  *
  * **Example** (Reading characters safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
  * pipe("abc", String.charAt(1)) // Option.some("b")
@@ -608,7 +608,7 @@ export const charAt: {
  *
  * **Example** (Reading code points)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
  * pipe("abc", String.codePointAt(1)) // Option.some(98)
@@ -628,7 +628,7 @@ export const codePointAt: {
  *
  * **Example** (Finding the first substring index)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
  * pipe("abbbc", String.indexOf("b")) // Option.some(1)
@@ -646,7 +646,7 @@ export const indexOf = (searchString: string) => (self: string): Option.Option<n
  *
  * **Example** (Finding the last substring index)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
  * pipe("abbbc", String.lastIndexOf("b")) // Option.some(3)
@@ -666,7 +666,7 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
  *
  * **Example** (Comparing strings by locale)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -688,16 +688,16 @@ export const localeCompare =
  *
  * **Example** (Matching regular expressions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, pipe, String } from "effect"
  *
  * const match = pipe("hello", String.match(/l+/))
  *
  * if (Option.isSome(match)) {
- *   console.log(`${match.value[0]}@${match.value.index}`) // "ll@2"
+ *   console.log(`${match.value[0]}@${match.value.index}`) // > ll@2
  * }
  *
- * console.log(Option.isNone(pipe("hello", String.match(/x/)))) // true
+ * console.log(Option.isNone(pipe("hello", String.match(/x/)))) // > true
  * ```
  *
  * @category searching
@@ -712,7 +712,7 @@ export const match = (regExp: RegExp | string) => (self: string): Option.Option<
  *
  * **Example** (Iterating regular expression matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  *
  * const matches = pipe("hello world", String.matchAll(/l/g))
@@ -731,7 +731,7 @@ export const matchAll = (regExp: RegExp) => (self: string): IterableIterator<Reg
  *
  * **Example** (Normalizing Unicode strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -756,7 +756,7 @@ export const normalize = (form?: "NFC" | "NFD" | "NFKC" | "NFKD") => (self: stri
  *
  * **Example** (Padding strings at the end)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -775,7 +775,7 @@ export const padEnd = (maxLength: number, fillString?: string) => (self: string)
  *
  * **Example** (Padding strings at the start)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -794,7 +794,7 @@ export const padStart = (maxLength: number, fillString?: string) => (self: strin
  *
  * **Example** (Repeating strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -812,7 +812,7 @@ export const repeat = (count: number) => (self: string): string => self.repeat(c
  *
  * **Example** (Replacing all matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -832,7 +832,7 @@ export const replaceAll = (searchValue: string | RegExp, replaceValue: string) =
  *
  * **Example** (Searching strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
  * String.search("ababb", "b") // Option.some(1)
@@ -857,7 +857,7 @@ export const search: {
  *
  * **Example** (Lowercasing strings by locale)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -876,7 +876,7 @@ export const toLocaleLowerCase = (locale?: string | Array<string>) => (self: str
  *
  * **Example** (Uppercasing strings by locale)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { pipe, String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -904,7 +904,7 @@ export const toLocaleUpperCase = (locale?: string | Array<string>) => (self: str
  *
  * **Example** (Taking characters from the start)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -933,7 +933,7 @@ export const takeLeft: {
  *
  * **Example** (Taking characters from the end)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  * import * as assert from "node:assert"
  *
@@ -960,11 +960,11 @@ const LF = 0x0a
  *
  * **Example** (Iterating lines without separators)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
  * const lines = String.linesIterator("hello\nworld\n")
- * console.log(Array.from(lines)) // ["hello", "world"]
+ * console.log(Array.from(lines)) // > [ 'hello', 'world' ]
  * ```
  *
  * @category splitting
@@ -978,11 +978,11 @@ export const linesIterator = (self: string): LinesIterator => linesSeparated(sel
  *
  * **Example** (Iterating lines with separators)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
  * const lines = String.linesWithSeparators("hello\nworld\n")
- * console.log(Array.from(lines)) // ["hello\n", "world\n"]
+ * console.log(Array.from(lines)) // > [ 'hello\n', 'world\n' ]
  * ```
  *
  * @category splitting
@@ -996,7 +996,7 @@ export const linesWithSeparators = (s: string): LinesIterator => linesSeparated(
  *
  * **Example** (Stripping custom margins)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
  * const text = "  |hello\n  |world"
@@ -1035,7 +1035,7 @@ export const stripMarginWith: {
  *
  * **Example** (Stripping pipe margins)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
  * const text = "  |hello\n  |world"
@@ -1053,11 +1053,11 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  *
  * **Example** (Converting snake_case to camelCase)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToCamel("hello_world")) // "helloWorld"
- * console.log(String.snakeToCamel("foo_bar_baz")) // "fooBarBaz"
+ * console.log(String.snakeToCamel("hello_world")) // > helloWorld
+ * console.log(String.snakeToCamel("foo_bar_baz")) // > fooBarBaz
  * ```
  *
  * @category transforming
@@ -1076,11 +1076,11 @@ export const snakeToCamel = (self: string): string => {
  *
  * **Example** (Converting snake_case to PascalCase)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToPascal("hello_world")) // "HelloWorld"
- * console.log(String.snakeToPascal("foo_bar_baz")) // "FooBarBaz"
+ * console.log(String.snakeToPascal("hello_world")) // > HelloWorld
+ * console.log(String.snakeToPascal("foo_bar_baz")) // > FooBarBaz
  * ```
  *
  * @category transforming
@@ -1099,11 +1099,11 @@ export const snakeToPascal = (self: string): string => {
  *
  * **Example** (Converting snake_case to kebab-case)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.snakeToKebab("hello_world")) // "hello-world"
- * console.log(String.snakeToKebab("foo_bar_baz")) // "foo-bar-baz"
+ * console.log(String.snakeToKebab("hello_world")) // > hello-world
+ * console.log(String.snakeToKebab("foo_bar_baz")) // > foo-bar-baz
  * ```
  *
  * @category transforming
@@ -1116,11 +1116,11 @@ export const snakeToKebab = (self: string): string => self.replace(/_/g, "-")
  *
  * **Example** (Converting camelCase to snake_case)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.camelToSnake("helloWorld")) // "hello_world"
- * console.log(String.camelToSnake("fooBarBaz")) // "foo_bar_baz"
+ * console.log(String.camelToSnake("helloWorld")) // > hello_world
+ * console.log(String.camelToSnake("fooBarBaz")) // > foo_bar_baz
  * ```
  *
  * @category transforming
@@ -1133,11 +1133,11 @@ export const camelToSnake = (self: string): string => self.replace(/([A-Z])/g, "
  *
  * **Example** (Converting PascalCase to snake_case)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.pascalToSnake("HelloWorld")) // "hello_world"
- * console.log(String.pascalToSnake("FooBarBaz")) // "foo_bar_baz"
+ * console.log(String.pascalToSnake("HelloWorld")) // > hello_world
+ * console.log(String.pascalToSnake("FooBarBaz")) // > foo_bar_baz
  * ```
  *
  * @category transforming
@@ -1151,11 +1151,11 @@ export const pascalToSnake = (self: string): string =>
  *
  * **Example** (Converting kebab-case to snake_case)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { String } from "effect"
  *
- * console.log(String.kebabToSnake("hello-world")) // "hello_world"
- * console.log(String.kebabToSnake("foo-bar-baz")) // "foo_bar_baz"
+ * console.log(String.kebabToSnake("hello-world")) // > hello_world
+ * console.log(String.kebabToSnake("foo-bar-baz")) // > foo_bar_baz
  * ```
  *
  * @category transforming

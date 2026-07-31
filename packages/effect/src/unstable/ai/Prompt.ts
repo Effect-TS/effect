@@ -153,7 +153,7 @@ const BasePart = Schema.Struct({
  *
  * **Example** (Creating content parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const textPart = Prompt.makePart("text", {
@@ -219,7 +219,7 @@ export type PartConstructorParams<P extends Part> = Omit<P, typeof PartTypeId | 
  *
  * **Example** (Creating text parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const textPart: Prompt.TextPart = Prompt.makePart("text", {
@@ -301,7 +301,7 @@ export const textPart = (params: PartConstructorParams<TextPart>): TextPart => m
  *
  * **Example** (Creating reasoning parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const reasoningPart: Prompt.ReasoningPart = Prompt.makePart("reasoning", {
@@ -387,7 +387,7 @@ export const reasoningPart = (params: PartConstructorParams<ReasoningPart>): Rea
  *
  * **Example** (Creating file parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const imagePart: Prompt.FilePart = Prompt.makePart("file", {
@@ -501,7 +501,7 @@ export const filePart = (params: PartConstructorParams<FilePart>): FilePart => m
  *
  * **Example** (Creating tool call parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const toolCallPart: Prompt.ToolCallPart = Prompt.makePart("tool-call", {
@@ -614,7 +614,7 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
  *
  * **Example** (Creating tool result parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const toolResultPart: Prompt.ToolResultPart = Prompt.makePart("tool-result", {
@@ -736,7 +736,7 @@ export const toolResultPart = (params: PartConstructorParams<ToolResultPart>): T
  *
  * **Example** (Creating tool approval responses)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const approvalResponse: Prompt.ToolApprovalResponsePart = Prompt.makePart(
@@ -858,7 +858,7 @@ export const toolApprovalResponsePart = (
  *
  * **Example** (Creating tool approval requests)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const approvalRequest: Prompt.ToolApprovalRequestPart = Prompt.makePart(
@@ -946,6 +946,32 @@ export const toolApprovalRequestPart = (
   params: PartConstructorParams<ToolApprovalRequestPart>
 ): ToolApprovalRequestPart => makePart("tool-approval-request", params as any)
 
+/**
+ * Schema for validation and encoding of content parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const Part: Schema.Union<
+  readonly [
+    typeof TextPart,
+    typeof ReasoningPart,
+    typeof FilePart,
+    typeof ToolCallPart,
+    typeof ToolResultPart,
+    typeof ToolApprovalResponsePart,
+    typeof ToolApprovalRequestPart
+  ]
+> = Schema.Union([
+  TextPart,
+  ReasoningPart,
+  FilePart,
+  ToolCallPart,
+  ToolResultPart,
+  ToolApprovalResponsePart,
+  ToolApprovalRequestPart
+])
+
 // =============================================================================
 // Base Message
 // =============================================================================
@@ -1012,7 +1038,7 @@ const BaseMessage = Schema.Struct({
  *
  * **Example** (Creating messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const textPart = Prompt.makePart("text", {
@@ -1096,7 +1122,7 @@ export const ContentFromString: Schema.decodeTo<
  *
  * **Example** (Creating system messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const systemMessage: Prompt.SystemMessage = Prompt.makeMessage("system", {
@@ -1177,7 +1203,7 @@ export const systemMessage = (params: MessageConstructorParams<SystemMessage>): 
  *
  * **Example** (Creating user messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const textUserMessage: Prompt.UserMessage = Prompt.makeMessage("user", {
@@ -1240,6 +1266,17 @@ export interface UserMessageEncoded extends BaseMessageEncoded<"user", UserMessa
  * @since 4.0.0
  */
 export type UserMessagePartEncoded = TextPartEncoded | FilePartEncoded
+
+/**
+ * Schema for validation and encoding of user message content parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const UserMessagePart: Schema.Union<readonly [typeof TextPart, typeof FilePart]> = Schema.Union([
+  TextPart,
+  FilePart
+])
 
 /**
  * Represents provider-specific options that can be associated with a
@@ -1345,7 +1382,7 @@ export const userMessage = (params: MessageConstructorParams<UserMessage>): User
  *
  * **Example** (Creating assistant messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const assistantMessage: Prompt.AssistantMessage = Prompt.makeMessage(
@@ -1426,6 +1463,30 @@ export type AssistantMessagePartEncoded =
   | ToolCallPartEncoded
   | ToolResultPartEncoded
   | ToolApprovalRequestPartEncoded
+
+/**
+ * Schema for validation and encoding of assistant message content parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const AssistantMessagePart: Schema.Union<
+  readonly [
+    typeof TextPart,
+    typeof FilePart,
+    typeof ReasoningPart,
+    typeof ToolCallPart,
+    typeof ToolResultPart,
+    typeof ToolApprovalRequestPart
+  ]
+> = Schema.Union([
+  TextPart,
+  FilePart,
+  ReasoningPart,
+  ToolCallPart,
+  ToolResultPart,
+  ToolApprovalRequestPart
+])
 
 /**
  * Represents provider-specific options that can be associated with a
@@ -1536,7 +1597,7 @@ export const assistantMessage = (params: MessageConstructorParams<AssistantMessa
  *
  * **Example** (Creating tool messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const toolMessage: Prompt.ToolMessage = Prompt.makeMessage("tool", {
@@ -1595,6 +1656,19 @@ export interface ToolMessageEncoded extends BaseMessageEncoded<"tool", ToolMessa
  * @since 4.0.0
  */
 export type ToolMessagePartEncoded = ToolResultPartEncoded | ToolApprovalResponsePartEncoded
+
+/**
+ * Schema for validation and encoding of tool message content parts.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export const ToolMessagePart: Schema.Union<
+  readonly [typeof ToolResultPart, typeof ToolApprovalResponsePart]
+> = Schema.Union([
+  ToolResultPart,
+  ToolApprovalResponsePart
+])
 
 /**
  * Represents provider-specific options that can be associated with a
@@ -1809,11 +1883,11 @@ const decodeMessagesSync = Schema.decodeSync(Schema.Array(Message))
  *
  * **Example** (Creating an empty prompt)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const emptyPrompt = Prompt.empty
- * console.log(emptyPrompt.content) // []
+ * console.log(emptyPrompt.content) // > []
  * ```
  *
  * @category constructors
@@ -1872,7 +1946,7 @@ export const make = (input: RawInput): Prompt => {
  *
  * **Example** (Creating prompts from messages)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const messages: ReadonlyArray<Prompt.Message> = [
@@ -1900,7 +1974,7 @@ export const fromMessages = (messages: ReadonlyArray<Message>): Prompt => makePr
  *
  * **Example** (Creating prompts from response parts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt, Response } from "effect/unstable/ai"
  *
  * const responseParts: ReadonlyArray<Response.AnyPart> = [
@@ -2058,7 +2132,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
  *
  * **Example** (Concatenating prompts)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const systemPrompt = Prompt.make([{
@@ -2101,7 +2175,7 @@ export const concat: {
  *
  * **Example** (Replacing system instructions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const systemPrompt = Prompt.make([{
@@ -2143,7 +2217,7 @@ export const setSystem: {
  *
  * **Example** (Prepending system instructions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const systemPrompt = Prompt.make([{
@@ -2192,7 +2266,7 @@ export const prependSystem: {
  *
  * **Example** (Appending system instructions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Prompt } from "effect/unstable/ai"
  *
  * const systemPrompt = Prompt.make([{

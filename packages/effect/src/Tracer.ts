@@ -61,7 +61,7 @@ export interface EffectPrimitive<X> {
  *
  * **Example** (Creating span statuses)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Exit } from "effect"
  * import type { Tracer } from "effect"
  *
@@ -80,8 +80,8 @@ export interface EffectPrimitive<X> {
  *   exit: Exit.succeed("result")
  * }
  *
- * console.log(startedStatus._tag) // "Started"
- * console.log(endedStatus.endTime - endedStatus.startTime) // 500000000n
+ * console.log(startedStatus._tag) // > Started
+ * console.log(endedStatus.endTime - endedStatus.startTime) // > 500000000n
  * ```
  *
  * @category models
@@ -103,7 +103,7 @@ export type SpanStatus = {
  *
  * **Example** (Accepting any span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Tracer } from "effect"
  *
  * // Function that accepts any span type
@@ -134,11 +134,11 @@ export type AnySpan = Span | ExternalSpan
  *
  * **Example** (Reading the parent span key)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tracer } from "effect"
  *
  * // The key used to identify parent spans in the context
- * console.log(Tracer.ParentSpanKey) // "effect/Tracer/ParentSpan"
+ * console.log(Tracer.ParentSpanKey) // > effect/Tracer/ParentSpan
  * ```
  *
  * @category constants
@@ -152,7 +152,7 @@ export const ParentSpanKey = "effect/Tracer/ParentSpan"
  *
  * **Example** (Accessing the parent span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Tracer } from "effect"
  *
  * // Access the parent span from the context
@@ -174,7 +174,7 @@ export class ParentSpan extends Context.Service<ParentSpan, AnySpan>()(ParentSpa
  *
  * **Example** (Creating an external span value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context } from "effect"
  * import type { Tracer } from "effect"
  *
@@ -208,7 +208,7 @@ export interface ExternalSpan {
  *
  * **Example** (Configuring span options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import type { Tracer } from "effect"
  *
@@ -266,7 +266,7 @@ export interface TraceOptions {
  *
  * **Example** (Configuring span kinds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import type { Tracer } from "effect"
  *
@@ -296,7 +296,7 @@ export type SpanKind = "internal" | "server" | "client" | "producer" | "consumer
  *
  * **Example** (Working with spans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Exit, Option } from "effect"
  * import type { Tracer } from "effect"
  *
@@ -370,7 +370,7 @@ export interface Span {
  *
  * **Example** (Linking spans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Tracer } from "effect"
  *
  * // Create a span link to connect spans
@@ -425,7 +425,7 @@ export const make = (options: Tracer): Tracer => options
  *
  * **Example** (Creating an external span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Tracer } from "effect"
  *
  * // Create an external span from another tracing system
@@ -474,7 +474,7 @@ export const externalSpan = (
  *
  * **Example** (Disabling span propagation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Tracer } from "effect"
  *
  * // Disable span propagation for a specific effect
@@ -563,7 +563,7 @@ export const TracerKey = "effect/Tracer"
  *
  * **Example** (Accessing the current tracer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Tracer } from "effect"
  *
  * // Access the current tracer from the context

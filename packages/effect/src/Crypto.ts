@@ -25,7 +25,7 @@ const TypeId = "~effect/platform/Crypto"
  *
  * **Example** (Using a digest algorithm)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Crypto } from "effect"
  *
  * const algorithm: Crypto.DigestAlgorithm = "SHA-256"
@@ -47,7 +47,7 @@ export type DigestAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
  *
  * **Example** (Using cryptographic operations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Crypto, Effect, Layer } from "effect"
  *
  * const TestCrypto = Layer.succeed(
@@ -196,7 +196,7 @@ export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/C
  *
  * **Example** (Creating a Crypto service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Crypto, Effect, Layer } from "effect"
  *
  * const TestCrypto = Layer.succeed(

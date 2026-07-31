@@ -63,7 +63,7 @@ export const loadUserWithInferredInput = fetchUserProfile("user-123").pipe(
 
 export class HttpError extends Schema.TaggedErrorClass<HttpError>()("HttpError", {
   message: Schema.String,
-  status: Schema.Number,
+  status: Schema.Int,
   retryable: Schema.Boolean
 }) {}
 

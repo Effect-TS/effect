@@ -26,7 +26,7 @@
  *
  * **Example** (Chaining operations with pipe)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // The Pipeable interface allows Effect values to be chained using the pipe method
@@ -539,7 +539,7 @@ export interface Pipeable {
  *
  * **Example** (Implementing a pipe method)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Pipeable } from "effect"
  *
  * class NumberBox {
@@ -554,7 +554,7 @@ export interface Pipeable {
  *   (n) => n + 2,
  *   (n) => n * 3
  * )
- * console.log(result) // 21
+ * console.log(result) // > 21
  * ```
  *
  * @category combinators

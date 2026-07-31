@@ -32,14 +32,14 @@ import * as Reducer from "./Reducer.ts"
  *
  * **Example** (Coercing values to numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number as N } from "effect"
  *
  * const num = N.Number("42")
- * console.log(num) // 42
+ * console.log(num) // > 42
  *
  * const float = N.Number("3.14")
- * console.log(float) // 3.14
+ * console.log(float) // > 3.14
  * ```
  *
  * @category constructors
@@ -56,7 +56,7 @@ export const Number = globalThis.Number
  *
  * **Example** (Checking for numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -78,7 +78,7 @@ export const isNumber: (input: unknown) => input is number = predicate.isNumber
  *
  * **Example** (Adding numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -104,7 +104,7 @@ export const sum: {
  *
  * **Example** (Multiplying numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -130,7 +130,7 @@ export const multiply: {
  *
  * **Example** (Subtracting numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -154,7 +154,7 @@ export const subtract: {
  *
  * **Example** (Dividing numbers safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  *
  * Number.divide(6, 3) // Option.some(2)
@@ -189,10 +189,10 @@ export const divide: {
  *
  * **Example** (Dividing numbers unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  *
- * console.log(Number.divideUnsafe(6, 3)) // 2
+ * console.log(Number.divideUnsafe(6, 3)) // > 2
  *
  * // Passing 0 as the divisor throws a RangeError("Division by zero").
  * ```
@@ -220,7 +220,7 @@ export const divideUnsafe: {
  *
  * **Example** (Incrementing a number)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -241,7 +241,7 @@ export const increment = (n: number): number => n + 1
  *
  * **Example** (Decrementing a number)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -263,12 +263,12 @@ export const decrement = (n: number): number => n - 1
  *
  * **Example** (Comparing numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  *
- * console.log(Number.Order(1, 2)) // -1
- * console.log(Number.Order(2, 1)) // 1
- * console.log(Number.Order(1, 1)) // 0
+ * console.log(Number.Order(1, 2)) // > -1
+ * console.log(Number.Order(2, 1)) // > 1
+ * console.log(Number.Order(1, 1)) // > 0
  * ```
  *
  * @category instances
@@ -286,12 +286,12 @@ export const Order: order.Order<number> = order.Number
  *
  * **Example** (Comparing numbers for equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  *
- * console.log(Number.Equivalence(1, 1)) // true
- * console.log(Number.Equivalence(1, 2)) // false
- * console.log(Number.Equivalence(NaN, NaN)) // true
+ * console.log(Number.Equivalence(1, 1)) // > true
+ * console.log(Number.Equivalence(1, 2)) // > false
+ * console.log(Number.Equivalence(NaN, NaN)) // > true
  * ```
  *
  * @category instances
@@ -308,7 +308,7 @@ export const Equivalence: Equ.Equivalence<number> = Equ.Number
  *
  * **Example** (Checking less-than comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -334,7 +334,7 @@ export const isLessThan: {
  *
  * **Example** (Checking less-than-or-equal comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -360,7 +360,7 @@ export const isLessThanOrEqualTo: {
  *
  * **Example** (Checking greater-than comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -386,7 +386,7 @@ export const isGreaterThan: {
  *
  * **Example** (Checking greater-than-or-equal comparisons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -412,7 +412,7 @@ export const isGreaterThanOrEqualTo: {
  *
  * **Example** (Checking inclusive ranges)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -454,7 +454,7 @@ export const between: {
  *
  * **Example** (Clamping to a range)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -490,7 +490,7 @@ export const clamp: {
  *
  * **Example** (Finding the minimum)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -516,7 +516,7 @@ export const min: {
  *
  * **Example** (Finding the maximum)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -542,7 +542,7 @@ export const max: {
  *
  * **Example** (Determining the sign)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -565,7 +565,7 @@ export const sign = (n: number): Ordering => Order(n, 0)
  *
  * **Example** (Summing an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -595,7 +595,7 @@ export const sumAll = (collection: Iterable<number>): number => {
  *
  * **Example** (Multiplying an iterable)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -629,7 +629,7 @@ export const multiplyAll = (collection: Iterable<number>): number => {
  *
  * **Example** (Calculating remainders)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -694,7 +694,7 @@ function toScientificInteger(n: number): readonly [coefficient: bigint, exponent
  *
  * **Example** (Finding the next power of two)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *
@@ -720,7 +720,7 @@ export const nextPow2 = (n: number): number => {
  *
  * **Example** (Parsing numbers from strings)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  *
  * Number.parse("42") // Option.some(42)
@@ -762,7 +762,7 @@ export const parse = (s: string): Option.Option<number> => {
  *
  * **Example** (Rounding with precision)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number } from "effect"
  * import * as assert from "node:assert"
  *

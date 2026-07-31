@@ -119,6 +119,44 @@ describe("Channel", () => {
         assert.deepStrictEqual(resultChunked, [[1, 2, 3, 4], [5]])
       }))
 
+    it.effect("fromReadableStream", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.fromReadableStream({
+          evaluate: () =>
+            new ReadableStream<number>({
+              start(controller) {
+                controller.enqueue(1)
+                controller.enqueue(2)
+                controller.close()
+              }
+            }),
+          onError: (error) => error
+        }).pipe(Channel.runCollect)
+
+        assert.deepStrictEqual(result, [[1], [2]])
+      }))
+
+    it.effect("fromTransformStream - surfaces write-side errors through the read side", () =>
+      Effect.gen(function*() {
+        const error = new Error("write failed")
+        const channel = Channel.fromTransformStream<never, number, number, Error>({
+          evaluate: () =>
+            new TransformStream<number, number>({
+              transform() {
+                throw error
+              }
+            }),
+          onError: (cause) => cause as Error
+        })
+        const exit = yield* Channel.fromArray([[1] as [number]]).pipe(
+          Channel.pipeTo(channel),
+          Channel.runDrain,
+          Effect.exit
+        )
+
+        assertExitFailure(exit, Cause.fail(error))
+      }))
+
     it.effect("acquireRelease", () =>
       Effect.gen(function*() {
         const acquired = yield* Ref.make(false)

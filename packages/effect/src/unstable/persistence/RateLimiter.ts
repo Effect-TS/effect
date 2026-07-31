@@ -234,7 +234,7 @@ export const layer: Layer.Layer<
  *
  * **Example** (Applying rate limits to effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { RateLimiter } from "effect/unstable/persistence"
  *
@@ -283,7 +283,7 @@ export const makeWithRateLimiter: Effect.Effect<
  *
  * **Example** (Sleeping until rate limit permits)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { RateLimiter } from "effect/unstable/persistence"
  *
@@ -362,8 +362,8 @@ export class RateLimitExceeded extends Schema.ErrorClass<RateLimitExceeded>(
   _tag: Schema.tag("RateLimitExceeded"),
   retryAfter: Schema.DurationFromMillis,
   key: Schema.String,
-  limit: Schema.Number,
-  remaining: Schema.Number
+  limit: Schema.Finite,
+  remaining: Schema.Finite
 }) {
   /**
    * Public message used when the rate limiter rejects a request.

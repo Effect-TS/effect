@@ -35,7 +35,7 @@ const TypeId = "~effect/FiberHandle"
  *
  * **Example** (Managing a single fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -69,7 +69,7 @@ export interface FiberHandle<out A = unknown, out E = unknown> extends Pipeable,
  *
  * **Example** (Checking fiber handles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -115,7 +115,7 @@ const makeUnsafe = <A = unknown, E = unknown>(): FiberHandle<A, E> => {
  *
  * **Example** (Creating a scoped fiber handle)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -162,7 +162,7 @@ export const make = <A = unknown, E = unknown>(): Effect.Effect<FiberHandle<A, E
  *
  * **Example** (Running effects with a fiber handle)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -218,7 +218,7 @@ export const makeRuntime = <R, E = unknown, A = unknown>(): Effect.Effect<
  *
  * **Example** (Running effects as promises)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -269,7 +269,7 @@ const isInternalInterruption = Filter.toPredicate(Filter.compose(
  *
  * **Example** (Setting a fiber unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -355,7 +355,7 @@ export const setUnsafe: {
  *
  * **Example** (Setting a fiber safely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -415,7 +415,7 @@ export const set: {
  *
  * **Example** (Reading the current fiber unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -444,7 +444,7 @@ export function getUnsafe<A, E>(self: FiberHandle<A, E>): Option.Option<Fiber.Fi
  *
  * **Example** (Reading the current fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -475,7 +475,7 @@ export function get<A, E>(self: FiberHandle<A, E>): Effect.Effect<Option.Option<
  *
  * **Example** (Clearing a fiber handle)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -501,10 +501,11 @@ export const clear = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void> =>
     if (self.state._tag === "Closed" || self.state.fiber === undefined) {
       return Effect.void
     }
+    const fiber = self.state.fiber
     return Effect.andThen(
-      restore(Fiber.interruptAs(self.state.fiber, internalFiberId)),
+      restore(Fiber.interruptAs(fiber, internalFiberId)),
       Effect.sync(() => {
-        if (self.state._tag === "Open") {
+        if (self.state._tag === "Open" && self.state.fiber === fiber) {
           self.state.fiber = undefined
         }
       })
@@ -532,7 +533,7 @@ const constInterruptedFiber = (function() {
  *
  * **Example** (Running an effect in a fiber handle)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -611,7 +612,7 @@ const runImpl = <A, E, R, XE extends E, XA extends A>(
  *
  * **Example** (Capturing a runtime for fiber handles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, FiberHandle } from "effect"
  *
  * interface Users {
@@ -694,7 +695,7 @@ export const runtime: <A, E>(
  *
  * **Example** (Capturing a runtime for promises)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -764,7 +765,7 @@ export const runtimePromise = <A, E>(self: FiberHandle<A, E>): <R = never>() => 
  *
  * **Example** (Propagating fiber failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {
@@ -787,7 +788,7 @@ export const join = <A, E>(self: FiberHandle<A, E>): Effect.Effect<void, E> =>
  *
  * **Example** (Waiting for a fiber to complete)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FiberHandle } from "effect"
  *
  * Effect.gen(function*() {

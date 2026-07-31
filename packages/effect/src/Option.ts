@@ -20,6 +20,7 @@ import type { TypeLambda } from "./HKT.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as doNotation from "./internal/doNotation.ts"
 import * as option from "./internal/option.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as result from "./internal/result.ts"
 import type { Order } from "./Order.ts"
 import * as order from "./Order.ts"
@@ -177,7 +178,7 @@ export declare namespace Option {
    *
    * **Example** (Extracting the value type)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import type { Option } from "effect"
    *
    * declare const myOption: Option.Option<string>
@@ -240,7 +241,7 @@ export interface OptionTypeLambda extends TypeLambda {
  *
  * **Example** (Creating an empty Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * //      ┌─── Option<never>
@@ -273,7 +274,7 @@ export const none = <A = never>(): Option<A> => option.none
  *
  * **Example** (Wrapping a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * //      ┌─── Option<number>
@@ -306,7 +307,7 @@ export const some: <A>(value: A) => Option<A> = option.some
  *
  * **Example** (Checking if a value is an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.isOption(Option.some(1)))
@@ -340,7 +341,7 @@ export const isOption: (input: unknown) => input is Option<unknown> = option.isO
  *
  * **Example** (Checking for None)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.isNone(Option.some(1)))
@@ -370,7 +371,7 @@ export const isNone: <A>(self: Option<A>) => self is None<A> = option.isNone
  *
  * **Example** (Checking for Some)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.isSome(Option.some(1)))
@@ -403,7 +404,7 @@ export const isSome: <A>(self: Option<A>) => self is Some<A> = option.isSome
  *
  * **Example** (Matching on an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const message = Option.match(Option.some(1), {
@@ -453,7 +454,7 @@ export const match: {
  *
  * **Example** (Converting a parser to a type guard)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * type MyData = string | number
@@ -495,7 +496,7 @@ export const toRefinement = <A, B extends A>(f: (a: A) => Option<B>): (a: A) => 
  *
  * **Example** (Getting the first element)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.fromIterable([1, 2, 3]))
@@ -532,7 +533,7 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
  *
  * **Example** (Extracting the success side)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * console.log(Option.getSuccess(Result.succeed("ok")))
@@ -564,7 +565,7 @@ export const getSuccess: <A, E>(self: Result<A, E>) => Option<A> = result.getSuc
  *
  * **Example** (Extracting the failure side)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * console.log(Option.getFailure(Result.succeed("ok")))
@@ -597,7 +598,7 @@ export const getFailure: <A, E>(self: Result<A, E>) => Option<E> = result.getFai
  *
  * **Example** (Unwrapping with a fallback)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.some(1).pipe(Option.getOrElse(() => 0)))
@@ -638,7 +639,7 @@ export const getOrElse: {
  *
  * **Example** (Providing a fallback Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.none().pipe(Option.orElse(() => Option.some("b"))))
@@ -677,7 +678,7 @@ export const orElse: {
  *
  * **Example** (Providing a fallback value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.none().pipe(Option.orElseSome(() => "b")))
@@ -716,7 +717,7 @@ export const orElseSome: {
  *
  * **Example** (Tracking value source)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.orElseResult(Option.some("primary"), () => Option.some("fallback")))
@@ -755,7 +756,7 @@ export const orElseResult: {
  *
  * **Example** (Finding the first Some)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.firstSomeOf([
@@ -798,7 +799,7 @@ export const firstSomeOf = <T, C extends Iterable<Option<T>> = Iterable<Option<T
  *
  * **Example** (Converting nullable values to an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.fromNullishOr(undefined))
@@ -838,7 +839,7 @@ export const fromNullishOr = <A>(
  *
  * **Example** (Converting possibly undefined values to an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.fromUndefinedOr(undefined))
@@ -877,7 +878,7 @@ export const fromUndefinedOr = <A>(
  *
  * **Example** (Converting possibly null values to an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.fromNullOr(null))
@@ -915,7 +916,7 @@ export const fromNullOr = <A>(
  *
  * **Example** (Lifting a parser)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const parse = (s: string): number | undefined => {
@@ -957,7 +958,7 @@ export const liftNullishOr = <A extends ReadonlyArray<unknown>, B>(
  *
  * **Example** (Unwrapping to null)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.getOrNull(Option.some(1)))
@@ -990,7 +991,7 @@ export const getOrNull: <A>(self: Option<A>) => A | null = getOrElse(constNull)
  *
  * **Example** (Unwrapping to undefined)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.getOrUndefined(Option.some(1)))
@@ -1022,7 +1023,7 @@ export const getOrUndefined: <A>(self: Option<A>) => A | undefined = getOrElse(c
  *
  * **Example** (Lifting JSON.parse)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const parse = Option.liftThrowable(JSON.parse)
@@ -1140,7 +1141,7 @@ export const getOrThrow: <A>(self: Option<A>) => A = getOrThrowWith(() => new Er
  *
  * **Example** (Mapping over an Option)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.map(Option.some(2), (n) => n * 2))
@@ -1174,7 +1175,7 @@ export const map: {
  *
  * **Example** (Replacing a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.as(Option.some(42), "new value"))
@@ -1206,7 +1207,7 @@ export const as: {
  *
  * **Example** (Voiding the value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.asVoid(Option.some(42)))
@@ -1234,7 +1235,7 @@ export {
    *
    * **Example** (Referencing Option.void)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Option } from "effect"
    *
    * console.log(Option.void)
@@ -1266,7 +1267,7 @@ export {
  *
  * **Example** (Chaining optional lookups)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * interface User {
@@ -1320,7 +1321,7 @@ export const flatMap: {
  *
  * **Example** (Chaining with andThen)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * // Chain with a function returning Option
@@ -1376,7 +1377,7 @@ export const andThen: {
  *
  * **Example** (Navigating optional properties)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * interface Employee {
@@ -1425,7 +1426,7 @@ export const flatMapNullishOr: {
  *
  * **Example** (Flattening nested Options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.flatten(Option.some(Option.some("value"))))
@@ -1457,7 +1458,7 @@ export const flatten: <A>(self: Option<Option<A>>) => Option<A> = flatMap(identi
  *
  * **Example** (Keeping the second value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.zipRight(Option.some(1), Option.some("hello")))
@@ -1493,7 +1494,7 @@ export const zipRight: {
  *
  * **Example** (Keeping the first value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.zipLeft(Option.some("hello"), Option.some(1)))
@@ -1530,7 +1531,7 @@ export const zipLeft: {
  *
  * **Example** (Composing parsers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const parse = (s: string): Option.Option<number> =>
@@ -1575,7 +1576,7 @@ export const composeK: {
  *
  * **Example** (Validating without transforming)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const getInteger = (n: number) =>
@@ -1615,7 +1616,7 @@ export const tap: {
  *
  * **Example** (Pairing two Options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.product(Option.some("hello"), Option.some(42)))
@@ -1650,7 +1651,7 @@ export const product = <A, B>(self: Option<A>, that: Option<B>): Option<[A, B]> 
  *
  * **Example** (Combining many Options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const first = Option.some(1)
@@ -1704,7 +1705,7 @@ export const productMany = <A>(
  *
  * **Example** (Combining a tuple and a struct)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const maybeName: Option.Option<string> = Option.some("John")
@@ -1758,7 +1759,7 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
       if (isNone(o)) {
         return none()
       }
-      out[key] = o.value
+      InternalRecord.assignProperty(out, key, o.value)
     }
     return some(out)
   }
@@ -1778,7 +1779,7 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
  *
  * **Example** (Combining with a function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const person = Option.zipWith(
@@ -1823,7 +1824,7 @@ export const zipWith: {
  *
  * **Example** (Summing present values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
  *
  * const items = [Option.some(1), Option.none(), Option.some(2), Option.none()]
@@ -1866,7 +1867,7 @@ export const reduceCompact: {
  *
  * **Example** (Converting to an array)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.toArray(Option.some(1)))
@@ -1899,7 +1900,7 @@ export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [se
  *
  * **Example** (Partitioning by Result)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * const parseNumber = (s: string): Result.Result<number, string> => {
@@ -1951,7 +1952,7 @@ export const partitionMap: {
  *
  * **Example** (Filtering and transforming)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
  * console.log(Option.filterMap(
@@ -1995,7 +1996,7 @@ export const filterMap: {
  *
  * **Example** (Filtering with a predicate)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const removeEmpty = (input: Option.Option<string>) =>
@@ -2044,7 +2045,7 @@ export const filter: {
  *
  * **Example** (Comparing Options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Option } from "effect"
  *
  * const eq = Option.makeEquivalence(Equivalence.strictEqual<number>())
@@ -2082,7 +2083,7 @@ export const makeEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Eq
  *
  * **Example** (Ordering Options)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number as N, Option } from "effect"
  *
  * const ord = Option.makeOrder(N.Order)
@@ -2118,7 +2119,7 @@ export const makeOrder = <A>(O: Order<A>): Order<Option<A>> =>
  *
  * **Example** (Lifting addition)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const addOptions = Option.lift2((a: number, b: number) => a + b)
@@ -2157,7 +2158,7 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
  *
  * **Example** (Validating positive numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const parsePositive = Option.liftPredicate((n: number) => n > 0)
@@ -2207,7 +2208,7 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
  *
  * **Example** (Checking with custom equivalence)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equivalence, Option } from "effect"
  *
  * const check = Option.containsWith(Equivalence.strictEqual<number>())
@@ -2248,7 +2249,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  *
  * **Example** (Checking containment)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * console.log(Option.some(2).pipe(Option.contains(2)))
@@ -2288,7 +2289,7 @@ export const contains: {
  *
  * **Example** (Testing a condition)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const isEven = (n: number) => n % 2 === 0
@@ -2335,7 +2336,7 @@ export const exists: {
  *
  * **Example** (Starting do notation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
  * import * as assert from "node:assert"
  *
@@ -2383,7 +2384,7 @@ export {
    *
    * **Example** (Adding a computed value)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Option, pipe } from "effect"
    * import * as assert from "node:assert"
    *
@@ -2416,7 +2417,7 @@ export {
  *
  * **Example** (Binding Option values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
  * import * as assert from "node:assert"
  *
@@ -2460,7 +2461,7 @@ export const bind: {
  *
  * **Example** (Building Option pipelines with do notation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
  * import * as assert from "node:assert"
  *
@@ -2500,7 +2501,7 @@ export const Do: Option<{}> = some({})
  *
  * **Example** (Sequencing Option computations with generator syntax)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
  * const maybeName: Option.Option<string> = Option.some("John")
@@ -2555,7 +2556,7 @@ export const gen: Gen.Gen<OptionTypeLambda> = (...args) => {
  *
  * **Example** (Reducing with first-wins semantics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, Option } from "effect"
  *
  * const reducer = Option.makeReducer(Number.ReducerSum)
@@ -2593,7 +2594,7 @@ export function makeReducer<A>(combiner: Combiner.Combiner<A>): Reducer.Reducer<
  *
  * **Example** (Fail-fast combining)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, Option } from "effect"
  *
  * const combiner = Option.makeCombinerFailFast(Number.ReducerSum)
@@ -2633,7 +2634,7 @@ export function makeCombinerFailFast<A>(combiner: Combiner.Combiner<A>): Combine
  *
  * **Example** (Fail-fast reducing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Number, Option } from "effect"
  *
  * const reducer = Option.makeReducerFailFast(Number.ReducerSum)

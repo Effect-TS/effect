@@ -35,7 +35,7 @@ const TypeId = "~effect/Ref"
  *
  * **Example** (Reading and updating a ref)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -85,7 +85,7 @@ export declare namespace Ref {
    *
    * **Example** (Using invariant refs)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Ref } from "effect"
    *
    * // This interface defines the invariant nature of Ref's type parameter
@@ -136,7 +136,7 @@ const RefProto = {
  *
  * **Example** (Creating a ref unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Ref } from "effect"
  *
  * // Create a ref directly without Effect
@@ -144,7 +144,7 @@ const RefProto = {
  *
  * // Get the current value
  * const value = Ref.getUnsafe(counter)
- * console.log(value) // 0
+ * console.log(value) // > 0
  *
  * // Note: This is unsafe and should be used carefully
  * // Prefer Ref.make for Effect-wrapped creation
@@ -168,7 +168,7 @@ export const makeUnsafe = <A>(value: A): Ref<A> => {
  *
  * **Example** (Creating a ref)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -194,7 +194,7 @@ export const make = <A>(value: A): Effect.Effect<Ref<A>> => Effect.sync(() => ma
  *
  * **Example** (Getting the current value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -220,7 +220,7 @@ export const get = <A>(self: Ref<A>) => Effect.sync(() => self.ref.current)
  *
  * **Example** (Setting a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -259,7 +259,7 @@ export const set = dual<
  *
  * **Example** (Replacing a value atomically)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -299,7 +299,7 @@ export const getAndSet = dual<
  *
  * **Example** (Updating and returning the previous value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -345,7 +345,7 @@ export const getAndUpdate = dual<
  *
  * **Example** (Conditionally updating and returning the previous value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -402,7 +402,7 @@ export const getAndUpdateSome = dual<
  *
  * **Example** (Setting and returning the new value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -450,7 +450,7 @@ export const setAndGet = dual<
  *
  * **Example** (Modifying a value atomically)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -513,7 +513,7 @@ export const modify = dual<
  *
  * **Example** (Conditionally modifying a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -581,7 +581,7 @@ export const modifySome: {
  *
  * **Example** (Updating a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -626,7 +626,7 @@ export const update = dual<
  *
  * **Example** (Updating and returning the new value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -667,7 +667,7 @@ export const updateAndGet = dual<
  *
  * **Example** (Conditionally updating a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -727,7 +727,7 @@ export const updateSome = dual<
  *
  * **Example** (Conditionally updating and returning the current value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option, Ref } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -781,7 +781,7 @@ export const updateSomeAndGet = dual<
  *
  * **Example** (Reading a ref unsafely)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Ref } from "effect"
  *
  * // Create a ref directly
@@ -789,7 +789,7 @@ export const updateSomeAndGet = dual<
  *
  * // Get the value synchronously
  * const value = Ref.getUnsafe(counter)
- * console.log(value) // 42
+ * console.log(value) // > 42
  *
  * // Note: This is unsafe and should be used carefully
  * // Prefer Ref.get for Effect-wrapped access

@@ -35,7 +35,7 @@ import * as Yaml from "yaml"
  *
  * **Example** (Creating a parse error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
  *
  * const error = new OpenApiPatch.JsonPatchParseError({
@@ -73,7 +73,7 @@ export class JsonPatchParseError extends Schema.ErrorClass<JsonPatchParseError>(
  *
  * **Example** (Creating a validation error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
  *
  * const error = new OpenApiPatch.JsonPatchValidationError({
@@ -110,7 +110,7 @@ export class JsonPatchValidationError extends Schema.ErrorClass<JsonPatchValidat
  *
  * **Example** (Creating an application error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
  *
  * const error = new OpenApiPatch.JsonPatchApplicationError({
@@ -132,7 +132,7 @@ export class JsonPatchApplicationError
   extends Schema.ErrorClass<JsonPatchApplicationError>("JsonPatchApplicationError")({
     _tag: Schema.tag("JsonPatchApplicationError"),
     source: Schema.String,
-    operationIndex: Schema.Number,
+    operationIndex: Schema.Natural,
     operation: Schema.String,
     path: Schema.String,
     reason: Schema.String
@@ -154,7 +154,7 @@ export class JsonPatchApplicationError
  *
  * **Example** (Creating an aggregate error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
  *
  * const error = new OpenApiPatch.JsonPatchAggregateError({
@@ -283,7 +283,7 @@ export const JsonPatchOperation: Schema.Codec<JsonPatch.JsonPatchOperation> = Sc
  *
  * **Example** (Decoding a patch document)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
  *
@@ -434,7 +434,7 @@ const parseInlinePatch = Effect.fn("parseInlinePatch")(function*(input: string) 
  *
  * **Example** (Parsing patch input)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
  *
@@ -481,7 +481,7 @@ export const parsePatchInput = Effect.fn("parsePatchInput")(function*(input: str
  *
  * **Example** (Applying patches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
  *

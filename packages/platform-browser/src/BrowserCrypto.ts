@@ -60,7 +60,9 @@ export const layer: Layer.Layer<EffectCrypto.Crypto> = Layer.effect(
     }
     const randomBytes = (size: number): Uint8Array => {
       const bytes = new Uint8Array(size)
-      crypto.getRandomValues(bytes)
+      for (let i = 0; i < bytes.length; i += 65_536) {
+        crypto.getRandomValues(bytes.subarray(i, i + 65_536))
+      }
       return bytes
     }
 

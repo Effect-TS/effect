@@ -11,7 +11,7 @@
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
-import * as Brand from "./Brand.ts"
+import type * as Brand from "./Brand.ts"
 import * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
 import * as Effect from "./Effect.ts"
@@ -38,7 +38,7 @@ const TypeId = "~effect/platform/FileSystem"
  *
  * **Example** (Accessing file system operations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -341,9 +341,15 @@ export interface FileSystem {
     mtime: Date | number
   ) => Effect.Effect<void, PlatformError>
   /**
-   * Watch a directory or file for changes
+   * Watch a directory or file for changes.
+   *
+   * **Details**
+   *
+   * By default, only changes to the direct children of the directory are
+   * reported. Set the `recursive` option to `true` to watch for changes in
+   * subdirectories as well.
    */
-  readonly watch: (path: string) => Stream.Stream<WatchEvent, PlatformError>
+  readonly watch: (path: string, options?: WatchOptions) => Stream.Stream<WatchEvent, PlatformError>
   /**
    * Write data to a file at `path`.
    */
@@ -380,7 +386,7 @@ export interface FileSystem {
  *
  * **Example** (Creating branded file sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * // Create sizes using the Size constructor
@@ -410,7 +416,7 @@ export type Size = Brand.Branded<bigint, "Size">
  *
  * **Example** (Using size inputs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -439,12 +445,12 @@ export type SizeInput = bigint | number | Size
  *
  * **Example** (Converting size inputs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * // From number
  * const size1 = FileSystem.Size(1024)
- * console.log(typeof size1) // "bigint"
+ * console.log(typeof size1) // > bigint
  *
  * // From bigint
  * const size2 = FileSystem.Size(BigInt(2048))
@@ -477,7 +483,7 @@ export const Size = (bytes: SizeInput): Size => typeof bytes === "bigint" ? byte
  *
  * **Example** (Creating kibibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -510,7 +516,7 @@ export const KiB = (n: number): Size => Size(n * 1024)
  *
  * **Example** (Creating mebibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -547,7 +553,7 @@ export const MiB = (n: number): Size => Size(n * 1024 * 1024)
  *
  * **Example** (Creating gibibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -582,7 +588,7 @@ export const GiB = (n: number): Size => Size(n * 1024 * 1024 * 1024)
  *
  * **Example** (Creating tebibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -622,7 +628,7 @@ const bigintPiB = bigint1024 * bigint1024 * bigint1024 * bigint1024 * bigint1024
  *
  * **Example** (Creating pebibyte sizes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -668,7 +674,7 @@ export const PiB = (n: number): Size => Size(BigInt(n) * bigintPiB)
  *
  * **Example** (Opening files with flags)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -870,7 +876,7 @@ const notFound = (method: string, path: string) =>
  *
  * **Example** (Creating a no-op FileSystem)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem, PlatformError } from "effect"
  *
  * // Create a test filesystem that only allows reading specific files
@@ -1015,7 +1021,7 @@ export const makeNoop = (fileSystem: Partial<FileSystem>): FileSystem =>
  *
  * **Example** (Providing a no-op FileSystem layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem } from "effect"
  *
  * // Create a test layer with specific behaviors
@@ -1090,7 +1096,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  *
  * **Example** (Working with file handles)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Console, Effect, FileSystem } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -1125,7 +1131,6 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  */
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
-  readonly fd: File.Descriptor
   readonly stat: Effect.Effect<File.Info, PlatformError>
   readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<void>
   readonly sync: Effect.Effect<void, PlatformError>
@@ -1143,19 +1148,6 @@ export interface File {
  * @since 4.0.0
  */
 export declare namespace File {
-  /**
-   * Branded type for file descriptors.
-   *
-   * **Details**
-   *
-   * File descriptors are numeric handles used by the operating system
-   * to identify open files. The branded type ensures type safety.
-   *
-   * @category file
-   * @since 4.0.0
-   */
-  export type Descriptor = Brand.Branded<number, "FileDescriptor">
-
   /**
    * Enumeration of possible file system entry types.
    *
@@ -1188,7 +1180,7 @@ export declare namespace File {
    *
    * **Example** (Inspecting file information)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, FileSystem, Option } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -1241,32 +1233,6 @@ export declare namespace File {
 }
 
 /**
- * Creates a `File.Descriptor` from a number.
- *
- * **When to use**
- *
- * Use to brand an operating-system file descriptor number when implementing a
- * `FileSystem` that returns custom `File` handles.
- *
- * **Details**
- *
- * `File.Descriptor` is a branded integer handle used by operating systems to
- * identify open files.
- *
- * **Gotchas**
- *
- * This constructor is nominal and does not check that the number is an integer
- * or that it refers to an open file descriptor.
- *
- * @see {@link File.Descriptor} for the branded descriptor type produced by this constructor
- * @see {@link File} for file handles that expose a descriptor through `fd`
- *
- * @category constructors
- * @since 4.0.0
- */
-export const FileDescriptor = Brand.nominal<File.Descriptor>()
-
-/**
  * Specifies the reference point for seeking within an open file.
  *
  * **When to use**
@@ -1286,6 +1252,19 @@ export const FileDescriptor = Brand.nominal<File.Descriptor>()
  * @since 4.0.0
  */
 export type SeekMode = "start" | "current"
+
+/**
+ * Options for watching files or directories.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WatchOptions {
+  /**
+   * When `true`, changes in subdirectories are also reported.
+   */
+  readonly recursive?: boolean | undefined
+}
 
 /**
  * Represents file system events emitted when watching files or directories.
@@ -1373,7 +1352,7 @@ export declare namespace WatchEvent {
  *
  * **Example** (Providing a custom watch backend)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, FileSystem, Option, Stream } from "effect"
  *
  * // Custom watch backend implementation
@@ -1403,5 +1382,9 @@ export declare namespace WatchEvent {
  * @since 4.0.0
  */
 export class WatchBackend extends Context.Service<WatchBackend, {
-  readonly register: (path: string, stat: File.Info) => Option.Option<Stream.Stream<WatchEvent, PlatformError>>
+  readonly register: (
+    path: string,
+    stat: File.Info,
+    options?: WatchOptions
+  ) => Option.Option<Stream.Stream<WatchEvent, PlatformError>>
 }>()("effect/platform/FileSystem/WatchBackend") {}

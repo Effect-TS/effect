@@ -44,7 +44,7 @@ import * as Semaphore from "../Semaphore.ts"
  *
  * Tests `Effect.timeout` using `TestClock`.
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber, Option, pipe } from "effect"
  * import { TestClock } from "effect/testing"
  * import * as assert from "node:assert"
@@ -63,7 +63,7 @@ import * as Semaphore from "../Semaphore.ts"
  *
  * **Example** (Advancing time deterministically)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -111,7 +111,7 @@ export interface TestClock extends Clock.Clock {
  *
  * **Example** (Configuring a test clock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -137,7 +137,7 @@ export declare namespace TestClock {
    *
    * **Example** (Configuring the warning delay)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect } from "effect"
    * import { TestClock } from "effect/testing"
    *
@@ -199,7 +199,7 @@ const SleepOrder = Order.flip(Order.Struct({
  *
  * **Example** (Creating a test clock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -225,7 +225,7 @@ const SleepOrder = Order.flip(Order.Struct({
 export const make = Effect.fnUntraced(function*(
   options?: TestClock.Options
 ) {
-  const config = Object.assign({}, defaultOptions, options)
+  const config = { ...defaultOptions, ...options }
   let sequence = 0
   const sleeps: Array<{
     readonly sequence: number
@@ -355,7 +355,7 @@ export const make = Effect.fnUntraced(function*(
  *
  * **Example** (Providing a test clock layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -387,7 +387,7 @@ export const layer: (options?: TestClock.Options) => Layer.Layer<TestClock> = fl
  *
  * **Example** (Accessing the test clock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -418,7 +418,7 @@ export const testClockWith = <A, E, R>(
  *
  * **Example** (Advancing the test clock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -451,7 +451,7 @@ export const adjust = (duration: Duration.Input): Effect.Effect<void> =>
  *
  * **Example** (Setting the test clock time)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Duration, Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *
@@ -485,7 +485,7 @@ export const setTime = (timestamp: number): Effect.Effect<void> =>
  *
  * **Example** (Running with the live clock)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Clock, Effect } from "effect"
  * import { TestClock } from "effect/testing"
  *

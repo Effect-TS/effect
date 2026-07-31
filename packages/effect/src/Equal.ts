@@ -28,7 +28,7 @@ import { hasProperty } from "./Predicate.ts"
  *
  * **Example** (Implementing Equal on a class)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Hash } from "effect"
  *
  * class UserId implements Equal.Equal {
@@ -76,7 +76,7 @@ export const symbol = "~effect/interfaces/Equal"
  *
  * **Example** (Comparing coordinates by value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Hash } from "effect"
  *
  * class Coordinate implements Equal.Equal {
@@ -93,8 +93,8 @@ export const symbol = "~effect/interfaces/Equal"
  *   }
  * }
  *
- * console.log(Equal.equals(new Coordinate(1, 2), new Coordinate(1, 2))) // true
- * console.log(Equal.equals(new Coordinate(1, 2), new Coordinate(3, 4))) // false
+ * console.log(Equal.equals(new Coordinate(1, 2), new Coordinate(1, 2))) // > true
+ * console.log(Equal.equals(new Coordinate(1, 2), new Coordinate(3, 4))) // > false
  * ```
  *
  * @see {@link symbol} — the property key used by the equality method
@@ -139,30 +139,30 @@ export interface Equal extends Hash.Hash {
  *
  * **Example** (Comparing values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal } from "effect"
  *
  * // Primitives
- * console.log(Equal.equals(1, 1))         // true
- * console.log(Equal.equals(NaN, NaN))     // true
- * console.log(Equal.equals("a", "b"))     // false
+ * console.log(Equal.equals(1, 1)) // > true
+ * console.log(Equal.equals(NaN, NaN)) // > true
+ * console.log(Equal.equals("a", "b")) // > false
  *
  * // Objects and arrays
- * console.log(Equal.equals({ a: 1, b: 2 }, { a: 1, b: 2 })) // true
- * console.log(Equal.equals([1, [2, 3]], [1, [2, 3]]))         // true
+ * console.log(Equal.equals({ a: 1, b: 2 }, { a: 1, b: 2 })) // > true
+ * console.log(Equal.equals([1, [2, 3]], [1, [2, 3]])) // > true
  *
  * // Dates
- * console.log(Equal.equals(new Date("2024-01-01"), new Date("2024-01-01"))) // true
+ * console.log(Equal.equals(new Date("2024-01-01"), new Date("2024-01-01"))) // > true
  *
  * // Maps (order-independent)
  * const m1 = new Map([["a", 1], ["b", 2]])
  * const m2 = new Map([["b", 2], ["a", 1]])
- * console.log(Equal.equals(m1, m2)) // true
+ * console.log(Equal.equals(m1, m2)) // > true
  *
  * // Curried form
  * const is5 = Equal.equals(5)
- * console.log(is5(5)) // true
- * console.log(is5(3)) // false
+ * console.log(is5(5)) // > true
+ * console.log(is5(3)) // > false
  * ```
  *
  * @see {@link Equal} — the interface for custom equality
@@ -406,7 +406,7 @@ const compareSets = makeCompareSet(compareBoth)
  *
  * **Example** (Checking Equal values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal, Hash } from "effect"
  *
  * class Token implements Equal.Equal {
@@ -419,9 +419,9 @@ const compareSets = makeCompareSet(compareBoth)
  *   }
  * }
  *
- * console.log(Equal.isEqual(new Token("abc"))) // true
- * console.log(Equal.isEqual({ x: 1 }))         // false
- * console.log(Equal.isEqual(42))                // false
+ * console.log(Equal.isEqual(new Token("abc"))) // > true
+ * console.log(Equal.isEqual({ x: 1 })) // > false
+ * console.log(Equal.isEqual(42)) // > false
  * ```
  *
  * @see {@link Equal} — the interface being checked
@@ -447,12 +447,12 @@ export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol)
  *
  * **Example** (Deduplicating with Equal semantics)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Array, Equal } from "effect"
  *
  * const eq = Equal.asEquivalence<number>()
  * const result = Array.dedupeWith([1, 2, 2, 3, 1], eq)
- * console.log(result) // [1, 2, 3]
+ * console.log(result) // > [ 1, 2, 3 ]
  * ```
  *
  * @see {@link equals} — the underlying comparison function
@@ -481,7 +481,7 @@ export const asEquivalence: <A>() => Equivalence<A> = () => equals
  *
  * **Example** (Opting out of structural equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal } from "effect"
  *
  * const a = { x: 1 }
@@ -526,7 +526,7 @@ export const byReference = <T extends object>(obj: T): T => byReferenceUnsafe(ne
  *
  * **Example** (Marking an object for reference equality)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Equal } from "effect"
  *
  * const obj1 = { a: 1, b: 2 }

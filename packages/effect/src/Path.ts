@@ -47,7 +47,7 @@ export const TypeId = "~effect/platform/Path"
  *
  * **Example** (Using path operations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Path } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -108,7 +108,7 @@ export interface Path {
  *
  * **Example** (Working with parsed paths)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Path } from "effect"
  *
  * // Access types and utilities in the Path namespace
@@ -150,7 +150,7 @@ export declare namespace Path {
    *
    * **Example** (Parsing and formatting paths)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect, Path } from "effect"
    *
    * const program = Effect.gen(function*() {
@@ -198,7 +198,7 @@ export declare namespace Path {
  *
  * **Example** (Providing a custom Path service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Layer, Path } from "effect"
  *
  * // Create a custom path implementation

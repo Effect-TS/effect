@@ -329,6 +329,94 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(functionTool.function.strict, true)
       }))
 
+    it.effect("groups parallel tool calls into one assistant message", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
+
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, makeChatCompletion()))
+            })
+          ))
+        )
+
+        yield* LanguageModel.generateText({
+          prompt: Prompt.make([
+            { role: "user", content: "use both tools" },
+            {
+              role: "assistant",
+              content: [
+                Prompt.toolCallPart({
+                  id: "call_1",
+                  name: "TestTool",
+                  params: { input: "first" },
+                  providerExecuted: false
+                }),
+                Prompt.toolCallPart({
+                  id: "call_2",
+                  name: "TestTool",
+                  params: { input: "second" },
+                  providerExecuted: false
+                })
+              ]
+            },
+            {
+              role: "tool",
+              content: [
+                Prompt.toolResultPart({
+                  id: "call_1",
+                  name: "TestTool",
+                  isFailure: false,
+                  result: { output: "first" }
+                }),
+                Prompt.toolResultPart({
+                  id: "call_2",
+                  name: "TestTool",
+                  isFailure: false,
+                  result: { output: "second" }
+                })
+              ]
+            }
+          ]),
+          toolkit: TestToolkit
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(TestToolkitLayer),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        if (capturedRequest === undefined) {
+          return
+        }
+
+        const requestBody = yield* getRequestBody(capturedRequest)
+        assert.deepStrictEqual(requestBody.messages, [
+          { role: "user", content: "use both tools" },
+          {
+            role: "assistant",
+            content: null,
+            tool_calls: [
+              {
+                id: "call_1",
+                type: "function",
+                function: { name: "TestTool", arguments: JSON.stringify({ input: "first" }) }
+              },
+              {
+                id: "call_2",
+                type: "function",
+                function: { name: "TestTool", arguments: JSON.stringify({ input: "second" }) }
+              }
+            ]
+          },
+          { role: "tool", tool_call_id: "call_1", content: JSON.stringify({ output: "first" }) },
+          { role: "tool", tool_call_id: "call_2", content: JSON.stringify({ output: "second" }) }
+        ])
+      }))
+
     it.effect("converts dynamic tools to function type", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
@@ -1064,11 +1152,12 @@ describe("OpenAiLanguageModel", () => {
         assert.deepStrictEqual(toolCall.params, expectedParams)
       }))
 
-    it.effect("streams known events and ignores unknown ones", () =>
+    it.effect("continues after invalid JSON and schema-mismatched events", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
 
         const events = [
+          "{invalid-json",
           {
             id: "chatcmpl_stream_1",
             object: "chat.completion.chunk",
@@ -1079,6 +1168,10 @@ describe("OpenAiLanguageModel", () => {
               delta: { content: "Hello" },
               finish_reason: null
             }]
+          },
+          {
+            type: "provider.chat.completion.delta",
+            provider_payload: { content: "provider-specific" }
           },
           {
             id: "chatcmpl_stream_1",

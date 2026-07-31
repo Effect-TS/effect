@@ -28,6 +28,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import { identity } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Rec from "effect/Record"
 import * as Scope from "effect/Scope"
 import * as Semaphore from "effect/Semaphore"
 import * as Stream from "effect/Stream"
@@ -199,7 +200,7 @@ export const make = (
           const obj: any = {}
           for (let i = 0; i < columns.length; i++) {
             const value = result[i]
-            obj[columns[i]] = value instanceof ArrayBuffer ? new Uint8Array(value) : value
+            Rec.assignProperty(obj, columns[i], value instanceof ArrayBuffer ? new Uint8Array(value) : value)
           }
           yield obj
         }

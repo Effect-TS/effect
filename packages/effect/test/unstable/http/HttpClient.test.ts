@@ -2,7 +2,8 @@ import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Clock, Duration, Effect, Fiber, Layer, Ref, Stream } from "effect"
 import { TestClock } from "effect/testing"
-import { HttpClient, HttpClientResponse } from "effect/unstable/http"
+import * as Tracer from "effect/Tracer"
+import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { RateLimiter } from "effect/unstable/persistence"
 
 const makeStatusClient = Effect.fnUntraced(function*(status: number) {
@@ -16,9 +17,236 @@ const makeStatusClient = Effect.fnUntraced(function*(status: number) {
   return { attempts, client } as const
 })
 
+const makeRedirectClient = Effect.fnUntraced(function*(status: number, location: string | ReadonlyArray<string>) {
+  const locations = typeof location === "string" ? [location] : location
+  const requests = yield* Ref.make<Array<HttpClientRequest.HttpClientRequest>>([])
+  const client = HttpClient.make((request) =>
+    Effect.map(
+      Ref.updateAndGet(requests, (requests) => [...requests, request]),
+      (requests) =>
+        HttpClientResponse.fromWeb(
+          request,
+          requests.length <= locations.length
+            ? new Response(null, { status, headers: { location: locations[requests.length - 1] } })
+            : new Response(null, { status: 200 })
+        )
+    )
+  ).pipe(HttpClient.followRedirects())
+  return { client, requests } as const
+})
+
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
 describe("HttpClient", () => {
+  describe("tracer", () => {
+    it.effect("includes request and response headers by default", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(
+            HttpClientResponse.fromWeb(
+              request,
+              new Response(null, {
+                headers: { "x-response-default": "response" }
+              })
+            )
+          )
+        )
+
+        yield* client.get("http://test/", {
+          headers: { "x-request-default": "request" }
+        }).pipe(Effect.provideService(Tracer.Tracer, tracer))
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-default"), "request")
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-default"), "response")
+      }))
+
+    it.effect("filters request and response header span attributes", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(
+            HttpClientResponse.fromWeb(
+              request,
+              new Response(null, {
+                headers: {
+                  "x-response-drop": "drop",
+                  "x-response-keep": "keep"
+                }
+              })
+            )
+          )
+        )
+
+        yield* client.get("http://test/", {
+          headers: {
+            "x-request-drop": "drop",
+            "x-request-keep": "keep"
+          }
+        }).pipe(
+          Effect.provideService(HttpClient.TracerHeaderFilter, (name) => name.endsWith("-keep")),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-drop"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-request-keep"), "keep")
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-drop"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-response-keep"), "keep")
+      }))
+
+    it.effect("filters the same header name independently by phase", () =>
+      Effect.gen(function*() {
+        let clientSpan: Tracer.NativeSpan | undefined
+        const tracer = Tracer.make({
+          span(options) {
+            clientSpan = new Tracer.NativeSpan(options)
+            return clientSpan
+          }
+        })
+        const client = HttpClient.make((request) =>
+          Effect.succeed(
+            HttpClientResponse.fromWeb(
+              request,
+              new Response(null, {
+                headers: { "x-phase-filter": "response" }
+              })
+            )
+          )
+        )
+
+        yield* client.get("http://test/", {
+          headers: { "x-phase-filter": "request" }
+        }).pipe(
+          Effect.provideService(HttpClient.TracerHeaderFilter, (_name, phase) => phase === "response"),
+          Effect.provideService(Tracer.Tracer, tracer)
+        )
+
+        assert(clientSpan !== undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.request.header.x-phase-filter"), undefined)
+        assert.strictEqual(clientSpan.attributes.get("http.response.header.x-phase-filter"), "response")
+      }))
+  })
+
+  describe("followRedirects", () => {
+    it.effect("preserves credential headers on same-origin redirects", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(302, "https://origin.test/destination")
+        yield* client.get("https://origin.test/start", {
+          headers: {
+            Authorization: "Bearer secret",
+            Cookie: "session=secret"
+          }
+        })
+
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.strictEqual(redirected.headers.authorization, "Bearer secret")
+        assert.strictEqual(redirected.headers.cookie, "session=secret")
+      }))
+
+    it.effect("strips credential headers on cross-origin redirects", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(302, "https://redirect.test/destination")
+        yield* client.get("https://origin.test/start", {
+          headers: {
+            Authorization: "Bearer secret",
+            Cookie: "session=secret",
+            "Proxy-Authorization": "Basic secret",
+            "X-Test": "retained"
+          }
+        })
+
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.isUndefined(redirected.headers.authorization)
+        assert.isUndefined(redirected.headers.cookie)
+        assert.isUndefined(redirected.headers["proxy-authorization"])
+        assert.strictEqual(redirected.headers["x-test"], "retained")
+      }))
+
+    it.effect("strips credential headers on scheme downgrade redirects", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(302, "http://origin.test/destination")
+        yield* client.get("https://origin.test/start", {
+          headers: {
+            Authorization: "Bearer secret",
+            Cookie: "session=secret",
+            "Proxy-Authorization": "Basic secret"
+          }
+        })
+
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.isUndefined(redirected.headers.authorization)
+        assert.isUndefined(redirected.headers.cookie)
+        assert.isUndefined(redirected.headers["proxy-authorization"])
+      }))
+
+    it.effect("resolves relative locations against the current hop", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(302, ["../next/step", "destination"])
+        yield* client.get("https://origin.test/path/start", {
+          headers: { Authorization: "Bearer secret" }
+        })
+
+        const redirected = (yield* Ref.get(requests))[2]
+        assert.strictEqual(redirected.url, "https://origin.test/next/destination")
+        assert.strictEqual(redirected.headers.authorization, "Bearer secret")
+      }))
+
+    it.effect("switches 303 requests to GET and drops the body", () =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(303, "/destination")
+        yield* HttpClientRequest.post("https://origin.test/start").pipe(
+          HttpClientRequest.bodyText("payload"),
+          client.execute
+        )
+
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.strictEqual(redirected.method, "GET")
+        assert.strictEqual(redirected.body._tag, "Empty")
+        assert.isUndefined(redirected.headers["content-type"])
+        assert.isUndefined(redirected.headers["content-length"])
+      }))
+
+    it.effect.each([301, 302])("switches POST to GET on %s redirects", (status) =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(status, "/destination")
+        yield* HttpClientRequest.post("https://origin.test/start").pipe(
+          HttpClientRequest.bodyText("payload"),
+          client.execute
+        )
+
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.strictEqual(redirected.method, "GET")
+        assert.strictEqual(redirected.body._tag, "Empty")
+      }))
+
+    it.effect.each([301, 302])("preserves non-POST methods on %s redirects", (status) =>
+      Effect.gen(function*() {
+        const { client, requests } = yield* makeRedirectClient(status, "/destination")
+        yield* HttpClientRequest.put("https://origin.test/start").pipe(
+          HttpClientRequest.bodyText("payload"),
+          client.execute
+        )
+
+        const redirected = (yield* Ref.get(requests))[1]
+        assert.strictEqual(redirected.method, "PUT")
+        assert.strictEqual(redirected.body._tag, "Uint8Array")
+      }))
+  })
+
   describe("retryTransient", () => {
     it.effect("retries transient responses with retryOn errors-and-responses", () =>
       Effect.gen(function*() {

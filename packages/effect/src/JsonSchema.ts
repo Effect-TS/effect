@@ -9,6 +9,7 @@
  * @since 4.0.0
  */
 import * as Arr from "./Array.ts"
+import * as InternalRecord from "./internal/record.ts"
 import { unescapeToken } from "./JsonPointer.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Rec from "./Record.ts"
@@ -108,7 +109,7 @@ export interface Definitions extends Record<string, JsonSchema> {}
  *
  * **Example** (Inspecting a parsed document)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -118,9 +119,9 @@ export interface Definitions extends Record<string, JsonSchema> {}
  *
  * const doc = JsonSchema.fromSchemaDraft2020_12(raw)
  *
- * console.log(doc.dialect)     // "draft-2020-12"
- * console.log(doc.schema)      // { type: "string" }
- * console.log(doc.definitions) // { Trimmed: { type: "string", minLength: 1 } }
+ * console.log(doc.dialect) // > draft-2020-12
+ * console.log(doc.schema) // > { type: 'string' }
+ * console.log(doc.definitions) // > { Trimmed: { type: 'string', minLength: 1 } }
  * ```
  *
  * @see {@link MultiDocument}
@@ -223,7 +224,7 @@ const RE_COMPONENTS_SCHEMAS = /^#\/components\/schemas(?=\/|$)/
  *
  * **Example** (Parsing a Draft-07 schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -237,8 +238,8 @@ const RE_COMPONENTS_SCHEMAS = /^#\/components\/schemas(?=\/|$)/
  * }
  *
  * const doc = JsonSchema.fromSchemaDraft07(raw)
- * console.log(doc.dialect) // "draft-2020-12"
- * console.log(doc.schema.properties) // { tags: { type: "array", items: { type: "string" } } }
+ * console.log(doc.dialect) // > draft-2020-12
+ * console.log(doc.schema.properties) // > { tags: { type: 'array', items: { type: 'string' } } }
  * ```
  *
  * @see {@link fromSchemaDraft2020_12}
@@ -369,7 +370,7 @@ export function fromSchemaDraft07(js: JsonSchema): Document<"draft-2020-12"> {
  *
  * **Example** (Parsing a Draft-2020-12 schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -379,8 +380,8 @@ export function fromSchemaDraft07(js: JsonSchema): Document<"draft-2020-12"> {
  * }
  *
  * const doc = JsonSchema.fromSchemaDraft2020_12(raw)
- * console.log(doc.schema)      // { type: "number", minimum: 0 }
- * console.log(doc.definitions) // { PositiveInt: { type: "integer", minimum: 1 } }
+ * console.log(doc.schema) // > { type: 'number', minimum: 0 }
+ * console.log(doc.definitions) // > { PositiveInt: { type: 'integer', minimum: 1 } }
  * ```
  *
  * @see {@link fromSchemaDraft07}
@@ -412,7 +413,7 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  *
  * **Example** (Parsing an OpenAPI 3.1 schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -424,7 +425,7 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  *
  * const doc = JsonSchema.fromSchemaOpenApi3_1(raw)
  * // $ref is rewritten to Draft-2020-12 form
- * console.log(doc.schema.properties) // { user: { $ref: "#/$defs/User" } }
+ * console.log(doc.schema.properties) // > { user: { '$ref': '#/$defs/User' } }
  * ```
  *
  * @see {@link fromSchemaOpenApi3_0}
@@ -454,7 +455,7 @@ export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12"> 
  *
  * **Example** (Parsing an OpenAPI 3.0 nullable schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const raw: JsonSchema.JsonSchema = {
@@ -464,7 +465,7 @@ export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12"> 
  *
  * const doc = JsonSchema.fromSchemaOpenApi3_0(raw)
  * // nullable is expanded into a type array
- * console.log(doc.schema.type) // ["string", "null"]
+ * console.log(doc.schema.type) // > [ 'string', 'null' ]
  * ```
  *
  * @see {@link fromSchemaOpenApi3_1}
@@ -498,7 +499,7 @@ export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-1
  *
  * **Example** (Converting to Draft-07)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const doc = JsonSchema.fromSchemaDraft2020_12({
@@ -508,9 +509,9 @@ export function fromSchemaOpenApi3_0(schema: JsonSchema): Document<"draft-2020-1
  * })
  *
  * const draft07 = JsonSchema.toDocumentDraft07(doc)
- * console.log(draft07.dialect)                // "draft-07"
- * console.log(draft07.schema.items)           // [{ type: "string" }, { type: "number" }]
- * console.log(draft07.schema.additionalItems) // { type: "boolean" }
+ * console.log(draft07.dialect) // > draft-07
+ * console.log(draft07.schema.items) // > [ { type: 'string' }, { type: 'number' } ]
+ * console.log(draft07.schema.additionalItems) // > { type: 'boolean' }
  * ```
  *
  * @see {@link fromSchemaDraft07}
@@ -646,7 +647,7 @@ function toSchemaDraft07(schema: JsonSchema): JsonSchema {
  *
  * **Example** (Converting to OpenAPI 3.1)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const multi: JsonSchema.MultiDocument<"draft-2020-12"> = {
@@ -658,8 +659,8 @@ function toSchemaDraft07(schema: JsonSchema): JsonSchema {
  * }
  *
  * const openapi = JsonSchema.toMultiDocumentOpenApi3_1(multi)
- * console.log(openapi.dialect) // "openapi-3.1"
- * console.log(openapi.schemas[0]) // { $ref: "#/components/schemas/User" }
+ * console.log(openapi.dialect) // > openapi-3.1
+ * console.log(openapi.schemas[0]) // > { '$ref': '#/components/schemas/User' }
  * ```
  *
  * @see {@link toDocumentDraft07}
@@ -745,11 +746,11 @@ function rewrite_refs(node: unknown, f: ($ref: string) => string): unknown {
     const v = node[k]
 
     if (k === "$ref") {
-      out[k] = typeof v === "string" ? f(v) : v
+      InternalRecord.assignProperty(out, k, typeof v === "string" ? f(v) : v)
     } else if (Array.isArray(v) || Predicate.isObject(v)) {
-      out[k] = rewrite_refs(v, f)
+      InternalRecord.assignProperty(out, k, rewrite_refs(v, f))
     } else {
-      out[k] = v
+      InternalRecord.assignProperty(out, k, v)
     }
   }
 
@@ -762,7 +763,7 @@ function walk_object(
 ): Record<string, unknown> | undefined {
   if (!Predicate.isObject(value)) return undefined
   const out: Record<string, unknown> = {}
-  for (const k of Object.keys(value)) out[k] = walk(value[k], false)
+  for (const k of Object.keys(value)) InternalRecord.assignProperty(out, k, walk(value[k], false))
   return out
 }
 
@@ -776,15 +777,15 @@ function normalize_OpenApi3_0_to_Draft07(node: unknown): unknown {
   for (const k of Object.keys(src)) {
     const v = src[k]
     if (k === "$ref" && typeof v === "string") {
-      out[k] = v.replace(RE_COMPONENTS_SCHEMAS, "#/definitions")
+      InternalRecord.assignProperty(out, k, v.replace(RE_COMPONENTS_SCHEMAS, "#/definitions"))
     } else if (k === "example") {
       if (src.examples === undefined) {
         out.examples = [v]
       }
     } else if (Array.isArray(v) || Predicate.isObject(v)) {
-      out[k] = normalize_OpenApi3_0_to_Draft07(v)
+      InternalRecord.assignProperty(out, k, normalize_OpenApi3_0_to_Draft07(v))
     } else {
-      out[k] = v
+      InternalRecord.assignProperty(out, k, v)
     }
   }
 
@@ -872,7 +873,7 @@ function widen_type(node: Record<string, unknown>): Record<string, unknown> {
  *
  * **Example** (Resolving a $ref)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const definitions: JsonSchema.Definitions = {
@@ -895,10 +896,7 @@ export function resolve$ref($ref: string, definitions: Definitions): JsonSchema 
   const tokens = $ref.split("/")
   if (tokens.length > 0) {
     const identifier = unescapeToken(tokens[tokens.length - 1])
-    const definition = definitions[identifier]
-    if (definition !== undefined) {
-      return definition
-    }
+    if (Object.hasOwn(definitions, identifier)) return definitions[identifier]
   }
 }
 
@@ -917,7 +915,7 @@ export function resolve$ref($ref: string, definitions: Definitions): JsonSchema 
  *
  * **Example** (Resolving a top-level $ref)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { JsonSchema } from "effect"
  *
  * const doc: JsonSchema.Document<"draft-2020-12"> = {

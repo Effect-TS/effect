@@ -73,7 +73,7 @@ export const ProviderDiscovery: Context.Service<ProviderDiscovery, ProviderDisco
  *
  * **Example** (Creating a discovery error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as Discovery from "@effect/ai-codegen/Discovery"
  *
  * const error = new Discovery.DiscoveryError({
@@ -95,7 +95,7 @@ export class DiscoveryError extends Data.TaggedError("DiscoveryError")<{
  *
  * **Example** (Creating a provider not found error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import * as Discovery from "@effect/ai-codegen/Discovery"
  *
  * const error = new Discovery.ProviderNotFoundError({

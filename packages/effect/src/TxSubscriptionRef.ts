@@ -36,7 +36,7 @@ const TypeId = "~effect/transactions/TxSubscriptionRef"
  *
  * **Example** (Subscribing to transactional changes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -100,7 +100,7 @@ const TxSubscriptionRefProto: Omit<TxSubscriptionRef<any>, typeof TypeId | "ref"
  *
  * **Example** (Creating a transactional subscription reference)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -140,7 +140,7 @@ export const make = <A>(value: A): Effect.Effect<TxSubscriptionRef<A>> =>
  *
  * **Example** (Reading the current value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -172,7 +172,7 @@ export const get = <A>(self: TxSubscriptionRef<A>): Effect.Effect<A> => TxRef.ge
  *
  * **Example** (Modifying and returning a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -222,7 +222,7 @@ export const modify: {
  *
  * **Example** (Setting a new value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -257,7 +257,7 @@ export const set: {
  *
  * **Example** (Updating a value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -293,7 +293,7 @@ export const update: {
  *
  * **Example** (Getting and setting atomically)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -329,7 +329,7 @@ export const getAndSet: {
  *
  * **Example** (Getting and updating atomically)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -366,7 +366,7 @@ export const getAndUpdate: {
  *
  * **Example** (Updating and reading atomically)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -409,7 +409,7 @@ export const updateAndGet: {
  *
  * **Example** (Subscribing to changes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxQueue, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -459,7 +459,7 @@ export const changes = <A>(
  *
  * **Example** (Streaming changes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Stream, TxSubscriptionRef } from "effect"
  *
  * const program = Effect.gen(function*() {

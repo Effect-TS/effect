@@ -33,7 +33,7 @@ const TypeId = "~effect/cli/Primitive"
  *
  * **Example** (Parsing values with primitives)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -125,7 +125,7 @@ const makeSchemaPrimitive = <T>(
  *
  * **Example** (Parsing boolean values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -157,7 +157,7 @@ export const boolean: Primitive<boolean> = makeSchemaPrimitive(
  *
  * **Example** (Parsing floating-point numbers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -186,7 +186,7 @@ export const float: Primitive<number> = makeSchemaPrimitive(
  *
  * **Example** (Parsing integer values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -215,7 +215,7 @@ export const integer: Primitive<number> = makeSchemaPrimitive(
  *
  * **Example** (Parsing date values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -236,7 +236,7 @@ export const integer: Primitive<number> = makeSchemaPrimitive(
  */
 export const date: Primitive<Date> = makeSchemaPrimitive(
   "Date",
-  Schema.DateValid
+  Schema.Date
 )
 
 /**
@@ -244,7 +244,7 @@ export const date: Primitive<Date> = makeSchemaPrimitive(
  *
  * **Example** (Parsing string values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -270,7 +270,7 @@ export const string: Primitive<string> = makePrimitive("String", (value) => Effe
  *
  * **Example** (Parsing choices)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -314,7 +314,7 @@ export const choice = <A>(
  *
  * **Example** (Choosing path validation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Primitive } from "effect/unstable/cli"
  *
  * // Only accept files
@@ -337,7 +337,7 @@ export type PathType = "file" | "directory" | "either"
  *
  * **Example** (Parsing file system paths)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -415,7 +415,7 @@ export const path = (
  *
  * **Example** (Parsing redacted values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Redacted } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -439,7 +439,7 @@ export const redacted: Primitive<Redacted.Redacted<string>> = makePrimitive(
  *
  * **Example** (Reading file text)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -536,7 +536,7 @@ const fileParsers: Record<string, (content: string) => unknown> = {
  *
  * **Example** (Parsing file content)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -588,7 +588,7 @@ export type FileSchemaOptions = Struct.Simplify<
  *
  * **Example** (Parsing file content with a schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -634,7 +634,7 @@ export const fileSchema = <A>(
  *
  * **Example** (Parsing key-value pairs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -681,7 +681,7 @@ export const keyValuePair: Primitive<Record<string, string>> = makePrimitive(
  *
  * **Example** (Rejecting option values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  * import { Primitive } from "effect/unstable/cli"
  *
@@ -708,20 +708,20 @@ export const none: Primitive<never> = makePrimitive("None", () => Effect.fail("T
  *
  * **Example** (Getting primitive type names)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Primitive } from "effect/unstable/cli"
  *
- * console.log(Primitive.getTypeName(Primitive.string)) // "string"
- * console.log(Primitive.getTypeName(Primitive.integer)) // "integer"
- * console.log(Primitive.getTypeName(Primitive.boolean)) // "boolean"
- * console.log(Primitive.getTypeName(Primitive.date)) // "date"
- * console.log(Primitive.getTypeName(Primitive.keyValuePair)) // "key=value"
+ * console.log(Primitive.getTypeName(Primitive.string)) // > string
+ * console.log(Primitive.getTypeName(Primitive.integer)) // > integer
+ * console.log(Primitive.getTypeName(Primitive.boolean)) // > boolean
+ * console.log(Primitive.getTypeName(Primitive.date)) // > date
+ * console.log(Primitive.getTypeName(Primitive.keyValuePair)) // > key=value
  *
  * const logLevelChoice = Primitive.choice([
  *   ["debug", "debug"],
  *   ["info", "info"]
  * ])
- * console.log(Primitive.getTypeName(logLevelChoice)) // "choice"
+ * console.log(Primitive.getTypeName(logLevelChoice)) // > choice
  * ```
  *
  * @category getters

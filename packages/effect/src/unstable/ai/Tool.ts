@@ -171,7 +171,7 @@ export type NeedsApproval<Params extends Schema.Constraint> =
  *
  * **Example** (Defining a weather lookup tool)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -274,6 +274,13 @@ export interface Tool<
   readonly needsApproval?: boolean | NeedsApprovalFunction<any> | undefined
 
   /**
+   * Set whether user approval is required before executing this tool.
+   */
+  setNeedsApproval(
+    needsApproval: NeedsApproval<Config["parameters"]>
+  ): Tool<Name, Config, Requirements>
+
+  /**
    * Adds a _request-level_ dependency which must be provided before the tool
    * call handler can be executed.
    *
@@ -358,7 +365,7 @@ export interface Tool<
  *
  * **Example** (Defining a provider-defined web search tool)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -450,7 +457,7 @@ export interface ProviderDefined<
  *
  * **Example** (Defining dynamic tools)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -517,7 +524,7 @@ export interface Dynamic<
  *
  * **Example** (Checking for user-defined tools)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -547,8 +554,8 @@ export interface Dynamic<
  *   })
  * })
  *
- * console.log(Tool.isUserDefined(UserDefinedTool)) // true
- * console.log(Tool.isUserDefined(ProviderDefinedTool)) // false
+ * console.log(Tool.isUserDefined(UserDefinedTool)) // > true
+ * console.log(Tool.isUserDefined(ProviderDefinedTool)) // > false
  * ```
  *
  * @category guards
@@ -562,7 +569,7 @@ export const isUserDefined = (u: unknown): u is Tool<string, any, any> =>
  *
  * **Example** (Checking for provider-defined tools)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -592,8 +599,8 @@ export const isUserDefined = (u: unknown): u is Tool<string, any, any> =>
  *   })
  * })
  *
- * console.log(Tool.isProviderDefined(UserDefinedTool)) // false
- * console.log(Tool.isProviderDefined(ProviderDefinedTool)) // true
+ * console.log(Tool.isProviderDefined(UserDefinedTool)) // > false
+ * console.log(Tool.isProviderDefined(ProviderDefinedTool)) // > false
  * ```
  *
  * @category guards
@@ -608,7 +615,7 @@ export const isProviderDefined = (
  *
  * **Example** (Checking for dynamic tools)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -621,8 +628,8 @@ export const isProviderDefined = (
  *   success: Schema.Number
  * })
  *
- * console.log(Tool.isDynamic(DynamicTool)) // true
- * console.log(Tool.isDynamic(UserDefinedTool)) // false
+ * console.log(Tool.isDynamic(DynamicTool)) // > true
+ * console.log(Tool.isDynamic(UserDefinedTool)) // > false
  * ```
  *
  * @category guards
@@ -1051,6 +1058,9 @@ const Proto = {
   setFailure(this: Any, failureSchema: Schema.Constraint) {
     return clone(this, { failureSchema })
   },
+  setNeedsApproval(this: Any, needsApproval: NeedsApproval<any>) {
+    return clone(this, { needsApproval })
+  },
   annotate<I, S>(this: Any, tag: Context.Key<I, S>, value: S) {
     return clone(this, { annotations: Context.add(this.annotations, tag, value) })
   },
@@ -1175,7 +1185,7 @@ const dynamicProto = <
  *
  * **Example** (Creating a tool without parameters)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -1281,7 +1291,7 @@ export const make = <
  *
  * **Example** (Creating a dynamic tool)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -1379,7 +1389,7 @@ export const dynamic: {
  *
  * **Example** (Creating a provider-defined tool)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -1576,7 +1586,7 @@ export class NameMapper<Tools extends ReadonlyArray<Any>> {
  *
  * **Example** (Reading a tool description)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tool } from "effect/unstable/ai"
  *
  * const myTool = Tool.make("example", {
@@ -1615,7 +1625,7 @@ export const getDescription = <Tool extends Any>(tool: Tool): string | undefined
  *
  * **Example** (Generating a tool JSON schema)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
@@ -1693,7 +1703,7 @@ const getJsonSchemaFromSchemaWith = <S extends Schema.Constraint>(
  *
  * **Example** (Annotating a tool title)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tool } from "effect/unstable/ai"
  *
  * const myTool = Tool.make("calculate_tip")
@@ -1710,7 +1720,7 @@ export class Title extends Context.Service<Title, string>()("effect/ai/Tool/Titl
  *
  * **Example** (Annotating MCP metadata)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tool } from "effect/unstable/ai"
  *
  * const myCalculatorUi = Tool.make("calculator_ui", {})
@@ -1732,7 +1742,7 @@ export class Meta extends Context.Service<Meta, Record<string, unknown>>()("effe
  *
  * **Example** (Marking a tool as read-only)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tool } from "effect/unstable/ai"
  *
  * const readOnlyTool = Tool.make("get_user_info")
@@ -1756,7 +1766,7 @@ export const Readonly = Context.Reference<boolean>("effect/ai/Tool/Readonly", {
  *
  * **Example** (Marking a tool as non-destructive)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tool } from "effect/unstable/ai"
  *
  * const safeTool = Tool.make("search_database")
@@ -1781,7 +1791,7 @@ export const Destructive = Context.Reference<boolean>("effect/ai/Tool/Destructiv
  *
  * **Example** (Marking a tool as idempotent)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tool } from "effect/unstable/ai"
  *
  * const idempotentTool = Tool.make("get_current_time")
@@ -1806,7 +1816,7 @@ export const Idempotent = Context.Reference<boolean>("effect/ai/Tool/Idempotent"
  *
  * **Example** (Disabling open-world access)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tool } from "effect/unstable/ai"
  *
  * const restrictedTool = Tool.make("internal_operation")
@@ -1835,7 +1845,7 @@ export const OpenWorld = Context.Reference<boolean>("effect/ai/Tool/OpenWorld", 
  *
  * **Example** (Disabling strict JSON schema mode)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Tool } from "effect/unstable/ai"
  *
  * const flexibleTool = Tool.make("search")

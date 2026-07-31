@@ -159,7 +159,7 @@ describe("Config", () => {
       await assertFailure(
         Config.date("b"),
         provider,
-        `Expected a valid date, got Invalid Date
+        `Expected a valid Date, got Invalid Date
   at ["b"]`
       )
     })

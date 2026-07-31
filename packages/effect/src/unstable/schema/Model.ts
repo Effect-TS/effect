@@ -74,7 +74,7 @@ export {
    *
    * **Example** (Defining a variant model class)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Schema } from "effect"
    * import { Model } from "effect/unstable/schema"
    *
