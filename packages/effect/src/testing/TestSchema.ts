@@ -9,9 +9,9 @@
  *
  * @since 4.0.0
  */
-import * as assert from "node:assert"
 import type * as Context from "../Context.ts"
 import * as Effect from "../Effect.ts"
+import * as Equal from "../Equal.ts"
 import { pipe } from "../Function.ts"
 import * as Record from "../Record.ts"
 import * as Result from "../Result.ts"
@@ -20,6 +20,12 @@ import * as SchemaAST from "../SchemaAST.ts"
 import type * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
 import * as FastCheck from "../testing/FastCheck.ts"
+
+const assertEquals = (actual: unknown, expected: unknown): void => {
+  if (!Equal.equals(actual, expected)) {
+    throw new Error("Expected values to be deeply equal")
+  }
+}
 
 /**
  * Provides schema test assertions for decoding, encoding, make, arbitrary generation, and round-trip verification.
@@ -60,7 +66,7 @@ export class Asserts<S extends Schema.Constraint> {
    *
    * **Details**
    *
-   * `ast.fields.equals(a, b)` compares struct field ASTs via `assert.deepStrictEqual`. `ast.elements.equals(a, b)` compares tuple element ASTs via `assert.deepStrictEqual`.
+   * `ast.fields.equals(a, b)` compares struct field ASTs by value. `ast.elements.equals(a, b)` compares tuple element ASTs by value.
    *
    * **Example** (Comparing struct fields)
    *
@@ -76,12 +82,12 @@ export class Asserts<S extends Schema.Constraint> {
   static ast = {
     fields: {
       equals: (a: Schema.Struct.Fields, b: Schema.Struct.Fields) => {
-        assert.deepStrictEqual(Record.map(a, SchemaAST.getAST), Record.map(b, SchemaAST.getAST))
+        assertEquals(Record.map(a, SchemaAST.getAST), Record.map(b, SchemaAST.getAST))
       }
     },
     elements: {
       equals: (a: Schema.Tuple.Elements, b: Schema.Tuple.Elements) => {
-        assert.deepStrictEqual(a.map(SchemaAST.getAST), b.map(SchemaAST.getAST))
+        assertEquals(a.map(SchemaAST.getAST), b.map(SchemaAST.getAST))
       }
     }
   } as const
@@ -128,7 +134,7 @@ export class Asserts<S extends Schema.Constraint> {
         )
       )
       expected = arguments.length === 1 ? input : expected
-      assert.deepStrictEqual(r, Result.succeed(expected))
+      assertEquals(r, Result.succeed(expected))
     }
     return {
       succeed,
@@ -139,7 +145,7 @@ export class Asserts<S extends Schema.Constraint> {
             Effect.result
           )
         )
-        assert.deepStrictEqual(r, Result.fail(message))
+        assertEquals(r, Result.fail(message))
       }
     }
   }
@@ -182,7 +188,7 @@ export class Asserts<S extends Schema.Constraint> {
             Effect.result
           )
         )
-        assert.deepStrictEqual(r, Result.succeed(t))
+        assertEquals(r, Result.succeed(t))
       }),
       options?.params
     )
@@ -296,7 +302,7 @@ export class Asserts<S extends Schema.Constraint> {
  *
  * **Details**
  *
- * All assertions are async and use `assert.deepStrictEqual` internally. `succeed(input)` asserts the decoded output equals `input`; `succeed(input, expected)` asserts it equals `expected`; `fail(input, message)` asserts decoding fails and the stringified issue equals `message`. `provide(key, impl)` returns a new `Decoding` with the service injected into the decoding context.
+ * All assertions are async and compare values structurally. `succeed(input)` asserts the decoded output equals `input`; `succeed(input, expected)` asserts it equals `expected`; `fail(input, message)` asserts decoding fails and the stringified issue equals `message`. `provide(key, impl)` returns a new `Decoding` with the service injected into the decoding context.
  *
  * **Example** (Decoding with service provision)
  *
@@ -372,7 +378,7 @@ export class Decoding<S extends Schema.Constraint> {
       )
     )
     expected = arguments.length === 1 ? input : expected
-    assert.deepStrictEqual(r, Result.succeed(expected))
+    assertEquals(r, Result.succeed(expected))
   }
   /**
    * Asserts that decoding `input` fails and the stringified issue equals
@@ -405,7 +411,7 @@ export class Decoding<S extends Schema.Constraint> {
         Effect.result
       )
     )
-    assert.deepStrictEqual(r, Result.fail(message))
+    assertEquals(r, Result.fail(message))
   }
   /**
    * Returns a new {@link Decoding} instance with the given service injected into the decoding effect context.
@@ -436,7 +442,7 @@ export class Decoding<S extends Schema.Constraint> {
  *
  * **Details**
  *
- * All assertions are async and use `assert.deepStrictEqual` internally. `succeed(input)` asserts the encoded output equals `input`; `succeed(input, expected)` asserts it equals `expected`; `fail(input, message)` asserts encoding fails and the stringified issue equals `message`. `provide(key, impl)` returns a new `Encoding` with the service injected into the encoding context.
+ * All assertions are async and compare values structurally. `succeed(input)` asserts the encoded output equals `input`; `succeed(input, expected)` asserts it equals `expected`; `fail(input, message)` asserts encoding fails and the stringified issue equals `message`. `provide(key, impl)` returns a new `Encoding` with the service injected into the encoding context.
  *
  * **Example** (Encoding assertions)
  *
@@ -512,7 +518,7 @@ export class Encoding<S extends Schema.Constraint> {
       )
     )
     expected = arguments.length === 1 ? input : expected
-    assert.deepStrictEqual(r, Result.succeed(expected))
+    assertEquals(r, Result.succeed(expected))
   }
   /**
    * Asserts that encoding `input` fails and the stringified issue equals
@@ -545,7 +551,7 @@ export class Encoding<S extends Schema.Constraint> {
         Effect.result
       )
     )
-    assert.deepStrictEqual(r, Result.fail(message))
+    assertEquals(r, Result.fail(message))
   }
   /**
    * Returns a new {@link Encoding} instance with the given service injected into the encoding effect context.

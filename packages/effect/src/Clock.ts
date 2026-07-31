@@ -28,6 +28,10 @@ import * as effect from "./internal/effect.ts"
  * const testClock: Clock.Clock = {
  *   currentTimeMillisUnsafe: () => 1_000,
  *   currentTimeMillis: Effect.succeed(1_000),
+ *   ...{
+ *     monotonicTimeNanosUnsafe: () => 1_000_000_000n,
+ *     monotonicTimeNanos: Effect.succeed(1_000_000_000n)
+ *   },
  *   currentTimeNanosUnsafe: () => 1_000_000_000n,
  *   currentTimeNanos: Effect.succeed(1_000_000_000n),
  *   sleep: () => Effect.void
@@ -106,6 +110,10 @@ export interface Clock {
  * const testClock: Clock.Clock = {
  *   currentTimeMillisUnsafe: () => 1_000,
  *   currentTimeMillis: Effect.succeed(1_000),
+ *   ...{
+ *     monotonicTimeNanosUnsafe: () => 1_000_000_000n,
+ *     monotonicTimeNanos: Effect.succeed(1_000_000_000n)
+ *   },
  *   currentTimeNanosUnsafe: () => 1_000_000_000n,
  *   currentTimeNanos: Effect.succeed(1_000_000_000n),
  *   sleep: () => Effect.void
@@ -144,6 +152,10 @@ export const Clock: Context.Reference<Clock> = effect.ClockRef
  * const testClock: Clock.Clock = {
  *   currentTimeMillisUnsafe: () => 1_000,
  *   currentTimeMillis: Effect.succeed(1_000),
+ *   ...{
+ *     monotonicTimeNanosUnsafe: () => 1_000_000_000n,
+ *     monotonicTimeNanos: Effect.succeed(1_000_000_000n)
+ *   },
  *   currentTimeNanosUnsafe: () => 1_000_000_000n,
  *   currentTimeNanos: Effect.succeed(1_000_000_000n),
  *   sleep: () => Effect.void
@@ -178,6 +190,10 @@ export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effec
  * const testClock: Clock.Clock = {
  *   currentTimeMillisUnsafe: () => 1_000,
  *   currentTimeMillis: Effect.succeed(1_000),
+ *   ...{
+ *     monotonicTimeNanosUnsafe: () => 1_000_000_000n,
+ *     monotonicTimeNanos: Effect.succeed(1_000_000_000n)
+ *   },
  *   currentTimeNanosUnsafe: () => 1_000_000_000n,
  *   currentTimeNanos: Effect.succeed(1_000_000_000n),
  *   sleep: () => Effect.void
@@ -210,6 +226,10 @@ export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
  * const testClock: Clock.Clock = {
  *   currentTimeMillisUnsafe: () => 1_000,
  *   currentTimeMillis: Effect.succeed(1_000),
+ *   ...{
+ *     monotonicTimeNanosUnsafe: () => 1_000_000_000n,
+ *     monotonicTimeNanos: Effect.succeed(1_000_000_000n)
+ *   },
  *   currentTimeNanosUnsafe: () => 1_000_000_000n,
  *   currentTimeNanos: Effect.succeed(1_000_000_000n),
  *   sleep: () => Effect.void

@@ -894,7 +894,9 @@ export function fromEnv(options?: {
   readonly preserveEmptyStrings?: boolean | undefined
 }): ConfigProvider {
   const env: Record<string, string | undefined> = options?.env ?? {
-    ...globalThis?.process?.env,
+    ...(globalThis as {
+      readonly process?: { readonly env?: Record<string, string | undefined> }
+    }).process?.env,
     ...(import.meta as any)?.env
   }
   const preserveEmptyStrings = options?.preserveEmptyStrings === true

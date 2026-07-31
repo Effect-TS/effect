@@ -29,6 +29,11 @@ import type { Covariant } from "../../Types.ts"
 import * as Ansi from "./internal/ansi.ts"
 import type * as Primitive from "./Primitive.ts"
 
+declare const process: {
+  readonly platform: string
+  readonly cwd: () => string
+}
+
 const TypeId = "~effect/cli/Prompt"
 
 /**

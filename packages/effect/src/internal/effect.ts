@@ -6023,15 +6023,15 @@ const performanceNowNanos = (function() {
   }
 })()
 const processOrPerformanceNow = (function() {
-  const processHrtime =
-    typeof process === "object" && "hrtime" in process && typeof process.hrtime.bigint === "function" ?
-      process.hrtime :
-      undefined
-  if (!processHrtime) {
+  const processHrtime = (globalThis as {
+    readonly process?: { readonly hrtime?: { readonly bigint?: () => bigint } }
+  }).process?.hrtime
+  const processHrtimeBigint = processHrtime?.bigint
+  if (typeof processHrtimeBigint !== "function") {
     return performanceNowNanos
   }
-  const origin = (BigInt(Date.now()) * BigInt(1e6)) - processHrtime.bigint()
-  return () => origin + processHrtime.bigint()
+  const origin = (BigInt(Date.now()) * BigInt(1e6)) - processHrtimeBigint()
+  return () => origin + processHrtimeBigint()
 })()
 
 /** @internal */
@@ -6384,10 +6384,10 @@ export const consolePretty = (options?: {
 }) => {
   // evaluated lazily so the module-level bundle stays free of `process`
   // property accesses, which bundlers must retain as possible side effects
-  const hasProcessStdout = typeof process === "object" &&
-    process !== null &&
-    typeof process.stdout === "object" &&
-    process.stdout !== null
+  const process = (globalThis as {
+    readonly process?: { readonly stdout?: { readonly isTTY?: boolean } }
+  }).process
+  const hasProcessStdout = typeof process?.stdout === "object" && process.stdout !== null
   const processStdoutIsTTY = hasProcessStdout &&
     process.stdout.isTTY === true
   const hasProcessStdoutOrDeno = hasProcessStdout || "Deno" in globalThis
@@ -6405,7 +6405,7 @@ const prettyLoggerTty = (options: {
   readonly colors: boolean
   readonly formatDate: (date: Date) => string
 }) => {
-  const processIsBun = typeof process === "object" && "isBun" in process && process.isBun === true
+  const processIsBun = (globalThis as { readonly process?: { readonly isBun?: boolean } }).process?.isBun === true
   const color = options.colors ? withColor : withColorNoop
   return loggerMake<unknown, void>(
     ({ cause, date, fiber, logLevel, message: message_ }) => {
