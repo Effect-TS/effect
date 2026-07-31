@@ -10,6 +10,7 @@
     "module": "ES2022",
     "target": "ES2022",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["node"],
     "rewriteRelativeImportExtensions": true,
     "allowImportingTsExtensions": true,
     "paths": {

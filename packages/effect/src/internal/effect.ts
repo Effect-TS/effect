@@ -6018,11 +6018,11 @@ class ClockImpl implements Clock.Clock {
 const nanosPerMilli = BigInt(1_000_000)
 
 const monotonicNowNanos = (function() {
-  const processHrtimeBigint = (globalThis as {
+  const processHrtime = (globalThis as {
     readonly process?: { readonly hrtime?: { readonly bigint?: () => bigint } }
-  }).process?.hrtime?.bigint
-  if (typeof processHrtimeBigint === "function") {
-    return processHrtimeBigint
+  }).process?.hrtime
+  if (typeof processHrtime?.bigint === "function") {
+    return () => processHrtime.bigint!()
   }
   if (typeof performance !== "undefined" && typeof performance.now === "function") {
     return () => BigInt(Math.round(performance.now() * 1_000_000))
