@@ -14,6 +14,7 @@ export interface Snippet {
   readonly source: string
   readonly line: number
   readonly name: string | undefined
+  readonly suite: boolean
 }
 
 /**
@@ -28,6 +29,7 @@ const jsdocPattern = /\/\*\*[\s\S]*?\*\//g
 const fencePattern = /(?:```|~~~)(.*?)\n([\s\S]*?)(?:(?:```|~~~)|$)/g
 const runnableMarker = "import.meta.vitest"
 const namePattern = /(?:^|\s)name=(?:"([^"]+)"|'([^']+)'|([^\s]+))/
+const suitePattern = /(?:^|\s)suite(?:\s|$)/
 
 const lineNumberAt = (source: string): (offset: number) => number => {
   const starts = [0]
@@ -65,7 +67,8 @@ const snippets = (
     return [{
       source,
       line: lineAt(offset + (match.index ?? 0)),
-      name: name?.[1] ?? name?.[2] ?? name?.[3]
+      name: name?.[1] ?? name?.[2] ?? name?.[3],
+      suite: suitePattern.test(metadata)
     }]
   })
 }

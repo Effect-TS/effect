@@ -1669,13 +1669,11 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * const person = Option.zipWith(
+ * Option.zipWith(
  *   Option.some("John"),
  *   Option.some(25),
  *   (name, age) => ({ name: name.toUpperCase(), age })
- * )
- *
- * person // => Option.some({ name: "JOHN", age: 25 })
+ * ) // => Option.some({ name: "JOHN", age: 25 })
  * ```
  *
  * @see {@link product} to combine into a tuple instead
@@ -2178,13 +2176,12 @@ export const exists: {
  * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
  *
- * const result = pipe(
+ * pipe(
  *   Option.some(2),
  *   Option.bindTo("x"),
  *   Option.bind("y", () => Option.some(3)),
  *   Option.let("sum", ({ x, y }) => x + y)
- * )
- * result // => Option.some({ x: 2, y: 3, sum: 5 })
+ * ) // => Option.some({ x: 2, y: 3, sum: 5 })
  * ```
  *
  * @see {@link Do} for starting with an empty record
@@ -2225,13 +2222,12 @@ export {
    * ```ts import.meta.vitest
    * import { Option, pipe } from "effect"
    *
-   * const result = pipe(
+   * pipe(
    *   Option.Do,
    *   Option.bind("x", () => Option.some(2)),
    *   Option.bind("y", () => Option.some(3)),
    *   Option.let("sum", ({ x, y }) => x + y)
-   * )
-   * result // => Option.some({ x: 2, y: 3, sum: 5 })
+   * ) // => Option.some({ x: 2, y: 3, sum: 5 })
    * ```
    *
    * @see {@link Do} for starting the chain
@@ -2257,14 +2253,13 @@ export {
  * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
  *
- * const result = pipe(
+ * pipe(
  *   Option.Do,
  *   Option.bind("x", () => Option.some(2)),
  *   Option.bind("y", () => Option.some(3)),
  *   Option.let("sum", ({ x, y }) => x + y),
  *   Option.filter(({ x, y }) => x * y > 5)
- * )
- * result // => Option.some({ x: 2, y: 3, sum: 5 })
+ * ) // => Option.some({ x: 2, y: 3, sum: 5 })
  * ```
  *
  * @see {@link Do} for starting the chain
@@ -2300,14 +2295,13 @@ export const bind: {
  * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
  *
- * const result = pipe(
+ * pipe(
  *   Option.Do,
  *   Option.bind("x", () => Option.some(2)),
  *   Option.bind("y", () => Option.some(3)),
  *   Option.let("sum", ({ x, y }) => x + y),
  *   Option.filter(({ x, y }) => x * y > 5)
- * )
- * result // => Option.some({ x: 2, y: 3, sum: 5 })
+ * ) // => Option.some({ x: 2, y: 3, sum: 5 })
  * ```
  *
  * @see {@link bind} to add `Option` values
@@ -2342,13 +2336,11 @@ export const Do: Option<{}> = some({})
  * const maybeName: Option.Option<string> = Option.some("John")
  * const maybeAge: Option.Option<number> = Option.some(25)
  *
- * const person = Option.gen(function*() {
+ * Option.gen(function*() {
  *   const name = (yield* maybeName).toUpperCase()
  *   const age = yield* maybeAge
  *   return { name, age }
- * })
- *
- * person // => Option.some({ name: "JOHN", age: 25 })
+ * }) // => Option.some({ name: "JOHN", age: 25 })
  * ```
  *
  * @see {@link Do} / {@link bind} for the do notation alternative

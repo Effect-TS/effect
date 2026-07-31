@@ -119,11 +119,114 @@ const assertionTarget = (
   return target
 }
 
-const parseExpected = (expected: string, source: string, offset: number, file: string, line: number): void => {
+const parseExpected = (expected: string, source: string, offset: number, file: string, line: number): Node => {
   const parsed = parseSync(`${file}?doctest-expected`, `const __expected = (${expected})`, { lang: "ts" })
   const error = parsed.errors[0]
   if (error !== undefined) {
     fail(source, offset, file, line, `invalid doctest expected expression: ${error.message}`)
+  }
+  const statement = parsed.program.body[0]
+  const declarations = isNode(statement) ? statement.declarations : undefined
+  const declaration = Array.isArray(declarations) ? declarations[0] : undefined
+  const init = isNode(declaration) && isNode(declaration.init) ? declaration.init : undefined
+  return init?.type === "ParenthesizedExpression" && isNode(init.expression)
+    ? init.expression
+    : fail(source, offset, file, line, "invalid doctest expected expression")
+}
+
+type PrimitiveLiteral =
+  | { readonly kind: "bigint"; readonly value: bigint }
+  | { readonly kind: "boolean"; readonly value: boolean }
+  | { readonly kind: "null"; readonly value: null }
+  | { readonly kind: "number"; readonly value: number }
+  | { readonly kind: "string"; readonly value: string }
+
+const primitiveLiteral = (node: Node, allowSign = true): PrimitiveLiteral | undefined => {
+  if (node.type === "ParenthesizedExpression" && isNode(node.expression)) {
+    return primitiveLiteral(node.expression, allowSign)
+  }
+
+  if (
+    allowSign && node.type === "UnaryExpression" && (node.operator === "+" || node.operator === "-") &&
+    isNode(node.argument)
+  ) {
+    const argument = primitiveLiteral(node.argument, false)
+    if (argument?.kind === "number") {
+      return { kind: "number", value: node.operator === "-" ? -argument.value : argument.value }
+    }
+    if (argument?.kind === "bigint") {
+      return { kind: "bigint", value: node.operator === "-" ? -argument.value : argument.value }
+    }
+    return undefined
+  }
+
+  if (node.type === "TemplateLiteral") {
+    const expressions = node.expressions
+    const quasis = node.quasis
+    const quasi = Array.isArray(quasis) && quasis.length === 1 ? quasis[0] : undefined
+    const quasiValue = isNode(quasi) ? quasi.value : undefined
+    const value = typeof quasiValue === "object" && quasiValue !== null && "cooked" in quasiValue
+      ? quasiValue.cooked
+      : undefined
+    return Array.isArray(expressions) && expressions.length === 0 && typeof value === "string"
+      ? { kind: "string", value }
+      : undefined
+  }
+
+  if (node.type !== "Literal" || node.regex !== undefined) return undefined
+  if (typeof node.bigint === "string") return { kind: "bigint", value: BigInt(node.bigint) }
+  if (node.value === null) return { kind: "null", value: null }
+  if (typeof node.value === "boolean") return { kind: "boolean", value: node.value }
+  if (typeof node.value === "number") return { kind: "number", value: node.value }
+  if (typeof node.value === "string") return { kind: "string", value: node.value }
+  return undefined
+}
+
+const typedPrimitiveConst = (node: Node): { readonly id: Node; readonly value: PrimitiveLiteral } | undefined => {
+  if (node.type !== "VariableDeclaration" || node.kind !== "const" || node.declare !== false) return undefined
+  const declarations = node.declarations
+  const declaration = Array.isArray(declarations) && declarations.length === 1 ? declarations[0] : undefined
+  const id = isNode(declaration) && isNode(declaration.id) ? declaration.id : undefined
+  const init = isNode(declaration) && isNode(declaration.init) ? declaration.init : undefined
+  const value = init === undefined ? undefined : primitiveLiteral(init)
+  return id?.type === "Identifier" && isNode(id.typeAnnotation) && value !== undefined
+    ? { id, value }
+    : undefined
+}
+
+const rejectTautologicalAssertion = (
+  source: string,
+  candidates: ReadonlyArray<Candidate>,
+  target: Candidate,
+  expectedNode: Node,
+  offset: number,
+  file: string,
+  line: number
+): void => {
+  const expected = primitiveLiteral(expectedNode)
+  if (expected === undefined) return
+
+  let declaration = typedPrimitiveConst(target.node)
+  if (target.node.type === "ExpressionStatement" && isNode(target.node.expression)) {
+    const expression = target.node.expression
+    if (expression.type === "Identifier" && typeof expression.name === "string") {
+      const previous = candidates
+        .filter(({ node, parent }) => parent === target.parent && node.end <= target.node.start)
+        .sort((left, right) => right.node.end - left.node.end)
+      for (const candidate of previous) {
+        const previousDeclaration = typedPrimitiveConst(candidate.node)
+        if (previousDeclaration?.id.name === expression.name) {
+          declaration = previousDeclaration
+          break
+        }
+      }
+    }
+  }
+
+  if (
+    declaration !== undefined && declaration.value.kind === expected.kind && declaration.value.value === expected.value
+  ) {
+    fail(source, offset, file, line, "doctest assertion is tautological for an explicitly typed primitive literal")
   }
 }
 
@@ -162,8 +265,10 @@ export const transform = (source: string, file: string, line: number): string =>
   const output = new RolldownMagicString(source)
 
   for (const { comment, expected } of markers) {
-    parseExpected(expected, source, comment.start, file, line)
-    const { node, parent } = assertionTarget(source, candidates, comment, file, line)
+    const expectedNode = parseExpected(expected, source, comment.start, file, line)
+    const target = assertionTarget(source, candidates, comment, file, line)
+    rejectTautologicalAssertion(source, candidates, target, expectedNode, comment.start, file, line)
+    const { node, parent } = target
 
     if (node.type === "ExpressionStatement") {
       if (node.directive !== null) {

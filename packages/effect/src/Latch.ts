@@ -34,15 +34,12 @@ import * as internal from "./internal/effect.ts"
  * // Create and use a latch for coordination between fibers
  * const program = Effect.gen(function*() {
  *   const latch = yield* Latch.make()
- *   const events: Array<string> = []
- *
- *   const waiter = yield* Effect.forkChild(latch.await.pipe(Effect.andThen(Effect.sync(() => events.push("opened")))))
+ *   const waiter = yield* Effect.forkChild(latch.await.pipe(Effect.as("opened")))
  *   yield* latch.open
- *   yield* Fiber.join(waiter)
- *   return events
+ *   return yield* Fiber.join(waiter)
  * })
  *
- * await Effect.runPromise(program) // => ["opened"]
+ * await Effect.runPromise(program) // => "opened"
  * ```
  *
  * @see {@link make} for creating a latch inside Effect code
@@ -145,21 +142,15 @@ export interface Latch {
  * import { Effect, Fiber, Latch } from "effect"
  *
  * const latch = Latch.makeUnsafe(false)
- * const events: Array<string> = []
- *
- * const waiter = Effect.gen(function*() {
- *   yield* latch.await
- *   events.push("opened")
- * })
+ * const waiter = latch.await.pipe(Effect.as("opened"))
  *
  * const program = Effect.gen(function*() {
  *   const fiber = yield* Effect.forkChild(waiter)
  *   yield* latch.open
- *   yield* Fiber.join(fiber)
- *   return events
+ *   return yield* Fiber.join(fiber)
  * })
  *
- * await Effect.runPromise(program) // => ["opened"]
+ * await Effect.runPromise(program) // => "opened"
  * ```
  *
  * @see {@link make} for creating a latch inside Effect code
@@ -187,20 +178,14 @@ export const makeUnsafe: (open?: boolean | undefined) => Latch = internal.makeLa
  *
  * const program = Effect.gen(function*() {
  *   const latch = yield* Latch.make(false)
- *   const events: Array<string> = []
- *
- *   const waiter = Effect.gen(function*() {
- *     yield* latch.await
- *     events.push("opened")
- *   })
+ *   const waiter = latch.await.pipe(Effect.as("opened"))
  *
  *   const fiber = yield* Effect.forkChild(waiter)
  *   yield* latch.open
- *   yield* Fiber.join(fiber)
- *   return events
+ *   return yield* Fiber.join(fiber)
  * })
  *
- * await Effect.runPromise(program) // => ["opened"]
+ * await Effect.runPromise(program) // => "opened"
  * ```
  *
  * @see {@link makeUnsafe} for synchronous allocation outside Effect code

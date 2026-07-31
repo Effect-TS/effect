@@ -341,11 +341,7 @@ export const isEmpty: <V>(self: HashSet<V>) => boolean = internal.isEmpty
  * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
- * const set1 = HashSet.make("a", "b")
- * const set2 = HashSet.make("b", "c")
- * const combined = HashSet.union(set1, set2)
- *
- * combined // => HashSet.make("a", "b", "c")
+ * HashSet.union(HashSet.make("a", "b"), HashSet.make("b", "c")) // => HashSet.make("a", "b", "c")
  * ```
  *
  * @category combinators
@@ -367,11 +363,7 @@ export const union: {
  * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
- * const set1 = HashSet.make("a", "b", "c")
- * const set2 = HashSet.make("b", "c", "d")
- * const common = HashSet.intersection(set1, set2)
- *
- * common // => HashSet.make("b", "c")
+ * HashSet.intersection(HashSet.make("a", "b", "c"), HashSet.make("b", "c", "d")) // => HashSet.make("b", "c")
  * ```
  *
  * @category combinators
@@ -393,11 +385,7 @@ export const intersection: {
  * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
- * const set1 = HashSet.make("a", "b", "c")
- * const set2 = HashSet.make("b", "d")
- * const diff = HashSet.difference(set1, set2)
- *
- * diff // => HashSet.make("a", "c")
+ * HashSet.difference(HashSet.make("a", "b", "c"), HashSet.make("b", "d")) // => HashSet.make("a", "c")
  * ```
  *
  * @category combinators
@@ -478,10 +466,7 @@ export const map: {
  * ```ts import.meta.vitest
  * import { HashSet } from "effect"
  *
- * const numbers = HashSet.make(1, 2, 3, 4, 5, 6)
- * const evens = HashSet.filter(numbers, (n) => n % 2 === 0)
- *
- * evens // => HashSet.make(2, 4, 6)
+ * HashSet.filter(HashSet.make(1, 2, 3, 4, 5, 6), (n) => n % 2 === 0) // => HashSet.make(2, 4, 6)
  * ```
  *
  * @category filtering

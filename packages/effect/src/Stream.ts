@@ -107,11 +107,10 @@ export const TypeId: TypeId = "~effect/Stream"
  * ```ts import.meta.vitest
  * import { Effect, Stream } from "effect"
  *
- * const values: Array<number> = []
- * await Effect.runPromise(
+ * const values = await Effect.runPromise(
  *   Stream.make(1, 2, 3).pipe(
  *     Stream.map((n) => n * 2),
- *     Stream.runForEach((n) => Effect.sync(() => values.push(n)))
+ *     Stream.runCollect
  *   )
  * )
  * values // => [2, 4, 6]
@@ -212,7 +211,6 @@ export interface VarianceStruct<out A, out E, out R> {
  * type NumberStream = Stream.Stream<number, string, never>
  * type SuccessType = Stream.Success<NumberStream>
  * const value: SuccessType = 42
- * value // => 42
  * ```
  *
  * @category utility types
@@ -231,7 +229,6 @@ export type Success<T extends Stream<any, any, any>> = [T] extends [Stream<infer
  * type NumberStream = Stream.Stream<number, string, never>
  * type ErrorType = Stream.Error<NumberStream>
  * const error: ErrorType = "boom"
- * error // => "boom"
  * ```
  *
  * @category utility types
@@ -7439,7 +7436,7 @@ export const mapAccumArrayEffect: {
       readonly onHalt?: ((state: S) => ReadonlyArray<B>) | undefined
     }
   ): Stream<B, E | E2, R | R2>
-} = dual((args) => isStream(args), <A, E, R, S, B, E2, R2>(
+} = dual((args) => isStream(args[0]), <A, E, R, S, B, E2, R2>(
   self: Stream<A, E, R>,
   initial: LazyArg<S>,
   f: (s: S, a: Arr.NonEmptyReadonlyArray<A>) => Effect.Effect<readonly [state: S, values: ReadonlyArray<B>], E2, R2>,
@@ -8683,22 +8680,36 @@ export const broadcast: {
  * **Example** (Sharing a stream)
  *
  * ```ts import.meta.vitest
- * import { Effect, Stream } from "effect"
+ * import { Deferred, Effect, Ref, Stream } from "effect"
  *
- * await Effect.runPromise(
+ * const result = await Effect.runPromise(
  *   Effect.scoped(
  *     Effect.gen(function*() {
- *       const shared = yield* Stream.make(1, 2, 3).pipe(
- *         Stream.share({ capacity: 16 })
+ *       const firstReady = yield* Deferred.make<void>()
+ *       const secondReady = yield* Deferred.make<void>()
+ *       const acquisitions = yield* Ref.make(0)
+ *       const source = Stream.fromEffect(Ref.update(acquisitions, (n) => n + 1)).pipe(
+ *         Stream.drain,
+ *         Stream.concat(Stream.make(0)),
+ *         Stream.concat(
+ *           Stream.fromEffect(Effect.all([Deferred.await(firstReady), Deferred.await(secondReady)])).pipe(Stream.drain)
+ *         ),
+ *         Stream.concat(Stream.make(1, 2, 3))
  *       )
+ *       const shared = yield* Stream.share(source, { capacity: 16, replay: 1 })
+ *       const consume = (ready: Deferred.Deferred<void>) =>
+ *         shared.pipe(
+ *           Stream.tap((value) => value === 0 ? Deferred.succeed(ready, void 0) : Effect.void),
+ *           Stream.filter((value) => value !== 0),
+ *           Stream.runCollect
+ *         )
  *
- *       const first = yield* shared.pipe(Stream.take(1), Stream.runCollect)
- *       const second = yield* shared.pipe(Stream.take(1), Stream.runCollect)
- *
- *       const result = [first, second] // => [[1], [1]]
+ *       const values = yield* Effect.all([consume(firstReady), consume(secondReady)], { concurrency: "unbounded" })
+ *       return { values, acquisitions: yield* Ref.get(acquisitions) }
  *     })
  *   )
  * )
+ * result // => { values: [[1, 2, 3], [1, 2, 3]], acquisitions: 1 }
  * ```
  *
  * @category Broadcast
@@ -11021,15 +11032,7 @@ export const toReadableStreamEffect: {
  * const stream = Stream.make(1, 2, 3)
  * const iterable = Stream.toAsyncIterableWith(stream, Context.empty())
  *
- * const collect = async () => {
- *   const results: Array<number> = []
- *   for await (const value of iterable) {
- *     results.push(value)
- *   }
- *   results // => [ 1, 2, 3 ]
- * }
- *
- * await collect()
+ * await Array.fromAsync(iterable) // => [1, 2, 3]
  * ```
  *
  * @category destructors
@@ -11135,17 +11138,10 @@ export const toAsyncIterableWith: {
  *
  * const program = Effect.gen(function*() {
  *   const iterable = yield* Stream.toAsyncIterableEffect(stream)
- *   const values = yield* Effect.promise(async () => {
- *     const collected: Array<number> = []
- *     for await (const value of iterable) {
- *       collected.push(value)
- *     }
- *     return collected
- *   })
- *   values // => [1, 2, 3]
+ *   return yield* Effect.promise(() => Array.fromAsync(iterable))
  * })
  *
- * await Effect.runPromise(program)
+ * await Effect.runPromise(program) // => [1, 2, 3]
  * ```
  *
  * @category destructors
@@ -11167,16 +11163,7 @@ export const toAsyncIterableEffect = <A, E, R>(self: Stream<A, E, R>): Effect.Ef
  *
  * const stream = Stream.make(1, 2, 3)
  *
- * const collect = async () => {
- *   const iterable = Stream.toAsyncIterable(stream)
- *   const values: Array<number> = []
- *   for await (const value of iterable) {
- *     values.push(value)
- *   }
- *   values // => [ 1, 2, 3 ]
- * }
- *
- * await collect()
+ * await Array.fromAsync(Stream.toAsyncIterable(stream)) // => [1, 2, 3]
  * ```
  *
  * @category destructors

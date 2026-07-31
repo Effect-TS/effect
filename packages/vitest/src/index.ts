@@ -179,8 +179,8 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  *
  * @since 4.0.0
  *
- * ```ts
- * import { expect, layer } from "@effect/vitest"
+ * ```ts import.meta.vitest suite
+ * import { assert, layer } from "@effect/vitest"
  * import { Effect, Layer, Context } from "effect"
  *
  * class Foo extends Context.Service<Foo, "foo">()("Foo") {
@@ -194,25 +194,23 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  *   )
  * }
  *
- * const tests = () => {
- *   layer(Foo.Live)("layer", (it) => {
+ * layer(Foo.Live)("layer", (it) => {
+ *   it.effect("adds context", () =>
+ *     Effect.gen(function*() {
+ *       const foo = yield* Foo
+ *       assert.strictEqual(foo, "foo")
+ *     }))
+ *
+ *   it.layer(Bar.Live)("nested", (it) => {
  *     it.effect("adds context", () =>
  *       Effect.gen(function*() {
  *         const foo = yield* Foo
- *         expect(foo).toEqual("foo")
+ *         const bar = yield* Bar
+ *         assert.strictEqual(foo, "foo")
+ *         assert.strictEqual(bar, "bar")
  *       }))
- *
- *     it.layer(Bar.Live)("nested", (it) => {
- *       it.effect("adds context", () =>
- *         Effect.gen(function*() {
- *           const foo = yield* Foo
- *           const bar = yield* Bar
- *           expect(foo).toEqual("foo")
- *           expect(bar).toEqual("bar")
- *         }))
- *     })
  *   })
- * }
+ * })
  * ```
  */
 export const layer: <R, E>(

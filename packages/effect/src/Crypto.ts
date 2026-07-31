@@ -29,7 +29,6 @@ const TypeId = "~effect/platform/Crypto"
  * import { Crypto } from "effect"
  *
  * const algorithm: Crypto.DigestAlgorithm = "SHA-256"
- * algorithm // => "SHA-256"
  * ```
  *
  * @category models

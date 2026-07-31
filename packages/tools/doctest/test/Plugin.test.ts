@@ -64,4 +64,44 @@ describe("Plugin", () => {
       rmSync(root, { recursive: true, force: true })
     }
   })
+
+  it("imports suite snippets directly while isolating ordinary snippets", async () => {
+    const root = mkdtempSync(join(tmpdir(), "effect-doctest-plugin-"))
+    const file = join(root, "example.ts")
+    writeFileSync(
+      file,
+      [
+        "/**",
+        " * ```ts import.meta.vitest suite",
+        " * registerSuite()",
+        " * ```",
+        " * ```ts import.meta.vitest name=ordinary",
+        " * runExample()",
+        " * ```",
+        " */"
+      ].join("\n")
+    )
+
+    try {
+      const plugin = Doctest.plugin()
+      const resolveId = plugin.resolveId
+      const load = plugin.load
+      if (typeof resolveId !== "function" || typeof load !== "function") {
+        return assert.fail("expected function plugin hooks")
+      }
+      const context = { addWatchFile() {} } as never
+      const resolved = await resolveId.call(context, Protocol.collectorId(file, "test"), undefined, {} as never)
+      if (typeof resolved !== "string") return assert.fail("expected resolved collector ID")
+      const source = await load.call(context, resolved, {} as never)
+      if (typeof source !== "string") return assert.fail("expected collector source")
+
+      const suiteId = JSON.stringify(Protocol.snippetId(file, 0, "test"))
+      const ordinaryId = JSON.stringify(Protocol.snippetId(file, 1, "test"))
+      assert.ok(source.includes(`import ${suiteId}`))
+      assert.ok(!source.includes(`test("line 2", () => import(${suiteId}))`))
+      assert.ok(source.includes(`test("ordinary", () => import(${ordinaryId}))`))
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
 })

@@ -214,6 +214,20 @@ export const isSink = (u: unknown): u is Sink<unknown, never, unknown, unknown, 
  * Use to create a `Sink` from a `Channel` that processes non-empty arrays of
  * input values.
  *
+ * **Example** (Using channel completion as the sink result)
+ *
+ * ```ts import.meta.vitest
+ * import { Channel, Effect, Sink, Stream } from "effect"
+ *
+ * const channel = Channel.identity<readonly [number, ...Array<number>], never, void>().pipe(
+ *   Channel.drain,
+ *   Channel.mapDone(() => ["consumed"] as const)
+ * )
+ * const sink = Sink.fromChannel(channel)
+ *
+ * await Effect.runPromise(Stream.run(Stream.make(1, 2, 3), sink)) // => "consumed"
+ * ```
+ *
  * @see {@link toChannel} for converting a `Sink` back to a `Channel`
  * @category constructors
  * @since 2.0.0
@@ -299,15 +313,16 @@ export const fromTransform = <In, A, E, R, L = never>(
 /**
  * Creates a `Channel` from a Sink.
  *
- * **Example** (Converting a sink to a channel)
+ * **Example** (Running a sink as a channel)
  *
  * ```ts import.meta.vitest
- * import { Channel, Sink } from "effect"
+ * import { Channel, Effect, Sink, Stream } from "effect"
  *
- * // Create a sink and extract its channel
- * const sink = Sink.succeed(42)
- * const channel = Sink.toChannel(sink)
- * Channel.isChannel(channel) // => true
+ * const channel = Stream.toChannel(Stream.make(1, 2, 3)).pipe(
+ *   Channel.pipeTo(Sink.toChannel(Sink.sum))
+ * )
+ *
+ * await Effect.runPromise(Channel.runDone(channel)) // => [6]
  * ```
  *
  * @category constructors

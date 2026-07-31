@@ -6,6 +6,23 @@ import { TestClock } from "effect/testing"
 const attributes = { x: "a", y: "b" }
 
 describe("Metric", () => {
+  it("identifies constructed and transformed metrics", () => {
+    const counter = Metric.counter("requests")
+    const transformed = Metric.mapInput(counter, (input: string) => input.length)
+
+    assert.isTrue(Metric.isMetric(counter))
+    assert.isTrue(Metric.isMetric(transformed))
+    assert.isFalse(Metric.isMetric({ id: "requests" }))
+    assert.isFalse(Metric.isMetric(null))
+  })
+
+  it("creates evenly spaced linear boundaries", () => {
+    assert.deepStrictEqual(
+      Metric.linearBoundaries({ start: 10, width: 5, count: 4 }),
+      [10, 15, 20, Infinity]
+    )
+  })
+
   it.effect("should be referentially transparent", () =>
     Effect.gen(function*() {
       const id = nextId()

@@ -21,8 +21,22 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [
-        { source: "const first = 1", line: 3, name: "first" },
-        { source: "const second = 2", line: 9, name: "second example" }
+        { source: "const first = 1", line: 3, name: "first", suite: false },
+        { source: "const second = 2", line: 9, name: "second example", suite: false }
+      ])
+    })
+
+    it("extracts suite metadata", () => {
+      const source = [
+        "/**",
+        " * ```ts import.meta.vitest suite",
+        " * const suite = true",
+        " * ```",
+        " */"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source), [
+        { source: "const suite = true", line: 2, name: undefined, suite: true }
       ])
     })
 
@@ -39,7 +53,7 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [
-        { source: "const inside = true", line: 5, name: undefined }
+        { source: "const inside = true", line: 5, name: undefined, suite: false }
       ])
     })
 
@@ -70,7 +84,8 @@ describe("Source", () => {
       assert.deepStrictEqual(Source.extract(source), [{
         source: "const value = 1 // => 1",
         line: 2,
-        name: undefined
+        name: undefined,
+        suite: false
       }])
     })
 
@@ -92,7 +107,8 @@ describe("Source", () => {
           "console.log(1) // > 1"
         ].join("\n"),
         line: 2,
-        name: undefined
+        name: undefined,
+        suite: false
       }])
     })
   })
@@ -112,7 +128,7 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source, "markdown"), [
-        { source: "const value = 1", line: 7, name: "example" }
+        { source: "const value = 1", line: 7, name: "example", suite: false }
       ])
     })
   })

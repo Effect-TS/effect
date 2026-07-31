@@ -460,18 +460,13 @@ export class Composite extends Base {
  *   `Option.none()` when no value was provided.
  * - The default formatter renders this as `"Expected <type>, got <actual>"`.
  *
- * **Example** (Formatting output)
+ * **Example** (Inspecting the actual value)
  *
  * ```ts import.meta.vitest
- * import { Schema } from "effect"
+ * import { Option, Schema, SchemaIssue } from "effect"
  *
- * try {
- *   Schema.decodeUnknownSync(Schema.String)(42)
- * } catch (e) {
- *   if (Schema.isSchemaError(e)) {
- *     String(e.issue) // => "Expected string, got 42"
- *   }
- * }
+ * const issue = new SchemaIssue.InvalidType(Schema.String.ast, Option.some(42))
+ * issue.actual // => Option.some(42)
  * ```
  *
  * @see {@link InvalidValue} — the input has the right type but fails a value constraint

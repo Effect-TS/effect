@@ -126,7 +126,7 @@ export const empty: "" = "" as const
  * // Type-level concatenation
  * type Result = String.Concat<"hello", "world"> // "helloworld"
  *
- * const witness: Result = "helloworld" // => "helloworld"
+ * const witness: Result = "helloworld"
  * ```
  *
  * @category models
@@ -263,7 +263,7 @@ export const replace = (searchValue: string | RegExp, replaceValue: string) => (
  *
  * type Result = String.Trim<"  hello  "> // "hello"
  *
- * const witness: Result = "hello" // => "hello"
+ * const witness: Result = "hello"
  * ```
  *
  * @category models
@@ -298,7 +298,7 @@ export const trim = <A extends string>(self: A): Trim<A> => self.trim() as Trim<
  *
  * type Result = String.TrimStart<"  hello"> // "hello"
  *
- * const witness: Result = "hello" // => "hello"
+ * const witness: Result = "hello"
  * ```
  *
  * @category models
@@ -333,7 +333,7 @@ export const trimStart = <A extends string>(self: A): TrimStart<A> => self.trimS
  *
  * type Result = String.TrimEnd<"hello  "> // "hello"
  *
- * const witness: Result = "hello" // => "hello"
+ * const witness: Result = "hello"
  * ```
  *
  * @category models

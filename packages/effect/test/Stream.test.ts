@@ -1255,6 +1255,17 @@ describe("Stream", () => {
 
         assert.deepStrictEqual(result, Array.scan([1, 2, 3, 4, 5], 0, (acc, curr) => acc + curr))
       }))
+
+    it.effect("mapAccumArrayEffect supports data-first usage", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.mapAccumArrayEffect(
+          Stream.make(1, 2, 3),
+          () => 0,
+          (state, values) => Effect.succeed([state + values.length, values] as const)
+        ).pipe(Stream.runCollect)
+
+        assert.deepStrictEqual(result, [1, 2, 3])
+      }))
   })
 
   describe("grouping", () => {
