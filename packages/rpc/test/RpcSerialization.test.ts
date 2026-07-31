@@ -1,5 +1,7 @@
-import { RpcSerialization } from "@effect/rpc"
+import { Socket, SocketServer } from "@effect/platform"
+import { RpcSerialization, RpcServer } from "@effect/rpc"
 import { afterEach, assert, describe, it } from "@effect/vitest"
+import { Deferred, Effect, Layer } from "effect"
 
 const prototypeDescriptors = new Map<PropertyKey, PropertyDescriptor | undefined>()
 
@@ -56,7 +58,39 @@ const assertBatchRoundTrip = (parser: RpcSerialization.Parser, frame: string) =>
   }])
 }
 
+const captureSerializationError = (decode: () => unknown) => {
+  try {
+    decode()
+  } catch (error) {
+    assert(error instanceof RpcSerialization.RpcSerializationError)
+    return error
+  }
+  return assert.fail("Expected an RpcSerializationError")
+}
+
 describe("RpcSerialization", () => {
+  describe("ndjson", () => {
+    it("limits the buffered frame size", () => {
+      const parser = RpcSerialization.makeNdjson({ maxBufferSize: 4 }).unsafeMake()
+      assert.deepStrictEqual(parser.decode("1234"), [])
+      const error = captureSerializationError(() => parser.decode("5"))
+      assert.strictEqual(error.reason, "BufferSizeExceeded")
+      assert.strictEqual(error.bufferSize, 5)
+    })
+
+    it("allows the buffer limit to be disabled", () => {
+      const parser = RpcSerialization.makeNdjson({ maxBufferSize: "unbounded" }).unsafeMake()
+      assert.deepStrictEqual(parser.decode("123456789"), [])
+    })
+  })
+
+  describe("ndJsonRpc", () => {
+    it("passes the buffer limit to ndjson", () => {
+      const parser = RpcSerialization.ndJsonRpc({ maxBufferSize: 4 }).unsafeMake()
+      captureSerializationError(() => parser.decode("12345"))
+    })
+  })
+
   describe("jsonRpc", () => {
     it("dispatches batched requests and clears completed batch state", () => {
       assertBatchRoundTrip(
@@ -104,6 +138,15 @@ describe("RpcSerialization", () => {
   })
 
   describe("makeMsgPack", () => {
+    it("limits incomplete frame buffering", () => {
+      const parser = RpcSerialization.makeMsgPack({ maxBufferSize: 6 }).unsafeMake()
+      assert.deepStrictEqual(parser.decode(Uint8Array.of(0xdb, 0, 0, 0, 10)), [])
+      assert.deepStrictEqual(parser.decode(Uint8Array.of(1)), [])
+      const error = captureSerializationError(() => parser.decode(Uint8Array.of(2)))
+      assert.strictEqual(error.reason, "BufferSizeExceeded")
+      assert.strictEqual(error.bufferSize, 7)
+    })
+
     it("useRecords false encode and decode correctly", () => {
       const parser = RpcSerialization.makeMsgPack({ useRecords: false }).unsafeMake()
       const payload = { _tag: "Request", id: 1, method: "echo" }
@@ -131,6 +174,48 @@ describe("RpcSerialization", () => {
       assert.deepStrictEqual(decoded[0], payload)
     })
   })
+
+  it.effect("closes a socket when the buffer limit is exceeded", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const closed = yield* Deferred.make<Socket.CloseEvent>()
+      const socket = Socket.Socket.of({
+        [Socket.TypeId]: Socket.TypeId,
+        run: () => Effect.void,
+        runRaw: (handler) =>
+          Effect.suspend(() => {
+            const result = handler("12345")
+            return Effect.isEffect(result) ? result : Effect.void
+          }),
+        writer: Effect.succeed((chunk) =>
+          Socket.isCloseEvent(chunk)
+            ? Deferred.succeed(closed, chunk).pipe(Effect.asVoid)
+            : Effect.die("Expected the socket to close")
+        )
+      })
+      const server = SocketServer.SocketServer.of({
+        address: {
+          _tag: "TcpAddress",
+          hostname: "localhost",
+          port: 0
+        },
+        run: (handler) =>
+          Effect.andThen(handler(socket), Effect.never).pipe(
+            Effect.catchAllCause((cause) => Effect.die(cause))
+          )
+      })
+      const layer = RpcServer.layerProtocolSocketServer.pipe(
+        Layer.provide(Layer.succeed(SocketServer.SocketServer, server)),
+        Layer.provide(
+          Layer.succeed(
+            RpcSerialization.RpcSerialization,
+            RpcSerialization.makeNdjson({ maxBufferSize: 4 })
+          )
+        )
+      )
+      yield* Layer.build(layer)
+      const event = yield* Deferred.await(closed)
+      assert.strictEqual(event.code, 1009)
+    })))
 
   describe("jsonRpc", () => {
     const response = JSON.stringify({ jsonrpc: "2.0", id: 1, result: "ok" })
