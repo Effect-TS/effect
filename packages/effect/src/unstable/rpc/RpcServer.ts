@@ -22,6 +22,7 @@ import { reportCauseUnsafe } from "../../internal/effect.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
 import * as Queue from "../../Queue.ts"
 import * as Schedule from "../../Schedule.ts"
@@ -1465,8 +1466,8 @@ const makeSocketProtocol: Effect.Effect<
           step: constVoid
         })
       } catch (cause) {
-        if (cause instanceof RpcSerialization.MaxBufferSizeExceeded) {
-          return writeRaw(new Socket.CloseEvent(1009, cause.message))
+        if (Predicate.isTagged(cause, "MaxBufferSizeExceeded")) {
+          return writeRaw(new Socket.CloseEvent(1009, String(cause)))
         }
         return writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
       }
