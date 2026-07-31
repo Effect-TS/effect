@@ -7436,7 +7436,7 @@ export const mapAccumArrayEffect: {
       readonly onHalt?: ((state: S) => ReadonlyArray<B>) | undefined
     }
   ): Stream<B, E | E2, R | R2>
-} = dual((args) => isStream(args), <A, E, R, S, B, E2, R2>(
+} = dual((args) => isStream(args[0]), <A, E, R, S, B, E2, R2>(
   self: Stream<A, E, R>,
   initial: LazyArg<S>,
   f: (s: S, a: Arr.NonEmptyReadonlyArray<A>) => Effect.Effect<readonly [state: S, values: ReadonlyArray<B>], E2, R2>,
