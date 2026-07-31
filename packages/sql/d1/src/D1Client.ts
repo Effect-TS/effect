@@ -69,8 +69,9 @@ export interface D1Client extends Client.SqlClient {
    *
    * **Gotchas**
    *
-   * Statements should be created by this client so that query and result name
-   * transformations remain consistent.
+   * Each statement uses the query and result name transformations from the
+   * client that created it. Mixing clients can produce differently shaped row
+   * results within the same batch.
    *
    * @since 4.0.0
    */
@@ -115,6 +116,78 @@ export interface D1ClientConfig {
   readonly transformResultNames?: ((str: string) => string) | undefined
   readonly transformQueryNames?: ((str: string) => string) | undefined
 }
+
+type TransformRows = <A extends object>(rows: ReadonlyArray<A>) => ReadonlyArray<A>
+
+type BatchResults<Statements extends ReadonlyArray<Statement.Statement<any>>> = {
+  readonly [K in keyof Statements]: Effect.Success<Statements[K]>
+}
+
+interface StatementWithTransformRows extends Statement.Statement<any> {
+  readonly transformRows: TransformRows | undefined
+}
+
+const makeBatch = (options: {
+  readonly db: D1Database
+  readonly prepareCache: Cache.Cache<string, D1PreparedStatement, SqlError>
+  readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
+  readonly getClient: () => D1Client
+}): D1Client["batch"] =>
+  Effect.fnUntraced(function*<const Statements extends ReadonlyArray<Statement.Statement<any>>>(
+    statements: Statements
+  ) {
+    if (statements.length === 0) {
+      return [] as unknown as BatchResults<Statements>
+    }
+    return yield* Effect.useSpan(
+      "sql.execute",
+      { kind: "client" },
+      (span) =>
+        Effect.withFiber(Effect.fnUntraced(function*(fiber) {
+          const transformer = yield* Statement.CurrentTransformer
+          const prepared: Array<D1PreparedStatement> = []
+          const transforms: Array<TransformRows | undefined> = []
+          const queryTexts: Array<string> = []
+
+          for (const original of statements) {
+            const statement = transformer === undefined
+              ? original
+              : yield* transformer(original, options.getClient(), fiber, span)
+            const [sql, params] = statement.compile()
+            queryTexts.push(sql)
+            transforms.push((statement as StatementWithTransformRows).transformRows)
+            prepared.push((yield* Cache.get(options.prepareCache, sql)).bind(...params))
+          }
+
+          for (const [key, value] of options.spanAttributes) {
+            span.attribute(key, value)
+          }
+          span.attribute(ATTR_DB_OPERATION_NAME, "batch")
+          span.attribute(ATTR_DB_QUERY_TEXT, queryTexts.join("; "))
+
+          // D1 batches execute on the binding directly and intentionally cannot participate in SqlClient transactions.
+          const responses = yield* Effect.tryPromise({
+            try: () =>
+              options.db.batch<Record<string, unknown>>(prepared).then((responses) => {
+                for (const response of responses) {
+                  if (response.error) {
+                    throw response.error
+                  }
+                }
+                return responses
+              }),
+            catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute batch", "execute") })
+          })
+
+          const results = responses.map((response, index) => {
+            const rows = response.results || []
+            const transformRows = transforms[index]
+            return transformRows ? transformRows(rows) : rows
+          })
+          return results as BatchResults<Statements>
+        }))
+    )
+  })
 
 /**
  * Creates a scoped Cloudflare D1 SQL client. Prepared statements are cached, while transactions and streaming queries are not supported by this driver.
@@ -212,67 +285,6 @@ export const make = (
           catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
         })
 
-      const makeBatch = (
-        transformRows: (<A extends object>(rows: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined,
-        getClient: () => D1Client
-      ) =>
-      <const Statements extends ReadonlyArray<Statement.Statement<any>>>(
-        statements: Statements
-      ): Effect.Effect<
-        {
-          readonly [K in keyof Statements]: Effect.Success<Statements[K]>
-        },
-        SqlError
-      > => {
-        if (statements.length === 0) {
-          return Effect.succeed([]) as any
-        }
-        return Effect.useSpan(
-          "sql.execute",
-          { kind: "client" },
-          (span) =>
-            Effect.gen(function*() {
-              const compiled = yield* Effect.forEach(statements, (statement) =>
-                Effect.withFiber((fiber) => {
-                  const transformer = fiber.getRef(Statement.CurrentTransformer)
-                  if (transformer === undefined) {
-                    return Effect.succeed(statement.compile())
-                  }
-                  return Effect.map(
-                    transformer(statement, getClient(), fiber, span),
-                    (statement) => statement.compile()
-                  )
-                }))
-              for (const [key, value] of spanAttributes) {
-                span.attribute(key, value)
-              }
-              span.attribute(ATTR_DB_OPERATION_NAME, "batch")
-              span.attribute(ATTR_DB_QUERY_TEXT, compiled.map(([sql]) => sql).join("; "))
-
-              const prepared = yield* Effect.forEach(compiled, ([sql]) => Cache.get(prepareCache, sql))
-              const responses = yield* Effect.tryPromise({
-                try: () =>
-                  db.batch(prepared.map((statement, index) => statement.bind(...compiled[index][1]))).then(
-                    (responses) => {
-                      for (const response of responses) {
-                        if (response.error) {
-                          throw response.error
-                        }
-                      }
-                      return responses
-                    }
-                  ),
-                catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute batch", "execute") })
-              })
-
-              return responses.map((response) => {
-                const rows = response.results || []
-                return transformRows ? transformRows(rows as ReadonlyArray<Record<string, unknown>>) : rows
-              }) as any
-            })
-        ) as any
-      }
-
       const connection = identity<Connection>({
         execute(sql, params, transformRows) {
           return transformRows
@@ -297,10 +309,10 @@ export const make = (
           return Stream.die("executeStream not implemented")
         }
       })
-      return { connection, makeBatch } as const
+      return { connection, prepareCache } as const
     })
 
-    const { connection, makeBatch } = yield* makeConnection
+    const { connection, prepareCache } = yield* makeConnection
     const acquirer = Effect.succeed(connection)
     const transactionAcquirer = Effect.die("transactions are not supported in D1")
 
@@ -316,22 +328,37 @@ export const make = (
       {
         [TypeId]: TypeId as TypeId,
         config: options,
-        batch: makeBatch(transformRows, () => client)
+        batch: makeBatch({
+          db: options.db,
+          prepareCache,
+          spanAttributes,
+          getClient: () => client
+        })
       }
     )
 
-    if (transformRows !== undefined) {
-      const withoutTransforms = client.withoutTransforms
+    if (options.transformQueryNames !== undefined || transformRows !== undefined) {
+      const clientWithoutTransformsBase = yield* Client.make({
+        acquirer: Effect.succeed(connection),
+        compiler: compiler.withoutTransform,
+        transactionAcquirer,
+        spanAttributes,
+        transformRows: undefined
+      })
+      let clientWithoutTransforms!: D1Client
+      clientWithoutTransforms = Object.assign(clientWithoutTransformsBase as D1Client, {
+        [TypeId]: TypeId as TypeId,
+        config: options,
+        batch: makeBatch({
+          db: options.db,
+          prepareCache,
+          spanAttributes,
+          getClient: () => clientWithoutTransforms
+        }),
+        withoutTransforms: () => clientWithoutTransforms
+      })
       Object.assign(client, {
-        withoutTransforms: () => {
-          let clientWithoutTransforms!: D1Client
-          clientWithoutTransforms = Object.assign(withoutTransforms.call(client), {
-            [TypeId]: TypeId as TypeId,
-            config: options,
-            batch: makeBatch(undefined, () => clientWithoutTransforms)
-          })
-          return clientWithoutTransforms
-        }
+        withoutTransforms: () => clientWithoutTransforms
       })
     }
 

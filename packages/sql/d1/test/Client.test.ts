@@ -96,6 +96,43 @@ describe("Client", () => {
           withoutTransforms<{ firstName: string }>`SELECT ${withoutTransforms("firstName")} FROM test`
         ])
         assert.deepStrictEqual(rawRows, [{ firstName: "Jane" }])
+
+        const [rawRowsFromTransformedBatch] = yield* transformed.batch([
+          withoutTransforms<{ first_name: string }>`SELECT ${withoutTransforms("first_name")} FROM test`
+        ])
+        assert.deepStrictEqual(rawRowsFromTransformedBatch, [{ first_name: "John" }])
+
+        const [transformedRowsFromRawBatch] = yield* withoutTransforms.batch([
+          transformed<{ firstName: string }>`SELECT ${transformed("firstName")} FROM test`
+        ])
+        assert.deepStrictEqual(transformedRowsFromRawBatch, [{ firstName: "John" }])
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(Reactivity.layer)
+      )
+    }).pipe(Effect.provide(D1Miniflare.layerClient)))
+
+  it.effect("should disable query-only transforms", () =>
+    Effect.gen(function*() {
+      const sql = yield* D1Client.D1Client
+      yield* sql`CREATE TABLE test (first_name TEXT, "firstName" TEXT)`
+      yield* sql`INSERT INTO test (first_name, "firstName") VALUES ('John', 'Jane')`
+
+      yield* Effect.gen(function*() {
+        const transformed = yield* D1Client.make({
+          db: sql.config.db,
+          transformQueryNames: (name) => name === "firstName" ? "first_name" : name
+        })
+        const [transformedRows] = yield* transformed.batch([
+          transformed<{ first_name: string }>`SELECT ${transformed("firstName")} FROM test`
+        ])
+        assert.deepStrictEqual(transformedRows, [{ first_name: "John" }])
+
+        const withoutTransforms = transformed.withoutTransforms()
+        const [rawRows] = yield* withoutTransforms.batch([
+          withoutTransforms<{ firstName: string }>`SELECT ${withoutTransforms("firstName")} FROM test`
+        ])
+        assert.deepStrictEqual(rawRows, [{ firstName: "Jane" }])
       }).pipe(
         Effect.scoped,
         Effect.provide(Reactivity.layer)
@@ -149,6 +186,22 @@ describe("Client", () => {
       const sql = yield* D1Client.D1Client
       yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
       const res = yield* sql`INSERT INTO test ${sql.insert({ name: "hello" })}`.pipe(
+        sql.withTransaction,
+        Effect.sandbox,
+        Effect.flip
+      )
+      const rows = yield* sql`SELECT * FROM test`
+      assert.deepStrictEqual(rows, [])
+      assert.equal(Cause.hasDies(res), true)
+    }).pipe(Effect.provide(D1Miniflare.layerClient)))
+
+  it.effect("should defect when batching in a transaction", () =>
+    Effect.gen(function*() {
+      const sql = yield* D1Client.D1Client
+      yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
+      const res = yield* sql.batch([
+        sql`INSERT INTO test ${sql.insert({ name: "hello" })}`
+      ]).pipe(
         sql.withTransaction,
         Effect.sandbox,
         Effect.flip
