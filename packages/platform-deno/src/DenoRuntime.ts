@@ -1,17 +1,6 @@
 /**
  * Deno helper for running a root Effect program.
  *
- * **Example** (Running an Effect program)
- *
- * ```ts import.meta.vitest
- * import { Effect } from "effect"
- *
- * const program = Effect.succeed("Hello, World")
- *
- * // In a Deno entrypoint, pass `program` to `DenoRuntime.runMain` instead.
- * await Effect.runPromise(program) // => "Hello, World"
- * ```
- *
  * @since 4.0.0
  */
 

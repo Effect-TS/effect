@@ -6274,20 +6274,14 @@ export type HaltStrategy = "left" | "right" | "both" | "either"
  * **Example** (Merging channels)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class MergeError extends Data.TaggedError("MergeError")<{
- *   readonly source: string
- * }> {}
+ * import { Channel, Effect } from "effect"
  *
  * // Create two channels
  * const leftChannel = Channel.fromIterable([1, 2, 3])
  * const rightChannel = Channel.fromIterable(["a", "b", "c"])
  *
- * // Merge them with "either" halt strategy
- * const mergedChannel = Channel.merge(leftChannel, rightChannel, {
- *   haltStrategy: "either"
- * })
+ * // The default "both" strategy waits for both channels to complete
+ * const mergedChannel = Channel.merge(leftChannel, rightChannel)
  *
  * const values = await Effect.runPromise(Channel.runCollect(mergedChannel))
  * values.map(String).sort() // => ["1", "2", "3", "a", "b", "c"]

@@ -198,33 +198,25 @@ export const CurrentLogAnnotations: Context.Reference<ReadonlyRecord<string, unk
  *
  * Use `MinimumLogLevel` to control which log entries are filtered out.
  *
- * **Example** (Changing the current log level)
+ * **Example** (Changing the level of an unqualified log)
  *
  * ```ts import.meta.vitest
- * import { Effect, References } from "effect"
+ * import { Effect, Logger, References } from "effect"
  *
- * const dynamicLogging = Effect.gen(function*() {
- *   // Get current log level (default is "Info")
- *   const current = yield* References.CurrentLogLevel
- *
- *   // Set log level to Debug for detailed logging
- *   const debug = yield* Effect.provideService(
- *     References.CurrentLogLevel,
- *     References.CurrentLogLevel,
- *     "Debug"
- *   )
- *
- *   // Change to Error level to reduce noise
- *   const error = yield* Effect.provideService(
- *     References.CurrentLogLevel,
- *     References.CurrentLogLevel,
- *     "Error"
- *   )
- *
- *   return [current, debug, error]
+ * const levels: Array<string> = []
+ * const logger = Logger.make<unknown, void>(({ logLevel }) => {
+ *   levels.push(logLevel)
  * })
  *
- * await Effect.runPromise(dynamicLogging) // => ["Info", "Debug", "Error"]
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.log("uses the default level")
+ *   yield* Effect.log("uses the provided level").pipe(
+ *     Effect.provideService(References.CurrentLogLevel, "Error")
+ *   )
+ * })
+ *
+ * await Effect.runPromise(program.pipe(Effect.provide(Logger.layer([logger]))))
+ * levels // => ["Info", "Error"]
  * ```
  *
  * @category references
@@ -328,33 +320,27 @@ export const CurrentStackFrame: Context.Reference<StackFrame | undefined> = refe
  *
  * Use to filter out log entries below a severity threshold.
  *
- * **Example** (Setting the minimum log level)
+ * **Example** (Filtering logs below the minimum level)
  *
  * ```ts import.meta.vitest
- * import { Effect, References } from "effect"
+ * import { Effect, Logger, References } from "effect"
  *
- * const configureMinimumLogging = Effect.gen(function*() {
- *   // Get current minimum level (default is "Info")
- *   const current = yield* References.MinimumLogLevel
- *
- *   // Set minimum level to Warn - Debug and Info will be filtered
- *   const warn = yield* Effect.provideService(
- *     References.MinimumLogLevel,
- *     References.MinimumLogLevel,
- *     "Warn"
- *   )
- *
- *   // Reset to default Info level
- *   const info = yield* Effect.provideService(
- *     References.MinimumLogLevel,
- *     References.MinimumLogLevel,
- *     "Info"
- *   )
- *
- *   return [current, warn, info]
+ * const levels: Array<string> = []
+ * const logger = Logger.make<unknown, void>(({ logLevel }) => {
+ *   levels.push(logLevel)
  * })
  *
- * await Effect.runPromise(configureMinimumLogging) // => ["Info", "Warn", "Info"]
+ * const program = Effect.gen(function*() {
+ *   yield* Effect.logInfo("filtered out")
+ *   yield* Effect.logWarning("included at the threshold")
+ *   yield* Effect.logError("included above the threshold")
+ * })
+ *
+ * await Effect.runPromise(program.pipe(
+ *   Effect.provideService(References.MinimumLogLevel, "Warn"),
+ *   Effect.provide(Logger.layer([logger]))
+ * ))
+ * levels // => ["Warn", "Error"]
  * ```
  *
  * @category references

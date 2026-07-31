@@ -229,9 +229,7 @@ export const isEmptyReadonlyRecord: <K extends string, A>(
  * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
- * const input = [1, 2, 3, 4]
- *
- * Record.fromIterableWith(input, (a) => [String(a), a * 2]) // => { "1": 2, "2": 4, "3": 6, "4": 8 }
+ * Record.fromIterableWith([1, 2, 3, 4], (a) => [String(a), a * 2]) // => { "1": 2, "2": 4, "3": 6, "4": 8 }
  * ```
  *
  * @category constructors
@@ -311,9 +309,7 @@ export const fromIterableBy: {
  * ```ts import.meta.vitest
  * import { Record } from "effect"
  *
- * const input: Array<[string, number]> = [["a", 1], ["b", 2]]
- *
- * Record.fromEntries(input) // => { a: 1, b: 2 }
+ * Record.fromEntries([["a", 1], ["b", 2]]) // => { a: 1, b: 2 }
  * ```
  *
  * @category constructors

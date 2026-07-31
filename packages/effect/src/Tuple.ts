@@ -267,14 +267,13 @@ type Evolved<T, E> = { [I in keyof T]: I extends keyof E ? (E[I] extends (...a: 
  * ```ts import.meta.vitest
  * import { pipe, Tuple } from "effect"
  *
- * const result = pipe(
+ * pipe(
  *   Tuple.make("hello", 42, true),
  *   Tuple.evolve([
  *     (s) => s.toUpperCase(),
  *     (n) => n * 2
  *   ])
- * )
- * result // => ["HELLO", 84, true]
+ * ) // => ["HELLO", 84, true]
  * ```
  *
  * @see {@link map} – apply the same transformation to all elements
@@ -314,11 +313,10 @@ export const evolve: {
  * ```ts import.meta.vitest
  * import { pipe, Tuple } from "effect"
  *
- * const result = pipe(
+ * pipe(
  *   Tuple.make("a", "b", "c"),
  *   Tuple.renameIndices(["2", "1", "0"])
- * )
- * result // => ["c", "b", "a"]
+ * ) // => ["c", "b", "a"]
  * ```
  *
  * @see {@link evolve} – transform element values instead of positions
@@ -370,8 +368,7 @@ export const renameIndices: {
  * }
  *
  * const asArray = Struct.lambda<AsArray>((a) => [a])
- * const result = pipe(Tuple.make(1, "hello", true), Tuple.map(asArray))
- * result // => [[1], ["hello"], [true]]
+ * pipe(Tuple.make(1, "hello", true), Tuple.map(asArray)) // => [[1], ["hello"], [true]]
  * ```
  *
  * @see {@link mapPick} – apply a lambda only to selected indices
@@ -417,11 +414,10 @@ export const map: {
  * }
  *
  * const asArray = Struct.lambda<AsArray>((a) => [a])
- * const result = pipe(
+ * pipe(
  *   Tuple.make(1, "hello", true),
  *   Tuple.mapPick([0, 2], asArray)
- * )
- * result // => [[1], "hello", [true]]
+ * ) // => [[1], "hello", [true]]
  * ```
  *
  * @see {@link map} – apply a lambda to all elements
@@ -473,11 +469,10 @@ export const mapPick: {
  * }
  *
  * const asArray = Struct.lambda<AsArray>((a) => [a])
- * const result = pipe(
+ * pipe(
  *   Tuple.make(1, "hello", true),
  *   Tuple.mapOmit([1], asArray)
- * )
- * result // => [[1], "hello", [true]]
+ * ) // => [[1], "hello", [true]]
  * ```
  *
  * @see {@link map} – apply a lambda to all elements
@@ -704,12 +699,11 @@ export function makeCombiner<A extends ReadonlyArray<unknown>>(
  *   String.ReducerConcat
  * ])
  *
- * const result = R.combineAll([
+ * R.combineAll([
  *   [1, "a"],
  *   [2, "b"],
  *   [3, "c"]
- * ])
- * result // => [6, "abc"]
+ * ]) // => [6, "abc"]
  * ```
  *
  * @see {@link makeCombiner} – like `makeReducer` but without an initial value

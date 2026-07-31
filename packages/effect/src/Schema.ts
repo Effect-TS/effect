@@ -1139,18 +1139,14 @@ export {
   /**
    * Returns `true` if `u` is a {@link SchemaError}.
    *
-   * **Example** (Narrowing Schema errors in a catch block)
+   * **Example** (Narrowing Schema errors)
    *
    * ```ts import.meta.vitest
-   * import { Schema } from "effect"
+   * import { Result, Schema } from "effect"
    *
-   * try {
-   *   Schema.decodeUnknownSync(Schema.Number)("oops")
-   * } catch (err) {
-   *   if (Schema.isSchemaError(err)) {
-   *     err._tag // => "SchemaError"
-   *   }
-   * }
+   * const result = Result.try(() => Schema.decodeUnknownSync(Schema.Number)("oops"))
+   * const error: unknown = Result.isFailure(result) ? result.failure : undefined
+   * Schema.isSchemaError(error) // => true
    * ```
    *
    * @category guards
@@ -1170,18 +1166,16 @@ export {
    *
    * Use {@link isSchemaError} to narrow an unknown value to `SchemaError`.
    *
-   * **Example** (Catching a SchemaError)
+   * **Example** (Inspecting a SchemaError)
    *
    * ```ts import.meta.vitest
-   * import { Schema } from "effect"
+   * import { Option, Result, Schema, SchemaIssue } from "effect"
    *
-   * try {
-   *   Schema.decodeUnknownSync(Schema.Number)("not a number")
-   * } catch (err) {
-   *   if (Schema.isSchemaError(err)) {
-   *     err.message // => "Expected number, got \"not a number\""
-   *   }
-   * }
+   * const result = Schema.decodeUnknownResult(Schema.Number)("not a number")
+   * const actual = Result.isFailure(result) && result.failure.issue instanceof SchemaIssue.InvalidType
+   *   ? result.failure.issue.actual
+   *   : Option.none()
+   * actual // => Option.some("not a number")
    * ```
    *
    * @category errors
@@ -5251,12 +5245,14 @@ export interface middlewareDecoding<S extends Constraint, RD> extends
  * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
+ * const events: Array<string> = []
  * const Logged = Schema.String.pipe(
  *   Schema.middlewareDecoding((effect) =>
- *     Effect.tapError(effect, () => Effect.sync(() => console.log("decode failed")))
+ *     Effect.tapError(effect, () => Effect.sync(() => events.push("decode failed")))
  *   )
  * )
  * Effect.runSync(Effect.result(Schema.decodeUnknownEffect(Logged)(42)))
+ * events // => ["decode failed"]
  * ```
  *
  * @see {@link catchDecoding} for a simpler error-recovery variant
@@ -5318,12 +5314,14 @@ export interface middlewareEncoding<S extends Constraint, RE> extends
  * ```ts import.meta.vitest
  * import { Effect, Schema } from "effect"
  *
+ * const events: Array<string> = []
  * const Logged = Schema.String.pipe(
  *   Schema.middlewareEncoding((effect) =>
- *     Effect.tapError(effect, () => Effect.sync(() => console.log("encode failed")))
+ *     Effect.tapError(effect, () => Effect.sync(() => events.push("encode failed")))
  *   )
  * )
  * Effect.runSync(Effect.result(Schema.encodeUnknownEffect(Logged)(42)))
+ * events // => ["encode failed"]
  * ```
  *
  * @see {@link catchEncoding} for a simpler error-recovery variant
@@ -15902,10 +15900,9 @@ export interface JsonObject {
  * **Example** (Validating a JSON value)
  *
  * ```ts import.meta.vitest
- * import { Schema } from "effect"
+ * import { Option, Schema } from "effect"
  *
- * const result = Schema.decodeUnknownOption(Schema.Json)({ key: [1, true, null] })
- * result._tag // => "Some"
+ * Schema.decodeUnknownOption(Schema.Json)({ key: [1, true, null] }) // => Option.some({ key: [1, true, null] })
  * ```
  *
  * @category schemas

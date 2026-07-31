@@ -105,8 +105,6 @@ export declare namespace TestConsole {
    * import type { TestConsole } from "effect/testing"
    *
    * const method: TestConsole.TestConsole.Method = "log"
-   *
-   * method // => "log"
    * ```
    *
    * @category models

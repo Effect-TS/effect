@@ -157,7 +157,8 @@ A good example:
 - Prefer `operation() // => expected` over introducing a result binding used only by the assertion. Retain bindings for reuse, mutation, identity checks, or meaningful multi-step setup, and insert a blank line before a separate assertion block.
 - Keep direct assertions on one line up to 120 characters. Use dense expected arrays such as `[1, 2]` and semantic Effect values such as `Option.some(1)` rather than console formatting.
 - Preserve `import.meta.vitest` for type-level examples, but do not add tautological runtime assertions to them.
-- Use `suite` metadata when the example registers Vitest tests or suites: `````ts import.meta.vitest suite``. Call the registration API directly so the nested tests and assertions are collected and executed.
+- Leave examples that register Vitest tests or suites as plain `````ts`` fences because the doctest collector executes
+  runnable snippets inside tests. Call the registration API directly to show its intended top-level usage.
 - Keep documentation-only snippets as plain `````ts`` fences.
 - Treat targeted doctest runs and package-local `pnpm docgen` as complementary checks: doctest executes marked examples, while docgen typechecks documentation examples.
 

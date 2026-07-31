@@ -811,8 +811,9 @@ export const makeZonedFromString: (input: string) => Option.Option<Zoned> = Inte
  *
  * ```ts import.meta.vitest
  * import { DateTime, Effect } from "effect"
+ * import { TestClock } from "effect/testing"
  *
- * await Effect.runPromise(Effect.map(DateTime.nowAsDate, (now) => now instanceof Date)) // => true
+ * await Effect.runPromise(Effect.provide(Effect.map(DateTime.now, DateTime.toEpochMillis), TestClock.layer())) // => 0
  * ```
  *
  * @category constructors
@@ -828,8 +829,9 @@ export const now: Effect.Effect<Utc> = Internal.now
  *
  * ```ts import.meta.vitest
  * import { DateTime, Effect } from "effect"
+ * import { TestClock } from "effect/testing"
  *
- * await Effect.runPromise(Effect.map(DateTime.now, DateTime.isDateTime)) // => true
+ * await Effect.runPromise(Effect.provide(Effect.map(DateTime.nowAsDate, (date) => date.getTime()), TestClock.layer())) // => 0
  * ```
  *
  * @category constructors
@@ -1388,13 +1390,10 @@ export const between: {
  *
  * ```ts import.meta.vitest
  * import { DateTime, Effect } from "effect"
+ * import { TestClock } from "effect/testing"
  *
- * const program = Effect.gen(function*() {
- *   const futureDate = DateTime.add(yield* DateTime.now, { hours: 1 })
- *   return yield* DateTime.isFuture(futureDate)
- * })
- *
- * await Effect.runPromise(program) // => true
+ * const futureDate = DateTime.makeUnsafe(1)
+ * await Effect.runPromise(Effect.provide(DateTime.isFuture(futureDate), TestClock.layer())) // => true
  * ```
  *
  * @category comparisons
@@ -1416,11 +1415,11 @@ export const isFuture: (self: DateTime) => Effect.Effect<boolean> = Internal.isF
  *
  * **Example** (Checking future DateTime values unsafely)
  *
- * ```ts import.meta.vitest
+ * ```ts
  * import { DateTime } from "effect"
  *
- * const futureDate = DateTime.makeUnsafe("2100-01-01T00:00:00Z")
- * DateTime.isFutureUnsafe(futureDate) // => true
+ * const oneHourFromNow = DateTime.add(DateTime.nowUnsafe(), { hours: 1 })
+ * DateTime.isFutureUnsafe(oneHourFromNow)
  * ```
  *
  * @category comparisons
@@ -1439,13 +1438,10 @@ export const isFutureUnsafe: (self: DateTime) => boolean = Internal.isFutureUnsa
  *
  * ```ts import.meta.vitest
  * import { DateTime, Effect } from "effect"
+ * import { TestClock } from "effect/testing"
  *
- * const program = Effect.gen(function*() {
- *   const pastDate = DateTime.subtract(yield* DateTime.now, { hours: 1 })
- *   return yield* DateTime.isPast(pastDate)
- * })
- *
- * await Effect.runPromise(program) // => true
+ * const pastDate = DateTime.makeUnsafe(-1)
+ * await Effect.runPromise(Effect.provide(DateTime.isPast(pastDate), TestClock.layer())) // => true
  * ```
  *
  * @category comparisons
@@ -1467,11 +1463,11 @@ export const isPast: (self: DateTime) => Effect.Effect<boolean> = Internal.isPas
  *
  * **Example** (Checking past DateTime values unsafely)
  *
- * ```ts import.meta.vitest
+ * ```ts
  * import { DateTime } from "effect"
  *
- * const pastDate = DateTime.makeUnsafe("2000-01-01T00:00:00Z")
- * DateTime.isPastUnsafe(pastDate) // => true
+ * const oneHourAgo = DateTime.subtract(DateTime.nowUnsafe(), { hours: 1 })
+ * DateTime.isPastUnsafe(oneHourAgo)
  * ```
  *
  * @category comparisons

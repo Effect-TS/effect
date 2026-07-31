@@ -472,7 +472,7 @@ export declare namespace All {
  * **Example** (Stopping on the first failure)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  * const record = (value: unknown) => Effect.sync(() => { output.push(value) })
  *
@@ -483,9 +483,8 @@ export declare namespace All {
  *   Effect.succeed("Task3").pipe(Effect.tap(record))
  * ])
  *
- * const exit = await Effect.runPromiseExit(program)
- * void output.push(exit._tag)
- * output // => ["Task1", "Failure"]
+ * const outcome = await Effect.runPromiseExit(program)
+ * const observation = [output, outcome] // => [["Task1"], Exit.fail("Task2: Oh no!")]
  * ```
  *
  * @see {@link forEach} for iterating over elements and applying an effect.
@@ -609,14 +608,13 @@ export const reduce: {
  * **Example** (Validating every element)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Exit } from "effect"
  *
  * const program = Effect.validate([0, 1, 2, 3], (n) =>
  *   n % 2 === 0 ? Effect.fail(`${n} is even`) : Effect.succeed(n)
  * )
  *
- * const exit = await Effect.runPromiseExit(program)
- * exit._tag // => "Failure"
+ * await Effect.runPromiseExit(program) // => Exit.fail(["0 is even", "2 is even"])
  * ```
  *
  * @category error accumulation
@@ -1587,19 +1585,19 @@ export const failCauseSync: <E>(
  * **Example** (Failing on division by zero)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Exit } from "effect"
  *
+ * const defect = new Error("Cannot divide by zero")
  * const divide = (a: number, b: number) =>
  *   b === 0
- *     ? Effect.die(new Error("Cannot divide by zero"))
+ *     ? Effect.die(defect)
  *     : Effect.succeed(a / b)
  *
  * //      ┌─── Effect<number, never, never>
  * //      ▼
  * const program = divide(1, 0)
  *
- * const exit = Effect.runSyncExit(program)
- * exit._tag // => "Failure"
+ * Effect.runSyncExit(program) // => Exit.die(defect)
  * ```
  *
  * @category constructors
@@ -2242,18 +2240,13 @@ export const result: <A, E, R>(self: Effect<A, E, R>) => Effect<Result.Result<A,
  *
  * ```ts import.meta.vitest
  * import { Effect, Option } from "effect"
- * const output: Array<unknown> = []
  *
- * const program = Effect.gen(function*() {
- *   const someValue = yield* Effect.option(Effect.succeed(1))
- *   const noneValue = yield* Effect.option(Effect.fail("missing"))
+ * const program = Effect.all([
+ *   Effect.option(Effect.succeed(1)),
+ *   Effect.option(Effect.fail("missing"))
+ * ])
  *
- *   yield* Effect.sync(() => { output.push(Option.isSome(someValue)) })
- *   yield* Effect.sync(() => { output.push(Option.isNone(noneValue)) })
- * })
- *
- * Effect.runSync(program)
- * output // => [true, true]
+ * Effect.runSync(program) // => [Option.some(1), Option.none()]
  * ```
  *
  * @see {@link result} for a version that uses `Result` instead.
@@ -2285,7 +2278,7 @@ export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option<A>, never
  * **Example** (Capturing completion as Exit)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Exit } from "effect"
  *
  * const success = Effect.succeed(42)
  * const failure = Effect.fail("Something went wrong")
@@ -2293,9 +2286,9 @@ export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option<A>, never
  * const program1 = Effect.exit(success)
  * const program2 = Effect.exit(failure)
  *
- * Effect.runSync(program1)._tag // => "Success"
+ * Effect.runSync(program1) // => Exit.succeed(42)
  *
- * Effect.runSync(program2)._tag // => "Failure"
+ * Effect.runSync(program2) // => Exit.fail("Something went wrong")
  * ```
  *
  * @see {@link option} for a version that uses `Option` instead.
@@ -3613,7 +3606,7 @@ export const mapBoth: {
  * **Example** (Converting typed failures into defects)
  *
  * ```ts import.meta.vitest
- * import { Data, Effect } from "effect"
+ * import { Data, Effect, Exit } from "effect"
  *
  * class DivideByZeroError extends Data.TaggedError("DivideByZeroError")<{}> {}
  *
@@ -3626,7 +3619,7 @@ export const mapBoth: {
  * //      ▼
  * const program = Effect.orDie(divide(1, 0))
  *
- * Effect.runSyncExit(program)._tag // => "Failure"
+ * Effect.runSyncExit(program) // => Exit.die(new DivideByZeroError())
  * ```
  *
  * @category converting failures to defects
@@ -3647,7 +3640,7 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = in
  * **Example** (Running effects on failure)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  *
  * // Simulate a task that fails with an error
@@ -3659,8 +3652,8 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = in
  *   (error) => Effect.sync(() => { output.push(`expected error: ${error}`) })
  * )
  *
- * void output.push(Effect.runSyncExit(tapping)._tag)
- * output // => ["expected error: NetworkError", "Failure"]
+ * void output.push(Effect.runSyncExit(tapping))
+ * output // => ["expected error: NetworkError", Exit.fail("NetworkError")]
  * ```
  *
  * @category sequencing
@@ -3688,7 +3681,7 @@ export const tapError: {
  * **Example** (Running effects for tagged failures)
  *
  * ```ts import.meta.vitest
- * import { Data, Effect } from "effect"
+ * import { Data, Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  *
  * class NetworkError extends Data.TaggedError("NetworkError")<{
@@ -3706,8 +3699,8 @@ export const tapError: {
  *   Effect.sync(() => { output.push(`expected error: ${error.statusCode}`) })
  * )
  *
- * void output.push(Effect.runSyncExit(program)._tag)
- * output // => ["expected error: 504", "Failure"]
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["expected error: 504", Exit.fail(new NetworkError({ statusCode: 504 }))]
  * ```
  *
  * @category sequencing
@@ -3751,7 +3744,7 @@ export const tapErrorTag: {
  * **Example** (Observing full failure causes)
  *
  * ```ts import.meta.vitest
- * import { Cause, Effect } from "effect"
+ * import { Cause, Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  *
  * const task = Effect.fail("Something went wrong")
@@ -3761,8 +3754,8 @@ export const tapErrorTag: {
  *   (cause) => Effect.sync(() => { output.push(`Logging cause: ${Cause.squash(cause)}`) })
  * )
  *
- * void output.push(Effect.runSyncExit(program)._tag)
- * output // => ["Logging cause: Something went wrong", "Failure"]
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["Logging cause: Something went wrong", Exit.fail("Something went wrong")]
  * ```
  *
  * @category sequencing
@@ -3790,7 +3783,7 @@ export const tapCause: {
  * **Example** (Observing selected failure causes)
  *
  * ```ts import.meta.vitest
- * import { Cause, Effect } from "effect"
+ * import { Cause, Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  *
  * const task = Effect.fail("Network timeout")
@@ -3802,8 +3795,8 @@ export const tapCause: {
  *   (cause) => Effect.sync(() => { output.push(`Logging failure cause: ${Cause.squash(cause)}`) })
  * )
  *
- * void output.push(Effect.runSyncExit(program)._tag)
- * output // => ["Logging failure cause: Network timeout", "Failure"]
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["Logging failure cause: Network timeout", Exit.fail("Network timeout")]
  * ```
  *
  * @category sequencing
@@ -3868,7 +3861,7 @@ export const tapCauseFilter: {
  * **Example** (Observing defects)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  *
  * // Simulate a severe failure in the system
@@ -3882,8 +3875,8 @@ export const tapCauseFilter: {
  *   (defect) => Effect.sync(() => { output.push(`defect: ${defect}`) })
  * )
  *
- * void output.push(Effect.runSyncExit(tapping2)._tag)
- * output // => ["defect: Something went wrong", "Failure"]
+ * void output.push(Effect.runSyncExit(tapping2))
+ * output // => ["defect: Something went wrong", Exit.die("Something went wrong")]
  * ```
  *
  * @category sequencing
@@ -6743,20 +6736,21 @@ export const ensuring: {
  * **Example** (Running cleanup on failure)
  *
  * ```ts import.meta.vitest
- * import { Cause, Data, Effect } from "effect"
+ * import { Cause, Data, Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  *
  * class TaskError extends Data.TaggedError("TaskError")<{ readonly message: string }> {}
  *
- * const task = Effect.fail(new TaskError({ message: "Something went wrong" }))
+ * const error = new TaskError({ message: "Something went wrong" })
+ * const task = Effect.fail(error)
  *
  * const program = Effect.onError(
  *   task,
  *   (cause) => Effect.sync(() => { output.push(`Cleanup on error: ${Cause.squash(cause)}`) })
  * )
  *
- * void output.push(Effect.runSyncExit(program)._tag)
- * output // => ["Cleanup on error: TaskError: Something went wrong", "Failure"]
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["Cleanup on error: TaskError: Something went wrong", Exit.fail(error)]
  * ```
  *
  * @category resource management
@@ -6779,7 +6773,7 @@ export const onError: {
  * **Example** (Running cleanup for selected failures)
  *
  * ```ts import.meta.vitest
- * import { Cause, Effect } from "effect"
+ * import { Cause, Effect, Exit } from "effect"
  * const output: Array<unknown> = []
  *
  * const task = Effect.fail("boom")
@@ -6793,8 +6787,8 @@ export const onError: {
  *     })
  * )
  *
- * void output.push(Effect.runSyncExit(program)._tag)
- * output // => ["Cause: boom", "Failure"]
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["Cause: boom", Exit.fail("boom")]
  * ```
  *
  * @category resource management
@@ -8955,15 +8949,13 @@ export const runPromiseWith: <R>(
  * **Example** (Observing promise results as Exit)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Exit } from "effect"
  *
  * // Execute a successful effect and get the Exit result as a Promise
- * const success = await Effect.runPromiseExit(Effect.succeed(1))
- * success._tag // => "Success"
+ * await Effect.runPromiseExit(Effect.succeed(1)) // => Exit.succeed(1)
  *
  * // Execute a failing effect and get the Exit result as a Promise
- * const failure = await Effect.runPromiseExit(Effect.fail("my error"))
- * failure._tag // => "Failure"
+ * await Effect.runPromiseExit(Effect.fail("my error")) // => Exit.fail("my error")
  * ```
  *
  * @see {@link runPromise} for a version that rejects on failure.
@@ -9139,19 +9131,24 @@ export const runSyncWith: <R>(
  * **Example** (Observing synchronous results as Exit)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Exit } from "effect"
  *
- * Effect.runSyncExit(Effect.succeed(1))._tag // => "Success"
+ * Effect.runSyncExit(Effect.succeed(1)) // => Exit.succeed(1)
  *
- * Effect.runSyncExit(Effect.fail("my error"))._tag // => "Failure"
+ * Effect.runSyncExit(Effect.fail("my error")) // => Exit.fail("my error")
  * ```
  *
  * **Example** (Capturing async work as a Die cause)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Cause, Effect, Exit } from "effect"
  *
- * Effect.runSyncExit(Effect.promise(() => Promise.resolve(1)))._tag // => "Failure"
+ * const exit = Effect.runSyncExit(Effect.promise(() => Promise.resolve(1)))
+ * const isAsyncDie = Exit.hasDies(exit) && exit.cause.reasons.some(
+ *   (reason) => Cause.isDieReason(reason) && Cause.isAsyncFiberError(reason.defect)
+ * )
+ *
+ * isAsyncDie // => true
  * ```
  *
  * @see {@link runSync} for a version that throws on failure.

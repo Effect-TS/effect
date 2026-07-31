@@ -878,12 +878,10 @@ export const dropWhile: {
  * ```ts import.meta.vitest
  * import { Chunk } from "effect"
  *
- * const result = Chunk.make(1, 2).pipe(
+ * Chunk.make(1, 2).pipe(
  *   Chunk.prependAll(Chunk.make("a", "b")),
  *   Chunk.toArray
- * )
- *
- * result // => ["a", "b", 1, 2]
+ * ) // => ["a", "b", 1, 2]
  * ```
  *
  * @category combining
@@ -912,12 +910,10 @@ export const prependAll: {
  * ```ts import.meta.vitest
  * import { Chunk } from "effect"
  *
- * const result = Chunk.make(1, 2).pipe(
+ * Chunk.make(1, 2).pipe(
  *   Chunk.appendAll(Chunk.make("a", "b")),
  *   Chunk.toArray
- * )
- *
- * result // => [1, 2, "a", "b"]
+ * ) // => [1, 2, "a", "b"]
  * ```
  *
  * @see {@link prependAll} for concatenating chunks in the opposite order
@@ -1058,19 +1054,15 @@ export const filter: {
  * import { Chunk, Result } from "effect"
  *
  * const chunk = Chunk.make("1", "2", "hello", "3", "4")
- * const result = Chunk.filterMapWhile(chunk, (s) => {
- *   const num = parseInt(s)
- *   return isNaN(num) ? Result.failVoid : Result.succeed(num)
- * })
- * Chunk.toArray(result) // => [1, 2]
- * // Stops at "hello" and doesn't process "3", "4"
+ * Chunk.toArray(Chunk.filterMapWhile(chunk, (s) => {
+ *   const n = Number(s)
+ *   return Number.isNaN(n) ? Result.failVoid : Result.succeed(n)
+ * })) // => [1, 2]
  *
- * // Compare with regular filterMap
- * const allNumbers = Chunk.filterMap(chunk, (s) => {
- *   const num = parseInt(s)
- *   return isNaN(num) ? Result.failVoid : Result.succeed(num)
- * })
- * Chunk.toArray(allNumbers) // => [1, 2, 3, 4]
+ * Chunk.toArray(Chunk.filterMap(chunk, (s) => {
+ *   const n = Number(s)
+ *   return Number.isNaN(n) ? Result.failVoid : Result.succeed(n)
+ * })) // => [1, 2, 3, 4]
  * ```
  *
  * @category filtering

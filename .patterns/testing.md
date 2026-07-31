@@ -28,7 +28,8 @@ it("should work with pure functions", () => {
 
 ## Testing Rules
 
-- Never use `Effect.runSync` in tests
+- Never use `Effect.runSync` in unit tests. Runnable documentation may use it only for the intentional synchronous-runner
+  cases described in `.patterns/jsdoc.md`.
 - Never use `expect` from Vitest; use `assert` methods instead
 - Always use `TestClock` for time-dependent operations
 - Group related tests using `describe`
