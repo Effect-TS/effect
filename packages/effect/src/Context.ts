@@ -554,8 +554,12 @@ const fromMap = <Services>(map: Map<string, any>): ContextImpl<Services> => {
   return makeImpl(slab, map, undefined, 0, map.size, map)
 }
 
+// Some cycle-locked modules build Context objects that only carry `mapUnsafe`
+// (Redactable's no-fiber fallback, cause stack annotations in internal/core),
+// so every read path tolerates that shape by checking for a missing `base`
 const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
   if (self._flat !== undefined) return self._flat
+  if (self.base === undefined) return self.mapUnsafe
   if (self.overlay === undefined) return self._flat = self.base
 
   const map = new Map(self.base)
@@ -572,6 +576,9 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
 const slabAt = (self: ContextImpl<any>, slot: number): unknown => slot < self.slab.length ? self.slab[slot] : Unset
 
 const lookup = (self: ContextImpl<any>, key: string, slot?: number): unknown => {
+  if (self.base === undefined) {
+    return self.mapUnsafe.has(key) ? self.mapUnsafe.get(key) : Unset
+  }
   if (slot !== undefined) {
     const value = slabAt(self, slot)
     if (value !== Unset) return value
@@ -827,7 +834,8 @@ export const add: {
   key: Key<I, S>,
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
-  const impl = self as ContextImpl<Services>
+  let impl = self as ContextImpl<Services>
+  if (impl.base === undefined) impl = fromMap(new Map(impl.mapUnsafe))
 
   if (impl.mutable) {
     ;(impl.base as Map<string, any>).set(key.key, service)

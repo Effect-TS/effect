@@ -64,6 +64,22 @@ describe("Context", () => {
     ])
   })
 
+  it("reads legacy contexts that only carry mapUnsafe", () => {
+    // Redactable and cause annotations build these in cycle-locked modules
+    const legacy = { mapUnsafe: new Map([[A.key, 1]]) } as any
+    const Ref = Context.Reference<number>("ContextTest/LegacyRef", { defaultValue: () => 7 })
+
+    strictEqual(Context.getOrUndefined(legacy, A), 1)
+    strictEqual(Context.getOrUndefined(legacy, B), undefined)
+    strictEqual(Context.getReferenceUnsafe(legacy, Ref), 7)
+
+    const added = Context.add(legacy, B, 2) as Context.Context<any>
+    strictEqual(Context.getOrUndefined(added, A), 1)
+    strictEqual(Context.getOrUndefined(added, B), 2)
+
+    deepStrictEqual([...Context.merge(Context.make(C, 3), legacy).mapUnsafe], [[C.key, 3], [A.key, 1]])
+  })
+
   it("distinguishes an undefined service from an absent service", () => {
     const Undefined = Context.Service<undefined>("ContextTest/Undefined")
     const Missing = Context.Service<undefined>("ContextTest/Missing")
