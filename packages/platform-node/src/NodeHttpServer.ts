@@ -347,8 +347,9 @@ class ServerRequestImpl extends NodeHttpIncomingMessage<HttpServerError> impleme
     return this.source.url!
   }
 
+  private cachedMethod: HttpMethod | undefined
   get method(): HttpMethod {
-    return this.source.method!.toUpperCase() as HttpMethod
+    return this.cachedMethod ??= this.source.method!.toUpperCase() as HttpMethod
   }
 
   override get headers(): Headers.Headers {
@@ -524,7 +525,10 @@ const handleResponse = (
   if (request.method === "HEAD") {
     nodeResponse.writeHead(response.status, headers)
     return Effect.callback<void>((resume) => {
+      let completed = false
       const done = () => {
+        if (completed) return
+        completed = true
         nodeResponse.off("close", done)
         resume(Effect.void)
       }
@@ -614,17 +618,9 @@ const handleResponse = (
       return body.stream.pipe(
         Stream.orDie,
         Stream.runForEachArray((array) => {
-          let needDrain = false
-          for (let i = 0; i < array.length; i++) {
-            const written = nodeResponse.write(array[i])
-            if (!written && !needDrain) {
-              needDrain = true
-              drainLatch.closeUnsafe()
-            } else if (written && needDrain) {
-              needDrain = false
-            }
-          }
-          if (!needDrain) return Effect.void
+          const chunk = array.length > 1 ? Buffer.concat(array) : array[0]
+          if (nodeResponse.write(chunk)) return Effect.void
+          drainLatch.closeUnsafe()
           return drainLatch.await
         }),
         Effect.interruptible,
