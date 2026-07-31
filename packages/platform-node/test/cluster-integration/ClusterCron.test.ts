@@ -100,13 +100,15 @@ describe("cluster cron integration", () => {
         const currentTicks: Array<Tick> = []
         const gate = Latch.makeUnsafe()
         let entered = 0
-        const blockedExecution = (ticks: Array<Tick>) =>
-          Effect.gen(function*() {
+        const blockedExecution = Effect.fnUntraced(
+          function*(ticks: Array<Tick>) {
             if (yield* recordTick(ticks)) {
               entered++
               yield* gate.await
             }
-          }).pipe(Effect.uninterruptible)
+          },
+          Effect.uninterruptible
+        )
         const previousCron = ClusterCron.make({
           name: `previous-${backend}`,
           cron: everySecond,
@@ -178,7 +180,9 @@ describe("cluster cron integration", () => {
           "The cron schedules did not start",
           Effect.sync(() => catchUpTicks.length >= 2 && skipTicks.length >= 2)
         )
-        yield* Effect.forEach(runners, cluster.kill, { discard: true })
+        for (const runner of runners) {
+          yield* cluster.kill(runner)
+        }
         const catchUpBefore = catchUpTicks.length
         const skipBefore = skipTicks.length
         const lastScheduledBeforeRestart = catchUpTicks[catchUpBefore - 1].scheduled

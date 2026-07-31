@@ -52,15 +52,14 @@ const StateEntityLayer = StateEntity.toLayer(
           runner: addressString(runner),
           value: ++value
         })),
-      Ordered: ({ payload }) =>
-        Effect.gen(function*() {
-          order.push(payload.sequence)
-          if (payload.sequence === 1) {
-            orderEntered.openUnsafe()
-            yield* orderGate.await
-          }
-          return payload.sequence
-        })
+      Ordered: Effect.fnUntraced(function*({ payload }) {
+        order.push(payload.sequence)
+        if (payload.sequence === 1) {
+          orderEntered.openUnsafe()
+          yield* orderGate.await
+        }
+        return payload.sequence
+      })
     }
   }),
   { maxIdleTime: "1 second" }
@@ -77,12 +76,11 @@ let mailboxGate = Latch.makeUnsafe(true)
 let mailboxEntered = Latch.makeUnsafe()
 
 const MailboxEntityLayer = MailboxEntity.toLayer({
-  Hold: ({ payload }) =>
-    Effect.gen(function*() {
-      mailboxEntered.openUnsafe()
-      yield* mailboxGate.await
-      return payload.sequence
-    })
+  Hold: Effect.fnUntraced(function*({ payload }) {
+    mailboxEntered.openUnsafe()
+    yield* mailboxGate.await
+    return payload.sequence
+  })
 }, { mailboxCapacity: 1 })
 
 const GroupEntity = Entity.make("ClusterIntegrationSpecialGroup", [

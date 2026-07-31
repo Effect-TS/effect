@@ -126,13 +126,12 @@ const PersistenceEntityLayer = PersistenceEntity.toLayer({
       increment("Persisted", payload.id)
       return `persisted:${payload.id}`
     }),
-  Scheduled: ({ payload }) =>
-    Effect.gen(function*() {
-      increment("Scheduled", payload.id)
-      const deliveredAt = yield* Clock.currentTimeMillis
-      state.scheduledDeliveries.push(deliveredAt)
-      return deliveredAt
-    }),
+  Scheduled: Effect.fnUntraced(function*({ payload }) {
+    increment("Scheduled", payload.id)
+    const deliveredAt = yield* Clock.currentTimeMillis
+    state.scheduledDeliveries.push(deliveredAt)
+    return deliveredAt
+  }),
   StoredReply: ({ payload }) =>
     Effect.sync(() => {
       increment("StoredReply", payload.id)
@@ -159,22 +158,20 @@ const PersistenceEntityLayer = PersistenceEntity.toLayer({
     Effect.sync(() => increment("TypedFailure", payload.id)).pipe(
       Effect.andThen(Effect.fail(`typed:${payload.id}`))
     ),
-  Uninterruptible: ({ payload }) =>
-    Effect.gen(function*() {
-      increment("Uninterruptible", payload.id)
-      state.uninterruptibleEntered.openUnsafe()
-      yield* state.uninterruptibleGate.await
-      state.completedUninterruptible++
-      return `uninterruptible:${payload.id}`
-    }),
-  Volatile: ({ payload }) =>
-    Effect.gen(function*() {
-      increment("Volatile", payload.id)
-      state.volatileEntered.openUnsafe()
-      yield* state.volatileGate.await
-      state.completedVolatile++
-      return `volatile:${payload.id}`
-    })
+  Uninterruptible: Effect.fnUntraced(function*({ payload }) {
+    increment("Uninterruptible", payload.id)
+    state.uninterruptibleEntered.openUnsafe()
+    yield* state.uninterruptibleGate.await
+    state.completedUninterruptible++
+    return `uninterruptible:${payload.id}`
+  }),
+  Volatile: Effect.fnUntraced(function*({ payload }) {
+    increment("Volatile", payload.id)
+    state.volatileEntered.openUnsafe()
+    yield* state.volatileGate.await
+    state.completedVolatile++
+    return `volatile:${payload.id}`
+  })
 }, { disableFatalDefects: true })
 
 describe("cluster message persistence integration", () => {
