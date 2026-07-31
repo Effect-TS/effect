@@ -70,6 +70,23 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
   readonly stack?: string | undefined
 }
 
+const SlotId = Symbol.for("effect/Context/Slot")
+const Unset = Symbol()
+const slotByKey = new Map<string, number>()
+let nextSlot = 0
+
+const allocateSlot = (key: Key<any, any>): number => {
+  let slot = slotByKey.get(key.key)
+  if (slot === undefined) {
+    slot = nextSlot++
+    slotByKey.set(key.key, slot)
+  }
+  ;(key as any)[SlotId] = slot
+  return slot
+}
+
+const slotOf = (key: Key<any, any>): number | undefined => (key as any)[SlotId] ?? slotByKey.get(key.key)
+
 /**
  * Context key with helper methods for working with a service.
  *
@@ -252,6 +269,7 @@ export const Service: {
     if (arguments[1]?.defaultValue) {
       self[ReferenceTypeId] = ReferenceTypeId
       self.defaultValue = arguments[1].defaultValue
+      allocateSlot(self)
     }
     return self
   }
@@ -472,8 +490,81 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
 }
 
 interface ContextImpl<in Services> extends Context<Services> {
-  readonly _mapUnsafe: ReadonlyMap<string, any>
+  slab: ReadonlyArray<unknown>
+  base: ReadonlyMap<string, any>
+  overlay: Overlay | undefined
+  depth: number
+  size: number
+  _flat: ReadonlyMap<string, any> | undefined
 }
+
+interface Overlay {
+  readonly key: string
+  readonly value: unknown
+  readonly parent: Overlay | undefined
+}
+
+const MaxDepth = 8
+
+const makeImpl = <Services>(
+  slab: ReadonlyArray<unknown>,
+  base: ReadonlyMap<string, any>,
+  overlay: Overlay | undefined,
+  depth: number,
+  size: number,
+  flat?: ReadonlyMap<string, any>
+): ContextImpl<Services> => {
+  const self: ContextImpl<Services> = Object.create(Proto)
+  self.slab = slab
+  self.base = base
+  self.overlay = overlay
+  self.depth = depth
+  self.size = size
+  self.mutable = false
+  self._flat = flat
+  return self
+}
+
+const fromMap = <Services>(map: Map<string, any>): ContextImpl<Services> => {
+  const slab: Array<unknown> = []
+  map.forEach((value, key) => {
+    const slot = slotByKey.get(key)
+    if (slot === undefined) return
+    while (slab.length <= slot) slab.push(Unset)
+    slab[slot] = value
+  })
+  return makeImpl(slab, map, undefined, 0, map.size, map)
+}
+
+const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
+  if (self._flat !== undefined) return self._flat
+  if (self.overlay === undefined) return self._flat = self.base
+
+  const map = new Map(self.base)
+  const stack: Array<Overlay> = []
+  for (let overlay: Overlay | undefined = self.overlay; overlay !== undefined; overlay = overlay.parent) {
+    stack.push(overlay)
+  }
+  for (let i = stack.length - 1; i >= 0; i--) {
+    map.set(stack[i].key, stack[i].value)
+  }
+  return self._flat = map
+}
+
+const slabAt = (self: ContextImpl<any>, slot: number): unknown => slot < self.slab.length ? self.slab[slot] : Unset
+
+const lookup = (self: ContextImpl<any>, key: string, slot?: number): unknown => {
+  if (slot !== undefined) {
+    const value = slabAt(self, slot)
+    if (value !== Unset) return value
+  }
+  for (let overlay = self.overlay; overlay !== undefined; overlay = overlay.parent) {
+    if (overlay.key === key) return overlay.value
+  }
+  return self.base.has(key) ? self.base.get(key) : Unset
+}
+
+const has = (self: ContextImpl<any>, key: Key<any, any>): boolean => lookup(self, key.key, slotOf(key)) !== Unset
 
 /**
  * Creates a `Context` from an existing service map.
@@ -485,7 +576,7 @@ interface ContextImpl<in Services> extends Context<Services> {
  *
  * **Gotchas**
  *
- * This is unsafe because later mutation of the provided map can affect the
+ * The provided map is copied so later mutations are not observed by the
  * created `Context`. Prefer `empty`, `make`, `add`, or `merge` for normal
  * Context construction.
  *
@@ -507,19 +598,19 @@ interface ContextImpl<in Services> extends Context<Services> {
  * @since 4.0.0
  */
 export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>): Context<Services> => {
-  const self: ContextImpl<Services> = Object.create(Proto)
-  self._mapUnsafe = mapUnsafe
-  self.mutable = false
-  return self
+  return fromMap(new Map(mapUnsafe))
 }
 
-const Proto: Omit<ContextImpl<never>, "_mapUnsafe" | "mutable"> = {
+const Proto: Omit<
+  ContextImpl<never>,
+  "slab" | "base" | "overlay" | "depth" | "size" | "mutable" | "_flat"
+> = {
   ...PipeInspectableProto,
   [TypeId]: {
     _Services: (_: never) => _
   },
   get mapUnsafe() {
-    return this._mapUnsafe
+    return flatten(this as ContextImpl<any>)
   },
   toJSON(this: Context<never>) {
     return {
@@ -543,8 +634,13 @@ const Proto: Omit<ContextImpl<never>, "_mapUnsafe" | "mutable"> = {
     return true
   },
   [Hash.symbol]<A>(this: Context<A>): number {
-    return Hash.number(this.mapUnsafe.size)
+    return Hash.number((this as ContextImpl<A>).size)
   }
+}
+
+/** @internal */
+export const unsafeMakeSlot = (key: Key<any, any>): void => {
+  allocateSlot(key)
 }
 
 /**
@@ -705,10 +801,44 @@ export const add: {
   self: Context<Services>,
   key: Key<I, S>,
   service: Types.NoInfer<S>
-): Context<Services | I> =>
-  withMapUnsafe(self, (map) => {
+): Context<Services | I> => {
+  const impl = self as ContextImpl<Services>
+  const slot = slotOf(key)
+  const grew = !has(impl, key)
+
+  if (impl.mutable) {
+    const mutable = impl as any
+    if (slot !== undefined) {
+      while (mutable.slab.length <= slot) mutable.slab.push(Unset)
+      mutable.slab[slot] = service
+    }
+    ;(mutable.base as Map<string, any>).set(key.key, service)
+    mutable.size += grew ? 1 : 0
+    mutable._flat = undefined
+    return self as any
+  }
+
+  let slab = impl.slab
+  if (slot !== undefined) {
+    slab = impl.slab.slice()
+    while (slab.length <= slot) (slab as Array<unknown>).push(Unset)
+    ;(slab as Array<unknown>)[slot] = service
+  }
+
+  if (impl.depth >= MaxDepth) {
+    const map = new Map(flatten(impl))
     map.set(key.key, service)
-  }))
+    return fromMap(map)
+  }
+
+  return makeImpl(
+    slab,
+    impl.base,
+    { key: key.key, value: service, parent: impl.overlay },
+    impl.depth + 1,
+    impl.size + (grew ? 1 : 0)
+  )
+})
 
 /**
  * Adds or removes a service depending on an `Option`.
@@ -760,13 +890,9 @@ export const addOrOmit: {
   key: Key<I, S>,
   service: Option.Option<Types.NoInfer<S>>
 ): Context<Services | I> =>
-  withMapUnsafe(self, (map) => {
-    if (service._tag === "None") {
-      map.delete(key.key)
-    } else {
-      map.set(key.key, service.value)
-    }
-  }))
+  service._tag === "None"
+    ? omit(key)(self) as any
+    : add(self, key, service.value))
 
 /**
  * Gets the service for a key, or evaluates the fallback when a non-reference
@@ -819,9 +945,8 @@ export const getOrElse: {
   <S, I, B>(key: Key<I, S>, orElse: LazyArg<B>): <Services>(self: Context<Services>) => S | B
   <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B
 } = dual(3, <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B => {
-  if (self.mapUnsafe.has(key.key)) {
-    return self.mapUnsafe.get(key.key)! as any
-  }
+  const value = lookup(self as ContextImpl<Services>, key.key, slotOf(key))
+  if (value !== Unset) return value as any
   return isReference(key) ? getDefaultValue(key) : orElse()
 })
 
@@ -849,7 +974,10 @@ export const getOrUndefined: {
   <Services, S, I>(self: Context<Services>, key: Key<I, S>): S | undefined
 } = dual(
   2,
-  <Services, S, I>(self: Context<Services>, key: Key<I, S>): S | undefined => self.mapUnsafe.get(key.key)
+  <Services, S, I>(self: Context<Services>, key: Key<I, S>): S | undefined => {
+    const value = lookup(self as ContextImpl<Services>, key.key, slotOf(key))
+    return value === Unset ? undefined : value as S
+  }
 )
 
 /**
@@ -893,11 +1021,12 @@ export const getUnsafe: {
 } = dual(
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S => {
-    if (!self.mapUnsafe.has(service.key)) {
+    const value = lookup(self as ContextImpl<Services>, service.key, slotOf(service))
+    if (value === Unset) {
       if (ReferenceTypeId in service) return getDefaultValue(service as any)
       throw serviceNotFoundError(service)
     }
-    return self.mapUnsafe.get(service.key)! as any
+    return value as any
   }
 )
 
@@ -980,10 +1109,8 @@ export const get: {
  * @since 4.0.0
  */
 export const getReferenceUnsafe = <Services, S>(self: Context<Services>, service: Reference<S>): S => {
-  if (!self.mapUnsafe.has(service.key)) {
-    return getDefaultValue(service as any)
-  }
-  return self.mapUnsafe.get(service.key)! as any
+  const value = lookup(self as ContextImpl<Services>, service.key, slotOf(service))
+  return value === Unset ? getDefaultValue(service as any) : value as S
 }
 
 const defaultValueCacheKey = "~effect/Context/defaultValue" as const
@@ -1053,9 +1180,8 @@ export const getOption: {
   <S, I>(service: Key<I, S>): <Services>(self: Context<Services>) => Option.Option<S>
   <Services, S, I>(self: Context<Services>, service: Key<I, S>): Option.Option<S>
 } = dual(2, <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): Option.Option<S> => {
-  if (self.mapUnsafe.has(service.key)) {
-    return Option.some(self.mapUnsafe.get(service.key)! as any)
-  }
+  const value = lookup(self as ContextImpl<Services>, service.key, slotOf(service))
+  if (value !== Unset) return Option.some(value as any)
   return isReference(service) ? Option.some(getDefaultValue(service as any)) : Option.none()
 })
 
@@ -1097,11 +1223,13 @@ export const merge: {
   <R1>(that: Context<R1>): <Services>(self: Context<Services>) => Context<R1 | Services>
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
-  if (self.mapUnsafe.size === 0) return that as any
-  if (that.mapUnsafe.size === 0) return self as any
-  return withMapUnsafe(self, (map) => {
-    that.mapUnsafe.forEach((value, key) => map.set(key, value))
-  })
+  const selfImpl = self as ContextImpl<Services>
+  const thatImpl = that as ContextImpl<R1>
+  if (selfImpl.size === 0) return that as any
+  if (thatImpl.size === 0) return self as any
+  const map = new Map(flatten(selfImpl))
+  flatten(thatImpl).forEach((value, key) => map.set(key, value))
+  return fromMap(map)
 })
 
 /**
@@ -1148,11 +1276,11 @@ export const mergeAll = <T extends Array<unknown>>(
 ): Context<T[number]> => {
   const map = new Map()
   for (let i = 0; i < ctxs.length; i++) {
-    ctxs[i].mapUnsafe.forEach((value, key) => {
+    flatten(ctxs[i] as ContextImpl<any>).forEach((value, key) => {
       map.set(key, value)
     })
   }
-  return makeUnsafe(map)
+  return fromMap(map)
 }
 
 /**
@@ -1189,14 +1317,14 @@ export const mergeAll = <T extends Array<unknown>>(
 export const pick = <S extends ReadonlyArray<Key<any, any>>>(
   ...services: S
 ) =>
-<Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> =>
-  withMapUnsafe(self, (map) => {
-    const keySet = new Set(services.map((key) => key.key))
-    map.forEach((_, key) => {
-      if (keySet.has(key)) return
-      map.delete(key)
-    })
+<Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> => {
+  const keep = new Set(services.map((key) => key.key))
+  const map = new Map<string, any>()
+  flatten(self as ContextImpl<Services>).forEach((value, key) => {
+    if (keep.has(key)) map.set(key, value)
   })
+  return fromMap(map)
+}
 
 /**
  * Returns a new `Context` with the specified service keys removed.
@@ -1232,12 +1360,14 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
 export const omit = <S extends ReadonlyArray<Key<any, any>>>(
   ...keys: S
 ) =>
-<Services>(self: Context<Services>): Context<Exclude<Services, Service.Identifier<S[number]>>> =>
-  withMapUnsafe(self, (map) => {
-    for (let i = 0; i < keys.length; i++) {
-      map.delete(keys[i].key)
-    }
+<Services>(self: Context<Services>): Context<Exclude<Services, Service.Identifier<S[number]>>> => {
+  const drop = new Set(keys.map((key) => key.key))
+  const map = new Map<string, any>()
+  flatten(self as ContextImpl<Services>).forEach((value, key) => {
+    if (!drop.has(key)) map.set(key, value)
   })
+  return fromMap(map)
+}
 
 /**
  * Performs a series of mutations on a `Context`. Prevents unnecessary copying
@@ -1265,23 +1395,17 @@ export const mutate: {
 } = dual(
   2,
   <Services, B>(self: Context<Services>, f: (context: Context<Services>) => Context<B>): Context<B> => {
-    const next = makeUnsafe<Services>(new Map(self.mapUnsafe))
+    const next = fromMap<Services>(new Map(flatten(self as ContextImpl<Services>)))
     next.mutable = true
-    const result = f(next)
-    result.mutable = false
-    return result
+    let result: Context<B> | undefined
+    try {
+      return result = f(next)
+    } finally {
+      next.mutable = false
+      if (result !== undefined) result.mutable = false
+    }
   }
 )
-
-const withMapUnsafe = <Services, B>(self: Context<Services>, f: (map: Map<string, any>) => void): Context<B> => {
-  if (self.mutable) {
-    f(self.mapUnsafe as any)
-    return self as any
-  }
-  const map = new Map(self.mapUnsafe)
-  f(map)
-  return makeUnsafe(map)
-}
 
 /**
  * Creates a context key with a default value.

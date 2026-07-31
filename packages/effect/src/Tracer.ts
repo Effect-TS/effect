@@ -168,6 +168,7 @@ export const ParentSpanKey = "effect/Tracer/ParentSpan"
  * @since 2.0.0
  */
 export class ParentSpan extends Context.Service<ParentSpan, AnySpan>()(ParentSpanKey) {}
+Context.unsafeMakeSlot(ParentSpan)
 
 /**
  * Represents a span created outside Effect's tracer, carrying trace and span
