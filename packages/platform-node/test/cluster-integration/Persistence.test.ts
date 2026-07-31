@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Clock, DateTime, Effect, Exit, Fiber, Latch, PrimaryKey, Schema, Stream } from "effect"
+import { Cause, Clock, DateTime, Effect, Exit, Fiber, Latch, Option, PrimaryKey, Schema, Stream } from "effect"
 import { ClusterSchema, DeliverAt, Entity } from "effect/unstable/cluster"
 import { Rpc, RpcSchema } from "effect/unstable/rpc"
 import { type Backend, make } from "./harness.ts"
@@ -88,6 +88,8 @@ const freshState = () => ({
   completedVolatile: 0,
   counts: new Map<string, number>(),
   scheduledDeliveries: [] as Array<number>,
+  streamThirdEntered: Latch.makeUnsafe(),
+  streamThirdGate: Latch.makeUnsafe(),
   uninterruptibleEntered: Latch.makeUnsafe(),
   uninterruptibleGate: Latch.makeUnsafe(),
   volatileEntered: Latch.makeUnsafe(),
@@ -138,7 +140,20 @@ const PersistenceEntityLayer = PersistenceEntity.toLayer({
     }),
   Streamed: (request) => {
     increment("Streamed", request.payload.id)
-    return Stream.fromIterable([0, 1, 2, 3, 4]).pipe(Stream.rechunk(1))
+    const start = Option.match(request.lastSentChunkValue, {
+      onNone: () => 0,
+      onSome: (value) => value + 1
+    })
+    return Stream.fromIterable([0, 1, 2, 3, 4].slice(start)).pipe(
+      Stream.mapEffect((value) => {
+        if (request.payload.id.endsWith("-restart") && value === 2) {
+          state.streamThirdEntered.openUnsafe()
+          return Effect.as(state.streamThirdGate.await, value)
+        }
+        return Effect.succeed(value)
+      }),
+      Stream.rechunk(1)
+    )
   },
   TypedFailure: ({ payload }) =>
     Effect.sync(() => increment("TypedFailure", payload.id)).pipe(
@@ -367,6 +382,53 @@ describe("cluster message persistence integration", () => {
           Effect.map(cluster.repliedMessageCount, (value) => value === 1)
         )
         assert.strictEqual(count("Streamed", id), 1)
+      }).pipe(Effect.scoped))
+
+    it.live(`${backend}: resumes a persisted stream after its runner is killed`, () =>
+      Effect.gen(function*() {
+        resetState()
+        const cluster = yield* make({ backend, entities: PersistenceEntityLayer })
+        const [owner] = yield* cluster.start(1)
+        yield* cluster.waitForStableAssignments()
+        const client = yield* cluster.getClient(PersistenceEntity)
+        const id = `${backend}-stream-restart`
+        const received: Array<number> = []
+        const valuesFiber = yield* client("stream-restart").Streamed(new KeyedPayload({ id })).pipe(
+          Stream.tap((value) => Effect.sync(() => received.push(value))),
+          Stream.runCollect,
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* cluster.waitUntil(
+          "The stream did not deliver two chunks before blocking the third",
+          Effect.sync(() => received.length === 2 && received[0] === 0 && received[1] === 1)
+        )
+        yield* cluster.waitUntil(
+          "The stream handler did not block before delivering its third chunk",
+          Effect.as(state.streamThirdEntered.await, true)
+        )
+
+        yield* cluster.kill(owner)
+        yield* cluster.start(1)
+        yield* cluster.waitForStableAssignments()
+        yield* cluster.waitUntil(
+          "The replacement runner did not resume the persisted stream",
+          Effect.sync(() => count("Streamed", id) === 2)
+        )
+        state.streamThirdGate.openUnsafe()
+
+        assert.deepStrictEqual(Array.from(yield* Fiber.join(valuesFiber)), [0, 1, 2, 3, 4])
+        yield* cluster.waitUntil(
+          "The terminal stream reply was not persisted after recovery",
+          Effect.map(
+            cluster.messageCounts(),
+            (counts) => counts.replied === 1 && counts.unprocessed === 0
+          )
+        )
+        assert.deepStrictEqual(yield* cluster.messageCounts(), {
+          failed: 0,
+          replied: 1,
+          unprocessed: 0
+        })
       }).pipe(Effect.scoped))
 
     it.live(`${backend}: delivers scheduled messages only after their deadline`, () =>
