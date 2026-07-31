@@ -588,7 +588,7 @@ export interface GaugeState<in Input extends number | bigint> {
  *     "http_response_time_ms",
  *     {
  *       description: "HTTP response time distribution in milliseconds",
- *       boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 20 }) // 0, 50, 100, ..., 950
+ *       boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 20 }) // 50, 100, ..., 900, Infinity
  *     }
  *   )
  *
@@ -671,7 +671,7 @@ export interface Histogram<Input> extends Metric<Input, HistogramState> {}
  *   // Create histogram with linear boundaries
  *   const responseTimeHistogram = Metric.histogram("api_response_time_ms", {
  *     description: "API response time distribution",
- *     boundaries: Metric.linearBoundaries({ start: 0, width: 100, count: 10 }) // 0, 100, 200, ..., 900
+ *     boundaries: Metric.linearBoundaries({ start: 0, width: 100, count: 10 }) // 100, 200, ..., 800, Infinity
  *   })
  *
  *   // Record observations
@@ -2398,7 +2398,7 @@ export const frequency = (name: string, options?: {
  *   const responseTimeHistogram = Metric.histogram("api_response_time", {
  *     description: "Distribution of API response times in milliseconds",
  *     boundaries: Metric.linearBoundaries({ start: 0, width: 50, count: 10 })
- *     // Creates buckets: 0-50ms, 50-100ms, 100-150ms, ..., 400-450ms, 450ms+
+ *     // Creates buckets: 0-50ms, 50-100ms, 100-150ms, ..., 350-400ms, 400ms+
  *   })
  *
  *   // Create a histogram for request payload sizes
@@ -3380,7 +3380,7 @@ export const boundariesFromIterable = (iterable: Iterable<number>): ReadonlyArra
  *
  * **Details**
  *
- * Generates `count - 1` finite boundaries using `start + width + index` for
+ * Generates `count - 1` candidate boundaries using `start + index * width` for
  * each zero-based index, then applies the same normalization as
  * `boundariesFromIterable`: non-positive values are removed, duplicates are
  * collapsed, and `Infinity` is appended.
@@ -3388,38 +3388,9 @@ export const boundariesFromIterable = (iterable: Iterable<number>): ReadonlyArra
  * **Example** (Creating linear boundaries)
  *
  * ```ts import.meta.vitest
- * import { Data, Effect, Metric } from "effect"
+ * import { Metric } from "effect"
  *
- * class BoundaryError extends Data.TaggedError("BoundaryError")<{
- *   readonly operation: string
- * }> {}
- *
- * // Create boundaries for response time histogram
- * const responseBoundaries = Metric.linearBoundaries({
- *   start: 0, // Starting point
- *   width: 100, // Offset used for the first boundary
- *   count: 5 // Creates 4 boundaries + infinity
- * })
- * const boundaries = responseBoundaries // => [100, 101, 102, 103, Infinity]
- *
- * // Create a histogram using these boundaries
- * const responseTimeHistogram = Metric.histogram("api_response_time", {
- *   description: "API response time distribution",
- *   boundaries: responseBoundaries
- * })
- *
- * const program = Effect.gen(function*() {
- *   // Record some response times
- *   yield* Metric.update(responseTimeHistogram, 85)
- *   yield* Metric.update(responseTimeHistogram, 101)
- *   yield* Metric.update(responseTimeHistogram, 450)
- *
- *   const value = yield* Metric.value(responseTimeHistogram)
- *   return value
- * })
- *
- * const state = await Effect.runPromise(Effect.provideService(program, Metric.MetricRegistry, new Map()))
- * const stateValues = [state.count, state.min, state.max, state.sum] // => [3, 85, 450, 636]
+ * Metric.linearBoundaries({ start: 10, width: 20, count: 5 }) // => [10, 30, 50, 70, Infinity]
  * ```
  *
  * @category boundaries
@@ -3430,7 +3401,7 @@ export const linearBoundaries = (options: {
   readonly width: number
   readonly count: number
 }): ReadonlyArray<number> =>
-  boundariesFromIterable(Arr.makeBy(options.count - 1, (n) => options.start + n + options.width))
+  boundariesFromIterable(Arr.makeBy(options.count - 1, (n) => options.start + n * options.width))
 
 /**
  * Creates histogram bucket boundaries with exponentially increasing values.
