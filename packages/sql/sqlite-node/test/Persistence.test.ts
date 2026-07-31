@@ -139,7 +139,7 @@ it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
         VALUES ('live', 'live', '{}', NULL), ('live', 'future', '{}', ${SqlCleanupTest.futureExpiresAt})
       `
 
-      yield* Layer.build(Persistence.layerBackingSql)
+      yield* Layer.build(Persistence.layerBackingSql).pipe(TestClock.withLive)
 
       let expired = yield* SqlCleanupTest.waitForCount(
         expiredCount,
@@ -149,7 +149,6 @@ it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
 
       while (expired > 0) {
         const previous = expired
-        yield* TestClock.adjust(SqlCleanupTest.cleanupBatchDelay)
         expired = yield* SqlCleanupTest.waitForCount(expiredCount, (count) => count < previous)
       }
       assert.strictEqual(expired, 0)

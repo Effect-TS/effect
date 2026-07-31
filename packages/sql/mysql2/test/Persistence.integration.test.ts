@@ -55,7 +55,7 @@ it.layer(MysqlContainer.layerClient, { timeout: "30 seconds" })("Persistence SQL
         VALUES ('live', 'live', '{}', NULL), ('live', 'future', '{}', ${SqlCleanupTest.futureExpiresAt})
       `
 
-      yield* Layer.build(Persistence.layerBackingSql)
+      yield* Layer.build(Persistence.layerBackingSql).pipe(TestClock.withLive)
 
       let expired = yield* SqlCleanupTest.waitForCount(
         expiredCount,
@@ -65,7 +65,6 @@ it.layer(MysqlContainer.layerClient, { timeout: "30 seconds" })("Persistence SQL
 
       while (expired > 0) {
         const previous = expired
-        yield* TestClock.adjust(SqlCleanupTest.cleanupBatchDelay)
         expired = yield* SqlCleanupTest.waitForCount(expiredCount, (count) => count < previous)
       }
       assert.strictEqual(expired, 0)
