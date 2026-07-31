@@ -17,9 +17,6 @@ const collectorModule = (
 ): string => {
   const tests = snippets.map((snippet, index) => {
     const id = JSON.stringify(Protocol.snippetId(file, index, version))
-    if (snippet.suite) {
-      return `import ${id}`
-    }
     const label = JSON.stringify(snippet.name ?? `line ${snippet.line}`)
     return `test(${label}, () => import(${id}))`
   })

@@ -129,6 +129,8 @@ Use this checklist when authoring or reviewing an example:
 - Assert semantic constructors such as `Option.some`, `Result.succeed`, and `Exit.fail`, not rendered console output. Preserve runnable markers on type-level examples without adding fake runtime assertions.
 - Keep runnable examples complete, deterministic, bounded, and independent of external services or machine-specific state. Await asynchronous work so failures and cleanup remain inside the doctest.
 - Import public APIs and include all required setup. Do not use undeclared placeholders or rely on declarations from surrounding prose.
-- Use `````ts import.meta.vitest suite`` for examples that register Vitest tests or suites, such as `@effect/vitest` helpers. Invoke the registration API directly; the `suite` marker runs the example during collection.
+- Leave examples that register Vitest tests or suites as plain `````ts`` fences; the doctest collector executes runnable
+  snippets inside tests, where nested test registration is invalid. Invoke registration APIs directly so the snippet still
+  shows the intended top-level usage.
 - Leave intentionally non-executable snippets as plain `````ts`` fences.
 - Run `pnpm doctest --run <source files>` from the repository root after changing runnable examples. Also run `pnpm docgen` from the affected package directory because docgen typechecks examples while doctest executes marked examples.

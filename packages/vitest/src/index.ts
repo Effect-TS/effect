@@ -179,7 +179,7 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  *
  * @since 4.0.0
  *
- * ```ts import.meta.vitest suite
+ * ```ts
  * import { assert, layer } from "@effect/vitest"
  * import { Effect, Layer, Context } from "effect"
  *

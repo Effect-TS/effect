@@ -15,23 +15,6 @@ export const value = 1
 
 The optional `name="..."` metadata labels the test without appearing in the example body. Unnamed examples use the opening fence line, such as `line 12`; Vitest displays the containing file alongside it.
 
-Examples that register Vitest tests or suites must use `suite` metadata and invoke the registration API directly:
-
-````ts
-/**
- * ```ts import.meta.vitest suite
- * import { assert, it } from "@effect/vitest"
- *
- * it("checks a value", () => {
- *   assert.strictEqual(1 + 1, 2)
- * })
- * ```
- */
-export const value = 1
-````
-
-Suite snippets are imported directly by the generated collector during Vitest collection so their nested tests are registered. Ordinary snippets remain isolated modules registered as individual tests; `name` metadata labels those ordinary tests.
-
 ## Inline assertions
 
 Add a trailing `// =>` comment to assert the value of an expression:
@@ -51,8 +34,6 @@ export const value = 1
 The expected value is a TypeScript expression evaluated in the same lexical scope. Values are compared with Effect's `Equal.equals` semantics, so the convention supports primitives, arrays, plain objects, and Effect data types such as `Option`, `Result`, `Exit`, and `HashMap` without converting them to console output.
 
 Prefer asserting the API call directly instead of introducing a binding used only by the assertion. Keep bindings for reuse or meaningful multi-step setup, with a blank line before a later assertion block. Keep the call and assertion on one line when it fits within 120 characters, and format expected arrays densely, for example `[1, 2]`, `[[1], [2]]`, and `Option.some([1, 2])`. Preserve runnable markers on type-level examples without adding tautological runtime assertions.
-
-The transform rejects the tautological case where an explicitly typed `const` identifier is initialized to a primitive literal and asserted against an equivalent primitive value. This includes transparent parentheses, signed numeric and bigint literals, no-substitution template literals, and equivalent spellings such as `1` and `1.0`. It intentionally does not infer aliases, fold arbitrary constant expressions, or compare object and array literals. Type-only examples should retain the runnable marker without adding `// =>`.
 
 An assertion may also trail a single initialized `const` declaration with an identifier binding. The initializer is evaluated once and the binding remains available to subsequent code:
 

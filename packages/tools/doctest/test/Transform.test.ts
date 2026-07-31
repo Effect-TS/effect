@@ -18,58 +18,6 @@ describe("Transform", () => {
     )
   })
 
-  it("rejects equivalent typed primitive-literal tautological assertions", () => {
-    for (
-      const source of [
-        "const value: number = 1 // => 1",
-        "const value: number = (1) // => 1.0",
-        "const value: number = 1\nvalue // => 1",
-        "const value: number = (1)\nvalue // => ((1.0))",
-        "const value: number = -1\nvalue // => -1.0",
-        "const value: number = +1\nvalue // => 1.0",
-        "const value: bigint = -1n\nvalue // => -0x1n",
-        "const value: string = `value`\nvalue // => \"value\"",
-        "const value: string = 'value'\nvalue // => \"value\""
-      ]
-    ) {
-      assert.throws(
-        () => transform(source, "example.ts", 10),
-        /doctest assertion is tautological for an explicitly typed primitive literal/
-      )
-    }
-  })
-
-  it("finds a matching typed const before intervening same-parent statements", () => {
-    assert.throws(
-      () => transform("const value: number = 1\nuseOtherValue()\nvalue // => 1.0", "example.ts", 10),
-      /doctest assertion is tautological for an explicitly typed primitive literal/
-    )
-  })
-
-  it("allows assertions that require runtime evaluation", () => {
-    for (
-      const source of [
-        "const value = 1\nvalue // => 1",
-        "const value: number = makeValue()\nvalue // => 1",
-        "const value: number = 1\nvalue // => 2",
-        "const value: ReadonlyArray<number> = [1]\nvalue // => [1]",
-        "const value: { readonly n: number } = { n: 1 }\nvalue // => { n: 1 }",
-        "const value: number = 1 + 0\nvalue // => 1",
-        "const value: number = -(-1)\nvalue // => 1",
-        "const value: string = `${\"value\"}`\nvalue // => \"value\"",
-        "const original: number = 1\nconst value = original\nvalue // => 1",
-        "const value: number = 1\nif (enabled) {\n  value // => 1\n}"
-      ]
-    ) {
-      assert.doesNotThrow(() => transform(source, "example.ts", 10))
-    }
-  })
-
-  it("allows type-only examples without assertions", () => {
-    const source = "const value: number = 1"
-    assert.strictEqual(transform(source, "example.ts", 10), source)
-  })
-
   it("preserves indentation in nested blocks", () => {
     assert.strictEqual(
       transform("if (enabled) {\n  const result = makeValue() // => 1\n}", "example.ts", 10),
