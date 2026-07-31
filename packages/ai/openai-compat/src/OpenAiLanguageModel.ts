@@ -18,7 +18,7 @@ import * as Option from "effect/Option"
 import * as Predicate from "effect/Predicate"
 import * as Rec from "effect/Record"
 import * as Redactable from "effect/Redactable"
-import type * as Schema from "effect/Schema"
+import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
@@ -631,6 +631,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         const [rawResponse, response] = yield* client.createResponse(request)
         annotateResponse(options.span, rawResponse)
         return yield* makeResponse({
+          options,
           rawResponse,
           response,
           toolNameMapper
@@ -645,6 +646,7 @@ export const make = Effect.fnUntraced(function*({ model, config: providerConfig 
         annotateRequest(options.span, request)
         const [response, stream] = yield* client.createResponseStream(request)
         return yield* makeStreamResponse({
+          options,
           stream,
           response,
           toolNameMapper
@@ -1042,10 +1044,12 @@ type ActiveToolCall = {
 
 const makeResponse = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
+    options,
     rawResponse,
     response,
     toolNameMapper
   }: {
+    readonly options: LanguageModel.ProviderOptions
     readonly rawResponse: CreateResponse200
     readonly response: HttpClientResponse.HttpClientResponse
     readonly toolNameMapper: Tool.NameMapper<Tools>
@@ -1085,7 +1089,7 @@ const makeResponse = Effect.fnUntraced(
           const toolId = toolCall.id ?? `${rawResponse.id}_tool_${index}`
           const toolName = toolNameMapper.getCustomName(toolCall.function?.name ?? "unknown_tool")
           const toolParams = toolCall.function?.arguments ?? "{}"
-          const params = yield* Effect.try({
+          const encodedParams = yield* Effect.try({
             try: () => Tool.unsafeSecureJsonParse(toolParams),
             catch: (cause) =>
               AiError.make({
@@ -1098,6 +1102,7 @@ const makeResponse = Effect.fnUntraced(
                 })
               })
           })
+          const params = yield* transformToolCallParams(options.tools, toolName, encodedParams)
           hasToolCalls = true
           parts.push({
             type: "tool-call",
@@ -1130,10 +1135,12 @@ const makeResponse = Effect.fnUntraced(
 
 const makeStreamResponse = Effect.fnUntraced(
   function*<Tools extends ReadonlyArray<Tool.Any>>({
+    options,
     stream,
     response,
     toolNameMapper
   }: {
+    readonly options: LanguageModel.ProviderOptions
     readonly stream: Stream.Stream<ResponseStreamEvent, AiError.AiError>
     readonly response: HttpClientResponse.HttpClientResponse
     readonly toolNameMapper: Tool.NameMapper<Tools>
@@ -1175,7 +1182,7 @@ const makeStreamResponse = Effect.fnUntraced(
 
           for (const toolCall of Object.values(activeToolCalls)) {
             const toolParams = toolCall.arguments.length > 0 ? toolCall.arguments : "{}"
-            const params = yield* Effect.try({
+            const encodedParams = yield* Effect.try({
               try: () => Tool.unsafeSecureJsonParse(toolParams),
               catch: (cause) =>
                 AiError.make({
@@ -1188,6 +1195,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   })
                 })
             })
+            const params = yield* transformToolCallParams(options.tools, toolCall.name, encodedParams)
             parts.push({ type: "tool-params-end", id: toolCall.id })
             parts.push({
               type: "tool-call",
@@ -1404,6 +1412,49 @@ const unsupportedSchemaError = (error: unknown, method: string): AiError.AiError
       description: error instanceof Error ? error.message : String(error)
     })
   })
+
+const tryCodecTransform = <S extends Schema.Constraint>(schema: S, method: string) =>
+  Effect.try({
+    try: () => toCodecOpenAI(schema),
+    catch: (error) => unsupportedSchemaError(error, method)
+  })
+
+const transformToolCallParams = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>(
+  tools: Tools,
+  toolName: string,
+  toolParams: unknown
+): Effect.fn.Return<unknown, AiError.AiError> {
+  const tool = tools.find((tool) => tool.name === toolName)
+
+  if (Predicate.isUndefined(tool)) {
+    return yield* AiError.make({
+      module: "OpenAiLanguageModel",
+      method: "makeResponse",
+      reason: new AiError.ToolNotFoundError({
+        toolName,
+        availableTools: tools.map((tool) => tool.name)
+      })
+    })
+  }
+
+  const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
+
+  const transform = Schema.decodeEffect(codec)
+
+  return yield* (
+    transform(toolParams) as Effect.Effect<unknown, Schema.SchemaError>
+  ).pipe(Effect.mapError((error) =>
+    AiError.make({
+      module: "OpenAiLanguageModel",
+      method: "makeResponse",
+      reason: new AiError.ToolParameterValidationError({
+        toolName,
+        toolParams,
+        description: error.issue.toString()
+      })
+    })
+  ))
+})
 
 const tryJsonSchema = <S extends Schema.Constraint>(schema: S, method: string) =>
   Effect.try({
