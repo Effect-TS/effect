@@ -36,7 +36,7 @@ import * as Headers from "../http/Headers.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
-import type * as Socket from "../socket/Socket.ts"
+import * as Socket from "../socket/Socket.ts"
 import * as SocketServer from "../socket/SocketServer.ts"
 import * as Transferable from "../workers/Transferable.ts"
 import type { WorkerError } from "../workers/WorkerError.ts"
@@ -1465,6 +1465,9 @@ const makeSocketProtocol: Effect.Effect<
           step: constVoid
         })
       } catch (cause) {
+        if (cause instanceof RpcSerialization.MaxBufferSizeExceeded) {
+          return writeRaw(new Socket.CloseEvent(1009, cause.message))
+        }
         return writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
       }
     }).pipe(

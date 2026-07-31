@@ -11,6 +11,7 @@
  */
 import * as Msgpackr from "msgpackr"
 import * as Context from "../../Context.ts"
+import * as Data from "../../Data.ts"
 import * as Layer from "../../Layer.ts"
 import * as Predicate from "../../Predicate.ts"
 import { hasProperty } from "../../Predicate.ts"
@@ -48,6 +49,37 @@ export interface Parser {
 }
 
 /**
+ * Error raised when a streaming parser retains more data than its configured
+ * buffer limit.
+ *
+ * @category errors
+ * @since 4.0.0
+ */
+export class MaxBufferSizeExceeded extends Data.TaggedError("MaxBufferSizeExceeded")<{
+  readonly maxBufferSize: number
+}> {
+  override get message() {
+    return `RPC serialization buffer exceeded the maximum size of ${this.maxBufferSize}`
+  }
+}
+
+/**
+ * Options shared by streaming RPC serialization formats.
+ *
+ * @category serialization
+ * @since 4.0.0
+ */
+export interface StreamingOptions {
+  /**
+   * Maximum number of bytes or string code units retained for an incomplete frame.
+   * The default is 16 MiB.
+   */
+  readonly maxBufferSize?: number | undefined
+}
+
+const defaultMaxBufferSize = 16 * 1024 * 1024
+
+/**
  * JSON RPC serialization for whole message payloads. It does not include
  * message framing, so it is intended for transports that frame responses
  * themselves.
@@ -77,41 +109,54 @@ export const json: RpcSerialization["Service"] = RpcSerialization.of({
  * @category serialization
  * @since 4.0.0
  */
-export const ndjson: RpcSerialization["Service"] = RpcSerialization.of({
-  contentType: "application/ndjson",
-  includesFraming: true,
-  makeUnsafe: () => {
-    const decoder = new TextDecoder()
-    let buffer = ""
-    return ({
-      decode: (bytes) => {
-        buffer += typeof bytes === "string" ? bytes : decoder.decode(bytes)
-        let position = 0
-        let nlIndex = buffer.indexOf("\n", position)
-        const items: Array<unknown> = []
-        while (nlIndex !== -1) {
-          const item = JSON.parse(buffer.slice(position, nlIndex))
-          items.push(item)
-          position = nlIndex + 1
-          nlIndex = buffer.indexOf("\n", position)
-        }
-        buffer = buffer.slice(position)
-        return items
-      },
-      encode: (response) => {
-        if (Array.isArray(response)) {
-          if (response.length === 0) return undefined
-          let data = ""
-          for (let i = 0; i < response.length; i++) {
-            data += JSON.stringify(response[i]) + "\n"
-          }
-          return data
-        }
-        return JSON.stringify(response) + "\n"
+export const ndjson = (options?: StreamingOptions): RpcSerialization["Service"] => {
+  const maxBufferSize = options?.maxBufferSize ?? defaultMaxBufferSize
+  return RpcSerialization.of({
+    contentType: "application/ndjson",
+    includesFraming: true,
+    makeUnsafe: () => {
+      const decoder = new TextDecoder()
+      let buffer = ""
+      const failMaxBufferSize = (): never => {
+        buffer = ""
+        throw new MaxBufferSizeExceeded({ maxBufferSize })
       }
-    })
-  }
-})
+      return ({
+        decode: (bytes) => {
+          buffer += typeof bytes === "string" ? bytes : decoder.decode(bytes)
+          let position = 0
+          let nlIndex = buffer.indexOf("\n", position)
+          const items: Array<unknown> = []
+          while (nlIndex !== -1) {
+            if (nlIndex - position > maxBufferSize) {
+              failMaxBufferSize()
+            }
+            const item = JSON.parse(buffer.slice(position, nlIndex))
+            items.push(item)
+            position = nlIndex + 1
+            nlIndex = buffer.indexOf("\n", position)
+          }
+          buffer = buffer.slice(position)
+          if (buffer.length > maxBufferSize) {
+            failMaxBufferSize()
+          }
+          return items
+        },
+        encode: (response) => {
+          if (Array.isArray(response)) {
+            if (response.length === 0) return undefined
+            let data = ""
+            for (let i = 0; i < response.length; i++) {
+              data += JSON.stringify(response[i]) + "\n"
+            }
+            return data
+          }
+          return JSON.stringify(response) + "\n"
+        }
+      })
+    }
+  })
+}
 
 /**
  * Creates a JSON-RPC 2.0 serialization for RPC protocol messages without
@@ -156,12 +201,13 @@ export const jsonRpc = (options?: {
  */
 export const ndJsonRpc = (options?: {
   readonly contentType?: string | undefined
+  readonly maxBufferSize?: number | undefined
 }): RpcSerialization["Service"] =>
   RpcSerialization.of({
     contentType: options?.contentType ?? "application/json-rpc",
     includesFraming: true,
     makeUnsafe: () => {
-      const parser = ndjson.makeUnsafe()
+      const parser = ndjson({ maxBufferSize: options?.maxBufferSize }).makeUnsafe()
       const batches = new Map<string, {
         readonly size: number
         readonly responses: Map<string, RpcMessage.FromServerEncoded>
@@ -444,19 +490,29 @@ type JsonRpcMessage = JsonRpcRequest | JsonRpcResponse
  * @category serialization
  * @since 4.0.0
  */
-export const makeMsgPack = (options?: Msgpackr.Options | undefined): RpcSerialization["Service"] =>
-  RpcSerialization.of({
+export const makeMsgPack = (
+  options?: (Msgpackr.Options & StreamingOptions) | undefined
+): RpcSerialization["Service"] => {
+  const { maxBufferSize = defaultMaxBufferSize, ...msgpackOptions } = options ?? {}
+  return RpcSerialization.of({
     contentType: "application/msgpack",
     includesFraming: true,
     makeUnsafe: () => {
-      const unpackr = new Msgpackr.Unpackr(options)
-      const packr = new Msgpackr.Packr(options)
+      const unpackr = new Msgpackr.Unpackr(msgpackOptions)
+      const packr = new Msgpackr.Packr(msgpackOptions)
       const encoder = new TextEncoder()
       let incomplete: Uint8Array | undefined = undefined
+      const failMaxBufferSize = (): never => {
+        incomplete = undefined
+        throw new MaxBufferSizeExceeded({ maxBufferSize })
+      }
       return {
         decode(bytes) {
           let buf = typeof bytes === "string" ? encoder.encode(bytes) : bytes
           if (incomplete !== undefined) {
+            if (incomplete.length + buf.length > maxBufferSize) {
+              failMaxBufferSize()
+            }
             const prev = buf
             bytes = new Uint8Array(incomplete.length + buf.length)
             bytes.set(incomplete)
@@ -470,6 +526,9 @@ export const makeMsgPack = (options?: Msgpackr.Options | undefined): RpcSerializ
             const error = error_ as any
             if (error.incomplete) {
               incomplete = buf.subarray(error.lastPosition)
+              if (incomplete.length > maxBufferSize) {
+                failMaxBufferSize()
+              }
               return error.values ?? []
             }
             throw error_
@@ -479,6 +538,7 @@ export const makeMsgPack = (options?: Msgpackr.Options | undefined): RpcSerializ
       }
     }
   })
+}
 
 /**
  * Default MessagePack RPC serialization using record support and built-in
@@ -515,7 +575,7 @@ export const layerJson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeriali
  * @category serialization
  * @since 4.0.0
  */
-export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(ndjson)
+export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(ndjson())
 
 /**
  * RPC serialization layer that uses JSON-RPC for serialization.
@@ -536,6 +596,7 @@ export const layerJsonRpc = (options?: {
  */
 export const layerNdJsonRpc = (options?: {
   readonly contentType?: string | undefined
+  readonly maxBufferSize?: number | undefined
 }): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(ndJsonRpc(options))
 
 /**

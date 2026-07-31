@@ -31,6 +31,16 @@ const expectedJsonRpcSuccess = [{
   }
 }]
 
+const assertMaxBufferSizeExceeded = (f: () => unknown, maxBufferSize: number) => {
+  try {
+    f()
+    assert.fail("Expected MaxBufferSizeExceeded")
+  } catch (error) {
+    assert.instanceOf(error, RpcSerialization.MaxBufferSizeExceeded)
+    assert.strictEqual(error.maxBufferSize, maxBufferSize)
+  }
+}
+
 describe("RpcSerialization", () => {
   describe.sequential("jsonRpc inherited properties", () => {
     afterEach(() => {
@@ -76,6 +86,22 @@ describe("RpcSerialization", () => {
     const decoded = parser.decode("{\"a\":1}")
     assert.strictEqual(decoded.length, 1)
     assert.deepStrictEqual(decoded, [{ a: 1 }])
+  })
+
+  it("ndjson fails when an unterminated frame exceeds maxBufferSize", () => {
+    const parser = RpcSerialization.ndjson({ maxBufferSize: 4 }).makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("12"), [])
+    assert.deepStrictEqual(parser.decode("34"), [])
+    assertMaxBufferSizeExceeded(() => parser.decode("5"), 4)
+  })
+
+  it("ndJsonRpc forwards maxBufferSize to its ndjson framing parser", () => {
+    const parser = RpcSerialization.ndJsonRpc({ maxBufferSize: 4 }).makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("12"), [])
+    assert.deepStrictEqual(parser.decode("34"), [])
+    assert.throws(() => parser.decode("5"), RpcSerialization.MaxBufferSizeExceeded)
   })
 
   it("jsonRpc encodes a non-batched single response array as an object", () => {
@@ -221,5 +247,14 @@ describe("RpcSerialization", () => {
     const decoded = parser.decode(encoded as Uint8Array)
     assert.strictEqual(decoded.length, 1)
     assert.deepStrictEqual(decoded[0], payload)
+  })
+
+  it("makeMsgPack fails when incomplete frames exceed maxBufferSize", () => {
+    const parser = RpcSerialization.makeMsgPack({ maxBufferSize: 2 }).makeUnsafe()
+    const incompleteFrame = Uint8Array.of(0xd9)
+
+    assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+    assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+    assertMaxBufferSizeExceeded(() => parser.decode(incompleteFrame), 2)
   })
 })
