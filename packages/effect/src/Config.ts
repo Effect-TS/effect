@@ -640,7 +640,7 @@ export const unwrap = <T>(wrapped: Wrap<T>): Config<T> => {
 interface ConfigCursor {
   readonly provider: ConfigProvider.ConfigProvider
   readonly path: Path
-  readonly node: Option.Option<ConfigProvider.Node>
+  readonly node: ConfigProvider.Node | undefined
   readonly toString: () => string
 }
 
@@ -660,21 +660,21 @@ const loadCursor: (
 const loadChildCursor = (cursor: ConfigCursor, segment: string | number): Effect.Effect<ConfigCursor> =>
   loadCursor(cursor.provider, [...cursor.path, segment])
 
-const getScalar = (node: Option.Option<ConfigProvider.Node>): string | undefined => {
-  if (Option.isNone(node)) return undefined
-  switch (node.value._tag) {
+const getScalar = (node: ConfigProvider.Node | undefined): string | undefined => {
+  if (node === undefined) return undefined
+  switch (node._tag) {
     case "Value":
-      return node.value.value
+      return node.value
     case "Record":
     case "Array":
-      return node.value.value
+      return node.value
   }
 }
 
 const materializeOpaque: (cursor: ConfigCursor) => Effect.Effect<Schema.StringTree, SchemaIssue.Issue> = Effect
   .fnUntraced(function*(cursor) {
-    if (Option.isNone(cursor.node)) return undefined
-    const node = cursor.node.value
+    if (cursor.node === undefined) return undefined
+    const node = cursor.node
     switch (node._tag) {
       case "Value":
         return node.value
@@ -741,20 +741,20 @@ const isScalarInput = (ast: SchemaAST.AST): boolean => {
 
 const hasProviderInput = (
   ast: SchemaAST.AST,
-  node: Option.Option<ConfigProvider.Node>
+  node: ConfigProvider.Node | undefined
 ): boolean => {
   switch (ast._tag) {
     case "Objects":
-      return Option.isSome(node) && node.value._tag === "Record"
+      return node?._tag === "Record"
     case "Arrays":
-      return Option.isSome(node) && node.value._tag === "Array"
+      return node?._tag === "Array"
     case "Union":
       return ast.types.some((ast) => hasProviderInput(ast, node))
     case "Suspend":
       return hasProviderInput(ast.thunk(), node)
     case "Declaration":
     case "Any":
-      return Option.isSome(node)
+      return node !== undefined
     default:
       return getScalar(node) !== undefined
   }
@@ -765,10 +765,10 @@ const toConfigCursorAST = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
     case "Objects": {
       const matchesIndex = ast.indexSignatures.map((is) => SchemaParser._is(is.parameter))
       const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
-        if (Option.isNone(cursor.node) || cursor.node.value._tag !== "Record") {
+        if (cursor.node?._tag !== "Record") {
           return undefined
         }
-        const node = cursor.node.value
+        const node = cursor.node
         const keys = new Set<string>()
         for (const property of ast.propertySignatures) {
           if (typeof property.name === "string") keys.add(property.name)
@@ -781,7 +781,7 @@ const toConfigCursorAST = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
         const out: Record<string, ConfigCursor> = {}
         for (const key of keys) {
           const child = yield* loadChildCursor(cursor, key)
-          if (Option.isSome(child.node)) InternalRecord.assignProperty(out, key, child)
+          if (child.node !== undefined) InternalRecord.assignProperty(out, key, child)
         }
         return out
       })
@@ -789,11 +789,11 @@ const toConfigCursorAST = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
     }
     case "Arrays": {
       const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
-        if (Option.isNone(cursor.node) || cursor.node.value._tag !== "Array") {
+        if (cursor.node?._tag !== "Array") {
           return undefined
         }
         const out: Array<ConfigCursor> = []
-        for (let i = 0; i < cursor.node.value.length; i++) {
+        for (let i = 0; i < cursor.node.length; i++) {
           out.push(yield* loadChildCursor(cursor, i))
         }
         return out

@@ -827,11 +827,11 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           const sourceError = new ConfigProvider.SourceError({ message: "source unavailable" })
           const provider = ConfigProvider.make((path) => {
             if (path.length === 0) {
-              return Effect.succeed(Option.some(ConfigProvider.makeRecord(new Set(["value"]))))
+              return Effect.succeed(ConfigProvider.makeRecord(new Set(["value"])))
             }
             return path.length === 1 && path[0] === "value"
               ? Effect.fail(sourceError)
-              : Effect.succeed(Option.none())
+              : Effect.succeed(undefined)
           })
           const config = Config.all({
             recovered: Config.schema(Schema.Struct({ value: Schema.String })).pipe(
@@ -852,7 +852,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
         Effect.gen(function*() {
           const sourceError = new ConfigProvider.SourceError({ message: "source unavailable" })
           const provider = ConfigProvider.make((path) =>
-            path.length === 0 ? Effect.fail(sourceError) : Effect.succeed(Option.none())
+            path.length === 0 ? Effect.fail(sourceError) : Effect.succeed(undefined)
           )
           const fallback = { recovered: { value: "default" }, required: "default" }
           const config = Config.all({
@@ -873,8 +873,8 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           const provider = ConfigProvider.make((path) =>
             Effect.succeed(
               path.length === 1 && path[0] === "value"
-                ? Option.some(ConfigProvider.makeRecord(new Set()))
-                : Option.none()
+                ? ConfigProvider.makeRecord(new Set())
+                : undefined
             )
           )
           const config = Config.string("value")
@@ -1389,15 +1389,15 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
             const primary = ConfigProvider.make((path) =>
               Effect.succeed(
                 path.length === 0
-                  ? Option.some(ConfigProvider.makeRecord(new Set()))
-                  : Option.none()
+                  ? ConfigProvider.makeRecord(new Set())
+                  : undefined
               )
             )
             const fallback = ConfigProvider.make((path) =>
               Effect.succeed(
                 path.length === 1 && path[0] === "host"
-                  ? Option.some(ConfigProvider.makeValue("localhost"))
-                  : Option.none()
+                  ? ConfigProvider.makeValue("localhost")
+                  : undefined
               )
             )
             const provider = ConfigProvider.orElse(primary, fallback)
@@ -1413,12 +1413,10 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
             const sourceError = new ConfigProvider.SourceError({ message: "unrelated key was loaded" })
             const provider = ConfigProvider.make((path) => {
               if (path.length === 0) {
-                return Effect.succeed(
-                  Option.some(ConfigProvider.makeRecord(new Set(["wanted", "unrelated"])))
-                )
+                return Effect.succeed(ConfigProvider.makeRecord(new Set(["wanted", "unrelated"])))
               }
               if (path[0] === "wanted") {
-                return Effect.succeed(Option.some(ConfigProvider.makeValue("value")))
+                return Effect.succeed(ConfigProvider.makeValue("value"))
               }
               return Effect.fail(sourceError)
             })
@@ -1434,12 +1432,10 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
             const sourceError = new ConfigProvider.SourceError({ message: "non-matching key was loaded" })
             const provider = ConfigProvider.make((path) => {
               if (path.length === 0) {
-                return Effect.succeed(
-                  Option.some(ConfigProvider.makeRecord(new Set(["wanted", "unrelated"])))
-                )
+                return Effect.succeed(ConfigProvider.makeRecord(new Set(["wanted", "unrelated"])))
               }
               if (path[0] === "wanted") {
-                return Effect.succeed(Option.some(ConfigProvider.makeValue("value")))
+                return Effect.succeed(ConfigProvider.makeValue("value"))
               }
               return Effect.fail(sourceError)
             })
@@ -1470,12 +1466,12 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           Effect.gen(function*() {
             const provider = ConfigProvider.make((path) => {
               if (path.length === 0) {
-                return Effect.succeed(Option.some(ConfigProvider.makeArray(2)))
+                return Effect.succeed(ConfigProvider.makeArray(2))
               }
               return Effect.succeed(
                 path[0] === 0
-                  ? Option.some(ConfigProvider.makeValue("value"))
-                  : Option.none()
+                  ? ConfigProvider.makeValue("value")
+                  : undefined
               )
             })
 
@@ -1538,12 +1534,12 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           Effect.gen(function*() {
             const provider = ConfigProvider.make((path) => {
               if (path.length === 1 && path[0] === "value") {
-                return Effect.succeed(Option.some(ConfigProvider.makeArray(1, "scalar")))
+                return Effect.succeed(ConfigProvider.makeArray(1, "scalar"))
               }
               if (path.length === 2 && path[0] === "value" && path[1] === 0) {
-                return Effect.succeed(Option.some(ConfigProvider.makeValue("element")))
+                return Effect.succeed(ConfigProvider.makeValue("element"))
               }
-              return Effect.succeedNone
+              return Effect.succeed(undefined)
             })
 
             const error = yield* Config.schema(Schema.Unknown, "value").parse(provider).pipe(Effect.flip)
@@ -1674,9 +1670,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
             const sourceError = new ConfigProvider.SourceError({ message: "source unavailable" })
             const provider = ConfigProvider.make((path) => {
               if (path.length === 1 && path[0] === "value") {
-                return Effect.succeed(
-                  Option.some(ConfigProvider.makeRecord(new Set(["child"]), "scalar"))
-                )
+                return Effect.succeed(ConfigProvider.makeRecord(new Set(["child"]), "scalar"))
               }
               return Effect.fail(sourceError)
             })

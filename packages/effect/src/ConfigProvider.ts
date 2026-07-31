@@ -17,7 +17,6 @@ import { format } from "./Formatter.ts"
 import { dual, flow } from "./Function.ts"
 import { PipeInspectableProto } from "./internal/core.ts"
 import * as Layer from "./Layer.ts"
-import * as Option from "./Option.ts"
 import * as Path_ from "./Path.ts"
 import type { Pipeable } from "./Pipeable.ts"
 import type { PlatformError } from "./PlatformError.ts"
@@ -42,8 +41,8 @@ import * as Str from "./String.ts"
  * `value`. `Array` is an indexed container with a known `length` and may also
  * carry an optional co-located `value`.
  *
- * Provider lookups use `Option<Node>` because a missing node is an outcome of
- * the lookup. Within a node that was found, `value: undefined` has a narrower
+ * Provider lookups return `undefined` when no node exists at the requested
+ * path. Within a node that was found, `value: undefined` has a narrower
  * structural meaning: the container exists but has no co-located scalar value.
  *
  * @see {@link makeValue} – construct a `Value` node
@@ -183,7 +182,7 @@ export function makeArray(length: number, value?: string): Node {
  * **Gotchas**
  *
  * Do not use `SourceError` for "key not found". That case is represented by
- * returning `Option.none()` from `load`.
+ * returning `undefined` from `load`.
  *
  * **Example** (Failing with a SourceError)
  *
@@ -246,8 +245,8 @@ export type Path = ReadonlyArray<string | number>
  *
  * `load(path)` is the semantic lookup operation used by the `Config` module.
  * It applies provider transformations and composition before consulting the
- * underlying source. `Option.none()` means "not found", `Option.some(node)`
- * means the path exists, and `SourceError` means the source itself failed.
+ * underlying source. `undefined` means "not found", a `Node` means the path
+ * exists, and `SourceError` means the source itself failed.
  *
  * `mapInput(f)` is the provider's path-transformation capability. Keeping this
  * capability on the provider allows source and composite providers to preserve
@@ -269,9 +268,8 @@ export type Path = ReadonlyArray<string | number>
  */
 export interface ConfigProvider extends Pipeable {
   /**
-   * Returns `Option.some(node)` when `path` exists or `Option.none()` when it
-   * does not. Fails with `SourceError` when the underlying source cannot be
-   * read.
+   * Returns a `Node` when `path` exists or `undefined` when it does not. Fails
+   * with `SourceError` when the underlying source cannot be read.
    *
    * **When to use**
    *
@@ -280,12 +278,12 @@ export interface ConfigProvider extends Pipeable {
    *
    * **Details**
    *
-   * Lookup absence uses `Option` because it controls provider composition,
-   * such as whether {@link orElse} consults its fallback. An optional `value`
-   * inside a found `Record` or `Array` node remains `undefined` because it
-   * describes the shape of that node rather than the outcome of the lookup.
+   * Lookup absence controls provider composition, such as whether
+   * {@link orElse} consults its fallback. An optional `value` inside a found
+   * `Record` or `Array` node remains `undefined` because it describes the shape
+   * of that node rather than the outcome of the lookup.
    */
-  readonly load: (path: Path) => Effect.Effect<Option.Option<Node>, SourceError>
+  readonly load: (path: Path) => Effect.Effect<Node | undefined, SourceError>
 
   /**
    * Returns a provider that applies `f` to lookup paths after any existing path
@@ -357,7 +355,7 @@ const Proto = {
 const identityPath = (path: Path): Path => path
 
 function makeProvider(
-  load: (path: Path) => Effect.Effect<Option.Option<Node>, SourceError>,
+  load: (path: Path) => Effect.Effect<Node | undefined, SourceError>,
   mapInput: (f: (path: Path) => Path) => ConfigProvider
 ): ConfigProvider {
   const self = Object.create(Proto)
@@ -367,7 +365,7 @@ function makeProvider(
 }
 
 function makeSource(
-  get: (path: Path) => Effect.Effect<Option.Option<Node>, SourceError>,
+  get: (path: Path) => Effect.Effect<Node | undefined, SourceError>,
   transform: (path: Path) => Path
 ): ConfigProvider {
   return makeProvider(
@@ -381,7 +379,7 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
     (path) =>
       Effect.flatMap(
         first.load(path),
-        (node) => Option.isSome(node) ? Effect.succeed(node) : second.load(path)
+        (node) => node !== undefined ? Effect.succeed(node) : second.load(path)
       ),
     (f) => makeOrElse(first.mapInput(f), second.mapInput(f))
   )
@@ -398,9 +396,9 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  * **Details**
  *
  * The `get` callback receives a `Path` and must return
- * `Effect<Option<Node>, SourceError>`. Return `Option.none()` when the path
- * does not exist, `Option.some(node)` when it does, and fail with `SourceError`
- * only when the source cannot be read.
+ * `Effect<Node | undefined, SourceError>`. Return `undefined` when the path does
+ * not exist, a `Node` when it does, and fail with `SourceError` only when the
+ * source cannot be read.
  *
  * Providers created by `make` also implement the path-transformation
  * capability used by {@link mapInput}, {@link constantCase}, and
@@ -409,7 +407,7 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  * **Example** (Creating a simple in-memory provider)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect, Option } from "effect"
+ * import { ConfigProvider, Effect } from "effect"
  *
  * const data: Record<string, string> = {
  *   host: "localhost",
@@ -420,13 +418,11 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  *   const key = path.join(".")
  *   const value = data[key]
  *   return Effect.succeed(
- *     value !== undefined
- *       ? Option.some(ConfigProvider.makeValue(value))
- *       : Option.none()
+ *     value !== undefined ? ConfigProvider.makeValue(value) : undefined
  *   )
  * })
  *
- * Effect.runSync(provider.load(["host"])) // => Option.some(ConfigProvider.makeValue("localhost"))
+ * Effect.runSync(provider.load(["host"])) // => ConfigProvider.makeValue("localhost")
  * ```
  *
  * @see {@link fromEnv} – pre-built provider for environment variables
@@ -435,12 +431,12 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  * @category constructors
  * @since 4.0.0
  */
-export function make(get: (path: Path) => Effect.Effect<Option.Option<Node>, SourceError>): ConfigProvider {
+export function make(get: (path: Path) => Effect.Effect<Node | undefined, SourceError>): ConfigProvider {
   return makeSource(get, identityPath)
 }
 
 /**
- * Returns a provider that falls back to `that` when `self` returns `None`
+ * Returns a provider that falls back to `that` when `self` returns `undefined`
  * for a path.
  *
  * **When to use**
@@ -456,13 +452,13 @@ export function make(get: (path: Path) => Effect.Effect<Option.Option<Node>, Sou
  *
  * **Gotchas**
  *
- * The fallback only runs when the path is not found (`Option.none()`). A
+ * The fallback only runs when the path is not found (`undefined`). A
  * `SourceError` from `self` is not caught; it propagates immediately.
  *
  * **Example** (Falling back to a default provider)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect, Option } from "effect"
+ * import { ConfigProvider, Effect } from "effect"
  *
  * const envProvider = ConfigProvider.fromEnv({
  *   env: { HOST: "prod.example.com" }
@@ -471,9 +467,9 @@ export function make(get: (path: Path) => Effect.Effect<Option.Option<Node>, Sou
  *
  * const combined = ConfigProvider.orElse(envProvider, defaults)
  *
- * const host = Option.getOrThrow(Effect.runSync(combined.load(["HOST"])))
- * const port = Option.getOrThrow(Effect.runSync(combined.load(["PORT"])))
- * const values = [host.value, port.value] // => ["prod.example.com", "3000"]
+ * const host = Effect.runSync(combined.load(["HOST"]))
+ * const port = Effect.runSync(combined.load(["PORT"]))
+ * const values = [host?.value, port?.value] // => ["prod.example.com", "3000"]
  * ```
  *
  * @see {@link layerAdd} – install a fallback provider via a Layer
@@ -512,7 +508,7 @@ export const orElse: {
  * **Example** (Uppercasing path segments)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect, Option } from "effect"
+ * import { ConfigProvider, Effect } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: { APP_HOST: "localhost" }
@@ -524,8 +520,8 @@ export const orElse: {
  *   )
  * )
  *
- * const node = Option.getOrThrow(Effect.runSync(upper.load(["app_host"])))
- * node.value // => "localhost"
+ * const node = Effect.runSync(upper.load(["app_host"]))
+ * node?.value // => "localhost"
  * ```
  *
  * @see {@link constantCase} – a preset that converts to `CONSTANT_CASE`
@@ -559,15 +555,15 @@ export const mapInput: {
  * **Example** (Resolving camelCase keys to env vars)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect, Option } from "effect"
+ * import { ConfigProvider, Effect } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: { DATABASE_HOST: "localhost" }
  * }).pipe(ConfigProvider.constantCase)
  *
  * // path ["databaseHost"] now resolves to env var DATABASE_HOST
- * const node = Option.getOrThrow(Effect.runSync(provider.load(["databaseHost"])))
- * node.value // => "localhost"
+ * const node = Effect.runSync(provider.load(["databaseHost"]))
+ * node?.value // => "localhost"
  * ```
  *
  * @see {@link mapInput} – for arbitrary path transformations
@@ -604,7 +600,7 @@ export const constantCase: (self: ConfigProvider) => ConfigProvider = mapInput((
  * **Example** (Nesting under a prefix)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect, Option } from "effect"
+ * import { ConfigProvider, Effect } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: { APP_HOST: "localhost", APP_PORT: "3000" }
@@ -612,8 +608,8 @@ export const constantCase: (self: ConfigProvider) => ConfigProvider = mapInput((
  *
  * // Lookups for ["HOST"] now resolve to ["APP", "HOST"]
  * const scoped = ConfigProvider.nested(provider, "APP")
- * const node = Option.getOrThrow(Effect.runSync(scoped.load(["HOST"])))
- * node.value // => "localhost"
+ * const node = Effect.runSync(scoped.load(["HOST"]))
+ * node?.value // => "localhost"
  * ```
  *
  * @see {@link mapInput} – for arbitrary path transformations
@@ -685,7 +681,7 @@ export const layer = <E = never, R = never>(
  * **Details**
  *
  * By default, the new provider acts as a fallback and is consulted only when
- * the current provider returns `Option.none()`. Set `asPrimary: true` to make
+ * the current provider returns `undefined`. Set `asPrimary: true` to make
  * the new provider the primary source, with the existing one as fallback.
  *
  * **Example** (Adding default values)
@@ -739,7 +735,7 @@ export const layerAdd = <E = never, R = never>(
  * **Details**
  *
  * Path traversal follows standard JS rules: string segments index into object
- * keys, numeric segments index into arrays. Returns `Option.none()` for any
+ * keys, numeric segments index into arrays. Returns `undefined` for any
  * path that cannot be resolved. Never fails with `SourceError`.
  *
  * Primitive values (`number`, `boolean`, `bigint`) are stringified via
@@ -784,7 +780,7 @@ export function fromUnknown(root: unknown, options?: {
   readonly preserveEmptyStrings?: boolean | undefined
 }): ConfigProvider {
   const preserveEmptyStrings = options?.preserveEmptyStrings === true
-  return make((path) => Effect.succeed(Option.fromUndefinedOr(nodeAtJson(root, path, preserveEmptyStrings))))
+  return make((path) => Effect.succeed(nodeAtJson(root, path, preserveEmptyStrings)))
 }
 
 function nodeAtJson(root: unknown, path: Path, preserveEmptyStrings: boolean): Node | undefined {
@@ -902,7 +898,7 @@ export function fromEnv(options?: {
   const preserveEmptyStrings = options?.preserveEmptyStrings === true
   const trie = buildEnvTrie(env)
 
-  return make((path) => Effect.succeed(Option.fromUndefinedOr(nodeAtEnv(trie, env, path, preserveEmptyStrings))))
+  return make((path) => Effect.succeed(nodeAtEnv(trie, env, path, preserveEmptyStrings)))
 }
 
 type EnvTrieNode = {
@@ -993,7 +989,7 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  * **Example** (Parsing .env contents)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect, Option } from "effect"
+ * import { ConfigProvider, Effect } from "effect"
  *
  * const contents = `
  * HOST=localhost
@@ -1002,8 +998,8 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  * `
  *
  * const provider = ConfigProvider.fromDotEnvContents(contents)
- * const port = Option.getOrThrow(Effect.runSync(provider.load(["PORT"])))
- * port.value // => "3000"
+ * const port = Effect.runSync(provider.load(["PORT"]))
+ * port?.value // => "3000"
  * ```
  *
  * @see {@link fromDotEnv} – loads a `.env` file from disk
@@ -1141,7 +1137,7 @@ function searchLast(str: string, rgx: RegExp): number {
  * **Example** (Loading a .env file)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect, FileSystem, Option } from "effect"
+ * import { ConfigProvider, Effect, FileSystem } from "effect"
  *
  * const fileSystem = FileSystem.makeNoop({
  *   readFileString: () => Effect.succeed("HOST=localhost")
@@ -1155,7 +1151,7 @@ function searchLast(str: string, rgx: RegExp): number {
  * const node = await Effect.runPromise(
  *   Effect.provideService(program, FileSystem.FileSystem, fileSystem)
  * )
- * Option.getOrThrow(node).value // => "localhost"
+ * node?.value // => "localhost"
  * ```
  *
  * @see {@link fromDotEnvContents} – parse a `.env` string directly
@@ -1190,7 +1186,7 @@ export const fromDotEnv: (options?: {
  * Resolution tries a regular file first and returns a `Value` node for
  * non-empty trimmed file contents. If the file read fails, it tries a directory
  * and returns a `Record` node with immediate child names as keys. If both fail
- * with `NotFound`, it returns `Option.none()`. Other platform failures return
+ * with `NotFound`, it returns `undefined`. Other platform failures return
  * `SourceError`.
  *
  * Requires `Path` and `FileSystem` in the Effect context. Defaults to root
@@ -1204,7 +1200,7 @@ export const fromDotEnv: (options?: {
  * **Example** (Reading config from a directory)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect, FileSystem, Option, Path } from "effect"
+ * import { ConfigProvider, Effect, FileSystem, Path } from "effect"
  *
  * const fileSystem = FileSystem.makeNoop({
  *   readFileString: (path) =>
@@ -1226,7 +1222,7 @@ export const fromDotEnv: (options?: {
  *     Effect.provideService(FileSystem.FileSystem, fileSystem)
  *   )
  * )
- * Option.getOrThrow(node).value // => "localhost"
+ * node?.value // => "localhost"
  * ```
  *
  * @see {@link fromEnv} – for environment variables
@@ -1276,8 +1272,7 @@ export const fromDir: (options?: {
           message: `Failed to read file at ${platformPath.join(rootPath, ...path.map(String))}`,
           cause
         })
-      ),
-      Effect.map(Option.fromUndefinedOr)
+      )
     )
   })
 })

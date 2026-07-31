@@ -314,13 +314,13 @@ For reusable codecs you can pass directly to `Config.schema`:
 
 The concrete built-in source providers `fromEnv`, `fromDotEnvContents`, `fromDotEnv`, `fromUnknown`, and `fromDir` treat literal empty strings as missing values by default when they are loaded as values. Container discovery still reflects the source structure, so a key or file can appear in a `Record` or `Array` node and then load as missing. Pass `{ preserveEmptyStrings: true }` to preserve empty strings as explicit values.
 
-At the raw provider interface, `load(path)` succeeds with an `Option<Node>`:
-`Option.some(node)` means the path exists, while `Option.none()` means it does
-not. A `SourceError` represents a failure to read the source and remains in the
-Effect error channel.
+At the raw provider interface, `load(path)` succeeds with `Node | undefined`: a
+`Node` means the path exists, while `undefined` means it does not. A
+`SourceError` represents a failure to read the source and remains in the Effect
+error channel.
 
-This lookup-level `Option` is distinct from the `value` field of a found
-`Record` or `Array` node. Such a container can exist while
+Lookup-level `undefined` is distinct from the `value` field of a found `Record`
+or `Array` node. Such a container can exist while
 `node.value === undefined`, which means that it has children but no co-located
 scalar value.
 
@@ -442,14 +442,14 @@ const program = Effect.gen(function*() {
 
 Requires `Path` and `FileSystem` in the Effect context.
 
-Missing files and directories return `Option.none()`, so fallback providers can handle the path. Empty files also return `Option.none()` by default after trimming their contents, while directory listings still report the file names present on disk; pass `{ preserveEmptyStrings: true }` to preserve them as `Value("")`. Other file-system failures are reported as `SourceError`.
+Missing files and directories return `undefined`, so fallback providers can handle the path. Empty files also return `undefined` by default after trimming their contents, while directory listings still report the file names present on disk; pass `{ preserveEmptyStrings: true }` to preserve them as `Value("")`. Other file-system failures are reported as `SourceError`.
 
 ### `ConfigProvider.make` — Custom Sources
 
 Build a provider from any backing store:
 
 ```ts
-import { ConfigProvider, Effect, Option } from "effect"
+import { ConfigProvider, Effect } from "effect"
 
 const data: Record<string, string> = {
   host: "localhost",
@@ -460,23 +460,21 @@ const provider = ConfigProvider.make((path) => {
   const key = path.join(".")
   const value = data[key]
   return Effect.succeed(
-    value !== undefined
-      ? Option.some(ConfigProvider.makeValue(value))
-      : Option.none()
+    value !== undefined ? ConfigProvider.makeValue(value) : undefined
   )
 })
 ```
 
-Return `Option.none()` for "not found" and `Option.some(node)` for a node that
-exists. Only fail with `SourceError` when the source itself cannot be read.
-Providers created with `make` automatically support the path-transformation
-behavior used by `mapInput`, `constantCase`, and `nested`.
+Return `undefined` for "not found" and a `Node` for a path that exists. Only
+fail with `SourceError` when the source itself cannot be read. Providers created
+with `make` automatically support the path-transformation behavior used by
+`mapInput`, `constantCase`, and `nested`.
 
 ## ConfigProvider Combinators
 
 ### `ConfigProvider.orElse` — Fallback Sources
 
-Falls back to a second provider when the first returns `Option.none()` (path not found). Does **not** catch `SourceError`.
+Falls back to a second provider when the first returns `undefined` (path not found). Does **not** catch `SourceError`.
 
 ```ts
 import { ConfigProvider } from "effect"
