@@ -904,7 +904,7 @@ const NumberFromString = Schema.String.pipe(
   Schema.decodeTo(Schema.Number, {
     decode: SchemaGetter.transformOrFail((s) => {
       const n = parseFloat(s)
-      if (n === undefined) {
+      if (isNaN(parsed)) {
         return Effect.fail(new SchemaIssue.InvalidValue(Option.some(s)))
       }
       return Effect.succeed(n)
