@@ -471,6 +471,10 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
   mutable: boolean
 }
 
+interface ContextImpl<in Services> extends Context<Services> {
+  readonly _mapUnsafe: ReadonlyMap<string, any>
+}
+
 /**
  * Creates a `Context` from an existing service map.
  *
@@ -503,16 +507,19 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
  * @since 4.0.0
  */
 export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>): Context<Services> => {
-  const self = Object.create(Proto)
-  self.mapUnsafe = mapUnsafe
+  const self: ContextImpl<Services> = Object.create(Proto)
+  self._mapUnsafe = mapUnsafe
   self.mutable = false
   return self
 }
 
-const Proto: Omit<Context<never>, "mapUnsafe" | "mutable"> = {
+const Proto: Omit<ContextImpl<never>, "_mapUnsafe" | "mutable"> = {
   ...PipeInspectableProto,
   [TypeId]: {
     _Services: (_: never) => _
+  },
+  get mapUnsafe() {
+    return this._mapUnsafe
   },
   toJSON(this: Context<never>) {
     return {
