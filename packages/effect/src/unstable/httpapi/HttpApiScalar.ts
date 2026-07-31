@@ -87,12 +87,6 @@ export type ScalarConfig = {
   /**
    * Path to a favicon image.
    *
-   * **Example** (Setting a relative favicon)
-   *
-   * ```ts import.meta.vitest
-   * const favicon = "/favicon.svg" // => "/favicon.svg"
-   * ```
-   *
    * @default undefined
    */
   favicon?: string
@@ -106,12 +100,6 @@ export type ScalarConfig = {
    *
    * Browsers can derive the origin from `window.location.origin`; server
    * rendering needs this value supplied explicitly.
-   *
-   * **Example** (Setting a local server URL)
-   *
-   * ```ts import.meta.vitest
-   * const baseServerURL = "http://localhost:3000" // => "http://localhost:3000"
-   * ```
    *
    * @default undefined
    */

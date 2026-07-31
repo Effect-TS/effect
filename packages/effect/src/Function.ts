@@ -589,16 +589,6 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * ) // => "result: 4"
  * ```
  *
- * **Example** (Chaining methods before conversion)
- *
- * ```ts import.meta.vitest
- * const numbers = [1, 2, 3, 4]
- * const double = (n: number) => n * 2
- * const greaterThanFour = (n: number) => n > 4
- *
- * numbers.map(double).filter(greaterThanFour) // => [6, 8]
- * ```
- *
  * **Example** (Rewriting method chains with pipe)
  *
  * The same transformation can be written with data-last functions.
@@ -615,34 +605,6 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  *   Array.map(double),
  *   Array.filter(greaterThanFour)
  * ) // => [6, 8]
- * ```
- *
- * **Example** (Chaining arithmetic operations)
- *
- * ```ts import.meta.vitest
- * import { pipe } from "effect"
- *
- * // Define simple arithmetic operations
- * const increment = (x: number) => x + 1
- * const double = (x: number) => x * 2
- * const subtractTen = (x: number) => x - 10
- *
- * // Sequentially apply these operations using `pipe`
- * pipe(5, increment, double, subtractTen) // => 2
- * ```
- *
- * **Example** (Building a simple transformation pipeline)
- *
- * ```ts import.meta.vitest
- * import { pipe } from "effect"
- *
- * // Simple transformation pipeline
- * pipe(
- *   5,
- *   (x) => x * 2, // 10
- *   (x) => x + 1, // 11
- *   (x) => x.toString() // "11"
- * ) // => "11"
  * ```
  *
  * @category combinators

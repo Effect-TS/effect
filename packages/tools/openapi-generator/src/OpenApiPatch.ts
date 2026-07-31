@@ -36,9 +36,9 @@ import * as Yaml from "yaml"
  * **Example** (Creating a parse error)
  *
  * ```ts import.meta.vitest
- * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
+ * import { JsonPatchParseError } from "@effect/openapi-generator/OpenApiPatch"
  *
- * const error = new OpenApiPatch.JsonPatchParseError({
+ * const error = new JsonPatchParseError({
  *   source: "./patches/fix.json",
  *   reason: "Unexpected token at position 42"
  * })
@@ -73,9 +73,9 @@ export class JsonPatchParseError extends Schema.ErrorClass<JsonPatchParseError>(
  * **Example** (Creating a validation error)
  *
  * ```ts import.meta.vitest
- * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
+ * import { JsonPatchValidationError } from "@effect/openapi-generator/OpenApiPatch"
  *
- * const error = new OpenApiPatch.JsonPatchValidationError({
+ * const error = new JsonPatchValidationError({
  *   source: "inline",
  *   reason: "Expected 'add' | 'remove' | 'replace' at [0].op, got 'copy'"
  * })
@@ -109,9 +109,9 @@ export class JsonPatchValidationError extends Schema.ErrorClass<JsonPatchValidat
  * **Example** (Creating an application error)
  *
  * ```ts import.meta.vitest
- * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
+ * import { JsonPatchApplicationError } from "@effect/openapi-generator/OpenApiPatch"
  *
- * const error = new OpenApiPatch.JsonPatchApplicationError({
+ * const error = new JsonPatchApplicationError({
  *   source: "./patches/fix.json",
  *   operationIndex: 2,
  *   operation: "remove",
@@ -152,18 +152,18 @@ export class JsonPatchApplicationError
  * **Example** (Creating an aggregate error)
  *
  * ```ts import.meta.vitest
- * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
+ * import { JsonPatchAggregateError, JsonPatchApplicationError } from "@effect/openapi-generator/OpenApiPatch"
  *
- * const error = new OpenApiPatch.JsonPatchAggregateError({
+ * const error = new JsonPatchAggregateError({
  *   errors: [
- *     new OpenApiPatch.JsonPatchApplicationError({
+ *     new JsonPatchApplicationError({
  *       source: "./fix.json",
  *       operationIndex: 0,
  *       operation: "replace",
  *       path: "/info/x",
  *       reason: "Property does not exist"
  *     }),
- *     new OpenApiPatch.JsonPatchApplicationError({
+ *     new JsonPatchApplicationError({
  *       source: "./fix.json",
  *       operationIndex: 2,
  *       operation: "remove",
@@ -281,9 +281,9 @@ export const JsonPatchOperation: Schema.Codec<JsonPatch.JsonPatchOperation> = Sc
  *
  * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
+ * import { JsonPatchDocument } from "@effect/openapi-generator/OpenApiPatch"
  *
- * const patch = Schema.decodeUnknownSync(OpenApiPatch.JsonPatchDocument)([
+ * const patch = Schema.decodeUnknownSync(JsonPatchDocument)([
  *   { op: "add", path: "/foo", value: "bar" },
  *   { op: "remove", path: "/baz" },
  *   { op: "replace", path: "/qux", value: 42 }
@@ -434,10 +434,10 @@ const parseInlinePatch = Effect.fn("parseInlinePatch")(function*(input: string) 
  *
  * ```ts import.meta.vitest
  * import { Effect } from "effect"
- * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
+ * import { parsePatchInput } from "@effect/openapi-generator/OpenApiPatch"
  *
  * // From inline JSON
- * const fromInline = OpenApiPatch.parsePatchInput(
+ * const fromInline = parsePatchInput(
  *   '[{"op":"replace","path":"/info/title","value":"My API"}]'
  * )
  *
@@ -479,7 +479,7 @@ export const parsePatchInput = Effect.fn("parsePatchInput")(function*(input: str
  *
  * ```ts import.meta.vitest
  * import { Effect } from "effect"
- * import * as OpenApiPatch from "@effect/openapi-generator/OpenApiPatch"
+ * import { applyPatches } from "@effect/openapi-generator/OpenApiPatch"
  *
  * const document = { info: { title: "Old Title" }, paths: {} }
  * const patches = [
@@ -490,7 +490,7 @@ export const parsePatchInput = Effect.fn("parsePatchInput")(function*(input: str
  * ]
  *
  * const program = Effect.gen(function*() {
- *   const result = yield* OpenApiPatch.applyPatches(patches, document)
+ *   const result = yield* applyPatches(patches, document)
  *   return (result as typeof document).info.title
  * })
  *
