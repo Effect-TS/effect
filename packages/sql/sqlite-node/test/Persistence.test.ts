@@ -1,11 +1,12 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
-import { expect, it } from "@effect/vitest"
+import { assert, expect, it } from "@effect/vitest"
 import { Duration, Effect, FileSystem, Layer } from "effect"
+import * as SqlCleanupTest from "effect-test/unstable/persistence/SqlCleanupTest"
 import { TestClock } from "effect/testing"
 import { Persistence } from "effect/unstable/persistence"
 import { Reactivity } from "effect/unstable/reactivity"
-import type * as SqlClient from "effect/unstable/sql/SqlClient"
+import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 const ClientLayer = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -107,3 +108,60 @@ const suite = (name: string, layer: Layer.Layer<Persistence.BackingPersistence, 
 
 suite("table-per-store", Persistence.layerBackingSqlMultiTable)
 suite("single-table", Persistence.layerBackingSql)
+
+it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
+  it.effect("deletes expired entries in batches", () =>
+    Effect.gen(function*() {
+      const sql = (yield* SqlClient.SqlClient).withoutTransforms()
+      const table = sql("effect_persistence")
+      const expiredCount = sql<{ readonly count: number }>`
+        SELECT COUNT(*) AS count FROM ${table} WHERE store_id = 'expired'
+      `.pipe(Effect.map((rows) => rows[0].count))
+      yield* sql`
+        CREATE TABLE ${table} (
+          store_id TEXT NOT NULL,
+          id TEXT NOT NULL,
+          value TEXT NOT NULL,
+          expires INTEGER,
+          PRIMARY KEY (store_id, id)
+        )
+      `
+
+      const entries = Array.from({ length: SqlCleanupTest.expiredEntryCount }, (_, i) => ({
+        store_id: "expired",
+        id: String(i),
+        value: "{}",
+        expires: SqlCleanupTest.expiredAtEpoch
+      }))
+      yield* sql`INSERT INTO ${table} ${sql.insert(entries)}`.unprepared
+      yield* sql`
+        INSERT INTO ${table} (store_id, id, value, expires)
+        VALUES ('live', 'live', '{}', NULL), ('live', 'future', '{}', ${SqlCleanupTest.futureExpiresAt})
+      `
+
+      yield* Layer.build(Persistence.layerBackingSql).pipe(TestClock.withLive)
+
+      let expired = yield* SqlCleanupTest.waitForCount(
+        expiredCount,
+        (count) => count < SqlCleanupTest.expiredEntryCount
+      )
+      assert.strictEqual(expired, 1)
+
+      while (expired > 0) {
+        const previous = expired
+        expired = yield* SqlCleanupTest.waitForCount(expiredCount, (count) => count < previous)
+      }
+      assert.strictEqual(expired, 0)
+      const live = yield* sql<{ readonly count: number }>`
+        SELECT COUNT(*) AS count FROM ${table} WHERE store_id = 'live'
+      `
+      assert.strictEqual(live[0].count, 2)
+
+      const indexes = yield* sql<{ readonly count: number }>`
+        SELECT COUNT(*) AS count FROM sqlite_master
+        WHERE type = 'index'
+          AND name = 'effect_persistence_expires_idx'
+      `
+      assert.strictEqual(indexes[0].count, 1)
+    }), { timeout: SqlCleanupTest.testTimeout })
+})

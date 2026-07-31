@@ -1041,7 +1041,7 @@ const replyKind = {
 } as const satisfies Record<Reply.Reply<any>["_tag"], number | null>
 
 const replyFromRow = (row: ReplyRow): Reply.Encoded =>
-  Number(row.kind) === replyKind.WithExit ?
+  row.kind !== null && Number(row.kind) === replyKind.WithExit ?
     {
       _tag: "WithExit",
       id: String(row.id),

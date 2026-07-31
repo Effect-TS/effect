@@ -684,6 +684,23 @@ describe("Metric", () => {
         assert.strictEqual(result.max, Duration.toMillis(Duration.hours(1)))
         assert.strictEqual(result.sum, Duration.toMillis(Duration.hours(1)))
       }))
+
+    it.effect("uses monotonic time when wall time moves backward", () =>
+      Effect.gen(function*() {
+        const id = nextId()
+        const timer = Metric.timer(id)
+        yield* TestClock.setTime(1_000)
+        yield* Effect.gen(function*() {
+          yield* TestClock.adjust("100 millis")
+          yield* TestClock.setTime(0)
+        }).pipe(Effect.trackDuration(timer))
+
+        const result = yield* Metric.value(timer)
+        assert.strictEqual(result.count, 1)
+        assert.strictEqual(result.min, 100)
+        assert.strictEqual(result.max, 100)
+        assert.strictEqual(result.sum, 100)
+      }))
   })
 
   describe("trackDurationWith", () => {

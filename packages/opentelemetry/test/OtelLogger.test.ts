@@ -56,19 +56,22 @@ describe("Logger", () => {
       )
     })
 
-    it.effect("uses monotonic clock timestamps and keeps them aligned with spans", () => {
+    it.effect("uses wall-clock timestamps and keeps them aligned with spans", () => {
       const logExporter = new InMemoryLogRecordExporter()
       const spanExporter = new InMemorySpanExporter()
-      const timeNanos = 1_735_689_600_123_456_789n
+      const wallTimeNanos = 1_735_689_600_123_456_789n
+      const monotonicTimeNanos = 123_456_789n
       const expectedTime: readonly [number, number] = [
-        Number(timeNanos / BigInt(1_000_000_000)),
-        Number(timeNanos % BigInt(1_000_000_000))
+        Number(wallTimeNanos / BigInt(1_000_000_000)),
+        Number(wallTimeNanos % BigInt(1_000_000_000))
       ]
       const skewedClock: Clock.Clock = {
         currentTimeMillisUnsafe: () => 1,
         currentTimeMillis: Effect.succeed(1),
-        currentTimeNanosUnsafe: () => timeNanos,
-        currentTimeNanos: Effect.succeed(timeNanos),
+        currentTimeNanosUnsafe: () => wallTimeNanos,
+        currentTimeNanos: Effect.succeed(wallTimeNanos),
+        monotonicTimeNanosUnsafe: () => monotonicTimeNanos,
+        monotonicTimeNanos: Effect.succeed(monotonicTimeNanos),
         sleep: () => Effect.void
       }
 

@@ -13,6 +13,7 @@
     "bundle-compare-selected": "bash scripts/bundle-compare-selected.sh",
     "circular": "node scripts/circular.mjs",
     "test": "vitest",
+    "test-cluster": "vitest run --project cluster-integration",
     "doctest": "vitest --config vitest.docs.ts",
     "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",

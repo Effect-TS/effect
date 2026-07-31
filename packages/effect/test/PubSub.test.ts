@@ -399,6 +399,48 @@ describe("PubSub", () => {
     }))
 
   describe("replay", () => {
+    it("does not retain values published after the replay window is drained", () => {
+      const pubsub = PubSub.makeAtomicUnbounded<object>({ replay: 1 })
+      pubsub.publish({})
+      const replayWindow = pubsub.replayWindow()
+      replayWindow.take()
+
+      const slidOut = {}
+      pubsub.publish(slidOut)
+      pubsub.publish({})
+
+      assert.isFalse(retains(replayWindow, slidOut))
+    })
+
+    it("does not retain values published outside an undrained replay window", () => {
+      const pubsub = PubSub.makeAtomicUnbounded<object>({ replay: 1 })
+      const replayed = {}
+      pubsub.publish(replayed)
+      const replayWindow = pubsub.replayWindow()
+
+      const slidOut = {}
+      pubsub.publish(slidOut)
+      pubsub.publish({})
+
+      assert.isFalse(retains(replayWindow, slidOut))
+      assert.strictEqual(replayWindow.take(), replayed)
+    })
+
+    it("preserves replay order across multiple slides", () => {
+      const pubsub = PubSub.makeAtomicBounded<number>({ capacity: 4, replay: 3 })
+      pubsub.publishAll([1, 2, 3, 4, 5])
+      const subscription = pubsub.subscribe()
+      const replayWindow = pubsub.replayWindow()
+      pubsub.publishAll([6, 7, 8, 9])
+      for (const value of [10, 11, 12]) {
+        pubsub.slide()
+        pubsub.publish(value)
+      }
+
+      assert.deepStrictEqual(replayWindow.takeAll(), [6, 7, 8])
+      assert.deepStrictEqual(subscription.pollUpTo(Number.POSITIVE_INFINITY), [9, 10, 11, 12])
+    })
+
     it.effect("unbounded", () =>
       Effect.gen(function*() {
         const messages = [1, 2, 3, 4, 5]
@@ -474,6 +516,20 @@ describe("PubSub", () => {
         const sub3 = yield* PubSub.subscribe(pubsub)
         assert.deepStrictEqual(yield* PubSub.takeAll(sub3), [14, 15, 16])
       }))
+
+    it.effect("sliding preserves publish order with a lagging subscriber", () =>
+      Effect.scoped(
+        Effect.gen(function*() {
+          const pubsub = yield* PubSub.sliding<number>({ capacity: 4, replay: 3 })
+          yield* PubSub.subscribe(pubsub)
+          yield* PubSub.publishAll(pubsub, [1, 2])
+          const subscription = yield* PubSub.subscribe(pubsub)
+          yield* PubSub.publishAll(pubsub, [3, 4, 5])
+
+          const values = yield* PubSub.takeAll(subscription)
+          assert.isTrue(values.every((value, index) => index === 0 || values[index - 1] <= value))
+        })
+      ))
   })
 
   it.effect("shutdown interrupts suspended subscribers", () =>
@@ -550,3 +606,26 @@ describe("PubSub", () => {
       })
     ))
 })
+
+const retains = (root: object, target: object): boolean => {
+  const objects = [root]
+  const seen = new Set<object>()
+  while (objects.length > 0) {
+    const current = objects.pop()!
+    if (current === target) {
+      return true
+    }
+    if (seen.has(current)) {
+      continue
+    }
+    seen.add(current)
+    for (const key of Reflect.ownKeys(current)) {
+      const descriptor = Object.getOwnPropertyDescriptor(current, key)
+      const value = descriptor && "value" in descriptor ? descriptor.value : undefined
+      if (typeof value === "object" && value !== null) {
+        objects.push(value)
+      }
+    }
+  }
+  return false
+}
