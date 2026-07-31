@@ -1972,7 +1972,7 @@ export const summarized: {
 export const withDuration = <A, In, L, E, R>(
   self: Sink<A, In, L, E, R>
 ): Sink<[A, Duration.Duration], In, L, E, R> =>
-  summarized(self, Clock.currentTimeNanos, (start, end) => Duration.nanos(end - start))
+  summarized(self, Clock.monotonicTimeNanos, (start, end) => Duration.nanos(end - start))
 
 /**
  * A sink that drains all input and returns the elapsed duration.

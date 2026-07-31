@@ -236,6 +236,7 @@ export const make = Effect.fnUntraced(function*(
   const warningSemaphore = yield* Semaphore.make(1)
 
   let currentTimestamp: number = new Date(0).getTime()
+  let currentMonotonicNanos = BigInt(0)
   let warningState: WarningState = WarningState.Start()
 
   function currentTimeMillisUnsafe(): number {
@@ -246,8 +247,13 @@ export const make = Effect.fnUntraced(function*(
     return BigInt(Math.floor(currentTimestamp * 1000000))
   }
 
+  function monotonicTimeNanosUnsafe(): bigint {
+    return currentMonotonicNanos
+  }
+
   const currentTimeMillis = Effect.sync(currentTimeMillisUnsafe)
   const currentTimeNanos = Effect.sync(currentTimeNanosUnsafe)
+  const monotonicTimeNanos = Effect.sync(monotonicTimeNanosUnsafe)
 
   function withLive<A, E, R>(effect: Effect.Effect<A, E, R>) {
     return Effect.provideService(effect, Clock.Clock, liveClock)
@@ -317,14 +323,21 @@ export const make = Effect.fnUntraced(function*(
   const run = Effect.fnUntraced(function*(step: (currentTimestamp: number) => number) {
     yield* Fiber.await(yield* Effect.forkChild(Effect.yieldNow))
     const endTimestamp = step(currentTimestamp)
+    const advanceTo = (timestamp: number) => {
+      const deltaMillis = timestamp - currentTimestamp
+      if (deltaMillis > 0 && Number.isFinite(deltaMillis)) {
+        currentMonotonicNanos += BigInt(Math.round(deltaMillis * 1_000_000))
+      }
+      currentTimestamp = timestamp
+    }
     while (Arr.isArrayNonEmpty(sleeps)) {
       if (Arr.lastNonEmpty(sleeps).timestamp > endTimestamp) break
       const entry = sleeps.pop()!
-      currentTimestamp = entry.timestamp
+      advanceTo(entry.timestamp)
       entry.latch.openUnsafe()
       yield* Effect.yieldNow
     }
-    currentTimestamp = endTimestamp
+    advanceTo(endTimestamp)
   }, runSemaphore.withPermits(1))
 
   function adjust(duration: Duration.Input) {
@@ -341,8 +354,10 @@ export const make = Effect.fnUntraced(function*(
   return {
     currentTimeMillisUnsafe,
     currentTimeNanosUnsafe,
+    monotonicTimeNanosUnsafe,
     currentTimeMillis,
     currentTimeNanos,
+    monotonicTimeNanos,
     adjust,
     setTime,
     sleep,

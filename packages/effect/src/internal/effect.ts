@@ -3747,8 +3747,8 @@ export const timed = <A, E, R>(
   self: Effect.Effect<A, E, R>
 ): Effect.Effect<[duration: Duration.Duration, result: A], E, R> =>
   clockWith((clock) => {
-    const start = clock.currentTimeNanosUnsafe()
-    return map(self, (a) => [Duration.nanos(clock.currentTimeNanosUnsafe() - start), a])
+    const start = clock.monotonicTimeNanosUnsafe()
+    return map(self, (a) => [Duration.nanos(clock.monotonicTimeNanosUnsafe() - start), a])
   })
 
 // ----------------------------------------------------------------------------
@@ -5992,9 +5992,13 @@ class ClockImpl implements Clock.Clock {
   }
   readonly currentTimeMillis: Effect.Effect<number> = sync(() => this.currentTimeMillisUnsafe())
   currentTimeNanosUnsafe(): bigint {
-    return processOrPerformanceNow()
+    return wallTimeNanos()
   }
   readonly currentTimeNanos: Effect.Effect<bigint> = sync(() => this.currentTimeNanosUnsafe())
+  monotonicTimeNanosUnsafe(): bigint {
+    return monotonicNowNanos()
+  }
+  readonly monotonicTimeNanos: Effect.Effect<bigint> = sync(() => this.monotonicTimeNanosUnsafe())
   sleep(duration: Duration.Duration): Effect.Effect<void> {
     return this.sleepMillis(Duration.toMillis(duration))
   }
@@ -6011,27 +6015,46 @@ class ClockImpl implements Clock.Clock {
   }
 }
 
-const performanceNowNanos = (function() {
-  const bigint1e6 = BigInt(1_000_000)
-  if (typeof performance === "undefined" || typeof performance.now === "undefined") {
-    return () => BigInt(Date.now()) * bigint1e6
-  }
-  let origin: bigint
-  return () => {
-    origin ??= (BigInt(Date.now()) * bigint1e6) - BigInt(Math.round(performance.now() * 1_000_000))
-    return origin + BigInt(Math.round(performance.now() * 1_000_000))
-  }
-})()
-const processOrPerformanceNow = (function() {
+const nanosPerMilli = BigInt(1_000_000)
+
+const monotonicNowNanos = (function() {
   const processHrtime =
     typeof process === "object" && "hrtime" in process && typeof process.hrtime.bigint === "function" ?
       process.hrtime :
       undefined
-  if (!processHrtime) {
-    return performanceNowNanos
+  if (processHrtime) {
+    return () => processHrtime.bigint()
   }
-  const origin = (BigInt(Date.now()) * BigInt(1e6)) - processHrtime.bigint()
-  return () => origin + processHrtime.bigint()
+  if (typeof performance !== "undefined" && typeof performance.now === "function") {
+    return () => BigInt(Math.round(performance.now() * 1_000_000))
+  }
+  let previous = BigInt(0)
+  return () => {
+    const current = BigInt(Date.now()) * nanosPerMilli
+    if (current > previous) {
+      previous = current
+    }
+    return previous
+  }
+})()
+
+const wallTimeNanos = (function() {
+  const reanchorThresholdNanos = BigInt(1_000_000_000)
+  let origin: bigint | undefined
+  return () => {
+    const monotonic = monotonicNowNanos()
+    const wall = BigInt(Date.now()) * nanosPerMilli
+    if (origin === undefined) {
+      origin = wall - monotonic
+    } else {
+      const projected = origin + monotonic
+      const skew = wall > projected ? wall - projected : projected - wall
+      if (skew > reanchorThresholdNanos) {
+        origin = wall - monotonic
+      }
+    }
+    return origin + monotonic
+  }
 })()
 
 /** @internal */
@@ -6047,6 +6070,9 @@ export const currentTimeMillis: Effect.Effect<number> = clockWith((clock) => clo
 
 /** @internal */
 export const currentTimeNanos: Effect.Effect<bigint> = clockWith((clock) => clock.currentTimeNanos)
+
+/** @internal */
+export const monotonicTimeNanos: Effect.Effect<bigint> = clockWith((clock) => clock.monotonicTimeNanos)
 
 // ----------------------------------------------------------------------------
 // Errors

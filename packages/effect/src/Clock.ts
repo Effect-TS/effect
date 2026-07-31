@@ -1,8 +1,9 @@
 /**
  * Service and helpers for reading time and sleeping inside Effect programs.
- * The active `Clock` provides current time in milliseconds or nanoseconds and a
- * `sleep` operation for delaying work. Because time is accessed through a
- * service, tests can replace the clock with a controlled implementation.
+ * The active `Clock` provides Unix time, monotonic time for measuring elapsed
+ * durations, and a `sleep` operation for delaying work. Because time is
+ * accessed through a service, tests can replace the clock with a controlled
+ * implementation.
  *
  * @since 2.0.0
  */
@@ -39,39 +40,94 @@ import * as effect from "./internal/effect.ts"
  */
 export interface Clock {
   /**
-   * Returns the current time in milliseconds unsafely.
+   * Returns the current Unix time in milliseconds unsafely.
    *
    * **When to use**
    *
-   * Use to read millisecond time synchronously when you already have a `Clock`
-   * service and can accept non-effectful access.
+   * Use to read a wall-clock timestamp synchronously when you already have a
+   * `Clock` service and can accept non-effectful access.
+   *
+   * **Gotchas**
+   *
+   * The value can move backward or forward when the system wall clock is
+   * corrected, so it is not suitable for measuring elapsed time.
    */
   currentTimeMillisUnsafe(): number
   /**
-   * Returns the current time in milliseconds.
+   * Returns the current Unix time in milliseconds.
    *
    * **When to use**
    *
-   * Use to read millisecond time through this `Clock` service in `Effect`.
+   * Use to read a wall-clock timestamp through this `Clock` service in
+   * `Effect`.
+   *
+   * **Gotchas**
+   *
+   * The value can move backward or forward when the system wall clock is
+   * corrected, so it is not suitable for measuring elapsed time.
    */
   readonly currentTimeMillis: Effect<number>
   /**
-   * Returns the current time in nanoseconds unsafely.
+   * Returns the current Unix time in nanoseconds unsafely.
    *
    * **When to use**
    *
-   * Use to read nanosecond time synchronously when you already have a `Clock`
-   * service and can accept non-effectful access.
+   * Use to read a wall-clock timestamp synchronously when you already have a
+   * `Clock` service and can accept non-effectful access.
+   *
+   * **Gotchas**
+   *
+   * The value can move backward or forward when the system wall clock is
+   * corrected, so it is not suitable for measuring elapsed time.
    */
   currentTimeNanosUnsafe(): bigint
   /**
-   * Returns the current time in nanoseconds.
+   * Returns the current Unix time in nanoseconds.
    *
    * **When to use**
    *
-   * Use to read nanosecond time through this `Clock` service in `Effect`.
+   * Use to read a wall-clock timestamp through this `Clock` service in
+   * `Effect`.
+   *
+   * **Gotchas**
+   *
+   * The value can move backward or forward when the system wall clock is
+   * corrected, so it is not suitable for measuring elapsed time.
    */
   readonly currentTimeNanos: Effect<bigint>
+  /**
+   * Returns the current monotonic time in nanoseconds unsafely.
+   *
+   * **When to use**
+   *
+   * Use to measure elapsed time synchronously when you already have a `Clock`
+   * service and can accept non-effectful access.
+   *
+   * **Gotchas**
+   *
+   * The value has an arbitrary origin and is unsuitable for serialization. Use
+   * it only to subtract readings produced by the same clock. Whether it
+   * advances while the host is suspended depends on the runtime.
+   *
+   * @since 4.0.0
+   */
+  monotonicTimeNanosUnsafe(): bigint
+  /**
+   * Returns the current monotonic time in nanoseconds.
+   *
+   * **When to use**
+   *
+   * Use to measure elapsed time through this `Clock` service in `Effect`.
+   *
+   * **Gotchas**
+   *
+   * The value has an arbitrary origin and is unsuitable for serialization. Use
+   * it only to subtract readings produced by the same clock. Whether it
+   * advances while the host is suspended depends on the runtime.
+   *
+   * @since 4.0.0
+   */
+  readonly monotonicTimeNanos: Effect<bigint>
   /**
    * Asynchronously sleeps for the specified duration.
    *
@@ -141,12 +197,17 @@ export const Clock: Context.Reference<Clock> = effect.ClockRef
 export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effect<A, E, R> = effect.clockWith
 
 /**
- * Returns an Effect that succeeds with the current time in milliseconds.
+ * Returns an Effect that succeeds with the current Unix time in milliseconds.
  *
  * **When to use**
  *
- * Use to read wall-clock time from the active Clock service with millisecond
- * precision.
+ * Use to create wall-clock timestamps from the active `Clock` service with
+ * millisecond precision.
+ *
+ * **Gotchas**
+ *
+ * The value can move backward or forward when the system wall clock is
+ * corrected, so it is not suitable for measuring elapsed time.
  *
  * **Example** (Reading milliseconds)
  *
@@ -161,6 +222,7 @@ export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effec
  * ```
  *
  * @see {@link currentTimeNanos} for nanosecond precision
+ * @see {@link monotonicTimeNanos} for measuring elapsed time
  * @see {@link clockWith} for accessing the full Clock service
  *
  * @category constructors
@@ -169,12 +231,19 @@ export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effec
 export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
 
 /**
- * Returns an Effect that succeeds with the current time in nanoseconds.
+ * Returns an Effect that succeeds with the current Unix time in nanoseconds.
  *
  * **When to use**
  *
- * Use to read wall-clock time from the active `Clock` service with nanosecond
- * precision.
+ * Use to create wall-clock timestamps from the active `Clock` service with
+ * nanosecond precision.
+ *
+ * **Gotchas**
+ *
+ * The value can move backward or forward when the system wall clock is
+ * corrected, so it is not suitable for measuring elapsed time.
+ * The live clock allows up to one second of drift from `Date.now()` before
+ * re-anchoring.
  *
  * **Example** (Reading nanoseconds)
  *
@@ -188,7 +257,30 @@ export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
  * })
  * ```
  *
+ * @see {@link monotonicTimeNanos} for measuring elapsed time
+ *
  * @category constructors
  * @since 2.0.0
  */
 export const currentTimeNanos: Effect<bigint> = effect.currentTimeNanos
+
+/**
+ * Returns an Effect that succeeds with the current monotonic time in
+ * nanoseconds.
+ *
+ * **When to use**
+ *
+ * Use to measure elapsed time by subtracting two readings.
+ *
+ * **Gotchas**
+ *
+ * The value has an arbitrary origin and is unsuitable for serialization. Use
+ * it only to subtract readings produced by the same clock. Whether it advances
+ * while the host is suspended depends on the runtime.
+ *
+ * @see {@link currentTimeNanos} for Unix wall-clock timestamps
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const monotonicTimeNanos: Effect<bigint> = effect.monotonicTimeNanos
