@@ -9,8 +9,16 @@ const isNode = typeof process !== "undefined" &&
   !isDeno &&
   !isBun
 const integrationTestsEnabled = process.env.EFFECT_INTEGRATION_TESTS === "1"
+const clusterTestsEnabled = process.env.EFFECT_CLUSTER_TESTS === "1"
 
-const project = (name: string, directory: string, include: boolean = true, config: ViteUserConfig = {}) => {
+const project = (
+  name: string,
+  directory: string,
+  include: boolean = true,
+  config: ViteUserConfig = {},
+  projectExclude?: ReadonlyArray<string>,
+  projectInclude?: ReadonlyArray<string>
+) => {
   if (!include) {
     return []
   }
@@ -20,7 +28,14 @@ const project = (name: string, directory: string, include: boolean = true, confi
     test: { name }
   }, config)
 
-  return [mergeConfig(shared, cfg)]
+  const merged = mergeConfig(shared, cfg)
+  if (projectExclude !== undefined) {
+    merged.test!.exclude = [...projectExclude]
+  }
+  if (projectInclude !== undefined) {
+    merged.test!.include = [...projectInclude]
+  }
+  return [merged]
 }
 
 export const exclude = [
@@ -32,6 +47,7 @@ export const exclude = [
   "**/typetest/**",
   "**/coverage/**",
   "**/test/utils/**",
+  "**/test/cluster-integration/**",
   ...(!integrationTestsEnabled ? ["**/*.integration.test.{ts,tsx}"] : []),
   "**/*.d.ts",
   "**/*.config.*",
@@ -117,6 +133,26 @@ export default defineConfig({
       }),
       ...project("@effect/platform-deno", "packages/platform-deno", isDeno),
       ...project("@effect/platform-node", "packages/platform-node", isNode),
+      ...project(
+        "cluster-integration",
+        "packages/platform-node",
+        isNode && clusterTestsEnabled,
+        {
+          test: {
+            globalSetup: [path.join(__dirname, "packages/platform-node/test/cluster-integration/globalSetup.ts")],
+            include: ["test/cluster-integration/**/*.test.ts"],
+            retry: 0,
+            sequence: {
+              concurrent: false
+            },
+            testTimeout: 60_000
+          }
+        },
+        exclude.filter((path) => path !== "**/test/cluster-integration/**"),
+        [
+          "test/cluster-integration/**/*.test.ts"
+        ]
+      ),
       ...project("@effect/platform-node-shared", "packages/platform-node-shared", !isDeno),
       ...project("@effect/vitest", "packages/vitest"),
       ...project("@effect/sql-clickhouse", "packages/sql/clickhouse"),
