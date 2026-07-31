@@ -903,7 +903,7 @@ import { Effect, Number, Option, Schema, SchemaGetter, SchemaIssue } from "effec
 const NumberFromString = Schema.String.pipe(
   Schema.decodeTo(Schema.Number, {
     decode: SchemaGetter.transformOrFail((s) => {
-      const n = Number.parse(s)
+      const n = parseFloat(s)
       if (n === undefined) {
         return Effect.fail(new SchemaIssue.InvalidValue(Option.some(s)))
       }
