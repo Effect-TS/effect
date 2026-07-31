@@ -165,6 +165,38 @@ export const make = <A>(evaluate: LazyArg<A>): Effect.Effect<ScopedRef<A>, never
  * changed to the new value, with old resources released, or until the attempt
  * to acquire a new value fails.
  *
+ * **Gotchas**
+ *
+ * The current value's scope is closed before acquisition of the replacement
+ * begins. If that acquisition fails, the old value remains readable, but its
+ * resources have already been released.
+ *
+ * **Example** (Replacing a scoped value)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, ScopedRef } from "effect"
+ *
+ * const events: Array<string> = []
+ * const acquire = (name: string) => Effect.acquireRelease(
+ *   Effect.sync(() => {
+ *     events.push(`acquire ${name}`)
+ *     return name
+ *   }),
+ *   () => Effect.sync(() => { events.push(`release ${name}`) })
+ * )
+ *
+ * const program = Effect.scoped(Effect.gen(function*() {
+ *   const ref = yield* ScopedRef.fromAcquire(acquire("first"))
+ *   yield* ScopedRef.set(ref, acquire("second"))
+ * }))
+ *
+ * await Effect.runPromise(program)
+ * events // => ["acquire first", "release first", "acquire second", "release second"]
+ * ```
+ *
+ * @see {@link fromAcquire} for creating a reference from an initial scoped acquisition
+ * @see {@link get} for reading the current value
+ *
  * @category setters
  * @since 2.0.0
  */

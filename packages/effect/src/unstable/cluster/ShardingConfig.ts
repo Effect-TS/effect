@@ -353,7 +353,22 @@ export const layerFromEnv = (options?: Partial<ShardingConfig["Service"]> | unde
  * Normalizes the provided `ShardingConfig` to calculate the `available` and
  * `assigned` shard groups.
  *
- * @category Shard groups
+ * **Example** (Normalizing shard groups)
+ *
+ * ```ts import.meta.vitest
+ * import { ShardingConfig } from "effect/unstable/cluster"
+ *
+ * const groups = ShardingConfig.shardGroupConfig({
+ *   ...ShardingConfig.defaults,
+ *   availableShardGroups: ["payments", "default"],
+ *   assignedShardGroups: ["payments", "missing"]
+ * })
+ *
+ * const result = [Array.from(groups.available), Array.from(groups.assigned)]
+ * result // => [["default", "payments"], ["payments"]]
+ * ```
+ *
+ * @category shard groups
  * @since 4.0.0
  */
 export const shardGroupConfig = (config: ShardingConfig["Service"]): {

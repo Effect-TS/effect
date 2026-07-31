@@ -762,6 +762,23 @@ export interface SchemaStore<S extends Schema.Constraint> {
 /**
  * Adapts a `KeyValueStore` into a `SchemaStore` using the schema's JSON codec.
  *
+ * **Example** (Encoding values for storage)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Option, Schema } from "effect"
+ * import { KeyValueStore } from "effect/unstable/persistence"
+ *
+ * const Counter = Schema.Struct({ count: Schema.NumberFromString })
+ * const program = Effect.gen(function*() {
+ *   const store = yield* KeyValueStore.KeyValueStore
+ *   const counters = KeyValueStore.toSchemaStore(store, Counter)
+ *   yield* counters.set("visits", { count: 42 })
+ *   return [yield* counters.get("visits"), yield* store.get("visits")]
+ * }).pipe(Effect.provide(KeyValueStore.layerMemory))
+ *
+ * await Effect.runPromise(program) // => [Option.some({ count: 42 }), '{"count":"42"}']
+ * ```
+ *
  * @category SchemaStore
  * @since 4.0.0
  */

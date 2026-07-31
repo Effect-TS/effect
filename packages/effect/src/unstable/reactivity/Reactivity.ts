@@ -246,6 +246,26 @@ export const mutation: {
  * The returned queue receives the initial result and each later result after the
  * keys are invalidated. The registration is removed when the current scope closes.
  *
+ * **Example** (Refreshing a query after a mutation)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Queue, Ref } from "effect"
+ * import { Reactivity } from "effect/unstable/reactivity"
+ *
+ * const program = Effect.gen(function*() {
+ *   const counter = yield* Ref.make(0)
+ *   const results = yield* Reactivity.query(Ref.get(counter), ["counter"])
+ *   const initial = yield* Queue.take(results)
+ *
+ *   yield* Reactivity.mutation(Ref.update(counter, (value) => value + 1), ["counter"])
+ *   const refreshed = yield* Queue.take(results)
+ *
+ *   return [initial, refreshed] as const
+ * })
+ *
+ * await Effect.runPromise(Effect.scoped(program).pipe(Effect.provide(Reactivity.layer))) // => [0, 1]
+ * ```
+ *
  * @category accessors
  * @since 4.0.0
  */

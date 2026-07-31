@@ -444,12 +444,10 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  *   returns a parsing function `(u, ast, options) => Effect<T, Issue>`
  * - `annotations` — optional metadata
  *
- * @see {@link declare} for creating schemas for non-parametric types.
- *
  * **Example** (Schema for a parametric `Box<A>` type)
  *
  * ```ts import.meta.vitest
- * import { Effect, Option, Schema, SchemaIssue as Issue, SchemaParser } from "effect"
+ * import { Effect, Option, Schema, SchemaIssue, SchemaParser } from "effect"
  *
  * interface Box<A> {
  *   readonly value: A
@@ -474,8 +472,10 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  *   )
  *
  * const schema = Box(Schema.Number)
- * Effect.runSync(Schema.decodeUnknownEffect(schema)({ value: 1 })) // => { value: 1 }
+ * await Effect.runPromise(Schema.decodeUnknownEffect(schema)({ value: 1 })) // => { value: 1 }
  * ```
+ *
+ * @see {@link declare} for creating schemas for non-parametric types.
  *
  * @category constructors
  * @since 4.0.0
@@ -1339,6 +1339,20 @@ function toBaseStandardJSONSchemaV1(self: Constraint, target: StandardJSONSchema
  * **Details**
  *
  * https://github.com/standard-schema/standard-schema/pull/134
+ *
+ * **Example** (Generating input and output JSON Schemas)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const standard = Schema.toStandardJSONSchemaV1(Schema.FiniteFromString)
+ *
+ * const schemas = [
+ *   standard["~standard"].jsonSchema.input({ target: "draft-2020-12" }),
+ *   standard["~standard"].jsonSchema.output({ target: "draft-2020-12" })
+ * ]
+ * schemas // => [{ type: "string" }, { type: "number" }]
+ * ```
  *
  * @category Standard Schema
  * @since 4.0.0
@@ -2412,6 +2426,30 @@ interface requiredKeyLambda extends Lambda {
  * Use to remove optional-key wrapping from a schema field that was previously
  * wrapped with {@link optionalKey}.
  *
+ * **Example** (Preserving undefined while requiring a key)
+ *
+ * Unlike `required`, `requiredKey` makes the key required without removing the
+ * `undefined` member introduced by `optional`.
+ *
+ * ```ts import.meta.vitest
+ * import { Option, Schema } from "effect"
+ *
+ * const RequiredKey = Schema.Struct({
+ *   value: Schema.requiredKey(Schema.optional(Schema.String))
+ * })
+ * const Required = Schema.Struct({
+ *   value: Schema.required(Schema.optional(Schema.String))
+ * })
+ *
+ * const results = [
+ *   Schema.decodeUnknownOption(RequiredKey)({ value: undefined }),
+ *   Schema.decodeUnknownOption(Required)({ value: undefined })
+ * ]
+ * results // => [Option.some({ value: undefined }), Option.none()]
+ * ```
+ *
+ * @see {@link required} for removing both optional-key and `undefined` wrapping
+ *
  * @category combinators
  * @since 4.0.0
  */
@@ -2585,6 +2623,26 @@ interface toTypeLambda extends Lambda {
 /**
  * Extracts the type-side schema: sets `Encoded` to equal the decoded `Type`,
  * discarding the encoding transformation path.
+ *
+ * **When to use**
+ *
+ * Use when you need a schema for values after decoding, without retaining the
+ * original encoded representation or transformation.
+ *
+ * **Example** (Accepting only decoded values)
+ *
+ * ```ts import.meta.vitest
+ * import { Option, Schema } from "effect"
+ *
+ * const schema = Schema.toType(Schema.NumberFromString)
+ * const results = [
+ *   Schema.decodeUnknownOption(schema)(42),
+ *   Schema.decodeUnknownOption(schema)("42")
+ * ]
+ * results // => [Option.some(42), Option.none()]
+ * ```
+ *
+ * @see {@link toEncoded} for extracting the encoded-side schema
  *
  * @category transforming
  * @since 4.0.0
@@ -4679,6 +4737,21 @@ export interface ArrayEnsure<S extends Constraint> extends decodeTo<$Array<toTyp
  * accepts arrays, an array input can be treated as one value and wrapped in a
  * one-element array.
  *
+ * **Example** (Normalizing one item to an array)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ *
+ * const schema = Schema.ArrayEnsure(Schema.NumberFromString)
+ *
+ * const results = [
+ *   Schema.decodeUnknownSync(schema)("1"),
+ *   Schema.decodeUnknownSync(schema)(["1", "2"]),
+ *   Schema.encodeSync(schema)([1])
+ * ]
+ * results // => [[1], [1, 2], "1"]
+ * ```
+ *
  * @see {@link Array} for accepting only array input
  * @see {@link NonEmptyArray} for requiring at least one decoded element
  *
@@ -5001,6 +5074,14 @@ interface NullishOrLambda extends Lambda {
 
 /**
  * Creates a union schema of `S | null | undefined`.
+ *
+ * **When to use**
+ *
+ * Use when you need to accept both `null` and `undefined` in addition to the
+ * values accepted by another schema.
+ *
+ * @see {@link NullOr} for accepting `null` but not `undefined`
+ * @see {@link UndefinedOr} for accepting `undefined` but not `null`
  *
  * @category constructors
  * @since 3.10.0

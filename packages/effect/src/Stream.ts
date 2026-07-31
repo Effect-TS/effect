@@ -4919,6 +4919,21 @@ export const catchIf: {
  * Successful filter results are passed to `f`. Failed filter results go to
  * `orElse` when provided; otherwise the filter failure is re-failed.
  *
+ * **Example** (Recovering selected errors)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Result, Stream } from "effect"
+ *
+ * const selectUnavailable = (error: string) =>
+ *   error === "unavailable" ? Result.succeed(error) : Result.fail(error)
+ * const program = Stream.fail("unavailable").pipe(
+ *   Stream.catchFilter(selectUnavailable, (error) => Stream.make(`recovered:${error}`)),
+ *   Stream.runCollect
+ * )
+ *
+ * await Effect.runPromise(program) // => ["recovered:unavailable"]
+ * ```
+ *
  * @see {@link catchIf} for predicate or refinement based recovery
  * @see {@link catchTag} for `_tag` based recovery from one tagged error
  * @see {@link catchTags} for `_tag` based recovery from multiple tagged errors
@@ -8190,6 +8205,19 @@ const groupByImpl = <A, E, R, K, V, E2, R2>(
  * The key is computed with `f`; adjacent elements whose keys are equal by
  * `Equal.equals` are emitted as one `[key, group]`. Later non-adjacent runs
  * with the same key are emitted separately.
+ *
+ * **Example** (Grouping adjacent runs)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Stream } from "effect"
+ *
+ * const program = Stream.make("a", "a", "b", "a").pipe(
+ *   Stream.groupAdjacentBy((value) => value),
+ *   Stream.runCollect
+ * )
+ *
+ * await Effect.runPromise(program) // => [["a", ["a", "a"]], ["b", ["b"]], ["a", ["a"]]]
+ * ```
  *
  * @see {@link groupByKey} for grouping all elements with the same key across the stream
  * @see {@link groupBy} for custom grouped stream construction

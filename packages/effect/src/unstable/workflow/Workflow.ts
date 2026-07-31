@@ -653,6 +653,45 @@ export const ResultEncoded: Schema.Codec<ResultEncoded<any, any>> = Schema.toEnc
  * `Result`, handling suspension, defect capture, interruption, and workflow
  * scope finalization.
  *
+ * **Example** (Finalizing workflow resources)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * import { Workflow, WorkflowEngine } from "effect/unstable/workflow"
+ *
+ * const ExampleWorkflow = Workflow.make("ExampleWorkflow", {
+ *   payload: {},
+ *   idempotencyKey: () => "example"
+ * })
+ * const instance = WorkflowEngine.WorkflowInstance.initial(ExampleWorkflow, "execution-1")
+ * const events: Array<string | Exit.Exit<unknown, unknown>> = []
+ *
+ * const body = Effect.gen(function*() {
+ *   yield* Workflow.addFinalizer((exit) => Effect.sync(() => {
+ *     events.push(exit)
+ *   }))
+ *   yield* Workflow.provideScope(
+ *     Effect.acquireRelease(Effect.void, () => Effect.sync(() => {
+ *       events.push("resource-finalizer")
+ *     }))
+ *   )
+ *   return "done"
+ * })
+ *
+ * const program = Effect.gen(function*() {
+ *   const result = yield* Workflow.intoResult(body).pipe(
+ *     Effect.provideService(WorkflowEngine.WorkflowInstance, instance)
+ *   )
+ *   return [result, events] as const
+ * })
+ * const expected = [
+ *   new Workflow.Complete({ exit: Exit.succeed("done") }),
+ *   ["resource-finalizer", Exit.succeed("done")]
+ * ]
+ *
+ * await Effect.runPromise(program) // => expected
+ * ```
+ *
  * @category results
  * @since 4.0.0
  */
@@ -825,7 +864,44 @@ export const addFinalizer: <R>(
  *
  * Compensation finalizers are only registered for top-level effects in the workflow and do not work for nested activities.
  *
- * @category Compensation
+ * **Example** (Compensating a failed workflow)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Effect, Exit } from "effect"
+ * import { Workflow, WorkflowEngine } from "effect/unstable/workflow"
+ *
+ * const ExampleWorkflow = Workflow.make("CompensationExample", {
+ *   payload: {},
+ *   idempotencyKey: () => "example"
+ * })
+ * const instance = WorkflowEngine.WorkflowInstance.initial(ExampleWorkflow, "execution-1")
+ * const compensated: Array<readonly [string, Cause.Cause<unknown>]> = []
+ *
+ * const body = Effect.gen(function*() {
+ *   yield* Workflow.withCompensation(
+ *     Effect.succeed("created"),
+ *     (value, cause) => Effect.sync(() => {
+ *       compensated.push([value, cause])
+ *     })
+ *   )
+ *   return yield* Effect.fail("failed")
+ * })
+ *
+ * const program = Effect.gen(function*() {
+ *   const result = yield* Workflow.intoResult(body).pipe(
+ *     Effect.provideService(WorkflowEngine.WorkflowInstance, instance)
+ *   )
+ *   return [result, compensated] as const
+ * })
+ * const expected = [
+ *   new Workflow.Complete({ exit: Exit.fail("failed") }),
+ *   [["created", Cause.fail("failed")]]
+ * ]
+ *
+ * await Effect.runPromise(program) // => expected
+ * ```
+ *
+ * @category compensation
  * @since 4.0.0
  */
 export const withCompensation: {
@@ -852,6 +928,25 @@ export const withCompensation: {
 /**
  * Marks a workflow instance as suspended and interrupts the current fiber to
  * stop execution until it is resumed.
+ *
+ * **Example** (Suspending a workflow execution)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { Workflow, WorkflowEngine } from "effect/unstable/workflow"
+ *
+ * const ExampleWorkflow = Workflow.make("SuspensionExample", {
+ *   payload: {},
+ *   idempotencyKey: () => "example"
+ * })
+ * const instance = WorkflowEngine.WorkflowInstance.initial(ExampleWorkflow, "execution-1")
+ *
+ * const program = Workflow.intoResult(Workflow.suspend(instance)).pipe(
+ *   Effect.provideService(WorkflowEngine.WorkflowInstance, instance)
+ * )
+ *
+ * await Effect.runPromise(program) // => new Workflow.Suspended({ cause: undefined })
+ * ```
  *
  * @category results
  * @since 4.0.0

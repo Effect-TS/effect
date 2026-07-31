@@ -45,7 +45,7 @@ const policy = Schedule.forever.pipe(
 )
 
 /**
- * Registry of exporter flush operations, used to manually drain buffered
+ * Service that registers exporter flush operations and manually drains buffered
  * telemetry before the surrounding scope closes.
  *
  * **Details**
@@ -56,7 +56,27 @@ const policy = Schedule.forever.pipe(
  * exporter's temporary-disable window. Wrap it with `Effect.timeoutOption` to
  * bound its duration at the call site.
  *
- * @category flushing
+ * **Example** (Removing scoped registrations)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { OtlpExporter } from "effect/unstable/observability"
+ *
+ * const program = Effect.gen(function*() {
+ *   const events: Array<string> = []
+ *   const flusher = yield* OtlpExporter.Flusher
+ *   yield* Effect.scoped(Effect.gen(function*() {
+ *     yield* flusher.register(Effect.sync(() => events.push("flushed")))
+ *     yield* flusher.flush
+ *   }))
+ *   yield* flusher.flush
+ *   return events
+ * }).pipe(Effect.provide(OtlpExporter.layerFlusher))
+ *
+ * await Effect.runPromise(program) // => ["flushed"]
+ * ```
+ *
+ * @category services
  * @since 4.0.0
  */
 export class Flusher extends Context.Service<Flusher, {
@@ -67,21 +87,6 @@ export class Flusher extends Context.Service<Flusher, {
    *
    * There is no built-in timeout; use `Effect.timeoutOption` to bound the
    * operation. Exporters in their 60-second `disabledUntil` window are skipped.
-   *
-   * **Example** (Flushing exporters)
-   *
-   * ```ts import.meta.vitest
-   * import { Effect } from "effect"
-   * import { OtlpExporter } from "effect/unstable/observability"
-   *
-   * const program = Effect.gen(function*() {
-   *   const flusher = yield* OtlpExporter.Flusher
-   *   yield* flusher.flush
-   *   return "flushed"
-   * }).pipe(Effect.provide(OtlpExporter.layerFlusher))
-   *
-   * await Effect.runPromise(program) // => "flushed"
-   * ```
    */
   readonly flush: Effect.Effect<void>
   readonly register: (run: Effect.Effect<void>) => Effect.Effect<void, never, Scope.Scope>

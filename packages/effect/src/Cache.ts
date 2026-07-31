@@ -1366,6 +1366,24 @@ export const values = <Key, A, E, R>(self: Cache<Key, A, E, R>): Effect.Effect<I
  *
  * Expired entries are removed from the cache while `entries` filters them out.
  *
+ * **Example** (Collecting successful entries)
+ *
+ * ```ts import.meta.vitest
+ * import { Cache, Effect } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const cache = yield* Cache.make<string, number, string>({
+ *     capacity: 10,
+ *     lookup: (key) => key === "invalid" ? Effect.fail("invalid key") : Effect.succeed(key.length)
+ *   })
+ *   yield* Cache.get(cache, "ok")
+ *   yield* Effect.exit(Cache.get(cache, "invalid"))
+ *   return Array.from(yield* Cache.entries(cache))
+ * })
+ *
+ * await Effect.runPromise(program) // => [["ok", 2]]
+ * ```
+ *
  * @see {@link keys} for retrieving only cached keys
  * @see {@link values} for retrieving only cached values
  *

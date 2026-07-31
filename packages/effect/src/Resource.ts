@@ -164,14 +164,37 @@ export const get = <A, E>(self: Resource<A, E>): Effect.Effect<A, E> =>
  *
  * **Details**
  *
- * When acquisition succeeds, refreshing replaces the value stored in the
- * resource's scoped reference and releases resources associated with the
- * previous value.
+ * Refreshing releases resources associated with the current value, reruns the
+ * acquisition effect in a new scope, and stores the new value on success.
  *
  * **Gotchas**
  *
- * If acquisition fails, the returned effect fails and the previously stored
- * result is left as what `get` reads.
+ * If acquisition fails, the returned effect fails and `get` still returns the
+ * previously stored result, but resources associated with that result have
+ * already been released.
+ *
+ * **Example** (Retaining the value after a failed refresh)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Resource, Result } from "effect"
+ *
+ * let available = true
+ * let releases = 0
+ * const acquire = Effect.acquireRelease(
+ *   Effect.suspend(() => available ? Effect.succeed("value") : Effect.fail("unavailable")),
+ *   () => Effect.sync(() => { releases++ })
+ * )
+ *
+ * const program = Effect.scoped(Effect.gen(function*() {
+ *   const resource = yield* Resource.manual(acquire)
+ *   available = false
+ *   const refresh = yield* Effect.result(Resource.refresh(resource))
+ *   const current = yield* Resource.get(resource)
+ *   return [refresh, current, releases] as const
+ * }))
+ *
+ * await Effect.runPromise(program) // => [Result.fail("unavailable"), "value", 1]
+ * ```
  *
  * @see {@link get} for reading the current stored value
  * @see {@link manual} for resources refreshed only by caller action

@@ -241,6 +241,29 @@ export const make = <const Id extends string>(identifier: Id): HttpApi<Id, never
  * The callbacks receive each group or endpoint with merged annotations, endpoint
  * middleware, and response schemas grouped by HTTP status.
  *
+ * **Example** (Reflecting merged annotations)
+ *
+ * ```ts import.meta.vitest
+ * import { Context } from "effect"
+ * import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
+ *
+ * const api = HttpApi.make("users-api")
+ *   .annotate(OpenApi.Title, "API")
+ *   .add(
+ *     HttpApiGroup.make("users")
+ *       .annotate(OpenApi.Title, "Group")
+ *       .add(HttpApiEndpoint.get("getUser", "/users/:id").annotate(OpenApi.Title, "Endpoint"))
+ *   )
+ * const titles: Array<string> = []
+ *
+ * HttpApi.reflect(api, {
+ *   onGroup: ({ mergedAnnotations }) => titles.push(Context.getUnsafe(mergedAnnotations, OpenApi.Title)),
+ *   onEndpoint: ({ mergedAnnotations }) => titles.push(Context.getUnsafe(mergedAnnotations, OpenApi.Title))
+ * })
+ *
+ * titles // => ["Group", "Endpoint"]
+ * ```
+ *
  * @category reflection
  * @since 4.0.0
  */

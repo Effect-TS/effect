@@ -267,6 +267,23 @@ export const openUnsafe = (self: Latch): boolean => self.openUnsafe()
  * the latch was closed, or `false` if the latch was already open. Future
  * waiters still suspend until the latch is opened or released again.
  *
+ * **Example** (Releasing only current waiters)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Fiber, Latch } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const latch = yield* Latch.make()
+ *   const waiter = yield* Effect.forkChild(Latch.await(latch), { startImmediately: true })
+ *
+ *   yield* Latch.release(latch)
+ *   yield* Fiber.join(waiter)
+ *   return Latch.isOpen(latch)
+ * })
+ *
+ * await Effect.runPromise(program) // => false
+ * ```
+ *
  * @see {@link open} for opening the latch for current and future waiters
  *
  * @category combinators

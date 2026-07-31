@@ -308,6 +308,27 @@ export interface optionalOption<S extends Schema.Constraint>
  * Creates a schema for optional keys that decodes missing or null encoded values
  * through `Option` and encodes `Option` values back to optional nullable keys.
  *
+ * **Example** (Decoding optional JSON fields)
+ *
+ * ```ts import.meta.vitest
+ * import { Option, Schema } from "effect"
+ * import { Model } from "effect/unstable/schema"
+ *
+ * const Profile = Schema.Struct({ nickname: Model.optionalOption(Schema.String) })
+ * const decode = Schema.decodeUnknownSync(Profile)
+ * const encode = Schema.encodeSync(Profile)
+ *
+ * const decodedMissing = decode({}).nickname
+ * const decodedNull = decode({ nickname: null }).nickname
+ * const encodedNone = encode({ nickname: Option.none() })
+ * const encodedSome = encode({ nickname: Option.some("Ada") })
+ *
+ * decodedMissing // => Option.none()
+ * decodedNull // => Option.none()
+ * encodedNone // => {}
+ * encodedSome // => { nickname: "Ada" }
+ * ```
+ *
  * @category optional
  * @since 4.0.0
  */
@@ -701,6 +722,23 @@ export interface JsonFromString<S extends Schema.Top> extends
  * **Details**
  *
  * The "json" variants will use the object schema directly.
+ *
+ * **Example** (Using database and JSON field encodings)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { Model } from "effect/unstable/schema"
+ *
+ * const Settings = Model.Struct({
+ *   preferences: Model.JsonFromString(Schema.Struct({ theme: Schema.String }))
+ * })
+ * const value = { preferences: { theme: "dark" } }
+ * const database = Schema.encodeSync(Model.extract(Settings, "select"))(value)
+ * const json = Schema.encodeSync(Model.extract(Settings, "json"))(value)
+ *
+ * const encoded = [database, json]
+ * encoded // => [{ preferences: "{\"theme\":\"dark\"}" }, { preferences: { theme: "dark" } }]
+ * ```
  *
  * @category constructors
  * @since 4.0.0

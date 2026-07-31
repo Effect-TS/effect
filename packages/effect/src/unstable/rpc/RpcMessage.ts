@@ -330,6 +330,24 @@ const encodeDefect = Schema.encodeSync(Schema.Defect())
  * Creates an encoded terminal response for a request whose exit is a defect
  * encoded with `Schema.Defect()`.
  *
+ * **Example** (Encoding a defect exit)
+ *
+ * ```ts import.meta.vitest
+ * import { RpcMessage } from "effect/unstable/rpc"
+ *
+ * const exit = RpcMessage.ResponseExitDieEncoded({
+ *   requestId: RpcMessage.RequestId("request-1"),
+ *   defect: "connection lost"
+ * })
+ * const expected: RpcMessage.ResponseExitEncoded = {
+ *   _tag: "Exit",
+ *   requestId: "request-1",
+ *   exit: { _tag: "Failure", cause: [{ _tag: "Die", defect: "connection lost" }] }
+ * }
+ *
+ * exit // => expected
+ * ```
+ *
  * @category response
  * @since 4.0.0
  */

@@ -185,6 +185,16 @@ export class ChunkedMessage
   /**
    * Splits binary event-log message data into numbered chunks.
    *
+   * **Example** (Splitting at the chunk-size boundary)
+   *
+   * ```ts import.meta.vitest
+   * import { EventLogMessage } from "effect/unstable/eventlog"
+   *
+   * const chunks = EventLogMessage.ChunkedMessage.split(7, new Uint8Array(512_001))
+   *
+   * chunks.map((chunk) => [chunk.part, chunk.data.byteLength]) // => [[[0, 2], 512000], [[1, 2], 1]]
+   * ```
+   *
    * @since 4.0.0
    */
   static split(id: number, data: Uint8Array): NonEmptyReadonlyArray<ChunkedMessage> {

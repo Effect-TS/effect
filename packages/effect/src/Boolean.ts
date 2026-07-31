@@ -29,16 +29,6 @@ import * as Reducer from "./Reducer.ts"
  * This follows native truthiness rules. For example, non-empty strings such as
  * `"false"` coerce to `true`.
  *
- * **Example** (Coercing values to booleans)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.Boolean(1) // => true
- * Boolean.Boolean("false") // => true
- * Boolean.Boolean(0) // => false
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -50,15 +40,6 @@ export const Boolean = globalThis.Boolean
  * **When to use**
  *
  * Use to validate unknown input and narrow it to `boolean`.
- *
- * **Example** (Checking for booleans)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.isBoolean(true) // => true
- * Boolean.isBoolean("true") // => false
- * ```
  *
  * @category guards
  * @since 2.0.0
@@ -72,15 +53,17 @@ export const isBoolean: (input: unknown) => input is boolean = predicate.isBoole
  *
  * Use to choose between two lazy branches based on a boolean value.
  *
- * **Example** (Pattern matching on booleans)
+ * **Example** (Evaluating only the selected branch)
  *
  * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  *
- * Boolean.match(true, {
- *   onFalse: () => "It's false!",
- *   onTrue: () => "It's true!"
- * }) // => "It's true!"
+ * Boolean.match(false, {
+ *   onFalse: () => "fallback",
+ *   onTrue: () => {
+ *     throw new Error("unselected branch was evaluated")
+ *   }
+ * }) // => "fallback"
  * ```
  *
  * @category pattern matching
@@ -109,16 +92,6 @@ export const match: {
  * Use when you need to sort or compare boolean values through APIs that accept
  * an ordering instance where `false` comes before `true`.
  *
- * **Example** (Comparing booleans)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.Order(false, true) // => -1
- * Boolean.Order(true, false) // => 1
- * Boolean.Order(true, true) // => 0
- * ```
- *
  * @category instances
  * @since 2.0.0
  */
@@ -132,15 +105,6 @@ export const Order: order.Order<boolean> = order.Boolean
  * Use when checking boolean equality through APIs that accept an equivalence
  * relation.
  *
- * **Example** (Comparing booleans for equivalence)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.Equivalence(true, true) // => true
- * Boolean.Equivalence(true, false) // => false
- * ```
- *
  * @category instances
  * @since 2.0.0
  */
@@ -152,15 +116,6 @@ export const Equivalence: Equ.Equivalence<boolean> = Equ.Boolean
  * **When to use**
  *
  * Use to invert a boolean value.
- *
- * **Example** (Negating booleans)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.not(true) // => false
- * Boolean.not(false) // => true
- * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -178,17 +133,6 @@ export const not = (self: boolean): boolean => !self
  *
  * Supports both data-first and data-last forms.
  *
- * **Example** (Combining booleans with AND)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.and(true, true) // => true
- * Boolean.and(true, false) // => false
- * Boolean.and(false, true) // => false
- * Boolean.and(false, false) // => false
- * ```
- *
  * @category combinators
  * @since 2.0.0
  */
@@ -203,17 +147,6 @@ export const and: {
  * **When to use**
  *
  * Use to negate a logical AND result.
- *
- * **Example** (Combining booleans with NAND)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.nand(true, true) // => false
- * Boolean.nand(true, false) // => true
- * Boolean.nand(false, true) // => true
- * Boolean.nand(false, false) // => true
- * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -230,17 +163,6 @@ export const nand: {
  *
  * Use to accept when either boolean operand is `true`.
  *
- * **Example** (Combining booleans with OR)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.or(true, true) // => true
- * Boolean.or(true, false) // => true
- * Boolean.or(false, true) // => true
- * Boolean.or(false, false) // => false
- * ```
- *
  * @category combinators
  * @since 2.0.0
  */
@@ -255,17 +177,6 @@ export const or: {
  * **When to use**
  *
  * Use to accept only when both boolean operands are `false`.
- *
- * **Example** (Combining booleans with NOR)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.nor(true, true) // => false
- * Boolean.nor(true, false) // => false
- * Boolean.nor(false, true) // => false
- * Boolean.nor(false, false) // => true
- * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -282,17 +193,6 @@ export const nor: {
  *
  * Use to accept when exactly one boolean operand is `true`.
  *
- * **Example** (Combining booleans with XOR)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.xor(true, true) // => false
- * Boolean.xor(true, false) // => true
- * Boolean.xor(false, true) // => true
- * Boolean.xor(false, false) // => false
- * ```
- *
  * @category combinators
  * @since 2.0.0
  */
@@ -307,17 +207,6 @@ export const xor: {
  * **When to use**
  *
  * Use to accept when both boolean operands have the same truth value.
- *
- * **Example** (Checking boolean equivalence)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.eqv(true, true) // => true
- * Boolean.eqv(true, false) // => false
- * Boolean.eqv(false, true) // => false
- * Boolean.eqv(false, false) // => true
- * ```
  *
  * @category combinators
  * @since 2.0.0
@@ -334,14 +223,12 @@ export const eqv: {
  *
  * Use to model logical implication between a condition and a consequence.
  *
- * **Example** (Checking boolean implication)
+ * **Example** (Allowing a false antecedent)
  *
  * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  *
- * Boolean.implies(true, true) // => true
  * Boolean.implies(true, false) // => false
- * Boolean.implies(false, true) // => true
  * Boolean.implies(false, false) // => true
  * ```
  *
@@ -360,13 +247,20 @@ export const implies: {
  *
  * Use to check that every boolean in an iterable is `true`.
  *
- * **Example** (Checking every boolean)
+ * **Example** (Short-circuiting an iterable)
+ *
+ * The iterable is not advanced after the first `false` value.
  *
  * ```ts import.meta.vitest
  * import { Boolean } from "effect"
  *
- * Boolean.every([true, true, true]) // => true
- * Boolean.every([true, false, true]) // => false
+ * function* values() {
+ *   yield true
+ *   yield false
+ *   throw new Error("iterated past false")
+ * }
+ *
+ * Boolean.every(values()) // => false
  * ```
  *
  * @see {@link some} for checking whether at least one value is `true`
@@ -390,15 +284,6 @@ export const every = (collection: Iterable<boolean>): boolean => {
  * **When to use**
  *
  * Use to check that at least one boolean in an iterable is `true`.
- *
- * **Example** (Checking some booleans)
- *
- * ```ts import.meta.vitest
- * import { Boolean } from "effect"
- *
- * Boolean.some([true, false, true]) // => true
- * Boolean.some([false, false, false]) // => false
- * ```
  *
  * @see {@link every} for checking whether all values are `true`
  * @see {@link ReducerOr} for reducing booleans with OR through a `Reducer`
@@ -451,6 +336,11 @@ export const ReducerAnd: Reducer.Reducer<boolean> = Reducer.make((a, b) => a && 
  * **Details**
  *
  * The `initialValue` is `false`.
+ *
+ * **Gotchas**
+ *
+ * `combineAll` uses the default left-to-right `Reducer.make` fold and does not
+ * short-circuit on `true`.
  *
  * @see {@link ReducerAnd} for reducing with AND semantics
  * @see {@link some} for checking an iterable directly

@@ -244,6 +244,20 @@ export const decodeDataSchema = <Type, DecodingServices, IE, Done>(
  * callback, and call `reset` to clear any buffered event state. `feed` returns
  * an `SseError` if the pending event exceeds `maxEventSize`.
  *
+ * **Example** (Parsing chunked events)
+ *
+ * ```ts import.meta.vitest
+ * import { Sse } from "effect/unstable/encoding"
+ *
+ * const events: Array<Sse.AnyEvent> = []
+ * const parser = Sse.makeParser((event) => events.push(event))
+ *
+ * parser.feed("id: 1\nevent: up")
+ * parser.feed("date\ndata: ready\n\n")
+ *
+ * events // => [{ _tag: "Event", id: "1", event: "update", data: "ready" }]
+ * ```
+ *
  * @category decoding
  * @since 4.0.0
  */

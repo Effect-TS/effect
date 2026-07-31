@@ -32,21 +32,6 @@ const randomNext: Effect<number> = random.Random.useSync((random) => random.next
 /**
  * A Schedule defines a strategy for repeating or retrying effects based on some policy.
  *
- * **Example** (Defining retry and repeat schedules)
- *
- * ```ts import.meta.vitest
- * import { Effect, Schedule } from "effect"
- * import { TestClock } from "effect/testing"
- *
- * const executions: Array<number> = []
- * const program = Effect.sync(() => executions.push(executions.length + 1)).pipe(
- *   Effect.repeat(Schedule.recurs(2)),
- *   Effect.as(executions)
- * )
- *
- * await Effect.runPromise(Effect.provide(program, TestClock.layer())) // => [1, 2, 3]
- * ```
- *
  * @category models
  * @since 2.0.0
  */
@@ -114,15 +99,6 @@ export const CurrentMetadata = Context.Reference<Metadata>("effect/Schedule/Curr
 export declare namespace Schedule {
   /**
    * Variance interface that defines the type parameter relationships for Schedule.
-   *
-   * **Example** (Understanding schedule variance)
-   *
-   * ```ts import.meta.vitest
-   * import { Schedule } from "effect"
-   *
-   * const schedule: Schedule.Schedule<number, unknown, never, never> = Schedule.recurs(2)
-   * Schedule.isSchedule(schedule) // => true
-   * ```
    *
    * @category models
    * @since 2.0.0
@@ -197,20 +173,6 @@ const ScheduleProto = {
 /**
  * Type guard that checks if a value is a Schedule.
  *
- * **Example** (Checking for schedules)
- *
- * ```ts import.meta.vitest
- * import { Schedule } from "effect"
- *
- * const schedule = Schedule.exponential("100 millis")
- * const notSchedule = { foo: "bar" }
- *
- * Schedule.isSchedule(schedule) // => true
- * Schedule.isSchedule(notSchedule) // => false
- * Schedule.isSchedule(null) // => false
- * Schedule.isSchedule(undefined) // => false
- * ```
- *
  * @category guards
  * @since 2.0.0
  */
@@ -219,29 +181,35 @@ export const isSchedule = (u: unknown): u is Schedule<unknown, never, unknown, u
 /**
  * Creates a Schedule from a step function that returns a Pull.
  *
- * **Example** (Creating a custom schedule from a step function)
+ * **Example** (Completing a custom schedule)
  *
  * ```ts import.meta.vitest
- * import { Cause, Duration, Effect, Schedule } from "effect"
+ * import { Cause, Duration, Effect, Pull, Schedule } from "effect"
  *
  * const schedule = Schedule.fromStep(Effect.sync(() => {
  *   let count = 0
  *
  *   return (_now: number, _input: string) => {
- *     if (count >= 3) {
+ *     if (count >= 2) {
  *       return Cause.done(count)
  *     }
- *     return Effect.succeed([count++, Duration.millis(100)] as [number, Duration.Duration])
+ *     return Effect.succeed([count++, Duration.zero] as [number, Duration.Duration])
  *   }
  * }))
  *
  * const program = Effect.gen(function*() {
  *   const step = yield* Schedule.toStep(schedule)
- *   const [output] = yield* step(0, "input")
- *   return output
+ *   const first = yield* step(0, "input")
+ *   const second = yield* step(0, "input")
+ *   const done = yield* Pull.matchEffect(step(0, "input"), {
+ *     onSuccess: () => Effect.die("unexpected recurrence"),
+ *     onFailure: Effect.failCause,
+ *     onDone: Effect.succeed
+ *   })
+ *   return [first, second, done] as const
  * })
  *
- * await Effect.runPromise(program) // => 0
+ * await Effect.runPromise(program) // => [[0, Duration.zero], [1, Duration.zero], 2]
  * ```
  *
  * @category constructors
@@ -275,31 +243,6 @@ const metadataFn = () => {
 /**
  * Creates a Schedule from a step function that receives metadata about the schedule's execution.
  *
- * **Example** (Creating a metadata-aware schedule)
- *
- * ```ts import.meta.vitest
- * import { Cause, Duration, Effect, Schedule } from "effect"
- *
- * const firstThreeInputs = Schedule.fromStepWithMetadata(Effect.succeed((metadata: Schedule.InputMetadata<string>) => {
- *   if (metadata.attempt > 3) {
- *     return Cause.done("finished")
- *   }
- *
- *   return Effect.succeed([
- *     `attempt ${metadata.attempt}: ${metadata.input}`,
- *     Duration.millis(250)
- *   ] as [string, Duration.Duration])
- * }))
- *
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(firstThreeInputs)
- *   const [output] = yield* step(0, "input")
- *   return output
- * })
- *
- * await Effect.runPromise(program) // => "attempt 1: input"
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -317,26 +260,6 @@ export const fromStepWithMetadata = <Input, Output, EnvX, ErrorX, Error, Env>(
 
 /**
  * Extracts the step function from a Schedule.
- *
- * **Example** (Extracting a schedule step function)
- *
- * ```ts import.meta.vitest
- * import { Duration, Effect, Schedule } from "effect"
- *
- * // Extract step function from an existing schedule
- * const schedule = Schedule.exponential("100 millis").pipe(Schedule.upTo({ times: 3 }))
- *
- * const program = Effect.gen(function*() {
- *   const stepFn = yield* Schedule.toStep(schedule)
- *
- *   // Use the step function directly for custom logic. The timestamp is
- *   // supplied by the caller, so tests can pass a deterministic value.
- *   const now = 0
- *   return yield* stepFn(now, "input")
- * })
- *
- * await Effect.runPromise(program) // => [Duration.millis(100), Duration.millis(100)]
- * ```
  *
  * @category destructors
  * @since 4.0.0
@@ -406,21 +329,23 @@ export const toStepWithMetadata = <Output, Input, Error, Env>(
 /**
  * Extracts a step function from a Schedule that automatically handles sleep delays.
  *
- * **Example** (Extracting a sleeping step function)
+ * **Example** (Observing an automatically applied delay)
  *
  * ```ts import.meta.vitest
- * import { Effect, Schedule } from "effect"
+ * import { Clock, Effect, Fiber, Schedule } from "effect"
  * import { TestClock } from "effect/testing"
  *
- * const schedule = Schedule.recurs(3)
- *
  * const program = Effect.gen(function*() {
- *   const stepWithSleep = yield* Schedule.toStepWithSleep(schedule)
- *
- *   return [yield* stepWithSleep("first"), yield* stepWithSleep("second")]
+ *   const step = yield* Schedule.toStepWithSleep(Schedule.spaced("1 second"))
+ *   const before = yield* Clock.currentTimeMillis
+ *   const fiber = yield* step(undefined).pipe(Effect.forkChild)
+ *   yield* TestClock.adjust("1 second")
+ *   const output = yield* Fiber.join(fiber)
+ *   const after = yield* Clock.currentTimeMillis
+ *   return [output, after - before] as const
  * })
  *
- * await Effect.runPromise(Effect.provide(program, TestClock.layer())) // => [0, 1]
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer())) // => [0, 1000]
  * ```
  *
  * @category destructors
@@ -447,7 +372,7 @@ export const toStepWithSleep = <Output, Input, Error, Env>(
  * ```ts import.meta.vitest
  * import { Duration, Effect, Schedule } from "effect"
  *
- * const schedule = Schedule.recurs(1).pipe(
+ * const schedule = Schedule.spaced("100 millis").pipe(
  *   Schedule.addDelay(() => Effect.succeed("25 millis"))
  * )
  * const program = Effect.gen(function*() {
@@ -456,7 +381,7 @@ export const toStepWithSleep = <Output, Input, Error, Env>(
  *   return delay
  * })
  *
- * await Effect.runPromise(program) // => Duration.millis(25)
+ * await Effect.runPromise(program) // => Duration.millis(125)
  * ```
  *
  * @category delays & timeouts
@@ -484,15 +409,6 @@ export const addDelay: {
 /**
  * Returns a schedule that runs `self` to completion, then runs `other`, and
  * merges their outputs.
- *
- * **Example** (Sequencing quick and slow retries)
- *
- * ```ts import.meta.vitest
- * import { Schedule } from "effect"
- *
- * const schedule = Schedule.andThen(Schedule.recurs(1), Schedule.recurs(2))
- * Schedule.isSchedule(schedule) // => true
- * ```
  *
  * @category sequencing
  * @since 2.0.0
@@ -526,10 +442,23 @@ export const andThen: {
  * **Example** (Tracking sequential schedule phases)
  *
  * ```ts import.meta.vitest
- * import { Schedule } from "effect"
+ * import { Duration, Effect, Result, Schedule } from "effect"
  *
- * const schedule = Schedule.andThenResult(Schedule.recurs(1), Schedule.recurs(2))
- * Schedule.isSchedule(schedule) // => true
+ * const left = Schedule.identity<string>().pipe(Schedule.upTo({ times: 2 }))
+ * const right = Schedule.identity<string>()
+ * const program = Effect.gen(function*() {
+ *   const step = yield* Schedule.toStep(Schedule.andThenResult(left, right))
+ *   return [
+ *     yield* step(0, "left-1"),
+ *     yield* step(0, "left-2"),
+ *     yield* step(0, "right-1")
+ *   ]
+ * })
+ *
+ * const phases = await Effect.runPromise(program)
+ * phases[0] // => [Result.fail("left-1"), Duration.zero]
+ * phases[1] // => [Result.fail("left-2"), Duration.zero]
+ * phases[2] // => [Result.succeed("right-1"), Duration.zero]
  * ```
  *
  * @category sequencing
@@ -603,13 +532,24 @@ export const andThenResult: {
  * Use when a combined policy should continue only while every schedule still
  * recurs, and should wait for the slowest schedule between recurrences.
  *
- * **Example** (Combining retry schedules by their maximum delay)
+ * **Example** (Stopping when one combined schedule completes)
  *
  * ```ts import.meta.vitest
- * import { Schedule } from "effect"
+ * import { Duration, Effect, Pull, Schedule } from "effect"
  *
- * const schedule = Schedule.max([Schedule.fixed("5 seconds"), Schedule.spaced("10 seconds")])
- * Schedule.isSchedule(schedule) // => true
+ * const schedule = Schedule.max([Schedule.duration("1 second"), Schedule.spaced("5 seconds")])
+ * const program = Effect.gen(function*() {
+ *   const step = yield* Schedule.toStep(schedule)
+ *   const first = yield* step(0, undefined)
+ *   const done = yield* Pull.matchEffect(step(5_000, undefined), {
+ *     onSuccess: () => Effect.die("unexpected recurrence"),
+ *     onFailure: Effect.failCause,
+ *     onDone: Effect.succeed
+ *   })
+ *   return [first, done] as const
+ * })
+ *
+ * await Effect.runPromise(program) // => [[Duration.seconds(5), Duration.seconds(5)], Duration.zero]
  * ```
  *
  * @category combining
@@ -663,15 +603,6 @@ const maxDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Dur
  * Returns a new `Schedule` that recurs on the specified `Cron` schedule and
  * outputs the duration between recurrences.
  *
- * **Example** (Scheduling work with cron expressions)
- *
- * ```ts import.meta.vitest
- * import { Schedule } from "effect"
- *
- * const everyMinute = Schedule.cron("* * * * *")
- * Schedule.isSchedule(everyMinute) // => true
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -707,9 +638,23 @@ export const cron: {
  * **Example** (Recurring once after a duration)
  *
  * ```ts import.meta.vitest
- * import { Schedule } from "effect"
+ * import { Clock, Duration, Effect, Fiber, Schedule } from "effect"
+ * import { TestClock } from "effect/testing"
  *
- * Schedule.isSchedule(Schedule.duration("1 second")) // => true
+ * const times: Array<number> = []
+ * const action = Clock.currentTimeMillis.pipe(
+ *   Effect.tap((now) => Effect.sync(() => times.push(now)))
+ * )
+ * const program = Effect.gen(function*() {
+ *   const fiber = yield* Effect.repeat(action, Schedule.duration("1 second")).pipe(Effect.forkChild)
+ *   yield* TestClock.adjust("1 second")
+ *   const output = yield* Fiber.join(fiber)
+ *   return { times, output }
+ * })
+ *
+ * const result = await Effect.runPromise(Effect.provide(program, TestClock.layer()))
+ * result.times // => [0, 1000]
+ * result.output // => Duration.zero
  * ```
  *
  * @see {@link during} for recurring until a duration has elapsed
@@ -733,14 +678,6 @@ export const duration = (durationInput: Duration.Input): Schedule<Duration.Durat
  * **When to use**
  *
  * Use to bound a repeating or retrying schedule by elapsed time.
- *
- * **Example** (Repeating work during a duration)
- *
- * ```ts import.meta.vitest
- * import { Schedule } from "effect"
- *
- * Schedule.isSchedule(Schedule.during("5 seconds")) // => true
- * ```
  *
  * @see {@link duration} for one delayed recurrence
  *
@@ -767,15 +704,6 @@ export const during = (duration: Duration.Input): Schedule<Duration.Duration> =>
  *
  * Use when a combined policy should continue while any schedule still recurs,
  * and should wait for the fastest schedule between recurrences.
- *
- * **Example** (Combining retry schedules by their minimum delay)
- *
- * ```ts import.meta.vitest
- * import { Schedule } from "effect"
- *
- * const schedule = Schedule.min([Schedule.fixed("5 seconds"), Schedule.spaced("10 seconds")])
- * Schedule.isSchedule(schedule) // => true
- * ```
  *
  * @category combining
  * @since 4.0.0
@@ -831,19 +759,6 @@ const minDuration = (results: ReadonlyArray<Duration.Duration | undefined>): Dur
  * repetitions, given by `base * factor.pow(n)`, where `n` is the number of
  * repetitions so far. Returns the current duration between recurrences.
  *
- * **Example** (Retrying with exponential backoff)
- *
- * ```ts import.meta.vitest
- * import { Duration, Effect, Schedule } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(Schedule.exponential("100 millis"))
- *   return yield* step(0, undefined)
- * })
- *
- * await Effect.runPromise(program) // => [Duration.millis(100), Duration.millis(100)]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -862,19 +777,6 @@ export const exponential = (
  * Schedule that always recurs, increasing delays by summing the preceding
  * two delays (similar to the Fibonacci sequence). Returns the current
  * duration between recurrences.
- *
- * **Example** (Retrying with Fibonacci backoff)
- *
- * ```ts import.meta.vitest
- * import { Duration, Effect, Schedule } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(Schedule.fibonacci("100 millis"))
- *   return yield* step(0, undefined)
- * })
- *
- * await Effect.runPromise(program) // => [Duration.millis(100), Duration.millis(100)]
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -912,17 +814,27 @@ export const fibonacci = (one: Duration.Input): Schedule<Duration.Duration> => {
  * |---------action--------||action|-----|action|-----------|
  * ```
  *
- * **Example** (Repeating on fixed intervals)
+ * **Example** (Skipping missed intervals)
  *
  * ```ts import.meta.vitest
- * import { Duration, Effect, Schedule } from "effect"
+ * import { Clock, Effect, Fiber, Schedule } from "effect"
+ * import { TestClock } from "effect/testing"
  *
+ * const starts: Array<number> = []
+ * const action = Effect.gen(function*() {
+ *   const now = yield* Clock.currentTimeMillis
+ *   yield* Effect.sync(() => starts.push(now))
+ *   yield* Effect.sleep("1500 millis")
+ * })
  * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(Schedule.fixed("1 second"))
- *   return yield* step(0, undefined)
+ *   const schedule = Schedule.fixed("1 second").pipe(Schedule.upTo({ times: 2 }))
+ *   const fiber = yield* Effect.repeat(action, schedule).pipe(Effect.forkChild)
+ *   yield* TestClock.adjust("6 seconds")
+ *   yield* Fiber.join(fiber)
+ *   return starts
  * })
  *
- * await Effect.runPromise(program) // => [0, Duration.seconds(1)]
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer())) // => [0, 2500, 4000]
  * ```
  *
  * @see {@link spaced} for delaying after each action completes
@@ -964,23 +876,6 @@ export const fixed = (interval: Duration.Input): Schedule<number> => {
  * current attempt, and elapsed timing information. Return either a plain value
  * or an `Effect` that produces the new output.
  *
- * **Example** (Mapping schedule outputs)
- *
- * ```ts import.meta.vitest
- * import { Effect, Schedule } from "effect"
- *
- * const countSchedule = Schedule.recurs(5).pipe(
- *   Schedule.map(({ output: count }) => Effect.succeed(`Execution #${count + 1}`))
- * )
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(countSchedule)
- *   const [output] = yield* step(0, undefined)
- *   return output
- * })
- *
- * await Effect.runPromise(program) // => "Execution #1"
- * ```
- *
  * @category mapping
  * @since 2.0.0
  */
@@ -1019,23 +914,6 @@ export const map: {
 /**
  * Returns a new `Schedule` that modifies the delay of the next recurrence
  * of the schedule using the specified effectful function.
- *
- * **Example** (Modifying delays from schedule metadata)
- *
- * ```ts import.meta.vitest
- * import { Duration, Effect, Schedule } from "effect"
- *
- * const schedule = Schedule.spaced("10 millis").pipe(
- *   Schedule.modifyDelay(({ duration }) => Effect.succeed(Duration.times(duration, 2)))
- * )
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(schedule)
- *   const [, delay] = yield* step(0, undefined)
- *   return delay
- * })
- *
- * await Effect.runPromise(program) // => Duration.millis(20)
- * ```
  *
  * @category delays & timeouts
  * @since 2.0.0
@@ -1102,23 +980,6 @@ export const jittered = <Output, Input, Error, Env>(
 /**
  * Returns a new `Schedule` that outputs the inputs of the specified schedule.
  *
- * **Example** (Passing inputs through as outputs)
- *
- * ```ts import.meta.vitest
- * import { Effect, Schedule } from "effect"
- *
- * const inputSchedule = Schedule.passthrough(
- *   Schedule.exponential("100 millis").pipe(Schedule.upTo({ times: 3 }))
- * )
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(inputSchedule)
- *   const [output] = yield* step(0, "input")
- *   return output
- * })
- *
- * await Effect.runPromise(program) // => "input"
- * ```
- *
  * @category mapping
  * @since 2.0.0
  */
@@ -1150,15 +1011,13 @@ export const passthrough = <Output, Input, Error, Env>(
  *
  * ```ts import.meta.vitest
  * import { Effect, Schedule } from "effect"
- * import { TestClock } from "effect/testing"
- *
  * const executions: Array<number> = []
  * const program = Effect.sync(() => executions.push(executions.length + 1)).pipe(
  *   Effect.repeat(Schedule.recurs(3)),
  *   Effect.as(executions)
  * )
  *
- * await Effect.runPromise(Effect.provide(program, TestClock.layer())) // => [1, 2, 3, 4]
+ * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
  * @see {@link upTo} for limiting an existing schedule
@@ -1176,19 +1035,6 @@ export const recurs = (times: number): Schedule<number> =>
  * **When to use**
  *
  * Use when each delay should start after the previous action completes.
- *
- * **Example** (Repeating with fixed spacing)
- *
- * ```ts import.meta.vitest
- * import { Duration, Effect, Schedule } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(Schedule.spaced("2 seconds"))
- *   return yield* step(0, undefined)
- * })
- *
- * await Effect.runPromise(program) // => [0, Duration.seconds(2)]
- * ```
  *
  * @see {@link fixed} for recurrence aligned to a regular cadence
  *
@@ -1209,24 +1055,6 @@ export const spaced = (duration: Duration.Input): Schedule<number> => {
  *
  * The callback receives the full schedule metadata, including the input, output,
  * computed delay duration, current attempt, and elapsed timing information.
- *
- * **Example** (Tapping schedule metadata)
- *
- * ```ts import.meta.vitest
- * import { Effect, Schedule } from "effect"
- *
- * const attempts: Array<number> = []
- * const monitoredSchedule = Schedule.recurs(2).pipe(
- *   Schedule.tap((metadata) => Effect.sync(() => attempts.push(metadata.attempt)))
- * )
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(monitoredSchedule)
- *   const [output] = yield* step(0, undefined)
- *   return { attempts, output }
- * })
- *
- * await Effect.runPromise(program) // => { attempts: [1], output: 0 }
- * ```
  *
  * @category sequencing
  * @since 4.0.0
@@ -1272,20 +1100,28 @@ export const tap: {
  * step. Long-running effects can cause the duration limit to be detected on the
  * following schedule step.
  *
- * **Example** (Limiting by duration and recurrence count)
+ * **Example** (Including the duration boundary)
  *
  * ```ts import.meta.vitest
- * import { Effect, Schedule } from "effect"
- * import { TestClock } from "effect/testing"
+ * import { Duration, Effect, Option, Pull, Schedule } from "effect"
  *
- * const executions: Array<number> = []
- * const schedule = Schedule.forever.pipe(Schedule.upTo({ times: 2 }))
- * const program = Effect.sync(() => executions.push(executions.length + 1)).pipe(
- *   Effect.repeat(schedule),
- *   Effect.as(executions)
- * )
+ * const schedule = Schedule.identity<string>().pipe(Schedule.upTo({ duration: "1 second" }))
+ * const program = Effect.gen(function*() {
+ *   const step = yield* Schedule.toStep(schedule)
+ *   const atStart = yield* step(0, "start")
+ *   const atBoundary = yield* step(1_000, "boundary")
+ *   const afterBoundary = yield* Pull.matchEffect(step(1_001, "after"), {
+ *     onSuccess: (value) => Effect.succeed(Option.some(value)),
+ *     onFailure: Effect.failCause,
+ *     onDone: () => Effect.succeed(Option.none())
+ *   })
+ *   return [atStart, atBoundary, afterBoundary] as const
+ * })
  *
- * await Effect.runPromise(Effect.provide(program, TestClock.layer())) // => [1, 2, 3]
+ * const result = await Effect.runPromise(program)
+ * result[0] // => ["start", Duration.zero]
+ * result[1] // => ["boundary", Duration.zero]
+ * result[2] // => Option.none()
  * ```
  *
  * @category filtering
@@ -1391,19 +1227,6 @@ export {
  * |action------|sleep---|act|-sleep|action----|
  * ```
  *
- * **Example** (Repeating on aligned windows)
- *
- * ```ts import.meta.vitest
- * import { Duration, Effect, Schedule } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const step = yield* Schedule.toStep(Schedule.windowed("5 seconds"))
- *   return yield* step(0, undefined)
- * })
- *
- * await Effect.runPromise(program) // => [0, Duration.seconds(5)]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -1424,22 +1247,6 @@ export const windowed = (interval: Duration.Input): Schedule<number> => {
  *
  * The output of the schedule is the current count of its repetitions thus far
  * (i.e. `0, 1, 2, ...`).
- *
- * **Example** (Repeating forever)
- *
- * ```ts import.meta.vitest
- * import { Effect, Schedule } from "effect"
- * import { TestClock } from "effect/testing"
- *
- * const executions: Array<number> = []
- * const schedule = Schedule.forever.pipe(Schedule.upTo({ times: 2 }))
- * const program = Effect.sync(() => executions.push(executions.length + 1)).pipe(
- *   Effect.repeat(schedule),
- *   Effect.as(executions)
- * )
- *
- * await Effect.runPromise(Effect.provide(program, TestClock.layer())) // => [1, 2, 3]
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -1491,10 +1298,10 @@ export {
  * ```ts import.meta.vitest
  * import { Schedule } from "effect"
  *
- * const schedule = Schedule.recurs(3).pipe(
- *   Schedule.setInputType<string>()
+ * const policy: Schedule.Schedule<number, string> = Schedule.recurs(3).pipe(
+ *   Schedule.setInputType<string>(),
+ *   Schedule.while(({ input }) => input.length > 0)
  * )
- * Schedule.isSchedule(schedule) // => true
  * ```
  *
  * @category utility types

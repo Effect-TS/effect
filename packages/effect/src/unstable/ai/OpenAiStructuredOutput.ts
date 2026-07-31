@@ -52,7 +52,23 @@ import * as InternalStructuredOutput from "./internal/structured-output.ts"
  * - Compatibility targets standard OpenAI models. Fine-tuned models support a
  *   smaller JSON Schema subset.
  *
- * @category Codec Transformation
+ * **Example** (Encoding optional fields for OpenAI)
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { OpenAiStructuredOutput } from "effect/unstable/ai"
+ *
+ * const schema = Schema.Struct({
+ *   name: Schema.String,
+ *   nickname: Schema.optionalKey(Schema.String)
+ * })
+ * const codec = OpenAiStructuredOutput.toCodecOpenAI(schema).codec
+ *
+ * Schema.encodeSync(codec)({ name: "Ada" }) // => { name: "Ada", nickname: null }
+ * Schema.decodeSync(codec)({ name: "Ada", nickname: null }) // => { name: "Ada" }
+ * ```
+ *
+ * @category transforming
  * @since 4.0.0
  */
 export function toCodecOpenAI<T, E, RD, RE>(

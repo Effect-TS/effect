@@ -3,7 +3,8 @@
  * users. An `RcRef<A, E>` acquires the resource lazily the first time `get`
  * needs it, reuses that value while it is borrowed or kept idle, and finalizes
  * it when the final borrowing scope closes unless an idle timeout keeps it
- * available. The module also provides `invalidate` for forcing the next `get`
+ * available. Closing the scope that created the reference also closes the
+ * cached resource. The module provides `invalidate` for forcing the next `get`
  * to acquire a fresh resource.
  *
  * @since 3.5.0
@@ -29,37 +30,7 @@ const TypeId = "~effect/RcRef"
  *
  * An RcRef wraps a resource that can be acquired and released multiple times.
  * The resource is lazily acquired on the first call to `get` and automatically
- * released when the last reference is released.
- *
- * **Example** (Sharing a lazily acquired resource)
- *
- * ```ts import.meta.vitest
- * import { Effect, RcRef } from "effect"
- *
- * const events: Array<string> = []
- *
- * // Create an RcRef for a database connection
- * const createConnectionRef = (connectionString: string) =>
- *   RcRef.make({
- *     acquire: Effect.acquireRelease(
- *       Effect.succeed(`Connected to ${connectionString}`),
- *       (connection) => Effect.sync(() => events.push(`closed ${connection}`))
- *     )
- *   })
- *
- * // Use the RcRef in multiple operations
- * const program = Effect.gen(function*() {
- *   const connectionRef = yield* createConnectionRef("postgres://localhost")
- *
- *   // Multiple gets will share the same connection
- *   const connection1 = yield* RcRef.get(connectionRef)
- *   const connection2 = yield* RcRef.get(connectionRef)
- *
- *   return [connection1 === connection2, events] as const
- * })
- *
- * await Effect.runPromise(Effect.scoped(program)) // => [true, ["closed Connected to postgres://localhost"]]
- * ```
+ * released when the last reference is released or its owning scope closes.
  *
  * @category models
  * @since 3.5.0
@@ -70,17 +41,6 @@ export interface RcRef<out A, out E = never> extends Pipeable {
 
 /**
  * Namespace containing type-level members associated with `RcRef`.
- *
- * **Example** (Referencing namespace types)
- *
- * ```ts import.meta.vitest
- * import type { RcRef } from "effect"
- *
- * // Use RcRef namespace types
- * type MyRcRef = RcRef.RcRef<string, Error>
- * type MyVariance = RcRef.RcRef.Variance<string, Error>
- *
- * ```
  *
  * @since 3.5.0
  */
@@ -122,34 +82,45 @@ export declare namespace RcRef {
  * gets while it remains cached. Each `get` adds a reference to the current
  * `Scope`. When the last reference is released, the resource is closed
  * immediately by default, or after `idleTimeToLive` when that option is
- * provided.
+ * provided. An infinite idle time keeps the resource until invalidation or
+ * until the scope that created the `RcRef` closes.
  *
- * **Example** (Creating a reference-counted resource)
+ * **Gotchas**
+ *
+ * Closing the scope that creates the `RcRef` closes the cached resource even if
+ * borrower scopes are still open. Do not use the reference after its owning
+ * scope closes.
+ *
+ * **Example** (Releasing after an idle period)
  *
  * ```ts import.meta.vitest
  * import { Effect, RcRef } from "effect"
+ * import { TestClock } from "effect/testing"
  *
  * const events: Array<string> = []
- *
- * const program = Effect.gen(function*() {
+ * const program = Effect.scoped(Effect.gen(function*() {
  *   const ref = yield* RcRef.make({
  *     acquire: Effect.acquireRelease(
- *       Effect.succeed("foo"),
- *       () => Effect.sync(() => events.push("released foo"))
- *     )
+ *       Effect.sync(() => {
+ *         events.push("acquire")
+ *         return "resource"
+ *       }),
+ *       () => Effect.sync(() => { events.push("release") })
+ *     ),
+ *     idleTimeToLive: "1 hour"
  *   })
  *
- *   // will only acquire the resource once, and release it
- *   // when the scope is closed
- *   yield* RcRef.get(ref).pipe(
- *     Effect.andThen(RcRef.get(ref)),
- *     Effect.scoped
- *   )
- * })
+ *   yield* Effect.scoped(RcRef.get(ref))
+ *   const beforeExpiry = [...events]
+ *   yield* TestClock.adjust("1 hour")
+ *   return [beforeExpiry, [...events]] as const
+ * }))
  *
- * await Effect.runPromise(Effect.scoped(program))
- * events // => ["released foo"]
+ * await Effect.runPromise(Effect.provide(program, TestClock.layer())) // => [["acquire"], ["acquire", "release"]]
  * ```
+ *
+ * @see {@link get} for borrowing the cached resource in the current scope
+ * @see {@link invalidate} for forcing the next borrow to acquire a fresh resource
  *
  * @category constructors
  * @since 3.5.0
@@ -180,31 +151,38 @@ export const make: <A, E, R>(
  * reference is released; the resource is closed when the final reference is
  * released, subject to any configured idle time-to-live.
  *
- * **Example** (Sharing one acquired value)
+ * **Example** (Releasing after the final borrower closes)
  *
  * ```ts import.meta.vitest
- * import { Effect, RcRef } from "effect"
+ * import { Effect, Exit, RcRef, Scope } from "effect"
  *
  * const events: Array<string> = []
- *
- * const program = Effect.gen(function*() {
- *   // Create an RcRef with a resource
+ * const program = Effect.scoped(Effect.gen(function*() {
  *   const ref = yield* RcRef.make({
  *     acquire: Effect.acquireRelease(
- *       Effect.succeed("shared resource"),
- *       (resource) => Effect.sync(() => events.push(`released ${resource}`))
+ *       Effect.sync(() => {
+ *         events.push("acquire")
+ *         return {}
+ *       }),
+ *       () => Effect.sync(() => { events.push("release") })
  *     )
  *   })
  *
- *   // Get the value from the RcRef
- *   const value1 = yield* RcRef.get(ref)
- *   const value2 = yield* RcRef.get(ref)
+ *   const firstScope = yield* Scope.make()
+ *   const secondScope = yield* Scope.make()
+ *   const first = yield* Scope.provide(RcRef.get(ref), firstScope)
+ *   const second = yield* Scope.provide(RcRef.get(ref), secondScope)
+ *   yield* Scope.close(firstScope, Exit.void)
+ *   const afterFirstClose = [...events]
+ *   yield* Scope.close(secondScope, Exit.void)
+ *   return [first === second, afterFirstClose, [...events]] as const
+ * }))
  *
- *   return [value1 === value2, events] as const
- * })
- *
- * await Effect.runPromise(Effect.scoped(program)) // => [true, ["released shared resource"]]
+ * await Effect.runPromise(program) // => [true, ["acquire"], ["acquire", "release"]]
  * ```
+ *
+ * @see {@link make} for configuring acquisition and idle lifetime
+ * @see {@link invalidate} for replacing a cached resource
  *
  * @category combinators
  * @since 3.5.0

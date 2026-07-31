@@ -584,6 +584,23 @@ export const getCurrent: () => Fiber<any, any> | undefined = effect.getCurrentFi
  * This does not wait for the fiber to complete. It only registers the
  * interruption finalizer and returns the same fiber.
  *
+ * **Example** (Tying a fiber to a scope)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Exit, Fiber, Scope } from "effect"
+ *
+ * const program = Effect.gen(function*() {
+ *   const scope = yield* Scope.make()
+ *   const fiber = yield* Effect.forkChild(Effect.never)
+ *   Fiber.runIn(fiber, scope)
+ *   yield* Scope.close(scope, Exit.void)
+ *   return yield* Fiber.await(fiber)
+ * })
+ *
+ * const exit = await Effect.runPromise(program)
+ * Exit.hasInterrupts(exit) // => true
+ * ```
+ *
  * @see {@link interrupt} for interrupting and waiting for completion
  *
  * @category resource management

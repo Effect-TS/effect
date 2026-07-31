@@ -503,6 +503,25 @@ const getPoolItemInner = Effect.fnUntraced(function*<A, E>(
  * The item is matched with strict equality. Passing an equivalent but different
  * object instance does nothing.
  *
+ * **Example** (Replacing an item after its borrower releases it)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Exit, Pool, Scope } from "effect"
+ *
+ * let next = 0
+ * const program = Effect.scoped(Effect.gen(function*() {
+ *   const pool = yield* Pool.make({ acquire: Effect.sync(() => ++next), size: 1 })
+ *   const borrowedScope = yield* Scope.make()
+ *   const first = yield* Scope.provide(Pool.get(pool), borrowedScope)
+ *   yield* Pool.invalidate(pool, first)
+ *   yield* Scope.close(borrowedScope, Exit.void)
+ *   const replacement = yield* Effect.scoped(Pool.get(pool))
+ *   return [first, replacement] as const
+ * }))
+ *
+ * await Effect.runPromise(program) // => [1, 2]
+ * ```
+ *
  * @see {@link get} for retrieving scoped items from the pool
  *
  * @category combinators

@@ -1431,6 +1431,27 @@ export const withCookiesRef: {
 /**
  * Attaches the lifetime of the `HttpClientRequest` to a `Scope`.
  *
+ * **Example** (Aborting a request when its scope closes)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { HttpClient, HttpClientResponse } from "effect/unstable/http"
+ *
+ * const program = Effect.gen(function*() {
+ *   const signals: Array<AbortSignal> = []
+ *   const client = HttpClient.make((request, _url, signal) =>
+ *     Effect.sync(() => {
+ *       signals.push(signal)
+ *       return HttpClientResponse.fromWeb(request, new Response(null, { status: 200 }))
+ *     }))
+ *
+ *   yield* Effect.scoped(HttpClient.withScope(client).get("http://example.test"))
+ *   return signals.map((signal) => signal.aborted)
+ * })
+ *
+ * await Effect.runPromise(program) // => [true]
+ * ```
+ *
  * @category resource management
  * @since 4.0.0
  */

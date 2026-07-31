@@ -35,16 +35,6 @@ const TypeId = "~effect/SchemaIssue/Issue"
  *
  * - Checks for the internal `TypeId` brand on the value.
  *
- * **Example** (Type-guarding an unknown error)
- *
- * ```ts import.meta.vitest
- * import { SchemaIssue } from "effect"
- *
- * const issue = new SchemaIssue.MissingKey(undefined)
- * SchemaIssue.isIssue(issue) // => true
- * SchemaIssue.isIssue("not an issue") // => false
- * ```
- *
  * @see {@link Issue}
  *
  * @category guards
@@ -134,26 +124,6 @@ class Base {
  *   wrapped in `Option`).
  * - `filter` is the AST filter node that produced this issue.
  * - `issue` is the inner issue describing the failure reason.
- *
- * **Example** (Matching a Filter issue)
- *
- * ```ts import.meta.vitest
- * import { Option, SchemaAST, SchemaIssue } from "effect"
- *
- * function describe(issue: SchemaIssue.Issue): string {
- *   if (issue._tag === "Filter") {
- *     return `Filter failed on: ${String(issue.actual)}`
- *   }
- *   return String(issue)
- * }
- *
- * const issue = new SchemaIssue.Filter(
- *   "invalid",
- *   SchemaAST.isPattern(/^valid$/),
- *   new SchemaIssue.InvalidValue(Option.some("invalid"))
- * )
- * describe(issue) // => "Filter failed on: invalid"
- * ```
  *
  * @see {@link Leaf} — terminal issue types that commonly appear as the inner `issue`
  * @see {@link CheckHook} — formatter hook for `Filter` issues
@@ -460,20 +430,6 @@ export class Composite extends Base {
  *   `Option.none()` when no value was provided.
  * - The default formatter renders this as `"Expected <type>, got <actual>"`.
  *
- * **Example** (Formatting output)
- *
- * ```ts import.meta.vitest
- * import { Schema } from "effect"
- *
- * try {
- *   Schema.decodeUnknownSync(Schema.String)(42)
- * } catch (e) {
- *   if (Schema.isSchemaError(e)) {
- *     String(e.issue) // => "Expected string, got 42"
- *   }
- * }
- * ```
- *
  * @see {@link InvalidValue} — the input has the right type but fails a value constraint
  *
  * @category models
@@ -523,18 +479,6 @@ export class InvalidType extends Base {
  * - The default formatter renders this as `"Invalid data <actual>"` unless a
  *   custom `message` annotation is provided.
  *
- * **Example** (Returning InvalidValue from a custom filter)
- *
- * ```ts import.meta.vitest
- * import { Option, SchemaIssue } from "effect"
- *
- * const issue = new SchemaIssue.InvalidValue(
- *   Option.some(""),
- *   { message: "must not be empty" }
- * )
- * String(issue) // => "must not be empty"
- * ```
- *
  * @see {@link InvalidType} — the input has the wrong type entirely
  * @see {@link Filter} — composite wrapper when a schema filter produces this issue
  *
@@ -583,18 +527,6 @@ export class InvalidValue extends Base {
  *   `Option.none()` when absent.
  * - `annotations` optionally carries a `message` string.
  * - The default formatter renders this as `"Forbidden operation"`.
- *
- * **Example** (Creating a Forbidden issue)
- *
- * ```ts import.meta.vitest
- * import { Option, SchemaIssue } from "effect"
- *
- * const issue = new SchemaIssue.Forbidden(
- *   Option.none(),
- *   { message: "async operation not allowed in sync context" }
- * )
- * String(issue) // => "async operation not allowed in sync context"
- * ```
  *
  * @see {@link InvalidValue} — for value-constraint failures (not operation failures)
  *
@@ -761,13 +693,22 @@ export class OneOf extends Base {
  * - Wraps `actual` with `Option.some` for variants that store it as plain
  *   `unknown` (`AnyOf`, `UnexpectedKey`, `OneOf`, `Filter`).
  *
- * **Example** (Extracting the actual value)
+ * **Gotchas**
+ *
+ * `getActual` inspects only the supplied node. A top-level `Composite` reports
+ * the entire input rather than a nested failing value, while a `Pointer`
+ * returns `Option.none()` even when its child issue carries an actual value.
+ *
+ * **Example** (Inspecting parser issue values)
  *
  * ```ts import.meta.vitest
- * import { Option, SchemaIssue } from "effect"
+ * import { Option, Result, Schema, SchemaIssue, SchemaParser } from "effect"
  *
- * const issue = new SchemaIssue.MissingKey(undefined)
- * SchemaIssue.getActual(issue) // => Option.none()
+ * const root = SchemaParser.decodeUnknownResult(Schema.Number)("not a number")
+ * Result.getFailure(root).pipe(Option.flatMap(SchemaIssue.getActual)) // => Option.some("not a number")
+ *
+ * const nested = SchemaParser.decodeUnknownResult(Schema.Struct({ count: Schema.Number }))({ count: "not a number" })
+ * Result.getFailure(nested).pipe(Option.flatMap(SchemaIssue.getActual)) // => Option.some({ count: "not a number" })
  * ```
  *
  * @see {@link Issue}
@@ -880,17 +821,6 @@ export type LeafHook = (issue: Leaf) => string
  *   - `Forbidden` → `"Forbidden operation"`
  *   - `OneOf` → `"Expected exactly one member to match the input <actual>"`
  *
- * **Example** (Formatting Standard Schema issues with defaultLeafHook)
- *
- * ```ts import.meta.vitest
- * import { SchemaIssue } from "effect"
- *
- * const formatter = SchemaIssue.makeFormatterStandardSchemaV1({
- *   leafHook: SchemaIssue.defaultLeafHook
- * })
- * formatter(new SchemaIssue.MissingKey(undefined)) // => { issues: [{ path: [], message: "Missing key" }] }
- * ```
- *
  * @see {@link LeafHook}
  * @see {@link makeFormatterStandardSchemaV1}
  *
@@ -978,13 +908,17 @@ export const defaultCheckHook: CheckHook = (issue): string | undefined => {
  * - Falls back to {@link defaultLeafHook} / {@link defaultCheckHook} when no
  *   hooks are provided.
  *
- * **Example** (Creating a Standard Schema V1 formatter)
+ * **Example** (Formatting nested issue paths)
  *
  * ```ts import.meta.vitest
- * import { SchemaIssue } from "effect"
+ * import { Result, Schema, SchemaIssue, SchemaParser } from "effect"
  *
+ * const schema = Schema.Struct({ profile: Schema.Struct({ age: Schema.Number }) })
  * const formatter = SchemaIssue.makeFormatterStandardSchemaV1()
- * formatter(new SchemaIssue.MissingKey(undefined)).issues[0].message // => "Missing key"
+ *
+ * SchemaParser.decodeUnknownResult(schema)({ profile: { age: "unknown" } }).pipe(
+ *   Result.mapError(formatter)
+ * ) // => Result.fail({ issues: [{ path: ["profile", "age"], message: "Expected number, got \"unknown\"" }] })
  * ```
  *
  * @see {@link makeFormatterDefault} — produces a plain string instead
@@ -1085,15 +1019,6 @@ function formatCheck<T>(check: SchemaAST.Check<T>): string {
  *   {@link defaultLeafHook} and {@link defaultCheckHook}.
  * - Each entry is rendered as `"<message>"` or `"<message>\n  at <path>"`.
  * - Multiple entries are joined with newlines.
- *
- * **Example** (Formatting an issue as a string)
- *
- * ```ts import.meta.vitest
- * import { SchemaIssue } from "effect"
- *
- * const formatter = SchemaIssue.makeFormatterDefault()
- * formatter(new SchemaIssue.MissingKey(undefined)) // => "Missing key"
- * ```
  *
  * @see {@link makeFormatterStandardSchemaV1} — produces Standard Schema V1 format instead
  * @see {@link Formatter}

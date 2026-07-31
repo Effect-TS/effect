@@ -191,6 +191,14 @@ export {
    * Creates a Filter that tries to apply a function and returns `fail` on
    * error.
    *
+   * **Example** (Discarding exceptions and failing with the input)
+   *
+   * ```ts import.meta.vitest
+   * import { Filter, Result } from "effect"
+   *
+   * Filter.try((input: string) => JSON.parse(input))("invalid") // => Result.fail("invalid")
+   * ```
+   *
    * @category constructors
    * @since 4.0.0
    */

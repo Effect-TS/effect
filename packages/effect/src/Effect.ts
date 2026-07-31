@@ -6821,6 +6821,21 @@ export const onErrorIf: {
  * `Cause` is accepted or transformed by a `Filter`, and the finalizer needs the
  * filter's pass value plus the original cause.
  *
+ * **Example** (Finalizing selected failures)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Effect, Exit } from "effect"
+ *
+ * const observed: Array<string> = []
+ * const program = Effect.fail("boom").pipe(
+ *   Effect.onErrorFilter(Cause.findError, (error) => Effect.sync(() => observed.push(error))),
+ *   Effect.exit,
+ *   Effect.map((exit) => [observed, exit] as const)
+ * )
+ *
+ * await Effect.runPromise(program) // => [["boom"], Exit.fail("boom")]
+ * ```
+ *
  * @see {@link onError} for cleanup on every failure
  * @see {@link onErrorIf} for selecting failures with a boolean predicate
  * @see {@link onExitFilter} for selecting from every exit instead of only failures

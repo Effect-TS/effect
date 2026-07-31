@@ -58,6 +58,19 @@ const notFound = Response.empty({ status: 404 })
  * If the value is already an HTTP server response it is returned directly; errors
  * from the response conversion are converted to defects.
  *
+ * **Example** (Converting a server error)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * import { HttpServerError, HttpServerRequest, HttpServerRespondable } from "effect/unstable/http"
+ *
+ * const request = HttpServerRequest.fromWeb(new Request("https://example.com/missing"))
+ * const error = new HttpServerError.RouteNotFound({ request })
+ * await Effect.runPromise(
+ *   Effect.map(HttpServerRespondable.toResponse(error), (response) => response.status)
+ * ) // => 404
+ * ```
+ *
  * @category accessors
  * @since 4.0.0
  */

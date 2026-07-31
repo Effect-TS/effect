@@ -139,6 +139,46 @@ export const layerSpawner: <W = unknown>(
  * buffering sent messages until the worker is ready and scoping port cleanup to
  * the worker run.
  *
+ * **Example** (Buffering and cleaning up worker messages)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Latch } from "effect"
+ * import { Worker } from "effect/unstable/workers"
+ *
+ * const posted: Array<unknown> = []
+ * const sent = Latch.makeUnsafe()
+ * const platform = Worker.makePlatform<unknown>()({
+ *   setup: () => Effect.succeed({
+ *     postMessage(message: unknown) {
+ *       posted.push(message)
+ *       sent.openUnsafe()
+ *     }
+ *   }),
+ *   listen: ({ emit }) => Effect.sync(() => emit([0]))
+ * })
+ *
+ * const program = Effect.gen(function*() {
+ *   const worker = yield* platform.spawn<number, string>(0)
+ *   yield* worker.send("queued")
+ *   const bufferedBeforeReady = posted.length === 0
+ *   yield* Effect.scoped(Effect.gen(function*() {
+ *     yield* Effect.forkScoped(worker.run(() => Effect.void))
+ *     yield* sent.await
+ *   }))
+ *   const postedBeforeSendAfterClose = posted.length
+ *   yield* worker.send("after-close")
+ *   const portRemovedAfterScope = posted.length === postedBeforeSendAfterClose
+ *   return { bufferedBeforeReady, portRemovedAfterScope, posted }
+ * }).pipe(Effect.provide(Worker.layerSpawner(() => undefined)))
+ * const expected = {
+ *   bufferedBeforeReady: true,
+ *   portRemovedAfterScope: true,
+ *   posted: [[0, "queued"]]
+ * }
+ *
+ * await Effect.runPromise(program) // => expected
+ * ```
+ *
  * @category constructors
  * @since 4.0.0
  */

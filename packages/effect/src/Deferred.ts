@@ -31,25 +31,23 @@ const TypeId = "~effect/Deferred"
  * Use to coordinate multiple fibers around a value or failure that will be
  * supplied exactly once.
  *
- * **Example** (Creating a Deferred for inter-fiber communication)
+ * **Example** (Coordinating a waiting fiber)
  *
  * ```ts import.meta.vitest
  * import { Deferred, Effect, Fiber } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   const deferred: Deferred.Deferred<string> = yield* Deferred.make<string>()
- *   const producer = yield* Effect.forkChild(
- *     Effect.gen(function*() {
- *       yield* Deferred.succeed(deferred, "Hello, World!")
- *     })
- *   )
+ *   const deferred = yield* Deferred.make<number>()
+ *   const waiter = yield* Deferred.await(deferred).pipe(Effect.forkChild)
+ *   yield* Effect.yieldNow
  *
- *   const consumer = yield* Effect.forkChild(Deferred.await(deferred))
- *   yield* Fiber.join(producer)
- *   return yield* Fiber.join(consumer)
+ *   const first = yield* Deferred.succeed(deferred, 1)
+ *   const second = yield* Deferred.succeed(deferred, 2)
+ *   const value = yield* Fiber.join(waiter)
+ *   return [first, second, value]
  * })
  *
- * await Effect.runPromise(program) // => "Hello, World!"
+ * await Effect.runPromise(program) // => [true, false, 1]
  * ```
  *
  * @category models
@@ -125,15 +123,6 @@ const DeferredProto = {
  * Use to allocate a `Deferred` synchronously when direct allocation outside
  * `Effect` is required.
  *
- * **Example** (Creating a Deferred unsafely)
- *
- * ```ts import.meta.vitest
- * import { Deferred } from "effect"
- *
- * const deferred = Deferred.makeUnsafe<number>()
- * Deferred.isDoneUnsafe(deferred) // => false
- * ```
- *
  * @category unsafe
  * @since 4.0.0
  */
@@ -150,20 +139,6 @@ export const makeUnsafe = <A, E = never>(): Deferred<A, E> => {
  * **When to use**
  *
  * Use to allocate an empty `Deferred` inside an `Effect` workflow.
- *
- * **Example** (Creating a Deferred)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   yield* Deferred.succeed(deferred, 42)
- *   return yield* Deferred.await(deferred)
- * })
- *
- * await Effect.runPromise(program) // => 42
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -195,23 +170,12 @@ export {
    *
    * Awaiters observe the completion effect stored in the `Deferred`.
    *
-   * **Example** (Awaiting a Deferred value)
+   * **Gotchas**
    *
-   * ```ts import.meta.vitest
-   * import { Deferred, Effect } from "effect"
+   * Interrupting a fiber suspended by `await` cancels only that wait. It does
+   * not complete or interrupt the `Deferred` itself.
    *
-   * const program = Effect.gen(function*() {
-   *   const deferred = yield* Deferred.make<number>()
-   *   yield* Deferred.succeed(deferred, 42)
-   *
-   *   return yield* Deferred.await(deferred)
-   * })
-   *
-   * await Effect.runPromise(program) // => 42
-   * ```
-   *
-   * @see {@link complete} for completing from an effect and memoizing its result
-   * @see {@link completeWith} for completing with an effect directly
+   * @see {@link poll} for inspecting the current state without suspending
    *
    * @category getters
    * @since 2.0.0
@@ -233,19 +197,30 @@ export {
  * The returned effect succeeds with `true` when this call completed the
  * `Deferred`, or `false` if it was already completed.
  *
- * **Example** (Completing a Deferred from an effect)
+ * **Example** (Comparing completion evaluation)
  *
  * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   const completed = yield* Deferred.complete(deferred, Effect.succeed(42))
- *   const value = yield* Deferred.await(deferred)
- *   return [completed, value]
+ *   let memoizedRuns = 0
+ *   let repeatedRuns = 0
+ *   const memoized = yield* Deferred.make<number>()
+ *   const repeated = yield* Deferred.make<number>()
+ *
+ *   yield* Deferred.complete(memoized, Effect.sync(() => ++memoizedRuns))
+ *   yield* Deferred.completeWith(repeated, Effect.sync(() => ++repeatedRuns))
+ *
+ *   const values = yield* Effect.all([
+ *     Deferred.await(memoized),
+ *     Deferred.await(memoized),
+ *     Deferred.await(repeated),
+ *     Deferred.await(repeated)
+ *   ])
+ *   return [values, memoizedRuns, repeatedRuns]
  * })
  *
- * await Effect.runPromise(program) // => [true, 42]
+ * await Effect.runPromise(program) // => [[1, 1, 1, 2], 1, 2]
  * ```
  *
  * @see {@link completeWith} for storing an effect directly without memoizing its result
@@ -280,21 +255,6 @@ export const complete: {
  * The supplied effect is not memoized by `completeWith`; each awaiter may run
  * the stored effect independently.
  *
- * **Example** (Completing a Deferred with an effect)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   const completed = yield* Deferred.completeWith(deferred, Effect.succeed(42))
- *   const value = yield* Deferred.await(deferred)
- *   return [completed, value]
- * })
- *
- * await Effect.runPromise(program) // => [true, 42]
- * ```
- *
  * @see {@link complete} for running an effect once and sharing its result
  * @see {@link done} for completing from an already computed `Exit`
  *
@@ -322,20 +282,6 @@ export const completeWith: {
  *
  * The returned effect succeeds with `true` when this call completed the
  * `Deferred`, or `false` if it was already completed.
- *
- * **Example** (Completing a Deferred with an Exit)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect, Exit } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   yield* Deferred.done(deferred, Exit.succeed(42))
- *   return yield* Effect.exit(Deferred.await(deferred))
- * })
- *
- * await Effect.runPromise(program) // => Exit.succeed(42)
- * ```
  *
  * @see {@link complete} for completing from an effect and memoizing its result
  * @see {@link completeWith} for storing an effect directly
@@ -370,13 +316,14 @@ export const done: {
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number, string>()
- *   const success = yield* Deferred.fail(deferred, "Operation failed")
- *   const exit = yield* Effect.exit(Deferred.await(deferred))
- *   return [success, exit]
+ *   yield* Deferred.fail(deferred, "Operation failed")
+ *   return yield* Effect.exit(Deferred.await(deferred))
  * })
  *
- * await Effect.runPromise(program) // => [true, Exit.fail("Operation failed")]
+ * await Effect.runPromise(program) // => Exit.fail("Operation failed")
  * ```
+ *
+ * @see {@link failCause} for preserving a complete failure cause
  *
  * @category completion
  * @since 2.0.0
@@ -400,21 +347,6 @@ export const fail: {
  * Fibers waiting on the `Deferred` fail with the computed error only if this
  * call completes it. The returned effect succeeds with `true` when this call
  * completed the `Deferred`, or `false` if it was already completed.
- *
- * **Example** (Failing a Deferred with a lazy error)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect, Exit } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number, string>()
- *   const success = yield* Deferred.failSync(deferred, () => "Lazy error")
- *   const exit = yield* Effect.exit(Deferred.await(deferred))
- *   return [success, exit]
- * })
- *
- * await Effect.runPromise(program) // => [true, Exit.fail("Lazy error")]
- * ```
  *
  * @category completion
  * @since 2.0.0
@@ -446,15 +378,18 @@ export const failSync: {
  * ```ts import.meta.vitest
  * import { Cause, Deferred, Effect, Exit } from "effect"
  *
+ * const cause = Cause.combine(Cause.fail("Operation failed"), Cause.die("cleanup defect"))
+ *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number, string>()
- *   const success = yield* Deferred.failCause(deferred, Cause.fail("Operation failed"))
- *   const exit = yield* Effect.exit(Deferred.await(deferred))
- *   return [success, exit]
+ *   yield* Deferred.failCause(deferred, cause)
+ *   return yield* Effect.exit(Deferred.await(deferred))
  * })
  *
- * await Effect.runPromise(program) // => [true, Exit.failCause(Cause.fail("Operation failed"))]
+ * await Effect.runPromise(program) // => Exit.failCause(cause)
  * ```
+ *
+ * @see {@link fail} for completing with only a typed error value
  *
  * @category completion
  * @since 2.0.0
@@ -482,21 +417,6 @@ export const failCause: {
  * call completes it. The returned effect succeeds with `true` when this call
  * completed the `Deferred`, or `false` if it was already completed.
  *
- * **Example** (Failing a Deferred with a lazy Cause)
- *
- * ```ts import.meta.vitest
- * import { Cause, Deferred, Effect, Exit } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number, string>()
- *   const success = yield* Deferred.failCauseSync(deferred, () => Cause.fail("Lazy error"))
- *   const exit = yield* Effect.exit(Deferred.await(deferred))
- *   return [success, exit]
- * })
- *
- * await Effect.runPromise(program) // => [true, Exit.failCause(Cause.fail("Lazy error"))]
- * ```
- *
  * @category completion
  * @since 2.0.0
  */
@@ -522,22 +442,6 @@ export const failCauseSync: {
  * completes it. The returned effect succeeds with `true` when this call
  * completed the `Deferred`, or `false` if it was already completed.
  *
- * **Example** (Killing a Deferred with a defect)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect, Exit } from "effect"
- *
- * const defect = new Error("Something went wrong")
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   const success = yield* Deferred.die(deferred, defect)
- *   const exit = yield* Effect.exit(Deferred.await(deferred))
- *   return [success, exit]
- * })
- *
- * await Effect.runPromise(program) // => [true, Exit.die(defect)]
- * ```
- *
  * @category completion
  * @since 2.0.0
  */
@@ -559,22 +463,6 @@ export const die: {
  * Fibers waiting on the `Deferred` die with the computed defect only if this
  * call completes it. The returned effect succeeds with `true` when this call
  * completed the `Deferred`, or `false` if it was already completed.
- *
- * **Example** (Killing a Deferred with a lazy defect)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect, Exit } from "effect"
- *
- * const defect = new Error("Lazy error")
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   const success = yield* Deferred.dieSync(deferred, () => defect)
- *   const exit = yield* Effect.exit(Deferred.await(deferred))
- *   return [success, exit]
- * })
- *
- * await Effect.runPromise(program) // => [true, Exit.die(defect)]
- * ```
  *
  * @category completion
  * @since 2.0.0
@@ -602,20 +490,7 @@ export const dieSync: {
  * when this call completed the `Deferred`, or `false` if it was already
  * completed.
  *
- * **Example** (Interrupting a Deferred)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   const success = yield* Deferred.interrupt(deferred)
- *   const done = yield* Deferred.isDone(deferred)
- *   return [success, done]
- * })
- *
- * await Effect.runPromise(program) // => [true, true]
- * ```
+ * @see {@link interruptWith} for supplying the interrupting fiber id
  *
  * @category completion
  * @since 2.0.0
@@ -644,13 +519,14 @@ export const interrupt = <A, E>(self: Deferred<A, E>): Effect<boolean> =>
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
- *   const success = yield* Deferred.interruptWith(deferred, 42)
- *   const exit = yield* Effect.exit(Deferred.await(deferred))
- *   return [success, exit]
+ *   yield* Deferred.interruptWith(deferred, 42)
+ *   return yield* Effect.exit(Deferred.await(deferred))
  * })
  *
- * await Effect.runPromise(program) // => [true, Exit.interrupt(42)]
+ * await Effect.runPromise(program) // => Exit.interrupt(42)
  * ```
+ *
+ * @see {@link interrupt} for attributing interruption to the current fiber
  *
  * @category completion
  * @since 2.0.0
@@ -671,22 +547,6 @@ export const interruptWith: {
  * **When to use**
  *
  * Use to check completion status inside an `Effect` workflow.
- *
- * **Example** (Checking Deferred completion)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   const beforeCompletion = yield* Deferred.isDone(deferred)
- *   yield* Deferred.succeed(deferred, 42)
- *   const afterCompletion = yield* Deferred.isDone(deferred)
- *   return [beforeCompletion, afterCompletion]
- * })
- *
- * await Effect.runPromise(program) // => [false, true]
- * ```
  *
  * @category getters
  * @since 2.0.0
@@ -719,24 +579,29 @@ export const isDoneUnsafe = <A, E>(self: Deferred<A, E>): boolean => self.effect
  * Use to inspect whether a `Deferred` is already completed and retrieve its
  * stored completion effect when available.
  *
+ * **Gotchas**
+ *
+ * `Option.some` means the `Deferred` is completed, not that it succeeded. Run
+ * the nested effect to observe a failure, defect, or interruption.
+ *
  * **Example** (Polling Deferred completion)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect, Option } from "effect"
+ * import { Deferred, Effect, Exit, Option } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
+ *   const deferred = yield* Deferred.make<number, string>()
  *   const beforeCompletion = yield* Deferred.poll(deferred)
- *   yield* Deferred.succeed(deferred, 42)
+ *   yield* Deferred.fail(deferred, "Operation failed")
  *   const afterCompletion = yield* Deferred.poll(deferred)
- *   const afterValue = afterCompletion._tag === "Some"
- *     ? Option.some(yield* afterCompletion.value)
- *     : Option.none()
- *   return [beforeCompletion, afterValue]
+ *   const afterExit = yield* Effect.transposeOption(Option.map(afterCompletion, Effect.exit))
+ *   return [beforeCompletion, afterExit]
  * })
  *
- * await Effect.runPromise(program) // => [Option.none(), Option.some(42)]
+ * await Effect.runPromise(program) // => [Option.none(), Option.some(Exit.fail("Operation failed"))]
  * ```
+ *
+ * @see {@link _await await} for suspending until completion
  *
  * @category getters
  * @since 2.0.0
@@ -757,21 +622,6 @@ export function poll<A, E>(self: Deferred<A, E>): Effect<Option.Option<Effect<A,
  * Fibers waiting on the `Deferred` receive the value only if this call
  * completes it. The returned effect succeeds with `true` when this call
  * completed the `Deferred`, or `false` if it was already completed.
- *
- * **Example** (Completing a Deferred with a value)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   yield* Deferred.succeed(deferred, 42)
- *
- *   return yield* Deferred.await(deferred)
- * })
- *
- * await Effect.runPromise(program) // => 42
- * ```
  *
  * @category completion
  * @since 2.0.0
@@ -796,20 +646,6 @@ export const succeed: {
  * completes it. The returned effect succeeds with `true` when this call
  * completed the `Deferred`, or `false` if it was already completed.
  *
- * **Example** (Completing a Deferred with a lazy value)
- *
- * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const deferred = yield* Deferred.make<number>()
- *   yield* Deferred.sync(deferred, () => 42)
- *   return yield* Deferred.await(deferred)
- * })
- *
- * await Effect.runPromise(program) // => 42
- * ```
- *
  * @category completion
  * @since 2.0.0
  */
@@ -833,18 +669,16 @@ export const sync: {
  *
  * **Details**
  *
- * This mutates the `Deferred` directly and should be reserved for low-level
- * code; prefer the effectful completion APIs when possible. Returns `true` if
- * this call completed the `Deferred`, or `false` if it was already completed.
+ * Returns `true` if this call completed the `Deferred`, or `false` if it was
+ * already completed.
  *
- * **Example** (Completing a Deferred unsafely)
+ * **Gotchas**
  *
- * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
+ * This mutates the `Deferred` directly and stores the supplied effect without
+ * memoizing it, so each awaiter may run that effect independently. Prefer the
+ * effectful completion APIs when possible.
  *
- * const deferred = Deferred.makeUnsafe<number>()
- * Deferred.doneUnsafe(deferred, Effect.succeed(42)) // => true
- * ```
+ * @see {@link completeWith} for the effectful equivalent
  *
  * @category unsafe
  * @since 4.0.0
@@ -880,18 +714,16 @@ export const doneUnsafe = <A, E>(self: Deferred<A, E>, effect: Effect<A, E>): bo
  * **Example** (Completing a Deferred from an effect result)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
- *
- * const successEffect = Effect.succeed(42)
+ * import { Deferred, Effect, Exit } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number, string>()
- *   const isCompleted = yield* Deferred.into(successEffect, deferred)
- *   const value = yield* Deferred.await(deferred)
- *   return [isCompleted, value]
+ *   const isCompleted = yield* Deferred.into(Effect.fail("Operation failed"), deferred)
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [isCompleted, exit]
  * })
  *
- * await Effect.runPromise(program) // => [true, 42]
+ * await Effect.runPromise(program) // => [true, Exit.fail("Operation failed")]
  * ```
  *
  * @category Synchronization Utilities

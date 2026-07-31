@@ -76,6 +76,27 @@ export class ResponseIdTracker extends Context.Service<ResponseIdTracker, Servic
  * latest assistant turn only when the existing prompt prefix is fully tracked;
  * otherwise it clears the tracked state and returns `Option.none()`.
  *
+ * **Example** (Preparing an incremental prompt)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
+ * import { Prompt, ResponseIdTracker } from "effect/unstable/ai"
+ *
+ * const program = Effect.gen(function*() {
+ *   const tracker = yield* ResponseIdTracker.make
+ *   const first = Prompt.userMessage({ content: [Prompt.textPart({ text: "Hello" })] })
+ *   const reply = Prompt.assistantMessage({ content: [Prompt.textPart({ text: "Hi" })] })
+ *   const next = Prompt.userMessage({ content: [Prompt.textPart({ text: "Continue" })] })
+ *
+ *   tracker.markParts([first], "response-1")
+ *   return tracker.prepareUnsafe(Prompt.fromMessages([first, reply, next])).pipe(
+ *     Option.map(({ previousResponseId, prompt }) => [previousResponseId, prompt.content.length])
+ *   )
+ * })
+ *
+ * await Effect.runPromise(program) // => Option.some(["response-1", 1])
+ * ```
+ *
  * @category constructors
  * @since 4.0.0
  */

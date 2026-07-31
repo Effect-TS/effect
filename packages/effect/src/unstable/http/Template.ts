@@ -171,6 +171,17 @@ export function make<A extends ReadonlyArray<Interpolated>>(
  * evaluated as stream chunks, and stream interpolations are flattened into the
  * output.
  *
+ * **Example** (Interpolating a finite stream)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Stream } from "effect"
+ * import { Template } from "effect/unstable/http"
+ *
+ * const page = Template.stream`<p>${Stream.make("one", "two")}</p>`.pipe(Stream.runCollect)
+ *
+ * await Effect.runPromise(page) // => ["<p>", "one", "two", "</p>"]
+ * ```
+ *
  * @category constructors
  * @since 4.0.0
  */

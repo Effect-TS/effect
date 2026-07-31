@@ -37,6 +37,15 @@ export type Take<A, E = never, Done = void> = NonEmptyReadonlyArray<A> | Exit.Ex
  * Use to interpret a stored or transferred `Take` as a `Pull` step while
  * preserving emitted batches, ordinary failures, and completion values.
  *
+ * **Example** (Interpreting values and completion)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Effect, Exit, Take } from "effect"
+ *
+ * await Effect.runPromise(Take.toPull([1, 2])) // => [1, 2]
+ * await Effect.runPromise(Effect.flip(Take.toPull(Exit.succeed("finished")))) // => Cause.Done("finished")
+ * ```
+ *
  * @category converting
  * @since 4.0.0
  */

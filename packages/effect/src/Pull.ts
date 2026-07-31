@@ -316,6 +316,15 @@ export const filterDoneLeftover: <E>(
  * If the cause contains a done value, that leftover becomes the successful
  * value. Otherwise the non-done cause becomes the failure cause.
  *
+ * **Example** (Converting done completion to success)
+ *
+ * ```ts import.meta.vitest
+ * import { Cause, Exit, Pull } from "effect"
+ *
+ * Pull.doneExitFromCause(Cause.fail(Cause.Done("leftover"))) // => Exit.succeed("leftover")
+ * Pull.doneExitFromCause(Cause.fail("boom")) // => Exit.fail("boom")
+ * ```
+ *
  * @see {@link filterDone} for extracting the done signal without converting the cause to an `Exit`
  * @see {@link matchEffect} for handling `Pull` success, failure, and done outcomes directly
  *

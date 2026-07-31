@@ -1006,6 +1006,24 @@ const textDecoder = new TextDecoder()
  * protocol is `https` only when `x-forwarded-proto` is `https`; invalid URLs
  * return `Option.none`.
  *
+ * **Example** (Reading an absolute request URL)
+ *
+ * ```ts import.meta.vitest
+ * import { Option } from "effect"
+ * import { HttpClientRequest, HttpServerRequest } from "effect/unstable/http"
+ *
+ * const request = HttpServerRequest.fromClientRequest(HttpClientRequest.get("/users?page=2", {
+ *   headers: {
+ *     host: "api.example.com",
+ *     "x-forwarded-proto": "https"
+ *   }
+ * }))
+ *
+ * HttpServerRequest.toURL(request).pipe(
+ *   Option.map((url) => url.href)
+ * ) // => Option.some("https://api.example.com/users?page=2")
+ * ```
+ *
  * @category converting
  * @since 4.0.0
  */

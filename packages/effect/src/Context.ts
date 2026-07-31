@@ -79,21 +79,6 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
  * service from the current Effect context before applying a function, and `of`
  * is a type-level helper for service values.
  *
- * **Example** (Defining a service key)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * // Define an identifier for a database service
- * const Database = Context.Service<{ query: (sql: string) => string }>(
- *   "Database"
- * )
- *
- * // The key can be used to store and retrieve services
- * const context = Context.make(Database, { query: (sql) => `Result: ${sql}` })
- * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
- * ```
- *
  * @category models
  * @since 4.0.0
  */
@@ -171,28 +156,16 @@ export declare namespace ServiceClass {
  * string for unrelated services makes them occupy the same slot in a
  * `Context`.
  *
- * **Example** (Creating service keys)
+ * **Example** (Inferring a service from its constructor)
  *
  * ```ts import.meta.vitest
- * import { Context } from "effect"
+ * import { Context, Effect } from "effect"
  *
- * // Create a simple service
- * const Database = Context.Service<{
- *   query: (sql: string) => string
- * }>("Database")
+ * class Config extends Context.Service<Config>()("Config", {
+ *   make: Effect.succeed({ port: 8080 })
+ * }) {}
  *
- * // Create a service class
- * class Config extends Context.Service<Config, {
- *   port: number
- * }>()("Config") {}
- *
- * // Use the services to create contexts
- * const db = Context.make(Database, {
- *   query: (sql) => `Result: ${sql}`
- * })
- * const config = Context.make(Config, { port: 8080 })
- * Context.get(db, Database).query("SELECT 1") // => "Result: SELECT 1"
- * Context.get(config, Config).port // => 8080
+ * await Effect.runPromise(Config.make.pipe(Effect.map((config) => config.port))) // => 8080
  * ```
  *
  * @see {@link Reference} for service keys with default values
@@ -309,25 +282,6 @@ const ReferenceTypeId = "~effect/Context/Reference" as const
  * override, Context getters that resolve references return the cached default
  * value instead of failing.
  *
- * **Example** (Defining a reference with a default value)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * // Define a reference with a default value
- * const messages: Array<string> = []
- * const LoggerRef: Context.Reference<{ log: (msg: string) => void }> =
- *   Context.Reference("Logger", {
- *     defaultValue: () => ({ log: (msg) => { messages.push(msg) } })
- *   })
- *
- * // The reference can be used without explicit provision
- * const context = Context.empty()
- * const logger = Context.get(context, LoggerRef) // Uses default value
- * logger.log("default logger")
- * messages // => ["default logger"]
- * ```
- *
  * @category models
  * @since 3.11.0
  */
@@ -341,43 +295,12 @@ export interface Reference<in out Shape> extends Service<never, Shape> {
 /**
  * Namespace containing utility types for `Context` service keys.
  *
- * **Example** (Extracting service types)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * const Database = Context.Service<{
- *   query: (sql: string) => string
- * }>("Database")
- *
- * // Extract service type from a key
- * type DatabaseService = Context.Service.Shape<typeof Database>
- *
- * // Extract identifier type from a key
- * type DatabaseId = Context.Service.Identifier<typeof Database>
- *
- * Database.key // => "Database"
- * ```
- *
  * @since 2.0.0
  */
 export declare namespace Service {
   /**
    * Type that matches any `Context` service key regardless of its identifier or
    * service shape.
-   *
-   * **Example** (Typing any service key)
-   *
-   * ```ts import.meta.vitest
-   * import { Context } from "effect"
-   *
-   * // Any represents any possible service type
-   * const services: Array<Context.Service.Any> = [
-   *   Context.Service<{ log: (msg: string) => void }>("Logger"),
-   *   Context.Service<{ query: (sql: string) => string }>("Database")
-   * ]
-   * services.map((service) => service.key) // => ["Logger", "Database"]
-   * ```
    *
    * @category models
    * @since 4.0.0
@@ -388,21 +311,6 @@ export declare namespace Service {
    * Extracts the service implementation type stored behind a `Context` service
    * key.
    *
-   * **Example** (Extracting a service shape)
-   *
-   * ```ts import.meta.vitest
-   * import { Context } from "effect"
-   *
-   * const Database = Context.Service<{ query: (sql: string) => string }>(
-   *   "Database"
-   * )
-   *
-   * // Extract the service shape from the service
-   * type DatabaseService = Context.Service.Shape<typeof Database>
-   * // DatabaseService is { query: (sql: string) => string }
-   * Database.key // => "Database"
-   * ```
-   *
    * @category models
    * @since 4.0.0
    */
@@ -411,21 +319,6 @@ export declare namespace Service {
   /**
    * Extracts the identifier, or requirement type, associated with a `Context`
    * service key.
-   *
-   * **Example** (Extracting a service identifier)
-   *
-   * ```ts import.meta.vitest
-   * import { Context } from "effect"
-   *
-   * const Database = Context.Service<{ query: (sql: string) => string }>(
-   *   "Database"
-   * )
-   *
-   * // Extract the identifier type from a key
-   * type DatabaseId = Context.Service.Identifier<typeof Database>
-   * // DatabaseId is the identifier type
-   * Database.key // => "Database"
-   * ```
    *
    * @category models
    * @since 2.0.0
@@ -443,22 +336,6 @@ const TypeId = "~effect/Context" as const
  *
  * The type parameter tracks the service identifiers available in the context.
  * At runtime, services are stored by each key's string `key`.
- *
- * **Example** (Creating a context with multiple services)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * // Create a context with multiple services
- * const Logger = Context.Service<{ log: (msg: string) => void }>("Logger")
- * const Database = Context.Service<{ query: (sql: string) => string }>(
- *   "Database"
- * )
- *
- * const context = Context.make(Logger, { log: (_msg: string) => {} })
- *   .pipe(Context.add(Database, { query: (sql) => `Result: ${sql}` }))
- * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
- * ```
  *
  * @category models
  * @since 2.0.0
@@ -484,20 +361,6 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
  * This is unsafe because later mutation of the provided map can affect the
  * created `Context`. Prefer `empty`, `make`, `add`, or `merge` for normal
  * Context construction.
- *
- * **Example** (Creating a context from a map)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * // Create a context from a Map (unsafe)
- * const map = new Map([
- *   ["Logger", { log: (_msg: string) => {} }]
- * ])
- *
- * const context = Context.makeUnsafe(map)
- * context.mapUnsafe.size // => 1
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -558,13 +421,6 @@ const Proto: Omit<Context<never>, "mapUnsafe" | "mutable"> = {
  * This guard only proves that the value is a `Context`; it does not prove that
  * any specific service is present.
  *
- * **Example** (Checking for contexts)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- * Context.isContext(Context.empty()) // => true
- * ```
- *
  * @see {@link isKey} for checking service keys
  * @see {@link isReference} for checking references with defaults
  *
@@ -576,13 +432,6 @@ export const isContext = (u: unknown): u is Context<never> => hasProperty(u, Typ
 /**
  * Checks whether the provided argument is a `Key`.
  *
- * **Example** (Checking for keys)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- * Context.isKey(Context.Service("Service")) // => true
- * ```
- *
  * @category guards
  * @since 4.0.0
  */
@@ -590,19 +439,6 @@ export const isKey = (u: unknown): u is Key<any, any> => hasProperty(u, ServiceT
 
 /**
  * Checks whether the provided argument is a `Reference`.
- *
- * **Example** (Checking for references)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * const LoggerRef = Context.Reference("Logger", {
- *   defaultValue: () => ({ log: (_msg: string) => {} })
- * })
- *
- * Context.isReference(LoggerRef) // => true
- * Context.isReference(Context.Service("Key")) // => false
- * ```
  *
  * @category guards
  * @since 3.11.0
@@ -612,13 +448,6 @@ export const isReference = (u: unknown): u is Reference<any> => hasProperty(u, R
 /**
  * Returns an empty `Context`.
  *
- * **Example** (Creating an empty context)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- * Context.empty().mapUnsafe.size // => 0
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -627,18 +456,6 @@ const emptyContext = makeUnsafe(new Map())
 
 /**
  * Creates a new `Context` with a single service associated to the key.
- *
- * **Example** (Creating a context with one service)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- *
- * const context = Context.make(Port, { PORT: 8080 })
- *
- * Context.get(context, Port).PORT // => 8080
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -659,25 +476,6 @@ export const make = <I, S>(
  *
  * If the context already contains the same service key, the new service
  * replaces the previous one.
- *
- * **Example** (Adding a service to a context)
- *
- * ```ts import.meta.vitest
- * import { Context, pipe } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
- *
- * const someContext = Context.make(Port, { PORT: 8080 })
- *
- * const context = pipe(
- *   someContext,
- *   Context.add(Timeout, { TIMEOUT: 5000 })
- * )
- *
- * const values = [Context.get(context, Port).PORT, Context.get(context, Timeout).TIMEOUT]
- * values // => [8080, 5000]
- * ```
  *
  * @see {@link addOrOmit} for adding or removing a service from an `Option`
  *
@@ -715,23 +513,11 @@ export const add: {
  * When `service` is `Option.some`, the value is stored for the key. When it is
  * `Option.none`, the key is removed from the returned `Context`.
  *
- * **Example** (Adding optional services)
+ * **Gotchas**
  *
- * ```ts import.meta.vitest
- * import { Context, Option } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- *
- * const withPort = Context.empty().pipe(
- *   Context.addOrOmit(Port, Option.some({ PORT: 8080 }))
- * )
- *
- * const withoutPort = withPort.pipe(
- *   Context.addOrOmit(Port, Option.none())
- * )
- * Context.getOption(withPort, Port) // => Option.some({ PORT: 8080 })
- * Context.getOption(withoutPort, Port) // => Option.none()
- * ```
+ * The returned context type includes the service identifier even when the
+ * `Option` is `None`. Use `getOption` when the input may remove a required
+ * service.
  *
  * @see {@link add} for always storing a service value
  *
@@ -779,29 +565,6 @@ export const addOrOmit: {
  *
  * The fallback is not evaluated for missing `Context.Reference` keys because
  * references resolve to their default value.
- *
- * **Example** (Falling back for missing services)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * const Logger = Context.Service<{ log: (msg: string) => void }>("Logger")
- * const Database = Context.Service<{ query: (sql: string) => string }>(
- *   "Database"
- * )
- *
- * const context = Context.make(Logger, { log: (_msg: string) => {} })
- *
- * const logger = Context.getOrElse(context, Logger, () => ({ log: () => {} }))
- * const database = Context.getOrElse(
- *   context,
- *   Database,
- *   () => ({ query: () => "fallback" })
- * )
- *
- * logger === Context.get(context, Logger) // => true
- * database.query("SELECT 1") // => "fallback"
- * ```
  *
  * @see {@link getOption} for returning `Option.none` when a non-reference key is missing
  *
@@ -860,20 +623,6 @@ export const getOrUndefined: {
  * context, its cached default value is returned. For absent non-reference keys,
  * this function throws a runtime error.
  *
- * **Example** (Getting services unsafely)
- *
- * ```ts import.meta.vitest
- * import { Context, Option } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
- *
- * const context = Context.make(Port, { PORT: 8080 })
- *
- * Context.getUnsafe(context, Port).PORT // => 8080
- * Context.getOption(context, Timeout) // => Option.none()
- * ```
- *
  * @see {@link get} for type-checked service access
  * @see {@link getOption} for optional service access
  *
@@ -901,22 +650,6 @@ export const getUnsafe: {
  *
  * Use when you need type-checked access to a service already included in the
  * context type.
- *
- * **Example** (Getting a service from a context)
- *
- * ```ts import.meta.vitest
- * import { Context, pipe } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
- *
- * const context = pipe(
- *   Context.make(Port, { PORT: 8080 }),
- *   Context.add(Timeout, { TIMEOUT: 5000 })
- * )
- *
- * Context.get(context, Timeout).TIMEOUT // => 5000
- * ```
  *
  * @see {@link getOption} for optional service access
  * @see {@link getOrElse} for fallback values
@@ -947,23 +680,6 @@ export const get: {
  *
  * Mutable default values can be shared across contexts unless an override is
  * provided, because the default is cached on the `Context.Reference`.
- *
- * **Example** (Getting reference defaults unsafely)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * const messages: Array<string> = []
- * const LoggerRef = Context.Reference("Logger", {
- *   defaultValue: () => ({ log: (msg: string) => messages.push(msg) })
- * })
- *
- * const context = Context.empty()
- * const logger = Context.getReferenceUnsafe(context, LoggerRef)
- *
- * logger.log("message")
- * messages // => ["message"]
- * ```
  *
  * @see {@link getUnsafe} for unsafe access with any service key
  * @see {@link get} for type-checked reference-aware access
@@ -1023,20 +739,6 @@ const serviceNotFoundError = (service: Key<any, any>) => {
  * is a `Context.Reference` and no override is stored, returns `Option.some` of
  * the cached default value. Missing non-reference keys return `Option.none`.
  *
- * **Example** (Getting optional services)
- *
- * ```ts import.meta.vitest
- * import { Context, Option } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
- *
- * const context = Context.make(Port, { PORT: 8080 })
- *
- * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
- * Context.getOption(context, Timeout) // => Option.none()
- * ```
- *
  * @see {@link getOrElse} for returning a fallback value directly
  *
  * @category getters
@@ -1064,21 +766,16 @@ export const getOption: {
  * When both contexts contain the same service key, the service from `that`
  * overrides the service from `self`.
  *
- * **Example** (Merging two contexts)
+ * **Example** (Replacing a service while merging)
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
+ * const Endpoint = Context.Service<string>("Endpoint")
+ * const defaults = Context.make(Endpoint, "https://api.example.com")
+ * const overrides = Context.make(Endpoint, "http://localhost:3000")
  *
- * const firstContext = Context.make(Port, { PORT: 8080 })
- * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
- *
- * const context = Context.merge(firstContext, secondContext)
- *
- * const values = [Context.get(context, Port).PORT, Context.get(context, Timeout).TIMEOUT]
- * values // => [8080, 5000]
+ * Context.get(Context.merge(defaults, overrides), Endpoint) // => "http://localhost:3000"
  * ```
  *
  * @see {@link mergeAll} for merging more than two contexts at once
@@ -1109,28 +806,6 @@ export const merge: {
  * When multiple contexts contain the same service key, the service from the
  * last context with that key is kept.
  *
- * **Example** (Merging multiple contexts)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
- * const Host = Context.Service<{ HOST: string }>("Host")
- *
- * const firstContext = Context.make(Port, { PORT: 8080 })
- * const secondContext = Context.make(Timeout, { TIMEOUT: 5000 })
- * const thirdContext = Context.make(Host, { HOST: "localhost" })
- *
- * const context = Context.mergeAll(
- *   firstContext,
- *   secondContext,
- *   thirdContext
- * )
- *
- * context.mapUnsafe.size // => 3
- * ```
- *
  * @see {@link merge} for merging two contexts
  *
  * @category combining
@@ -1155,25 +830,6 @@ export const mergeAll = <T extends Array<unknown>>(
  *
  * Use when you want to keep an allowlist of services in a `Context`.
  *
- * **Example** (Picking services from a context)
- *
- * ```ts import.meta.vitest
- * import { Context, Option, pipe } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
- *
- * const someContext = pipe(
- *   Context.make(Port, { PORT: 8080 }),
- *   Context.add(Timeout, { TIMEOUT: 5000 })
- * )
- *
- * const context = pipe(someContext, Context.pick(Port))
- *
- * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
- * Context.getOption(context, Timeout) // => Option.none()
- * ```
- *
  * @see {@link omit} for removing selected services
  *
  * @category filtering
@@ -1197,25 +853,6 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
  * **When to use**
  *
  * Use when you want to remove a denylist of services from a `Context`.
- *
- * **Example** (Omitting services from a context)
- *
- * ```ts import.meta.vitest
- * import { Context, Option, pipe } from "effect"
- *
- * const Port = Context.Service<{ PORT: number }>("Port")
- * const Timeout = Context.Service<{ TIMEOUT: number }>("Timeout")
- *
- * const someContext = pipe(
- *   Context.make(Port, { PORT: 8080 }),
- *   Context.add(Timeout, { TIMEOUT: 5000 })
- * )
- *
- * const context = pipe(someContext, Context.omit(Timeout))
- *
- * Context.getOption(context, Port) // => Option.some({ PORT: 8080 })
- * Context.getOption(context, Timeout) // => Option.none()
- * ```
  *
  * @see {@link pick} for keeping selected services
  *
@@ -1292,34 +929,25 @@ const withMapUnsafe = <Services, B>(self: Context<Services>, f: (map: Map<string
  * when needed. The default value is computed lazily and cached on the
  * reference.
  *
- * **Example** (Creating references with default values)
+ * **Example** (Caching a default and overriding it)
  *
  * ```ts import.meta.vitest
  * import { Context } from "effect"
  *
- * // Create a reference with a default value
- * const messages: Array<string> = []
- * const LoggerRef = Context.Reference("Logger", {
- *   defaultValue: () => ({ log: (msg: string) => messages.push(`Default: ${msg}`) })
+ * let defaults = 0
+ * const Attempt = Context.Reference("Attempt", {
+ *   defaultValue: () => ++defaults
  * })
  *
- * // The reference provides the default value when accessed from an empty context
- * const context = Context.empty()
- * const logger = Context.get(context, LoggerRef)
- *
- * // You can also override the default value
- * const customContext = Context.make(LoggerRef, {
- *   log: (msg: string) => messages.push(`Custom: ${msg}`)
- * })
- * const customLogger = Context.get(customContext, LoggerRef)
- * logger.log("default")
- * customLogger.log("message")
- * messages // => ["Default: default", "Custom: message"]
+ * Context.get(Context.empty(), Attempt) // => 1
+ * Context.get(Context.empty(), Attempt) // => 1
+ * Context.get(Context.make(Attempt, 10), Attempt) // => 10
+ * defaults // => 1
  * ```
  *
  * @see {@link Service} for required services without default values
  *
- * @category references
+ * @category services
  * @since 3.11.0
  */
 export const Reference: <Service>(

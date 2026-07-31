@@ -40,24 +40,6 @@ const TypeId = "~effect/Logger"
  * for each log event. Use `Logger.layer` to install one or more loggers for an
  * effect.
  *
- * **Example** (Creating custom loggers)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- *
- * const messages: Array<string> = []
- * const stringLogger = Logger.make<unknown, void>((options) => {
- *   messages.push(`[${options.logLevel}] ${options.message}`)
- * })
- *
- * const program = Effect.log("Hello World").pipe(
- *   Effect.provide(Logger.layer([stringLogger]))
- * )
- *
- * Effect.runSync(program)
- * messages // => ["[Info] Hello World"]
- * ```
- *
  * @category models
  * @since 2.0.0
  */
@@ -73,28 +55,6 @@ export interface Logger<in Message, out Output> extends Pipeable {
  *
  * Includes the logged message, log level, cause, current fiber, and timestamp.
  *
- * **Example** (Accessing logger options)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- *
- * const outputs: Array<unknown> = []
- * const detailedLogger = Logger.make((options) => {
- *   outputs.push({
- *     message: options.message,
- *     level: options.logLevel,
- *     hasCause: options.cause.reasons.length > 0
- *   })
- * })
- *
- * const program = Effect.log("Processing request").pipe(
- *   Effect.provide(Logger.layer([detailedLogger]))
- * )
- *
- * Effect.runSync(program)
- * outputs // => [{ message: ["Processing request"], level: "Info", hasCause: false }]
- * ```
- *
  * @category options
  * @since 2.0.0
  */
@@ -109,18 +69,6 @@ export interface Options<out Message> {
 /**
  * Returns `true` if the specified value is a `Logger`, otherwise returns `false`.
  *
- * **Example** (Checking logger values)
- *
- * ```ts import.meta.vitest
- * import { Logger } from "effect"
- *
- * const myLogger = Logger.make(() => undefined)
- *
- * Logger.isLogger(myLogger) // => true
- * Logger.isLogger("not a logger") // => false
- * Logger.isLogger({ log: () => {} }) // => false
- * ```
- *
  * @category guards
  * @since 4.0.0
  */
@@ -134,27 +82,6 @@ export const isLogger = (u: unknown): u is Logger<unknown, unknown> => Predicate
  * By default this set includes the default logger and the tracer logger.
  * Providing `Logger.layer` replaces or merges with this set depending on its
  * options.
- *
- * **Example** (Accessing current loggers)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- *
- * const messages: Array<unknown> = []
- * const customLogger = Logger.make((options) => {
- *   messages.push(options.message)
- * })
- * const program = Effect.gen(function*() {
- *   const currentLoggers = yield* Effect.service(Logger.CurrentLoggers)
- *   yield* Effect.log("Hello from custom logger").pipe(
- *     Effect.provide(Logger.layer([customLogger]))
- *   )
- *   return currentLoggers.has(Logger.defaultLogger)
- * })
- *
- * Effect.runSync(program) // => true
- * messages // => [["Hello from custom logger"]]
- * ```
  *
  * @category references
  * @since 4.0.0
@@ -197,21 +124,16 @@ export const LogToStderr: Context.Reference<boolean> = effect.LogToStderr
  * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
- * const outputs: Array<unknown> = []
- * const structuredLogger = Logger.make((options) => ({
- *   message: options.message
- * }))
- *
- * // Transform to uppercase messages
- * const uppercaseLogger = Logger.map(
- *   structuredLogger,
- *   (output) => ({ ...output, message: String(output.message).toUpperCase() })
+ * const messageCounts: Array<number> = []
+ * const logger = Logger.make(({ message }) => Array.isArray(message) ? message : [message]).pipe(
+ *   Logger.map((messages) => messages.length),
+ *   Logger.map((count) => {
+ *     messageCounts.push(count)
+ *   })
  * )
  *
- * const collector = Logger.make((options) => outputs.push(uppercaseLogger.log(options)))
- * const program = Effect.log("hello").pipe(Effect.provide(Logger.layer([collector])))
- * Effect.runSync(program)
- * outputs // => [{ message: "HELLO" }]
+ * Effect.runSync(Effect.log("first", "second").pipe(Effect.provide(Logger.layer([logger]))))
+ * messageCounts // => [2]
  * ```
  *
  * @category mapping
@@ -238,27 +160,6 @@ export const map = dual<
  * Use when a logger's string or object output should be routed to `console.log` for
  * development or debugging.
  *
- * **Example** (Writing logger output with console.log)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- * import { TestConsole } from "effect/testing"
- *
- * // Create a custom formatter
- * const customFormatter = Logger.make((options) =>
- *   `${options.logLevel}: ${options.message}`
- * )
- *
- * const consoleLogger = Logger.withConsoleLog(customFormatter)
- *
- * const program = Effect.gen(function*() {
- *   yield* Effect.log("Hello World").pipe(Effect.provide(Logger.layer([consoleLogger])))
- *   return yield* TestConsole.logLines
- * }).pipe(Effect.provide(TestConsole.layer))
- *
- * await Effect.runPromise(program) // => ["Info: Hello World"]
- * ```
- *
  * @category logging
  * @since 2.0.0
  */
@@ -277,27 +178,6 @@ export const withConsoleLog = <Message, Output>(
  *
  * Use when logger output should be routed to `console.error`, such as error logs that
  * should appear on stderr instead of stdout.
- *
- * **Example** (Writing logger output with console.error)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- * import { TestConsole } from "effect/testing"
- *
- * // Create an error-specific formatter
- * const errorFormatter = Logger.make((options) =>
- *   `ERROR: ${options.message}`
- * )
- *
- * const errorLogger = Logger.withConsoleError(errorFormatter)
- *
- * const program = Effect.gen(function*() {
- *   yield* Effect.logError("Database connection failed").pipe(Effect.provide(Logger.layer([errorLogger])))
- *   return yield* TestConsole.errorLines
- * }).pipe(Effect.provide(TestConsole.layer))
- *
- * await Effect.runPromise(program) // => ["ERROR: Database connection failed"]
- * ```
  *
  * @category logging
  * @since 2.0.0
@@ -321,37 +201,6 @@ export const withConsoleError = <Message, Output>(
  * `Debug` uses `console.debug`, `Info` uses `console.info`, `Trace` uses
  * `console.trace`, `Warn` uses `console.warn`, `Error` and `Fatal` use
  * `console.error`, and all other levels use `console.log`.
- *
- * **Example** (Writing logs with level-based console methods)
- *
- * ```ts import.meta.vitest
- * import { Console, Effect, Logger } from "effect"
- *
- * const messages: Array<ReadonlyArray<unknown>> = []
- * const testConsole: Console.Console = Object.assign(Object.create(console), {
- *   info: (message: unknown) => messages.push(["info", message]),
- *   warn: (message: unknown) => messages.push(["warn", message]),
- *   error: (message: unknown) => messages.push(["error", message])
- * })
- * const formatter = Logger.make((options) =>
- *   `[${options.logLevel}] ${options.message}`
- * )
- *
- * const leveledLogger = Logger.withLeveledConsole(formatter)
- *
- * const program = Effect.gen(function*() {
- *   yield* Effect.logInfo("Info message") // -> console.info
- *   yield* Effect.logWarning("Warning") // -> console.warn
- *   yield* Effect.logError("Error occurred") // -> console.error
- * }).pipe(Effect.provide(Logger.layer([leveledLogger])))
- * Effect.runSync(Effect.provideService(program, Console.Console, testConsole))
- * const expected = [
- *   ["info", "[Info] Info message"],
- *   ["warn", "[Warn] Warning"],
- *   ["error", "[Error] Error occurred"]
- * ]
- * messages // => expected
- * ```
  *
  * @category logging
  * @since 3.8.0
@@ -447,24 +296,6 @@ const format = (
  * The log function receives an options object containing the message, log level,
  * cause, fiber information, and timestamp, and should return the desired output.
  *
- * **Example** (Creating loggers from functions)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- *
- * const outputs: Array<string> = []
- * const textLogger = Logger.make((options) =>
- *   `${options.logLevel}: ${options.message}`
- * )
- * const collector = Logger.make((options) => outputs.push(textLogger.log(options)))
- *
- * const program = Effect.log("Hello World").pipe(
- *   Effect.provide(Logger.layer([collector]))
- * )
- * Effect.runSync(program)
- * outputs // => ["Info: Hello World"]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -474,14 +305,6 @@ export const make: <Message, Output>(
 
 /**
  * The default logging implementation used by the Effect runtime.
- *
- * **Example** (Referencing the default logger)
- *
- * ```ts import.meta.vitest
- * import { Logger } from "effect"
- *
- * Logger.isLogger(Logger.defaultLogger) // => true
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -495,28 +318,6 @@ export const defaultLogger: Logger<unknown, void> = effect.defaultLogger
  *
  * For example, a simple log entry is rendered as
  * `timestamp=2025-01-03T14:22:47.570Z level=INFO fiber=#1 message=hello`.
- *
- * **Example** (Formatting logs as simple strings)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- * import { TestConsole } from "effect/testing"
- *
- * // Use the simple format logger
- * const stableSimple = Logger.map(Logger.formatSimple, (output) =>
- *   output
- *     .replace(/timestamp=\S+ /, "")
- *     .replace(/fiber=#\d+ /, "")
- * )
- * const program = Effect.gen(function*() {
- *   yield* Effect.log("Application started").pipe(
- *     Effect.provide(Logger.layer([Logger.withConsoleLog(stableSimple)]))
- *   )
- *   return yield* TestConsole.logLines
- * }).pipe(Effect.provide(TestConsole.layer))
- *
- * await Effect.runPromise(program) // => ["level=Info message=\"Application started\""]
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -532,27 +333,6 @@ export const formatSimple = effect.loggerMake(format(escapeDoubleQuotes))
  * For example, a logfmt entry is rendered as
  * `timestamp=2025-01-03T14:22:47.570Z level=INFO fiber=#1 message=hello`.
  *
- * **Example** (Formatting logs as logfmt)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- * import { TestConsole } from "effect/testing"
- *
- * const stableLogFmt = Logger.map(Logger.formatLogFmt, (output) =>
- *   output
- *     .replace(/timestamp=\S+ /, "")
- *     .replace(/fiber=#\d+ /, "")
- * )
- * const program = Effect.gen(function*() {
- *   yield* Effect.log("User login").pipe(
- *     Effect.provide(Logger.layer([Logger.withConsoleLog(stableLogFmt)]))
- *   )
- *   return yield* TestConsole.logLines
- * }).pipe(Effect.provide(TestConsole.layer))
- *
- * await Effect.runPromise(program) // => ["level=Info message=\"User login\""]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -567,26 +347,6 @@ export const formatLogFmt = effect.loggerMake(format(JSON.stringify, 0))
  * `level: "INFO"`, `timestamp: "2025-01-03T14:25:39.666Z"`,
  * `annotations: { key: "value" }`, `spans: { label: 0 }`, and
  * `fiberId: "#1"`.
- *
- * **Example** (Formatting logs as structured objects)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- * import { TestConsole } from "effect/testing"
- *
- * const stableStructured = Logger.map(Logger.formatStructured, (output) => ({
- *   message: output.message,
- *   level: output.level
- * }))
- * const program = Effect.gen(function*() {
- *   yield* Effect.log("User action").pipe(
- *     Effect.provide(Logger.layer([Logger.withConsoleLog(stableStructured)]))
- *   )
- *   return yield* TestConsole.logLines
- * }).pipe(Effect.provide(TestConsole.layer))
- *
- * await Effect.runPromise(program) // => [{ message: "User action", level: "INFO" }]
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -638,26 +398,6 @@ export const formatStructured: Logger<unknown, {
  * "timestamp":"2025-01-03T14:28:57.508Z","annotations":{"key":"value"},
  * "spans":{"label":0},"fiberId":"#1"}`.
  *
- * **Example** (Formatting logs as JSON)
- *
- * ```ts import.meta.vitest
- * import { Effect, Formatter, Logger } from "effect"
- * import { TestConsole } from "effect/testing"
- *
- * const stableJson = Logger.map(Logger.formatJson, (json) => {
- *   const output = JSON.parse(json)
- *   return Formatter.formatJson({ message: output.message, level: output.level })
- * })
- * const program = Effect.gen(function*() {
- *   yield* Effect.log("Server started").pipe(
- *     Effect.provide(Logger.layer([Logger.withConsoleLog(stableJson)]))
- *   )
- *   return yield* TestConsole.logLines
- * }).pipe(Effect.provide(TestConsole.layer))
- *
- * await Effect.runPromise(program) // => ["{\"message\":\"Server started\",\"level\":\"INFO\"}"]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -672,7 +412,7 @@ export const formatJson = map(formatStructured, Formatter.formatJson)
  * passes buffered outputs to `flush`. When the scope closes, the background
  * process is interrupted and any remaining buffered entries are flushed.
  *
- * **Example** (Batching logger output)
+ * **Example** (Flushing buffered output on scope close)
  *
  * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
@@ -760,15 +500,6 @@ export const batched = dual<
  * `[09:37:17.579] INFO (#1) label=0ms: hello` followed by an annotation line
  * such as `key: value`.
  *
- * **Example** (Logging with pretty console output)
- *
- * ```ts import.meta.vitest
- * import { Logger } from "effect"
- *
- * const prettyLogger = Logger.consolePretty({ colors: false })
- * Logger.isLogger(prettyLogger) // => true
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -790,14 +521,6 @@ export const consolePretty: (
  * For example, a console logfmt entry is rendered as
  * `timestamp=2025-01-03T14:22:47.570Z level=INFO fiber=#1 message=info`.
  *
- * **Example** (Logging logfmt output to the console)
- *
- * ```ts import.meta.vitest
- * import { Logger } from "effect"
- *
- * Logger.isLogger(Logger.consoleLogFmt) // => true
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -815,14 +538,6 @@ export const consoleLogFmt: Logger<unknown, void> = withConsoleLog(formatLogFmt)
  * `annotations: { key: "value" }`, `spans: { label: 0 }`, and
  * `fiberId: "#1"`.
  *
- * **Example** (Logging structured output to the console)
- *
- * ```ts import.meta.vitest
- * import { Logger } from "effect"
- *
- * Logger.isLogger(Logger.consoleStructured) // => true
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -837,14 +552,6 @@ export const consoleStructured: Logger<unknown, void> = withConsoleLog(formatStr
  * For example, console JSON output can render as
  * `{"message":["hello"],"level":"INFO","timestamp":"2025-01-03T14:28:57.508Z",
  * "annotations":{"key":"value"},"spans":{"label":0},"fiberId":"#1"}`.
- *
- * **Example** (Logging JSON output to the console)
- *
- * ```ts import.meta.vitest
- * import { Logger } from "effect"
- *
- * Logger.isLogger(Logger.consoleJson) // => true
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -864,18 +571,6 @@ export const consoleJson: Logger<unknown, void> = withConsoleLog(formatJson)
  * so log messages automatically appear as span events unless you override the
  * default loggers.
  *
- * **Example** (Recording logs as trace span events)
- *
- * ```ts import.meta.vitest
- * import { Effect, Logger } from "effect"
- *
- * const program = Effect.log("span event").pipe(
- *   Effect.withSpan("operation"),
- *   Effect.provide(Logger.layer([Logger.tracerLogger]))
- * )
- * Effect.runSync(program)
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -890,22 +585,27 @@ export const tracerLogger: Logger<unknown, void> = effect.tracerLogger
  * If the specified array of `loggers` should be _merged_ with the current set
  * of loggers (instead of overwriting them), set `mergeWithExisting` to `true`.
  *
- * **Example** (Providing logger layers)
+ * **Example** (Merging with active loggers)
  *
  * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
  *
- * const messages: Array<unknown> = []
- * const customLogger = Logger.make((options) => {
- *   messages.push(options.message)
+ * const firstMessages: Array<unknown> = []
+ * const secondMessages: Array<unknown> = []
+ * const firstLogger = Logger.make(({ message }) => {
+ *   firstMessages.push(message)
  * })
- * const CustomLoggerLive = Logger.layer([customLogger])
+ * const secondLogger = Logger.make(({ message }) => {
+ *   secondMessages.push(message)
+ * })
  *
- * const program = Effect.log("Application started").pipe(
- *   Effect.provide(CustomLoggerLive)
+ * const program = Effect.log("merged").pipe(
+ *   Effect.provide(Logger.layer([secondLogger], { mergeWithExisting: true })),
+ *   Effect.provide(Logger.layer([firstLogger]))
  * )
  * Effect.runSync(program)
- * messages // => [["Application started"]]
+ * firstMessages // => [["merged"]]
+ * secondMessages // => [["merged"]]
  * ```
  *
  * @category context
@@ -944,59 +644,10 @@ export const layer = <
  * string output, writes each batch to the specified path, and flushes remaining
  * entries when the scope closes.
  *
- * **Example** (Writing JSON logs to a file)
+ * **Gotchas**
  *
- * ```ts import.meta.vitest
- * import { Effect, FileSystem, Logger } from "effect"
- *
- * const writes: Array<string> = []
- * const file = {
- *   write: (buffer: Uint8Array) => Effect.sync(() => {
- *     writes.push(new TextDecoder().decode(buffer).trim())
- *     return FileSystem.Size(buffer.length)
- *   })
- * } as unknown as FileSystem.File
- * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })
- * const messageLogger = Logger.make((options) => String(options.message))
- *
- * const program = Effect.scoped(Effect.gen(function*() {
- *   const fileLogger = yield* Logger.toFile(messageLogger, "/tmp/log.txt")
- *   yield* Effect.log("a").pipe(Effect.provide(Logger.layer([fileLogger])))
- *   yield* Effect.log("b").pipe(Effect.provide(Logger.layer([fileLogger])))
- *   yield* Effect.log("c").pipe(Effect.provide(Logger.layer([fileLogger])))
- * })).pipe(Effect.provideService(FileSystem.FileSystem, fileSystem))
- *
- * await Effect.runPromise(program)
- * writes // => ["a\nb\nc"]
- * ```
- *
- * **Example** (Writing logs to files)
- *
- * ```ts import.meta.vitest
- * import { Effect, FileSystem, Logger } from "effect"
- *
- * const writes: Array<string> = []
- * const file = {
- *   write: (buffer: Uint8Array) => Effect.sync(() => {
- *     writes.push(new TextDecoder().decode(buffer).trim())
- *     return FileSystem.Size(buffer.length)
- *   })
- * } as unknown as FileSystem.File
- * const fileSystem = FileSystem.makeNoop({ open: () => Effect.succeed(file) })
- * const messageLogger = Logger.make((options) => String(options.message))
- *
- * const program = Effect.scoped(Effect.gen(function*() {
- *   const fileLogger = yield* Logger.toFile(messageLogger, "/tmp/app.log", {
- *     batchWindow: "1 hour"
- *   })
- *   yield* Effect.log("Application started").pipe(
- *     Effect.provide(Logger.layer([fileLogger]))
- *   )
- * })).pipe(Effect.provideService(FileSystem.FileSystem, fileSystem))
- *
- * await Effect.runPromise(program)
- * writes // => ["Application started"]
- * ```
+ * Opening the file can fail, but errors from writing a batch after the file is
+ * open are ignored.
  *
  * @category file
  * @since 4.0.0

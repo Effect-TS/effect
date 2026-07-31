@@ -219,6 +219,23 @@ export const decode = <IE = never, Done = unknown>(options?: {
  * The channel decodes UTF-8 bytes, parses each NDJSON line, and then decodes
  * each parsed value with the schema.
  *
+ * **Example** (Decoding records across byte chunks)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema, Stream } from "effect"
+ * import { Ndjson } from "effect/unstable/encoding"
+ *
+ * const encoder = new TextEncoder()
+ * const Record = Schema.Struct({ name: Schema.String })
+ * const program = Stream.make(encoder.encode("{\"name\":\""), encoder.encode("Ada\"}\n")).pipe(
+ *   Stream.pipeThroughChannel(Ndjson.decodeSchema(Record)()),
+ *   Stream.runCollect,
+ *   Effect.map(Array.from)
+ * )
+ *
+ * await Effect.runPromise(program) // => [{ name: "Ada" }]
+ * ```
+ *
  * @category constructors
  * @since 4.0.0
  */

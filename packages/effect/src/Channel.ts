@@ -66,16 +66,6 @@ export const TypeId: TypeId = "~effect/Channel"
 /**
  * Checks whether a value is a `Channel`.
  *
- * **Example** (Checking for channels)
- *
- * ```ts import.meta.vitest
- * import { Channel } from "effect"
- *
- * const channel = Channel.succeed(42)
- * Channel.isChannel(channel) // => true
- * Channel.isChannel("not a channel") // => false
- * ```
- *
  * @category guards
  * @since 3.5.4
  */
@@ -107,32 +97,6 @@ export const isChannel = (
  *  - **Concatenating**: The output of one channel can be used to create other
  *    channels, which are all concatenated together. The first channel and the
  *    function that makes the other channels can be composed into a channel.
- *
- * **Example** (Typing channels)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // A channel that outputs numbers and requires no environment
- * type NumberChannel = Channel.Channel<number>
- *
- * // A channel that outputs strings, can fail with Error, completes with boolean
- * type StringChannel = Channel.Channel<string, Error, boolean>
- *
- * // A channel with all type parameters specified
- * type FullChannel = Channel.Channel<
- *   string, // OutElem - output elements
- *   Error, // OutErr - output errors
- *   number, // OutDone - completion value
- *   number, // InElem - input elements
- *   string, // InErr - input errors
- *   boolean, // InDone - input completion
- *   { db: string } // Env - required environment
- * >
- *
- * const channel: NumberChannel = Channel.succeed(1)
- * Effect.runSync(Channel.runCollect(channel)) // => [1]
- * ```
  *
  * @category models
  * @since 2.0.0
@@ -266,17 +230,6 @@ const ChannelProto = {
 /**
  * Creates a `Channel` from a transformation function that operates on upstream pulls.
  *
- * **Example** (Creating channels from transforms)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const channel = Channel.fromTransform((upstream, scope) =>
- *   Effect.succeed(upstream)
- * )
- * await Effect.runPromise(Channel.runCollect(channel)) // => []
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -302,24 +255,6 @@ export const fromTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, E
 
 /**
  * Transforms a Channel by applying a function to its Pull implementation.
- *
- * **Example** (Transforming pull behavior)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Transform a channel by modifying its pull behavior
- * const originalChannel = Channel.fromIterable([1, 2, 3])
- *
- * const transformedChannel = Channel.transformPull(
- *   originalChannel,
- *   (pull, scope) =>
- *     Effect.succeed(
- *       Effect.map(pull, (value) => value * 2)
- *     )
- * )
- * await Effect.runPromise(Channel.runCollect(transformedChannel)) // => [2, 4, 6]
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -357,20 +292,26 @@ export const transformPull = <
 /**
  * Creates a `Channel` from an `Effect` that produces a `Pull`.
  *
- * **Example** (Creating channels from pulls)
+ * **Example** (Signaling pull completion)
  *
  * ```ts import.meta.vitest
- * import { Cause, Channel, Effect } from "effect"
+ * import { Cause, Channel, Effect, Exit } from "effect"
  *
  * const channel = Channel.fromPull(Effect.sync(() => {
  *   let emitted = false
  *   return Effect.suspend(() => {
- *     if (emitted) return Cause.done()
+ *     if (emitted) return Cause.done("finished")
  *     emitted = true
  *     return Effect.succeed(42)
  *   })
  * }))
- * await Effect.runPromise(Channel.runCollect(channel)) // => [42]
+ *
+ * const program = Effect.scoped(Effect.gen(function*() {
+ *   const pull = yield* Channel.toPull(channel)
+ *   return [yield* pull, yield* Effect.exit(pull)] as const
+ * }))
+ *
+ * await Effect.runPromise(program) // => [42, Exit.fail(Cause.Done("finished"))]
  * ```
  *
  * @category constructors
@@ -419,17 +360,6 @@ export const fromTransformBracket = <OutElem, OutErr, OutDone, InElem, InErr, In
 /**
  * Converts a `Channel` back to its underlying transformation function.
  *
- * **Example** (Extracting channel transforms)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const channel = Channel.succeed(42)
- * const transform = Channel.toTransform(channel)
- * typeof transform // => "function"
- * Effect.runSync(Channel.runCollect(channel)) // => [42]
- * ```
- *
  * @category destructors
  * @since 4.0.0
  */
@@ -442,14 +372,6 @@ export const toTransform = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env
 
 /**
  * The default chunk size used by channels for batching operations.
- *
- * **Example** (Reading the default chunk size)
- *
- * ```ts import.meta.vitest
- * import { Channel } from "effect"
- *
- * Channel.DefaultChunkSize // => 4096
- * ```
  *
  * @category constants
  * @since 4.0.0
@@ -475,22 +397,6 @@ const asyncQueue = <A, E = never, R = never>(
 /**
  * Creates a `Channel` that interacts with a callback function using a queue.
  *
- * **Example** (Creating channels from callbacks)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Queue } from "effect"
- *
- * const channel = Channel.callback<number>((queue) =>
- *   Effect.gen(function*() {
- *     yield* Queue.offer(queue, 1)
- *     yield* Queue.offer(queue, 2)
- *     yield* Queue.offer(queue, 3)
- *     yield* Queue.end(queue)
- *   })
- * )
- * await Effect.runPromise(Channel.runCollect(channel)) // => [1, 2, 3]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -506,19 +412,6 @@ export const callback = <A, E = never, R = never>(
 /**
  * Creates a `Channel` that interacts with a callback function using a queue, emitting arrays.
  *
- * **Example** (Creating array channels from callbacks)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Queue } from "effect"
- *
- * const channel = Channel.callbackArray<number>(Effect.fn(function*(queue) {
- *   yield* Queue.offer(queue, 1)
- *   yield* Queue.offer(queue, 2)
- *   yield* Queue.end(queue)
- * }))
- * await Effect.runPromise(Channel.runCollect(channel)) // => [[1, 2]]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -533,15 +426,6 @@ export const callbackArray = <A, E = never, R = never>(
 
 /**
  * Creates a `Channel` that lazily evaluates to another channel.
- *
- * **Example** (Suspending channel creation)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const channel = Channel.suspend(() => Channel.succeed(42))
- * Effect.runSync(Channel.runCollect(channel)) // => [42]
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -561,18 +445,19 @@ export const suspend = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
  * Acquisition is uninterruptible. If acquisition fails, `use` is not run and
  * `release` is not registered.
  *
- * **Example** (Managing resources with acquire-use-release)
+ * **Example** (Releasing with the channel completion)
  *
  * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
+ * import { Channel, Effect, Exit } from "effect"
  *
- * const released: Array<string> = []
+ * const releases: Array<Exit.Exit<string>> = []
  * const channel = Channel.acquireUseRelease(
  *   Effect.succeed("resource"),
- *   (resource) => Channel.succeed(resource.toUpperCase()),
- *   (resource, exit) => Effect.sync(() => released.push(resource))
+ *   (resource) => Channel.concat(Channel.succeed(resource), Channel.end("finished")),
+ *   (_, exit) => Effect.sync(() => releases.push(exit))
  * )
- * const observed = [await Effect.runPromise(Channel.runCollect(channel)), released] // => [["RESOURCE"], ["resource"]]
+ *
+ * const observed = [await Effect.runPromise(Channel.runDrain(channel)), releases] // => ["finished", [Exit.succeed("finished")]]
  * ```
  *
  * @category constructors
@@ -606,19 +491,6 @@ export const acquireUseRelease = <A, E, R, OutElem, OutErr, OutDone, InElem, InE
  * exit. If acquisition fails, no element is emitted and `release` is not
  * registered.
  *
- * **Example** (Managing resources with acquire-release)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const released: Array<string> = []
- * const channel = Channel.acquireRelease(
- *   Effect.succeed("resource"),
- *   (resource, exit) => Effect.sync(() => released.push(resource))
- * )
- * const observed = [await Effect.runPromise(Channel.runCollect(channel)), released] // => [["resource"], ["resource"]]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -642,16 +514,6 @@ export const acquireRelease: {
 /**
  * Creates a `Channel` from an iterator.
  *
- * **Example** (Creating channels from iterators)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const numbers = [1, 2, 3, 4, 5]
- * const channel = Channel.fromIterator(() => numbers[Symbol.iterator]())
- * Effect.runSync(Channel.runCollect(channel)) // => [1, 2, 3, 4, 5]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -669,15 +531,6 @@ export const fromIterator = <A, L>(iterator: LazyArg<Iterator<A, L>>): Channel<A
 /**
  * Creates a `Channel` that emits all elements from an array.
  *
- * **Example** (Creating channels from arrays)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const channel = Channel.fromArray([1, 2, 3, 4, 5])
- * Effect.runSync(Channel.runCollect(channel)) // => [1, 2, 3, 4, 5]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -690,16 +543,6 @@ export const fromArray = <A>(array: ReadonlyArray<A>): Channel<A> =>
 /**
  * Creates a `Channel` that emits all elements from a chunk.
  *
- * **Example** (Creating channels from chunks)
- *
- * ```ts import.meta.vitest
- * import { Channel, Chunk, Effect } from "effect"
- *
- * const chunk = Chunk.make(1, 2, 3)
- * const channel = Channel.fromChunk(chunk)
- * Effect.runSync(Channel.runCollect(channel)) // => [1, 2, 3]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -707,46 +550,6 @@ export const fromChunk = <A>(chunk: Chunk.Chunk<A>): Channel<A> => fromArray(Chu
 
 /**
  * Creates a `Channel` from an iterator that emits arrays of elements.
- *
- * **Example** (Batching iterator output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Create a channel from a simple iterator
- * const numberIterator = (): Iterator<number, string> => {
- *   let count = 0
- *   return {
- *     next: () => {
- *       if (count < 3) {
- *         return { value: count++, done: false }
- *       }
- *       return { value: "finished", done: true }
- *     }
- *   }
- * }
- *
- * const channel = Channel.fromIteratorArray(() => numberIterator(), 2)
- * Effect.runSync(Channel.runCollect(channel)) // => [[0, 1], [2]]
- * ```
- *
- * **Example** (Batching generator output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Create channel from a generator function
- * function* fibonacci(): Generator<number, void, unknown> {
- *   let a = 0, b = 1
- *   for (let i = 0; i < 5; i++) {
- *     yield a
- *     ;[a, b] = [b, a + b]
- *   }
- * }
- *
- * const fibChannel = Channel.fromIteratorArray(() => fibonacci(), 3)
- * Effect.runSync(Channel.runCollect(fibChannel)) // => [[0, 1, 1], [2, 3]]
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -781,16 +584,6 @@ export const fromIteratorArray = <A, L>(
 /**
  * Creates a `Channel` that emits all elements from an iterable.
  *
- * **Example** (Creating channels from iterables)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const set = new Set([1, 2, 3])
- * const channel = Channel.fromIterable(set)
- * Effect.runSync(Channel.runCollect(channel)) // => [1, 2, 3]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -799,16 +592,6 @@ export const fromIterable = <A, L>(iterable: Iterable<A, L>): Channel<A, never, 
 
 /**
  * Creates a `Channel` that emits arrays of elements from an iterable.
- *
- * **Example** (Batching iterable output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const numbers = [1, 2, 3, 4, 5]
- * const channel = Channel.fromIterableArray(numbers, 4)
- * Effect.runSync(Channel.runCollect(channel)) // => [[1, 2, 3, 4], [5]]
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -821,15 +604,6 @@ export const fromIterableArray = <A, L>(
 /**
  * Creates a `Channel` that emits a single value and then ends.
  *
- * **Example** (Creating channels that succeed)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const channel = Channel.succeed(42)
- * Effect.runSync(Channel.runCollect(channel)) // => [42]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -837,15 +611,6 @@ export const succeed = <A>(value: A): Channel<A> => fromEffect(Effect.succeed(va
 
 /**
  * Creates a `Channel` that immediately ends with the specified value.
- *
- * **Example** (Ending with a value)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const channel = Channel.end("done")
- * Effect.runSync(Channel.runCollect(channel)) // => []
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -864,20 +629,6 @@ export const endSync = <A>(evaluate: LazyArg<A>): Channel<never, never, A> =>
 /**
  * Creates a `Channel` that emits a single value computed by a lazy evaluation.
  *
- * **Example** (Computing values lazily)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * let requests = 0
- *
- * const channel = Channel.sync(() => {
- *   requests += 1
- *   return `request-${requests}`
- * })
- * Effect.runSync(Channel.runCollect(channel)) // => ["request-1"]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -885,25 +636,6 @@ export const sync = <A>(evaluate: LazyArg<A>): Channel<A> => fromEffect(Effect.s
 
 /**
  * Represents a `Channel` that emits no elements.
- *
- * **Example** (Creating empty channels)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Create an empty channel
- * const emptyChannel = Channel.empty
- *
- * // Use empty channel in composition
- * const combined = Channel.concatWith(emptyChannel, () => Channel.succeed(42))
- * // Will immediately provide the second channel's output
- *
- * // Empty channel can be used as a no-op in conditional logic
- * const conditionalChannel = (shouldEmit: boolean) =>
- *   shouldEmit ? Channel.succeed("data") : Channel.empty
- *
- * Effect.runSync(Channel.runCollect(conditionalChannel(true))) // => ["data"]
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -913,27 +645,6 @@ export const empty: Channel<never> = fromPull(Effect.succeed(Cause.done()))
 /**
  * Represents a `Channel` that never completes.
  *
- * **Example** (Creating non-terminating channels)
- *
- * ```ts import.meta.vitest
- * import { Channel } from "effect"
- *
- * // Create a channel that never completes
- * const neverChannel = Channel.never
- *
- * // Use in conditional logic
- * const withFallback = Channel.concatWith(
- *   neverChannel,
- *   () => Channel.succeed("fallback")
- * )
- *
- * // Never channel is useful for testing or as a placeholder
- * const conditionalChannel = (shouldComplete: boolean) =>
- *   shouldComplete ? Channel.succeed("done") : Channel.never
- *
- * Channel.isChannel(conditionalChannel(false)) // => true
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -941,15 +652,6 @@ export const never: Channel<never, never, never> = fromPull(Effect.succeed(Effec
 
 /**
  * Constructs a channel that fails immediately with the specified error.
- *
- * **Example** (Failing with an error)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Exit } from "effect"
- *
- * const failedChannel = Channel.fail("Something went wrong")
- * Effect.runSync(Effect.exit(Channel.runCollect(failedChannel))) // => Exit.fail("Something went wrong")
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -965,22 +667,6 @@ export const fail = <E>(error: E): Channel<never, E, never> => fromPull(Effect.s
  * Use when the error value should be computed each time the channel runs instead
  * of when the channel is constructed.
  *
- * **Example** (Failing with a lazy error)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Exit } from "effect"
- *
- * let attempts = 0
- * const conditionalError = Channel.failSync(() => {
- *   attempts += 1
- *   return `Error after attempt ${attempts}`
- * })
- * const observed = [
- *   Effect.runSync(Effect.exit(Channel.runCollect(conditionalError))),
- *   attempts
- * ] // => [Exit.fail("Error after attempt 1"), 1]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -994,16 +680,6 @@ export const failSync = <E>(evaluate: LazyArg<E>): Channel<never, E, never> => f
  * Use when the channel failure must preserve a full `Cause`, such as defects,
  * interruptions, or combined failures.
  *
- * **Example** (Failing with causes)
- *
- * ```ts import.meta.vitest
- * import { Cause, Channel, Effect, Exit } from "effect"
- *
- * const simpleCause = Cause.fail("Simple error")
- * const failedChannel = Channel.failCause(simpleCause)
- * Effect.runSync(Effect.exit(Channel.runCollect(failedChannel))) // => Exit.failCause(simpleCause)
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -1012,24 +688,6 @@ export const failCause = <E>(cause: Cause.Cause<E>): Channel<never, E, never> =>
 /**
  * Constructs a channel that fails immediately with the specified lazily
  * evaluated `Cause`.
- *
- * **Example** (Failing with lazy causes)
- *
- * ```ts import.meta.vitest
- * import { Cause, Channel, Effect, Exit } from "effect"
- *
- * // Create a channel that fails with a lazily computed cause
- * let attempts = 0
- * const failedChannel = Channel.failCauseSync(() => {
- *   attempts += 1
- *   return Cause.fail(`Runtime error after attempt ${attempts}`)
- * })
- *
- * const observed = [
- *   Effect.runSync(Effect.exit(Channel.runCollect(failedChannel))),
- *   attempts
- * ] // => [Exit.fail("Runtime error after attempt 1"), 1]
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -1041,16 +699,6 @@ export const failCauseSync = <E>(
 /**
  * Constructs a channel that fails immediately with the specified defect.
  *
- * **Example** (Dying with defects)
- *
- * ```ts import.meta.vitest
- * import { Cause, Channel, Effect, Exit } from "effect"
- *
- * const defect = "Unrecoverable error"
- * const diedChannel = Channel.die(defect)
- * Effect.runSync(Effect.exit(Channel.runCollect(diedChannel))) // => Exit.failCause(Cause.die(defect))
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -1058,17 +706,6 @@ export const die = (defect: unknown): Channel<never, never, never> => failCause(
 
 /**
  * Uses an effect to write a single value to the channel.
- *
- * **Example** (Creating channels from effects)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const successChannel = Channel.fromEffect(
- *   Effect.succeed("Hello from effect!")
- * )
- * Effect.runSync(Channel.runCollect(successChannel)) // => ["Hello from effect!"]
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -1133,21 +770,6 @@ export const fromEffectTake = <A, E, Done, E2, R>(
 /**
  * Creates a channel from a queue.
  *
- * **Example** (Creating channels from queues)
- *
- * ```ts import.meta.vitest
- * import { Cause, Channel, Effect, Queue } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const queue = yield* Queue.bounded<string, Cause.Done>(3)
- *   yield* Queue.offerAll(queue, ["item1", "item2", "item3"])
- *   yield* Queue.end(queue)
- *   const channel = Channel.fromQueue(queue)
- *   return yield* Channel.runCollect(channel)
- * })
- * await Effect.runPromise(program) // => ["item1", "item2", "item3"]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -1157,21 +779,6 @@ export const fromQueue = <A, E>(
 
 /**
  * Creates a channel from a queue that emits arrays of elements.
- *
- * **Example** (Creating batched channels from queues)
- *
- * ```ts import.meta.vitest
- * import { Cause, Channel, Effect, Queue } from "effect"
- *
- * const program = Effect.gen(function*() {
- *   const queue = yield* Queue.bounded<number, Cause.Done>(4)
- *   yield* Queue.offerAll(queue, [1, 2, 3, 4])
- *   yield* Queue.end(queue)
- *   const arrayChannel = Channel.fromQueueArray(queue)
- *   return yield* Channel.runCollect(arrayChannel)
- * })
- * await Effect.runPromise(program) // => [[1, 2, 3, 4]]
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -1193,46 +800,6 @@ export const identity = <Elem, Err, Done>(): Channel<Elem, Err, Done, Elem, Err,
 /**
  * Creates a channel from a PubSub subscription.
  *
- * **Example** (Creating channels from subscriptions)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Option, PubSub } from "effect"
- *
- * class SubscriptionError extends Data.TaggedError("SubscriptionError")<{
- *   readonly reason: string
- * }> {}
- *
- * const program = Effect.gen(function*() {
- *   // Create a PubSub
- *   const pubsub = yield* PubSub.bounded<string>(32)
- *
- *   // Create a subscription
- *   const subscription = yield* PubSub.subscribe(pubsub)
- *
- *   // Publish some messages
- *   yield* PubSub.publish(pubsub, "Hello")
- *   yield* PubSub.publish(pubsub, "World")
- *   yield* PubSub.publish(pubsub, "from")
- *   yield* PubSub.publish(pubsub, "PubSub")
- *
- *   // Create a channel from the subscription
- *   const channel = Channel.fromSubscription(subscription)
- *
- *   // The channel will receive all published messages
- *   return channel
- * })
- * const result = Effect.scoped(Effect.flatMap(program, Channel.runHead))
- * await Effect.runPromise(result) // => Option.some("Hello")
- *
- * // Real-time notifications example
- * const notificationChannel = Effect.gen(function*() {
- *   const eventBus = yield* PubSub.unbounded<{ type: string; payload: any }>()
- *   const userSubscription = yield* PubSub.subscribe(eventBus)
- *
- *   return Channel.fromSubscription(userSubscription)
- * })
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -1248,104 +815,6 @@ export const fromSubscription = <A>(
  * This constructor creates a channel that reads from a PubSub subscription and outputs
  * arrays of values in chunks. It's useful when you want to process multiple values at once
  * for better performance.
- *
- * **Example** (Batching subscription values)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Option, PubSub } from "effect"
- *
- * class StreamError extends Data.TaggedError("StreamError")<{
- *   readonly message: string
- * }> {}
- *
- * const program = Effect.gen(function*() {
- *   const pubsub = yield* PubSub.bounded<number>(16)
- *   const subscription = yield* PubSub.subscribe(pubsub)
- *
- *   // Create a channel that reads arrays of values
- *   const channel = Channel.fromSubscriptionArray(subscription)
- *
- *   // Publish some values
- *   yield* PubSub.publish(pubsub, 1)
- *   yield* PubSub.publish(pubsub, 2)
- *   yield* PubSub.publish(pubsub, 3)
- *   yield* PubSub.publish(pubsub, 4)
- *
- *   // The channel will output arrays like [1, 2, 3] and [4]
- *   return channel
- * })
- * const result = Effect.scoped(Effect.flatMap(program, Channel.runHead))
- * await Effect.runPromise(result) // => Option.some([1, 2, 3, 4])
- * ```
- *
- * **Example** (Processing subscription values in batches)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Option, PubSub } from "effect"
- *
- * class BatchProcessingError extends Data.TaggedError("BatchProcessingError")<{
- *   readonly reason: string
- * }> {}
- *
- * const batchProcessor = Effect.gen(function*() {
- *   const pubsub = yield* PubSub.bounded<string>(32)
- *   const subscription = yield* PubSub.subscribe(pubsub)
- *
- *   // Create a channel that processes items in batches
- *   const batchChannel = Channel.fromSubscriptionArray(subscription)
- *
- *   // Transform to process each batch
- *   const processedChannel = Channel.map(batchChannel, (batch) =>
- *     batch.map((item) => item.toUpperCase())
- *   )
- *
- *   yield* PubSub.publishAll(pubsub, ["one", "two"])
- *   return processedChannel
- * })
- * const batch = Effect.scoped(Effect.flatMap(batchProcessor, Channel.runHead))
- * await Effect.runPromise(batch) // => Option.some(["ONE", "TWO"])
- * ```
- *
- * **Example** (Aggregating subscription metrics)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Option, PubSub } from "effect"
- *
- * const metricsAggregator = Effect.gen(function*() {
- *   const metricsPubSub = yield* PubSub.bounded<
- *     { timestamp: number; value: number }
- *   >(100)
- *   const subscription = yield* PubSub.subscribe(metricsPubSub)
- *
- *   // Create a channel that collects metrics in chunks
- *   const metricsChannel = Channel.fromSubscriptionArray(subscription)
- *
- *   // Transform to calculate aggregate statistics
- *   const aggregatedChannel = Channel.map(metricsChannel, (metrics) => {
- *     const values = metrics.map((m) => m.value)
- *     const sum = values.reduce((a, b) => a + b, 0)
- *     const avg = sum / values.length
- *     const min = Math.min(...values)
- *     const max = Math.max(...values)
- *
- *     return {
- *       count: values.length,
- *       sum,
- *       average: avg,
- *       min,
- *       max,
- *       firstTimestamp: Math.min(...metrics.map((m) => m.timestamp)),
- *       lastTimestamp: Math.max(...metrics.map((m) => m.timestamp))
- *     }
- *   })
- *
- *   yield* PubSub.publish(metricsPubSub, { timestamp: 1, value: 10 })
- *   return aggregatedChannel
- * })
- * const metric = Effect.scoped(Effect.flatMap(metricsAggregator, Channel.runHead))
- * const result = await Effect.runPromise(metric)
- * Option.map(result, ({ count, sum, average, min, max }) => ({ count, sum, average, min, max })) // => Option.some({ count: 1, sum: 10, average: 10, min: 10, max: 10 })
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -1364,95 +833,6 @@ export const fromSubscriptionArray = <A>(
  * subscribing to it. The channel outputs individual values as they are published
  * to the PubSub, making it ideal for real-time streaming scenarios.
  *
- * **Example** (Creating channels from PubSubs)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Option, PubSub } from "effect"
- *
- * class StreamError extends Data.TaggedError("StreamError")<{
- *   readonly message: string
- * }> {}
- *
- * const program = Effect.gen(function*() {
- *   const pubsub = yield* PubSub.unbounded<number>({ replay: 3 })
- *
- *   // Create a channel that reads individual values
- *   const channel = Channel.fromPubSub(pubsub)
- *
- *   // Publish some values
- *   yield* PubSub.publish(pubsub, 1)
- *   yield* PubSub.publish(pubsub, 2)
- *   yield* PubSub.publish(pubsub, 3)
- *
- *   // The channel will output: 1, 2, 3 (individual values)
- *   return channel
- * })
- * const result = Effect.scoped(Effect.flatMap(program, Channel.runHead))
- * await Effect.runPromise(result) // => Option.some(1)
- * ```
- *
- * **Example** (Streaming PubSub notifications)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Option, PubSub } from "effect"
- *
- * const notificationService = Effect.gen(function*() {
- *   const notificationPubSub = yield* PubSub.unbounded<string>({ replay: 1 })
- *
- *   // Create a channel for real-time notifications
- *   const notificationChannel = Channel.fromPubSub(notificationPubSub)
- *
- *   // Transform notifications to add timestamps
- *   const receivedAt = "2024-01-01T00:00:00.000Z"
- *   const timestampedChannel = Channel.map(notificationChannel, (message) => ({
- *     message,
- *     receivedAt,
- *     id: `notification:${message}`
- *   }))
- *
- *   yield* PubSub.publish(notificationPubSub, "ready")
- *   return timestampedChannel
- * })
- * const notification = Effect.scoped(Effect.flatMap(notificationService, Channel.runHead))
- * await Effect.runPromise(notification) // => Option.some({ message: "ready", receivedAt: "2024-01-01T00:00:00.000Z", id: "notification:ready" })
- * ```
- *
- * **Example** (Processing PubSub events)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Option, PubSub } from "effect"
- *
- * interface DomainEvent {
- *   readonly type: string
- *   readonly payload: unknown
- *   readonly timestamp: number
- * }
- *
- * const eventProcessor = Effect.gen(function*() {
- *   const eventPubSub = yield* PubSub.unbounded<DomainEvent>({ replay: 1 })
- *
- *   // Create a channel for processing domain events
- *   const eventChannel = Channel.fromPubSub(eventPubSub)
- *
- *   // Filter and transform events
- *   const processedChannel = Channel.map(eventChannel, (event) => {
- *     if (event.type === "user.created") {
- *       return {
- *         ...event,
- *         processed: true,
- *         processedAt: event.timestamp + 1
- *       }
- *     }
- *     return event
- *   })
- *
- *   yield* PubSub.publish(eventPubSub, { type: "user.created", payload: {}, timestamp: 1 })
- *   return processedChannel
- * })
- * const event = Effect.scoped(Effect.flatMap(eventProcessor, Channel.runHead))
- * const result = await Effect.runPromise(event) // => Option.some({ type: "user.created", payload: {}, timestamp: 1, processed: true, processedAt: 2 })
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -1468,132 +848,6 @@ export const fromPubSub = <A>(
  * This constructor creates a channel that reads from a PubSub by automatically
  * subscribing to it and collecting values into arrays. The channel outputs
  * arrays of values in chunks, making it ideal for batch processing scenarios.
- *
- * **Example** (Batching PubSub values)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Option, PubSub } from "effect"
- *
- * class BatchError extends Data.TaggedError("BatchError")<{
- *   readonly message: string
- * }> {}
- *
- * const program = Effect.gen(function*() {
- *   const pubsub = yield* PubSub.unbounded<number>({ replay: 4 })
- *
- *   // Create a channel that reads arrays of values
- *   const channel = Channel.fromPubSubArray(pubsub)
- *
- *   // Publish some values
- *   yield* PubSub.publish(pubsub, 1)
- *   yield* PubSub.publish(pubsub, 2)
- *   yield* PubSub.publish(pubsub, 3)
- *   yield* PubSub.publish(pubsub, 4)
- *
- *   // The channel will output arrays like [1, 2, 3] and [4]
- *   return channel
- * })
- * const result = Effect.scoped(Effect.flatMap(program, Channel.runHead))
- * await Effect.runPromise(result) // => Option.some([1, 2, 3, 4])
- * ```
- *
- * **Example** (Processing PubSub orders in batches)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Option, PubSub } from "effect"
- *
- * interface Order {
- *   readonly id: string
- *   readonly customerId: string
- *   readonly items: ReadonlyArray<string>
- *   readonly total: number
- *   readonly submittedAt: number
- * }
- *
- * const orderBatchProcessor = Effect.gen(function*() {
- *   const orderPubSub = yield* PubSub.unbounded<Order>({ replay: 1 })
- *
- *   // Create a channel that processes orders in batches
- *   const orderChannel = Channel.fromPubSubArray(orderPubSub)
- *
- *   // Transform to process each batch of orders
- *   const processedChannel = Channel.map(orderChannel, (orderBatch) => {
- *     const totalRevenue = orderBatch.reduce((sum, order) => sum + order.total, 0)
- *     const customerCount = new Set(orderBatch.map((order) =>
- *       order.customerId
- *     )).size
- *
- *     return {
- *       batchSize: orderBatch.length,
- *       totalRevenue,
- *       uniqueCustomers: customerCount,
- *       firstSubmittedAt: Math.min(...orderBatch.map((order) => order.submittedAt)),
- *       orders: orderBatch
- *     }
- *   })
- *
- *   yield* PubSub.publish(orderPubSub, {
- *     id: "1", customerId: "a", items: ["book"], total: 10, submittedAt: 1
- *   })
- *   return processedChannel
- * })
- * const order = Effect.scoped(Effect.flatMap(orderBatchProcessor, Channel.runHead))
- * const result = await Effect.runPromise(order)
- * Option.map(result, (batch) => [batch.batchSize, batch.totalRevenue, batch.uniqueCustomers]) // => Option.some([1, 10, 1])
- * ```
- *
- * **Example** (Processing PubSub logs in batches)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect, Option, PubSub } from "effect"
- *
- * interface LogEntry {
- *   readonly timestamp: number
- *   readonly level: "info" | "warn" | "error"
- *   readonly message: string
- *   readonly source: string
- * }
- *
- * const logAggregator = Effect.gen(function*() {
- *   const logPubSub = yield* PubSub.unbounded<LogEntry>({ replay: 1 })
- *
- *   // Create a channel that collects logs in batches
- *   const logChannel = Channel.fromPubSubArray(logPubSub)
- *
- *   // Transform to analyze log batches
- *   const analysisChannel = Channel.map(logChannel, (logBatch) => {
- *     const errorCount = logBatch.filter((log) => log.level === "error").length
- *     const warnCount = logBatch.filter((log) => log.level === "warn").length
- *     const infoCount = logBatch.filter((log) => log.level === "info").length
- *
- *     const timeRange = {
- *       start: Math.min(...logBatch.map((log) => log.timestamp)),
- *       end: Math.max(...logBatch.map((log) => log.timestamp))
- *     }
- *
- *     return {
- *       batchId: `${timeRange.start}-${timeRange.end}`,
- *       totalEntries: logBatch.length,
- *       errorCount,
- *       warnCount,
- *       infoCount,
- *       timeRange,
- *       sources: [...new Set(logBatch.map((log) => log.source))]
- *     }
- *   })
- *
- *   yield* PubSub.publish(logPubSub, {
- *     timestamp: 1,
- *     level: "info",
- *     message: "ready",
- *     source: "app"
- *   } satisfies LogEntry)
- *   return analysisChannel
- * })
- * const log = Effect.scoped(Effect.flatMap(logAggregator, Channel.runHead))
- * const result = await Effect.runPromise(log)
- * Option.map(result, (batch) => [batch.batchId, batch.totalEntries, batch.infoCount]) // => Option.some(["1-1", 1, 1])
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -1630,24 +884,6 @@ export const fromSchedule = <O, E, R>(
 
 /**
  * Creates a channel from a lazily supplied Web `ReadableStream`.
- *
- * **Example** (Reading from a Web stream)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const channel = Channel.fromReadableStream({
- *   evaluate: () => new ReadableStream({
- *     start(controller) {
- *       controller.enqueue(1)
- *       controller.close()
- *     }
- *   }),
- *   onError: (cause) => new Error(String(cause))
- * })
- *
- * await Effect.runPromise(Channel.runCollect(channel)) // => [[1]]
- * ```
  *
  * @category constructors
  * @since 4.0.0
@@ -1715,30 +951,6 @@ export const pullIntoWritableStream = <A, IE, E>(options: {
  * Creates a channel that writes upstream values to a lazily supplied Web
  * `WritableStream`.
  *
- * **Example** (Writing channel input)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * const written: Array<number> = []
- * const sink = Channel.fromWritableStream<never, Error, number>({
- *   evaluate: () => new WritableStream({
- *     write(value) {
- *       written.push(value)
- *     }
- *   }),
- *   onError: (cause) => new Error(String(cause))
- * })
- *
- * const program = Channel.fromArray([[1, 2] as [number, number]]).pipe(
- *   Channel.pipeTo(sink),
- *   Channel.runDrain
- * )
- *
- * await Effect.runPromise(program)
- * written // => [1, 2]
- * ```
- *
  * @category constructors
  * @since 4.0.0
  */
@@ -1756,7 +968,7 @@ export const fromWritableStream = <IE, E, A>(options: {
  * Creates a channel backed by a Web `TransformStream`, writing upstream values
  * while emitting transformed values from its readable side.
  *
- * **Example** (Transforming channel input)
+ * **Example** (Transforming channel input and output)
  *
  * ```ts import.meta.vitest
  * import { Channel, Effect } from "effect"
@@ -1770,7 +982,7 @@ export const fromWritableStream = <IE, E, A>(options: {
  *   onError: (cause) => new Error(String(cause))
  * })
  *
- * const program = Channel.fromArray([[1, 2] as [number, number]]).pipe(
+ * const program = Channel.fromArray([[1, 2] as const]).pipe(
  *   Channel.pipeTo(transform),
  *   Channel.runCollect
  * )
@@ -1903,40 +1115,6 @@ export const fromAsyncIterableArray = <A, D, E>(
 /**
  * Maps the output of this channel using the specified function.
  *
- * **Example** (Mapping channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class TransformError extends Data.TaggedError("TransformError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Basic mapping of channel values
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4, 5])
- * const doubledChannel = Channel.map(numbersChannel, (n) => n * 2)
- * Effect.runSync(Channel.runCollect(doubledChannel)) // => [2, 4, 6, 8, 10]
- *
- * // Transform string data
- * const wordsChannel = Channel.fromIterable(["hello", "world", "effect"])
- * const upperCaseChannel = Channel.map(wordsChannel, (word) => word.toUpperCase())
- * Effect.runSync(Channel.runCollect(upperCaseChannel)) // => ["HELLO", "WORLD", "EFFECT"]
- *
- * // Complex object transformation
- * type User = { id: number; name: string }
- * type UserDisplay = { displayName: string; isActive: boolean }
- *
- * const usersChannel = Channel.fromIterable([
- *   { id: 1, name: "Alice" },
- *   { id: 2, name: "Bob" }
- * ])
- * const displayChannel = Channel.map(usersChannel, (user): UserDisplay => ({
- *   displayName: `User: ${user.name}`,
- *   isActive: true
- * }))
- * Effect.runSync(Channel.runCollect(displayChannel)) // => [{ displayName: "User: Alice", isActive: true }, { displayName: "User: Bob", isActive: true }]
- * ```
- *
  * @category sequencing
  * @since 2.0.0
  */
@@ -2041,17 +1219,29 @@ const concurrencyIsSequential = (
  * map multiple elements concurrently, and `options.unordered` to allow
  * concurrently mapped outputs to be emitted as soon as they complete.
  *
- * **Example** (Mapping channel output with effects)
+ * **Example** (Preserving order with concurrent effects)
  *
  * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
+ * import { Channel, Deferred, Effect, Fiber } from "effect"
  *
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4, 5])
- * const processedChannel = Channel.mapEffect(
- *   numbersChannel,
- *   (n) => Effect.succeed(n * n)
- * )
- * await Effect.runPromise(Channel.runCollect(processedChannel)) // => [1, 4, 9, 16, 25]
+ * const program = Effect.gen(function*() {
+ *   const secondStarted = yield* Deferred.make<void>()
+ *   const releaseFirst = yield* Deferred.make<void>()
+ *   const channel = Channel.fromArray([0, 1]).pipe(
+ *     Channel.mapEffect(
+ *       (index) => index === 0
+ *         ? Effect.as(Deferred.await(releaseFirst), "first")
+ *         : Effect.as(Deferred.succeed(secondStarted, void 0), "second"),
+ *       { concurrency: 2 }
+ *     )
+ *   )
+ *   const fiber = yield* Effect.forkChild(Channel.runCollect(channel))
+ *   yield* Deferred.await(secondStarted)
+ *   yield* Deferred.succeed(releaseFirst, void 0)
+ *   return yield* Fiber.join(fiber)
+ * })
+ *
+ * await Effect.runPromise(program) // => ["first", "second"]
  * ```
  *
  * @category sequencing
@@ -2278,28 +1468,6 @@ export const mapInputError: {
  * debugging) on each element emitted by a channel without modifying the
  * elements themselves.
  *
- * **Example** (Tapping channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class LogError extends Data.TaggedError("LogError")<{
- *   readonly message: string
- * }> {}
- *
- * // Create a channel that outputs numbers
- * const numberChannel = Channel.fromIterable([1, 2, 3])
- *
- * // Tap into each output element to perform side effects
- * const processed: Array<number> = []
- * const tappedChannel = Channel.tap(
- *   numberChannel,
- *   (n) => Effect.sync(() => processed.push(n))
- * )
- *
- * const observed = [await Effect.runPromise(Channel.runCollect(tappedChannel)), processed] // => [[1, 2, 3], [1, 2, 3]]
- * ```
- *
  * @category sequencing
  * @since 4.0.0
  */
@@ -2341,28 +1509,6 @@ export const tap: {
  * used only for child-channel completion. By default child channels are run
  * sequentially. Use `options.concurrency` and `options.bufferSize` to run child
  * channels concurrently.
- *
- * **Example** (Flat mapping channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class ProcessError extends Data.TaggedError("ProcessError")<{
- *   readonly cause: string
- * }> {}
- *
- * // Create a channel that outputs numbers
- * const numberChannel = Channel.fromIterable([1, 2, 3])
- *
- * // FlatMap each number to create new channels
- * const flatMappedChannel = Channel.flatMap(
- *   numberChannel,
- *   (n) =>
- *     Channel.fromIterable(Array.from({ length: n }, (_, i) => `item-${n}-${i}`))
- * )
- *
- * Effect.runSync(Channel.runCollect(flatMappedChannel)) // => ["item-1-0", "item-2-0", "item-2-1", "item-3-0", "item-3-1", "item-3-2"]
- * ```
  *
  * @category sequencing
  * @since 2.0.0
@@ -2547,21 +1693,19 @@ const flatMapConcurrent = <
  * Concatenates this channel with another channel created from the terminal value
  * of this channel. The new channel is created using the provided function.
  *
- * **Example** (Concatenating with completion values)
+ * **Example** (Continuing from a completion value)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
+ * import { Channel, Effect } from "effect"
  *
- * class ConcatError extends Data.TaggedError("ConcatError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create a channel that outputs numbers and terminates with sum
- * const numberChannel = Channel.fromIterable([1, 2, 3]).pipe(
- *   Channel.concatWith((sum: void) => Channel.succeed(`Completed processing`))
+ * const source = Channel.concat(Channel.fromArray([1, 2]), Channel.end(3))
+ * const channel = Channel.concatWith(
+ *   source,
+ *   (sum) => Channel.concat(Channel.succeed(sum * 2), Channel.end(`total:${sum}`))
  * )
  *
- * Effect.runSync(Channel.runCollect(numberChannel)) // => [1, 2, 3, "Completed processing"]
+ * const program = Effect.all([Channel.runCollect(channel), Channel.runDrain(channel)])
+ * await Effect.runPromise(program) // => [[1, 2, 6], "total:3"]
  * ```
  *
  * @category sequencing
@@ -2658,25 +1802,6 @@ export const concatWith: {
 /**
  * Concatenates this channel with another channel, so that the second channel
  * starts emitting values after the first channel has completed.
- *
- * **Example** (Concatenating channels)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class ConcatError extends Data.TaggedError("ConcatError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create two channels
- * const firstChannel = Channel.fromIterable([1, 2, 3])
- * const secondChannel = Channel.fromIterable(["a", "b", "c"])
- *
- * // Concatenate them
- * const concatenatedChannel = Channel.concat(firstChannel, secondChannel)
- *
- * Effect.runSync(Channel.runCollect(concatenatedChannel)) // => [1, 2, 3, "a", "b", "c"]
- * ```
  *
  * @category sequencing
  * @since 4.0.0
@@ -2983,28 +2108,6 @@ export const orElseIfEmpty: {
 /**
  * Flattens a channel of channels.
  *
- * **Example** (Flattening nested channels)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class FlattenError extends Data.TaggedError("FlattenError")<{
- *   readonly cause: string
- * }> {}
- *
- * // Create a channel that outputs channels
- * const nestedChannels = Channel.fromIterable([
- *   Channel.fromIterable([1, 2]),
- *   Channel.fromIterable([3, 4]),
- *   Channel.fromIterable([5, 6])
- * ])
- *
- * // Flatten the nested channels
- * const flattenedChannel = Channel.flatten(nestedChannels)
- *
- * Effect.runSync(Channel.runCollect(flattenedChannel)) // => [1, 2, 3, 4, 5, 6]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -3037,28 +2140,6 @@ export const flatten = <
 
 /**
  * Flattens a channel that outputs arrays into a channel that outputs individual elements.
- *
- * **Example** (Flattening arrays of channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class FlattenError extends Data.TaggedError("FlattenError")<{
- *   readonly message: string
- * }> {}
- *
- * // Create a channel that outputs arrays
- * const arrayChannel = Channel.fromIterable([
- *   [1, 2, 3],
- *   [4, 5],
- *   [6, 7, 8, 9]
- * ])
- *
- * // Flatten the arrays into individual elements
- * const flattenedChannel = Channel.flattenArray(arrayChannel)
- *
- * Effect.runSync(Channel.runCollect(flattenedChannel)) // => [1, 2, 3, 4, 5, 6, 7, 8, 9]
- * ```
  *
  * @category transforming
  * @since 4.0.0
@@ -3132,20 +2213,6 @@ export const flattenTake = <
 /**
  * Creates a new channel that consumes all output from the source channel
  * but emits nothing, preserving only the completion value.
- *
- * **Example** (Draining channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Create a channel that outputs values
- * const sourceChannel = Channel.fromIterable([1, 2, 3, 4, 5])
- *
- * // Drain all output, keeping only the completion
- * const drainedChannel = Channel.drain(sourceChannel)
- *
- * Effect.runSync(Channel.runCollect(drainedChannel)) // => []
- * ```
  *
  * @category constructors
  * @since 2.0.0
@@ -3289,27 +2356,6 @@ export const schedule: {
 /**
  * Filters the output elements of a channel using a predicate function.
  * Elements that don't match the predicate are discarded.
- *
- * **Example** (Filtering channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Create a channel with mixed numbers
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4, 5, 6, 7, 8])
- *
- * // Filter to keep only even numbers
- * const evenChannel = Channel.filter(numbersChannel, (n) => n % 2 === 0)
- * Effect.runSync(Channel.runCollect(evenChannel)) // => [2, 4, 6, 8]
- *
- * // Filter with type refinement
- * const mixedChannel = Channel.fromIterable([1, "hello", 2, "world", 3])
- * const numbersOnlyChannel = Channel.filter(
- *   mixedChannel,
- *   (value): value is number => typeof value === "number"
- * )
- * Effect.runSync(Channel.runCollect(numbersOnlyChannel)) // => [1, 2, 3]
- * ```
  *
  * @category filtering
  * @since 4.0.0
@@ -3500,35 +2546,6 @@ export const filterMapEffect: {
  * Filters arrays of elements emitted by a channel, applying the filter
  * to each element within the arrays and only emitting non-empty filtered arrays.
  *
- * **Example** (Filtering array output)
- *
- * ```ts import.meta.vitest
- * import { Array, Channel, Effect } from "effect"
- *
- * const nonEmptyArrayPredicate = Array.isReadonlyArrayNonEmpty
- *
- * // Create a channel that outputs arrays of mixed data
- * const arrayChannel = Channel.fromIterable([
- *   Array.make(1, 2, 3, 4, 5),
- *   Array.make(6, 7, 8, 9, 10),
- *   Array.make(11, 12, 13, 14, 15)
- * ]).pipe(Channel.filter(nonEmptyArrayPredicate))
- *
- * // Filter arrays to keep only even numbers
- * const evenArraysChannel = Channel.filterArray(arrayChannel, (n) => n % 2 === 0)
- * Effect.runSync(Channel.runCollect(evenArraysChannel)) // => [[2, 4], [6, 8, 10], [12, 14]]
- * // Note: Only non-empty filtered arrays are emitted
- *
- * // Arrays that would become empty after filtering are discarded entirely
- * const oddChannel = Channel.fromIterable([
- *   Array.make(1, 3, 5),
- *   Array.make(2, 4),
- *   Array.make(7, 9)
- * ]).pipe(Channel.filter(nonEmptyArrayPredicate))
- * const filteredOddChannel = Channel.filterArray(oddChannel, (n) => n % 2 === 0)
- * Effect.runSync(Channel.runCollect(filteredOddChannel)) // => [[2, 4]]
- * ```
- *
  * @category filtering
  * @since 4.0.0
  */
@@ -3705,38 +2722,6 @@ export const filterMapArrayEffect: {
 /**
  * Maps over a channel statefully with an accumulator, where each element can produce multiple output values.
  *
- * **Example** (Mapping with accumulated state)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Create a channel with numbers
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4])
- *
- * // Use mapAccum to create running sums and emit both current and sum
- * const runningSum = Channel.mapAccum(
- *   numbersChannel,
- *   () => 0, // initial accumulator state
- *   (sum, current) => {
- *     const newSum = sum + current
- *     // Return [newState, outputValues]
- *     return [newSum, [current, newSum]] as const
- *   }
- * )
- * // Using with Effect for async processing
- * const asyncMapAccum = Channel.mapAccum(
- *   numbersChannel,
- *   () => "",
- *   (acc, value) =>
- *     Effect.gen(function*() {
- *       const newAcc = acc + value.toString()
- *       return [newAcc, [`${value}-processed`, newAcc]] as const
- *     })
- * )
- * Effect.runSync(Channel.runCollect(runningSum)) // => [1, 1, 2, 3, 3, 6, 4, 10]
- * Effect.runSync(Channel.runCollect(asyncMapAccum)) // => ["1-processed", "1", "2-processed", "12", "3-processed", "123", "4-processed", "1234"]
- * ```
- *
  * @category sequencing
  * @since 4.0.0
  */
@@ -3847,29 +2832,6 @@ export const mapAccum: {
  * Transforms a channel statefully by scanning over its output with an accumulator function.
  * Emits the intermediate results of the scan operation.
  *
- * **Example** (Scanning channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Create a channel with numbers
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4, 5])
- *
- * // Scan to create running sum
- * const runningSumChannel = Channel.scan(numbersChannel, 0, (sum, n) => sum + n)
- * Effect.runSync(Channel.runCollect(runningSumChannel)) // => [0, 1, 3, 6, 10, 15]
- * // Note: emits the initial value and each intermediate result
- *
- * // Scan with string concatenation
- * const wordsChannel = Channel.fromIterable(["hello", "world", "from", "effect"])
- * const sentenceChannel = Channel.scan(
- *   wordsChannel,
- *   "",
- *   (sentence, word) => sentence === "" ? word : `${sentence} ${word}`
- * )
- * Effect.runSync(Channel.runCollect(sentenceChannel)) // => ["", "hello", "hello world", "hello world from", "hello world from effect"]
- * ```
- *
  * @category sequencing
  * @since 4.0.0
  */
@@ -3910,43 +2872,6 @@ export const scan: {
  *
  * Use when maintaining accumulated state over channel output requires Effects
  * or can fail, while still emitting each intermediate state.
- *
- * **Example** (Scanning channel output with effects)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class ScanError extends Data.TaggedError("ScanError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create a channel with numbers
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4])
- *
- * // Effectful scan with async operations
- * const asyncScanChannel = Channel.scanEffect(
- *   numbersChannel,
- *   "",
- *   (acc, value) =>
- *     Effect.gen(function*() {
- *       return acc + value.toString()
- *     })
- * )
- * await Effect.runPromise(Channel.runCollect(asyncScanChannel)) // => ["", "1", "12", "123", "1234"]
- *
- * // Scan with error handling
- * const errorHandlingScan = Channel.scanEffect(
- *   numbersChannel,
- *   0,
- *   (sum, n) => {
- *     if (n < 0) {
- *       return Effect.fail(new ScanError({ reason: "negative number" }))
- *     }
- *     return Effect.succeed(sum + n)
- *   }
- * )
- * await Effect.runPromise(Channel.runCollect(errorHandlingScan)) // => [0, 1, 3, 6, 10]
- * ```
  *
  * @category sequencing
  * @since 4.0.0
@@ -4002,33 +2927,18 @@ export const scanEffect: {
  * Catches any cause of failure from the channel and allows recovery by
  * creating a new channel based on the caught cause.
  *
- * **Example** (Recovering from failure causes)
+ * **Example** (Recovering from a defect cause)
  *
  * ```ts import.meta.vitest
- * import { Cause, Channel, Data, Effect } from "effect"
+ * import { Cause, Channel, Effect } from "effect"
  *
- * class ProcessError extends Data.TaggedError("ProcessError")<{
- *   readonly reason: string
- * }> {}
- *
- * class RecoveryError extends Data.TaggedError("RecoveryError")<{
- *   readonly message: string
- * }> {}
- *
- * // Create a failing channel
- * const failingChannel = Channel.fail(
- *   new ProcessError({ reason: "network error" })
- * )
- *
- * // Catch the cause and provide recovery
- * const recoveredChannel = Channel.catchCause(failingChannel, (cause) => {
- *   if (Cause.hasFails(cause)) {
- *     return Channel.succeed("Recovered from failure")
- *   }
- *   return Channel.succeed("Recovered from interruption")
+ * const causes: Array<Cause.Cause<never>> = []
+ * const channel = Channel.catchCause(Channel.die("defect"), (cause) => {
+ *   causes.push(cause)
+ *   return Channel.end("recovered")
  * })
  *
- * Effect.runSync(Channel.runCollect(recoveredChannel)) // => ["Recovered from failure"]
+ * const observed = [await Effect.runPromise(Channel.runDrain(channel)), causes] // => ["recovered", [Cause.die("defect")]]
  * ```
  *
  * @category error handling
@@ -5247,7 +4157,7 @@ export const catchTag: {
  *     Channel.succeed(`retry: ${reason.retryAfter}`)
  *   )
  * )
- * Effect.runSync(Channel.runCollect(recovered)) // => ["retry: 60"]
+ * await Effect.runPromise(Channel.runCollect(recovered)) // => ["retry: 60"]
  * ```
  *
  * @category error handling
@@ -5607,30 +4517,6 @@ export const catchReasons: {
 /**
  * Promotes nested reason errors into the channel error, replacing the parent error.
  *
- * **Example** (Promoting nested reasons)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Exit } from "effect"
- *
- * class RateLimitError extends Data.TaggedError("RateLimitError")<{
- *   retryAfter: number
- * }> {}
- *
- * class QuotaExceededError extends Data.TaggedError("QuotaExceededError")<{
- *   limit: number
- * }> {}
- *
- * class AiError extends Data.TaggedError("AiError")<{
- *   reason: RateLimitError | QuotaExceededError
- * }> {}
- *
- * const reason = new RateLimitError({ retryAfter: 60 })
- * const channel = Channel.fail(new AiError({ reason }))
- *
- * const unwrapped = channel.pipe(Channel.unwrapReason("AiError"))
- * Effect.runSync(Effect.exit(Channel.runCollect(unwrapped))) // => Exit.fail(reason)
- * ```
- *
  * @category error handling
  * @since 4.0.0
  */
@@ -5726,25 +4612,6 @@ export const mapError: {
 /**
  * Converts all errors in the channel to defects (unrecoverable failures).
  * This is useful when you want to treat errors as programming errors.
- *
- * **Example** (Converting failures to defects)
- *
- * ```ts import.meta.vitest
- * import { Cause, Channel, Data, Effect, Exit } from "effect"
- *
- * class ValidationError extends Data.TaggedError("ValidationError")<{
- *   readonly field: string
- * }> {}
- *
- * // Create a channel that might fail
- * const error = new ValidationError({ field: "email" })
- * const failingChannel = Channel.fail(error)
- *
- * // Convert failures to defects
- * const fatalChannel = Channel.orDie(failingChannel)
- *
- * Effect.runSync(Effect.exit(Channel.runCollect(fatalChannel))) // => Exit.failCause(Cause.die(error))
- * ```
  *
  * @category error handling
  * @since 2.0.0
@@ -5942,25 +4809,22 @@ export const retry: {
  * the previous child channel. Use `options.concurrency` to allow more active
  * child channels. The source channel's done value is preserved.
  *
- * **Example** (Switching mapped channels)
+ * **Example** (Interrupting superseded child channels)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
+ * import { Channel, Effect } from "effect"
  *
- * class SwitchError extends Data.TaggedError("SwitchError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create a channel that outputs numbers
- * const numberChannel = Channel.fromIterable([1, 2, 3])
- *
- * // Switch to new channels based on each value
- * const switchedChannel = Channel.switchMap(
- *   numberChannel,
- *   (n) => Channel.fromIterable([`value-${n}`])
+ * const finalized: Array<number> = []
+ * const channel = Channel.fromArray([1, 2, 3]).pipe(
+ *   Channel.switchMap((value) => value === 3
+ *     ? Channel.succeed(value)
+ *     : Channel.ensuring(
+ *       Channel.never,
+ *       Effect.sync(() => finalized.push(value))
+ *     ))
  * )
  *
- * await Effect.runPromise(Channel.runCollect(switchedChannel)) // => ["value-3"]
+ * const observed = [await Effect.runPromise(Channel.runCollect(channel)), finalized.sort()] // => [[3], [1, 2]]
  * ```
  *
  * @category sequencing
@@ -6065,31 +4929,6 @@ export const switchMap: {
  *
  * Use when channel outputs are themselves channels and multiple inner channels
  * should run with configured concurrency and buffering.
- *
- * **Example** (Merging nested channels)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class MergeAllError extends Data.TaggedError("MergeAllError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create channels that output other channels
- * const nestedChannels = Channel.fromIterable([
- *   Channel.fromIterable([1, 2]),
- *   Channel.fromIterable([3, 4]),
- *   Channel.fromIterable([5, 6])
- * ])
- *
- * // Merge all channels with bounded concurrency
- * const mergedChannel = Channel.mergeAll({
- *   concurrency: 1,
- *   bufferSize: 16
- * })(nestedChannels)
- *
- * await Effect.runPromise(Channel.runCollect(mergedChannel)) // => [1, 2, 3, 4, 5, 6]
- * ```
  *
  * @category combining
  * @since 2.0.0
@@ -6253,15 +5092,6 @@ export const mergeAll: {
 /**
  * Represents strategies for halting merged channels when one completes or fails.
  *
- * **Example** (Choosing merge halt strategies)
- *
- * ```ts import.meta.vitest
- * import { Channel } from "effect"
- *
- * // Different halt strategies for channel merging
- * const strategies: Array<Channel.HaltStrategy> = ["left", "right", "both", "either"] // => ["left", "right", "both", "either"]
- * ```
- *
  * @category models
  * @since 4.0.0
  */
@@ -6271,26 +5101,19 @@ export type HaltStrategy = "left" | "right" | "both" | "either"
  * Returns a new channel, which is the merge of this channel and the specified
  * channel.
  *
- * **Example** (Merging channels)
+ * **Example** (Halting when either side completes)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
+ * import { Channel, Effect } from "effect"
  *
- * class MergeError extends Data.TaggedError("MergeError")<{
- *   readonly source: string
- * }> {}
+ * const finalized: Array<string> = []
+ * const left = Channel.ensuring(
+ *   Channel.never,
+ *   Effect.sync(() => finalized.push("left"))
+ * )
+ * const channel = Channel.merge(left, Channel.succeed("right"), { haltStrategy: "either" })
  *
- * // Create two channels
- * const leftChannel = Channel.fromIterable([1, 2, 3])
- * const rightChannel = Channel.fromIterable(["a", "b", "c"])
- *
- * // Merge them with "either" halt strategy
- * const mergedChannel = Channel.merge(leftChannel, rightChannel, {
- *   haltStrategy: "either"
- * })
- *
- * const values = await Effect.runPromise(Channel.runCollect(mergedChannel))
- * values.map(String).sort() // => ["1", "2", "3", "a", "b", "c"]
+ * const observed = [await Effect.runPromise(Channel.runCollect(channel)), finalized] // => [["right"], ["left"]]
  * ```
  *
  * @category combining
@@ -6484,12 +5307,17 @@ export const mergeEffect: {
  * **Example** (Splitting string chunks into lines)
  *
  * ```ts import.meta.vitest
- * import { Effect, Stream } from "effect"
+ * import { Channel, Effect } from "effect"
  *
- * const result = await Effect.runPromise(Stream.runCollect(
- *   Stream.splitLines(Stream.make("hel", "lo\r\nwor", "ld\n"))
- * ))
- * result // => ["hello", "world"]
+ * const channel = Channel.fromArray([
+ *   ["hel", "lo\r"] as const,
+ *   ["\nwor", "ld\n"] as const
+ * ]).pipe(
+ *   Channel.pipeTo(Channel.splitLines()),
+ *   Channel.flattenArray
+ * )
+ *
+ * await Effect.runPromise(Channel.runCollect(channel)) // => ["hello", "world"]
  * ```
  *
  * @category String manipulation
@@ -6656,23 +5484,19 @@ export const encodeText = <Err, Done>(): Channel<
  * and the output type of the specified channel, terminating with the value of
  * the specified channel.
  *
- * **Example** (Piping one channel into another)
+ * **Example** (Preserving the downstream completion boundary)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
+ * import { Channel, Effect } from "effect"
  *
- * class PipeError extends Data.TaggedError("PipeError")<{
- *   readonly stage: string
- * }> {}
+ * const source = Channel.concat(Channel.fromArray([1, 2]), Channel.end("source done"))
+ * const transform = Channel.identity<number, never, string>().pipe(
+ *   Channel.map((value) => value * 2)
+ * )
+ * const channel = Channel.pipeTo(source, transform)
  *
- * // Create source and transform channels
- * const sourceChannel = Channel.fromIterable([1, 2, 3])
- * const transformChannel = Channel.map(sourceChannel, (n: number) => n * 2)
- *
- * // Pipe the source into the transform
- * const pipedChannel = Channel.pipeTo(sourceChannel, transformChannel)
- *
- * Effect.runSync(Channel.runCollect(pipedChannel)) // => [2, 4, 6]
+ * const program = Effect.all([Channel.runCollect(channel), Channel.runDrain(channel)])
+ * await Effect.runPromise(program) // => [[2, 4], "source done"]
  * ```
  *
  * @category sequencing
@@ -6704,24 +5528,22 @@ export const pipeTo: {
  * specified channel and preserves this channel's failures without providing
  * them to the other channel for observation.
  *
- * **Example** (Piping while preserving failures)
+ * **Example** (Keeping upstream failures out of downstream input)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Exit } from "effect"
+ * import { Channel, Effect, Exit } from "effect"
  *
- * class SourceError extends Data.TaggedError("SourceError")<{
- *   readonly code: number
- * }> {}
+ * const source = Channel.concat(Channel.succeed(1), Channel.fail("source failed"))
+ * const downstream = Channel.identity<number, never, never>().pipe(
+ *   Channel.map((value) => value * 2)
+ * )
+ * const channel = Channel.pipeToOrFail(source, downstream)
+ * const program = Effect.scoped(Effect.gen(function*() {
+ *   const pull = yield* Channel.toPull(channel)
+ *   return [yield* pull, yield* Effect.exit(pull)] as const
+ * }))
  *
- * // Create a failing source channel
- * const error = new SourceError({ code: 404 })
- * const failingSource = Channel.fail(error)
- * const safeTransform = Channel.identity<never, never, never>()
- *
- * // Pipe while preserving source failures
- * const safePipedChannel = Channel.pipeToOrFail(failingSource, safeTransform)
- *
- * Effect.runSync(Effect.exit(Channel.runCollect(safePipedChannel))) // => Exit.fail(error)
+ * await Effect.runPromise(program) // => [2, Exit.fail("source failed")]
  * ```
  *
  * @category sequencing
@@ -6767,26 +5589,6 @@ export const pipeToOrFail: {
  * Constructs a `Channel` from a scoped effect that will result in a
  * `Channel` if successful.
  *
- * **Example** (Unwrapping channel effects)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class UnwrapError extends Data.TaggedError("UnwrapError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create an effect that produces a channel
- * const channelEffect = Effect.succeed(
- *   Channel.fromIterable([1, 2, 3])
- * )
- *
- * // Unwrap the effect to get the channel
- * const unwrappedChannel = Channel.unwrap(channelEffect)
- *
- * Effect.runSync(Channel.runCollect(unwrappedChannel)) // => [1, 2, 3]
- * ```
- *
  * @category constructors
  * @since 2.0.0
  */
@@ -6830,26 +5632,6 @@ export const scoped = <OutElem, OutErr, OutDone, InElem, InErr, InDone, Env>(
  *
  * The input handler is forked in the channel scope. The wrapped channel is run
  * with an already-completed input.
- *
- * **Example** (Embedding custom input handling)
- *
- * ```ts import.meta.vitest
- * import { Channel, Effect } from "effect"
- *
- * // Create a base channel
- * const baseChannel = Channel.fromIterable([1, 2, 3])
- *
- * // Drain the embedded input while the base channel runs
- * const embeddedChannel = Channel.embedInput(
- *   baseChannel,
- *   (upstream) =>
- *     upstream.pipe(
- *       Effect.forever,
- *       Effect.ignore
- *     )
- * )
- * await Effect.runPromise(Channel.runCollect(embeddedChannel)) // => [1, 2, 3]
- * ```
  *
  * @category sequencing
  * @since 2.0.0
@@ -7028,6 +5810,18 @@ export const bufferArray: {
  * channel's done value. If the channel completes first, the original channel's
  * done value is preserved.
  *
+ * **Example** (Stopping a channel with an effect)
+ *
+ * ```ts import.meta.vitest
+ * import { Channel, Effect } from "effect"
+ *
+ * const channel = Channel.never.pipe(
+ *   Channel.interruptWhen(Effect.succeed("stopped"))
+ * )
+ *
+ * await Effect.runPromise(Channel.runDrain(channel)) // => "stopped"
+ * ```
+ *
  * @category interruption
  * @since 2.0.0
  */
@@ -7123,25 +5917,19 @@ export const onError: {
  * Returns a channel with an exit-aware finalizer that is guaranteed to run once
  * the channel begins execution, whether it succeeds or fails.
  *
- * **Example** (Running exit finalizers)
+ * **Example** (Observing the channel completion exit)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Exit } from "effect"
+ * import { Channel, Effect, Exit } from "effect"
  *
- * class ExitError extends Data.TaggedError("ExitError")<{
- *   readonly stage: string
- * }> {}
+ * const exits: Array<Exit.Exit<string>> = []
+ * const source = Channel.concat(Channel.fromArray([1, 2]), Channel.end("finished"))
+ * const channel = Channel.onExit(
+ *   source,
+ *   (exit) => Effect.sync(() => exits.push(exit))
+ * )
  *
- * // Create a channel
- * const dataChannel = Channel.fromIterable([1, 2, 3])
- *
- * // Attach exit handler
- * const exits: Array<Exit.Exit<void, ExitError>> = []
- * const channelWithExit = Channel.onExit(dataChannel, (exit) => {
- *   exits.push(exit)
- *   return Effect.void
- * })
- * const observed = [await Effect.runPromise(Channel.runCollect(channelWithExit)), exits] // => [[1, 2, 3], [Exit.void]]
+ * const observed = [await Effect.runPromise(Channel.runDrain(channel)), exits] // => ["finished", [Exit.succeed("finished")]]
  * ```
  *
  * @category resource management
@@ -7269,27 +6057,6 @@ export const onEnd: {
 /**
  * Returns a channel with a finalizer effect that is guaranteed to run once the
  * channel begins execution, whether it succeeds or fails.
- *
- * **Example** (Ensuring cleanup runs)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class EnsureError extends Data.TaggedError("EnsureError")<{
- *   readonly operation: string
- * }> {}
- *
- * // Create a channel
- * const dataChannel = Channel.fromIterable([1, 2, 3])
- *
- * // Ensure cleanup always runs
- * const events: Array<string> = []
- * const channelWithCleanup = Channel.ensuring(
- *   dataChannel,
- *   Effect.sync(() => events.push("cleanup"))
- * )
- * const observed = [await Effect.runPromise(Channel.runCollect(channelWithCleanup)), events] // => [[1, 2, 3], ["cleanup"]]
- * ```
  *
  * @category resource management
  * @since 2.0.0
@@ -7833,24 +6600,6 @@ export const bindTo: {
 /**
  * Runs a channel and counts the number of elements it outputs.
  *
- * **Example** (Counting channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class CountError extends Data.TaggedError("CountError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create a channel with multiple elements
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4, 5])
- *
- * // Count the elements
- * const countEffect = Channel.runCount(numbersChannel)
- *
- * Effect.runSync(countEffect) // => 5
- * ```
- *
  * @category execution
  * @since 4.0.0
  */
@@ -7861,23 +6610,13 @@ export const runCount = <OutElem, OutErr, OutDone, Env>(
 /**
  * Runs a channel and discards all output elements, returning only the final result.
  *
- * **Example** (Draining channel output at runtime)
+ * **Example** (Returning only the completion value)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
+ * import { Channel, Effect } from "effect"
  *
- * class DrainError extends Data.TaggedError("DrainError")<{
- *   readonly stage: string
- * }> {}
- *
- * // Create a channel that outputs elements and completes with a result
- * const resultChannel = Channel.fromIterable([1, 2, 3])
- * const completedChannel = Channel.concat(resultChannel, Channel.end("completed"))
- *
- * // Drain all elements and get only the final result
- * const drainEffect = Channel.runDrain(completedChannel)
- *
- * Effect.runSync(drainEffect) // => "completed"
+ * const channel = Channel.concat(Channel.fromArray([1, 2, 3]), Channel.end("finished"))
+ * await Effect.runPromise(Channel.runDrain(channel)) // => "finished"
  * ```
  *
  * @category execution
@@ -7889,29 +6628,6 @@ export const runDrain = <OutElem, OutErr, OutDone, Env>(
 
 /**
  * Runs a channel and applies an effect to each output element.
- *
- * **Example** (Running effects for each output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class ForEachError extends Data.TaggedError("ForEachError")<{
- *   readonly element: unknown
- * }> {}
- *
- * // Create a channel with numbers
- * const numbersChannel = Channel.fromIterable([1, 2, 3])
- *
- * // Run forEach to process each element
- * const processed: Array<number> = []
- * const forEachEffect = Channel.runForEach(
- *   numbersChannel,
- *   (n) => Effect.sync(() => processed.push(n))
- * )
- *
- * await Effect.runPromise(forEachEffect)
- * processed // => [1, 2, 3]
- * ```
  *
  * @category execution
  * @since 4.0.0
@@ -7973,24 +6689,6 @@ export const runForEachWhile: {
 
 /**
  * Runs a channel and collects all output elements into an array.
- *
- * **Example** (Collecting channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class CollectError extends Data.TaggedError("CollectError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create a channel with elements
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4, 5])
- *
- * // Collect all elements into an array
- * const collectEffect = Channel.runCollect(numbersChannel)
- *
- * Effect.runSync(collectEffect) // => [1, 2, 3, 4, 5]
- * ```
  *
  * @category execution
  * @since 2.0.0
@@ -8074,24 +6772,6 @@ export const runLast = <OutElem, OutErr, OutDone, Env>(
 
 /**
  * Runs a channel and folds over all output elements with an accumulator.
- *
- * **Example** (Folding channel output)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class FoldError extends Data.TaggedError("FoldError")<{
- *   readonly operation: string
- * }> {}
- *
- * // Create a channel with numbers
- * const numbersChannel = Channel.fromIterable([1, 2, 3, 4, 5])
- *
- * // Fold to calculate sum
- * const sumEffect = Channel.runFold(numbersChannel, () => 0, (acc, n) => acc + n)
- *
- * Effect.runSync(sumEffect) // => 15
- * ```
  *
  * @category execution
  * @since 4.0.0
@@ -8191,25 +6871,6 @@ export const runFoldEffect: {
  * while that scope remains open. Pulls are serialized so only one pull is
  * evaluated at a time.
  *
- * **Example** (Converting channels to pulls)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect } from "effect"
- *
- * class PullError extends Data.TaggedError("PullError")<{
- *   readonly step: string
- * }> {}
- *
- * // Create a channel
- * const numbersChannel = Channel.fromIterable([1, 2, 3])
- *
- * const program = Effect.scoped(Effect.gen(function*() {
- *   const pull = yield* Channel.toPull(numbersChannel)
- *   return [yield* pull, yield* pull, yield* pull]
- * }))
- * await Effect.runPromise(program) // => [1, 2, 3]
- * ```
- *
  * @category destructors
  * @since 2.0.0
  */
@@ -8238,27 +6899,6 @@ export const toPull: <OutElem, OutErr, OutDone, Env>(
 
 /**
  * Converts a channel to a Pull within an existing scope.
- *
- * **Example** (Converting channels to scoped pulls)
- *
- * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Scope } from "effect"
- *
- * class ScopedPullError extends Data.TaggedError("ScopedPullError")<{
- *   readonly reason: string
- * }> {}
- *
- * // Create a channel
- * const numbersChannel = Channel.fromIterable([1, 2, 3])
- *
- * // Convert to Pull with explicit scope
- * const scopedPullEffect = Effect.gen(function*() {
- *   const scope = yield* Effect.scope
- *   const pull = yield* Channel.toPullScoped(numbersChannel, scope)
- *   return [yield* pull, yield* pull, yield* pull]
- * })
- * await Effect.runPromise(Effect.scoped(scopedPullEffect)) // => [1, 2, 3]
- * ```
  *
  * @category destructors
  * @since 4.0.0
@@ -8363,24 +7003,17 @@ export const runIntoQueueArray: {
  * signaled through the queue. The queue is shut down when the surrounding scope
  * closes.
  *
- * **Example** (Converting channels to queues)
+ * **Example** (Observing queue completion)
  *
  * ```ts import.meta.vitest
- * import { Channel, Data, Effect, Queue } from "effect"
+ * import { Cause, Channel, Effect, Exit, Queue } from "effect"
  *
- * class QueueError extends Data.TaggedError("QueueError")<{
- *   readonly operation: string
- * }> {}
- *
- * // Create a channel with data
- * const dataChannel = Channel.fromIterable([1, 2, 3, 4, 5])
- *
- * // Convert to queue for concurrent processing
  * const program = Effect.scoped(Effect.gen(function*() {
- *   const queue = yield* Channel.toQueue(dataChannel, { capacity: 32 })
- *   return yield* Queue.takeBetween(queue, 5, 5)
+ *   const queue = yield* Channel.toQueue(Channel.fromArray([1, 2]), { capacity: 1 })
+ *   return [yield* Queue.take(queue), yield* Queue.take(queue), yield* Effect.exit(Queue.take(queue))] as const
  * }))
- * await Effect.runPromise(program) // => [1, 2, 3, 4, 5]
+ *
+ * await Effect.runPromise(program) // => [1, 2, Exit.fail(Cause.Done())]
  * ```
  *
  * @category destructors

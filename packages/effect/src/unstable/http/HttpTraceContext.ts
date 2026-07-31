@@ -57,6 +57,21 @@ export const toHeaders = (span: Tracer.Span): Headers.Headers =>
  * W3C `traceparent` is tried first, followed by compact B3 (`b3`) and then
  * multi-header B3 (`x-b3-*`).
  *
+ * **Example** (Prioritizing W3C trace context)
+ *
+ * ```ts import.meta.vitest
+ * import { Option } from "effect"
+ * import { Headers, HttpTraceContext } from "effect/unstable/http"
+ *
+ * const headers = Headers.fromRecordUnsafe({
+ *   traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+ *   b3: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-0"
+ * })
+ * const selected = Option.map(HttpTraceContext.fromHeaders(headers), (span) => [span.traceId, span.sampled])
+ *
+ * selected // => Option.some(["4bf92f3577b34da6a3ce929d0e0e4736", true])
+ * ```
+ *
  * @category decoding
  * @since 4.0.0
  */

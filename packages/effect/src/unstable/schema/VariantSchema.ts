@@ -543,6 +543,26 @@ export interface Overrideable<S extends Schema.Top & Schema.WithoutConstructorDe
  * Wraps a schema with an effectful constructor default while allowing explicit
  * values to be marked with `Override`.
  *
+ * **Example** (Overriding a constructor default)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, Schema, SchemaParser } from "effect"
+ * import { VariantSchema } from "effect/unstable/schema"
+ *
+ * const User = Schema.Struct({
+ *   role: VariantSchema.Overrideable(Schema.String, {
+ *     defaultValue: Effect.succeed("member")
+ *   })
+ * })
+ * const make = SchemaParser.makeEffect(User)
+ *
+ * const users = [
+ *   await Effect.runPromise(make({})),
+ *   await Effect.runPromise(make({ role: VariantSchema.Override("admin") }))
+ * ]
+ * users // => [{ role: "member" }, { role: "admin" }]
+ * ```
+ *
  * @category overrideable
  * @since 4.0.0
  */

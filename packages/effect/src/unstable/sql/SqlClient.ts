@@ -215,6 +215,42 @@ export const make = Effect.fnUntraced(function*(options: SqlClient.MakeOptions) 
  * savepoints for nested transactions, commits on success, and rolls back on
  * failure or interruption.
  *
+ * **Example** (Rolling back and releasing a connection)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Exit, Scope } from "effect"
+ * import { SqlClient } from "effect/unstable/sql"
+ *
+ * class Transaction extends Context.Service<Transaction, readonly [string, number]>()("Transaction") {}
+ *
+ * const program = Effect.gen(function*() {
+ *   const events: Array<string> = []
+ *   const record = (event: string) => Effect.sync(() => {
+ *     events.push(event)
+ *   })
+ *   const transaction = SqlClient.makeWithTransaction({
+ *     transactionService: Transaction,
+ *     spanAttributes: [],
+ *     acquireConnection: Effect.gen(function*() {
+ *       const scope = yield* Scope.make()
+ *       yield* Scope.addFinalizer(scope, record("release"))
+ *       yield* record("acquire")
+ *       return [scope, "connection"] as const
+ *     }),
+ *     begin: () => record("begin"),
+ *     savepoint: (_, id) => record(`savepoint-${id}`),
+ *     commit: () => record("commit"),
+ *     rollback: () => record("rollback"),
+ *     rollbackSavepoint: (_, id) => record(`rollback-savepoint-${id}`)
+ *   })
+ *
+ *   const exit = yield* Effect.exit(transaction(Effect.fail("query failed")))
+ *   return [events, exit] as const
+ * })
+ *
+ * await Effect.runPromise(program) // => [["acquire", "begin", "rollback", "release"], Exit.fail("query failed")]
+ * ```
+ *
  * @category transactions
  * @since 4.0.0
  */

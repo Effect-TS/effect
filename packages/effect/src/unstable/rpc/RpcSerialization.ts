@@ -52,6 +52,18 @@ export interface Parser {
  * Error raised when a streaming parser retains more data than its configured
  * buffer limit.
  *
+ * **Example** (Enforcing an NDJSON buffer limit)
+ *
+ * ```ts import.meta.vitest
+ * import { Result } from "effect"
+ * import { RpcSerialization } from "effect/unstable/rpc"
+ *
+ * const parser = RpcSerialization.makeNdjson({ maxBufferSize: 4 }).makeUnsafe()
+ * parser.decode("1234")
+ *
+ * Result.try(() => parser.decode("5")) // => Result.fail(new RpcSerialization.MaxBufferSizeExceeded({ maxBufferSize: 4 }))
+ * ```
+ *
  * @category errors
  * @since 4.0.0
  */
@@ -174,6 +186,32 @@ export const ndjson: RpcSerialization["Service"] = makeNdjson()
 /**
  * Creates a JSON-RPC 2.0 serialization for RPC protocol messages without
  * additional message framing.
+ *
+ * **Example** (Encoding a JSON-RPC request)
+ *
+ * ```ts import.meta.vitest
+ * import { RpcMessage, RpcSerialization } from "effect/unstable/rpc"
+ *
+ * const parser = RpcSerialization.jsonRpc().makeUnsafe()
+ * const request: RpcMessage.RequestEncoded = {
+ *   _tag: "Request",
+ *   id: 1,
+ *   tag: "users.get",
+ *   payload: { id: 123 },
+ *   headers: [["authorization", "Bearer token"]]
+ * }
+ * const encoded = parser.encode(request)
+ * const wire = encoded === undefined ? undefined : JSON.parse(encoded as string)
+ * const expected = {
+ *   jsonrpc: "2.0",
+ *   method: "users.get",
+ *   params: { id: 123 },
+ *   id: 1,
+ *   headers: [["authorization", "Bearer token"]]
+ * }
+ *
+ * wire // => expected
+ * ```
  *
  * @category serialization
  * @since 4.0.0
@@ -592,6 +630,8 @@ export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeria
 
 /**
  * RPC serialization layer that uses NDJSON with custom streaming options.
+ *
+ * @see {@link makeNdjson} for constructing the service without a layer
  *
  * @category serialization
  * @since 4.0.0

@@ -87,42 +87,47 @@ export interface LayerRef<in out I, in out E = never> {
  *
  * **Gotchas**
  *
- * Invalidation does not revoke contexts already borrowed by active scopes; those
- * contexts remain usable until their scopes close.
+ * - Invalidation does not revoke contexts already borrowed by active scopes;
+ *   those contexts remain usable until their scopes close.
+ * - Without `idleTimeToLive`, the built context is released when its last
+ *   borrowing scope closes. `preload` and `refresh` acquire it, but do not keep
+ *   it cached while idle.
  *
- * **Example** (Sharing one layer-built service)
+ * **Example** (Invalidating a cached layer)
  *
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerRef } from "effect"
  *
- * class Database extends Context.Service<Database, {
- *   readonly query: Effect.Effect<string>
- * }>()("Database") {}
+ * class Resource extends Context.Service<Resource, { readonly id: number }>()("Resource") {}
  *
- * const databaseLayer = Layer.succeed(Database, {
- *   query: Effect.succeed("result")
- * })
- *
- * const query = Effect.gen(function*() {
- *   const database = yield* Database
- *   return yield* database.query
- * })
+ * let acquired = 0
+ * const released: Array<number> = []
+ * const resourceLayer = Layer.effect(Resource)(
+ *   Effect.acquireRelease(
+ *     Effect.sync(() => ({ id: ++acquired })),
+ *     ({ id }) => Effect.sync(() => { released.push(id) })
+ *   )
+ * )
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
- *     const ref = yield* LayerRef.make(databaseLayer, {
- *       idleTimeToLive: "5 seconds"
+ *     const ref = yield* LayerRef.make(resourceLayer, {
+ *       idleTimeToLive: "1 minute"
  *     })
  *
- *     const result = yield* Effect.provide(query, ref.get)
- *
+ *     const use = Effect.scoped(
+ *       ref.contextEffect.pipe(Effect.map((context) => Context.get(context, Resource).id))
+ *     )
+ *     const first = yield* use
+ *     const cached = yield* use
  *     yield* ref.invalidate
- *
- *     return result
+ *     const fresh = yield* use
+ *     return [first, cached, fresh]
  *   })
  * )
  *
- * await Effect.runPromise(program) // => "result"
+ * await Effect.runPromise(program) // => [1, 1, 2]
+ * released // => [1, 2]
  * ```
  *
  * @see {@link Service} for defining a reusable service class around a `LayerRef`
@@ -267,37 +272,9 @@ export interface TagClass<
  * **Details**
  *
  * The returned class is a `Context.Service` whose value is a `LayerRef`. It also
- * includes `.layer`, `.layerNoDeps`, `.get`, `.contextEffect`, and `.invalidate`
- * helpers so callers do not need to access the `LayerRef` value directly.
- *
- * **Example** (Defining a refreshable service)
- *
- * ```ts import.meta.vitest
- * import { Context, Effect, Layer, LayerRef } from "effect"
- *
- * class Database extends Context.Service<Database, {
- *   readonly query: Effect.Effect<string>
- * }>()("Database") {}
- *
- * const databaseLayer = Layer.succeed(Database, {
- *   query: Effect.succeed("result")
- * })
- *
- * class DatabaseRef extends LayerRef.Service<DatabaseRef>()("DatabaseRef", {
- *   layer: databaseLayer,
- *   preload: true
- * }) {}
- *
- * const program = Effect.gen(function*() {
- *   const database = yield* Database
- *   return yield* database.query
- * }).pipe(
- *   Effect.provide(DatabaseRef.get),
- *   Effect.provide(DatabaseRef.layer)
- * )
- *
- * await Effect.runPromise(program) // => "result"
- * ```
+ * includes `.layer`, `.layerNoDeps`, `.get`, `.contextEffect`, `.invalidate`,
+ * and `.refresh` helpers so callers do not need to access the `LayerRef` value
+ * directly.
  *
  * @see {@link make} for creating a `LayerRef` value without defining a service class
  *

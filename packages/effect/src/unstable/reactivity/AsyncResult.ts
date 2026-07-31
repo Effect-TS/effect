@@ -142,7 +142,7 @@ const ResultProto = {
 /**
  * Returns whether an `AsyncResult` is currently waiting for an asynchronous computation or refresh to finish.
  *
- * @category refinements
+ * @category predicates
  * @since 4.0.0
  */
 export const isWaiting = <A, E>(result: AsyncResult<A, E>): boolean => result.waiting
@@ -666,6 +666,20 @@ export const matchWithWaiting: {
 
 /**
  * Combines an iterable or record of `AsyncResult` and plain values into one `AsyncResult`, returning the first non-success result or a success of the collected values marked waiting when any input success is waiting.
+ *
+ * **Example** (Combining successful results)
+ *
+ * ```ts import.meta.vitest
+ * import { Option } from "effect"
+ * import { AsyncResult } from "effect/unstable/reactivity"
+ *
+ * const combined = AsyncResult.all([
+ *   AsyncResult.success(1, { timestamp: 0 }),
+ *   AsyncResult.success(2, { waiting: true, timestamp: 0 })
+ * ])
+ *
+ * const observed = [AsyncResult.value(combined), AsyncResult.isWaiting(combined)] // => [Option.some([1, 2]), true]
+ * ```
  *
  * @category combinators
  * @since 4.0.0

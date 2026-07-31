@@ -1088,18 +1088,22 @@ export function fromJsonMultiDocument(input: Schema.Json): MultiDocument {
  *
  * Revivers are resolved locally by `id`; none are installed implicitly. Reviver results are used directly, and exceptions raised by a reviver pass through unchanged.
  *
- * **Example** (Restoring a persisted schema)
+ * **Example** (Restoring persisted checks)
  *
  * ```ts import.meta.vitest
- * import { Schema, SchemaRepresentation } from "effect"
+ * import { Option, Schema, SchemaRepresentation } from "effect"
  *
- * const document = SchemaRepresentation.toRepresentation(Schema.Struct({ name: Schema.String }).ast)
+ * const document = SchemaRepresentation.toRepresentation(Schema.NonEmptyString.ast)
  * const persisted = SchemaRepresentation.toJson(document)
- * const restored = SchemaRepresentation.fromJson(persisted)
- * const schema = SchemaRepresentation.fromRepresentation(restored, { revivers: [] })
- * const Person = Schema.make<Schema.Codec<{ readonly name: string }>>(schema.ast)
+ * const loaded: Schema.Json = JSON.parse(JSON.stringify(persisted))
+ * const restored = SchemaRepresentation.fromRepresentation(
+ *   SchemaRepresentation.fromJson(loaded),
+ *   { revivers: [Schema.isMinLengthReviver] }
+ * )
  *
- * Schema.decodeUnknownSync(Person)({ name: "Ada" }) // => { name: "Ada" }
+ * // Persisted data cannot carry its static type, so reapply the type known by the application.
+ * const NonEmptyString = Schema.make<Schema.Codec<string>>(restored.ast)
+ * Schema.decodeUnknownOption(NonEmptyString)("") // => Option.none()
  * ```
  *
  * @see {@link fromJson} for decoding a persisted document
