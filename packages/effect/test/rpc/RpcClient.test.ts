@@ -55,7 +55,7 @@ describe("RpcClient", () => {
     assertEmptyResponseFailsRequest(RpcSerialization.layerJson, "[]"))
 
   it.effect("fails request on empty HTTP response for framed serialization", () =>
-    assertEmptyResponseFailsRequest(RpcSerialization.layerNdjson(), ""))
+    assertEmptyResponseFailsRequest(RpcSerialization.layerNdjson, ""))
 
   it.effect("defects request when framed HTTP response closes before request completes", () =>
     Effect.gen(function*() {
@@ -63,7 +63,7 @@ describe("RpcClient", () => {
         generateRequestId: () => RpcMessage.RequestId("0")
       }).pipe(
         Effect.provide(makeProtocolLayer(
-          RpcSerialization.layerNdjson(),
+          RpcSerialization.layerNdjson,
           JSON.stringify({ _tag: "Chunk", requestId: "0", values: ["event"] }) + "\n"
         ))
       )

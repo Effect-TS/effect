@@ -61,7 +61,7 @@ const makeRunnerLayer = (port: number, entities: Layer.Layer<never, never, Shard
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(RpcSerialization.layerMsgPack())
+    Layer.provide(RpcSerialization.layerMsgPack)
   )
 
 const makeClientLayer = (port: number) =>
@@ -74,7 +74,7 @@ const makeClientLayer = (port: number) =>
       entityMessagePollInterval: 5000,
       sendRetryInterval: 100
     })),
-    Layer.provide(RpcSerialization.layerMsgPack())
+    Layer.provide(RpcSerialization.layerMsgPack)
   )
 
 // An entity whose reply cannot be serialized: the handler returns a

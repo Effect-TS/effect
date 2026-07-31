@@ -915,7 +915,7 @@ const makeStdioSerialization = (
     contentType: "application/json-rpc",
     includesFraming: true,
     makeUnsafe: () => {
-      const framing = RpcSerialization.ndjson().makeUnsafe()
+      const framing = RpcSerialization.ndjson.makeUnsafe()
       const jsonRpc = RpcSerialization.jsonRpc().makeUnsafe()
       const protocolsByVersion = new Map<string, McpProtocol.ProtocolAdapter>(
         protocols.map((protocol) => [protocol.protocolVersion, protocol])

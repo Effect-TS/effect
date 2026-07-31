@@ -27,20 +27,20 @@ describe("RpcServer", () => {
   )
   const CustomDefectLayer = HttpNdjsonClient.pipe(
     Layer.provideMerge(HttpNdjsonServer),
-    Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson()])
+    Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson])
   )
   e2eSuite(
     "e2e http ndjson",
     HttpNdjsonClient.pipe(
       Layer.provideMerge(HttpNdjsonServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson()])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson])
     )
   )
   e2eSuite(
     "e2e http msgpack",
     HttpNdjsonClient.pipe(
       Layer.provideMerge(HttpNdjsonServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack()])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
     )
   )
   e2eSuite(
@@ -73,7 +73,7 @@ describe("RpcServer", () => {
     "e2e ws ndjson",
     HttpWsClient.pipe(
       Layer.provideMerge(HttpWsServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson()])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson])
     )
   )
   e2eSuite(
@@ -87,7 +87,7 @@ describe("RpcServer", () => {
     "e2e ws msgpack",
     HttpWsClient.pipe(
       Layer.provideMerge(HttpWsServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack()])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
     )
   )
   e2eSuite(
@@ -117,14 +117,14 @@ describe("RpcServer", () => {
     "e2e tcp ndjson",
     TcpClient.pipe(
       Layer.provideMerge(TcpServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson()])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerNdjson])
     )
   )
   e2eSuite(
     "e2e tcp msgpack",
     TcpClient.pipe(
       Layer.provideMerge(TcpServer),
-      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack()])
+      Layer.provide([NodeHttpServer.layerTest, RpcSerialization.layerMsgPack])
     )
   )
   e2eSuite(
@@ -225,7 +225,7 @@ describe("RpcServer", () => {
         return NodeSocket.layerNet({ port: address.port })
       }).pipe(Layer.unwrap)
     ),
-    Layer.provide(RpcSerialization.layerNdjson())
+    Layer.provide(RpcSerialization.layerNdjson)
   )
 
   const assertTickerSurvives = <E, R>(
@@ -290,7 +290,7 @@ describe("RpcServer", () => {
       Layer.provide(TickerHandlers),
       Layer.provideMerge(RpcServer.layerProtocolSocketServer),
       Layer.provideMerge(NodeSocketServer.layer({ port: 0 })),
-      Layer.provide(RpcSerialization.layerNdjson())
+      Layer.provide(RpcSerialization.layerNdjson)
     )
 
     it.live(
@@ -326,7 +326,7 @@ describe("RpcServer", () => {
       Layer.provide(Handlers),
       Layer.provideMerge(RpcServer.layerProtocolSocketServer),
       Layer.provideMerge(NodeSocketServer.layer({ port: 0 })),
-      Layer.provide(RpcSerialization.layerNdjson())
+      Layer.provide(RpcSerialization.layerNdjson)
     )
 
     it.live(

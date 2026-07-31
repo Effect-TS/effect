@@ -46,7 +46,7 @@ describe("RpcServer", () => {
           Effect.provide(Layer.succeed(SocketServer.SocketServer, socketServer)),
           Effect.provide(Layer.succeed(
             RpcSerialization.RpcSerialization,
-            RpcSerialization.ndjson({ maxBufferSize: 4 })
+            RpcSerialization.makeNdjson({ maxBufferSize: 4 })
           ))
         )
         yield* Effect.forkScoped(protocol.run(() => Effect.void))

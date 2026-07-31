@@ -72,12 +72,17 @@ export class MaxBufferSizeExceeded extends Data.TaggedError("MaxBufferSizeExceed
 export interface StreamingOptions {
   /**
    * Maximum number of bytes or string code units retained for an incomplete frame.
-   * The default is 16 MiB.
+   * The default is 16 MiB. Use `"unbounded"` to disable the limit.
    */
-  readonly maxBufferSize?: number | undefined
+  readonly maxBufferSize?: number | "unbounded" | undefined
 }
 
 const defaultMaxBufferSize = 16 * 1024 * 1024
+
+const isBufferSizeExceeded = (
+  bufferSize: number,
+  maxBufferSize: number | "unbounded"
+): maxBufferSize is number => maxBufferSize !== "unbounded" && bufferSize > maxBufferSize
 
 /**
  * JSON RPC serialization for whole message payloads. It does not include
@@ -109,7 +114,7 @@ export const json: RpcSerialization["Service"] = RpcSerialization.of({
  * @category serialization
  * @since 4.0.0
  */
-export const ndjson = (options?: StreamingOptions): RpcSerialization["Service"] => {
+export const makeNdjson = (options?: StreamingOptions): RpcSerialization["Service"] => {
   const maxBufferSize = options?.maxBufferSize ?? defaultMaxBufferSize
   return RpcSerialization.of({
     contentType: "application/ndjson",
@@ -117,7 +122,7 @@ export const ndjson = (options?: StreamingOptions): RpcSerialization["Service"] 
     makeUnsafe: () => {
       const decoder = new TextDecoder()
       let buffer = ""
-      const failMaxBufferSize = (): never => {
+      const failMaxBufferSize = (maxBufferSize: number): never => {
         buffer = ""
         throw new MaxBufferSizeExceeded({ maxBufferSize })
       }
@@ -128,8 +133,8 @@ export const ndjson = (options?: StreamingOptions): RpcSerialization["Service"] 
           let nlIndex = buffer.indexOf("\n", position)
           const items: Array<unknown> = []
           while (nlIndex !== -1) {
-            if (nlIndex - position > maxBufferSize) {
-              failMaxBufferSize()
+            if (isBufferSizeExceeded(nlIndex - position, maxBufferSize)) {
+              failMaxBufferSize(maxBufferSize)
             }
             const item = JSON.parse(buffer.slice(position, nlIndex))
             items.push(item)
@@ -137,8 +142,8 @@ export const ndjson = (options?: StreamingOptions): RpcSerialization["Service"] 
             nlIndex = buffer.indexOf("\n", position)
           }
           buffer = buffer.slice(position)
-          if (buffer.length > maxBufferSize) {
-            failMaxBufferSize()
+          if (isBufferSizeExceeded(buffer.length, maxBufferSize)) {
+            failMaxBufferSize(maxBufferSize)
           }
           return items
         },
@@ -157,6 +162,14 @@ export const ndjson = (options?: StreamingOptions): RpcSerialization["Service"] 
     }
   })
 }
+
+/**
+ * Default newline-delimited JSON RPC serialization.
+ *
+ * @category serialization
+ * @since 4.0.0
+ */
+export const ndjson: RpcSerialization["Service"] = makeNdjson()
 
 /**
  * Creates a JSON-RPC 2.0 serialization for RPC protocol messages without
@@ -201,13 +214,13 @@ export const jsonRpc = (options?: {
  */
 export const ndJsonRpc = (options?: {
   readonly contentType?: string | undefined
-  readonly maxBufferSize?: number | undefined
+  readonly maxBufferSize?: number | "unbounded" | undefined
 }): RpcSerialization["Service"] =>
   RpcSerialization.of({
     contentType: options?.contentType ?? "application/json-rpc",
     includesFraming: true,
     makeUnsafe: () => {
-      const parser = ndjson({ maxBufferSize: options?.maxBufferSize }).makeUnsafe()
+      const parser = makeNdjson({ maxBufferSize: options?.maxBufferSize }).makeUnsafe()
       const batches = new Map<string, {
         readonly size: number
         readonly responses: Map<string, RpcMessage.FromServerEncoded>
@@ -502,7 +515,7 @@ export const makeMsgPack = (
       const packr = new Msgpackr.Packr(msgpackOptions)
       const encoder = new TextEncoder()
       let incomplete: Uint8Array | undefined = undefined
-      const failMaxBufferSize = (): never => {
+      const failMaxBufferSize = (maxBufferSize: number): never => {
         incomplete = undefined
         throw new MaxBufferSizeExceeded({ maxBufferSize })
       }
@@ -510,8 +523,8 @@ export const makeMsgPack = (
         decode(bytes) {
           let buf = typeof bytes === "string" ? encoder.encode(bytes) : bytes
           if (incomplete !== undefined) {
-            if (incomplete.length + buf.length > maxBufferSize) {
-              failMaxBufferSize()
+            if (isBufferSizeExceeded(incomplete.length + buf.length, maxBufferSize)) {
+              failMaxBufferSize(maxBufferSize)
             }
             const prev = buf
             bytes = new Uint8Array(incomplete.length + buf.length)
@@ -526,8 +539,8 @@ export const makeMsgPack = (
             const error = error_ as any
             if (error.incomplete) {
               incomplete = buf.subarray(error.lastPosition)
-              if (incomplete.length > maxBufferSize) {
-                failMaxBufferSize()
+              if (isBufferSizeExceeded(incomplete.length, maxBufferSize)) {
+                failMaxBufferSize(maxBufferSize)
               }
               return error.values ?? []
             }
@@ -575,8 +588,16 @@ export const layerJson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeriali
  * @category serialization
  * @since 4.0.0
  */
-export const layerNdjson = (options?: StreamingOptions): Layer.Layer<RpcSerialization> =>
-  Layer.succeed(RpcSerialization)(ndjson(options))
+export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(ndjson)
+
+/**
+ * RPC serialization layer that uses NDJSON with custom streaming options.
+ *
+ * @category serialization
+ * @since 4.0.0
+ */
+export const layerNdjsonWith = (options?: StreamingOptions): Layer.Layer<RpcSerialization> =>
+  Layer.succeed(RpcSerialization)(makeNdjson(options))
 
 /**
  * RPC serialization layer that uses JSON-RPC for serialization.
@@ -597,7 +618,7 @@ export const layerJsonRpc = (options?: {
  */
 export const layerNdJsonRpc = (options?: {
   readonly contentType?: string | undefined
-  readonly maxBufferSize?: number | undefined
+  readonly maxBufferSize?: number | "unbounded" | undefined
 }): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(ndJsonRpc(options))
 
 /**
@@ -611,9 +632,14 @@ export const layerNdJsonRpc = (options?: {
  * @category serialization
  * @since 4.0.0
  */
-export const layerMsgPack = (
+export const layerMsgPack: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(msgPack)
+
+/**
+ * RPC serialization layer that uses MessagePack with custom options.
+ *
+ * @category serialization
+ * @since 4.0.0
+ */
+export const layerMsgPackWith = (
   options?: (Msgpackr.Options & StreamingOptions) | undefined
-): Layer.Layer<RpcSerialization> =>
-  Layer.succeed(RpcSerialization)(
-    options === undefined ? msgPack : makeMsgPack({ useRecords: true, ...options })
-  )
+): Layer.Layer<RpcSerialization> => Layer.succeed(RpcSerialization)(makeMsgPack(options))
