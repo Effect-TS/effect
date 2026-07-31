@@ -277,9 +277,7 @@ const Proto = {
  *
  * const maybeParam = Param.string(Param.flagKind, "name")
  *
- * if (Param.isParam(maybeParam)) {
- *   console.log("This is a Param")
- * }
+ * Param.isParam(maybeParam) // => true
  * ```
  *
  * @category refinements
@@ -298,8 +296,8 @@ export const isParam = (u: unknown): u is Param<any, ParamKind> => Predicate.has
  * const nameParam = Param.string(Param.flagKind, "name")
  * const optionalParam = Param.optional(nameParam)
  *
- * console.log(Param.isSingle(nameParam)) // > true
- * console.log(Param.isSingle(optionalParam)) // > false
+ * Param.isSingle(nameParam) // => true
+ * Param.isSingle(optionalParam) // => false
  * ```
  *
  * @category refinements
@@ -368,6 +366,7 @@ export const makeSingle = <const Kind extends ParamKind, A>(params: {
  * const fileArg = Param.string(Param.argumentKind, "file")
  *
  * // Usage in CLI: --name "John Doe" or as positional argument
+ * const kinds = [nameFlag.kind, fileArg.kind] // => ["flag", "argument"]
  * ```
  *
  * @category constructors
@@ -399,6 +398,7 @@ export const string = <const Kind extends ParamKind>(
  *
  * // Usage in CLI: --verbose (defaults to true when present, false when absent)
  * // or as positional: true/false
+ * const kinds = [verboseFlag.kind, enableArg.kind] // => ["flag", "argument"]
  * ```
  *
  * @category constructors
@@ -429,6 +429,7 @@ export const boolean = <const Kind extends ParamKind>(
  * const countArg = Param.integer(Param.argumentKind, "count")
  *
  * // Usage in CLI: --port 8080 or as positional argument: 42
+ * const kinds = [portFlag.kind, countArg.kind] // => ["flag", "argument"]
  * ```
  *
  * @category constructors
@@ -459,6 +460,7 @@ export const integer = <const Kind extends ParamKind>(
  * const thresholdArg = Param.float(Param.argumentKind, "threshold")
  *
  * // Usage in CLI: --rate 0.95 or as positional argument: 3.14159
+ * const kinds = [rateFlag.kind, thresholdArg.kind] // => ["flag", "argument"]
  * ```
  *
  * @category constructors
@@ -490,6 +492,7 @@ export const float = <const Kind extends ParamKind>(
  *
  * // Usage in CLI: --start-date "2023-12-25" or as positional: "2023-01-01"
  * // Parses to JavaScript Date object
+ * const kinds = [startFlag.kind, dueDateArg.kind] // => ["flag", "argument"]
  * ```
  *
  * @category constructors
@@ -528,6 +531,7 @@ export const date = <const Kind extends ParamKind>(
  *   ["dog", { _tag: "Dog" }],
  *   ["cat", { _tag: "Cat" }]
  * ])
+ * animal.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -558,6 +562,7 @@ export const choiceWithValue = <
  *   "warn",
  *   "error"
  * ])
+ * logLevel.kind // => "flag"
  * ```
  *
  * @category constructors
@@ -591,6 +596,7 @@ export const choice = <
  *   mustExist: true,
  *   typeName: "config-file"
  * })
+ * const kinds = [outputPath.kind, inputPath.kind, configFile.kind] // => ["flag", "flag", "flag"]
  * ```
  *
  * @category constructors
@@ -632,6 +638,7 @@ export const path = <Kind extends ParamKind>(
  * const sourceDir = Param.directory(Param.flagKind, "source", { mustExist: true })
  *
  * // Usage: --output-dir /path/to/dir --source /existing/dir
+ * const kinds = [outputDir.kind, sourceDir.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -670,6 +677,7 @@ export const directory = <Kind extends ParamKind>(
  * const inputFile = Param.file(Param.flagKind, "input", { mustExist: true })
  *
  * // Usage: --output result.txt --input existing-file.txt
+ * const kinds = [outputFile.kind, inputFile.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -704,6 +712,7 @@ export const file = <Kind extends ParamKind>(
  * const apiKey = Param.redacted(Param.argumentKind, "api-key")
  *
  * // Usage: --password (value will be hidden in help/logs)
+ * const kinds = [password.kind, apiKey.kind] // => ["flag", "argument"]
  * ```
  *
  * @category constructors
@@ -734,6 +743,7 @@ export const redacted = <Kind extends ParamKind>(
  * const templateContent = Param.fileText(Param.argumentKind, "template")
  *
  * // Usage: --config config.txt (reads file content into string)
+ * const kinds = [configContent.kind, templateContent.kind] // => ["flag", "argument"]
  * ```
  *
  * @category constructors
@@ -767,6 +777,7 @@ export const fileText = <Kind extends ParamKind>(kind: Kind, name: string): Para
  * const jsonConfig = Param.fileParse(Param.flagKind, "json-config", {
  *   format: "json"
  * })
+ * const kinds = [config.kind, jsonConfig.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -807,6 +818,7 @@ export const fileParse = <Kind extends ParamKind>(
  * })
  *
  * // Usage: --config config.json (reads and validates file content)
+ * const kinds = [config.kind, yamlConfig.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -847,6 +859,7 @@ export const fileSchema = <Kind extends ParamKind, A>(
  *
  * const props = Param.keyValuePair(Param.flagKind, "property")
  * // --property name=value --property debug=true
+ * const kinds = [env.kind, props.kind] // => ["flag", "flag"]
  * ```
  *
  * @category constructors
@@ -886,8 +899,8 @@ export const keyValuePair = <Kind extends ParamKind>(
  * const makeDebugParam = (enableDebug: boolean) =>
  *   enableDebug ? Param.string(Param.flagKind, "debug") : disabledDebugParam
  *
- * console.log(makeDebugParam(true) === disabledDebugParam) // > false
- * console.log(makeDebugParam(false) === disabledDebugParam) // > true
+ * makeDebugParam(true) === disabledDebugParam // => false
+ * makeDebugParam(false) === disabledDebugParam // => true
  * ```
  *
  * @category constructors
@@ -930,6 +943,7 @@ const FLAG_DASH_REGEXP = /^-+/
  *   Param.optional,
  *   Param.withAlias("-c") // finds the underlying Single and adds alias
  * )
+ * const kinds = [force.kind, count.kind] // => ["flag", "flag"]
  * ```
  *
  * @category combinators
@@ -963,6 +977,7 @@ export const withAlias: {
  *   Param.withAlias("-v"),
  *   Param.withDescription("Enable verbose output")
  * )
+ * verbose.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -996,6 +1011,7 @@ export const withDescription: {
  * const experimental = Param.boolean(Param.flagKind, "experimental-foo").pipe(
  *   Param.withHidden
  * )
+ * experimental.kind // => "flag"
  * ```
  *
  * @category metadata
@@ -1019,6 +1035,7 @@ export const withHidden = <Kind extends ParamKind, A>(self: Param<Kind, A>): Par
  * const port = Param.integer(Param.flagKind, "port").pipe(
  *   Param.map((n) => ({ port: n, url: `http://localhost:${n}` }))
  * )
+ * port.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -1060,8 +1077,26 @@ const transform = <Kind extends ParamKind, A, B>(
  * **Example** (Mapping parsed values effectfully)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
  * import { CliError, Param } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
  *
  * const validatedEmail = Param.string(Param.flagKind, "email").pipe(
  *   Param.mapEffect((email) =>
@@ -1077,6 +1112,14 @@ const transform = <Kind extends ParamKind, A, B>(
  *       )
  *   )
  * )
+ *
+ * const [, value] = await Effect.runPromise(
+ *   validatedEmail.parse({
+ *     arguments: [],
+ *     flags: { email: ["alice@example.com"] }
+ *   }).pipe(Effect.provide(CliTestLayer))
+ * )
+ * value // => "alice@example.com"
  * ```
  *
  * @category combinators
@@ -1110,7 +1153,26 @@ export const mapEffect: {
  * **Example** (Mapping thrown errors)
  *
  * ```ts import.meta.vitest
+ * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
  * import { Param } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
  *
  * const parsedJson = Param.string(Param.flagKind, "config").pipe(
  *   Param.mapTryCatch(
@@ -1119,6 +1181,14 @@ export const mapEffect: {
  *       `Invalid JSON: ${error instanceof Error ? error.message : String(error)}`
  *   )
  * )
+ *
+ * const [, value] = await Effect.runPromise(
+ *   parsedJson.parse({
+ *     arguments: [],
+ *     flags: { config: ['{"enabled":true}'] }
+ *   }).pipe(Effect.provide(CliTestLayer))
+ * )
+ * value // => { enabled: true }
  * ```
  *
  * @category combinators
@@ -1181,6 +1251,7 @@ export const mapTryCatch: {
  * // - When not provided: returns Option.none()
  * // - When provided: returns Option.some(parsedValue)
  * const port = Param.optional(Param.integer(Param.flagKind, "port"))
+ * port.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -1244,6 +1315,7 @@ export const optional = <Kind extends ParamKind, A>(
  *   Param.withDescription("Enable verbose output"),
  *   Param.withDefault(false)
  * )
+ * const kinds = [port.kind, verbose.kind] // => ["flag", "flag"]
  * ```
  *
  * @category combinators
@@ -1422,6 +1494,7 @@ export type VariadicParamOptions = {
  *   min: 2, // at least 2 times
  *   max: 2 // at most 2 times
  * })
+ * const kinds = [tags.kind, inputs.kind, limited.kind] // => ["flag", "flag", "flag"]
  * ```
  *
  * @category combinators
@@ -1478,6 +1551,7 @@ export const variadic = <Kind extends ParamKind, A>(
  *
  * // Parse: --tag dev --tag staging --tag v1.0
  * // Result: ["dev", "staging", "v1.0"]
+ * const kinds = [files.kind, tags.kind] // => ["flag", "flag"]
  * ```
  *
  * @category combinators
@@ -1517,6 +1591,7 @@ export const between: {
  *
  * // Parse: --suppress warning1 --suppress warning2
  * // Result: ["warning1", "warning2"]
+ * suppressions.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -1553,6 +1628,7 @@ export const atMost: {
  *
  * // Parse: --input file1.txt --input file2.txt --input file3.txt
  * // Result: ["file1.txt", "file2.txt", "file3.txt"]
+ * inputs.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -1588,6 +1664,7 @@ export const atLeast: {
  *     (n) => `Expected positive integer, got ${n}`
  *   )
  * )
+ * positiveInt.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -1639,6 +1716,7 @@ export const filterMap: {
  *     (n) => `Expected even number, got ${n}`
  *   )
  * )
+ * evenNumber.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -1680,6 +1758,7 @@ export const filter: {
  *     () => "Port must be between 1 and 65535"
  *   )
  * )
+ * port.kind // => "flag"
  * ```
  *
  * @category metadata
@@ -1715,6 +1794,7 @@ export const withMetavar: {
  * const email = Param.string(Param.flagKind, "email").pipe(
  *   Param.withSchema(Email)
  * )
+ * email.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -1758,6 +1838,7 @@ export const withSchema: {
  * const config = Param.file(Param.flagKind, "config").pipe(
  *   Param.orElse(() => Param.string(Param.flagKind, "config-url"))
  * )
+ * config.kind // => "flag"
  * ```
  *
  * @category combinators
@@ -1798,6 +1879,7 @@ export const orElse: {
  *   Param.orElseResult(() => Param.string(Param.flagKind, "config-url"))
  * )
  * // Returns Result<string, string>
+ * configSource.kind // => "flag"
  * ```
  *
  * @category combinators

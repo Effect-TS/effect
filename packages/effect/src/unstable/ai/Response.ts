@@ -167,6 +167,7 @@ export type AllPartsEncoded =
  * )
  *
  * const allPartsSchema = Response.AllParts(myToolkit)
+ * Schema.isSchema(allPartsSchema) // => true
  * ```
  *
  * @category schemas
@@ -506,6 +507,8 @@ const BasePart = Schema.Struct({
  *   params: { city: "San Francisco" },
  *   providerExecuted: false
  * })
+ *
+ * const result = [textPart.type, toolCallPart.name] // => ["text", "get_weather"]
  * ```
  *
  * @category constructors
@@ -563,6 +566,7 @@ export type ConstructorParams<Part extends AnyPart> =
  * const textPart: Response.TextPart = Response.makePart("text", {
  *   text: "The answer to your question is 42."
  * })
+ * textPart.text // => "The answer to your question is 42."
  * ```
  *
  * @category models
@@ -820,6 +824,7 @@ export const TextEndPart: Schema.Struct<{
  *   text:
  *     "Let me think step by step: First I need to analyze the user's question..."
  * })
+ * reasoningPart.type // => "reasoning"
  * ```
  *
  * @category models
@@ -1316,6 +1321,7 @@ export const ToolParamsEndPart: Schema.Struct<{
  *   params: { city: "San Francisco", units: "celsius" },
  *   providerExecuted: false
  * })
+ * const result = [toolCallPart.name, toolCallPart.params.city] // => ["get_weather", "San Francisco"]
  * ```
  *
  * @category models
@@ -1533,6 +1539,7 @@ export interface ToolResultFailure<Name extends string, Failure> extends BaseToo
  *   providerExecuted: false,
  *   preliminary: false
  * })
+ * const result = [toolResultPart.name, toolResultPart.result.temperature] // => ["get_weather", 22]
  * ```
  *
  * @category models
@@ -1733,6 +1740,7 @@ export const toolResultPart = <const Params extends ConstructorParams<ToolResult
  *     toolCallId: "call_456"
  *   }
  * )
+ * const result = [approvalRequest.approvalId, approvalRequest.toolCallId] // => ["approval_123", "call_456"]
  * ```
  *
  * @category models
@@ -1831,6 +1839,7 @@ export const toolApprovalRequestPart = (
  *   mediaType: "image/jpeg",
  *   data: new Uint8Array([1, 2, 3])
  * })
+ * const result = [imagePart.mediaType, imagePart.data] // => ["image/jpeg", new Uint8Array([1, 2, 3])]
  * ```
  *
  * @category models
@@ -2126,6 +2135,7 @@ export const UrlSourcePart: Schema.Struct<{
  *   hash: undefined,
  *   headers: { "Content-Type": "application/json" }
  * }
+ * const result = [requestDetails.method, requestDetails.urlParams] // => ["POST", []]
  * ```
  *
  * @category schemas
@@ -2166,6 +2176,7 @@ export const HttpRequestDetails = Schema.Struct({
  *     "X-Request-Id": "req_abc123"
  *   }
  * }
+ * const result = [responseDetails.status, responseDetails.headers["X-Request-Id"]] // => [200, "req_abc123"]
  * ```
  *
  * @category schemas
@@ -2200,10 +2211,11 @@ export const HttpResponseDetails = Schema.Struct({
  *   {
  *     id: "resp_123",
  *     modelId: "gpt-4",
- *     timestamp: DateTime.nowUnsafe(),
+ *     timestamp: DateTime.makeUnsafe("2024-01-01T00:00:00Z"),
  *     request: undefined
  *   }
  * )
+ * const result = [metadataPart.id, metadataPart.modelId] // => ["resp_123", "gpt-4"]
  * ```
  *
  * @category models
@@ -2426,6 +2438,7 @@ export class Usage extends Schema.Class<Usage>("effect/ai/AiResponse/Usage")({
  *   }),
  *   response: undefined
  * })
+ * const result = [finishPart.reason, finishPart.usage.inputTokens.total] // => ["stop", 50]
  * ```
  *
  * @category models
@@ -2528,6 +2541,7 @@ export const FinishPart: Schema.Struct<{
  * const errorPart: Response.ErrorPart = Response.makePart("error", {
  *   error: new Error("boom")
  * })
+ * const result = [errorPart.type, errorPart.error instanceof Error] // => ["error", true]
  * ```
  *
  * @category models

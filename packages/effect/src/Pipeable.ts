@@ -32,9 +32,10 @@
  * // The Pipeable interface allows Effect values to be chained using the pipe method
  * const program = Effect.succeed(1).pipe(
  *   Effect.map((x) => x + 1),
- *   Effect.flatMap((x) => Effect.succeed(x * 2)),
- *   Effect.tap((x) => Effect.log(`Result: ${x}`))
+ *   Effect.flatMap((x) => Effect.succeed(x * 2))
  * )
+ *
+ * Effect.runSync(program) // => 4
  * ```
  *
  * @category models
@@ -554,7 +555,7 @@ export interface Pipeable {
  *   (n) => n + 2,
  *   (n) => n * 3
  * )
- * console.log(result) // > 21
+ * result // => 21
  * ```
  *
  * @category combinators

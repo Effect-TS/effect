@@ -34,8 +34,8 @@ import type { EqualsWith, ExcludeTag, ExtractReason, ExtractTag, ReasonTags, Tag
  * // A filter that only passes positive numbers
  * const positiveFilter: Filter.Filter<number> = (n) => n > 0 ? Result.succeed(n) : Result.fail(n)
  *
- * console.log(positiveFilter(5)) // > { _id: 'Result', _tag: 'Success', value: 5 }
- * console.log(positiveFilter(-3)) // > { _id: 'Result', _tag: 'Failure', failure: -3 }
+ * positiveFilter(5) // => Result.succeed(5)
+ * positiveFilter(-3) // => Result.fail(-3)
  * ```
  *
  * @category models
@@ -74,6 +74,9 @@ export interface Filter<in Input, out Pass = Input, out Fail = Input> {
  *     const user: User = { id, isActive: id.length > 0 }
  *     return user.isActive ? Result.succeed(user) : Result.fail(user)
  *   })
+ *
+ * await Effect.runPromise(validateUser("alice")) // => Result.succeed({ id: "alice", isActive: true })
+ * await Effect.runPromise(validateUser("")) // => Result.fail({ id: "", isActive: false })
  * ```
  *
  * @category models
@@ -113,6 +116,8 @@ export interface FilterEffect<
  * const uppercaseFilter = Filter.make((s: string) =>
  *   s.length > 0 ? Result.succeed(s.toUpperCase()) : Result.fail(s)
  * )
+ * positiveFilter(1) // => Result.succeed(1)
+ * uppercaseFilter("ok") // => Result.succeed("OK")
  * ```
  *
  * @category constructors
@@ -143,6 +148,8 @@ export const make = <Input, Pass, Fail>(
  *     return isValid ? Result.succeed(id) : Result.fail(id)
  *   })
  * )
+ *
+ * await Effect.runPromise(asyncValidate("id")) // => Result.succeed("id")
  * ```
  *
  * @category constructors
@@ -212,6 +219,9 @@ export {
  * const isString = Filter.fromPredicate((x: unknown): x is string =>
  *   typeof x === "string"
  * )
+ * positiveNumbers(1) // => Result.succeed(1)
+ * nonEmptyStrings("") // => Result.fail("")
+ * isString("ok") // => Result.succeed("ok")
  * ```
  *
  * @category constructors
@@ -262,8 +272,8 @@ export const toPredicate = <A, Pass, Fail>(
  * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
- * console.log(Filter.string("hello")) // > { _id: 'Result', _tag: 'Success', value: 'hello' }
- * console.log(Filter.string(42)) // > { _id: 'Result', _tag: 'Failure', failure: 42 }
+ * Filter.string("hello") // => Result.succeed("hello")
+ * Filter.string(42) // => Result.fail(42)
  * ```
  *
  * @category constructors
@@ -353,8 +363,8 @@ export const instanceOf =
  * ```ts import.meta.vitest
  * import { Filter, Result } from "effect"
  *
- * console.log(Filter.number(42)) // > { _id: 'Result', _tag: 'Success', value: 42 }
- * console.log(Filter.number("42")) // > { _id: 'Result', _tag: 'Failure', failure: '42' }
+ * Filter.number(42) // => Result.succeed(42)
+ * Filter.number("42") // => Result.fail("42")
  * ```
  *
  * @category constructors
@@ -618,12 +628,13 @@ export const zipWith: {
  * **Example** (Zipping filters)
  *
  * ```ts import.meta.vitest
- * import { Filter } from "effect"
+ * import { Filter, Result } from "effect"
  *
  * const positiveNumbers = Filter.fromPredicate((n: number) => n > 0)
  * const evenNumbers = Filter.fromPredicate((n: number) => n % 2 === 0)
  *
  * const positiveAndEven = Filter.zip(positiveNumbers, evenNumbers)
+ * positiveAndEven(2) // => Result.succeed([2, 2])
  * ```
  *
  * @category combinators
@@ -651,12 +662,13 @@ export const zip: {
  * **Example** (Keeping the left filter result)
  *
  * ```ts import.meta.vitest
- * import { Filter } from "effect"
+ * import { Filter, Result } from "effect"
  *
  * const positiveNumbers = Filter.fromPredicate((n: number) => n > 0)
  * const evenNumbers = Filter.fromPredicate((n: number) => n % 2 === 0)
  *
  * const positiveEven = Filter.andLeft(positiveNumbers, evenNumbers)
+ * positiveEven(2) // => Result.succeed(2)
  * ```
  *
  * @category combinators
@@ -691,6 +703,7 @@ export const andLeft: {
  * )
  *
  * const positiveDoubled = Filter.andRight(positiveNumbers, doubleNumbers)
+ * positiveDoubled(2) // => Result.succeed(4)
  * ```
  *
  * @category combinators
@@ -725,6 +738,7 @@ export const andRight: {
  * )
  *
  * const stringToUpper = Filter.compose(stringFilter, nonEmptyUpper)
+ * stringToUpper("hello") // => Result.succeed("HELLO")
  * ```
  *
  * @category combinators

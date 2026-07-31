@@ -61,8 +61,8 @@ export interface FunctionTypeLambda extends TypeLambda {
  *   (self: number, that: number) => number
  * >(2, (self, that) => self + that)
  *
- * console.log(sum(2, 3)) // > 5
- * console.log(pipe(2, sum(3))) // > 5
+ * sum(2, 3) // => 5
+ * pipe(2, sum(3)) // => 5
  * ```
  *
  * **Example** (Defining overloads with call signatures)
@@ -75,8 +75,8 @@ export interface FunctionTypeLambda extends TypeLambda {
  *   (self: number, that: number): number
  * } = Function.dual(2, (self: number, that: number): number => self + that)
  *
- * console.log(sum(2, 3)) // > 5
- * console.log(pipe(2, sum(3))) // > 5
+ * sum(2, 3) // => 5
+ * pipe(2, sum(3)) // => 5
  * ```
  *
  * **Example** (Selecting data-first or data-last style with a predicate)
@@ -92,8 +92,8 @@ export interface FunctionTypeLambda extends TypeLambda {
  *   (self, that) => self + that
  * )
  *
- * console.log(sum(2, 3)) // > 5
- * console.log(pipe(2, sum(3))) // > 5
+ * sum(2, 3) // => 5
+ * pipe(2, sum(3)) // => 5
  * ```
  *
  * @category combinators
@@ -171,9 +171,8 @@ export const dual: {
  *
  * ```ts import.meta.vitest
  * import { Function, pipe, String } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(pipe(String.length, Function.apply("hello")), 5)
+ * pipe(String.length, Function.apply("hello")) // => 5
  * ```
  *
  * @see {@link pipe} for building left-to-right pipelines
@@ -196,6 +195,7 @@ export const apply = <A>(a: A) => <B>(self: (a: A) => B): B => self(a)
  * import { Function } from "effect"
  *
  * const constNull: Function.LazyArg<null> = Function.constant(null)
+ * constNull() // => null
  * ```
  *
  * @category models
@@ -215,10 +215,9 @@ export type LazyArg<A> = () => A
  *
  * ```ts import.meta.vitest
  * import type { Function } from "effect"
- * import * as assert from "node:assert"
  *
  * const sum: Function.FunctionN<[number, number], number> = (a, b) => a + b
- * assert.deepStrictEqual(sum(2, 3), 5)
+ * sum(2, 3) // => 5
  * ```
  *
  * @category models
@@ -237,9 +236,8 @@ export type FunctionN<A extends ReadonlyArray<unknown>, B> = (...args: A) => B
  *
  * ```ts import.meta.vitest
  * import { identity } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(identity(5), 5)
+ * identity(5) // => 5
  * ```
  *
  * @category combinators
@@ -260,15 +258,12 @@ export const identity = <A>(a: A): A => a
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
- * const test1 = Function.satisfies<number>()(5 as const)
+ * const test1 = Function.satisfies<number>()(5 as const) // => 5
  * // ^? const test: 5
  * // @ts-expect-error
  * const test2 = Function.satisfies<string>()(5)
  * // ^? Argument of type 'number' is not assignable to parameter of type 'string'
- *
- * assert.deepStrictEqual(Function.satisfies<number>()(5), 5)
  * ```
  *
  * @see {@link cast} for changing only the static TypeScript type
@@ -310,12 +305,11 @@ export const cast: <A, B>(a: A) => B = identity as any
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
  * const constNull = Function.constant(null)
  *
- * assert.deepStrictEqual(constNull(), null)
- * assert.deepStrictEqual(constNull(), null)
+ * constNull() // => null
+ * constNull() // => null
  * ```
  *
  * @category constructors
@@ -334,9 +328,8 @@ export const constant = <A>(value: A): LazyArg<A> => () => value
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(Function.constTrue(), true)
+ * Function.constTrue() // => true
  * ```
  *
  * @category constants
@@ -355,9 +348,8 @@ export const constTrue: LazyArg<boolean> = constant(true)
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(Function.constFalse(), false)
+ * Function.constFalse() // => false
  * ```
  *
  * @category constants
@@ -376,9 +368,8 @@ export const constFalse: LazyArg<boolean> = constant(false)
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(Function.constNull(), null)
+ * Function.constNull() // => null
  * ```
  *
  * @category constants
@@ -397,9 +388,8 @@ export const constNull: LazyArg<null> = constant(null)
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(Function.constUndefined(), undefined)
+ * Function.constUndefined() // => undefined
  * ```
  *
  * @category constants
@@ -419,9 +409,8 @@ export const constUndefined: LazyArg<undefined> = constant(undefined)
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(Function.constVoid(), undefined)
+ * Function.constVoid() // => undefined
  * ```
  *
  * @category constants
@@ -441,11 +430,10 @@ export const constVoid: LazyArg<void> = constUndefined
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
  * const f = (a: number) => (b: string) => a - b.length
  *
- * assert.deepStrictEqual(Function.flip(f)("aaa")(2), -1)
+ * Function.flip(f)("aaa")(2) // => -1
  * ```
  *
  * @category combinators
@@ -469,12 +457,11 @@ export const flip = <A extends Array<unknown>, B extends Array<unknown>, C>(
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
  * const increment = (n: number) => n + 1
  * const square = (n: number) => n * n
  *
- * assert.strictEqual(Function.compose(increment, square)(2), 9)
+ * Function.compose(increment, square)(2) // => 9
  * ```
  *
  * @see {@link flow} for composing a left-to-right sequence of functions
@@ -530,11 +517,10 @@ export const absurd = <A>(_: never): A => {
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
  * const sumTupled = Function.tupled((x: number, y: number): number => x + y)
  *
- * assert.deepStrictEqual(sumTupled([1, 2]), 3)
+ * sumTupled([1, 2]) // => 3
  * ```
  *
  * @see {@link untupled} for adapting a tuple-argument function back to multiple arguments
@@ -555,11 +541,10 @@ export const tupled = <A extends ReadonlyArray<unknown>, B>(f: (...a: A) => B): 
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
  * const getFirst = Function.untupled(<A, B>(tuple: [A, B]): A => tuple[0])
  *
- * assert.deepStrictEqual(getFirst(1, 2), 1)
+ * getFirst(1, 2) // => 1
  * ```
  *
  * @see {@link tupled} for adapting a multi-argument function to one tuple argument
@@ -596,14 +581,12 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * ```ts import.meta.vitest
  * import { pipe } from "effect"
  *
- * const result = pipe(
+ * pipe(
  *   1,
  *   (n) => n + 1,
  *   (n) => n * 2,
  *   (n) => `result: ${n}`
- * )
- *
- * console.log(result) // > result: 4
+ * ) // => "result: 4"
  * ```
  *
  * **Example** (Chaining methods before conversion)
@@ -613,9 +596,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * const double = (n: number) => n * 2
  * const greaterThanFour = (n: number) => n > 4
  *
- * const result = numbers.map(double).filter(greaterThanFour)
- *
- * console.log(result) // > [ 6, 8 ]
+ * numbers.map(double).filter(greaterThanFour) // => [6, 8]
  * ```
  *
  * **Example** (Rewriting method chains with pipe)
@@ -629,13 +610,11 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * const double = (n: number) => n * 2
  * const greaterThanFour = (n: number) => n > 4
  *
- * const result = pipe(
+ * pipe(
  *   numbers,
  *   Array.map(double),
  *   Array.filter(greaterThanFour)
- * )
- *
- * console.log(result) // > [ 6, 8 ]
+ * ) // => [6, 8]
  * ```
  *
  * **Example** (Chaining arithmetic operations)
@@ -649,10 +628,7 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * const subtractTen = (x: number) => x - 10
  *
  * // Sequentially apply these operations using `pipe`
- * const result = pipe(5, increment, double, subtractTen)
- *
- * console.log(result)
- * // Output: 2
+ * pipe(5, increment, double, subtractTen) // => 2
  * ```
  *
  * **Example** (Building a simple transformation pipeline)
@@ -661,14 +637,12 @@ export const untupled = <A extends ReadonlyArray<unknown>, B>(f: (a: A) => B): (
  * import { pipe } from "effect"
  *
  * // Simple transformation pipeline
- * const result = pipe(
+ * pipe(
  *   5,
  *   (x) => x * 2, // 10
  *   (x) => x + 1, // 11
  *   (x) => x.toString() // "11"
- * )
- *
- * console.log(result) // > 11
+ * ) // => "11"
  * ```
  *
  * @category combinators
@@ -1143,14 +1117,13 @@ export function pipe(a: unknown, ...args: Array<any>): unknown {
  *
  * ```ts import.meta.vitest
  * import { flow } from "effect"
- * import * as assert from "node:assert"
  *
  * const len = (s: string): number => s.length
  * const double = (n: number): number => n * 2
  *
  * const f = flow(len, double)
  *
- * assert.strictEqual(f("aaa"), 6)
+ * f("aaa") // => 6
  * ```
  *
  * @see {@link pipe} for applying a value through a left-to-right sequence immediately
@@ -1347,7 +1320,6 @@ export function flow(
  *   name: hole<string>()
  * })
  *
- * console.log(typeof buildUser) // > function
  * ```
  *
  * @category utility types
@@ -1368,9 +1340,8 @@ export const hole: <T>() => T = cast(absurd)
  *
  * ```ts import.meta.vitest
  * import { Function } from "effect"
- * import * as assert from "node:assert"
  *
- * assert.deepStrictEqual(Function.SK(0, "hello"), "hello")
+ * Function.SK(0, "hello") // => "hello"
  * ```
  *
  * @category combinators

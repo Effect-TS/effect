@@ -46,12 +46,12 @@ import * as Str from "./String.ts"
  * **Example** (Creating and composing getters)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const parseNumber = SchemaGetter.transform<number, string>((s) => Number(s))
  * const double = SchemaGetter.transform<number, number>((n) => n * 2)
  * const composed = parseNumber.compose(double)
- * // composed: Getter<number, string> — parses then doubles
+ * await Effect.runPromise(composed.run(Option.some("21"), {})) // => Option.some(42)
  * ```
  *
  * @see {@link transform} to create a getter from a pure function
@@ -106,10 +106,10 @@ export class Getter<out T, in E, R = never> extends Pipeable.Class {
  * **Example** (Returning a constant getter)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const alwaysZero = SchemaGetter.succeed(0)
- * // alwaysZero: Getter<0, unknown> — always produces 0
+ * await Effect.runPromise(alwaysZero.run(Option.none(), {})) // => Option.some(0)
  * ```
  *
  * @see {@link transform} when you need to use the input value
@@ -138,11 +138,13 @@ export function succeed<const T, E>(t: T): Getter<T, E> {
  * **Example** (Defining an always-failing getter)
  *
  * ```ts import.meta.vitest
- * import { Option, SchemaGetter, SchemaIssue } from "effect"
+ * import { Effect, Option, SchemaGetter, SchemaIssue } from "effect"
  *
  * const rejectAll = SchemaGetter.fail<string, string>(
  *   (oe) => new SchemaIssue.InvalidValue(oe, { message: "not allowed" })
  * )
+ * const issue = await Effect.runPromise(Effect.flip(rejectAll.run(Option.some("x"), {})))
+ * issue._tag // => "InvalidValue"
  * ```
  *
  * @see {@link forbidden} for a convenience helper for `Forbidden` issues
@@ -172,11 +174,13 @@ export function fail<T, E>(f: (oe: Option.Option<E>) => SchemaIssue.Issue): Gett
  * **Example** (Forbidding a decode direction)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const noEncode = SchemaGetter.forbidden<string, number>(
  *   () => "encoding is not supported"
  * )
+ * const issue = await Effect.runPromise(Effect.flip(noEncode.run(Option.some(1), {})))
+ * issue._tag // => "Forbidden"
  * ```
  *
  * @see {@link fail} to fail with a custom issue type
@@ -221,6 +225,7 @@ function isPassthrough<T, E, R>(getter: Getter<T, E, R>): getter is typeof passt
  *     encode: SchemaGetter.passthrough()
  *   })
  * )
+ * Schema.decodeSync(StringToString)("hello") // => "hello"
  * ```
  *
  * @see {@link passthroughSupertype} when `T extends E`
@@ -251,10 +256,11 @@ export function passthrough<T>(): Getter<T, T> {
  * **Example** (Passing through supertypes)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * // string extends string, so this is valid
  * const g = SchemaGetter.passthroughSupertype<string, string>()
+ * await Effect.runPromise(g.run(Option.some("hello"), {})) // => Option.some("hello")
  * ```
  *
  * @see {@link passthrough} when types are identical
@@ -283,10 +289,11 @@ export function passthroughSupertype<T>(): Getter<T, T> {
  * **Example** (Passing through subtypes)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * // "hello" extends string, so E extends T
  * const g = SchemaGetter.passthroughSubtype<string, "hello">()
+ * await Effect.runPromise(g.run(Option.some("hello"), {})) // => Option.some("hello")
  * ```
  *
  * @see {@link passthrough} when types are identical
@@ -321,8 +328,9 @@ export function passthroughSubtype<T>(): Getter<T, T> {
  * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const withTimestamp = SchemaGetter.onNone<number>(() =>
- *   Effect.succeed(Option.some(Date.now()))
+ *   Effect.succeed(Option.some(0))
  * )
+ * await Effect.runPromise(withTimestamp.run(Option.none(), {})) // => Option.some(0)
  * ```
  *
  * @see {@link required} when absent input should fail
@@ -355,9 +363,11 @@ export function onNone<T, E extends T = T, R = never>(
  * **Example** (Defining a required struct field)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const mustExist = SchemaGetter.required<string>()
+ * const issue = await Effect.runPromise(Effect.flip(mustExist.run(Option.none(), {})))
+ * issue._tag // => "MissingKey"
  * ```
  *
  * @see {@link onNone} to provide a fallback instead of failing
@@ -393,6 +403,7 @@ export function required<T, E extends T = T>(annotations?: Schema.Annotations.Ke
  * const parseIfPresent = SchemaGetter.onSome<number, string>(
  *   (s) => Effect.succeed(Option.some(Number(s)))
  * )
+ * await Effect.runPromise(parseIfPresent.run(Option.some("42"), {})) // => Option.some(42)
  * ```
  *
  * @see {@link onNone} to handle only absent values
@@ -431,11 +442,12 @@ export function onSome<T, E, R = never>(
  * **Example** (Validating effectfully)
  *
  * ```ts import.meta.vitest
- * import { Effect, SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const nonNegative = SchemaGetter.checkEffect<number>((n) =>
  *   Effect.succeed(n >= 0 ? undefined : "must be non-negative")
  * )
+ * await Effect.runPromise(nonNegative.run(Option.some(1), {})) // => Option.some(1)
  * ```
  *
  * @see {@link transform} when you need to change the value, not just validate
@@ -488,6 +500,7 @@ export function checkEffect<T, R = never>(
  *     encode: SchemaGetter.transform((n) => String(n))
  *   })
  * )
+ * Schema.decodeSync(NumberFromString)("42") // => 42
  * ```
  *
  * @see {@link transformOrFail} when the transformation can fail
@@ -528,6 +541,7 @@ export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
  *       : Effect.succeed(n)
  *   }
  * )
+ * await Effect.runPromise(safeParseInt.run(Option.some("42"), {})) // => Option.some(42)
  * ```
  *
  * @see {@link transform} when transformation cannot fail
@@ -558,11 +572,12 @@ export function transformOrFail<T, E, R = never>(
  * **Example** (Filtering out empty strings)
  *
  * ```ts import.meta.vitest
- * import { Option, SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const skipEmpty = SchemaGetter.transformOptional<string, string>((o) =>
  *   Option.filter(o, (s) => s.length > 0)
  * )
+ * await Effect.runPromise(skipEmpty.run(Option.some(""), {})) // => Option.none()
  * ```
  *
  * @see {@link transform} when you only need to transform present values
@@ -591,9 +606,10 @@ export function transformOptional<T, E>(f: (oe: Option.Option<E>) => Option.Opti
  * **Example** (Omitting a field during encoding)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const omitField = SchemaGetter.omit<string>()
+ * await Effect.runPromise(omitField.run(Option.some("hidden"), {})) // => Option.none()
  * ```
  *
  * @see {@link transformOptional} when you want conditional omission
@@ -623,10 +639,10 @@ export function omit<T>(): Getter<never, T> {
  * **Example** (Providing a default value for an optional field)
  *
  * ```ts import.meta.vitest
- * import { Effect, SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const withZero = SchemaGetter.withDefault(Effect.succeed(0))
- * // Getter<number, number | undefined>
+ * await Effect.runPromise(withZero.run(Option.some(undefined), {})) // => Option.some(0)
  * ```
  *
  * @see {@link onNone} to handle only absent keys (not `undefined` values)
@@ -659,10 +675,10 @@ export function withDefault<T, R = never>(
  * **Example** (Coercing to a string)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const toString = SchemaGetter.String<number>()
- * // Getter<string, number>
+ * await Effect.runPromise(toString.run(Option.some(42), {})) // => Option.some("42")
  * ```
  *
  * @see {@link transform} for custom string conversions
@@ -690,10 +706,10 @@ export function String<E>(): Getter<string, E> {
  * **Example** (Coercing to a number)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const toNumber = SchemaGetter.Number<string>()
- * // Getter<number, string>
+ * await Effect.runPromise(toNumber.run(Option.some("42"), {})) // => Option.some(42)
  * ```
  *
  * @see {@link transformOrFail} for validated number parsing
@@ -720,10 +736,10 @@ export function Number<E>(): Getter<number, E> {
  * **Example** (Coercing to a boolean)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const toBool = SchemaGetter.Boolean<string>()
- * // Getter<boolean, string>
+ * await Effect.runPromise(toBool.run(Option.some("true"), {})) // => Option.some(true)
  * ```
  *
  * @category Coercions
@@ -749,10 +765,10 @@ export function Boolean<E>(): Getter<boolean, E> {
  * **Example** (Coercing to a bigint)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const toBigInt = SchemaGetter.BigInt<string>()
- * // Getter<bigint, string>
+ * await Effect.runPromise(toBigInt.run(Option.some("42"), {})) // => Option.some(42n)
  * ```
  *
  * @category Coercions
@@ -778,10 +794,11 @@ export function BigInt<E extends string | number | bigint | boolean>(): Getter<b
  * **Example** (Coercing to a Date)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const toDate = SchemaGetter.Date<string>()
- * // Getter<Date, string>
+ * const result = await Effect.runPromise(toDate.run(Option.some("1970-01-01"), {}))
+ * Option.map(result, (date) => date.toISOString()) // => Option.some("1970-01-01T00:00:00.000Z")
  * ```
  *
  * @see {@link dateTimeUtcFromInput} for validated DateTime parsing
@@ -803,9 +820,10 @@ export function Date<E extends string | number | Date>(): Getter<Date, E> {
  * **Example** (Trimming whitespace)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const trimmed = SchemaGetter.trim<string>()
+ * await Effect.runPromise(trimmed.run(Option.some("  hello  "), {})) // => Option.some("hello")
  * ```
  *
  * @category string
@@ -825,9 +843,10 @@ export function trim<E extends string>(): Getter<string, E> {
  * **Example** (Capitalizing a string)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const cap = SchemaGetter.capitalize<string>()
+ * await Effect.runPromise(cap.run(Option.some("hello"), {})) // => Option.some("Hello")
  * ```
  *
  * @category string
@@ -847,9 +866,10 @@ export function capitalize<E extends string>(): Getter<string, E> {
  * **Example** (Uncapitalizing a string)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const uncap = SchemaGetter.uncapitalize<string>()
+ * await Effect.runPromise(uncap.run(Option.some("Hello"), {})) // => Option.some("hello")
  * ```
  *
  * @category string
@@ -869,9 +889,10 @@ export function uncapitalize<E extends string>(): Getter<string, E> {
  * **Example** (Converting snake case to camel case)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const toCamel = SchemaGetter.snakeToCamel<string>()
+ * await Effect.runPromise(toCamel.run(Option.some("user_name"), {})) // => Option.some("userName")
  * ```
  *
  * @see {@link camelToSnake} for the inverse operation
@@ -893,9 +914,10 @@ export function snakeToCamel<E extends string>(): Getter<string, E> {
  * **Example** (Converting camel case to snake case)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const toSnake = SchemaGetter.camelToSnake<string>()
+ * await Effect.runPromise(toSnake.run(Option.some("userName"), {})) // => Option.some("user_name")
  * ```
  *
  * @see {@link snakeToCamel} for the inverse operation
@@ -917,9 +939,10 @@ export function camelToSnake<E extends string>(): Getter<string, E> {
  * **Example** (Converting to lowercase)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const lower = SchemaGetter.toLowerCase<string>()
+ * await Effect.runPromise(lower.run(Option.some("HELLO"), {})) // => Option.some("hello")
  * ```
  *
  * @see {@link toUpperCase} for the inverse operation
@@ -941,9 +964,10 @@ export function toLowerCase<E extends string>(): Getter<string, E> {
  * **Example** (Converting to uppercase)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const upper = SchemaGetter.toUpperCase<string>()
+ * await Effect.runPromise(upper.run(Option.some("hello"), {})) // => Option.some("HELLO")
  * ```
  *
  * @see {@link toLowerCase} for the inverse operation
@@ -977,10 +1001,10 @@ type ParseJsonOptions = {
  * **Example** (Parsing JSON)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const parse = SchemaGetter.parseJson<string>()
- * // Getter<MutableJson, string>
+ * await Effect.runPromise(parse.run(Option.some("{\"a\":1}"), {})) // => Option.some({ a: 1 })
  * ```
  *
  * @see {@link stringifyJson} for the inverse operation
@@ -1034,10 +1058,10 @@ type StringifyJsonOptions = {
  * **Example** (Stringifying JSON)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const stringify = SchemaGetter.stringifyJson()
- * // Getter<string, unknown>
+ * await Effect.runPromise(stringify.run(Option.some({ a: 1 }), {})) // => Option.some("{\"a\":1}")
  * ```
  *
  * @see {@link parseJson} for the inverse operation
@@ -1077,10 +1101,10 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  * **Example** (Parsing a key-value string)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const parse = SchemaGetter.splitKeyValue<string>()
- * // "a=1,b=2" -> { a: "1", b: "2" }
+ * await Effect.runPromise(parse.run(Option.some("a=1,b=2"), {})) // => Option.some({ a: "1", b: "2" })
  * ```
  *
  * @see {@link joinKeyValue} for the inverse operation
@@ -1123,10 +1147,10 @@ export function splitKeyValue<E extends string>(options?: {
  * **Example** (Joining key-value records)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const join = SchemaGetter.joinKeyValue()
- * // { a: "1", b: "2" } -> "a=1,b=2"
+ * await Effect.runPromise(join.run(Option.some({ a: "1", b: "2" }), {})) // => Option.some("a=1,b=2")
  * ```
  *
  * @see {@link splitKeyValue} for the inverse operation
@@ -1161,11 +1185,10 @@ export function joinKeyValue<E extends Record<PropertyKey, string>>(options?: {
  * **Example** (Splitting a comma-separated string)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const splitComma = SchemaGetter.split<string>()
- * // "a,b,c" -> ["a", "b", "c"]
- * // "" -> []
+ * await Effect.runPromise(splitComma.run(Option.some("a,b,c"), {})) // => Option.some(["a", "b", "c"])
  * ```
  *
  * @see {@link splitKeyValue} when values are key-value pairs
@@ -1190,9 +1213,10 @@ export function split<E extends string>(options?: {
  * **Example** (Encoding to Base64)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeBase64<Uint8Array>()
+ * await Effect.runPromise(encode.run(Option.some(new Uint8Array([1, 2, 3])), {})) // => Option.some("AQID")
  * ```
  *
  * @see {@link decodeBase64} for the inverse operation to `Uint8Array`
@@ -1216,9 +1240,10 @@ export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E>
  * **Example** (Encoding to Base64Url)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeBase64Url<Uint8Array>()
+ * await Effect.runPromise(encode.run(Option.some(new Uint8Array([251, 255])), {})) // => Option.some("-_8")
  * ```
  *
  * @see {@link decodeBase64Url} for the inverse operation to `Uint8Array`
@@ -1242,9 +1267,10 @@ export function encodeBase64Url<E extends Uint8Array | string>(): Getter<string,
  * **Example** (Encoding to hex)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeHex<Uint8Array>()
+ * await Effect.runPromise(encode.run(Option.some(new Uint8Array([1, 2, 3])), {})) // => Option.some("010203")
  * ```
  *
  * @see {@link decodeHex} for the inverse operation to `Uint8Array`
@@ -1267,10 +1293,11 @@ export function encodeHex<E extends Uint8Array | string>(): Getter<string, E> {
  * **Example** (Decoding Base64 to bytes)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeBase64<string>()
- * // Getter<Uint8Array, string>
+ * const result = await Effect.runPromise(decode.run(Option.some("AQID"), {}))
+ * Option.map(result, Array.from) // => Option.some([1, 2, 3])
  * ```
  *
  * @see {@link decodeBase64String} to decode to `string` instead
@@ -1298,10 +1325,10 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
  * **Example** (Decoding Base64 to string)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeBase64String<string>()
- * // Getter<string, string>
+ * await Effect.runPromise(decode.run(Option.some("aGVsbG8="), {})) // => Option.some("hello")
  * ```
  *
  * @see {@link decodeBase64} to decode to `Uint8Array` instead
@@ -1329,10 +1356,11 @@ export function decodeBase64String<E extends string>(): Getter<string, E> {
  * **Example** (Decoding Base64Url to bytes)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeBase64Url<string>()
- * // Getter<Uint8Array, string>
+ * const result = await Effect.runPromise(decode.run(Option.some("-_8="), {}))
+ * Option.map(result, Array.from) // => Option.some([251, 255])
  * ```
  *
  * @see {@link decodeBase64UrlString} to decode to `string` instead
@@ -1360,10 +1388,10 @@ export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
  * **Example** (Decoding Base64Url to string)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeBase64UrlString<string>()
- * // Getter<string, string>
+ * await Effect.runPromise(decode.run(Option.some("aGVsbG8"), {})) // => Option.some("hello")
  * ```
  *
  * @see {@link decodeBase64Url} to decode to `Uint8Array` instead
@@ -1391,10 +1419,11 @@ export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
  * **Example** (Decoding hex to bytes)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeHex<string>()
- * // Getter<Uint8Array, string>
+ * const result = await Effect.runPromise(decode.run(Option.some("010203"), {}))
+ * Option.map(result, Array.from) // => Option.some([1, 2, 3])
  * ```
  *
  * @see {@link decodeHexString} to decode to `string` instead
@@ -1422,10 +1451,10 @@ export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
  * **Example** (Decoding hex to string)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeHexString<string>()
- * // Getter<string, string>
+ * await Effect.runPromise(decode.run(Option.some("68656c6c6f"), {})) // => Option.some("hello")
  * ```
  *
  * @see {@link decodeHex} to decode to `Uint8Array` instead
@@ -1455,9 +1484,10 @@ export function decodeHexString<E extends string>(): Getter<string, E> {
  * **Example** (Encoding a URI component)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeUriComponent<string>()
+ * await Effect.runPromise(encode.run(Option.some("hello world"), {})) // => Option.some("hello%20world")
  * ```
  *
  * @see {@link decodeUriComponent} for the inverse operation
@@ -1479,10 +1509,10 @@ export function encodeUriComponent<E extends string>(): Getter<string, E> {
  * **Example** (Decoding a URI component)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeUriComponent<string>()
- * // Getter<string, string>
+ * await Effect.runPromise(decode.run(Option.some("hello%20world"), {})) // => Option.some("hello world")
  * ```
  *
  * @see {@link encodeUriComponent} for the inverse operation
@@ -1524,10 +1554,11 @@ export function decodeUriComponent<E extends string>(): Getter<string, E> {
  * **Example** (Parsing DateTime)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { DateTime, Effect, Option, SchemaGetter } from "effect"
  *
  * const parseDate = SchemaGetter.dateTimeUtcFromInput<string>()
- * // Getter<DateTime.Utc, string>
+ * const result = await Effect.runPromise(parseDate.run(Option.some("2024-01-01T00:00:00Z"), {}))
+ * Option.map(result, DateTime.toEpochMillis) // => Option.some(1704067200000)
  * ```
  *
  * @see {@link Date} for a simpler coercion to `Date` (no validation)
@@ -1562,10 +1593,12 @@ export function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): Gette
  * **Example** (Decoding FormData)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeFormData()
- * // Getter<TreeObject<string | Blob>, FormData>
+ * const formData = new FormData()
+ * formData.append("user[name]", "Alice")
+ * await Effect.runPromise(decode.run(Option.some(formData), {})) // => Option.some({ user: { name: "Alice" } })
  * ```
  *
  * @see {@link encodeFormData} for the corresponding encoder
@@ -1600,10 +1633,11 @@ const collectFormDataEntries = collectBracketPathEntries((value): value is strin
  * **Example** (Encoding to FormData)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeFormData()
- * // Getter<FormData, unknown>
+ * const result = await Effect.runPromise(encode.run(Option.some({ name: "Alice" }), {}))
+ * Option.map(result, (formData) => formData.get("name")) // => Option.some("Alice")
  * ```
  *
  * @see {@link decodeFormData} for the corresponding decoder
@@ -1643,10 +1677,11 @@ export function encodeFormData(): Getter<FormData, unknown> {
  * **Example** (Decoding URLSearchParams)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const decode = SchemaGetter.decodeURLSearchParams()
- * // Getter<TreeObject<string>, URLSearchParams>
+ * const params = new URLSearchParams("user[name]=Alice")
+ * await Effect.runPromise(decode.run(Option.some(params), {})) // => Option.some({ user: { name: "Alice" } })
  * ```
  *
  * @see {@link encodeURLSearchParams} for the corresponding encoder
@@ -1678,10 +1713,11 @@ const collectURLSearchParamsEntries = collectBracketPathEntries(Predicate.isStri
  * **Example** (Encoding to URLSearchParams)
  *
  * ```ts import.meta.vitest
- * import { SchemaGetter } from "effect"
+ * import { Effect, Option, SchemaGetter } from "effect"
  *
  * const encode = SchemaGetter.encodeURLSearchParams()
- * // Getter<URLSearchParams, unknown>
+ * const result = await Effect.runPromise(encode.run(Option.some({ name: "Alice" }), {}))
+ * Option.map(result, (params) => params.toString()) // => Option.some("name=Alice")
  * ```
  *
  * @see {@link decodeURLSearchParams} for the corresponding decoder
@@ -1750,12 +1786,11 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
  * ```ts import.meta.vitest
  * import { SchemaGetter } from "effect"
  *
- * const tree = SchemaGetter.makeTreeRecord([
+ * SchemaGetter.makeTreeRecord([
  *   ["user[name]", "Alice"],
  *   ["user[tags][]", "admin"],
  *   ["user[tags][]", "editor"]
- * ])
- * // { user: { name: "Alice", tags: ["admin", "editor"] } }
+ * ]) // => { user: { name: "Alice", tags: ["admin", "editor"] } }
  * ```
  *
  * @see {@link collectBracketPathEntries} for flattening trees into bracket-path entries
@@ -1849,7 +1884,8 @@ export function makeTreeRecord<A>(
  *
  * const collectStrings = SchemaGetter.collectBracketPathEntries(Predicate.isString)
  * const entries = collectStrings({ user: { name: "Alice", tags: ["admin", "editor"] } })
- * // [["user[name]", "Alice"], ["user[tags]", "admin"], ["user[tags]", "editor"]]
+ *
+ * entries // => [["user[name]", "Alice"], ["user[tags]", "admin"], ["user[tags]", "editor"]]
  * ```
  *
  * @see {@link makeTreeRecord} for building trees from bracket-path entries

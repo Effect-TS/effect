@@ -68,21 +68,19 @@ export class Flusher extends Context.Service<Flusher, {
    * There is no built-in timeout; use `Effect.timeoutOption` to bound the
    * operation. Exporters in their 60-second `disabledUntil` window are skipped.
    *
-   * **Example** (Flushing from a Cloudflare Worker)
+   * **Example** (Flushing exporters)
    *
-   * ```ts
-   * import { Effect, ManagedRuntime } from "effect"
-   * import { OtlpExporter, OtlpTracer } from "effect/unstable/observability"
+   * ```ts import.meta.vitest
+   * import { Effect } from "effect"
+   * import { OtlpExporter } from "effect/unstable/observability"
    *
-   * const layer = OtlpTracer.layerFromConfig()
-   * const runtime = ManagedRuntime.make(layer)
+   * const program = Effect.gen(function*() {
+   *   const flusher = yield* OtlpExporter.Flusher
+   *   yield* flusher.flush
+   *   return "flushed"
+   * }).pipe(Effect.provide(OtlpExporter.layerFlusher))
    *
-   * // In the request handler:
-   * ctx.waitUntil(
-   *   runtime.runPromise(
-   *     Effect.flatMap(OtlpExporter.Flusher, (flusher) => flusher.flush)
-   *   )
-   * )
+   * await Effect.runPromise(program) // => "flushed"
    * ```
    */
   readonly flush: Effect.Effect<void>

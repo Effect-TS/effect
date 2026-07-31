@@ -89,8 +89,7 @@ export type Node =
  * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
- * const node = ConfigProvider.makeValue("3000")
- * // { _tag: "Value", value: "3000" }
+ * ConfigProvider.makeValue("3000") // => { _tag: "Value", value: "3000" }
  * ```
  *
  * @see {@link makeRecord} – for object-like containers
@@ -124,7 +123,11 @@ export function makeValue(value: string): Node {
  * import { ConfigProvider } from "effect"
  *
  * const node = ConfigProvider.makeRecord(new Set(["host", "port"]))
- * // { _tag: "Record", keys: Set(["host", "port"]), value: undefined }
+ * node._tag // => "Record"
+ * if (node._tag === "Record") {
+ *   node.keys // => new Set(["host", "port"])
+ *   node.value // => undefined
+ * }
  * ```
  *
  * @see {@link makeValue} – for terminal leaves
@@ -156,8 +159,7 @@ export function makeRecord(keys: ReadonlySet<string>, value?: string): Node {
  * ```ts import.meta.vitest
  * import { ConfigProvider } from "effect"
  *
- * const node = ConfigProvider.makeArray(3)
- * // { _tag: "Array", length: 3, value: undefined }
+ * ConfigProvider.makeArray(3) // => { _tag: "Array", length: 3, value: undefined }
  * ```
  *
  * @see {@link makeValue} – for terminal leaves
@@ -193,6 +195,8 @@ export function makeArray(length: number, value?: string): Node {
  *     new ConfigProvider.SourceError({ message: "connection refused" })
  *   )
  * )
+ *
+ * Effect.runSync(Effect.flip(provider.load(["host"]))).message // => "connection refused"
  * ```
  *
  * @see {@link ConfigProvider} – the interface whose `load` may fail with this
@@ -222,6 +226,7 @@ export class SourceError extends Data.TaggedError("SourceError")<{
  * import type { ConfigProvider } from "effect"
  *
  * const path: ConfigProvider.Path = ["database", "replicas", 0, "host"]
+ * path.join(".") // => "database.replicas.0.host"
  * ```
  *
  * @category models
@@ -325,6 +330,8 @@ export interface ConfigProvider extends Pipeable {
  * }).pipe(
  *   Effect.provideService(ConfigProvider.ConfigProvider, provider)
  * )
+ *
+ * Effect.runSync(program) === provider // => true
  * ```
  *
  * @see {@link layer} – install a provider as a Layer
@@ -418,6 +425,8 @@ function makeOrElse(first: ConfigProvider, second: ConfigProvider): ConfigProvid
  *       : Option.none()
  *   )
  * })
+ *
+ * Effect.runSync(provider.load(["host"])) // => Option.some(ConfigProvider.makeValue("localhost"))
  * ```
  *
  * @see {@link fromEnv} – pre-built provider for environment variables
@@ -453,7 +462,7 @@ export function make(get: (path: Path) => Effect.Effect<Option.Option<Node>, Sou
  * **Example** (Falling back to a default provider)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider } from "effect"
+ * import { ConfigProvider, Effect, Option } from "effect"
  *
  * const envProvider = ConfigProvider.fromEnv({
  *   env: { HOST: "prod.example.com" }
@@ -461,6 +470,10 @@ export function make(get: (path: Path) => Effect.Effect<Option.Option<Node>, Sou
  * const defaults = ConfigProvider.fromUnknown({ HOST: "localhost", PORT: "3000" })
  *
  * const combined = ConfigProvider.orElse(envProvider, defaults)
+ *
+ * const host = Option.getOrThrow(Effect.runSync(combined.load(["HOST"])))
+ * const port = Option.getOrThrow(Effect.runSync(combined.load(["PORT"])))
+ * const values = [host.value, port.value] // => ["prod.example.com", "3000"]
  * ```
  *
  * @see {@link layerAdd} – install a fallback provider via a Layer
@@ -499,7 +512,7 @@ export const orElse: {
  * **Example** (Uppercasing path segments)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider } from "effect"
+ * import { ConfigProvider, Effect, Option } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: { APP_HOST: "localhost" }
@@ -510,6 +523,9 @@ export const orElse: {
  *     typeof seg === "string" ? seg.toUpperCase() : seg
  *   )
  * )
+ *
+ * const node = Option.getOrThrow(Effect.runSync(upper.load(["app_host"])))
+ * node.value // => "localhost"
  * ```
  *
  * @see {@link constantCase} – a preset that converts to `CONSTANT_CASE`
@@ -543,13 +559,15 @@ export const mapInput: {
  * **Example** (Resolving camelCase keys to env vars)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider } from "effect"
+ * import { ConfigProvider, Effect, Option } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: { DATABASE_HOST: "localhost" }
  * }).pipe(ConfigProvider.constantCase)
  *
  * // path ["databaseHost"] now resolves to env var DATABASE_HOST
+ * const node = Option.getOrThrow(Effect.runSync(provider.load(["databaseHost"])))
+ * node.value // => "localhost"
  * ```
  *
  * @see {@link mapInput} – for arbitrary path transformations
@@ -586,7 +604,7 @@ export const constantCase: (self: ConfigProvider) => ConfigProvider = mapInput((
  * **Example** (Nesting under a prefix)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider } from "effect"
+ * import { ConfigProvider, Effect, Option } from "effect"
  *
  * const provider = ConfigProvider.fromEnv({
  *   env: { APP_HOST: "localhost", APP_PORT: "3000" }
@@ -594,6 +612,8 @@ export const constantCase: (self: ConfigProvider) => ConfigProvider = mapInput((
  *
  * // Lookups for ["HOST"] now resolve to ["APP", "HOST"]
  * const scoped = ConfigProvider.nested(provider, "APP")
+ * const node = Option.getOrThrow(Effect.runSync(scoped.load(["HOST"])))
+ * node.value // => "localhost"
  * ```
  *
  * @see {@link mapInput} – for arbitrary path transformations
@@ -639,7 +659,7 @@ export const nested: {
  *   return port
  * })
  *
- * // Effect.runSync(Effect.provide(program, TestLayer)) // 8080
+ * Effect.runSync(Effect.provide(program, TestLayer)) // => 8080
  * ```
  *
  * @see {@link layerAdd} – add a provider without replacing the existing one
@@ -671,7 +691,7 @@ export const layer = <E = never, R = never>(
  * **Example** (Adding default values)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider } from "effect"
+ * import { Config, ConfigProvider, Effect, Layer } from "effect"
  *
  * const defaults = ConfigProvider.fromUnknown({
  *   HOST: "localhost",
@@ -680,6 +700,11 @@ export const layer = <E = never, R = never>(
  *
  * // The current env provider is tried first; `defaults` is the fallback
  * const DefaultsLayer = ConfigProvider.layerAdd(defaults)
+ * const BaseLayer = ConfigProvider.layer(ConfigProvider.fromUnknown({}))
+ * const program = Config.string("HOST")
+ *
+ * const layer = Layer.provide(DefaultsLayer, BaseLayer)
+ * Effect.runSync(Effect.provide(program, layer)) // => "localhost"
  * ```
  *
  * @see {@link layer} – replace the provider entirely
@@ -746,7 +771,7 @@ export const layerAdd = <E = never, R = never>(
  *   provider.pipe(ConfigProvider.nested("database"))
  * )
  *
- * // Effect.runSync(host) // "localhost"
+ * Effect.runSync(host) // => "localhost"
  * ```
  *
  * @see {@link fromEnv} – for environment variables
@@ -855,7 +880,7 @@ function emptyStringAsMissing(value: string | undefined, preserveEmptyStrings: b
  *   provider.pipe(ConfigProvider.nested("DATABASE"))
  * )
  *
- * // Effect.runSync(host) // "localhost"
+ * Effect.runSync(host) // => "localhost"
  * ```
  *
  * @see {@link fromUnknown} – for JSON objects
@@ -869,7 +894,9 @@ export function fromEnv(options?: {
   readonly preserveEmptyStrings?: boolean | undefined
 }): ConfigProvider {
   const env: Record<string, string | undefined> = options?.env ?? {
-    ...globalThis?.process?.env,
+    ...(globalThis as {
+      readonly process?: { readonly env?: Record<string, string | undefined> }
+    }).process?.env,
     ...(import.meta as any)?.env
   }
   const preserveEmptyStrings = options?.preserveEmptyStrings === true
@@ -966,7 +993,7 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  * **Example** (Parsing .env contents)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider } from "effect"
+ * import { ConfigProvider, Effect, Option } from "effect"
  *
  * const contents = `
  * HOST=localhost
@@ -975,6 +1002,8 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  * `
  *
  * const provider = ConfigProvider.fromDotEnvContents(contents)
+ * const port = Option.getOrThrow(Effect.runSync(provider.load(["PORT"])))
+ * port.value // => "3000"
  * ```
  *
  * @see {@link fromDotEnv} – loads a `.env` file from disk
@@ -1112,12 +1141,21 @@ function searchLast(str: string, rgx: RegExp): number {
  * **Example** (Loading a .env file)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect } from "effect"
+ * import { ConfigProvider, Effect, FileSystem, Option } from "effect"
+ *
+ * const fileSystem = FileSystem.makeNoop({
+ *   readFileString: () => Effect.succeed("HOST=localhost")
+ * })
  *
  * const program = Effect.gen(function*() {
  *   const provider = yield* ConfigProvider.fromDotEnv()
- *   return provider
+ *   return yield* provider.load(["HOST"])
  * })
+ *
+ * const node = await Effect.runPromise(
+ *   Effect.provideService(program, FileSystem.FileSystem, fileSystem)
+ * )
+ * Option.getOrThrow(node).value // => "localhost"
  * ```
  *
  * @see {@link fromDotEnvContents} – parse a `.env` string directly
@@ -1166,14 +1204,29 @@ export const fromDotEnv: (options?: {
  * **Example** (Reading config from a directory)
  *
  * ```ts import.meta.vitest
- * import { ConfigProvider, Effect } from "effect"
+ * import { ConfigProvider, Effect, FileSystem, Option, Path } from "effect"
+ *
+ * const fileSystem = FileSystem.makeNoop({
+ *   readFileString: (path) =>
+ *     path === "/etc/myapp/host"
+ *       ? Effect.succeed("localhost")
+ *       : Effect.die("unexpected path")
+ * })
  *
  * const program = Effect.gen(function*() {
  *   const provider = yield* ConfigProvider.fromDir({
  *     rootPath: "/etc/myapp"
  *   })
- *   return provider
+ *   return yield* provider.load(["host"])
  * })
+ *
+ * const node = await Effect.runPromise(
+ *   program.pipe(
+ *     Effect.provide(Path.layer),
+ *     Effect.provideService(FileSystem.FileSystem, fileSystem)
+ *   )
+ * )
+ * Option.getOrThrow(node).value // => "localhost"
  * ```
  *
  * @see {@link fromEnv} – for environment variables

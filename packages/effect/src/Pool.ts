@@ -277,6 +277,8 @@ export const make = <A, E, R>(options: {
  *     (pool) => Effect.flatMap(Pool.get(pool), (connection) => connection.execute("select 1"))
  *   )
  * )
+ *
+ * await Effect.runPromise(program) // => ["executed: select 1"]
  * ```
  *
  * @category constructors

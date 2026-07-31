@@ -36,12 +36,14 @@ const TypeId = "~effect/RcRef"
  * ```ts import.meta.vitest
  * import { Effect, RcRef } from "effect"
  *
+ * const events: Array<string> = []
+ *
  * // Create an RcRef for a database connection
  * const createConnectionRef = (connectionString: string) =>
  *   RcRef.make({
  *     acquire: Effect.acquireRelease(
  *       Effect.succeed(`Connected to ${connectionString}`),
- *       (connection) => Effect.log(`Closing connection: ${connection}`)
+ *       (connection) => Effect.sync(() => events.push(`closed ${connection}`))
  *     )
  *   })
  *
@@ -53,8 +55,10 @@ const TypeId = "~effect/RcRef"
  *   const connection1 = yield* RcRef.get(connectionRef)
  *   const connection2 = yield* RcRef.get(connectionRef)
  *
- *   return [connection1, connection2]
+ *   return [connection1 === connection2, events] as const
  * })
+ *
+ * await Effect.runPromise(Effect.scoped(program)) // => [true, ["closed Connected to postgres://localhost"]]
  * ```
  *
  * @category models
@@ -75,6 +79,7 @@ export interface RcRef<out A, out E = never> extends Pipeable {
  * // Use RcRef namespace types
  * type MyRcRef = RcRef.RcRef<string, Error>
  * type MyVariance = RcRef.RcRef.Variance<string, Error>
+ *
  * ```
  *
  * @since 3.5.0
@@ -124,11 +129,13 @@ export declare namespace RcRef {
  * ```ts import.meta.vitest
  * import { Effect, RcRef } from "effect"
  *
- * Effect.gen(function*() {
+ * const events: Array<string> = []
+ *
+ * const program = Effect.gen(function*() {
  *   const ref = yield* RcRef.make({
  *     acquire: Effect.acquireRelease(
  *       Effect.succeed("foo"),
- *       () => Effect.log("release foo")
+ *       () => Effect.sync(() => events.push("released foo"))
  *     )
  *   })
  *
@@ -139,6 +146,9 @@ export declare namespace RcRef {
  *     Effect.scoped
  *   )
  * })
+ *
+ * await Effect.runPromise(Effect.scoped(program))
+ * events // => ["released foo"]
  * ```
  *
  * @category constructors
@@ -175,12 +185,14 @@ export const make: <A, E, R>(
  * ```ts import.meta.vitest
  * import { Effect, RcRef } from "effect"
  *
+ * const events: Array<string> = []
+ *
  * const program = Effect.gen(function*() {
  *   // Create an RcRef with a resource
  *   const ref = yield* RcRef.make({
  *     acquire: Effect.acquireRelease(
  *       Effect.succeed("shared resource"),
- *       (resource) => Effect.log(`Releasing ${resource}`)
+ *       (resource) => Effect.sync(() => events.push(`released ${resource}`))
  *     )
  *   })
  *
@@ -188,11 +200,10 @@ export const make: <A, E, R>(
  *   const value1 = yield* RcRef.get(ref)
  *   const value2 = yield* RcRef.get(ref)
  *
- *   // Both values are the same instance
- *   console.log(value1 === value2) // true
- *
- *   return value1
+ *   return [value1 === value2, events] as const
  * })
+ *
+ * await Effect.runPromise(Effect.scoped(program)) // => [true, ["released shared resource"]]
  * ```
  *
  * @category combinators

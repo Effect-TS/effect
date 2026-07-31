@@ -6,6 +6,7 @@ import { normalizePath, type Plugin } from "vite"
 import type { TestUserConfig } from "vitest/config"
 import * as Protocol from "./Protocol.ts"
 import * as Source from "./Source.ts"
+import { transform } from "./Transform.ts"
 
 const runner = "@effect/doctest/Runner"
 
@@ -17,8 +18,7 @@ const collectorModule = (
   const tests = snippets.map((snippet, index) => {
     const id = JSON.stringify(Protocol.snippetId(file, index, version))
     const label = JSON.stringify(snippet.name ?? `line ${snippet.line}`)
-    const expected = JSON.stringify(snippet.expected)
-    return `test(${label}, () => import(${id}), ${expected})`
+    return `test(${label}, () => import(${id}))`
   })
 
   return `import { test } from "@effect/doctest/Runtime"\n\n${tests.join("\n\n")}\n`
@@ -105,7 +105,7 @@ export const plugin = (): Plugin => {
           throw new Error(`Unknown documentation snippet module '${id}'`)
         }
 
-        return snippet.source
+        return transform(snippet.source, loaded.file, snippet.line)
       })
     },
     watchChange(id) {

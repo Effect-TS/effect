@@ -38,11 +38,12 @@ import type { HelpDoc } from "./HelpDoc.ts"
  * // Use the custom formatter in a program
  * const program = Effect.gen(function*() {
  *   const formatter = yield* CliOutput.Formatter
- *   const helpText = formatter.formatVersion("myapp", "1.0.0")
- *   console.log(helpText)
+ *   return formatter.formatVersion("myapp", "1.0.0")
  * }).pipe(
  *   Effect.provide(CliOutput.layer(customFormatter))
  * )
+ *
+ * await Effect.runPromise(program) // => "myapp (1.0.0)"
  * ```
  *
  * @category models
@@ -84,8 +85,7 @@ export interface Formatter {
    *
    * const formatter = CliOutput.defaultFormatter()
    * const helpText = formatter.formatHelpDoc(helpDoc)
-   * console.log(helpText)
-   * // Outputs formatted help with sections: DESCRIPTION, USAGE, ARGUMENTS, FLAGS
+   * const sectionsPresent = [helpText.includes("DESCRIPTION"), helpText.includes("FLAGS")] // => [true, true]
    * ```
    *
    * @since 4.0.0
@@ -108,7 +108,7 @@ export interface Formatter {
    * const formatter = CliOutput.defaultFormatter()
    * const error = new InvalidOption({ message: "Unknown flag '--invalid'" })
    * const errorMessage = formatter.formatCliError(error)
-   * console.log(errorMessage) // > Unknown flag '--invalid'
+   * errorMessage // => "Unknown flag '--invalid'"
    * ```
    *
    * @since 4.0.0
@@ -134,10 +134,10 @@ export interface Formatter {
    * const error = new ValidationError({ message: "Value must be positive" })
    *
    * const coloredError = colorFormatter.formatError(error)
-   * console.log(coloredError) // "\n\x1b[1m\x1b[31mERROR\x1b[0m\n  Value must be positive\x1b[0m"
+   * coloredError.includes("\u001b[31mERROR") // => true
    *
    * const plainError = noColorFormatter.formatError(error)
-   * console.log(plainError) // "\nERROR\n  Value must be positive"
+   * plainError // => "\nERROR\n  Value must be positive"
    * ```
    *
    * @since 4.0.0
@@ -159,10 +159,10 @@ export interface Formatter {
    * const version = "1.2.3"
    *
    * const coloredVersion = colorFormatter.formatVersion(appName, version)
-   * console.log(coloredVersion) // > [1mmy-awesome-tool[0m [2mv[0m[1m1.2.3[0m
+   * coloredVersion // => "\u001b[1mmy-awesome-tool\u001b[0m \u001b[2mv\u001b[0m\u001b[1m1.2.3\u001b[0m"
    *
    * const plainVersion = noColorFormatter.formatVersion(appName, version)
-   * console.log(plainVersion) // > my-awesome-tool v1.2.3
+   * plainVersion // => "my-awesome-tool v1.2.3"
    * ```
    *
    * @since 4.0.0
@@ -189,7 +189,7 @@ export interface Formatter {
    * ]
    *
    * const output = formatter.formatErrors(errors)
-   * // Groups errors by type and displays all at once
+   * const optionsPresent = [output.includes("--foo"), output.includes("--required")] // => [true, true]
    * ```
    *
    * @since 4.0.0
@@ -212,14 +212,13 @@ export interface Formatter {
  *   const formatter = yield* CliOutput.Formatter
  *
  *   // Format version information
- *   const versionText = formatter.formatVersion("my-cli", "2.1.0")
- *   console.log(versionText) // "my-cli v2.1.0" (with colors if supported)
- *
- *   return versionText
+ *   return formatter.formatVersion("my-cli", "2.1.0")
  * })
  *
  * // Run with default formatter
- * const result = Effect.runSync(program)
+ * await Effect.runPromise(program.pipe(
+ *   Effect.provide(CliOutput.layer(CliOutput.defaultFormatter({ colors: false })))
+ * )) // => "my-cli v2.1.0"
  * ```
  *
  * @category services
@@ -236,7 +235,7 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  * **Example** (Providing a custom formatter)
  *
  * ```ts import.meta.vitest
- * import { Console, Effect } from "effect"
+ * import { Effect } from "effect"
  * import { CliOutput } from "effect/unstable/cli"
  *
  * // Create a custom formatter without colors
@@ -246,22 +245,12 @@ export const Formatter: Context.Reference<Formatter> = Context.Reference(
  * // Create a program that uses the custom formatter
  * const program = Effect.gen(function*() {
  *   const formatter = yield* CliOutput.Formatter
- *   const versionText = formatter.formatVersion("my-cli", "1.0.0")
- *   yield* Console.log(`Using custom formatter: ${versionText}`)
+ *   return formatter.formatVersion("my-cli", "1.0.0")
  * }).pipe(
  *   Effect.provide(NoColorLayer)
  * )
  *
- * // You can also create completely custom formatters
- * const jsonFormatter: CliOutput.Formatter = {
- *   formatHelpDoc: (doc) => JSON.stringify(doc, null, 2),
- *   formatCliError: (error) => JSON.stringify({ error: error.message }),
- *   formatError: (error) =>
- *     JSON.stringify({ type: "error", message: error.message }),
- *   formatVersion: (name, version) => JSON.stringify({ name, version }),
- *   formatErrors: (errors) => JSON.stringify(errors.map((error) => error.message))
- * }
- * const JsonLayer = CliOutput.layer(jsonFormatter)
+ * await Effect.runPromise(program) // => "my-cli v1.0.0"
  * ```
  *
  * @category layers
@@ -280,7 +269,6 @@ const escapeControlCharacters = (text: string): string =>
  * **Example** (Creating default formatters)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
  * import { CliError, CliOutput } from "effect/unstable/cli"
  *
  * // Create a formatter without colors for tests or CI environments
@@ -292,23 +280,16 @@ const escapeControlCharacters = (text: string): string =>
  * // Auto-detect colors based on terminal support (default behavior)
  * const autoFormatter = CliOutput.defaultFormatter()
  *
- * const program = Effect.gen(function*() {
- *   const formatter = colorFormatter
- *
- *   // Format an error with proper styling
- *   const error = new CliError.InvalidValue({
- *     option: "foo",
- *     value: "bar",
- *     expected: "baz",
- *     kind: "flag"
- *   })
- *   const errorText = formatter.formatError(error)
- *   console.log(errorText)
- *
- *   // Format version information
- *   const versionText = formatter.formatVersion("my-tool", "1.2.3")
- *   console.log(versionText)
+ * const error = new CliError.InvalidValue({
+ *   option: "foo",
+ *   value: "bar",
+ *   expected: "baz",
+ *   kind: "flag"
  * })
+ *
+ * noColorFormatter.formatError(error).includes("Invalid value") // => true
+ * colorFormatter.formatVersion("my-tool", "1.2.3").includes("my-tool") // => true
+ * autoFormatter.formatVersion("my-tool", "1.2.3").includes("1.2.3") // => true
  * ```
  *
  * @category constructors

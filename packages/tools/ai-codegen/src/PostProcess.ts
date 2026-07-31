@@ -28,6 +28,9 @@ import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawne
  *   stderr: "error: some lint error",
  *   cause: new Error("Lint failed")
  * })
+ *
+ * error.step // => "lint"
+ * error.exitCode // => 1
  * ```
  *
  * @category errors

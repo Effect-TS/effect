@@ -55,9 +55,12 @@ Keep these distinctions:
 ## Example Best Practices
 
 - Mark runnable TypeScript examples with `````ts import.meta.vitest`` so `pnpm doctest` executes them.
-- Use inline or standalone `// >` comments to assert the complete console output of a runnable example. Move inline markers to the next line when the source line would exceed 120 characters. Each marker represents one expected output line; an angle-bracketed label such as `// > <system time zone>` matches exactly one unavoidable environment-dependent line, and examples without markers remain execution-only.
+- Use a trailing `// =>` comment to assert an expression or single initialized `const` identifier against a TypeScript expression on the same line. Values use Effect's `Equal.equals` semantics, and examples without markers remain execution-only. Write asynchronous execution explicitly; the transform does not run Effects or await promises automatically.
+- Prefer asserting the API call directly. Keep bindings only for reuse, mutation, identity checks, or meaningful multi-step setup; put a blank line before a separate assertion block.
+- Keep calls on one line when the complete line is at most 120 characters. Format expected arrays densely (`[1, 2]`, `[[1], [2]]`, `Option.some([1, 2])`) while retaining normal object spacing.
+- Assert semantic constructors such as `Option.some`, `Result.succeed`, and `Exit.fail`, not rendered console output. Preserve runnable markers on type-level examples without adding fake runtime assertions.
 - Keep runnable examples complete, deterministic, bounded, and independent of external services or machine-specific state. Await asynchronous work so failures and cleanup remain inside the doctest.
 - Import public APIs and include all required setup. Do not use undeclared placeholders or rely on declarations from surrounding prose.
 - Use `````ts import.meta.vitest suite`` for examples that register Vitest tests or suites, such as `@effect/vitest` helpers. Invoke the registration API directly; the `suite` marker runs the example during collection.
 - Leave intentionally non-executable snippets as plain `````ts`` fences.
-- Run `pnpm doctest` from the repository root after changing runnable examples. Also run `pnpm docgen` from the affected package directory because docgen typechecks examples while doctest executes marked examples.
+- Run `pnpm doctest --run <source files>` from the repository root after changing runnable examples. Also run `pnpm docgen` from the affected package directory because docgen typechecks examples while doctest executes marked examples.

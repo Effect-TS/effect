@@ -235,15 +235,16 @@ export const layer: Layer.Layer<
  * **Example** (Applying rate limits to effects)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Layer } from "effect"
  * import { RateLimiter } from "effect/unstable/persistence"
  *
- * Effect.gen(function*() {
+ * const messages: Array<string> = []
+ * const program = Effect.gen(function*() {
  *   // Access the `withLimiter` function from the RateLimiter module
  *   const withLimiter = yield* RateLimiter.makeWithRateLimiter
  *
  *   // Apply a rate limiter to an effect
- *   yield* Effect.log("Making a request with rate limiting").pipe(
+ *   yield* Effect.sync(() => messages.push("Making a request with rate limiting")).pipe(
  *     withLimiter({
  *       key: "some-key",
  *       limit: 10,
@@ -252,7 +253,12 @@ export const layer: Layer.Layer<
  *       algorithm: "fixed-window"
  *     })
  *   )
- * })
+ * }).pipe(
+ *   Effect.provide(RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory)))
+ * )
+ *
+ * await Effect.runPromise(program)
+ * messages // => ["Making a request with rate limiting"]
  * ```
  *
  * @category accessors
@@ -284,22 +290,27 @@ export const makeWithRateLimiter: Effect.Effect<
  * **Example** (Sleeping until rate limit permits)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, Layer } from "effect"
  * import { RateLimiter } from "effect/unstable/persistence"
  *
- * Effect.gen(function*() {
+ * const program = Effect.gen(function*() {
  *   // Access the `sleep` function from the RateLimiter module
  *   const sleep = yield* RateLimiter.makeSleep
  *
  *   // Use the `sleep` function with specific rate limiting parameters.
  *   // This will only sleep if the rate limit has been exceeded.
- *   yield* sleep({
+ *   const result = yield* sleep({
  *     key: "some-key",
  *     limit: 10,
  *     window: "5 seconds",
  *     algorithm: "fixed-window"
  *   })
- * })
+ *   return result.remaining
+ * }).pipe(
+ *   Effect.provide(RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory)))
+ * )
+ *
+ * await Effect.runPromise(program) // => 9
  * ```
  *
  * @category accessors

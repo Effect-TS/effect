@@ -53,6 +53,7 @@ export interface Argument<A> extends Param.Param<typeof Param.argumentKind, A> {
  * import { Argument } from "effect/unstable/cli"
  *
  * const filename = Argument.string("filename")
+ * filename.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -69,6 +70,7 @@ export const string = (name: string): Argument<string> => Param.string(Param.arg
  * import { Argument } from "effect/unstable/cli"
  *
  * const count = Argument.integer("count")
+ * count.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -86,6 +88,7 @@ export const integer = (name: string): Argument<number> => Param.integer(Param.a
  *
  * const inputFile = Argument.file("input", { mustExist: true }) // Must exist
  * const outputFile = Argument.file("output", { mustExist: false }) // Must not exist
+ * const kinds = [inputFile.kind, outputFile.kind] // => ["argument", "argument"]
  * ```
  *
  * @category constructors
@@ -104,6 +107,7 @@ export const file = (name: string, options?: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const workspace = Argument.directory("workspace", { mustExist: true }) // Must exist
+ * workspace.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -122,6 +126,7 @@ export const directory = (name: string, options?: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const ratio = Argument.float("ratio")
+ * ratio.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -138,6 +143,7 @@ export const float = (name: string): Argument<number> => Param.float(Param.argum
  * import { Argument } from "effect/unstable/cli"
  *
  * const startDate = Argument.date("start-date")
+ * startDate.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -154,6 +160,7 @@ export const date = (name: string): Argument<Date> => Param.date(Param.argumentK
  * import { Argument } from "effect/unstable/cli"
  *
  * const environment = Argument.choice("environment", ["dev", "staging", "prod"])
+ * environment.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -173,6 +180,7 @@ export const choice = <const Choices extends ReadonlyArray<string>>(
  * import { Argument } from "effect/unstable/cli"
  *
  * const configPath = Argument.path("config")
+ * configPath.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -192,6 +200,7 @@ export const path = (name: string, options?: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const secret = Argument.redacted("secret")
+ * secret.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -208,6 +217,7 @@ export const redacted = (name: string): Argument<Redacted.Redacted<string>> => P
  * import { Argument } from "effect/unstable/cli"
  *
  * const config = Argument.fileText("config-file")
+ * config.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -230,6 +240,7 @@ export const fileText = (name: string): Argument<string> => Param.fileText(Param
  * import { Argument } from "effect/unstable/cli"
  *
  * const config = Argument.fileParse("config", { format: "json" })
+ * config.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -255,6 +266,7 @@ export const fileParse = (
  * })
  *
  * const config = Argument.fileSchema("config", ConfigSchema)
+ * config.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -276,6 +288,7 @@ export const fileSchema = <A>(
  *
  * // Used as a placeholder or default in combinators
  * const noArg = Argument.none
+ * noArg.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -296,6 +309,7 @@ export const none: Argument<never> = Param.none(Param.argumentKind)
  * import { Argument } from "effect/unstable/cli"
  *
  * const optionalVersion = Argument.string("version").pipe(Argument.optional)
+ * optionalVersion.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -314,6 +328,7 @@ export const optional = <A>(arg: Argument<A>): Argument<Option.Option<A>> => Par
  * const filename = Argument.string("filename").pipe(
  *   Argument.withDescription("The input file to process")
  * )
+ * filename.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -333,6 +348,7 @@ export const withDescription: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const port = Argument.integer("port").pipe(Argument.withDefault(8080))
+ * port.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -360,6 +376,7 @@ export const withDefault: {
  * const repository = Argument.string("repository").pipe(
  *   Argument.withFallbackConfig(Config.string("REPOSITORY"))
  * )
+ * repository.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -381,6 +398,7 @@ export const withFallbackConfig: {
  * const filename = Argument.string("filename").pipe(
  *   Argument.withFallbackPrompt(Prompt.text({ message: "Filename" }))
  * )
+ * filename.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -411,6 +429,8 @@ export const withFallbackPrompt: {
  * const limitedFiles = Argument.string("files").pipe(
  *   Argument.variadic({ min: 1, max: 5 })
  * )
+ *
+ * const kinds = [anyFiles.kind, atLeastOneFile.kind, limitedFiles.kind] // => ["argument", "argument", "argument"]
  * ```
  *
  * @category combinators
@@ -435,6 +455,7 @@ export const variadic: {
  * const port = Argument.integer("port").pipe(
  *   Argument.map((p) => ({ port: p, url: `http://localhost:${p}` }))
  * )
+ * port.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -451,8 +472,26 @@ export const map: {
  * **Example** (Validating values effectfully)
  *
  * ```ts import.meta.vitest
- * import { Effect } from "effect"
+ * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
  * import { Argument, CliError } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
  *
  * const files = Argument.string("files").pipe(
  *   Argument.mapEffect((file) =>
@@ -465,6 +504,11 @@ export const map: {
  *       )
  *   )
  * )
+ *
+ * const [, value] = await Effect.runPromise(
+ *   files.parse({ arguments: ["notes.txt"], flags: {} }).pipe(Effect.provide(CliTestLayer))
+ * )
+ * value // => "notes.txt"
  * ```
  *
  * @category combinators
@@ -489,7 +533,26 @@ export const mapEffect: {
  * **Example** (Mapping values that may throw)
  *
  * ```ts import.meta.vitest
+ * import { Effect, FileSystem, Layer, Path, Stdio, Terminal } from "effect"
  * import { Argument } from "effect/unstable/cli"
+ * import { ChildProcessSpawner } from "effect/unstable/process"
+ *
+ * const CliTestLayer = Layer.mergeAll(
+ *   FileSystem.layerNoop({}),
+ *   Path.layer,
+ *   Stdio.layerTest({}),
+ *   Layer.succeed(Terminal.Terminal, Terminal.make({
+ *     columns: Effect.succeed(80),
+ *     rows: Effect.succeed(24),
+ *     readInput: Effect.die("unused"),
+ *     readLine: Effect.die("unused"),
+ *     display: () => Effect.void
+ *   })),
+ *   Layer.succeed(
+ *     ChildProcessSpawner.ChildProcessSpawner,
+ *     ChildProcessSpawner.make(() => Effect.die("unused"))
+ *   )
+ * )
  *
  * const json = Argument.string("data").pipe(
  *   Argument.mapTryCatch(
@@ -498,6 +561,11 @@ export const mapEffect: {
  *       `Invalid JSON: ${error instanceof Error ? error.message : String(error)}`
  *   )
  * )
+ *
+ * const [, value] = await Effect.runPromise(
+ *   json.parse({ arguments: ['{"enabled":true}'], flags: {} }).pipe(Effect.provide(CliTestLayer))
+ * )
+ * value // => { enabled: true }
  * ```
  *
  * @category combinators
@@ -524,6 +592,7 @@ export const mapTryCatch: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const files = Argument.string("files").pipe(Argument.atLeast(1))
+ * files.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -543,6 +612,7 @@ export const atLeast: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const files = Argument.string("files").pipe(Argument.atMost(5))
+ * files.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -562,6 +632,7 @@ export const atMost: {
  * import { Argument } from "effect/unstable/cli"
  *
  * const files = Argument.string("files").pipe(Argument.between(1, 5))
+ * files.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -584,6 +655,7 @@ export const between: {
  * const input = Argument.string("input").pipe(
  *   Argument.withSchema(Schema.NonEmptyString)
  * )
+ * input.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -612,6 +684,7 @@ export const withSchema: {
  *   ["warn", 2],
  *   ["error", 3]
  * ])
+ * logLevel.kind // => "argument"
  * ```
  *
  * @category constructors
@@ -642,6 +715,7 @@ export const choiceWithValue = <const Choices extends ReadonlyArray<readonly [st
  * const port = Argument.integer("port").pipe(
  *   Argument.withMetavar("PORT")
  * )
+ * port.kind // => "argument"
  * ```
  *
  * @category metadata
@@ -666,6 +740,7 @@ export const withMetavar: {
  *     (n) => `Expected positive integer, got ${n}`
  *   )
  * )
+ * positiveInt.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -696,6 +771,7 @@ export const filter: {
  *     (n) => `Expected positive integer, got ${n}`
  *   )
  * )
+ * positiveInt.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -721,6 +797,7 @@ export const filterMap: {
  * const value = Argument.integer("value").pipe(
  *   Argument.orElse(() => Argument.string("value"))
  * )
+ * value.kind // => "argument"
  * ```
  *
  * @category combinators
@@ -743,6 +820,7 @@ export const orElse: {
  *   Argument.orElseResult(() => Argument.string("url"))
  * )
  * // Returns Result<string, string>
+ * source.kind // => "argument"
  * ```
  *
  * @category combinators

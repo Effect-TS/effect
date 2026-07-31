@@ -29,6 +29,7 @@ const TypeId = "~effect/platform/Crypto"
  * import { Crypto } from "effect"
  *
  * const algorithm: Crypto.DigestAlgorithm = "SHA-256"
+ * algorithm // => "SHA-256"
  * ```
  *
  * @category models
@@ -62,12 +63,11 @@ export type DigestAlgorithm = "SHA-1" | "SHA-256" | "SHA-384" | "SHA-512"
  *   const crypto = yield* Crypto.Crypto
  *   const bytes = yield* crypto.randomBytes(16)
  *   const uuidv4 = yield* crypto.randomUUIDv4
- *   const uuidv7 = yield* crypto.randomUUIDv7
  *   const hash = yield* crypto.digest("SHA-256", bytes)
- *   return { uuidv4, uuidv7, hash }
+ *   return [bytes.length, uuidv4.length, hash.length]
  * })
  *
- * Effect.runPromise(Effect.provide(program, TestCrypto))
+ * await Effect.runPromise(Effect.provide(program, TestCrypto)) // => [16, 36, 16]
  * ```
  *
  * @category models
@@ -197,15 +197,14 @@ export const Crypto: Context.Service<Crypto, Crypto> = Context.Service("effect/C
  * **Example** (Creating a Crypto service)
  *
  * ```ts import.meta.vitest
- * import { Crypto, Effect, Layer } from "effect"
+ * import { Crypto, Effect } from "effect"
  *
- * const TestCrypto = Layer.succeed(
- *   Crypto.Crypto,
- *   Crypto.make({
- *     randomBytes: (size) => new Uint8Array(size),
- *     digest: (_algorithm, data) => Effect.succeed(data)
- *   })
- * )
+ * const testCrypto = Crypto.make({
+ *   randomBytes: (size) => new Uint8Array(size),
+ *   digest: (_algorithm, data) => Effect.succeed(data)
+ * })
+ *
+ * await Effect.runPromise(testCrypto.randomBytes(4)) // => new Uint8Array([0, 0, 0, 0])
  * ```
  *
  * @category constructors

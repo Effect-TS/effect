@@ -121,6 +121,8 @@ export interface LayerRef<in out I, in out E = never> {
  *     return result
  *   })
  * )
+ *
+ * await Effect.runPromise(program) // => "result"
  * ```
  *
  * @see {@link Service} for defining a reusable service class around a `LayerRef`
@@ -293,6 +295,8 @@ export interface TagClass<
  *   Effect.provide(DatabaseRef.get),
  *   Effect.provide(DatabaseRef.layer)
  * )
+ *
+ * await Effect.runPromise(program) // => "result"
  * ```
  *
  * @see {@link make} for creating a `LayerRef` value without defining a service class

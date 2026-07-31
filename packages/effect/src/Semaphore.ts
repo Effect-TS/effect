@@ -44,6 +44,8 @@ import type * as Option from "./Option.ts"
  *     Effect.succeed("Resource accessed")
  *   )
  * })
+ *
+ * await Effect.runPromise(program) // => "Resource accessed"
  * ```
  *
  * @see {@link make} for creating a semaphore inside Effect code
@@ -180,9 +182,8 @@ export interface Semaphore {
  * const task = (id: number) =>
  *   semaphore.withPermits(1)(
  *     Effect.gen(function*() {
- *       yield* Effect.log(`Task ${id} started`)
- *       yield* Effect.sleep("1 second")
- *       yield* Effect.log(`Task ${id} completed`)
+ *       yield* Effect.yieldNow
+ *       return id
  *     })
  *   )
  *
@@ -194,6 +195,8 @@ export interface Semaphore {
  *   task(4),
  *   task(5)
  * ], { concurrency: "unbounded" })
+ *
+ * await Effect.runPromise(program) // => [1, 2, 3, 4, 5]
  * ```
  *
  * @category constructors
@@ -332,15 +335,16 @@ class SemaphoreImpl implements Semaphore {
  *   const task = (id: number) =>
  *     semaphore.withPermits(1)(
  *       Effect.gen(function*() {
- *         yield* Effect.log(`Task ${id} acquired permit`)
- *         yield* Effect.sleep("1 second")
- *         yield* Effect.log(`Task ${id} releasing permit`)
+ *         yield* Effect.yieldNow
+ *         return id
  *       })
  *     )
  *
  *   // Run 4 tasks, but only 2 can run concurrently
- *   yield* Effect.all([task(1), task(2), task(3), task(4)])
+ *   return yield* Effect.all([task(1), task(2), task(3), task(4)])
  * })
+ *
+ * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
  * @category constructors

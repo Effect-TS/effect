@@ -22,7 +22,7 @@ describe("Plugin", () => {
     assert.isUndefined(config.call({} as never, { test: { runner: "./custom-runner.ts" } }, {} as never))
   })
 
-  it("generates console output assertions only for marked examples", async () => {
+  it("transforms inline assertions in snippet modules", async () => {
     const root = mkdtempSync(join(tmpdir(), "effect-doctest-plugin-"))
     const file = join(root, "example.ts")
     writeFileSync(
@@ -30,11 +30,7 @@ describe("Plugin", () => {
       [
         "/**",
         " * ```ts import.meta.vitest name=asserted",
-        " * console.log(1)",
-        " * // > 1",
-        " * ```",
-        " * ```ts import.meta.vitest name=unasserted",
-        " * console.log(2)",
+        " * const result = 1 // => 1",
         " * ```",
         " */"
       ].join("\n")
@@ -55,8 +51,15 @@ describe("Plugin", () => {
       if (typeof source !== "string") return assert.fail("expected collector source")
 
       assert.match(source, /import \{ test \} from "@effect\/doctest\/Runtime"/)
-      assert.match(source, /test\("asserted", \(\) => import\([^)]*\), "1"\)/)
-      assert.match(source, /test\("unasserted", \(\) => import\([^)]*\), undefined\)/)
+      assert.match(source, /test\("asserted", \(\) => import\([^)]*\)\)/)
+
+      const snippetId = Protocol.snippetId(file, 0, "test")
+      const resolvedSnippet = await resolveId.call(context, snippetId, undefined, {} as never)
+      if (typeof resolvedSnippet !== "string") return assert.fail("expected resolved snippet ID")
+      const snippet = await load.call(context, resolvedSnippet, {} as never)
+      if (typeof snippet !== "string") return assert.fail("expected snippet source")
+      assert.match(snippet, /const result = 1\n__effect_doctest_assert_0\(result, 1\)/)
+      assert.match(snippet, /assertEquals as __effect_doctest_assert_0/)
     } finally {
       rmSync(root, { recursive: true, force: true })
     }

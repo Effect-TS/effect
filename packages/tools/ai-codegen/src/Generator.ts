@@ -28,6 +28,9 @@ import type { DiscoveredProvider } from "./Discovery.ts"
  *   provider: "openai",
  *   cause: new Error("Invalid spec")
  * })
+ *
+ * error._tag // => "GenerationError"
+ * error.provider // => "openai"
  * ```
  *
  * @category errors
@@ -50,6 +53,9 @@ export class GenerationError extends Data.TaggedError("GenerationError")<{
  *   provider: "openai",
  *   cause: new Error("Invalid patch")
  * })
+ *
+ * error._tag // => "PatchError"
+ * error.provider // => "openai"
  * ```
  *
  * @category errors

@@ -41,6 +41,7 @@ import { OtlpSerialization } from "./OtlpSerialization.ts"
  * **Example** (Configuring aggregation temporality)
  *
  * ```ts import.meta.vitest
+ * import { Layer } from "effect"
  * import { OtlpMetrics } from "effect/unstable/observability"
  *
  * // Use delta temporality for backends that prefer it (e.g., Datadog, Dynatrace)
@@ -54,6 +55,8 @@ import { OtlpSerialization } from "./OtlpSerialization.ts"
  *   url: "http://localhost:4318/v1/metrics",
  *   temporality: "cumulative" // This is the default
  * })
+ *
+ * const result = [Layer.isLayer(metricsLayer), Layer.isLayer(cumulativeLayer)] // => [true, true]
  * ```
  *
  * @category models

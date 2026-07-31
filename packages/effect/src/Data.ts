@@ -36,11 +36,7 @@ import type { Unify } from "./Unify.ts"
  *
  * class Person extends Data.Class<{ readonly name: string }> {}
  *
- * const mike1 = new Person({ name: "Mike" })
- * const mike2 = new Person({ name: "Mike" })
- *
- * console.log(Equal.equals(mike1, mike2))
- * // true
+ * Equal.equals(new Person({ name: "Mike" }), new Person({ name: "Mike" })) // => true
  * ```
  *
  * @see {@link TaggedClass} — adds a `_tag` field
@@ -82,9 +78,7 @@ export const Class: new<A extends Record<string, any> = {}>(
  *   readonly name: string
  * }> {}
  *
- * const mike = new Person({ name: "Mike" })
- * console.log(mike._tag)
- * // "Person"
+ * new Person({ name: "Mike" })._tag // => "Person"
  * ```
  *
  * @see {@link Class} — without a `_tag`
@@ -135,9 +129,7 @@ export const TaggedClass = <Tag extends string>(
  *
  * const { BadRequest, NotFound } = Data.taggedEnum<HttpError>()
  *
- * const err = BadRequest({ status: 400, message: "missing id" })
- * console.log(err._tag)
- * // "BadRequest"
+ * BadRequest({ status: 400, message: "missing id" })._tag // => "BadRequest"
  * ```
  *
  * @see {@link taggedEnum} — constructors and matchers for a `TaggedEnum`
@@ -214,6 +206,7 @@ export declare namespace TaggedEnum {
    *
    * const ok = Success({ value: 42 })
    * // ok: { readonly _tag: "Success"; readonly value: number }
+   * ok // => { value: 42, _tag: "Success" }
    * ```
    *
    * @see {@link Kind} — apply concrete types to a `WithGenerics` definition
@@ -253,9 +246,9 @@ export declare namespace TaggedEnum {
    *   readonly taggedEnum: Option<this["A"]>
    * }
    *
-   * // Resolve to the concrete union for `string`
-   * type StringOption = Data.TaggedEnum.Kind<OptionDef, string>
+   * // Resolves to the concrete union for `string`:
    * // { _tag: "None" } | { _tag: "Some"; value: string }
+   * type StringOption = Data.TaggedEnum.Kind<OptionDef, string>
    * ```
    *
    * @see {@link WithGenerics} — define the generic shape
@@ -379,16 +372,14 @@ export declare namespace TaggedEnum {
    *
    * const shape = Circle({ radius: 10 })
    *
-   * // Type guard
    * if ($is("Circle")(shape)) {
-   *   console.log(shape.radius)
+   *   shape.radius // => 10
    * }
    *
-   * // Pattern matching
-   * const label = $match(shape, {
+   * $match(shape, {
    *   Circle: (s) => `circle r=${s.radius}`,
    *   Rect: (s) => `rect ${s.w}x${s.h}`
-   * })
+   * }) // => "circle r=10"
    * ```
    *
    * @see {@link taggedEnum} — creates constructors and matchers
@@ -552,15 +543,12 @@ export declare namespace TaggedEnum {
  *
  * const err = NotFound({ url: "/missing" })
  *
- * // Type guard
- * console.log($is("NotFound")(err)) // > true
+ * $is("NotFound")(err) // => true
  *
- * // Pattern matching
- * const msg = $match(err, {
+ * $match(err, {
  *   BadRequest: (e) => e.message,
  *   NotFound: (e) => `${e.url} not found`
- * })
- * console.log(msg) // > /missing not found
+ * }) // => "/missing not found"
  * ```
  *
  * **Example** (Defining a generic tagged enum)
@@ -579,6 +567,7 @@ export declare namespace TaggedEnum {
  *
  * const ok = Success({ value: 42 })
  * // ok: { readonly _tag: "Success"; readonly value: number }
+ * ok // => { value: 42, _tag: "Success" }
  * ```
  *
  * @see {@link TaggedEnum} — the type-level companion
@@ -700,7 +689,7 @@ function taggedMatch<
  * **Example** (Defining a yieldable error)
  *
  * ```ts import.meta.vitest
- * import { Data, Effect } from "effect"
+ * import { Data, Effect, Exit } from "effect"
  *
  * class NetworkError extends Data.Error<{
  *   readonly code: number
@@ -711,8 +700,7 @@ function taggedMatch<
  *   return yield* new NetworkError({ code: 500, message: "timeout" })
  * })
  *
- * // The effect fails with a NetworkError
- * Effect.runSync(Effect.exit(program))
+ * Effect.runSync(Effect.exit(program)) // => Exit.fail(new NetworkError({ code: 500, message: "timeout" }))
  * ```
  *
  * @see {@link TaggedError} — adds a `_tag` for `Effect.catchTag`
@@ -760,6 +748,8 @@ export const Error: new<A extends Record<string, any> = {}>(
  *   Effect.catchTag("NotFound", (e) =>
  *     Effect.succeed(`missing: ${e.resource}`))
  * )
+ *
+ * await Effect.runPromise(recovered) // => "missing: /users/42"
  * ```
  *
  * @see {@link Error} — without a `_tag`

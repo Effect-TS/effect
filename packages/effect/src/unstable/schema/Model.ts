@@ -107,6 +107,8 @@ export {
    *     return this.name.toUpperCase()
    *   }
    * }
+   *
+   * [Schema.isSchema(Group), Schema.isSchema(Group.insert), Schema.isSchema(Group.json)] // => [true, true, true]
    * ```
    *
    * @category constructors

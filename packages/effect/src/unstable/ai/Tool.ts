@@ -188,6 +188,7 @@ export type NeedsApproval<Params extends Schema.Constraint> =
  *     humidity: Schema.Number
  *   })
  * })
+ * const result = [GetWeather.name, GetWeather.failureMode] // => ["GetWeather", "error"]
  * ```
  *
  * @category models
@@ -384,7 +385,8 @@ export interface Tool<
  *       snippet: Schema.String
  *     }))
  *   })
- * })
+ * })({ query: "Effect" })
+ * const result = [WebSearch.name, WebSearch.providerName] // => ["OpenAiWebSearch", "web_search"]
  * ```
  *
  * @category models
@@ -480,6 +482,8 @@ export interface ProviderDefined<
  *     required: ["query"]
  *   }
  * })
+ *
+ * const result = [Calculator.name, McpTool.name] // => ["Calculator", "McpTool"]
  * ```
  *
  * @category models
@@ -554,8 +558,7 @@ export interface Dynamic<
  *   })
  * })
  *
- * console.log(Tool.isUserDefined(UserDefinedTool)) // > true
- * console.log(Tool.isUserDefined(ProviderDefinedTool)) // > false
+ * const result = [Tool.isUserDefined(UserDefinedTool), Tool.isUserDefined(ProviderDefinedTool)] // => [true, false]
  * ```
  *
  * @category guards
@@ -599,8 +602,7 @@ export const isUserDefined = (u: unknown): u is Tool<string, any, any> =>
  *   })
  * })
  *
- * console.log(Tool.isProviderDefined(UserDefinedTool)) // > false
- * console.log(Tool.isProviderDefined(ProviderDefinedTool)) // > false
+ * const result = [Tool.isProviderDefined(UserDefinedTool), Tool.isProviderDefined(ProviderDefinedTool)] // => [false, false]
  * ```
  *
  * @category guards
@@ -628,8 +630,7 @@ export const isProviderDefined = (
  *   success: Schema.Number
  * })
  *
- * console.log(Tool.isDynamic(DynamicTool)) // > true
- * console.log(Tool.isDynamic(UserDefinedTool)) // > false
+ * const result = [Tool.isDynamic(DynamicTool), Tool.isDynamic(UserDefinedTool)] // => [true, false]
  * ```
  *
  * @category guards
@@ -1194,6 +1195,7 @@ const dynamicProto = <
  *   description: "Returns the current timestamp",
  *   success: Schema.Number
  * })
+ * GetCurrentTime.name // => "GetCurrentTime"
  * ```
  *
  * @category constructors
@@ -1314,6 +1316,8 @@ export const make = <
  *     required: ["query"]
  *   }
  * })
+ *
+ * const result = [Calculator.name, McpTool.name] // => ["Calculator", "McpTool"]
  * ```
  *
  * @category constructors
@@ -1408,7 +1412,8 @@ export const dynamic: {
  *       content: Schema.String
  *     }))
  *   })
- * })
+ * })({ query: "Effect" })
+ * const result = [WebSearch.name, WebSearch.providerName] // => ["OpenAiWebSearch", "web_search"]
  * ```
  *
  * @category constructors
@@ -1594,7 +1599,7 @@ export class NameMapper<Tools extends ReadonlyArray<Any>> {
  * })
  *
  * const description = Tool.getDescription(myTool)
- * console.log(description) // "This is an example tool"
+ * description // => "This is an example tool"
  * ```
  *
  * @category getters
@@ -1637,15 +1642,10 @@ export const getDescription = <Tool extends Any>(tool: Tool): string | undefined
  * })
  *
  * const jsonSchema = Tool.getJsonSchema(weatherTool)
- * console.log(jsonSchema)
- * // {
- * //   type: "object",
- * //   properties: {
- * //     location: { type: "string" },
- * //     units: { type: "string", enum: ["celsius", "fahrenheit"] }
- * //   },
- * //   required: ["location", "units"]
- * // }
+ * jsonSchema.type // => "object"
+ * if (typeof jsonSchema.properties === "object" && jsonSchema.properties !== null) {
+ *   Object.keys(jsonSchema.properties) // => ["location", "units"]
+ * }
  * ```
  *
  * @category getters
@@ -1704,10 +1704,12 @@ const getJsonSchemaFromSchemaWith = <S extends Schema.Constraint>(
  * **Example** (Annotating a tool title)
  *
  * ```ts import.meta.vitest
+ * import { Context } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
  * const myTool = Tool.make("calculate_tip")
  *   .annotate(Tool.Title, "Tip Calculator")
+ * Context.getUnsafe(myTool.annotations, Tool.Title) // => "Tip Calculator"
  * ```
  *
  * @category annotations
@@ -1721,10 +1723,12 @@ export class Title extends Context.Service<Title, string>()("effect/ai/Tool/Titl
  * **Example** (Annotating MCP metadata)
  *
  * ```ts import.meta.vitest
+ * import { Context } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
  * const myCalculatorUi = Tool.make("calculator_ui", {})
  *   .annotate(Tool.Meta, { ui: { resourceUri: "ui://example/calculator-ui" } })
+ * "ui" in Context.getUnsafe(myCalculatorUi.annotations, Tool.Meta) // => true
  * ```
  *
  * @category annotations
@@ -1743,10 +1747,12 @@ export class Meta extends Context.Service<Meta, Record<string, unknown>>()("effe
  * **Example** (Marking a tool as read-only)
  *
  * ```ts import.meta.vitest
+ * import { Context } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
  * const readOnlyTool = Tool.make("get_user_info")
  *   .annotate(Tool.Readonly, true)
+ * Context.get(readOnlyTool.annotations, Tool.Readonly) // => true
  * ```
  *
  * @category annotations
@@ -1767,10 +1773,12 @@ export const Readonly = Context.Reference<boolean>("effect/ai/Tool/Readonly", {
  * **Example** (Marking a tool as non-destructive)
  *
  * ```ts import.meta.vitest
+ * import { Context } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
  * const safeTool = Tool.make("search_database")
  *   .annotate(Tool.Destructive, false)
+ * Context.get(safeTool.annotations, Tool.Destructive) // => false
  * ```
  *
  * @category annotations
@@ -1792,10 +1800,12 @@ export const Destructive = Context.Reference<boolean>("effect/ai/Tool/Destructiv
  * **Example** (Marking a tool as idempotent)
  *
  * ```ts import.meta.vitest
+ * import { Context } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
  * const idempotentTool = Tool.make("get_current_time")
  *   .annotate(Tool.Idempotent, true)
+ * Context.get(idempotentTool.annotations, Tool.Idempotent) // => true
  * ```
  *
  * @category annotations
@@ -1817,10 +1827,12 @@ export const Idempotent = Context.Reference<boolean>("effect/ai/Tool/Idempotent"
  * **Example** (Disabling open-world access)
  *
  * ```ts import.meta.vitest
+ * import { Context } from "effect"
  * import { Tool } from "effect/unstable/ai"
  *
  * const restrictedTool = Tool.make("internal_operation")
  *   .annotate(Tool.OpenWorld, false)
+ * Context.get(restrictedTool.annotations, Tool.OpenWorld) // => false
  * ```
  *
  * @category annotations
@@ -1850,6 +1862,7 @@ export const OpenWorld = Context.Reference<boolean>("effect/ai/Tool/OpenWorld", 
  *
  * const flexibleTool = Tool.make("search")
  *   .annotate(Tool.Strict, false)
+ * Tool.getStrictMode(flexibleTool) // => false
  * ```
  *
  * @category annotations

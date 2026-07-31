@@ -145,18 +145,21 @@ A good example:
 - uses stable, deterministic, bounded behavior and does not require network
   access, external services, timing assumptions, randomness, or machine-specific
   state;
-- demonstrates the meaningful result, with a concise expected-output comment
+- demonstrates the meaningful result, with a concise expected-value comment
   when useful; and
 - uses explanatory prose only when the code cannot communicate an important
   choice or caveat on its own.
 
 ### Executable examples
 
-- Mark runnable TypeScript fences with `import.meta.vitest`. Running `pnpm doctest` from the repository root executes every marked example.
+- Mark runnable TypeScript fences with `import.meta.vitest`. Run changed examples from the repository root with `pnpm doctest --run <source files>`.
 - Write each marked example as a complete isolated module. Import public APIs, define every runtime value, await asynchronous work, and keep execution deterministic and bounded.
+- Prefer `operation() // => expected` over introducing a result binding used only by the assertion. Retain bindings for reuse, mutation, identity checks, or meaningful multi-step setup, and insert a blank line before a separate assertion block.
+- Keep direct assertions on one line up to 120 characters. Use dense expected arrays such as `[1, 2]` and semantic Effect values such as `Option.some(1)` rather than console formatting.
+- Preserve `import.meta.vitest` for type-level examples, but do not add tautological runtime assertions to them.
 - Use `suite` metadata when the example registers Vitest tests or suites: `````ts import.meta.vitest suite``. Call the registration API directly so the nested tests and assertions are collected and executed.
 - Keep documentation-only snippets as plain `````ts`` fences.
-- Treat `pnpm doctest` and package-local `pnpm docgen` as complementary checks: doctest executes marked examples, while docgen typechecks documentation examples.
+- Treat targeted doctest runs and package-local `pnpm docgen` as complementary checks: doctest executes marked examples, while docgen typechecks documentation examples.
 
 When reviewing existing examples:
 
@@ -170,9 +173,9 @@ When reviewing existing examples:
    scaffolding than the insight justifies. Also remove it when a good replacement
    would require guessing at a use case.
 
-Prefer readable output over assertions; public documentation should not look
-like a test suite. Type-level examples may demonstrate inference or assignability
-without runtime output. For lazy APIs such as `Effect`, execute enough of the
+Prefer concise trailing `// =>` assertions that keep the meaningful result visible;
+public documentation should not look like a test suite. Type-level examples may demonstrate inference or assignability
+without runtime assertions. For lazy APIs such as `Effect`, execute enough of the
 program to demonstrate the behavior unless the example's value is specifically
 type-level or construction-oriented.
 
@@ -252,7 +255,7 @@ When refining an existing public API module, always do a dedicated `**Gotchas**`
 
 Run the narrowest validation that matches the change:
 
-- For runnable JSDoc example changes, run `pnpm doctest` from the repository root.
+- For runnable JSDoc example changes, run `pnpm doctest --run <source files>` from the repository root.
 - For JSDoc or example changes in a package with generated docs, run `pnpm docgen` from that package directory.
 - Run `pnpm lint` because the linter includes the custom rule that checks public API JSDoc.
 - Do not run broad validation for prose-only skill edits.

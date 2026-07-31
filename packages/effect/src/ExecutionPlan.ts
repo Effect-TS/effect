@@ -66,41 +66,20 @@ export const isExecutionPlan = (u: unknown): u is ExecutionPlan<any> => Predicat
  *
  * **Example** (Defining fallback execution steps)
  *
- * ```ts
- * import { Effect, ExecutionPlan, Schedule } from "effect"
- * import type { Layer } from "effect"
- * import type { LanguageModel } from "effect/unstable/ai"
- *
- * declare const layerBad: Layer.Layer<LanguageModel.LanguageModel>
- * declare const layerGood: Layer.Layer<LanguageModel.LanguageModel>
+ * ```ts import.meta.vitest
+ * import { Context, ExecutionPlan } from "effect"
  *
  * const ThePlan = ExecutionPlan.make(
  *   {
- *     // First try with the bad layer 2 times with a 3 second delay between attempts
- *     provide: layerBad,
- *     attempts: 2,
- *     schedule: Schedule.spaced(3000)
+ *     provide: Context.empty(),
+ *     attempts: 2
  *   },
- *   // Then try with the bad layer 3 times with a 1 second delay between attempts
  *   {
- *     provide: layerBad,
- *     attempts: 3,
- *     schedule: Schedule.spaced(1000)
- *   },
- *   // Finally try with the good layer.
- *   //
- *   // If `attempts` is omitted, the plan will only attempt once, unless a schedule is provided.
- *   {
- *     provide: layerGood
+ *     provide: Context.empty()
  *   }
  * )
  *
- * declare const effect: Effect.Effect<
- *   void,
- *   never,
- *   LanguageModel.LanguageModel
- * >
- * const withPlan: Effect.Effect<void> = Effect.withExecutionPlan(effect, ThePlan)
+ * ThePlan.steps.map((step) => step.attempts ?? 1) // => [2, 1]
  * ```
  *
  * @category models
@@ -166,41 +145,20 @@ export type ConfigBase = {
  *
  * **Example** (Creating an execution plan)
  *
- * ```ts
- * import { Effect, ExecutionPlan, Schedule } from "effect"
- * import type { Layer } from "effect"
- * import type { LanguageModel } from "effect/unstable/ai"
- *
- * declare const layerBad: Layer.Layer<LanguageModel.LanguageModel>
- * declare const layerGood: Layer.Layer<LanguageModel.LanguageModel>
+ * ```ts import.meta.vitest
+ * import { Context, ExecutionPlan } from "effect"
  *
  * const ThePlan = ExecutionPlan.make(
  *   {
- *     // First try with the bad layer 2 times with a 3 second delay between attempts
- *     provide: layerBad,
- *     attempts: 2,
- *     schedule: Schedule.spaced(3000)
+ *     provide: Context.empty(),
+ *     attempts: 2
  *   },
- *   // Then try with the bad layer 3 times with a 1 second delay between attempts
  *   {
- *     provide: layerBad,
- *     attempts: 3,
- *     schedule: Schedule.spaced(1000)
- *   },
- *   // Finally try with the good layer.
- *   //
- *   // If `attempts` is omitted, the plan will only attempt once, unless a schedule is provided.
- *   {
- *     provide: layerGood
+ *     provide: Context.empty()
  *   }
  * )
  *
- * declare const effect: Effect.Effect<
- *   void,
- *   never,
- *   LanguageModel.LanguageModel
- * >
- * const withPlan: Effect.Effect<void> = Effect.withExecutionPlan(effect, ThePlan)
+ * ThePlan.steps.length // => 2
  * ```
  *
  * @category constructors

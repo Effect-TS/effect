@@ -42,6 +42,7 @@ const TypeId = "~effect/Request"
  * interface GetAllUsers extends Request.Request<ReadonlyArray<string>, Error> {
  *   readonly _tag: "GetAllUsers"
  * }
+ *
  * ```
  *
  * @category models
@@ -109,7 +110,10 @@ export interface Variance<out A, out E, out R> {
  *
  * // Constructor type is used internally by Request.of() and Request.tagged()
  * const GetUser = Request.tagged<GetUser>("GetUser")
- * const userRequest = GetUser({ id: 123 })
+ * const request = GetUser({ id: 123 })
+ *
+ * request._tag // => "GetUser"
+ * request.id // => 123
  * ```
  *
  * @category models
@@ -133,6 +137,7 @@ export interface Constructor<R extends Request<any, any, any>, T extends keyof R
  *
  * // Extract the error type from a Request using the utility
  * type UserError = Request.Error<GetUser> // Error
+ *
  * ```
  *
  * @category utility types
@@ -155,6 +160,7 @@ export type Error<T extends Request<any, any, any>> = [T] extends [Request<infer
  *
  * // Extract the success type from a Request using the utility
  * type UserSuccess = Request.Success<GetUser> // string
+ *
  * ```
  *
  * @category utility types
@@ -187,6 +193,7 @@ export type Services<T extends Request<any, any, any>> = [T] extends [Request<in
  *
  * // Extract the result type from a Request using the utility
  * type UserResult = Request.Result<GetUser> // Exit.Exit<string, Error>
+ *
  * ```
  *
  * @category utility types
@@ -242,8 +249,8 @@ export const RequestPrototype: Request<any, any, any> = {
  * const GetUser = Request.tagged<GetUser>("GetUser")
  *
  * const request = GetUser({ id: "123" })
- * console.log(Request.isRequest(request)) // > true
- * console.log(Request.isRequest("not a request")) // > false
+ * Request.isRequest(request) // => true
+ * Request.isRequest("not a request") // => false
  * ```
  *
  * @category guards
@@ -275,6 +282,9 @@ export const isRequest = (u: unknown): u is Request<unknown, unknown, unknown> =
  *   id: "user-123",
  *   includeSettings: true
  * })
+ *
+ * request.id // => "user-123"
+ * request.includeSettings // => true
  * ```
  *
  * @category constructors
@@ -318,8 +328,7 @@ export const of = <R extends Request<any, any, any>>(): Constructor<R> => (args)
  * const postRequest = GetPost({ id: "post-456" })
  *
  * // _tag is automatically set
- * console.log(userRequest._tag) // > GetUser
- * console.log(postRequest._tag) // > GetPost
+ * Array.of(userRequest._tag, postRequest._tag) // => ["GetUser", "GetPost"]
  * ```
  *
  * @category constructors
@@ -352,7 +361,7 @@ export const tagged = <R extends Request<any, any, any> & { _tag: string }>(
  * }
  *
  * const getUserRequest = new GetUser(123)
- * console.log(getUserRequest.id) // > 123
+ * getUserRequest.id // => 123
  * ```
  *
  * @category constructors
@@ -389,8 +398,9 @@ export const Class: new<A extends Record<string, any>, Success, Error = never, C
  * {}
  *
  * const request = new GetUserById({ id: 123 })
- * console.log(request._tag) // > GetUserById
- * console.log(request.id) // > 123
+ *
+ * request._tag // => "GetUserById"
+ * request.id // => 123
  * ```
  *
  * @category constructors

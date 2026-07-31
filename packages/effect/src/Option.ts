@@ -179,13 +179,12 @@ export declare namespace Option {
    * **Example** (Extracting the value type)
    *
    * ```ts import.meta.vitest
-   * import type { Option } from "effect"
+   * import { Option } from "effect"
    *
-   * declare const myOption: Option.Option<string>
-   *
-   * //      ┌─── string
-   * //      ▼
+   * const myOption: Option.Option<string> = Option.some("value")
    * type MyType = Option.Option.Value<typeof myOption>
+   *
+   * const witness: MyType = "value"
    * ```
    *
    * @category Type-level Utils
@@ -246,10 +245,7 @@ export interface OptionTypeLambda extends TypeLambda {
  *
  * //      ┌─── Option<never>
  * //      ▼
- * const noValue = Option.none()
- *
- * console.log(noValue)
- * // Output: { _id: 'Option', _tag: 'None' }
+ * const noValue = Option.none() // => Option.none()
  * ```
  *
  * @see {@link some} for the opposite operation.
@@ -279,10 +275,7 @@ export const none = <A = never>(): Option<A> => option.none
  *
  * //      ┌─── Option<number>
  * //      ▼
- * const value = Option.some(1)
- *
- * console.log(value)
- * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ * const value = Option.some(1) // => Option.some(1)
  * ```
  *
  * @see {@link none} for the opposite operation.
@@ -310,14 +303,9 @@ export const some: <A>(value: A) => Option<A> = option.some
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.isOption(Option.some(1)))
- * // Output: true
- *
- * console.log(Option.isOption(Option.none()))
- * // Output: true
- *
- * console.log(Option.isOption({}))
- * // Output: false
+ * Option.isOption(Option.some(1)) // => true
+ * Option.isOption(Option.none()) // => true
+ * Option.isOption({}) // => false
  * ```
  *
  * @see {@link isNone} to check for `None` specifically
@@ -344,11 +332,8 @@ export const isOption: (input: unknown) => input is Option<unknown> = option.isO
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.isNone(Option.some(1)))
- * // Output: false
- *
- * console.log(Option.isNone(Option.none()))
- * // Output: true
+ * Option.isNone(Option.some(1)) // => false
+ * Option.isNone(Option.none()) // => true
  * ```
  *
  * @see {@link isSome} for the opposite check.
@@ -374,11 +359,8 @@ export const isNone: <A>(self: Option<A>) => self is None<A> = option.isNone
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.isSome(Option.some(1)))
- * // Output: true
- *
- * console.log(Option.isSome(Option.none()))
- * // Output: false
+ * Option.isSome(Option.some(1)) // => true
+ * Option.isSome(Option.none()) // => false
  * ```
  *
  * @see {@link isNone} for the opposite check.
@@ -407,13 +389,10 @@ export const isSome: <A>(self: Option<A>) => self is Some<A> = option.isSome
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * const message = Option.match(Option.some(1), {
+ * Option.match(Option.some(1), {
  *   onNone: () => "Option is empty",
  *   onSome: (value) => `Option has a value: ${value}`
- * })
- *
- * console.log(message)
- * // Output: "Option has a value: 1"
+ * }) // => "Option has a value: 1"
  * ```
  *
  * @see {@link getOrElse} for unwrapping with a default
@@ -466,11 +445,8 @@ export const match: {
  * //      ▼
  * const isString = Option.toRefinement(parseString)
  *
- * console.log(isString("a"))
- * // Output: true
- *
- * console.log(isString(1))
- * // Output: false
+ * isString("a") // => true
+ * isString(1) // => false
  * ```
  *
  * @see {@link liftPredicate} for the reverse direction
@@ -499,11 +475,8 @@ export const toRefinement = <A, B extends A>(f: (a: A) => Option<B>): (a: A) => 
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.fromIterable([1, 2, 3]))
- * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
- *
- * console.log(Option.fromIterable([]))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.fromIterable([1, 2, 3]) // => Option.some(1)
+ * Option.fromIterable([]) // => Option.none()
  * ```
  *
  * @see {@link toArray} for the inverse direction
@@ -536,11 +509,8 @@ export const fromIterable = <A>(collection: Iterable<A>): Option<A> => {
  * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
- * console.log(Option.getSuccess(Result.succeed("ok")))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'ok' }
- *
- * console.log(Option.getSuccess(Result.fail("err")))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.getSuccess(Result.succeed("ok")) // => Option.some("ok")
+ * Option.getSuccess(Result.fail("err")) // => Option.none()
  * ```
  *
  * @see {@link getFailure} for the opposite operation.
@@ -568,11 +538,8 @@ export const getSuccess: <A, E>(self: Result<A, E>) => Option<A> = result.getSuc
  * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
- * console.log(Option.getFailure(Result.succeed("ok")))
- * // Output: { _id: 'Option', _tag: 'None' }
- *
- * console.log(Option.getFailure(Result.fail("err")))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'err' }
+ * Option.getFailure(Result.succeed("ok")) // => Option.none()
+ * Option.getFailure(Result.fail("err")) // => Option.some("err")
  * ```
  *
  * @see {@link getSuccess} for the opposite operation.
@@ -601,11 +568,8 @@ export const getFailure: <A, E>(self: Result<A, E>) => Option<E> = result.getFai
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.some(1).pipe(Option.getOrElse(() => 0)))
- * // Output: 1
- *
- * console.log(Option.none().pipe(Option.getOrElse(() => 0)))
- * // Output: 0
+ * Option.some(1).pipe(Option.getOrElse(() => 0)) // => 1
+ * Option.none().pipe(Option.getOrElse(() => 0)) // => 0
  * ```
  *
  * @see {@link getOrNull} to fall back to `null`
@@ -642,11 +606,8 @@ export const getOrElse: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.none().pipe(Option.orElse(() => Option.some("b"))))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'b' }
- *
- * console.log(Option.some("a").pipe(Option.orElse(() => Option.some("b"))))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'a' }
+ * Option.none().pipe(Option.orElse(() => Option.some("b"))) // => Option.some("b")
+ * Option.some("a").pipe(Option.orElse(() => Option.some("b"))) // => Option.some("a")
  * ```
  *
  * @see {@link orElseSome} to wrap the fallback value in `Some` automatically
@@ -681,11 +642,8 @@ export const orElse: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.none().pipe(Option.orElseSome(() => "b")))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'b' }
- *
- * console.log(Option.some("a").pipe(Option.orElseSome(() => "b")))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'a' }
+ * Option.none().pipe(Option.orElseSome(() => "b")) // => Option.some("b")
+ * Option.some("a").pipe(Option.orElseSome(() => "b")) // => Option.some("a")
  * ```
  *
  * @see {@link orElse} when the fallback is itself an `Option`
@@ -718,13 +676,12 @@ export const orElseSome: {
  * **Example** (Tracking value source)
  *
  * ```ts import.meta.vitest
- * import { Option } from "effect"
+ * import { Option, Result } from "effect"
  *
- * console.log(Option.orElseResult(Option.some("primary"), () => Option.some("fallback")))
- * // Output: { _id: 'Option', _tag: 'Some', value: { _tag: 'Failure', value: 'primary' } }
+ * const fallback = () => Option.some("fallback")
  *
- * console.log(Option.orElseResult(Option.none(), () => Option.some("fallback")))
- * // Output: { _id: 'Option', _tag: 'Some', value: { _tag: 'Success', value: 'fallback' } }
+ * Option.orElseResult(Option.some("primary"), fallback) // => Option.some(Result.fail("primary"))
+ * Option.orElseResult(Option.none(), fallback) // => Option.some(Result.succeed("fallback"))
  * ```
  *
  * @see {@link orElse} for the simpler variant without source tracking
@@ -759,12 +716,11 @@ export const orElseResult: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.firstSomeOf([
+ * Option.firstSomeOf([
  *   Option.none(),
  *   Option.some(1),
  *   Option.some(2)
- * ]))
- * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ * ]) // => Option.some(1)
  * ```
  *
  * @see {@link orElse} for a two-option fallback
@@ -802,14 +758,9 @@ export const firstSomeOf = <T, C extends Iterable<Option<T>> = Iterable<Option<T
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.fromNullishOr(undefined))
- * // Output: { _id: 'Option', _tag: 'None' }
- *
- * console.log(Option.fromNullishOr(null))
- * // Output: { _id: 'Option', _tag: 'None' }
- *
- * console.log(Option.fromNullishOr(1))
- * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
+ * Option.fromNullishOr(undefined) // => Option.none()
+ * Option.fromNullishOr(null) // => Option.none()
+ * Option.fromNullishOr(1) // => Option.some(1)
  * ```
  *
  * @see {@link fromNullOr} to only treat `null` as absent
@@ -842,14 +793,9 @@ export const fromNullishOr = <A>(
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.fromUndefinedOr(undefined))
- * // Output: { _id: 'Option', _tag: 'None' }
- *
- * console.log(Option.fromUndefinedOr(null))
- * // Output: { _id: 'Option', _tag: 'Some', value: null }
- *
- * console.log(Option.fromUndefinedOr(42))
- * // Output: { _id: 'Option', _tag: 'Some', value: 42 }
+ * Option.fromUndefinedOr(undefined) // => Option.none()
+ * Option.fromUndefinedOr(null) // => Option.some(null)
+ * Option.fromUndefinedOr(42) // => Option.some(42)
  * ```
  *
  * @see {@link fromNullishOr} to treat both `null` and `undefined` as absent
@@ -881,14 +827,9 @@ export const fromUndefinedOr = <A>(
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.fromNullOr(null))
- * // Output: { _id: 'Option', _tag: 'None' }
- *
- * console.log(Option.fromNullOr(undefined))
- * // Output: { _id: 'Option', _tag: 'Some', value: undefined }
- *
- * console.log(Option.fromNullOr(42))
- * // Output: { _id: 'Option', _tag: 'Some', value: 42 }
+ * Option.fromNullOr(null) // => Option.none()
+ * Option.fromNullOr(undefined) // => Option.some(undefined)
+ * Option.fromNullOr(42) // => Option.some(42)
  * ```
  *
  * @see {@link fromNullishOr} to treat both `null` and `undefined` as absent
@@ -926,11 +867,8 @@ export const fromNullOr = <A>(
  *
  * const parseOption = Option.liftNullishOr(parse)
  *
- * console.log(parseOption("1"))
- * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
- *
- * console.log(parseOption("not a number"))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * parseOption("1") // => Option.some(1)
+ * parseOption("not a number") // => Option.none()
  * ```
  *
  * @see {@link fromNullishOr} for converting a single value
@@ -961,11 +899,8 @@ export const liftNullishOr = <A extends ReadonlyArray<unknown>, B>(
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.getOrNull(Option.some(1)))
- * // Output: 1
- *
- * console.log(Option.getOrNull(Option.none()))
- * // Output: null
+ * Option.getOrNull(Option.some(1)) // => 1
+ * Option.getOrNull(Option.none()) // => null
  * ```
  *
  * @see {@link getOrUndefined} to return `undefined` instead
@@ -994,11 +929,8 @@ export const getOrNull: <A>(self: Option<A>) => A | null = getOrElse(constNull)
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.getOrUndefined(Option.some(1)))
- * // Output: 1
- *
- * console.log(Option.getOrUndefined(Option.none()))
- * // Output: undefined
+ * Option.getOrUndefined(Option.some(1)) // => 1
+ * Option.getOrUndefined(Option.none()) // => undefined
  * ```
  *
  * @see {@link getOrNull} to return `null` instead
@@ -1028,11 +960,8 @@ export const getOrUndefined: <A>(self: Option<A>) => A | undefined = getOrElse(c
  *
  * const parse = Option.liftThrowable(JSON.parse)
  *
- * console.log(parse("1"))
- * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
- *
- * console.log(parse(""))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * parse("1") // => Option.some(1)
+ * parse("") // => Option.none()
  * ```
  *
  * @see {@link liftNullishOr} for nullable-returning functions
@@ -1066,14 +995,16 @@ export const liftThrowable = <A extends ReadonlyArray<unknown>, B>(
  *
  * **Example** (Throwing a custom error)
  *
- * ```ts
- * import { Option } from "effect"
+ * ```ts import.meta.vitest
+ * import { Option, Result } from "effect"
  *
- * console.log(Option.getOrThrowWith(Option.some(1), () => new Error("missing")))
- * // Output: 1
+ * Option.getOrThrowWith(Option.some(1), () => new Error("missing")) // => 1
  *
- * Option.getOrThrowWith(Option.none(), () => new Error("missing"))
- * // throws Error: missing
+ * const failure = Result.try({
+ *   try: () => Option.getOrThrowWith(Option.none(), () => new Error("missing")),
+ *   catch: (error) => (error as Error).message
+ * })
+ * Result.getFailure(failure).pipe(Option.getOrElse(() => "no error")) // => "missing"
  * ```
  *
  * @see {@link getOrThrow} for a version with a default error
@@ -1107,14 +1038,16 @@ export const getOrThrowWith: {
  *
  * **Example** (Throwing a default error)
  *
- * ```ts
- * import { Option } from "effect"
+ * ```ts import.meta.vitest
+ * import { Option, Result } from "effect"
  *
- * console.log(Option.getOrThrow(Option.some(1)))
- * // Output: 1
+ * Option.getOrThrow(Option.some(1)) // => 1
  *
- * Option.getOrThrow(Option.none())
- * // throws Error: getOrThrow called on a None
+ * const failure = Result.try({
+ *   try: () => Option.getOrThrow(Option.none()),
+ *   catch: (error) => (error as Error).message
+ * })
+ * Result.getFailure(failure).pipe(Option.getOrElse(() => "no error")) // => "getOrThrow called on a None"
  * ```
  *
  * @see {@link getOrThrowWith} for a custom error
@@ -1144,11 +1077,8 @@ export const getOrThrow: <A>(self: Option<A>) => A = getOrThrowWith(() => new Er
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.map(Option.some(2), (n) => n * 2))
- * // Output: { _id: 'Option', _tag: 'Some', value: 4 }
- *
- * console.log(Option.map(Option.none(), (n: number) => n * 2))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.map(Option.some(2), (n) => n * 2) // => Option.some(4)
+ * Option.map(Option.none(), (n: number) => n * 2) // => Option.none()
  * ```
  *
  * @see {@link flatMap} when `f` returns an `Option`
@@ -1178,11 +1108,8 @@ export const map: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.as(Option.some(42), "new value"))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'new value' }
- *
- * console.log(Option.as(Option.none(), "new value"))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.as(Option.some(42), "new value") // => Option.some("new value")
+ * Option.as(Option.none(), "new value") // => Option.none()
  * ```
  *
  * @see {@link asVoid} to replace with `undefined`
@@ -1210,11 +1137,8 @@ export const as: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.asVoid(Option.some(42)))
- * // Output: { _id: 'Option', _tag: 'Some', value: undefined }
- *
- * console.log(Option.asVoid(Option.none()))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.asVoid(Option.some(42)) // => Option.some(undefined)
+ * Option.asVoid(Option.none()) // => Option.none()
  * ```
  *
  * @see {@link as} to replace with a specific constant
@@ -1238,8 +1162,7 @@ export {
    * ```ts import.meta.vitest
    * import { Option } from "effect"
    *
-   * console.log(Option.void)
-   * // Output: { _id: 'Option', _tag: 'Some', value: undefined }
+   * Option.void // => Option.some(undefined)
    * ```
    *
    * @see {@link asVoid} to convert an existing `Option` to `Option<void>`
@@ -1280,12 +1203,9 @@ export {
  *   address: Option.some({ street: Option.some("123 Main St") })
  * }
  *
- * const street = user.address.pipe(
+ * user.address.pipe(
  *   Option.flatMap((addr) => addr.street)
- * )
- *
- * console.log(street)
- * // Output: { _id: 'Option', _tag: 'Some', value: '123 Main St' }
+ * ) // => Option.some("123 Main St")
  * ```
  *
  * @see {@link map} when `f` returns a plain value
@@ -1325,16 +1245,13 @@ export const flatMap: {
  * import { Option } from "effect"
  *
  * // Chain with a function returning Option
- * console.log(Option.andThen(Option.some(5), (x) => Option.some(x * 2)))
- * // Output: { _id: 'Option', _tag: 'Some', value: 10 }
+ * Option.andThen(Option.some(5), (x) => Option.some(x * 2)) // => Option.some(10)
  *
  * // Chain with a static value
- * console.log(Option.andThen(Option.some(5), "hello"))
- * // Output: { _id: 'Option', _tag: 'Some', value: "hello" }
+ * Option.andThen(Option.some(5), "hello") // => Option.some("hello")
  *
  * // Chain with None - skips
- * console.log(Option.andThen(Option.none(), (x) => Option.some(x * 2)))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.andThen(Option.none(), (x) => Option.some(x * 2)) // => Option.none()
  * ```
  *
  * @see {@link flatMap} for the standard monadic bind
@@ -1388,12 +1305,9 @@ export const andThen: {
  *   company: { address: { street: { name: "high street" } } }
  * }
  *
- * console.log(
- *   Option.some(emp).pipe(
- *     Option.flatMapNullishOr((e) => e.company?.address?.street?.name)
- *   )
- * )
- * // Output: { _id: 'Option', _tag: 'Some', value: 'high street' }
+ * Option.some(emp).pipe(
+ *   Option.flatMapNullishOr((e) => e.company?.address?.street?.name)
+ * ) // => Option.some("high street")
  * ```
  *
  * @see {@link flatMap} when the function already returns `Option`
@@ -1429,11 +1343,8 @@ export const flatMapNullishOr: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.flatten(Option.some(Option.some("value"))))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'value' }
- *
- * console.log(Option.flatten(Option.some(Option.none())))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.flatten(Option.some(Option.some("value"))) // => Option.some("value")
+ * Option.flatten(Option.some(Option.none())) // => Option.none()
  * ```
  *
  * @see {@link flatMap} which is `map` + `flatten`
@@ -1461,11 +1372,8 @@ export const flatten: <A>(self: Option<Option<A>>) => Option<A> = flatMap(identi
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.zipRight(Option.some(1), Option.some("hello")))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'hello' }
- *
- * console.log(Option.zipRight(Option.none(), Option.some("hello")))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.zipRight(Option.some(1), Option.some("hello")) // => Option.some("hello")
+ * Option.zipRight(Option.none(), Option.some("hello")) // => Option.none()
  * ```
  *
  * @see {@link zipLeft} to keep the first value instead
@@ -1497,11 +1405,8 @@ export const zipRight: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.zipLeft(Option.some("hello"), Option.some(1)))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'hello' }
- *
- * console.log(Option.zipLeft(Option.some("hello"), Option.none()))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.zipLeft(Option.some("hello"), Option.some(1)) // => Option.some("hello")
+ * Option.zipLeft(Option.some("hello"), Option.none()) // => Option.none()
  * ```
  *
  * @see {@link zipRight} to keep the second value instead
@@ -1542,11 +1447,8 @@ export const zipLeft: {
  *
  * const parseAndDouble = Option.composeK(parse, double)
  *
- * console.log(parseAndDouble("42"))
- * // Output: { _id: 'Option', _tag: 'Some', value: 84 }
- *
- * console.log(parseAndDouble("not a number"))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * parseAndDouble("42") // => Option.some(84)
+ * parseAndDouble("not a number") // => Option.none()
  * ```
  *
  * @see {@link flatMap} for single-step chaining
@@ -1582,11 +1484,8 @@ export const composeK: {
  * const getInteger = (n: number) =>
  *   Number.isInteger(n) ? Option.some(n) : Option.none()
  *
- * console.log(Option.tap(Option.some(1), getInteger))
- * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
- *
- * console.log(Option.tap(Option.some(1.14), getInteger))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.tap(Option.some(1), getInteger) // => Option.some(1)
+ * Option.tap(Option.some(1.14), getInteger) // => Option.none()
  * ```
  *
  * @see {@link flatMap} when you want to transform the value
@@ -1619,11 +1518,8 @@ export const tap: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.product(Option.some("hello"), Option.some(42)))
- * // Output: { _id: 'Option', _tag: 'Some', value: ['hello', 42] }
- *
- * console.log(Option.product(Option.none(), Option.some(42)))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.product(Option.some("hello"), Option.some(42)) // => Option.some(["hello", 42])
+ * Option.product(Option.none(), Option.some(42)) // => Option.none()
  * ```
  *
  * @see {@link zipWith} to combine with a function instead of a tuple
@@ -1657,11 +1553,8 @@ export const product = <A, B>(self: Option<A>, that: Option<B>): Option<[A, B]> 
  * const first = Option.some(1)
  * const rest = [Option.some(2), Option.some(3)]
  *
- * console.log(Option.productMany(first, rest))
- * // Output: { _id: 'Option', _tag: 'Some', value: [1, 2, 3] }
- *
- * console.log(Option.productMany(first, [Option.some(2), Option.none()]))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Option.productMany(first, rest) // => Option.some([1, 2, 3])
+ * Option.productMany(first, [Option.some(2), Option.none()]) // => Option.none()
  * ```
  *
  * @see {@link product} for combining exactly two
@@ -1713,17 +1606,11 @@ export const productMany = <A>(
  *
  * //      ┌─── Option<[string, number]>
  * //      ▼
- * const tuple = Option.all([maybeName, maybeAge])
- * console.log(tuple)
- * // Output:
- * // { _id: 'Option', _tag: 'Some', value: [ 'John', 25 ] }
+ * const tuple = Option.all([maybeName, maybeAge]) // => Option.some(["John", 25])
  *
  * //      ┌─── Option<{ name: string; age: number; }>
  * //      ▼
- * const struct = Option.all({ name: maybeName, age: maybeAge })
- * console.log(struct)
- * // Output:
- * // { _id: 'Option', _tag: 'Some', value: { name: 'John', age: 25 } }
+ * const struct = Option.all({ name: maybeName, age: maybeAge }) // => Option.some({ name: "John", age: 25 })
  * ```
  *
  * @see {@link product} for combining exactly two
@@ -1788,9 +1675,7 @@ export const all: <const I extends Iterable<Option<any>> | Record<string, Option
  *   (name, age) => ({ name: name.toUpperCase(), age })
  * )
  *
- * console.log(person)
- * // Output:
- * // { _id: 'Option', _tag: 'Some', value: { name: 'JOHN', age: 25 } }
+ * person // => Option.some({ name: "JOHN", age: 25 })
  * ```
  *
  * @see {@link product} to combine into a tuple instead
@@ -1829,8 +1714,7 @@ export const zipWith: {
  *
  * const items = [Option.some(1), Option.none(), Option.some(2), Option.none()]
  *
- * console.log(pipe(items, Option.reduceCompact(0, (b, a) => b + a)))
- * // Output: 3
+ * pipe(items, Option.reduceCompact(0, (b, a) => b + a)) // => 3
  * ```
  *
  * @category reducing
@@ -1870,11 +1754,8 @@ export const reduceCompact: {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.toArray(Option.some(1)))
- * // Output: [1]
- *
- * console.log(Option.toArray(Option.none()))
- * // Output: []
+ * Option.toArray(Option.some(1)) // => [1]
+ * Option.toArray(Option.none()) // => []
  * ```
  *
  * @see {@link fromIterable} for the inverse direction
@@ -1908,14 +1789,9 @@ export const toArray = <A>(self: Option<A>): Array<A> => isNone(self) ? [] : [se
  *   return isNaN(n) ? Result.fail("Not a number") : Result.succeed(n)
  * }
  *
- * console.log(Option.partitionMap(Option.some("42"), parseNumber))
- * // Output: [{ _id: 'Option', _tag: 'None' }, { _id: 'Option', _tag: 'Some', value: 42 }]
- *
- * console.log(Option.partitionMap(Option.some("abc"), parseNumber))
- * // Output: [{ _id: 'Option', _tag: 'Some', value: 'Not a number' }, { _id: 'Option', _tag: 'None' }]
- *
- * console.log(Option.partitionMap(Option.none(), parseNumber))
- * // Output: [{ _id: 'Option', _tag: 'None' }, { _id: 'Option', _tag: 'None' }]
+ * Option.partitionMap(Option.some("42"), parseNumber) // => [Option.none(), Option.some(42)]
+ * Option.partitionMap(Option.some("abc"), parseNumber) // => [Option.some("Not a number"), Option.none()]
+ * Option.partitionMap(Option.none(), parseNumber) // => [Option.none(), Option.none()]
  * ```
  *
  * @see {@link filter} for simple predicate-based filtering
@@ -1955,11 +1831,10 @@ export const partitionMap: {
  * ```ts import.meta.vitest
  * import { Option, Result } from "effect"
  *
- * console.log(Option.filterMap(
+ * Option.filterMap(
  *   Option.some(2),
  *   (n) => (n % 2 === 0 ? Result.succeed(`Even: ${n}`) : Result.failVoid)
- * ))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'Even: 2' }
+ * ) // => Option.some("Even: 2")
  * ```
  *
  * @see {@link filter} for predicate-based filtering
@@ -2002,14 +1877,9 @@ export const filterMap: {
  * const removeEmpty = (input: Option.Option<string>) =>
  *   Option.filter(input, (value) => value !== "")
  *
- * console.log(removeEmpty(Option.some("hello")))
- * // Output: { _id: 'Option', _tag: 'Some', value: 'hello' }
- *
- * console.log(removeEmpty(Option.some("")))
- * // Output: { _id: 'Option', _tag: 'None' }
- *
- * console.log(removeEmpty(Option.none()))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * removeEmpty(Option.some("hello")) // => Option.some("hello")
+ * removeEmpty(Option.some("")) // => Option.none()
+ * removeEmpty(Option.none()) // => Option.none()
  * ```
  *
  * @see {@link filterMap} to transform and filter simultaneously
@@ -2050,14 +1920,9 @@ export const filter: {
  *
  * const eq = Option.makeEquivalence(Equivalence.strictEqual<number>())
  *
- * console.log(eq(Option.some(1), Option.some(1)))
- * // Output: true
- *
- * console.log(eq(Option.some(1), Option.some(2)))
- * // Output: false
- *
- * console.log(eq(Option.none(), Option.none()))
- * // Output: true
+ * eq(Option.some(1), Option.some(1)) // => true
+ * eq(Option.some(1), Option.some(2)) // => false
+ * eq(Option.none(), Option.none()) // => true
  * ```
  *
  * @category instances
@@ -2088,14 +1953,9 @@ export const makeEquivalence = <A>(isEquivalent: Equivalence.Equivalence<A>): Eq
  *
  * const ord = Option.makeOrder(N.Order)
  *
- * console.log(ord(Option.none(), Option.some(1)))
- * // Output: -1
- *
- * console.log(ord(Option.some(1), Option.none()))
- * // Output: 1
- *
- * console.log(ord(Option.some(1), Option.some(2)))
- * // Output: -1
+ * ord(Option.none(), Option.some(1)) // => -1
+ * ord(Option.some(1), Option.none()) // => 1
+ * ord(Option.some(1), Option.some(2)) // => -1
  * ```
  *
  * @category sorting
@@ -2124,11 +1984,8 @@ export const makeOrder = <A>(O: Order<A>): Order<Option<A>> =>
  *
  * const addOptions = Option.lift2((a: number, b: number) => a + b)
  *
- * console.log(addOptions(Option.some(2), Option.some(3)))
- * // Output: { _id: 'Option', _tag: 'Some', value: 5 }
- *
- * console.log(addOptions(Option.some(2), Option.none()))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * addOptions(Option.some(2), Option.some(3)) // => Option.some(5)
+ * addOptions(Option.some(2), Option.none()) // => Option.none()
  * ```
  *
  * @see {@link zipWith} for a non-lifted variant
@@ -2163,11 +2020,8 @@ export const lift2 = <A, B, C>(f: (a: A, b: B) => C): {
  *
  * const parsePositive = Option.liftPredicate((n: number) => n > 0)
  *
- * console.log(parsePositive(1))
- * // Output: { _id: 'Option', _tag: 'Some', value: 1 }
- *
- * console.log(parsePositive(-1))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * parsePositive(1) // => Option.some(1)
+ * parsePositive(-1) // => Option.none()
  * ```
  *
  * @see {@link filter} to apply a predicate to an existing `Option`
@@ -2213,14 +2067,9 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
  *
  * const check = Option.containsWith(Equivalence.strictEqual<number>())
  *
- * console.log(Option.some(2).pipe(check(2)))
- * // Output: true
- *
- * console.log(Option.some(1).pipe(check(2)))
- * // Output: false
- *
- * console.log(Option.none().pipe(check(2)))
- * // Output: false
+ * Option.some(2).pipe(check(2)) // => true
+ * Option.some(1).pipe(check(2)) // => false
+ * Option.none().pipe(check(2)) // => false
  * ```
  *
  * @see {@link contains} for a version using default equality
@@ -2252,14 +2101,9 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  * ```ts import.meta.vitest
  * import { Option } from "effect"
  *
- * console.log(Option.some(2).pipe(Option.contains(2)))
- * // Output: true
- *
- * console.log(Option.some(1).pipe(Option.contains(2)))
- * // Output: false
- *
- * console.log(Option.none().pipe(Option.contains(2)))
- * // Output: false
+ * Option.some(2).pipe(Option.contains(2)) // => true
+ * Option.some(1).pipe(Option.contains(2)) // => false
+ * Option.none().pipe(Option.contains(2)) // => false
  * ```
  *
  * @see {@link containsWith} for custom equality
@@ -2294,14 +2138,9 @@ export const contains: {
  *
  * const isEven = (n: number) => n % 2 === 0
  *
- * console.log(Option.some(2).pipe(Option.exists(isEven)))
- * // Output: true
- *
- * console.log(Option.some(1).pipe(Option.exists(isEven)))
- * // Output: false
- *
- * console.log(Option.none().pipe(Option.exists(isEven)))
- * // Output: false
+ * Option.some(2).pipe(Option.exists(isEven)) // => true
+ * Option.some(1).pipe(Option.exists(isEven)) // => false
+ * Option.none().pipe(Option.exists(isEven)) // => false
  * ```
  *
  * @see {@link filter} to keep or discard based on a predicate
@@ -2338,7 +2177,6 @@ export const exists: {
  *
  * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
- * import * as assert from "node:assert"
  *
  * const result = pipe(
  *   Option.some(2),
@@ -2346,7 +2184,7 @@ export const exists: {
  *   Option.bind("y", () => Option.some(3)),
  *   Option.let("sum", ({ x, y }) => x + y)
  * )
- * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
+ * result // => Option.some({ x: 2, y: 3, sum: 5 })
  * ```
  *
  * @see {@link Do} for starting with an empty record
@@ -2386,7 +2224,6 @@ export {
    *
    * ```ts import.meta.vitest
    * import { Option, pipe } from "effect"
-   * import * as assert from "node:assert"
    *
    * const result = pipe(
    *   Option.Do,
@@ -2394,7 +2231,7 @@ export {
    *   Option.bind("y", () => Option.some(3)),
    *   Option.let("sum", ({ x, y }) => x + y)
    * )
-   * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
+   * result // => Option.some({ x: 2, y: 3, sum: 5 })
    * ```
    *
    * @see {@link Do} for starting the chain
@@ -2419,7 +2256,6 @@ export {
  *
  * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
- * import * as assert from "node:assert"
  *
  * const result = pipe(
  *   Option.Do,
@@ -2428,7 +2264,7 @@ export {
  *   Option.let("sum", ({ x, y }) => x + y),
  *   Option.filter(({ x, y }) => x * y > 5)
  * )
- * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
+ * result // => Option.some({ x: 2, y: 3, sum: 5 })
  * ```
  *
  * @see {@link Do} for starting the chain
@@ -2463,7 +2299,6 @@ export const bind: {
  *
  * ```ts import.meta.vitest
  * import { Option, pipe } from "effect"
- * import * as assert from "node:assert"
  *
  * const result = pipe(
  *   Option.Do,
@@ -2472,7 +2307,7 @@ export const bind: {
  *   Option.let("sum", ({ x, y }) => x + y),
  *   Option.filter(({ x, y }) => x * y > 5)
  * )
- * assert.deepStrictEqual(result, Option.some({ x: 2, y: 3, sum: 5 }))
+ * result // => Option.some({ x: 2, y: 3, sum: 5 })
  * ```
  *
  * @see {@link bind} to add `Option` values
@@ -2513,9 +2348,7 @@ export const Do: Option<{}> = some({})
  *   return { name, age }
  * })
  *
- * console.log(person)
- * // Output:
- * // { _id: 'Option', _tag: 'Some', value: { name: 'JOHN', age: 25 } }
+ * person // => Option.some({ name: "JOHN", age: 25 })
  * ```
  *
  * @see {@link Do} / {@link bind} for the do notation alternative
@@ -2560,8 +2393,7 @@ export const gen: Gen.Gen<OptionTypeLambda> = (...args) => {
  * import { Number, Option } from "effect"
  *
  * const reducer = Option.makeReducer(Number.ReducerSum)
- * console.log(reducer.combineAll([Option.some(1), Option.none(), Option.some(2)]))
- * // Output: { _id: 'Option', _tag: 'Some', value: 3 }
+ * reducer.combineAll([Option.some(1), Option.none(), Option.some(2)]) // => Option.some(3)
  * ```
  *
  * @see {@link makeReducerFailFast} for fail-fast semantics
@@ -2598,11 +2430,8 @@ export function makeReducer<A>(combiner: Combiner.Combiner<A>): Reducer.Reducer<
  * import { Number, Option } from "effect"
  *
  * const combiner = Option.makeCombinerFailFast(Number.ReducerSum)
- * console.log(combiner.combine(Option.some(1), Option.some(2)))
- * // Output: { _id: 'Option', _tag: 'Some', value: 3 }
- *
- * console.log(combiner.combine(Option.some(1), Option.none()))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * combiner.combine(Option.some(1), Option.some(2)) // => Option.some(3)
+ * combiner.combine(Option.some(1), Option.none()) // => Option.none()
  * ```
  *
  * @see {@link makeReducerFailFast} to get a full `Reducer`
@@ -2638,11 +2467,8 @@ export function makeCombinerFailFast<A>(combiner: Combiner.Combiner<A>): Combine
  * import { Number, Option } from "effect"
  *
  * const reducer = Option.makeReducerFailFast(Number.ReducerSum)
- * console.log(reducer.combineAll([Option.some(1), Option.some(2)]))
- * // Output: { _id: 'Option', _tag: 'Some', value: 3 }
- *
- * console.log(reducer.combineAll([Option.some(1), Option.none()]))
- * // Output: { _id: 'Option', _tag: 'None' }
+ * reducer.combineAll([Option.some(1), Option.some(2)]) // => Option.some(3)
+ * reducer.combineAll([Option.some(1), Option.none()]) // => Option.none()
  * ```
  *
  * @see {@link makeCombinerFailFast} for just the combiner

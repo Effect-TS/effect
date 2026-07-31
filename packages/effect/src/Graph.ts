@@ -490,7 +490,7 @@ export const isGraph = <N = unknown, E = unknown, T extends Kind = Kind, U = nev
  *   Graph.addNode(mutable, "A")
  * })
  *
- * console.log(graph.type) // > directed
+ * graph.type // => "directed"
  * ```
  *
  * @see {@link directed} for constructing a directed graph directly
@@ -536,6 +536,7 @@ export const make =
  *   Graph.addEdge(mutable, a, b, "A->B")
  *   Graph.addEdge(mutable, b, c, "B->C")
  * })
+ * Array.of(Graph.nodeCount(graph), Graph.edgeCount(graph)) // => [3, 2]
  * ```
  *
  * @category constructors
@@ -561,6 +562,7 @@ export const directed: <N, E>(
  *   Graph.addEdge(mutable, a, b, "A-B")
  *   Graph.addEdge(mutable, b, c, "B-C")
  * })
+ * Array.of(Graph.nodeCount(graph), Graph.edgeCount(graph)) // => [3, 2]
  * ```
  *
  * @category constructors
@@ -585,6 +587,7 @@ export const undirected: <N, E>(
  * const graph = Graph.directed<string, number>()
  * const mutable = Graph.beginMutation(graph)
  * // Now mutable can be safely modified without affecting original graph
+ * Array.of(Graph.nodeCount(mutable), Graph.nodeCount(graph)) // => [0, 0]
  * ```
  *
  * @category mutations
@@ -627,7 +630,7 @@ export const beginMutation = <N, E, T extends Kind = "directed">(
  * const graph = Graph.directed<string, number>()
  * const mutable = Graph.beginMutation(graph)
  * // ... perform mutations on mutable ...
- * const newGraph = Graph.endMutation(mutable)
+ * Graph.nodeCount(Graph.endMutation(mutable)) // => 0
  * ```
  *
  * @category mutations
@@ -683,8 +686,8 @@ const mutateScoped = <N, E, T extends Kind>(
  *   Graph.addEdge(mutable, nodeA, nodeB, 1)
  * })
  *
- * console.log(Graph.nodeCount(newGraph)) // > 2
- * console.log(Graph.edgeCount(newGraph)) // > 1
+ * Graph.nodeCount(newGraph) // => 2
+ * Graph.edgeCount(newGraph) // => 1
  * ```
  *
  * @category mutations
@@ -894,8 +897,8 @@ const assertSameKind = <N, E>(self: Graph<N, E, Kind>, that: Graph<N, E, Kind>):
  *   nodeIdentity: (node) => node.id
  * })
  *
- * console.log(Graph.nodeCount(result)) // > 3
- * console.log(Graph.edgeCount(result)) // > 2
+ * Graph.nodeCount(result) // => 3
+ * Graph.edgeCount(result) // => 2
  * ```
  *
  * @category set operations
@@ -984,8 +987,8 @@ export const compose: {
  *
  * const result = Graph.intersection(left, right)
  *
- * console.log(Graph.nodeCount(result)) // > 2
- * console.log(Graph.edgeCount(result)) // > 1
+ * Graph.nodeCount(result) // => 2
+ * Graph.edgeCount(result) // => 1
  * ```
  *
  * @category set operations
@@ -1082,8 +1085,8 @@ export const intersection: {
  *
  * const result = Graph.difference(left, right)
  *
- * console.log(Graph.nodeCount(result)) // > 3
- * console.log(Graph.edgeCount(result)) // > 1
+ * Graph.nodeCount(result) // => 3
+ * Graph.edgeCount(result) // => 1
  * ```
  *
  * @category set operations
@@ -1170,8 +1173,8 @@ export const difference: {
  *
  * const result = Graph.symmetricDifference(left, right)
  *
- * console.log(Graph.nodeCount(result)) // > 4
- * console.log(Graph.edgeCount(result)) // > 2
+ * Graph.nodeCount(result) // => 4
+ * Graph.edgeCount(result) // => 2
  * ```
  *
  * @category set operations
@@ -1250,7 +1253,7 @@ export const symmetricDifference: {
  *
  * const result = Graph.complement(graph, (source, target) => `${source}-${target}`)
  *
- * console.log(Graph.edgeCount(result)) // > 1
+ * Graph.edgeCount(result) // => 1
  * ```
  *
  * @category set operations
@@ -1341,7 +1344,7 @@ export interface NeighborhoodConfig {
  *
  * const result = Graph.neighborhood(graph, 1, { radius: 1 })
  *
- * console.log(Graph.nodeCount(result)) // > 2
+ * Graph.nodeCount(result) // => 2
  * ```
  *
  * @category set operations
@@ -1459,11 +1462,9 @@ export const sum: {
  * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
- * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
- *   const nodeA = Graph.addNode(mutable, "Node A")
- *   const nodeB = Graph.addNode(mutable, "Node B")
- *   console.log(nodeA) // > 0
- *   console.log(nodeB) // > 1
+ * Graph.mutate(Graph.directed<string, number>(), (mutable) => {
+ *   Graph.addNode(mutable, "Node A") // => 0
+ *   Graph.addNode(mutable, "Node B") // => 1
  * })
  * ```
  *
@@ -1508,12 +1509,7 @@ export const addNode = <N, E, T extends Kind = "directed">(
  *   Graph.addNode(mutable, "Node A")
  * })
  *
- * const nodeIndex = 0
- * const nodeData = Graph.getNode(graph, nodeIndex)
- *
- * if (Option.isSome(nodeData)) {
- *   console.log(nodeData.value) // > Node A
- * }
+ * Graph.getNode(graph, 0) // => Option.some("Node A")
  * ```
  *
  * @category getters
@@ -1547,13 +1543,8 @@ export const getNode: {
  *   Graph.addNode(mutable, "Node A")
  * })
  *
- * const nodeIndex = 0
- * const exists = Graph.hasNode(graph, nodeIndex)
- * console.log(exists) // > true
- *
- * const nonExistentIndex = 999
- * const notExists = Graph.hasNode(graph, nonExistentIndex)
- * console.log(notExists) // > false
+ * Graph.hasNode(graph, 0) // => true
+ * Graph.hasNode(graph, 999) // => false
  * ```
  *
  * @category getters
@@ -1576,7 +1567,7 @@ export const hasNode: {
  * import { Graph } from "effect"
  *
  * const emptyGraph = Graph.directed<string, number>()
- * console.log(Graph.nodeCount(emptyGraph)) // > 0
+ * Graph.nodeCount(emptyGraph) // => 0
  *
  * const graphWithNodes = Graph.mutate(emptyGraph, (mutable) => {
  *   Graph.addNode(mutable, "Node A")
@@ -1584,7 +1575,7 @@ export const hasNode: {
  *   Graph.addNode(mutable, "Node C")
  * })
  *
- * console.log(Graph.nodeCount(graphWithNodes)) // > 3
+ * Graph.nodeCount(graphWithNodes) // => 3
  * ```
  *
  * @category getters
@@ -1600,7 +1591,7 @@ export const nodeCount = <N, E, T extends Kind = "directed">(
  * **Example** (Finding the first matching node)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   Graph.addNode(mutable, "Node A")
@@ -1608,11 +1599,8 @@ export const nodeCount = <N, E, T extends Kind = "directed">(
  *   Graph.addNode(mutable, "Node C")
  * })
  *
- * const result = Graph.findNode(graph, (data) => data.startsWith("Node B"))
- * console.log(result) // > { _id: 'Option', _tag: 'Some', value: 1 }
- *
- * const notFound = Graph.findNode(graph, (data) => data === "Node D")
- * console.log(notFound) // > { _id: 'Option', _tag: 'None' }
+ * Graph.findNode(graph, (data) => data.startsWith("Node B")) // => Option.some(1)
+ * Graph.findNode(graph, (data) => data === "Node D") // => Option.none()
  * ```
  *
  * @category getters
@@ -1653,11 +1641,8 @@ export const findNode: {
  *   Graph.addNode(mutable, "Start C")
  * })
  *
- * const result = Graph.findNodes(graph, (data) => data.startsWith("Start"))
- * console.log(result) // > [ 0, 2 ]
- *
- * const empty = Graph.findNodes(graph, (data) => data === "Not Found")
- * console.log(empty) // > []
+ * Graph.findNodes(graph, (data) => data.startsWith("Start")) // => [0, 2]
+ * Graph.findNodes(graph, (data) => data === "Not Found") // => []
  * ```
  *
  * @category getters
@@ -1691,7 +1676,7 @@ export const findNodes: {
  * **Example** (Finding the first matching edge)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
@@ -1701,11 +1686,8 @@ export const findNodes: {
  *   Graph.addEdge(mutable, nodeB, nodeC, 20)
  * })
  *
- * const result = Graph.findEdge(graph, (data) => data > 15)
- * console.log(result) // > { _id: 'Option', _tag: 'Some', value: 1 }
- *
- * const notFound = Graph.findEdge(graph, (data) => data > 100)
- * console.log(notFound) // > { _id: 'Option', _tag: 'None' }
+ * Graph.findEdge(graph, (data) => data > 15) // => Option.some(1)
+ * Graph.findEdge(graph, (data) => data > 100) // => Option.none()
  * ```
  *
  * @category getters
@@ -1749,11 +1731,8 @@ export const findEdge: {
  *   Graph.addEdge(mutable, nodeC, nodeA, 30)
  * })
  *
- * const result = Graph.findEdges(graph, (data) => data >= 20)
- * console.log(result) // > [ 1, 2 ]
- *
- * const empty = Graph.findEdges(graph, (data) => data > 100)
- * console.log(empty) // > []
+ * Graph.findEdges(graph, (data) => data >= 20) // => [1, 2]
+ * Graph.findEdges(graph, (data) => data > 100) // => []
  * ```
  *
  * @category getters
@@ -1787,7 +1766,7 @@ export const findEdges: {
  * **Example** (Updating node data)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   Graph.addNode(mutable, "Node A")
@@ -1795,8 +1774,7 @@ export const findEdges: {
  *   Graph.updateNode(mutable, 0, (data) => data.toUpperCase())
  * })
  *
- * const nodeData = Graph.getNode(graph, 0)
- * console.log(nodeData) // > { _id: 'Option', _tag: 'Some', value: 'NODE A' }
+ * Graph.getNode(graph, 0) // => Option.some("NODE A")
  * ```
  *
  * @category transforming
@@ -1825,7 +1803,7 @@ export const updateNode = <N, E, T extends Kind = "directed">(
  * **Example** (Updating edge data)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
@@ -1834,8 +1812,7 @@ export const updateNode = <N, E, T extends Kind = "directed">(
  *   Graph.updateEdge(mutable, edgeIndex, (data) => data * 2)
  * })
  *
- * const edgeData = Graph.getEdge(result, 0)
- * console.log(edgeData) // Option.some(new Graph.Edge({ source: 0, target: 1, data: 20 }))
+ * Option.map(Graph.getEdge(result, 0), (edge) => edge.data) // => Option.some(20)
  * ```
  *
  * @category mutations
@@ -1869,7 +1846,7 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
  * **Example** (Mapping node data)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   Graph.addNode(mutable, "node a")
@@ -1878,8 +1855,7 @@ export const updateEdge = <N, E, T extends Kind = "directed">(
  *   Graph.mapNodes(mutable, (data) => data.toUpperCase())
  * })
  *
- * const nodeData = Graph.getNode(graph, 0)
- * console.log(nodeData) // > { _id: 'Option', _tag: 'Some', value: 'NODE A' }
+ * Graph.getNode(graph, 0) // => Option.some("NODE A")
  * ```
  *
  * @category transforming
@@ -1905,7 +1881,7 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
  * **Example** (Mapping edge data)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
@@ -1916,8 +1892,7 @@ export const mapNodes = <N, E, T extends Kind = "directed">(
  *   Graph.mapEdges(mutable, (data) => data * 2)
  * })
  *
- * const edgeData = Graph.getEdge(graph, 0)
- * console.log(edgeData) // Option.some(new Graph.Edge({ source: 0, target: 1, data: 20 }))
+ * Option.map(Graph.getEdge(graph, 0), (edge) => edge.data) // => Option.some(20)
  * ```
  *
  * @category transforming
@@ -1974,7 +1949,7 @@ const rebuildAdjacency = <N, E, T extends Kind = "directed">(
  * **Example** (Reversing edge directions)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
@@ -1985,8 +1960,7 @@ const rebuildAdjacency = <N, E, T extends Kind = "directed">(
  *   Graph.reverse(mutable) // Now B -> A, C -> B
  * })
  *
- * const edge0 = Graph.getEdge(graph, 0)
- * console.log(edge0) // Option.some(new Graph.Edge({ source: 1, target: 0, data: 1 }))
+ * Option.map(Graph.getEdge(graph, 0), (edge) => edge.source) // => Option.some(1)
  * ```
  *
  * @category transforming
@@ -2044,7 +2018,7 @@ export const reverse = <N, E, T extends Kind = "directed">(
  *   )
  * })
  *
- * console.log(Graph.nodeCount(graph)) // 2 (only "active" nodes remain)
+ * Graph.nodeCount(graph) // => 2
  * ```
  *
  * @category transforming
@@ -2101,7 +2075,7 @@ export const filterMapNodes = <N, E, T extends Kind = "directed">(
  *   )
  * })
  *
- * console.log(Graph.edgeCount(graph)) // 2 (edges with weight 5 removed)
+ * Graph.edgeCount(graph) // => 2
  * ```
  *
  * @category transforming
@@ -2159,7 +2133,7 @@ export const filterMapEdges = <N, E, T extends Kind = "directed">(
  *   Graph.filterNodes(mutable, (data) => data === "active")
  * })
  *
- * console.log(Graph.nodeCount(graph)) // 2 (only "active" nodes remain)
+ * Graph.nodeCount(graph) // => 2
  * ```
  *
  * @category transforming
@@ -2209,7 +2183,7 @@ export const filterNodes = <N, E, T extends Kind = "directed">(
  *   Graph.filterEdges(mutable, (data) => data >= 10)
  * })
  *
- * console.log(Graph.edgeCount(graph)) // 2 (edge with weight 5 removed)
+ * Graph.edgeCount(graph) // => 2
  * ```
  *
  * @category transforming
@@ -2289,11 +2263,10 @@ const invalidateCycleFlagOnAddition = <N, E, T extends Kind = "directed">(
  * ```ts import.meta.vitest
  * import { Graph } from "effect"
  *
- * const result = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
+ * Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
  *   const nodeB = Graph.addNode(mutable, "Node B")
- *   const edge = Graph.addEdge(mutable, nodeA, nodeB, 42)
- *   console.log(edge) // > 0
+ *   Graph.addEdge(mutable, nodeA, nodeB, 42) // => 0
  * })
  * ```
  *
@@ -2378,6 +2351,7 @@ export const addEdge = <N, E, T extends Kind = "directed">(
  *   // Remove nodeA and all edges connected to it
  *   Graph.removeNode(mutable, nodeA)
  * })
+ * Array.of(Graph.nodeCount(result), Graph.edgeCount(result)) // => [1, 0]
  * ```
  *
  * @category mutations
@@ -2445,6 +2419,7 @@ export const removeNode = <N, E, T extends Kind = "directed">(
  *   // Remove the edge
  *   Graph.removeEdge(mutable, edge)
  * })
+ * Array.of(Graph.nodeCount(result), Graph.edgeCount(result)) // => [2, 0]
  * ```
  *
  * @category mutations
@@ -2531,7 +2506,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  * **Example** (Getting edge data)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.mutate(Graph.directed<string, number>(), (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
@@ -2539,14 +2514,7 @@ const removeEdgeInternal = <N, E, T extends Kind = "directed">(
  *   Graph.addEdge(mutable, nodeA, nodeB, 42)
  * })
  *
- * const edgeIndex = 0
- * const edgeData = Graph.getEdge(graph, edgeIndex)
- *
- * if (edgeData._tag === "Some") {
- *   console.log(edgeData.value.data) // > 42
- *   console.log(edgeData.value.source) // > 0
- *   console.log(edgeData.value.target) // > 1
- * }
+ * Graph.getEdge(graph, 0) // => Option.some(new Graph.Edge({ source: 0, target: 1, data: 42 }))
  * ```
  *
  * @category getters
@@ -2580,15 +2548,8 @@ export const getEdge: {
  *   Graph.addEdge(mutable, nodeA, nodeB, 42)
  * })
  *
- * const nodeA = 0
- * const nodeB = 1
- * const nodeC = 2
- *
- * const hasAB = Graph.hasEdge(graph, nodeA, nodeB)
- * console.log(hasAB) // > true
- *
- * const hasAC = Graph.hasEdge(graph, nodeA, nodeC)
- * console.log(hasAC) // > false
+ * Graph.hasEdge(graph, 0, 1) // => true
+ * Graph.hasEdge(graph, 0, 2) // => false
  * ```
  *
  * @category getters
@@ -2638,7 +2599,7 @@ export const hasEdge: {
  * import { Graph } from "effect"
  *
  * const emptyGraph = Graph.directed<string, number>()
- * console.log(Graph.edgeCount(emptyGraph)) // > 0
+ * Graph.edgeCount(emptyGraph) // => 0
  *
  * const graphWithEdges = Graph.mutate(emptyGraph, (mutable) => {
  *   const nodeA = Graph.addNode(mutable, "Node A")
@@ -2649,7 +2610,7 @@ export const hasEdge: {
  *   Graph.addEdge(mutable, nodeC, nodeA, 3)
  * })
  *
- * console.log(Graph.edgeCount(graphWithEdges)) // > 3
+ * Graph.edgeCount(graphWithEdges) // => 3
  * ```
  *
  * @category getters
@@ -2706,15 +2667,8 @@ const getDirectedNeighbors = <N, E>(
  *   Graph.addEdge(mutable, nodeA, nodeC, 2)
  * })
  *
- * const nodeA = 0
- * const nodeB = 1
- * const nodeC = 2
- *
- * const neighborsA = Graph.neighbors(graph, nodeA)
- * console.log(neighborsA) // > [ 1, 2 ]
- *
- * const neighborsB = Graph.neighbors(graph, nodeB)
- * console.log(neighborsB) // > []
+ * Graph.neighbors(graph, 0) // => [1, 2]
+ * Graph.neighbors(graph, 1) // => []
  * ```
  *
  * @category getters
@@ -2843,6 +2797,7 @@ export const predecessors: {
  *
  * // Get incoming neighbors (nodes that point to nodeB)
  * const incoming = Graph.neighborsDirected(graph, nodeB, "incoming")
+ * Array.of(outgoing, incoming) // => [[1], [0]]
  * ```
  *
  * @deprecated Use {@link successors} for outgoing neighbors or {@link predecessors} for incoming neighbors.
@@ -2901,6 +2856,7 @@ export const neighborsDirected: {
  *   edgeLabel: (data) => data,
  *   graphName: "MyDependencyGraph"
  * }
+ * Array.of(basicOptions.nodeLabel?.("A"), namedOptions.graphName) // => ["Node: A", "MyDependencyGraph"]
  * ```
  *
  * @category options
@@ -2946,16 +2902,7 @@ const escapeGraphVizString = (value: string): string =>
  *   Graph.addEdge(mutable, nodeC, nodeA, 3)
  * })
  *
- * const dot = Graph.toGraphViz(graph)
- * console.log(dot)
- * // digraph "G" {
- * //   "0" [label="Node A"];
- * //   "1" [label="Node B"];
- * //   "2" [label="Node C"];
- * //   "0" -> "1" [label="1"];
- * //   "1" -> "2" [label="2"];
- * //   "2" -> "0" [label="3"];
- * // }
+ * Graph.toGraphViz(graph).split("\n") // => ['digraph "G" {', '  "0" [label="Node A"];', '  "1" [label="Node B"];', '  "2" [label="Node C"];', '  "0" -> "1" [label="1"];', '  "1" -> "2" [label="2"];', '  "2" -> "0" [label="3"];', "}"]
  * ```
  *
  * @category converting
@@ -3040,6 +2987,7 @@ export const toGraphViz: {
  * const options: Graph.MermaidOptions<string, string> = {
  *   nodeShape: shapeSelector
  * }
+ * options.nodeShape?.("decision") // => "diamond"
  * ```
  *
  * @category models
@@ -3085,6 +3033,7 @@ export type MermaidNodeShape =
  * const bottomUpOptions: Graph.MermaidOptions<string, string> = {
  *   direction: "BT"
  * }
+ * Array.of(horizontalOptions.direction, verticalOptions.direction, bottomUpOptions.direction) // => ["LR", "TB", "BT"]
  * ```
  *
  * @category models
@@ -3126,6 +3075,7 @@ export type MermaidDirection =
  *
  * // Auto-detection (recommended, default behavior)
  * const autoOptions: Graph.MermaidOptions<string, string> = {}
+ * Array.of(flowchartOptions.diagramType, graphOptions.diagramType, autoOptions.diagramType) // => ["flowchart", "graph", undefined]
  * ```
  *
  * @category models
@@ -3168,6 +3118,7 @@ export type MermaidDiagramType =
  *   direction: "LR",
  *   nodeShape: (data) => data.includes("start") ? "circle" : "rectangle"
  * }
+ * Array.of(basicOptions.nodeLabel?.("A"), advancedOptions.nodeShape?.("start")) // => ["Node: A", "circle"]
  * ```
  *
  * @category options
@@ -3283,14 +3234,7 @@ const formatMermaidNode = (
  *   Graph.addEdge(mutable, app, cache, 2)
  * })
  *
- * const mermaid = Graph.toMermaid(graph)
- * console.log(mermaid)
- * // flowchart TD
- * //   0["App"]
- * //   1["Database"]
- * //   2["Cache"]
- * //   0 -->|"1"| 1
- * //   0 -->|"2"| 2
+ * Graph.toMermaid(graph).split("\n") // => ["flowchart TD", '  0["App"]', '  1["Database"]', '  2["Cache"]', '  0 -->|"1"| 1', '  0 -->|"2"| 2']
  * ```
  *
  * **Example** (Exporting an undirected Mermaid diagram)
@@ -3312,13 +3256,7 @@ const formatMermaidNode = (
  *   edgeLabel: (relationship) => relationship,
  *   direction: "LR"
  * })
- * console.log(mermaid)
- * // graph LR
- * //   0["Alice"]
- * //   1["Bob"]
- * //   2["Charlie"]
- * //   0 ---|"friends"| 1
- * //   1 ---|"colleagues"| 2
+ * mermaid.split("\n") // => ["graph LR", '  0["Alice"]', '  1["Bob"]', '  2["Charlie"]', '  0 ---|"friends"| 1', '  1 ---|"colleagues"| 2']
  * ```
  *
  * **Example** (Customizing Mermaid node shapes)
@@ -3362,15 +3300,7 @@ const formatMermaidNode = (
  *     }
  *   }
  * })
- * console.log(mermaid)
- * // flowchart TD
- * //   0(["Begin"])
- * //   1["Process Data"]
- * //   2{"Valid?"}
- * //   3(["Complete"])
- * //   0 --> 1
- * //   1 --> 2
- * //   2 --> 3
+ * mermaid.split("\n") // => ["flowchart TD", '  0(["Begin"])', '  1["Process Data"]', '  2{"Valid?"}', '  3(["Complete"])', "  0 --> 1", "  1 --> 2", '  2 -->|"yes"| 3']
  * ```
  *
  * **Example** (Visualizing dependency graphs)
@@ -3424,15 +3354,7 @@ const formatMermaidNode = (
  *   direction: "TB"
  * })
  *
- * console.log(dependencyDiagram)
- * // flowchart TB
- * //   0["MyApp\nv1.0.0"]
- * //   1{{"React\nv18.0.0"}}
- * //   2["Lodash\nv4.17.0"]
- * //   3{"Webpack\nv5.0.0"}
- * //   0 -->|"depends on"| 1
- * //   0 -->|"depends on"| 2
- * //   0 -->|"builds with"| 3
+ * dependencyDiagram.split("\n") // => ["flowchart TB", '  0["MyApp#92;nv1.0.0"]', '  1{{"React#92;nv18.0.0"}}', '  2["Lodash#92;nv4.17.0"]', '  3{"Webpack#92;nv5.0.0"}', '  0 -->|"depends on"| 1', '  0 -->|"depends on"| 2', '  0 -->|"builds with"| 3']
  * ```
  *
  * @category converting
@@ -3533,17 +3455,9 @@ export type Direction = "outgoing" | "incoming"
  *   Graph.addEdge(mutable, a, c, "A-C")
  * })
  *
- * const outgoing = Array.from(
- *   Graph.indices(Graph.bfs(graph, { start: [0], direction: "outgoing" }))
- * ) // [0, 1, 2]
- *
- * const incoming = Array.from(
- *   Graph.indices(Graph.bfs(graph, { start: [1], direction: "incoming" }))
- * ) // [1, 0]
- *
- * const undirected = Array.from(
- *   Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" }))
- * ) // [1, 0, 2]
+ * Array.from(Graph.indices(Graph.bfs(graph, { start: [0], direction: "outgoing" }))) // => [0, 1, 2]
+ * Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "incoming" }))) // => [1, 0]
+ * Array.from(Graph.indices(Graph.bfs(graph, { start: [1], direction: "undirected" }))) // => [1, 0, 2]
  * ```
  *
  * @category models
@@ -3578,7 +3492,7 @@ export type TraversalDirection = Direction | "undirected"
  *   Graph.addEdge(mutable, a, b, "A->B")
  *   Graph.addEdge(mutable, b, c, "B->C")
  * })
- * console.log(Graph.isAcyclic(dag)) // > true
+ * Graph.isAcyclic(dag) // => true
  *
  * // Cyclic directed graph
  * const cyclic = Graph.directed<string, string>((mutable) => {
@@ -3587,7 +3501,7 @@ export type TraversalDirection = Direction | "undirected"
  *   Graph.addEdge(mutable, a, b, "A->B")
  *   Graph.addEdge(mutable, b, a, "B->A") // Creates cycle
  * })
- * console.log(Graph.isAcyclic(cyclic)) // > false
+ * Graph.isAcyclic(cyclic) // => false
  * ```
  *
  * @category algorithms
@@ -3740,7 +3654,7 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
  *   Graph.addEdge(mutable, b, c, "edge")
  *   Graph.addEdge(mutable, c, d, "edge")
  * })
- * console.log(Graph.isBipartite(bipartite)) // > true
+ * Graph.isBipartite(bipartite) // => true
  *
  * // Non-bipartite graph (odd cycle)
  * const triangle = Graph.undirected<string, string>((mutable) => {
@@ -3751,7 +3665,7 @@ export const isAcyclic = <N, E, T extends Kind = "directed">(
  *   Graph.addEdge(mutable, b, c, "edge")
  *   Graph.addEdge(mutable, c, a, "edge") // Triangle (3-cycle)
  * })
- * console.log(Graph.isBipartite(triangle)) // > false
+ * Graph.isBipartite(triangle) // => false
  * ```
  *
  * @category algorithms
@@ -3876,8 +3790,7 @@ const getTraversableNeighbor = <N, E, T extends Kind>(
  *   Graph.addEdge(mutable, c, d, "edge") // Component 2: C-D
  * })
  *
- * const components = Graph.connectedComponents(graph)
- * console.log(components) // > [ [ 0, 1 ], [ 2, 3 ] ]
+ * Graph.connectedComponents(graph) // => [[0, 1], [2, 3]]
  * ```
  *
  * @category algorithms
@@ -3940,8 +3853,7 @@ export const connectedComponents = <N, E>(
  *   Graph.addEdge(mutable, c, a, "C->A") // Creates SCC: A-B-C
  * })
  *
- * const sccs = Graph.stronglyConnectedComponents(graph)
- * console.log(sccs) // > [ [ 0, 2, 1 ] ]
+ * Graph.stronglyConnectedComponents(graph) // => [[0, 2, 1]]
  * ```
  *
  * @category algorithms
@@ -4175,7 +4087,7 @@ export interface DijkstraConfig<E> {
  * **Example** (Finding shortest paths with Dijkstra)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
@@ -4192,10 +4104,7 @@ export interface DijkstraConfig<E> {
  *   cost: (edgeData) => edgeData
  * })
  *
- * if (result._tag === "Some") {
- *   console.log(result.value.path) // [0, 1, 2] - shortest path A->B->C
- *   console.log(result.value.distance) // 7 - total distance
- * }
+ * Option.map(result, ({ distance, path }) => [distance, path] as const) // => Option.some([7, [0, 1, 2]])
  * ```
  *
  * @category algorithms
@@ -4383,8 +4292,8 @@ export interface AllPairsResult<E> {
  * })
  *
  * const result = Graph.floydWarshall(graph, (edgeData) => edgeData)
- * const distanceAToC = result.distances.get(0)?.get(2) // 5 (A->B->C)
- * const pathAToC = result.paths.get(0)?.get(2) // [0, 1, 2]
+ * const shortest = { distance: result.distances.get(0)?.get(2), path: result.paths.get(0)?.get(2) }
+ * shortest // => { distance: 5, path: [0, 1, 2] }
  * ```
  *
  * @category algorithms
@@ -4566,7 +4475,7 @@ export interface AstarConfig<E, N> {
  * **Example** (Finding shortest paths with A-star)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<{ x: number; y: number }, number>((mutable) => {
  *   const a = Graph.addNode(mutable, { x: 0, y: 0 })
@@ -4589,10 +4498,7 @@ export interface AstarConfig<E, N> {
  *   heuristic
  * })
  *
- * if (result._tag === "Some") {
- *   console.log(result.value.path) // [0, 1, 2] - shortest path
- *   console.log(result.value.distance) // 2 - total distance
- * }
+ * Option.map(result, ({ distance, path }) => [distance, path] as const) // => Option.some([2, [0, 1, 2]])
  * ```
  *
  * @category algorithms
@@ -4796,7 +4702,7 @@ export interface BellmanFordConfig<E> {
  * **Example** (Finding shortest paths with Bellman-Ford)
  *
  * ```ts import.meta.vitest
- * import { Graph } from "effect"
+ * import { Graph, Option } from "effect"
  *
  * const graph = Graph.directed<string, number>((mutable) => {
  *   const a = Graph.addNode(mutable, "A")
@@ -4813,10 +4719,7 @@ export interface BellmanFordConfig<E> {
  *   cost: (edgeData) => edgeData
  * })
  *
- * if (result._tag === "Some") {
- *   console.log(result.value.path) // [0, 1, 2] - shortest path A->B->C
- *   console.log(result.value.distance) // 2 - total distance
- * }
+ * Option.map(result, ({ distance, path }) => [distance, path] as const) // => Option.some([2, [0, 1, 2]])
  * ```
  *
  * @category algorithms
@@ -4986,8 +4889,8 @@ export const bellmanFord: {
  * }
  *
  * // Access node data using values() or entries()
- * const nodeData = Array.from(Graph.values(dfsNodes)) // ["A", "B"]
- * const nodeEntries = Array.from(Graph.entries(allNodes)) // [[0, "A"], [1, "B"]]
+ * Array.from(Graph.values(dfsNodes)) // => ["A", "B"]
+ * Array.from(Graph.entries(allNodes)) // => [[0, "A"], [1, "B"]]
  * ```
  *
  * @category models
@@ -5020,14 +4923,10 @@ export class Walker<T, N> implements Iterable<[T, N]> {
    * const dfs = Graph.dfs(graph, { start: [0] })
    *
    * // Map to just the node data
-   * const values = Array.from(dfs.visit((index, data) => data))
-   * console.log(values) // > [ 'A', 'B' ]
+   * Array.from(dfs.visit((index, data) => data)) // => ["A", "B"]
    *
    * // Map to custom objects
-   * const custom = Array.from(
-   *   dfs.visit((index, data) => ({ id: index, name: data }))
-   * )
-   * console.log(custom) // > [ { id: 0, name: 'A' }, { id: 1, name: 'B' } ]
+   * Array.from(dfs.visit((index, data) => ({ id: index, name: data }))) // => [{ id: 0, name: "A" }, { id: 1, name: "B" }]
    * ```
    *
    * @since 4.0.0
@@ -5056,14 +4955,10 @@ export class Walker<T, N> implements Iterable<[T, N]> {
      * const dfs = Graph.dfs(graph, { start: [0] })
      *
      * // Map to just the node data
-     * const values = Array.from(dfs.visit((index, data) => data))
-     * console.log(values) // > [ 'A', 'B' ]
+     * Array.from(dfs.visit((index, data) => data)) // => ["A", "B"]
      *
      * // Map to custom objects
-     * const custom = Array.from(
-     *   dfs.visit((index, data) => ({ id: index, name: data }))
-     * )
-     * console.log(custom) // > [ { id: 0, name: 'A' }, { id: 1, name: 'B' } ]
+     * Array.from(dfs.visit((index, data) => ({ id: index, name: data }))) // => [{ id: 0, name: "A" }, { id: 1, name: "B" }]
      * ```
      *
      * @category iterators
@@ -5127,8 +5022,7 @@ export type EdgeWalker<E> = Walker<EdgeIndex, Edge<E>>
  * })
  *
  * const dfs = Graph.dfs(graph, { start: [0] })
- * const indices = Array.from(Graph.indices(dfs))
- * console.log(indices) // > [ 0, 1 ]
+ * Array.from(Graph.indices(dfs)) // => [0, 1]
  * ```
  *
  * @category iterators
@@ -5151,8 +5045,7 @@ export const indices = <T, N>(walker: Walker<T, N>): Iterable<T> => walker.visit
  * })
  *
  * const dfs = Graph.dfs(graph, { start: [0] })
- * const values = Array.from(Graph.values(dfs))
- * console.log(values) // > [ 'A', 'B' ]
+ * Array.from(Graph.values(dfs)) // => ["A", "B"]
  * ```
  *
  * @category iterators
@@ -5175,8 +5068,7 @@ export const values = <T, N>(walker: Walker<T, N>): Iterable<N> => walker.visit(
  * })
  *
  * const dfs = Graph.dfs(graph, { start: [0] })
- * const entries = Array.from(Graph.entries(dfs))
- * console.log(entries) // > [ [ 0, 'A' ], [ 1, 'B' ] ]
+ * Array.from(Graph.entries(dfs)) // => [[0, "A"], [1, "B"]]
  * ```
  *
  * @category iterators
@@ -5243,14 +5135,10 @@ export interface SearchConfig {
  * })
  *
  * // Start from a specific node
- * const dfs1 = Graph.dfs(graph, { start: [0] })
- * for (const nodeIndex of Graph.indices(dfs1)) {
- *   console.log(nodeIndex) // Traverses in DFS order: 0, 1, 2
- * }
+ * Array.from(Graph.indices(Graph.dfs(graph, { start: [0] }))) // => [0, 1, 2]
  *
  * // Empty iterator (no starting nodes)
- * const dfs2 = Graph.dfs(graph)
- * // Can be used programmatically
+ * Graph.dfs(graph)
  * ```
  *
  * @category iterators
@@ -5380,14 +5268,10 @@ export const dfs: {
  * })
  *
  * // Start from a specific node
- * const bfs1 = Graph.bfs(graph, { start: [0] })
- * for (const nodeIndex of Graph.indices(bfs1)) {
- *   console.log(nodeIndex) // Traverses in BFS order: 0, 1, 2
- * }
+ * Array.from(Graph.indices(Graph.bfs(graph, { start: [0] }))) // => [0, 1, 2]
  *
  * // Empty iterator (no starting nodes)
- * const bfs2 = Graph.bfs(graph)
- * // Can be used programmatically
+ * Graph.bfs(graph)
  * ```
  *
  * @category iterators
@@ -5501,13 +5385,10 @@ export interface TopoConfig {
  * })
  *
  * // Standard topological sort
- * const topo1 = Graph.topo(graph)
- * for (const nodeIndex of Graph.indices(topo1)) {
- *   console.log(nodeIndex) // 0, 1, 2 (topological order)
- * }
+ * Array.from(Graph.indices(Graph.topo(graph))) // => [0, 1, 2]
  *
  * // With initial nodes
- * const topo2 = Graph.topo(graph, { initials: [0] })
+ * Graph.topo(graph, { initials: [0] })
  *
  * // Check before sorting a cyclic graph
  * const cyclicGraph = Graph.directed<string, number>((mutable) => {
@@ -5517,9 +5398,7 @@ export interface TopoConfig {
  *   Graph.addEdge(mutable, b, a, 2) // Creates cycle
  * })
  *
- * if (!Graph.isAcyclic(cyclicGraph)) {
- *   console.log("cyclic graph") // cyclic graph
- * }
+ * Graph.isAcyclic(cyclicGraph) // => false
  * ```
  *
  * @category iterators
@@ -5665,10 +5544,7 @@ export const topo: {
  * })
  *
  * // Postorder: children before parents
- * const postOrder = Graph.dfsPostOrder(graph, { start: [0] })
- * for (const node of postOrder) {
- *   console.log(node) // 1, 2, 0
- * }
+ * Array.from(Graph.indices(Graph.dfsPostOrder(graph, { start: [0] }))) // => [1, 2, 0]
  * ```
  *
  * @category iterators
@@ -5777,8 +5653,7 @@ export const dfsPostOrder: {
  *   Graph.addEdge(mutable, a, b, 1)
  * })
  *
- * const indices = Array.from(Graph.indices(Graph.nodes(graph)))
- * console.log(indices) // > [ 0, 1, 2 ]
+ * Array.from(Graph.indices(Graph.nodes(graph))) // => [0, 1, 2]
  * ```
  *
  * @category iterators
@@ -5826,8 +5701,7 @@ export const nodes = <N, E, T extends Kind = "directed">(
  *   Graph.addEdge(mutable, b, c, 2)
  * })
  *
- * const indices = Array.from(Graph.indices(Graph.edges(graph)))
- * console.log(indices) // > [ 0, 1 ]
+ * Array.from(Graph.indices(Graph.edges(graph))) // => [0, 1]
  * ```
  *
  * @category iterators
@@ -5903,16 +5777,10 @@ export interface ExternalsConfig {
  * })
  *
  * // Nodes with no outgoing edges (sinks + isolated)
- * const sinks = Array.from(
- *   Graph.indices(Graph.externals(graph, { direction: "outgoing" }))
- * )
- * console.log(sinks) // > [ 2, 3 ]
+ * Array.from(Graph.indices(Graph.externals(graph, { direction: "outgoing" }))) // => [2, 3]
  *
  * // Nodes with no incoming edges (sources + isolated)
- * const sources = Array.from(
- *   Graph.indices(Graph.externals(graph, { direction: "incoming" }))
- * )
- * console.log(sources) // > [ 0, 3 ]
+ * Array.from(Graph.indices(Graph.externals(graph, { direction: "incoming" }))) // => [0, 3]
  * ```
  *
  * @category iterators

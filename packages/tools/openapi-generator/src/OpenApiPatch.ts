@@ -43,8 +43,7 @@ import * as Yaml from "yaml"
  *   reason: "Unexpected token at position 42"
  * })
  *
- * console.log(error.message)
- * // "Failed to parse patch from ./patches/fix.json: Unexpected token at position 42"
+ * error.message // => "Failed to parse patch from ./patches/fix.json: Unexpected token at position 42"
  * ```
  *
  * @category errors
@@ -81,8 +80,7 @@ export class JsonPatchParseError extends Schema.ErrorClass<JsonPatchParseError>(
  *   reason: "Expected 'add' | 'remove' | 'replace' at [0].op, got 'copy'"
  * })
  *
- * console.log(error.message)
- * // "Invalid JSON Patch from inline: Expected 'add' | 'remove' | 'replace' at [0].op, got 'copy'"
+ * error.message // => "Invalid JSON Patch from inline: Expected 'add' | 'remove' | 'replace' at [0].op, got 'copy'"
  * ```
  *
  * @category errors
@@ -121,8 +119,7 @@ export class JsonPatchValidationError extends Schema.ErrorClass<JsonPatchValidat
  *   reason: "Property \"users\" does not exist"
  * })
  *
- * console.log(error.message)
- * // "Failed to apply patch from ./patches/fix.json: operation 2 (remove at /paths/~1users): Property \"users\" does not exist"
+ * error.message // => 'Failed to apply patch from ./patches/fix.json: operation 2 (remove at /paths/~1users): Property "users" does not exist'
  * ```
  *
  * @category errors
@@ -176,8 +173,7 @@ export class JsonPatchApplicationError
  *   ]
  * })
  *
- * console.log(error.message)
- * // "2 patch operations failed:\n  1. ..."
+ * error.message.split("\n")[0] // => "2 patch operations failed:"
  * ```
  *
  * @category errors
@@ -292,6 +288,8 @@ export const JsonPatchOperation: Schema.Codec<JsonPatch.JsonPatchOperation> = Sc
  *   { op: "remove", path: "/baz" },
  *   { op: "replace", path: "/qux", value: 42 }
  * ])
+ *
+ * patch.map((operation) => operation.op) // => ["add", "remove", "replace"]
  * ```
  *
  * @category schemas
@@ -443,14 +441,12 @@ const parseInlinePatch = Effect.fn("parseInlinePatch")(function*(input: string) 
  *   '[{"op":"replace","path":"/info/title","value":"My API"}]'
  * )
  *
- * // From file path
- * const fromFile = OpenApiPatch.parsePatchInput("./patches/fix-api.json")
- *
  * const program = Effect.gen(function*() {
  *   const patch = yield* fromInline
- *   console.log(patch)
- *   // [{ op: "replace", path: "/info/title", value: "My API" }]
+ *   return [patch[0].op, patch[0].path]
  * })
+ *
+ * Effect.runSync(program) // => ["replace", "/info/title"]
  * ```
  *
  * @category parsing
@@ -495,9 +491,10 @@ export const parsePatchInput = Effect.fn("parsePatchInput")(function*(input: str
  *
  * const program = Effect.gen(function*() {
  *   const result = yield* OpenApiPatch.applyPatches(patches, document)
- *   console.log(result)
- *   // { info: { title: "New Title" }, paths: {} }
+ *   return (result as typeof document).info.title
  * })
+ *
+ * Effect.runSync(program) // => "New Title"
  * ```
  *
  * @category application

@@ -36,33 +36,20 @@ const TypeId = "~effect/Deferred"
  * ```ts import.meta.vitest
  * import { Deferred, Effect, Fiber } from "effect"
  *
- * // Create and use a Deferred for inter-fiber communication
  * const program = Effect.gen(function*() {
- *   // Create a Deferred that will hold a string value
  *   const deferred: Deferred.Deferred<string> = yield* Deferred.make<string>()
- *
- *   // Fork a fiber that will set the deferred value
  *   const producer = yield* Effect.forkChild(
  *     Effect.gen(function*() {
- *       yield* Effect.sleep("100 millis")
  *       yield* Deferred.succeed(deferred, "Hello, World!")
  *     })
  *   )
  *
- *   // Fork a fiber that will await the deferred value
- *   const consumer = yield* Effect.forkChild(
- *     Effect.gen(function*() {
- *       const value = yield* Deferred.await(deferred)
- *       console.log("Received:", value)
- *       return value
- *     })
- *   )
- *
- *   // Wait for both fibers to complete
+ *   const consumer = yield* Effect.forkChild(Deferred.await(deferred))
  *   yield* Fiber.join(producer)
- *   const result = yield* Fiber.join(consumer)
- *   return result
+ *   return yield* Fiber.join(consumer)
  * })
+ *
+ * await Effect.runPromise(program) // => "Hello, World!"
  * ```
  *
  * @category models
@@ -144,7 +131,7 @@ const DeferredProto = {
  * import { Deferred } from "effect"
  *
  * const deferred = Deferred.makeUnsafe<number>()
- * console.log(deferred)
+ * Deferred.isDoneUnsafe(deferred) // => false
  * ```
  *
  * @category unsafe
@@ -172,9 +159,10 @@ export const makeUnsafe = <A, E = never>(): Deferred<A, E> => {
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   yield* Deferred.succeed(deferred, 42)
- *   const value = yield* Deferred.await(deferred)
- *   console.log(value) // 42
+ *   return yield* Deferred.await(deferred)
  * })
+ *
+ * await Effect.runPromise(program) // => 42
  * ```
  *
  * @category constructors
@@ -216,9 +204,10 @@ export {
    *   const deferred = yield* Deferred.make<number>()
    *   yield* Deferred.succeed(deferred, 42)
    *
-   *   const value = yield* Deferred.await(deferred)
-   *   console.log(value) // 42
+   *   return yield* Deferred.await(deferred)
    * })
+   *
+   * await Effect.runPromise(program) // => 42
    * ```
    *
    * @see {@link complete} for completing from an effect and memoizing its result
@@ -252,11 +241,11 @@ export {
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   const completed = yield* Deferred.complete(deferred, Effect.succeed(42))
- *   console.log(completed) // true
- *
  *   const value = yield* Deferred.await(deferred)
- *   console.log(value) // 42
+ *   return [completed, value]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, 42]
  * ```
  *
  * @see {@link completeWith} for storing an effect directly without memoizing its result
@@ -299,11 +288,11 @@ export const complete: {
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   const completed = yield* Deferred.completeWith(deferred, Effect.succeed(42))
- *   console.log(completed) // true
- *
  *   const value = yield* Deferred.await(deferred)
- *   console.log(value) // 42
+ *   return [completed, value]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, 42]
  * ```
  *
  * @see {@link complete} for running an effect once and sharing its result
@@ -342,10 +331,10 @@ export const completeWith: {
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   yield* Deferred.done(deferred, Exit.succeed(42))
- *
- *   const value = yield* Deferred.await(deferred)
- *   console.log(value) // 42
+ *   return yield* Effect.exit(Deferred.await(deferred))
  * })
+ *
+ * await Effect.runPromise(program) // => Exit.succeed(42)
  * ```
  *
  * @see {@link complete} for completing from an effect and memoizing its result
@@ -377,13 +366,16 @@ export const done: {
  * **Example** (Failing a Deferred with an error)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
+ * import { Deferred, Effect, Exit } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number, string>()
  *   const success = yield* Deferred.fail(deferred, "Operation failed")
- *   console.log(success) // true
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [success, exit]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, Exit.fail("Operation failed")]
  * ```
  *
  * @category completion
@@ -412,13 +404,16 @@ export const fail: {
  * **Example** (Failing a Deferred with a lazy error)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
+ * import { Deferred, Effect, Exit } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number, string>()
  *   const success = yield* Deferred.failSync(deferred, () => "Lazy error")
- *   console.log(success) // true
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [success, exit]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, Exit.fail("Lazy error")]
  * ```
  *
  * @category completion
@@ -449,16 +444,16 @@ export const failSync: {
  * **Example** (Failing a Deferred with a Cause)
  *
  * ```ts import.meta.vitest
- * import { Cause, Deferred, Effect } from "effect"
+ * import { Cause, Deferred, Effect, Exit } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number, string>()
- *   const success = yield* Deferred.failCause(
- *     deferred,
- *     Cause.fail("Operation failed")
- *   )
- *   console.log(success) // true
+ *   const success = yield* Deferred.failCause(deferred, Cause.fail("Operation failed"))
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [success, exit]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, Exit.failCause(Cause.fail("Operation failed"))]
  * ```
  *
  * @category completion
@@ -490,16 +485,16 @@ export const failCause: {
  * **Example** (Failing a Deferred with a lazy Cause)
  *
  * ```ts import.meta.vitest
- * import { Cause, Deferred, Effect } from "effect"
+ * import { Cause, Deferred, Effect, Exit } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number, string>()
- *   const success = yield* Deferred.failCauseSync(
- *     deferred,
- *     () => Cause.fail("Lazy error")
- *   )
- *   console.log(success) // true
+ *   const success = yield* Deferred.failCauseSync(deferred, () => Cause.fail("Lazy error"))
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [success, exit]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, Exit.failCause(Cause.fail("Lazy error"))]
  * ```
  *
  * @category completion
@@ -530,16 +525,17 @@ export const failCauseSync: {
  * **Example** (Killing a Deferred with a defect)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
+ * import { Deferred, Effect, Exit } from "effect"
  *
+ * const defect = new Error("Something went wrong")
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
- *   const success = yield* Deferred.die(
- *     deferred,
- *     new Error("Something went wrong")
- *   )
- *   console.log(success) // true
+ *   const success = yield* Deferred.die(deferred, defect)
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [success, exit]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, Exit.die(defect)]
  * ```
  *
  * @category completion
@@ -567,16 +563,17 @@ export const die: {
  * **Example** (Killing a Deferred with a lazy defect)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
+ * import { Deferred, Effect, Exit } from "effect"
  *
+ * const defect = new Error("Lazy error")
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
- *   const success = yield* Deferred.dieSync(
- *     deferred,
- *     () => new Error("Lazy error")
- *   )
- *   console.log(success) // true
+ *   const success = yield* Deferred.dieSync(deferred, () => defect)
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [success, exit]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, Exit.die(defect)]
  * ```
  *
  * @category completion
@@ -613,8 +610,11 @@ export const dieSync: {
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   const success = yield* Deferred.interrupt(deferred)
- *   console.log(success) // true
+ *   const done = yield* Deferred.isDone(deferred)
+ *   return [success, done]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, true]
  * ```
  *
  * @category completion
@@ -640,13 +640,16 @@ export const interrupt = <A, E>(self: Deferred<A, E>): Effect<boolean> =>
  * **Example** (Interrupting a Deferred with a fiber id)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
+ * import { Deferred, Effect, Exit } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   const success = yield* Deferred.interruptWith(deferred, 42)
- *   console.log(success) // true
+ *   const exit = yield* Effect.exit(Deferred.await(deferred))
+ *   return [success, exit]
  * })
+ *
+ * await Effect.runPromise(program) // => [true, Exit.interrupt(42)]
  * ```
  *
  * @category completion
@@ -677,12 +680,12 @@ export const interruptWith: {
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   const beforeCompletion = yield* Deferred.isDone(deferred)
- *   console.log(beforeCompletion) // false
- *
  *   yield* Deferred.succeed(deferred, 42)
  *   const afterCompletion = yield* Deferred.isDone(deferred)
- *   console.log(afterCompletion) // true
+ *   return [beforeCompletion, afterCompletion]
  * })
+ *
+ * await Effect.runPromise(program) // => [false, true]
  * ```
  *
  * @category getters
@@ -719,17 +722,20 @@ export const isDoneUnsafe = <A, E>(self: Deferred<A, E>): boolean => self.effect
  * **Example** (Polling Deferred completion)
  *
  * ```ts import.meta.vitest
- * import { Deferred, Effect } from "effect"
+ * import { Deferred, Effect, Option } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   const beforeCompletion = yield* Deferred.poll(deferred)
- *   console.log(beforeCompletion._tag === "None") // true
- *
  *   yield* Deferred.succeed(deferred, 42)
  *   const afterCompletion = yield* Deferred.poll(deferred)
- *   console.log(afterCompletion._tag === "Some") // true
+ *   const afterValue = afterCompletion._tag === "Some"
+ *     ? Option.some(yield* afterCompletion.value)
+ *     : Option.none()
+ *   return [beforeCompletion, afterValue]
  * })
+ *
+ * await Effect.runPromise(program) // => [Option.none(), Option.some(42)]
  * ```
  *
  * @category getters
@@ -761,9 +767,10 @@ export function poll<A, E>(self: Deferred<A, E>): Effect<Option.Option<Effect<A,
  *   const deferred = yield* Deferred.make<number>()
  *   yield* Deferred.succeed(deferred, 42)
  *
- *   const value = yield* Deferred.await(deferred)
- *   console.log(value) // 42
+ *   return yield* Deferred.await(deferred)
  * })
+ *
+ * await Effect.runPromise(program) // => 42
  * ```
  *
  * @category completion
@@ -797,10 +804,10 @@ export const succeed: {
  * const program = Effect.gen(function*() {
  *   const deferred = yield* Deferred.make<number>()
  *   yield* Deferred.sync(deferred, () => 42)
- *
- *   const value = yield* Deferred.await(deferred)
- *   console.log(value) // 42
+ *   return yield* Deferred.await(deferred)
  * })
+ *
+ * await Effect.runPromise(program) // => 42
  * ```
  *
  * @category completion
@@ -836,8 +843,7 @@ export const sync: {
  * import { Deferred, Effect } from "effect"
  *
  * const deferred = Deferred.makeUnsafe<number>()
- * const success = Deferred.doneUnsafe(deferred, Effect.succeed(42))
- * console.log(success) // > true
+ * Deferred.doneUnsafe(deferred, Effect.succeed(42)) // => true
  * ```
  *
  * @category unsafe
@@ -876,27 +882,16 @@ export const doneUnsafe = <A, E>(self: Deferred<A, E>, effect: Effect<A, E>): bo
  * ```ts import.meta.vitest
  * import { Deferred, Effect } from "effect"
  *
- * // Define an effect that succeeds
  * const successEffect = Effect.succeed(42)
  *
  * const program = Effect.gen(function*() {
- *   // Create a deferred
  *   const deferred = yield* Deferred.make<number, string>()
- *
- *   // Complete the deferred using the successEffect
  *   const isCompleted = yield* Deferred.into(successEffect, deferred)
- *
- *   // Access the value of the deferred
  *   const value = yield* Deferred.await(deferred)
- *   console.log(value)
- *
- *   return isCompleted
+ *   return [isCompleted, value]
  * })
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // 42
- * // true
+ * await Effect.runPromise(program) // => [true, 42]
  * ```
  *
  * @category Synchronization Utilities

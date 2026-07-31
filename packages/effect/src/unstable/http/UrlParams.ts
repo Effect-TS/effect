@@ -466,7 +466,6 @@ export const toString = (input: Input): string => new URLSearchParams(fromInput(
  *
  * ```ts import.meta.vitest
  * import { UrlParams } from "effect/unstable/http"
- * import * as assert from "node:assert"
  *
  * const urlParams = UrlParams.fromInput({
  *   a: 1,
@@ -474,12 +473,7 @@ export const toString = (input: Input): string => new URLSearchParams(fromInput(
  *   c: "string",
  *   e: [1, 2, 3]
  * })
- * const result = UrlParams.toRecord(urlParams)
- *
- * assert.deepStrictEqual(
- *   result,
- *   { "a": "1", "b": "true", "c": "string", "e": ["1", "2", "3"] }
- * )
+ * UrlParams.toRecord(urlParams) // => { a: "1", b: "true", c: "string", e: ["1", "2", "3"] }
  * ```
  *
  * @category converting
@@ -541,12 +535,11 @@ export interface schemaJsonField extends Schema.decodeTo<Schema.fromJsonString<S
  *   }))
  * )
  *
- * console.log(
- *   Schema.decodeSync(extractFoo)(UrlParams.fromInput({
- *     foo: JSON.stringify({ some: "bar", number: 42 }),
+ * const decoded = Schema.decodeSync(extractFoo)(UrlParams.fromInput({
+ *     foo: `{"some":"bar","number":42}`,
  *     baz: "qux"
  *   }))
- * )
+ * const result = [decoded.some, decoded.number] // => ["bar", 42]
  * ```
  *
  * @category schemas
@@ -603,12 +596,11 @@ export interface schemaRecord extends
  *   }))
  * )
  *
- * console.log(
- *   Schema.decodeSync(toStruct)(UrlParams.fromInput({
+ * const decoded = Schema.decodeSync(toStruct)(UrlParams.fromInput({
  *     some: "value",
  *     number: 42
  *   }))
- * )
+ * const result = [decoded.some, decoded.number] // => ["value", 42]
  * ```
  *
  * @category schemas

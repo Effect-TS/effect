@@ -100,11 +100,15 @@ export const registerProducer = (
  * **Example** (Creating a metrics layer with temporality)
  *
  * ```ts import.meta.vitest
- * import { OtelMetrics } from "@effect/opentelemetry"
- * import { PeriodicExportingMetricReader } from "@opentelemetry/sdk-metrics"
- * import { OTLPMetricExporter } from "@opentelemetry/exporter-metrics-otlp-http"
+ * import { OtelMetrics, Resource } from "@effect/opentelemetry"
+ * import {
+ *   AggregationTemporality,
+ *   InMemoryMetricExporter,
+ *   PeriodicExportingMetricReader
+ * } from "@opentelemetry/sdk-metrics"
+ * import { Effect, Layer } from "effect"
  *
- * const metricExporter = new OTLPMetricExporter({ url: "http://localhost:4318/v1/metrics" })
+ * const metricExporter = new InMemoryMetricExporter(AggregationTemporality.CUMULATIVE)
  *
  * // Use delta temporality for backends like Datadog or Dynatrace
  * const metricsLayer = OtelMetrics.layer(
@@ -120,6 +124,14 @@ export const registerProducer = (
  *   () => new PeriodicExportingMetricReader({ exporter: metricExporter }),
  *   { temporality: "cumulative" }
  * )
+ *
+ * const program = Layer.merge(metricsLayer, cumulativeLayer).pipe(
+ *   Layer.provide(Resource.layerEmpty),
+ *   Layer.build,
+ *   Effect.scoped
+ * )
+ *
+ * await Effect.runPromise(Effect.as(program, "metrics layers built")) // => "metrics layers built"
  * ```
  *
  * @category layers

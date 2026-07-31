@@ -49,9 +49,10 @@ const TypeId = "~effect/transactions/TxRef"
  *     yield* TxRef.set(ref, current + 1)
  *   }))
  *
- *   const final = yield* TxRef.get(ref)
- *   console.log(final) // 1
+ *   return yield* TxRef.get(ref)
  * })
+ *
+ * await Effect.runPromise(program) // => 1
  * ```
  *
  * @category models
@@ -88,9 +89,10 @@ export interface TxRef<in out A> extends Pipeable {
  *     yield* TxRef.set(name, "Bob")
  *   }))
  *
- *   console.log(yield* TxRef.get(counter)) // 42
- *   console.log(yield* TxRef.get(name)) // "Bob"
+ *   return [yield* TxRef.get(counter), yield* TxRef.get(name)]
  * })
+ *
+ * await Effect.runPromise(program) // => [42, "Bob"]
  * ```
  *
  * @category constructors
@@ -116,8 +118,8 @@ export const make = <A>(initial: A) => Effect.sync(() => makeUnsafe(initial))
  * const config = TxRef.makeUnsafe({ timeout: 5000, retries: 3 })
  *
  * // These are now ready to use in transactions
- * console.log(counter.value) // > 0
- * console.log(config.value) // > { timeout: 5000, retries: 3 }
+ * counter.value // => 0
+ * config.value // => { timeout: 5000, retries: 3 }
  * ```
  *
  * @category constructors
@@ -152,9 +154,10 @@ export const makeUnsafe = <A>(initial: A): TxRef<A> => ({
  *   // Modify and return both old and new value
  *   const result = yield* TxRef.modify(counter, (current) => [current * 2, current + 1])
  *
- *   console.log(result) // 0 (the return value: current * 2)
- *   console.log(yield* TxRef.get(counter)) // 1 (the new value: current + 1)
+ *   return [result, yield* TxRef.get(counter)]
  * })
+ *
+ * await Effect.runPromise(program) // => [0, 1]
  * ```
  *
  * @category combinators
@@ -202,8 +205,10 @@ export const modify: {
  *     TxRef.update(counter, (current) => current * 2)
  *   )
  *
- *   console.log(yield* TxRef.get(counter)) // 20
+ *   return yield* TxRef.get(counter)
  * })
+ *
+ * await Effect.runPromise(program) // => 20
  * ```
  *
  * @category combinators
@@ -237,8 +242,10 @@ export const update: {
  *     TxRef.get(counter)
  *   )
  *
- *   console.log(value) // 42
+ *   return value
  * })
+ *
+ * await Effect.runPromise(program) // => 42
  * ```
  *
  * @category combinators
@@ -266,8 +273,10 @@ export const get = <A>(self: TxRef<A>): Effect.Effect<A> => modify(self, (curren
  *     TxRef.set(counter, 100)
  *   )
  *
- *   console.log(yield* TxRef.get(counter)) // 100
+ *   return yield* TxRef.get(counter)
  * })
+ *
+ * await Effect.runPromise(program) // => 100
  * ```
  *
  * @category combinators

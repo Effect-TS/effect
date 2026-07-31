@@ -53,14 +53,22 @@ type IdleTimeToLiveInput<K> = Duration.Input | ((key: K) => Duration.Input)
  *   const layerMap = yield* createDatabaseLayerMap
  *
  *   // Get a layer for a specific environment
- *   const devLayer = layerMap.get("development")
+ *   const development = yield* Effect.provide(
+ *     DatabaseService.use((database) => database.query("SELECT 1")),
+ *     layerMap.get("development")
+ *   )
  *
  *   // Get context directly
- *   const context = yield* layerMap.contextEffect("production")
+ *   const productionContext = yield* layerMap.contextEffect("production")
+ *   const production = yield* Context.get(productionContext, DatabaseService).query("SELECT 1")
  *
  *   // Invalidate a cached layer
  *   yield* layerMap.invalidate("development")
+ *
+ *   return { development, production }
  * })
+ *
+ * await Effect.runPromise(Effect.scoped(program)) // => { development: "development: SELECT 1", production: "production: SELECT 1" }
  * ```
  *
  * @category models
@@ -117,16 +125,16 @@ export interface LayerMap<in out K, in out I, in out E = never> {
  *   const devLayer = layerMap.get("development")
  *
  *   // Use the layer to provide the service
- *   const result = yield* Effect.provide(
+ *   return yield* Effect.provide(
  *     Effect.gen(function*() {
  *       const db = yield* DatabaseService
  *       return yield* db.query("SELECT * FROM users")
  *     }),
  *     devLayer
  *   )
- *
- *   console.log(result) // "development: SELECT * FROM users"
  * })
+ *
+ * await Effect.runPromise(Effect.scoped(program)) // => "development: SELECT * FROM users"
  * ```
  *
  * @category constructors
@@ -185,21 +193,17 @@ export const make: <
  * ```ts import.meta.vitest
  * import { Context, Effect, Layer, LayerMap } from "effect"
  *
- * // Define service keys
- * const DevDatabase = Context.Service<{
+ * // Define a service key
+ * const Database = Context.Service<{
  *   readonly query: (sql: string) => Effect.Effect<string>
- * }>("DevDatabase")
- *
- * const ProdDatabase = Context.Service<{
- *   readonly query: (sql: string) => Effect.Effect<string>
- * }>("ProdDatabase")
+ * }>("Database")
  *
  * // Create predefined layers
  * const layers = {
- *   development: Layer.succeed(DevDatabase)({
+ *   development: Layer.succeed(Database)({
  *     query: Effect.fn("DevDatabase.query")((sql) => Effect.succeed(`DEV: ${sql}`))
  *   }),
- *   production: Layer.succeed(ProdDatabase)({
+ *   production: Layer.succeed(Database)({
  *     query: Effect.fn("ProdDatabase.query")((sql) => Effect.succeed(`PROD: ${sql}`))
  *   })
  * } as const
@@ -210,12 +214,19 @@ export const make: <
  *     idleTimeToLive: "10 seconds"
  *   })
  *
- *   // Get layers by key
- *   const devLayer = layerMap.get("development")
- *   const prodLayer = layerMap.get("production")
+ *   const development = yield* Effect.provide(
+ *     Database.use((database) => database.query("SELECT 1")),
+ *     layerMap.get("development")
+ *   )
+ *   const production = yield* Effect.provide(
+ *     Database.use((database) => database.query("SELECT 1")),
+ *     layerMap.get("production")
+ *   )
  *
- *   console.log("LayerMap created from record")
+ *   return { development, production }
  * })
+ *
+ * await Effect.runPromise(Effect.scoped(program)) // => { development: "DEV: SELECT 1", production: "PROD: SELECT 1" }
  * ```
  *
  * @category constructors
@@ -311,7 +322,7 @@ export interface TagClass<
  * **Example** (Defining a layer map service)
  *
  * ```ts import.meta.vitest
- * import { Console, Context, Effect, Layer, LayerMap } from "effect"
+ * import { Context, Effect, Layer, LayerMap } from "effect"
  *
  * // Define a service key
  * const Greeter = Context.Service<{
@@ -334,7 +345,7 @@ export interface TagClass<
  * const program = Effect.gen(function*() {
  *   // Access and use the Greeter service
  *   const greeter = yield* Greeter
- *   yield* Console.log(yield* greeter.greet)
+ *   return yield* greeter.greet
  * }).pipe(
  *   // Use the GreeterMap service to provide a variant of the Greeter service
  *   Effect.provide(GreeterMap.get("John"))
@@ -342,6 +353,8 @@ export interface TagClass<
  *   // Provide the GreeterMap layer
  *   Effect.provide(GreeterMap.layer)
  * )
+ *
+ * await Effect.runPromise(program) // => "Hello, John!"
  * ```
  *
  * @category services

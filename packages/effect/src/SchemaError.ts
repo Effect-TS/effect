@@ -29,8 +29,7 @@ const TypeId = "~effect/SchemaError/SchemaError"
  *   Schema.decodeUnknownSync(Schema.Number)("not a number")
  * } catch (err) {
  *   if (Schema.isSchemaError(err)) {
- *     console.log(err.message)
- *     // Expected number, actual "not a number"
+ *     err.message // => "Expected number, got \"not a number\""
  *   }
  * }
  * ```

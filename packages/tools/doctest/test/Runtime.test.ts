@@ -1,31 +1,18 @@
 import * as Runtime from "@effect/doctest/Runtime"
-import { assert } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
+import { HashMap, Option } from "effect"
 
-const log = console.log
-const dir = console.dir
+describe("Runtime", () => {
+  it("compares Effect values with Equal.equals", () => {
+    Runtime.assertEquals(Option.some(1), Option.some(1))
+    Runtime.assertEquals(HashMap.make(["a", 1]), HashMap.make(["a", 1]))
+  })
 
-Runtime.test(
-  "asserts formatted console output",
-  () => {
-    console.log("Hello")
-    console.dir({ value: 1 })
-    console.warn("Warning")
-  },
-  "Hello\n{ value: 1 }\nWarning"
-)
+  it("reports unequal values", () => {
+    assert.throws(() => Runtime.assertEquals(Option.some(1), Option.some(2)))
+  })
+})
 
-Runtime.test(
-  "supports labeled single-line wildcards",
-  () => {
-    console.log("Before")
-    console.log({ environment: process.platform })
-    console.log("After")
-  },
-  "Before\n<platform-specific value>\nAfter"
-)
-
-Runtime.test("runs examples without expected output", () => {
-  assert.strictEqual(1 + 1, 2)
-  assert.strictEqual(console.log, log)
-  assert.strictEqual(console.dir, dir)
+Runtime.test("registers documentation tests", () => {
+  Runtime.assertEquals(Option.none(), Option.none())
 })

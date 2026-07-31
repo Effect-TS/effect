@@ -346,6 +346,8 @@ export const doneExitFromCause = <E>(cause: Cause.Cause<E>): Exit.Exit<Cause.Don
  *   onFailure: (cause) => Effect.succeed(`Got error: ${cause}`),
  *   onDone: (leftover) => Effect.succeed(`Stream halted with: ${leftover}`)
  * })
+ *
+ * await Effect.runPromise(result) // => "Stream halted with: stream ended"
  * ```
  *
  * @category pattern matching
