@@ -708,9 +708,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   setContext(context: Context.Context<never>): void {
     const previous = this.context
     this.context = context
-    // Every key cached below must have a slab slot (References always do;
-    // ParentSpan opts in via `slot: true`), so a shared slab means none of
-    // them changed
+    // Every key cached below opts in to a slab slot, so a shared slab means
+    // none of them changed
     if (previous !== undefined && Context.unsafeHasSameSlab(previous, context)) return
     const scheduler = this.getRef(Scheduler.Scheduler)
     if (scheduler !== this.currentScheduler) {

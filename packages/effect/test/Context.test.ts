@@ -35,11 +35,20 @@ describe("Context", () => {
     ])
   })
 
-  it("supports slot-allocated services", () => {
-    const Slotted = Context.Service<number>("ContextTest/Slotted", { slot: true })
-    class SlottedClass extends Context.Service<SlottedClass, number>()("ContextTest/SlottedClass", { slot: true }) {}
+  it("allocates slab slots only when requested", () => {
+    const Slotted = Context.Service<number>("ContextTest/Slotted", { allocateSlot: true })
+    class SlottedClass extends Context.Service<SlottedClass, number>()("ContextTest/SlottedClass", {
+      allocateSlot: true
+    }) {}
+    const Ref = Context.Reference<number>("ContextTest/Ref", { defaultValue: () => 0 })
+    const SlottedRef = Context.Reference<number>("ContextTest/SlottedRef", {
+      allocateSlot: true,
+      defaultValue: () => 0
+    })
 
     const source = Context.make(A, 1)
+    assertTrue(Context.unsafeHasSameSlab(source, Context.add(source, Ref, 1)))
+    assertFalse(Context.unsafeHasSameSlab(source, Context.add(source, SlottedRef, 1)))
     const context = source.pipe(
       Context.add(Slotted, 2),
       Context.add(SlottedClass, 3)

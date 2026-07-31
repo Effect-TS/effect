@@ -167,7 +167,7 @@ export const ParentSpanKey = "effect/Tracer/ParentSpan"
  * @category services
  * @since 2.0.0
  */
-export class ParentSpan extends Context.Service<ParentSpan, AnySpan>()(ParentSpanKey, { slot: true }) {}
+export class ParentSpan extends Context.Service<ParentSpan, AnySpan>()(ParentSpanKey, { allocateSlot: true }) {}
 
 /**
  * Represents a span created outside Effect's tracer, carrying trace and span
@@ -629,6 +629,7 @@ export const TracerKey = "effect/Tracer"
  * @since 2.0.0
  */
 export const Tracer: Context.Reference<Tracer> = Context.Reference<Tracer>(TracerKey, {
+  allocateSlot: true,
   defaultValue: () =>
     make({
       span: (options) => new NativeSpan(options)
