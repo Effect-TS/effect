@@ -2101,19 +2101,15 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
  * ```ts import.meta.vitest
  * import { Metric } from "effect"
  *
- * const counter = Metric.counter("requests")
- * const gauge = Metric.gauge("temperature")
- * const notAMetric = { name: "fake-metric" }
- *
- * const checks = [Metric.isMetric(counter), Metric.isMetric(gauge), Metric.isMetric(notAMetric), Metric.isMetric(null)]
- * checks // => [false, false, false, false]
+ * Metric.isMetric(Metric.counter("requests")) // => true
+ * Metric.isMetric({ name: "requests" }) // => false
  * ```
  *
  * @category guards
  * @since 4.0.0
  */
 export const isMetric = (u: unknown): u is Metric<unknown, never> =>
-  Predicate.hasProperty(u, "~effect/Metric") && u["~effect/Metric"] === "~effect/Metric"
+  Predicate.hasProperty(u, TypeId) && u[TypeId] === TypeId
 
 /**
  * Represents a Counter metric that tracks cumulative numerical values over
