@@ -190,8 +190,8 @@ export const make = Effect.gen(function*() {
       }),
     asHttpEffect() {
       let handler = Effect.withFiber<HttpServerResponse.HttpServerResponse, unknown>((fiber) => {
-        const contextMap = new Map(fiber.context.mapUnsafe)
-        const request = contextMap.get(HttpServerRequest.HttpServerRequest.key) as HttpServerRequest.HttpServerRequest
+        let context = fiber.context
+        const request = Context.getUnsafe(context, HttpServerRequest.HttpServerRequest)
         let result = router.find(request.method, request.url)
         if (result === undefined && request.method === "HEAD") {
           result = router.find("GET", request.url)
@@ -205,15 +205,19 @@ export const make = Effect.gen(function*() {
         }
         const route = result.handler
         if (Option.isSome(route.prefix)) {
-          contextMap.set(HttpServerRequest.HttpServerRequest.key, sliceRequestUrl(request, route.prefix.value))
+          context = Context.add(
+            context,
+            HttpServerRequest.HttpServerRequest,
+            sliceRequestUrl(request, route.prefix.value)
+          )
         }
-        contextMap.set(HttpServerRequest.ParsedSearchParams.key, result.searchParams)
-        contextMap.set(RouteContext.key, {
+        context = Context.add(context, HttpServerRequest.ParsedSearchParams, result.searchParams)
+        context = Context.add(context, RouteContext, {
           route,
           params: result.params
         })
 
-        const span = contextMap.get(Tracer.ParentSpan.key) as Tracer.Span | undefined
+        const span = Context.getOrUndefined(context, Tracer.ParentSpan) as Tracer.Span | undefined
         if (span && span._tag === "Span") {
           span.attribute("http.route", route.path)
         }
@@ -224,7 +228,7 @@ export const make = Effect.gen(function*() {
               HttpServerResponse.HttpServerResponse,
               unknown
             >,
-          () => Context.makeUnsafe(contextMap)
+          () => context
         )
       })
       if (middleware.size === 0) return handler

@@ -643,6 +643,18 @@ export const unsafeMakeSlot = (key: Key<any, any>): void => {
   allocateSlot(key)
 }
 
+/** @internal */
+export const unsafeHasSameSlab = <Services, Services2>(
+  self: Context<Services>,
+  that: Context<Services2>
+): boolean => (self as ContextImpl<Services>).slab === (that as ContextImpl<Services2>).slab
+
+/** @internal */
+export const unsafeGetByKey = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
+  const value = lookup(self as ContextImpl<Services>, key, slotByKey.get(key))
+  return value === Unset ? undefined : value as A
+}
+
 /**
  * Checks whether the provided argument is a `Context`.
  *
@@ -1227,6 +1239,22 @@ export const merge: {
   const thatImpl = that as ContextImpl<R1>
   if (selfImpl.size === 0) return that as any
   if (thatImpl.size === 0) return self as any
+  if (selfImpl.mutable) {
+    const base = selfImpl.base as Map<string, any>
+    const slab = selfImpl.slab as Array<unknown>
+    flatten(thatImpl).forEach((value, key) => {
+      const grew = !base.has(key)
+      base.set(key, value)
+      const slot = slotByKey.get(key)
+      if (slot !== undefined) {
+        while (slab.length <= slot) slab.push(Unset)
+        slab[slot] = value
+      }
+      selfImpl.size += grew ? 1 : 0
+    })
+    selfImpl._flat = undefined
+    return self as any
+  }
   const map = new Map(flatten(selfImpl))
   flatten(thatImpl).forEach((value, key) => map.set(key, value))
   return fromMap(map)
@@ -1319,8 +1347,22 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
 ) =>
 <Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> => {
   const keep = new Set(services.map((key) => key.key))
+  const impl = self as ContextImpl<Services>
+  if (impl.mutable) {
+    const base = impl.base as Map<string, any>
+    const slab = impl.slab as Array<unknown>
+    base.forEach((_, key) => {
+      if (keep.has(key)) return
+      base.delete(key)
+      const slot = slotByKey.get(key)
+      if (slot !== undefined && slot < slab.length) slab[slot] = Unset
+    })
+    impl.size = base.size
+    impl._flat = undefined
+    return self as any
+  }
   const map = new Map<string, any>()
-  flatten(self as ContextImpl<Services>).forEach((value, key) => {
+  flatten(impl).forEach((value, key) => {
     if (keep.has(key)) map.set(key, value)
   })
   return fromMap(map)
@@ -1362,8 +1404,21 @@ export const omit = <S extends ReadonlyArray<Key<any, any>>>(
 ) =>
 <Services>(self: Context<Services>): Context<Exclude<Services, Service.Identifier<S[number]>>> => {
   const drop = new Set(keys.map((key) => key.key))
+  const impl = self as ContextImpl<Services>
+  if (impl.mutable) {
+    const base = impl.base as Map<string, any>
+    const slab = impl.slab as Array<unknown>
+    drop.forEach((key) => {
+      if (!base.delete(key)) return
+      const slot = slotByKey.get(key)
+      if (slot !== undefined && slot < slab.length) slab[slot] = Unset
+    })
+    impl.size = base.size
+    impl._flat = undefined
+    return self as any
+  }
   const map = new Map<string, any>()
-  flatten(self as ContextImpl<Services>).forEach((value, key) => {
+  flatten(impl).forEach((value, key) => {
     if (!drop.has(key)) map.set(key, value)
   })
   return fromMap(map)

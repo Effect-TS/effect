@@ -125,12 +125,12 @@ export const make = Effect.fnUntraced(function*(
         info: Deno.ServeHandlerInfo<Deno.NetAddr | Deno.UnixAddr>
       ): Promise<Response> {
         return new Promise<Response>((resolve) => {
-          const map = new Map(services.mapUnsafe)
-          map.set(
-            ServerRequest.HttpServerRequest.key,
+          const context = Context.add(
+            services,
+            ServerRequest.HttpServerRequest,
             new DenoServerRequest(request, info.remoteAddr, resolve, removeHost(request.url), websocket)
           )
-          const fiber = Fiber.runIn(Effect.runForkWith(Context.makeUnsafe<any>(map))(httpEffect), scope)
+          const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
           request.signal.addEventListener("abort", () => {
             fiber.interruptUnsafe(parent.id, Error.ClientAbort.annotation)
           }, { once: true })

@@ -706,20 +706,22 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     return pipeArguments(this, arguments)
   }
   setContext(context: Context.Context<never>): void {
+    const previous = this.context
     this.context = context
+    if (previous !== undefined && Context.unsafeHasSameSlab(previous, context)) return
     const scheduler = this.getRef(Scheduler.Scheduler)
     if (scheduler !== this.currentScheduler) {
       this.currentScheduler = scheduler
       this._dispatcher = undefined
     }
-    this.currentSpan = context.mapUnsafe.get(Tracer.ParentSpanKey)
+    this.currentSpan = Context.unsafeGetByKey(context, Tracer.ParentSpanKey)
     this.currentLogLevel = this.getRef(CurrentLogLevel)
     this.minimumLogLevel = this.getRef(MinimumLogLevel)
-    this.currentStackFrame = context.mapUnsafe.get(CurrentStackFrame.key)
+    this.currentStackFrame = this.getRef(CurrentStackFrame)
     this.maxOpsBeforeYield = this.getRef(Scheduler.MaxOpsBeforeYield)
     this.currentPreventYield = this.getRef(Scheduler.PreventSchedulerYield)
-    this.runtimeMetrics = context.mapUnsafe.get(InternalMetric.FiberRuntimeMetricsKey)
-    const currentTracer = context.mapUnsafe.get(Tracer.TracerKey)
+    this.runtimeMetrics = Context.unsafeGetByKey(context, InternalMetric.FiberRuntimeMetricsKey)
+    const currentTracer = Context.unsafeGetByKey<Tracer.Tracer>(context, Tracer.TracerKey)
     this.currentTracerContext = currentTracer ? currentTracer["context"] : undefined
   }
   get currentSpanLocal(): Tracer.Span | undefined {

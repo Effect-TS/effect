@@ -1,6 +1,7 @@
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
+import * as Option from "effect/Option"
 import { describe, it } from "vitest"
 
 describe("Context", () => {
@@ -120,6 +121,18 @@ describe("Context", () => {
       })
     )
     assertFalse(thrownInput!.mutable)
+  })
+
+  it("applies merge and removal operations in a mutation", () => {
+    const source = Context.make(A, 1).pipe(Context.add(B, 2))
+    const result = Context.mutate(source, (mutable) => {
+      Context.addOrOmit(mutable, B, Option.none())
+      return Context.merge(mutable, Context.make(C, 3))
+    })
+
+    deepStrictEqual([...source.mapUnsafe], [[A.key, 1], [B.key, 2]])
+    deepStrictEqual([...result.mapUnsafe], [[A.key, 1], [C.key, 3]])
+    assertFalse(result.mutable)
   })
 
   it("resolves reference defaults lazily and caches them", () => {
