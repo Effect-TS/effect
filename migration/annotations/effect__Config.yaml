@@ -72,7 +72,7 @@
   note: "Unchanged."
 "effect/Config#primitive":
   replacement: "Config.schema(customSchema, path)"
-  note: "Custom primitive parsing moved to Schema codecs; express decoding and diagnostics in a Schema, then pass it to Config.schema."
+  note: "Custom primitive parsing moved to Schema codecs; express decoding and diagnostics in a Schema, then pass it to Config.schema. Its canonical StringTree encoding must expose a concrete shape; opaque encodings such as Schema.Any or Schema.Unknown are not supported."
 "effect/Config#redacted":
   replacement: "Config.redacted"
   note: "The string/path overload remains; replace the v3 Config argument overload with Config.map(config, Redacted.make)."

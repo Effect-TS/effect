@@ -649,67 +649,16 @@ const cursorToString = (): string => "<configuration>"
 const loadCursor: (
   provider: ConfigProvider.ConfigProvider,
   path: Path
-) => Effect.Effect<ConfigCursor> = Effect.fnUntraced(function*(
-  provider,
-  path
-) {
-  const node = yield* provider.load(path).pipe(Effect.orDie)
-  return { provider, path, node, toString: cursorToString }
-})
+) => Effect.Effect<ConfigCursor> = (provider, path) =>
+  provider.load(path).pipe(
+    Effect.orDie,
+    Effect.mapEager((node) => ({ provider, path, node, toString: cursorToString }))
+  )
 
 const loadChildCursor = (cursor: ConfigCursor, segment: string | number): Effect.Effect<ConfigCursor> =>
   loadCursor(cursor.provider, [...cursor.path, segment])
 
-const getScalar = (node: ConfigProvider.Node | undefined): string | undefined => {
-  if (node === undefined) return undefined
-  switch (node._tag) {
-    case "Value":
-      return node.value
-    case "Record":
-    case "Array":
-      return node.value
-  }
-}
-
-const materializeOpaque: (cursor: ConfigCursor) => Effect.Effect<Schema.StringTree, SchemaIssue.Issue> = Effect
-  .fnUntraced(function*(cursor) {
-    if (cursor.node === undefined) return undefined
-    const node = cursor.node
-    switch (node._tag) {
-      case "Value":
-        return node.value
-      case "Record": {
-        if (node.value !== undefined) {
-          return yield* Effect.fail(
-            new SchemaIssue.Forbidden(Option.none(), {
-              message: "Cannot materialize both the scalar and record representations"
-            })
-          )
-        }
-        const out: Record<string, Schema.StringTree> = {}
-        for (const key of node.keys) {
-          const child = yield* loadChildCursor(cursor, key)
-          const value = yield* materializeOpaque(child)
-          if (value !== undefined) InternalRecord.assignProperty(out, key, value)
-        }
-        return out
-      }
-      case "Array": {
-        if (node.value !== undefined) {
-          return yield* Effect.fail(
-            new SchemaIssue.Forbidden(Option.none(), {
-              message: "Cannot materialize both the scalar and array representations"
-            })
-          )
-        }
-        const out: Array<Schema.StringTree> = []
-        for (let i = 0; i < node.length; i++) {
-          out.push(yield* materializeOpaque(yield* loadChildCursor(cursor, i)))
-        }
-        return out
-      }
-    }
-  })
+const getScalar = (node: ConfigProvider.Node | undefined): string | undefined => node?.value
 
 const decodeFromCursor = (
   ast: SchemaAST.AST,
@@ -720,7 +669,7 @@ const decodeFromCursor = (
     ast,
     new SchemaTransformation.Transformation(
       SchemaGetter.transformOrFail((input: unknown) => decode(input as ConfigCursor)),
-      SchemaGetter.forbidden(() => "Config cursor encoding is not supported")
+      SchemaGetter.passthrough()
     )
   )
 
@@ -731,8 +680,6 @@ const isScalarInput = (ast: SchemaAST.AST): boolean => {
     case "Objects":
     case "Arrays":
     case "Suspend":
-    case "Declaration":
-    case "Any":
       return false
     default:
       return true
@@ -752,67 +699,76 @@ const hasProviderInput = (
       return ast.types.some((ast) => hasProviderInput(ast, node))
     case "Suspend":
       return hasProviderInput(ast.thunk(), node)
-    case "Declaration":
-    case "Any":
-      return node !== undefined
     default:
       return getScalar(node) !== undefined
   }
 }
 
-const toConfigCursorAST = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
-  switch (ast._tag) {
-    case "Objects": {
-      const matchesIndex = ast.indexSignatures.map((is) => SchemaParser._is(is.parameter))
-      const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
-        if (cursor.node?._tag !== "Record") {
-          return undefined
-        }
-        const node = cursor.node
-        const keys = new Set<string>()
-        for (const property of ast.propertySignatures) {
-          if (typeof property.name === "string") keys.add(property.name)
-        }
-        if (matchesIndex.length > 0) {
-          for (const key of node.keys) {
-            if (matchesIndex.some((matches) => matches(key))) keys.add(key)
+const toConfigCursorAST = (root: SchemaAST.AST): SchemaAST.AST => {
+  const seen = new WeakSet<SchemaAST.AST>()
+  const recur = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
+    seen.add(ast)
+    switch (ast._tag) {
+      case "Objects": {
+        const matchesIndex = ast.indexSignatures.map((is) => SchemaParser._is(is.parameter))
+        const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
+          if (cursor.node?._tag !== "Record") {
+            return undefined
           }
+          const node = cursor.node
+          const keys = new Set<string>()
+          for (const property of ast.propertySignatures) {
+            if (typeof property.name === "string") keys.add(property.name)
+          }
+          if (matchesIndex.length > 0) {
+            for (const key of node.keys) {
+              if (matchesIndex.some((matches) => matches(key))) keys.add(key)
+            }
+          }
+          const out: Record<string, ConfigCursor> = {}
+          for (const key of keys) {
+            const child = yield* loadChildCursor(cursor, key)
+            if (child.node !== undefined) InternalRecord.assignProperty(out, key, child)
+          }
+          return out
+        })
+        return decodeFromCursor(ast.recur(recur, (ast) => ast), materialize)
+      }
+      case "Arrays": {
+        const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
+          if (cursor.node?._tag !== "Array") {
+            return undefined
+          }
+          const out: Array<ConfigCursor> = []
+          for (let i = 0; i < cursor.node.length; i++) {
+            out.push(yield* loadChildCursor(cursor, i))
+          }
+          return out
+        })
+        return decodeFromCursor(ast.recur(recur), materialize)
+      }
+      case "Union":
+        for (const member of ast.types) {
+          recur(member)
         }
-        const out: Record<string, ConfigCursor> = {}
-        for (const key of keys) {
-          const child = yield* loadChildCursor(cursor, key)
-          if (child.node !== undefined) InternalRecord.assignProperty(out, key, child)
-        }
-        return out
-      })
-      return decodeFromCursor(ast.recur(toConfigCursorAST, (ast) => ast), materialize)
+        return isScalarInput(ast)
+          ? decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
+          : ast.recur(recur)
+      case "Suspend": {
+        const target = ast.thunk()
+        // Force new branches so opaque encodings fail when the Config is constructed.
+        if (!seen.has(target)) recur(target)
+        return ast.recur(recur)
+      }
+      case "Declaration":
+      case "Any":
+        throw new globalThis.Error("Config.schema does not support opaque StringTree encodings", { cause: ast })
+      default:
+        return decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
     }
-    case "Arrays": {
-      const materialize = Effect.fnUntraced(function*(cursor: ConfigCursor) {
-        if (cursor.node?._tag !== "Array") {
-          return undefined
-        }
-        const out: Array<ConfigCursor> = []
-        for (let i = 0; i < cursor.node.length; i++) {
-          out.push(yield* loadChildCursor(cursor, i))
-        }
-        return out
-      })
-      return decodeFromCursor(ast.recur(toConfigCursorAST), materialize)
-    }
-    case "Union":
-      return isScalarInput(ast)
-        ? decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
-        : ast.recur(toConfigCursorAST)
-    case "Suspend":
-      return ast.recur(toConfigCursorAST)
-    case "Declaration":
-    case "Any":
-      return decodeFromCursor(ast, materializeOpaque)
-    default:
-      return decodeFromCursor(ast, (cursor) => Effect.succeed(getScalar(cursor.node)))
-  }
-})
+  })
+  return recur(root)
+}
 
 /**
  * Creates a `Config<T>` from a `Schema.Codec`.
@@ -859,10 +815,15 @@ const toConfigCursorAST = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
  * fields are validated. The same empty parent container does not make an
  * `all` group present when all of its child configs are absent.
  *
- * An opaque schema such as `Schema.Unknown` can recursively load an
- * unambiguous subtree. It fails when a provider node contains both a scalar and
- * a structural representation because the schema provides no shape with which
- * to choose between them.
+ * The canonical `StringTree` encoding must expose a concrete scalar, object,
+ * array, or union shape. Opaque encodings such as `Schema.Any`,
+ * `Schema.Unknown`, `Schema.ObjectKeyword`, `Schema.Json`, and
+ * `Schema.MutableJson` are rejected synchronously when this config is
+ * constructed, including when they are nested in another schema. Suspended
+ * recursive schemas remain supported when their eventual shape is concrete.
+ * Declarations such as `Schema.URL` also remain supported when their canonical
+ * encoding has a concrete shape. To read arbitrary JSON from one scalar value,
+ * use `Schema.fromJsonString(Schema.Json)`.
  *
  * **Example** (Reading a structured config)
  *
@@ -903,17 +864,17 @@ export function schema<T>(codec: Schema.ConstraintCodec<T, unknown>, path?: stri
       Effect.flatMapEager((cursor) => {
         const hasInput = hasProviderInput(encodedAst, cursor.node)
         return catchSourceError(
-          Effect.matchEffect(decodeCursor(cursor), {
-            onFailure: (issue) => {
+          decodeCursor(cursor).pipe(
+            Effect.mapEager((value) => resolved(value, hasInput)),
+            Effect.catchEager((issue) => {
               const error = new ConfigError(
                 new Schema.SchemaError(fullPath.length > 0 ? new SchemaIssue.Pointer(fullPath, issue) : issue)
               )
               return hasInput
                 ? Effect.fail(evaluationFailure(error, true))
                 : Effect.succeed(absent(error))
-            },
-            onSuccess: (value) => Effect.succeed(resolved(value, hasInput))
-          }),
+            })
+          ),
           hasInput
         )
       })

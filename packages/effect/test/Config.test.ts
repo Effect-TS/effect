@@ -1502,52 +1502,58 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
       })
 
       describe("Opaque schemas", () => {
-        it("materializes an unambiguous provider subtree", async () => {
-          await assertSuccess(
-            Config.schema(Schema.Unknown, "value"),
-            ConfigProvider.fromUnknown({
-              value: {
-                child: "nested"
-              }
-            }),
-            {
-              child: "nested"
-            }
-          )
-        })
+        const unsupported = [
+          ["Any", Schema.Any],
+          ["Unknown", Schema.Unknown],
+          ["ObjectKeyword", Schema.ObjectKeyword],
+          ["Json", Schema.Json],
+          ["MutableJson", Schema.MutableJson]
+        ] as const
 
-        it("rejects ambiguous scalar and record representations", async () => {
-          await assertFailure(
-            Config.schema(Schema.Unknown, "value"),
-            ConfigProvider.fromEnv({
-              env: {
-                value: "scalar",
-                value_child: "nested"
-              }
-            }),
-            `Cannot materialize both the scalar and record representations
-  at ["value"]`
-          )
-        })
-
-        it.effect("rejects ambiguous scalar and array representations", () =>
-          Effect.gen(function*() {
-            const provider = ConfigProvider.make((path) => {
-              if (path.length === 1 && path[0] === "value") {
-                return Effect.succeed(ConfigProvider.makeArray(1, "scalar"))
-              }
-              if (path.length === 2 && path[0] === "value" && path[1] === 0) {
-                return Effect.succeed(ConfigProvider.makeValue("element"))
-              }
-              return Effect.succeed(undefined)
-            })
-
-            const error = yield* Config.schema(Schema.Unknown, "value").parse(provider).pipe(Effect.flip)
-            assert.strictEqual(
-              error.cause.message,
-              `Cannot materialize both the scalar and array representations
-  at ["value"]`
+        for (const [name, schema] of unsupported) {
+          it(`rejects Schema.${name}`, () => {
+            assert.throws(
+              () => Config.schema(schema),
+              /Config\.schema does not support opaque StringTree encodings/
             )
+          })
+        }
+
+        it("rejects opaque shapes nested in objects", () => {
+          assert.throws(
+            () => Config.schema(Schema.Struct({ value: Schema.Unknown })),
+            /Config\.schema does not support opaque StringTree encodings/
+          )
+        })
+
+        it("rejects opaque union members", () => {
+          assert.throws(
+            () => Config.schema(Schema.Union([Schema.String, Schema.Unknown])),
+            /Config\.schema does not support opaque StringTree encodings/
+          )
+        })
+
+        it("rejects opaque shapes behind suspensions", () => {
+          assert.throws(
+            () => Config.schema(Schema.suspend(() => Schema.Unknown)),
+            /Config\.schema does not support opaque StringTree encodings/
+          )
+        })
+
+        it.effect("supports declarations with concrete StringTree encodings", () =>
+          Effect.gen(function*() {
+            const provider = ConfigProvider.fromUnknown({ value: "https://example.com" })
+            const value = yield* Config.schema(Schema.URL, "value").parse(provider)
+
+            assert.strictEqual(value.href, "https://example.com/")
+          }))
+
+        it.effect("supports arbitrary JSON encoded in a scalar string", () =>
+          Effect.gen(function*() {
+            const provider = ConfigProvider.fromUnknown({ value: `{"nested":[1,true]}` })
+            const value = yield* Config.schema(Schema.fromJsonString(Schema.Json), "value").parse(provider)
+
+            assert.deepStrictEqual(value, { nested: [1, true] })
           }))
       })
 

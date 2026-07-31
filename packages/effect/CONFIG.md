@@ -289,7 +289,7 @@ This keeps the provider responsible only for reporting what exists. Schema remai
 
 Plain `Schema.Array` and `Schema.Record` accept structural provider input only. Use `Config.Array` for separated scalar input such as `"a,b,c"`, and `Config.Record` for input such as `"a=1,b=2"`.
 
-When the schema does not reveal a shape, as with `Schema.Unknown`, `Config.schema` can load an unambiguous subtree recursively. If the same node has both a scalar and a record or array representation, loading fails instead of discarding one representation.
+The canonical `StringTree` encoding must expose a concrete scalar, object, array, or union shape. `Config.schema` rejects opaque encodings such as `Schema.Any`, `Schema.Unknown`, `Schema.ObjectKeyword`, `Schema.Json`, and `Schema.MutableJson` synchronously when the config is constructed, including when they are nested in another schema. Suspended recursive schemas and declarations such as `Schema.URL` remain supported when their eventual canonical encoding has a concrete shape. To read arbitrary JSON from one scalar provider value, use `Schema.fromJsonString(Schema.Json)`.
 
 ### Custom Config Logic
 
