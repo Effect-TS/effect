@@ -22,6 +22,7 @@ import { reportCauseUnsafe } from "../../internal/effect.ts"
 import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Pull from "../../Pull.ts"
 import * as Queue from "../../Queue.ts"
 import * as Schedule from "../../Schedule.ts"
@@ -36,7 +37,7 @@ import * as Headers from "../http/Headers.ts"
 import * as HttpRouter from "../http/HttpRouter.ts"
 import * as HttpServerRequest from "../http/HttpServerRequest.ts"
 import * as HttpServerResponse from "../http/HttpServerResponse.ts"
-import type * as Socket from "../socket/Socket.ts"
+import * as Socket from "../socket/Socket.ts"
 import * as SocketServer from "../socket/SocketServer.ts"
 import * as Transferable from "../workers/Transferable.ts"
 import type { WorkerError } from "../workers/WorkerError.ts"
@@ -1465,6 +1466,9 @@ const makeSocketProtocol: Effect.Effect<
           step: constVoid
         })
       } catch (cause) {
+        if (Predicate.isTagged(cause, "MaxBufferSizeExceeded")) {
+          return writeRaw(new Socket.CloseEvent(1009, String(cause)))
+        }
         return writeRaw(parser.encode(ResponseDefectEncoded(cause))!)
       }
     }).pipe(

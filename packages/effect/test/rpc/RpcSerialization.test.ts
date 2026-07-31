@@ -1,4 +1,5 @@
 import { afterEach, assert, describe, it } from "@effect/vitest"
+import { Effect } from "effect"
 import { RpcSerialization } from "effect/unstable/rpc"
 
 const responseExitSuccess = (requestId: string | number, value: unknown) => ({
@@ -30,6 +31,16 @@ const expectedJsonRpcSuccess = [{
     value: "ok"
   }
 }]
+
+const assertMaxBufferSizeExceeded = (f: () => unknown, maxBufferSize: number) => {
+  try {
+    f()
+    assert.fail("Expected MaxBufferSizeExceeded")
+  } catch (error) {
+    assert.instanceOf(error, RpcSerialization.MaxBufferSizeExceeded)
+    assert.strictEqual(error.maxBufferSize, maxBufferSize)
+  }
+}
 
 describe("RpcSerialization", () => {
   describe.sequential("jsonRpc inherited properties", () => {
@@ -76,6 +87,40 @@ describe("RpcSerialization", () => {
     const decoded = parser.decode("{\"a\":1}")
     assert.strictEqual(decoded.length, 1)
     assert.deepStrictEqual(decoded, [{ a: 1 }])
+  })
+
+  it("ndjson fails when an unterminated frame exceeds maxBufferSize", () => {
+    const parser = RpcSerialization.makeNdjson({ maxBufferSize: 4 }).makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("12"), [])
+    assert.deepStrictEqual(parser.decode("34"), [])
+    assertMaxBufferSizeExceeded(() => parser.decode("5"), 4)
+  })
+
+  it("ndjson allows an unbounded incomplete frame", () => {
+    const parser = RpcSerialization.makeNdjson({ maxBufferSize: "unbounded" }).makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("x".repeat(1024)), [])
+  })
+
+  it.effect("layerNdjsonWith forwards maxBufferSize to its decoder", () =>
+    Effect.gen(function*() {
+      const serialization = yield* RpcSerialization.RpcSerialization
+      const parser = serialization.makeUnsafe()
+
+      assert.deepStrictEqual(parser.decode("12"), [])
+      assert.deepStrictEqual(parser.decode("34"), [])
+      assertMaxBufferSizeExceeded(() => parser.decode("5"), 4)
+    }).pipe(
+      Effect.provide(RpcSerialization.layerNdjsonWith({ maxBufferSize: 4 }))
+    ))
+
+  it("ndJsonRpc forwards maxBufferSize to its ndjson framing parser", () => {
+    const parser = RpcSerialization.ndJsonRpc({ maxBufferSize: 4 }).makeUnsafe()
+
+    assert.deepStrictEqual(parser.decode("12"), [])
+    assert.deepStrictEqual(parser.decode("34"), [])
+    assert.throws(() => parser.decode("5"), RpcSerialization.MaxBufferSizeExceeded)
   })
 
   it("jsonRpc encodes a non-batched single response array as an object", () => {
@@ -222,4 +267,35 @@ describe("RpcSerialization", () => {
     assert.strictEqual(decoded.length, 1)
     assert.deepStrictEqual(decoded[0], payload)
   })
+
+  it("makeMsgPack fails when incomplete frames exceed maxBufferSize", () => {
+    const parser = RpcSerialization.makeMsgPack({ maxBufferSize: 2 }).makeUnsafe()
+    const incompleteFrame = Uint8Array.of(0xd9)
+
+    assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+    assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+    assertMaxBufferSizeExceeded(() => parser.decode(incompleteFrame), 2)
+  })
+
+  it("makeMsgPack allows an unbounded incomplete frame", () => {
+    const parser = RpcSerialization.makeMsgPack({ maxBufferSize: "unbounded" }).makeUnsafe()
+    const incompleteFrame = Uint8Array.of(0xd9)
+
+    for (let i = 0; i < 20; i++) {
+      assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+    }
+  })
+
+  it.effect("layerMsgPackWith forwards maxBufferSize to its decoder", () =>
+    Effect.gen(function*() {
+      const serialization = yield* RpcSerialization.RpcSerialization
+      const parser = serialization.makeUnsafe()
+      const incompleteFrame = Uint8Array.of(0xd9)
+
+      assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+      assert.deepStrictEqual(parser.decode(incompleteFrame), [])
+      assertMaxBufferSizeExceeded(() => parser.decode(incompleteFrame), 2)
+    }).pipe(
+      Effect.provide(RpcSerialization.layerMsgPackWith({ maxBufferSize: 2 }))
+    ))
 })
