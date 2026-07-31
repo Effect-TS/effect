@@ -3,8 +3,10 @@ import { MysqlClient } from "@effect/sql-mysql2"
 import { PgClient } from "@effect/sql-pg"
 import { Clock, Context, Duration, Effect, Exit, Latch, Layer, Option, Redacted, Scope } from "effect"
 import {
+  ClusterWorkflowEngine,
   type Entity,
   EntityId,
+  type MessageStorage,
   type Runner as RunnerModel,
   RunnerAddress,
   RunnerHealth,
@@ -21,6 +23,7 @@ import type { Rpc } from "effect/unstable/rpc"
 import { RpcSerialization } from "effect/unstable/rpc"
 import * as SocketServer from "effect/unstable/socket/SocketServer"
 import { SqlClient } from "effect/unstable/sql"
+import { WorkflowEngine } from "effect/unstable/workflow"
 import { inject } from "vitest"
 
 export type Backend = "mysql" | "pg"
@@ -43,7 +46,9 @@ export interface MessageCounts {
 export interface MakeOptions {
   readonly backend: Backend
   readonly config?: Partial<ShardingConfig.ShardingConfig["Service"]> | undefined
-  readonly entities: Layer.Layer<never, never, Sharding.Sharding>
+  readonly entities:
+    | RunnerEntities
+    | ((options: { readonly prefix: string }) => RunnerEntities)
   readonly lockMode?: LockMode | undefined
   readonly runnerLayer?: RunnerLayer | undefined
 }
@@ -56,6 +61,12 @@ export interface StartOptions {
 type HarnessConfig = Partial<ShardingConfig.ShardingConfig["Service"]> & {
   readonly shardLockDisableAdvisory: boolean
 }
+
+type RunnerEntities = Layer.Layer<
+  never,
+  never,
+  Sharding.Sharding | MessageStorage.MessageStorage | SqlClient.SqlClient
+>
 
 interface RegistrationRow {
   readonly address: string
@@ -147,7 +158,7 @@ const RunnerHealthLive = RunnerHealth.layerPing.pipe(
 
 export const socketRunnerLayer = (
   address: RunnerAddress.RunnerAddress,
-  entities: Layer.Layer<never, never, Sharding.Sharding>,
+  entities: RunnerEntities,
   socketServer: SocketServer.SocketServer["Service"],
   config: HarnessConfig
 ) =>
@@ -198,6 +209,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     Effect.provide(database)
   )
   const shared = Context.merge(database, messageStorage)
+  const entities = typeof options.entities === "function" ? options.entities({ prefix }) : options.entities
   const runners: Array<RunnerEntry> = []
 
   const makeRunnerStorage = Effect.fnUntraced(function*(
@@ -214,10 +226,14 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
 
   const clientScope = yield* Scope.fork(parentScope)
   const clientStorage = yield* makeRunnerStorage(clientScope)
-  const client = yield* clientLayer(config).pipe(
+  const clientBase = yield* clientLayer(config).pipe(
     Layer.buildWithScope(clientScope),
     Effect.provide(Context.merge(shared, clientStorage))
   )
+  const workflowEngine = yield* ClusterWorkflowEngine.make.pipe(
+    Effect.provide(Context.merge(shared, clientBase))
+  )
+  const client = Context.add(clientBase, WorkflowEngine.WorkflowEngine, workflowEngine)
   const clientSharding = Context.get(client, Sharding.Sharding)
   let nextRunnerIndex = 0
   const startRunner = Effect.fnUntraced(function*(index: number, startOptions?: StartOptions) {
@@ -244,7 +260,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     const storage = Context.make(RunnerStorage.RunnerStorage, controller.controlled)
     const context = yield* (options.runnerLayer ?? socketRunnerLayer)(
       address,
-      options.entities,
+      entities,
       socketServer,
       runnerConfig
     ).pipe(
@@ -447,6 +463,7 @@ export const make = Effect.fnUntraced(function*(options: MakeOptions) {
     unprocessedMessageCount: Effect.map(messageCounts(), (counts) => counts.unprocessed),
     waitForEntityOwner,
     waitForStableAssignments,
-    waitUntil
+    waitUntil,
+    workflowEngine
   } as const
 })
