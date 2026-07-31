@@ -7,6 +7,11 @@
 /**
  * @since 4.0.0
  */
+export * as Cli from "./Cli.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as Plugin from "./Plugin.ts"
 
 /**

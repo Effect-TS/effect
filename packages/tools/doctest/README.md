@@ -69,3 +69,15 @@ export default defineConfig({
 Source files selected by `includeSource` are collected through generated doctest collectors and are not executed. Native in-source tests using `import.meta.vitest` are therefore not supported by this plugin. Regular test files included through `test.include` continue to run normally.
 
 The plugin configures `@effect/doctest/Runner` when no test runner is specified. If `test.runner` is already configured, the plugin leaves it unchanged; that runner is then responsible for integrating doctest collection when required.
+
+## Typechecking
+
+Use the standalone command to check extracted examples with the TypeScript 7 native API:
+
+```sh
+effect-doctest-typecheck --tsconfig tsconfig.doctest.json
+```
+
+The checker uses `files`, `include`, and `exclude` from the supplied tsconfig to discover TypeScript source files and Markdown documents. Use extension-neutral patterns such as `src/**/*` when Markdown should be included. Optional positional files and glob patterns narrow that configured project for targeted runs. Without `--tsconfig`, positional inputs are required and each source inherits its nearest `tsconfig.json`.
+
+The checker is independent of Vitest. It keeps snippet source and generated project configuration in memory, resolves imports from the snippet's documented source location, and maps diagnostics back to the corresponding JSDoc lines. Runtime execution remains available separately through the Vitest plugin.

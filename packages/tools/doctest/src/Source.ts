@@ -13,6 +13,7 @@ import { readFile } from "node:fs/promises"
 export interface Snippet {
   readonly source: string
   readonly line: number
+  readonly column: number
   readonly name: string | undefined
 }
 
@@ -60,11 +61,17 @@ const snippets = (
     }
 
     const name = namePattern.exec(match[1])
-    const source = jsdoc ? match[2].replace(/^[ \t]*\* ?/gm, "").trim() : match[2].trim()
+    const prefixPattern = /^[ \t]*\* ?/
+    const contentLine = jsdoc
+      ? match[2].split("\n").find((line) => line.replace(prefixPattern, "").trim().length > 0)
+      : undefined
+    const column = jsdoc ? (prefixPattern.exec(contentLine ?? "")?.[0].length ?? 0) + 1 : 1
+    const source = jsdoc ? match[2].replace(/^[ \t]*\* ?/gm, "").trimEnd() : match[2].trimEnd()
 
     return [{
       source,
       line: lineAt(offset + (match.index ?? 0)),
+      column,
       name: name?.[1] ?? name?.[2] ?? name?.[3]
     }]
   })

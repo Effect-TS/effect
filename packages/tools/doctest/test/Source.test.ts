@@ -21,8 +21,8 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [
-        { source: "const first = 1", line: 3, name: "first" },
-        { source: "const second = 2", line: 9, name: "second example" }
+        { source: "const first = 1", line: 3, column: 4, name: "first" },
+        { source: "const second = 2", line: 9, column: 4, name: "second example" }
       ])
     })
 
@@ -39,7 +39,7 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source), [
-        { source: "const inside = true", line: 5, name: undefined }
+        { source: "const inside = true", line: 5, column: 4, name: undefined }
       ])
     })
 
@@ -70,6 +70,7 @@ describe("Source", () => {
       assert.deepStrictEqual(Source.extract(source), [{
         source: "const value = 1 // => 1",
         line: 2,
+        column: 4,
         name: undefined
       }])
     })
@@ -92,6 +93,7 @@ describe("Source", () => {
           "console.log(1) // > 1"
         ].join("\n"),
         line: 2,
+        column: 4,
         name: undefined
       }])
     })
@@ -112,7 +114,7 @@ describe("Source", () => {
       ].join("\n")
 
       assert.deepStrictEqual(Source.extract(source, "markdown"), [
-        { source: "const value = 1", line: 7, name: "example" }
+        { source: "const value = 1", line: 7, column: 1, name: "example" }
       ])
     })
   })

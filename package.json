@@ -15,6 +15,7 @@
     "test": "vitest",
     "test-cluster": "vitest run --project cluster-integration",
     "doctest": "vitest --config vitest.docs.ts",
+    "doctest-typecheck": "effect-doctest-typecheck --tsconfig tsconfig.doctest.json",
     "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",
     "typeperf": "pnpm --dir packages/effect exec node typeperf/run.mjs",

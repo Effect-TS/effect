@@ -3,7 +3,7 @@
   "version": "4.0.0-beta.102",
   "type": "module",
   "license": "MIT",
-  "description": "Runs TypeScript documentation examples as Vitest tests",
+  "description": "Runs and typechecks TypeScript documentation examples",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
@@ -15,8 +15,12 @@
     "./package.json": "./package.json",
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
+    "./bin": null,
     "./index": null,
     "./internal/*": null
+  },
+  "bin": {
+    "effect-doctest-typecheck": "./src/internal/bin.ts"
   },
   "files": [
     "src/**/*.ts",
@@ -32,8 +36,12 @@
       "./package.json": "./package.json",
       ".": "./dist/index.js",
       "./*": "./dist/*.js",
+      "./bin": null,
       "./index": null,
       "./internal/*": null
+    },
+    "bin": {
+      "effect-doctest-typecheck": "./dist/internal/bin.js"
     }
   },
   "scripts": {
@@ -43,12 +51,24 @@
     "check": "tsc -b tsconfig.json"
   },
   "dependencies": {
-    "rolldown": "^1.1.5"
+    "@effect/platform-node": "workspace:^",
+    "glob": "^13.0.6",
+    "rolldown": "^1.1.5",
+    "tsconfck": "^3.1.6",
+    "typescript": "^7.0.2"
   },
   "peerDependencies": {
     "effect": "workspace:^",
     "vite": ">=8.0.0 <9.0.0",
     "vitest": ">=4.1.10 <5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@effect/vitest": "workspace:^",

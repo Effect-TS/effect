@@ -864,9 +864,21 @@ importers:
 
   packages/tools/doctest:
     dependencies:
+      '@effect/platform-node':
+        specifier: workspace:^
+        version: link:../../platform-node
+      glob:
+        specifier: ^13.0.6
+        version: 13.0.6
       rolldown:
         specifier: ^1.1.5
         version: 1.1.5
+      tsconfck:
+        specifier: ^3.1.6
+        version: 3.1.6(typescript@7.0.2)
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
     devDependencies:
       '@effect/vitest':
         specifier: workspace:^
@@ -12648,6 +12660,10 @@ snapshots:
   tsconfck@3.1.6(typescript@6.0.3):
     optionalDependencies:
       typescript: 6.0.3
+
+  tsconfck@3.1.6(typescript@7.0.2):
+    optionalDependencies:
+      typescript: 7.0.2
 
   tsconfig-paths@4.2.0:
     dependencies:
