@@ -14625,9 +14625,9 @@ export const trackDuration: {
     f: ((duration: Duration.Duration) => Input) | undefined
   ): Effect<A, E, R> =>
     clockWith((clock) => {
-      const startTime = clock.currentTimeNanosUnsafe()
+      const startTime = clock.monotonicTimeNanosUnsafe()
       return onExit(self, () => {
-        const endTime = clock.currentTimeNanosUnsafe()
+        const endTime = clock.monotonicTimeNanosUnsafe()
         const duration = Duration.subtract(
           Duration.fromInputUnsafe(endTime),
           Duration.fromInputUnsafe(startTime)

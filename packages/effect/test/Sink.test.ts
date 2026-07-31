@@ -7,8 +7,9 @@ import {
   deepStrictEqual,
   strictEqual
 } from "@effect/vitest/utils"
-import { Array, Cause, Deferred, Effect, Fiber, Option, Ref, Result, Sink, Stream } from "effect"
+import { Array, Cause, Deferred, Duration, Effect, Fiber, Option, Ref, Result, Sink, Stream } from "effect"
 import { constTrue, pipe } from "effect/Function"
+import { TestClock } from "effect/testing"
 
 describe("Sink", () => {
   describe("constructors", () => {
@@ -241,6 +242,23 @@ describe("Sink", () => {
           Stream.runCollect
         )
         deepStrictEqual(result, [[1, 2], [], []])
+      }))
+  })
+
+  describe("withDuration", () => {
+    it.effect("uses monotonic time when wall time moves backward", () =>
+      Effect.gen(function*() {
+        yield* TestClock.setTime(1_000)
+        const [, duration] = yield* Stream.empty.pipe(
+          Stream.run(
+            Sink.fromEffect(Effect.gen(function*() {
+              yield* TestClock.adjust("100 millis")
+              yield* TestClock.setTime(0)
+            })).pipe(Sink.withDuration)
+          )
+        )
+
+        strictEqual(Duration.toMillis(duration), 100)
       }))
   })
 
