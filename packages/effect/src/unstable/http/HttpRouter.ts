@@ -217,14 +217,14 @@ export const make = Effect.gen(function*() {
         if (span && span._tag === "Span") {
           span.attribute("http.route", route.path)
         }
-        return Effect.provideContext(
+        return Effect.updateContext(
           (route.uninterruptible ?
             route.handler :
             Effect.interruptible(route.handler)) as Effect.Effect<
               HttpServerResponse.HttpServerResponse,
               unknown
             >,
-          Context.makeUnsafe(contextMap)
+          () => Context.makeUnsafe(contextMap)
         )
       })
       if (middleware.size === 0) return handler
