@@ -1437,7 +1437,9 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
     })
   }
 
-  const { codec } = yield* tryCodecTransform(tool.parametersSchema, "makeResponse")
+  const codec = Tool.isProviderDefined(tool)
+    ? tool.parametersSchema
+    : (yield* tryCodecTransform(tool.parametersSchema, "makeResponse")).codec
 
   const transform = Schema.decodeEffect(codec)
 

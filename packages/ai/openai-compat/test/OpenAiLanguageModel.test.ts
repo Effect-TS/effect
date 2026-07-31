@@ -381,6 +381,61 @@ describe("OpenAiLanguageModel", () => {
         assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
       }))
 
+    it.effect("decodes provider-defined tool parameters with their original schema", () =>
+      Effect.gen(function*() {
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(
+                request,
+                makeChatCompletion({
+                  choices: [{
+                    index: 0,
+                    finish_reason: "tool_calls",
+                    message: {
+                      role: "assistant",
+                      content: null,
+                      tool_calls: [{
+                        id: "call_provider_record_1",
+                        type: "function",
+                        function: {
+                          name: "provider_record",
+                          arguments: JSON.stringify({ env: { PATH: "/usr/bin" } })
+                        }
+                      }]
+                    }
+                  }]
+                })
+              ))
+            )
+          ))
+        )
+
+        const toolkit = Toolkit.make(CompatRecordTool({}))
+        const toolkitLayer = toolkit.toLayer({
+          CompatRecord: ({ env }) => Effect.succeed(JSON.stringify(env))
+        })
+        const result = yield* LanguageModel.generateText({
+          prompt: "use the provider record tool",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(toolkitLayer),
+          Effect.provide(layer)
+        )
+
+        const toolCall = result.content.find((part) => part.type === "tool-call")
+        assert.isDefined(toolCall)
+        if (toolCall?.type !== "tool-call") {
+          return
+        }
+
+        assert.strictEqual(toolCall.name, "CompatRecord")
+        assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
+      }))
+
     it.effect("groups parallel tool calls into one assistant message", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
@@ -1623,6 +1678,17 @@ const RecordToolkit = Toolkit.make(RecordTool)
 
 const RecordToolkitLayer = RecordToolkit.toLayer({
   RecordTool: ({ env }) => Effect.succeed(JSON.stringify(env))
+})
+
+const CompatRecordTool = Tool.providerDefined({
+  id: "compat.provider_record",
+  customName: "CompatRecord",
+  providerName: "provider_record",
+  requiresHandler: true,
+  parameters: Schema.Struct({
+    env: Schema.Record(Schema.String, Schema.String)
+  }),
+  success: Schema.String
 })
 
 const CompatApplyPatchTool = Tool.providerDefined({
