@@ -19,7 +19,7 @@ import type { Scope } from "./Scope.ts"
 /**
  * Represents a console interface for logging, debugging, timing, and grouping output.
  *
- * @category models
+ * @category services
  * @since 2.0.0
  */
 export interface Console {

@@ -165,7 +165,7 @@ export const make = <A>(evaluate: LazyArg<A>): Effect.Effect<ScopedRef<A>, never
  * changed to the new value, with old resources released, or until the attempt
  * to acquire a new value fails.
  *
- * @category setters
+ * @category mutations
  * @since 2.0.0
  */
 export const set: {

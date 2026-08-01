@@ -19,7 +19,7 @@ const TypeId = "~@effect/platform-browser/IndexedDb"
 /**
  * Service interface that provides the browser `indexedDB` factory and `IDBKeyRange` constructor.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface IndexedDb {

@@ -179,7 +179,7 @@ export class Storage extends Context.Service<Storage, {
  * Data, session authentication bindings, and streams are process-local and are
  * released with the surrounding scope.
  *
- * @category storage
+ * @category constructors
  * @since 4.0.0
  */
 export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {

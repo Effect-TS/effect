@@ -265,7 +265,7 @@ export const xForwardedHeaders = make((httpApp) =>
 /**
  * Middleware that parses the current request URL's search parameters and provides them as `ParsedSearchParams`.
  *
- * @category search params
+ * @category parsing
  * @since 4.0.0
  */
 export const searchParamsParser = <E, R>(
@@ -285,7 +285,7 @@ export const searchParamsParser = <E, R>(
 /**
  * Middleware that handles CORS preflight requests and adds configured CORS headers to HTTP responses.
  *
- * @category CORS
+ * @category middleware
  * @since 4.0.0
  */
 export const cors = (options?: {

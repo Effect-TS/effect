@@ -19,7 +19,7 @@ import * as Domain from "./Domain.ts"
 /**
  * Source file and path currently being parsed.
  *
- * @category models
+ * @category services
  * @since 0.6.0
  */
 export interface SourceShape {

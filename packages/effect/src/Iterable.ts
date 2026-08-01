@@ -727,7 +727,7 @@ export const drop: {
  * findSquareRoot // => Option.some(1)
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findFirst: {
@@ -787,7 +787,7 @@ export const findFirst: {
  * lastString // => Option.some("world")
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findLast: {
@@ -2085,7 +2085,7 @@ export const unfold = <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>): Iterab
  * processed // => [[1, 2], [3, 4], [5, 6]]
  * ```
  *
- * @category elements
+ * @category traversing
  * @since 2.0.0
  */
 export const forEach: {
@@ -2315,7 +2315,7 @@ export const dedupeAdjacent: <A>(self: Iterable<A>) => Iterable<A> = dedupeAdjac
  * Array.from(testCases) // => ["admin_can_read", "admin_can_write", "admin_can_delete", "user_can_read", "user_can_write", "user_can_delete"]
  * ```
  *
- * @category elements
+ * @category combining
  * @since 2.0.0
  */
 export const cartesianWith: {
@@ -2389,7 +2389,7 @@ export const cartesianWith: {
  * Array.from(withEmpty) // => []
  * ```
  *
- * @category elements
+ * @category combining
  * @since 2.0.0
  */
 export const cartesian: {

@@ -497,7 +497,7 @@ export const parsePatchInput = Effect.fn("parsePatchInput")(function*(input: str
  * Effect.runSync(program) // => "New Title"
  * ```
  *
- * @category application
+ * @category transforming
  * @since 4.0.0
  */
 export const applyPatches = Effect.fn("applyPatches")(function*(

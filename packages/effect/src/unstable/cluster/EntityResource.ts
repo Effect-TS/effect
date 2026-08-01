@@ -156,7 +156,7 @@ export const make: <A, E, R>(options: {
  * The pod is created and waited on through `K8sHttpClient`, and is kept alive
  * until the resource is closed or its idle time to live expires.
  *
- * @category Kubernetes
+ * @category constructors
  * @since 4.0.0
  */
 export const makeK8sPod: (

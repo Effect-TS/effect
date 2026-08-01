@@ -321,7 +321,7 @@ export const isEmpty: <K, V>(self: HashMap<K, V>) => boolean = internal.isEmpty
  * HashMap.get("b")(map) // => Option.some(2)
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const get: {
@@ -354,7 +354,7 @@ export const get: {
  * HashMap.getHash(userMap, "user999", Hash.string("user999")) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const getHash: {
@@ -1141,7 +1141,7 @@ export const filterMap: {
  * HashMap.findFirst(map, (value, key) => key === "b" && value > 1) // => Option.some(["b", 2])
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findFirst: {

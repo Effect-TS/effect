@@ -125,7 +125,7 @@ export interface HttpApiMiddlewareClient<_E, CE, R> {
 /**
  * Client-side service marker required when a middleware declares `requiredForClient`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export interface ForClient<Id> {
@@ -136,7 +136,7 @@ export interface ForClient<Id> {
 /**
  * Base service key shape for HTTP API middleware services, including provided services, declared error schemas, and client requirements.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface AnyService extends Context.Key<any, any> {
@@ -150,7 +150,7 @@ export interface AnyService extends Context.Key<any, any> {
 /**
  * Middleware service key shape for security middleware, including the security schemes handled by the service.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface AnyServiceSecurity extends AnyService {

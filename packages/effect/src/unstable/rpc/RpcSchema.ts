@@ -47,7 +47,7 @@ export function getStreamSchemas(schema: Schema.Constraint): Option.Option<{
  * A schema marker for RPC streaming responses, storing the success element
  * schema and stream error schema used for encoding and decoding stream chunks.
  *
- * @category streams
+ * @category models
  * @since 4.0.0
  */
 export interface Stream<A extends Schema.Constraint, E extends Schema.Constraint> extends
@@ -75,7 +75,7 @@ const schema = Schema.declare(Stream_.isStream)
  * Creates an RPC stream schema from a stream element success schema and stream
  * error schema.
  *
- * @category streams
+ * @category constructors
  * @since 4.0.0
  */
 export function Stream<A extends Schema.Constraint, E extends Schema.Constraint>(success: A, error: E): Stream<A, E> {

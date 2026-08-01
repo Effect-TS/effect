@@ -885,7 +885,7 @@ export const layerStoreMemory: Layer.Layer<
  * Creates a Redis-backed `RateLimiterStore` using Lua scripts and the
  * configured key prefix.
  *
- * @category RateLimiterStore
+ * @category constructors
  * @since 4.0.0
  */
 export const makeStoreRedis = Effect.fnUntraced(function*(

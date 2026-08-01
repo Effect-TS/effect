@@ -55,7 +55,7 @@ import { withRunClient } from "./Utils.ts"
  * The object-shaped client generated from a union of RPC definitions, with one
  * method per RPC tag.
  *
- * @category client
+ * @category utility types
  * @since 4.0.0
  */
 export type RpcClient<Rpcs extends Rpc.Any, E = never> = Struct.Simplify<RpcClient.From<Rpcs, E>>
@@ -72,7 +72,7 @@ export declare namespace RpcClient {
    * method that accepts the RPC payload and returns either an `Effect` or
    * `Stream` based on the RPC success schema.
    *
-   * @category client
+   * @category utility types
    * @since 4.0.0
    */
   export type From<Rpcs extends Rpc.Any, E = never> = {
@@ -137,7 +137,7 @@ export declare namespace RpcClient {
    * Builds a flattened RPC client function that accepts an RPC tag and payload,
    * returning the corresponding `Effect` or `Stream` for that RPC.
    *
-   * @category client
+   * @category utility types
    * @since 4.0.0
    */
   export type Flat<Rpcs extends Rpc.Any, E = never> = <
@@ -212,7 +212,7 @@ let requestIdCounter = 0
  * client API together with a `write` function for delivering server messages
  * back to the client.
  *
- * @category client
+ * @category constructors
  * @since 4.0.0
  */
 export const makeNoSerialization: <Rpcs extends Rpc.Any, E, const Flatten extends boolean = false>(
@@ -622,7 +622,7 @@ let clientIdCounter = 0
  * Creates a schema-aware RPC client for a group using the current client
  * `Protocol`, encoding requests and decoding server responses.
  *
- * @category client
+ * @category constructors
  * @since 4.0.0
  */
 export const make: <Rpcs extends Rpc.Any, const Flatten extends boolean = false>(

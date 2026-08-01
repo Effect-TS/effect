@@ -496,7 +496,7 @@ export class CurrentRunnerAddress extends Context.Service<
  * Use when you use it to complete an entity request by succeeding, failing, failing with a
  * cause, or supplying an explicit `Exit`.
  *
- * @category Replier
+ * @category models
  * @since 4.0.0
  */
 export interface Replier<Rpcs extends Rpc.Any> {
@@ -535,7 +535,7 @@ export declare namespace Replier {
    * For streaming RPCs this may be either a stream of success chunks or a dequeue
    * of success chunks. For non-streaming RPCs it is the RPC success value.
    *
-   * @category Replier
+   * @category utility types
    * @since 4.0.0
    */
   export type Success<R extends Rpc.Any> = Rpc.Success<R> extends Stream.Stream<infer _A, infer _E, infer _R> ?
@@ -551,7 +551,7 @@ export declare namespace Replier {
  * It includes the underlying request envelope plus the last stream reply chunk
  * that was sent, allowing handlers to resume chunk sequencing after a restart.
  *
- * @category request
+ * @category models
  * @since 4.0.0
  */
 export class Request<Rpc extends Rpc.Any> extends Data.Class<

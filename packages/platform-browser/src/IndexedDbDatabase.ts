@@ -234,7 +234,7 @@ export interface Transaction<
 /**
  * Extracts the string-literal index names defined by an `IndexedDbTable`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type IndexFromTable<Table extends IndexedDbTable.AnyWithProps> = IsStringLiteral<
@@ -245,7 +245,7 @@ export type IndexFromTable<Table extends IndexedDbTable.AnyWithProps> = IsString
 /**
  * Extracts the valid index names for a table name within an IndexedDB version.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type IndexFromTableName<

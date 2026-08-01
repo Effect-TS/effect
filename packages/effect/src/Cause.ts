@@ -987,7 +987,7 @@ export const findInterrupt: <E>(self: Cause<E>) => Result.Result<Interrupt, Caus
  *
  * @see {@link filterInterruptors} — `Result`-based variant
  *
- * @category accessors
+ * @category getters
  * @since 2.0.0
  */
 export const interruptors: <E>(self: Cause<E>) => ReadonlySet<number> = effect.causeInterruptors
@@ -1062,7 +1062,7 @@ export const filterInterruptors: <E>(self: Cause<E>) => Result.Result<Set<number
  * @see {@link pretty} — renders the cause as a single string
  * @see {@link squash} — lossy collapse to a single thrown value
  *
- * @category rendering
+ * @category formatting
  * @since 3.2.0
  */
 export const prettyErrors: <E>(self: Cause<E>, options?: {
@@ -1109,7 +1109,7 @@ export const prettyErrors: <E>(self: Cause<E>, options?: {
  *
  * @see {@link prettyErrors} — get the individual `Error` instances
  *
- * @category rendering
+ * @category formatting
  * @since 2.0.0
  */
 export const pretty: <E>(cause: Cause<E>) => string = effect.causePretty

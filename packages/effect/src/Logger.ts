@@ -908,7 +908,7 @@ export const tracerLogger: Logger<unknown, void> = effect.tracerLogger
  * messages // => [["Application started"]]
  * ```
  *
- * @category context
+ * @category layers
  * @since 4.0.0
  */
 export const layer = <
@@ -998,7 +998,7 @@ export const layer = <
  * writes // => ["Application started"]
  * ```
  *
- * @category file
+ * @category logging
  * @since 4.0.0
  */
 export const toFile = dual<

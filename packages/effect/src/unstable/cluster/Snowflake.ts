@@ -170,7 +170,7 @@ export const make = (options: {
 /**
  * Extracts the Unix timestamp in milliseconds from a snowflake id.
  *
- * @category parts
+ * @category getters
  * @since 4.0.0
  */
 export const timestamp = (snowflake: Snowflake): number => Number(snowflake >> constBigInt22) + sinceUnixEpoch
@@ -178,7 +178,7 @@ export const timestamp = (snowflake: Snowflake): number => Number(snowflake >> c
 /**
  * Extracts the timestamp from a snowflake id as a `DateTime.Utc`.
  *
- * @category parts
+ * @category getters
  * @since 4.0.0
  */
 export const dateTime = (snowflake: Snowflake): DateTime.Utc => DateTime.makeUnsafe(timestamp(snowflake))
@@ -186,7 +186,7 @@ export const dateTime = (snowflake: Snowflake): DateTime.Utc => DateTime.makeUns
 /**
  * Extracts the machine id component from a snowflake id.
  *
- * @category parts
+ * @category getters
  * @since 4.0.0
  */
 export const machineId = (snowflake: Snowflake): MachineId =>
@@ -195,7 +195,7 @@ export const machineId = (snowflake: Snowflake): MachineId =>
 /**
  * Extracts the per-machine sequence component from a snowflake id.
  *
- * @category parts
+ * @category getters
  * @since 4.0.0
  */
 export const sequence = (snowflake: Snowflake): number => Number(snowflake % constBigInt4096)
@@ -203,7 +203,7 @@ export const sequence = (snowflake: Snowflake): number => Number(snowflake % con
 /**
  * Decomposes a snowflake id into its timestamp, machine id, and sequence parts.
  *
- * @category parts
+ * @category converting
  * @since 4.0.0
  */
 export const toParts = (snowflake: Snowflake): Snowflake.Parts => ({

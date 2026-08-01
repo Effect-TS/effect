@@ -70,7 +70,7 @@ export const TypeId: TypeId = "~effect/ErrorReporter"
  * @see {@link report} for manually reporting a `Cause`
  * @see {@link Effect.withErrorReporting} for reporting failures from an effect
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface ErrorReporter {
@@ -284,7 +284,7 @@ export const layer = <
  * output // => "fallback value"
  * ```
  *
- * @category reporting
+ * @category logging
  * @since 4.0.0
  */
 export const report = <E>(cause: Cause.Cause<E>): Effect.Effect<void> =>

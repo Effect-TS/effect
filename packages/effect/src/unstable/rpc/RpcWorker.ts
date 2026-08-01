@@ -44,7 +44,7 @@ export declare namespace InitialMessage {
    * Tagged wire representation of an RPC worker initial message after schema
    * encoding.
    *
-   * @category initial message
+   * @category models
    * @since 4.0.0
    */
   export interface Encoded {
@@ -61,7 +61,7 @@ const ProtocolTag = Context.Service<Protocol, Protocol["Service"]>(
  * Runs an effect, encodes its result with the schema's JSON codec, and returns
  * the encoded value together with collected transferables.
  *
- * @category initial message
+ * @category encoding
  * @since 4.0.0
  */
 export const makeInitialMessage = <S extends Schema.Constraint, E, R2>(
@@ -105,7 +105,7 @@ export const layerInitialMessage = <S extends Schema.Constraint, R2>(
  * Reads the protocol initial message and decodes it with the supplied schema,
  * failing if no initial message is available or decoding fails.
  *
- * @category initial message
+ * @category decoding
  * @since 4.0.0
  */
 export const initialMessage = <S extends Schema.Constraint>(

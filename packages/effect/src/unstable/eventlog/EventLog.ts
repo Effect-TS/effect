@@ -1012,7 +1012,7 @@ export const layer = <Groups extends EventGroup.Any, E, R>(
  * The returned function delegates to the `EventLog` service and preserves each
  * event's success and error types.
  *
- * @category client
+ * @category constructors
  * @since 4.0.0
  */
 export const makeClient = <Groups extends EventGroup.Any>(

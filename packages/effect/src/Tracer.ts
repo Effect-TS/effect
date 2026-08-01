@@ -22,7 +22,7 @@ import * as Option from "./Option.ts"
  * `span` to allocate a span from the supplied name, parent, annotations,
  * links, start time, kind, root flag, and sampling decision.
  *
- * @category models
+ * @category services
  * @since 2.0.0
  */
 export interface Tracer {
@@ -648,7 +648,7 @@ export const Tracer: Context.Reference<Tracer> = Context.Reference<Tracer>(Trace
  *
  * @see {@link Span} for the interface implemented by native spans
  *
- * @category native tracer
+ * @category models
  * @since 4.0.0
  */
 export class NativeSpan implements Span {

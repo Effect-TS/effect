@@ -33,7 +33,7 @@ export * from "effect/unstable/sql/Migrator"
 /**
  * Runs SQL migrations for a React Native SQLite database using the shared `Migrator` implementation and the current `SqlClient`.
  *
- * @category constructors
+ * @category running
  * @since 4.0.0
  */
 export const run: <R>(

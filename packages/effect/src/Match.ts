@@ -1183,7 +1183,7 @@ export const not: <
  *
  * @see {@link string} for matching any string
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptyString
@@ -1224,7 +1224,7 @@ export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptySt
  * handleStatus("pending") // => "Unknown status: pending"
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const is: <
@@ -1256,7 +1256,7 @@ export const is: <
  * processValue(true) // => "Boolean: yes"
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const string: Predicate.Refinement<unknown, string> = Predicate.isString
@@ -1297,7 +1297,7 @@ export const string: Predicate.Refinement<unknown, string> = Predicate.isString
  *
  * @see {@link bigint} for matching primitive bigint values
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const number: Predicate.Refinement<unknown, number> = Predicate.isNumber
@@ -1346,7 +1346,7 @@ export const number: Predicate.Refinement<unknown, number> = Predicate.isNumber
  * @see {@link defined} for matching only non-nullish values
  * @see {@link orElse} for providing a fallback after earlier cases
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const any: SafeRefinement<unknown, any> = internal.any
@@ -1430,7 +1430,7 @@ export const defined: <A>(u: A) => u is A & {} = internal.defined
  *
  * @see {@link is} for matching specific literal boolean values
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const boolean: Predicate.Refinement<unknown, boolean> = Predicate.isBoolean
@@ -1452,7 +1452,7 @@ export {
    * @see {@link defined} for matching non-nullish values
    * @see {@link is} for matching literal values
    *
-   * @category predicates
+   * @category guards
    * @since 4.0.0
    */
   _undefined as undefined
@@ -1475,7 +1475,7 @@ export {
    * @see {@link defined} for matching non-nullish values
    * @see {@link is} for matching literal values
    *
-   * @category predicates
+   * @category guards
    * @since 4.0.0
    */
   _null as null
@@ -1517,7 +1517,7 @@ export {
  *
  * @see {@link number} for matching primitive number values
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
@@ -1555,7 +1555,7 @@ export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
  * handleSymbol("string") // => "Not a symbol"
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
@@ -1597,7 +1597,7 @@ export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
  *
  * @see {@link instanceOf} for matching instances of any constructor
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
@@ -1642,7 +1642,7 @@ export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
  *
  * @see {@link instanceOf} for matching a specific constructor
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const record: Predicate.Refinement<unknown, { [x: PropertyKey]: unknown }> = Predicate.isObject
@@ -1701,7 +1701,7 @@ export const record: Predicate.Refinement<unknown, { [x: PropertyKey]: unknown }
  * @see {@link instanceOfUnsafe} for constructor matching without the same type-safety guarantee
  * @see {@link record} for matching broad non-null, non-array objects
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const instanceOf: <A extends abstract new(...args: any) => any>(
@@ -1746,7 +1746,7 @@ export const instanceOf: <A extends abstract new(...args: any) => any>(
  *
  * @see {@link instanceOf} for type-safe constructor matching
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(

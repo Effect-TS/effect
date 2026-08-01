@@ -663,7 +663,7 @@ export const McpError = Schema.Union([
  *
  * The receiver should respond promptly; otherwise the sender may disconnect.
  *
- * @category ping
+ * @category protocols
  * @since 4.0.0
  */
 export class Ping extends Rpc.make("ping", {
@@ -679,7 +679,7 @@ export class Ping extends Rpc.make("ping", {
 /**
  * Schema for the server's response to an initialize request from the client.
  *
- * @category initialization
+ * @category schemas
  * @since 4.0.0
  */
 export class InitializeResult extends Schema.Opaque<InitializeResult>()(Schema.Struct({
@@ -706,7 +706,7 @@ export class InitializeResult extends Schema.Opaque<InitializeResult>()(Schema.S
  * Sent from the client to the server when it first connects, asking it to begin
  * initialization.
  *
- * @category initialization
+ * @category protocols
  * @since 4.0.0
  */
 export class Initialize extends Rpc.make("initialize", {
@@ -735,7 +735,7 @@ export class Initialize extends Rpc.make("initialize", {
 /**
  * Sent from the client to the server after initialization has finished.
  *
- * @category initialization
+ * @category protocols
  * @since 4.0.0
  */
 export class InitializedNotification extends Rpc.make("notifications/initialized", {
@@ -755,7 +755,7 @@ export class InitializedNotification extends Rpc.make("notifications/initialized
  * The payload identifies the request to cancel and may include a
  * human-readable reason.
  *
- * @category cancellation
+ * @category protocols
  * @since 4.0.0
  */
 export class CancelledNotification extends Rpc.make("notifications/cancelled", {
@@ -783,7 +783,7 @@ export class CancelledNotification extends Rpc.make("notifications/cancelled", {
 /**
  * Sent from either peer to report progress for a long-running request.
  *
- * @category progress
+ * @category protocols
  * @since 4.0.0
  */
 export class ProgressNotification extends Rpc.make("notifications/progress", {
@@ -817,7 +817,7 @@ export class ProgressNotification extends Rpc.make("notifications/progress", {
 /**
  * Schema for a known resource that the server is capable of reading.
  *
- * @category resources
+ * @category schemas
  * @since 4.0.0
  */
 export class Resource extends Schema.Class<Resource>(
@@ -869,7 +869,7 @@ export class Resource extends Schema.Class<Resource>(
 /**
  * Schema for a template description of resources available on the server.
  *
- * @category resources
+ * @category schemas
  * @since 4.0.0
  */
 export class ResourceTemplate extends Schema.Class<ResourceTemplate>(
@@ -915,7 +915,7 @@ export class ResourceTemplate extends Schema.Class<ResourceTemplate>(
 /**
  * Schema for the contents of a specific resource or sub-resource.
  *
- * @category resources
+ * @category schemas
  * @since 4.0.0
  */
 export class ResourceContents extends Schema.Opaque<ResourceContents>()(Schema.Struct({
@@ -936,7 +936,7 @@ export class ResourceContents extends Schema.Opaque<ResourceContents>()(Schema.S
 /**
  * Schema for text resource contents represented as a string.
  *
- * @category resources
+ * @category schemas
  * @since 4.0.0
  */
 export class TextResourceContents extends Schema.Opaque<TextResourceContents>()(Schema.Struct({
@@ -951,7 +951,7 @@ export class TextResourceContents extends Schema.Opaque<TextResourceContents>()(
 /**
  * Schema for binary resource contents represented as a `Uint8Array`.
  *
- * @category resources
+ * @category schemas
  * @since 4.0.0
  */
 export class BlobResourceContents extends Schema.Opaque<BlobResourceContents>()(Schema.Struct({
@@ -965,7 +965,7 @@ export class BlobResourceContents extends Schema.Opaque<BlobResourceContents>()(
 /**
  * Schema for the server's response to a resources/list request from the client.
  *
- * @category resources
+ * @category schemas
  * @since 4.0.0
  */
 export class ListResourcesResult extends Schema.Class<ListResourcesResult>(
@@ -978,7 +978,7 @@ export class ListResourcesResult extends Schema.Class<ListResourcesResult>(
 /**
  * Sent from the client to request a list of resources the server has.
  *
- * @category resources
+ * @category protocols
  * @since 4.0.0
  */
 export class ListResources extends Rpc.make("resources/list", {
@@ -991,7 +991,7 @@ export class ListResources extends Rpc.make("resources/list", {
  * Schema for the server's response to a resources/templates/list request from
  * the client.
  *
- * @category resources
+ * @category schemas
  * @since 4.0.0
  */
 export class ListResourceTemplatesResult extends Schema.Class<ListResourceTemplatesResult>(
@@ -1004,7 +1004,7 @@ export class ListResourceTemplatesResult extends Schema.Class<ListResourceTempla
 /**
  * Sent from the client to request a list of resource templates the server has.
  *
- * @category resources
+ * @category protocols
  * @since 4.0.0
  */
 export class ListResourceTemplates extends Rpc.make("resources/templates/list", {
@@ -1016,7 +1016,7 @@ export class ListResourceTemplates extends Rpc.make("resources/templates/list", 
 /**
  * Schema for the server's response to a resources/read request from the client.
  *
- * @category resources
+ * @category schemas
  * @since 4.0.0
  */
 export class ReadResourceResult extends Schema.Opaque<ReadResourceResult>()(Schema.Struct({
@@ -1027,7 +1027,7 @@ export class ReadResourceResult extends Schema.Opaque<ReadResourceResult>()(Sche
 /**
  * Sent from the client to the server, to read a specific resource URI.
  *
- * @category resources
+ * @category protocols
  * @since 4.0.0
  */
 export class ReadResource extends Rpc.make("resources/read", {
@@ -1054,7 +1054,7 @@ export class ReadResource extends Rpc.make("resources/read", {
  *
  * Servers may send this notification without a previous client subscription.
  *
- * @category resources
+ * @category protocols
  * @since 4.0.0
  */
 export class ResourceListChangedNotification extends Rpc.make("notifications/resources/list_changed", {
@@ -1065,7 +1065,7 @@ export class ResourceListChangedNotification extends Rpc.make("notifications/res
  * Sent from the client to request resources/updated notifications from the
  * server whenever a particular resource changes.
  *
- * @category resources
+ * @category protocols
  * @since 4.0.0
  */
 export class Subscribe extends Rpc.make("resources/subscribe", {
@@ -1086,7 +1086,7 @@ export class Subscribe extends Rpc.make("resources/subscribe", {
  * notifications from the server. This should follow a previous
  * resources/subscribe request.
  *
- * @category resources
+ * @category protocols
  * @since 4.0.0
  */
 export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
@@ -1110,7 +1110,7 @@ export class Unsubscribe extends Rpc.make("resources/unsubscribe", {
  * The URI may identify a sub-resource of the resource that the client
  * originally subscribed to.
  *
- * @category resources
+ * @category protocols
  * @since 4.0.0
  */
 export class ResourceUpdatedNotification extends Rpc.make("notifications/resources/updated", {
@@ -1406,7 +1406,7 @@ export class PromptListChangedNotification extends Rpc.make("notifications/promp
  * Clients should never make tool use decisions based on ToolAnnotations
  * received from untrusted servers.
  *
- * @category tools
+ * @category schemas
  * @since 4.0.0
  */
 export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Struct({
@@ -1452,7 +1452,7 @@ export class ToolAnnotations extends Schema.Opaque<ToolAnnotations>()(Schema.Str
 /**
  * Schema for the definition of a tool the client can call.
  *
- * @category tools
+ * @category schemas
  * @since 4.0.0
  */
 export class Tool extends Schema.Class<Tool>(
@@ -1493,7 +1493,7 @@ export class Tool extends Schema.Class<Tool>(
 /**
  * Schema for the server's response to a tools/list request from the client.
  *
- * @category tools
+ * @category schemas
  * @since 4.0.0
  */
 export class ListToolsResult extends Schema.Class<ListToolsResult>(
@@ -1506,7 +1506,7 @@ export class ListToolsResult extends Schema.Class<ListToolsResult>(
 /**
  * Sent from the client to request a list of tools the server has.
  *
- * @category tools
+ * @category protocols
  * @since 4.0.0
  */
 export class ListTools extends Rpc.make("tools/list", {
@@ -1527,7 +1527,7 @@ export class ListTools extends Rpc.make("tools/list", {
  * indicating that the server does not support tool calls, or any other
  * exceptional conditions, should be reported as an MCP error response.
  *
- * @category tools
+ * @category schemas
  * @since 4.0.0
  */
 export class CallToolResult extends Schema.Class<CallToolResult>("@effect/ai/McpSchema/CallToolResult")({
@@ -1553,7 +1553,7 @@ export class CallToolResult extends Schema.Class<CallToolResult>("@effect/ai/Mcp
  * @see {@link ListTools} for discovering available tools before calling one
  * @see {@link CallToolResult} for the successful tool-call result shape
  *
- * @category tools
+ * @category protocols
  * @since 4.0.0
  */
 export class CallTool extends Rpc.make("tools/call", {
@@ -1580,7 +1580,7 @@ export class CallTool extends Rpc.make("tools/call", {
  *
  * Servers may send this notification without a previous client subscription.
  *
- * @category tools
+ * @category protocols
  * @since 4.0.0
  */
 export class ToolListChangedNotification extends Rpc.make("notifications/tools/list_changed", {
@@ -1686,7 +1686,7 @@ export class LoggingMessageNotification extends Rpc.make("notifications/message"
 /**
  * Describes a message issued to or received from an LLM API.
  *
- * @category sampling
+ * @category schemas
  * @since 4.0.0
  */
 export class SamplingMessage extends Schema.Opaque<SamplingMessage>()(Schema.Struct({
@@ -1702,7 +1702,7 @@ export class SamplingMessage extends Schema.Opaque<SamplingMessage>()(Schema.Str
  * Keys not declared here are currently left unspecified by the spec and are up
  * to the client to interpret.
  *
- * @category sampling
+ * @category schemas
  * @since 4.0.0
  */
 export class ModelHint extends Schema.Opaque<ModelHint>()(Schema.Struct({
@@ -1739,7 +1739,7 @@ export class ModelHint extends Schema.Opaque<ModelHint>()(Schema.Struct({
  * up to the client to decide how to interpret these preferences and how to
  * balance them against other considerations.
  *
- * @category sampling
+ * @category schemas
  * @since 4.0.0
  */
 export class ModelPreferences extends Schema.Class<ModelPreferences>(
@@ -1787,7 +1787,7 @@ export class ModelPreferences extends Schema.Class<ModelPreferences>(
  * The client should let the user inspect the sampled message before returning
  * it to the server.
  *
- * @category sampling
+ * @category schemas
  * @since 4.0.0
  */
 export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
@@ -1817,7 +1817,7 @@ export class CreateMessageResult extends Schema.Class<CreateMessageResult>(
  * The client chooses the model and should ask the user to approve the sampling
  * request before it begins.
  *
- * @category sampling
+ * @category protocols
  * @since 4.0.0
  */
 export class CreateMessage extends Rpc.make("sampling/createMessage", {
@@ -1862,7 +1862,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
 /**
  * Schema for a reference to a resource or resource template definition.
  *
- * @category autocomplete
+ * @category schemas
  * @since 4.0.0
  */
 export class ResourceReference extends Schema.Opaque<ResourceReference>()(Schema.Struct({
@@ -1876,7 +1876,7 @@ export class ResourceReference extends Schema.Opaque<ResourceReference>()(Schema
 /**
  * Schema for a prompt reference used in autocomplete requests.
  *
- * @category autocomplete
+ * @category schemas
  * @since 4.0.0
  */
 export class PromptReference extends Schema.Opaque<PromptReference>()(Schema.Struct({
@@ -1891,7 +1891,7 @@ export class PromptReference extends Schema.Opaque<PromptReference>()(Schema.Str
 /**
  * Schema for the server's response to a completion/complete request.
  *
- * @category autocomplete
+ * @category schemas
  * @since 4.0.0
  */
 export class CompleteResult extends Schema.Opaque<CompleteResult>()(Schema.Struct({
@@ -1929,7 +1929,7 @@ export class CompleteResult extends Schema.Opaque<CompleteResult>()(Schema.Struc
 /**
  * Sent from the client to the server to ask for completion options.
  *
- * @category autocomplete
+ * @category protocols
  * @since 4.0.0
  */
 export class Complete extends Rpc.make("completion/complete", {
@@ -1975,7 +1975,7 @@ export class Complete extends Rpc.make("completion/complete", {
 /**
  * Represents a root directory or file that the server can operate on.
  *
- * @category roots
+ * @category schemas
  * @since 4.0.0
  */
 export class Root extends Schema.Class<Root>(
@@ -2002,7 +2002,7 @@ export class Root extends Schema.Class<Root>(
  *
  * Use to return the directories or files that an MCP server may operate on.
  *
- * @category roots
+ * @category schemas
  * @since 4.0.0
  */
 export class ListRootsResult extends Schema.Class<ListRootsResult>(
@@ -2023,7 +2023,7 @@ export class ListRootsResult extends Schema.Class<ListRootsResult>(
  * system structure or access specific locations that the client has permission
  * to read from.
  *
- * @category roots
+ * @category protocols
  * @since 4.0.0
  */
 export class ListRoots extends Rpc.make("roots/list", {
@@ -2043,7 +2043,7 @@ export class ListRoots extends Rpc.make("roots/list", {
  *
  * Send this when the client adds, removes, or modifies a root.
  *
- * @category roots
+ * @category protocols
  * @since 4.0.0
  */
 export class RootsListChangedNotification extends Rpc.make("notifications/roots/list_changed", {
@@ -2057,7 +2057,7 @@ export class RootsListChangedNotification extends Rpc.make("notifications/roots/
 /**
  * Schema for an accepted client response to an elicitation request.
  *
- * @category elicitation
+ * @category schemas
  * @since 4.0.0
  */
 export class ElicitAcceptResult extends Schema.Class<ElicitAcceptResult>(
@@ -2081,7 +2081,7 @@ export class ElicitAcceptResult extends Schema.Class<ElicitAcceptResult>(
 /**
  * Schema for a declined or canceled client response to an elicitation request.
  *
- * @category elicitation
+ * @category schemas
  * @since 4.0.0
  */
 export class ElicitDeclineResult extends Schema.Class<ElicitDeclineResult>(
@@ -2100,7 +2100,7 @@ export class ElicitDeclineResult extends Schema.Class<ElicitDeclineResult>(
 /**
  * Schema for every client response to an elicitation request.
  *
- * @category elicitation
+ * @category schemas
  * @since 4.0.0
  */
 export const ElicitResult = Schema.Union([
@@ -2117,7 +2117,7 @@ export const ElicitResult = Schema.Union([
  * The client responds with accepted content, an explicit decline, or a
  * cancellation.
  *
- * @category elicitation
+ * @category protocols
  * @since 4.0.0
  */
 export class Elicit extends Rpc.make("elicitation/create", {
@@ -2146,7 +2146,7 @@ export class Elicit extends Rpc.make("elicitation/create", {
  * The error stores the original elicitation request and, when available, the
  * underlying cause.
  *
- * @category elicitation
+ * @category schemas
  * @since 4.0.0
  */
 export class ElicitationDeclined

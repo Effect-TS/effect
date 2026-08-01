@@ -110,7 +110,7 @@ export class BackingPersistence extends Context.Service<BackingPersistence, {
  * Raw persistence backing store for JSON-compatible objects with optional
  * TTLs.
  *
- * @category BackingPersistence
+ * @category services
  * @since 4.0.0
  */
 export interface BackingPersistenceStore {

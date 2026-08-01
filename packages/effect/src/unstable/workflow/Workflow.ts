@@ -476,7 +476,7 @@ export const isResult = <A = unknown, E = unknown>(
  * Result of a workflow execution, either a completed exit or a suspended
  * workflow state.
  *
- * @category results
+ * @category models
  * @since 4.0.0
  */
 export type Result<A, E> = Complete<A, E> | Suspended
@@ -484,7 +484,7 @@ export type Result<A, E> = Complete<A, E> | Suspended
 /**
  * Encoded representation of a workflow `Result`.
  *
- * @category results
+ * @category models
  * @since 4.0.0
  */
 export type ResultEncoded<A, E> =
@@ -495,7 +495,7 @@ export type ResultEncoded<A, E> =
  * Encoded representation of a completed workflow result containing an encoded
  * `Exit`.
  *
- * @category results
+ * @category models
  * @since 4.0.0
  */
 export interface CompleteEncoded<A, E> {
@@ -527,7 +527,7 @@ export interface CompleteSchema<
 /**
  * Represents a completed workflow execution with its success or failure `Exit`.
  *
- * @category results
+ * @category models
  * @since 4.0.0
  */
 export class Complete<A, E> extends Data.TaggedClass("Complete")<{
@@ -599,7 +599,7 @@ export class Complete<A, E> extends Data.TaggedClass("Complete")<{
  * Represents a suspended workflow execution, optionally carrying the cause that
  * triggered suspension.
  *
- * @category results
+ * @category schemas
  * @since 4.0.0
  */
 export class Suspended extends Schema.Class<Suspended>(
@@ -620,7 +620,7 @@ export class Suspended extends Schema.Class<Suspended>(
  * Creates a schema for workflow results using the supplied success and error
  * schemas.
  *
- * @category results
+ * @category schemas
  * @since 4.0.0
  */
 export const Result = <
@@ -636,7 +636,7 @@ const AnyOrVoid = Schema.Union([Schema.Any, Schema.Void])
 /**
  * Schema for encoded workflow results with generic success and error payloads.
  *
- * @category results
+ * @category schemas
  * @since 4.0.0
  */
 export const ResultEncoded: Schema.Codec<ResultEncoded<any, any>> = Schema.toEncoded(
@@ -653,7 +653,7 @@ export const ResultEncoded: Schema.Codec<ResultEncoded<any, any>> = Schema.toEnc
  * `Result`, handling suspension, defect capture, interruption, and workflow
  * scope finalization.
  *
- * @category results
+ * @category converting
  * @since 4.0.0
  */
 export const intoResult = <A, E, R>(
@@ -716,7 +716,7 @@ export const intoResult = <A, E, R>(
  * Wraps an activity-like effect so workflow suspension waits for currently
  * running activities to finish or suspend.
  *
- * @category results
+ * @category resource management
  * @since 4.0.0
  */
 export const wrapActivityResult = <A, E, R>(
@@ -853,7 +853,7 @@ export const withCompensation: {
  * Marks a workflow instance as suspended and interrupts the current fiber to
  * stop execution until it is resumed.
  *
- * @category results
+ * @category interruption
  * @since 4.0.0
  */
 export const suspend = (instance: WorkflowInstance["Service"]): Effect.Effect<never> =>

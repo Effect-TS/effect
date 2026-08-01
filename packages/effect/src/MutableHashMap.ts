@@ -254,7 +254,7 @@ export const fromIterable = <K, V>(entries: Iterable<readonly [K, V]>): MutableH
  * @see {@link has} for checking only whether a key is present
  * @see {@link set} for inserting or replacing a value by key
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const get: {
@@ -308,7 +308,7 @@ const isSimpleKey = (u: unknown): boolean => typeof u !== "object" && typeof u !
  * @see {@link values} for iterating over stored values
  * @see {@link has} for checking one key without iterating
  *
- * @category elements
+ * @category getters
  * @since 3.8.0
  */
 export const keys = <K, V>(self: MutableHashMap<K, V>): Iterable<K> => self.backing.keys()
@@ -342,7 +342,7 @@ export const keys = <K, V>(self: MutableHashMap<K, V>): Iterable<K> => self.back
  *
  * @see {@link keys} for iterating over stored keys
  *
- * @category elements
+ * @category getters
  * @since 3.8.0
  */
 export const values = <K, V>(self: MutableHashMap<K, V>): Iterable<V> => self.backing.values()
@@ -386,7 +386,7 @@ const getFromBucket = <K, V>(
  *
  * @see {@link get} for reading the value as an `Option`
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const has: {
@@ -778,7 +778,7 @@ export const clear = <K, V>(self: MutableHashMap<K, V>) => {
  *
  * @see {@link isEmpty} for checking whether the map has no entries
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const size = <K, V>(self: MutableHashMap<K, V>): number => self.backing.size

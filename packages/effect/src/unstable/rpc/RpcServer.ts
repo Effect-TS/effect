@@ -63,7 +63,7 @@ import { withRun } from "./Utils.ts"
  * The decoded RPC server boundary, accepting client messages for a client id
  * and allowing that client to be disconnected.
  *
- * @category server
+ * @category models
  * @since 4.0.0
  */
 export interface RpcServer<A extends Rpc.Any> {
@@ -78,7 +78,7 @@ export interface RpcServer<A extends Rpc.Any> {
  * handlers for a group and sending decoded server responses through
  * `onFromServer`.
  *
- * @category server
+ * @category constructors
  * @since 4.0.0
  */
 export const makeNoSerialization: <Rpcs extends Rpc.Any>(
@@ -483,7 +483,7 @@ const applyMiddleware = <A, E, R>(
  * requests, invoking handlers, encoding responses, and managing in-flight
  * request lifetime.
  *
- * @category server
+ * @category running
  * @since 4.0.0
  */
 export const make: <Rpcs extends Rpc.Any>(
@@ -1165,7 +1165,7 @@ export const layerProtocolHttp = (options: {
  * Starts an RPC server for a group and returns the HTTP request/response effect
  * that serves the non-websocket HTTP RPC protocol.
  *
- * @category http app
+ * @category running
  * @since 4.0.0
  */
 export const toHttpEffect: <Rpcs extends Rpc.Any>(
@@ -1206,7 +1206,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
  * Starts an RPC server for a group and returns the HTTP effect that upgrades
  * requests to the websocket RPC protocol.
  *
- * @category http app
+ * @category running
  * @since 4.0.0
  */
 export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(

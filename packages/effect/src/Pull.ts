@@ -151,7 +151,7 @@ export type ExcludeDone<E> = Exclude<E, Cause.Done<any>>
  * @see {@link matchEffect} for handling success, ordinary failure, and done outcomes explicitly
  * @see {@link filterDoneLeftover} for extracting a done leftover from an existing `Cause`
  *
- * @category Done
+ * @category error handling
  * @since 4.0.0
  */
 export const catchDone: {
@@ -217,7 +217,7 @@ export const isDoneFailure = <E>(
  * Returns a successful `Result` with the `Cause.Done` value when one is
  * present, otherwise returns a failed `Result` containing the non-done cause.
  *
- * @category Done
+ * @category filtering
  * @since 4.0.0
  */
 export const filterDone: <E>(
@@ -245,7 +245,7 @@ export const filterDone: <E>(
  * @see {@link filterDoneLeftover} for extracting only the done leftover value
  * @see {@link filterNoDone} for the inverse filter that succeeds only when no done failure is present
  *
- * @category Done
+ * @category filtering
  * @since 4.0.0
  */
 export const filterDoneVoid: <E extends Cause.Done>(
@@ -271,7 +271,7 @@ export const filterDoneVoid: <E extends Cause.Done>(
  * @see {@link filterDone} for the inverse typed done filter
  * @see {@link filterDoneVoid} for done detection when the payload is not needed
  *
- * @category Done
+ * @category filtering
  * @since 4.0.0
  */
 export const filterNoDone: <E>(
@@ -291,7 +291,7 @@ export const filterNoDone: <E>(
  * Use to extract only the leftover value carried by a `Cause.Done` completion
  * signal.
  *
- * @category Done
+ * @category filtering
  * @since 4.0.0
  */
 export const filterDoneLeftover: <E>(
@@ -319,7 +319,7 @@ export const filterDoneLeftover: <E>(
  * @see {@link filterDone} for extracting the done signal without converting the cause to an `Exit`
  * @see {@link matchEffect} for handling `Pull` success, failure, and done outcomes directly
  *
- * @category Done
+ * @category converting
  * @since 4.0.0
  */
 export const doneExitFromCause = <E>(cause: Cause.Cause<E>): Exit.Exit<Cause.Done.Extract<E>, ExcludeDone<E>> => {

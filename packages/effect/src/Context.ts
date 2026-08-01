@@ -681,7 +681,7 @@ export const make = <I, S>(
  *
  * @see {@link addOrOmit} for adding or removing a service from an `Option`
  *
- * @category adders
+ * @category combining
  * @since 2.0.0
  */
 export const add: {
@@ -735,7 +735,7 @@ export const add: {
  *
  * @see {@link add} for always storing a service value
  *
- * @category adders
+ * @category combining
  * @since 4.0.0
  */
 export const addOrOmit: {

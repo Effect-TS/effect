@@ -117,7 +117,7 @@ export const isPrimaryKey = (u: unknown): u is PrimaryKey => hasProperty(u, symb
  * PrimaryKey.value(simpleKey) // => "simple-key-123"
  * ```
  *
- * @category accessors
+ * @category getters
  * @since 2.0.0
  */
 export const value = (self: PrimaryKey): string => self[symbol]()

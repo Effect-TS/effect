@@ -172,7 +172,7 @@ const getQueueSchema = <Payload extends Schema.Top>(
 /**
  * Adds an item to the queue and wait for a worker to process it.
  *
- * @category processing
+ * @category running
  * @since 4.0.0
  */
 export const process: <

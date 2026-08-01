@@ -56,7 +56,7 @@ export class BadRequest extends Schema.ErrorClass<BadRequest>("effect/HttpApiErr
  * No-content schema variant for `BadRequest`, decoding an empty 400 response into
  * a `BadRequest` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const BadRequestNoContent = BadRequest.pipe(HttpApiSchema.asNoContent({
@@ -86,7 +86,7 @@ export class Unauthorized extends Schema.ErrorClass<Unauthorized>("effect/HttpAp
  * No-content schema variant for `Unauthorized`, decoding an empty 401 response
  * into an `Unauthorized` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const UnauthorizedNoContent = Unauthorized.pipe(HttpApiSchema.asNoContent({
@@ -116,7 +116,7 @@ export class Forbidden extends Schema.ErrorClass<Forbidden>("effect/HttpApiError
  * No-content schema variant for `Forbidden`, decoding an empty 403 response into a
  * `Forbidden` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const ForbiddenNoContent = Forbidden.pipe(HttpApiSchema.asNoContent({
@@ -146,7 +146,7 @@ export class NotFound extends Schema.ErrorClass<NotFound>("effect/HttpApiError/N
  * No-content schema variant for `NotFound`, decoding an empty 404 response into a
  * `NotFound` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const NotFoundNoContent = NotFound.pipe(HttpApiSchema.asNoContent({
@@ -176,7 +176,7 @@ export class MethodNotAllowed extends Schema.ErrorClass<MethodNotAllowed>("effec
  * No-content schema variant for `MethodNotAllowed`, decoding an empty 405 response
  * into a `MethodNotAllowed` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const MethodNotAllowedNoContent = MethodNotAllowed.pipe(HttpApiSchema.asNoContent({
@@ -206,7 +206,7 @@ export class NotAcceptable extends Schema.ErrorClass<NotAcceptable>("effect/Http
  * No-content schema variant for `NotAcceptable`, decoding an empty 406 response
  * into a `NotAcceptable` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const NotAcceptableNoContent = NotAcceptable.pipe(HttpApiSchema.asNoContent({
@@ -236,7 +236,7 @@ export class RequestTimeout extends Schema.ErrorClass<RequestTimeout>("effect/Ht
  * No-content schema variant for `RequestTimeout`, decoding an empty 408 response
  * into a `RequestTimeout` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const RequestTimeoutNoContent = RequestTimeout.pipe(HttpApiSchema.asNoContent({
@@ -266,7 +266,7 @@ export class Conflict extends Schema.ErrorClass<Conflict>("effect/HttpApiError/C
  * No-content schema variant for `Conflict`, decoding an empty 409 response into a
  * `Conflict` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const ConflictNoContent = Conflict.pipe(HttpApiSchema.asNoContent({
@@ -296,7 +296,7 @@ export class Gone extends Schema.ErrorClass<Gone>("effect/HttpApiError/Gone")({
  * No-content schema variant for `Gone`, decoding an empty 410 response into a
  * `Gone` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const GoneNoContent = Gone.pipe(HttpApiSchema.asNoContent({
@@ -328,7 +328,7 @@ export class UnprocessableEntity
  * No-content schema variant for `UnprocessableEntity`, decoding an empty 422
  * response into an `UnprocessableEntity` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const UnprocessableEntityNoContent = UnprocessableEntity.pipe(HttpApiSchema.asNoContent({
@@ -359,7 +359,7 @@ export class InternalServerError
  * No-content schema variant for `InternalServerError`, decoding an empty 500
  * response into an `InternalServerError` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const InternalServerErrorNoContent = InternalServerError.pipe(HttpApiSchema.asNoContent({
@@ -388,7 +388,7 @@ export class NotImplemented extends Schema.ErrorClass<NotImplemented>("effect/Ht
  * No-content schema variant for `NotImplemented`, decoding an empty 501 response
  * into a `NotImplemented` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const NotImplementedNoContent = NotImplemented.pipe(HttpApiSchema.asNoContent({
@@ -419,7 +419,7 @@ export class ServiceUnavailable
  * No-content schema variant for `ServiceUnavailable`, decoding an empty 503
  * response into a `ServiceUnavailable` error value.
  *
- * @category NoContent errors
+ * @category schemas
  * @since 4.0.0
  */
 export const ServiceUnavailableNoContent = ServiceUnavailable.pipe(HttpApiSchema.asNoContent({

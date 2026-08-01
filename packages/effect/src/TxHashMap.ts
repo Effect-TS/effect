@@ -2053,7 +2053,7 @@ export const compact = <K, A>(
  * await Effect.runPromise(program) // => { language: "en-US", theme: "dark", timezone: "UTC" }
  * ```
  *
- * @category combinators
+ * @category getters
  * @since 4.0.0
  */
 export const toEntries = <K, V>(
@@ -2094,7 +2094,7 @@ export const toEntries = <K, V>(
  * await Effect.runPromise(program) // => 1
  * ```
  *
- * @category combinators
+ * @category getters
  * @since 4.0.0
  */
 export const toValues = <K, V>(self: TxHashMap<K, V>): Effect.Effect<Array<V>> => values(self)

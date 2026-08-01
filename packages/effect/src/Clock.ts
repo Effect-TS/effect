@@ -45,7 +45,7 @@ import * as effect from "./internal/effect.ts"
  * await Effect.runPromise(Effect.provideService(clockOperations, Clock.Clock, testClock)) // => [1_000, 1_000_000_000n]
  * ```
  *
- * @category models
+ * @category services
  * @since 2.0.0
  */
 export interface Clock {
@@ -219,7 +219,7 @@ export const Clock: Context.Reference<Clock> = effect.ClockRef
  * @see {@link Clock} for the service reference
  * @see {@link currentTimeMillis} for convenience accessor that returns milliseconds
  * @see {@link currentTimeNanos} for convenience accessor that returns nanoseconds
- * @category constructors
+ * @category accessors
  * @since 2.0.0
  */
 export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effect<A, E, R> = effect.clockWith
@@ -259,7 +259,7 @@ export const clockWith: <A, E, R>(f: (clock: Clock) => Effect<A, E, R>) => Effec
  * @see {@link monotonicTimeNanos} for measuring elapsed time
  * @see {@link clockWith} for accessing the full Clock service
  *
- * @category constructors
+ * @category accessors
  * @since 2.0.0
  */
 export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
@@ -299,7 +299,7 @@ export const currentTimeMillis: Effect<number> = effect.currentTimeMillis
  *
  * @see {@link monotonicTimeNanos} for measuring elapsed time
  *
- * @category constructors
+ * @category accessors
  * @since 2.0.0
  */
 export const currentTimeNanos: Effect<bigint> = effect.currentTimeNanos
@@ -320,7 +320,7 @@ export const currentTimeNanos: Effect<bigint> = effect.currentTimeNanos
  *
  * @see {@link currentTimeNanos} for Unix wall-clock timestamps
  *
- * @category constructors
+ * @category accessors
  * @since 4.0.0
  */
 export const monotonicTimeNanos: Effect<bigint> = effect.monotonicTimeNanos

@@ -438,7 +438,7 @@ export const size: <V>(self: Trie<V>) => number = TR.size
  * Trie.get(trie, "mea") // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const get: {

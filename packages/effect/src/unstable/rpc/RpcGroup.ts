@@ -29,7 +29,7 @@ const TypeId = "~effect/rpc/RpcGroup"
  * A collection of RPC definitions that can be composed, annotated, and
  * converted into server handlers or layers.
  *
- * @category groups
+ * @category models
  * @since 4.0.0
  */
 export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
@@ -170,7 +170,7 @@ export interface RpcGroup<in out R extends Rpc.Any> extends Pipeable {
  * An erased `RpcGroup` type for APIs that only need to know that a value is an
  * RPC group.
  *
- * @category groups
+ * @category utility types
  * @since 4.0.0
  */
 export interface Any {
@@ -396,7 +396,7 @@ const makeProto = <Rpcs extends Rpc.Any>(options: {
 /**
  * Creates an `RpcGroup` from one or more RPC definitions.
  *
- * @category groups
+ * @category constructors
  * @since 4.0.0
  */
 export const make = <const Rpcs extends ReadonlyArray<Rpc.Any>>(

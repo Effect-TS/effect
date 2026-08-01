@@ -425,7 +425,7 @@ export const make: (options: Omit<Runners["Service"], "sendLocal" | "notifyLocal
  * `EntityNotAssignedToRunner` and ignores notifications, pings, and unavailable
  * runner reports.
  *
- * @category no-op
+ * @category constructors
  * @since 4.0.0
  */
 export const makeNoop: Effect.Effect<
@@ -466,7 +466,7 @@ const rpcErrors: Schema.Union<[
  * RPC group used for runner-to-runner communication, including ping, notify,
  * effect, stream, and envelope messages.
  *
- * @category RPCs
+ * @category models
  * @since 4.0.0
  */
 export class Rpcs extends RpcGroup.make(
@@ -507,7 +507,7 @@ export class Rpcs extends RpcGroup.make(
 /**
  * Client interface generated from the runner RPC group.
  *
- * @category RPCs
+ * @category models
  * @since 4.0.0
  */
 export interface RpcClient extends RpcClient_.FromGroup<typeof Rpcs, RpcClientError> {}
@@ -516,7 +516,7 @@ export interface RpcClient extends RpcClient_.FromGroup<typeof Rpcs, RpcClientEr
  * Builds a runner RPC client from the current `RpcClient.Protocol`, using the
  * `Runners` span prefix with tracing disabled.
  *
- * @category RPCs
+ * @category constructors
  * @since 4.0.0
  */
 export const makeRpcClient: Effect.Effect<

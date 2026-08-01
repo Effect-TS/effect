@@ -869,7 +869,7 @@ function makeProto<
  * Constraint for path parameter schemas: each parameter must encode to
  * `string | undefined`, or the schema must encode to a record of those values.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type ParamsConstraint =
@@ -880,7 +880,7 @@ export type ParamsConstraint =
  * Constraint for header schemas: each header must encode to `string | undefined`,
  * or the schema must encode to a record of those values.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type HeadersConstraint =
@@ -891,7 +891,7 @@ export type HeadersConstraint =
  * Constraint for query schemas: each field must encode to `string`, an array of
  * strings, or `undefined`, or the schema must encode to a record of those values.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type QueryConstraint =
@@ -906,7 +906,7 @@ export type QueryConstraint =
  * - for body methods, payload may be any `Schema.Top` (or content-type keyed
  *   schemas) and OpenAPI uses `requestBody` instead of `parameters`
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMethod.NoBody ? Record<
@@ -920,7 +920,7 @@ export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMe
  * accept field records for query-style encoding, while body methods accept one or
  * more schemas.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type PayloadConstraintCodecs<Method extends HttpMethod> = Method extends HttpMethod.NoBody ?
@@ -931,7 +931,7 @@ export type PayloadConstraintCodecs<Method extends HttpMethod> = Method extends 
  * Constraint for success response schemas, allowing either a single schema or a
  * readonly array of schemas.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type SuccessConstraint = Schema.Top | ReadonlyArray<Schema.Top>
@@ -940,7 +940,7 @@ export type SuccessConstraint = Schema.Top | ReadonlyArray<Schema.Top>
  * Constraint for error response schemas, allowing either a single schema or a
  * readonly array of schemas.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type ErrorConstraint = Schema.Top | ReadonlyArray<Schema.Top>

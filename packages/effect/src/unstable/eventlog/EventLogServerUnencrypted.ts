@@ -74,7 +74,7 @@ export class EventLogServerUnencrypted extends Context.Service<EventLogServerUne
  * Creates a typed server-side write function for events in the supplied
  * `EventLogSchema`.
  *
- * @category EventLogServerUnencrypted
+ * @category constructors
  * @since 4.0.0
  */
 export const makeWrite = <Groups extends EventGroup.Any>(
@@ -556,7 +556,7 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
  * in memory, publishes live changes, and serializes transactions with a
  * semaphore.
  *
- * @category storage
+ * @category constructors
  * @since 4.0.0
  */
 export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {

@@ -26,7 +26,7 @@ import type * as Fiber from "./Fiber.ts"
  * priorities, and decides when fibers should yield control after consuming
  * their operation budget.
  *
- * @category models
+ * @category services
  * @since 2.0.0
  */
 export interface Scheduler {
@@ -145,7 +145,7 @@ class PriorityBuckets {
  * operation counts to decide when fibers should yield, and is the default
  * scheduler implementation.
  *
- * @category schedulers
+ * @category models
  * @since 2.0.0
  */
 export class MixedScheduler implements Scheduler {

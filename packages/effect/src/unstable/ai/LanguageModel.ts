@@ -1728,7 +1728,7 @@ export const generateText: {
  * await Effect.runPromise(program) // => { title: "Tech Conference", date: "March 15th", location: "San Francisco" }
  * ```
  *
- * @category object generation
+ * @category generators
  * @since 4.0.0
  */
 export const generateObject = <

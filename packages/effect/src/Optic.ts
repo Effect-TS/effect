@@ -59,7 +59,7 @@ import type { IsUnion } from "./Types.ts"
  * @see {@link Lens} — when you only need a one-directional focus into a whole
  * @see {@link Prism} — when the focus may not be present
  *
- * @category Iso
+ * @category models
  * @since 4.0.0
  */
 export interface Iso<in out S, in out A> extends Lens<S, A>, Prism<S, A> {}
@@ -134,7 +134,7 @@ export function makeIso<S, A>(get: (s: S) => A, set: (a: A) => S): Iso<S, A> {
  * @see {@link Iso} — when conversion is lossless in both directions
  * @see {@link Optional} — when reading can also fail
  *
- * @category Lens
+ * @category models
  * @since 4.0.0
  */
 export interface Lens<in out S, in out A> extends Optional<S, A> {
@@ -218,7 +218,7 @@ export function makeLens<S, A>(get: (s: S) => A, replace: (a: A, s: S) => S): Le
  * @see {@link fromChecks} — build a Prism from schema checks
  * @see {@link Lens} — when reading always succeeds
  *
- * @category Prism
+ * @category models
  * @since 4.0.0
  */
 export interface Prism<in out S, in out A> extends Optional<S, A> {
@@ -434,7 +434,7 @@ type ForbidUnion<A, Message extends string> = IsUnion<A> extends true ? [Message
  * @see {@link Lens} — when reading always succeeds
  * @see {@link Prism} — when writing always succeeds
  *
- * @category Optional
+ * @category models
  * @since 4.0.0
  */
 export interface Optional<in out S, in out A> {
@@ -945,7 +945,7 @@ export function makeOptional<S, A>(
  * @see {@link getAll} — extract focused elements
  * @see {@link Optional} — the base type
  *
- * @category Traversal
+ * @category models
  * @since 4.0.0
  */
 export interface Traversal<in out S, in out A> extends Optional<S, ReadonlyArray<A>> {}
@@ -1291,7 +1291,7 @@ function composeKind(a: Kind, b: Kind): Kind {
  *
  * @see {@link Traversal} — the optic type this operates on
  *
- * @category Traversal
+ * @category getters
  * @since 4.0.0
  */
 export function getAll<S, A>(traversal: Traversal<S, A>): (s: S) => Array<A> {
@@ -1335,7 +1335,7 @@ const identityIso = make([])
  *
  * @see {@link Iso} — the type this function returns
  *
- * @category Iso
+ * @category constructors
  * @since 4.0.0
  */
 export function id<S>(): Iso<S, S> {
@@ -1373,7 +1373,7 @@ export function id<S>(): Iso<S, S> {
  * @see {@link Iso} — the type this function returns
  * @see {@link id} — identity iso
  *
- * @category Iso
+ * @category constructors
  * @since 4.0.0
  */
 export function entries<A>(): Iso<Record<string, A>, ReadonlyArray<readonly [string, A]>> {
@@ -1410,7 +1410,7 @@ export function entries<A>(): Iso<Record<string, A>, ReadonlyArray<readonly [str
  * @see {@link none} — focuses on `None` instead
  * @see {@link Prism} — the type this function returns
  *
- * @category Prism
+ * @category constructors
  * @since 4.0.0
  */
 export function some<A>(): Prism<Option.Option<A>, A> {
@@ -1453,7 +1453,7 @@ export function some<A>(): Prism<Option.Option<A>, A> {
  * @see {@link some} — focuses on `Some` instead
  * @see {@link Prism} — the type this function returns
  *
- * @category Prism
+ * @category constructors
  * @since 4.0.0
  */
 export function none<A>(): Prism<Option.Option<A>, undefined> {
@@ -1496,7 +1496,7 @@ export function none<A>(): Prism<Option.Option<A>, undefined> {
  * @see {@link failure} — focuses on the failure side
  * @see {@link Prism} — the type this function returns
  *
- * @category Prism
+ * @category constructors
  * @since 4.0.0
  */
 export function success<A, E>(): Prism<Result.Result<A, E>, A> {
@@ -1539,7 +1539,7 @@ export function success<A, E>(): Prism<Result.Result<A, E>, A> {
  * @see {@link success} — focuses on the success side
  * @see {@link Prism} — the type this function returns
  *
- * @category Prism
+ * @category constructors
  * @since 4.0.0
  */
 export function failure<A, E>(): Prism<Result.Result<A, E>, E> {

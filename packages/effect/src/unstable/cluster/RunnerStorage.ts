@@ -84,7 +84,7 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
  * String-encoded runner storage interface used by adapters that persist runner
  * addresses, runners, machine ids, and shard ids outside the in-memory model.
  *
- * @category encoded
+ * @category services
  * @since 4.0.0
  */
 export interface Encoded {

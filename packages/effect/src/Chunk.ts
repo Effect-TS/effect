@@ -90,7 +90,7 @@ export interface NonEmptyChunk<out A> extends Chunk<A>, NonEmptyIterable<A> {}
  * // Equivalent to: Chunk<number>
  * ```
  *
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface ChunkTypeLambda extends TypeLambda {
@@ -494,7 +494,7 @@ const reverseChunk = <A>(self: Chunk<A>): Chunk<A> => {
  * Chunk.toArray(Chunk.reverse(chunk)) // => [3, 2, 1]
  * ```
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const reverse: <S extends Chunk<any>>(self: S) => Chunk.With<S, Chunk.Infer<S>> = reverseChunk as any
@@ -518,7 +518,7 @@ export const reverse: <S extends Chunk<any>>(self: S) => Chunk.With<S, Chunk.Inf
  * chunk.pipe(Chunk.get(2)) // => Option.some("c")
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const get: {
@@ -722,7 +722,7 @@ export const prepend: {
  * Chunk.toArray(Chunk.take(chunk, 3)) // => [1, 2, 3]
  * ```
  *
- * @category elements
+ * @category filtering
  * @since 2.0.0
  */
 export const take: {
@@ -778,7 +778,7 @@ export const take: {
  * Chunk.toArray(Chunk.drop(chunk, 2)) // => [3, 4, 5]
  * ```
  *
- * @category elements
+ * @category filtering
  * @since 2.0.0
  */
 export const drop: {
@@ -833,7 +833,7 @@ export const drop: {
  * Chunk.toArray(Chunk.dropRight(chunk, 2)) // => [1, 2, 3]
  * ```
  *
- * @category elements
+ * @category filtering
  * @since 2.0.0
  */
 export const dropRight: {
@@ -853,7 +853,7 @@ export const dropRight: {
  * Chunk.toArray(Chunk.dropWhile(chunk, (n) => n < 3)) // => [3, 4, 5]
  * ```
  *
- * @category elements
+ * @category filtering
  * @since 2.0.0
  */
 export const dropWhile: {
@@ -1254,7 +1254,7 @@ export const flatten: <S extends Chunk<Chunk<any>>>(self: S) => Chunk.Flatten<S>
  *
  * @see {@link split} for splitting into a target number of chunks instead of a fixed chunk size
  *
- * @category elements
+ * @category splitting
  * @since 2.0.0
  */
 export const chunksOf: {
@@ -1303,7 +1303,7 @@ export const chunksOf: {
  * Chunk.toArray(Chunk.intersection(chunk3, chunk4)) // => []
  * ```
  *
- * @category elements
+ * @category set operations
  * @since 2.0.0
  */
 export const intersection: {
@@ -1361,7 +1361,7 @@ export const isNonEmpty = <A>(self: Chunk<A>): self is NonEmptyChunk<A> => self.
  * Chunk.head(Chunk.make(1, 2, 3)) // => Option.some(1)
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const head: <A>(self: Chunk<A>) => Option<A> = get(0)
@@ -1416,7 +1416,7 @@ export const headUnsafe = <A>(self: Chunk<A>): A => getUnsafe(self, 0)
  * // Chunk.headNonEmpty(Chunk.empty()) // TypeScript error
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const headNonEmpty: <A>(self: NonEmptyChunk<A>) => A = headUnsafe
@@ -1433,7 +1433,7 @@ export const headNonEmpty: <A>(self: NonEmptyChunk<A>) => A = headUnsafe
  * Chunk.last(Chunk.make(1, 2, 3)) // => Option.some(3)
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const last = <A>(self: Chunk<A>): Option<A> => get(self, self.length - 1)
@@ -1488,7 +1488,7 @@ export const lastUnsafe = <A>(self: Chunk<A>): A => getUnsafe(self, self.length 
  * // Chunk.lastNonEmpty(Chunk.empty()) // TypeScript error
  * ```
  *
- * @category elements
+ * @category getters
  * @since 3.4.0
  */
 export const lastNonEmpty: <A>(self: NonEmptyChunk<A>) => A = lastUnsafe
@@ -1805,7 +1805,7 @@ export const separate = <A, B>(self: Chunk<Result<B, A>>): [Chunk<A>, Chunk<B>] 
  * Chunk.size(Chunk.make(1, 2, 3)) // => 3
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const size = <A>(self: Chunk<A>): number => self.length
@@ -2047,7 +2047,7 @@ export const splitWhere: {
  * Chunk.tail(Chunk.empty<number>()) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const tail = <A>(self: Chunk<A>): O.Option<Chunk<A>> => self.length > 0 ? O.some(drop(self, 1)) : O.none()
@@ -2070,7 +2070,7 @@ export const tail = <A>(self: Chunk<A>): O.Option<Chunk<A>> => self.length > 0 ?
  * // Chunk.tailNonEmpty(Chunk.empty()) // TypeScript error
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const tailNonEmpty = <A>(self: NonEmptyChunk<A>): Chunk<A> => drop(self, 1)
@@ -2093,7 +2093,7 @@ export const tailNonEmpty = <A>(self: NonEmptyChunk<A>): Chunk<A> => drop(self, 
  * Chunk.toArray(Chunk.takeRight(chunk, 0)) // => []
  * ```
  *
- * @category elements
+ * @category filtering
  * @since 2.0.0
  */
 export const takeRight: {
@@ -2120,7 +2120,7 @@ export const takeRight: {
  * Chunk.toArray(Chunk.takeWhile(small, (n) => n < 10)) // => [1, 2, 3]
  * ```
  *
- * @category elements
+ * @category filtering
  * @since 2.0.0
  */
 export const takeWhile: {
@@ -2158,7 +2158,7 @@ export const takeWhile: {
  * Chunk.toArray(Chunk.union(withDupes1, withDupes2)) // => [1, 2, 3]
  * ```
  *
- * @category elements
+ * @category set operations
  * @since 2.0.0
  */
 export const union: {
@@ -2190,7 +2190,7 @@ export const union: {
  * Chunk.toArray(Chunk.dedupe(unique)) // => [1, 2, 3]
  * ```
  *
- * @category elements
+ * @category deduplication
  * @since 2.0.0
  */
 export const dedupe = <A>(self: Chunk<A>): Chunk<A> => fromArrayUnsafe(RA.dedupe(toReadonlyArray(self)))
@@ -2244,7 +2244,7 @@ export const dedupeAdjacent = <A>(self: Chunk<A>): Chunk<A> => fromArrayUnsafe(R
  * Chunk.toArray(emptyStrs) // => []
  * ```
  *
- * @category elements
+ * @category splitting
  * @since 2.0.0
  */
 export const unzip = <A, B>(self: Chunk<readonly [A, B]>): [Chunk<A>, Chunk<B>] => {
@@ -2329,7 +2329,7 @@ export const zip: {
  * Chunk.toArray(Chunk.remove(chunk, 10)) // => ["a", "b", "c", "d"]
  * ```
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const remove: {
@@ -2359,7 +2359,7 @@ export const remove: {
  * chunk.pipe(Chunk.modify(-1, (n) => n * 10)) // => Option.none()
  * ```
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const modify: {
@@ -2390,7 +2390,7 @@ export const modify: {
  * chunk.pipe(Chunk.replace(-1, "Z")) // => Option.none()
  * ```
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const replace: {
@@ -2537,7 +2537,7 @@ export const containsWith: <A>(
  * firstString // => Option.some("hello")
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findFirst: {
@@ -2565,7 +2565,7 @@ export const findFirst: {
  * Chunk.findFirstIndex(chunk, (n) => n % 2 === 0) // => Option.some(1)
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findFirstIndex: {
@@ -2594,7 +2594,7 @@ export const findFirstIndex: {
  * Chunk.findLast(chunk, (n) => n % 2 === 0) // => Option.some(4)
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findLast: {
@@ -2622,7 +2622,7 @@ export const findLast: {
  * Chunk.findLastIndex(chunk, (n) => n % 2 === 0) // => Option.some(3)
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findLastIndex: {

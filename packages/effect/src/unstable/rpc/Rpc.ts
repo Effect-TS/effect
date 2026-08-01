@@ -47,7 +47,7 @@ export const isRpc = (u: unknown): u is Rpc<any, any, any> => Predicate.hasPrope
  * Defect schemas decode and encode without services and can be constructed from
  * `null`, `undefined`, or an object value.
  *
- * @category models
+ * @category schemas
  * @since 4.0.0
  */
 export interface DefectSchema extends Schema.Top {

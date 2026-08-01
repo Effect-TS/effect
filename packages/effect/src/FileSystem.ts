@@ -72,7 +72,7 @@ const TypeId = "~effect/platform/FileSystem"
  * result.content // => "{\"env\": \"development\"}"
  * ```
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface FileSystem {
@@ -1034,7 +1034,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  * Effect.runSync(program) // => { size: 5n, bytesRead: 5n, buffer: [1, 2, 3, 4, 5] }
  * ```
  *
- * @category file
+ * @category models
  * @since 4.0.0
  */
 export interface File {
@@ -1064,7 +1064,7 @@ export declare namespace File {
    * Represents the different types of entries that can exist in a file system,
    * from regular files to special device files and symbolic links.
    *
-   * @category file
+   * @category models
    * @since 4.0.0
    */
   export type Type =
@@ -1120,7 +1120,7 @@ export declare namespace File {
    * info.type === "File" // => true
    * ```
    *
-   * @category file
+   * @category models
    * @since 4.0.0
    */
   export interface Info {

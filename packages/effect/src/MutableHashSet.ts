@@ -296,7 +296,7 @@ export const add: {
  * @see {@link add} for adding a value to the set
  * @see {@link remove} for removing a value from the set
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const has: {
@@ -377,7 +377,7 @@ export const remove: {
  * MutableHashSet.size(set) // => 0
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const size = <V>(self: MutableHashSet<V>): number => MutableHashMap.size(self.keyMap)

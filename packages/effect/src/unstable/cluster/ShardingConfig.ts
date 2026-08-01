@@ -353,7 +353,7 @@ export const layerFromEnv = (options?: Partial<ShardingConfig["Service"]> | unde
  * Normalizes the provided `ShardingConfig` to calculate the `available` and
  * `assigned` shard groups.
  *
- * @category shard groups
+ * @category converting
  * @since 4.0.0
  */
 export const shardGroupConfig = (config: ShardingConfig["Service"]): {

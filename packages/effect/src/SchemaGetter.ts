@@ -337,7 +337,7 @@ export function passthroughSubtype<T>(): Getter<T, T> {
  * @see {@link withDefault} for a simpler default value for undefined inputs
  * @see {@link onSome} to handle only present values
  *
- * @category constructors
+ * @category transforming
  * @since 4.0.0
  */
 export function onNone<T, E extends T = T, R = never>(
@@ -373,7 +373,7 @@ export function onNone<T, E extends T = T, R = never>(
  * @see {@link onNone} to provide a fallback instead of failing
  * @see {@link withDefault} to substitute a default for undefined values
  *
- * @category constructors
+ * @category validation
  * @since 4.0.0
  */
 export function required<T, E extends T = T>(annotations?: Schema.Annotations.Key<T>): Getter<T, E> {
@@ -410,7 +410,7 @@ export function required<T, E extends T = T>(annotations?: Schema.Annotations.Ke
  * @see {@link transform} for a simpler pure transformation of present values
  * @see {@link transformOrFail} for fallible transformation of present values
  *
- * @category constructors
+ * @category transforming
  * @since 4.0.0
  */
 export function onSome<T, E, R = never>(
@@ -453,7 +453,7 @@ export function onSome<T, E, R = never>(
  * @see {@link transform} when you need to change the value, not just validate
  * @see {@link fail} for unconditional failure
  *
- * @category constructors
+ * @category validation
  * @since 4.0.0
  */
 export function checkEffect<T, R = never>(
@@ -507,7 +507,7 @@ export function checkEffect<T, R = never>(
  * @see {@link transformOptional} when you need to handle `None` inputs
  * @see {@link passthrough} when no transformation is needed
  *
- * @category constructors
+ * @category transforming
  * @since 4.0.0
  */
 export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
@@ -547,7 +547,7 @@ export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
  * @see {@link transform} when transformation cannot fail
  * @see {@link onSome} when you need full `Option` control over the output
  *
- * @category constructors
+ * @category transforming
  * @since 4.0.0
  */
 export function transformOrFail<T, E, R = never>(
@@ -583,7 +583,7 @@ export function transformOrFail<T, E, R = never>(
  * @see {@link transform} when you only need to transform present values
  * @see {@link omit} when you always want `None`
  *
- * @category constructors
+ * @category transforming
  * @since 4.0.0
  */
 export function transformOptional<T, E>(f: (oe: Option.Option<E>) => Option.Option<T>): Getter<T, E> {
@@ -615,7 +615,7 @@ export function transformOptional<T, E>(f: (oe: Option.Option<E>) => Option.Opti
  * @see {@link transformOptional} when you want conditional omission
  * @see {@link forbidden} when you want to fail instead of silently omit
  *
- * @category constructors
+ * @category filtering
  * @since 4.0.0
  */
 export function omit<T>(): Getter<never, T> {
@@ -648,7 +648,7 @@ export function omit<T>(): Getter<never, T> {
  * @see {@link onNone} to handle only absent keys (not `undefined` values)
  * @see {@link required} when absent input should fail instead of using a default
  *
- * @category constructors
+ * @category transforming
  * @since 4.0.0
  */
 export function withDefault<T, R = never>(
@@ -683,7 +683,7 @@ export function withDefault<T, R = never>(
  *
  * @see {@link transform} for custom string conversions
  *
- * @category coercions
+ * @category converting
  * @since 4.0.0
  */
 export function String<E>(): Getter<string, E> {
@@ -714,7 +714,7 @@ export function String<E>(): Getter<string, E> {
  *
  * @see {@link transformOrFail} for validated number parsing
  *
- * @category coercions
+ * @category converting
  * @since 4.0.0
  */
 export function Number<E>(): Getter<number, E> {
@@ -742,7 +742,7 @@ export function Number<E>(): Getter<number, E> {
  * await Effect.runPromise(toBool.run(Option.some("true"), {})) // => Option.some(true)
  * ```
  *
- * @category coercions
+ * @category converting
  * @since 4.0.0
  */
 export function Boolean<E>(): Getter<boolean, E> {
@@ -771,7 +771,7 @@ export function Boolean<E>(): Getter<boolean, E> {
  * await Effect.runPromise(toBigInt.run(Option.some("42"), {})) // => Option.some(42n)
  * ```
  *
- * @category coercions
+ * @category converting
  * @since 4.0.0
  */
 export function BigInt<E extends string | number | bigint | boolean>(): Getter<bigint, E> {
@@ -803,7 +803,7 @@ export function BigInt<E extends string | number | bigint | boolean>(): Getter<b
  *
  * @see {@link dateTimeUtcFromInput} for validated DateTime parsing
  *
- * @category coercions
+ * @category converting
  * @since 4.0.0
  */
 export function Date<E extends string | number | Date>(): Getter<Date, E> {
@@ -826,7 +826,7 @@ export function Date<E extends string | number | Date>(): Getter<Date, E> {
  * await Effect.runPromise(trimmed.run(Option.some("  hello  "), {})) // => Option.some("hello")
  * ```
  *
- * @category string
+ * @category transforming
  * @since 4.0.0
  */
 export function trim<E extends string>(): Getter<string, E> {
@@ -849,7 +849,7 @@ export function trim<E extends string>(): Getter<string, E> {
  * await Effect.runPromise(cap.run(Option.some("hello"), {})) // => Option.some("Hello")
  * ```
  *
- * @category string
+ * @category transforming
  * @since 4.0.0
  */
 export function capitalize<E extends string>(): Getter<string, E> {
@@ -872,7 +872,7 @@ export function capitalize<E extends string>(): Getter<string, E> {
  * await Effect.runPromise(uncap.run(Option.some("Hello"), {})) // => Option.some("hello")
  * ```
  *
- * @category string
+ * @category transforming
  * @since 4.0.0
  */
 export function uncapitalize<E extends string>(): Getter<string, E> {
@@ -897,7 +897,7 @@ export function uncapitalize<E extends string>(): Getter<string, E> {
  *
  * @see {@link camelToSnake} for the inverse operation
  *
- * @category string
+ * @category transforming
  * @since 4.0.0
  */
 export function snakeToCamel<E extends string>(): Getter<string, E> {
@@ -922,7 +922,7 @@ export function snakeToCamel<E extends string>(): Getter<string, E> {
  *
  * @see {@link snakeToCamel} for the inverse operation
  *
- * @category string
+ * @category transforming
  * @since 4.0.0
  */
 export function camelToSnake<E extends string>(): Getter<string, E> {
@@ -947,7 +947,7 @@ export function camelToSnake<E extends string>(): Getter<string, E> {
  *
  * @see {@link toUpperCase} for the inverse operation
  *
- * @category string
+ * @category transforming
  * @since 4.0.0
  */
 export function toLowerCase<E extends string>(): Getter<string, E> {
@@ -972,7 +972,7 @@ export function toLowerCase<E extends string>(): Getter<string, E> {
  *
  * @see {@link toLowerCase} for the inverse operation
  *
- * @category string
+ * @category transforming
  * @since 4.0.0
  */
 export function toUpperCase<E extends string>(): Getter<string, E> {
@@ -1009,7 +1009,7 @@ type ParseJsonOptions = {
  *
  * @see {@link stringifyJson} for the inverse operation
  *
- * @category JSON getters
+ * @category decoding
  * @since 4.0.0
  */
 export function parseJson<E extends string>(): Getter<Schema.MutableJson, E>
@@ -1026,7 +1026,7 @@ export function parseJson<E extends string>(options?: ParseJsonOptions | undefin
 /**
  * Replacer function or property allowlist accepted by `JSON.stringify`.
  *
- * @category JSON getters
+ * @category utility types
  * @since 4.0.0
  */
 export type JsonReplacer =
@@ -1066,7 +1066,7 @@ type StringifyJsonOptions = {
  *
  * @see {@link parseJson} for the inverse operation
  *
- * @category JSON getters
+ * @category encoding
  * @since 4.0.0
  */
 export function stringifyJson(options?: StringifyJsonOptions): Getter<string, unknown> {
@@ -1110,7 +1110,7 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
  * @see {@link joinKeyValue} for the inverse operation
  * @see {@link split} to split into an array of strings
  *
- * @category string
+ * @category splitting
  * @since 4.0.0
  */
 export function splitKeyValue<E extends string>(options?: {
@@ -1155,7 +1155,7 @@ export function splitKeyValue<E extends string>(options?: {
  *
  * @see {@link splitKeyValue} for the inverse operation
  *
- * @category string
+ * @category combining
  * @since 4.0.0
  */
 export function joinKeyValue<E extends Record<PropertyKey, string>>(options?: {
@@ -1193,7 +1193,7 @@ export function joinKeyValue<E extends Record<PropertyKey, string>>(options?: {
  *
  * @see {@link splitKeyValue} when values are key-value pairs
  *
- * @category string
+ * @category splitting
  * @since 4.0.0
  */
 export function split<E extends string>(options?: {
@@ -1223,7 +1223,7 @@ export function split<E extends string>(options?: {
  * @see {@link decodeBase64String} for the inverse operation to `string`
  * @see {@link encodeBase64Url} for the URL-safe variant
  *
- * @category Base64 getters
+ * @category encoding
  * @since 4.0.0
  */
 export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E> {
@@ -1250,7 +1250,7 @@ export function encodeBase64<E extends Uint8Array | string>(): Getter<string, E>
  * @see {@link decodeBase64UrlString} for the inverse operation to `string`
  * @see {@link encodeBase64} for the standard Base64 variant
  *
- * @category Base64 getters
+ * @category encoding
  * @since 4.0.0
  */
 export function encodeBase64Url<E extends Uint8Array | string>(): Getter<string, E> {
@@ -1276,7 +1276,7 @@ export function encodeBase64Url<E extends Uint8Array | string>(): Getter<string,
  * @see {@link decodeHex} for the inverse operation to `Uint8Array`
  * @see {@link decodeHexString} for the inverse operation to `string`
  *
- * @category Hex getters
+ * @category encoding
  * @since 4.0.0
  */
 export function encodeHex<E extends Uint8Array | string>(): Getter<string, E> {
@@ -1303,7 +1303,7 @@ export function encodeHex<E extends Uint8Array | string>(): Getter<string, E> {
  * @see {@link decodeBase64String} to decode to `string` instead
  * @see {@link encodeBase64} for the inverse operation
  *
- * @category Base64 getters
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
@@ -1334,7 +1334,7 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
  * @see {@link decodeBase64} to decode to `Uint8Array` instead
  * @see {@link encodeBase64} for the inverse operation
  *
- * @category Base64 getters
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeBase64String<E extends string>(): Getter<string, E> {
@@ -1366,7 +1366,7 @@ export function decodeBase64String<E extends string>(): Getter<string, E> {
  * @see {@link decodeBase64UrlString} to decode to `string` instead
  * @see {@link encodeBase64Url} for the inverse operation
  *
- * @category Base64 getters
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
@@ -1397,7 +1397,7 @@ export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
  * @see {@link decodeBase64Url} to decode to `Uint8Array` instead
  * @see {@link encodeBase64Url} for the inverse operation
  *
- * @category Base64 getters
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
@@ -1429,7 +1429,7 @@ export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
  * @see {@link decodeHexString} to decode to `string` instead
  * @see {@link encodeHex} for the inverse operation
  *
- * @category Hex getters
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
@@ -1460,7 +1460,7 @@ export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
  * @see {@link decodeHex} to decode to `Uint8Array` instead
  * @see {@link encodeHex} for the inverse operation
  *
- * @category Hex getters
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeHexString<E extends string>(): Getter<string, E> {
@@ -1492,7 +1492,7 @@ export function decodeHexString<E extends string>(): Getter<string, E> {
  *
  * @see {@link decodeUriComponent} for the inverse operation
  *
- * @category URI
+ * @category encoding
  * @since 4.0.0
  */
 export function encodeUriComponent<E extends string>(): Getter<string, E> {
@@ -1517,7 +1517,7 @@ export function encodeUriComponent<E extends string>(): Getter<string, E> {
  *
  * @see {@link encodeUriComponent} for the inverse operation
  *
- * @category URI
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeUriComponent<E extends string>(): Getter<string, E> {
@@ -1563,7 +1563,7 @@ export function decodeUriComponent<E extends string>(): Getter<string, E> {
  *
  * @see {@link Date} for a simpler coercion to `Date` (no validation)
  *
- * @category DateTime
+ * @category converting
  * @since 4.0.0
  */
 export function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): Getter<DateTime.Utc, E> {
@@ -1605,7 +1605,7 @@ export function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): Gette
  * @see {@link makeTreeRecord} for the underlying bracket-path parser
  * @see {@link decodeURLSearchParams} for the URLSearchParams variant
  *
- * @category FormData
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeFormData(): Getter<Schema.TreeRecord<string | Blob>, FormData> {
@@ -1644,7 +1644,7 @@ const collectFormDataEntries = collectBracketPathEntries((value): value is strin
  * @see {@link collectBracketPathEntries} for the underlying flattener
  * @see {@link encodeURLSearchParams} for the URLSearchParams variant
  *
- * @category FormData
+ * @category encoding
  * @since 4.0.0
  */
 export function encodeFormData(): Getter<FormData, unknown> {
@@ -1688,7 +1688,7 @@ export function encodeFormData(): Getter<FormData, unknown> {
  * @see {@link makeTreeRecord} for the underlying bracket-path parser
  * @see {@link decodeFormData} for the FormData variant
  *
- * @category search params
+ * @category decoding
  * @since 4.0.0
  */
 export function decodeURLSearchParams(): Getter<Schema.TreeRecord<string>, URLSearchParams> {
@@ -1724,7 +1724,7 @@ const collectURLSearchParamsEntries = collectBracketPathEntries(Predicate.isStri
  * @see {@link collectBracketPathEntries} for the underlying flattener
  * @see {@link encodeFormData} for the FormData variant
  *
- * @category search params
+ * @category encoding
  * @since 4.0.0
  */
 export function encodeURLSearchParams(): Getter<URLSearchParams, unknown> {
@@ -1797,7 +1797,7 @@ function bracketPathToTokens(bracketPath: string): Array<string | number> {
  * @see {@link decodeFormData} for a higher-level FormData decoder
  * @see {@link decodeURLSearchParams} for a higher-level URLSearchParams decoder
  *
- * @category Tree
+ * @category constructors
  * @since 4.0.0
  */
 export function makeTreeRecord<A>(
@@ -1892,7 +1892,7 @@ export function makeTreeRecord<A>(
  * @see {@link encodeFormData} for a higher-level FormData encoder
  * @see {@link encodeURLSearchParams} for a higher-level URLSearchParams encoder
  *
- * @category Tree
+ * @category converting
  * @since 4.0.0
  */
 export function collectBracketPathEntries<A>(isLeaf: (value: unknown) => value is A) {

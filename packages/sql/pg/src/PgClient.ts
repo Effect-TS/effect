@@ -73,7 +73,7 @@ export type TypeId = "~@effect/sql-pg/PgClient"
 /**
  * PostgreSQL client service, extending `SqlClient` with JSON parameter fragments and LISTEN/NOTIFY helpers.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface PgClient extends Client.SqlClient {
@@ -99,7 +99,7 @@ export const PgClient = Context.Service<PgClient>("@effect/sql-pg/PgClient")
 /**
  * Configuration for a PostgreSQL client, including connection, TLS, custom stream, application name, type parser, JSON transform, and query/result name transform options.
  *
- * @category constructors
+ * @category models
  * @since 4.0.0
  */
 export interface PgClientConfig {
@@ -129,7 +129,7 @@ export interface PgClientConfig {
 /**
  * PostgreSQL pool configuration, extending `PgClientConfig` with idle timeout, pool size, and connection lifetime settings.
  *
- * @category constructors
+ * @category models
  * @since 4.0.0
  */
 export interface PgPoolConfig extends PgClientConfig {
@@ -865,18 +865,18 @@ const escape = Statement.defaultEscape("\"")
 /**
  * PostgreSQL-specific custom statement fragments supported by the compiler, currently JSON parameter fragments.
  *
- * @category custom types
+ * @category models
  * @since 4.0.0
  */
 export type PgCustom = PgJson
 
 /**
- * @category custom types
+ * @category models
  * @since 4.0.0
  */
 interface PgJson extends Custom<"PgJson", unknown> {}
 /**
- * @category custom types
+ * @category constructors
  * @since 4.0.0
  */
 const PgJson = Statement.custom<PgJson>("PgJson")

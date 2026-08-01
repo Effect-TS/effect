@@ -357,7 +357,7 @@ export const layerStoreMemory: Layer.Layer<
  * refreshes locks while items are being processed, and moves exhausted items
  * to a failed queue.
  *
- * @category store
+ * @category constructors
  * @since 4.0.0
  */
 export const makeStoreRedis = Effect.fnUntraced(function*(
@@ -745,7 +745,7 @@ export const layerStoreRedis: (
  * per-worker locks, refreshes active locks while scoped takes are running, and
  * retries or completes rows according to the processing exit.
  *
- * @category store
+ * @category constructors
  * @since 4.0.0
  */
 export const makeStoreSql: (

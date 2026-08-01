@@ -10,7 +10,7 @@
  */
 
 /**
- * @category tuples
+ * @category utility types
  * @since 2.0.0
  */
 type TupleOf_<T, N extends number, R extends Array<unknown>> = `${N}` extends `-${number}` ? never
@@ -48,7 +48,7 @@ type TupleOf_<T, N extends number, R extends Array<unknown>> = `${N}` extends `-
  *
  * @see {@link TupleOfAtLeast}
  *
- * @category tuples
+ * @category utility types
  * @since 3.3.0
  */
 export type TupleOf<N extends number, T> = N extends N ? number extends N ? Array<T> : TupleOf_<T, N, []> : never
@@ -81,7 +81,7 @@ export type TupleOf<N extends number, T> = N extends N ? number extends N ? Arra
  *
  * @see {@link TupleOf}
  *
- * @category tuples
+ * @category utility types
  * @since 3.3.0
  */
 export type TupleOfAtLeast<N extends number, T> = [...TupleOf<N, T>, ...Array<T>]

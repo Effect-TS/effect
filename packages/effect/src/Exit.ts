@@ -964,7 +964,7 @@ export const asVoidAll: <I extends Iterable<Exit<any, any>>>(
  * @see {@link getCause} to extract the Cause of a failure
  * @see {@link filterValue} for filter-pipeline usage
  *
- * @category accessors
+ * @category getters
  * @since 4.0.0
  */
 export const getSuccess: <A, E>(self: Exit<A, E>) => Option<A> = effect.exitGetSuccess
@@ -993,7 +993,7 @@ export const getSuccess: <A, E>(self: Exit<A, E>) => Option<A> = effect.exitGetS
  * @see {@link getSuccess} to extract the success value
  * @see {@link filterCause} for filter-pipeline usage
  *
- * @category accessors
+ * @category getters
  * @since 4.0.0
  */
 export const getCause: <A, E>(self: Exit<A, E>) => Option<Cause.Cause<E>> = effect.exitGetCause
@@ -1029,7 +1029,7 @@ export const getCause: <A, E>(self: Exit<A, E>) => Option<Cause.Cause<E>> = effe
  * @see {@link findError} for filter-pipeline usage
  * @see {@link getCause} to get the full Cause as an Option
  *
- * @category accessors
+ * @category getters
  * @since 4.0.0
  */
 export const findErrorOption: <A, E>(self: Exit<A, E>) => Option<E> = effect.exitFindErrorOption

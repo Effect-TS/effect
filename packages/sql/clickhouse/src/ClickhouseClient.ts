@@ -104,7 +104,7 @@ export type TypeId = "~@effect/sql-clickhouse/ClickhouseClient"
  * typed parameter fragments, command-mode execution, insert queries, and
  * per-effect query ID and ClickHouse settings.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface ClickhouseClient extends Client.SqlClient {
@@ -149,7 +149,7 @@ export const ClickhouseClient = Context.Service<ClickhouseClient>("@effect/sql-c
  * `@clickhouse/client` options with optional span attributes and query/result
  * name transforms.
  *
- * @category constructors
+ * @category models
  * @since 4.0.0
  */
 export interface ClickhouseClientConfig extends Clickhouse.ClickHouseClientConfigOptions {
@@ -504,7 +504,7 @@ const typeFromUnknown = (value: unknown): string => {
  * `{pN: Type}` placeholders and escaping identifiers with an optional query
  * name transform.
  *
- * @category compiler
+ * @category constructors
  * @since 4.0.0
  */
 export const makeCompiler = (transform?: (_: string) => string) =>
@@ -534,13 +534,13 @@ const escape = Statement.defaultEscape("\"")
  * Custom SQL fragment type used for ClickHouse typed parameters created by
  * `ClickhouseClient.param`.
  *
- * @category custom types
+ * @category models
  * @since 4.0.0
  */
 export type ClickhouseCustom = ClickhouseParam
 
 /**
- * @category custom types
+ * @category models
  * @since 4.0.0
  */
 interface ClickhouseParam extends Statement.Custom<"ClickhouseParam", string, unknown> {}
