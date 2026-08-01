@@ -710,20 +710,21 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
     this.context = context
     // Every key cached below opts in to Context caching, so contexts related
     // only by non-caching adds cannot have changed any of them
-    if (previous !== undefined && Context.hasSameCache(previous, context)) return
+    if (previous && Context.hasSameCache(previous, context)) return
+    const map = context.mapUnsafe
     const scheduler = this.getRef(Scheduler.Scheduler)
     if (scheduler !== this.currentScheduler) {
       this.currentScheduler = scheduler
       this._dispatcher = undefined
     }
-    this.currentSpan = Context.getOrUndefined(context, Tracer.ParentSpan)
+    this.currentSpan = map.get(Tracer.ParentSpanKey)
     this.currentLogLevel = this.getRef(CurrentLogLevel)
     this.minimumLogLevel = this.getRef(MinimumLogLevel)
     this.currentStackFrame = this.getRef(CurrentStackFrame)
     this.maxOpsBeforeYield = this.getRef(Scheduler.MaxOpsBeforeYield)
     this.currentPreventYield = this.getRef(Scheduler.PreventSchedulerYield)
-    this.runtimeMetrics = Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey)
-    const currentTracer = Context.getOrUndefined(context, Tracer.Tracer)
+    this.runtimeMetrics = map.get(InternalMetric.FiberRuntimeMetricsKey)
+    const currentTracer = map.get(Tracer.TracerKey)
     this.currentTracerContext = currentTracer ? currentTracer["context"] : undefined
   }
   get currentSpanLocal(): Tracer.Span | undefined {
