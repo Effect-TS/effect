@@ -103,6 +103,24 @@ describe("HttpApiBuilder", () => {
               readonly headers: { readonly location: string }
               readonly body: void
             }>())))
+
+        HttpApiBuilder.group(Api, "group", (handlers) => {
+          expect(handlers.handle).type.not.toBeCallableWith(
+            "create",
+            () => Effect.succeed(hole<{ readonly body: void }>())
+          )
+
+          expect(handlers.handle).type.not.toBeCallableWith(
+            "create",
+            () => Effect.succeed(hole<{ readonly headers: { readonly location: string } }>())
+          )
+
+          return handlers.handle("create", () =>
+            Effect.succeed(hole<{
+              readonly headers: { readonly location: string }
+              readonly body: void
+            }>()))
+        })
       })
 
       it("propagates handler service requirements", () => {
