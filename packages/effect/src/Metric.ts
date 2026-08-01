@@ -2108,7 +2108,7 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
  * @category guards
  * @since 4.0.0
  */
-export const isMetric = (u: unknown): u is Metric<unknown, never> =>
+export const isMetric = (u: unknown): u is Metric<never, unknown> =>
   Predicate.hasProperty(u, TypeId) && u[TypeId] === TypeId
 
 /**
