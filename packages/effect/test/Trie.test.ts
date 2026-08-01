@@ -144,6 +144,13 @@ describe("Trie", () => {
     assertNone(Trie.get(trie, "mea"))
   })
 
+  it("stores undefined values", () => {
+    const trie = Trie.make(["a", undefined])
+
+    strictEqual(Trie.size(trie), 1)
+    strictEqual(Option.isSome(Trie.get(trie, "a")), true, "an inserted undefined value must remain present")
+  })
+
   it("get distinguishes complete keys from prefixes", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
