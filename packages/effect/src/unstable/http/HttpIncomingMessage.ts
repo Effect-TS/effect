@@ -108,7 +108,7 @@ export const schemaHeaders = <A, I extends Readonly<Record<string, string | unde
 /**
  * Context reference for the optional maximum size allowed when reading an incoming message body.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const MaxBodySize = Context.Reference<FileSystem.Size | undefined>(

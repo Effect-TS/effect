@@ -205,7 +205,7 @@ export interface Service {
  * express every constraint; the returned codec remains authoritative for
  * validating model output.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type CodecTransformer = <T, E, RD, RE>(schema: Schema.ConstraintCodec<T, E, RD, RE>) => {

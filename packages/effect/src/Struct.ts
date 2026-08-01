@@ -170,7 +170,7 @@ export const get: {
  *
  * @see {@link get} – access a single key's value
  * @see {@link pick} – select a subset of keys into a new struct
- * @category Key utilities
+ * @category key utilities
  * @since 3.6.0
  */
 export const keys = <S extends object>(self: S): Array<(keyof S) & string> =>
@@ -372,7 +372,7 @@ type KeyEvolved<S, E> = Simplify<
  * @see {@link renameKeys} – rename keys with a static mapping
  * @see {@link evolve} – transform values instead of keys
  * @see {@link evolveEntries} – transform both keys and values
- * @category Key utilities
+ * @category key utilities
  * @since 4.0.0
  */
 export const evolveKeys: {
@@ -466,7 +466,7 @@ export const evolveEntries: {
  *
  * @see {@link evolveKeys} – rename keys using functions
  * @see {@link evolveEntries} – rename keys and transform values
- * @category Key utilities
+ * @category key utilities
  * @since 4.0.0
  */
 export const renameKeys: {

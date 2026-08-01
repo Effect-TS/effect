@@ -172,7 +172,7 @@ const getQueueSchema = <Payload extends Schema.Top>(
 /**
  * Adds an item to the queue and wait for a worker to process it.
  *
- * @category Processing
+ * @category processing
  * @since 4.0.0
  */
 export const process: <
@@ -249,7 +249,7 @@ const defaultRetrySchedule = Schedule.min([
 /**
  * Create a worker effect that processes items from the durable queue.
  *
- * @category Worker
+ * @category workers
  * @since 4.0.0
  */
 export const makeWorker: <
@@ -336,7 +336,7 @@ export const makeWorker: <
 /**
  * Create a layer that runs workers for the durable queue.
  *
- * @category Worker
+ * @category workers
  * @since 4.0.0
  */
 export const worker: <

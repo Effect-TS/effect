@@ -7800,7 +7800,7 @@ export function makeIsBetween<T>(deriveOptions: {
  * Creates a divisibility check for any numeric type from a remainder function
  * and a zero value.
  *
- * @category Numeric checks
+ * @category numeric checks
  * @since 4.0.0
  */
 export function makeIsMultipleOf<T>(options: {
@@ -14796,7 +14796,7 @@ export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> 
  *
  * Use {@link toType} before this function to represent the type side instead.
  *
- * @category Representation
+ * @category representation
  * @since 4.0.0
  */
 export function toRepresentation(schema: Constraint): SchemaRepresentation.Document {
@@ -14912,7 +14912,7 @@ export function toJsonSchemaDocument(
 /**
  * Type-level representation returned by {@link toCodecJson}.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export interface toCodecJson<S extends Constraint> extends
@@ -14949,7 +14949,7 @@ export interface toCodecJson<S extends Constraint> extends
  * `toCodecJson` callback can return `undefined` when the declaration is already
  * in canonical JSON form.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export function toCodecJson<S extends Constraint>(schema: S): toCodecJson<S> {
@@ -15071,7 +15071,7 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
  * Derives an isomorphism codec from a schema. The encoded form is the
  * schema's `Iso` type — the intermediate representation used for round-tripping.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export function toCodecIso<S extends Constraint>(schema: S): Codec<S["Type"], S["Iso"]> {
@@ -15108,7 +15108,7 @@ function toCodecIsoBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Schem
  * A {@link Tree} of `string | undefined` nodes. Leaf values are either a
  * string representation or `undefined` for opaque/declaration types.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export type StringTree = Tree<string | undefined>
@@ -15116,7 +15116,7 @@ export type StringTree = Tree<string | undefined>
 /**
  * Type-level representation returned by {@link toCodecStringTree}.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export interface toCodecStringTree<S extends Constraint> extends
@@ -15151,7 +15151,7 @@ export interface toCodecStringTree<S extends Constraint> extends
  * `toCodec` encoding. A callback can return `undefined` when the declaration is
  * already in canonical StringTree form.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export function toCodecStringTree<S extends Constraint>(schema: S): toCodecStringTree<S> {
@@ -15161,7 +15161,7 @@ export function toCodecStringTree<S extends Constraint>(schema: S): toCodecStrin
 /**
  * Type-level representation returned by {@link toCodecArrayFromSingle}.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export interface toCodecArrayFromSingle<S extends Constraint> extends
@@ -15200,7 +15200,7 @@ export interface toCodecArrayFromSingle<S extends Constraint> extends
  * decoding convenience rather than a canonical StringTree representation. It
  * does not parse comma-separated strings.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export function toCodecArrayFromSingle<S extends Constraint>(schema: S): toCodecArrayFromSingle<S> {
@@ -15229,7 +15229,7 @@ type XmlEncoderOptions = {
  * an `Effect` that succeeds with the XML string or fails with `SchemaError` if
  * codec encoding fails.
  *
- * @category Canonical Codecs
+ * @category canonical codecs
  * @since 4.0.0
  */
 export function toEncoderXml<T, RE>(
@@ -16007,7 +16007,7 @@ export const MutableJsonReviver = makeFixedDeclarationReviver(
  * annotations are taken from the last check; otherwise they are taken from
  * the base schema instance.
  *
- * @category Schema Resolvers
+ * @category schema resolvers
  * @since 4.0.0
  */
 export function resolveAnnotations<S extends Constraint>(
@@ -16021,7 +16021,7 @@ export function resolveAnnotations<S extends Constraint>(
  * annotations are those attached via `annotateKey` and live on the AST's
  * `context` rather than on the schema node itself.
  *
- * @category Schema Resolvers
+ * @category schema resolvers
  * @since 4.0.0
  */
 export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotations.Key<S["Type"]> | undefined {

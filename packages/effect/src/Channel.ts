@@ -6486,7 +6486,7 @@ export const mergeEffect: {
  * result // => ["hello", "world"]
  * ```
  *
- * @category String manipulation
+ * @category string manipulation
  * @since 2.0.0
  */
 export const splitLines = <Err, Done>(): Channel<
@@ -6600,7 +6600,7 @@ export const splitLines = <Err, Done>(): Channel<
  * span `Uint8Array` boundaries. The optional `encoding` and `options` are
  * passed to `TextDecoder`.
  *
- * @category String manipulation
+ * @category string manipulation
  * @since 4.0.0
  */
 export const decodeText = <Err, Done>(encoding?: string, options?: TextDecoderOptions): Channel<
@@ -6626,7 +6626,7 @@ export const decodeText = <Err, Done>(encoding?: string, options?: TextDecoderOp
  *
  * Each string inside an emitted array is encoded independently.
  *
- * @category String manipulation
+ * @category string manipulation
  * @since 4.0.0
  */
 export const encodeText = <Err, Done>(): Channel<
@@ -6900,7 +6900,7 @@ export const embedInput: {
  *
  * @see {@link bufferArray} for buffering elements from array outputs
  *
- * @category Buffering
+ * @category buffering
  * @since 2.0.0
  */
 export const buffer: {
@@ -6966,7 +6966,7 @@ export const buffer: {
  *
  * @see {@link buffer} for buffering output elements without flattening arrays
  *
- * @category Buffering
+ * @category buffering
  * @since 4.0.0
  */
 export const bufferArray: {
@@ -7329,7 +7329,7 @@ const runWith = <
 /**
  * Creates a channel from the specified services.
  *
- * @category services
+ * @category accessors
  * @since 2.0.0
  */
 export const contextWith = <Env, OutElem, OutErr, OutDone, InElem, InErr, InDone, Env2>(
@@ -7343,7 +7343,7 @@ export const contextWith = <Env, OutElem, OutErr, OutDone, InElem, InErr, InDone
  * Provides a `Context` to the channel, removing the corresponding service
  * requirements from the returned channel.
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideContext: {
@@ -7371,7 +7371,7 @@ export const provideContext: {
  * Provides a concrete service for a context key, removing that service
  * requirement from the returned channel.
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideService: {
@@ -7411,7 +7411,7 @@ export const provideService: {
  * If the service effect fails, the returned channel fails. The provided service
  * removes the corresponding service requirement from the returned channel.
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const provideServiceEffect: {
@@ -7448,7 +7448,7 @@ export const provideServiceEffect: {
  * builds the layer in the channel scope. Use `options.local` to build a fresh
  * layer instance for this provision.
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const provide: {
@@ -7496,7 +7496,7 @@ export const provide: {
  * provide to the channel. The returned channel requires the services needed to
  * build that context.
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const updateContext: {
@@ -7528,7 +7528,7 @@ export const updateContext: {
  * The existing service is read from the context. The updated service is
  * provided to the channel under the same key.
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const updateService: {

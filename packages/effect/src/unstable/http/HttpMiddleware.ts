@@ -84,7 +84,7 @@ const stripSearchAndHash = (url: string): string => {
 /**
  * Runs an effect with HTTP response logging disabled for the current server request.
  *
- * @category Logger
+ * @category logging
  * @since 4.0.0
  */
 export const withLoggerDisabled = <A, E, R>(self: Effect.Effect<A, E, R>): Effect.Effect<A, E, R | HttpServerRequest> =>
@@ -97,7 +97,7 @@ export const withLoggerDisabled = <A, E, R>(self: Effect.Effect<A, E, R>): Effec
 /**
  * Context reference for a predicate that disables server-side tracing for matching requests.
  *
- * @category Tracer
+ * @category services
  * @since 4.0.0
  */
 export const TracerDisabledWhen = Context.Reference<Predicate<HttpServerRequest>>(
@@ -108,7 +108,7 @@ export const TracerDisabledWhen = Context.Reference<Predicate<HttpServerRequest>
 /**
  * Creates a layer that disables server-side tracing for requests whose URL exactly matches one of the supplied URLs.
  *
- * @category Tracer
+ * @category layers
  * @since 4.0.0
  */
 export const layerTracerDisabledForUrls = (
@@ -118,7 +118,7 @@ export const layerTracerDisabledForUrls = (
 /**
  * Context reference for generating server span names from HTTP server requests.
  *
- * @category Tracer
+ * @category services
  * @since 4.0.0
  */
 export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) => string>(
@@ -129,7 +129,7 @@ export const SpanNameGenerator = Context.Reference<(request: HttpServerRequest) 
 /**
  * Middleware that logs sent HTTP responses with request method, request URL, and response status annotations.
  *
- * @category Logger
+ * @category logging
  * @since 4.0.0
  */
 export const logger: <E, R>(
@@ -170,7 +170,7 @@ export const logger: <E, R>(
 /**
  * Middleware that creates a server trace span for each request and records request and response HTTP attributes.
  *
- * @category Tracer
+ * @category tracing
  * @since 4.0.0
  */
 export const tracer: <E, R>(
@@ -245,7 +245,7 @@ export const tracer: <E, R>(
 /**
  * Middleware that trusts `X-Forwarded-Host` and `X-Forwarded-For`, updating the request host header and remote address.
  *
- * @category Proxying
+ * @category proxying
  * @since 4.0.0
  */
 export const xForwardedHeaders = make((httpApp) =>

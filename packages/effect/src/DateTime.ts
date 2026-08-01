@@ -1813,7 +1813,7 @@ export const setPartsUtc: {
  * await Effect.runPromise(Effect.provide(program, layer)) // => "Europe/London"
  * ```
  *
- * @category current time zone
+ * @category services
  * @since 3.11.0
  */
 export class CurrentTimeZone extends Context.Service<CurrentTimeZone, TimeZone>()(

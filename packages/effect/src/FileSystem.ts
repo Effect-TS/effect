@@ -988,7 +988,7 @@ export const FileTypeId = "~effect/platform/FileSystem/File"
  * @see {@link File} for the file-handle interface narrowed by this guard
  * @see {@link FileTypeId} for the runtime marker checked by this guard
  *
- * @category file
+ * @category guards
  * @since 4.0.0
  */
 export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
@@ -1287,7 +1287,7 @@ export declare namespace WatchEvent {
  * Effect.runSync(withCustomBackend) // => true
  * ```
  *
- * @category file watcher
+ * @category services
  * @since 4.0.0
  */
 export class WatchBackend extends Context.Service<WatchBackend, {

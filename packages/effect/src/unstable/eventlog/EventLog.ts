@@ -205,7 +205,7 @@ export const SchemaTypeId: SchemaTypeId = "~effect/eventlog/EventLog/Schema"
 /**
  * Returns `true` when a value carries the `EventLogSchema` marker.
  *
- * @category schemas
+ * @category guards
  * @since 4.0.0
  */
 export const isEventLogSchema = (u: unknown): u is EventLogSchema<EventGroup.Any> =>
@@ -410,7 +410,7 @@ export declare namespace Handlers {
  *
  * Defaults to the branded store id `"default"`.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/EventLog/CurrentStoreId", {

@@ -185,7 +185,7 @@ export class CloseEvent {
 /**
  * Returns `true` when a value is a `CloseEvent`.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isCloseEvent = (u: unknown): u is CloseEvent => Predicate.hasProperty(u, CloseEventTypeId)
@@ -209,7 +209,7 @@ export const SocketErrorTypeId: SocketErrorTypeId = "~effect/socket/Socket/Socke
 /**
  * Returns `true` when a value is a `SocketError`.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isSocketError = (u: unknown): u is SocketError => Predicate.hasProperty(u, SocketErrorTypeId)
@@ -796,7 +796,7 @@ export const layerWebSocket: (
 /**
  * Context reference for socket send queue capacity, defaulting to `16`.
  *
- * @category fiber refs
+ * @category services
  * @since 4.0.0
  */
 export const SendQueueCapacity = Context.Reference<number>("~effect/socket/Socket/SendQueueCapacity", {

@@ -387,7 +387,7 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  * String.isEmpty("a") // => false
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 2.0.0
  */
 export const isEmpty = (self: string): self is "" => self.length === 0

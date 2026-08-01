@@ -104,7 +104,7 @@ type CompletionContext = typeof Complete.payloadSchema.Type["context"]
  * Handlers use this service to register capabilities and resolve incoming MCP
  * requests.
  *
- * @category server
+ * @category services
  * @since 4.0.0
  */
 export class McpServer extends Context.Service<McpServer, {

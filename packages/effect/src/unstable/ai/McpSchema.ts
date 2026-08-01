@@ -2169,7 +2169,7 @@ export class ElicitationDeclined
  * It exposes the current client id, the client's initialize payload, and a
  * scoped RPC client for server-initiated requests back to that client.
  *
- * @category client
+ * @category services
  * @since 4.0.0
  */
 export class McpServerClient extends Context.Service<McpServerClient, {
@@ -2469,7 +2469,7 @@ const ParamSchemaTypeId = "~effect/ai/McpSchema/ParamSchema"
  * Returns `true` when a schema was created with `param` and therefore carries
  * a resource URI template parameter name.
  *
- * @category parameters
+ * @category guards
  * @since 4.0.0
  */
 export function isParam(schema: Schema.Constraint): schema is Param<string, Schema.Top> {
@@ -2529,7 +2529,7 @@ export function param<const Name extends string, S extends Schema.Constraint>(
  * Annotation to conditionally enable or disable tools based on client
  * information.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class EnabledWhen

@@ -1175,7 +1175,7 @@ export const reduce: {
  * Record.every({ a: 1, b: -1 }, (n) => n > 0) // => false
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 2.0.0
  */
 export const every: {

@@ -87,7 +87,7 @@ export type XHRResponseType = "arraybuffer" | "text"
  * @see {@link XHRResponseType} for the allowed response body modes
  * @see {@link withXHRArrayBuffer} for scoping XHR response handling to `ArrayBuffer`
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const CurrentXHRResponseType: Context.Reference<XHRResponseType> = Context.Reference(

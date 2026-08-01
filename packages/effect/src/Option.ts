@@ -187,7 +187,7 @@ export declare namespace Option {
    * const witness: MyType = "value"
    * ```
    *
-   * @category Type-level Utils
+   * @category utility types
    * @since 2.0.0
    */
   export type Value<T extends Option<any>> = [T] extends [Option<infer _A>] ? _A : never

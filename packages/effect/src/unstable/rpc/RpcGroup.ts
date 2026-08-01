@@ -181,7 +181,7 @@ export interface Any {
  * Builds the object type of server handler functions required to implement each
  * RPC in a union.
  *
- * @category groups
+ * @category utility types
  * @since 4.0.0
  */
 export type HandlersFrom<Rpc extends Rpc.Any> = {
@@ -192,7 +192,7 @@ export type HandlersFrom<Rpc extends Rpc.Any> = {
  * Extracts the server handler function type for a specific RPC tag from an RPC
  * union.
  *
- * @category groups
+ * @category utility types
  * @since 4.0.0
  */
 export type HandlerFrom<Rpc extends Rpc.Any, Tag extends Rpc["_tag"]> = Extract<Rpc, { readonly _tag: Tag }> extends
@@ -202,7 +202,7 @@ export type HandlerFrom<Rpc extends Rpc.Any, Tag extends Rpc["_tag"]> = Extract<
  * Computes the services required by all handlers in a handler object for an RPC
  * union.
  *
- * @category groups
+ * @category utility types
  * @since 4.0.0
  */
 export type HandlersServices<Rpcs extends Rpc.Any, Handlers> = keyof Handlers extends infer K ?
@@ -213,7 +213,7 @@ export type HandlersServices<Rpcs extends Rpc.Any, Handlers> = keyof Handlers ex
  * Computes the services required by a single RPC handler, excluding services
  * provided by middleware and `Scope` where the server supplies it.
  *
- * @category groups
+ * @category utility types
  * @since 4.0.0
  */
 export type HandlerServices<Rpcs extends Rpc.Any, K extends Rpcs["_tag"], Handler> = true extends
@@ -242,7 +242,7 @@ export type HandlerServices<Rpcs extends Rpc.Any, K extends Rpcs["_tag"], Handle
 /**
  * Extracts the union of RPC definitions from an `RpcGroup`.
  *
- * @category groups
+ * @category utility types
  * @since 4.0.0
  */
 export type Rpcs<Group> = Group extends RpcGroup<infer R> ? string extends R["_tag"] ? never : R : never

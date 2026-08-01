@@ -239,7 +239,7 @@ export declare namespace Cause {
    * type E = Cause.Cause.Error<Cause.Cause<string>>
    * ```
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type Error<T> = T extends Cause<infer E> ? E : never
@@ -285,7 +285,7 @@ export declare namespace Reason {
    * type E = Cause.Reason.Error<Cause.Reason<string>>
    * ```
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type Error<T> = T extends Reason<infer E> ? E : never
@@ -1809,7 +1809,7 @@ export const annotations: <E>(self: Cause<E>) => Context.Context<never> = effect
  * @see {@link annotations} for reading merged annotations from a cause
  * @see {@link InterruptorStackTrace} for the interrupt-specific stack-frame annotation
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class StackTrace extends Context.Service<StackTrace, StackFrame>()("effect/Cause/StackTrace") {}
@@ -1831,7 +1831,7 @@ export class StackTrace extends Context.Service<StackTrace, StackFrame>()("effec
  * @see {@link reasonAnnotations} for reading annotations from a single reason
  * @see {@link annotate} for attaching annotations to a cause
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class InterruptorStackTrace

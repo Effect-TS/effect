@@ -119,7 +119,7 @@ const makeAuthenticate = Effect.fnUntraced(function*(options: {
  * Use to provide the RPC client used by remote event-log replicas to
  * authenticate, write entries, and subscribe to changes.
  *
- * @category RPC client
+ * @category services
  * @since 4.0.0
  */
 export class EventLogRemoteClient extends Context.Service<

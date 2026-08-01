@@ -84,7 +84,7 @@ export interface MutableHashSet<out V> extends Iterable<V>, Pipeable, Inspectabl
  *
  * @see {@link MutableHashSet} for the mutable hash set interface
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isMutableHashSet = <V>(value: unknown): value is MutableHashSet<V> => hasProperty(value, TypeId)

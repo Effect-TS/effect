@@ -62,7 +62,7 @@ export type Client<Groups extends HttpApiGroup.Constraint, E = never, R = never>
  * Derives the typed client interface for an `HttpApi`, preserving any additional
  * client error and service requirements supplied by the caller.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api extends

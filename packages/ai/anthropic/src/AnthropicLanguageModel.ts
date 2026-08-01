@@ -65,7 +65,7 @@ export type Model = (typeof Generated.Model)["members"][1]["Encoded"]
  * requests. Scoped configuration overrides defaults supplied to `model`,
  * `make`, or `layer`.
  *
- * @category configuration
+ * @category services
  * @since 4.0.0
  */
 export class Config extends Context.Service<

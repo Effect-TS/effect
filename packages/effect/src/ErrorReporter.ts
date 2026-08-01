@@ -170,7 +170,7 @@ export const make = (
  * Use when you need to read or replace the current set of error reporters
  * directly.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const CurrentErrorReporters: Context.Reference<ReadonlySet<ErrorReporter>> = references.CurrentErrorReporters
@@ -284,7 +284,7 @@ export const layer = <
  * output // => "fallback value"
  * ```
  *
- * @category Reporting
+ * @category reporting
  * @since 4.0.0
  */
 export const report = <E>(cause: Cause.Cause<E>): Effect.Effect<void> =>
@@ -395,7 +395,7 @@ export const ignore: ignore = "~effect/ErrorReporter/ignore"
  *
  * @see {@link ignore} for the annotation key this predicate reads
  *
- * @category annotations
+ * @category predicates
  * @since 4.0.0
  */
 export const isIgnored = (u: unknown): boolean =>

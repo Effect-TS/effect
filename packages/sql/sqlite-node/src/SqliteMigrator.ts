@@ -78,7 +78,7 @@ export const run: <R2 = never>(
 /**
  * Creates a layer that runs the configured SQLite migrations during layer construction and provides no services.
  *
- * @category constructors
+ * @category layers
  * @since 4.0.0
  */
 export const layer = <R>(

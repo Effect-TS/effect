@@ -221,7 +221,7 @@ export const toParts = (snowflake: Snowflake): Snowflake.Parts => ({
  * backward, resets the sequence each millisecond, and advances the timestamp when
  * more than 4096 ids are requested in the same millisecond.
  *
- * @category Generator
+ * @category constructors
  * @since 4.0.0
  */
 export const makeGenerator: Effect.Effect<Snowflake.Generator> = Effect.gen(function*() {
@@ -265,7 +265,7 @@ export const makeGenerator: Effect.Effect<Snowflake.Generator> = Effect.gen(func
 /**
  * Context service for a stateful snowflake id generator.
  *
- * @category Generator
+ * @category services
  * @since 4.0.0
  */
 export class Generator extends Context.Service<
@@ -276,7 +276,7 @@ export class Generator extends Context.Service<
 /**
  * Layer that provides the default snowflake `Generator` service.
  *
- * @category Generator
+ * @category layers
  * @since 4.0.0
  */
 export const layerGenerator: Layer.Layer<Generator> = Layer.effect(Generator)(makeGenerator)

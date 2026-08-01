@@ -245,7 +245,7 @@ export class PersistedQueueError extends Schema.ErrorClass<PersistedQueueError>(
  * The store persists offered elements and returns taken elements in a scope so
  * the finalizer can complete or retry them based on the processing exit.
  *
- * @category store
+ * @category services
  * @since 4.0.0
  */
 export class PersistedQueueStore extends Context.Service<
@@ -283,7 +283,7 @@ export class PersistedQueueStore extends Context.Service<
  * The store is process-local and volatile; failed takes are requeued until the
  * configured maximum attempts is reached.
  *
- * @category store
+ * @category layers
  * @since 4.0.0
  */
 export const layerStoreMemory: Layer.Layer<
@@ -720,7 +720,7 @@ end
 /**
  * Provides a Redis-backed `PersistedQueueStore` using `makeStoreRedis`.
  *
- * @category store
+ * @category layers
  * @since 4.0.0
  */
 export const layerStoreRedis: (
@@ -1181,7 +1181,7 @@ class QueueKey extends Data.Class<{
 /**
  * Provides a SQL-backed `PersistedQueueStore` using `makeStoreSql`.
  *
- * @category store
+ * @category layers
  * @since 4.0.0
  */
 export const layerStoreSql: (

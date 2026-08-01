@@ -425,7 +425,7 @@ export function transformOptional<T, E>(options: {
  * @see {@link toUpperCase}
  * @see {@link snakeToCamel}
  *
- * @category String transformations
+ * @category string transformations
  * @since 4.0.0
  */
 export function trim(): Transformation<string, string> {
@@ -464,7 +464,7 @@ export function trim(): Transformation<string, string> {
  * @see {@link trim}
  * @see {@link toLowerCase}
  *
- * @category String transformations
+ * @category string transformations
  * @since 4.0.0
  */
 export function snakeToCamel(): Transformation<string, string> {
@@ -502,7 +502,7 @@ export function snakeToCamel(): Transformation<string, string> {
  * @see {@link toUpperCase}
  * @see {@link trim}
  *
- * @category String transformations
+ * @category string transformations
  * @since 4.0.0
  */
 export function toLowerCase(): Transformation<string, string> {
@@ -540,7 +540,7 @@ export function toLowerCase(): Transformation<string, string> {
  * @see {@link toLowerCase}
  * @see {@link trim}
  *
- * @category String transformations
+ * @category string transformations
  * @since 4.0.0
  */
 export function toUpperCase(): Transformation<string, string> {
@@ -578,7 +578,7 @@ export function toUpperCase(): Transformation<string, string> {
  * @see {@link uncapitalize}
  * @see {@link toUpperCase}
  *
- * @category String transformations
+ * @category string transformations
  * @since 4.0.0
  */
 export function capitalize(): Transformation<string, string> {
@@ -616,7 +616,7 @@ export function capitalize(): Transformation<string, string> {
  * @see {@link capitalize}
  * @see {@link toLowerCase}
  *
- * @category String transformations
+ * @category string transformations
  * @since 4.0.0
  */
 export function uncapitalize(): Transformation<string, string> {
@@ -659,7 +659,7 @@ export function uncapitalize(): Transformation<string, string> {
  * @see {@link trim}
  * @see {@link snakeToCamel}
  *
- * @category String transformations
+ * @category string transformations
  * @since 4.0.0
  */
 export function splitKeyValue(options?: {
@@ -815,7 +815,7 @@ export function passthroughSubtype<T>(): Transformation<T, T> {
  * @see {@link bigintFromString}
  * @see {@link transform}
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export const numberFromString = new Transformation(
@@ -852,7 +852,7 @@ export const numberFromString = new Transformation(
  * @see {@link numberFromString}
  * @see {@link transform}
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export const bigintFromString = new Transformation(
@@ -888,7 +888,7 @@ export const bigintFromString = new Transformation(
  * @see {@link dateFromMillis}
  * @see {@link dateTimeUtcFromString}
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export const dateFromString: Transformation<globalThis.Date, string> = new Transformation(
@@ -929,7 +929,7 @@ export const dateFromString: Transformation<globalThis.Date, string> = new Trans
  * @see {@link dateFromString}
  * @see {@link SchemaGetter.dateTimeUtcFromInput}
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export const dateFromMillis: Transformation<globalThis.Date, number> = new Transformation(

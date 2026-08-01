@@ -94,7 +94,7 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
  * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
  * ```
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Service<in out Identifier, in out Shape> extends Key<Identifier, Shape> {
@@ -119,7 +119,7 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
  *
  * @see {@link Service} for creating function-style keys or class-style service keys
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface ServiceClass<in out Self, in out Identifier extends string, in out Shape>
@@ -140,7 +140,7 @@ export declare namespace ServiceClass {
    * Runtime and type-level metadata carried by a class-style service key,
    * including its service type identifier, string key, and service shape.
    *
-   * @category models
+   * @category services
    * @since 4.0.0
    */
   export interface Shape<Identifier extends string, Service> {
@@ -197,7 +197,7 @@ export declare namespace ServiceClass {
  *
  * @see {@link Reference} for service keys with default values
  *
- * @category constructors
+ * @category services
  * @since 4.0.0
  */
 export const Service: {
@@ -328,7 +328,7 @@ const ReferenceTypeId = "~effect/Context/Reference" as const
  * messages // => ["default logger"]
  * ```
  *
- * @category models
+ * @category services
  * @since 3.11.0
  */
 export interface Reference<in out Shape> extends Service<never, Shape> {
@@ -379,7 +379,7 @@ export declare namespace Service {
    * services.map((service) => service.key) // => ["Logger", "Database"]
    * ```
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type Any = Key<never, any> | Key<any, any>
@@ -403,7 +403,7 @@ export declare namespace Service {
    * Database.key // => "Database"
    * ```
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type Shape<T> = T extends Key<infer _I, infer S> ? S : never
@@ -427,7 +427,7 @@ export declare namespace Service {
    * Database.key // => "Database"
    * ```
    *
-   * @category models
+   * @category utility types
    * @since 2.0.0
    */
   export type Identifier<T> = T extends Key<infer I, infer _S> ? I : never
@@ -1319,7 +1319,7 @@ const withMapUnsafe = <Services, B>(self: Context<Services>, f: (map: Map<string
  *
  * @see {@link Service} for required services without default values
  *
- * @category references
+ * @category services
  * @since 3.11.0
  */
 export const Reference: <Service>(

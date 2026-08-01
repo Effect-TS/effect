@@ -1033,7 +1033,7 @@ export const intersperse: {
  * hasAlmostTwo // => true
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
@@ -1082,7 +1082,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  * containsThree([4, 5, 6]) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const contains: {
@@ -1971,7 +1971,7 @@ export const flatMapNullishOr: {
  * hasString // => true
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const some: {

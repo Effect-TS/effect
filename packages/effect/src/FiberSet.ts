@@ -84,7 +84,7 @@ export interface FiberSet<out A = unknown, out E = unknown>
  * actual // => [true, false]
  * ```
  *
- * @category refinements
+ * @category guards
  * @since 2.0.0
  */
 export const isFiberSet = (u: unknown): u is FiberSet<unknown, unknown> => Predicate.hasProperty(u, TypeId)

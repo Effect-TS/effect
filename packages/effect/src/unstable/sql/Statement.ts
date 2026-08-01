@@ -99,7 +99,7 @@ export type Transformer = (
  * Context reference for an optional current SQL statement transformer applied
  * before statement execution.
  *
- * @category transformer
+ * @category services
  * @since 4.0.0
  */
 export const CurrentTransformer = Context.Reference<Transformer | undefined>("effect/sql/CurrentTransformer", {

@@ -216,7 +216,7 @@ export type Any = Entity<string, Rpc.Any>
  * Each handler receives the entity request envelope for that RPC and returns the
  * RPC result or a supported RPC wrapper.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type HandlersFrom<Rpc extends Rpc.Any> = {
@@ -232,7 +232,7 @@ export type HandlersFrom<Rpc extends Rpc.Any> = {
  *
  * The check is based on the internal entity type identifier.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isEntity = (u: unknown): u is Any => Predicate.hasProperty(u, TypeId)
@@ -464,7 +464,7 @@ export const make = <const Type extends string, Rpcs extends ReadonlyArray<Rpc.A
  * Use to read the current entity identity and shard address from entity
  * handlers and keep-alive logic.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export class CurrentAddress extends Context.Service<
@@ -480,7 +480,7 @@ export class CurrentAddress extends Context.Service<
  * Use to read the runner address associated with the current entity handler
  * registration.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export class CurrentRunnerAddress extends Context.Service<
@@ -699,7 +699,7 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
  * When enabled it sends the internal keep-alive RPC for the current address; when
  * disabled it releases the keep-alive latch if one is present.
  *
- * @category Keep alive
+ * @category keep alive
  * @since 4.0.0
  */
 export const keepAlive: (
@@ -755,7 +755,7 @@ export const keepAlive: (
  * The RPC is marked as persisted and uninterruptible so the keep-alive signal
  * survives normal entity restarts.
  *
- * @category Keep alive
+ * @category keep alive
  * @since 4.0.0
  */
 export const KeepAliveRpc = Rpc.make("Cluster/Entity/keepAlive")
@@ -770,7 +770,7 @@ export const KeepAliveRpc = Rpc.make("Cluster/Entity/keepAlive")
  * `keepAlive` closes the latch when keep-alive is active and opens it again when
  * the resource no longer needs to keep the entity alive.
  *
- * @category Keep alive
+ * @category services
  * @since 4.0.0
  */
 export class KeepAliveLatch extends Context.Service<KeepAliveLatch, Latch.Latch>()(

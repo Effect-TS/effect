@@ -320,7 +320,7 @@ export declare namespace Request {
  *
  * The check is based on the envelope type identifier.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isEnvelope = (u: unknown): u is Envelope<any> => Predicate.hasProperty(u, TypeId)

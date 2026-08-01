@@ -97,7 +97,7 @@ export interface HttpRouter {
  * Route and middleware layers require this service to register themselves with
  * the router.
  *
- * @category HttpRouter
+ * @category services
  * @since 4.0.0
  */
 export const HttpRouter: Context.Service<HttpRouter, HttpRouter> = Context.Service<HttpRouter>(
@@ -249,7 +249,7 @@ function sliceRequestUrl(request: HttpServerRequest.HttpServerRequest, prefix: s
  * The value is passed to the route matcher when an `HttpRouter` is created and
  * defaults to an empty configuration.
  *
- * @category configuration
+ * @category services
  * @since 4.0.0
  */
 export const RouterConfig = Context.Reference<Partial<FindMyWay.RouterConfig>>(
@@ -555,7 +555,7 @@ export const addAll = <Routes extends ReadonlyArray<Route<any, any>>, EX = never
 /**
  * Layer that provides a newly constructed `HttpRouter`.
  *
- * @category HttpRouter
+ * @category layers
  * @since 4.0.0
  */
 export const layer: Layer.Layer<HttpRouter> = Layer.effect(HttpRouter)(make)
@@ -601,7 +601,7 @@ const RouteTypeId = "~effect/http/HttpRouter/Route"
  * A route pairs an HTTP method and path pattern with a response handler, plus
  * metadata used for prefix handling and interruptibility.
  *
- * @category Route
+ * @category routes
  * @since 4.0.0
  */
 export interface Route<E = never, R = never> {
@@ -623,7 +623,7 @@ export declare namespace Route {
   /**
    * Extracts the error type produced by a `Route` handler.
    *
-   * @category Route
+   * @category routes
    * @since 4.0.0
    */
   export type Error<R extends Route<any, any>> = R extends Route<infer E, infer _R> ? E : never
@@ -631,7 +631,7 @@ export declare namespace Route {
   /**
    * Extracts the context requirements of a `Route` handler.
    *
-   * @category Route
+   * @category routes
    * @since 4.0.0
    */
   export type Context<T extends Route<any, any>> = T extends Route<infer _E, infer R> ? R : never
@@ -659,7 +659,7 @@ const makeRoute = <E, R>(options: {
  * function from the current request to a response effect. Set `uninterruptible` to
  * prevent the route handler from being made interruptible while it runs.
  *
- * @category Route
+ * @category routes
  * @since 4.0.0
  */
 export const route = <E = never, R = never>(
@@ -728,7 +728,7 @@ export const prefixPath: {
  * request, the matched prefix can be removed from the request URL seen by the
  * handler.
  *
- * @category Route
+ * @category routes
  * @since 4.0.0
  */
 export const prefixRoute: {
@@ -748,7 +748,7 @@ export const prefixRoute: {
  * Represents a request-level dependency, that needs to be provided by
  * middleware.
  *
- * @category Request types
+ * @category request types
  * @since 4.0.0
  */
 export interface Request<Kind extends string, T> {
@@ -767,7 +767,7 @@ export declare namespace Request {
   /**
    * Wraps a type in a request-level marker of the supplied kind.
    *
-   * @category Request types
+   * @category request types
    * @since 4.0.0
    */
   export type From<Kind extends string, R> = R extends infer T ? Request<Kind, T> : never
@@ -776,7 +776,7 @@ export declare namespace Request {
    * Extracts the payload types from request-level markers that have the supplied
    * kind.
    *
-   * @category Request types
+   * @category request types
    * @since 4.0.0
    */
   export type Only<Kind extends string, A> = A extends Request<Kind, infer T> ? T : never
@@ -785,7 +785,7 @@ export declare namespace Request {
    * Removes request-level markers from a union, leaving only ordinary requirement
    * or error types.
    *
-   * @category Request types
+   * @category request types
    * @since 4.0.0
    */
   export type Without<A> = A extends Request<infer _Kind, infer _> ? never : A
@@ -795,7 +795,7 @@ export declare namespace Request {
  * Services provided by the HTTP router, which are available in the
  * request context.
  *
- * @category Request types
+ * @category request types
  * @since 4.0.0
  */
 export type Provided =
@@ -807,7 +807,7 @@ export type Provided =
 /**
  * Services provided to global middleware.
  *
- * @category Request types
+ * @category request types
  * @since 4.0.0
  */
 export type GlobalProvided =

@@ -7486,7 +7486,7 @@ export const mapAccumArrayEffect: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category Accumulation
+ * @category accumulation
  * @since 2.0.0
  */
 export const scan: {
@@ -7538,7 +7538,7 @@ export const scan: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category Accumulation
+ * @category accumulation
  * @since 2.0.0
  */
 export const scanEffect: {
@@ -8267,7 +8267,7 @@ export const groupAdjacentBy: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category Aggregation
+ * @category aggregation
  * @since 2.0.0
  */
 export const transduce = dual<
@@ -8342,7 +8342,7 @@ export const transduce = dual<
  * }))
  * ```
  *
- * @category Aggregation
+ * @category aggregation
  * @since 2.0.0
  */
 export const aggregate: {
@@ -8383,7 +8383,7 @@ export const aggregate: {
  * }))
  * ```
  *
- * @category Aggregation
+ * @category aggregation
  * @since 2.0.0
  */
 export const aggregateWithin: {
@@ -8514,7 +8514,7 @@ export const aggregateWithin: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category Broadcast
+ * @category broadcasting
  * @since 4.0.0
  */
 export const broadcastN: {
@@ -8631,7 +8631,7 @@ const makePubSub = <A>(
  * await Effect.runPromise(program)
  * ```
  *
- * @category Broadcast
+ * @category broadcasting
  * @since 2.0.0
  */
 export const broadcast: {
@@ -8712,7 +8712,7 @@ export const broadcast: {
  * result // => { values: [[1, 2, 3], [1, 2, 3]], acquisitions: 1 }
  * ```
  *
- * @category Broadcast
+ * @category broadcasting
  * @since 3.8.0
  */
 export const share: {
@@ -8793,7 +8793,7 @@ export const share: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category Pipe
+ * @category piping
  * @since 2.0.0
  */
 export const pipeThroughChannel: {
@@ -8840,7 +8840,7 @@ export const pipeThroughChannel: {
  * }))
  * ```
  *
- * @category Pipe
+ * @category piping
  * @since 2.0.0
  */
 export const pipeThroughChannelOrFail: {
@@ -8880,7 +8880,7 @@ export const pipeThroughChannelOrFail: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category Pipe
+ * @category piping
  * @since 2.0.0
  */
 export const pipeThrough: {
@@ -8914,7 +8914,7 @@ export const pipeThrough: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category Accumulation
+ * @category accumulation
  * @since 4.0.0
  */
 export const collect = <A, E, R>(self: Stream<A, E, R>): Stream<Array<A>, E, R> => fromEffect(runCollect(self))
@@ -8940,7 +8940,7 @@ export const collect = <A, E, R>(self: Stream<A, E, R>): Stream<Array<A>, E, R> 
  * await Effect.runPromise(program)
  * ```
  *
- * @category Accumulation
+ * @category accumulation
  * @since 2.0.0
  */
 export const accumulate = <A, E, R>(self: Stream<A, E, R>): Stream<Arr.NonEmptyArray<A>, E, R> =>
@@ -8969,7 +8969,7 @@ export const accumulate = <A, E, R>(self: Stream<A, E, R>): Stream<Arr.NonEmptyA
  * await Effect.runPromise(program)
  * ```
  *
- * @category Deduplication
+ * @category deduplication
  * @since 2.0.0
  */
 export const changes = <A, E, R>(self: Stream<A, E, R>): Stream<A, E, R> => changesWith(self, Equal.equals)
@@ -8994,7 +8994,7 @@ export const changes = <A, E, R>(self: Stream<A, E, R>): Stream<A, E, R> => chan
  * )
  * ```
  *
- * @category Deduplication
+ * @category deduplication
  * @since 2.0.0
  */
 export const changesWith: {
@@ -9050,7 +9050,7 @@ export const changesWith: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category Deduplication
+ * @category deduplication
  * @since 2.0.0
  */
 export const changesWithEffect: {
@@ -9526,7 +9526,7 @@ export const haltWhen: {
  * exits // => ["success"]
  * ```
  *
- * @category Finalization
+ * @category finalization
  * @since 4.0.0
  */
 export const onExit: {
@@ -9716,7 +9716,7 @@ export const onEnd: {
  * events // => ["cleanup"]
  * ```
  *
- * @category Finalization
+ * @category finalization
  * @since 2.0.0
  */
 export const ensuring: {
@@ -9754,7 +9754,7 @@ export const ensuring: {
  * await Effect.runPromise(Stream.runCollect(withEnv)) // => ["Hello, Ada"]
  * ```
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const provide: {
@@ -9812,7 +9812,7 @@ export const provide: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideContext: {
@@ -9857,7 +9857,7 @@ export const provideContext: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideService: {
@@ -9909,7 +9909,7 @@ export const provideService: {
  * events // => ["loading"]
  * ```
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideServiceEffect: {
@@ -9966,7 +9966,7 @@ export const provideServiceEffect: {
  * )
  * ```
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const updateContext: {
@@ -10006,7 +10006,7 @@ export const updateContext: {
  * await Effect.runPromise(Effect.provideService(program, Counter, { count: 0 }))
  * ```
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const updateService: {

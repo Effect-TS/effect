@@ -172,7 +172,7 @@ const scoped = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 /**
  * Function run with the current request and response just before the response is sent, allowing the response to be replaced or failing with `HttpServerError`.
  *
- * @category Pre-response handlers
+ * @category pre-response handlers
  * @since 4.0.0
  */
 export type PreResponseHandler = (

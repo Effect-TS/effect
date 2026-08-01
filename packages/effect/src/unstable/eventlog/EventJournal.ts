@@ -34,7 +34,7 @@ import type { StoreId } from "./EventLogMessage.ts"
  * The service writes local entries, imports entries from remote journals, exposes
  * a stream of local changes, and provides per-store locking.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export class EventJournal extends Context.Service<EventJournal, {
@@ -497,7 +497,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
  * All journal data is stored in process memory and is not persisted across layer
  * lifetimes.
  *
- * @category memory
+ * @category layers
  * @since 4.0.0
  */
 export const layerMemory: Layer.Layer<EventJournal> = Layer.effect(EventJournal, makeMemory)
@@ -772,7 +772,7 @@ const decodeEntryIdbArray = Schema.decodeUnknownEffect(EntryIdbArray)
  * Provides `EventJournal` using the IndexedDB-backed implementation created by
  * `makeIndexedDb`.
  *
- * @category indexed db
+ * @category layers
  * @since 4.0.0
  */
 export const layerIndexedDb = (options?: {

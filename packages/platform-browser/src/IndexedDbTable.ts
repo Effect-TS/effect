@@ -23,7 +23,7 @@ const TypeId = "~@effect/platform-browser/IndexedDbTable"
 /**
  * Typed IndexedDB table definition containing its name, schema, key path, indexes, auto-increment setting, and transaction durability.
  *
- * @category interface
+ * @category models
  * @since 4.0.0
  */
 export interface IndexedDbTable<

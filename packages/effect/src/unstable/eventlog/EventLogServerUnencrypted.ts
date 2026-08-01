@@ -322,7 +322,7 @@ const toStoreNotFoundError = (options: {
  * Provides a `StoreMapping` that accepts only one configured store id and fails
  * all other store ids as not found.
  *
- * @category store
+ * @category layers
  * @since 4.0.0
  */
 export const layerStoreMappingStatic = (options: {
@@ -352,7 +352,7 @@ export const layerStoreMappingStatic = (options: {
  * allocates remote sequence numbers, persists entries, streams changes, and
  * exposes a transaction boundary.
  *
- * @category storage
+ * @category services
  * @since 4.0.0
  */
 export class Storage extends Context.Service<Storage, {
@@ -663,7 +663,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
 /**
  * Provides unencrypted server `Storage` using the in-memory implementation.
  *
- * @category storage
+ * @category layers
  * @since 4.0.0
  */
 export const layerStorageMemory: Layer.Layer<Storage> = Layer.effect(Storage)(makeStorageMemory)

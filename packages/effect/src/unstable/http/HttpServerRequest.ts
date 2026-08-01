@@ -105,7 +105,7 @@ export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessa
  * Use to access the request currently being handled by HTTP server routes and
  * middleware.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export const HttpServerRequest: Context.Service<HttpServerRequest, HttpServerRequest> = Context.Service(
@@ -125,7 +125,7 @@ export const HttpServerRequest: Context.Service<HttpServerRequest, HttpServerReq
  * Each key maps to a string value, or to an array when the parameter appears more
  * than once.
  *
- * @category search params
+ * @category services
  * @since 4.0.0
  */
 export class ParsedSearchParams extends Context.Service<

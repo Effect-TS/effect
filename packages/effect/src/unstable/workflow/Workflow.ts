@@ -200,7 +200,7 @@ export interface AnyStructSchema extends Schema.Top {
  * Type-level marker for services associated with a specific workflow
  * execution tag.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export interface Execution<Tag extends string> {
@@ -252,7 +252,7 @@ export interface AnyWithProps extends Any {
 /**
  * Extracts the payload schema from a `Workflow`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type PayloadSchema<W> = W extends Workflow<
@@ -267,7 +267,7 @@ export type PayloadSchema<W> = W extends Workflow<
  * Computes the schema services required by clients that execute or poll
  * workflows.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type RequirementsClient<Workflows extends Any> = Workflows extends Workflow<
@@ -285,7 +285,7 @@ export type RequirementsClient<Workflows extends Any> = Workflows extends Workfl
  * Computes the schema services required by handlers that decode workflow
  * payloads and encode workflow results.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type RequirementsHandler<Workflows extends Any> = Workflows extends Workflow<
@@ -465,7 +465,7 @@ const ResultTypeId = "~effect/workflow/Workflow/Result"
 /**
  * Returns `true` when a value is a workflow `Result`.
  *
- * @category results
+ * @category guards
  * @since 4.0.0
  */
 export const isResult = <A = unknown, E = unknown>(
@@ -825,7 +825,7 @@ export const addFinalizer: <R>(
  *
  * Compensation finalizers are only registered for top-level effects in the workflow and do not work for nested activities.
  *
- * @category Compensation
+ * @category compensation
  * @since 4.0.0
  */
 export const withCompensation: {
@@ -870,7 +870,7 @@ export const suspend = (instance: WorkflowInstance["Service"]): Effect.Effect<ne
  *
  * By default, this annotation is set to `true`, meaning defects are captured.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export const CaptureDefects = Context.Reference<boolean>(
@@ -887,7 +887,7 @@ export const CaptureDefects = Context.Reference<boolean>(
  *
  * The suspended execution can later be resumed with the workflow's `resume` method, for example `MyWorkflow.resume(executionId)`.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export const SuspendOnFailure = Context.Reference<boolean>(

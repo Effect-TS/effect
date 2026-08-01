@@ -2528,7 +2528,7 @@ export const rotate: {
  *
  * @see {@link contains} for the `Equal.equivalence()` variant
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
@@ -2563,7 +2563,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  *
  * @see {@link containsWith} — use custom equality
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const contains: {
@@ -3424,7 +3424,7 @@ export declare namespace ReadonlyArray {
    * // StringArrayType is string
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type Infer<S extends Iterable<any>> = S extends ReadonlyArray<infer A> ? A
@@ -3443,7 +3443,7 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<string>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type With<S extends Iterable<any>, A> = S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
@@ -3465,7 +3465,7 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<number>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type OrNonEmpty<
@@ -3492,7 +3492,7 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<boolean>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type AndNonEmpty<
@@ -3516,7 +3516,7 @@ export declare namespace ReadonlyArray {
    * // Flattened is Array<number>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends
@@ -4188,7 +4188,7 @@ export const liftResult = <A extends Array<unknown>, E, B>(
  *
  * @see {@link some} — test if any element matches
  *
- * @category elements
+ * @category guards
  * @since 2.0.0
  */
 export const every: {
@@ -4220,7 +4220,7 @@ export const every: {
  * @see {@link every} — test if all elements match
  * @see {@link contains} — test for a specific value
  *
- * @category elements
+ * @category guards
  * @since 2.0.0
  */
 export const some: {

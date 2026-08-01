@@ -533,7 +533,7 @@ export const externalSpan = (
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category references
+ * @category services
  * @since 3.12.0
  */
 export const DisablePropagation = Context.Reference<boolean>(
@@ -556,7 +556,7 @@ export const DisablePropagation = Context.Reference<boolean>(
  *
  * @see {@link MinimumTraceLevel} for the threshold that decides whether spans at that level are sampled
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const CurrentTraceLevel: Context.Reference<LogLevel> = Context.Reference<LogLevel>(
@@ -585,7 +585,7 @@ export const CurrentTraceLevel: Context.Reference<LogLevel> = Context.Reference<
  *
  * @see {@link CurrentTraceLevel} for the default span level used when options do not specify one
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const MinimumTraceLevel = Context.Reference<
@@ -600,7 +600,7 @@ export const MinimumTraceLevel = Context.Reference<
  * Use when you need the raw context key for active tracer lookup in lower-level
  * tracing code.
  *
- * @category references
+ * @category constants
  * @since 4.0.0
  */
 export const TracerKey = "effect/Tracer"
@@ -625,7 +625,7 @@ export const TracerKey = "effect/Tracer"
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category references
+ * @category services
  * @since 2.0.0
  */
 export const Tracer: Context.Reference<Tracer> = Context.Reference<Tracer>(TracerKey, {

@@ -1178,7 +1178,7 @@ export declare namespace Metric {
    * metricIds // => ["requests:Counter", "bytes:Counter", "status_codes:Frequency", "cpu_usage:Gauge", "response_time:Histogram"]
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type Input<A> = A extends Metric<infer _Input, infer _State> ? _Input
@@ -1241,7 +1241,7 @@ export declare namespace Metric {
    * values // => [10, 85.5, 1]
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type State<A> = A extends Metric<infer _Input, infer _State> ? _State
@@ -1555,7 +1555,7 @@ export declare namespace Metric {
  * const key = result // => { keyValue: "effect/Metric/CurrentMetricAttributes", keyType: "string", isConstant: true }
  * ```
  *
- * @category references
+ * @category constants
  * @since 4.0.0
  */
 export const CurrentMetricAttributesKey = "effect/Metric/CurrentMetricAttributes" as const
@@ -1602,7 +1602,7 @@ export const CurrentMetricAttributesKey = "effect/Metric/CurrentMetricAttributes
  * const actual = attributes // => { service: "api", version: "1.0" }
  * ```
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const CurrentMetricAttributes = Context.Reference<Metric.AttributeSet>(CurrentMetricAttributesKey, {
@@ -1634,7 +1634,7 @@ const MetricRegistryKey = "~effect/observability/Metric/MetricRegistryKey"
  * @see {@link snapshot} for reading all registered metrics from the current `Effect` context
  * @see {@link snapshotUnsafe} for reading all registered metrics from an explicit `Context`
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const MetricRegistry = Context.Reference<Map<string, Metric.Metadata<any, any>>>(
@@ -2808,7 +2808,7 @@ export const mapInput: {
  * const count = value.count // => 3
  * ```
  *
- * @category Input
+ * @category input
  * @since 2.0.0
  */
 export const withConstantInput: {
@@ -2873,7 +2873,7 @@ export const withConstantInput: {
  * await Effect.runPromise(Effect.provideService(result, Metric.MetricRegistry, new Map())) // => [2, 1]
  * ```
  *
- * @category Attributes
+ * @category attributes
  * @since 4.0.0
  */
 export const withAttributes: {
@@ -2936,7 +2936,7 @@ export const withAttributes: {
  * const ids = snapshots.map((snapshot) => snapshot.id).sort() // => ["http_requests", "response_time_ms"]
  * ```
  *
- * @category Snapshotting
+ * @category snapshotting
  * @since 2.0.0
  */
 export const snapshot: Effect<ReadonlyArray<Metric.Snapshot>> = InternalEffect.map(
@@ -2995,7 +2995,7 @@ export const snapshot: Effect<ReadonlyArray<Metric.Snapshot>> = InternalEffect.m
  * included // => [true, true, true]
  * ```
  *
- * @category Debugging
+ * @category debugging
  * @since 4.0.0
  */
 export const dump: Effect<string> = InternalEffect.flatMap(InternalEffect.context(), (context) => {
@@ -3063,7 +3063,7 @@ export const dump: Effect<string> = InternalEffect.flatMap(InternalEffect.contex
  * await Effect.runPromise(Effect.provideService(program, Metric.MetricRegistry, new Map())) // => ["http_requests"]
  * ```
  *
- * @category Snapshotting
+ * @category snapshotting
  * @since 4.0.0
  */
 export const snapshotUnsafe = (context: Context.Context<never>): ReadonlyArray<Metric.Snapshot> => {
@@ -3310,7 +3310,7 @@ export interface FiberRuntimeMetricsService {
  * const isDefault = result // => true
  * ```
  *
- * @category runtime metrics
+ * @category services
  * @since 4.0.0
  */
 export const FiberRuntimeMetrics = Context.Reference<FiberRuntimeMetricsService | undefined>(

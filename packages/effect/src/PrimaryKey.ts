@@ -81,7 +81,7 @@ export interface PrimaryKey {
  * @see {@link PrimaryKey} for the protocol being checked
  * @see {@link value} for extracting the string value after narrowing
  *
- * @category models
+ * @category guards
  * @since 4.0.0
  */
 export const isPrimaryKey = (u: unknown): u is PrimaryKey => hasProperty(u, symbol)

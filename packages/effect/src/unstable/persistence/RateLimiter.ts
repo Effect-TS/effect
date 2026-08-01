@@ -497,7 +497,7 @@ export type AdaptivePhase = "inactive" | "cooldown" | "learning" | "learned"
 /**
  * Options for consuming tokens from the adaptive rate limiter store.
  *
- * @category models
+ * @category options
  * @since 4.0.0
  */
 export interface AdaptiveConsumeOptions {
@@ -548,7 +548,7 @@ export interface AdaptiveConsumeResult {
 /**
  * Options for reporting response feedback to the adaptive rate limiter store.
  *
- * @category models
+ * @category options
  * @since 4.0.0
  */
 export interface AdaptiveFeedbackOptions {
@@ -586,7 +586,7 @@ export interface AdaptiveFeedbackOptions {
  * Use to provide the shared counter storage and adaptive feedback state used by
  * persistent rate-limit checks.
  *
- * @category store
+ * @category services
  * @since 4.0.0
  */
 export class RateLimiterStore extends Context.Service<
@@ -666,7 +666,7 @@ interface AdaptiveState {
 /**
  * Provides a process-local in-memory `RateLimiterStore`.
  *
- * @category RateLimiterStore
+ * @category layers
  * @since 4.0.0
  */
 export const layerStoreMemory: Layer.Layer<

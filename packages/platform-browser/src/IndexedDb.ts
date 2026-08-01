@@ -93,7 +93,7 @@ export const make = (impl: Omit<IndexedDb, typeof TypeId>): IndexedDb => Indexed
 /**
  * Layer that provides `IndexedDb` from `window.indexedDB` and `window.IDBKeyRange`, failing with a config error when they are unavailable.
  *
- * @category constructors
+ * @category layers
  * @since 4.0.0
  */
 export const layerWindow: Layer.Layer<IndexedDb> = Layer.effect(

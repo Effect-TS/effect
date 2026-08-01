@@ -300,7 +300,7 @@ export const JsonPatchDocument = Schema.Array(JsonPatchOperation)
 /**
  * Type for a JSON Patch document.
  *
- * @category types
+ * @category models
  * @since 4.0.0
  */
 export type JsonPatchDocument = typeof JsonPatchDocument.Type

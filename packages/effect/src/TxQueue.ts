@@ -1073,7 +1073,7 @@ export const size = (self: TxQueueState): Effect.Effect<number> => TxChunk.size(
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty = (self: TxQueueState): Effect.Effect<boolean> => TxChunk.isEmpty(self.items)
@@ -1099,7 +1099,7 @@ export const isEmpty = (self: TxQueueState): Effect.Effect<boolean> => TxChunk.i
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 2.0.0
  */
 export const isFull = (self: TxQueueState): Effect.Effect<boolean> =>
@@ -1373,7 +1373,7 @@ export const shutdown = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isOpen = (self: TxQueueState): Effect.Effect<boolean> =>
@@ -1401,7 +1401,7 @@ export const isOpen = (self: TxQueueState): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isClosing = (self: TxQueueState): Effect.Effect<boolean> =>
@@ -1428,7 +1428,7 @@ export const isClosing = (self: TxQueueState): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isDone = (self: TxQueueState): Effect.Effect<boolean> =>
@@ -1455,7 +1455,7 @@ export const isDone = (self: TxQueueState): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 2.0.0
  */
 export const isShutdown = (self: TxQueueState): Effect.Effect<boolean> => isDone(self)

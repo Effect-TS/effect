@@ -42,7 +42,7 @@ import * as Snowflake from "./Snowflake.ts"
  * messages; manages reply handlers; and provides transaction wrapping for storage
  * operations.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export class MessageStorage extends Context.Service<MessageStorage, {
@@ -284,7 +284,7 @@ export declare namespace SaveResult {
  * Implementations persist encoded messages, track primary keys and delayed
  * delivery, read unprocessed messages, and provide transaction wrapping.
  *
- * @category Encoded
+ * @category encoded
  * @since 4.0.0
  */
 export type Encoded = {
@@ -412,7 +412,7 @@ export type Encoded = {
  * The fields distinguish existing shards from newly assigned shards and carry the
  * driver-specific pagination cursor.
  *
- * @category Encoded
+ * @category encoded
  * @since 4.0.0
  */
 export type EncodedUnprocessedOptions<A> = {
@@ -429,7 +429,7 @@ export type EncodedUnprocessedOptions<A> = {
  * The fields distinguish existing requests from new requests and carry the
  * driver-specific pagination cursor.
  *
- * @category Encoded
+ * @category encoded
  * @since 4.0.0
  */
 export type EncodedRepliesOptions<A> = {
@@ -806,7 +806,7 @@ export type MemoryEntry = {
 /**
  * Provides a context reference used in tests to simulate a transaction.
  *
- * @category memory
+ * @category services
  * @since 4.0.0
  */
 export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/MessageStorage/MemoryTransaction", {
@@ -822,7 +822,7 @@ export const MemoryTransaction = Context.Reference<boolean>("effect/cluster/Mess
  * maps used to track requests, primary keys, unprocessed envelopes, reply IDs,
  * and the journal.
  *
- * @category memory
+ * @category services
  * @since 4.0.0
  */
 export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluster/MessageStorage/MemoryDriver", {

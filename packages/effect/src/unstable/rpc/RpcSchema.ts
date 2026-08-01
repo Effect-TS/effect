@@ -23,7 +23,7 @@ const StreamSchemaTypeId = "~effect/rpc/RpcSchema/StreamSchema"
  * Returns `true` when a schema is an RPC stream schema created by
  * `RpcSchema.Stream`.
  *
- * @category streams
+ * @category guards
  * @since 4.0.0
  */
 export function isStreamSchema(schema: Schema.Constraint): schema is Stream<Schema.Top, Schema.Top> {
@@ -86,7 +86,7 @@ export function Stream<A extends Schema.Constraint, E extends Schema.Constraint>
  * Annotation that marks interruptions that originate from an RPC client
  * abort.
  *
- * @category Cause annotations
+ * @category services
  * @since 4.0.0
  */
 export class ClientAbort extends Context.Service<ClientAbort, true>()("effect/rpc/RpcSchema/ClientAbort") {

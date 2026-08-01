@@ -1313,7 +1313,7 @@ export class InvalidUserInputError extends Schema.ErrorClass<InvalidUserInputErr
  * `isRetryable` getter. Provider-facing reasons may also include retry timing,
  * provider metadata, usage information, or HTTP context.
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export type AiErrorReason =

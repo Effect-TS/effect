@@ -68,7 +68,7 @@ export const isCliError = (u: unknown): u is CliError => Predicate.hasProperty(u
  * describe(new CliError.MissingOption({ option: "token" })) // => "Required flag missing: token"
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export type CliError =
@@ -112,7 +112,7 @@ export type CliError =
  * parseError._tag // => "UnrecognizedOption"
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class UnrecognizedOption extends Schema.TaggedErrorClass<UnrecognizedOption>(
@@ -165,7 +165,7 @@ export class UnrecognizedOption extends Schema.TaggedErrorClass<UnrecognizedOpti
  * duplicateError.childCommand // => "deploy"
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class DuplicateOption extends Schema.TaggedErrorClass<DuplicateOption>(
@@ -222,7 +222,7 @@ export class DuplicateOption extends Schema.TaggedErrorClass<DuplicateOption>(
  * validationError._tag // => "MissingOption"
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class MissingOption extends Schema.TaggedErrorClass<MissingOption>(
@@ -275,7 +275,7 @@ export class MissingOption extends Schema.TaggedErrorClass<MissingOption>(
  * parseError._tag // => "MissingArgument"
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class MissingArgument extends Schema.TaggedErrorClass<MissingArgument>(
@@ -316,7 +316,7 @@ export class MissingArgument extends Schema.TaggedErrorClass<MissingArgument>(
  * const details = [error._tag, error.arguments] // => ["UnexpectedArgument", ["extra.txt"]]
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class UnexpectedArgument extends Schema.TaggedErrorClass<UnexpectedArgument>(
@@ -373,7 +373,7 @@ export class UnexpectedArgument extends Schema.TaggedErrorClass<UnexpectedArgume
  * const details = [invalidArgError.kind, invalidArgError.option, invalidArgError.value] // => ["argument", "count", "abc"]
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
@@ -443,7 +443,7 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
  * parseError._tag // => "UnknownSubcomand"
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class UnknownSubcommand extends Schema.TaggedErrorClass<UnknownSubcommand>(
@@ -510,7 +510,7 @@ export class UnknownSubcommand extends Schema.TaggedErrorClass<UnknownSubcommand
  * await Effect.runPromise(handleError(userError)) // => 1
  * ```
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class UserError extends Schema.TaggedErrorClass<UserError>(
@@ -534,7 +534,7 @@ export class UserError extends Schema.TaggedErrorClass<UserError>(
  * This excludes `ShowHelp` itself, allowing parse and validation errors to be
  * stored in `ShowHelp.errors` without nesting another help-control value.
  *
- * @category models
+ * @category schemas
  * @since 4.0.0
  */
 export const NonShowHelpErrors: Schema.Union<
@@ -568,7 +568,7 @@ export const NonShowHelpErrors: Schema.Union<
  * runner should display help along with the underlying parse or validation
  * failures.
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export type NonShowHelpErrors = typeof NonShowHelpErrors.Type
@@ -582,7 +582,7 @@ export type NonShowHelpErrors = typeof NonShowHelpErrors.Type
  * that should be shown with help text. When `errors` is non-empty, the runtime
  * exit code is `1`; otherwise it is `0`.
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class ShowHelp extends Schema.TaggedErrorClass<ShowHelp>(

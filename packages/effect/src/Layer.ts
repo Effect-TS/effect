@@ -270,7 +270,7 @@ const memoMapReuse = <RIn, E, ROut>(
  * Layer.isLayer(notALayer) // => false
  * ```
  *
- * @category getters
+ * @category guards
  * @since 2.0.0
  */
 export const isLayer = (u: unknown): u is Layer<unknown, unknown, unknown> => hasProperty(u, TypeId)
@@ -576,7 +576,7 @@ export const forkMemoMap = (parent: MemoMap): Effect<MemoMap> => internalEffect.
  *
  * @see {@link MemoMap} the memoization map type wrapped by this service
  *
- * @category models
+ * @category services
  * @since 3.13.0
  */
 export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("effect/Layer/CurrentMemoMap") {

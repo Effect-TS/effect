@@ -72,7 +72,7 @@ export interface SchedulerDispatcher {
  * The default value creates a `MixedScheduler`. Provide this service to
  * customize execution mode, task dispatching, or yield behavior.
  *
- * @category references
+ * @category services
  * @since 2.0.0
  */
 export const Scheduler: Context.Reference<Scheduler> = Context.Reference<Scheduler>("effect/Scheduler", {
@@ -262,7 +262,7 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
  *
  * @see {@link PreventSchedulerYield} for bypassing scheduler yield checks entirely rather than tuning the operation budget
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/MaxOpsBeforeYield", {
@@ -287,7 +287,7 @@ export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/Max
  * @see {@link MaxOpsBeforeYield} for tuning yield frequency without disabling yield checks
  * @see {@link Scheduler} for providing custom scheduler yield behavior
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const PreventSchedulerYield = Context.Reference<boolean>("effect/Scheduler/PreventSchedulerYield", {

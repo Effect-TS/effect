@@ -1968,7 +1968,7 @@ export const timed: Sink<Duration.Duration, unknown> = map(withDuration(drain), 
  * Services contained in the provided context are removed from the sink's
  * service requirements.
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideContext: {
@@ -1997,7 +1997,7 @@ export const provideContext: {
  * The service identified by `key` is removed from the sink's service
  * requirements.
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const provideService: {
@@ -2146,7 +2146,7 @@ export {
  * The effect receives the sink's `Exit` for the result value. The original
  * sink result and leftovers are preserved unless the finalizer itself fails.
  *
- * @category Finalization
+ * @category finalization
  * @since 4.0.0
  */
 export const onExit: {
@@ -2174,7 +2174,7 @@ export const onExit: {
  * The original sink result and leftovers are preserved unless the finalizer
  * itself fails.
  *
- * @category Finalization
+ * @category finalization
  * @since 2.0.0
  */
 export const ensuring: {

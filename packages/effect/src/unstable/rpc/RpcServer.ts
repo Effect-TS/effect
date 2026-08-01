@@ -762,7 +762,7 @@ export const make: <Rpcs extends Rpc.Any>(
  * Provides a scoped layer that starts an RPC server for a group using the
  * current server `Protocol`.
  *
- * @category server
+ * @category layers
  * @since 4.0.0
  */
 export const layer = <Rpcs extends Rpc.Any>(
@@ -791,7 +791,7 @@ export const layer = <Rpcs extends Rpc.Any>(
  * Defaults to using websockets for communication, but can be configured to use
  * HTTP.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerHttp = <Rpcs extends Rpc.Any>(options: {
@@ -830,7 +830,7 @@ export const layerHttp = <Rpcs extends Rpc.Any>(options: {
  * Use to provide the transport boundary for RPC servers over HTTP, WebSocket,
  * workers, sockets, or custom protocols.
  *
- * @category protocols
+ * @category services
  * @since 4.0.0
  */
 export class Protocol extends Context.Service<
@@ -880,7 +880,7 @@ export const makeProtocolSocketServer = Effect.gen(function*() {
 /**
  * RPC protocol that uses `SocketServer` for communication.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolSocketServer: Layer.Layer<
@@ -947,7 +947,7 @@ export const makeProtocolWebsocket: (options: {
 /**
  * RPC protocol that uses WebSockets for communication.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolWebsocket = (options: {
@@ -1152,7 +1152,7 @@ export const makeProtocolHttp: (options: {
  * Provides a server `Protocol` that uses HTTP POST requests for RPC
  * communication.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolHttp = (options: {
@@ -1308,7 +1308,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
  * Provides a server `Protocol` that reads RPC messages from `Stdio.stdin` and
  * writes encoded responses to `Stdio.stdout`.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolStdio: Layer.Layer<
@@ -1379,7 +1379,7 @@ export const makeProtocolWorkerRunner: Effect.Effect<
 /**
  * Provides a server `Protocol` backed by the current `WorkerRunnerPlatform`.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolWorkerRunner: Layer.Layer<

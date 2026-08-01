@@ -1502,7 +1502,7 @@ export const followRedirects: {
 /**
  * Context reference for a predicate that disables client-side tracing for matching outgoing requests.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const TracerDisabledWhen = Context.Reference<
@@ -1514,7 +1514,7 @@ export const TracerDisabledWhen = Context.Reference<
 /**
  * Context reference for filtering request and response headers added to client spans.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const TracerHeaderFilter = Context.Reference<
@@ -1526,7 +1526,7 @@ export const TracerHeaderFilter = Context.Reference<
 /**
  * Context reference that controls whether outgoing client spans are propagated to request headers.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const TracerPropagationEnabled = Context.Reference<boolean>("effect/HttpClient/TracerPropagationEnabled", {
@@ -1536,7 +1536,7 @@ export const TracerPropagationEnabled = Context.Reference<boolean>("effect/HttpC
 /**
  * Context reference for generating the span name used for outgoing client request spans.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const SpanNameGenerator = Context.Reference<

@@ -21,7 +21,7 @@ import type { Protocol } from "./RpcServer.ts"
  * Context service that supplies the initial RPC worker message as encoded data
  * paired with any transferables that should be posted with it.
  *
- * @category initial message
+ * @category services
  * @since 4.0.0
  */
 export class InitialMessage extends Context.Service<
@@ -86,7 +86,7 @@ export const makeInitialMessage = <S extends Schema.Constraint, E, R2>(
  * Provides the `InitialMessage` service from a schema and build effect,
  * capturing the layer context and dying if schema encoding fails.
  *
- * @category initial message
+ * @category layers
  * @since 4.0.0
  */
 export const layerInitialMessage = <S extends Schema.Constraint, R2>(

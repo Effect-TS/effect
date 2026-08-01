@@ -66,7 +66,7 @@ export interface EntityResource<out A, out E = never> {
  *
  * It is not closed during restarts, due to shard movement or node shutdowns.
  *
- * @category resource management
+ * @category services
  * @since 4.0.0
  */
 export class CloseScope extends Context.Service<

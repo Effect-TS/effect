@@ -126,7 +126,7 @@ export class IndexedDbDatabaseError extends Data.TaggedError(
  * @see {@link IndexedDb.IndexedDb} for the lower-level browser IndexedDB primitives
  * @see {@link make} for creating a schema that provides this service as a layer
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class IndexedDbDatabase extends Context.Service<

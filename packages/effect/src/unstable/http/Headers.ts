@@ -42,7 +42,7 @@ export type TypeId = typeof TypeId
 /**
  * Returns `true` if the provided value is a `Headers` value.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isHeaders = (u: unknown): u is Headers => Predicate.hasProperty(u, TypeId)
@@ -423,7 +423,7 @@ export const redact: {
  *
  * Defaults include `authorization`, `cookie`, `set-cookie`, and `x-api-key`.
  *
- * @category fiber refs
+ * @category services
  * @since 4.0.0
  */
 export const CurrentRedactedNames = Context.Reference<

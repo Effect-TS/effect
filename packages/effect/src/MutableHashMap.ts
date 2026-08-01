@@ -83,7 +83,7 @@ export interface MutableHashMap<out K, out V> extends Iterable<[K, V]>, Pipeable
  *
  * @see {@link MutableHashMap} for the mutable hash map interface
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isMutableHashMap = <K, V>(value: unknown): value is MutableHashMap<K, V> => hasProperty(value, TypeId)

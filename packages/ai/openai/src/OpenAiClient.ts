@@ -460,7 +460,7 @@ export type ResponseStreamEvent = typeof OpenAiSchema.ResponseStreamEvent.Type
  * @see {@link withWebSocketMode} for enabling WebSocket mode for one effect
  * @see {@link layerWebSocketMode} for providing WebSocket mode through a layer
  *
- * @category Websocket mode
+ * @category WebSocket mode
  * @since 4.0.0
  */
 export class OpenAiSocket extends Context.Service<OpenAiSocket, {
@@ -696,7 +696,7 @@ const decodeEvent = Schema.decodeUnknownSync(Schema.fromJsonString(AllEvents))
  * @see {@link layerWebSocketMode} for providing WebSocket mode through a layer
  * @see {@link OpenAiSocket} for direct access to the WebSocket-backed streaming service
  *
- * @category Websocket mode
+ * @category WebSocket mode
  * @since 4.0.0
  */
 export const withWebSocketMode = <A, E, R>(
@@ -733,7 +733,7 @@ export const withWebSocketMode = <A, E, R>(
  *
  * @see {@link withWebSocketMode} for enabling WebSocket mode around a single effect
  *
- * @category Websocket mode
+ * @category WebSocket mode
  * @since 4.0.0
  */
 export const layerWebSocketMode: Layer.Layer<

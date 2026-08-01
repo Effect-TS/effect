@@ -240,14 +240,14 @@ export declare namespace Result {
   /**
    * Extracts the failure type `E` from `Result<A, E>`.
    *
-   * @category Type Level
+   * @category utility types
    * @since 4.0.0
    */
   export type Failure<T extends Result<any, any>> = [T] extends [Result<infer _A, infer _E>] ? _E : never
   /**
    * Extracts the success type `A` from `Result<A, E>`.
    *
-   * @category Type Level
+   * @category utility types
    * @since 4.0.0
    */
   export type Success<T extends Result<any, any>> = [T] extends [Result<infer _A, infer _E>] ? _A : never
@@ -1701,7 +1701,7 @@ export {
  *
  * @see {@link transposeMapOption} to map and transpose in one step
  *
- * @category Transposing
+ * @category transposing
  * @since 3.14.0
  */
 export const transposeOption = <A = never, E = never>(
@@ -1742,7 +1742,7 @@ export const transposeOption = <A = never, E = never>(
  *
  * @see {@link transposeOption} when the Option already contains a Result
  *
- * @category Transposing
+ * @category transposing
  * @since 3.15.0
  */
 export const transposeMapOption = dual<

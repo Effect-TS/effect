@@ -683,7 +683,7 @@ export function withDefault<T, R = never>(
  *
  * @see {@link transform} for custom string conversions
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export function String<E>(): Getter<string, E> {
@@ -714,7 +714,7 @@ export function String<E>(): Getter<string, E> {
  *
  * @see {@link transformOrFail} for validated number parsing
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export function Number<E>(): Getter<number, E> {
@@ -742,7 +742,7 @@ export function Number<E>(): Getter<number, E> {
  * await Effect.runPromise(toBool.run(Option.some("true"), {})) // => Option.some(true)
  * ```
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export function Boolean<E>(): Getter<boolean, E> {
@@ -771,7 +771,7 @@ export function Boolean<E>(): Getter<boolean, E> {
  * await Effect.runPromise(toBigInt.run(Option.some("42"), {})) // => Option.some(42n)
  * ```
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export function BigInt<E extends string | number | bigint | boolean>(): Getter<bigint, E> {
@@ -803,7 +803,7 @@ export function BigInt<E extends string | number | bigint | boolean>(): Getter<b
  *
  * @see {@link dateTimeUtcFromInput} for validated DateTime parsing
  *
- * @category Coercions
+ * @category coercions
  * @since 4.0.0
  */
 export function Date<E extends string | number | Date>(): Getter<Date, E> {

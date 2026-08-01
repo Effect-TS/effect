@@ -719,7 +719,7 @@ export declare namespace IndexedDbQuery {
 /**
  * Service tag for the active `IDBTransaction` used to share a transaction across IndexedDB query effects.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class IndexedDbTransaction extends Context.Service<IndexedDbTransaction, globalThis.IDBTransaction>()(

@@ -399,7 +399,7 @@ export const make = (
  * Fiber reference read by the low-level ClickHouse connection to choose query
  * or command execution for statements; defaults to `query`.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const ClientMethod = Context.Reference<"query" | "command" | "insert">(
@@ -413,7 +413,7 @@ export const ClientMethod = Context.Reference<"query" | "command" | "insert">(
  * Fiber reference for the ClickHouse `query_id` applied to queries and
  * inserts; a random UUID is generated when no query ID is set.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const QueryId = Context.Reference<string | undefined>(
@@ -425,7 +425,7 @@ export const QueryId = Context.Reference<string | undefined>(
  * Fiber reference containing ClickHouse settings to attach to queries,
  * commands, and inserts.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const ClickhouseSettings: Context.Reference<

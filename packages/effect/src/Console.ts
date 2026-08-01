@@ -77,7 +77,7 @@ export interface Console {
  *
  * @see {@link consoleWith} for using the current console service inside an effect
  *
- * @category references
+ * @category services
  * @since 2.0.0
  */
 export const Console: Context.Reference<Console> = effect.ConsoleRef

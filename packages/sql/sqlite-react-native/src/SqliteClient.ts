@@ -93,7 +93,7 @@ export interface SqliteClientConfig {
  * Use to switch React Native SQLite query execution to the asynchronous driver
  * API for a scoped effect.
  *
- * @category fiber refs
+ * @category services
  * @since 4.0.0
  */
 export const AsyncQuery = Context.Reference<boolean>(

@@ -52,7 +52,7 @@ export class PersistenceError extends Schema.ErrorClass<PersistenceError>(ErrorT
  * Service for creating scoped stores of persisted `Persistable` request
  * results.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class Persistence extends Context.Service<Persistence, {
@@ -99,7 +99,7 @@ export interface PersistenceStore {
 /**
  * Service for creating raw backing stores for persistence store ids.
  *
- * @category BackingPersistence
+ * @category services
  * @since 4.0.0
  */
 export class BackingPersistence extends Context.Service<BackingPersistence, {

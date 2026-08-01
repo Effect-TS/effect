@@ -32,7 +32,7 @@ import type { HttpServerResponse } from "./HttpServerResponse.ts"
  * The service can serve an HTTP response effect and exposes the address where the
  * server is listening.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class HttpServer extends Context.Service<HttpServer, {

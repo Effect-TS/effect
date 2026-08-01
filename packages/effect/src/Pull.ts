@@ -53,7 +53,7 @@ export interface Pull<out A, out E = never, out Done = void, out R = never>
  * @see {@link Leftover} for extracting the completion leftover type
  * @see {@link Services} for extracting the required services type instead
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Success<P> = P extends Effect<infer _A, infer _E, infer _R> ? _A : never
@@ -71,7 +71,7 @@ export type Success<P> = P extends Effect<infer _A, infer _E, infer _R> ? _A : n
  * @see {@link Services} for extracting the required services type instead
  * @see {@link ExcludeDone} for excluding `Cause.Done` from an error union
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Error<P> = P extends Effect<infer _A, infer _E, infer _R> ? _E extends Cause.Done<infer _L> ? never : _E
@@ -90,7 +90,7 @@ export type Error<P> = P extends Effect<infer _A, infer _E, infer _R> ? _E exten
  * @see {@link Error} for extracting the ordinary failure type, excluding `Cause.Done`
  * @see {@link Services} for extracting the required services type instead
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Leftover<P> = P extends Effect<infer _A, infer _E, infer _R> ? _E extends Cause.Done<infer _L> ? _L : never
@@ -108,7 +108,7 @@ export type Leftover<P> = P extends Effect<infer _A, infer _E, infer _R> ? _E ex
  * @see {@link Error} for extracting the ordinary failure type
  * @see {@link Leftover} for extracting the completion leftover type
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Services<P> = P extends Effect<infer _A, infer _E, infer _R> ? _R : never
@@ -124,7 +124,7 @@ export type Services<P> = P extends Effect<infer _A, infer _E, infer _R> ? _R : 
  * @see {@link Error} for extracting ordinary failures from a `Pull`
  * @see {@link Leftover} for extracting the completion leftover type
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type ExcludeDone<E> = Exclude<E, Cause.Done<any>>
@@ -180,7 +180,7 @@ export const catchDone: {
  * @see {@link filterDone} for extracting the `Cause.Done` value from a `Cause`
  * @see {@link filterNoDone} for selecting causes with no done failures
  *
- * @category Done
+ * @category predicates
  * @since 4.0.0
  */
 export const isDoneCause = <E>(cause: Cause.Cause<E>): boolean => cause.reasons.some(isDoneFailure)
@@ -197,7 +197,7 @@ export const isDoneCause = <E>(cause: Cause.Cause<E>): boolean => cause.reasons.
  * @see {@link isDoneCause} for checking an entire `Cause` for any done reason
  * @see {@link filterDone} for extracting the `Cause.Done` value from a `Cause`
  *
- * @category Done
+ * @category guards
  * @since 4.0.0
  */
 export const isDoneFailure = <E>(

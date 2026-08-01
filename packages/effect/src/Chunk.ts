@@ -273,7 +273,7 @@ const makeChunk = <A>(backing: Backing<A>): Chunk<A> => {
  * Chunk.isChunk("string") // => false
  * ```
  *
- * @category constructors
+ * @category guards
  * @since 2.0.0
  */
 export const isChunk: {
@@ -1327,7 +1327,7 @@ export const intersection: {
  * Chunk.isEmpty(Chunk.make(1, 2, 3)) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty = <A>(self: Chunk<A>): boolean => self.length === 0
@@ -1344,7 +1344,7 @@ export const isEmpty = <A>(self: Chunk<A>): boolean => self.length === 0
  * Chunk.isNonEmpty(Chunk.make(1, 2, 3)) // => true
  * ```
  *
- * @category elements
+ * @category guards
  * @since 2.0.0
  */
 export const isNonEmpty = <A>(self: Chunk<A>): self is NonEmptyChunk<A> => self.length > 0
@@ -1528,7 +1528,7 @@ export declare namespace Chunk {
    * type StringType = Chunk.Chunk.Infer<typeof stringChunk> // string
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type Infer<S extends Chunk<any>> = S extends Chunk<infer A> ? A : never
@@ -1548,7 +1548,7 @@ export declare namespace Chunk {
    * type WithString2 = Chunk.Chunk.With<typeof nonEmptyChunk, string> // Chunk.NonEmptyChunk<string>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type With<S extends Chunk<any>, A> = S extends NonEmptyChunk<any> ? NonEmptyChunk<A> : Chunk<A>
@@ -1581,7 +1581,7 @@ export declare namespace Chunk {
    * > // Chunk.NonEmptyChunk<string>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type OrNonEmpty<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any> ?
@@ -1617,7 +1617,7 @@ export declare namespace Chunk {
    * > // Chunk.NonEmptyChunk<string>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type AndNonEmpty<S extends Chunk<any>, T extends Chunk<any>, A> = S extends NonEmptyChunk<any> ?
@@ -1640,7 +1640,7 @@ export declare namespace Chunk {
    * type Flattened2 = Chunk.Chunk.Flatten<typeof nestedNonEmpty> // Chunk.NonEmptyChunk<string>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type Flatten<T extends Chunk<Chunk<any>>> = T extends NonEmptyChunk<NonEmptyChunk<infer A>> ? NonEmptyChunk<A>
@@ -2469,7 +2469,7 @@ export const range = (start: number, end: number): NonEmptyChunk<number> =>
  * Chunk.contains(Chunk.empty<number>(), 1) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const contains: {
@@ -2503,7 +2503,7 @@ export const contains: {
  * containsCaseInsensitive(words, "grape") // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const containsWith: <A>(
@@ -2655,7 +2655,7 @@ export const findLastIndex: {
  * }
  * ```
  *
- * @category elements
+ * @category guards
  * @since 2.0.0
  */
 export const every: {
@@ -2689,7 +2689,7 @@ export const every: {
  * Chunk.some(words, (word) => word.includes("ban")) // => true
  * ```
  *
- * @category elements
+ * @category guards
  * @since 2.0.0
  */
 export const some: {

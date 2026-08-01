@@ -29,7 +29,7 @@ import { makeRunMain, type Teardown } from "effect/Runtime"
  * The `beforeunload` interruption is best-effort. Browser teardown may prevent
  * asynchronous finalizers, network work, timers, or prompts from completing.
  *
- * @category Runtime
+ * @category running
  * @since 4.0.0
  */
 export const runMain: {

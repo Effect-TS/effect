@@ -156,7 +156,7 @@ export const isLogger = (u: unknown): u is Logger<unknown, unknown> => Predicate
  * messages // => [["Hello from custom logger"]]
  * ```
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const CurrentLoggers: Context.Reference<ReadonlySet<Logger<unknown, any>>> = effect.CurrentLoggers
@@ -179,7 +179,7 @@ export const CurrentLoggers: Context.Reference<ReadonlySet<Logger<unknown, any>>
  * @see {@link consolePretty} for the TTY-mode pretty console logger affected by this reference
  * @see {@link withConsoleError} for routing a specific formatter logger to `console.error`
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const LogToStderr: Context.Reference<boolean> = effect.LogToStderr

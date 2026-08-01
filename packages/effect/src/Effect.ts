@@ -168,7 +168,7 @@ export interface Variance<A, E, R> {
  * @see {@link Error} for extracting the failure type from the same `Effect`
  * @see {@link Services} for extracting the required services from the same `Effect`
  *
- * @category models
+ * @category utility types
  * @since 2.0.0
  */
 export type Success<T> = T extends Effect<infer _A, infer _E, infer _R> ? _A
@@ -189,7 +189,7 @@ export type Success<T> = T extends Effect<infer _A, infer _E, infer _R> ? _A
  * @see {@link Success} for extracting the success value type instead
  * @see {@link Services} for extracting the required services type instead
  *
- * @category models
+ * @category utility types
  * @since 2.0.0
  */
 export type Error<T> = T extends Effect<infer _A, infer _E, infer _R> ? _E
@@ -206,7 +206,7 @@ export type Error<T> = T extends Effect<infer _A, infer _E, infer _R> ? _E
  * @see {@link Success} for extracting the success value type instead
  * @see {@link Error} for extracting the failure type instead
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Services<T> = T extends Effect<infer _A, infer _E, infer _R> ? _R
@@ -5600,7 +5600,7 @@ export const matchEffect: {
  * output // => [true]
  * ```
  *
- * @category condition checking
+ * @category predicates
  * @since 2.0.0
  */
 export const isFailure: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, never, R> = internal.isFailure
@@ -5630,7 +5630,7 @@ export const isFailure: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  * output // => ["ok: true", "failed: false"]
  * ```
  *
- * @category condition checking
+ * @category predicates
  * @since 2.0.0
  */
 export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, never, R> = internal.isSuccess
@@ -14409,7 +14409,7 @@ export const trackDuration: {
  * Effect.runSync(runnable) // => "Transaction complete"
  * ```
  *
- * @category transactions
+ * @category services
  * @since 4.0.0
  */
 export class Transaction extends Context.Service<

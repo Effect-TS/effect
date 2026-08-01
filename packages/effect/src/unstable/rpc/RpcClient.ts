@@ -200,7 +200,7 @@ export declare namespace RpcClient {
  * Derives the object-shaped RPC client type for all RPCs contained in an
  * `RpcGroup`.
  *
- * @category client
+ * @category utility types
  * @since 4.0.0
  */
 export type FromGroup<Group, E = never> = RpcClient<RpcGroup.Rpcs<Group>, E>
@@ -807,7 +807,7 @@ const rpcSchemas = (rpc: Rpc.AnyWithProps) => {
  * Use to set request headers that should be automatically merged into outgoing
  * RPC client messages.
  *
- * @category headers
+ * @category services
  * @since 4.0.0
  */
 export const CurrentHeaders = Context.Reference<Headers.Headers>("effect/rpc/RpcClient/CurrentHeaders", {
@@ -839,7 +839,7 @@ export const withHeaders: {
  * Use to provide the transport boundary for RPC clients over HTTP, WebSocket,
  * workers, sockets, or custom protocols.
  *
- * @category protocols
+ * @category services
  * @since 4.0.0
  */
 export class Protocol extends Context.Service<Protocol, {
@@ -980,7 +980,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
  * Provides a client `Protocol` backed by `HttpClient`, targeting the configured
  * URL and optionally transforming the client before use.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolHttp = (options: {
@@ -1171,7 +1171,7 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
  * Provides a client `Protocol` backed by the current `Socket` and
  * `RpcSerialization` services.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolSocket = (options?: {
@@ -1352,7 +1352,7 @@ export const makeProtocolWorker = (
  * Provides a client `Protocol` backed by a worker pool using the current worker
  * platform and spawner services.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolWorker: (
@@ -1382,7 +1382,7 @@ export const layerProtocolWorker: (
  * Use to run setup or cleanup effects when an RPC client transport opens or
  * closes.
  *
- * @category connection hooks
+ * @category services
  * @since 4.0.0
  */
 export class ConnectionHooks extends Context.Service<ConnectionHooks, {

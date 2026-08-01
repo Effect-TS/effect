@@ -317,7 +317,7 @@ export const size = <A>(self: TxPubSub<A>): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category getters
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effect.map(size(self), (s) => s === 0)
@@ -338,7 +338,7 @@ export const isEmpty = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => Effect.
  * await Effect.runPromise(program) // => false
  * ```
  *
- * @category getters
+ * @category predicates
  * @since 2.0.0
  */
 export const isFull = <A>(self: TxPubSub<A>): Effect.Effect<boolean> =>
@@ -369,7 +369,7 @@ export const isFull = <A>(self: TxPubSub<A>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category getters
+ * @category predicates
  * @since 2.0.0
  */
 export const isShutdown = <A>(self: TxPubSub<A>): Effect.Effect<boolean> => TxRef.get(self.shutdownRef)

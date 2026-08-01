@@ -27,7 +27,7 @@ const TypeId = "~@effect/platform-browser/IndexedDbVersion"
 /**
  * Typed IndexedDB version definition containing the tables available in that schema version.
  *
- * @category interface
+ * @category models
  * @since 4.0.0
  */
 export interface IndexedDbVersion<

@@ -456,7 +456,7 @@ export const set: {
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 2.0.0
  */
 export const has: {
@@ -626,7 +626,7 @@ export const size = <K, V>(self: TxHashMap<K, V>): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty = <K, V>(self: TxHashMap<K, V>): Effect.Effect<boolean> =>
@@ -656,7 +656,7 @@ export const isEmpty = <K, V>(self: TxHashMap<K, V>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => false
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isNonEmpty = <K, V>(self: TxHashMap<K, V>): Effect.Effect<boolean> =>
@@ -1305,7 +1305,7 @@ export const getHash: {
  * await Effect.runPromise(program) // => ["Role admin: true", "Role user: true", "Role moderator: false"]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const hasHash: {
@@ -1653,7 +1653,7 @@ export const filterMap: {
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const hasBy: {
@@ -1763,7 +1763,7 @@ export const findFirst: {
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const some: {
@@ -1819,7 +1819,7 @@ export const some: {
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const every: {

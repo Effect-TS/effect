@@ -183,7 +183,7 @@ export interface Clock {
  * @see {@link currentTimeMillis} for reading the current time in milliseconds
  * @see {@link currentTimeNanos} for reading the current time in nanoseconds
  *
- * @category references
+ * @category services
  * @since 2.0.0
  */
 export const Clock: Context.Reference<Clock> = effect.ClockRef
