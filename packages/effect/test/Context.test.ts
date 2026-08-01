@@ -35,37 +35,42 @@ describe("Context", () => {
     ])
   })
 
-  it("copies the slab only for references and opted-in services", () => {
-    const Slotted = Context.Service<number>("ContextTest/Slotted", { allocateSlot: true })
-    class SlottedClass extends Context.Service<SlottedClass, number>()("ContextTest/SlottedClass", {
-      allocateSlot: true
+  it("copies the cache only for opted-in keys", () => {
+    const Cached = Context.Service<number>("ContextTest/Cached", { enableCaching: true })
+    class CachedClass extends Context.Service<CachedClass, number>()("ContextTest/CachedClass", {
+      enableCaching: true
     }) {}
     const Ref = Context.Reference<number>("ContextTest/Ref", { defaultValue: () => 0 })
+    const CachedRef = Context.Reference<number>("ContextTest/CachedRef", {
+      enableCaching: true,
+      defaultValue: () => 0
+    })
 
     const source = Context.make(A, 1)
-    assertTrue(Context.unsafeHasSameSlab(source, Context.add(source, B, 1)))
-    assertFalse(Context.unsafeHasSameSlab(source, Context.add(source, Ref, 1)))
+    assertTrue(Context.unsafeHasSameCache(source, Context.add(source, B, 1)))
+    assertTrue(Context.unsafeHasSameCache(source, Context.add(source, Ref, 1)))
+    assertFalse(Context.unsafeHasSameCache(source, Context.add(source, CachedRef, 1)))
     const context = source.pipe(
-      Context.add(Slotted, 2),
-      Context.add(SlottedClass, 3)
+      Context.add(Cached, 2),
+      Context.add(CachedClass, 3)
     )
 
-    strictEqual(Context.get(context, Slotted), 2)
-    strictEqual(Context.get(context, SlottedClass), 3)
-    assertTrue(Context.getOption(source, Slotted)._tag === "None")
+    strictEqual(Context.get(context, Cached), 2)
+    strictEqual(Context.get(context, CachedClass), 3)
+    assertTrue(Context.getOption(source, Cached)._tag === "None")
 
-    const replaced = Context.add(context, Slotted, 4)
-    strictEqual(Context.get(replaced, Slotted), 4)
-    strictEqual(Context.get(context, Slotted), 2)
+    const replaced = Context.add(context, Cached, 4)
+    strictEqual(Context.get(replaced, Cached), 4)
+    strictEqual(Context.get(context, Cached), 2)
 
     deepStrictEqual([...replaced.mapUnsafe], [
       [A.key, 1],
-      [Slotted.key, 4],
-      [SlottedClass.key, 3]
+      [Cached.key, 4],
+      [CachedClass.key, 3]
     ])
-    deepStrictEqual([...Context.omit(Slotted)(replaced).mapUnsafe], [
+    deepStrictEqual([...Context.omit(Cached)(replaced).mapUnsafe], [
       [A.key, 1],
-      [SlottedClass.key, 3]
+      [CachedClass.key, 3]
     ])
   })
 

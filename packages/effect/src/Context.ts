@@ -70,12 +70,12 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
   readonly stack?: string | undefined
 }
 
-const SlabKeyId = Symbol.for("effect/Context/SlabKey")
-const slabKeys = new Set<string>()
+const CacheKeyId = Symbol.for("effect/Context/CacheKey")
+const cacheKeys = new Set<string>()
 
-const addSlabKey = (key: Key<any, any>): void => {
-  ;(key as any)[SlabKeyId] = true
-  slabKeys.add(key.key)
+const addCacheKey = (key: Key<any, any>): void => {
+  ;(key as any)[CacheKeyId] = true
+  cacheKeys.add(key.key)
 }
 
 /**
@@ -173,10 +173,10 @@ export declare namespace ServiceClass {
  * declarations. The returned key can be yielded as an Effect and passed to
  * `Context.make`, `Context.add`, and the Context getter functions.
  *
- * Pass `allocateSlot: true` to store the key in the slab, making reads O(1).
- * Reserve this for services that are added and read on hot paths; every slab
- * key grows the small Map that a slotted `Context.add` copies. `Reference`
- * keys are stored in the slab automatically.
+ * Pass `enableCaching: true` to store the key in the context's cache, making
+ * reads O(1). Reserve this for keys that are added and read on hot paths;
+ * every cached key grows the small Map that a caching `Context.add` copies.
+ * The same option is available on `Reference`.
  *
  * **Gotchas**
  *
@@ -217,7 +217,7 @@ export const Service: {
   <Identifier, Shape = Identifier>(
     key: string,
     options?: {
-      readonly allocateSlot?: boolean | undefined
+      readonly enableCaching?: boolean | undefined
     } | undefined
   ): Service<Identifier, Shape>
   <Self, Shape>(): <
@@ -229,7 +229,7 @@ export const Service: {
     id: Identifier,
     options?: {
       readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
-      readonly allocateSlot?: boolean | undefined
+      readonly enableCaching?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -242,7 +242,7 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
-      readonly allocateSlot?: boolean | undefined
+      readonly enableCaching?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -273,21 +273,21 @@ export const Service: {
       self[ReferenceTypeId] = ReferenceTypeId
       self.defaultValue = arguments[1].defaultValue
     }
-    if (arguments[1]?.defaultValue || arguments[1]?.allocateSlot) {
-      addSlabKey(self)
+    if (arguments[1]?.enableCaching) {
+      addCacheKey(self)
     }
     return self
   }
   return function(key: string, options?: {
     readonly make?: any
-    readonly allocateSlot?: boolean
+    readonly enableCaching?: boolean
   }) {
     self.key = key
     if (options?.make) {
       ;(self as any).make = options.make
     }
-    if (options?.allocateSlot) {
-      addSlabKey(self)
+    if (options?.enableCaching) {
+      addCacheKey(self)
     }
     return self
   }
@@ -499,7 +499,7 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
 }
 
 interface ContextImpl<in Services> extends Context<Services> {
-  slab: ReadonlyMap<string, unknown>
+  cache: ReadonlyMap<string, unknown>
   base: ReadonlyMap<string, any>
   overlay: Overlay | undefined
   depth: number
@@ -515,13 +515,13 @@ interface Overlay {
 const MaxDepth = 8
 
 const makeImpl = <Services>(
-  slab: ReadonlyMap<string, unknown>,
+  cache: ReadonlyMap<string, unknown>,
   base: ReadonlyMap<string, any>,
   overlay: Overlay | undefined,
   depth: number
 ): ContextImpl<Services> => {
   const self: ContextImpl<Services> = Object.create(Proto)
-  self.slab = slab
+  self.cache = cache
   self.base = base
   self.overlay = overlay
   self.depth = depth
@@ -531,11 +531,11 @@ const makeImpl = <Services>(
 }
 
 const fromMap = <Services>(map: Map<string, any>): ContextImpl<Services> => {
-  const slab = new Map<string, unknown>()
+  const cache = new Map<string, unknown>()
   map.forEach((value, key) => {
-    if (slabKeys.has(key)) slab.set(key, value)
+    if (cacheKeys.has(key)) cache.set(key, value)
   })
-  return makeImpl(slab, map, undefined, 0)
+  return makeImpl(cache, map, undefined, 0)
 }
 
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
@@ -578,11 +578,11 @@ const lookup = (self: ContextImpl<any>, key: string): unknown => {
   return self.base.get(key)
 }
 
-// The slab is a cache: every slotted value is also present in overlay/base
+// Cached values are also present in overlay/base, so the cache is safe to skip
 const lookupKey = (self: Context<any>, key: Key<any, any>): unknown => {
   const impl = self as ContextImpl<any>
-  if ((key as any)[SlabKeyId] === true && impl.slab !== undefined) {
-    const value = impl.slab.get(key.key)
+  if ((key as any)[CacheKeyId] === true && impl.cache !== undefined) {
+    const value = impl.cache.get(key.key)
     if (value !== undefined) return value
   }
   return lookup(impl, key.key)
@@ -634,7 +634,7 @@ export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>
 
 const Proto: Omit<
   ContextImpl<never>,
-  "slab" | "base" | "overlay" | "depth" | "mutable" | "_flat"
+  "cache" | "base" | "overlay" | "depth" | "mutable" | "_flat"
 > = {
   ...PipeInspectableProto,
   [TypeId]: {
@@ -670,15 +670,15 @@ const Proto: Omit<
 }
 
 /** @internal */
-export const unsafeHasSameSlab = <Services, Services2>(
+export const unsafeHasSameCache = <Services, Services2>(
   self: Context<Services>,
   that: Context<Services2>
-): boolean => (self as ContextImpl<Services>).slab === (that as ContextImpl<Services2>).slab
+): boolean => (self as ContextImpl<Services>).cache === (that as ContextImpl<Services2>).cache
 
 /** @internal */
 export const unsafeGetByKey = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
   const impl = self as ContextImpl<Services>
-  const value = impl.slab?.get(key)
+  const value = impl.cache?.get(key)
   if (value !== undefined) return value as A
   return lookup(impl, key) as A | undefined
 }
@@ -847,14 +847,14 @@ export const add: {
     return withFlat(impl, (map) => map.set(key.key, service))
   }
 
-  let slab = impl.slab
-  if (slabKeys.has(key.key)) {
-    slab = new Map(impl.slab)
-    ;(slab as Map<string, unknown>).set(key.key, service)
+  let cache = impl.cache
+  if (cacheKeys.has(key.key)) {
+    cache = new Map(impl.cache)
+    ;(cache as Map<string, unknown>).set(key.key, service)
   }
 
   return makeImpl(
-    slab,
+    cache,
     impl.base,
     { key: key.key, value: service, parent: impl.overlay },
     impl.depth + 1
@@ -1410,8 +1410,8 @@ export const mutate: {
 } = dual(
   2,
   <Services, B>(self: Context<Services>, f: (context: Context<Services>) => Context<B>): Context<B> => {
-    // The scratch context gets an empty slab, so every operation on it reads
-    // and writes `base` alone; the slab is rebuilt once when sealing
+    // The scratch context gets an empty cache, so every operation on it reads
+    // and writes `base` alone; the cache is rebuilt once when sealing
     const map = new Map(flatten(self as ContextImpl<Services>))
     const scratch = makeImpl<Services>(new Map(), map, undefined, 0)
     scratch.mutable = true
@@ -1474,5 +1474,6 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
+    readonly enableCaching?: boolean | undefined
   }
 ) => Reference<Service> = Service as any
