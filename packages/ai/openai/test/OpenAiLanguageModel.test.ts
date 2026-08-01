@@ -30,6 +30,24 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("generateText", () => {
+    it.effect("forwards safety and legacy prompt-cache config", () =>
+      Effect.gen(function*() {
+        yield* LanguageModel.generateText({ prompt: "test" }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-5.5", {
+            safety_identifier: "user-hash-123",
+            prompt_cache_key: "reviewer:v1",
+            prompt_cache_retention: "24h"
+          }))
+        )
+
+        const requests = yield* MockHttpClient.requests
+        const body = yield* getRequestBody(requests[0])
+
+        strictEqual(body.safety_identifier, "user-hash-123")
+        strictEqual(body.prompt_cache_key, "reviewer:v1")
+        strictEqual(body.prompt_cache_retention, "24h")
+      }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.5" as any } }))))
+
     describe("message preparation", () => {
       describe("system messages", () => {
         it.effect("uses system role for standard models", () =>
@@ -913,6 +931,36 @@ describe("OpenAiLanguageModel", () => {
   })
 
   describe("streamText", () => {
+    it.effect("forwards safety and GPT-5.6 prompt-cache config", () =>
+      Effect.gen(function*() {
+        const streamEvents = [{
+          type: "response.completed",
+          sequence_number: 1,
+          response: makeDefaultResponse({ model: "gpt-5.6" as any })
+        }] as unknown as ReadonlyArray<typeof Generated.ResponseStreamEvent.Type>
+
+        const requests = yield* Effect.gen(function*() {
+          yield* LanguageModel.streamText({ prompt: "test" }).pipe(Stream.runCollect)
+          return yield* MockHttpClient.requests
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-5.6", {
+            safety_identifier: "user-hash-456",
+            prompt_cache_key: "reviewer:v2",
+            prompt_cache_options: {
+              mode: "implicit",
+              ttl: "30m"
+            }
+          })),
+          Effect.provide(makeStreamHttpTestLayer(streamEvents))
+        )
+        const body = yield* getRequestBody(requests[0])
+
+        strictEqual(body.safety_identifier, "user-hash-456")
+        strictEqual(body.prompt_cache_key, "reviewer:v2")
+        deepStrictEqual(body.prompt_cache_options, { mode: "implicit", ttl: "30m" })
+        strictEqual(body.stream, true)
+      }))
+
     it.effect("extracts usage information", () =>
       Effect.gen(function*() {
         const streamEvents = [
@@ -1363,7 +1411,8 @@ describe("OpenAiLanguageModel", () => {
 
 class MockOpenAiResponse extends Context.Service<MockOpenAiResponse, {
   readonly status: number
-  readonly body: Generated.Response
+  readonly body?: Generated.Response | undefined
+  readonly events?: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type> | undefined
   readonly headers?: Record<string, string> | undefined
 }>()("MockOpenAiResponse") {}
 
@@ -1380,7 +1429,7 @@ const encodeResponse = Schema.encodeUnknownEffect(OpenAiSchema.Response)
 const makeHttpClient = Effect.gen(function*() {
   const capturedRequests = yield* Ref.make<ReadonlyArray<HttpClientRequest.HttpClientRequest>>([])
   const response = yield* MockOpenAiResponse
-  const body = yield* Effect.orDie(encodeResponse(response.body))
+  const body = response.body === undefined ? undefined : yield* Effect.orDie(encodeResponse(response.body))
 
   const httpClient = HttpClient.makeWith(
     Effect.fnUntraced(function*(requestEffect) {
@@ -1388,10 +1437,18 @@ const makeHttpClient = Effect.gen(function*() {
       yield* Ref.update(capturedRequests, Array.append(request))
       return HttpClientResponse.fromWeb(
         request,
-        new Response(JSON.stringify(body), {
-          headers: response.headers ?? {},
-          status: response.status
-        })
+        new Response(
+          response.events === undefined
+            ? JSON.stringify(body)
+            : response.events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(""),
+          {
+            headers: {
+              "content-type": response.events === undefined ? "application/json" : "text/event-stream",
+              ...response.headers
+            },
+            status: response.status
+          }
+        )
       )
     }),
     Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
@@ -1423,6 +1480,15 @@ const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStre
     })
   )
 }
+
+const makeStreamHttpTestLayer = (events: ReadonlyArray<typeof Generated.ResponseStreamEvent.Type>) =>
+  OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+    Layer.provideMerge(HttpClientLayer),
+    Layer.provide(Layer.succeed(MockOpenAiResponse, {
+      events,
+      status: 200
+    }))
+  )
 
 const makeDefaultResponse = (
   overrides: Partial<Generated.Response> = {}
