@@ -721,11 +721,27 @@ const compilePath = (path: string) => {
   }
 }
 
+// An `encoding` override is only sound when `schemas` is a single member: it
+// forces every union branch onto that one content type, which would silently
+// flatten a genuinely mixed-encoding union. The overloads below make that
+// invariant a type error at the call site instead of a convention.
+function schemasToResponse(
+  schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>]
+): (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<unknown, unknown, unknown>
+function schemasToResponse(
+  schemas: readonly [Schema.Constraint],
+  encoding: HttpApiSchema.ResponseEncoding
+): (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<unknown, unknown, unknown>
 function schemasToResponse(
   schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>],
   encoding?: HttpApiSchema.ResponseEncoding
 ) {
-  const codec = toCodecArrayBuffer(schemas, encoding)
+  // The overloads above already reject an `encoding` override paired with a
+  // multi-member array at every call site, so the cast here only restates
+  // what the caller already proved.
+  const codec = encoding === undefined
+    ? toCodecArrayBuffer(schemas)
+    : toCodecArrayBuffer(schemas as readonly [Schema.Constraint], encoding)
   const decode = Schema.decodeEffect(codec)
   return (response: HttpClientResponse.HttpClientResponse) => Effect.flatMap(response.arrayBuffer, decode)
 }
@@ -968,6 +984,15 @@ const UnknownFromArrayBuffer = StringFromArrayBuffer.pipe(Schema.decodeTo(
   ])
 ))
 
+// See the comment on `schemasToResponse`: `encodingOverride` is only sound
+// for a single-member array, so the overloads below reject it otherwise.
+function toCodecArrayBuffer(
+  schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>]
+): Schema.Top
+function toCodecArrayBuffer(
+  schemas: readonly [Schema.Constraint],
+  encodingOverride: HttpApiSchema.ResponseEncoding
+): Schema.Top
 function toCodecArrayBuffer(
   schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>],
   encodingOverride?: HttpApiSchema.ResponseEncoding

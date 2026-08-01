@@ -1191,7 +1191,7 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Top>, method: Htt
       entry.stream = body
     } else {
       const noContent = HttpApiSchema.isNoContent(body.ast)
-      const encoding = HttpApiSchema.getResponseEncoding(body.ast)
+      const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
       if (entry.stream !== undefined) {
         if (noContent) {
           throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)

@@ -340,4 +340,18 @@ describe("WithHeaders responses", () => {
     const [success] = Array.from(endpoint.success)
     assert.isTrue(HttpApiSchema.isStreamSchema(HttpApiSchema.unwrapResponseSchema(success)))
   })
+
+  it("streaming success mixed with a WithHeaders buffered success is allowed when the wrapper's content-type differs from the body's", () => {
+    const endpoint = HttpApiEndpoint.get("download", "/download", {
+      success: [
+        HttpApiSchema.StreamUint8Array({ contentType: "application/json" }),
+        HttpApiSchema.WithHeaders({
+          headers: { "x-a": Schema.String },
+          body: Schema.String
+        }).pipe(HttpApiSchema.asText())
+      ]
+    })
+
+    assert.strictEqual(endpoint.success.size, 2)
+  })
 })
