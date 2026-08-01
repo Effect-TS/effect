@@ -805,7 +805,11 @@ describe("McpServer protocol adapters", () => {
 
       assert.isDefined(tool)
       assert.deepStrictEqual(tool.annotations, {
-        title: "Canonical title"
+        title: "Canonical title",
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true
       })
     }))
 

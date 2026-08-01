@@ -164,15 +164,17 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 
 describe("McpServer", () => {
   describe("direct service", () => {
-    it.effect("should return empty contents when a resource URI is unknown", () =>
+    it.effect("should fail when a resource URI is unknown", () =>
       Effect.gen(function*() {
         const server = yield* McpServer.McpServer.make
 
-        const result = yield* server.findResource("file:///unknown").pipe(
-          Effect.provideService(McpSchema.McpServerClient, directClient)
+        const error = yield* server.findResource("file:///unknown").pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient),
+          Effect.flip
         )
 
-        assert.deepStrictEqual(result.contents, [])
+        assertTrue(error instanceof McpSchema.InvalidParams)
+        assert.strictEqual(error.message, "Resource 'file:///unknown' not found")
       }))
 
     it.effect("should preserve a registered resource handler's typed failure", () =>
