@@ -125,6 +125,45 @@ export class Config extends Context.Service<
 
 declare module "effect/unstable/ai/Prompt" {
   /**
+   * OpenAI-specific options for system messages.
+   *
+   * **Details**
+   *
+   * A prompt-cache breakpoint is placed on the system message's input text block.
+   *
+   * @category request
+   * @since 4.0.0
+   */
+  export interface SystemMessageOptions extends ProviderOptions {
+    readonly openai?: {
+      /**
+       * Marks the end of reusable prompt content eligible for caching.
+       */
+      readonly promptCacheBreakpoint?: typeof OpenAiSchema.PromptCacheBreakpoint.Encoded | null
+    } | null
+  }
+
+  /**
+   * OpenAI-specific options for user messages.
+   *
+   * **Details**
+   *
+   * A message-level prompt-cache breakpoint is used as a fallback for the last
+   * content part when that part has no breakpoint of its own.
+   *
+   * @category request
+   * @since 4.0.0
+   */
+  export interface UserMessageOptions extends ProviderOptions {
+    readonly openai?: {
+      /**
+       * Marks the end of reusable prompt content eligible for caching.
+       */
+      readonly promptCacheBreakpoint?: typeof OpenAiSchema.PromptCacheBreakpoint.Encoded | null
+    } | null
+  }
+
+  /**
    * OpenAI-specific options for file prompt parts.
    *
    * @category request
@@ -139,6 +178,10 @@ declare module "effect/unstable/ai/Prompt" {
        * The detail level of the image to be sent to the model. One of `high`, `low`, or `auto`. Defaults to `auto`.
        */
       readonly imageDetail?: ImageDetail | null
+      /**
+       * Marks the end of reusable prompt content eligible for caching.
+       */
+      readonly promptCacheBreakpoint?: typeof OpenAiSchema.PromptCacheBreakpoint.Encoded | null
     } | null
   }
 
@@ -241,6 +284,10 @@ declare module "effect/unstable/ai/Prompt" {
        * A list of annotations that apply to the output text.
        */
       readonly annotations?: ReadonlyArray<typeof OpenAiSchema.Annotation.Encoded> | null
+      /**
+       * Marks the end of reusable prompt content eligible for caching.
+       */
+      readonly promptCacheBreakpoint?: typeof OpenAiSchema.PromptCacheBreakpoint.Encoded | null
     } | null
   }
 }
@@ -814,9 +861,15 @@ const prepareMessages = Effect.fnUntraced(
     for (const message of prompt.content) {
       switch (message.role) {
         case "system": {
+          const prompt_cache_breakpoint = getPromptCacheBreakpoint(message)
+
           messages.push({
             role: getSystemMessageMode(config.model as string),
-            content: [{ type: "input_text", text: message.content }]
+            content: [{
+              type: "input_text",
+              text: message.content,
+              ...(Predicate.isNotNull(prompt_cache_breakpoint) ? { prompt_cache_breakpoint } : undefined)
+            }]
           })
           break
         }
@@ -826,10 +879,17 @@ const prepareMessages = Effect.fnUntraced(
 
           for (let index = 0; index < message.content.length; index++) {
             const part = message.content[index]
+            const prompt_cache_breakpoint = getPromptCacheBreakpoint(part) ?? (
+              index === message.content.length - 1 ? getPromptCacheBreakpoint(message) : null
+            )
 
             switch (part.type) {
               case "text": {
-                content.push({ type: "input_text", text: part.text })
+                content.push({
+                  type: "input_text",
+                  text: part.text,
+                  ...(Predicate.isNotNull(prompt_cache_breakpoint) ? { prompt_cache_breakpoint } : undefined)
+                })
                 break
               }
 
@@ -839,32 +899,60 @@ const prepareMessages = Effect.fnUntraced(
                   const mediaType = part.mediaType === "image/*" ? "image/jpeg" : part.mediaType
 
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_image", file_id: part.data, detail })
+                    content.push({
+                      type: "input_image",
+                      file_id: part.data,
+                      detail,
+                      ...(Predicate.isNotNull(prompt_cache_breakpoint) ? { prompt_cache_breakpoint } : undefined)
+                    })
                   }
 
                   if (part.data instanceof URL) {
-                    content.push({ type: "input_image", image_url: part.data.toString(), detail })
+                    content.push({
+                      type: "input_image",
+                      image_url: part.data.toString(),
+                      detail,
+                      ...(Predicate.isNotNull(prompt_cache_breakpoint) ? { prompt_cache_breakpoint } : undefined)
+                    })
                   }
 
                   if (part.data instanceof Uint8Array) {
                     const base64 = Encoding.encodeBase64(part.data)
                     const imageUrl = `data:${mediaType};base64,${base64}`
-                    content.push({ type: "input_image", image_url: imageUrl, detail })
+                    content.push({
+                      type: "input_image",
+                      image_url: imageUrl,
+                      detail,
+                      ...(Predicate.isNotNull(prompt_cache_breakpoint) ? { prompt_cache_breakpoint } : undefined)
+                    })
                   }
                 } else if (part.mediaType === "application/pdf") {
                   if (typeof part.data === "string" && isFileId(part.data, config)) {
-                    content.push({ type: "input_file", file_id: part.data })
+                    content.push({
+                      type: "input_file",
+                      file_id: part.data,
+                      ...(Predicate.isNotNull(prompt_cache_breakpoint) ? { prompt_cache_breakpoint } : undefined)
+                    })
                   }
 
                   if (part.data instanceof URL) {
-                    content.push({ type: "input_file", file_url: part.data.toString() })
+                    content.push({
+                      type: "input_file",
+                      file_url: part.data.toString(),
+                      ...(Predicate.isNotNull(prompt_cache_breakpoint) ? { prompt_cache_breakpoint } : undefined)
+                    })
                   }
 
                   if (part.data instanceof Uint8Array) {
                     const base64 = Encoding.encodeBase64(part.data)
                     const fileName = part.fileName ?? `part-${index}.pdf`
                     const fileData = `data:application/pdf;base64,${base64}`
-                    content.push({ type: "input_file", filename: fileName, file_data: fileData })
+                    content.push({
+                      type: "input_file",
+                      filename: fileName,
+                      file_data: fileData,
+                      ...(Predicate.isNotNull(prompt_cache_breakpoint) ? { prompt_cache_breakpoint } : undefined)
+                    })
                   }
                 } else {
                   return yield* AiError.make({
@@ -2876,6 +2964,10 @@ const getEncryptedContent = (
 ): string | null => part.options.openai?.encryptedContent ?? null
 
 const getImageDetail = (part: Prompt.FilePart): ImageDetail => part.options.openai?.imageDetail ?? "auto"
+
+const getPromptCacheBreakpoint = (
+  input: Prompt.SystemMessage | Prompt.UserMessage | Prompt.TextPart | Prompt.FilePart
+): typeof OpenAiSchema.PromptCacheBreakpoint.Encoded | null => input.options.openai?.promptCacheBreakpoint ?? null
 
 const makeItemIdMetadata = (itemId: string | undefined) => Predicate.isNotUndefined(itemId) ? { itemId } : {}
 

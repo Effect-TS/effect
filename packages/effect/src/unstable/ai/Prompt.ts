@@ -1088,7 +1088,7 @@ export type MessageConstructorParams<M extends Message> = Omit<M, typeof Message
   /**
    * Optional provider-specific options for this message.
    */
-  readonly options?: Part["options"] | undefined
+  readonly options?: M["options"] | undefined
 }
 
 /**
