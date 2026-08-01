@@ -716,14 +716,16 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
       this.currentScheduler = scheduler
       this._dispatcher = undefined
     }
-    this.currentSpan = Context.getOrUndefined(context, Tracer.ParentSpan)
+    // The string-keyed lookups keep the Tracer key values (and the native
+    // tracer behind Tracer.Tracer's default) out of every bundle
+    this.currentSpan = Context.getOrUndefinedUnsafe(context, Tracer.ParentSpanKey)
     this.currentLogLevel = this.getRef(CurrentLogLevel)
     this.minimumLogLevel = this.getRef(MinimumLogLevel)
     this.currentStackFrame = this.getRef(CurrentStackFrame)
     this.maxOpsBeforeYield = this.getRef(Scheduler.MaxOpsBeforeYield)
     this.currentPreventYield = this.getRef(Scheduler.PreventSchedulerYield)
     this.runtimeMetrics = Context.getOrUndefinedUnsafe(context, InternalMetric.FiberRuntimeMetricsKey)
-    const currentTracer = Context.getOrUndefined(context, Tracer.Tracer)
+    const currentTracer = Context.getOrUndefinedUnsafe<Tracer.Tracer>(context, Tracer.TracerKey)
     this.currentTracerContext = currentTracer ? currentTracer["context"] : undefined
   }
   get currentSpanLocal(): Tracer.Span | undefined {
