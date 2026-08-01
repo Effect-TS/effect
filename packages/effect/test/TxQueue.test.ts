@@ -230,6 +230,26 @@ describe("TxQueue", () => {
         assert.strictEqual(size, 5)
       })))
 
+    it.effect("offerAll preserves a one-shot iterable across retries", () =>
+      Effect.gen(function*() {
+        const queue = yield* TxQueue.bounded<number>(1)
+        yield* TxQueue.offer(queue, 1)
+
+        let iterations = 0
+        const values = (function*() {
+          iterations++
+          yield 2
+        })()
+        const fiber = yield* Effect.forkChild(TxQueue.offerAll(queue, values))
+        while (iterations === 0) {
+          yield* Effect.yieldNow
+        }
+
+        assert.strictEqual(yield* TxQueue.take(queue), 1)
+        assert.deepStrictEqual(yield* Fiber.join(fiber), [])
+        assert.deepStrictEqual(yield* TxQueue.poll(queue), Option.some(2))
+      }))
+
     it.effect("takeAll works correctly with new signature", () =>
       Effect.tx(Effect.gen(function*() {
         const queue = yield* TxQueue.bounded<number>(10)
