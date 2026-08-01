@@ -76,7 +76,6 @@ export interface SchedulerDispatcher {
  * @since 2.0.0
  */
 export const Scheduler: Context.Reference<Scheduler> = Context.Reference<Scheduler>("effect/Scheduler", {
-  allocateSlot: true,
   defaultValue: () => new MixedScheduler()
 })
 
@@ -267,7 +266,6 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
  * @since 4.0.0
  */
 export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/MaxOpsBeforeYield", {
-  allocateSlot: true,
   defaultValue: () => 2048
 })
 
@@ -293,6 +291,5 @@ export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/Max
  * @since 4.0.0
  */
 export const PreventSchedulerYield = Context.Reference<boolean>("effect/Scheduler/PreventSchedulerYield", {
-  allocateSlot: true,
   defaultValue: () => false
 })

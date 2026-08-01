@@ -41,15 +41,10 @@ describe("Context", () => {
       allocateSlot: true
     }) {}
     const Ref = Context.Reference<number>("ContextTest/Ref", { defaultValue: () => 0 })
-    const SlottedRef = Context.Reference<number>("ContextTest/SlottedRef", {
-      allocateSlot: true,
-      defaultValue: () => 0
-    })
 
     const source = Context.make(A, 1)
     assertTrue(Context.unsafeHasSameSlab(source, Context.add(source, B, 1)))
     assertFalse(Context.unsafeHasSameSlab(source, Context.add(source, Ref, 1)))
-    assertFalse(Context.unsafeHasSameSlab(source, Context.add(source, SlottedRef, 1)))
     const context = source.pipe(
       Context.add(Slotted, 2),
       Context.add(SlottedClass, 3)

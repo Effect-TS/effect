@@ -518,8 +518,7 @@ const makeImpl = <Services>(
   slab: ReadonlyMap<string, unknown>,
   base: ReadonlyMap<string, any>,
   overlay: Overlay | undefined,
-  depth: number,
-  flat?: ReadonlyMap<string, any>
+  depth: number
 ): ContextImpl<Services> => {
   const self: ContextImpl<Services> = Object.create(Proto)
   self.slab = slab
@@ -527,7 +526,7 @@ const makeImpl = <Services>(
   self.overlay = overlay
   self.depth = depth
   self.mutable = false
-  self._flat = flat
+  self._flat = undefined
   return self
 }
 
@@ -536,7 +535,7 @@ const fromMap = <Services>(map: Map<string, any>): ContextImpl<Services> => {
   map.forEach((value, key) => {
     if (slabKeys.has(key)) slab.set(key, value)
   })
-  return makeImpl(slab, map, undefined, 0, map)
+  return makeImpl(slab, map, undefined, 0)
 }
 
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
@@ -635,7 +634,7 @@ export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>
 
 const Proto: Omit<
   ContextImpl<never>,
-  "slab" | "base" | "overlay" | "depth" | "size" | "mutable" | "_flat"
+  "slab" | "base" | "overlay" | "depth" | "mutable" | "_flat"
 > = {
   ...PipeInspectableProto,
   [TypeId]: {
@@ -1414,7 +1413,7 @@ export const mutate: {
     // The scratch context gets an empty slab, so every operation on it reads
     // and writes `base` alone; the slab is rebuilt once when sealing
     const map = new Map(flatten(self as ContextImpl<Services>))
-    const scratch = makeImpl<Services>(new Map(), map, undefined, 0, map)
+    const scratch = makeImpl<Services>(new Map(), map, undefined, 0)
     scratch.mutable = true
     try {
       const result = f(scratch)
@@ -1475,6 +1474,5 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
-    readonly allocateSlot?: boolean | undefined
   }
 ) => Reference<Service> = Service as any

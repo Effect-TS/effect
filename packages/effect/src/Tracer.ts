@@ -629,7 +629,6 @@ export const TracerKey = "effect/Tracer"
  * @since 2.0.0
  */
 export const Tracer: Context.Reference<Tracer> = Context.Reference<Tracer>(TracerKey, {
-  allocateSlot: true,
   defaultValue: () =>
     make({
       span: (options) => new NativeSpan(options)
