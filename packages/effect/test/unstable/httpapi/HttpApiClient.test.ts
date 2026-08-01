@@ -674,6 +674,31 @@ describe("HttpApiClient", () => {
           [{ event: "tick", data: "one" }]
         )
       }))
+
+    // A headers schema with dynamic keys has no OpenAPI representation (see
+    // OpenApi.test.ts), but it must still decode normally at runtime.
+    it.effect("decodes a headers schema that is not object-shaped", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.post("create", "/create", {
+              success: HttpApiSchema.WithHeaders({
+                headers: Schema.Record(Schema.String, Schema.String),
+                body: HttpApiSchema.Created
+              })
+            })
+          )
+        )
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => new Response(null, { status: 201, headers: { location: "/things/1" } }))
+        })
+
+        const result = yield* client.test.create({})
+
+        strictEqual(result.headers.location, "/things/1")
+        strictEqual(result.body, undefined)
+      }))
   })
 })
 

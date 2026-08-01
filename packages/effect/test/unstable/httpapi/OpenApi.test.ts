@@ -332,4 +332,68 @@ describe("OpenApi", () => {
     })
     assert.deepStrictEqual(Object.keys(response.content!), ["application/octet-stream"])
   })
+
+  // OpenAPI models `Response.headers` as a fixed name -> schema map, so a headers
+  // schema with dynamic keys has no representation. It still encodes and decodes
+  // at runtime (see HttpApiClient.test.ts), it just contributes no entries here.
+  // This mirrors `processParameters`, which bails the same way for request
+  // `params` / `query` / `headers` that are not object-shaped.
+  it("omits response headers for a headers schema that is not object-shaped", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          success: HttpApiSchema.WithHeaders({
+            headers: Schema.Record(Schema.String, Schema.String),
+            body: HttpApiSchema.Created
+          })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const response = spec.paths["/create"]!.post!.responses[201]!
+
+    assert.isUndefined(response.headers)
+  })
+
+  it("prefers a description on the wrapper over one on the body", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          success: HttpApiSchema.WithHeaders({
+            headers: { location: Schema.String },
+            body: HttpApiSchema.Created.annotate({ description: "body description" })
+          }).annotate({ description: "wrapper description" })
+        }),
+        HttpApiEndpoint.get("get", "/get", {
+          success: HttpApiSchema.WithHeaders({
+            headers: { "x-trace-id": Schema.String },
+            body: Schema.Struct({ name: Schema.String }).annotate({ description: "body description" })
+          }).annotate({ description: "wrapper description" })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.strictEqual(spec.paths["/create"]!.post!.responses[201]!.description, "wrapper description")
+    assert.strictEqual(spec.paths["/get"]!.get!.responses[200]!.description, "wrapper description")
+  })
+
+  it("falls back to the body description when the wrapper has none", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          success: HttpApiSchema.WithHeaders({
+            headers: { location: Schema.String },
+            body: HttpApiSchema.Created.annotate({ description: "body description" })
+          })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.strictEqual(spec.paths["/create"]!.post!.responses[201]!.description, "body description")
+  })
 })

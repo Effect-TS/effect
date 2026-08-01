@@ -458,13 +458,7 @@ export const isStreamSse = (u: unknown): u is StreamSse<Sse.EventCodec, Schema.T
 export const isStreamUint8Array = (u: unknown): u is StreamUint8Array =>
   isStreamSchema(u) && u._tag === "StreamUint8Array"
 
-/**
- * Runtime brand key used to mark response schemas that carry a headers schema.
- *
- * @category type IDs
- * @since 4.0.0
- */
-export const WithHeadersTypeId = "~effect/httpapi/HttpApiSchema/WithHeaders"
+const WithHeadersTypeId = "~effect/httpapi/HttpApiSchema/WithHeaders"
 
 /**
  * Schema for a response that carries typed headers alongside a body.
@@ -514,16 +508,30 @@ const withHeadersSchema = Schema.declare(
  * `HttpApiSchema.Created`, `asText()`, and friends compose as expected. An
  * annotation applied to the wrapper itself takes precedence.
  *
- * **Example**
+ * Only object-shaped headers schemas appear in the generated OpenAPI document:
+ * OpenAPI models `Response.headers` as a fixed map from header name to schema,
+ * so a schema with dynamic keys such as `Schema.Record` has no representation
+ * there. Such a schema still encodes and decodes normally on the server and the
+ * client; it simply contributes no `responses[status].headers` entries. This
+ * matches how request `params`, `query`, and `headers` are handled.
  *
- * ```ts
+ * **Example** (Declaring a Location response header)
+ *
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
- * import { HttpApiSchema } from "effect/unstable/httpapi"
+ * import { HttpApiEndpoint, HttpApiSchema } from "effect/unstable/httpapi"
  *
- * const CreatedWithLocation = HttpApiSchema.WithHeaders({
- *   headers: { location: Schema.String },
- *   body: HttpApiSchema.Created
+ * const createUser = HttpApiEndpoint.post("createUser", "/users", {
+ *   payload: Schema.Struct({ name: Schema.String }),
+ *   success: HttpApiSchema.WithHeaders({
+ *     headers: { location: Schema.String },
+ *     body: HttpApiSchema.Created
+ *   })
  * })
+ *
+ * // The handler for this endpoint returns `{ headers, body }`, and the
+ * // generated client decodes the same shape back.
+ * createUser.identifier // => "createUser"
  * ```
  *
  * @category constructors
@@ -583,12 +591,8 @@ function makeWithHeaders(
 export const isWithHeaders = (u: unknown): u is WithHeaders<Schema.Top, Schema.Top> =>
   Schema.isSchema(u) && Predicate.hasProperty(u, WithHeadersTypeId)
 
-/**
- * Rebuilds a {@link WithHeaders} schema with new sub-schemas, preserving the
- * wrapper's own AST and therefore any annotations applied to it.
- *
- * @internal
- */
+/** @internal */
+// Reuses `self.ast` so that annotations applied to the wrapper survive the rebuild.
 export const replaceWithHeaders = (
   self: WithHeaders<Schema.Top, Schema.Top>,
   headers: Schema.Top,
@@ -802,31 +806,17 @@ export const isNoContent = (ast: SchemaAST.AST): boolean => {
   return SchemaAST.isVoid(target)
 }
 
-/**
- * Returns the response body schema, unwrapping {@link WithHeaders}.
- *
- * @internal
- */
+/** @internal */
 export function unwrapResponseSchema(schema: Schema.Top): Schema.Top {
   return isWithHeaders(schema) ? schema.body : schema
 }
 
-/**
- * `isNoContent` for a schema rather than a bare AST, unwrapping
- * {@link WithHeaders} first.
- *
- * @internal
- */
+/** @internal */
 export function isNoContentSchema(schema: Schema.Top): boolean {
   return isNoContent(unwrapResponseSchema(schema).ast)
 }
 
-/**
- * Returns the response content type for buffered, streaming, and
- * {@link WithHeaders} response schemas alike.
- *
- * @internal
- */
+/** @internal */
 export function getResponseContentType(schema: Schema.Top): string {
   const body = unwrapResponseSchema(schema)
   // The wrapper's AST is authoritative: it carries the body's lifted encoding

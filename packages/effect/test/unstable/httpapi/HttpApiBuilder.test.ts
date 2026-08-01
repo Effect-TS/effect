@@ -785,4 +785,49 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       assert.strictEqual(response.headers["content-type"], "text/plain")
       assert.deepStrictEqual(value, { headers: { "x-a": "a" }, body: "hello" })
     }))
+
+  // The `WithHeaders` declaration predicate matches any `{ headers, body }`
+  // value, so a plain struct of that shape is indistinguishable from a wrapper
+  // in the server's encode union and the first declared member wins. The
+  // exclusivity rule only forbids sharing a (status, content-type) pair, so
+  // these two members coexist legally. Clients are unaffected: their decode map
+  // is keyed by status, and the two members have different statuses.
+  it.effect("dispatches an ambiguous { headers, body } value to the first declared member", () =>
+    Effect.gen(function*() {
+      const WrappedFirst = HttpApiSchema.status(201)(
+        HttpApiSchema.WithHeaders({
+          headers: { location: Schema.String },
+          body: Schema.String
+        })
+      )
+      const PlainStruct = Schema.Struct({
+        headers: Schema.Struct({ location: Schema.String }),
+        body: Schema.String
+      })
+      const makeApi = (success: ReadonlyArray<Schema.Top>) =>
+        HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/get", { success: success as any })
+          )
+        )
+      const respond = (Api: any) =>
+        HttpApiTest.groups(Api, ["test"]).pipe(
+          Effect.provide(HttpApiBuilder.group(
+            Api,
+            "test",
+            (handlers: any) => handlers.handle("get", () => Effect.succeed({ headers: { location: "/x" }, body: "hi" }))
+          )),
+          Effect.flatMap((client: any) => client.test.get({ responseMode: "response-only" }))
+        )
+
+      const wrapped = yield* respond(makeApi([WrappedFirst, PlainStruct]))
+      assert.strictEqual(wrapped.status, 201)
+      assert.strictEqual(wrapped.headers.location, "/x")
+      assert.strictEqual(yield* wrapped.text, JSON.stringify("hi"))
+
+      const plain = yield* respond(makeApi([PlainStruct, WrappedFirst]))
+      assert.strictEqual(plain.status, 200)
+      assert.isUndefined(plain.headers.location)
+      assert.strictEqual(yield* plain.text, JSON.stringify({ headers: { location: "/x" }, body: "hi" }))
+    }))
 })
