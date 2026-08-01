@@ -780,6 +780,57 @@ describe("HttpApiClient", () => {
     })
   })
 
+  describe("WithHeaders", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("group").add(
+        HttpApiEndpoint.post("create", "/create", {
+          success: HttpApiSchema.WithHeaders({
+            headers: { location: Schema.String },
+            body: HttpApiSchema.Created
+          }),
+          error: HttpApiSchema.WithHeaders({
+            headers: { "retry-after": Schema.String },
+            body: Schema.Struct({ reason: Schema.String })
+          })
+        })
+      )
+    )
+    const client = Effect.runSync(
+      HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+    )
+
+    it("returns headers and body by default", () => {
+      expect(client.group.create({})).type.toBe<
+        Effect.Effect<
+          { readonly headers: { readonly location: string }; readonly body: void },
+          | { readonly headers: { readonly "retry-after": string }; readonly body: { readonly reason: string } }
+          | HttpClientError.HttpClientError
+          | Schema.SchemaError
+        >
+      >()
+    })
+
+    it("pairs the decoded value with the response", () => {
+      expect(client.group.create({ responseMode: "decoded-and-response" })).type.toBe<
+        Effect.Effect<
+          [
+            { readonly headers: { readonly location: string }; readonly body: void },
+            HttpClientResponse.HttpClientResponse
+          ],
+          | { readonly headers: { readonly "retry-after": string }; readonly body: { readonly reason: string } }
+          | HttpClientError.HttpClientError
+          | Schema.SchemaError
+        >
+      >()
+    })
+
+    it("returns only the response in response-only mode", () => {
+      expect(client.group.create({ responseMode: "response-only" })).type.toBe<
+        Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError>
+      >()
+    })
+  })
+
   describe("error", () => {
     it("defaults to client and schema errors", () => {
       const Api = HttpApi.make("Api")

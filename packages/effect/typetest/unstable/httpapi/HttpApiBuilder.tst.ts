@@ -1,4 +1,4 @@
-import { Context, Effect, Layer, Schema } from "effect"
+import { Context, Effect, hole, Layer, Schema } from "effect"
 import type { FileSystem } from "effect/FileSystem"
 import type { Path } from "effect/Path"
 import type { Generator } from "effect/unstable/http/Etag"
@@ -84,6 +84,25 @@ describe("HttpApiBuilder", () => {
         )
 
         expect(handlers).type.toBe<Layer.Layer<HttpApiGroup.Service<"api", "users">>>()
+      })
+
+      it("requires a headers/body handler result for WithHeaders successes", () => {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("group").add(
+            HttpApiEndpoint.post("create", "/create", {
+              success: HttpApiSchema.WithHeaders({
+                headers: { location: Schema.String },
+                body: HttpApiSchema.Created
+              })
+            })
+          )
+        )
+        HttpApiBuilder.group(Api, "group", (handlers) =>
+          handlers.handle("create", () =>
+            Effect.succeed(hole<{
+              readonly headers: { readonly location: string }
+              readonly body: void
+            }>())))
       })
 
       it("propagates handler service requirements", () => {

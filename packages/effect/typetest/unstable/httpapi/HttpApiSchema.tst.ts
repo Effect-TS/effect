@@ -117,6 +117,19 @@ describe("HttpApiSchema", () => {
     })
   })
 
+  describe("WithHeaders", () => {
+    it("exposes a headers/body type", () => {
+      const schema = HttpApiSchema.WithHeaders({
+        headers: { location: Schema.String },
+        body: Schema.Struct({ id: Schema.String })
+      })
+      expect<typeof schema["Type"]>().type.toBe<{
+        readonly headers: { readonly location: string }
+        readonly body: { readonly id: string }
+      }>()
+    })
+  })
+
   describe("StreamUint8Array", () => {
     it("constructs the stream schema", () => {
       const stream = HttpApiSchema.StreamUint8Array()
