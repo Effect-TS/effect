@@ -401,7 +401,12 @@ export class McpServer extends Context.Service<McpServer, {
       },
       addResource: (options) =>
         Effect.gen(function*() {
-          resources.push(options)
+          const existingIndex = resources.findIndex(({ resource }) => resource.uri === options.resource.uri)
+          if (existingIndex === -1) {
+            resources.push(options)
+          } else {
+            resources[existingIndex] = options
+          }
           yield* internalCore.resources.register({
             descriptor: options.resource,
             isVisible: (profile) => {
@@ -421,7 +426,14 @@ export class McpServer extends Context.Service<McpServer, {
         }),
       addResourceTemplate: ({ annotations, completions, handle, routerPath, template }) =>
         Effect.gen(function*() {
-          resourceTemplates.push({ template, annotations })
+          const existingIndex = resourceTemplates.findIndex(({ template: current }) =>
+            current.uriTemplate === template.uriTemplate
+          )
+          if (existingIndex === -1) {
+            resourceTemplates.push({ template, annotations })
+          } else {
+            resourceTemplates[existingIndex] = { template, annotations }
+          }
           const templateMatcher = makeUriMatcher<true>()
           templateMatcher.add(routerPath, true)
           yield* internalCore.resources.registerTemplate({
@@ -469,7 +481,7 @@ export class McpServer extends Context.Service<McpServer, {
       findResource: (uri) =>
         Effect.gen(function*() {
           const client = yield* McpServerClient
-          const result = yield* internalCore.resources.read(uri, {
+          return yield* internalCore.resources.read(uri, {
             clientId: client.clientId,
             protocol: {
               protocolVersion: client.protocolVersion,
@@ -479,16 +491,21 @@ export class McpServer extends Context.Service<McpServer, {
             },
             requestContext: client
           }).pipe(
-            Effect.catchTag("ResourceNotFound", () => Effect.succeed({ contents: [] }))
+            Effect.catchTag("ResourceNotFound", (error) =>
+              Effect.fail(new InvalidParams({ message: `Resource '${error.uri}' not found` })))
           )
-          return result
         }),
       get prompts() {
         return prompts
       },
       addPrompt: (options) =>
         Effect.gen(function*() {
-          prompts.push(options)
+          const existingIndex = prompts.findIndex(({ prompt }) => prompt.name === options.prompt.name)
+          if (existingIndex === -1) {
+            prompts.push(options)
+          } else {
+            prompts[existingIndex] = options
+          }
           yield* internalCore.prompts.register({
             descriptor: options.prompt,
             isVisible: (profile) => {
