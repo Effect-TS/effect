@@ -1,7 +1,14 @@
 import { AnthropicClient, AnthropicLanguageModel, AnthropicTool } from "@effect/ai-anthropic"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema, Stream } from "effect"
-import { AnthropicStructuredOutput, LanguageModel, Tool, Toolkit } from "effect/unstable/ai"
+import {
+  AnthropicStructuredOutput,
+  LanguageModel,
+  Prompt,
+  Response as AiResponse,
+  Tool,
+  Toolkit
+} from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 describe("AnthropicLanguageModel", () => {
@@ -275,6 +282,103 @@ describe("AnthropicLanguageModel", () => {
 
         assert.strictEqual(dynamicTool.description, "A dynamic tool")
         assert.deepStrictEqual(dynamicTool.input_schema, inputSchema)
+      }))
+
+    it.effect("serializes provider-executed web_search parts from the assistant message", () =>
+      Effect.gen(function*() {
+        let capturedRequest: HttpClientRequest.HttpClientRequest | undefined = undefined
+        const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) => {
+              capturedRequest = request
+              return Effect.succeed(jsonResponse(request, {
+                id: "msg_test_2",
+                type: "message",
+                role: "assistant",
+                model: "claude-sonnet-4-20250514",
+                content: [{ type: "text", text: "You're welcome" }],
+                stop_reason: "end_turn",
+                stop_sequence: null,
+                usage: {
+                  cache_creation: null,
+                  cache_creation_input_tokens: null,
+                  cache_read_input_tokens: null,
+                  inference_geo: null,
+                  input_tokens: 10,
+                  output_tokens: 5,
+                  service_tier: null
+                }
+              }))
+            })
+          ))
+        )
+
+        const searchResults = [{
+          type: "web_search_result",
+          url: "https://example.com/gold",
+          title: "Gold price",
+          encrypted_content: "encrypted",
+          page_age: null
+        }]
+
+        const history = Prompt.fromResponseParts([
+          AiResponse.makePart("tool-call", {
+            id: "srvtoolu_1",
+            name: "AnthropicWebSearch",
+            params: { query: "gold price today" },
+            providerExecuted: true
+          }),
+          AiResponse.makePart("tool-result", {
+            id: "srvtoolu_1",
+            name: "AnthropicWebSearch",
+            isFailure: false,
+            result: searchResults,
+            encodedResult: searchResults,
+            preliminary: false,
+            providerExecuted: true
+          }),
+          AiResponse.makePart("text", { text: "Gold is around $4,000." })
+        ])
+
+        const prompt = Prompt.concat(
+          Prompt.concat(Prompt.make("what is the gold price?"), history),
+          Prompt.make("thanks")
+        )
+
+        yield* LanguageModel.generateText({
+          prompt,
+          toolkit: Toolkit.make(AnthropicTool.WebSearch_20250305({})),
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+          Effect.provide(layer)
+        )
+
+        assert.isDefined(capturedRequest)
+        if (capturedRequest === undefined) {
+          return
+        }
+
+        const body = yield* getRequestBody(capturedRequest)
+        const assistantMessage = body.messages.find((message: any) => message.role === "assistant")
+        assert.isDefined(assistantMessage)
+
+        const serverToolUse = assistantMessage.content.find((block: any) => block.type === "server_tool_use")
+        assert.isDefined(serverToolUse)
+        assert.strictEqual(serverToolUse.id, "srvtoolu_1")
+        assert.strictEqual(serverToolUse.name, "web_search")
+
+        const searchResult = assistantMessage.content.find((block: any) => block.type === "web_search_tool_result")
+        assert.isDefined(searchResult)
+        assert.strictEqual(searchResult.tool_use_id, "srvtoolu_1")
+
+        const clientToolResults = body.messages.flatMap((message: any) =>
+          Array.isArray(message.content)
+            ? message.content.filter((block: any) => block.type === "tool_result")
+            : []
+        )
+        assert.strictEqual(clientToolResults.length, 0)
       }))
   })
 
