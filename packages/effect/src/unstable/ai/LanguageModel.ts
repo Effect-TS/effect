@@ -2055,7 +2055,8 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
       id: approval.toolCallId,
       name: toolCall.name,
       isFailure: terminalResult.isFailure,
-      result: terminalResult.encodedResult
+      result: terminalResult.encodedResult,
+      providerExecuted: false
     })
   })
 
@@ -2075,7 +2076,8 @@ const createDenialResults = (
           id: denial.toolCallId,
           name: denial.toolCall.name,
           isFailure: true,
-          result: { type: "execution-denied", reason: denial.reason }
+          result: { type: "execution-denied", reason: denial.reason },
+          providerExecuted: false
         })
       )
     }
