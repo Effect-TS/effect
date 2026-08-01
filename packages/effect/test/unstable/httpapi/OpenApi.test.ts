@@ -260,4 +260,51 @@ describe("OpenApi", () => {
 
     assert.throws(() => OpenApi.fromApi(Api), /Conflicting OpenAPI security scheme: __proto__/)
   })
+
+  it("emits response headers declared with WithHeaders", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          success: HttpApiSchema.WithHeaders({
+            headers: {
+              location: Schema.String,
+              "x-request-id": Schema.optional(Schema.String)
+            },
+            body: HttpApiSchema.Created
+          })
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const response = spec.paths["/create"]!.post!.responses[201]!
+
+    assert.deepStrictEqual(response.headers, {
+      location: { required: true, schema: { type: "string" } },
+      "x-request-id": { required: false, schema: { type: "string" } }
+    })
+  })
+
+  it("marks a response header optional when only some content-types declare it", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("get", "/get", {
+          success: [
+            Schema.String.pipe(HttpApiSchema.asText()),
+            HttpApiSchema.WithHeaders({
+              headers: { "x-trace-id": Schema.String },
+              body: Schema.Struct({ name: Schema.String })
+            })
+          ]
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const response = spec.paths["/get"]!.get!.responses[200]!
+
+    assert.deepStrictEqual(response.headers, {
+      "x-trace-id": { required: false, schema: { type: "string" } }
+    })
+  })
 })

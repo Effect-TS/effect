@@ -369,7 +369,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
 
       function processResponseBodies(bodies: ResponseBodies, defaultDescription: () => string) {
-        for (const [status, { content, descriptions, streamContent }] of bodies) {
+        for (const [status, { content, descriptions, headers, members, streamContent }] of bodies) {
           const description = descriptions.size > 0 ? Array.from(descriptions).join(" | ") : defaultDescription()
           InternalRecord.assignProperty(op.responses, status, {
             description
@@ -451,6 +451,18 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
                   }
                 })
               }
+            })
+          }
+          for (const [name, header] of headers) {
+            op.responses[status].headers ??= {}
+            InternalRecord.assignProperty(op.responses[status].headers, name, {
+              required: header.required && header.count === members,
+              schema: {}
+            })
+            pathOps.push({
+              _tag: "parameter",
+              ast: header.ast,
+              path: ["paths", path, method, "responses", String(status), "headers", name, "schema"]
             })
           }
         }
@@ -668,12 +680,30 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
   return spec
 }
 
+type ResponseHeaders = Map<string, { ast: SchemaAST.AST; required: boolean; count: number }>
+
+// `Schema.optional` encodes optionality as an `undefined` member unioned onto the
+// property type (with the optionality itself tracked separately via
+// `SchemaAST.isOptional`). Strip that member so the generated JSON Schema for an
+// optional header is a plain `{ type: "string" }` rather than `{ anyOf: [..., { type: "null" }] }`.
+function dropUndefinedMember(ast: SchemaAST.AST): SchemaAST.AST {
+  if (SchemaAST.isUnion(ast)) {
+    const types = ast.types.filter((type) => !SchemaAST.isUndefined(type))
+    if (types.length !== ast.types.length) {
+      return types.length === 1 ? types[0] : new SchemaAST.Union(types, ast.mode, ast.annotations, ast.checks)
+    }
+  }
+  return ast
+}
+
 type ResponseBodies = Map<
   number, // status
   {
     descriptions: Set<string>
     content: Content | undefined // undefined means no content
     streamContent: StreamContent | undefined
+    headers: ResponseHeaders
+    members: number
   }
 >
 
@@ -688,7 +718,7 @@ function extractSuccessResponseBodies(endpoint: HttpApiEndpoint.Top): ResponseBo
 }
 
 function extractResponseBodies(
-  schemas: Array<Schema.Constraint>,
+  schemas: Array<Schema.Top>,
   getStatus: (ast: SchemaAST.AST) => number,
   getDescription: (ast: SchemaAST.AST) => string | undefined
 ): ResponseBodies {
@@ -696,23 +726,52 @@ function extractResponseBodies(
     descriptions: Set<string>
     content: Content | undefined
     streamContent: StreamContent | undefined
+    headers: ResponseHeaders
+    members: number
   }>()
 
   schemas.forEach(process)
 
   return map
 
-  function process(schema: Schema.Constraint) {
-    if (HttpApiSchema.isStreamSchema(schema)) {
-      addStreamContent(schema)
-      return
-    }
-    const ast = schema.ast
-    const status = getStatus(ast)
-    if (HttpApiSchema.isNoContent(ast)) {
-      addNoContent(status, getDescription(schema.ast) ?? "<No Content>")
+  function process(schema: Schema.Top) {
+    const body = HttpApiSchema.unwrapResponseSchema(schema)
+    const status = getStatus(schema.ast)
+    if (HttpApiSchema.isStreamSchema(body)) {
+      addStreamContent(body)
     } else {
-      addContent(schema, status, HttpApiSchema.getResponseEncoding(ast))
+      const ast = body.ast
+      if (HttpApiSchema.isNoContent(ast)) {
+        addNoContent(status, getDescription(ast) ?? "<No Content>")
+      } else {
+        addContent(body, status, HttpApiSchema.getResponseEncoding(ast))
+      }
+    }
+    const entry = map.get(status)!
+    entry.members += 1
+    if (HttpApiSchema.isWithHeaders(schema)) {
+      addResponseHeaders(entry.headers, schema.headers)
+    }
+  }
+
+  function addResponseHeaders(headers: ResponseHeaders, schema: Schema.Top) {
+    const ast = SchemaAST.getLastEncoding(schema.ast)
+    if (!SchemaAST.isObjects(ast)) return
+    for (const ps of ast.propertySignatures) {
+      const name = String(ps.name)
+      const required = !SchemaAST.isOptional(ps.type)
+      const type = dropUndefinedMember(ps.type)
+      const existing = headers.get(name)
+      if (existing === undefined) {
+        headers.set(name, {
+          ast: type,
+          required,
+          count: 1
+        })
+      } else {
+        existing.count += 1
+        existing.required = existing.required && required
+      }
     }
   }
 
@@ -722,7 +781,9 @@ function extractResponseBodies(
       map.set(status, {
         descriptions: new Set([description]),
         content: undefined,
-        streamContent: undefined
+        streamContent: undefined,
+        headers: new Map(),
+        members: 0
       })
     } else {
       if (description !== undefined) {
@@ -739,7 +800,9 @@ function extractResponseBodies(
       map.set(status, {
         descriptions: new Set(description !== undefined ? [description] : []),
         content: new Map([[_tag, new Map([[contentType, new Set([schema])]])]]),
-        streamContent: undefined
+        streamContent: undefined,
+        headers: new Map(),
+        members: 0
       })
     } else {
       // concat descriptions
@@ -772,7 +835,9 @@ function extractResponseBodies(
       map.set(status, {
         descriptions: new Set(),
         content: undefined,
-        streamContent: new Map([[stream.contentType, stream]])
+        streamContent: new Map([[stream.contentType, stream]]),
+        headers: new Map(),
+        members: 0
       })
     } else if (statusMap.streamContent === undefined) {
       statusMap.streamContent = new Map([[stream.contentType, stream]])
@@ -1042,6 +1107,18 @@ export type OpenApiSpecContent = {
 export interface OpenApiSpecResponse {
   description: string
   content?: OpenApiSpecContent
+  headers?: Record<string, OpenApiSpecResponseHeader>
+}
+
+/**
+ * Generated OpenAPI response header object.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface OpenApiSpecResponseHeader {
+  required?: boolean
+  schema: JsonSchema.JsonSchema
 }
 
 /**
