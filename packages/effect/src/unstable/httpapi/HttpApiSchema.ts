@@ -618,7 +618,7 @@ export const WithHeaders = <
   }
   // Annotating always allocates a fresh AST. Consumers key per-instance caches
   // (and the whole encode/decode pipeline) on the wrapper's AST, so two wrappers
-  // must never share one — even when neither carries a lifted annotation.
+  // must never share one, even when neither carries a lifted annotation.
   const declaration = withHeadersSchema.annotate(annotations as Schema.Annotations.Augment)
   return makeWithHeaders(declaration.ast, headers, body) as any
 }
