@@ -1153,78 +1153,102 @@ function getErrorResponse(
   if (error === undefined) return new Set()
   const schemas = Arr.ensure(error)
   for (const schema of schemas) {
-    if (HttpApiSchema.isStreamSchema(schema)) {
+    if (HttpApiSchema.isStreamSchema(HttpApiSchema.unwrapResponseSchema(schema))) {
       throw new Error("Streaming schemas are not supported in error responses")
     }
   }
+  validateResponseExclusivity(schemas, HttpApiSchema.getStatusError)
   return new Set(disableCodecs ? schemas : schemas.map(transformResponse))
 }
 
-function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod) {
-  const statuses = new Map<number, {
-    readonly stream?: HttpApiSchema.StreamSchema | undefined
-    bufferedContentTypes: Set<string>
-    noContent: boolean
-  }>()
+interface StatusEntry {
+  stream: HttpApiSchema.StreamSchema | undefined
+  bufferedContentTypes: Set<string>
+  noContent: boolean
+}
+
+function validateSuccessResponse(schemas: ReadonlyArray<Schema.Top>, method: HttpMethod) {
+  const statuses = new Map<number, StatusEntry>()
 
   for (const schema of schemas) {
-    if (HttpApiSchema.isStreamSchema(schema)) {
-      validateStreamSuccess(schema, method)
-      const status = HttpApiSchema.getStatusStream(schema)
-      const entry = getStatusEntry(statuses, status)
+    const body = HttpApiSchema.unwrapResponseSchema(schema)
+    const status = HttpApiSchema.getStatusSuccess(schema.ast)
+    const entry = getStatusEntry(statuses, status)
+
+    if (HttpApiSchema.isStreamSchema(body)) {
+      validateStreamSuccess(body, method)
       if (entry.stream !== undefined) {
         throw new Error(`Multiple streaming success responses for status: ${status}`)
       }
       if (entry.noContent) {
         throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
       }
-      if (entry.bufferedContentTypes.has(MediaType.normalize(schema.contentType))) {
+      if (entry.bufferedContentTypes.has(MediaType.normalize(body.contentType))) {
         throw new Error(
-          `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${schema.contentType}`
+          `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${body.contentType}`
         )
       }
-      statuses.set(status, { ...entry, stream: schema })
+      entry.stream = body
     } else {
-      const status = HttpApiSchema.getStatusSuccess(schema.ast)
-      const entry = getStatusEntry(statuses, status)
-      const noContent = HttpApiSchema.isNoContent(schema.ast)
+      const noContent = HttpApiSchema.isNoContent(body.ast)
+      const encoding = HttpApiSchema.getResponseEncoding(body.ast)
       if (entry.stream !== undefined) {
         if (noContent) {
           throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
         }
-        const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
-        if (
-          MediaType.normalize(encoding.contentType) === MediaType.normalize(entry.stream.contentType)
-        ) {
+        if (MediaType.normalize(encoding.contentType) === MediaType.normalize(entry.stream.contentType)) {
           throw new Error(
             `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${encoding.contentType}`
           )
         }
       }
       if (!noContent) {
-        entry.bufferedContentTypes.add(
-          MediaType.normalize(HttpApiSchema.getResponseEncoding(schema.ast).contentType)
-        )
+        entry.bufferedContentTypes.add(MediaType.normalize(encoding.contentType))
       }
       entry.noContent = entry.noContent || noContent
     }
   }
+
+  validateResponseExclusivity(schemas, HttpApiSchema.getStatusSuccess)
 }
 
-function getStatusEntry(
-  statuses: Map<number, {
-    readonly stream?: HttpApiSchema.StreamSchema | undefined
-    bufferedContentTypes: Set<string>
-    noContent: boolean
-  }>,
-  status: number
-) {
+function getStatusEntry(statuses: Map<number, StatusEntry>, status: number): StatusEntry {
   let entry = statuses.get(status)
   if (entry === undefined) {
-    entry = { bufferedContentTypes: new Set(), noContent: false }
+    entry = { stream: undefined, bufferedContentTypes: new Set(), noContent: false }
     statuses.set(status, entry)
   }
   return entry
+}
+
+/**
+ * A `WithHeaders` response may not share a `(status, content-type)` pair with
+ * any other response: the client discriminates alternatives on exactly those
+ * two signals, so a shared bucket would make the decoded shape depend on which
+ * headers the server happened to send.
+ */
+function validateResponseExclusivity(
+  schemas: ReadonlyArray<Schema.Top>,
+  getStatus: (ast: AST.AST) => number
+) {
+  const occupied = new Map<string, boolean>()
+  for (const schema of schemas) {
+    const status = getStatus(schema.ast)
+    const contentType = HttpApiSchema.isNoContentSchema(schema)
+      ? ""
+      : MediaType.normalize(HttpApiSchema.getResponseContentType(schema))
+    const key = `${status} ${contentType}`
+    const wrapped = HttpApiSchema.isWithHeaders(schema)
+    const existing = occupied.get(key)
+    if (existing !== undefined && (wrapped || existing)) {
+      throw new Error(
+        `Cannot combine a WithHeaders response with another response for status ${status} and content-type: ${
+          contentType || "<no content>"
+        }`
+      )
+    }
+    occupied.set(key, Boolean(existing) || wrapped)
+  }
 }
 
 function validateStreamSuccess(schema: HttpApiSchema.StreamSchema, method: HttpMethod) {
@@ -1274,6 +1298,14 @@ function hasReservedEventLiteral(ast: AST.AST, seen: Set<AST.AST>): boolean {
 }
 
 function transformResponse(schema: Schema.Top): Schema.Top {
+  if (HttpApiSchema.isWithHeaders(schema)) {
+    const body = schema.body
+    return HttpApiSchema.replaceWithHeaders(
+      schema,
+      Schema.toCodecStringTree(schema.headers),
+      HttpApiSchema.isStreamSchema(body) ? body : transformResponse(body)
+    )
+  }
   const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
   switch (encoding._tag) {
     case "Json":

@@ -207,3 +207,137 @@ describe("HttpApiEndpoint streaming success schemas", () => {
     )
   })
 })
+
+describe("WithHeaders responses", () => {
+  it("stores a wrapper whose sub-schemas are codecs", () => {
+    const endpoint = HttpApiEndpoint.post("create", "/create", {
+      success: HttpApiSchema.WithHeaders({
+        headers: { location: Schema.String },
+        body: HttpApiSchema.Created
+      })
+    })
+
+    const [success] = Array.from(endpoint.success)
+    assert.isTrue(HttpApiSchema.isWithHeaders(success))
+    assert.strictEqual(HttpApiSchema.getStatusSuccess(success.ast), 201)
+  })
+
+  it("leaves sub-schemas untouched when codecs are disabled", () => {
+    const headers = Schema.Struct({ location: Schema.String })
+    const body = HttpApiSchema.Created
+    const endpoint = HttpApiEndpoint.post("create", "/create", {
+      success: HttpApiSchema.WithHeaders({ headers, body }),
+      disableCodecs: true
+    })
+
+    const [success] = Array.from(endpoint.success) as [
+      HttpApiSchema.WithHeaders<Schema.Top, Schema.Top>
+    ]
+    assert.strictEqual(success.headers, headers)
+    assert.strictEqual(success.body, body)
+  })
+
+  it("rejects sharing a status and content-type with a plain success", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.get("get", "/get", {
+          success: [
+            Schema.Struct({ a: Schema.String }),
+            HttpApiSchema.WithHeaders({
+              headers: { "x-trace-id": Schema.String },
+              body: Schema.Struct({ b: Schema.String })
+            })
+          ]
+        }),
+      "Cannot combine a WithHeaders response with another response for status 200 and content-type: application/json"
+    )
+  })
+
+  it("rejects sharing a status and content-type with another WithHeaders", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.get("get", "/get", {
+          success: [
+            HttpApiSchema.WithHeaders({
+              headers: { "x-a": Schema.String },
+              body: Schema.Struct({ a: Schema.String })
+            }),
+            HttpApiSchema.WithHeaders({
+              headers: { "x-b": Schema.String },
+              body: Schema.Struct({ b: Schema.String })
+            })
+          ]
+        }),
+      "Cannot combine a WithHeaders response with another response for status 200 and content-type: application/json"
+    )
+  })
+
+  it("allows a WithHeaders response at a distinct status", () => {
+    const endpoint = HttpApiEndpoint.get("get", "/get", {
+      success: [
+        Schema.Struct({ a: Schema.String }),
+        HttpApiSchema.WithHeaders({
+          headers: { location: Schema.String },
+          body: HttpApiSchema.Created
+        })
+      ]
+    })
+
+    assert.strictEqual(endpoint.success.size, 2)
+  })
+
+  it("allows a WithHeaders response at a distinct content-type", () => {
+    const endpoint = HttpApiEndpoint.get("get", "/get", {
+      success: [
+        Schema.Struct({ a: Schema.String }),
+        HttpApiSchema.WithHeaders({
+          headers: { "x-trace-id": Schema.String },
+          body: Schema.String.pipe(HttpApiSchema.asText())
+        })
+      ]
+    })
+
+    assert.strictEqual(endpoint.success.size, 2)
+  })
+
+  it("applies exclusivity to errors", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.get("get", "/get", {
+          error: [
+            Schema.Struct({ reason: Schema.String }),
+            HttpApiSchema.WithHeaders({
+              headers: { "retry-after": Schema.String },
+              body: Schema.Struct({ cause: Schema.String })
+            })
+          ]
+        }),
+      "Cannot combine a WithHeaders response with another response for status 500 and content-type: application/json"
+    )
+  })
+
+  it("rejects a streaming body in an error response", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.get("get", "/get", {
+          error: HttpApiSchema.WithHeaders({
+            headers: { "x-trace-id": Schema.String },
+            body: HttpApiSchema.StreamUint8Array()
+          })
+        }),
+      "Streaming schemas are not supported in error responses"
+    )
+  })
+
+  it("accepts a streaming body in a success response", () => {
+    const endpoint = HttpApiEndpoint.get("download", "/download", {
+      success: HttpApiSchema.WithHeaders({
+        headers: { "x-trace-id": Schema.String },
+        body: HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
+      })
+    })
+
+    const [success] = Array.from(endpoint.success)
+    assert.isTrue(HttpApiSchema.isStreamSchema(HttpApiSchema.unwrapResponseSchema(success)))
+  })
+})
