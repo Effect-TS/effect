@@ -992,6 +992,80 @@ describe("HttpApi", () => {
     })
   })
 
+  // `HttpApiTest` runs in memory, so these cover the parts of `WithHeaders` that
+  // only a real server exercises: the empty-body path, where headers are the
+  // only thing written, and the streaming path, where they must be flushed
+  // before the first chunk.
+  describe("response headers", () => {
+    it.effect("empty body, json body, and stream", () => {
+      const Api = HttpApi.make("api").add(
+        HttpApiGroup.make("group").add(
+          HttpApiEndpoint.post("create", "/things", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { location: Schema.String },
+              body: HttpApiSchema.Created
+            })
+          }),
+          HttpApiEndpoint.get("json", "/json", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { "x-total": Schema.String },
+              body: Schema.Struct({ a: Schema.String })
+            })
+          }),
+          HttpApiEndpoint.get("stream", "/stream", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { "x-trace": Schema.String },
+              body: HttpApiSchema.StreamUint8Array()
+            })
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "group",
+        (handlers) =>
+          handlers
+            .handle("create", () =>
+              Effect.succeed({
+                headers: { location: "/things/1" },
+                body: HttpApiSchema.Created.make()
+              }))
+            .handle("json", () => Effect.succeed({ headers: { "x-total": "7" }, body: { a: "hi" } }))
+            .handle("stream", () =>
+              Effect.succeed({
+                headers: { "x-trace": "t1" },
+                body: Stream.make(new Uint8Array([1, 2, 3]))
+              }))
+      )
+
+      const ApiLive = HttpRouter.serve(
+        HttpApiBuilder.layer(Api).pipe(Layer.provide(GroupLive)),
+        { disableListenLog: true, disableLogger: true }
+      ).pipe(Layer.provideMerge(NodeHttpServer.layerTest))
+
+      return Effect.gen(function*() {
+        // server side
+        const created = yield* HttpClient.post("/things")
+        yield* assertServerText(created, 201, "")
+        assert.strictEqual(created.headers["location"], "/things/1")
+
+        const json = yield* HttpClient.get("/json")
+        yield* assertServerJson(json, 200, { a: "hi" })
+        assert.strictEqual(json.headers["x-total"], "7")
+
+        const stream = yield* HttpClient.get("/stream")
+        assert.strictEqual(stream.status, 200)
+        assert.strictEqual(stream.headers["x-trace"], "t1")
+
+        // client side
+        const client = yield* HttpApiClient.make(Api)
+        assert.strictEqual((yield* client.group.create()).headers.location, "/things/1")
+        yield* assertClientJson(client.group.json(), { headers: { "x-total": "7" }, body: { a: "hi" } })
+        assert.strictEqual((yield* client.group.stream()).headers["x-trace"], "t1")
+      }).pipe(Effect.provide(ApiLive))
+    })
+  })
+
   describe("error option", () => {
     it.effect("no content", () => {
       const Api = HttpApi.make("api")
