@@ -1,4 +1,4 @@
-import { Context, Option, Redactable, Redacted, Schema } from "effect"
+import { Context, Inspectable, Option, Redactable, Redacted, Schema } from "effect"
 import { format, formatJson } from "effect/Formatter"
 import { describe, it } from "vitest"
 import { strictEqual } from "./utils/assert.ts"
@@ -236,9 +236,25 @@ describe("Formatter", () => {
       strictEqual(formatJson({ left: shared, right: shared }), `{"left":{"a":1},"right":{"a":1}}`)
     })
 
+    it("should stringify BigInt values", () => {
+      strictEqual(formatJson({ value: 123n }), `{"value":"123n"}`)
+      strictEqual(formatJson([1n, 2n]), `["1n","2n"]`)
+    })
+
     it("should redact sensitive data", () => {
       strictEqual(formatJson(data), `{"secret":"[REDACTED]"}`)
       strictEqual(formatJson({ a: data }), `{"a":{"secret":"[REDACTED]"}}`)
+    })
+  })
+
+  describe("Inspectable.toStringUnknown", () => {
+    it("should stringify BigInt values", () => {
+      strictEqual(
+        Inspectable.toStringUnknown({ value: 123n }),
+        `{
+  "value": "123n"
+}`
+      )
     })
   })
 })
