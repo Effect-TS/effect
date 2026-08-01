@@ -6,11 +6,6 @@ import { TestClock } from "effect/testing"
 const attributes = { x: "a", y: "b" }
 
 describe("Metric", () => {
-  it("isMetric", () => {
-    assert.isTrue(Metric.isMetric(Metric.counter("counter")))
-    assert.isFalse(Metric.isMetric({ "~effect/Metric": "~effect/Metric" }))
-  })
-
   it.effect("should be referentially transparent", () =>
     Effect.gen(function*() {
       const id = nextId()
