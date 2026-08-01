@@ -580,24 +580,28 @@ const withFlat = <B>(self: ContextImpl<any>, f: (map: Map<string, any>) => void)
   return fromMap(map)
 }
 
-const lookup = (self: ContextImpl<any>, key: string, slot?: number): unknown => {
+const lookup = (self: ContextImpl<any>, key: string): unknown => {
   if (self.base === undefined) {
     return self.mapUnsafe.has(key) ? self.mapUnsafe.get(key) : Unset
-  }
-  if (slot !== undefined && slot < self.slab.length) {
-    const value = self.slab[slot]
-    if (value !== Unset) return value
   }
   for (let overlay = self.overlay; overlay !== undefined; overlay = overlay.parent) {
     if (overlay.key === key) return overlay.value
   }
-  return self.base.has(key) ? self.base.get(key) : Unset
+  const value = self.base.get(key)
+  return value === undefined && !self.base.has(key) ? Unset : value
 }
 
 // The slab is a cache: every slotted value is also present in overlay/base, so
 // reads can use the key's own slot without consulting the registry
-const lookupKey = (self: Context<any>, key: Key<any, any>): unknown =>
-  lookup(self as ContextImpl<any>, key.key, (key as any)[SlotId])
+const lookupKey = (self: Context<any>, key: Key<any, any>): unknown => {
+  const impl = self as ContextImpl<any>
+  const slot = (key as any)[SlotId]
+  if (slot !== undefined && slot < impl.slab.length) {
+    const value = impl.slab[slot]
+    if (value !== Unset) return value
+  }
+  return lookup(impl, key.key)
+}
 
 /**
  * Creates a `Context` from an existing service map.
@@ -679,7 +683,14 @@ export const unsafeHasSameSlab = <Services, Services2>(
 
 /** @internal */
 export const unsafeGetByKey = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
-  const value = lookup(self as ContextImpl<Services>, key, slotByKey.get(key))
+  const impl = self as ContextImpl<Services>
+  const slot = slotByKey.get(key)
+  let value: unknown
+  if (slot !== undefined && slot < impl.slab.length && impl.slab[slot] !== Unset) {
+    value = impl.slab[slot]
+  } else {
+    value = lookup(impl, key)
+  }
   return value === Unset ? undefined : value as A
 }
 
