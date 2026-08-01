@@ -8427,13 +8427,13 @@ export const aggregateWithin: {
     let leftover: Arr.NonEmptyReadonlyArray<A2> | undefined
     let sinkHasInput = false
     const step = yield* Schedule.toStepWithSleep(schedule)
-    const stepToBuffer = Effect.suspend(function loop(): Pull.Pull<never, E3, void, R3> {
-      return step(lastOutput).pipe(
-        Effect.flatMap(() => !sinkHasInput ? loop() : Queue.offer(buffer, scheduleStep)),
-        Effect.flatMap(() => Effect.never),
-        Pull.catchDone(() => Cause.done())
-      )
+    const stepLoop = Effect.suspend(function loop(): Pull.Pull<void, E3, C | void, R3> {
+      return Effect.flatMap(step(lastOutput), () => !sinkHasInput ? loop() : Queue.offer(buffer, scheduleStep))
     })
+    const stepToBuffer: Pull.Pull<never, E3, void, R3> = stepLoop.pipe(
+      Effect.flatMap(() => Effect.never),
+      Pull.catchDone(() => Cause.done())
+    )
 
     // buffer -> sink
     const pullFromBuffer: Pull.Pull<
