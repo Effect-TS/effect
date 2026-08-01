@@ -534,6 +534,59 @@ const withHeadersSchema = Schema.declare(
  * createUser.identifier // => "createUser"
  * ```
  *
+ * **Example** (Producing and consuming the headers)
+ *
+ * ```ts import.meta.vitest
+ * import { Effect, FileSystem, Layer, Path, Schema } from "effect"
+ * import { Etag, HttpPlatform } from "effect/unstable/http"
+ * import {
+ *   HttpApi,
+ *   HttpApiBuilder,
+ *   HttpApiEndpoint,
+ *   HttpApiGroup,
+ *   HttpApiSchema,
+ *   HttpApiTest
+ * } from "effect/unstable/httpapi"
+ *
+ * const Api = HttpApi.make("Api").add(
+ *   HttpApiGroup.make("users").add(
+ *     HttpApiEndpoint.post("createUser", "/users", {
+ *       payload: Schema.Struct({ name: Schema.String }),
+ *       success: HttpApiSchema.WithHeaders({
+ *         headers: { location: Schema.String },
+ *         body: HttpApiSchema.Created
+ *       })
+ *     })
+ *   )
+ * )
+ *
+ * // The handler returns the same `{ headers, body }` shape the schema declares.
+ * const UsersLive = HttpApiBuilder.group(Api, "users", (handlers) =>
+ *   handlers.handle("createUser", () =>
+ *     Effect.succeed({
+ *       headers: { location: "/users/1" },
+ *       body: HttpApiSchema.Created.make()
+ *     })))
+ *
+ * const TestServices = Layer.mergeAll(
+ *   Path.layer,
+ *   Etag.layerWeak,
+ *   HttpPlatform.layer
+ * ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
+ *
+ * const program = Effect.gen(function*() {
+ *   const client = yield* HttpApiTest.groups(Api, ["users"]).pipe(
+ *     Effect.provide(UsersLive)
+ *   )
+ *   // The client decodes the headers back into the declared type.
+ *   const response = yield* client.users.createUser({ payload: { name: "Ada" } })
+ *   return response.headers.location
+ * }).pipe(Effect.scoped, Effect.provide(TestServices))
+ *
+ * const location = await Effect.runPromise(program)
+ * location // => "/users/1"
+ * ```
+ *
  * @category constructors
  * @since 4.0.0
  */
