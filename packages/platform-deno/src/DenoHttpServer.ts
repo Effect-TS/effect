@@ -251,7 +251,7 @@ export const layer = (
 /**
  * Starts a Deno HTTP server on an ephemeral loopback port for tests.
  *
- * @category layers
+ * @category testing
  * @since 4.0.0
  */
 export const layerTest: Layer.Layer<

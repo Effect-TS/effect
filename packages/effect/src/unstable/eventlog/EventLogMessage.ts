@@ -39,7 +39,7 @@ export const StoreIdTypeId: StoreIdTypeId = "effect/eventlog/EventLog/StoreId"
 /**
  * Branded string identifying a logical event-log store.
  *
- * @category StoreId
+ * @category models
  * @since 4.0.0
  */
 export type StoreId = string & Brand<StoreIdTypeId>
@@ -47,7 +47,7 @@ export type StoreId = string & Brand<StoreIdTypeId>
 /**
  * Schema for branded event-log store ids.
  *
- * @category StoreId
+ * @category schemas
  * @since 4.0.0
  */
 export const StoreId = Schema.String.pipe(Schema.brand(StoreIdTypeId))

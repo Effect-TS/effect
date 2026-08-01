@@ -84,7 +84,7 @@ export interface FiberHandle<out A = unknown, out E = unknown> extends Pipeable,
  * actual // => [true, false]
  * ```
  *
- * @category refinements
+ * @category guards
  * @since 2.0.0
  */
 export const isFiberHandle = (u: unknown): u is FiberHandle => Predicate.hasProperty(u, TypeId)

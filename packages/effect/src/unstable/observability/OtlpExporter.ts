@@ -56,7 +56,7 @@ const policy = Schedule.forever.pipe(
  * exporter's temporary-disable window. Wrap it with `Effect.timeoutOption` to
  * bound its duration at the call site.
  *
- * @category flushing
+ * @category services
  * @since 4.0.0
  */
 export class Flusher extends Context.Service<Flusher, {
@@ -107,7 +107,7 @@ export class Flusher extends Context.Service<Flusher, {
  * was called (for example one started by the export interval); it only waits
  * for the exports it initiates.
  *
- * @category flushing
+ * @category layers
  * @since 4.0.0
  */
 export const layerFlusher: Layer.Layer<Flusher> = Layer.sync(Flusher, () => {

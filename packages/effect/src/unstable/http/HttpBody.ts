@@ -30,7 +30,7 @@ const TypeId = "~effect/http/HttpBody"
 /**
  * Returns `true` if the provided value is an `HttpBody`.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isHttpBody = (u: unknown): u is HttpBody => Predicate.hasProperty(u, TypeId)

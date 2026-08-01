@@ -65,7 +65,7 @@ export interface Request<out A, out E = never, out R = never> extends Variance<A
  * @see {@link Services} for extracting a request's service requirements
  * @see {@link Result} for the exit type produced by completing a request
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Any = Request<any, any, any>
@@ -562,7 +562,7 @@ export const succeed: {
  * an `uninterruptible` flag used by batching and caching internals, and the
  * `completeUnsafe` callback used by resolvers to supply the final `Exit`.
  *
- * @category entry
+ * @category models
  * @since 2.0.0
  */
 export interface Entry<out R> {
@@ -588,7 +588,7 @@ export interface Entry<out R> {
  * most application code receives entries from a `RequestResolver` instead of
  * constructing them directly.
  *
- * @category entry
+ * @category constructors
  * @since 2.0.0
  */
 export const makeEntry = <R>(options: {

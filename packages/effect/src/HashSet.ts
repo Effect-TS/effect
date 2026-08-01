@@ -254,7 +254,7 @@ export const add: {
  * HashSet.has(people, new Person("Alice")) // => true
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const has: {
@@ -328,7 +328,7 @@ export const size: <V>(self: HashSet<V>) => number = internal.size
  * HashSet.isEmpty(HashSet.make("a")) // => false
  * ```
  *
- * @category getters
+ * @category predicates
  * @since 4.0.0
  */
 export const isEmpty: <V>(self: HashSet<V>) => boolean = internal.isEmpty
@@ -417,7 +417,7 @@ export const difference: {
  * HashSet.isSubset(small, small) // => true
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const isSubset: {
@@ -504,7 +504,7 @@ export const filter: {
  * HashSet.some(HashSet.empty<number>(), (n) => n > 0) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const some: {
@@ -531,7 +531,7 @@ export const some: {
  * HashSet.every(HashSet.empty<number>(), (n) => n > 0) // => true
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const every: {

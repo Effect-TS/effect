@@ -38,7 +38,7 @@ const ErrorTypeId = "~@effect/platform-browser/Clipboard/ClipboardError"
  * MIME type support varies by browser. Failed browser operations are surfaced
  * as `ClipboardError`.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Clipboard {

@@ -65,7 +65,7 @@ export const makeProducer = (temporality?: TemporalityPreference): Effect.Effect
 /**
  * Registers a metric producer with one or more metric readers.
  *
- * @category constructors
+ * @category resource management
  * @since 4.0.0
  */
 export const registerProducer = (

@@ -73,7 +73,7 @@ const redactHeaders = (headers: Record<string, string>): Record<string, string> 
  * const result = [error.reason, error.isRetryable] // => ["TransportError", true]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class NetworkError extends Schema.ErrorClass<NetworkError>(
@@ -366,7 +366,7 @@ export const HttpContext = Schema.Struct({
  * const result = [rateLimitError._tag, rateLimitError.isRetryable] // => ["RateLimitError", true]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class RateLimitError extends Schema.ErrorClass<RateLimitError>(
@@ -417,7 +417,7 @@ export class RateLimitError extends Schema.ErrorClass<RateLimitError>(
  * const result = [quotaError._tag, quotaError.isRetryable] // => ["QuotaExhaustedError", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class QuotaExhaustedError extends Schema.ErrorClass<QuotaExhaustedError>(
@@ -470,7 +470,7 @@ export class QuotaExhaustedError extends Schema.ErrorClass<QuotaExhaustedError>(
  * const result = [authError.kind, authError.isRetryable] // => ["InvalidKey", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class AuthenticationError extends Schema.ErrorClass<AuthenticationError>(
@@ -528,7 +528,7 @@ export class AuthenticationError extends Schema.ErrorClass<AuthenticationError>(
  * const result = [policyError.description, policyError.isRetryable] // => ["Input contains prohibited content", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class ContentPolicyError extends Schema.ErrorClass<ContentPolicyError>(
@@ -581,7 +581,7 @@ export class ContentPolicyError extends Schema.ErrorClass<ContentPolicyError>(
  * const result = [invalidRequestError.parameter, invalidRequestError.isRetryable] // => ["temperature", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class InvalidRequestError extends Schema.ErrorClass<InvalidRequestError>(
@@ -638,7 +638,7 @@ export class InvalidRequestError extends Schema.ErrorClass<InvalidRequestError>(
  * const result = [providerError.description, providerError.isRetryable] // => ["Server encountered an unexpected error", true]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class InternalProviderError extends Schema.ErrorClass<InternalProviderError>(
@@ -689,7 +689,7 @@ export class InternalProviderError extends Schema.ErrorClass<InternalProviderErr
  * const result = [parseError.description, parseError.isRetryable] // => ["Expected a string but received a number", true]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class InvalidOutputError extends Schema.ErrorClass<InvalidOutputError>(
@@ -766,7 +766,7 @@ export class InvalidOutputError extends Schema.ErrorClass<InvalidOutputError>(
  * const result = [error.description, error.responseText, error.isRetryable] // => ["Expected a valid JSON object", '{"foo":}', true]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class StructuredOutputError extends Schema.ErrorClass<StructuredOutputError>(
@@ -845,7 +845,7 @@ export class StructuredOutputError extends Schema.ErrorClass<StructuredOutputErr
  * const result = [error.description, error.isRetryable] // => ["Unions are not supported in Anthropic structured output", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class UnsupportedSchemaError extends Schema.ErrorClass<UnsupportedSchemaError>(
@@ -895,7 +895,7 @@ export class UnsupportedSchemaError extends Schema.ErrorClass<UnsupportedSchemaE
  * const result = [unknownError.description, unknownError.isRetryable] // => ["An unexpected error occurred", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class UnknownError extends Schema.ErrorClass<UnknownError>(
@@ -952,7 +952,7 @@ export class UnknownError extends Schema.ErrorClass<UnknownError>(
  * const result = [error.toolName, error.availableTools, error.isRetryable] // => ["unknownTool", ["GetWeather", "GetTime"], true]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class ToolNotFoundError extends Schema.ErrorClass<ToolNotFoundError>(
@@ -1006,7 +1006,7 @@ export class ToolNotFoundError extends Schema.ErrorClass<ToolNotFoundError>(
  * const result = [error.toolName, error.description, error.isRetryable] // => ["GetWeather", "Expected string, got number", true]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class ToolParameterValidationError extends Schema.ErrorClass<ToolParameterValidationError>(
@@ -1060,7 +1060,7 @@ export class ToolParameterValidationError extends Schema.ErrorClass<ToolParamete
  * const result = [error.toolName, error.isRetryable] // => ["GetWeather", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class InvalidToolResultError extends Schema.ErrorClass<InvalidToolResultError>(
@@ -1113,7 +1113,7 @@ export class InvalidToolResultError extends Schema.ErrorClass<InvalidToolResultE
  * const result = [error.toolName, error.description, error.isRetryable] // => ["GetWeather", "Cannot encode bigint values as JSON", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class ToolResultEncodingError extends Schema.ErrorClass<ToolResultEncodingError>(
@@ -1166,7 +1166,7 @@ export class ToolResultEncodingError extends Schema.ErrorClass<ToolResultEncodin
  * const result = [error.toolName, error.description, error.isRetryable] // => ["OpenAiCodeInterpreter", "Invalid container ID format", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class ToolConfigurationError extends Schema.ErrorClass<ToolConfigurationError>(
@@ -1217,7 +1217,7 @@ export class ToolConfigurationError extends Schema.ErrorClass<ToolConfigurationE
  * const result = [error.pendingApprovals, error.isRetryable] // => [["GetWeather", "SendEmail"], false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class ToolkitRequiredError extends Schema.ErrorClass<ToolkitRequiredError>(
@@ -1270,7 +1270,7 @@ export class ToolkitRequiredError extends Schema.ErrorClass<ToolkitRequiredError
  * const result = [error._tag, error.isRetryable] // => ["InvalidUserInputError", false]
  * ```
  *
- * @category reason
+ * @category errors
  * @since 4.0.0
  */
 export class InvalidUserInputError extends Schema.ErrorClass<InvalidUserInputError>(
@@ -1313,7 +1313,7 @@ export class InvalidUserInputError extends Schema.ErrorClass<InvalidUserInputErr
  * `isRetryable` getter. Provider-facing reasons may also include retry timing,
  * provider metadata, usage information, or HTTP context.
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export type AiErrorReason =

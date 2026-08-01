@@ -142,7 +142,7 @@ export interface IndexedDbQueryBuilder<
 /**
  * Valid key-path type for a table schema, using encoded fields whose values are IndexedDB-valid keys.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type KeyPath<TableSchema extends IndexedDbTable.AnySchemaStruct> =
@@ -152,7 +152,7 @@ export type KeyPath<TableSchema extends IndexedDbTable.AnySchemaStruct> =
 /**
  * Valid numeric key-path type for a table schema, used for auto-increment key paths.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type KeyPathNumber<TableSchema extends IndexedDbTable.AnySchemaStruct> =
@@ -168,7 +168,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Decoded row type returned by select queries, adding a `key` field when the table does not define a key path.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type SelectType<
@@ -181,7 +181,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Input type for insert and upsert operations, adjusted for auto-increment keys and out-of-line keys.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type ModifyType<
@@ -215,7 +215,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Value type accepted by `equals` comparisons for a table key path or index.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type EqualsType<
@@ -229,7 +229,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Value type accepted by range comparisons for a table key path or index, including partial tuples for compound indexes.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type ExtractIndexType<
@@ -248,7 +248,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Mutation input type for insert and upsert operations, including any required key fields.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type ModifyWithKey<Table extends IndexedDbTable.AnyWithProps> = ModifyType<Table>
@@ -719,7 +719,7 @@ export declare namespace IndexedDbQuery {
 /**
  * Service tag for the active `IDBTransaction` used to share a transaction across IndexedDB query effects.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class IndexedDbTransaction extends Context.Service<IndexedDbTransaction, globalThis.IDBTransaction>()(

@@ -116,7 +116,7 @@ export const layer: Layer.Layer<never, never, RpcServer.Protocol | Storage> = Rp
 /**
  * Schema for encrypted entries persisted by the encrypted event-log server.
  *
- * @category storage
+ * @category models
  * @since 4.0.0
  */
 export class PersistedEntry extends Schema.Class<PersistedEntry>(
@@ -150,7 +150,7 @@ export class PersistedEntry extends Schema.Class<PersistedEntry>(
  * persists encrypted entries, and streams encrypted changes for a public key and
  * store id.
  *
- * @category storage
+ * @category services
  * @since 4.0.0
  */
 export class Storage extends Context.Service<Storage, {
@@ -179,7 +179,7 @@ export class Storage extends Context.Service<Storage, {
  * Data, session authentication bindings, and streams are process-local and are
  * released with the surrounding scope.
  *
- * @category storage
+ * @category constructors
  * @since 4.0.0
  */
 export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {
@@ -255,7 +255,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
 /**
  * Provides encrypted server `Storage` using the in-memory implementation.
  *
- * @category storage
+ * @category layers
  * @since 4.0.0
  */
 export const layerStorageMemory: Layer.Layer<Storage> = Layer.effect(Storage)(makeStorageMemory)

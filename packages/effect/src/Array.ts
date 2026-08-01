@@ -52,7 +52,7 @@ export const Array = globalThis.Array
 /**
  * Type lambda for `ReadonlyArray`, used for higher-kinded type operations.
  *
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface ReadonlyArrayTypeLambda extends TypeLambda {
@@ -1636,7 +1636,7 @@ export const dropWhileFilter: {
  * @see {@link findLastIndex} — search from the end
  * @see {@link findFirst} — get the element itself
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findFirstIndex: {
@@ -1672,7 +1672,7 @@ export const findFirstIndex: {
  * @see {@link findFirstIndex} — search from the start
  * @see {@link findLast} — get the element itself
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findLastIndex: {
@@ -1715,7 +1715,7 @@ export const findLastIndex: {
  * @see {@link findFirstIndex} — get the index instead
  * @see {@link findFirstWithIndex} — get both element and index
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findFirst: {
@@ -1752,7 +1752,7 @@ export const findFirst: {
  * @see {@link findFirst} — get only the element
  * @see {@link findFirstIndex} — get only the index
  *
- * @category elements
+ * @category searching
  * @since 3.17.0
  */
 export const findFirstWithIndex: {
@@ -1810,7 +1810,7 @@ export const findFirstWithIndex: {
  * @see {@link findFirst} — search from the start
  * @see {@link findLastIndex} — get the index instead
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findLast: {
@@ -1867,7 +1867,7 @@ export const findLast: {
  * @see {@link replace} — replace an existing element
  * @see {@link modify} — transform an element at an index
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const insertAt: {
@@ -1905,7 +1905,7 @@ export const insertAt: {
  * @see {@link modify} — transform an element with a function
  * @see {@link insertAt} — insert without removing
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const replace: {
@@ -1951,7 +1951,7 @@ export const replace: {
  * @see {@link modifyHeadNonEmpty} — modify the first element
  * @see {@link modifyLastNonEmpty} — modify the last element
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const modify: {
@@ -1996,7 +1996,7 @@ export const modify: {
  * @see {@link insertAt} — insert an element
  * @see {@link filter} — remove elements by predicate
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const remove: {
@@ -2031,7 +2031,7 @@ export const remove: {
  * Array.reverse([1, 2, 3, 4]) // => [4, 3, 2, 1]
  * ```
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const reverse = <S extends Iterable<any>>(
@@ -2101,7 +2101,7 @@ export const sort: {
  * @see {@link sort} for sorting with an `Order` that compares the elements directly
  * @see {@link sortBy} for sorting with multiple `Order`s applied in sequence
  *
- * @category elements
+ * @category sorting
  * @since 2.0.0
  */
 export const sortWith: {
@@ -2307,7 +2307,7 @@ export const unzip: <S extends Iterable<readonly [any, any]>>(
  *
  * @see {@link join} — intersperse and join into a string
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const intersperse: {
@@ -2351,7 +2351,7 @@ export const intersperse: {
  * @see {@link setHeadNonEmpty} — replace with a fixed value
  * @see {@link modifyLastNonEmpty} — modify the last element
  *
- * @category elements
+ * @category transforming
  * @since 4.0.0
  */
 export const modifyHeadNonEmpty: {
@@ -2384,7 +2384,7 @@ export const modifyHeadNonEmpty: {
  * @see {@link modifyHeadNonEmpty} — transform the head with a function
  * @see {@link setLastNonEmpty} — replace the last element
  *
- * @category elements
+ * @category transforming
  * @since 4.0.0
  */
 export const setHeadNonEmpty: {
@@ -2415,7 +2415,7 @@ export const setHeadNonEmpty: {
  * @see {@link setLastNonEmpty} — replace with a fixed value
  * @see {@link modifyHeadNonEmpty} — modify the first element
  *
- * @category elements
+ * @category transforming
  * @since 4.0.0
  */
 export const modifyLastNonEmpty: {
@@ -2446,7 +2446,7 @@ export const modifyLastNonEmpty: {
  * @see {@link modifyLastNonEmpty} — transform the last element with a function
  * @see {@link setHeadNonEmpty} — replace the first element
  *
- * @category elements
+ * @category transforming
  * @since 4.0.0
  */
 export const setLastNonEmpty: {
@@ -2483,7 +2483,7 @@ export const setLastNonEmpty: {
  * @see {@link take} for taking a fixed number of elements from the start
  * @see {@link drop} for dropping a fixed number of elements from the start
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const rotate: {
@@ -2528,7 +2528,7 @@ export const rotate: {
  *
  * @see {@link contains} for the `Equal.equivalence()` variant
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
@@ -2563,7 +2563,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  *
  * @see {@link containsWith} — use custom equality
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const contains: {
@@ -2596,7 +2596,7 @@ export const contains: {
  * @see {@link chunksOf} — split into fixed-size chunks
  * @see {@link splitAt} — split at an index
  *
- * @category elements
+ * @category splitting
  * @since 2.0.0
  */
 export const chop: {
@@ -2796,7 +2796,7 @@ export const splitWhere: {
  *
  * @see {@link fromIterable} — returns the same reference for arrays
  *
- * @category elements
+ * @category transforming
  * @since 2.0.0
  */
 export const copy: {
@@ -2827,7 +2827,7 @@ export const copy: {
  * @see {@link take} — truncate without padding
  * @see {@link replicate} — create an array of a single repeated value
  *
- * @category elements
+ * @category transforming
  * @since 3.8.4
  */
 export const pad: {
@@ -3134,7 +3134,7 @@ const hashBucketsHas = (buckets: HashBuckets, value: unknown): boolean => {
  * @see {@link intersectionWith} for keeping elements present in both arrays
  * @see {@link differenceWith} for keeping elements present only in the first array
  *
- * @category elements
+ * @category set operations
  * @since 2.0.0
  */
 export const unionWith: {
@@ -3182,7 +3182,7 @@ export const unionWith: {
  * @see {@link intersection} — elements in both arrays
  * @see {@link difference} — elements only in the first array
  *
- * @category elements
+ * @category set operations
  * @since 2.0.0
  */
 export const union: {
@@ -3231,7 +3231,7 @@ export const union: {
  * @see {@link unionWith} for keeping values from either array with custom equality
  * @see {@link differenceWith} for keeping values only from the first array with custom equality
  *
- * @category elements
+ * @category set operations
  * @since 2.0.0
  */
 export const intersectionWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
@@ -3269,7 +3269,7 @@ export const intersectionWith = <A>(isEquivalent: (self: A, that: A) => boolean)
  * @see {@link union} — elements in either array
  * @see {@link difference} — elements only in the first array
  *
- * @category elements
+ * @category set operations
  * @since 2.0.0
  */
 export const intersection: {
@@ -3306,7 +3306,7 @@ export const intersection: {
  * @see {@link unionWith} for keeping values from either array with custom equality
  * @see {@link intersectionWith} for keeping values present in both arrays with custom equality
  *
- * @category elements
+ * @category set operations
  * @since 2.0.0
  */
 export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
@@ -3344,7 +3344,7 @@ export const differenceWith = <A>(isEquivalent: (self: A, that: A) => boolean): 
  * @see {@link union} — elements in either array
  * @see {@link intersection} — elements in both arrays
  *
- * @category elements
+ * @category set operations
  * @since 2.0.0
  */
 export const difference: {
@@ -3424,7 +3424,7 @@ export declare namespace ReadonlyArray {
    * // StringArrayType is string
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type Infer<S extends Iterable<any>> = S extends ReadonlyArray<infer A> ? A
@@ -3443,7 +3443,7 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<string>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type With<S extends Iterable<any>, A> = S extends NonEmptyReadonlyArray<any> ? NonEmptyArray<A>
@@ -3465,7 +3465,7 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<number>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type OrNonEmpty<
@@ -3492,7 +3492,7 @@ export declare namespace ReadonlyArray {
    * // Result is NonEmptyArray<boolean>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type AndNonEmpty<
@@ -3516,7 +3516,7 @@ export declare namespace ReadonlyArray {
    * // Flattened is Array<number>
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 2.0.0
    */
   export type Flatten<T extends ReadonlyArray<ReadonlyArray<any>>> = T extends
@@ -4188,7 +4188,7 @@ export const liftResult = <A extends Array<unknown>, E, B>(
  *
  * @see {@link some} — test if any element matches
  *
- * @category elements
+ * @category guards
  * @since 2.0.0
  */
 export const every: {
@@ -4220,7 +4220,7 @@ export const every: {
  * @see {@link every} — test if all elements match
  * @see {@link contains} — test for a specific value
  *
- * @category elements
+ * @category guards
  * @since 2.0.0
  */
 export const some: {
@@ -4283,7 +4283,7 @@ export const extend: {
  * @see {@link max} — find the maximum
  * @see {@link sort} — sort the entire array
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const min: {
@@ -4306,7 +4306,7 @@ export const min: {
  * @see {@link min} — find the minimum
  * @see {@link sort} — sort the entire array
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const max: {
@@ -4415,7 +4415,7 @@ export const makeEquivalence: <A>(
  *
  * @see {@link map} for transforming each element into a new array
  *
- * @category elements
+ * @category traversing
  * @since 2.0.0
  */
 export const forEach: {
@@ -4443,7 +4443,7 @@ export const forEach: {
  * @see {@link dedupe} — uses default equality
  * @see {@link dedupeAdjacentWith} — only dedupes consecutive elements
  *
- * @category elements
+ * @category deduplication
  * @since 2.0.0
  */
 export const dedupeWith: {
@@ -4490,7 +4490,7 @@ export const dedupeWith: {
  * @see {@link dedupeWith} — use custom equality
  * @see {@link dedupeAdjacent} — only dedupes consecutive elements
  *
- * @category elements
+ * @category deduplication
  * @since 2.0.0
  */
 export const dedupe = <S extends Iterable<any>>(
@@ -4534,7 +4534,7 @@ export const dedupe = <S extends Iterable<any>>(
  * @see {@link dedupeAdjacent} — uses default equality
  * @see {@link dedupeWith} — dedupes all duplicates, not just adjacent
  *
- * @category elements
+ * @category deduplication
  * @since 2.0.0
  */
 export const dedupeAdjacentWith: {
@@ -4571,7 +4571,7 @@ export const dedupeAdjacentWith: {
  * @see {@link dedupeAdjacentWith} — use custom equality
  * @see {@link dedupe} — remove all duplicates
  *
- * @category elements
+ * @category deduplication
  * @since 2.0.0
  */
 export const dedupeAdjacent: <A>(self: Iterable<A>) => Array<A> = dedupeAdjacentWith(Equal.asEquivalence())
@@ -4676,7 +4676,7 @@ export const mapAccum: {
  *
  * @see {@link cartesian} for returning tuples instead of applying a combiner
  *
- * @category elements
+ * @category combining
  * @since 2.0.0
  */
 export const cartesianWith: {
@@ -4710,7 +4710,7 @@ export const cartesianWith: {
  *
  * @see {@link cartesianWith} — apply a combiner to each pair
  *
- * @category elements
+ * @category combining
  * @since 2.0.0
  */
 export const cartesian: {
@@ -4757,7 +4757,7 @@ export const cartesian: {
  * @see {@link bindTo} — start a pipeline by naming the first array
  * @see {@link let_ let} — introduce a plain computed value
  *
- * @category do notation
+ * @category constructors
  * @since 3.2.0
  */
 export const Do: ReadonlyArray<{}> = of({})
@@ -4792,7 +4792,7 @@ export const Do: ReadonlyArray<{}> = of({})
  * @see {@link bindTo} — name the first array in a pipeline
  * @see {@link let_ let} — add a plain computed value
  *
- * @category do notation
+ * @category sequencing
  * @since 3.2.0
  */
 export const bind: {
@@ -4833,7 +4833,7 @@ export const bind: {
  * @see {@link Do} — start with an empty scope
  * @see {@link bind} — add another array variable to the scope
  *
- * @category do notation
+ * @category mapping
  * @since 3.2.0
  */
 export const bindTo: {
@@ -4883,7 +4883,7 @@ export {
    * @see {@link Do} — start a do-notation pipeline
    * @see {@link bind} — introduce an array variable (produces cartesian product)
    *
-   * @category do notation
+   * @category mapping
    * @since 3.2.0
    */
   let_ as let

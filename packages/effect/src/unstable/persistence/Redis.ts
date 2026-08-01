@@ -123,7 +123,7 @@ const ScriptTypeId: ScriptTypeId = "~effect/persistence/Redis/Script"
  * It defines the Lua source, parameter-to-argument mapping, Redis key count,
  * and result type used by `Redis.eval`.
  *
- * @category Scripting
+ * @category scripting
  * @since 4.0.0
  */
 export interface Script<
@@ -173,7 +173,7 @@ const ScriptProto = {
  * The result type defaults to `void` and can be refined with
  * `withReturnType`.
  *
- * @category Scripting
+ * @category scripting
  * @since 4.0.0
  */
 export const script = <Params extends ReadonlyArray<any>>(

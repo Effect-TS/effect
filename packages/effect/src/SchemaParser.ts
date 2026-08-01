@@ -170,7 +170,7 @@ export function make<S extends Schema.Constraint>(schema: S) {
  * that contain defects, interruptions, or asynchronous work at this synchronous
  * boundary throw an `Error` whose cause is the underlying `Cause`.
  *
- * @category Asserting
+ * @category guards
  * @since 3.10.0
  */
 export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => input is I & S["Type"] {
@@ -222,7 +222,7 @@ export function _issue<T>(ast: SchemaAST.AST) {
  * synchronous boundary throw an `Error` whose cause is the underlying `Cause`,
  * instead of being converted to a schema validation error.
  *
- * @category Asserting
+ * @category guards
  * @since 4.0.0
  */
 export function asserts<S extends Schema.Constraint, I>(schema: S, input: I): asserts input is I & S["Type"] {

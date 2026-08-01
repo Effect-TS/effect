@@ -90,7 +90,7 @@ export interface Metadata<Output = unknown, Input = unknown> extends InputMetada
  * input and output values, zero duration, and zeroed timing fields before any
  * schedule step has produced metadata.
  *
- * @category metadata
+ * @category services
  * @since 4.0.0
  */
 export const CurrentMetadata = Context.Reference<Metadata>("effect/Schedule/CurrentMetadata", {
@@ -154,7 +154,7 @@ export declare namespace Schedule {
 /**
  * Extracts the output type from a `Schedule`.
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Output<S> = S extends Schedule<infer Output, any, any, any> ? Output : never
@@ -162,7 +162,7 @@ export type Output<S> = S extends Schedule<infer Output, any, any, any> ? Output
 /**
  * Extracts the input type from a `Schedule`.
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Input<S> = S extends Schedule<any, infer Input, any, any> ? Input : never
@@ -170,7 +170,7 @@ export type Input<S> = S extends Schedule<any, infer Input, any, any> ? Input : 
 /**
  * Extracts the error type from a `Schedule`.
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Error<S> = S extends Schedule<any, any, infer Error, any> ? Error : never
@@ -178,7 +178,7 @@ export type Error<S> = S extends Schedule<any, any, infer Error, any> ? Error : 
 /**
  * Extracts the service requirements from a `Schedule`.
  *
- * @category type extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Env<S> = S extends Schedule<any, any, any, infer Env> ? Env : never

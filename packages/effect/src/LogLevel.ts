@@ -108,7 +108,7 @@ export type Severity = "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "Trace"
  * @see {@link Severity} for the concrete message severity type that excludes `All` and `None`
  * @see {@link Order} for comparing these levels by severity order
  *
- * @category models
+ * @category constants
  * @since 4.0.0
  */
 export const values: ReadonlyArray<LogLevel> = ["All", "Fatal", "Error", "Warn", "Info", "Debug", "Trace", "None"]
@@ -377,7 +377,7 @@ export const isLessThanOrEqualTo: {
  * await Effect.runPromise(warnOnly) // => { debugEnabled: false, errorEnabled: true }
  * ```
  *
- * @category filtering
+ * @category predicates
  * @since 4.0.0
  */
 export const isEnabled = (self: LogLevel): Effect.Effect<boolean> =>

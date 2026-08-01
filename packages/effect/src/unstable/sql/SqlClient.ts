@@ -333,7 +333,7 @@ export const TransactionConnection = (
  * Context reference used by SQL integrations to opt in to safe integer
  * handling; defaults to `false`.
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const SafeIntegers = Context.Reference<boolean>("effect/sql/SqlClient/SafeIntegers", {

@@ -427,7 +427,7 @@ export const remove: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const has: {
@@ -492,7 +492,7 @@ export const size = <V>(self: TxHashSet<V>): Effect.Effect<number> =>
  * await Effect.runPromise(program)
  * ```
  *
- * @category getters
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty = <V>(self: TxHashSet<V>): Effect.Effect<boolean> =>
@@ -678,7 +678,7 @@ export const difference: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 4.0.0
  */
 export const isSubset: {
@@ -715,7 +715,7 @@ export const isSubset: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 4.0.0
  */
 export const some: {
@@ -751,7 +751,7 @@ export const some: {
  * await Effect.runPromise(program)
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 4.0.0
  */
 export const every: {

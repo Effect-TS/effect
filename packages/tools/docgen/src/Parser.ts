@@ -19,7 +19,7 @@ import * as Domain from "./Domain.ts"
 /**
  * Source file and path currently being parsed.
  *
- * @category models
+ * @category services
  * @since 0.6.0
  */
 export interface SourceShape {
@@ -148,7 +148,7 @@ const parseInterfaceDeclarations = (interfaces: ReadonlyArray<ast.InterfaceDecla
 /**
  * Parses exported interfaces from the current source file.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseInterfaces = Effect.flatMap(
@@ -257,7 +257,7 @@ const getFunctionDeclarations = Effect.gen(function*() {
 /**
  * Parses exported function declarations and function-valued variables.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseFunctions = Effect.gen(function*() {
@@ -304,7 +304,7 @@ const parseTypeAliasDeclarations = (typeAliases: ReadonlyArray<ast.TypeAliasDecl
 /**
  * Parses exported type aliases from the current source file.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseTypeAliases = Effect.flatMap(
@@ -336,7 +336,7 @@ const parseConstantVariableDeclaration = (vd: ast.VariableDeclaration) =>
 /**
  * Parses exported non-function constants from the current source file.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseConstants = Effect.gen(function*() {
@@ -415,7 +415,7 @@ const parseNamedExports = (ed: ast.ExportDeclaration) => {
 /**
  * Parses explicit export declarations from the current source file.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseExports = pipe(
@@ -463,7 +463,7 @@ const parseModuleDeclarations = (namespaces: ReadonlyArray<ast.ModuleDeclaration
 /**
  * Parses exported namespaces from the current source file.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseNamespaces = Effect.gen(function*() {
@@ -612,7 +612,7 @@ const parseClass = (c: ast.ClassDeclaration) =>
 /**
  * Parses exported classes and their documented members from the current source file.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseClasses = Effect.gen(function*() {
@@ -640,7 +640,7 @@ export const parseModuleDocumentation = Effect.gen(function*() {
 /**
  * Parses the current source file into a module documentation model.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseModule = Effect.gen(function*() {
@@ -717,7 +717,7 @@ const createProject = (files: ReadonlyArray<Domain.File>) =>
 /**
  * Parses source files into module documentation models sorted by path.
  *
- * @category parsers
+ * @category parsing
  * @since 0.6.0
  */
 export const parseFiles = (files: ReadonlyArray<Domain.File>) =>

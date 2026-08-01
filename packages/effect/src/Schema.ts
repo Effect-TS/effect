@@ -1255,7 +1255,7 @@ function makeStandardResult<A>(exit: Exit_.Exit<StandardSchemaV1.Result<A>>): St
  * invalidResult.issues?.map((issue) => issue.path) // => [["name"], ["age"]]
  * ```
  *
- * @category Standard Schema
+ * @category converting
  * @since 4.0.0
  */
 export function toStandardSchemaV1<S extends ConstraintDecoder<unknown>>(
@@ -1334,7 +1334,7 @@ function toBaseStandardJSONSchemaV1(self: Constraint, target: StandardJSONSchema
  *
  * https://github.com/standard-schema/standard-schema/pull/134
  *
- * @category Standard Schema
+ * @category converting
  * @since 4.0.0
  */
 export function toStandardJSONSchemaV1<S extends Constraint>(
@@ -3130,7 +3130,7 @@ export interface Boolean extends Bottom<boolean, boolean, never, never, SchemaAS
  *
  * @see {@link BooleanFromBit} for a schema that decodes bit literals `0` or `1` into a boolean
  *
- * @category boolean
+ * @category schemas
  * @since 4.0.0
  */
 export const Boolean: Boolean = make(SchemaAST.boolean)
@@ -6638,7 +6638,7 @@ const TRIMMED_PATTERN = "^\\S[\\s\\S]*\\S$|^\\S$|^$"
  * When generating test data with fast-check, this applies a `patterns`
  * constraint to ensure generated strings match the trimmed pattern.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isTrimmed(annotations?: Annotations.Filter) {
@@ -6672,7 +6672,7 @@ export function isTrimmed(annotations?: Annotations.Filter) {
  *
  * @see {@link isTrimmed} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isTrimmedReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -6695,7 +6695,7 @@ export const isTrimmedReviver: SchemaRepresentation.FilterReviver<null> = Intern
  * When generating test data with fast-check, this applies a `patterns`
  * constraint to ensure generated strings match the specified RegExp pattern.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isPattern(
@@ -6732,7 +6732,7 @@ const IsPatternPayload = Struct({
  *
  * @see {@link isPattern} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isPatternReviver: SchemaRepresentation.FilterReviver<{
@@ -6759,7 +6759,7 @@ export const isPatternReviver: SchemaRepresentation.FilterReviver<{
  * When generating test data with fast-check, this applies a `patterns`
  * constraint to ensure generated strings match the number string pattern.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isStringFinite(annotations?: Annotations.Filter): SchemaAST.Filter<string> {
@@ -6778,7 +6778,7 @@ export function isStringFinite(annotations?: Annotations.Filter): SchemaAST.Filt
  *
  * @see {@link isStringFinite} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isStringFiniteReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -6801,7 +6801,7 @@ export const isStringFiniteReviver: SchemaRepresentation.FilterReviver<null> = I
  * This check corresponds to a `pattern` constraint with the same signed
  * base-10 integer pattern.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isStringBigInt(annotations?: Annotations.Filter): SchemaAST.Filter<string> {
@@ -6820,7 +6820,7 @@ export function isStringBigInt(annotations?: Annotations.Filter): SchemaAST.Filt
  *
  * @see {@link isStringBigInt} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isStringBigIntReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -6838,7 +6838,7 @@ export const isStringBigIntReviver: SchemaRepresentation.FilterReviver<null> = I
  * The check uses the pattern `^Symbol\((.*)\)$`. It is not a general test for
  * whether a string can be passed to JavaScript's `Symbol()` function.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isStringSymbol(annotations?: Annotations.Filter): SchemaAST.Filter<string> {
@@ -6857,7 +6857,7 @@ export function isStringSymbol(annotations?: Annotations.Filter): SchemaAST.Filt
  *
  * @see {@link isStringSymbol} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isStringSymbolReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -6907,7 +6907,7 @@ const getUUIDRegExp = (version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8): globalThis.RegE
  * constraint to ensure generated strings match the UUID pattern.
  *
  * @see {@link isGUID} for shape-only GUID validation.
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isUUID(version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, annotations?: Annotations.Filter) {
@@ -6936,7 +6936,7 @@ export function isUUID(version?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, annotations?: An
  *
  * @see {@link isUUID} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isUUIDReviver: SchemaRepresentation.FilterReviver<{
@@ -6970,7 +6970,7 @@ const GUID_REGEXP = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{
  * constraint to ensure generated strings match the GUID pattern.
  *
  * @see {@link isUUID} for strict UUID validation.
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isGUID(annotations?: Annotations.Filter) {
@@ -6998,7 +6998,7 @@ export function isGUID(annotations?: Annotations.Filter) {
  *
  * @see {@link isGUID} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGUIDReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7023,7 +7023,7 @@ export const isGUIDReviver: SchemaRepresentation.FilterReviver<null> = InternalS
  * When generating test data with fast-check, this applies a `patterns`
  * constraint to ensure generated strings match the ULID pattern.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isULID(annotations?: Annotations.Filter) {
@@ -7051,7 +7051,7 @@ export function isULID(annotations?: Annotations.Filter) {
  *
  * @see {@link isULID} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isULIDReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7075,7 +7075,7 @@ export const isULIDReviver: SchemaRepresentation.FilterReviver<null> = InternalS
  * When generating test data with fast-check, this applies a `patterns`
  * constraint to ensure generated strings match the Base64 pattern.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isBase64(annotations?: Annotations.Filter) {
@@ -7104,7 +7104,7 @@ export function isBase64(annotations?: Annotations.Filter) {
  *
  * @see {@link isBase64} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBase64Reviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7129,7 +7129,7 @@ export const isBase64Reviver: SchemaRepresentation.FilterReviver<null> = Interna
  * When generating test data with fast-check, this applies a `patterns`
  * constraint to ensure generated strings match the Base64URL pattern.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isBase64Url(annotations?: Annotations.Filter) {
@@ -7158,7 +7158,7 @@ export function isBase64Url(annotations?: Annotations.Filter) {
  *
  * @see {@link isBase64Url} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBase64UrlReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7175,7 +7175,7 @@ export const isBase64UrlReviver: SchemaRepresentation.FilterReviver<null> = Inte
  * RegExp metacharacters in the prefix are escaped in JSON Schema and arbitrary
  * metadata so that the generated patterns retain literal `startsWith` semantics.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isStartsWith(startsWith: string, annotations?: Annotations.Filter) {
@@ -7210,7 +7210,7 @@ export function isStartsWith(startsWith: string, annotations?: Annotations.Filte
  *
  * @see {@link isStartsWith} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isStartsWithReviver: SchemaRepresentation.FilterReviver<{
@@ -7229,7 +7229,7 @@ export const isStartsWithReviver: SchemaRepresentation.FilterReviver<{
  * RegExp metacharacters in the suffix are escaped in JSON Schema and arbitrary
  * metadata so that the generated patterns retain literal `endsWith` semantics.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
@@ -7264,7 +7264,7 @@ export function isEndsWith(endsWith: string, annotations?: Annotations.Filter) {
  *
  * @see {@link isEndsWith} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isEndsWithReviver: SchemaRepresentation.FilterReviver<{
@@ -7284,7 +7284,7 @@ export const isEndsWithReviver: SchemaRepresentation.FilterReviver<{
  * arbitrary metadata so that the generated patterns retain literal `includes`
  * semantics.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isIncludes(includes: string, annotations?: Annotations.Filter) {
@@ -7319,7 +7319,7 @@ export function isIncludes(includes: string, annotations?: Annotations.Filter) {
  *
  * @see {@link isIncludes} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isIncludesReviver: SchemaRepresentation.FilterReviver<{
@@ -7341,7 +7341,7 @@ const UPPERCASED_PATTERN = "^[^a-z]*$"
  * such as digits, punctuation, and whitespace. It rejects strings that would
  * change when uppercased.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isUppercased(annotations?: Annotations.Filter) {
@@ -7375,7 +7375,7 @@ export function isUppercased(annotations?: Annotations.Filter) {
  *
  * @see {@link isUppercased} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isUppercasedReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7395,7 +7395,7 @@ const LOWERCASED_PATTERN = "^[^A-Z]*$"
  * such as digits, punctuation, and whitespace. It rejects strings that would
  * change when lowercased.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isLowercased(annotations?: Annotations.Filter) {
@@ -7429,7 +7429,7 @@ export function isLowercased(annotations?: Annotations.Filter) {
  *
  * @see {@link isLowercased} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLowercasedReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7449,7 +7449,7 @@ const CAPITALIZED_PATTERN = "^[^a-z]?.*$"
  * Empty strings pass. Strings whose first character has no lowercase form, such
  * as a digit, punctuation mark, or whitespace, also pass.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isCapitalized(annotations?: Annotations.Filter) {
@@ -7483,7 +7483,7 @@ export function isCapitalized(annotations?: Annotations.Filter) {
  *
  * @see {@link isCapitalized} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isCapitalizedReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7503,7 +7503,7 @@ const UNCAPITALIZED_PATTERN = "^[^A-Z]?.*$"
  * Empty strings pass. Strings whose first character has no uppercase form, such
  * as a digit, punctuation mark, or whitespace, also pass.
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export function isUncapitalized(annotations?: Annotations.Filter) {
@@ -7537,7 +7537,7 @@ export function isUncapitalized(annotations?: Annotations.Filter) {
  *
  * @see {@link isUncapitalized} for creating the corresponding check
  *
- * @category String checks
+ * @category validation
  * @since 4.0.0
  */
 export const isUncapitalizedReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7549,7 +7549,7 @@ export const isUncapitalizedReviver: SchemaRepresentation.FilterReviver<null> = 
 /**
  * Type-level representation of {@link Finite}.
  *
- * @category Number
+ * @category models
  * @since 3.10.0
  */
 export interface Finite extends Number {
@@ -7559,7 +7559,7 @@ export interface Finite extends Number {
 /**
  * Schema for finite numbers, rejecting `NaN`, `Infinity`, and `-Infinity`.
  *
- * @category Number
+ * @category schemas
  * @since 3.10.0
  */
 export const Finite: Finite = make(SchemaAST.finite)
@@ -7579,7 +7579,7 @@ export const Finite: Finite = make(SchemaAST.finite)
  * When generating test data with fast-check, this applies `noNaN: true` and
  * `noInfinity: true` constraints to ensure generated numbers are finite.
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isFinite: (annotations?: Annotations.Filter) => SchemaAST.Filter<number> = SchemaAST.isFinite
@@ -7593,7 +7593,7 @@ export const isFinite: (annotations?: Annotations.Filter) => SchemaAST.Filter<nu
  *
  * @see {@link isFinite} for creating the corresponding check
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isFiniteReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -7606,7 +7606,7 @@ export const isFiniteReviver: SchemaRepresentation.FilterReviver<null> = Interna
  * Creates a greater-than (`>`) check for any ordered type from an
  * `Order.Order` instance.
  *
- * @category Order checks
+ * @category validation
  * @since 4.0.0
  */
 export function makeIsGreaterThan<T>(options: {
@@ -7641,7 +7641,7 @@ export function makeIsGreaterThan<T>(options: {
  * Creates a greater-than-or-equal-to (`>=`) check for any ordered type from an
  * `Order.Order` instance.
  *
- * @category Order checks
+ * @category validation
  * @since 4.0.0
  */
 export function makeIsGreaterThanOrEqualTo<T>(options: {
@@ -7675,7 +7675,7 @@ export function makeIsGreaterThanOrEqualTo<T>(options: {
  * Creates a less-than (`<`) check for any ordered type from an `Order.Order`
  * instance.
  *
- * @category Order checks
+ * @category validation
  * @since 4.0.0
  */
 export function makeIsLessThan<T>(options: {
@@ -7710,7 +7710,7 @@ export function makeIsLessThan<T>(options: {
  * Creates a less-than-or-equal-to (`<=`) check for any ordered type from an
  * `Order.Order` instance.
  *
- * @category Order checks
+ * @category validation
  * @since 4.0.0
  */
 export function makeIsLessThanOrEqualTo<T>(options: {
@@ -7744,7 +7744,7 @@ export function makeIsLessThanOrEqualTo<T>(options: {
  * Creates an inclusive or exclusive range check for any ordered type from an
  * `Order.Order` instance.
  *
- * @category Order checks
+ * @category validation
  * @since 4.0.0
  */
 export function makeIsBetween<T>(deriveOptions: {
@@ -7800,7 +7800,7 @@ export function makeIsBetween<T>(deriveOptions: {
  * Creates a divisibility check for any numeric type from a remainder function
  * and a zero value.
  *
- * @category Numeric checks
+ * @category validation
  * @since 4.0.0
  */
 export function makeIsMultipleOf<T>(options: {
@@ -7844,7 +7844,7 @@ function encodeNumberPayload(number: number): number {
  * `exclusiveMinimum` constraint to ensure generated numbers are greater than
  * the specified value.
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThan = makeIsGreaterThan({
@@ -7868,7 +7868,7 @@ export const isGreaterThan = makeIsGreaterThan({
  *
  * @see {@link isGreaterThan} for creating the corresponding check
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanReviver: SchemaRepresentation.FilterReviver<{
@@ -7894,7 +7894,7 @@ export const isGreaterThanReviver: SchemaRepresentation.FilterReviver<{
  * When generating test data with fast-check, this applies a `minimum` constraint
  * to ensure generated numbers are greater than or equal to the specified value.
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanOrEqualTo = makeIsGreaterThanOrEqualTo({
@@ -7918,7 +7918,7 @@ export const isGreaterThanOrEqualTo = makeIsGreaterThanOrEqualTo({
  *
  * @see {@link isGreaterThanOrEqualTo} for creating the corresponding check
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanOrEqualToReviver: SchemaRepresentation.FilterReviver<{
@@ -7944,7 +7944,7 @@ export const isGreaterThanOrEqualToReviver: SchemaRepresentation.FilterReviver<{
  * `exclusiveMaximum` constraint to ensure generated numbers are less than the
  * specified value.
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThan = makeIsLessThan({
@@ -7968,7 +7968,7 @@ export const isLessThan = makeIsLessThan({
  *
  * @see {@link isLessThan} for creating the corresponding check
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanReviver: SchemaRepresentation.FilterReviver<{
@@ -7994,7 +7994,7 @@ export const isLessThanReviver: SchemaRepresentation.FilterReviver<{
  * When generating test data with fast-check, this applies a `maximum` constraint
  * to ensure generated numbers are less than or equal to the specified value.
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanOrEqualTo = makeIsLessThanOrEqualTo({
@@ -8018,7 +8018,7 @@ export const isLessThanOrEqualTo = makeIsLessThanOrEqualTo({
  *
  * @see {@link isLessThanOrEqualTo} for creating the corresponding check
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanOrEqualToReviver: SchemaRepresentation.FilterReviver<{
@@ -8047,7 +8047,7 @@ export const isLessThanOrEqualToReviver: SchemaRepresentation.FilterReviver<{
  * `exclusiveMaximum` flags to ensure generated numbers fall within the
  * specified range.
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBetween = makeIsBetween({
@@ -8088,7 +8088,7 @@ export const isBetween = makeIsBetween({
  *
  * @see {@link isBetween} for creating the corresponding check
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBetweenReviver: SchemaRepresentation.FilterReviver<{
@@ -8121,7 +8121,7 @@ export const isBetweenReviver: SchemaRepresentation.FilterReviver<{
  * When generating test data with fast-check, this applies constraints to ensure
  * generated numbers are multiples of the specified divisor.
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isMultipleOf = makeIsMultipleOf({
@@ -8147,7 +8147,7 @@ export const isMultipleOf = makeIsMultipleOf({
  *
  * @see {@link isMultipleOf} for creating the corresponding check
  *
- * @category Number checks
+ * @category validation
  * @since 4.0.0
  */
 export const isMultipleOfReviver: SchemaRepresentation.FilterReviver<{
@@ -8173,7 +8173,7 @@ export const isMultipleOfReviver: SchemaRepresentation.FilterReviver<{
  * When generating test data with fast-check, this applies an `integer: true`
  * constraint to ensure generated numbers are integers.
  *
- * @category Integer checks
+ * @category validation
  * @since 4.0.0
  */
 export function isInt(annotations?: Annotations.Filter) {
@@ -8206,7 +8206,7 @@ export function isInt(annotations?: Annotations.Filter) {
  *
  * @see {@link isInt} for creating the corresponding check
  *
- * @category Integer checks
+ * @category validation
  * @since 4.0.0
  */
 export const isIntReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -8218,7 +8218,7 @@ export const isIntReviver: SchemaRepresentation.FilterReviver<null> = InternalSc
 /**
  * Type-level representation of {@link Int}.
  *
- * @category Number
+ * @category models
  * @since 3.10.0
  */
 export interface Int extends Number {
@@ -8228,7 +8228,7 @@ export interface Int extends Number {
 /**
  * Schema for integers, rejecting `NaN`, `Infinity`, and `-Infinity`.
  *
- * @category Number
+ * @category schemas
  * @since 3.10.0
  */
 export const Int: Int = Number.check(isInt())
@@ -8236,7 +8236,7 @@ export const Int: Int = Number.check(isInt())
 /**
  * Type-level representation of {@link Natural}.
  *
- * @category Number
+ * @category models
  * @since 4.0.0
  */
 export interface Natural extends Int {
@@ -8252,7 +8252,7 @@ export interface Natural extends Int {
  *
  * @see {@link Int} for safe integers that may be negative
  *
- * @category Number
+ * @category schemas
  * @since 4.0.0
  */
 export const Natural: Natural = Int.check(isGreaterThanOrEqualTo(0))
@@ -8273,7 +8273,7 @@ export const Natural: Natural = Int.check(isGreaterThanOrEqualTo(0))
  * When generating test data with fast-check, this applies integer and range
  * constraints to ensure generated numbers are 32-bit signed integers.
  *
- * @category Integer checks
+ * @category validation
  * @since 4.0.0
  */
 export function isInt32(annotations?: Annotations.Filter) {
@@ -8305,7 +8305,7 @@ export function isInt32(annotations?: Annotations.Filter) {
  * When generating test data with fast-check, this applies integer and range
  * constraints to ensure generated numbers are 32-bit unsigned integers.
  *
- * @category Integer checks
+ * @category validation
  * @since 4.0.0
  */
 export function isUint32(annotations?: Annotations.Filter) {
@@ -8343,7 +8343,7 @@ function formatDateRuntime(date: globalThis.Date): string {
  * one millisecond after the specified value to ensure generated Date objects are
  * greater than it.
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanDate = makeIsGreaterThan({
@@ -8378,7 +8378,7 @@ export const isGreaterThanDate = makeIsGreaterThan({
  * to ensure generated Date objects are greater than or equal to the specified
  * date.
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanOrEqualToDate = makeIsGreaterThanOrEqualTo({
@@ -8407,7 +8407,7 @@ export const isGreaterThanOrEqualToDate = makeIsGreaterThanOrEqualTo({
  * one millisecond before the specified value to ensure generated Date objects
  * are less than it.
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanDate = makeIsLessThan({
@@ -8442,7 +8442,7 @@ export const isLessThanDate = makeIsLessThan({
  * to ensure generated Date objects are less than or equal to the specified
  * date.
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanOrEqualToDate = makeIsLessThanOrEqualTo({
@@ -8477,7 +8477,7 @@ export const isLessThanOrEqualToDate = makeIsLessThanOrEqualTo({
  * constraints to ensure generated Date objects fall within the specified range,
  * shifting exclusive bounds by one millisecond.
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBetweenDate = makeIsBetween({
@@ -8517,7 +8517,7 @@ export const isBetweenDate = makeIsBetween({
  * `exclusiveMinimum + 1n` to ensure generated BigInts are greater than the
  * specified value.
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanBigInt = makeIsGreaterThan({
@@ -8547,7 +8547,7 @@ export const isGreaterThanBigInt = makeIsGreaterThan({
  * to ensure generated BigInt values are greater than or equal to the specified
  * value.
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanOrEqualToBigInt = makeIsGreaterThanOrEqualTo({
@@ -8576,7 +8576,7 @@ export const isGreaterThanOrEqualToBigInt = makeIsGreaterThanOrEqualTo({
  * `exclusiveMaximum - 1n` to ensure generated BigInts are less than the
  * specified value.
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanBigInt = makeIsLessThan({
@@ -8606,7 +8606,7 @@ export const isLessThanBigInt = makeIsLessThan({
  * to ensure generated BigInt values are less than or equal to the specified
  * value.
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanOrEqualToBigInt = makeIsLessThanOrEqualTo({
@@ -8636,7 +8636,7 @@ export const isLessThanOrEqualToBigInt = makeIsLessThanOrEqualTo({
  * constraints to ensure generated BigInt values fall within the specified
  * range.
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBetweenBigInt = makeIsBetween({
@@ -8668,7 +8668,7 @@ export const isBetweenBigInt = makeIsBetween({
 /**
  * Validates that a BigDecimal is greater than the specified value (exclusive).
  *
- * @category BigDecimal checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanBigDecimal = makeIsGreaterThan({
@@ -8680,7 +8680,7 @@ export const isGreaterThanBigDecimal = makeIsGreaterThan({
  * Validates that a BigDecimal is greater than or equal to the specified value
  * (inclusive).
  *
- * @category BigDecimal checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanOrEqualToBigDecimal = makeIsGreaterThanOrEqualTo({
@@ -8691,7 +8691,7 @@ export const isGreaterThanOrEqualToBigDecimal = makeIsGreaterThanOrEqualTo({
 /**
  * Validates that a BigDecimal is less than the specified value (exclusive).
  *
- * @category BigDecimal checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanBigDecimal = makeIsLessThan({
@@ -8703,7 +8703,7 @@ export const isLessThanBigDecimal = makeIsLessThan({
  * Validates that a BigDecimal is less than or equal to the specified value
  * (inclusive).
  *
- * @category BigDecimal checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanOrEqualToBigDecimal = makeIsLessThanOrEqualTo({
@@ -8719,7 +8719,7 @@ export const isLessThanOrEqualToBigDecimal = makeIsLessThanOrEqualTo({
  * The minimum and maximum boundaries are inclusive by default. Pass
  * `exclusiveMinimum` or `exclusiveMaximum` to exclude either boundary.
  *
- * @category BigDecimal checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBetweenBigDecimal = makeIsBetween({
@@ -8755,7 +8755,7 @@ export const isBetweenBigDecimal = makeIsBetween({
  * Schema.is(NonEmptyArraySchema)([1]) // => true
  * ```
  *
- * @category Length checks
+ * @category validation
  * @since 4.0.0
  */
 export function isMinLength(minLength: number, annotations?: Annotations.Filter) {
@@ -8790,7 +8790,7 @@ export function isMinLength(minLength: number, annotations?: Annotations.Filter)
  *
  * @see {@link isMinLength} for creating the corresponding check
  *
- * @category Length checks
+ * @category validation
  * @since 4.0.0
  */
 export const isMinLengthReviver: SchemaRepresentation.FilterReviver<{
@@ -8817,7 +8817,7 @@ export const isMinLengthReviver: SchemaRepresentation.FilterReviver<{
  * When generating test data with fast-check, this applies a `minLength: 1`
  * constraint to ensure generated strings or arrays are non-empty.
  *
- * @category Length checks
+ * @category validation
  * @since 4.0.0
  */
 export function isNonEmpty(annotations?: Annotations.Filter) {
@@ -8841,7 +8841,7 @@ export function isNonEmpty(annotations?: Annotations.Filter) {
  * constraint to ensure generated strings or arrays have at most the required
  * length.
  *
- * @category Length checks
+ * @category validation
  * @since 4.0.0
  */
 export function isMaxLength(maxLength: number, annotations?: Annotations.Filter) {
@@ -8876,7 +8876,7 @@ export function isMaxLength(maxLength: number, annotations?: Annotations.Filter)
  *
  * @see {@link isMaxLength} for creating the corresponding check
  *
- * @category Length checks
+ * @category validation
  * @since 4.0.0
  */
 export const isMaxLengthReviver: SchemaRepresentation.FilterReviver<{
@@ -8904,7 +8904,7 @@ export const isMaxLengthReviver: SchemaRepresentation.FilterReviver<{
  * `maxLength` constraints to ensure generated strings or arrays have a length
  * within the specified range.
  *
- * @category Length checks
+ * @category validation
  * @since 4.0.0
  */
 export function isLengthBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
@@ -8947,7 +8947,7 @@ export function isLengthBetween(minimum: number, maximum: number, annotations?: 
  *
  * @see {@link isLengthBetween} for creating the corresponding check
  *
- * @category Length checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLengthBetweenReviver: SchemaRepresentation.FilterReviver<{
@@ -8976,7 +8976,7 @@ export const isLengthBetweenReviver: SchemaRepresentation.FilterReviver<{
  * `minLength` constraint. Generators for values with a final `.size`, such as
  * sets and maps, interpret it as final cardinality.
  *
- * @category Size checks
+ * @category validation
  * @since 4.0.0
  */
 export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
@@ -9011,7 +9011,7 @@ export function isMinSize(minSize: number, annotations?: Annotations.Filter) {
  *
  * @see {@link isMinSize} for creating the corresponding check
  *
- * @category Size checks
+ * @category validation
  * @since 4.0.0
  */
 export const isMinSizeReviver: SchemaRepresentation.FilterReviver<{
@@ -9039,7 +9039,7 @@ export const isMinSizeReviver: SchemaRepresentation.FilterReviver<{
  * `maxLength` constraint. Generators for values with a final `.size`, such as
  * sets and maps, interpret it as final cardinality.
  *
- * @category Size checks
+ * @category validation
  * @since 4.0.0
  */
 export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
@@ -9074,7 +9074,7 @@ export function isMaxSize(maxSize: number, annotations?: Annotations.Filter) {
  *
  * @see {@link isMaxSize} for creating the corresponding check
  *
- * @category Size checks
+ * @category validation
  * @since 4.0.0
  */
 export const isMaxSizeReviver: SchemaRepresentation.FilterReviver<{
@@ -9102,7 +9102,7 @@ export const isMaxSizeReviver: SchemaRepresentation.FilterReviver<{
  * `minLength` and `maxLength` constraints. Generators for values with a final
  * `.size`, such as sets and maps, interpret them as final cardinality.
  *
- * @category Size checks
+ * @category validation
  * @since 4.0.0
  */
 export function isSizeBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
@@ -9142,7 +9142,7 @@ export function isSizeBetween(minimum: number, maximum: number, annotations?: An
  *
  * @see {@link isSizeBetween} for creating the corresponding check
  *
- * @category Size checks
+ * @category validation
  * @since 4.0.0
  */
 export const isSizeBetweenReviver: SchemaRepresentation.FilterReviver<{
@@ -9171,7 +9171,7 @@ export const isSizeBetweenReviver: SchemaRepresentation.FilterReviver<{
  * `minLength` constraint. Object generators interpret it as the final number
  * of own properties.
  *
- * @category Object checks
+ * @category validation
  * @since 4.0.0
  */
 export function isMinProperties(minProperties: number, annotations?: Annotations.Filter) {
@@ -9206,7 +9206,7 @@ export function isMinProperties(minProperties: number, annotations?: Annotations
  *
  * @see {@link isMinProperties} for creating the corresponding check
  *
- * @category Object checks
+ * @category validation
  * @since 4.0.0
  */
 export const isMinPropertiesReviver: SchemaRepresentation.FilterReviver<{
@@ -9233,7 +9233,7 @@ export const isMinPropertiesReviver: SchemaRepresentation.FilterReviver<{
  * `maxLength` constraint. Object generators interpret it as the final number
  * of own properties.
  *
- * @category Object checks
+ * @category validation
  * @since 4.0.0
  */
 export function isMaxProperties(maxProperties: number, annotations?: Annotations.Filter) {
@@ -9268,7 +9268,7 @@ export function isMaxProperties(maxProperties: number, annotations?: Annotations
  *
  * @see {@link isMaxProperties} for creating the corresponding check
  *
- * @category Object checks
+ * @category validation
  * @since 4.0.0
  */
 export const isMaxPropertiesReviver: SchemaRepresentation.FilterReviver<{
@@ -9296,7 +9296,7 @@ export const isMaxPropertiesReviver: SchemaRepresentation.FilterReviver<{
  * `minLength` and `maxLength` constraints. Object generators interpret them as
  * the final number of own properties.
  *
- * @category Object checks
+ * @category validation
  * @since 4.0.0
  */
 export function isPropertiesLengthBetween(minimum: number, maximum: number, annotations?: Annotations.Filter) {
@@ -9336,7 +9336,7 @@ export function isPropertiesLengthBetween(minimum: number, maximum: number, anno
  *
  * @see {@link isPropertiesLengthBetween} for creating the corresponding check
  *
- * @category Object checks
+ * @category validation
  * @since 4.0.0
  */
 export const isPropertiesLengthBetweenReviver: SchemaRepresentation.FilterReviver<{
@@ -9361,7 +9361,7 @@ export const isPropertiesLengthBetweenReviver: SchemaRepresentation.FilterRevive
  * For string property names, this corresponds to the `propertyNames` constraint
  * in JSON Schema.
  *
- * @category Object checks
+ * @category validation
  * @since 4.0.0
  */
 export function isPropertyNames(keySchema: Constraint, annotations?: Annotations.Filter) {
@@ -9407,7 +9407,7 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
  *
  * @see {@link isPropertyNames} for creating the corresponding check
  *
- * @category Object checks
+ * @category validation
  * @since 4.0.0
  */
 export const isPropertyNamesReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -9429,7 +9429,7 @@ export const isPropertyNamesReviver: SchemaRepresentation.FilterReviver<null> = 
  * `unique: true` constraint. Array generators translate it to `fast-check`
  * `uniqueArray` using Effect equality.
  *
- * @category Array checks
+ * @category validation
  * @since 4.0.0
  */
 export function isUnique<T>(annotations?: Annotations.Filter) {
@@ -9462,7 +9462,7 @@ export function isUnique<T>(annotations?: Annotations.Filter) {
  *
  * @see {@link isUnique} for creating the corresponding check
  *
- * @category Array checks
+ * @category validation
  * @since 4.0.0
  */
 export const isUniqueReviver: SchemaRepresentation.FilterReviver<null> = InternalSchema.makeFilterReviver(
@@ -9478,7 +9478,7 @@ export const isUniqueReviver: SchemaRepresentation.FilterReviver<null> = Interna
 /**
  * Type-level representation of {@link NonEmptyString}.
  *
- * @category string
+ * @category models
  * @since 3.10.0
  */
 export interface NonEmptyString extends String {
@@ -9489,7 +9489,7 @@ export interface NonEmptyString extends String {
  * Schema for non-empty strings. Validates that a string has at least one
  * character.
  *
- * @category string
+ * @category schemas
  * @since 3.10.0
  */
 export const NonEmptyString: NonEmptyString = String.check(isNonEmpty())
@@ -9497,7 +9497,7 @@ export const NonEmptyString: NonEmptyString = String.check(isNonEmpty())
 /**
  * Type-level representation of {@link Char}.
  *
- * @category string
+ * @category models
  * @since 3.10.0
  */
 export interface Char extends String {
@@ -9520,7 +9520,7 @@ export interface Char extends String {
  * @see {@link NonEmptyString} for strings with length greater than zero
  * @see {@link isLengthBetween} for the underlying length check
  *
- * @category string
+ * @category schemas
  * @since 3.10.0
  */
 export const Char: Char = String.check(isLengthBetween(1, 1))
@@ -9528,7 +9528,7 @@ export const Char: Char = String.check(isLengthBetween(1, 1))
 /**
  * Type-level representation returned by {@link Option}.
  *
- * @category Option
+ * @category models
  * @since 3.10.0
  */
 export interface Option<A extends Constraint> extends
@@ -9551,7 +9551,7 @@ export interface Option<A extends Constraint> extends
  * `None` is represented as `{ _tag: "None" }`, while `Some` is represented as
  * `{ _tag: "Some", value }` using the wrapped schema's `Iso` type.
  *
- * @category Option
+ * @category utility types
  * @since 4.0.0
  */
 export type OptionIso<A extends Constraint> =
@@ -9561,7 +9561,7 @@ export type OptionIso<A extends Constraint> =
 /**
  * Schema for `Option<A>` values.
  *
- * @category Option
+ * @category schemas
  * @since 3.10.0
  */
 export function Option<A extends Constraint>(value: A): Option<A> {
@@ -9637,7 +9637,7 @@ export function Option<A extends Constraint>(value: A): Option<A> {
  *
  * @see {@link Option} for creating the corresponding schema
  *
- * @category Option
+ * @category schemas
  * @since 4.0.0
  */
 export const OptionReviver = InternalSchema.makeDeclarationReviver(
@@ -9652,7 +9652,7 @@ export const OptionReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation returned by {@link OptionFromNullOr}.
  *
- * @category Option
+ * @category models
  * @since 3.10.0
  */
 export interface OptionFromNullOr<S extends Constraint> extends decodeTo<Option<toType<S>>, NullOr<S>> {
@@ -9667,7 +9667,7 @@ export interface OptionFromNullOr<S extends Constraint> extends decodeTo<Option<
  * Decoding maps `null` to `None` and all other values to `Some`. Encoding maps
  * `None` to `null` and maps `Some` to its value.
  *
- * @category Option
+ * @category schemas
  * @since 3.10.0
  */
 export function OptionFromNullOr<S extends Constraint>(schema: S): OptionFromNullOr<S> {
@@ -9680,7 +9680,7 @@ export function OptionFromNullOr<S extends Constraint>(schema: S): OptionFromNul
 /**
  * Type-level representation returned by {@link OptionFromUndefinedOr}.
  *
- * @category Option
+ * @category models
  * @since 3.10.0
  */
 export interface OptionFromUndefinedOr<S extends Constraint> extends decodeTo<Option<toType<S>>, UndefinedOr<S>> {
@@ -9696,7 +9696,7 @@ export interface OptionFromUndefinedOr<S extends Constraint> extends decodeTo<Op
  * Decoding maps `undefined` to `None` and all other values to `Some`. Encoding
  * maps `None` to `undefined` and maps `Some` to its value.
  *
- * @category Option
+ * @category schemas
  * @since 3.10.0
  */
 export function OptionFromUndefinedOr<S extends Constraint>(schema: S): OptionFromUndefinedOr<S> {
@@ -9709,7 +9709,7 @@ export function OptionFromUndefinedOr<S extends Constraint>(schema: S): OptionFr
 /**
  * Type-level representation returned by {@link OptionFromNullishOr}.
  *
- * @category Option
+ * @category models
  * @since 3.10.0
  */
 export interface OptionFromNullishOr<S extends Constraint> extends decodeTo<Option<toType<S>>, NullishOr<S>> {
@@ -9726,7 +9726,7 @@ export interface OptionFromNullishOr<S extends Constraint> extends decodeTo<Opti
  * `options.onNoneEncoding`, which defaults to `undefined`, and maps `Some` to
  * its value.
  *
- * @category Option
+ * @category schemas
  * @since 3.10.0
  */
 export function OptionFromNullishOr<S extends Constraint>(
@@ -9744,7 +9744,7 @@ export function OptionFromNullishOr<S extends Constraint>(
 /**
  * Type-level representation returned by {@link OptionFromOptionalKey}.
  *
- * @category Option
+ * @category models
  * @since 4.0.0
  */
 export interface OptionFromOptionalKey<S extends Constraint> extends decodeTo<Option<toType<S>>, optionalKey<S>> {
@@ -9759,7 +9759,7 @@ export interface OptionFromOptionalKey<S extends Constraint> extends decodeTo<Op
  * Decoding maps a missing key to `None` and a present value to `Some`.
  * Encoding maps `None` to a missing key and maps `Some` to its value.
  *
- * @category Option
+ * @category schemas
  * @since 4.0.0
  */
 export function OptionFromOptionalKey<S extends Constraint>(schema: S): OptionFromOptionalKey<S> {
@@ -9772,7 +9772,7 @@ export function OptionFromOptionalKey<S extends Constraint>(schema: S): OptionFr
 /**
  * Type-level representation returned by {@link OptionFromOptional}.
  *
- * @category Option
+ * @category models
  * @since 4.0.0
  */
 export interface OptionFromOptional<S extends Constraint> extends decodeTo<Option<toType<S>>, optional<S>> {
@@ -9789,7 +9789,7 @@ export interface OptionFromOptional<S extends Constraint> extends decodeTo<Optio
  * maps all other values to `Some`. Encoding maps `None` to a missing key and
  * maps `Some` to its value.
  *
- * @category Option
+ * @category schemas
  * @since 4.0.0
  */
 export function OptionFromOptional<S extends Constraint>(schema: S): OptionFromOptional<S> {
@@ -9802,7 +9802,7 @@ export function OptionFromOptional<S extends Constraint>(schema: S): OptionFromO
 /**
  * Type-level representation returned by {@link OptionFromOptionalNullOr}.
  *
- * @category Option
+ * @category models
  * @since 4.0.0
  */
 export interface OptionFromOptionalNullOr<S extends Constraint>
@@ -9822,7 +9822,7 @@ export interface OptionFromOptionalNullOr<S extends Constraint>
  * according to `options.onNoneEncoding`: `"omit"` encodes a missing key,
  * `null` encodes `null`, and `undefined` encodes `undefined`.
  *
- * @category Option
+ * @category schemas
  * @since 4.0.0
  */
 export function OptionFromOptionalNullOr<S extends Constraint>(
@@ -9849,7 +9849,7 @@ export function OptionFromOptionalNullOr<S extends Constraint>(
 /**
  * Type-level representation returned by {@link Result}.
  *
- * @category schemas
+ * @category models
  * @since 4.0.0
  */
 export interface Result<A extends Constraint, E extends Constraint> extends
@@ -9873,7 +9873,7 @@ export interface Result<A extends Constraint, E extends Constraint> extends
  * Successful results are represented as `{ _tag: "Success", success }`, while
  * failed results are represented as `{ _tag: "Failure", failure }`.
  *
- * @category schemas
+ * @category utility types
  * @since 4.0.0
  */
 export type ResultIso<A extends Constraint, E extends Constraint> =
@@ -9988,7 +9988,7 @@ export const ResultReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation returned by {@link Redacted}.
  *
- * @category Redacted
+ * @category models
  * @since 3.10.0
  */
 export interface Redacted<S extends Constraint> extends
@@ -10054,7 +10054,7 @@ const RedactedRepresentationPayload: Decoder<RedactedRepresentationPayload> = Un
  *   sensitive and should not be exposed in JSON.
  *
  * @see {@link RedactedFromValue} for decoding raw values and wrapping them in `Redacted`.
- * @category Redacted
+ * @category schemas
  * @since 3.10.0
  */
 export function Redacted<S extends Constraint>(value: S, options?: {
@@ -10146,7 +10146,7 @@ export function Redacted<S extends Constraint>(value: S, options?: {
  *
  * @see {@link Redacted} for creating the corresponding schema
  *
- * @category Redacted
+ * @category schemas
  * @since 4.0.0
  */
 export const RedactedReviver = InternalSchema.makeDeclarationReviver(
@@ -10161,7 +10161,7 @@ export const RedactedReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation returned by {@link RedactedFromValue}.
  *
- * @category Redacted
+ * @category models
  * @since 4.0.0
  */
 export interface RedactedFromValue<S extends Constraint>
@@ -10174,7 +10174,7 @@ export interface RedactedFromValue<S extends Constraint>
  * Middleware that wraps decoded errors in `Redacted`, preventing sensitive
  * schema details from leaking in error messages.
  *
- * @category Redacted
+ * @category transforming
  * @since 4.0.0
  */
 export function redact<S extends Constraint>(schema: S): middlewareDecoding<S, S["DecodingServices"]> {
@@ -10187,7 +10187,7 @@ export function redact<S extends Constraint>(schema: S): middlewareDecoding<S, S
  * the raw value and wraps it.
  *
  * @see {@link Redacted} for schemas whose input is already a `Redacted` value.
- * @category Redacted
+ * @category schemas
  * @since 4.0.0
  */
 export function RedactedFromValue<S extends Constraint>(value: S, options?: {
@@ -10216,7 +10216,7 @@ export function RedactedFromValue<S extends Constraint>(value: S, options?: {
 /**
  * Type-level representation returned by {@link CauseReason}.
  *
- * @category CauseReason
+ * @category models
  * @since 4.0.0
  */
 export interface CauseReason<E extends Constraint, D extends Constraint> extends
@@ -10240,7 +10240,7 @@ export interface CauseReason<E extends Constraint, D extends Constraint> extends
  * Failures are represented with a `Fail` tag and encoded error, defects with a
  * `Die` tag and encoded defect, and interrupts with an optional `fiberId`.
  *
- * @category CauseReason
+ * @category utility types
  * @since 4.0.0
  */
 export type CauseReasonIso<E extends Constraint, D extends Constraint> = {
@@ -10271,7 +10271,7 @@ export type CauseReasonIso<E extends Constraint, D extends Constraint> = {
  * @see {@link Cause} for constructing schemas for full Cause values
  * @see {@link CauseReasonIso} for the ISO shape of each cause reason
  *
- * @category CauseReason
+ * @category schemas
  * @since 4.0.0
  */
 export function CauseReason<E extends Constraint, D extends Constraint>(error: E, defect: D): CauseReason<E, D> {
@@ -10353,7 +10353,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
  *
  * @see {@link CauseReason} for creating the corresponding schema
  *
- * @category CauseReason
+ * @category schemas
  * @since 4.0.0
  */
 export const CauseReasonReviver = InternalSchema.makeDeclarationReviver(
@@ -10411,7 +10411,7 @@ function causeReasonToFormatter<E>(error: Formatter<E>, defect: Formatter<unknow
 /**
  * Type-level representation returned by {@link Cause}.
  *
- * @category Cause
+ * @category models
  * @since 3.10.0
  */
 export interface Cause<E extends Constraint, D extends Constraint> extends
@@ -10439,7 +10439,7 @@ export interface Cause<E extends Constraint, D extends Constraint> extends
  * @see {@link Cause} for constructing schemas for full Cause values
  * @see {@link CauseReasonIso} for the ISO shape of each array element
  *
- * @category Cause
+ * @category utility types
  * @since 4.0.0
  */
 export type CauseIso<E extends Constraint, D extends Constraint> = ReadonlyArray<CauseReasonIso<E, D>>
@@ -10462,7 +10462,7 @@ export type CauseIso<E extends Constraint, D extends Constraint> = ReadonlyArray
  * @see {@link CauseReason} for the schema used by each individual cause reason
  * @see {@link CauseIso} for the ordered array representation used by the schema ISO
  *
- * @category Cause
+ * @category schemas
  * @since 3.10.0
  */
 export function Cause<E extends Constraint, D extends Constraint>(error: E, defect: D): Cause<E, D> {
@@ -10517,7 +10517,7 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
  *
  * @see {@link Cause} for creating the corresponding schema
  *
- * @category Cause
+ * @category schemas
  * @since 4.0.0
  */
 export const CauseReviver = InternalSchema.makeDeclarationReviver(
@@ -10554,7 +10554,7 @@ function causeToFormatter<E>(error: Formatter<E>, defect: Formatter<unknown>) {
 /**
  * Type-level representation of {@link Error}.
  *
- * @category Error
+ * @category models
  * @since 4.0.0
  */
 export interface Error extends instanceOf<globalThis.Error> {
@@ -10639,7 +10639,7 @@ const errorSchemaCache: Array<Error | undefined> = []
  * traces are omitted by default for security. Pass `{ includeStack: true }` to
  * include stack traces, or `{ excludeCause: true }` to omit causes.
  *
- * @category constructors
+ * @category schemas
  * @since 4.0.0
  */
 export function Error(options?: ErrorOptions): Error {
@@ -10675,7 +10675,7 @@ export function Error(options?: ErrorOptions): Error {
  *
  * @see {@link Error} for creating the corresponding schema
  *
- * @category Error
+ * @category schemas
  * @since 4.0.0
  */
 export const ErrorReviver = InternalSchema.makeDeclarationReviver(
@@ -10690,7 +10690,7 @@ export const ErrorReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation of {@link Defect}.
  *
- * @category Defect
+ * @category models
  * @since 3.10.0
  */
 export interface Defect extends decodeTo<Unknown, typeof Json> {
@@ -10737,7 +10737,7 @@ const defectSchemaCache: Array<Defect | undefined> = []
  *   string representation.
  *
  * @see {@link Error} for a schema that only accepts JavaScript `Error` values.
- * @category constructors
+ * @category schemas
  * @since 4.0.0
  */
 export function Defect(options?: ErrorOptions): Defect {
@@ -10754,7 +10754,7 @@ export function Defect(options?: ErrorOptions): Defect {
 /**
  * Type-level representation returned by {@link Exit}.
  *
- * @category Exit
+ * @category models
  * @since 3.10.0
  */
 export interface Exit<A extends Constraint, E extends Constraint, D extends Constraint> extends
@@ -10779,7 +10779,7 @@ export interface Exit<A extends Constraint, E extends Constraint, D extends Cons
  * Successful exits are represented as `{ _tag: "Success", value }`, while failed
  * exits are represented as `{ _tag: "Failure", cause }`.
  *
- * @category Exit
+ * @category utility types
  * @since 4.0.0
  */
 export type ExitIso<A extends Constraint, E extends Constraint, D extends Constraint> = {
@@ -10799,7 +10799,7 @@ export type ExitIso<A extends Constraint, E extends Constraint, D extends Constr
  * Use when serializing or validating an effect outcome where success, typed
  * failure, and defects each need their own schema.
  *
- * @category Exit
+ * @category schemas
  * @since 3.10.0
  */
 export function Exit<A extends Constraint, E extends Constraint, D extends Constraint>(
@@ -10919,7 +10919,7 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
  *
  * @see {@link Exit} for creating the corresponding schema
  *
- * @category Exit
+ * @category schemas
  * @since 4.0.0
  */
 export const ExitReviver = InternalSchema.makeDeclarationReviver(
@@ -10934,7 +10934,7 @@ export const ExitReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation returned by {@link ReadonlyMap}.
  *
- * @category ReadonlyMap
+ * @category models
  * @since 4.0.0
  */
 export interface $ReadonlyMap<Key extends Constraint, Value extends Constraint> extends
@@ -10954,7 +10954,7 @@ export interface $ReadonlyMap<Key extends Constraint, Value extends Constraint> 
  * Iso representation used for `ReadonlyMap` schemas: an array of readonly
  * `[key, value]` tuples using each entry schema's `Iso` type.
  *
- * @category ReadonlyMap
+ * @category utility types
  * @since 4.0.0
  */
 export type ReadonlyMapIso<Key extends Constraint, Value extends Constraint> = ReadonlyArray<
@@ -11055,7 +11055,7 @@ function entriesArbitrary<K, V, Out>(
  * Schema for readonly maps whose keys and values conform to the provided
  * schemas.
  *
- * @category ReadonlyMap
+ * @category schemas
  * @since 3.10.0
  */
 export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
@@ -11126,7 +11126,7 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
  *
  * @see {@link ReadonlyMap} for creating the corresponding schema
  *
- * @category ReadonlyMap
+ * @category schemas
  * @since 4.0.0
  */
 export const ReadonlyMapReviver = InternalSchema.makeDeclarationReviver(
@@ -11141,7 +11141,7 @@ export const ReadonlyMapReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation returned by {@link HashMap}.
  *
- * @category HashMap
+ * @category models
  * @since 3.10.0
  */
 export interface HashMap<Key extends Constraint, Value extends Constraint> extends
@@ -11161,7 +11161,7 @@ export interface HashMap<Key extends Constraint, Value extends Constraint> exten
  * Iso representation used for `HashMap` schemas: an array of readonly
  * `[key, value]` tuples using each entry schema's `Iso` type.
  *
- * @category HashMap
+ * @category utility types
  * @since 4.0.0
  */
 export type HashMapIso<Key extends Constraint, Value extends Constraint> = ReadonlyArray<
@@ -11171,7 +11171,7 @@ export type HashMapIso<Key extends Constraint, Value extends Constraint> = Reado
 /**
  * Schema for hash maps whose keys and values conform to the provided schemas.
  *
- * @category HashMap
+ * @category schemas
  * @since 3.10.0
  */
 export function HashMap<Key extends Constraint, Value extends Constraint>(key: Key, value: Value): HashMap<Key, Value> {
@@ -11240,7 +11240,7 @@ export function HashMap<Key extends Constraint, Value extends Constraint>(key: K
  *
  * @see {@link HashMap} for creating the corresponding schema
  *
- * @category HashMap
+ * @category schemas
  * @since 4.0.0
  */
 export const HashMapReviver = InternalSchema.makeDeclarationReviver(
@@ -11255,7 +11255,7 @@ export const HashMapReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation returned by {@link ReadonlySet}.
  *
- * @category ReadonlySet
+ * @category models
  * @since 4.0.0
  */
 export interface $ReadonlySet<Value extends Constraint> extends
@@ -11274,7 +11274,7 @@ export interface $ReadonlySet<Value extends Constraint> extends
  * Iso representation used for `ReadonlySet` schemas: an array of element values
  * using the element schema's `Iso` type.
  *
- * @category ReadonlySet
+ * @category utility types
  * @since 4.0.0
  */
 export type ReadonlySetIso<Value extends Constraint> = ReadonlyArray<Value["Iso"]>
@@ -11282,7 +11282,7 @@ export type ReadonlySetIso<Value extends Constraint> = ReadonlyArray<Value["Iso"
 /**
  * Schema for readonly sets whose values conform to the provided element schema.
  *
- * @category ReadonlySet
+ * @category schemas
  * @since 3.10.0
  */
 export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySet<Value> {
@@ -11351,7 +11351,7 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
  *
  * @see {@link ReadonlySet} for creating the corresponding schema
  *
- * @category ReadonlySet
+ * @category schemas
  * @since 4.0.0
  */
 export const ReadonlySetReviver = InternalSchema.makeDeclarationReviver(
@@ -11366,7 +11366,7 @@ export const ReadonlySetReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation returned by {@link HashSet}.
  *
- * @category HashSet
+ * @category models
  * @since 3.10.0
  */
 export interface HashSet<Value extends Constraint> extends
@@ -11385,7 +11385,7 @@ export interface HashSet<Value extends Constraint> extends
  * Iso representation used for `HashSet` schemas: an array of element values
  * using the element schema's `Iso` type.
  *
- * @category HashSet
+ * @category utility types
  * @since 4.0.0
  */
 export type HashSetIso<Value extends Constraint> = ReadonlyArray<Value["Iso"]>
@@ -11393,7 +11393,7 @@ export type HashSetIso<Value extends Constraint> = ReadonlyArray<Value["Iso"]>
 /**
  * Schema for hash sets whose values conform to the provided element schema.
  *
- * @category HashSet
+ * @category schemas
  * @since 3.10.0
  */
 export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> {
@@ -11462,7 +11462,7 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
  *
  * @see {@link HashSet} for creating the corresponding schema
  *
- * @category HashSet
+ * @category schemas
  * @since 4.0.0
  */
 export const HashSetReviver = InternalSchema.makeDeclarationReviver(
@@ -11477,7 +11477,7 @@ export const HashSetReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation returned by {@link Chunk}.
  *
- * @category Chunk
+ * @category models
  * @since 3.10.0
  */
 export interface Chunk<Value extends Constraint> extends
@@ -11503,7 +11503,7 @@ export interface Chunk<Value extends Constraint> extends
  *
  * @see {@link Chunk} for the schema interface and constructor that use this ISO representation
  *
- * @category Chunk
+ * @category utility types
  * @since 4.0.0
  */
 export type ChunkIso<Value extends Constraint> = ReadonlyArray<Value["Iso"]>
@@ -11511,7 +11511,7 @@ export type ChunkIso<Value extends Constraint> = ReadonlyArray<Value["Iso"]>
 /**
  * Schema for chunks whose values conform to the provided element schema.
  *
- * @category Chunk
+ * @category schemas
  * @since 3.10.0
  */
 export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
@@ -11580,7 +11580,7 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
  *
  * @see {@link Chunk} for creating the corresponding schema
  *
- * @category Chunk
+ * @category schemas
  * @since 4.0.0
  */
 export const ChunkReviver = InternalSchema.makeDeclarationReviver(
@@ -11595,7 +11595,7 @@ export const ChunkReviver = InternalSchema.makeDeclarationReviver(
 /**
  * Type-level representation of {@link RegExp}.
  *
- * @category RegExp
+ * @category models
  * @since 4.0.0
  */
 export interface RegExp extends instanceOf<globalThis.RegExp> {
@@ -11609,7 +11609,7 @@ export interface RegExp extends instanceOf<globalThis.RegExp> {
  *
  * The default JSON serializer encodes a `RegExp` as `{ source, flags }`.
  *
- * @category RegExp
+ * @category schemas
  * @since 4.0.0
  */
 export const RegExp: RegExp = instanceOf(
@@ -11678,7 +11678,7 @@ export const RegExp: RegExp = instanceOf(
  *
  * @see {@link RegExp} for the corresponding schema
  *
- * @category RegExp
+ * @category schemas
  * @since 4.0.0
  */
 export const RegExpReviver = makeFixedDeclarationReviver(
@@ -11689,7 +11689,7 @@ export const RegExpReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link URL}.
  *
- * @category URL
+ * @category models
  * @since 4.0.0
  */
 export interface URL extends instanceOf<globalThis.URL> {
@@ -11707,7 +11707,7 @@ const URLString = String.annotate({ expected: "a string that will be decoded as 
  *
  * - encodes `URL` as a `string`
  *
- * @category URL
+ * @category schemas
  * @since 4.0.0
  */
 export const URL: URL = instanceOf(
@@ -11741,7 +11741,7 @@ export const URL: URL = instanceOf(
  *
  * @see {@link URL} for the corresponding schema
  *
- * @category URL
+ * @category schemas
  * @since 4.0.0
  */
 export const URLReviver = makeFixedDeclarationReviver(
@@ -11752,7 +11752,7 @@ export const URLReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link URLFromString}.
  *
- * @category URL
+ * @category models
  * @since 4.0.0
  */
 export interface URLFromString extends decodeTo<URL, String> {
@@ -11770,7 +11770,7 @@ export interface URLFromString extends decodeTo<URL, String> {
  * Encoding:
  * - A `URL` is encoded as a `string`
  *
- * @category URL
+ * @category schemas
  * @since 4.0.0
  */
 export const URLFromString: URLFromString = URLString.pipe(decodeTo(URL, SchemaTransformation.urlFromString))
@@ -11778,7 +11778,7 @@ export const URLFromString: URLFromString = URLString.pipe(decodeTo(URL, SchemaT
 /**
  * Type-level representation of {@link Date}.
  *
- * @category Date
+ * @category models
  * @since 4.0.0
  */
 export interface Date extends declare<globalThis.Date> {
@@ -11835,7 +11835,7 @@ const DateString = String.annotate({ expected: "a string that will be decoded as
  * @see {@link DateFromString} for decoding strings into Date instances
  * @see {@link DateFromMillis} for decoding epoch milliseconds into Date instances
  *
- * @category Date
+ * @category schemas
  * @since 4.0.0
  */
 export const Date: Date = declare(
@@ -11872,7 +11872,7 @@ export const Date: Date = declare(
  *
  * @see {@link Date} for the corresponding schema
  *
- * @category Date
+ * @category schemas
  * @since 4.0.0
  */
 export const DateReviver = makeFixedDeclarationReviver(
@@ -11883,7 +11883,7 @@ export const DateReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link DateFromString}.
  *
- * @category Date
+ * @category models
  * @since 3.10.0
  */
 export interface DateFromString extends decodeTo<Date, String> {
@@ -11912,7 +11912,7 @@ export interface DateFromString extends decodeTo<Date, String> {
  * @see {@link DateTimeUtcFromString} for decoding date-time strings into UTC values
  * @see {@link Date} for accepting Date instances directly
  *
- * @category Date
+ * @category schemas
  * @since 3.10.0
  */
 export const DateFromString: DateFromString = DateString.pipe(decodeTo(Date, SchemaTransformation.dateFromString))
@@ -11920,7 +11920,7 @@ export const DateFromString: DateFromString = DateString.pipe(decodeTo(Date, Sch
 /**
  * Type-level representation of {@link DateFromMillis}.
  *
- * @category Date
+ * @category models
  * @since 4.0.0
  */
 export interface DateFromMillis extends decodeTo<Date, Int> {
@@ -11952,7 +11952,7 @@ export interface DateFromMillis extends decodeTo<Date, Int> {
  * @see {@link DateFromString} for decoding string-encoded dates
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
  *
- * @category Date
+ * @category schemas
  * @since 4.0.0
  */
 export const DateFromMillis: DateFromMillis = Int.pipe(
@@ -11962,7 +11962,7 @@ export const DateFromMillis: DateFromMillis = Int.pipe(
 /**
  * Type-level representation of {@link Duration}.
  *
- * @category Duration
+ * @category models
  * @since 3.10.0
  */
 export interface Duration extends declare<Duration_.Duration> {
@@ -11985,7 +11985,7 @@ export interface Duration extends declare<Duration_.Duration> {
  * Schema.decodeUnknownSync(Schema.Duration)(Duration.seconds(5)) // => Duration.seconds(5)
  * ```
  *
- * @category Duration
+ * @category schemas
  *
  * @since 3.10.0
  */
@@ -12058,7 +12058,7 @@ export const Duration: Duration = declare(
  *
  * @see {@link Duration} for the corresponding schema
  *
- * @category Duration
+ * @category schemas
  * @since 4.0.0
  */
 export const DurationReviver = makeFixedDeclarationReviver(
@@ -12071,7 +12071,7 @@ const DurationString = String.annotate({ expected: "a string that will be decode
 /**
  * Type-level representation of {@link DurationFromString}.
  *
- * @category Duration
+ * @category models
  * @since 4.0.0
  */
 export interface DurationFromString extends decodeTo<Duration, String> {
@@ -12090,7 +12090,7 @@ export interface DurationFromString extends decodeTo<Duration, String> {
  * Encoding:
  * - A `Duration` is encoded as a parseable `string`.
  *
- * @category Duration
+ * @category schemas
  * @since 4.0.0
  */
 export const DurationFromString: DurationFromString = DurationString.pipe(
@@ -12100,7 +12100,7 @@ export const DurationFromString: DurationFromString = DurationString.pipe(
 /**
  * Type-level representation of {@link DurationFromNanos}.
  *
- * @category Duration
+ * @category models
  * @since 3.10.0
  */
 export interface DurationFromNanos extends decodeTo<Duration, BigInt> {
@@ -12121,7 +12121,7 @@ export interface DurationFromNanos extends decodeTo<Duration, BigInt> {
  * fails when the duration cannot be represented as nanoseconds, such as
  * `Duration.infinity` or `Duration.negativeInfinity`.
  *
- * @category Duration
+ * @category schemas
  * @since 3.10.0
  */
 export const DurationFromNanos: DurationFromNanos = BigInt.pipe(
@@ -12131,7 +12131,7 @@ export const DurationFromNanos: DurationFromNanos = BigInt.pipe(
 /**
  * Type-level representation of {@link DurationFromMillis}.
  *
- * @category Duration
+ * @category models
  * @since 3.10.0
  */
 export interface DurationFromMillis extends decodeTo<Duration, Number> {
@@ -12154,7 +12154,7 @@ export interface DurationFromMillis extends decodeTo<Duration, Number> {
  *
  * `NaN` is decoded as `Duration.zero`, matching `Duration.millis`.
  *
- * @category Duration
+ * @category schemas
  * @since 3.10.0
  */
 export const DurationFromMillis: DurationFromMillis = Number.pipe(
@@ -12164,7 +12164,7 @@ export const DurationFromMillis: DurationFromMillis = Number.pipe(
 /**
  * Type-level representation of {@link BigDecimal}.
  *
- * @category BigDecimal
+ * @category models
  * @since 3.10.0
  */
 export interface BigDecimal extends declare<BigDecimal_.BigDecimal> {
@@ -12264,7 +12264,7 @@ function bigDecimalScaleConstraints(
  *
  * @see {@link BigDecimalFromString} for parsing string input into a BigDecimal
  *
- * @category BigDecimal
+ * @category schemas
  * @since 3.10.0
  */
 export const BigDecimal: BigDecimal = declare(
@@ -12316,7 +12316,7 @@ export const BigDecimal: BigDecimal = declare(
  *
  * @see {@link BigDecimal} for the corresponding schema
  *
- * @category BigDecimal
+ * @category schemas
  * @since 4.0.0
  */
 export const BigDecimalReviver = makeFixedDeclarationReviver(
@@ -12327,7 +12327,7 @@ export const BigDecimalReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link BigDecimalFromString}.
  *
- * @category BigDecimal
+ * @category models
  * @since 4.0.0
  */
 export interface BigDecimalFromString extends decodeTo<BigDecimal, String> {
@@ -12358,7 +12358,7 @@ export interface BigDecimalFromString extends decodeTo<BigDecimal, String> {
  * @see {@link BigIntFromString} for parsing base-10 integer strings into bigint values
  * @see {@link NumberFromString} for parsing JavaScript number strings
  *
- * @category BigDecimal
+ * @category schemas
  * @since 4.0.0
  */
 export const BigDecimalFromString: BigDecimalFromString = BigDecimalString.pipe(
@@ -12406,7 +12406,7 @@ export interface fromJsonString<S extends Constraint> extends decodeTo<S, String
  * Schema.encodeSync(schemaFromJsonString)({ a: 1 }) // => "{\n  \"a\": 1\n}"
  * ```
  *
- * @category constructors
+ * @category schemas
  * @since 4.0.0
  */
 export function fromJsonString<S extends Constraint>(
@@ -12426,7 +12426,7 @@ export const UnknownFromJsonString: fromJsonString<Unknown> = fromJsonString(Unk
 /**
  * Type-level representation of {@link File}.
  *
- * @category file
+ * @category models
  * @since 4.0.0
  */
 export interface File extends instanceOf<globalThis.File> {
@@ -12441,7 +12441,7 @@ export interface File extends instanceOf<globalThis.File> {
  * The default JSON serializer encodes a `File` as `{ data, type, name, lastModified }`
  * where `data` is base64-encoded.
  *
- * @category file
+ * @category schemas
  * @since 4.0.0
  */
 export const File: File = instanceOf(globalThis.File, {
@@ -12507,7 +12507,7 @@ export const File: File = instanceOf(globalThis.File, {
  *
  * @see {@link File} for the corresponding schema
  *
- * @category file
+ * @category schemas
  * @since 4.0.0
  */
 export const FileReviver = makeFixedDeclarationReviver(
@@ -12518,7 +12518,7 @@ export const FileReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link FormData}.
  *
- * @category FormData
+ * @category models
  * @since 4.0.0
  */
 export interface FormData extends instanceOf<globalThis.FormData> {
@@ -12533,7 +12533,7 @@ export interface FormData extends instanceOf<globalThis.FormData> {
  * The default JSON serializer encodes a `FormData` as an array of `[key, entry]`
  * pairs where each entry is tagged as `"String"` or `"File"`.
  *
- * @category FormData
+ * @category schemas
  * @since 4.0.0
  */
 export const FormData: FormData = instanceOf(globalThis.FormData, {
@@ -12589,7 +12589,7 @@ export const FormData: FormData = instanceOf(globalThis.FormData, {
  *
  * @see {@link FormData} for the corresponding schema
  *
- * @category FormData
+ * @category schemas
  * @since 4.0.0
  */
 export const FormDataReviver = makeFixedDeclarationReviver(
@@ -12600,7 +12600,7 @@ export const FormDataReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation returned by {@link fromFormData}.
  *
- * @category FormData
+ * @category models
  * @since 4.0.0
  */
 export interface fromFormData<S extends Constraint> extends decodeTo<S, FormData> {
@@ -12696,7 +12696,7 @@ export function fromFormData<S extends Constraint>(schema: S): fromFormData<S> {
 /**
  * Type-level representation of {@link URLSearchParams}.
  *
- * @category search params
+ * @category models
  * @since 4.0.0
  */
 export interface URLSearchParams extends instanceOf<globalThis.URLSearchParams> {
@@ -12710,7 +12710,7 @@ export interface URLSearchParams extends instanceOf<globalThis.URLSearchParams> 
  *
  * The default JSON serializer encodes a `URLSearchParams` as a query string.
  *
- * @category search params
+ * @category schemas
  * @since 4.0.0
  */
 export const URLSearchParams: URLSearchParams = instanceOf(globalThis.URLSearchParams, {
@@ -12742,7 +12742,7 @@ export const URLSearchParams: URLSearchParams = instanceOf(globalThis.URLSearchP
  *
  * @see {@link URLSearchParams} for the corresponding schema
  *
- * @category search params
+ * @category schemas
  * @since 4.0.0
  */
 export const URLSearchParamsReviver = makeFixedDeclarationReviver(
@@ -12753,7 +12753,7 @@ export const URLSearchParamsReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation returned by {@link fromURLSearchParams}.
  *
- * @category search params
+ * @category models
  * @since 4.0.0
  */
 export interface fromURLSearchParams<S extends Constraint> extends decodeTo<S, URLSearchParams> {
@@ -12844,7 +12844,7 @@ export function fromURLSearchParams<S extends Constraint>(schema: S): fromURLSea
 /**
  * Type-level representation of {@link NumberFromString}.
  *
- * @category Number
+ * @category models
  * @since 3.10.0
  */
 export interface NumberFromString extends decodeTo<Number, String> {
@@ -12865,7 +12865,7 @@ export interface NumberFromString extends decodeTo<Number, String> {
  * Encoding:
  * A number is encoded as a `string`.
  *
- * @category Number
+ * @category schemas
  * @since 3.10.0
  */
 export const NumberFromString: NumberFromString = String.annotate({
@@ -12875,7 +12875,7 @@ export const NumberFromString: NumberFromString = String.annotate({
 /**
  * Type-level representation of {@link FiniteFromString}.
  *
- * @category Number
+ * @category models
  * @since 4.0.0
  */
 export interface FiniteFromString extends decodeTo<Finite, String> {
@@ -12894,7 +12894,7 @@ export interface FiniteFromString extends decodeTo<Finite, String> {
  * Encoding:
  * - A finite number is encoded as a `string`.
  *
- * @category Number
+ * @category schemas
  * @since 4.0.0
  */
 export const FiniteFromString: FiniteFromString = String.annotate({
@@ -12904,7 +12904,7 @@ export const FiniteFromString: FiniteFromString = String.annotate({
 /**
  * Type-level representation of {@link BigIntFromString}.
  *
- * @category BigInt
+ * @category models
  * @since 4.0.0
  */
 export interface BigIntFromString extends decodeTo<BigInt, String> {
@@ -12936,7 +12936,7 @@ export interface BigIntFromString extends decodeTo<BigInt, String> {
  * @see {@link NumberFromString} for parsing JavaScript number strings, including non-finite values
  * @see {@link BigDecimalFromString} for parsing decimal number strings
  *
- * @category BigInt
+ * @category schemas
  * @since 4.0.0
  */
 export const BigIntFromString: BigIntFromString = make<String>(SchemaAST.bigIntString).pipe(
@@ -12946,7 +12946,7 @@ export const BigIntFromString: BigIntFromString = make<String>(SchemaAST.bigIntS
 /**
  * Type-level representation of {@link Trimmed}.
  *
- * @category string
+ * @category models
  * @since 3.10.0
  */
 export interface Trimmed extends String {
@@ -12956,7 +12956,7 @@ export interface Trimmed extends String {
 /**
  * Schema for strings that contains no leading or trailing whitespaces.
  *
- * @category string
+ * @category schemas
  * @since 3.10.0
  */
 export const Trimmed: Trimmed = String.check(isTrimmed())
@@ -12964,7 +12964,7 @@ export const Trimmed: Trimmed = String.check(isTrimmed())
 /**
  * Type-level representation of {@link Trim}.
  *
- * @category string
+ * @category models
  * @since 3.10.0
  */
 export interface Trim extends decodeTo<Trimmed, String> {
@@ -12982,7 +12982,7 @@ export interface Trim extends decodeTo<Trimmed, String> {
  * Encoding:
  * - The trimmed string is encoded as is.
  *
- * @category string
+ * @category schemas
  * @since 3.10.0
  */
 export const Trim: Trim = String.annotate({
@@ -12992,7 +12992,7 @@ export const Trim: Trim = String.annotate({
 /**
  * Type-level representation of {@link StringFromBase64}.
  *
- * @category string
+ * @category models
  * @since 3.10.0
  */
 export interface StringFromBase64 extends decodeTo<String, String> {
@@ -13010,7 +13010,7 @@ export interface StringFromBase64 extends decodeTo<String, String> {
  * Encoding:
  * - A `string` is encoded as a base64-encoded string.
  *
- * @category string
+ * @category schemas
  * @since 3.10.0
  */
 export const StringFromBase64: StringFromBase64 = String.annotate({
@@ -13022,7 +13022,7 @@ export const StringFromBase64: StringFromBase64 = String.annotate({
 /**
  * Type-level representation of {@link StringFromBase64Url}.
  *
- * @category string
+ * @category models
  * @since 3.10.0
  */
 export interface StringFromBase64Url extends decodeTo<String, String> {
@@ -13040,7 +13040,7 @@ export interface StringFromBase64Url extends decodeTo<String, String> {
  * Encoding:
  * - A `string` is encoded as a base64 (URL) encoded string.
  *
- * @category string
+ * @category schemas
  * @since 3.10.0
  */
 export const StringFromBase64Url: StringFromBase64Url = String.annotate({
@@ -13052,7 +13052,7 @@ export const StringFromBase64Url: StringFromBase64Url = String.annotate({
 /**
  * Type-level representation of {@link StringFromHex}.
  *
- * @category string
+ * @category models
  * @since 3.10.0
  */
 export interface StringFromHex extends decodeTo<String, String> {
@@ -13070,7 +13070,7 @@ export interface StringFromHex extends decodeTo<String, String> {
  * Encoding:
  * - A `string` is encoded as a hex string.
  *
- * @category string
+ * @category schemas
  * @since 3.10.0
  */
 export const StringFromHex: StringFromHex = String.annotate({
@@ -13082,7 +13082,7 @@ export const StringFromHex: StringFromHex = String.annotate({
 /**
  * Type-level representation of {@link StringFromUriComponent}.
  *
- * @category string
+ * @category models
  * @since 3.12.0
  */
 export interface StringFromUriComponent extends decodeTo<String, String> {
@@ -13118,7 +13118,7 @@ export interface StringFromUriComponent extends decodeTo<String, String> {
  * Schema.encodeSync(UrlSchema)({ maxItemPerPage: 10, page: 1 }) // => "%7B%22maxItemPerPage%22%3A10%2C%22page%22%3A1%7D"
  * ```
  *
- * @category string
+ * @category schemas
  * @since 3.12.0
  */
 export const StringFromUriComponent: StringFromUriComponent = String.annotate({
@@ -13131,7 +13131,7 @@ export const StringFromUriComponent: StringFromUriComponent = String.annotate({
  * Schema for property keys accepted by Effect schemas: finite `number`,
  * `symbol`, or `string`.
  *
- * @category PropertyKey
+ * @category schemas
  * @since 4.0.0
  */
 export const PropertyKey = Union([Finite, Symbol, String])
@@ -13144,7 +13144,7 @@ export const PropertyKey = Union([Finite, Symbol, String])
  * The result contains an `issues` array where each issue has a message and an
  * optional path made of property keys or keyed path segments.
  *
- * @category Standard Schema
+ * @category schemas
  * @since 4.0.0
  */
 export const StandardSchemaV1FailureResult = Struct({
@@ -13157,7 +13157,7 @@ export const StandardSchemaV1FailureResult = Struct({
 /**
  * Type-level representation of {@link BooleanFromBit}.
  *
- * @category boolean
+ * @category models
  * @since 4.0.0
  */
 export interface BooleanFromBit extends decodeTo<Boolean, Literals<readonly [0, 1]>> {
@@ -13180,7 +13180,7 @@ export interface BooleanFromBit extends decodeTo<Boolean, Literals<readonly [0, 
  * @see {@link Boolean} for validating values that are already booleans
  * @see {@link Literals} for keeping bit literals instead of decoding them
  *
- * @category boolean
+ * @category schemas
  * @since 4.0.0
  */
 export const BooleanFromBit: BooleanFromBit = Literals([0, 1]).pipe(
@@ -13196,7 +13196,7 @@ export const BooleanFromBit: BooleanFromBit = Literals([0, 1]).pipe(
 /**
  * Type-level representation of {@link Uint8Array}.
  *
- * @category Uint8Array
+ * @category models
  * @since 4.0.0
  */
 export interface Uint8Array extends instanceOf<globalThis.Uint8Array<ArrayBufferLike>> {
@@ -13218,7 +13218,7 @@ const Base64String = String.annotate({
  *
  * The default JSON serializer encodes Uint8Array as a Base64 encoded string.
  *
- * @category Uint8Array
+ * @category schemas
  * @since 4.0.0
  */
 export const Uint8Array: Uint8Array = instanceOf(globalThis.Uint8Array<ArrayBufferLike>, {
@@ -13248,7 +13248,7 @@ export const Uint8Array: Uint8Array = instanceOf(globalThis.Uint8Array<ArrayBuff
  *
  * @see {@link Uint8Array} for the corresponding schema
  *
- * @category Uint8Array
+ * @category schemas
  * @since 4.0.0
  */
 export const Uint8ArrayReviver = makeFixedDeclarationReviver(
@@ -13259,7 +13259,7 @@ export const Uint8ArrayReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link Uint8ArrayFromBase64}.
  *
- * @category Uint8Array
+ * @category models
  * @since 3.10.0
  */
 export interface Uint8ArrayFromBase64 extends decodeTo<Uint8Array, String> {
@@ -13278,7 +13278,7 @@ export interface Uint8ArrayFromBase64 extends decodeTo<Uint8Array, String> {
  * Encoding:
  * - A `Uint8Array` is encoded as a base64-encoded string.
  *
- * @category Uint8Array
+ * @category schemas
  * @since 3.10.0
  */
 export const Uint8ArrayFromBase64: Uint8ArrayFromBase64 = Base64String.pipe(
@@ -13288,7 +13288,7 @@ export const Uint8ArrayFromBase64: Uint8ArrayFromBase64 = Base64String.pipe(
 /**
  * Type-level representation of {@link Uint8ArrayFromBase64Url}.
  *
- * @category Uint8Array
+ * @category models
  * @since 3.10.0
  */
 export interface Uint8ArrayFromBase64Url extends decodeTo<Uint8Array, String> {
@@ -13307,7 +13307,7 @@ export interface Uint8ArrayFromBase64Url extends decodeTo<Uint8Array, String> {
  * Encoding:
  * - A `Uint8Array` is encoded as a base64 (URL) encoded string.
  *
- * @category Uint8Array
+ * @category schemas
  * @since 3.10.0
  */
 export const Uint8ArrayFromBase64Url: Uint8ArrayFromBase64Url = String.annotate({
@@ -13322,7 +13322,7 @@ export const Uint8ArrayFromBase64Url: Uint8ArrayFromBase64Url = String.annotate(
 /**
  * Type-level representation of {@link Uint8ArrayFromHex}.
  *
- * @category Uint8Array
+ * @category models
  * @since 3.10.0
  */
 export interface Uint8ArrayFromHex extends decodeTo<Uint8Array, String> {
@@ -13341,7 +13341,7 @@ export interface Uint8ArrayFromHex extends decodeTo<Uint8Array, String> {
  * Encoding:
  * - A `Uint8Array` is encoded as a hex encoded string.
  *
- * @category Uint8Array
+ * @category schemas
  * @since 3.10.0
  */
 export const Uint8ArrayFromHex: Uint8ArrayFromHex = String.annotate({
@@ -13356,7 +13356,7 @@ export const Uint8ArrayFromHex: Uint8ArrayFromHex = String.annotate({
 /**
  * Type-level representation of {@link DateTimeUtc}.
  *
- * @category DateTime
+ * @category models
  * @since 3.10.0
  */
 export interface DateTimeUtc extends declare<DateTime.Utc> {
@@ -13381,7 +13381,7 @@ export interface DateTimeUtc extends declare<DateTime.Utc> {
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
  * @see {@link DateTimeZoned} for preserving zoned DateTime values
  *
- * @category DateTime
+ * @category schemas
  * @since 3.10.0
  */
 export const DateTimeUtc: DateTimeUtc = declare(
@@ -13423,7 +13423,7 @@ export const DateTimeUtc: DateTimeUtc = declare(
  *
  * @see {@link DateTimeUtc} for the corresponding schema
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const DateTimeUtcReviver = makeFixedDeclarationReviver(
@@ -13434,7 +13434,7 @@ export const DateTimeUtcReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link DateTimeUtcFromDate}.
  *
- * @category DateTime
+ * @category models
  * @since 3.12.0
  */
 export interface DateTimeUtcFromDate extends decodeTo<DateTimeUtc, Date> {
@@ -13462,7 +13462,7 @@ export interface DateTimeUtcFromDate extends decodeTo<DateTimeUtc, Date> {
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
  * @see {@link Date} for validating Date instances without converting them
  *
- * @category DateTime
+ * @category schemas
  * @since 3.12.0
  */
 export const DateTimeUtcFromDate: DateTimeUtcFromDate = Date.pipe(
@@ -13475,7 +13475,7 @@ export const DateTimeUtcFromDate: DateTimeUtcFromDate = Date.pipe(
 /**
  * Type-level representation of {@link DateTimeUtcFromString}.
  *
- * @category DateTime
+ * @category models
  * @since 4.0.0
  */
 export interface DateTimeUtcFromString extends decodeTo<DateTimeUtc, String> {
@@ -13500,7 +13500,7 @@ export interface DateTimeUtcFromString extends decodeTo<DateTimeUtc, String> {
  * @see {@link DateTimeUtcFromMillis} for decoding epoch milliseconds into UTC values
  * @see {@link DateFromString} for decoding strings into JavaScript Date instances
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const DateTimeUtcFromString: DateTimeUtcFromString = String.annotate({
@@ -13515,7 +13515,7 @@ export const DateTimeUtcFromString: DateTimeUtcFromString = String.annotate({
 /**
  * Type-level representation of {@link DateTimeUtcFromMillis}.
  *
- * @category DateTime
+ * @category models
  * @since 4.0.0
  */
 export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>, Int> {
@@ -13537,7 +13537,7 @@ export interface DateTimeUtcFromMillis extends decodeTo<instanceOf<DateTime.Utc>
  * @see {@link DateTimeUtcFromString} for decoding date-time strings into UTC values
  * @see {@link DateFromMillis} for decoding epoch milliseconds into JavaScript Date instances
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const DateTimeUtcFromMillis: DateTimeUtcFromMillis = Int.pipe(
@@ -13550,7 +13550,7 @@ export const DateTimeUtcFromMillis: DateTimeUtcFromMillis = Int.pipe(
 /**
  * Type-level representation of {@link TimeZoneOffset}.
  *
- * @category DateTime
+ * @category models
  * @since 3.10.0
  */
 export interface TimeZoneOffset extends declare<DateTime.TimeZone.Offset> {
@@ -13566,7 +13566,7 @@ export interface TimeZoneOffset extends declare<DateTime.TimeZone.Offset> {
  *
  * - encodes `DateTime.TimeZone.Offset` as a number (offset in milliseconds)
  *
- * @category DateTime
+ * @category schemas
  * @since 3.10.0
  */
 export const TimeZoneOffset: TimeZoneOffset = declare(
@@ -13603,7 +13603,7 @@ export const TimeZoneOffset: TimeZoneOffset = declare(
  *
  * @see {@link TimeZoneOffset} for the corresponding schema
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const TimeZoneOffsetReviver = makeFixedDeclarationReviver(
@@ -13614,7 +13614,7 @@ export const TimeZoneOffsetReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link TimeZoneNamed}.
  *
- * @category DateTime
+ * @category models
  * @since 3.10.0
  */
 export interface TimeZoneNamed extends declare<DateTime.TimeZone.Named> {
@@ -13632,7 +13632,7 @@ const TimeZoneNamedString = String.annotate({ expected: "an IANA time zone ident
  *
  * - encodes `DateTime.TimeZone.Named` as a string (IANA time zone identifier)
  *
- * @category DateTime
+ * @category schemas
  * @since 3.10.0
  */
 export const TimeZoneNamed: TimeZoneNamed = declare(
@@ -13673,7 +13673,7 @@ export const TimeZoneNamed: TimeZoneNamed = declare(
  *
  * @see {@link TimeZoneNamed} for the corresponding schema
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const TimeZoneNamedReviver = makeFixedDeclarationReviver(
@@ -13684,7 +13684,7 @@ export const TimeZoneNamedReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link TimeZoneNamedFromString}.
  *
- * @category DateTime
+ * @category models
  * @since 4.0.0
  */
 export interface TimeZoneNamedFromString extends decodeTo<TimeZoneNamed, String> {
@@ -13702,7 +13702,7 @@ export interface TimeZoneNamedFromString extends decodeTo<TimeZoneNamed, String>
  * Encoding:
  * - A `DateTime.TimeZone.Named` is encoded as a `string`.
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const TimeZoneNamedFromString: TimeZoneNamedFromString = TimeZoneNamedString.pipe(
@@ -13712,7 +13712,7 @@ export const TimeZoneNamedFromString: TimeZoneNamedFromString = TimeZoneNamedStr
 /**
  * Type-level representation of {@link TimeZone}.
  *
- * @category DateTime
+ * @category models
  * @since 3.10.0
  */
 export interface TimeZone extends declare<DateTime.TimeZone> {
@@ -13733,7 +13733,7 @@ const TimeZoneString = String.annotate({
  * - encodes `DateTime.TimeZone` as a string (IANA identifier or offset like
  *   `+03:00`)
  *
- * @category DateTime
+ * @category schemas
  * @since 3.10.0
  */
 export const TimeZone: TimeZone = declare(
@@ -13777,7 +13777,7 @@ export const TimeZone: TimeZone = declare(
  *
  * @see {@link TimeZone} for the corresponding schema
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const TimeZoneReviver = makeFixedDeclarationReviver(
@@ -13788,7 +13788,7 @@ export const TimeZoneReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link TimeZoneFromString}.
  *
- * @category DateTime
+ * @category models
  * @since 4.0.0
  */
 export interface TimeZoneFromString extends decodeTo<TimeZone, String> {
@@ -13806,7 +13806,7 @@ export interface TimeZoneFromString extends decodeTo<TimeZone, String> {
  * Encoding:
  * - A `DateTime.TimeZone` is encoded as a `string`.
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const TimeZoneFromString: TimeZoneFromString = TimeZoneString.pipe(
@@ -13816,7 +13816,7 @@ export const TimeZoneFromString: TimeZoneFromString = TimeZoneString.pipe(
 /**
  * Type-level representation of {@link DateTimeZoned}.
  *
- * @category DateTime
+ * @category models
  * @since 3.10.0
  */
 export interface DateTimeZoned extends declare<DateTime.Zoned> {
@@ -13839,7 +13839,7 @@ const DateTimeZonedString = String.annotate({
  * - encodes named zones by appending the IANA identifier in brackets, such as
  *   `YYYY-MM-DDTHH:mm:ss.sss+HH:MM[Time/Zone]`
  *
- * @category DateTime
+ * @category schemas
  * @since 3.10.0
  */
 export const DateTimeZoned: DateTimeZoned = declare(
@@ -13887,7 +13887,7 @@ export const DateTimeZoned: DateTimeZoned = declare(
  *
  * @see {@link DateTimeZoned} for the corresponding schema
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const DateTimeZonedReviver = makeFixedDeclarationReviver(
@@ -13898,7 +13898,7 @@ export const DateTimeZonedReviver = makeFixedDeclarationReviver(
 /**
  * Type-level representation of {@link DateTimeZonedFromString}.
  *
- * @category DateTime
+ * @category models
  * @since 4.0.0
  */
 export interface DateTimeZonedFromString extends decodeTo<DateTimeZoned, String> {
@@ -13916,7 +13916,7 @@ export interface DateTimeZonedFromString extends decodeTo<DateTimeZoned, String>
  * Encoding:
  * - A `DateTime.Zoned` is encoded as a `string`.
  *
- * @category DateTime
+ * @category schemas
  * @since 4.0.0
  */
 export const DateTimeZonedFromString: DateTimeZonedFromString = DateTimeZonedString.pipe(
@@ -14495,7 +14495,7 @@ export const TaggedErrorClass: {
  * Use this type when you need to defer instantiation of the arbitrary, for
  * example to support recursive schemas.
  *
- * @category Arbitrary
+ * @category utility types
  * @since 4.0.0
  */
 export type LazyArbitrary<T> = (fc: typeof FastCheck) => FastCheck.Arbitrary<T>
@@ -14511,7 +14511,7 @@ export type LazyArbitrary<T> = (fc: typeof FastCheck) => FastCheck.Arbitrary<T>
  * nodes, impossible constraints, invalid candidates, and recursive schemas
  * without a finite terminal path fail immediately.
  *
- * @category Arbitrary
+ * @category generators
  * @since 4.0.0
  */
 export function toArbitraryLazy<S extends Constraint>(schema: S): LazyArbitrary<S["Type"]> {
@@ -14544,7 +14544,7 @@ export function toArbitraryLazy<S extends Constraint>(schema: S): LazyArbitrary<
  * FastCheck.sample(PersonArb, 1)
  * ```
  *
- * @category Arbitrary
+ * @category generators
  * @since 4.0.0
  */
 export function toArbitrary<S extends Constraint>(schema: S): FastCheck.Arbitrary<S["Type"]>
@@ -14581,7 +14581,7 @@ export function toArbitrary<S extends Constraint>(
  * The annotation is applied through this helper because adding it directly to
  * `Annotations.Bottom` would make schemas invariant.
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export function overrideToFormatter<S extends Top>(toFormatter: () => Formatter<S["Type"]>) {
@@ -14600,7 +14600,7 @@ export function overrideToFormatter<S extends Top>(toFormatter: () => Formatter<
  * The optional `onBefore` hook lets you intercept specific AST nodes before
  * the default formatting logic runs.
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export function toFormatter<S extends Constraint>(schema: S, options?: {
@@ -14796,7 +14796,7 @@ export function toEquivalence<T>(schema: Schema<T>): Equivalence.Equivalence<T> 
  *
  * Use {@link toType} before this function to represent the type side instead.
  *
- * @category Representation
+ * @category converting
  * @since 4.0.0
  */
 export function toRepresentation(schema: Constraint): SchemaRepresentation.Document {
@@ -14912,7 +14912,7 @@ export function toJsonSchemaDocument(
 /**
  * Type-level representation returned by {@link toCodecJson}.
  *
- * @category Canonical Codecs
+ * @category converting
  * @since 4.0.0
  */
 export interface toCodecJson<S extends Constraint> extends
@@ -14949,7 +14949,7 @@ export interface toCodecJson<S extends Constraint> extends
  * `toCodecJson` callback can return `undefined` when the declaration is already
  * in canonical JSON form.
  *
- * @category Canonical Codecs
+ * @category converting
  * @since 4.0.0
  */
 export function toCodecJson<S extends Constraint>(schema: S): toCodecJson<S> {
@@ -15071,7 +15071,7 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
  * Derives an isomorphism codec from a schema. The encoded form is the
  * schema's `Iso` type — the intermediate representation used for round-tripping.
  *
- * @category Canonical Codecs
+ * @category converting
  * @since 4.0.0
  */
 export function toCodecIso<S extends Constraint>(schema: S): Codec<S["Type"], S["Iso"]> {
@@ -15108,7 +15108,7 @@ function toCodecIsoBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Schem
  * A {@link Tree} of `string | undefined` nodes. Leaf values are either a
  * string representation or `undefined` for opaque/declaration types.
  *
- * @category Canonical Codecs
+ * @category models
  * @since 4.0.0
  */
 export type StringTree = Tree<string | undefined>
@@ -15116,7 +15116,7 @@ export type StringTree = Tree<string | undefined>
 /**
  * Type-level representation returned by {@link toCodecStringTree}.
  *
- * @category Canonical Codecs
+ * @category converting
  * @since 4.0.0
  */
 export interface toCodecStringTree<S extends Constraint> extends
@@ -15151,7 +15151,7 @@ export interface toCodecStringTree<S extends Constraint> extends
  * `toCodec` encoding. A callback can return `undefined` when the declaration is
  * already in canonical StringTree form.
  *
- * @category Canonical Codecs
+ * @category converting
  * @since 4.0.0
  */
 export function toCodecStringTree<S extends Constraint>(schema: S): toCodecStringTree<S> {
@@ -15161,7 +15161,7 @@ export function toCodecStringTree<S extends Constraint>(schema: S): toCodecStrin
 /**
  * Type-level representation returned by {@link toCodecArrayFromSingle}.
  *
- * @category Canonical Codecs
+ * @category converting
  * @since 4.0.0
  */
 export interface toCodecArrayFromSingle<S extends Constraint> extends
@@ -15200,7 +15200,7 @@ export interface toCodecArrayFromSingle<S extends Constraint> extends
  * decoding convenience rather than a canonical StringTree representation. It
  * does not parse comma-separated strings.
  *
- * @category Canonical Codecs
+ * @category converting
  * @since 4.0.0
  */
 export function toCodecArrayFromSingle<S extends Constraint>(schema: S): toCodecArrayFromSingle<S> {
@@ -15229,7 +15229,7 @@ type XmlEncoderOptions = {
  * an `Effect` that succeeds with the XML string or fails with `SchemaError` if
  * codec encoding fails.
  *
- * @category Canonical Codecs
+ * @category encoding
  * @since 4.0.0
  */
 export function toEncoderXml<T, RE>(
@@ -15489,7 +15489,7 @@ function onSerializerArrayFromSingle(ast: SchemaAST.AST): SchemaAST.AST {
  *
  * @see {@link isGreaterThanDate} for creating the corresponding check
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanDateReviver: SchemaRepresentation.FilterReviver<{
@@ -15509,7 +15509,7 @@ export const isGreaterThanDateReviver: SchemaRepresentation.FilterReviver<{
  *
  * @see {@link isGreaterThanOrEqualToDate} for creating the corresponding check
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanOrEqualToDateReviver: SchemaRepresentation.FilterReviver<{
@@ -15529,7 +15529,7 @@ export const isGreaterThanOrEqualToDateReviver: SchemaRepresentation.FilterReviv
  *
  * @see {@link isLessThanDate} for creating the corresponding check
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanDateReviver: SchemaRepresentation.FilterReviver<{
@@ -15549,7 +15549,7 @@ export const isLessThanDateReviver: SchemaRepresentation.FilterReviver<{
  *
  * @see {@link isLessThanOrEqualToDate} for creating the corresponding check
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanOrEqualToDateReviver: SchemaRepresentation.FilterReviver<{
@@ -15569,7 +15569,7 @@ export const isLessThanOrEqualToDateReviver: SchemaRepresentation.FilterReviver<
  *
  * @see {@link isBetweenDate} for creating the corresponding check
  *
- * @category Date checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBetweenDateReviver: SchemaRepresentation.FilterReviver<{
@@ -15597,7 +15597,7 @@ export const isBetweenDateReviver: SchemaRepresentation.FilterReviver<{
  *
  * @see {@link isGreaterThanBigInt} for creating the corresponding check
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanBigIntReviver: SchemaRepresentation.FilterReviver<{
@@ -15617,7 +15617,7 @@ export const isGreaterThanBigIntReviver: SchemaRepresentation.FilterReviver<{
  *
  * @see {@link isGreaterThanOrEqualToBigInt} for creating the corresponding check
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isGreaterThanOrEqualToBigIntReviver: SchemaRepresentation.FilterReviver<{
@@ -15637,7 +15637,7 @@ export const isGreaterThanOrEqualToBigIntReviver: SchemaRepresentation.FilterRev
  *
  * @see {@link isLessThanBigInt} for creating the corresponding check
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanBigIntReviver: SchemaRepresentation.FilterReviver<{
@@ -15657,7 +15657,7 @@ export const isLessThanBigIntReviver: SchemaRepresentation.FilterReviver<{
  *
  * @see {@link isLessThanOrEqualToBigInt} for creating the corresponding check
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isLessThanOrEqualToBigIntReviver: SchemaRepresentation.FilterReviver<{
@@ -15677,7 +15677,7 @@ export const isLessThanOrEqualToBigIntReviver: SchemaRepresentation.FilterRevive
  *
  * @see {@link isBetweenBigInt} for creating the corresponding check
  *
- * @category BigInt checks
+ * @category validation
  * @since 4.0.0
  */
 export const isBetweenBigIntReviver: SchemaRepresentation.FilterReviver<{
@@ -15704,7 +15704,7 @@ export const isBetweenBigIntReviver: SchemaRepresentation.FilterReviver<{
  * Derives an `Iso` optic from a schema that isomorphically converts between
  * the schema's `Type` and its `Iso` (intermediate / serialized form).
  *
- * @category Optic
+ * @category converting
  * @since 4.0.0
  */
 export function toIso<S extends Constraint>(schema: S): Optic_.Iso<S["Type"], S["Iso"]> {
@@ -15715,7 +15715,7 @@ export function toIso<S extends Constraint>(schema: S): Optic_.Iso<S["Type"], S[
 /**
  * Returns an identity `Iso` over the schema's source (`Type`) side.
  *
- * @category Optic
+ * @category constructors
  * @since 4.0.0
  */
 export function toIsoSource<S extends Constraint>(_: S): Optic_.Iso<S["Type"], S["Type"]> {
@@ -15725,7 +15725,7 @@ export function toIsoSource<S extends Constraint>(_: S): Optic_.Iso<S["Type"], S
 /**
  * Returns an identity `Iso` over the schema's focus (`Iso`) side.
  *
- * @category Optic
+ * @category constructors
  * @since 4.0.0
  */
 export function toIsoFocus<S extends Constraint>(_: S): Optic_.Iso<S["Iso"], S["Iso"]> {
@@ -15735,7 +15735,7 @@ export function toIsoFocus<S extends Constraint>(_: S): Optic_.Iso<S["Iso"], S["
 /**
  * Type-level representation returned by {@link overrideToCodecIso}.
  *
- * @category Optic
+ * @category transforming
  * @since 4.0.0
  */
 export interface overrideToCodecIso<S extends Constraint, Iso> extends
@@ -15774,7 +15774,7 @@ export interface overrideToCodecIso<S extends Constraint, Iso> extends
  * provided `decode` and `encode` getters to transform between the schema type
  * and the target codec.
  *
- * @category Optic
+ * @category transforming
  * @since 4.0.0
  */
 export function overrideToCodecIso<S extends Constraint, Iso>(
@@ -15826,7 +15826,7 @@ export function toDifferJsonPatch<T>(schema: ConstraintCodec<T, unknown>): Diffe
  * Recursive tree type whose leaves are `Node` values and whose branches are
  * readonly arrays or string-keyed records of child trees.
  *
- * @category Tree
+ * @category models
  * @since 4.0.0
  */
 export type Tree<Node> = Node | TreeRecord<Node> | ReadonlyArray<Tree<Node>>
@@ -15835,7 +15835,7 @@ export type Tree<Node> = Node | TreeRecord<Node> | ReadonlyArray<Tree<Node>>
  * A record node in a {@link Tree}: an object mapping string keys to child
  * `Tree` nodes.
  *
- * @category Tree
+ * @category models
  * @since 4.0.0
  */
 export interface TreeRecord<A> {
@@ -15847,7 +15847,7 @@ export interface TreeRecord<A> {
  * The resulting schema accepts a single node value, an array of trees, or an
  * object whose values are trees.
  *
- * @category Tree
+ * @category schemas
  * @since 4.0.0
  */
 export function Tree<S extends Constraint>(node: S) {
@@ -16007,7 +16007,7 @@ export const MutableJsonReviver = makeFixedDeclarationReviver(
  * annotations are taken from the last check; otherwise they are taken from
  * the base schema instance.
  *
- * @category Schema Resolvers
+ * @category getters
  * @since 4.0.0
  */
 export function resolveAnnotations<S extends Constraint>(
@@ -16021,7 +16021,7 @@ export function resolveAnnotations<S extends Constraint>(
  * annotations are those attached via `annotateKey` and live on the AST's
  * `context` rather than on the schema node itself.
  *
- * @category Schema Resolvers
+ * @category getters
  * @since 4.0.0
  */
 export function resolveAnnotationsKey<S extends Constraint>(schema: S): Annotations.Key<S["Type"]> | undefined {

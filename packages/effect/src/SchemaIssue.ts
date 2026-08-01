@@ -836,7 +836,7 @@ export function make(input: unknown, ast: SchemaAST.AST, out: Schema.FilterOutpu
  * @see {@link makeFormatterDefault} — creates a `Formatter<string>`
  * @see {@link makeFormatterStandardSchemaV1} — creates a `Formatter<StandardSchemaV1.FailureResult>`
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export interface Formatter<out Format> extends FormatterI<Issue, Format> {}
@@ -852,7 +852,7 @@ export interface Formatter<out Format> extends FormatterI<Issue, Format> {}
  * @see {@link defaultLeafHook} — the built-in implementation
  * @see {@link Leaf} — the union of terminal issue types
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export type LeafHook = (issue: Leaf) => string
@@ -889,7 +889,7 @@ export type LeafHook = (issue: Leaf) => string
  * @see {@link LeafHook}
  * @see {@link makeFormatterStandardSchemaV1}
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export const defaultLeafHook: LeafHook = (issue): string => {
@@ -927,7 +927,7 @@ export const defaultLeafHook: LeafHook = (issue): string => {
  * @see {@link defaultCheckHook} — the built-in implementation
  * @see {@link Filter} — the issue type this hook formats
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export type CheckHook = (issue: Filter) => string | undefined
@@ -949,7 +949,7 @@ export type CheckHook = (issue: Filter) => string | undefined
  * @see {@link CheckHook}
  * @see {@link makeFormatterStandardSchemaV1}
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export const defaultCheckHook: CheckHook = (issue): string | undefined => {
@@ -986,7 +986,7 @@ export const defaultCheckHook: CheckHook = (issue): string | undefined => {
  * @see {@link LeafHook}
  * @see {@link CheckHook}
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export function makeFormatterStandardSchemaV1(options?: {
@@ -1093,7 +1093,7 @@ function formatCheck<T>(check: SchemaAST.Check<T>): string {
  * @see {@link makeFormatterStandardSchemaV1} — produces Standard Schema V1 format instead
  * @see {@link Formatter}
  *
- * @category Formatter
+ * @category formatting
  * @since 4.0.0
  */
 export function makeFormatterDefault(): Formatter<string> {

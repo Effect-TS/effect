@@ -66,7 +66,7 @@ export interface EntityResource<out A, out E = never> {
  *
  * It is not closed during restarts, due to shard movement or node shutdowns.
  *
- * @category resource management
+ * @category services
  * @since 4.0.0
  */
 export class CloseScope extends Context.Service<
@@ -156,7 +156,7 @@ export const make: <A, E, R>(options: {
  * The pod is created and waited on through `K8sHttpClient`, and is kept alive
  * until the resource is closed or its idle time to live expires.
  *
- * @category Kubernetes
+ * @category constructors
  * @since 4.0.0
  */
 export const makeK8sPod: (

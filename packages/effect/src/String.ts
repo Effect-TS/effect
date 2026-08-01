@@ -387,7 +387,7 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  * String.isEmpty("a") // => false
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 2.0.0
  */
 export const isEmpty = (self: string): self is "" => self.length === 0
@@ -404,7 +404,7 @@ export const isEmpty = (self: string): self is "" => self.length === 0
  * String.isNonEmpty("a") // => true
  * ```
  *
- * @category guards
+ * @category predicates
  * @since 2.0.0
  */
 export const isNonEmpty = (self: string): boolean => self.length > 0
@@ -516,7 +516,7 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
  * String.charCodeAt("abc", 4) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const charCodeAt: {
@@ -557,7 +557,7 @@ export const substring = (start: number, end?: number) => (self: string): string
  * pipe("abc", String.at(4)) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const at: {
@@ -577,7 +577,7 @@ export const at: {
  * pipe("abc", String.charAt(4)) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const charAt: {
@@ -600,7 +600,7 @@ export const charAt: {
  * pipe("abc", String.codePointAt(10)) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const codePointAt: {
@@ -659,7 +659,7 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
  * pipe("a", String.localeCompare("a")) // => 0
  * ```
  *
- * @category comparing
+ * @category comparisons
  * @since 2.0.0
  */
 export const localeCompare =

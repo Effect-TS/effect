@@ -49,7 +49,7 @@ export type TypeId = "~@effect/sql-libsql/LibsqlClient"
 /**
  * libSQL-backed SQL client service, extending `SqlClient` with its runtime type marker and client configuration.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface LibsqlClient extends Client.SqlClient {

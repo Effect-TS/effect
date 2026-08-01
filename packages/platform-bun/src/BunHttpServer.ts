@@ -296,7 +296,7 @@ export const layer = <R extends string>(
 /**
  * Layer that starts a Bun HTTP server on an ephemeral port for tests.
  *
- * @category layers
+ * @category testing
  * @since 4.0.0
  */
 export const layerTest: Layer.Layer<

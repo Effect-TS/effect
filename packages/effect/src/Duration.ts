@@ -423,7 +423,7 @@ export const isDuration = (u: unknown): u is Duration => hasProperty(u, TypeId)
  * Duration.isFinite(Duration.infinity) // => false
  * ```
  *
- * @category guards
+ * @category predicates
  * @since 2.0.0
  */
 export const isFinite = (self: Duration): boolean =>
@@ -441,7 +441,7 @@ export const isFinite = (self: Duration): boolean =>
  * Duration.isZero(Duration.seconds(1)) // => false
  * ```
  *
- * @category guards
+ * @category predicates
  * @since 3.5.0
  */
 export const isZero = (self: Duration): boolean => {
@@ -469,7 +469,7 @@ export const isZero = (self: Duration): boolean => {
  * Duration.isNegative(Duration.negativeInfinity) // => true
  * ```
  *
- * @category guards
+ * @category predicates
  * @since 4.0.0
  */
 export const isNegative = (self: Duration): boolean => {
@@ -498,7 +498,7 @@ export const isNegative = (self: Duration): boolean => {
  * Duration.isPositive(Duration.infinity) // => true
  * ```
  *
- * @category guards
+ * @category predicates
  * @since 4.0.0
  */
 export const isPositive = (self: Duration): boolean => {

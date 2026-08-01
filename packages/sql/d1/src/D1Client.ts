@@ -52,7 +52,7 @@ export type TypeId = "~@effect/sql-d1/D1Client"
 /**
  * Cloudflare D1 SQL client service, extending `SqlClient` with its D1 configuration and no `updateValues` support.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface D1Client extends Client.SqlClient {

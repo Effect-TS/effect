@@ -46,7 +46,7 @@ type ModelConfig = Omit<ConfigOptions, "model"> & { readonly [x: string]: unknow
  *
  * @see {@link withConfigOverride} for scoping embedding request overrides
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export class Config extends Context.Service<

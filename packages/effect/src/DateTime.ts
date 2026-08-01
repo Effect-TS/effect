@@ -895,7 +895,7 @@ export const nowUnsafe: LazyArg<Utc> = Internal.nowUnsafe
  * utc // => DateTime.makeUnsafe("2024-01-01T00:00:00Z")
  * ```
  *
- * @category time zones
+ * @category converting
  * @since 3.13.0
  */
 export const toUtc: (self: DateTime) => Utc = Internal.toUtc
@@ -914,7 +914,7 @@ export const toUtc: (self: DateTime) => Utc = Internal.toUtc
  * DateTime.isZoned(zoned) // => true
  * ```
  *
- * @category time zones
+ * @category transforming
  * @since 3.6.0
  */
 export const setZone: {
@@ -946,7 +946,7 @@ export const setZone: {
  * DateTime.zoneToString(zoned.zone) // => "+03:00"
  * ```
  *
- * @category time zones
+ * @category transforming
  * @since 3.6.0
  */
 export const setZoneOffset: {
@@ -984,7 +984,7 @@ export const setZoneOffset: {
  * // DateTime.zoneMakeNamedUnsafe("Invalid/Zone")
  * ```
  *
- * @category time zones
+ * @category constructors
  * @since 4.0.0
  */
 export const zoneMakeNamedUnsafe: (zoneId: string) => TimeZone.Named = Internal.zoneMakeNamedUnsafe
@@ -1011,7 +1011,7 @@ export const zoneMakeNamedUnsafe: (zoneId: string) => TimeZone.Named = Internal.
  * DateTime.formatIsoZoned(dt) // => "2024-01-01T15:00:00.000+03:00"
  * ```
  *
- * @category time zones
+ * @category constructors
  * @since 3.6.0
  */
 export const zoneMakeOffset: (offset: number) => TimeZone.Offset = Internal.zoneMakeOffset
@@ -1032,7 +1032,7 @@ export const zoneMakeOffset: (offset: number) => TimeZone.Offset = Internal.zone
  * DateTime.zoneMakeNamed("Invalid/Zone") // => Option.none()
  * ```
  *
- * @category time zones
+ * @category constructors
  * @since 3.6.0
  */
 export const zoneMakeNamed: (zoneId: string) => Option.Option<TimeZone.Named> = Internal.zoneMakeNamed
@@ -1059,7 +1059,7 @@ export const zoneMakeNamed: (zoneId: string) => Option.Option<TimeZone.Named> = 
  * DateTime.zoneToString((await Effect.runPromise(program)).zone) // => "Europe/London"
  * ```
  *
- * @category time zones
+ * @category constructors
  * @since 3.6.0
  */
 export const zoneMakeNamedEffect: (zoneId: string) => Effect.Effect<TimeZone.Named, IllegalArgumentError> =
@@ -1081,7 +1081,7 @@ export const zoneMakeNamedEffect: (zoneId: string) => Effect.Effect<TimeZone.Nam
  * DateTime.isTimeZoneNamed(DateTime.zoneMakeLocal()) // => true
  * ```
  *
- * @category time zones
+ * @category constructors
  * @since 3.6.0
  */
 export const zoneMakeLocal: () => TimeZone.Named = Internal.zoneMakeLocal
@@ -1103,7 +1103,7 @@ export const zoneMakeLocal: () => TimeZone.Named = Internal.zoneMakeLocal
  * DateTime.zoneFromString("invalid") // => Option.none()
  * ```
  *
- * @category time zones
+ * @category decoding
  * @since 3.6.0
  */
 export const zoneFromString: (zone: string) => Option.Option<TimeZone> = Internal.zoneFromString
@@ -1120,7 +1120,7 @@ export const zoneFromString: (zone: string) => Option.Option<TimeZone> = Interna
  * DateTime.zoneToString(DateTime.zoneMakeNamedUnsafe("Europe/London")) // => "Europe/London"
  * ```
  *
- * @category time zones
+ * @category encoding
  * @since 3.6.0
  */
 export const zoneToString: (self: TimeZone) => string = Internal.zoneToString
@@ -1140,7 +1140,7 @@ export const zoneToString: (self: TimeZone) => string = Internal.zoneToString
  * result // => Option.some("2024-01-01T00:00:00.000+00:00[Europe/London]")
  * ```
  *
- * @category time zones
+ * @category transforming
  * @since 3.6.0
  */
 export const setZoneNamed: {
@@ -1169,7 +1169,7 @@ export const setZoneNamed: {
  * DateTime.zoneToString(zoned.zone) // => "Europe/London"
  * ```
  *
- * @category time zones
+ * @category transforming
  * @since 4.0.0
  */
 export const setZoneNamedUnsafe: {
@@ -1646,7 +1646,7 @@ export const removeTime: (self: DateTime) => Utc = Internal.removeTime
  * const selectedParts = [parts.year, parts.month, parts.day, parts.hour] // => [2024, 1, 1, 12]
  * ```
  *
- * @category parts
+ * @category getters
  * @since 3.6.0
  */
 export const toParts: (self: DateTime) => DateTime.PartsWithWeekday = Internal.toParts
@@ -1671,7 +1671,7 @@ export const toParts: (self: DateTime) => DateTime.PartsWithWeekday = Internal.t
  * const selectedParts = [parts.year, parts.month, parts.day, parts.hour] // => [2024, 1, 1, 12]
  * ```
  *
- * @category parts
+ * @category getters
  * @since 3.6.0
  */
 export const toPartsUtc: (self: DateTime) => DateTime.PartsWithWeekday = Internal.toPartsUtc
@@ -1692,7 +1692,7 @@ export const toPartsUtc: (self: DateTime) => DateTime.PartsWithWeekday = Interna
  * DateTime.getPartUtc(dateTime, "year") // => 2024
  * ```
  *
- * @category parts
+ * @category getters
  * @since 3.6.0
  */
 export const getPartUtc: {
@@ -1718,7 +1718,7 @@ export const getPartUtc: {
  * DateTime.getPart(dateTime, "year") // => 2024
  * ```
  *
- * @category parts
+ * @category getters
  * @since 3.6.0
  */
 export const getPart: {
@@ -1748,7 +1748,7 @@ export const getPart: {
  * updated // => DateTime.makeZonedUnsafe("2025-06-15T12:00:00Z", { timeZone: "UTC" })
  * ```
  *
- * @category parts
+ * @category transforming
  * @since 3.6.0
  */
 export const setParts: {
@@ -1777,7 +1777,7 @@ export const setParts: {
  * updated // => DateTime.makeUnsafe("2025-01-01T18:00:00Z")
  * ```
  *
- * @category parts
+ * @category transforming
  * @since 3.6.0
  */
 export const setPartsUtc: {
@@ -1813,7 +1813,7 @@ export const setPartsUtc: {
  * await Effect.runPromise(Effect.provide(program, layer)) // => "Europe/London"
  * ```
  *
- * @category current time zone
+ * @category services
  * @since 3.11.0
  */
 export class CurrentTimeZone extends Context.Service<CurrentTimeZone, TimeZone>()(
@@ -1835,7 +1835,7 @@ export class CurrentTimeZone extends Context.Service<CurrentTimeZone, TimeZone>(
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))) // => "Europe/London"
  * ```
  *
- * @category current time zone
+ * @category accessors
  * @since 3.6.0
  */
 export const setZoneCurrent = (self: DateTime): Effect.Effect<Zoned, never, CurrentTimeZone> =>
@@ -1857,7 +1857,7 @@ export const setZoneCurrent = (self: DateTime): Effect.Effect<Zoned, never, Curr
  * }).pipe(DateTime.withCurrentZone(zone))) // => "Europe/London"
  * ```
  *
- * @category current time zone
+ * @category providing services
  * @since 3.6.0
  */
 export const withCurrentZone: {
@@ -1879,7 +1879,7 @@ export const withCurrentZone: {
  * }).pipe(DateTime.withCurrentZoneLocal)) // => true
  * ```
  *
- * @category current time zone
+ * @category providing services
  * @since 3.6.0
  */
 export const withCurrentZoneLocal = <A, E, R>(
@@ -1902,7 +1902,7 @@ export const withCurrentZoneLocal = <A, E, R>(
  * await Effect.runPromise(program) // => "+03:00"
  * ```
  *
- * @category current time zone
+ * @category providing services
  * @since 3.6.0
  */
 export const withCurrentZoneOffset: {
@@ -1935,7 +1935,7 @@ export const withCurrentZoneOffset: {
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))) // => "Europe/London"
  * ```
  *
- * @category current time zone
+ * @category providing services
  * @since 3.6.0
  */
 export const withCurrentZoneNamed: {
@@ -1968,7 +1968,7 @@ export const withCurrentZoneNamed: {
  * }).pipe(DateTime.withCurrentZoneNamed("Europe/London"))) // => "Europe/London"
  * ```
  *
- * @category current time zone
+ * @category accessors
  * @since 3.6.0
  */
 export const nowInCurrentZone: Effect.Effect<Zoned, never, CurrentTimeZone> = Effect.flatMap(now, setZoneCurrent)
@@ -2741,7 +2741,7 @@ export const formatIsoZoned: (self: Zoned) => string = Internal.formatIsoZoned
  * await Effect.runPromise(Effect.provide(program, layer)) // => "Europe/London"
  * ```
  *
- * @category current time zone
+ * @category layers
  * @since 3.6.0
  */
 export const layerCurrentZone: (resource: NoInfer<TimeZone>) => Layer.Layer<CurrentTimeZone> = Layer.succeed(
@@ -2771,7 +2771,7 @@ export const layerCurrentZone: (resource: NoInfer<TimeZone>) => Layer.Layer<Curr
  * await Effect.runPromise(Effect.provide(program, layer)) // => "+03:00"
  * ```
  *
- * @category current time zone
+ * @category layers
  * @since 3.6.0
  */
 export const layerCurrentZoneOffset = (offset: number): Layer.Layer<CurrentTimeZone> =>
@@ -2800,7 +2800,7 @@ export const layerCurrentZoneOffset = (offset: number): Layer.Layer<CurrentTimeZ
  * await Effect.runPromise(Effect.provide(program, layer)) // => "Europe/London"
  * ```
  *
- * @category current time zone
+ * @category layers
  * @since 3.6.0
  */
 export const layerCurrentZoneNamed: (zoneId: string) => Layer.Layer<
@@ -2830,7 +2830,7 @@ export const layerCurrentZoneNamed: (zoneId: string) => Layer.Layer<
  * await Effect.runPromise(Effect.provide(program, DateTime.layerCurrentZoneLocal)) // => true
  * ```
  *
- * @category current time zone
+ * @category layers
  * @since 3.6.0
  */
 export const layerCurrentZoneLocal: Layer.Layer<CurrentTimeZone> = Layer.sync(CurrentTimeZone)(zoneMakeLocal)

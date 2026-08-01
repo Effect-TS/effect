@@ -300,7 +300,7 @@ export const JsonPatchDocument = Schema.Array(JsonPatchOperation)
 /**
  * Type for a JSON Patch document.
  *
- * @category types
+ * @category models
  * @since 4.0.0
  */
 export type JsonPatchDocument = typeof JsonPatchDocument.Type
@@ -497,7 +497,7 @@ export const parsePatchInput = Effect.fn("parsePatchInput")(function*(input: str
  * Effect.runSync(program) // => "New Title"
  * ```
  *
- * @category application
+ * @category transforming
  * @since 4.0.0
  */
 export const applyPatches = Effect.fn("applyPatches")(function*(

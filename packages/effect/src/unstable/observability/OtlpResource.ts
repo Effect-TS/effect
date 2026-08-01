@@ -142,7 +142,7 @@ export const fromConfig: (
  *
  * Throws if the resource does not contain a string `service.name` attribute.
  *
- * @category Attributes
+ * @category attributes
  * @since 4.0.0
  */
 export const serviceNameUnsafe = (resource: Resource): string => {
@@ -158,7 +158,7 @@ export const serviceNameUnsafe = (resource: Resource): string => {
 /**
  * Converts key/value entries into OTLP `KeyValue` attributes.
  *
- * @category Attributes
+ * @category attributes
  * @since 4.0.0
  */
 export const entriesToAttributes = (entries: Iterable<[string, unknown]>): Array<KeyValue> => {
@@ -180,7 +180,7 @@ export const entriesToAttributes = (entries: Iterable<[string, unknown]>): Array
  * Arrays are converted recursively, primitive values use their matching OTLP
  * fields, and unsupported values are formatted as strings.
  *
- * @category Attributes
+ * @category attributes
  * @since 4.0.0
  */
 export const unknownToAttributeValue = (value: unknown): AnyValue => {

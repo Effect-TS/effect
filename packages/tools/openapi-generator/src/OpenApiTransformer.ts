@@ -26,7 +26,7 @@ import * as Utils from "./Utils.ts"
  * types, and the implementation body. The generator swaps implementations to
  * choose between schema-backed clients and type-only clients.
  *
- * @category code generation
+ * @category services
  * @since 4.0.0
  */
 export class OpenApiTransformer extends Context.Service<
@@ -477,7 +477,7 @@ export const make = (
  * Use when you use this layer when generated HttpClient code should perform runtime response
  * decoding with generated Effect Schema values.
  *
- * @category code generation
+ * @category layers
  * @since 4.0.0
  */
 export const layerTransformerSchema = Layer.sync(
@@ -888,7 +888,7 @@ export const make = (
  * generated client relies on TypeScript types instead of runtime Schema
  * decoding.
  *
- * @category code generation
+ * @category layers
  * @since 4.0.0
  */
 export const layerTransformerTs = Layer.sync(

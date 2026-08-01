@@ -214,7 +214,7 @@ export const layerRpcHandlers = (options: {
  * Use to keep per-client chunk assembly state while handling chunked event-log
  * writes.
  *
- * @category chunked message state
+ * @category services
  * @since 4.0.0
  */
 export class ChunkedMessageState extends Context.Reference<

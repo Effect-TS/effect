@@ -36,7 +36,7 @@ export interface OpfsWorkerConfig {
 /**
  * Runs the SQLite OPFS worker loop, opening the configured database, posting a ready message, handling query/import/export/update-hook messages, and closing when a close message is received.
  *
- * @category constructors
+ * @category running
  * @since 4.0.0
  */
 export const run = (

@@ -958,7 +958,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
  *
  * @see {@link makePersisted} for the effect constructor when building the service directly instead of providing it as a layer
  *
- * @category constructors
+ * @category layers
  * @since 4.0.0
  */
 export const layerPersisted = (options: {
