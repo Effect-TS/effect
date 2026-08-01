@@ -629,4 +629,70 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       assert.strictEqual(response.headers["retry-after"], "120")
       assert.deepStrictEqual(body, { reason: "busy" })
     }))
+
+  it.effect("sets declared headers on a Uint8Array stream response", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("download", "/download", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { "x-trace-id": Schema.String },
+              body: HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
+            })
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("download", () =>
+            Effect.succeed({
+              headers: { "x-trace-id": "abc" },
+              body: Stream.make(new Uint8Array([1, 2, 3]))
+            }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      // TODO(Task 5): switch back to `{ responseMode: "decoded-and-response" }` and assert
+      // on the decoded `value` once the client understands `WithHeaders` responses.
+      const response = yield* client.test.download({ responseMode: "response-only" })
+
+      assert.strictEqual(response.headers["x-trace-id"], "abc")
+      assert.strictEqual(response.headers["content-type"], "application/custom-bytes")
+    }))
+
+  it.effect("sets declared headers on an SSE stream response", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("events", "/events", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { "x-trace-id": Schema.String },
+              body: HttpApiSchema.StreamSse({
+                events: Schema.Struct({ event: Schema.Literal("tick"), data: Schema.String })
+              })
+            })
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("events", () =>
+            Effect.succeed({
+              headers: { "x-trace-id": "abc" },
+              body: Stream.make({ event: "tick" as const, data: "one" })
+            }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      // TODO(Task 5): switch back to `{ responseMode: "decoded-and-response" }` and assert
+      // on the decoded `value` once the client understands `WithHeaders` responses.
+      const response = yield* client.test.events({ responseMode: "response-only" })
+
+      assert.strictEqual(response.headers["x-trace-id"], "abc")
+      assert.strictEqual(response.headers["content-type"], "text/event-stream")
+    }))
 })
