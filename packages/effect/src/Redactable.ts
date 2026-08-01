@@ -163,9 +163,15 @@ export function getRedacted(redactable: Redactable): unknown {
 /** @internal */
 export const currentFiberTypeId = "~effect/Fiber/currentFiber"
 
+const emptyMap = new Map()
 const emptyContext: Context.Context<never> = {
   "~effect/Context": {} as any,
-  mapUnsafe: new Map(),
+  cache: emptyMap,
+  base: emptyMap,
+  overlay: undefined,
+  depth: 0,
+  _flat: undefined,
+  mapUnsafe: emptyMap,
   pipe() {
     return pipeArguments(this, arguments)
   }

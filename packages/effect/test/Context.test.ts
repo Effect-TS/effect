@@ -1,7 +1,8 @@
-import { assertFalse, assertTrue, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
+import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
+import * as Redactable from "effect/Redactable"
 import { describe, it } from "vitest"
 
 describe("Context", () => {
@@ -47,9 +48,9 @@ describe("Context", () => {
     })
 
     const source = Context.make(A, 1)
-    assertTrue(Context.unsafeHasSameCache(source, Context.add(source, B, 1)))
-    assertTrue(Context.unsafeHasSameCache(source, Context.add(source, Ref, 1)))
-    assertFalse(Context.unsafeHasSameCache(source, Context.add(source, CachedRef, 1)))
+    assertTrue(Context.hasSameCache(source, Context.add(source, B, 1)))
+    assertTrue(Context.hasSameCache(source, Context.add(source, Ref, 1)))
+    assertFalse(Context.hasSameCache(source, Context.add(source, CachedRef, 1)))
     const context = source.pipe(
       Context.add(Cached, 2),
       Context.add(CachedClass, 3)
@@ -74,30 +75,37 @@ describe("Context", () => {
     ])
   })
 
-  it("reads legacy contexts that only carry mapUnsafe", () => {
-    // Redactable and cause annotations build these in cycle-locked modules
-    const legacy = { mapUnsafe: new Map([[A.key, 1]]) } as any
-    const Ref = Context.Reference<number>("ContextTest/LegacyRef", { defaultValue: () => 7 })
+  it("supports the Redactable fallback context", () => {
+    const Cached = Context.Service<number>("ContextTest/RedactableCached", { enableCaching: true })
+    const context = Redactable.getRedacted({
+      [Redactable.symbolRedactable](context: Context.Context<never>) {
+        return context
+      }
+    }) as Context.Context<never>
 
-    strictEqual(Context.getOrUndefined(legacy, A), 1)
-    strictEqual(Context.getOrUndefined(legacy, B), undefined)
-    strictEqual(Context.getReferenceUnsafe(legacy, Ref), 7)
+    strictEqual(context.mapUnsafe.size, 0)
+    assertTrue(Context.getOption(context, Cached)._tag === "None")
 
-    const added = Context.add(legacy, B, 2) as Context.Context<any>
-    strictEqual(Context.getOrUndefined(added, A), 1)
-    strictEqual(Context.getOrUndefined(added, B), 2)
-
-    deepStrictEqual([...Context.merge(Context.make(C, 3), legacy).mapUnsafe], [[C.key, 3], [A.key, 1]])
+    const added = Context.add(context, Cached, 1)
+    strictEqual(Context.get(added, Cached), 1)
+    strictEqual(context.mapUnsafe.size, 0)
   })
 
   it("distinguishes an undefined service from an absent service", () => {
-    const Undefined = Context.Service<undefined>("ContextTest/Undefined")
+    const Undefined = Context.Service<undefined>("ContextTest/Undefined", { enableCaching: true })
     const Missing = Context.Service<undefined>("ContextTest/Missing")
-    const context = Context.make(Undefined, undefined)
+    const Ref = Context.Reference<string | undefined>("ContextTest/UndefinedRef", {
+      defaultValue: () => "default",
+      enableCaching: true
+    })
+    const context = Context.make(Undefined, undefined).pipe(Context.add(Ref, undefined))
 
     assertTrue(Context.getOption(context, Undefined)._tag === "Some")
     assertTrue(Context.getOption(context, Missing)._tag === "None")
     strictEqual(Context.getUnsafe(context, Undefined), undefined)
+    strictEqual(Context.getOrElse(context, Undefined, () => 1), undefined)
+    deepStrictEqual(Context.getOption(context, Ref), Option.some(undefined))
+    strictEqual(Context.get(context, Ref), undefined)
   })
 
   it("bounds deep overlay chains without changing values or order", () => {
@@ -157,39 +165,6 @@ describe("Context", () => {
     deepStrictEqual([...Context.omit(B)(source).mapUnsafe], [[A.key, 1], [C.key, 3]])
   })
 
-  it("reseals mutable contexts after return and throw", () => {
-    let returnedInput: Context.Context<any> | undefined
-    const result = Context.mutate(Context.make(A, 1), (mutable) => {
-      returnedInput = mutable
-      return Context.add(mutable, B, 2)
-    })
-
-    assertFalse(result.mutable)
-    assertFalse(returnedInput!.mutable)
-
-    let thrownInput: Context.Context<any> | undefined
-    throws(() =>
-      Context.mutate(Context.make(A, 1), (mutable) => {
-        thrownInput = mutable
-        Context.add(mutable, B, 2)
-        throw new Error("boom")
-      })
-    )
-    assertFalse(thrownInput!.mutable)
-  })
-
-  it("applies merge and removal operations in a mutation", () => {
-    const source = Context.make(A, 1).pipe(Context.add(B, 2))
-    const result = Context.mutate(source, (mutable) => {
-      Context.addOrOmit(mutable, B, Option.none())
-      return Context.merge(mutable, Context.make(C, 3))
-    })
-
-    deepStrictEqual([...source.mapUnsafe], [[A.key, 1], [B.key, 2]])
-    deepStrictEqual([...result.mapUnsafe], [[A.key, 1], [C.key, 3]])
-    assertFalse(result.mutable)
-  })
-
   it("resolves reference defaults lazily and caches them", () => {
     let calls = 0
     const Ref = Context.Reference<object>("ContextTest/LazyRef", {
@@ -201,9 +176,9 @@ describe("Context", () => {
     const context = Context.empty()
 
     strictEqual(calls, 0)
-    const first = Context.getReferenceUnsafe(context, Ref)
+    const first = Context.get(context, Ref)
     strictEqual(calls, 1)
-    strictEqual(Context.getReferenceUnsafe(context, Ref), first)
+    strictEqual(Context.get(context, Ref), first)
     strictEqual(calls, 1)
   })
 

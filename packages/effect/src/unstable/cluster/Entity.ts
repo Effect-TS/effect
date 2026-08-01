@@ -645,12 +645,11 @@ export const makeTestClient: <Type extends string, Rpcs extends Rpc.Any, LA, LE,
       shardId: makeShardId(entityId)
     })
     const scope = yield* Effect.scope
-    const handlerContext = Context.mutate(entityEntry.context, (context) =>
-      context.pipe(
-        Context.add(CurrentRunnerAddress, runnerAddress),
-        Context.add(CurrentAddress, address),
-        Context.add(Scope, scope)
-      ))
+    const handlerContext = entityEntry.context.pipe(
+      Context.add(CurrentRunnerAddress, runnerAddress),
+      Context.add(CurrentAddress, address),
+      Context.add(Scope, scope)
+    )
     const handlers = yield* entityEntry.build.pipe(
       Effect.setContext(handlerContext as Context.Context<any>)
     )
