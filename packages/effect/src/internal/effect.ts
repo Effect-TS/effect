@@ -708,8 +708,8 @@ export class FiberImpl<A = any, E = any> implements Fiber.Fiber<A, E> {
   setContext(context: Context.Context<never>): void {
     const previous = this.context
     this.context = context
-    // Every key cached below opts in to Context caching, so a shared cache
-    // means none of them changed
+    // Every key cached below opts in to Context caching, so contexts related
+    // only by non-caching adds cannot have changed any of them
     if (previous !== undefined && Context.hasSameCache(previous, context)) return
     const scheduler = this.getRef(Scheduler.Scheduler)
     if (scheduler !== this.currentScheduler) {

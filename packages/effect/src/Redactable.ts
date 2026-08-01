@@ -166,11 +166,8 @@ export const currentFiberTypeId = "~effect/Fiber/currentFiber"
 const emptyMap = new Map()
 const emptyContext: Context.Context<never> = {
   "~effect/Context": {} as any,
-  cache: emptyMap,
   base: emptyMap,
-  overlay: undefined,
   depth: 0,
-  _flat: undefined,
   mapUnsafe: emptyMap,
   pipe() {
     return pipeArguments(this, arguments)

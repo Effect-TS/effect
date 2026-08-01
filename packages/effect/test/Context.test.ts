@@ -36,7 +36,7 @@ describe("Context", () => {
     ])
   })
 
-  it("copies the cache only for opted-in keys", () => {
+  it("invalidates the fiber cache only for opted-in keys", () => {
     const Cached = Context.Service<number>("ContextTest/Cached", { enableCaching: true })
     class CachedClass extends Context.Service<CachedClass, number>()("ContextTest/CachedClass", {
       enableCaching: true

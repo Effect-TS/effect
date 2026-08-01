@@ -68,7 +68,6 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
   readonly Identifier: Identifier
   readonly key: string
   readonly stack?: string | undefined
-  readonly enableCaching: boolean
 }
 
 /**
@@ -166,9 +165,9 @@ export declare namespace ServiceClass {
  * declarations. The returned key can be yielded as an Effect and passed to
  * `Context.make`, `Context.add`, and the Context getter functions.
  *
- * Pass `enableCaching: true` to store the key in the context's cache, making
- * reads O(1). Reserve this for keys that are added and read on hot paths;
- * every cached key grows the small Map that a caching `Context.add` copies.
+ * Pass `enableCaching: true` for keys whose values fibers cache locally, such
+ * as runtime references read on every context change. Adding a caching key
+ * invalidates those fiber caches, while adds of regular keys keep them intact.
  * The same option is available on `Reference`.
  *
  * **Gotchas**
@@ -260,7 +259,6 @@ export const Service: {
       return err.stack
     }
   })
-  self.enableCaching = false
   if (arguments.length > 0) {
     self.key = arguments[0]
     if (arguments[1]?.defaultValue) {
@@ -268,7 +266,6 @@ export const Service: {
       self.defaultValue = arguments[1].defaultValue
     }
     if (arguments[1]?.enableCaching) {
-      self.enableCaching = true
       cacheKeys.add(self.key)
     }
     return self
@@ -282,7 +279,6 @@ export const Service: {
       ;(self as any).make = options.make
     }
     if (options?.enableCaching) {
-      self.enableCaching = true
       cacheKeys.add(self.key)
     }
     return self
@@ -496,7 +492,7 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
 }
 
 interface ContextImpl<in Services> extends Context<Services> {
-  cache: ReadonlyMap<string, unknown>
+  cacheRoot: ContextImpl<any> | undefined
   base: ReadonlyMap<string, any>
   overlay: Overlay | undefined
   depth: number
@@ -512,26 +508,18 @@ interface Overlay {
 const MaxDepth = 8
 
 const makeImpl = <Services>(
-  cache: ReadonlyMap<string, unknown>,
+  cacheRoot: ContextImpl<any> | undefined,
   base: ReadonlyMap<string, any>,
   overlay: Overlay | undefined,
   depth: number
 ): ContextImpl<Services> => {
   const self: ContextImpl<Services> = Object.create(Proto)
-  self.cache = cache
+  self.cacheRoot = cacheRoot ?? self
   self.base = base
   self.overlay = overlay
   self.depth = depth
   self._flat = undefined
   return self
-}
-
-const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
-  if (self._flat) return self._flat
-  if (!self.overlay) return self._flat = self.base
-  const map = new Map(self.base)
-  applyOverlays(map, self.overlay)
-  return self._flat = map
 }
 
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
@@ -540,27 +528,20 @@ const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): voi
   map.set(overlay.key, overlay.value)
 }
 
-const withFlat = <B>(self: ContextImpl<any>, f: (map: Map<string, any>) => void): Context<B> => {
-  const map = new Map(flatten(self))
+const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
+  const map = new Map(self.mapUnsafe)
   f(map)
   return makeUnsafe(map)
 }
 
 const notFound = Symbol.for("effect/Context/notFound")
 
-const lookup = (self: ContextImpl<any>, key: string): unknown => {
-  for (let overlay = self.overlay; overlay; overlay = overlay.parent) {
+const lookup = (self: Context<any>, key: string): unknown => {
+  const impl = self as ContextImpl<any>
+  for (let overlay = impl.overlay; overlay; overlay = overlay.parent) {
     if (overlay.key === key) return overlay.value
   }
-  return self.base.has(key) ? self.base.get(key) : notFound
-}
-
-const lookupKey = <I, S>(self: Context<any>, key: Key<I, S>): S | typeof notFound => {
-  const impl = self as ContextImpl<any>
-  if (key.enableCaching) {
-    return impl.cache.has(key.key) ? impl.cache.get(key.key) as S : notFound
-  }
-  return lookup(impl, key.key) as any
+  return impl.base.has(key) ? impl.base.get(key) : notFound
 }
 
 /**
@@ -594,24 +575,24 @@ const lookupKey = <I, S>(self: Context<any>, key: Key<I, S>): S | typeof notFoun
  * @category constructors
  * @since 4.0.0
  */
-export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>): Context<Services> => {
-  const cache = new Map<string, unknown>()
-  mapUnsafe.forEach((value, key) => {
-    if (cacheKeys.has(key)) cache.set(key, value)
-  })
-  return makeImpl(cache, mapUnsafe, undefined, 0)
-}
+export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>): Context<Services> =>
+  makeImpl(undefined, mapUnsafe, undefined, 0)
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cache" | "base" | "overlay" | "depth" | "_flat"
+  "cacheRoot" | "base" | "overlay" | "depth" | "_flat"
 > = {
   ...PipeInspectableProto,
   [TypeId]: {
     _Services: (_: never) => _
   },
   get mapUnsafe() {
-    return flatten(this as ContextImpl<any>)
+    const self = this as any as ContextImpl<any>
+    if (self._flat) return self._flat
+    if (!self.overlay) return self._flat = self.base
+    const map = new Map(self.base)
+    applyOverlays(map, self.overlay)
+    return self._flat = map
   },
   toJSON(this: Context<never>) {
     return {
@@ -643,7 +624,7 @@ const Proto: Omit<
 export const hasSameCache = <Services, Services2>(
   self: Context<Services>,
   that: Context<Services2>
-): boolean => (self as ContextImpl<Services>).cache === (that as ContextImpl<Services2>).cache
+): boolean => (self as ContextImpl<Services>).cacheRoot === (that as ContextImpl<Services2>).cacheRoot
 
 /**
  * Checks whether the provided argument is a `Context`.
@@ -809,14 +790,8 @@ export const add: {
     return withFlat(impl, (map) => map.set(key.key, service))
   }
 
-  let cache = impl.cache
-  if (key.enableCaching) {
-    cache = new Map(impl.cache)
-    ;(cache as Map<string, unknown>).set(key.key, service)
-  }
-
   return makeImpl(
-    cache,
+    cacheKeys.has(key.key) ? undefined : impl.cacheRoot,
     impl.base,
     { key: key.key, value: service, parent: impl.overlay },
     impl.depth + 1
@@ -928,7 +903,7 @@ export const getOrElse: {
   <S, I, B>(key: Key<I, S>, orElse: LazyArg<B>): <Services>(self: Context<Services>) => S | B
   <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B
 } = dual(3, <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B => {
-  const value = lookupKey(self, key)
+  const value = lookup(self, key.key)
   if (value !== notFound) return value as any
   return isReference(key) ? getDefaultValue(key) : orElse()
 })
@@ -962,8 +937,7 @@ export const getOrUndefined: {
 
 /** @internal */
 export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
-  const impl = self as ContextImpl<Services>
-  const value = impl.cache.has(key) ? impl.cache.get(key) : lookup(impl, key)
+  const value = lookup(self, key)
   return value === notFound ? undefined : value as A
 }
 
@@ -1008,7 +982,7 @@ export const getUnsafe: {
 } = dual(
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S => {
-    const value = lookupKey(self, service)
+    const value = lookup(self, service.key)
     if (value === notFound) {
       if (isReference(service)) return getDefaultValue(service as any)
       throw serviceNotFoundError(service)
@@ -1119,7 +1093,7 @@ export const getOption: {
   <S, I>(service: Key<I, S>): <Services>(self: Context<Services>) => Option.Option<S>
   <Services, S, I>(self: Context<Services>, service: Key<I, S>): Option.Option<S>
 } = dual(2, <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): Option.Option<S> => {
-  const value = lookupKey(self, service)
+  const value = lookup(self, service.key)
   if (value !== notFound) return Option.some(value as any)
   return isReference(service) ? Option.some(getDefaultValue(service as any)) : Option.none()
 })
@@ -1162,11 +1136,9 @@ export const merge: {
   <R1>(that: Context<R1>): <Services>(self: Context<Services>) => Context<R1 | Services>
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
-  const selfImpl = self as ContextImpl<Services>
-  const thatFlat = flatten(that as ContextImpl<R1>)
-  if (flatten(selfImpl).size === 0) return that as any
-  if (thatFlat.size === 0) return self as any
-  return withFlat(selfImpl, (map) => thatFlat.forEach((value, key) => map.set(key, value)))
+  if (self.mapUnsafe.size === 0) return that as any
+  if (that.mapUnsafe.size === 0) return self as any
+  return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => map.set(key, value)))
 })
 
 /**
@@ -1213,7 +1185,7 @@ export const mergeAll = <T extends Array<unknown>>(
 ): Context<T[number]> => {
   const map = new Map()
   for (let i = 0; i < ctxs.length; i++) {
-    flatten(ctxs[i] as ContextImpl<any>).forEach((value, key) => {
+    ctxs[i].mapUnsafe.forEach((value, key) => {
       map.set(key, value)
     })
   }
@@ -1256,7 +1228,7 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
 ) =>
 <Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> => {
   const keep = new Set(services.map((key) => key.key))
-  return withFlat(self as ContextImpl<Services>, (map) =>
+  return withFlat(self, (map) =>
     map.forEach((_, key) => {
       if (!keep.has(key)) map.delete(key)
     }))
@@ -1297,7 +1269,7 @@ export const omit = <S extends ReadonlyArray<Key<any, any>>>(
   ...keys: S
 ) =>
 <Services>(self: Context<Services>): Context<Exclude<Services, Service.Identifier<S[number]>>> =>
-  withFlat(self as ContextImpl<Services>, (map) => {
+  withFlat(self, (map) => {
     for (let i = 0; i < keys.length; i++) {
       map.delete(keys[i].key)
     }
