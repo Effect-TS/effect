@@ -60,6 +60,7 @@ function fromASTs(
   const anonymousReferences = new Map<SchemaAST.AST, string>()
   const referenceOwners = new Map<string, SchemaAST.AST>()
   const valueIds = new Map<unknown, number>()
+  const compositeIds = new Map<string, number>()
   const canonicalByKey = new Map<string, SchemaAST.AST>()
   let nextValueId = 0
   const buildingReferences = new Set<string>()
@@ -95,10 +96,39 @@ function fromASTs(
     return id
   }
 
+  // Identity of a container slot on an annotated node: arrays and property/index
+  // signature wrappers are pure structure with no identity of their own, so they
+  // compare by their contents. AST nodes (and any other value) keep reference identity.
+  function getSlotId(value: unknown): number {
+    let composite: string | undefined
+    if (globalThis.Array.isArray(value)) {
+      composite = `[${value.map(getSlotId).join(",")}]`
+    } else if (value instanceof SchemaAST.PropertySignature) {
+      composite = `ps:${getValueId(value.name)}:${getValueId(value.type)}`
+    } else if (value instanceof SchemaAST.IndexSignature) {
+      composite = `is:${getValueId(value.parameter)}:${getValueId(value.type)}`
+    } else {
+      return getValueId(value)
+    }
+    const existing = compositeIds.get(composite)
+    if (existing !== undefined) return existing
+    const id = nextValueId++
+    compositeIds.set(composite, id)
+    return id
+  }
+
   function getIdentityKey(ast: SchemaAST.AST): string {
     let identity = ast._tag
+    // Two ASTs holding the same annotations object are claims to one declared schema:
+    // rebuilds of it (e.g. a codec derivation of a context-only copy) allocate fresh
+    // container wrappers, and those must not read as a second schema. Anonymous nodes
+    // and nodes with different annotation objects keep pure reference identity, so
+    // referentially distinct declarations stay distinct.
+    const structural = ast.annotations !== undefined
     for (const [key, value] of Object.entries(ast)) {
-      if (key !== "_tag" && key !== "context") identity += `:${getValueId(value)}`
+      if (key !== "_tag" && key !== "context") {
+        identity += `:${structural ? getSlotId(value) : getValueId(value)}`
+      }
     }
     return identity
   }
