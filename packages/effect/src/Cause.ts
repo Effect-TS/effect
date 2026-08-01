@@ -157,8 +157,8 @@ export type Reason<E> = Fail<E> | Die | Interrupt
  * import { Cause } from "effect"
  *
  * const cause = Cause.fail("error")
- * const fails = cause.reasons.filter(Cause.isFailReason)
- * fails[0].error // => "error"
+ * const fail = cause.reasons.find(Cause.isFailReason)
+ * fail?.error // => "error"
  * ```
  *
  * @see {@link isDieReason} — narrow to `Die`
@@ -183,8 +183,8 @@ export const isFailReason: <E>(self: Reason<E>) => self is Fail<E> = core.isFail
  * import { Cause } from "effect"
  *
  * const cause = Cause.die("defect")
- * const dies = cause.reasons.filter(Cause.isDieReason)
- * dies[0].defect // => "defect"
+ * const die = cause.reasons.find(Cause.isDieReason)
+ * die?.defect // => "defect"
  * ```
  *
  * @see {@link isFailReason} — narrow to `Fail`
@@ -209,8 +209,8 @@ export const isDieReason: <E>(self: Reason<E>) => self is Die = core.isDieReason
  * import { Cause } from "effect"
  *
  * const cause = Cause.interrupt(123)
- * const interrupts = cause.reasons.filter(Cause.isInterruptReason)
- * interrupts[0].fiberId // => 123
+ * const interrupt = cause.reasons.find(Cause.isInterruptReason)
+ * interrupt?.fiberId // => 123
  * ```
  *
  * @see {@link isFailReason} — narrow to `Fail`

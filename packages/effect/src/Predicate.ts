@@ -1344,6 +1344,7 @@ export function isPromise(input: unknown): input is Promise<unknown> {
  * ```ts import.meta.vitest
  * import { Predicate } from "effect"
  *
+ * // oxlint-disable-next-line no-thenable
  * const data: unknown = { then: () => {} }
  *
  * Predicate.isPromiseLike(data) // => true

@@ -2,4 +2,4 @@
 "@effect/doctest": minor
 ---
 
-Add the `effect-doctest-typecheck` command for typechecking documentation examples as virtual files with the TypeScript 7 native API.
+Add commands for checking documentation examples as virtual files: `effect-doctest-typecheck` uses the TypeScript 7 native API, and `effect-doctest-lint` uses the oxlint language server.

@@ -3,7 +3,7 @@
   "version": "4.0.0-beta.102",
   "type": "module",
   "license": "MIT",
-  "description": "Runs and typechecks TypeScript documentation examples",
+  "description": "Runs, lints, and typechecks TypeScript documentation examples",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
@@ -20,6 +20,7 @@
     "./internal/*": null
   },
   "bin": {
+    "effect-doctest-lint": "./src/internal/lint-bin.ts",
     "effect-doctest-typecheck": "./src/internal/bin.ts"
   },
   "files": [
@@ -41,6 +42,7 @@
       "./internal/*": null
     },
     "bin": {
+      "effect-doctest-lint": "./dist/internal/lint-bin.js",
       "effect-doctest-typecheck": "./dist/internal/bin.js"
     }
   },
@@ -59,10 +61,14 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
+    "oxlint": ">=1.76.0",
     "vite": ">=8.0.0 <9.0.0",
     "vitest": ">=4.1.10 <5.0.0"
   },
   "peerDependenciesMeta": {
+    "oxlint": {
+      "optional": true
+    },
     "vite": {
       "optional": true
     },

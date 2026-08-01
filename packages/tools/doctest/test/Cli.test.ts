@@ -1,4 +1,4 @@
-import { cli } from "@effect/doctest/Cli"
+import { cli, lintCli } from "@effect/doctest/Cli"
 import * as NodeServices from "@effect/platform-node/NodeServices"
 import { assert, describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
@@ -107,6 +107,47 @@ describe("Cli", () => {
 
           writeFileSync(invalid, "```ts import.meta.vitest\nconst value: string = \"ok\"\n```")
           yield* Command.runWith(cli, { version: "0.0.0" })(["--tsconfig", tsconfig])
+        }),
+      ({ root }) => Effect.sync(() => rmSync(root, { recursive: true, force: true }))
+    ).pipe(Effect.provide(NodeServices.layer)))
+
+  it.effect("lints virtual snippets and reports source diagnostics", () =>
+    Effect.acquireUseRelease(
+      Effect.sync(() => {
+        const root = mkdtempSync(join(import.meta.dirname, ".effect-doctest-lint-cli-"))
+        const sourceDirectory = join(root, "src")
+        const invalid = join(sourceDirectory, "invalid.ts")
+        const tsconfig = join(root, "tsconfig.json")
+        const oxlintConfig = join(root, ".oxlintrc.json")
+        mkdirSync(sourceDirectory)
+        writeFileSync(tsconfig, JSON.stringify({ include: ["src"] }))
+        writeFileSync(oxlintConfig, JSON.stringify({ rules: { "eslint/no-var": "error" } }))
+        writeFileSync(invalid, "/**\n * ```ts import.meta.vitest\n * var value = 1\n * ```\n */")
+        return { root, invalid, oxlintConfig, tsconfig }
+      }),
+      ({ invalid, oxlintConfig, root, tsconfig }) =>
+        Effect.gen(function*() {
+          const exit = yield* Effect.exit(
+            Command.runWith(lintCli, { version: "0.0.0" })([
+              "--tsconfig",
+              tsconfig,
+              "--oxlint-config",
+              oxlintConfig
+            ])
+          )
+          assert.isTrue(Exit.isFailure(exit))
+          if (Exit.isFailure(exit)) {
+            assert.include(Cause.pretty(exit.cause), `${invalid}:3:4 eslint(no-var)`)
+          }
+          assert.isFalse(existsSync(join(root, "src/.effect-doctest-invalid.ts-0.ts")))
+
+          writeFileSync(invalid, "/**\n * ```ts import.meta.vitest\n * const value = 1\n * ```\n */")
+          yield* Command.runWith(lintCli, { version: "0.0.0" })([
+            "--tsconfig",
+            tsconfig,
+            "--oxlint-config",
+            oxlintConfig
+          ])
         }),
       ({ root }) => Effect.sync(() => rmSync(root, { recursive: true, force: true }))
     ).pipe(Effect.provide(NodeServices.layer)))

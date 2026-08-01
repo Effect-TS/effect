@@ -1,6 +1,6 @@
 # `@effect/doctest`
 
-`@effect/doctest` extracts marked TypeScript examples from JSDoc comments and Markdown files, then runs each example as an isolated Vitest module.
+`@effect/doctest` extracts marked TypeScript examples from JSDoc comments and Markdown files for execution, linting, and typechecking.
 
 Mark runnable fences with `import.meta.vitest`:
 
@@ -81,3 +81,13 @@ effect-doctest-typecheck --tsconfig tsconfig.doctest.json
 The checker uses `files`, `include`, and `exclude` from the supplied tsconfig to discover TypeScript source files and Markdown documents. Use extension-neutral patterns such as `src/**/*` when Markdown should be included. Optional positional files and glob patterns narrow that configured project for targeted runs. Without `--tsconfig`, positional inputs are required and each source inherits its nearest `tsconfig.json`.
 
 The checker is independent of Vitest. It keeps snippet source and generated project configuration in memory, resolves imports from the snippet's documented source location, and maps diagnostics back to the corresponding JSDoc lines. Runtime execution remains available separately through the Vitest plugin.
+
+## Linting
+
+Use the standalone lint command to check extracted examples with oxlint:
+
+```sh
+effect-doctest-lint --tsconfig tsconfig.doctest.json --oxlint-config .oxlintrc.json
+```
+
+The lint command uses the same source discovery and optional positional filters as the typechecker. It starts oxlint as a language server and opens each example as an in-memory TypeScript document beside its documented source file. This preserves nested configuration and relative import resolution without writing temporary files, and maps oxlint diagnostics back to the corresponding JSDoc lines. Oxlint must be installed in the invoking project.

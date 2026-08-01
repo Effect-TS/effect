@@ -22,5 +22,14 @@
       "eslint/no-console": "off",
       "effect/no-import-from-barrel-package": "off"
     }
+  }, {
+    "files": ["**/.effect-doctest-*"],
+    "rules": {
+      "effect/no-bigint-literals": "off",
+      "eslint/no-console": "off",
+      "effect/no-import-from-barrel-package": "off",
+      "eslint/no-unused-expressions": "off",
+      "typescript/consistent-type-imports": "off"
+    }
   }]
 }

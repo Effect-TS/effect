@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs"
-import { basename, dirname, extname, join, resolve } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { API, type Diagnostic, DiagnosticCategory, type Snapshot } from "typescript/unstable/async"
 import type * as Source from "../Source.ts"
+import * as Virtual from "./Virtual.ts"
 
 interface ProjectState {
   files: Set<string>
@@ -48,14 +49,6 @@ const projectConfiguration = (file: string, configured?: string | undefined): Pr
     }
     directory = parent
   }
-}
-
-const virtualSource = (file: string, index: number): string => {
-  const sourceExtension = extname(file)
-  const extension = sourceExtension === ".tsx" || sourceExtension === ".mts" || sourceExtension === ".cts"
-    ? sourceExtension
-    : ".ts"
-  return join(dirname(file), `.effect-doctest-${basename(file)}-${index}${extension}`)
 }
 
 const sourceLocation = (source: string, offset: number): { readonly line: number; readonly column: number } => {
@@ -212,7 +205,7 @@ export class Typechecker {
 
       const sourceFiles = new Set<string>()
       request.snippets.forEach((snippet, index) => {
-        const source = virtualSource(request.file, index)
+        const source = Virtual.source(request.file, index)
         sourceFiles.add(source)
         checkedFiles.add(source)
         nextFiles.add(source)
