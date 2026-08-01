@@ -70,19 +70,13 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
   readonly stack?: string | undefined
 }
 
-const SlotId = Symbol.for("effect/Context/Slot")
-const Unset = Symbol()
-const slotByKey = new Map<string, number>()
+const SlabKeyId = Symbol.for("effect/Context/SlabKey")
+const slabKeys = new Set<string>()
 
-const allocateSlot = (key: Key<any, any>): void => {
-  if (!slotByKey.has(key.key)) slotByKey.set(key.key, slotByKey.size)
-  ;(key as any)[SlotId] = slotByKey.get(key.key)
+const addSlabKey = (key: Key<any, any>): void => {
+  ;(key as any)[SlabKeyId] = true
+  slabKeys.add(key.key)
 }
-
-// Writes must consult the registry as well: a slotted key string can be written
-// through a second key object that never allocated the slot itself, and the
-// slab copy has to happen regardless of which object performs the add
-const slotOf = (key: Key<any, any>): number | undefined => (key as any)[SlotId] ?? slotByKey.get(key.key)
 
 /**
  * Context key with helper methods for working with a service.
@@ -179,10 +173,10 @@ export declare namespace ServiceClass {
  * declarations. The returned key can be yielded as an Effect and passed to
  * `Context.make`, `Context.add`, and the Context getter functions.
  *
- * Pass `allocateSlot: true` to allocate a dense slab slot for the key, making reads
- * O(1). Reserve this for services that are added and read on hot paths;
- * every slotted key grows the array that slotted `Context.add`s copy.
- * The option is also available on `Reference` keys.
+ * Pass `allocateSlot: true` to store the key in the slab, making reads O(1).
+ * Reserve this for services that are added and read on hot paths; every slab
+ * key grows the small Map that a slotted `Context.add` copies. `Reference`
+ * keys are stored in the slab automatically.
  *
  * **Gotchas**
  *
@@ -279,8 +273,8 @@ export const Service: {
       self[ReferenceTypeId] = ReferenceTypeId
       self.defaultValue = arguments[1].defaultValue
     }
-    if (arguments[1]?.allocateSlot) {
-      allocateSlot(self)
+    if (arguments[1]?.defaultValue || arguments[1]?.allocateSlot) {
+      addSlabKey(self)
     }
     return self
   }
@@ -293,7 +287,7 @@ export const Service: {
       ;(self as any).make = options.make
     }
     if (options?.allocateSlot) {
-      allocateSlot(self)
+      addSlabKey(self)
     }
     return self
   }
@@ -505,7 +499,7 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
 }
 
 interface ContextImpl<in Services> extends Context<Services> {
-  slab: ReadonlyArray<unknown>
+  slab: ReadonlyMap<string, unknown>
   base: ReadonlyMap<string, any>
   overlay: Overlay | undefined
   depth: number
@@ -521,7 +515,7 @@ interface Overlay {
 const MaxDepth = 8
 
 const makeImpl = <Services>(
-  slab: ReadonlyArray<unknown>,
+  slab: ReadonlyMap<string, unknown>,
   base: ReadonlyMap<string, any>,
   overlay: Overlay | undefined,
   depth: number,
@@ -537,15 +531,10 @@ const makeImpl = <Services>(
   return self
 }
 
-const slabSet = (slab: Array<unknown>, slot: number, value: unknown): void => {
-  while (slab.length <= slot) slab.push(Unset)
-  slab[slot] = value
-}
-
 const fromMap = <Services>(map: Map<string, any>): ContextImpl<Services> => {
-  const slab: Array<unknown> = []
-  slotByKey.forEach((slot, key) => {
-    if (map.has(key)) slabSet(slab, slot, map.get(key))
+  const slab = new Map<string, unknown>()
+  map.forEach((value, key) => {
+    if (slabKeys.has(key)) slab.set(key, value)
   })
   return makeImpl(slab, map, undefined, 0, map)
 }
@@ -582,25 +571,31 @@ const withFlat = <B>(self: ContextImpl<any>, f: (map: Map<string, any>) => void)
 
 const lookup = (self: ContextImpl<any>, key: string): unknown => {
   if (self.base === undefined) {
-    return self.mapUnsafe.has(key) ? self.mapUnsafe.get(key) : Unset
+    return self.mapUnsafe.get(key)
   }
   for (let overlay = self.overlay; overlay !== undefined; overlay = overlay.parent) {
     if (overlay.key === key) return overlay.value
   }
-  const value = self.base.get(key)
-  return value === undefined && !self.base.has(key) ? Unset : value
+  return self.base.get(key)
 }
 
-// The slab is a cache: every slotted value is also present in overlay/base, so
-// reads can use the key's own slot without consulting the registry
+// The slab is a cache: every slotted value is also present in overlay/base
 const lookupKey = (self: Context<any>, key: Key<any, any>): unknown => {
   const impl = self as ContextImpl<any>
-  const slot = (key as any)[SlotId]
-  if (slot !== undefined && slot < impl.slab.length) {
-    const value = impl.slab[slot]
-    if (value !== Unset) return value
+  if ((key as any)[SlabKeyId] === true && impl.slab !== undefined) {
+    const value = impl.slab.get(key.key)
+    if (value !== undefined) return value
   }
   return lookup(impl, key.key)
+}
+
+const hasKey = (self: Context<any>, key: string): boolean => {
+  const impl = self as ContextImpl<any>
+  if (impl.base === undefined) return impl.mapUnsafe.has(key)
+  for (let overlay = impl.overlay; overlay !== undefined; overlay = overlay.parent) {
+    if (overlay.key === key) return true
+  }
+  return impl.base.has(key)
 }
 
 /**
@@ -684,14 +679,9 @@ export const unsafeHasSameSlab = <Services, Services2>(
 /** @internal */
 export const unsafeGetByKey = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
   const impl = self as ContextImpl<Services>
-  const slot = slotByKey.get(key)
-  let value: unknown
-  if (slot !== undefined && slot < impl.slab.length && impl.slab[slot] !== Unset) {
-    value = impl.slab[slot]
-  } else {
-    value = lookup(impl, key)
-  }
-  return value === Unset ? undefined : value as A
+  const value = impl.slab?.get(key)
+  if (value !== undefined) return value as A
+  return lookup(impl, key) as A | undefined
 }
 
 /**
@@ -859,10 +849,9 @@ export const add: {
   }
 
   let slab = impl.slab
-  const slot = slotOf(key)
-  if (slot !== undefined) {
-    slab = impl.slab.slice()
-    slabSet(slab as Array<unknown>, slot, service)
+  if (slabKeys.has(key.key)) {
+    slab = new Map(impl.slab)
+    ;(slab as Map<string, unknown>).set(key.key, service)
   }
 
   return makeImpl(
@@ -979,7 +968,7 @@ export const getOrElse: {
   <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B
 } = dual(3, <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B => {
   const value = lookupKey(self, key)
-  if (value !== Unset) return value as any
+  if (value !== undefined || hasKey(self, key.key)) return value as any
   return isReference(key) ? getDefaultValue(key) : orElse()
 })
 
@@ -1008,8 +997,7 @@ export const getOrUndefined: {
 } = dual(
   2,
   <Services, S, I>(self: Context<Services>, key: Key<I, S>): S | undefined => {
-    const value = lookupKey(self, key)
-    return value === Unset ? undefined : value as S
+    return lookupKey(self, key) as S | undefined
   }
 )
 
@@ -1055,7 +1043,7 @@ export const getUnsafe: {
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S => {
     const value = lookupKey(self, service)
-    if (value === Unset) {
+    if (value === undefined && !hasKey(self, service.key)) {
       if (ReferenceTypeId in service) return getDefaultValue(service as any)
       throw serviceNotFoundError(service)
     }
@@ -1143,7 +1131,7 @@ export const get: {
  */
 export const getReferenceUnsafe = <Services, S>(self: Context<Services>, service: Reference<S>): S => {
   const value = lookupKey(self, service)
-  return value === Unset ? getDefaultValue(service as any) : value as S
+  return value === undefined && !hasKey(self, service.key) ? getDefaultValue(service as any) : value as S
 }
 
 const defaultValueCacheKey = "~effect/Context/defaultValue" as const
@@ -1214,7 +1202,7 @@ export const getOption: {
   <Services, S, I>(self: Context<Services>, service: Key<I, S>): Option.Option<S>
 } = dual(2, <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): Option.Option<S> => {
   const value = lookupKey(self, service)
-  if (value !== Unset) return Option.some(value as any)
+  if (value !== undefined || hasKey(self, service.key)) return Option.some(value as any)
   return isReference(service) ? Option.some(getDefaultValue(service as any)) : Option.none()
 })
 
@@ -1426,7 +1414,7 @@ export const mutate: {
     // The scratch context gets an empty slab, so every operation on it reads
     // and writes `base` alone; the slab is rebuilt once when sealing
     const map = new Map(flatten(self as ContextImpl<Services>))
-    const scratch = makeImpl<Services>([], map, undefined, 0, map)
+    const scratch = makeImpl<Services>(new Map(), map, undefined, 0, map)
     scratch.mutable = true
     try {
       const result = f(scratch)
