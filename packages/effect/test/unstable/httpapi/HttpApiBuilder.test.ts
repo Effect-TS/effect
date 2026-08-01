@@ -528,3 +528,105 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       assert.deepStrictEqual(error, new HandlerFailure({ message: "handler failed" }))
     }))
 })
+
+it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
+  it.effect("sets declared headers on an empty 201 response", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.post("create", "/create", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { location: Schema.String },
+              body: HttpApiSchema.Created
+            })
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("create", () =>
+            Effect.succeed({
+              headers: { location: "/things/1" },
+              body: undefined
+            }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      // TODO(Task 5): switch back to `{ responseMode: "decoded-and-response" }` and assert
+      // on the decoded `value` once the client understands `WithHeaders` responses.
+      const response = yield* client.test.create({ responseMode: "response-only" })
+
+      assert.strictEqual(response.status, 201)
+      assert.strictEqual(response.headers["location"], "/things/1")
+    }))
+
+  it.effect("sets declared headers on a json response", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/get", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { "x-total-count": Schema.FiniteFromString },
+              body: Schema.Struct({ name: Schema.String })
+            })
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("get", () =>
+            Effect.succeed({
+              headers: { "x-total-count": 3 },
+              body: { name: "Ada" }
+            }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      // TODO(Task 5): switch back to `{ responseMode: "decoded-and-response" }` and assert
+      // on the decoded `value` once the client understands `WithHeaders` responses.
+      const response = yield* client.test.get({ responseMode: "response-only" })
+      const body = yield* response.json
+
+      assert.strictEqual(response.headers["x-total-count"], "3")
+      assert.strictEqual(response.headers["content-type"], "application/json")
+      assert.deepStrictEqual(body, { name: "Ada" })
+    }))
+
+  it.effect("sets declared headers on an error response", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/get", {
+            error: HttpApiSchema.WithHeaders({
+              headers: { "retry-after": Schema.String },
+              body: Schema.Struct({ reason: Schema.String })
+            })
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("get", () =>
+            Effect.fail({
+              headers: { "retry-after": "120" },
+              body: { reason: "busy" }
+            }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      // TODO(Task 5): switch back to `yield* Effect.flip(client.test.get())` and assert on the
+      // decoded error once the client understands `WithHeaders` responses.
+      const response = yield* client.test.get({ responseMode: "response-only" })
+      const body = yield* response.json
+
+      assert.strictEqual(response.status, 500)
+      assert.strictEqual(response.headers["retry-after"], "120")
+      assert.deepStrictEqual(body, { reason: "busy" })
+    }))
+})

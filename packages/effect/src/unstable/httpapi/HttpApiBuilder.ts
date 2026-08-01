@@ -26,6 +26,7 @@ import * as Result from "../../Result.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
+import * as SchemaParser from "../../SchemaParser.ts"
 import * as SchemaTransformation from "../../SchemaTransformation.ts"
 import * as Scope from "../../Scope.ts"
 import * as Stream from "../../Stream.ts"
@@ -1078,6 +1079,9 @@ function getResponseTransformation(
   getStatus: (ast: SchemaAST.AST) => number,
   schema: Schema.Constraint
 ): SchemaTransformation.Transformation<unknown, Response.HttpServerResponse> {
+  if (HttpApiSchema.isWithHeaders(schema)) {
+    return getWithHeadersTransformation(getStatus, schema)
+  }
   const ast = schema.ast
   const encode = getResponseEncode(
     getStatus(ast),
@@ -1088,6 +1092,50 @@ function getResponseTransformation(
   return SchemaTransformation.transformOrFail({
     decode: () => Effect.fail(new SchemaIssue.Forbidden({ message: "Encode only schema" })),
     encode
+  })
+}
+
+function getWithHeadersTransformation(
+  getStatus: (ast: SchemaAST.AST) => number,
+  schema: HttpApiSchema.WithHeaders<Schema.Top, Schema.Top>
+): SchemaTransformation.Transformation<unknown, Response.HttpServerResponse> {
+  const decode = (res: unknown) =>
+    Effect.fail(new SchemaIssue.Forbidden(Option.some(res), { message: "Encode only schema" }))
+
+  // Streaming bodies never reach this transformation: `makeStreamEncoder` handles
+  // them before success encoding runs.
+  if (HttpApiSchema.isStreamSchema(schema.body)) {
+    return SchemaTransformation.transformOrFail({
+      decode,
+      encode: (value: unknown): Effect.Effect<Response.HttpServerResponse, SchemaIssue.Issue> =>
+        Effect.fail(
+          new SchemaIssue.Forbidden(Option.some(value), {
+            message: "Expected a streaming response"
+          })
+        )
+    })
+  }
+
+  const encodeResponse = getResponseEncode(
+    getStatus(schema.ast),
+    HttpApiSchema.getResponseEncoding(schema.ast),
+    HttpApiSchema.isNoContentSchema(schema)
+  )
+  const encodeBody = SchemaParser.encodeUnknownEffect(schema.body) as any
+  const encodeHeaders = SchemaParser.encodeUnknownEffect(schema.headers) as any
+
+  return SchemaTransformation.transformOrFail({
+    decode,
+    encode: (value: any) =>
+      Effect.flatMap(
+        encodeBody(value?.body),
+        (encodedBody) =>
+          Effect.flatMap(encodeResponse(encodedBody), (response) =>
+            Effect.map(
+              encodeHeaders(value?.headers),
+              (headers) => Response.setHeaders(response, headers as Record<string, string>)
+            ))
+      )
   })
 }
 
