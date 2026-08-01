@@ -534,7 +534,8 @@ const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Co
   return makeUnsafe(map)
 }
 
-const notFound = Symbol.for("effect/Context/notFound")
+// A private symbol so user code cannot forge a value that reads as absent
+const notFound = Symbol()
 
 const lookup = (self: Context<any>, key: string): unknown => {
   const impl = self as ContextImpl<any>
@@ -786,12 +787,17 @@ export const add: {
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
   const impl = self as ContextImpl<Services>
+  const cacheRoot = cacheKeys.has(key.key) ? undefined : impl.cacheRoot
   if (impl.depth >= MaxDepth) {
-    return withFlat(impl, (map) => map.set(key.key, service))
+    // Rebase the overlay chain into a flat map, keeping the cacheRoot so a
+    // rebase on an ordinary key does not invalidate fiber caches
+    const map = new Map(impl.mapUnsafe)
+    map.set(key.key, service)
+    return makeImpl(cacheRoot, map, undefined, 0)
   }
 
   return makeImpl(
-    cacheKeys.has(key.key) ? undefined : impl.cacheRoot,
+    cacheRoot,
     impl.base,
     { key: key.key, value: service, parent: impl.overlay },
     impl.depth + 1

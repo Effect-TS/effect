@@ -120,6 +120,8 @@ describe("Context", () => {
     for (let i = 0; i < keys.length; i++) {
       strictEqual(Context.getUnsafe(context, keys[i]), i)
     }
+    // Rebasing on ordinary keys must not invalidate fiber caches
+    assertTrue(Context.hasSameCache(Context.empty(), context))
   })
 
   it("supports the ReadonlyMap surface through mapUnsafe", () => {

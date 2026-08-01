@@ -217,7 +217,7 @@ export const make = Effect.gen(function*() {
           params: result.params
         })
 
-        const span = Context.getOrUndefined(context, Tracer.ParentSpan) as Tracer.Span | undefined
+        const span = Context.getOrUndefined(context, Tracer.ParentSpan)
         if (span && span._tag === "Span") {
           span.attribute("http.route", route.path)
         }
