@@ -634,6 +634,10 @@ describe("String", () => {
       strictEqual(pipe("helloWorld", S.noCase({ delimiter: "-" })), "hello-world")
     })
 
+    it("uses a custom split regular expression", () => {
+      strictEqual(S.noCase("ab", { splitRegExp: /([a])([b])/g }), "a b")
+    })
+
     it("handles underscores and hyphens", () => {
       strictEqual(S.noCase("hello_world"), "hello world")
       strictEqual(S.noCase("hello-world"), "hello world")
