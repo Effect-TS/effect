@@ -335,7 +335,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         for (const [status, schemas] of errors.entries()) {
           const grouped = groupSchemasByContentType(schemas)
           for (const [contentType, schemas] of grouped.entries()) {
-            addResponseAlternative(errorAlternatives, status, contentType, schemasToResponse(schemas))
+            addResponseAlternative(errorAlternatives, status, contentType, schemasToResponseDecoder(schemas))
           }
         }
         for (const [status, alternatives] of errorAlternatives.entries()) {
@@ -362,7 +362,7 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         for (const [status, schemas] of successes.entries()) {
           const grouped = groupSchemasByContentType(schemas)
           for (const [contentType, schemas] of grouped.entries()) {
-            addResponseAlternative(successAlternatives, status, contentType, schemasToResponse(schemas))
+            addResponseAlternative(successAlternatives, status, contentType, schemasToResponseDecoder(schemas))
           }
         }
         for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
@@ -729,6 +729,30 @@ function schemasToResponse(schemas: readonly [Schema.Constraint, ...Array<Schema
 
 type ResponseDecoder = (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<unknown, unknown, unknown>
 
+function withHeadersToResponse(
+  schema: HttpApiSchema.WithHeaders<Schema.Top, Schema.Top>
+): ResponseDecoder {
+  const decodeHeaders = Schema.decodeUnknownEffect(schema.headers)
+  const body = schema.body
+  const decodeBody = HttpApiSchema.isStreamSchema(body)
+    ? streamToResponse(body)
+    : schemasToResponse([body as Schema.Constraint])
+  return (response) =>
+    Effect.flatMap(
+      decodeHeaders(response.headers),
+      (headers) => Effect.map(decodeBody(response), (body) => ({ headers, body }))
+    )
+}
+
+function schemasToResponseDecoder(
+  schemas: Arr.NonEmptyReadonlyArray<Schema.Top>
+): ResponseDecoder {
+  const first = schemas[0]
+  return schemas.length === 1 && HttpApiSchema.isWithHeaders(first)
+    ? withHeadersToResponse(first)
+    : schemasToResponse(schemas as readonly [Schema.Constraint, ...Array<Schema.Constraint>])
+}
+
 interface ResponseAlternative {
   readonly contentType: string
   readonly decode: ResponseDecoder
@@ -768,9 +792,9 @@ function groupSchemasByContentType(
 ): Map<string, Arr.NonEmptyReadonlyArray<Schema.Top>> {
   const grouped = new Map<string, [Schema.Top, ...Array<Schema.Top>]>()
   for (const schema of schemas) {
-    const contentType = HttpApiSchema.isNoContent(schema.ast)
+    const contentType = HttpApiSchema.isNoContentSchema(schema)
       ? ""
-      : MediaType.normalize(HttpApiSchema.getResponseEncoding(schema.ast).contentType)
+      : MediaType.normalize(HttpApiSchema.getResponseContentType(schema))
     const existing = grouped.get(contentType)
     if (existing === undefined) {
       grouped.set(contentType, [schema])

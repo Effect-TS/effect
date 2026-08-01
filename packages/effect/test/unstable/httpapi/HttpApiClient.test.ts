@@ -541,6 +541,140 @@ describe("HttpApiClient", () => {
       strictEqual(urls[0], "https://api.example.com/files")
       strictEqual(urls[1], "https://api.example.com/files/a%2Fb")
     }))
+
+  describe("response headers", () => {
+    const CreatedApi = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.post("create", "/create", {
+          success: HttpApiSchema.WithHeaders({
+            headers: { location: Schema.String },
+            body: HttpApiSchema.Created
+          })
+        })
+      )
+    )
+
+    it.effect("decodes declared headers alongside an empty body", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.makeWith(CreatedApi, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => new Response(null, { status: 201, headers: { location: "/things/1" } }))
+        })
+
+        const result = yield* client.test.create({})
+
+        assert.deepStrictEqual(result, { headers: { location: "/things/1" }, body: undefined })
+      }))
+
+    it.effect("fails when a required header is missing", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.makeWith(CreatedApi, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => new Response(null, { status: 201 }))
+        })
+
+        const error = yield* Effect.flip(client.test.create({}))
+
+        assert.isTrue(Schema.isSchemaError(error))
+      }))
+
+    it.effect("yields undefined for an absent optional header", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.post("create", "/create", {
+              success: HttpApiSchema.WithHeaders({
+                headers: { location: Schema.optional(Schema.String) },
+                body: HttpApiSchema.Created
+              })
+            })
+          )
+        )
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => new Response(null, { status: 201 }))
+        })
+
+        const result = yield* client.test.create({})
+
+        assert.deepStrictEqual(result, { headers: {}, body: undefined })
+      }))
+
+    it.effect("does not decode headers in response-only mode", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpApiClient.makeWith(CreatedApi, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() => new Response(null, { status: 201 }))
+        })
+
+        const response = yield* client.test.create({ responseMode: "response-only" })
+
+        strictEqual(response.status, 201)
+      }))
+
+    it.effect("decodes headers on an error response", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("get", "/get", {
+              error: HttpApiSchema.WithHeaders({
+                headers: { "retry-after": Schema.String },
+                body: Schema.Struct({ reason: Schema.String })
+              })
+            })
+          )
+        )
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response(JSON.stringify({ reason: "busy" }), {
+              status: 500,
+              headers: { "content-type": "application/json", "retry-after": "120" }
+            })
+          )
+        })
+
+        const error = yield* Effect.flip(client.test.get({}))
+
+        assert.deepStrictEqual(error, {
+          headers: { "retry-after": "120" },
+          body: { reason: "busy" }
+        })
+      }))
+
+    it.effect("decodes headers alongside a stream body", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("events", "/events", {
+              success: HttpApiSchema.WithHeaders({
+                headers: { "x-trace-id": Schema.String },
+                body: HttpApiSchema.StreamSse({
+                  events: Schema.Struct({ event: Schema.Literal("tick"), data: Schema.String })
+                })
+              })
+            })
+          )
+        )
+        const client = yield* HttpApiClient.makeWith(Api, {
+          baseUrl: "http://test",
+          httpClient: clientFromResponse(() =>
+            new Response(textStream(["event: tick\ndata: one\n\n"]), {
+              status: 200,
+              headers: { "content-type": "text/event-stream", "x-trace-id": "abc" }
+            })
+          )
+        })
+
+        const result = yield* client.test.events({})
+
+        assert.deepStrictEqual(result.headers, { "x-trace-id": "abc" })
+        assert.deepStrictEqual(
+          yield* Stream.runCollect(result.body),
+          [{ event: "tick", data: "one" }]
+        )
+      }))
+  })
 })
 
 const textEncoder = new TextEncoder()

@@ -554,12 +554,11 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       )
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
-      // TODO(Task 5): switch back to `{ responseMode: "decoded-and-response" }` and assert
-      // on the decoded `value` once the client understands `WithHeaders` responses.
-      const response = yield* client.test.create({ responseMode: "response-only" })
+      const [value, response] = yield* client.test.create({ responseMode: "decoded-and-response" })
 
       assert.strictEqual(response.status, 201)
       assert.strictEqual(response.headers["location"], "/things/1")
+      assert.deepStrictEqual(value, { headers: { location: "/things/1" }, body: undefined })
     }))
 
   it.effect("sets declared headers on a json response", () =>
@@ -586,14 +585,11 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       )
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
-      // TODO(Task 5): switch back to `{ responseMode: "decoded-and-response" }` and assert
-      // on the decoded `value` once the client understands `WithHeaders` responses.
-      const response = yield* client.test.get({ responseMode: "response-only" })
-      const body = yield* response.json
+      const [value, response] = yield* client.test.get({ responseMode: "decoded-and-response" })
 
       assert.strictEqual(response.headers["x-total-count"], "3")
       assert.strictEqual(response.headers["content-type"], "application/json")
-      assert.deepStrictEqual(body, { name: "Ada" })
+      assert.deepStrictEqual(value, { headers: { "x-total-count": 3 }, body: { name: "Ada" } })
     }))
 
   it.effect("sets declared headers on an error response", () =>
@@ -620,14 +616,12 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       )
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
-      // TODO(Task 5): switch back to `yield* Effect.flip(client.test.get())` and assert on the
-      // decoded error once the client understands `WithHeaders` responses.
-      const response = yield* client.test.get({ responseMode: "response-only" })
-      const body = yield* response.json
+      const error = yield* Effect.flip(client.test.get({}))
 
-      assert.strictEqual(response.status, 500)
-      assert.strictEqual(response.headers["retry-after"], "120")
-      assert.deepStrictEqual(body, { reason: "busy" })
+      assert.deepStrictEqual(error, {
+        headers: { "retry-after": "120" },
+        body: { reason: "busy" }
+      })
     }))
 
   it.effect("sets declared headers on a Uint8Array stream response", () =>
@@ -654,12 +648,12 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       )
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
-      // TODO(Task 5): switch back to `{ responseMode: "decoded-and-response" }` and assert
-      // on the decoded `value` once the client understands `WithHeaders` responses.
-      const response = yield* client.test.download({ responseMode: "response-only" })
+      const [value, response] = yield* client.test.download({ responseMode: "decoded-and-response" })
 
       assert.strictEqual(response.headers["x-trace-id"], "abc")
       assert.strictEqual(response.headers["content-type"], "application/custom-bytes")
+      assert.deepStrictEqual(value.headers, { "x-trace-id": "abc" })
+      assert.deepStrictEqual(yield* Stream.runCollect(value.body), [new Uint8Array([1, 2, 3])])
     }))
 
   it.effect("sets declared headers on an SSE stream response", () =>
@@ -688,11 +682,11 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       )
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
-      // TODO(Task 5): switch back to `{ responseMode: "decoded-and-response" }` and assert
-      // on the decoded `value` once the client understands `WithHeaders` responses.
-      const response = yield* client.test.events({ responseMode: "response-only" })
+      const [value, response] = yield* client.test.events({ responseMode: "decoded-and-response" })
 
       assert.strictEqual(response.headers["x-trace-id"], "abc")
       assert.strictEqual(response.headers["content-type"], "text/event-stream")
+      assert.deepStrictEqual(value.headers, { "x-trace-id": "abc" })
+      assert.deepStrictEqual(yield* Stream.runCollect(value.body), [{ event: "tick", data: "one" }])
     }))
 })
