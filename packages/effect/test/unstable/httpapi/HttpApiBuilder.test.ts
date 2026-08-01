@@ -1,6 +1,6 @@
 import { assert, it, vi } from "@effect/vitest"
 import { Cause, Effect, FileSystem, Layer, Path, Redacted, Schema, Stream } from "effect"
-import { Etag, HttpPlatform } from "effect/unstable/http"
+import { Etag, type HttpClientResponse, HttpPlatform } from "effect/unstable/http"
 import {
   HttpApi,
   HttpApiBuilder,
@@ -768,8 +768,8 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
           HttpApiEndpoint.get("get", "/get", {
             success: HttpApiSchema.WithHeaders({
               headers: { "x-a": Schema.String },
-              body: Schema.String
-            }).pipe(HttpApiSchema.asText())
+              body: Schema.String.pipe(HttpApiSchema.asText())
+            }).pipe(HttpApiSchema.asJson({ contentType: "application/vnd.custom+json" }))
           })
         )
       )
@@ -782,7 +782,7 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
       const [value, response] = yield* client.test.get({ responseMode: "decoded-and-response" })
 
-      assert.strictEqual(response.headers["content-type"], "text/plain")
+      assert.strictEqual(response.headers["content-type"], "application/vnd.custom+json")
       assert.deepStrictEqual(value, { headers: { "x-a": "a" }, body: "hello" })
     }))
 
@@ -810,7 +810,7 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
             HttpApiEndpoint.get("get", "/get", { success: success as any })
           )
         )
-      const respond = (Api: any) =>
+      const respond = (Api: any): Effect.Effect<HttpClientResponse.HttpClientResponse, any, any> =>
         HttpApiTest.groups(Api, ["test"]).pipe(
           Effect.provide(HttpApiBuilder.group(
             Api,

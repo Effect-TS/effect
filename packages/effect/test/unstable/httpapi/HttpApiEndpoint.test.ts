@@ -348,7 +348,7 @@ describe("WithHeaders responses", () => {
         HttpApiSchema.WithHeaders({
           headers: { "x-a": Schema.String },
           body: Schema.String
-        }).pipe(HttpApiSchema.asText())
+        }).pipe(HttpApiSchema.asJson({ contentType: "application/vnd.custom+json" }))
       ]
     })
 
