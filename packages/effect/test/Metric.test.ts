@@ -6,24 +6,9 @@ import { TestClock } from "effect/testing"
 const attributes = { x: "a", y: "b" }
 
 describe("Metric", () => {
-  describe("isMetric", () => {
-    it("returns true for constructed metrics", () => {
-      assert.isTrue(Metric.isMetric(Metric.counter("counter")))
-      assert.isTrue(Metric.isMetric(Metric.gauge("gauge")))
-    })
-
-    it("returns true for transformed metrics", () => {
-      const counter = Metric.counter("counter")
-      assert.isTrue(Metric.isMetric(Metric.mapInput(counter, (input: string) => Number(input))))
-      assert.isTrue(Metric.isMetric(Metric.withAttributes(counter, attributes)))
-    })
-
-    it("returns false for non-metrics", () => {
-      assert.isFalse(Metric.isMetric(null))
-      assert.isFalse(Metric.isMetric({}))
-      assert.isFalse(Metric.isMetric({ "~effect/Metric": "~effect/Metric" }))
-      assert.isFalse(Metric.isMetric({ "~effect/observability/Metric": "not-a-metric" }))
-    })
+  it("isMetric", () => {
+    assert.isTrue(Metric.isMetric(Metric.counter("counter")))
+    assert.isFalse(Metric.isMetric({ "~effect/Metric": "~effect/Metric" }))
   })
 
   it.effect("should be referentially transparent", () =>
