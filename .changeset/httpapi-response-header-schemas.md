@@ -1,5 +1,5 @@
 ---
-"effect": minor
+"effect": patch
 ---
 
 Add `HttpApiSchema.WithHeaders` for typed HTTP response headers.

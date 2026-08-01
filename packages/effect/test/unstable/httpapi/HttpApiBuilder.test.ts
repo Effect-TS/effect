@@ -689,4 +689,100 @@ it.layer(TestServices)("HttpApiBuilder response headers", (it) => {
       assert.deepStrictEqual(value.headers, { "x-trace-id": "abc" })
       assert.deepStrictEqual(yield* Stream.runCollect(value.body), [{ event: "tick", data: "one" }])
     }))
+
+  it.effect("keeps two WithHeaders endpoints independent", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test")
+          .add(HttpApiEndpoint.get("first", "/first", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { "x-first": Schema.String },
+              body: Schema.Struct({ a: Schema.String })
+            })
+          }))
+          .add(HttpApiEndpoint.get("second", "/second", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { "x-second": Schema.String },
+              body: Schema.Struct({ b: Schema.Number })
+            })
+          }))
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers
+            .handle("first", () => Effect.succeed({ headers: { "x-first": "1" }, body: { a: "one" } }))
+            .handle("second", () => Effect.succeed({ headers: { "x-second": "2" }, body: { b: 2 } }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+
+      assert.deepStrictEqual(yield* client.test.first({}), {
+        headers: { "x-first": "1" },
+        body: { a: "one" }
+      })
+      assert.deepStrictEqual(yield* client.test.second({}), {
+        headers: { "x-second": "2" },
+        body: { b: 2 }
+      })
+    }))
+
+  it.effect("honours a status annotation applied to a stream wrapper", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("download", "/download", {
+            success: HttpApiSchema.status(206)(
+              HttpApiSchema.WithHeaders({
+                headers: { "content-range": Schema.String },
+                body: HttpApiSchema.StreamUint8Array()
+              })
+            )
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("download", () =>
+            Effect.succeed({
+              headers: { "content-range": "bytes 0-2/9" },
+              body: Stream.make(new Uint8Array([1, 2, 3]))
+            }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const [value, response] = yield* client.test.download({ responseMode: "decoded-and-response" })
+
+      assert.strictEqual(response.status, 206)
+      assert.deepStrictEqual(value.headers, { "content-range": "bytes 0-2/9" })
+      assert.deepStrictEqual(yield* Stream.runCollect(value.body), [new Uint8Array([1, 2, 3])])
+    }))
+
+  it.effect("honours an encoding annotation applied to the wrapper", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("get", "/get", {
+            success: HttpApiSchema.WithHeaders({
+              headers: { "x-a": Schema.String },
+              body: Schema.String
+            }).pipe(HttpApiSchema.asText())
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("get", () => Effect.succeed({ headers: { "x-a": "a" }, body: "hello" }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const [value, response] = yield* client.test.get({ responseMode: "decoded-and-response" })
+
+      assert.strictEqual(response.headers["content-type"], "text/plain")
+      assert.deepStrictEqual(value, { headers: { "x-a": "a" }, body: "hello" })
+    }))
 })

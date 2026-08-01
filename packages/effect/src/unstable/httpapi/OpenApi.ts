@@ -736,18 +736,21 @@ function extractResponseBodies(
 
   function process(schema: Schema.Top) {
     const body = HttpApiSchema.unwrapResponseSchema(schema)
+    // The wrapper's AST is authoritative for both status and encoding: it
+    // carries the body's lifted annotations unless the wrapper declares its own.
     const status = getStatus(schema.ast)
     if (HttpApiSchema.isStreamSchema(body)) {
-      addStreamContent(body)
+      addStreamContent(body, status)
     } else {
       const ast = body.ast
       if (HttpApiSchema.isNoContent(ast)) {
         addNoContent(status, getDescription(ast) ?? "<No Content>")
       } else {
-        addContent(body, status, HttpApiSchema.getResponseEncoding(ast))
+        addContent(body, status, HttpApiSchema.getResponseEncoding(schema.ast))
       }
     }
-    const entry = map.get(status)!
+    const entry = map.get(status)
+    if (entry === undefined) return
     entry.members += 1
     if (HttpApiSchema.isWithHeaders(schema)) {
       addResponseHeaders(entry.headers, schema.headers)
@@ -828,8 +831,7 @@ function extractResponseBodies(
     }
   }
 
-  function addStreamContent(stream: HttpApiSchema.StreamSchema) {
-    const status = HttpApiSchema.getStatusStream(stream)
+  function addStreamContent(stream: HttpApiSchema.StreamSchema, status: number) {
     const statusMap = map.get(status)
     if (statusMap === undefined) {
       map.set(status, {

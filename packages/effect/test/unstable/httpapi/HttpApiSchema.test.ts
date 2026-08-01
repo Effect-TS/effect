@@ -133,6 +133,21 @@ describe("HttpApiSchema", () => {
       assert.strictEqual(schema.body, body)
     })
 
+    it("gives each wrapper its own AST", () => {
+      const a = HttpApiSchema.WithHeaders({
+        headers: { "x-a": Schema.String },
+        body: Schema.Struct({ a: Schema.String })
+      })
+      const b = HttpApiSchema.WithHeaders({
+        headers: { "x-b": Schema.String },
+        body: Schema.Struct({ b: Schema.String })
+      })
+
+      // consumers key per-instance caches on the wrapper AST, so two
+      // annotation-less wrappers must never share one
+      assert.notStrictEqual(a.ast, b.ast)
+    })
+
     it("accepts a field record for headers", () => {
       const schema = HttpApiSchema.WithHeaders({
         headers: { location: Schema.String },

@@ -721,8 +721,11 @@ const compilePath = (path: string) => {
   }
 }
 
-function schemasToResponse(schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>]) {
-  const codec = toCodecArrayBuffer(schemas)
+function schemasToResponse(
+  schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>],
+  encoding?: HttpApiSchema.ResponseEncoding
+) {
+  const codec = toCodecArrayBuffer(schemas, encoding)
   const decode = Schema.decodeEffect(codec)
   return (response: HttpClientResponse.HttpClientResponse) => Effect.flatMap(response.arrayBuffer, decode)
 }
@@ -736,7 +739,9 @@ function withHeadersToResponse(
   const body = schema.body
   const decodeBody = HttpApiSchema.isStreamSchema(body)
     ? streamToResponse(body)
-    : schemasToResponse([body as Schema.Constraint])
+    // the wrapper's AST is authoritative for encoding: it carries the body's
+    // lifted annotation unless one was applied to the wrapper itself
+    : schemasToResponse([body as Schema.Constraint], HttpApiSchema.getResponseEncoding(schema.ast))
   return (response) =>
     Effect.flatMap(
       decodeHeaders(response.headers),
@@ -744,6 +749,9 @@ function withHeadersToResponse(
     )
 }
 
+// Relies on the exclusivity invariant enforced by `HttpApiEndpoint`: a
+// `WithHeaders` member may not share a `(status, content-type)` pair with any
+// other member, so a bucket is either entirely wrapped or entirely plain.
 function schemasToResponseDecoder(
   schemas: Arr.NonEmptyReadonlyArray<Schema.Top>
 ): ResponseDecoder {
@@ -960,11 +968,14 @@ const UnknownFromArrayBuffer = StringFromArrayBuffer.pipe(Schema.decodeTo(
   ])
 ))
 
-function toCodecArrayBuffer(schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>]): Schema.Top {
+function toCodecArrayBuffer(
+  schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>],
+  encodingOverride?: HttpApiSchema.ResponseEncoding
+): Schema.Top {
   return Schema.Union(schemas.map(onSchema))
 
   function onSchema(schema: Schema.Constraint) {
-    const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
+    const encoding = encodingOverride ?? HttpApiSchema.getResponseEncoding(schema.ast)
     switch (encoding._tag) {
       case "Json": {
         // handle json codecs that transform void schemas to null

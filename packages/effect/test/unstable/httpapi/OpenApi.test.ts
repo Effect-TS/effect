@@ -307,4 +307,29 @@ describe("OpenApi", () => {
       "x-trace-id": { required: false, schema: { type: "string" } }
     })
   })
+
+  it("uses the wrapper status for a status-annotated stream wrapper", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("download", "/download", {
+          success: HttpApiSchema.status(206)(
+            HttpApiSchema.WithHeaders({
+              headers: { "content-range": Schema.String },
+              body: HttpApiSchema.StreamUint8Array()
+            })
+          )
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const responses = spec.paths["/download"]!.get!.responses
+
+    assert.isUndefined(responses[200])
+    const response = responses[206]!
+    assert.deepStrictEqual(response.headers, {
+      "content-range": { required: true, schema: { type: "string" } }
+    })
+    assert.deepStrictEqual(Object.keys(response.content!), ["application/octet-stream"])
+  })
 })

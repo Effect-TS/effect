@@ -927,7 +927,7 @@ function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undef
 
   const streamSchema = streamSuccess.stream
   const hasBuffered = hasBufferedSuccess(endpoint)
-  const status = HttpApiSchema.getStatusStream(streamSchema)
+  const status = streamSuccess.status
   const contentType = streamSchema.contentType
   const encodeHeaders = streamSuccess.headers === undefined
     ? undefined
@@ -989,6 +989,7 @@ function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undef
 
 interface StreamSuccess {
   readonly stream: HttpApiSchema.StreamSchema
+  readonly status: number
   readonly headers: Schema.Top | undefined
 }
 
@@ -998,6 +999,10 @@ function getStreamSuccessSchema(endpoint: HttpApiEndpoint.Top): StreamSuccess | 
     if (HttpApiSchema.isStreamSchema(body)) {
       return {
         stream: body,
+        // read the status off the outer schema: for a `WithHeaders` wrapper an
+        // annotation applied to the wrapper wins over the body's lifted one, and
+        // for a bare stream the two schemas are the same object
+        status: HttpApiSchema.getStatusSuccess(schema.ast),
         headers: HttpApiSchema.isWithHeaders(schema) ? schema.headers : undefined
       }
     }
@@ -1098,14 +1103,20 @@ function toResponseSchema(getStatus: (ast: SchemaAST.AST) => number) {
   const cache = new WeakMap<SchemaAST.AST, Schema.Top>()
 
   return (schema: Schema.Constraint): Schema.ConstraintEncoder<HttpServerResponse, unknown> => {
-    const cached = cache.get(schema.ast)
+    // `WithHeaders` transformations close over the instance's `headers` / `body`
+    // sub-schemas, which the opaque declaration AST does not describe, so the
+    // AST is not a sound cache key for them.
+    const cacheable = !HttpApiSchema.isWithHeaders(schema)
+    const cached = cacheable ? cache.get(schema.ast) : undefined
     if (cached !== undefined) {
       return cached as any
     }
     const responseSchema = $HttpServerResponse.pipe(
       Schema.decodeTo(schema, getResponseTransformation(getStatus, schema))
     )
-    cache.set(schema.ast, responseSchema)
+    if (cacheable) {
+      cache.set(schema.ast, responseSchema)
+    }
     return responseSchema
   }
 }

@@ -1298,15 +1298,24 @@ function hasReservedEventLiteral(ast: AST.AST, seen: Set<AST.AST>): boolean {
 }
 
 function transformResponse(schema: Schema.Top): Schema.Top {
+  // The wrapper's AST is authoritative for encoding: it carries the body's
+  // lifted annotation unless one was applied to the wrapper itself, which wins.
+  const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
   if (HttpApiSchema.isWithHeaders(schema)) {
     const body = schema.body
     return HttpApiSchema.replaceWithHeaders(
       schema,
       Schema.toCodecStringTree(schema.headers),
-      HttpApiSchema.isStreamSchema(body) ? body : transformResponse(body)
+      HttpApiSchema.isStreamSchema(body) ? body : transformResponseBody(body, encoding)
     )
   }
-  const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
+  return transformResponseBody(schema, encoding)
+}
+
+function transformResponseBody(
+  schema: Schema.Top,
+  encoding: HttpApiSchema.ResponseEncoding
+): Schema.Top {
   switch (encoding._tag) {
     case "Json":
       return Schema.toCodecJson(schema)

@@ -543,18 +543,22 @@ export const WithHeaders = <
   if (isWithHeaders(body)) {
     throw new Error("WithHeaders cannot wrap another WithHeaders")
   }
-  const annotations: Schema.Annotations.Augment = {}
+  const annotations: {
+    httpApiStatus?: number
+    "~httpApiEncoding"?: Encoding
+  } = {}
   const status = resolveHttpApiStatus(body.ast)
   if (status !== undefined) {
-    ;(annotations as any).httpApiStatus = status
+    annotations.httpApiStatus = status
   }
   const encoding = resolveHttpApiEncoding(body.ast)
   if (encoding !== undefined) {
-    ;(annotations as any)["~httpApiEncoding"] = encoding
+    annotations["~httpApiEncoding"] = encoding
   }
-  const declaration = status === undefined && encoding === undefined
-    ? withHeadersSchema
-    : withHeadersSchema.annotate(annotations)
+  // Annotating always allocates a fresh AST. Consumers key per-instance caches
+  // (and the whole encode/decode pipeline) on the wrapper's AST, so two wrappers
+  // must never share one — even when neither carries a lifted annotation.
+  const declaration = withHeadersSchema.annotate(annotations as Schema.Annotations.Augment)
   return makeWithHeaders(declaration.ast, headers, body) as any
 }
 
@@ -825,7 +829,9 @@ export function isNoContentSchema(schema: Schema.Top): boolean {
  */
 export function getResponseContentType(schema: Schema.Top): string {
   const body = unwrapResponseSchema(schema)
-  return isStreamSchema(body) ? body.contentType : getResponseEncoding(body.ast).contentType
+  // The wrapper's AST is authoritative: it carries the body's lifted encoding
+  // annotation unless one was applied to the wrapper itself, which wins.
+  return isStreamSchema(body) ? body.contentType : getResponseEncoding(schema.ast).contentType
 }
 
 const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
