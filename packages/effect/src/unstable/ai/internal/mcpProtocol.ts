@@ -1,6 +1,7 @@
 import * as Data from "../../../Data.ts"
 import * as Effect from "../../../Effect.ts"
 import * as Match from "../../../Match.ts"
+import * as Result from "../../../Result.ts"
 import * as Schema from "../../../Schema.ts"
 import type * as Scope from "../../../Scope.ts"
 import type * as Headers from "../../http/Headers.ts"

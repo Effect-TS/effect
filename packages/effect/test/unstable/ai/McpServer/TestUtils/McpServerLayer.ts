@@ -2,6 +2,7 @@ import { constVoid } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as Logger from "effect/Logger"
 import * as References from "effect/References"
+import type * as Schema from "effect/Schema"
 import * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpServer from "effect/unstable/ai/McpServer"
 
@@ -16,7 +17,8 @@ export const makeServerLayer = (options: {
       ...Array<McpProtocol.ProtocolAdapter>
     ]
     | undefined
-  readonly extensions?: Record<`${string}/${string}`, unknown> | undefined
+  readonly extensions?: Readonly<Record<`${string}/${string}`, Schema.Json>> | undefined
+  readonly allowedOrigins?: ReadonlyArray<string> | undefined
 }) =>
   McpServer.layerHttp({
     name: options.name,
