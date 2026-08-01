@@ -130,10 +130,9 @@ export const decode = <S extends Schema.Constraint>(
  * @category constructors
  * @since 4.0.0
  */
-export const decodeUnknown = <S extends Schema.Constraint>(
+export const decodeUnknown: <S extends Schema.Constraint>(
   schema: S
-) =>
-<IE = never, Done = unknown>(): Channel.Channel<
+) => <IE = never, Done = unknown>() => Channel.Channel<
   Arr.NonEmptyReadonlyArray<S["Type"]>,
   IE | Schema.SchemaError,
   Done,
@@ -141,10 +140,7 @@ export const decodeUnknown = <S extends Schema.Constraint>(
   IE,
   Done,
   S["DecodingServices"]
-> => {
-  const decode = Schema.decodeUnknownEffect(Schema.NonEmptyArray(schema))
-  return Channel.fromTransform((upstream, _scope) => Effect.succeed(Effect.flatMap(upstream, (chunk) => decode(chunk))))
-}
+> = decode
 
 /**
  * Wraps a channel so callers work with typed input and output chunks while the
