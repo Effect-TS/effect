@@ -530,14 +530,6 @@ const makeImpl = <Services>(
   return self
 }
 
-const fromMap = <Services>(map: Map<string, any>): ContextImpl<Services> => {
-  const cache = new Map<string, unknown>()
-  map.forEach((value, key) => {
-    if (cacheKeys.has(key)) cache.set(key, value)
-  })
-  return makeImpl(cache, map, undefined, 0)
-}
-
 const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
   if (overlay === undefined) return
   applyOverlays(map, overlay.parent)
@@ -565,7 +557,7 @@ const withFlat = <B>(self: ContextImpl<any>, f: (map: Map<string, any>) => void)
   }
   const map = new Map(flatten(self))
   f(map)
-  return fromMap(map)
+  return makeUnsafe(map)
 }
 
 const lookup = (self: ContextImpl<any>, key: string): unknown => {
@@ -607,9 +599,9 @@ const hasKey = (self: Context<any>, key: string): boolean => {
  *
  * **Gotchas**
  *
- * The provided map is copied so later mutations are not observed by the
- * created `Context`. Prefer `empty`, `make`, `add`, or `merge` for normal
- * Context construction.
+ * The provided map is retained without copying and must not be mutated after
+ * construction. Prefer `empty`, `make`, `add`, or `merge` for normal Context
+ * construction.
  *
  * **Example** (Creating a context from a map)
  *
@@ -629,7 +621,11 @@ const hasKey = (self: Context<any>, key: string): boolean => {
  * @since 4.0.0
  */
 export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>): Context<Services> => {
-  return fromMap(new Map(mapUnsafe))
+  const cache = new Map<string, unknown>()
+  mapUnsafe.forEach((value, key) => {
+    if (cacheKeys.has(key)) cache.set(key, value)
+  })
+  return makeImpl(cache, mapUnsafe, undefined, 0)
 }
 
 const Proto: Omit<
@@ -1298,7 +1294,7 @@ export const mergeAll = <T extends Array<unknown>>(
       map.set(key, value)
     })
   }
-  return fromMap(map)
+  return makeUnsafe(map)
 }
 
 /**
@@ -1417,7 +1413,7 @@ export const mutate: {
     scratch.mutable = true
     try {
       const result = f(scratch)
-      return result === (scratch as unknown) ? fromMap(map) : result
+      return result === (scratch as unknown) ? makeUnsafe(map) : result
     } finally {
       scratch.mutable = false
     }

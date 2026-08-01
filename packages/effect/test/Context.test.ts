@@ -207,12 +207,10 @@ describe("Context", () => {
     strictEqual(calls, 1)
   })
 
-  it("does not observe later mutation of makeUnsafe input", () => {
+  it("retains the makeUnsafe input map", () => {
     const map = new Map([[A.key, 1]])
     const context = Context.makeUnsafe(map)
-    map.set(A.key, 2)
-    map.set(B.key, 3)
 
-    deepStrictEqual([...context.mapUnsafe], [[A.key, 1]])
+    strictEqual(context.mapUnsafe, map)
   })
 })
