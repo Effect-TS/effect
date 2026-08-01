@@ -368,6 +368,16 @@ describe("Trie", () => {
     assertSome(Trie.longestPrefixOf(trie, "shellsort"), ["shells", 0])
   })
 
+  it("longestPrefixOf ignores valued sibling nodes that do not match the input", () => {
+    const trie = Trie.make(["a", 1], ["b", 2])
+
+    strictEqual(
+      Option.isNone(Trie.longestPrefixOf(trie, "c")),
+      true,
+      "a non-matching sibling must not be reported as a prefix"
+    )
+  })
+
   it("map transforms values and can use keys", () => {
     const trie = Trie.empty<number>().pipe(
       Trie.insert("shells", 0),
