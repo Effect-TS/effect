@@ -5,7 +5,7 @@ import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Ref from "effect/Ref"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
-import * as McpSchema from "effect/unstable/ai/McpSchema"
+import type * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import type * as RpcClientError from "effect/unstable/rpc/RpcClientError"
 import type * as RpcGroup from "effect/unstable/rpc/RpcGroup"
@@ -29,10 +29,11 @@ export interface McpTestPeerOptions {
 }
 
 export interface McpTestPeer {
-  readonly client: RpcClient.RpcClient<
+  readonly wireClient: RpcClient.RpcClient<
     RpcGroup.Rpcs<typeof McpSchema.ServerRequestRpcs>,
     RpcClientError.RpcClientError
   >
+  readonly reverseClient: McpSchema.McpReverseClient
   readonly requests: Effect.Effect<ReadonlyArray<RecordedRequest>>
   readonly takeRequest: Effect.Effect<RecordedRequest>
 }
@@ -41,7 +42,7 @@ const isReverseMethod = (method: string): method is ReverseMethod =>
   ["roots/list", "sampling/createMessage", "elicitation/create"].includes(method)
 
 export const makeMcpTestPeer = Effect.fn("McpTestPeer.make")(function*(
-  _protocol: McpProtocol.ProtocolAdapter,
+  protocol: McpProtocol.ProtocolAdapter,
   options: McpTestPeerOptions = {}
 ) {
   const requests = yield* Ref.make<ReadonlyArray<RecordedRequest>>([])
@@ -108,12 +109,20 @@ export const makeMcpTestPeer = Effect.fn("McpTestPeer.make")(function*(
     })
   )
 
-  const client = yield* RpcClient.make(McpSchema.ServerRequestRpcs).pipe(
+  const wireClient = yield* RpcClient.make(
+    protocol.serverRequestRpcs as unknown as typeof McpSchema.ServerRequestRpcs
+  ).pipe(
     Effect.provideService(RpcClient.Protocol, rpcProtocol)
   )
+  const reverseClient = yield* protocol.makeReverseClient({
+    protocolVersion: protocol.protocolVersion,
+    clientCapabilities: options.capabilities ?? {},
+    clientInfo: options.clientInfo ?? { name: "McpTestPeer", version: "1.0.0" }
+  }).pipe(Effect.provideService(RpcClient.Protocol, rpcProtocol))
 
   return {
-    client,
+    wireClient,
+    reverseClient,
     requests: Ref.get(requests),
     takeRequest: Queue.take(inbox)
   } satisfies McpTestPeer
