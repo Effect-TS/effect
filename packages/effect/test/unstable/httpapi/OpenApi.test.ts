@@ -260,4 +260,33 @@ describe("OpenApi", () => {
 
     assert.throws(() => OpenApi.fromApi(Api), /Conflicting OpenAPI security scheme: __proto__/)
   })
+
+  it("emits one component for a named schema reused with HttpApiSchema.status", () => {
+    const Widget = Schema.Struct({ id: Schema.String }).annotate({ identifier: "Widget" })
+
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("widgets").add(
+        HttpApiEndpoint.get("get", "/widgets/:id", {
+          params: { id: Schema.String },
+          success: Widget
+        }),
+        HttpApiEndpoint.post("create", "/widgets", {
+          success: Widget.pipe(HttpApiSchema.status(201))
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+    const schemaNames = Object.keys(spec.components.schemas).filter((name) => name.startsWith("Widget"))
+
+    assert.deepStrictEqual(schemaNames, ["Widget"])
+    assert.deepStrictEqual(
+      spec.paths["/widgets/{id}"]?.get?.responses?.["200"]?.content?.["application/json"]?.schema,
+      { $ref: "#/components/schemas/Widget" }
+    )
+    assert.deepStrictEqual(
+      spec.paths["/widgets"]?.post?.responses?.["201"]?.content?.["application/json"]?.schema,
+      { $ref: "#/components/schemas/Widget" }
+    )
+  })
 })
