@@ -73,18 +73,15 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
 const SlotId = Symbol.for("effect/Context/Slot")
 const Unset = Symbol()
 const slotByKey = new Map<string, number>()
-let nextSlot = 0
 
-const allocateSlot = (key: Key<any, any>): number => {
-  let slot = slotByKey.get(key.key)
-  if (slot === undefined) {
-    slot = nextSlot++
-    slotByKey.set(key.key, slot)
-  }
-  ;(key as any)[SlotId] = slot
-  return slot
+const allocateSlot = (key: Key<any, any>): void => {
+  if (!slotByKey.has(key.key)) slotByKey.set(key.key, slotByKey.size)
+  ;(key as any)[SlotId] = slotByKey.get(key.key)
 }
 
+// Writes must consult the registry as well: a slotted key string can be written
+// through a second key object that never allocated the slot itself, and the
+// slab copy has to happen regardless of which object performs the add
 const slotOf = (key: Key<any, any>): number | undefined => (key as any)[SlotId] ?? slotByKey.get(key.key)
 
 /**
@@ -512,7 +509,6 @@ interface ContextImpl<in Services> extends Context<Services> {
   base: ReadonlyMap<string, any>
   overlay: Overlay | undefined
   depth: number
-  size: number
   _flat: ReadonlyMap<string, any> | undefined
 }
 
@@ -529,7 +525,6 @@ const makeImpl = <Services>(
   base: ReadonlyMap<string, any>,
   overlay: Overlay | undefined,
   depth: number,
-  size: number,
   flat?: ReadonlyMap<string, any>
 ): ContextImpl<Services> => {
   const self: ContextImpl<Services> = Object.create(Proto)
@@ -537,21 +532,28 @@ const makeImpl = <Services>(
   self.base = base
   self.overlay = overlay
   self.depth = depth
-  self.size = size
   self.mutable = false
   self._flat = flat
   return self
 }
 
+const slabSet = (slab: Array<unknown>, slot: number, value: unknown): void => {
+  while (slab.length <= slot) slab.push(Unset)
+  slab[slot] = value
+}
+
 const fromMap = <Services>(map: Map<string, any>): ContextImpl<Services> => {
   const slab: Array<unknown> = []
-  map.forEach((value, key) => {
-    const slot = slotByKey.get(key)
-    if (slot === undefined) return
-    while (slab.length <= slot) slab.push(Unset)
-    slab[slot] = value
+  slotByKey.forEach((slot, key) => {
+    if (map.has(key)) slabSet(slab, slot, map.get(key))
   })
-  return makeImpl(slab, map, undefined, 0, map.size, map)
+  return makeImpl(slab, map, undefined, 0, map)
+}
+
+const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
+  if (overlay === undefined) return
+  applyOverlays(map, overlay.parent)
+  map.set(overlay.key, overlay.value)
 }
 
 // Some cycle-locked modules build Context objects that only carry `mapUnsafe`
@@ -561,26 +563,29 @@ const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
   if (self._flat !== undefined) return self._flat
   if (self.base === undefined) return self.mapUnsafe
   if (self.overlay === undefined) return self._flat = self.base
-
   const map = new Map(self.base)
-  const stack: Array<Overlay> = []
-  for (let overlay: Overlay | undefined = self.overlay; overlay !== undefined; overlay = overlay.parent) {
-    stack.push(overlay)
-  }
-  for (let i = stack.length - 1; i >= 0; i--) {
-    map.set(stack[i].key, stack[i].value)
-  }
+  applyOverlays(map, self.overlay)
   return self._flat = map
 }
 
-const slabAt = (self: ContextImpl<any>, slot: number): unknown => slot < self.slab.length ? self.slab[slot] : Unset
+// Applies a mutation to the flat view of the context: in place for mutable
+// scratch contexts, on a copy otherwise
+const withFlat = <B>(self: ContextImpl<any>, f: (map: Map<string, any>) => void): Context<B> => {
+  if (self.mutable) {
+    f(self.base as Map<string, any>)
+    return self as any
+  }
+  const map = new Map(flatten(self))
+  f(map)
+  return fromMap(map)
+}
 
 const lookup = (self: ContextImpl<any>, key: string, slot?: number): unknown => {
   if (self.base === undefined) {
     return self.mapUnsafe.has(key) ? self.mapUnsafe.get(key) : Unset
   }
-  if (slot !== undefined) {
-    const value = slabAt(self, slot)
+  if (slot !== undefined && slot < self.slab.length) {
+    const value = self.slab[slot]
     if (value !== Unset) return value
   }
   for (let overlay = self.overlay; overlay !== undefined; overlay = overlay.parent) {
@@ -589,7 +594,10 @@ const lookup = (self: ContextImpl<any>, key: string, slot?: number): unknown => 
   return self.base.has(key) ? self.base.get(key) : Unset
 }
 
-const has = (self: ContextImpl<any>, key: Key<any, any>): boolean => lookup(self, key.key, slotOf(key)) !== Unset
+// The slab is a cache: every slotted value is also present in overlay/base, so
+// reads can use the key's own slot without consulting the registry
+const lookupKey = (self: Context<any>, key: Key<any, any>): unknown =>
+  lookup(self as ContextImpl<any>, key.key, (key as any)[SlotId])
 
 /**
  * Creates a `Context` from an existing service map.
@@ -659,7 +667,7 @@ const Proto: Omit<
     return true
   },
   [Hash.symbol]<A>(this: Context<A>): number {
-    return Hash.number((this as ContextImpl<A>).size)
+    return Hash.number(this.mapUnsafe.size)
   }
 }
 
@@ -834,37 +842,23 @@ export const add: {
   key: Key<I, S>,
   service: Types.NoInfer<S>
 ): Context<Services | I> => {
-  let impl = self as ContextImpl<Services>
-  if (impl.base === undefined) impl = fromMap(new Map(impl.mapUnsafe))
-
-  if (impl.mutable) {
-    ;(impl.base as Map<string, any>).set(key.key, service)
-    impl.size = impl.base.size
-    return self as any
+  const impl = self as ContextImpl<Services>
+  if (impl.mutable || impl.base === undefined || impl.depth >= MaxDepth) {
+    return withFlat(impl, (map) => map.set(key.key, service))
   }
 
-  if (impl.depth >= MaxDepth) {
-    const map = new Map(flatten(impl))
-    map.set(key.key, service)
-    return fromMap(map)
-  }
-
-  const grew = !has(impl, key)
   let slab = impl.slab
   const slot = slotOf(key)
   if (slot !== undefined) {
-    const copy = impl.slab.slice()
-    while (copy.length <= slot) copy.push(Unset)
-    copy[slot] = service
-    slab = copy
+    slab = impl.slab.slice()
+    slabSet(slab as Array<unknown>, slot, service)
   }
 
   return makeImpl(
     slab,
     impl.base,
     { key: key.key, value: service, parent: impl.overlay },
-    impl.depth + 1,
-    impl.size + (grew ? 1 : 0)
+    impl.depth + 1
   )
 })
 
@@ -973,7 +967,7 @@ export const getOrElse: {
   <S, I, B>(key: Key<I, S>, orElse: LazyArg<B>): <Services>(self: Context<Services>) => S | B
   <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B
 } = dual(3, <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B => {
-  const value = lookup(self as ContextImpl<Services>, key.key, slotOf(key))
+  const value = lookupKey(self, key)
   if (value !== Unset) return value as any
   return isReference(key) ? getDefaultValue(key) : orElse()
 })
@@ -1003,7 +997,7 @@ export const getOrUndefined: {
 } = dual(
   2,
   <Services, S, I>(self: Context<Services>, key: Key<I, S>): S | undefined => {
-    const value = lookup(self as ContextImpl<Services>, key.key, slotOf(key))
+    const value = lookupKey(self, key)
     return value === Unset ? undefined : value as S
   }
 )
@@ -1049,7 +1043,7 @@ export const getUnsafe: {
 } = dual(
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S => {
-    const value = lookup(self as ContextImpl<Services>, service.key, slotOf(service))
+    const value = lookupKey(self, service)
     if (value === Unset) {
       if (ReferenceTypeId in service) return getDefaultValue(service as any)
       throw serviceNotFoundError(service)
@@ -1137,7 +1131,7 @@ export const get: {
  * @since 4.0.0
  */
 export const getReferenceUnsafe = <Services, S>(self: Context<Services>, service: Reference<S>): S => {
-  const value = lookup(self as ContextImpl<Services>, service.key, slotOf(service))
+  const value = lookupKey(self, service)
   return value === Unset ? getDefaultValue(service as any) : value as S
 }
 
@@ -1208,7 +1202,7 @@ export const getOption: {
   <S, I>(service: Key<I, S>): <Services>(self: Context<Services>) => Option.Option<S>
   <Services, S, I>(self: Context<Services>, service: Key<I, S>): Option.Option<S>
 } = dual(2, <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): Option.Option<S> => {
-  const value = lookup(self as ContextImpl<Services>, service.key, slotOf(service))
+  const value = lookupKey(self, service)
   if (value !== Unset) return Option.some(value as any)
   return isReference(service) ? Option.some(getDefaultValue(service as any)) : Option.none()
 })
@@ -1252,18 +1246,10 @@ export const merge: {
   <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1>
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
   const selfImpl = self as ContextImpl<Services>
-  const thatImpl = that as ContextImpl<R1>
-  if (selfImpl.size === 0) return that as any
-  if (thatImpl.size === 0) return self as any
-  if (selfImpl.mutable) {
-    const base = selfImpl.base as Map<string, any>
-    flatten(thatImpl).forEach((value, key) => base.set(key, value))
-    selfImpl.size = base.size
-    return self as any
-  }
-  const map = new Map(flatten(selfImpl))
-  flatten(thatImpl).forEach((value, key) => map.set(key, value))
-  return fromMap(map)
+  const thatFlat = flatten(that as ContextImpl<R1>)
+  if (flatten(selfImpl).size === 0) return that as any
+  if (thatFlat.size === 0) return self as any
+  return withFlat(selfImpl, (map) => thatFlat.forEach((value, key) => map.set(key, value)))
 })
 
 /**
@@ -1353,20 +1339,10 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
 ) =>
 <Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> => {
   const keep = new Set(services.map((key) => key.key))
-  const impl = self as ContextImpl<Services>
-  if (impl.mutable) {
-    const base = impl.base as Map<string, any>
-    base.forEach((_, key) => {
-      if (!keep.has(key)) base.delete(key)
-    })
-    impl.size = base.size
-    return self as any
-  }
-  const map = new Map<string, any>()
-  flatten(impl).forEach((value, key) => {
-    if (keep.has(key)) map.set(key, value)
-  })
-  return fromMap(map)
+  return withFlat(self as ContextImpl<Services>, (map) =>
+    map.forEach((_, key) => {
+      if (!keep.has(key)) map.delete(key)
+    }))
 }
 
 /**
@@ -1403,21 +1379,12 @@ export const pick = <S extends ReadonlyArray<Key<any, any>>>(
 export const omit = <S extends ReadonlyArray<Key<any, any>>>(
   ...keys: S
 ) =>
-<Services>(self: Context<Services>): Context<Exclude<Services, Service.Identifier<S[number]>>> => {
-  const drop = new Set(keys.map((key) => key.key))
-  const impl = self as ContextImpl<Services>
-  if (impl.mutable) {
-    const base = impl.base as Map<string, any>
-    drop.forEach((key) => base.delete(key))
-    impl.size = base.size
-    return self as any
-  }
-  const map = new Map<string, any>()
-  flatten(impl).forEach((value, key) => {
-    if (!drop.has(key)) map.set(key, value)
+<Services>(self: Context<Services>): Context<Exclude<Services, Service.Identifier<S[number]>>> =>
+  withFlat(self as ContextImpl<Services>, (map) => {
+    for (let i = 0; i < keys.length; i++) {
+      map.delete(keys[i].key)
+    }
   })
-  return fromMap(map)
-}
 
 /**
  * Performs a series of mutations on a `Context`. Prevents unnecessary copying
@@ -1448,16 +1415,14 @@ export const mutate: {
     // The scratch context gets an empty slab, so every operation on it reads
     // and writes `base` alone; the slab is rebuilt once when sealing
     const map = new Map(flatten(self as ContextImpl<Services>))
-    const scratch = makeImpl<Services>([], map, undefined, 0, map.size, map)
+    const scratch = makeImpl<Services>([], map, undefined, 0, map)
     scratch.mutable = true
-    let result: Context<B> | undefined
     try {
-      result = f(scratch)
+      const result = f(scratch)
+      return result === (scratch as unknown) ? fromMap(map) : result
     } finally {
       scratch.mutable = false
-      if (result !== undefined) result.mutable = false
     }
-    return result === (scratch as unknown) ? fromMap(map) : result
   }
 )
 
