@@ -8,6 +8,7 @@ import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Filter from "effect/Filter"
 import * as Latch from "effect/Latch"
+import * as Option from "effect/Option"
 import * as Queue from "effect/Queue"
 import * as Result from "effect/Result"
 
@@ -117,6 +118,12 @@ describe("Channel", () => {
         const resultChunked = yield* Channel.runCollect(Channel.fromIterableArray(numbers, 4))
         assert.deepStrictEqual(result, [[1, 2, 3, 4, 5]])
         assert.deepStrictEqual(resultChunked, [[1, 2, 3, 4], [5]])
+      }))
+
+    it.effect("fromIterableArray does not emit an empty chunk for a zero chunk size", () =>
+      Effect.gen(function*() {
+        const result = yield* Channel.runHead(Channel.fromIterableArray([1, 2, 3], 0))
+        assert.deepStrictEqual(result, Option.some([1]))
       }))
 
     it.effect("fromReadableStream", () =>
