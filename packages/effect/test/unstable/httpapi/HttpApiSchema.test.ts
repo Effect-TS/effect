@@ -119,4 +119,118 @@ describe("HttpApiSchema", () => {
     assert.isFalse(HttpApiSchema.isStreamSchema(Schema.String))
     assert.isFalse(HttpApiSchema.isStreamSchema(Schema.Uint8Array.pipe(HttpApiSchema.asUint8Array())))
   })
+
+  describe("WithHeaders", () => {
+    it("stores the headers and body sub-schemas", () => {
+      const headers = Schema.Struct({ location: Schema.String })
+      const body = Schema.String
+      const schema = HttpApiSchema.WithHeaders({ headers, body })
+
+      assert.isTrue(Schema.isSchema(schema))
+      assert.isTrue(HttpApiSchema.isWithHeaders(schema))
+      assert.isFalse(HttpApiSchema.isStreamSchema(schema))
+      assert.strictEqual(schema.headers, headers)
+      assert.strictEqual(schema.body, body)
+    })
+
+    it("accepts a field record for headers", () => {
+      const schema = HttpApiSchema.WithHeaders({
+        headers: { location: Schema.String },
+        body: Schema.String
+      })
+
+      assert.isTrue(Schema.isSchema(schema.headers))
+      assert.deepStrictEqual(
+        Object.keys((schema.headers as Schema.Struct<any>).fields),
+        ["location"]
+      )
+    })
+
+    it("lifts the body status annotation onto the wrapper", () => {
+      const schema = HttpApiSchema.WithHeaders({
+        headers: { location: Schema.String },
+        body: HttpApiSchema.Created
+      })
+
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(schema.ast), 201)
+    })
+
+    it("lifts the body encoding annotation onto the wrapper", () => {
+      const schema = HttpApiSchema.WithHeaders({
+        headers: { location: Schema.String },
+        body: Schema.String.pipe(HttpApiSchema.asText({ contentType: "text/custom" }))
+      })
+
+      assert.strictEqual(
+        HttpApiSchema.getResponseEncoding(schema.ast).contentType,
+        "text/custom"
+      )
+    })
+
+    it("lets an explicit status on the wrapper win", () => {
+      const schema = HttpApiSchema.status(202)(
+        HttpApiSchema.WithHeaders({
+          headers: { location: Schema.String },
+          body: HttpApiSchema.Created
+        })
+      )
+
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(schema.ast), 202)
+      assert.isTrue(HttpApiSchema.isWithHeaders(schema))
+      assert.strictEqual(schema.body, HttpApiSchema.Created)
+    })
+
+    it("defaults to 200 and json when the body carries no annotations", () => {
+      const schema = HttpApiSchema.WithHeaders({
+        headers: { location: Schema.String },
+        body: Schema.Struct({ id: Schema.String })
+      })
+
+      assert.strictEqual(HttpApiSchema.getStatusSuccess(schema.ast), 200)
+      assert.strictEqual(HttpApiSchema.getStatusError(schema.ast), 500)
+      assert.strictEqual(
+        HttpApiSchema.getResponseEncoding(schema.ast).contentType,
+        "application/json"
+      )
+    })
+
+    it("wraps a stream body", () => {
+      const stream = HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
+      const schema = HttpApiSchema.WithHeaders({
+        headers: { "x-trace-id": Schema.String },
+        body: stream
+      })
+
+      assert.isTrue(HttpApiSchema.isWithHeaders(schema))
+      assert.isFalse(HttpApiSchema.isStreamSchema(schema))
+      assert.strictEqual(HttpApiSchema.unwrapResponseSchema(schema), stream)
+      assert.strictEqual(
+        HttpApiSchema.getResponseContentType(schema),
+        "application/custom-bytes"
+      )
+    })
+
+    it("rejects nested WithHeaders", () => {
+      assert.throws(
+        () =>
+          HttpApiSchema.WithHeaders({
+            headers: { a: Schema.String },
+            body: HttpApiSchema.WithHeaders({ headers: { b: Schema.String }, body: Schema.String })
+          }),
+        "WithHeaders cannot wrap another WithHeaders"
+      )
+    })
+
+    it("classifies a no-content body through the wrapper", () => {
+      const schema = HttpApiSchema.WithHeaders({
+        headers: { location: Schema.String },
+        body: HttpApiSchema.Created
+      })
+
+      assert.isFalse(HttpApiSchema.isNoContent(schema.ast))
+      assert.isTrue(HttpApiSchema.isNoContentSchema(schema))
+      assert.isTrue(HttpApiSchema.isNoContentSchema(HttpApiSchema.Created))
+      assert.isFalse(HttpApiSchema.isNoContentSchema(Schema.String))
+    })
+  })
 })

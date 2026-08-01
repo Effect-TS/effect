@@ -458,6 +458,139 @@ export const isStreamSse = (u: unknown): u is StreamSse<Sse.EventCodec, Schema.T
 export const isStreamUint8Array = (u: unknown): u is StreamUint8Array =>
   isStreamSchema(u) && u._tag === "StreamUint8Array"
 
+/**
+ * Runtime brand key used to mark response schemas that carry a headers schema.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export const WithHeadersTypeId = "~effect/httpapi/HttpApiSchema/WithHeaders"
+
+/**
+ * Schema for a response that carries typed headers alongside a body.
+ *
+ * **Details**
+ *
+ * This declaration stores the headers and body schemas for later endpoint,
+ * server, client, and OpenAPI integrations. Its runtime value is
+ * `{ headers, body }`: handlers return that shape, and generated clients
+ * produce it.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WithHeaders<Headers extends Schema.Top, Body extends Schema.Top> extends
+  Schema.Bottom<
+    { readonly headers: Headers["Type"]; readonly body: Body["Type"] },
+    { readonly headers: Headers["Encoded"]; readonly body: Body["Encoded"] },
+    Headers["DecodingServices"] | Body["DecodingServices"],
+    Headers["EncodingServices"] | Body["EncodingServices"],
+    SchemaAST.Declaration,
+    WithHeaders<Headers, Body>
+  >
+{
+  readonly "Rebuild": WithHeaders<Headers, Body>
+  readonly [WithHeadersTypeId]: typeof WithHeadersTypeId
+  readonly headers: Headers
+  readonly body: Body
+}
+
+const withHeadersSchema = Schema.declare(
+  (u: unknown): u is { readonly headers: unknown; readonly body: unknown } =>
+    Predicate.hasProperty(u, "headers") && Predicate.hasProperty(u, "body")
+)
+
+/**
+ * Creates a response schema that carries typed headers alongside a body.
+ *
+ * **Details**
+ *
+ * Header names should be declared in lowercase: Effect normalizes header names
+ * to lowercase on both the client and the server. A header declared with a
+ * required schema fails decoding when absent from the response; use
+ * `Schema.optional` for headers that may be missing.
+ *
+ * The body's status and encoding annotations are lifted onto the wrapper, so
+ * `HttpApiSchema.Created`, `asText()`, and friends compose as expected. An
+ * annotation applied to the wrapper itself takes precedence.
+ *
+ * **Example**
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { HttpApiSchema } from "effect/unstable/httpapi"
+ *
+ * const CreatedWithLocation = HttpApiSchema.WithHeaders({
+ *   headers: { location: Schema.String },
+ *   body: HttpApiSchema.Created
+ * })
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const WithHeaders = <
+  H extends Schema.Struct.Fields | Schema.Top,
+  B extends Schema.Top
+>(options: {
+  readonly headers: H
+  readonly body: B
+}): WithHeaders<H extends Schema.Struct.Fields ? Schema.Struct<H> : H, B> => {
+  const headers = Schema.isSchema(options.headers)
+    ? options.headers as Schema.Top
+    : Schema.Struct(options.headers as Schema.Struct.Fields)
+  const body = options.body
+  if (isWithHeaders(body)) {
+    throw new Error("WithHeaders cannot wrap another WithHeaders")
+  }
+  const annotations: Schema.Annotations.Augment = {}
+  const status = resolveHttpApiStatus(body.ast)
+  if (status !== undefined) {
+    ;(annotations as any).httpApiStatus = status
+  }
+  const encoding = resolveHttpApiEncoding(body.ast)
+  if (encoding !== undefined) {
+    ;(annotations as any)["~httpApiEncoding"] = encoding
+  }
+  const declaration = status === undefined && encoding === undefined
+    ? withHeadersSchema
+    : withHeadersSchema.annotate(annotations)
+  return makeWithHeaders(declaration.ast, headers, body) as any
+}
+
+function makeWithHeaders(
+  ast: SchemaAST.Declaration,
+  headers: Schema.Top,
+  body: Schema.Top
+): WithHeaders<Schema.Top, Schema.Top> {
+  return Schema.make<WithHeaders<Schema.Top, Schema.Top>>(ast, {
+    [WithHeadersTypeId]: WithHeadersTypeId,
+    headers,
+    body
+  })
+}
+
+/**
+ * Returns `true` when a value is a {@link WithHeaders} schema.
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export const isWithHeaders = (u: unknown): u is WithHeaders<Schema.Top, Schema.Top> =>
+  Schema.isSchema(u) && Predicate.hasProperty(u, WithHeadersTypeId)
+
+/**
+ * Rebuilds a {@link WithHeaders} schema with new sub-schemas, preserving the
+ * wrapper's own AST and therefore any annotations applied to it.
+ *
+ * @internal
+ */
+export const replaceWithHeaders = (
+  self: WithHeaders<Schema.Top, Schema.Top>,
+  headers: Schema.Top,
+  body: Schema.Top
+): WithHeaders<Schema.Top, Schema.Top> => makeWithHeaders(self.ast, headers, body)
+
 function defaultStreamContentType(mode: StreamMode): string {
   switch (mode) {
     case "sse":
@@ -663,6 +796,36 @@ export const isNoContent = (ast: SchemaAST.AST): boolean => {
   const target = ast.encoding?.[0].to
   if (target === undefined) return false
   return SchemaAST.isVoid(target)
+}
+
+/**
+ * Returns the response body schema, unwrapping {@link WithHeaders}.
+ *
+ * @internal
+ */
+export function unwrapResponseSchema(schema: Schema.Top): Schema.Top {
+  return isWithHeaders(schema) ? schema.body : schema
+}
+
+/**
+ * `isNoContent` for a schema rather than a bare AST, unwrapping
+ * {@link WithHeaders} first.
+ *
+ * @internal
+ */
+export function isNoContentSchema(schema: Schema.Top): boolean {
+  return isNoContent(unwrapResponseSchema(schema).ast)
+}
+
+/**
+ * Returns the response content type for buffered, streaming, and
+ * {@link WithHeaders} response schemas alike.
+ *
+ * @internal
+ */
+export function getResponseContentType(schema: Schema.Top): string {
+  const body = unwrapResponseSchema(schema)
+  return isStreamSchema(body) ? body.contentType : getResponseEncoding(body.ast).contentType
 }
 
 const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
