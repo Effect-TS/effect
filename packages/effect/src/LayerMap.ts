@@ -158,6 +158,7 @@ export const make: <
   lookup: (key: K) => Layer.Layer<I, EL, RL>,
   options?: {
     readonly idleTimeToLive?: IdleTimeToLiveInput<K> | undefined
+    readonly preloadKeys?: Iterable<K> | undefined
   } | undefined
 ) {
   const context = yield* Effect.context<never>()
@@ -170,6 +171,12 @@ export const make: <
       ),
     idleTimeToLive: options?.idleTimeToLive
   })
+
+  if (options?.preloadKeys) {
+    for (const key of options.preloadKeys) {
+      yield* Effect.scoped(RcMap.get(rcMap, key))
+    }
+  }
 
   return identity<LayerMap<K, I, any>>({
     [TypeId]: TypeId,

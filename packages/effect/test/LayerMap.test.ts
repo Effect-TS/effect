@@ -16,6 +16,17 @@ const makeLayer = (key: string, acquired: Array<string>, released: Array<string>
   ) as Layer.Layer<any>
 
 describe("LayerMap", () => {
+  it.effect("make preloads the requested keys", () =>
+    Effect.gen(function*() {
+      const acquired: Array<string> = []
+      yield* LayerMap.make(
+        (key: string) => Layer.effectDiscard(Effect.sync(() => acquired.push(key))) as Layer.Layer<any>,
+        { preloadKeys: ["a", "b"] }
+      )
+
+      assert.deepStrictEqual(acquired, ["a", "b"])
+    }))
+
   it.effect("make supports dynamic idleTimeToLive", () =>
     Effect.gen(function*() {
       const acquired: Array<string> = []
