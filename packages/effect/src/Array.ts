@@ -909,7 +909,7 @@ export const length = <A>(self: ReadonlyArray<A>): number => self.length
 
 /** @internal */
 export function isOutOfBounds<A>(i: number, as: ReadonlyArray<A>): boolean {
-  return i < 0 || i >= as.length
+  return !Number.isFinite(i) || i < 0 || i >= as.length
 }
 
 const clamp = <A>(i: number, as: ReadonlyArray<A>): number => Math.floor(Math.min(Math.max(0, i), as.length))
@@ -1875,10 +1875,11 @@ export const insertAt: {
   <A, B>(self: Iterable<A>, i: number, b: B): Option.Option<NonEmptyArray<A | B>>
 } = dual(3, <A, B>(self: Iterable<A>, i: number, b: B): Option.Option<NonEmptyArray<A | B>> => {
   const out: Array<A | B> = Array.from(self) // copy because `splice` mutates the array
-  if (i < 0 || i > out.length) {
+  const index = Math.floor(i)
+  if (index !== out.length && isOutOfBounds(index, out)) {
     return Option.none()
   }
-  out.splice(i, 0, b)
+  out.splice(index, 0, b)
   return Option.some(out as any)
 })
 
@@ -1966,12 +1967,13 @@ export const modify: {
   ): Option.Option<ReadonlyArray.With<S, ReadonlyArray.Infer<S> | B>>
 } = dual(3, <A, B>(self: Iterable<A>, i: number, f: (a: A) => B): Option.Option<Array<A | B>> => {
   const arr = Array.from(self)
-  if (isOutOfBounds(i, arr)) {
+  const index = Math.floor(i)
+  if (isOutOfBounds(index, arr)) {
     return Option.none()
   }
   const out: Array<A | B> = arr
-  const b = f(arr[i])
-  out[i] = b
+  const b = f(arr[index])
+  out[index] = b
   return Option.some(out)
 })
 
@@ -2004,10 +2006,11 @@ export const remove: {
   <A>(self: Iterable<A>, i: number): Array<A>
 } = dual(2, <A>(self: Iterable<A>, i: number): Array<A> => {
   const out = Array.from(self)
-  if (isOutOfBounds(i, out)) {
+  const index = Math.floor(i)
+  if (isOutOfBounds(index, out)) {
     return out
   }
-  out.splice(i, 1)
+  out.splice(index, 1)
   return out
 })
 
