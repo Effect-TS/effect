@@ -178,12 +178,12 @@ export const set: {
       self: ScopedRef<A>,
       acquire: Effect.Effect<A, E, R>
     ) {
-      yield* Scope.close(self.backing.backing.ref.current[0], Exit.void)
       const scope = Scope.makeUnsafe()
       const value = yield* acquire.pipe(
         Scope.provide(scope),
         Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
       )
+      yield* Scope.close(self.backing.backing.ref.current[0], Exit.void)
       self.backing.backing.ref.current = [scope, value]
     },
     Effect.uninterruptible,

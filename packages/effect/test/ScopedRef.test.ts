@@ -76,9 +76,10 @@ describe("ScopedRef", () => {
     Effect.gen(function*() {
       let released = false
       const ref = yield* ScopedRef.fromAcquire(
-        Effect.acquireRelease(Effect.succeed(1), () => Effect.sync(() => {
-          released = true
-        }))
+        Effect.acquireRelease(Effect.succeed(1), () =>
+          Effect.sync(() => {
+            released = true
+          }))
       )
 
       yield* ScopedRef.set(ref, Effect.fail("boom")).pipe(Effect.catch(() => Effect.void))
