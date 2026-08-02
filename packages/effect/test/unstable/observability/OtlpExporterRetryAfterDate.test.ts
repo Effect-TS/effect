@@ -20,7 +20,8 @@ it.effect("honors an HTTP-date Retry-After value", () =>
               : new Response()
           )
         )
-      ))
+      )
+    )
     const exporter = yield* OtlpExporter.make({
       url: "http://localhost/v1/logs",
       headers: undefined,
@@ -41,4 +42,8 @@ it.effect("honors an HTTP-date Retry-After value", () =>
     yield* TestClock.adjust("5 seconds")
     yield* Effect.forEach(Array.from({ length: 3 }), () => Effect.yieldNow, { discard: true })
     assert.strictEqual(yield* Ref.get(attempts), 1)
+
+    yield* TestClock.adjust("55 seconds")
+    yield* Effect.forEach(Array.from({ length: 3 }), () => Effect.yieldNow, { discard: true })
+    assert.strictEqual(yield* Ref.get(attempts), 2)
   })))
