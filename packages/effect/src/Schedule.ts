@@ -753,8 +753,8 @@ export const during = (duration: Duration.Input): Schedule<Duration.Duration> =>
     effect.succeed((meta) => {
       const elapsed = Duration.millis(meta.elapsed)
       return meta.elapsed > durationMillis
-        ? effect.succeed([elapsed, Duration.zero])
-        : Cause.done(elapsed)
+        ? Cause.done(elapsed)
+        : effect.succeed([elapsed, Duration.zero])
     })
   )
 }
