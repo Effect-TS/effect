@@ -54,6 +54,15 @@ const suite = (name: string, layer: Layer.Layer<Persistence.BackingPersistence, 
         ])
       }))
 
+    it.effect("getMany with duplicate keys", () =>
+      Effect.gen(function*() {
+        const persistence = yield* Persistence.BackingPersistence
+        const store = yield* persistence.make("test_store_duplicate_keys")
+        yield* store.set("key", { value: 1 }, undefined)
+
+        expect(yield* store.getMany(["key", "key"])).toEqual([{ value: 1 }, { value: 1 }])
+      }))
+
     it.effect("remove", () =>
       Effect.gen(function*() {
         const persistence = yield* Persistence.BackingPersistence

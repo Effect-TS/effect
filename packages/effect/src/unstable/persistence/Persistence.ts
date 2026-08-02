@@ -414,18 +414,16 @@ export const layerBackingSqlMultiTable: Layer.Layer<
               })
             ),
             Effect.flatMap((rows) => {
-              const out = new Array<object | undefined>(keys.length)
+              const values = new Map<string, object>()
               for (let i = 0; i < rows.length; i++) {
                 const row = rows[i]
-                const index = keys.indexOf(row.id)
-                if (index === -1) continue
                 try {
-                  out[index] = JSON.parse(row.value)
+                  values.set(row.id, JSON.parse(row.value))
                 } catch {
                   // ignore
                 }
               }
-              return Effect.succeed(out as Arr.NonEmptyArray<object | undefined>)
+              return Effect.succeed(keys.map((key) => values.get(key)) as Arr.NonEmptyArray<object | undefined>)
             })
           ),
         set: (key, value, ttl) =>
@@ -761,18 +759,16 @@ export const layerBackingSql: Layer.Layer<
               })
             ),
             Effect.flatMap((rows) => {
-              const out = new Array<object | undefined>(keys.length)
+              const values = new Map<string, object>()
               for (let i = 0; i < rows.length; i++) {
                 const row = rows[i]
-                const index = keys.indexOf(row.id)
-                if (index === -1) continue
                 try {
-                  out[index] = JSON.parse(row.value)
+                  values.set(row.id, JSON.parse(row.value))
                 } catch {
                   // ignore
                 }
               }
-              return Effect.succeed(out as Arr.NonEmptyArray<object | undefined>)
+              return Effect.succeed(keys.map((key) => values.get(key)) as Arr.NonEmptyArray<object | undefined>)
             })
           ),
         set: (key, value, ttl) =>
