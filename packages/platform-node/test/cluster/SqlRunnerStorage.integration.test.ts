@@ -60,17 +60,25 @@ describe("SqlRunnerStorage", () => {
       assert.isAtLeast(partitioned.interruptedQueries, 1)
       assert.isAtMost(partitioned.maxActiveQueries, 1)
 
+      // Rebuilding is asynchronous, so wait until the replacement connection
+      // is ready before checking that lock operations recover.
+      const usableConnections = partitioned.usableConnections
       partitioned.current = false
+      yield* waitUntil(() => partitioned.usableConnections > usableConnections)
       expect(yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)).toEqual(shards)
 
       partitioned.current = true
       yield* expectDeadline(storage.acquire(runnerAddress1, [ShardId.make("default", 2)]))
+      const usableConnectionsAfterAcquire = partitioned.usableConnections
       partitioned.current = false
+      yield* waitUntil(() => partitioned.usableConnections > usableConnectionsAfterAcquire)
       yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)
 
       partitioned.current = true
       yield* expectDeadline(storage.release(runnerAddress1, shards[0]))
+      const usableConnectionsAfterRelease = partitioned.usableConnections
       partitioned.current = false
+      yield* waitUntil(() => partitioned.usableConnections > usableConnectionsAfterRelease)
       yield* storage.refresh(runnerAddress1, shards).pipe(TestClock.withLive)
       yield* storage.release(runnerAddress1, shards[0]).pipe(TestClock.withLive)
 
