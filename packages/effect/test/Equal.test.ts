@@ -289,6 +289,18 @@ describe("Equal.equals", () => {
       const date2 = new Date("2023-01-02T00:00:00.000Z")
       expect(Equal.equals(date1, date2)).toBe(false)
     })
+
+    it("should compare invalid dates without throwing", () => {
+      expect(Equal.equals(new Date(NaN), new Date(NaN))).toBe(true)
+    })
+  })
+
+  describe("DataView objects", () => {
+    it("should compare viewed bytes", () => {
+      const self = new DataView(Uint8Array.of(1).buffer)
+      const that = new DataView(Uint8Array.of(2).buffer)
+      expect(Equal.equals(self, that)).toBe(false)
+    })
   })
 
   describe("Effect data structures", () => {
