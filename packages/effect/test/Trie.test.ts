@@ -2,11 +2,23 @@ import { describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import * as Result from "effect/Result"
 import * as Trie from "effect/Trie"
 
 describe("Trie", () => {
+  it("equality rejects tries with different numbers of entries after a hash collision", () => {
+    const value = {
+      [Hash.symbol]: () => Hash.hash("a") * 53
+    }
+    const empty = Trie.empty<typeof value>()
+    const nonEmpty = Trie.make(["a", value])
+
+    strictEqual(Hash.hash(empty), Hash.hash(nonEmpty))
+    strictEqual(Equal.equals(empty, nonEmpty), false, "tries with different sizes must not be equal")
+  })
+
   it("toString renders entries in iteration order", () => {
     const trie = pipe(
       Trie.empty<number>(),
