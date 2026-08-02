@@ -26,35 +26,37 @@ import * as HttpClientError from "../../unstable/http/HttpClientError.ts"
 import * as HttpClientRequest from "../../unstable/http/HttpClientRequest.ts"
 import type { HttpBody } from "../http/HttpBody.ts"
 
-const retryAfterDelay = (clock: Clock, value: string | undefined): Duration.Duration => {
+const retryAfterDelay = (value: string | undefined): Effect.Effect<Duration.Duration> => {
   const seconds = Option.fromUndefinedOr(value).pipe(Option.flatMap(Num.parse))
   if (Option.isSome(seconds)) {
-    return Duration.seconds(seconds.value)
+    return Effect.succeed(Duration.seconds(seconds.value))
   }
   if (value === undefined) {
-    return Duration.seconds(5)
+    return Effect.succeed(Duration.seconds(5))
   }
   const timestamp = Date.parse(value)
   if (Number.isNaN(timestamp)) {
-    return Duration.seconds(5)
+    return Effect.succeed(Duration.seconds(5))
   }
-  return Duration.millis(Math.max(timestamp - clock.currentTimeMillisUnsafe(), 1))
+  return Effect.map(
+    Clock,
+    (clock) => Duration.millis(Math.max(timestamp - clock.currentTimeMillisUnsafe(), 1))
+  )
 }
 
-const policy = (clock: Clock) =>
-  Schedule.forever.pipe(
-    Schedule.passthrough,
-    Schedule.addDelay(({ output: error }) => {
-      if (
-        HttpClientError.isHttpClientError(error)
-        && error.reason._tag === "StatusCodeError"
-        && error.reason.response.status === 429
-      ) {
-        return Effect.succeed(retryAfterDelay(clock, error.reason.response.headers["retry-after"]))
-      }
-      return Effect.succeed(Duration.seconds(1))
-    })
-  )
+const policy = Schedule.forever.pipe(
+  Schedule.passthrough,
+  Schedule.addDelay(({ output: error }) => {
+    if (
+      HttpClientError.isHttpClientError(error)
+      && error.reason._tag === "StatusCodeError"
+      && error.reason.response.status === 429
+    ) {
+      return retryAfterDelay(error.reason.response.headers["retry-after"])
+    }
+    return Effect.succeed(Duration.seconds(1))
+  })
+)
 
 /**
  * Registry of exporter flush operations, used to manually drain buffered
@@ -181,7 +183,7 @@ export const make: (
 
   const client = HttpClient.filterStatusOk(Context.get(services, HttpClient.HttpClient)).pipe(
     HttpClient.transformResponse(Effect.provideService(HttpClient.TracerPropagationEnabled, false)),
-    HttpClient.retryTransient({ schedule: policy(clock), times: 3 })
+    HttpClient.retryTransient({ schedule: policy, times: 3 })
   )
 
   let headers = Headers.fromRecordUnsafe({
