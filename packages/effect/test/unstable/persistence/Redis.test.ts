@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
-import { Redis } from "effect/unstable/persistence"
+import { Effect, Layer } from "effect"
+import { Persistence, Redis } from "effect/unstable/persistence"
 
 describe("Redis", () => {
   it("preserves __proto__ as an own script option", () => {
@@ -13,6 +13,27 @@ describe("Redis", () => {
 
     assert.isTrue(Object.hasOwn(script, "__proto__"))
     assert.strictEqual((script as any)["__proto__"], value)
+  })
+
+  it.effect("clearing an empty persistence store succeeds", () => {
+    const redis = Redis.Redis.of({
+      send: <A>(command: string, ...args: ReadonlyArray<string>) => {
+        if (command.toUpperCase() === "KEYS") return Effect.succeed([] as unknown as A)
+        if (command.toUpperCase() === "DEL" && args.length === 0) {
+          return Effect.fail(new Redis.RedisError({ cause: "ERR wrong number of arguments for 'del' command" }))
+        }
+        return Effect.succeed(undefined as unknown as A)
+      },
+      eval: () => () => Effect.die("unused")
+    })
+    return Effect.gen(function*() {
+      const backing = yield* Persistence.BackingPersistence
+      const store = yield* backing.make("empty")
+      yield* store.clear
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Persistence.layerBackingRedis.pipe(Layer.provide(Layer.succeed(Redis.Redis, redis))))
+    )
   })
 
   it.effect("retries script loading when SCRIPT LOAD fails", () =>
