@@ -1034,6 +1034,7 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * @since 2.0.0
  */
 export const snakeToCamel = (self: string): string => {
+  if (self.length === 0) return self
   let str = self[0]
   for (let i = 1; i < self.length; i++) {
     str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
@@ -1057,6 +1058,7 @@ export const snakeToCamel = (self: string): string => {
  * @since 2.0.0
  */
 export const snakeToPascal = (self: string): string => {
+  if (self.length === 0) return self
   let str = self[0].toUpperCase()
   for (let i = 1; i < self.length; i++) {
     str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
