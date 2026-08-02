@@ -10,6 +10,6 @@ describe("Cause.map", () => {
       Cause.map((error) => error.toUpperCase())
     )
 
-    assert.strictEqual(Context.get(Cause.annotations(cause), RequestId), "request-1")
+    assert.strictEqual(Context.getOrUndefined(Cause.annotations(cause), RequestId), "request-1")
   })
 })
