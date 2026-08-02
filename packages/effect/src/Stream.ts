@@ -5888,6 +5888,27 @@ export const retry: {
   ): Stream<A, E | E2, R2 | R> => fromChannel(Channel.retry(self.channel, policy))
 )
 
+const retryWithoutReset = <A, E, R, X, E2, R2>(
+  self: Stream<A, E, R>,
+  schedule: Schedule.Schedule<X, E, E2, R2>
+): Stream<A, E | E2, R | R2> =>
+  unwrap(Effect.map(Schedule.toStepWithMetadata(schedule), (step) => {
+    let meta = Schedule.CurrentMetadata.defaultValue()
+    const loop = (): Stream<A, E | E2, R | R2> =>
+      catch_(
+        provideServiceEffect(self, Schedule.CurrentMetadata, Effect.sync(() => meta)),
+        (error) =>
+          unwrap(Pull.catchDone(
+            Effect.map(step(error), (meta_) => {
+              meta = meta_
+              return unwrap(Effect.as(Effect.yieldNow, loop()))
+            }),
+            () => Effect.succeed(fail(error))
+          ))
+      )
+    return loop()
+  }))
+
 /**
  * Applies an `ExecutionPlan` to a stream, retrying with step-provided resources
  * until it succeeds or the plan is exhausted.
@@ -5993,10 +6014,10 @@ export const withExecutionPlan: {
           attempted = true
           return fail(error)
         })
-        nextStream = retry(nextStream, internalExecutionPlan.scheduleFromStep(step, false) as any)
+        nextStream = retryWithoutReset(nextStream, internalExecutionPlan.scheduleFromStep(step, false) as any)
       } else {
         const schedule = internalExecutionPlan.scheduleFromStep(step, true)
-        nextStream = schedule ? retry(nextStream, schedule as any) : nextStream
+        nextStream = schedule ? retryWithoutReset(nextStream, schedule as any) : nextStream
       }
 
       return catch_(

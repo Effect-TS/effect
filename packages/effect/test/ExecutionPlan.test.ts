@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
-import { Array, Context, Effect, ExecutionPlan, Exit, Layer, Stream } from "effect"
+import { Array, Context, Effect, ExecutionPlan, Exit, Layer, Option, Stream } from "effect"
 
 describe("ExecutionPlan", () => {
   class Service extends Context.Service<Service>()("Service", {
@@ -46,6 +46,51 @@ describe("ExecutionPlan", () => {
   })
 
   describe("Stream.withExecutionPlan", () => {
+    it.effect("limits attempts after partial stream failures", () =>
+      Effect.gen(function*() {
+        let runs = 0
+        const stream = Stream.fromEffect(Effect.sync(() => {
+          runs++
+          return 1
+        })).pipe(Stream.concat(Stream.fail("boom")))
+        const plan = ExecutionPlan.make({
+          provide: Context.empty(),
+          attempts: 3
+        })
+        const items = Array.empty<number>()
+
+        const result = yield* stream.pipe(
+          Stream.withExecutionPlan(plan),
+          Stream.runForEach((item) =>
+            Effect.sync(() => {
+              items.push(item)
+            })
+          ),
+          Effect.exit
+        )
+
+        deepStrictEqual(items, [1, 1, 1])
+        deepStrictEqual(runs, 3)
+        deepStrictEqual(result, Exit.fail("boom"))
+      }))
+
+    it.live("allows timeouts to interrupt retries after partial stream failures", () =>
+      Effect.gen(function*() {
+        const stream = Stream.make(1).pipe(Stream.concat(Stream.fail("boom")))
+        const plan = ExecutionPlan.make({
+          provide: Context.empty(),
+          attempts: Number.MAX_SAFE_INTEGER
+        })
+
+        const result = yield* stream.pipe(
+          Stream.withExecutionPlan(plan),
+          Stream.runDrain,
+          Effect.timeoutOption(10)
+        )
+
+        assertTrue(Option.isNone(result))
+      }))
+
     it.effect("falls back through failing layers and records stream attempt metadata", () =>
       Effect.gen(function*() {
         const stream = Stream.unwrap(Effect.map(Service, (_) => _.stream))
