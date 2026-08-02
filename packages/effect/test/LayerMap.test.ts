@@ -20,7 +20,7 @@ describe("LayerMap", () => {
     Effect.gen(function*() {
       const acquired: Array<string> = []
       yield* LayerMap.make(
-        (key: string) => Layer.effectDiscard(Effect.sync(() => acquired.push(key))),
+        (key: string) => Layer.effectDiscard(Effect.sync(() => acquired.push(key))) as Layer.Layer<any>,
         { preloadKeys: ["a", "b"] }
       )
 
