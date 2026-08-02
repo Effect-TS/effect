@@ -497,6 +497,7 @@ interface ContextImpl<in Services> extends Context<Services> {
   overlay: Overlay | undefined
   depth: number
   _flat: ReadonlyMap<string, any> | undefined
+  baseFallThroughs: number
 }
 
 interface Overlay {
@@ -506,6 +507,7 @@ interface Overlay {
 }
 
 const MaxDepth = 8
+const FlattenAfterBaseFallThroughs = 8
 
 const makeImpl = <Services>(
   cacheRoot: ContextImpl<any> | undefined,
@@ -519,6 +521,7 @@ const makeImpl = <Services>(
   self.overlay = overlay
   self.depth = depth
   self._flat = undefined
+  self.baseFallThroughs = 0
   return self
 }
 
@@ -526,6 +529,14 @@ const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): voi
   if (!overlay) return
   applyOverlays(map, overlay.parent)
   map.set(overlay.key, overlay.value)
+}
+
+const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
+  if (self._flat) return self._flat
+  if (!self.overlay) return self._flat = self.base
+  const map = new Map(self.base)
+  applyOverlays(map, self.overlay)
+  return self._flat = map
 }
 
 const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
@@ -542,7 +553,14 @@ const lookup = (self: Context<any>, key: string): unknown => {
   for (let overlay = impl.overlay; overlay; overlay = overlay.parent) {
     if (overlay.key === key) return overlay.value
   }
-  return impl.base.has(key) ? impl.base.get(key) : notFound
+  if (!impl.base.has(key)) return notFound
+  const value = impl.base.get(key)
+  if (impl.overlay && ++impl.baseFallThroughs >= FlattenAfterBaseFallThroughs) {
+    impl.base = flatten(impl)
+    impl.overlay = undefined
+    impl.depth = 0
+  }
+  return value
 }
 
 /**
@@ -581,19 +599,14 @@ export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat"
+  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseFallThroughs"
 > = {
   ...PipeInspectableProto,
   [TypeId]: {
     _Services: (_: never) => _
   },
   get mapUnsafe() {
-    const self = this as any as ContextImpl<any>
-    if (self._flat) return self._flat
-    if (!self.overlay) return self._flat = self.base
-    const map = new Map(self.base)
-    applyOverlays(map, self.overlay)
-    return self._flat = map
+    return flatten(this as any as ContextImpl<any>)
   },
   toJSON(this: Context<never>) {
     return {

@@ -124,6 +124,32 @@ describe("Context", () => {
     assertTrue(Context.hasSameCache(Context.empty(), context))
   })
 
+  it("flattens after repeated base fall-throughs", () => {
+    const context = Context.make(A, 1).pipe(Context.add(B, 2))
+    const impl = context as any
+
+    for (let i = 0; i < 8; i++) {
+      strictEqual(Context.getUnsafe(context, B), 2)
+      assertTrue(Context.getOption(context, C)._tag === "None")
+    }
+    strictEqual(impl.baseFallThroughs, 0)
+    strictEqual(impl._flat, undefined)
+
+    for (let i = 0; i < 7; i++) {
+      strictEqual(Context.getUnsafe(context, A), 1)
+    }
+    strictEqual(impl._flat, undefined)
+
+    strictEqual(Context.getUnsafe(context, A), 1)
+    assertTrue(impl._flat instanceof Map)
+    strictEqual(impl.overlay, undefined)
+    strictEqual(impl.depth, 0)
+
+    const added = Context.add(context, C, 3) as any
+    strictEqual(added._flat, undefined)
+    strictEqual(added.baseFallThroughs, 0)
+  })
+
   it("supports the ReadonlyMap surface through mapUnsafe", () => {
     const context = Context.make(A, 1).pipe(Context.add(B, 2))
     const visited: Array<[string, number]> = []
