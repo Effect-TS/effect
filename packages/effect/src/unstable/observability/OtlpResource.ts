@@ -100,7 +100,7 @@ export const fromConfig: (
   readonly attributes?: Record<string, unknown> | undefined
 }) {
   const env = yield* Config.schema(
-    Schema.UndefinedOr(Config.Record(Schema.String, Schema.String)),
+    Schema.UndefinedOr(Config.Record(Schema.StringFromUriComponent, Schema.StringFromUriComponent)),
     "OTEL_RESOURCE_ATTRIBUTES"
   )
 
@@ -198,7 +198,7 @@ export const unknownToAttributeValue = (value: unknown): AnyValue => {
       }
     case "bigint":
       return {
-        intValue: Number(value)
+        intValue: String(value)
       }
     case "number":
       return Number.isInteger(value)
@@ -244,7 +244,7 @@ export interface AnyValue {
   /** AnyValue boolValue */
   boolValue?: boolean | null
   /** AnyValue intValue */
-  intValue?: number | null
+  intValue?: string | number | null
   /** AnyValue doubleValue */
   doubleValue?: number | null
   /** AnyValue arrayValue */
