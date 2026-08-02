@@ -268,7 +268,7 @@ export const causeMap: {
     const failures = self.reasons.map((failure) => {
       if (isFailReason(failure)) {
         hasFail = true
-        return new Fail(f(failure.error), new Map(failure.annotations))
+        return new Fail(f(failure.error), failure.annotations)
       }
       return failure
     })
