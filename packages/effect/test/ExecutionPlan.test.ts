@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
-import { Array, Context, Effect, ExecutionPlan, Exit, Layer, Option, Stream } from "effect"
+import { Array, Context, Effect, ExecutionPlan, Exit, Fiber, Latch, Layer, Scheduler, Stream } from "effect"
 
 describe("ExecutionPlan", () => {
   class Service extends Context.Service<Service>()("Service", {
@@ -74,21 +74,34 @@ describe("ExecutionPlan", () => {
         deepStrictEqual(result, Exit.fail("boom"))
       }))
 
-    it.live("allows timeouts to interrupt retries after partial stream failures", () =>
+    it.effect("allows interruption between retries after partial stream failures", () =>
       Effect.gen(function*() {
-        const stream = Stream.make(1).pipe(Stream.concat(Stream.fail("boom")))
+        let runs = 0
+        const retried = yield* Latch.make()
+        const stream = Stream.fromEffect(Effect.gen(function*() {
+          runs++
+          if (runs > 1) {
+            yield* retried.open
+          }
+          return 1
+        })).pipe(Stream.concat(Stream.fail("boom")))
         const plan = ExecutionPlan.make({
           provide: Context.empty(),
           attempts: Number.MAX_SAFE_INTEGER
         })
-
-        const result = yield* stream.pipe(
+        const fiber = yield* stream.pipe(
           Stream.withExecutionPlan(plan),
           Stream.runDrain,
-          Effect.timeoutOption(10)
+          Effect.provideService(Scheduler.PreventSchedulerYield, true),
+          Effect.forkChild
         )
 
-        assertTrue(Option.isNone(result))
+        yield* retried.await
+        yield* Fiber.interrupt(fiber)
+        const exit = yield* Fiber.await(fiber)
+
+        assertTrue(runs > 1)
+        assertTrue(Exit.hasInterrupts(exit))
       }))
 
     it.effect("falls back through failing layers and records stream attempt metadata", () =>
