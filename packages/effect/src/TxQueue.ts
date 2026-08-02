@@ -608,11 +608,13 @@ export const offerAll: {
   <A, E>(self: TxEnqueue<A, E>, values: Iterable<A>): Effect.Effect<Array<A>>
 } = dual(
   2,
-  <A, E>(self: TxEnqueue<A, E>, values: Iterable<A>): Effect.Effect<Array<A>> =>
-    Effect.gen(function*() {
+  <A, E>(self: TxEnqueue<A, E>, values: Iterable<A>): Effect.Effect<Array<A>> => {
+    const valuesArray = Array.from(values)
+
+    return Effect.gen(function*() {
       const rejected: Array<A> = []
 
-      for (const value of values) {
+      for (const value of valuesArray) {
         const accepted = yield* offer(self, value)
         if (!accepted) {
           rejected.push(value)
@@ -621,6 +623,7 @@ export const offerAll: {
 
       return rejected
     }).pipe(Effect.tx)
+  }
 )
 
 /**
