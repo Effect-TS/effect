@@ -1,17 +1,17 @@
+import { assert, describe, it } from "@effect/vitest"
 import * as BigInt from "effect/BigInt"
-import { describe, it } from "vitest"
-import { assertNone, assertSome, strictEqual } from "./utils/assert.ts"
+import { assertNone, assertSome } from "./utils/assert.ts"
 
 describe("BigInt", () => {
   it("re-exports the global BigInt constructor", () => {
-    strictEqual(BigInt.Equivalence(1n, 1n), true)
-    strictEqual(BigInt.Equivalence(1n, 2n), false)
+    assert.strictEqual(BigInt.Equivalence(1n, 1n), true)
+    assert.strictEqual(BigInt.Equivalence(1n, 2n), false)
   })
 
   it("divide returns some for non-zero divisors in data-first and data-last forms", () => {
     assertSome(BigInt.divide(6n, 3n), 2n)
     assertNone(BigInt.divide(6n, 0n))
-    strictEqual(BigInt.divideUnsafe(6n, 3n), 2n)
+    assert.strictEqual(BigInt.divideUnsafe(6n, 3n), 2n)
   })
 
   it("sqrt returns integer square roots", () => {
@@ -36,22 +36,34 @@ describe("BigInt", () => {
   })
 
   it("fromNumber returns none for unsafe or non-integral numbers", () => {
-    strictEqual(BigInt.ReducerSum.combine(1n, 2n), 3n)
-    strictEqual(BigInt.ReducerSum.combine(BigInt.ReducerSum.initialValue, 2n), 2n)
-    strictEqual(BigInt.ReducerSum.combine(2n, BigInt.ReducerSum.initialValue), 2n)
+    assert.strictEqual(BigInt.ReducerSum.combine(1n, 2n), 3n)
+    assert.strictEqual(BigInt.ReducerSum.combine(BigInt.ReducerSum.initialValue, 2n), 2n)
+    assert.strictEqual(BigInt.ReducerSum.combine(2n, BigInt.ReducerSum.initialValue), 2n)
   })
 
   it("ReducerMultiply combines values with one as the identity", () => {
-    strictEqual(BigInt.ReducerMultiply.combine(2n, 3n), 6n)
-    strictEqual(BigInt.ReducerMultiply.combine(BigInt.ReducerMultiply.initialValue, 2n), 2n)
-    strictEqual(BigInt.ReducerMultiply.combine(2n, BigInt.ReducerMultiply.initialValue), 2n)
+    assert.strictEqual(BigInt.ReducerMultiply.combine(2n, 3n), 6n)
+    assert.strictEqual(BigInt.ReducerMultiply.combine(BigInt.ReducerMultiply.initialValue, 2n), 2n)
+    assert.strictEqual(BigInt.ReducerMultiply.combine(2n, BigInt.ReducerMultiply.initialValue), 2n)
   })
 
   it("CombinerMax returns the larger bigint", () => {
-    strictEqual(BigInt.CombinerMax.combine(1n, 2n), 2n)
+    assert.strictEqual(BigInt.CombinerMax.combine(1n, 2n), 2n)
   })
 
   it("CombinerMin returns the smaller bigint", () => {
-    strictEqual(BigInt.CombinerMin.combine(1n, 2n), 1n)
+    assert.strictEqual(BigInt.CombinerMin.combine(1n, 2n), 1n)
+  })
+
+  it("returns a non-negative greatest common divisor", () => {
+    assert.strictEqual(BigInt.gcd(-6n, 4n), 2n)
+  })
+
+  it("returns a non-negative least common multiple", () => {
+    assert.strictEqual(BigInt.lcm(6n, -4n), 12n)
+  })
+
+  it("returns zero for two zero operands", () => {
+    assert.strictEqual(BigInt.lcm(0n, 0n), 0n)
   })
 })
