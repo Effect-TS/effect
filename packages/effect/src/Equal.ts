@@ -265,7 +265,11 @@ function compareObjects(self: object, that: object): boolean {
         return false
       }
       if (selfIsDataView) {
-        return compareDataViews(self, that as DataView)
+        const thatDataView = that as DataView
+        return compareTypedArrays(
+          new Uint8Array(self.buffer, self.byteOffset, self.byteLength),
+          new Uint8Array(thatDataView.buffer, thatDataView.byteOffset, thatDataView.byteLength)
+        )
       }
       return compareTypedArrays(self as Uint8Array, that as Uint8Array)
     } else if (self instanceof Map) {
@@ -331,13 +335,6 @@ function compareTypedArrays(self: Uint8Array, that: Uint8Array): boolean {
     }
   }
   return true
-}
-
-function compareDataViews(self: DataView, that: DataView): boolean {
-  return compareTypedArrays(
-    new Uint8Array(self.buffer, self.byteOffset, self.byteLength),
-    new Uint8Array(that.buffer, that.byteOffset, that.byteLength)
-  )
 }
 
 function compareRecords(
