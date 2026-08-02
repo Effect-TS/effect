@@ -105,12 +105,13 @@ describe("TxPubSub", () => {
             yield* TxPubSub.publish(hub, 1)
 
             let iterations = 0
+            const hasIterated = () => iterations > 0
             const values = (function*() {
               iterations++
               yield 2
             })()
             const fiber = yield* Effect.forkChild(TxPubSub.publishAll(hub, values))
-            while (iterations === 0) {
+            while (!hasIterated()) {
               yield* Effect.yieldNow
             }
 

@@ -9,6 +9,7 @@
  *
  * @since 4.0.0
  */
+import * as Arr from "./Array.ts"
 import * as Effect from "./Effect.ts"
 import { dual } from "./Function.ts"
 import type { Inspectable } from "./Inspectable.ts"
@@ -471,17 +472,19 @@ export const publishAll: {
   <A>(self: TxPubSub<A>, values: Iterable<A>): Effect.Effect<boolean>
 } = dual(
   2,
-  <A>(self: TxPubSub<A>, values: Iterable<A>): Effect.Effect<boolean> =>
-    Effect.gen(function*() {
+  <A>(self: TxPubSub<A>, values: Iterable<A>): Effect.Effect<boolean> => {
+    const valuesArray = Arr.fromIterable(values)
+    return Effect.gen(function*() {
       if (yield* TxRef.get(self.shutdownRef)) return false
 
       let allAccepted = true
-      for (const value of values) {
+      for (const value of valuesArray) {
         const accepted = yield* publish(self, value)
         if (!accepted) allAccepted = false
       }
       return allAccepted
     }).pipe(Effect.tx)
+  }
 )
 
 /**
