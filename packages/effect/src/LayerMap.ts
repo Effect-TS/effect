@@ -174,7 +174,7 @@ export const make: <
 
   if (options?.preloadKeys) {
     for (const key of options.preloadKeys) {
-      yield* RcMap.get(rcMap, key)
+      yield* Effect.scoped(RcMap.get(rcMap, key))
     }
   }
 
