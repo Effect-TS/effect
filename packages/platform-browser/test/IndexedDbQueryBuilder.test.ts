@@ -1463,26 +1463,31 @@ describe.sequential("IndexedDbQueryBuilder", () => {
 
     return Effect.gen(function*() {
       const api = yield* Db
-      yield* Effect.result(api.withTransaction({ tables: ["todo"], mode: "readwrite" })(
-        Effect.andThen(
-          api.from("todo").insert({ id: 1, title: "committed", count: 1, completed: false }),
-          Effect.fail("rollback")
+      yield* Effect.result(
+        api.withTransaction({ tables: ["todo"], mode: "readwrite" })(
+          Effect.andThen(
+            api.from("todo").insert({ id: 1, title: "committed", count: 1, completed: false }),
+            Effect.fail("rollback")
+          )
         )
-      ))
+      )
 
       assert.deepStrictEqual(yield* api.from("todo").select(), [])
     }).pipe(provideDb(Db))
   })
 
   it.effect("applies reverse before a select limit", () => {
-    class Db extends IndexedDbDatabase.make(V1, Effect.fn(function*(api) {
-      yield* api.createObjectStore("todo")
-      yield* api.from("todo").insertAll([
-        { id: 1, title: "one", count: 1, completed: false },
-        { id: 2, title: "two", count: 2, completed: false },
-        { id: 3, title: "three", count: 3, completed: false }
-      ])
-    })) {}
+    class Db extends IndexedDbDatabase.make(
+      V1,
+      Effect.fn(function*(api) {
+        yield* api.createObjectStore("todo")
+        yield* api.from("todo").insertAll([
+          { id: 1, title: "one", count: 1, completed: false },
+          { id: 2, title: "two", count: 2, completed: false },
+          { id: 3, title: "three", count: 3, completed: false }
+        ])
+      })
+    ) {}
 
     return Effect.gen(function*() {
       const api = yield* Db
@@ -1492,14 +1497,17 @@ describe.sequential("IndexedDbQueryBuilder", () => {
   })
 
   it.effect("honors an indexed range when delete has a limit", () => {
-    class Db extends IndexedDbDatabase.make(V1, Effect.fn(function*(api) {
-      yield* api.createObjectStore("todo")
-      yield* api.createIndex("todo", "titleIndex")
-      yield* api.from("todo").insertAll([
-        { id: 1, title: "keep", count: 1, completed: false },
-        { id: 2, title: "delete", count: 2, completed: false }
-      ])
-    })) {}
+    class Db extends IndexedDbDatabase.make(
+      V1,
+      Effect.fn(function*(api) {
+        yield* api.createObjectStore("todo")
+        yield* api.createIndex("todo", "titleIndex")
+        yield* api.from("todo").insertAll([
+          { id: 1, title: "keep", count: 1, completed: false },
+          { id: 2, title: "delete", count: 2, completed: false }
+        ])
+      })
+    ) {}
 
     return Effect.gen(function*() {
       const api = yield* Db
@@ -1510,14 +1518,17 @@ describe.sequential("IndexedDbQueryBuilder", () => {
   })
 
   it.effect("can consume the same paged select stream twice", () => {
-    class Db extends IndexedDbDatabase.make(V1, Effect.fn(function*(api) {
-      yield* api.createObjectStore("todo")
-      yield* api.from("todo").insertAll([
-        { id: 1, title: "one", count: 1, completed: false },
-        { id: 2, title: "two", count: 2, completed: false },
-        { id: 3, title: "three", count: 3, completed: false }
-      ])
-    })) {}
+    class Db extends IndexedDbDatabase.make(
+      V1,
+      Effect.fn(function*(api) {
+        yield* api.createObjectStore("todo")
+        yield* api.from("todo").insertAll([
+          { id: 1, title: "one", count: 1, completed: false },
+          { id: 2, title: "two", count: 2, completed: false },
+          { id: 3, title: "three", count: 3, completed: false }
+        ])
+      })
+    ) {}
 
     return Effect.gen(function*() {
       const api = yield* Db
