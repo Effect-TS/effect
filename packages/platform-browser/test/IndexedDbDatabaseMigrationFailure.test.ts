@@ -28,7 +28,9 @@ it.effect("aborts the versionchange transaction when a migration fails", () => {
   })
 
   return Effect.gen(function*() {
-    const migration = yield* Effect.result(Effect.service(IndexedDbDatabase.IndexedDbDatabase).pipe(Effect.provide(layer)))
+    const migration = yield* Effect.result(
+      Effect.service(IndexedDbDatabase.IndexedDbDatabase).pipe(Effect.provide(layer))
+    )
     assert.isTrue(Result.isFailure(migration))
 
     const database = yield* open

@@ -478,6 +478,12 @@ const layer = <DatabaseName extends string>(
             Effect.provideService(IndexedDbQueryBuilder.IndexedDbTransaction, transaction)
           )
           fiber = runForkWith(effect)
+          fiber.addObserver((exit) => {
+            if (exit._tag === "Failure") {
+              transaction.abort()
+              resume(exit)
+            }
+          })
           fiber.currentDispatcher.flush()
         }
 
