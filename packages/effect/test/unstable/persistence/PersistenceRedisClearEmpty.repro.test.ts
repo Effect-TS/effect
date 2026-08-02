@@ -3,12 +3,12 @@ import { Effect, Layer } from "effect"
 import { Persistence, Redis } from "effect/unstable/persistence"
 
 const redis = Redis.Redis.of({
-  send: (command, ...args) => {
-    if (command.toUpperCase() === "KEYS") return Effect.succeed([])
+  send: <A>(command: string, ...args: ReadonlyArray<string>) => {
+    if (command.toUpperCase() === "KEYS") return Effect.succeed([] as unknown as A)
     if (command.toUpperCase() === "DEL" && args.length === 0) {
       return Effect.fail(new Redis.RedisError({ cause: "ERR wrong number of arguments for 'del' command" }))
     }
-    return Effect.void
+    return Effect.succeed(undefined as unknown as A)
   },
   eval: () => () => Effect.die("unused")
 })
