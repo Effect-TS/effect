@@ -576,7 +576,7 @@ export const runtime: <A, E>(
           return constInterruptedFiber()
         }
         const fiber = runFork(effect, options)
-        addUnsafe(self, fiber)
+        addUnsafe(self, fiber, options)
         return fiber
       }
     }
