@@ -1,9 +1,9 @@
+import { assert, describe, it } from "@effect/vitest"
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
-import { describe, it } from "vitest"
 
 describe("Context", () => {
   const A = Context.Service<number>("ContextTest/A")
@@ -141,6 +141,51 @@ describe("Context", () => {
     const added = Context.add(context, C, 3) as any
     strictEqual(added._flat, undefined)
     strictEqual(added.baseHits, 0)
+  })
+
+  it("keeps request-style default misses independent of context size", () => {
+    const Request = Context.Service<number>("ContextTest/Scaling/Request")
+    const defaults = Array.from(
+      { length: 8 },
+      (_, i) => Context.Reference<number>(`ContextTest/Scaling/Default${i}`, { defaultValue: () => i })
+    )
+    const makeBase = (size: number) =>
+      Context.makeUnsafe(new Map(Array.from({ length: size }, (_, i) => [`ContextTest/Scaling/Base${i}`, i])))
+    const small = makeBase(16)
+    const large = makeBase(200)
+    const iterations = 50_000
+
+    const measure = (base: Context.Context<never>, count: number) => {
+      let checksum = 0
+      const start = performance.now()
+      for (let i = 0; i < count; i++) {
+        const child = Context.add(base, Request, i)
+        for (let j = 0; j < defaults.length; j++) {
+          checksum += Context.get(child, defaults[j])
+        }
+      }
+      const elapsed = performance.now() - start
+      strictEqual(checksum, count * 28)
+      return elapsed
+    }
+    const median = (samples: Array<number>) => samples.sort((a, b) => a - b)[Math.floor(samples.length / 2)]
+
+    measure(small, 5_000)
+    measure(large, 5_000)
+    const smallSamples: Array<number> = []
+    const largeSamples: Array<number> = []
+    for (let i = 0; i < 5; i++) {
+      if (i % 2 === 0) {
+        smallSamples.push(measure(small, iterations))
+        largeSamples.push(measure(large, iterations))
+      } else {
+        largeSamples.push(measure(large, iterations))
+        smallSamples.push(measure(small, iterations))
+      }
+    }
+
+    const ratio = median(largeSamples) / median(smallSamples)
+    assert.isBelow(ratio, 2, `200-service request cost was ${ratio.toFixed(2)}x the 16-service cost`)
   })
 
   it("supports the ReadonlyMap surface through mapUnsafe", () => {
