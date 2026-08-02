@@ -70,13 +70,13 @@ const copy = ((): FileSystem.FileSystem["copy"] => {
 
 // == copyFile
 
-const copyFile = (() => {
+const copyFile: FileSystem.FileSystem["copyFile"] = (() => {
   const nodeCopyFile = effectify(
     NFS.copyFile,
     handleErrnoException("FileSystem", "copyFile"),
     handleBadArgument("copyFile")
   )
-  return (fromPath: string, toPath: string) => nodeCopyFile(fromPath, toPath)
+  return (fromPath, toPath, options) => nodeCopyFile(fromPath, toPath, options?.mode ?? 0)
 })()
 
 // == chmod
