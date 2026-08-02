@@ -37,13 +37,13 @@ describe("Context", () => {
   })
 
   it("invalidates the fiber cache only for opted-in keys", () => {
-    const Cached = Context.Service<number>("ContextTest/Cached", { enableCaching: true })
+    const Cached = Context.Service<number>("ContextTest/Cached", { enableFiberCaching: true })
     class CachedClass extends Context.Service<CachedClass, number>()("ContextTest/CachedClass", {
-      enableCaching: true
+      enableFiberCaching: true
     }) {}
     const Ref = Context.Reference<number>("ContextTest/Ref", { defaultValue: () => 0 })
     const CachedRef = Context.Reference<number>("ContextTest/CachedRef", {
-      enableCaching: true,
+      enableFiberCaching: true,
       defaultValue: () => 0
     })
 
@@ -76,7 +76,7 @@ describe("Context", () => {
   })
 
   it("supports the Redactable fallback context", () => {
-    const Cached = Context.Service<number>("ContextTest/RedactableCached", { enableCaching: true })
+    const Cached = Context.Service<number>("ContextTest/RedactableCached", { enableFiberCaching: true })
     const context = Redactable.getRedacted({
       [Redactable.symbolRedactable](context: Context.Context<never>) {
         return context
@@ -92,11 +92,11 @@ describe("Context", () => {
   })
 
   it("distinguishes an undefined service from an absent service", () => {
-    const Undefined = Context.Service<undefined>("ContextTest/Undefined", { enableCaching: true })
+    const Undefined = Context.Service<undefined>("ContextTest/Undefined", { enableFiberCaching: true })
     const Missing = Context.Service<undefined>("ContextTest/Missing")
     const Ref = Context.Reference<string | undefined>("ContextTest/UndefinedRef", {
       defaultValue: () => "default",
-      enableCaching: true
+      enableFiberCaching: true
     })
     const context = Context.make(Undefined, undefined).pipe(Context.add(Ref, undefined))
 

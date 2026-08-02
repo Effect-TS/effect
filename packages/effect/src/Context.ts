@@ -165,7 +165,7 @@ export declare namespace ServiceClass {
  * declarations. The returned key can be yielded as an Effect and passed to
  * `Context.make`, `Context.add`, and the Context getter functions.
  *
- * Pass `enableCaching: true` for keys whose values fibers cache locally, such
+ * Pass `enableFiberCaching: true` for keys whose values fibers cache locally, such
  * as runtime references read on every context change. Adding a caching key
  * invalidates those fiber caches, while adds of regular keys keep them intact.
  * The same option is available on `Reference`.
@@ -209,7 +209,7 @@ export const Service: {
   <Identifier, Shape = Identifier>(
     key: string,
     options?: {
-      readonly enableCaching?: boolean | undefined
+      readonly enableFiberCaching?: boolean | undefined
     } | undefined
   ): Service<Identifier, Shape>
   <Self, Shape>(): <
@@ -221,7 +221,7 @@ export const Service: {
     id: Identifier,
     options?: {
       readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
-      readonly enableCaching?: boolean | undefined
+      readonly enableFiberCaching?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -234,7 +234,7 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
-      readonly enableCaching?: boolean | undefined
+      readonly enableFiberCaching?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -262,7 +262,7 @@ export const Service: {
   const init = (key: string, options?: {
     readonly defaultValue?: any
     readonly make?: any
-    readonly enableCaching?: boolean
+    readonly enableFiberCaching?: boolean
   }) => {
     self.key = key
     if (options?.defaultValue) {
@@ -272,7 +272,7 @@ export const Service: {
     if (options?.make) {
       ;(self as any).make = options.make
     }
-    if (options?.enableCaching) {
+    if (options?.enableFiberCaching) {
       cacheKeys.add(key)
     }
     return self
@@ -489,10 +489,10 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
 interface ContextImpl<in Services> extends Context<Services> {
   cacheRoot: ContextImpl<any> | undefined
   base: ReadonlyMap<string, any>
+  baseHits: number
   overlay: Overlay | undefined
   depth: number
   _flat: ReadonlyMap<string, any> | undefined
-  baseFallThroughs: number
 }
 
 interface Overlay {
@@ -502,7 +502,7 @@ interface Overlay {
 }
 
 const MaxDepth = 8
-const FlattenAfterBaseFallThroughs = 8
+const FlattenAfterBaseHits = 8
 
 const makeImpl = <Services>(
   cacheRoot: ContextImpl<any> | undefined,
@@ -516,7 +516,7 @@ const makeImpl = <Services>(
   self.overlay = overlay
   self.depth = depth
   self._flat = undefined
-  self.baseFallThroughs = 0
+  self.baseHits = 0
   return self
 }
 
@@ -549,12 +549,12 @@ const lookup = (self: Context<any>, key: string): unknown => {
     if (overlay.key === key) return overlay.value
   }
   const value = impl.base.get(key)
-  if (value === undefined && !impl.base.has(key)) return notFound
-  if (impl.overlay && ++impl.baseFallThroughs >= FlattenAfterBaseFallThroughs) {
+  if (impl.overlay && ++impl.baseHits >= FlattenAfterBaseHits) {
     impl.base = flatten(impl)
     impl.overlay = undefined
     impl.depth = 0
   }
+  if (value === undefined && !impl.base.has(key)) return notFound
   return value
 }
 
@@ -594,7 +594,7 @@ export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>
 
 const Proto: Omit<
   ContextImpl<never>,
-  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseFallThroughs"
+  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits"
 > = {
   ...PipeInspectableProto,
   [TypeId]: {
@@ -1334,6 +1334,6 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
-    readonly enableCaching?: boolean | undefined
+    readonly enableFiberCaching?: boolean | undefined
   }
 ) => Reference<Service> = Service as any

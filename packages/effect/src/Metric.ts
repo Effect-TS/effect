@@ -3311,7 +3311,7 @@ export interface FiberRuntimeMetricsService {
  */
 export const FiberRuntimeMetrics = Context.Reference<FiberRuntimeMetricsService | undefined>(
   InternalMetric.FiberRuntimeMetricsKey,
-  { enableCaching: true, defaultValue: constUndefined }
+  { enableFiberCaching: true, defaultValue: constUndefined }
 )
 
 /**
