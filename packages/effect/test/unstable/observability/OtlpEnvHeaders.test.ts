@@ -1,6 +1,6 @@
 import { assert, it } from "@effect/vitest"
 import { ConfigProvider, Effect } from "effect"
-import * as OtlpEnv from "../../../src/unstable/observability/internal/otlpEnv.ts"
+import * as OtlpEnv from "effect/unstable/observability/internal/otlpEnv"
 
 it.effect("decodes percent-encoded OTLP header values", () =>
   Effect.gen(function*() {
