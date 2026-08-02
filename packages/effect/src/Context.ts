@@ -259,30 +259,25 @@ export const Service: {
       return err.stack
     }
   })
-  if (arguments.length > 0) {
-    self.key = arguments[0]
-    if (arguments[1]?.defaultValue) {
-      self[ReferenceTypeId] = ReferenceTypeId
-      self.defaultValue = arguments[1].defaultValue
-    }
-    if (arguments[1]?.enableCaching) {
-      cacheKeys.add(self.key)
-    }
-    return self
-  }
-  return function(key: string, options?: {
+  const init = (key: string, options?: {
+    readonly defaultValue?: any
     readonly make?: any
     readonly enableCaching?: boolean
-  }) {
+  }) => {
     self.key = key
+    if (options?.defaultValue) {
+      self[ReferenceTypeId] = ReferenceTypeId
+      self.defaultValue = options.defaultValue
+    }
     if (options?.make) {
       ;(self as any).make = options.make
     }
     if (options?.enableCaching) {
-      cacheKeys.add(self.key)
+      cacheKeys.add(key)
     }
     return self
   }
+  return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
 const ServiceProto: any = {
@@ -615,17 +610,12 @@ const Proto: Omit<
     }
   },
   [Equal.symbol]<A>(this: Context<A>, that: unknown): boolean {
-    if (
-      !isContext(that)
-      || this.mapUnsafe.size !== that.mapUnsafe.size
-    ) return false
-    for (const k of this.mapUnsafe.keys()) {
-      if (
-        !that.mapUnsafe.has(k) ||
-        !Equal.equals(this.mapUnsafe.get(k), that.mapUnsafe.get(k))
-      ) {
-        return false
-      }
+    if (!isContext(that)) return false
+    const self = this.mapUnsafe
+    const other = that.mapUnsafe
+    if (self.size !== other.size) return false
+    for (const [key, value] of self) {
+      if (!other.has(key) || !Equal.equals(value, other.get(key))) return false
     }
     return true
   },
