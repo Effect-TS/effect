@@ -1336,11 +1336,9 @@ export const reduceWhileArray = <S, In>(
     }
     return upstream.pipe(
       Effect.flatMap((arr) => {
-        for (let i = 0; i < arr.length; i++) {
-          state = f(state, arr)
-          if (!contFn(state)) {
-            return Cause.done()
-          }
+        state = f(state, arr)
+        if (!contFn(state)) {
+          return Cause.done()
         }
         return Effect.void
       }),
