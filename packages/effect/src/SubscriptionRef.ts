@@ -374,7 +374,7 @@ export const getAndUpdateSome: {
     const current = self.value
     const option = update(current)
     if (Option.isNone(option)) {
-      return Effect.succeed(current)
+      return current
     }
     setUnsafe(self, option.value)
     return current
