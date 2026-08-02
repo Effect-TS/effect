@@ -219,6 +219,26 @@ describe("TxQueue", () => {
         assert.deepStrictEqual(maybe, Option.some(42))
       })))
 
+    it.effect("poll completes a closing queue after removing the last item", () =>
+      Effect.tx(Effect.gen(function*() {
+        const queue = yield* TxQueue.bounded<number>(1)
+        yield* TxQueue.offer(queue, 42)
+        yield* TxQueue.interrupt(queue)
+
+        assert.deepStrictEqual(yield* TxQueue.poll(queue), Option.some(42))
+        assert.strictEqual(yield* TxQueue.isDone(queue), true)
+      })))
+
+    it.effect("clear completes a closing queue after removing all items", () =>
+      Effect.tx(Effect.gen(function*() {
+        const queue = yield* TxQueue.bounded<number>(1)
+        yield* TxQueue.offer(queue, 42)
+        yield* TxQueue.interrupt(queue)
+
+        assert.deepStrictEqual(yield* TxQueue.clear(queue), [42])
+        assert.strictEqual(yield* TxQueue.isDone(queue), true)
+      })))
+
     it.effect("offerAll works correctly", () =>
       Effect.tx(Effect.gen(function*() {
         const queue = yield* TxQueue.bounded<number>(10)
