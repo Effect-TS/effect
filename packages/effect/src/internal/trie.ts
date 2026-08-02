@@ -42,7 +42,7 @@ const TrieProto: TR.Trie<unknown> = {
     return hash
   },
   [Equal.symbol]<V>(this: TrieImpl<V>, that: unknown): boolean {
-    if (isTrie(that)) {
+    if (isTrie(that) && size(this) === size(that)) {
       const entries = Array.from(that)
       return Array.from(this).every((itemSelf, i) => {
         const itemThat = entries[i]
