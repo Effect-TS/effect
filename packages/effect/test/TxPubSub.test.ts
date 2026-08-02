@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, TxPubSub, TxQueue } from "effect"
+import { Effect, Fiber, Option, TxPubSub, TxQueue } from "effect"
 
 describe("TxPubSub", () => {
   describe("constructors", () => {
@@ -91,6 +91,33 @@ describe("TxPubSub", () => {
             assert.strictEqual(v1, 1)
             assert.strictEqual(v2, 2)
             assert.strictEqual(v3, 3)
+          })
+        )
+      }))
+
+    it.effect("publishAll preserves a one-shot iterable across retries", () =>
+      Effect.gen(function*() {
+        const hub = yield* TxPubSub.bounded<number>(1)
+
+        yield* Effect.scoped(
+          Effect.gen(function*() {
+            const sub = yield* TxPubSub.subscribe(hub)
+            yield* TxPubSub.publish(hub, 1)
+
+            let iterations = 0
+            const hasIterated = () => iterations > 0
+            const values = (function*() {
+              iterations++
+              yield 2
+            })()
+            const fiber = yield* Effect.forkChild(TxPubSub.publishAll(hub, values))
+            while (!hasIterated()) {
+              yield* Effect.yieldNow
+            }
+
+            assert.strictEqual(yield* TxQueue.take(sub), 1)
+            assert.strictEqual(yield* Fiber.join(fiber), true)
+            assert.deepStrictEqual(yield* TxQueue.poll(sub), Option.some(2))
           })
         )
       }))
