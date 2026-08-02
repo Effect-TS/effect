@@ -725,6 +725,11 @@ export const poll = <A, E>(self: TxDequeue<A, E>): Effect.Effect<Option.Option<A
     }
 
     yield* TxChunk.drop(self.items, 1)
+
+    if (state._tag === "Closing" && (yield* isEmpty(self))) {
+      yield* TxRef.set(self.stateRef, { _tag: "Done", cause: state.cause })
+    }
+
     return Option.some(head.value)
   }).pipe(Effect.tx)
 
@@ -1269,12 +1274,11 @@ export const end = <A, E>(self: TxEnqueue<A, E | Cause.Done>): Effect.Effect<boo
   failCause(self, Cause.fail(Cause.Done()))
 
 /**
- * Removes and returns all currently buffered elements without changing the
- * queue state.
+ * Removes and returns all currently buffered elements.
  *
  * **Details**
  *
- * If the queue is already done with a `Cause.Done` error, returns an empty array. If the queue is done for any other cause, including interruption or failure, that cause is propagated.
+ * If the queue is closing, draining its buffered elements transitions it to done. If the queue is already done with a `Cause.Done` error, returns an empty array. If the queue is done for any other cause, including interruption or failure, that cause is propagated.
  *
  * **Example** (Clearing queues)
  *
@@ -1311,6 +1315,9 @@ export const clear = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<Array<A>, Excl
     }
     const chunk = yield* TxChunk.get(self.items)
     yield* TxChunk.set(self.items, Chunk.empty())
+    if (state._tag === "Closing") {
+      yield* TxRef.set(self.stateRef, { _tag: "Done", cause: state.cause })
+    }
     return Chunk.toArray(chunk)
   }).pipe(Effect.tx)
 
