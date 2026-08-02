@@ -105,6 +105,7 @@
     "@types/ini": "^4.1.1",
     "@types/node": "^26.1.2",
     "ajv": "^8.20.0",
+    "ajv-draft-04": "^1.0.0",
     "ast-types": "^0.14.2",
     "immer": "^11.1.11",
     "tinybench": "^6.0.2",
