@@ -1236,15 +1236,20 @@ export const noCase: {
   readonly delimiter?: string | undefined
   readonly transform?: (part: string, index: number, parts: ReadonlyArray<string>) => string
 }): string => {
+  const splitRegExp = toRegExpArray(options?.splitRegExp ?? SPLIT_REGEXP)
+  const stripRegExp = toRegExpArray(options?.stripRegExp ?? STRIP_REGEXP)
   const delimiter = options?.delimiter ?? " "
   const transform = options?.transform ?? toLowerCase
-  return normalizeCase(input, SPLIT_REGEXP, STRIP_REGEXP, delimiter, transform)
+  return normalizeCase(input, splitRegExp, stripRegExp, delimiter, transform)
 })
+
+const toRegExpArray = (regexp: RegExp | ReadonlyArray<RegExp>): ReadonlyArray<RegExp> =>
+  predicate.isRegExp(regexp) ? [regexp] : regexp
 
 const normalizeCase = (
   input: string,
   splitRegExp: ReadonlyArray<RegExp>,
-  stripRegExp: RegExp,
+  stripRegExp: ReadonlyArray<RegExp>,
   delimiter: string,
   transform: (part: string, index: number, parts: ReadonlyArray<string>) => string
 ): string => {
@@ -1252,7 +1257,9 @@ const normalizeCase = (
   for (const regexp of splitRegExp) {
     result = result.replace(regexp, "$1\0$2")
   }
-  result = result.replace(stripRegExp, "\0")
+  for (const regexp of stripRegExp) {
+    result = result.replace(regexp, "\0")
+  }
   let start = 0
   let end = result.length
   // Trim the delimiter from around the output string.
@@ -1372,7 +1379,7 @@ export const constantCase: (self: string) => string = noCase({
  * @since 4.0.0
  */
 export const configCase: (self: string) => string = (self) =>
-  normalizeCase(self, CONFIG_SPLIT_REGEXP, STRIP_REGEXP, "_", toUpperCase)
+  normalizeCase(self, CONFIG_SPLIT_REGEXP, [STRIP_REGEXP], "_", toUpperCase)
 
 /**
  * Converts a string to kebab-case (lowercase with hyphens).

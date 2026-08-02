@@ -642,6 +642,22 @@ describe("String", () => {
       strictEqual(pipe("helloWorld", S.noCase({ delimiter: "-" })), "hello-world")
     })
 
+    it("uses a custom split regular expression", () => {
+      strictEqual(S.noCase("ab", { splitRegExp: /([a])([b])/g }), "a b")
+    })
+
+    it("uses custom split regular expressions", () => {
+      strictEqual(S.noCase("abc", { splitRegExp: [/([a])([b])/g, /([b])([c])/g] }), "a b c")
+    })
+
+    it("uses a custom strip regular expression", () => {
+      strictEqual(S.noCase("a_b-c", { stripRegExp: /_/g }), "a b-c")
+    })
+
+    it("uses custom strip regular expressions", () => {
+      strictEqual(S.noCase("a_b-c", { stripRegExp: [/_/g, /-/g] }), "a b c")
+    })
+
     it("handles underscores and hyphens", () => {
       strictEqual(S.noCase("hello_world"), "hello world")
       strictEqual(S.noCase("hello-world"), "hello world")
