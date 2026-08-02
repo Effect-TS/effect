@@ -694,7 +694,7 @@ export interface AtomRuntime<R, ER = never> extends Atom<AsyncResult.AsyncResult
 }
 
 /**
- * Factory for `AtomRuntime` values that share a `Layer.MemoMap` and a set of global layers.
+ * Factory for `AtomRuntime` values that share a `Layer.MemoMap` or resolve one from the active registry.
  *
  * @category models
  * @since 4.0.0
@@ -705,7 +705,7 @@ export interface RuntimeFactory {
       | Layer.Layer<R, E, AtomRegistry | Reactivity.Reactivity>
       | ((get: AtomContext) => Layer.Layer<R, E, AtomRegistry | Reactivity.Reactivity>)
   ): AtomRuntime<R, E>
-  readonly memoMap: Layer.MemoMap
+  readonly memoMap: Layer.MemoMap | Atom<Layer.MemoMap>
   readonly addGlobalLayer: <A, E>(layer: Layer.Layer<A, E, AtomRegistry | Reactivity.Reactivity>) => void
 
   /**
@@ -718,15 +718,17 @@ export interface RuntimeFactory {
 }
 
 /**
- * Creates a `RuntimeFactory` backed by the supplied `Layer.MemoMap`.
+ * Creates a `RuntimeFactory` backed by a `Layer.MemoMap` or an atom that resolves one from the active registry.
  *
  * @category constructors
  * @since 4.0.0
  */
 export const context: (options: {
-  readonly memoMap: Layer.MemoMap
+  readonly memoMap: Layer.MemoMap | Atom<Layer.MemoMap>
 }) => RuntimeFactory = (options) => {
   let globalLayer: Layer.Layer<any, any, AtomRegistry> = Reactivity.layer
+  const resolveMemoMap = (get: AtomContext): Layer.MemoMap =>
+    isAtom(options.memoMap) ? get(options.memoMap) : options.memoMap
   function factory<E, R>(
     create:
       | Layer.Layer<R, E, AtomRegistry | Reactivity.Reactivity>
@@ -747,7 +749,7 @@ export const context: (options: {
 
     self.read = function read(get: AtomContext) {
       const layer = get(layerAtom)
-      const build = Effect.flatMap(Effect.scope, (scope) => Layer.buildWithMemoMap(layer, options.memoMap, scope))
+      const build = Effect.flatMap(Effect.scope, (scope) => Layer.buildWithMemoMap(layer, resolveMemoMap(get), scope))
       return effect(get, build, { uninterruptible: true })
     }
 
@@ -757,13 +759,15 @@ export const context: (options: {
   factory.addGlobalLayer = (layer: Layer.Layer<any, any, AtomRegistry | Reactivity.Reactivity>) => {
     globalLayer = Layer.provideMerge(globalLayer, Layer.provide(layer, Reactivity.layer))
   }
-  const reactivityAtom = removeTtl(make(
-    Effect.contextWith((services: Context.Context<Scope.Scope>) =>
-      Layer.buildWithMemoMap(Reactivity.layer, options.memoMap, Context.get(services, Scope.Scope))
-    ).pipe(
-      Effect.map(Context.get(Reactivity.Reactivity))
+  const reactivityAtom = removeTtl(
+    make((get) =>
+      Effect.contextWith((services: Context.Context<Scope.Scope>) =>
+        Layer.buildWithMemoMap(Reactivity.layer, resolveMemoMap(get), Context.get(services, Scope.Scope))
+      ).pipe(
+        Effect.map(Context.get(Reactivity.Reactivity))
+      )
     )
-  ))
+  )
   factory.withReactivity =
     (keys: ReadonlyArray<unknown> | ReadonlyRecord<string, ReadonlyArray<unknown>>) =>
     <A extends Atom<any>>(atom: A): A =>

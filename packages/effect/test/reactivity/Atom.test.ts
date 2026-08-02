@@ -259,6 +259,111 @@ describe.sequential("Atom", () => {
     cancel()
   })
 
+  describe("runtime memo maps", () => {
+    it.effect("keeps concrete memo maps shared across registries", () => {
+      let builds = 0
+
+      class RuntimeIdentity extends Context.Service<RuntimeIdentity, number>()("test/RuntimeIdentity/concrete") {}
+
+      const runtime = Atom.context({ memoMap: Layer.makeMemoMapUnsafe() })(
+        Layer.sync(RuntimeIdentity, () => ++builds)
+      )
+      const value = runtime.atom(RuntimeIdentity)
+      const firstRegistry = AtomRegistry.make()
+      const secondRegistry = AtomRegistry.make()
+
+      return Effect.gen(function*() {
+        assert.strictEqual(yield* AtomRegistry.getResult(firstRegistry, value), 1)
+        assert.strictEqual(yield* AtomRegistry.getResult(secondRegistry, value), 1)
+      }).pipe(
+        Effect.ensuring(
+          Effect.sync(() => {
+            firstRegistry.dispose()
+            secondRegistry.dispose()
+          })
+        )
+      )
+    })
+
+    it.effect("isolates memo map atoms and finalizes each registry independently", () => {
+      let builds = 0
+      const finalized: Array<number> = []
+
+      class RuntimeIdentity extends Context.Service<RuntimeIdentity, number>()("test/RuntimeIdentity/registry") {}
+
+      const memoMap = Atom.make(() => Layer.makeMemoMapUnsafe())
+      const runtime = Atom.context({ memoMap })(
+        Layer.effect(
+          RuntimeIdentity,
+          Effect.acquireRelease(
+            Effect.sync(() => ++builds),
+            (identity) => Effect.sync(() => finalized.push(identity))
+          )
+        )
+      )
+      const firstValue = runtime.atom(RuntimeIdentity)
+      const secondValue = runtime.atom(RuntimeIdentity)
+      const firstRegistry = AtomRegistry.make()
+      const secondRegistry = AtomRegistry.make()
+      firstRegistry.mount(firstValue)
+      firstRegistry.mount(secondValue)
+      secondRegistry.mount(firstValue)
+      secondRegistry.mount(secondValue)
+
+      return Effect.gen(function*() {
+        assert.strictEqual(yield* AtomRegistry.getResult(firstRegistry, firstValue), 1)
+        assert.strictEqual(yield* AtomRegistry.getResult(firstRegistry, secondValue), 1)
+        assert.strictEqual(yield* AtomRegistry.getResult(secondRegistry, firstValue), 2)
+
+        firstRegistry.dispose()
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(finalized, [1])
+        assert.strictEqual(yield* AtomRegistry.getResult(secondRegistry, secondValue), 2)
+
+        secondRegistry.dispose()
+        yield* Effect.yieldNow
+        assert.deepStrictEqual(finalized, [1, 2])
+      }).pipe(
+        Effect.ensuring(
+          Effect.sync(() => {
+            firstRegistry.dispose()
+            secondRegistry.dispose()
+          })
+        )
+      )
+    })
+
+    it("keeps reactive invalidation inside the active registry", async () => {
+      let reads = 0
+      const reactivityKeys = ["todos"]
+      const memoMap = Atom.make(() => Layer.makeMemoMapUnsafe())
+      const factory = Atom.context({ memoMap })
+      const runtime = factory(Layer.empty)
+      const query = Atom.make(() => ++reads).pipe(
+        factory.withReactivity(reactivityKeys),
+        Atom.keepAlive
+      )
+      const mutation = runtime.fn(Effect.fnUntraced(function*() {}), { reactivityKeys })
+      const firstRegistry = AtomRegistry.make()
+      const secondRegistry = AtomRegistry.make()
+
+      try {
+        assert.strictEqual(firstRegistry.get(query), 1)
+        assert.strictEqual(secondRegistry.get(query), 2)
+
+        firstRegistry.set(mutation, void 0)
+        await Effect.runPromise(Effect.yieldNow)
+
+        assert.strictEqual(firstRegistry.get(query), 3)
+        assert.strictEqual(secondRegistry.get(query), 2)
+        assert.strictEqual(reads, 3)
+      } finally {
+        firstRegistry.dispose()
+        secondRegistry.dispose()
+      }
+    })
+  })
+
   it("runtime direct tag", async () => {
     const counter = counterRuntime.atom(Counter)
     const r = AtomRegistry.make()
