@@ -149,6 +149,7 @@ describe("Trie", () => {
 
     strictEqual(Trie.size(trie), 1)
     strictEqual(Option.isSome(Trie.get(trie, "a")), true, "an inserted undefined value must remain present")
+    deepStrictEqual(Array.from(trie), [["a", undefined]])
   })
 
   it("get distinguishes complete keys from prefixes", () => {
