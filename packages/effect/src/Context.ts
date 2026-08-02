@@ -553,8 +553,8 @@ const lookup = (self: Context<any>, key: string): unknown => {
   for (let overlay = impl.overlay; overlay; overlay = overlay.parent) {
     if (overlay.key === key) return overlay.value
   }
-  if (!impl.base.has(key)) return notFound
   const value = impl.base.get(key)
+  if (value === undefined && !impl.base.has(key)) return notFound
   if (impl.overlay && ++impl.baseFallThroughs >= FlattenAfterBaseFallThroughs) {
     impl.base = flatten(impl)
     impl.overlay = undefined
