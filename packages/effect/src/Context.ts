@@ -547,12 +547,15 @@ const lookup = (self: Context<any>, key: string): unknown => {
     if (overlay.key === key) return overlay.value
   }
   const value = impl.base.get(key)
+  // Misses must not advance the counter: reference-default lookups miss the
+  // base on every fiber cache refresh, which would flatten every short-lived
+  // request context and reintroduce the O(services) per-request cost
+  if (value === undefined && !impl.base.has(key)) return notFound
   if (impl.overlay && ++impl.baseHits >= FlattenAfterBaseHits) {
     impl.base = flatten(impl)
     impl.overlay = undefined
     impl.depth = 0
   }
-  if (value === undefined && !impl.base.has(key)) return notFound
   return value
 }
 
