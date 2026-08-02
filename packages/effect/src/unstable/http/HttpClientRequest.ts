@@ -658,6 +658,8 @@ export const setBody: {
     }
     if (body.contentLength !== undefined) {
       headers = Headers.set(headers, "content-length", body.contentLength.toString())
+    } else {
+      headers = Headers.remove(headers, "content-length")
     }
   }
   return makeWith(
