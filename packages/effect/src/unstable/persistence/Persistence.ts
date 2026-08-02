@@ -965,7 +965,7 @@ export const layerBackingRedis: Layer.Layer<
               ({ cause }) => new PersistenceError({ message: `Failed to remove key ${key} from Redis`, cause })
             ),
           clear: redis.send<Array<string>>("KEYS", `${prefix}:*`).pipe(
-            Effect.flatMap((keys) => redis.send("DEL", ...keys)),
+            Effect.flatMap((keys) => keys.length === 0 ? Effect.void : redis.send("DEL", ...keys)),
             Effect.mapError(({ cause }) =>
               new PersistenceError({
                 message: `Failed to clear keys from Redis`,
