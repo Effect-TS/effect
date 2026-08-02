@@ -381,6 +381,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.forkChild({ startImmediately: true }))
 
       yield* TestClock.adjust(2000)
+      while (!flags.has("suspended")) {
+        yield* Effect.yieldNow
+      }
 
       assert.isTrue(flags.get("suspended"))
       assert.include(flags.get("cause"), "boom")
