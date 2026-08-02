@@ -587,12 +587,20 @@ describe("String", () => {
     it("handles single word", () => {
       strictEqual(S.snakeToCamel("hello"), "hello")
     })
+
+    it("handles an empty string", () => {
+      strictEqual(S.snakeToCamel(""), "")
+    })
   })
 
   describe("snakeToPascal", () => {
     it("converts snake_case to PascalCase", () => {
       strictEqual(S.snakeToPascal("hello_world"), "HelloWorld")
       strictEqual(S.snakeToPascal("foo_bar_baz"), "FooBarBaz")
+    })
+
+    it("handles an empty string", () => {
+      strictEqual(S.snakeToPascal(""), "")
     })
   })
 
