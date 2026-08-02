@@ -233,7 +233,9 @@ function compareObjects(self: object, that: object): boolean {
     return false
   } else if (self instanceof Date) {
     if (!(that instanceof Date)) return false
-    return self.toISOString() === that.toISOString()
+    const selfTime = self.getTime()
+    const thatTime = that.getTime()
+    return selfTime === thatTime || (Number.isNaN(selfTime) && Number.isNaN(thatTime))
   } else if (self instanceof RegExp) {
     if (!(that instanceof RegExp)) return false
     return self.toString() === that.toString()
@@ -254,8 +256,16 @@ function compareObjects(self: object, that: object): boolean {
       }
       return compareArrays(self, that)
     } else if (ArrayBuffer.isView(self)) {
-      if (!ArrayBuffer.isView(that) || self.byteLength !== that.byteLength) {
+      const selfIsDataView = self instanceof DataView
+      if (
+        !ArrayBuffer.isView(that) ||
+        self.byteLength !== that.byteLength ||
+        selfIsDataView !== (that instanceof DataView)
+      ) {
         return false
+      }
+      if (selfIsDataView) {
+        return compareDataViews(self, that as DataView)
       }
       return compareTypedArrays(self as Uint8Array, that as Uint8Array)
     } else if (self instanceof Map) {
@@ -321,6 +331,13 @@ function compareTypedArrays(self: Uint8Array, that: Uint8Array): boolean {
     }
   }
   return true
+}
+
+function compareDataViews(self: DataView, that: DataView): boolean {
+  return compareTypedArrays(
+    new Uint8Array(self.buffer, self.byteOffset, self.byteLength),
+    new Uint8Array(that.buffer, that.byteOffset, that.byteLength)
+  )
 }
 
 function compareRecords(

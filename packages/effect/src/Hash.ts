@@ -119,6 +119,9 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
       if (self === null) {
         return string("null")
       } else if (self instanceof Date) {
+        if (Number.isNaN(self.getTime())) {
+          return string("Invalid Date")
+        }
         return string(self.toISOString())
       } else if (self instanceof RegExp) {
         return string(self.toString())
@@ -134,6 +137,8 @@ export const hash: <A>(self: A) => number = <A>(self: A) => {
             return self[symbol]()
           } else if (typeof self === "function") {
             return random(self)
+          } else if (self instanceof DataView) {
+            return array(new Uint8Array(self.buffer, self.byteOffset, self.byteLength))
           } else if (Array.isArray(self) || ArrayBuffer.isView(self)) {
             return array(self as any)
           } else if (self instanceof Map) {
