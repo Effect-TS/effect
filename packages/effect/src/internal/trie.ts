@@ -693,10 +693,6 @@ export const longestPrefixOf = dual<
     let cIndex = 0
     while (cIndex < key.length) {
       const c = key[cIndex]
-      if (n.value !== undefined) {
-        longestPrefixNode = Option.some([key.slice(0, cIndex + 1), n.value.value])
-      }
-
       if (c > n.key) {
         if (n.right === undefined) {
           break
@@ -710,6 +706,9 @@ export const longestPrefixOf = dual<
           n = n.left
         }
       } else {
+        if (n.value !== undefined) {
+          longestPrefixNode = Option.some([key.slice(0, cIndex + 1), n.value.value])
+        }
         if (n.mid === undefined) {
           break
         } else {
