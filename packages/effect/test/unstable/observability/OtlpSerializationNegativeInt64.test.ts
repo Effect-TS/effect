@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { encodeAnyValue } from "../../../src/unstable/observability/internal/otlpProtobuf.ts"
+import { encodeAnyValue } from "effect/unstable/observability/internal/otlpProtobuf"
 
 it("encodes a negative protobuf int64 as a ten-byte varint", () => {
   const encoded = encodeAnyValue({ intValue: -1 })
