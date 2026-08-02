@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Fiber, Option, Result, TxQueue } from "effect"
+import { Cause, Effect, Fiber, Latch, Option, Result, TxQueue } from "effect"
 
 describe("TxQueue", () => {
   describe("interfaces", () => {
@@ -235,15 +235,13 @@ describe("TxQueue", () => {
         const queue = yield* TxQueue.bounded<number>(1)
         yield* TxQueue.offer(queue, 1)
 
-        let iterations = 0
+        const iterationStarted = Latch.makeUnsafe()
         const values = (function*() {
-          iterations++
+          iterationStarted.openUnsafe()
           yield 2
         })()
         const fiber = yield* Effect.forkChild(TxQueue.offerAll(queue, values))
-        while (iterations === 0) {
-          yield* Effect.yieldNow
-        }
+        yield* iterationStarted.await
 
         assert.strictEqual(yield* TxQueue.take(queue), 1)
         assert.deepStrictEqual(yield* Fiber.join(fiber), [])
