@@ -156,8 +156,8 @@ export const parseInterfaces = Effect.flatMap(
   (source) => parseInterfaceDeclarations(source.sourceFile.getInterfaces())
 )
 
-const parseType = (node: ast.Node) => {
-  const text = node.getType().getText(
+const getTypeText = (node: ast.Node) =>
+  node.getType().getText(
     node,
     ast.ts.TypeFormatFlags.NoTruncation
       | ast.ts.TypeFormatFlags.WriteArrayAsGenericType
@@ -166,6 +166,20 @@ const parseType = (node: ast.Node) => {
       | ast.ts.TypeFormatFlags.AllowUniqueESSymbolType
       | ast.ts.TypeFormatFlags.WriteArrowStyleSignature
   )
+
+const parseType = (node: ast.Node) => {
+  let text = getTypeText(node)
+  for (const property of node.getDescendantsOfKind(ast.ts.SyntaxKind.PropertySignature)) {
+    if (!shouldIgnore(parseDoc(getJSDocText(property.getJsDocs())))) continue
+    const readonly = property.getFirstModifierByKind(ast.ts.SyntaxKind.ReadonlyKeyword) ? "readonly " : ""
+    const optional = property.hasQuestionToken() ? "?" : ""
+    const type = property.getTypeNode()?.getText() ?? getTypeText(property)
+    const signature = `${readonly}${property.getName()}${optional}: ${type}`
+    text = text
+      .replaceAll(`; ${signature}`, "")
+      .replaceAll(`${signature}; `, "")
+      .replaceAll(signature, "")
+  }
   return text
 }
 

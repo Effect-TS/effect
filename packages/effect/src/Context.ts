@@ -165,11 +165,6 @@ export declare namespace ServiceClass {
  * declarations. The returned key can be yielded as an Effect and passed to
  * `Context.make`, `Context.add`, and the Context getter functions.
  *
- * Pass `enableFiberCaching: true` for keys whose values fibers cache locally, such
- * as runtime references read on every context change. Adding a caching key
- * invalidates those fiber caches, while adds of regular keys keep them intact.
- * The same option is available on `Reference`.
- *
  * **Gotchas**
  *
  * The string key is the runtime identity of the service. Reusing the same key
@@ -209,7 +204,8 @@ export const Service: {
   <Identifier, Shape = Identifier>(
     key: string,
     options?: {
-      readonly enableFiberCaching?: boolean | undefined
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     } | undefined
   ): Service<Identifier, Shape>
   <Self, Shape>(): <
@@ -221,7 +217,8 @@ export const Service: {
     id: Identifier,
     options?: {
       readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
-      readonly enableFiberCaching?: boolean | undefined
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -234,7 +231,8 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
-      readonly enableFiberCaching?: boolean | undefined
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -262,7 +260,7 @@ export const Service: {
   const init = (key: string, options?: {
     readonly defaultValue?: any
     readonly make?: any
-    readonly enableFiberCaching?: boolean
+    readonly fiberCached?: boolean
   }) => {
     self.key = key
     if (options?.defaultValue) {
@@ -272,7 +270,7 @@ export const Service: {
     if (options?.make) {
       ;(self as any).make = options.make
     }
-    if (options?.enableFiberCaching) {
+    if (options?.fiberCached) {
       cacheKeys.add(key)
     }
     return self
@@ -1334,6 +1332,7 @@ export const Reference: <Service>(
   key: string,
   options: {
     readonly defaultValue: () => Service
-    readonly enableFiberCaching?: boolean | undefined
+    /** @internal */
+    readonly fiberCached?: boolean | undefined
   }
 ) => Reference<Service> = Service as any
