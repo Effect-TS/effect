@@ -225,6 +225,7 @@ export const prepend = <A>(self: MutableList<A>, message: A): void => {
     offset: 0,
     next: self.head
   }
+  if (!self.tail) self.tail = self.head
   self.length++
 }
 
@@ -561,6 +562,7 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
  * @since 4.0.0
  */
 export const toArrayN = <A>(self: MutableList<A>, n: number): Array<A> => {
+  if (n <= 0) return []
   const length = Math.min(n, self.length)
   const out = new Array<A>(length)
   let index = 0
