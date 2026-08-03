@@ -3500,11 +3500,7 @@ function makeHooks<Input, State>(
 }
 
 function serializeAttributes(attributes: Metric.Attributes): string {
-  return serializeEntries(Array.isArray(attributes) ? attributes : Object.entries(attributes))
-}
-
-function serializeEntries(entries: ReadonlyArray<[string, string]>): string {
-  return JSON.stringify(entries)
+  return JSON.stringify(Array.isArray(attributes) ? attributes : Object.entries(attributes))
 }
 
 function mergeAttributes(
