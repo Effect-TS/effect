@@ -10,7 +10,6 @@
  */
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
-import * as Stream from "effect/Stream"
 import * as EtagImpl from "effect/unstable/http/Etag"
 import * as Headers from "effect/unstable/http/Headers"
 import * as Platform from "effect/unstable/http/HttpPlatform"
@@ -71,18 +70,13 @@ const compression: Platform.Compression = {
     const body = response.body
     switch (body._tag) {
       case "Uint8Array": {
-        return ServerResponse.stream(
-          NodeStream.pipeThroughDuplex(Stream.succeed(body.body), {
-            evaluate: () => compressTransform(algorithm, options)
-          }),
-          {
-            status: response.status,
-            statusText: response.statusText,
-            cookies: response.cookies,
-            headers: Headers.remove(response.headers, "content-length"),
-            contentType: body.contentType
-          }
-        )
+        return ServerResponse.raw(Readable.from([body.body]).pipe(compressTransform(algorithm, options)), {
+          status: response.status,
+          statusText: response.statusText,
+          cookies: response.cookies,
+          headers: Headers.remove(response.headers, "content-length"),
+          contentType: body.contentType
+        })
       }
       case "Stream": {
         return ServerResponse.stream(
