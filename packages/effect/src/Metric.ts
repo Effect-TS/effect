@@ -3504,7 +3504,7 @@ function serializeAttributes(attributes: Metric.Attributes): string {
 }
 
 function serializeEntries(entries: ReadonlyArray<[string, string]>): string {
-  return entries.map(([key, value]) => `${key}=${value}`).join(",")
+  return JSON.stringify(entries)
 }
 
 function mergeAttributes(
