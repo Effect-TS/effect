@@ -518,18 +518,23 @@ export class OtelSpan implements Tracer.Span {
 const isSampled = (traceFlags: Otel.TraceFlags): boolean =>
   (traceFlags & Otel.TraceFlags.SAMPLED) === Otel.TraceFlags.SAMPLED
 
+class OtelParentSpanContext extends Context.Service<
+  OtelParentSpanContext,
+  Otel.SpanContext
+>()("@effect/opentelemetry/Tracer/OtelParentSpanContext") {}
+
 const getOtelParent = (
   tracer: Otel.TraceAPI,
   context: Otel.Context,
   annotations: Context.Context<never>
 ): Option.Option<Tracer.AnySpan> => {
-  const otelParent = tracer.getSpan(context)?.spanContext()
+  const otelParent = tracer.getSpanContext(context)
   if (!otelParent) return Option.none()
   return Option.some(Tracer.externalSpan({
     spanId: otelParent.spanId,
     traceId: otelParent.traceId,
-    sampled: (otelParent.traceFlags & 1) === 1,
-    annotations
+    sampled: isSampled(otelParent.traceFlags),
+    annotations: Context.add(annotations, OtelParentSpanContext, otelParent)
   }))
 }
 
@@ -537,6 +542,17 @@ const makeSpanContext = (
   span: Tracer.AnySpan,
   annotations?: Context.Context<never>
 ): Otel.SpanContext => {
+  const otelParent = Context.getOrUndefined(span.annotations, OtelParentSpanContext)
+  if (Predicate.isNotUndefined(otelParent)) {
+    if (Predicate.isUndefined(annotations)) return otelParent
+    const traceFlags = extractTraceService(span, annotations, OtelTraceFlags)
+    const traceState = extractTraceService(span, annotations, OtelTraceState)
+    return {
+      ...otelParent,
+      traceFlags: traceFlags ?? otelParent.traceFlags,
+      ...(traceState ? { traceState } : {})
+    }
+  }
   const traceFlags = makeTraceFlags(span, annotations)
   const traceState = makeTraceState(span, annotations)!
   return ({
