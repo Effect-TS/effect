@@ -472,6 +472,12 @@ export const compression = (
   const minSize = options?.minSize ?? 1024
   const compressible = options?.compressible ?? compressionInternal.defaultCompressible
   const levels = { ...defaultLevels, ...options?.levels }
+  const levelOptions: Record<CompressionAlgorithm, { readonly level: number | undefined }> = {
+    gzip: { level: levels.gzip },
+    deflate: { level: levels.deflate },
+    br: { level: levels.br },
+    zstd: { level: levels.zstd }
+  }
   const transform = (
     compression: HttpPlatform["Service"]["compression"],
     acceptEncoding: string | undefined,
@@ -503,19 +509,15 @@ export const compression = (
     if (contentType === undefined || !compressible(contentType)) {
       return response
     }
-    const withVary = () => {
-      const vary = compressionInternal.varyAcceptEncoding(response.headers)
-      return vary === undefined ? response : Response.setHeader(response, "vary", vary)
-    }
     const algorithm = compressionInternal.negotiate(acceptEncoding, preferred, compression.algorithms)
     if (algorithm === undefined) {
-      return withVary()
+      return withVary(response)
     }
     const contentLength = body.contentLength ?? contentLengthHeader(response.headers)
     if (contentLength !== undefined && contentLength < minSize) {
-      return withVary()
+      return withVary(response)
     }
-    return compression.compressResponse(response, algorithm, { level: levels[algorithm] })
+    return compression.compressResponse(response, algorithm, levelOptions[algorithm])
   }
   return <E, R>(
     httpApp: Effect.Effect<HttpServerResponse, E, R>
@@ -523,12 +525,16 @@ export const compression = (
     Effect.withFiber((fiber) => {
       const request = Context.getUnsafe(fiber.context, HttpServerRequest)
       const platform = Context.getOrUndefined(fiber.context, HttpPlatform)
-      const compression = platform?.compression ?? compressionInternal.compressionWebWrapped()
-      const acceptEncoding = request.headers["accept-encoding"]
-      appendPreResponseHandlerUnsafe(request, (_request, response) =>
-        Effect.succeed(transform(compression, acceptEncoding, response)))
+      const compression = platform?.compression ?? compressionInternal.compressionWebWrapped
+      appendPreResponseHandlerUnsafe(request, (request, response) =>
+        Effect.succeed(transform(compression, request.headers["accept-encoding"], response)))
       return httpApp
     })
+}
+
+const withVary = (response: HttpServerResponse): HttpServerResponse => {
+  const vary = compressionInternal.varyAcceptEncoding(response.headers)
+  return vary === undefined ? response : Response.setHeader(response, "vary", vary)
 }
 
 const defaultAlgorithms: ReadonlyArray<CompressionAlgorithm> = ["br", "gzip", "deflate"]

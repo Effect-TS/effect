@@ -1,6 +1,7 @@
 import { identity } from "../../../Function.ts"
 import * as Stream from "../../../Stream.ts"
-import * as Headers from "../Headers.ts"
+import type * as Headers from "../Headers.ts"
+import * as HttpBody from "../HttpBody.ts"
 import type { Compression, CompressionAlgorithm, CompressionOptions } from "../HttpPlatform.ts"
 import * as Response from "../HttpServerResponse.ts"
 
@@ -38,6 +39,18 @@ export const wrapCompression = (impl: Compression): Compression => ({
 })
 
 /** @internal */
+export const compressionStream = (format: string) => (stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> =>
+  stream.pipeThrough(
+    new CompressionStream(format as CompressionFormat) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
+  )
+
+/** @internal */
+export const setBodyWithoutLength = (
+  response: Response.HttpServerResponse,
+  body: HttpBody.HttpBody
+): Response.HttpServerResponse => Response.removeHeader(Response.setBody(response, body), "content-length")
+
+/** @internal */
 export const makeCompression = (options: {
   readonly algorithms: Iterable<CompressionAlgorithm>
   readonly transform: (
@@ -51,15 +64,15 @@ export const makeCompression = (options: {
     switch (body._tag) {
       case "Uint8Array": {
         const data = body.body
-        return streamBodyResponse(
+        return streamBody(
           response,
-          () => options.transform(algorithm, opts)(new Blob([data as BlobPart]).stream() as ReadableStream<Uint8Array>),
+          () => options.transform(algorithm, opts)(singleChunkStream(data)),
           body.contentType
         )
       }
       case "Stream": {
         const stream = body.stream
-        return streamBodyResponse(
+        return streamBody(
           response,
           () => options.transform(algorithm, opts)(Stream.toReadableStream(stream)),
           body.contentType
@@ -70,13 +83,10 @@ export const makeCompression = (options: {
         if (readable === undefined) {
           return response
         }
-        return Response.raw(options.transform(algorithm, opts)(readable), {
-          status: response.status,
-          statusText: response.statusText,
-          cookies: response.cookies,
-          headers: Headers.remove(response.headers, "content-length"),
-          contentType: body.contentType ?? response.headers["content-type"]
-        })
+        return setBodyWithoutLength(
+          response,
+          HttpBody.raw(options.transform(algorithm, opts)(readable), { contentType: body.contentType })
+        )
       }
       default: {
         return response
@@ -85,17 +95,22 @@ export const makeCompression = (options: {
   }
 })
 
-const streamBodyResponse = (
+const streamBody = (
   response: Response.HttpServerResponse,
   evaluate: () => ReadableStream<Uint8Array>,
   contentType: string | undefined
 ): Response.HttpServerResponse =>
-  Response.stream(Stream.fromReadableStream({ evaluate, onError: identity }), {
-    status: response.status,
-    statusText: response.statusText,
-    cookies: response.cookies,
-    headers: Headers.remove(response.headers, "content-length"),
-    contentType
+  setBodyWithoutLength(
+    response,
+    HttpBody.stream(Stream.fromReadableStream({ evaluate, onError: identity }), contentType)
+  )
+
+const singleChunkStream = (data: Uint8Array): ReadableStream<Uint8Array> =>
+  new ReadableStream({
+    start(controller) {
+      controller.enqueue(data)
+      controller.close()
+    }
   })
 
 const rawReadableStream = (raw: unknown): ReadableStream<Uint8Array> | undefined => {
@@ -107,27 +122,14 @@ const rawReadableStream = (raw: unknown): ReadableStream<Uint8Array> | undefined
   return new globalThis.Response(raw as BodyInit).body ?? undefined
 }
 
-const webAlgorithms: ReadonlySet<CompressionAlgorithm> = new Set(["gzip", "deflate"])
-
-let webCompression: Compression | undefined
+/** @internal */
+export const compressionWeb: Compression = makeCompression({
+  algorithms: ["gzip", "deflate"],
+  transform: (algorithm) => compressionStream(algorithm)
+})
 
 /** @internal */
-export const compressionWeb = (): Compression =>
-  webCompression ??= makeCompression({
-    algorithms: webAlgorithms,
-    transform: (algorithm) => (stream) =>
-      stream.pipeThrough(
-        new CompressionStream(algorithm as "gzip" | "deflate") as unknown as ReadableWritablePair<
-          Uint8Array,
-          Uint8Array
-        >
-      )
-  })
-
-let webCompressionWithHeaders: Compression | undefined
-
-/** @internal */
-export const compressionWebWrapped = (): Compression => webCompressionWithHeaders ??= wrapCompression(compressionWeb())
+export const compressionWebWrapped: Compression = wrapCompression(compressionWeb)
 
 /** @internal */
 export const defaultCompressible = (contentType: string): boolean => {

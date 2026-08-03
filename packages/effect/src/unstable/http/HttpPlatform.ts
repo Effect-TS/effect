@@ -73,6 +73,23 @@ export interface Compression {
 }
 
 /**
+ * Creates a compression body transform backed by the Web `CompressionStream`
+ * API, for use with `makeCompression`.
+ *
+ * **Details**
+ *
+ * The format string is passed through to the runtime, so runtime-specific
+ * formats such as Bun's `"brotli"` and `"zstd"` are usable. `CompressionStream`
+ * has no compression level knob, so `CompressionOptions.level` does not apply.
+ *
+ * @category compression
+ * @since 4.0.0
+ */
+export const compressionStream: (
+  format: string
+) => (stream: ReadableStream<Uint8Array>) => ReadableStream<Uint8Array> = internal.compressionStream
+
+/**
  * Creates a `Compression` implementation from Web `ReadableStream`
  * transforms.
  *
@@ -221,7 +238,7 @@ export const layer = Layer.effect(HttpPlatform)(
   Effect.flatMap(FileSystem.FileSystem, (fs) =>
     make({
       platform: "web",
-      compression: internal.compressionWeb(),
+      compression: internal.compressionWeb,
       fileResponse(path, status, statusText, headers, start, end, contentLength) {
         return Response.stream(
           fs.stream(path, {

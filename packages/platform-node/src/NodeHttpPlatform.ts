@@ -12,6 +12,7 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as EtagImpl from "effect/unstable/http/Etag"
 import * as Headers from "effect/unstable/http/Headers"
+import * as HttpBody from "effect/unstable/http/HttpBody"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import * as Fs from "node:fs"
@@ -27,13 +28,8 @@ if (typeof Zlib.createZstdCompress === "function") {
   compressionAlgorithms.push("zstd")
 }
 
-const brotliParams = (level: number | undefined): Zlib.BrotliOptions => {
-  const params: Record<number, number> = {}
-  if (level !== undefined) {
-    params[Zlib.constants.BROTLI_PARAM_QUALITY] = level
-  }
-  return { params }
-}
+const brotliParams = (level: number | undefined): Zlib.BrotliOptions =>
+  level === undefined ? {} : { params: { [Zlib.constants.BROTLI_PARAM_QUALITY]: level } }
 
 const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
   level === undefined ? {} : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
@@ -64,48 +60,41 @@ const compressTransform = (
   }
 }
 
+// replaces the response body while keeping every other field, dropping the
+// now-stale Content-Length header
+const compressedBody = (
+  response: ServerResponse.HttpServerResponse,
+  body: HttpBody.HttpBody
+): ServerResponse.HttpServerResponse =>
+  ServerResponse.removeHeader(ServerResponse.setBody(response, body), "content-length")
+
 const compression: Platform.Compression = {
   algorithms: new Set(compressionAlgorithms),
   compressResponse(response, algorithm, options) {
     const body = response.body
     switch (body._tag) {
-      case "Uint8Array": {
-        return ServerResponse.raw(Readable.from([body.body]).pipe(compressTransform(algorithm, options)), {
-          status: response.status,
-          statusText: response.statusText,
-          cookies: response.cookies,
-          headers: Headers.remove(response.headers, "content-length"),
-          contentType: body.contentType
-        })
-      }
       case "Stream": {
-        return ServerResponse.stream(
-          NodeStream.pipeThroughDuplex(body.stream, {
-            evaluate: () => compressTransform(algorithm, options)
-          }),
-          {
-            status: response.status,
-            statusText: response.statusText,
-            cookies: response.cookies,
-            headers: Headers.remove(response.headers, "content-length"),
-            contentType: body.contentType
-          }
+        return compressedBody(
+          response,
+          HttpBody.stream(
+            NodeStream.pipeThroughDuplex(body.stream, {
+              evaluate: () => compressTransform(algorithm, options)
+            }),
+            body.contentType
+          )
         )
       }
+      case "Uint8Array":
       case "Raw": {
-        const readable = body.body instanceof Readable
+        const readable = body._tag === "Uint8Array"
+          ? Readable.from([body.body])
+          : body.body instanceof Readable
           ? body.body
           : Readable.fromWeb(new Response(body.body as BodyInit).body as any)
         const transform = compressTransform(algorithm, options)
         readable.on("error", (cause) => transform.destroy(cause))
         transform.on("error", (cause) => readable.destroy(cause))
-        return ServerResponse.raw(readable.pipe(transform), {
-          status: response.status,
-          statusText: response.statusText,
-          cookies: response.cookies,
-          headers: Headers.remove(response.headers, "content-length"),
-          contentType: body.contentType ?? response.headers["content-type"]
-        })
+        return compressedBody(response, HttpBody.raw(readable.pipe(transform), { contentType: body.contentType }))
       }
       default: {
         return response

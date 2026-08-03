@@ -19,21 +19,9 @@ import * as BunFileSystem from "./BunFileSystem.ts"
 
 // Bun's CompressionStream supports an extended format set covering brotli and
 // zstd
-const compressionFormats = {
-  gzip: "gzip",
-  deflate: "deflate",
-  br: "brotli",
-  zstd: "zstd"
-} as const
-
 const compression = Platform.makeCompression({
   algorithms: ["gzip", "deflate", "br", "zstd"],
-  transform: (algorithm) => (stream) =>
-    stream.pipeThrough(
-      new CompressionStream(
-        compressionFormats[algorithm] as CompressionFormat
-      ) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
-    )
+  transform: (algorithm) => Platform.compressionStream(algorithm === "br" ? "brotli" : algorithm)
 })
 
 /**

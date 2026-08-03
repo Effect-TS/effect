@@ -27,13 +27,8 @@ if (typeof Zlib.createZstdCompress === "function") {
   compressionAlgorithms.push("zstd")
 }
 
-const brotliParams = (level: number | undefined): Zlib.BrotliOptions => {
-  const params: Record<number, number> = {}
-  if (level !== undefined) {
-    params[Zlib.constants.BROTLI_PARAM_QUALITY] = level
-  }
-  return { params }
-}
+const brotliParams = (level: number | undefined): Zlib.BrotliOptions =>
+  level === undefined ? {} : { params: { [Zlib.constants.BROTLI_PARAM_QUALITY]: level } }
 
 const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
   level === undefined ? {} : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
@@ -43,28 +38,28 @@ const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
 // streams and flush each input chunk.
 const compression = Platform.makeCompression({
   algorithms: compressionAlgorithms,
-  transform: (algorithm, options) => (stream) => {
+  transform: (algorithm, options) => {
     switch (algorithm) {
       case "gzip":
       case "deflate": {
-        return stream.pipeThrough(
-          new CompressionStream(algorithm) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
-        )
+        return Platform.compressionStream(algorithm)
       }
       case "br":
       case "zstd": {
-        const transform = algorithm === "br"
-          ? Zlib.createBrotliCompress({
-            ...brotliParams(options?.level),
-            flush: Zlib.constants.BROTLI_OPERATION_FLUSH
-          })
-          : Zlib.createZstdCompress({
-            ...zstdParams(options?.level),
-            flush: Zlib.constants.ZSTD_e_flush
-          })
-        const source = Readable.fromWeb(stream as any)
-        source.on("error", (cause) => transform.destroy(cause))
-        return Readable.toWeb(source.pipe(transform)) as ReadableStream<Uint8Array>
+        return (stream) => {
+          const transform = algorithm === "br"
+            ? Zlib.createBrotliCompress({
+              ...brotliParams(options?.level),
+              flush: Zlib.constants.BROTLI_OPERATION_FLUSH
+            })
+            : Zlib.createZstdCompress({
+              ...zstdParams(options?.level),
+              flush: Zlib.constants.ZSTD_e_flush
+            })
+          const source = Readable.fromWeb(stream as any)
+          source.on("error", (cause) => transform.destroy(cause))
+          return Readable.toWeb(source.pipe(transform)) as ReadableStream<Uint8Array>
+        }
       }
     }
   }
