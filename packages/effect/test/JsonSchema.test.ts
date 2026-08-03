@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import * as JsonSchema from "effect/JsonSchema"
 
@@ -1209,6 +1209,21 @@ describe("JsonSchema", () => {
           "B_C": { type: "string" }
         }
       })
+    })
+
+    it("preserves definitions whose keys sanitize to the same component name", () => {
+      const input: JsonSchema.MultiDocument<"draft-2020-12"> = {
+        dialect: "draft-2020-12",
+        schemas: [{ anyOf: [{ $ref: "#/$defs/A$B" }, { $ref: "#/$defs/A B" }] }],
+        definitions: {
+          "A$B": { const: 1 },
+          "A B": { const: 2 }
+        }
+      }
+
+      const result = JsonSchema.toMultiDocumentOpenApi3_1(input)
+
+      assert.strictEqual(Object.keys(result.definitions).length, 2)
     })
   })
 
