@@ -23,12 +23,15 @@ import type { ReadonlyRecord } from "../../Record.ts"
 import { TracerEnabled } from "../../References.ts"
 import { ParentSpan } from "../../Tracer.ts"
 import * as Headers from "./Headers.ts"
+import type { CompressionAlgorithm } from "./HttpPlatform.ts"
+import { HttpPlatform } from "./HttpPlatform.ts"
 import { causeResponseStripped } from "./HttpServerError.ts"
 import { HttpServerRequest } from "./HttpServerRequest.ts"
 import * as Request from "./HttpServerRequest.ts"
 import * as Response from "./HttpServerResponse.ts"
 import type { HttpServerResponse } from "./HttpServerResponse.ts"
 import * as TraceContext from "./HttpTraceContext.ts"
+import * as compressionInternal from "./internal/compression.ts"
 import { appendPreResponseHandlerUnsafe } from "./internal/preResponseHandler.ts"
 
 /**
@@ -400,6 +403,160 @@ export const cors = (options?: {
         }))
       }
       appendPreResponseHandlerUnsafe(request, preResponseHandler)
+      return httpApp
+    })
+}
+
+/**
+ * Options for the `compression` middleware.
+ *
+ * @category compression
+ * @since 4.0.0
+ */
+export interface CompressionMiddlewareOptions {
+  /**
+   * Server preference order. Negotiation picks the first entry the client
+   * accepts (respecting q-values) that the platform supports.
+   *
+   * The effective set is this list intersected with the platform's advertised
+   * algorithms. Defaults to `["br", "gzip", "deflate"]`; `zstd` is excluded by
+   * default and must be opted into by listing it.
+   */
+  readonly algorithms?: ReadonlyArray<CompressionAlgorithm> | undefined
+  /**
+   * Minimum body size in bytes to compress, applied when the length is
+   * knowable. Unknown-length streaming bodies always compress. Defaults to
+   * `1024`.
+   */
+  readonly minSize?: number | undefined
+  /**
+   * Predicate deciding whether a content type is compressible, replacing the
+   * default predicate wholesale.
+   */
+  readonly compressible?: ((contentType: string) => boolean) | undefined
+  /**
+   * Per-algorithm compression levels. Platforms without a level knob ignore
+   * them.
+   */
+  readonly levels?: {
+    readonly gzip?: number | undefined
+    readonly deflate?: number | undefined
+    readonly br?: number | undefined
+    readonly zstd?: number | undefined
+  } | undefined
+}
+
+const defaultAlgorithms: ReadonlyArray<CompressionAlgorithm> = ["br", "gzip", "deflate"]
+
+const defaultLevels = {
+  gzip: 6,
+  deflate: 6,
+  br: 4,
+  zstd: 3
+} as const
+
+const noTransformRegex = /(?:^|[\s,])no-transform(?:$|[\s,;])/i
+
+const contentLengthHeader = (headers: Headers.Headers): number | undefined => {
+  const value = headers["content-length"]
+  if (value === undefined) {
+    return undefined
+  }
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
+}
+
+/**
+ * Middleware that compresses HTTP response bodies based on the request's
+ * `Accept-Encoding` header.
+ *
+ * **Details**
+ *
+ * Content negotiation follows RFC 9110: the first algorithm in server
+ * preference order that the client accepts with a positive q-value and the
+ * platform supports is used. When no algorithm is acceptable the response is
+ * sent uncompressed.
+ *
+ * The body transform is performed by the `HttpPlatform` service when present
+ * in the context, falling back to a Web `CompressionStream` implementation
+ * supporting gzip and deflate.
+ *
+ * Responses are skipped when the status is 1xx, 204, 206, or 304, when a
+ * `Content-Encoding` is already present, when `Cache-Control: no-transform`
+ * is set, when the content type is absent or not compressible, when a known
+ * body length is below `minSize`, or when the body is empty or `FormData`. A
+ * response carrying `Content-Encoding: identity` opts out of compression and
+ * has the header stripped before sending.
+ *
+ * `Vary: Accept-Encoding` is set on every response that was eligible by
+ * status and content type, including ones skipped by negotiation or
+ * `minSize`.
+ *
+ * @category compression
+ * @since 4.0.0
+ */
+export const compression = (options?: CompressionMiddlewareOptions | undefined): <E, R>(
+  httpApp: Effect.Effect<HttpServerResponse, E, R>
+) => Effect.Effect<HttpServerResponse, E, R | HttpServerRequest> => {
+  const preferred = options?.algorithms ?? defaultAlgorithms
+  const minSize = options?.minSize ?? 1024
+  const compressible = options?.compressible ?? compressionInternal.defaultCompressible
+  const levels = { ...defaultLevels, ...options?.levels }
+  const transform = (
+    compression: HttpPlatform["Service"]["compression"],
+    acceptEncoding: string | undefined,
+    response: HttpServerResponse
+  ): HttpServerResponse => {
+    if (
+      response.status < 200 ||
+      response.status === 204 ||
+      response.status === 206 ||
+      response.status === 304
+    ) {
+      return response
+    }
+    const currentEncoding = response.headers["content-encoding"]
+    if (currentEncoding !== undefined) {
+      return currentEncoding.trim().toLowerCase() === "identity"
+        ? Response.removeHeader(response, "content-encoding")
+        : response
+    }
+    const body = response.body
+    if (body._tag === "Empty" || body._tag === "FormData") {
+      return response
+    }
+    const cacheControl = response.headers["cache-control"]
+    if (cacheControl !== undefined && noTransformRegex.test(cacheControl)) {
+      return response
+    }
+    const contentType = response.headers["content-type"] ?? body.contentType
+    if (contentType === undefined || !compressible(contentType)) {
+      return response
+    }
+    const withVary = () => {
+      const vary = compressionInternal.varyAcceptEncoding(response.headers)
+      return vary === undefined ? response : Response.setHeader(response, "vary", vary)
+    }
+    const algorithm = compressionInternal.negotiate(acceptEncoding, preferred, compression.algorithms)
+    if (algorithm === undefined) {
+      return withVary()
+    }
+    const contentLength = body.contentLength ?? contentLengthHeader(response.headers)
+    if (contentLength !== undefined && contentLength < minSize) {
+      return withVary()
+    }
+    return compression.compressResponse(response, algorithm, { level: levels[algorithm] })
+  }
+  return <E, R>(
+    httpApp: Effect.Effect<HttpServerResponse, E, R>
+  ): Effect.Effect<HttpServerResponse, E, R | HttpServerRequest> =>
+    Effect.withFiber((fiber) => {
+      const request = Context.getUnsafe(fiber.context, HttpServerRequest)
+      const platform = Context.getOrUndefined(fiber.context, HttpPlatform)
+      const compression = platform?.compression ?? compressionInternal.compressionWebWrapped()
+      const acceptEncoding = request.headers["accept-encoding"]
+      appendPreResponseHandlerUnsafe(request, (_request, response) =>
+        Effect.succeed(transform(compression, acceptEncoding, response)))
       return httpApp
     })
 }

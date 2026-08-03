@@ -12,12 +12,125 @@ import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as EtagImpl from "effect/unstable/http/Etag"
 import * as Headers from "effect/unstable/http/Headers"
+import * as HttpBody from "effect/unstable/http/HttpBody"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import * as Fs from "node:fs"
+import type { Duplex } from "node:stream"
 import { Readable } from "node:stream"
+import * as Zlib from "node:zlib"
 import Mime from "./Mime.ts"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
+import * as NodeStream from "./NodeStream.ts"
+
+const compressionAlgorithms: Array<Platform.CompressionAlgorithm> = ["gzip", "deflate", "br"]
+if (typeof Zlib.zstdCompressSync === "function") {
+  compressionAlgorithms.push("zstd")
+}
+
+const brotliParams = (level: number | undefined, sizeHint?: number): Zlib.BrotliOptions => {
+  const params: Record<number, number> = {}
+  if (level !== undefined) {
+    params[Zlib.constants.BROTLI_PARAM_QUALITY] = level
+  }
+  if (sizeHint !== undefined) {
+    params[Zlib.constants.BROTLI_PARAM_SIZE_HINT] = sizeHint
+  }
+  return { params }
+}
+
+const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
+  level === undefined ? {} : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
+
+const compressSync = (
+  data: Uint8Array,
+  algorithm: Platform.CompressionAlgorithm,
+  options?: Platform.CompressionOptions | undefined
+): Uint8Array => {
+  switch (algorithm) {
+    case "gzip": {
+      return Zlib.gzipSync(data, { level: options?.level })
+    }
+    case "deflate": {
+      return Zlib.deflateSync(data, { level: options?.level })
+    }
+    case "br": {
+      return Zlib.brotliCompressSync(data, brotliParams(options?.level, data.length))
+    }
+    case "zstd": {
+      return Zlib.zstdCompressSync(data, zstdParams(options?.level))
+    }
+  }
+}
+
+const compressTransform = (
+  algorithm: Platform.CompressionAlgorithm,
+  options?: Platform.CompressionOptions | undefined
+): Duplex => {
+  switch (algorithm) {
+    case "gzip": {
+      return Zlib.createGzip({ level: options?.level, flush: Zlib.constants.Z_SYNC_FLUSH })
+    }
+    case "deflate": {
+      return Zlib.createDeflate({ level: options?.level, flush: Zlib.constants.Z_SYNC_FLUSH })
+    }
+    case "br": {
+      return Zlib.createBrotliCompress({
+        ...brotliParams(options?.level),
+        flush: Zlib.constants.BROTLI_OPERATION_FLUSH
+      })
+    }
+    case "zstd": {
+      return Zlib.createZstdCompress(zstdParams(options?.level))
+    }
+  }
+}
+
+const compression: Platform.Compression = {
+  algorithms: new Set(compressionAlgorithms),
+  compressResponse(response, algorithm, options) {
+    const body = response.body
+    switch (body._tag) {
+      case "Uint8Array": {
+        return ServerResponse.setBody(
+          response,
+          HttpBody.uint8Array(compressSync(body.body, algorithm, options), body.contentType)
+        )
+      }
+      case "Stream": {
+        return ServerResponse.stream(
+          NodeStream.pipeThroughDuplex(body.stream, {
+            evaluate: () => compressTransform(algorithm, options)
+          }),
+          {
+            status: response.status,
+            statusText: response.statusText,
+            cookies: response.cookies,
+            headers: Headers.remove(response.headers, "content-length"),
+            contentType: body.contentType
+          }
+        )
+      }
+      case "Raw": {
+        const readable = body.body instanceof Readable
+          ? body.body
+          : Readable.fromWeb(new Response(body.body as BodyInit).body as any)
+        const transform = compressTransform(algorithm, options)
+        readable.on("error", (cause) => transform.destroy(cause))
+        return ServerResponse.raw(readable.pipe(transform), {
+          status: response.status,
+          statusText: response.statusText,
+          cookies: response.cookies,
+          headers: Headers.remove(response.headers, "content-length"),
+          contentType: body.contentType ?? response.headers["content-type"]
+        })
+      }
+      default: {
+        return response
+      }
+    }
+  }
+}
 
 /**
  * Creates the Node `HttpPlatform`, serving file responses from Node readable
@@ -28,6 +141,7 @@ import * as NodeFileSystem from "./NodeFileSystem.ts"
  */
 export const make = Platform.make({
   platform: "node",
+  compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
     const stream = contentLength === 0
       ? Readable.from([])

@@ -15,7 +15,56 @@ import * as Layer from "effect/Layer"
 import * as Etag from "effect/unstable/http/Etag"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as Response from "effect/unstable/http/HttpServerResponse"
+import * as Zlib from "node:zlib"
 import * as BunFileSystem from "./BunFileSystem.ts"
+
+// Bun's CompressionStream supports an extended format set covering brotli and
+// zstd
+const compressionFormats = {
+  gzip: "gzip",
+  deflate: "deflate",
+  br: "brotli",
+  zstd: "zstd"
+} as const
+
+const compression = Platform.makeCompression({
+  algorithms: ["gzip", "deflate", "br", "zstd"],
+  transform: (algorithm) => (stream) =>
+    stream.pipeThrough(
+      new CompressionStream(
+        compressionFormats[algorithm] as CompressionFormat
+      ) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
+    ),
+  compressSync: (data, algorithm, options) => {
+    switch (algorithm) {
+      case "gzip": {
+        return Bun.gzipSync(data as Uint8Array<ArrayBuffer>, { level: options?.level as any })
+      }
+      case "deflate": {
+        return Bun.deflateSync(data as Uint8Array<ArrayBuffer>, { level: options?.level as any })
+      }
+      case "br": {
+        return Zlib.brotliCompressSync(
+          data,
+          options?.level === undefined
+            ? { params: { [Zlib.constants.BROTLI_PARAM_SIZE_HINT]: data.length } }
+            : {
+              params: {
+                [Zlib.constants.BROTLI_PARAM_QUALITY]: options.level,
+                [Zlib.constants.BROTLI_PARAM_SIZE_HINT]: data.length
+              }
+            }
+        )
+      }
+      case "zstd": {
+        return Bun.zstdCompressSync(
+          data as Uint8Array<ArrayBuffer>,
+          options?.level === undefined ? undefined : { level: options.level }
+        )
+      }
+    }
+  }
+})
 
 /**
  * @category constructors
@@ -27,6 +76,7 @@ const make: Effect.Effect<
   FileSystem | Etag.Generator
 > = Platform.make({
   platform: "bun",
+  compression,
   fileResponse(path, status, statusText, headers, start, end, _contentLength) {
     let file = Bun.file(path)
     if (start > 0 || end !== undefined) {

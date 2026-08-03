@@ -18,7 +18,72 @@ import * as Layer from "effect/Layer"
 import * as Etag from "effect/unstable/http/Etag"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as Response from "effect/unstable/http/HttpServerResponse"
+import { Readable } from "node:stream"
+import * as Zlib from "node:zlib"
 import * as DenoFileSystem from "./DenoFileSystem.ts"
+
+const compressionAlgorithms: Array<Platform.CompressionAlgorithm> = ["gzip", "deflate", "br"]
+if (typeof Zlib.zstdCompressSync === "function") {
+  compressionAlgorithms.push("zstd")
+}
+
+const brotliParams = (level: number | undefined, sizeHint?: number): Zlib.BrotliOptions => {
+  const params: Record<number, number> = {}
+  if (level !== undefined) {
+    params[Zlib.constants.BROTLI_PARAM_QUALITY] = level
+  }
+  if (sizeHint !== undefined) {
+    params[Zlib.constants.BROTLI_PARAM_SIZE_HINT] = sizeHint
+  }
+  return { params }
+}
+
+const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
+  level === undefined ? {} : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
+
+// gzip and deflate use the native CompressionStream; br and zstd go through
+// the node:zlib compatibility streams
+const compression = Platform.makeCompression({
+  algorithms: compressionAlgorithms,
+  transform: (algorithm, options) => (stream) => {
+    switch (algorithm) {
+      case "gzip":
+      case "deflate": {
+        return stream.pipeThrough(
+          new CompressionStream(algorithm) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
+        )
+      }
+      case "br":
+      case "zstd": {
+        const transform = algorithm === "br"
+          ? Zlib.createBrotliCompress({
+            ...brotliParams(options?.level),
+            flush: Zlib.constants.BROTLI_OPERATION_FLUSH
+          })
+          : Zlib.createZstdCompress(zstdParams(options?.level))
+        const source = Readable.fromWeb(stream as any)
+        source.on("error", (cause) => transform.destroy(cause))
+        return Readable.toWeb(source.pipe(transform)) as ReadableStream<Uint8Array>
+      }
+    }
+  },
+  compressSync: (data, algorithm, options) => {
+    switch (algorithm) {
+      case "gzip": {
+        return Zlib.gzipSync(data, { level: options?.level })
+      }
+      case "deflate": {
+        return Zlib.deflateSync(data, { level: options?.level })
+      }
+      case "br": {
+        return Zlib.brotliCompressSync(data, brotliParams(options?.level, data.length))
+      }
+      case "zstd": {
+        return Zlib.zstdCompressSync(data, zstdParams(options?.level))
+      }
+    }
+  }
+})
 
 /**
  * Creates the Deno `HttpPlatform`, serving file responses from resource-backed
@@ -29,6 +94,7 @@ import * as DenoFileSystem from "./DenoFileSystem.ts"
  */
 export const make = Platform.make({
   platform: "deno",
+  compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
     let body: ReadableStream<Uint8Array>
     if (contentLength === 0) {

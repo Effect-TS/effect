@@ -537,6 +537,24 @@ export const setHeader: {
 )
 
 /**
+ * Returns a response with the specified header removed.
+ *
+ * @category combinators
+ * @since 4.0.0
+ */
+export const removeHeader: {
+  (key: string): (self: HttpServerResponse) => HttpServerResponse
+  (self: HttpServerResponse, key: string): HttpServerResponse
+} = dual(
+  2,
+  (self: HttpServerResponse, key: string): HttpServerResponse =>
+    makeResponse({
+      ...self,
+      headers: Headers.remove(self.headers, key)
+    })
+)
+
+/**
  * Returns a response with all supplied headers set on the existing header map.
  *
  * @category combinators
