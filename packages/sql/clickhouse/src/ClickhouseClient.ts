@@ -175,16 +175,16 @@ export const make = (
       ? Statement.defaultTransforms(options.transformResultNames).array
       : undefined
 
-    const client = Clickhouse.createClient(options)
+    const client = yield* Effect.acquireRelease(
+      Effect.sync(() => Clickhouse.createClient(options)),
+      (client) => Effect.promise(() => client.close())
+    )
 
-    yield* Effect.acquireRelease(
-      Effect.tryPromise({
-        try: () => client.exec({ query: "SELECT 1" }),
-        catch: (cause) =>
-          new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
-      }),
-      () => Effect.promise(() => client.close())
-    ).pipe(
+    yield* Effect.tryPromise({
+      try: () => client.exec({ query: "SELECT 1" }),
+      catch: (cause) =>
+        new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
+    }).pipe(
       Effect.timeoutOrElse({
         duration: Duration.seconds(5),
         orElse: () =>
