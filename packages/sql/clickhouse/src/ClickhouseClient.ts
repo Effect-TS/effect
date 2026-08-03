@@ -484,7 +484,7 @@ const typeFromUnknown = (value: unknown): string => {
   }
   switch (typeof value) {
     case "number":
-      return "Decimal"
+      return "Float64"
     case "bigint":
       return "Int64"
     case "boolean":
