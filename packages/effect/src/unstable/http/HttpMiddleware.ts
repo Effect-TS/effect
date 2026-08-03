@@ -418,9 +418,7 @@ export const cors = (options?: {
  * platform supports is used. When no algorithm is acceptable the response is
  * sent uncompressed.
  *
- * The body transform is performed by the `HttpPlatform` service when present
- * in the context, falling back to a Web `CompressionStream` implementation
- * supporting gzip and deflate.
+ * The body transform is performed by the `HttpPlatform` service.
  *
  * Responses are skipped when the status is 1xx, 204, 206, or 304, when a
  * `Content-Encoding` is already present, when `Cache-Control: no-transform`
@@ -467,7 +465,7 @@ export const compression = (
   } | undefined
 ): <E, R>(
   httpApp: Effect.Effect<HttpServerResponse, E, R>
-) => Effect.Effect<HttpServerResponse, E, R | HttpServerRequest> => {
+) => Effect.Effect<HttpServerResponse, E, R | HttpServerRequest | HttpPlatform> => {
   const preferred = options?.algorithms ?? defaultAlgorithms
   const minSize = options?.minSize ?? 1024
   const compressible = options?.compressible ?? compressionInternal.defaultCompressible
@@ -521,11 +519,10 @@ export const compression = (
   }
   return <E, R>(
     httpApp: Effect.Effect<HttpServerResponse, E, R>
-  ): Effect.Effect<HttpServerResponse, E, R | HttpServerRequest> =>
+  ): Effect.Effect<HttpServerResponse, E, R | HttpServerRequest | HttpPlatform> =>
     Effect.withFiber((fiber) => {
       const request = Context.getUnsafe(fiber.context, HttpServerRequest)
-      const platform = Context.getOrUndefined(fiber.context, HttpPlatform)
-      const compression = platform?.compression ?? compressionInternal.compressionWebWrapped
+      const compression = Context.getUnsafe(fiber.context, HttpPlatform).compression
       appendPreResponseHandlerUnsafe(request, (request, response) =>
         Effect.succeed(transform(compression, request.headers["accept-encoding"], response)))
       return httpApp

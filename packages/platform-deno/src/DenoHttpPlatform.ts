@@ -36,13 +36,13 @@ const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
 // gzip and deflate use the native CompressionStream, which does not expose a
 // per-chunk flush control. br and zstd go through node:zlib compatibility
 // streams and flush each input chunk.
-const compression = Platform.makeCompression({
+const compression = Platform.makeCompressionWeb({
   algorithms: compressionAlgorithms,
   transform: (algorithm, options) => {
     switch (algorithm) {
       case "gzip":
       case "deflate": {
-        return Platform.compressionStream(algorithm)
+        return Platform.compressionTransformWeb(algorithm)
       }
       case "br":
       case "zstd": {

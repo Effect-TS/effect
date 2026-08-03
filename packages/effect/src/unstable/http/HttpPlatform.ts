@@ -24,93 +24,6 @@ import * as Response from "./HttpServerResponse.ts"
 import * as internal from "./internal/compression.ts"
 
 /**
- * Content codings that HTTP response compression can apply.
- *
- * @category compression
- * @since 4.0.0
- */
-export type CompressionAlgorithm = "gzip" | "deflate" | "br" | "zstd"
-
-/**
- * Options passed to a platform when compressing a response body.
- *
- * **Details**
- *
- * The `level` scale depends on the algorithm. Platforms without a level knob,
- * such as the Web `CompressionStream` implementation, ignore it.
- *
- * @category compression
- * @since 4.0.0
- */
-export interface CompressionOptions {
-  readonly level?: number | undefined
-}
-
-/**
- * Platform primitive for HTTP response compression.
- *
- * **Details**
- *
- * `algorithms` advertises what the platform can encode; content negotiation
- * happens in the shared `HttpMiddleware.compression` middleware.
- *
- * `compressResponse` is only called when compression is definitely happening —
- * all skip logic runs in the shared middleware first. The platform owns the
- * body transform and removes `Content-Length` when the compressed size is not
- * known in advance. The `make` wrapper owns the `Content-Encoding` and `Vary`
- * headers.
- *
- * @category compression
- * @since 4.0.0
- */
-export interface Compression {
-  readonly algorithms: ReadonlySet<CompressionAlgorithm>
-  readonly compressResponse: (
-    response: Response.HttpServerResponse,
-    algorithm: CompressionAlgorithm,
-    options?: CompressionOptions | undefined
-  ) => Response.HttpServerResponse
-}
-
-/**
- * Creates a compression body transform backed by the Web `CompressionStream`
- * API, for use with `makeCompression`.
- *
- * **Details**
- *
- * The format string is passed through to the runtime, so runtime-specific
- * formats such as Bun's `"brotli"` and `"zstd"` are usable. `CompressionStream`
- * has no compression level knob, so `CompressionOptions.level` does not apply.
- *
- * @category compression
- * @since 4.0.0
- */
-export const compressionStream: (
-  format: string
-) => (stream: ReadableStream<Uint8Array>) => ReadableStream<Uint8Array> = internal.compressionStream
-
-/**
- * Creates a `Compression` implementation from Web `ReadableStream`
- * transforms.
- *
- * **Details**
- *
- * `Uint8Array` bodies are compressed through `transform` as a single-chunk
- * stream. `Stream` and `Raw` bodies are also transformed as streams. The
- * `Content-Length` header is dropped in every case.
- *
- * @category compression
- * @since 4.0.0
- */
-export const makeCompression: (options: {
-  readonly algorithms: Iterable<CompressionAlgorithm>
-  readonly transform: (
-    algorithm: CompressionAlgorithm,
-    options?: CompressionOptions | undefined
-  ) => (stream: ReadableStream<Uint8Array>) => ReadableStream<Uint8Array>
-}) => Compression = internal.makeCompression
-
-/**
  * Service for platform-specific HTTP response helpers, including file-backed server responses.
  *
  * @category services
@@ -259,3 +172,90 @@ export const layer = Layer.effect(HttpPlatform)(
       }
     }))
 ).pipe(Layer.provide(Etag.layerWeak))
+
+/**
+ * Content codings that HTTP response compression can apply.
+ *
+ * @category compression
+ * @since 4.0.0
+ */
+export type CompressionAlgorithm = "gzip" | "deflate" | "br" | "zstd"
+
+/**
+ * Options passed to a platform when compressing a response body.
+ *
+ * **Details**
+ *
+ * The `level` scale depends on the algorithm. Platforms without a level knob,
+ * such as the Web `CompressionStream` implementation, ignore it.
+ *
+ * @category compression
+ * @since 4.0.0
+ */
+export interface CompressionOptions {
+  readonly level?: number | undefined
+}
+
+/**
+ * Platform primitive for HTTP response compression.
+ *
+ * **Details**
+ *
+ * `algorithms` advertises what the platform can encode; content negotiation
+ * happens in the shared `HttpMiddleware.compression` middleware.
+ *
+ * `compressResponse` is only called when compression is definitely happening —
+ * all skip logic runs in the shared middleware first. The platform owns the
+ * body transform and removes `Content-Length` when the compressed size is not
+ * known in advance. The `make` wrapper owns the `Content-Encoding` and `Vary`
+ * headers.
+ *
+ * @category compression
+ * @since 4.0.0
+ */
+export interface Compression {
+  readonly algorithms: ReadonlySet<CompressionAlgorithm>
+  readonly compressResponse: (
+    response: Response.HttpServerResponse,
+    algorithm: CompressionAlgorithm,
+    options?: CompressionOptions | undefined
+  ) => Response.HttpServerResponse
+}
+
+/**
+ * Creates a compression body transform backed by the Web `CompressionStream`
+ * API, for use with `makeCompressionWeb`.
+ *
+ * **Details**
+ *
+ * The format string is passed through to the runtime, so runtime-specific
+ * formats such as Bun's `"brotli"` and `"zstd"` are usable. `CompressionStream`
+ * has no compression level knob, so `CompressionOptions.level` does not apply.
+ *
+ * @category compression
+ * @since 4.0.0
+ */
+export const compressionTransformWeb: (
+  format: string
+) => (stream: ReadableStream<Uint8Array>) => ReadableStream<Uint8Array> = internal.compressionTransformWeb
+
+/**
+ * Creates a `Compression` implementation from Web `ReadableStream`
+ * transforms.
+ *
+ * **Details**
+ *
+ * `Uint8Array` bodies are compressed through `transform` as a single-chunk
+ * stream. `Stream` and `Raw` bodies are also transformed as streams. The
+ * `Content-Length` header is dropped in every case.
+ *
+ * @category compression
+ * @since 4.0.0
+ */
+export const makeCompressionWeb: (options: {
+  readonly algorithms: Iterable<CompressionAlgorithm>
+  readonly transform: (
+    algorithm: CompressionAlgorithm,
+    options?: CompressionOptions | undefined
+  ) => (stream: ReadableStream<Uint8Array>) => ReadableStream<Uint8Array>
+}) => Compression = internal.makeCompressionWeb

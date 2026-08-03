@@ -39,10 +39,11 @@ export const wrapCompression = (impl: Compression): Compression => ({
 })
 
 /** @internal */
-export const compressionStream = (format: string) => (stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> =>
-  stream.pipeThrough(
-    new CompressionStream(format as CompressionFormat) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
-  )
+export const compressionTransformWeb =
+  (format: string) => (stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> =>
+    stream.pipeThrough(
+      new CompressionStream(format as CompressionFormat) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
+    )
 
 /** @internal */
 export const setBodyWithoutLength = (
@@ -51,7 +52,7 @@ export const setBodyWithoutLength = (
 ): Response.HttpServerResponse => Response.removeHeader(Response.setBody(response, body), "content-length")
 
 /** @internal */
-export const makeCompression = (options: {
+export const makeCompressionWeb = (options: {
   readonly algorithms: Iterable<CompressionAlgorithm>
   readonly transform: (
     algorithm: CompressionAlgorithm,
@@ -123,13 +124,10 @@ const rawReadableStream = (raw: unknown): ReadableStream<Uint8Array> | undefined
 }
 
 /** @internal */
-export const compressionWeb: Compression = makeCompression({
+export const compressionWeb: Compression = makeCompressionWeb({
   algorithms: ["gzip", "deflate"],
-  transform: (algorithm) => compressionStream(algorithm)
+  transform: (algorithm) => compressionTransformWeb(algorithm)
 })
-
-/** @internal */
-export const compressionWebWrapped: Compression = wrapCompression(compressionWeb)
 
 /** @internal */
 export const defaultCompressible = (contentType: string): boolean => {

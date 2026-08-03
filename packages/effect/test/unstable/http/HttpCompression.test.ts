@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { afterAll, assert, describe, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Latch from "effect/Latch"
@@ -8,6 +8,7 @@ import * as Cookies from "effect/unstable/http/Cookies"
 import * as HttpEffect from "effect/unstable/http/HttpEffect"
 import * as HttpMiddleware from "effect/unstable/http/HttpMiddleware"
 import * as HttpPlatform from "effect/unstable/http/HttpPlatform"
+import * as HttpServer from "effect/unstable/http/HttpServer"
 import type { HttpServerRequest } from "effect/unstable/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
 
@@ -18,16 +19,6 @@ const bigJsonApp = Effect.succeed(HttpServerResponse.text(bigJson, { contentType
 
 type App = Effect.Effect<HttpServerResponse.HttpServerResponse, any, HttpServerRequest>
 type CompressionOptions = Parameters<typeof HttpMiddleware.compression>[0]
-
-const makeHandler = (
-  app: App,
-  options?: CompressionOptions,
-  context?: Context.Context<never>
-) =>
-  HttpEffect.toWebHandlerWith<never, HttpServerRequest | Scope.Scope>(context ?? Context.empty())(
-    app as Effect.Effect<HttpServerResponse.HttpServerResponse, any, HttpServerRequest | Scope.Scope>,
-    HttpMiddleware.compression(options)
-  )
 
 const get = (
   handler: (request: Request) => Promise<Response>,
@@ -44,22 +35,46 @@ const get = (
 const decompress = (data: ArrayBuffer, format: "gzip" | "deflate"): Promise<string> =>
   new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream(format))).text()
 
-// A platform stub used to exercise negotiation against algorithms the Web
-// fallback does not support. It only marks the chosen algorithm.
-const platformContext = (algorithms: ReadonlyArray<HttpPlatform.CompressionAlgorithm>): Context.Context<never> =>
+const platformContext = (compression: HttpPlatform.Compression): Context.Context<HttpPlatform.HttpPlatform> =>
   Context.make(
     HttpPlatform.HttpPlatform,
-    {
+    HttpPlatform.HttpPlatform.of({
       platform: "web",
-      compression: {
-        algorithms: new Set(algorithms),
-        compressResponse: (response: HttpServerResponse.HttpServerResponse, algorithm: string) =>
-          HttpServerResponse.setHeader(response, "content-encoding", algorithm)
-      },
+      compression,
       fileResponse: () => Effect.die("not implemented"),
       fileWebResponse: () => Effect.die("not implemented")
-    } as unknown as HttpPlatform.HttpPlatform["Service"]
-  ) as unknown as Context.Context<never>
+    })
+  )
+
+// A platform stub used to exercise negotiation against algorithms the Web
+// implementation does not support. It only marks the chosen algorithm.
+const negotiationPlatformContext = (algorithms: ReadonlyArray<HttpPlatform.CompressionAlgorithm>) =>
+  platformContext({
+    algorithms: new Set(algorithms),
+    compressResponse: (response, algorithm) => HttpServerResponse.setHeader(response, "content-encoding", algorithm)
+  })
+
+const makeHandler = (
+  app: App,
+  options?: CompressionOptions,
+  context?: Context.Context<HttpPlatform.HttpPlatform>
+) => {
+  const self = app as Effect.Effect<HttpServerResponse.HttpServerResponse, any, HttpServerRequest | Scope.Scope>
+  const middleware = HttpMiddleware.compression(options)
+  if (context !== undefined) {
+    return HttpEffect.toWebHandlerWith<HttpPlatform.HttpPlatform, HttpServerRequest | Scope.Scope>(context)(
+      self,
+      middleware
+    )
+  }
+  const { dispose, handler } = HttpEffect.toWebHandlerLayer(self, HttpServer.layerServices, { middleware })
+  disposers.push(dispose)
+  return handler
+}
+
+const disposers: Array<() => Promise<void>> = []
+
+afterAll(() => Promise.all(disposers.map((dispose) => dispose())))
 
 const randomBytes = (length: number): Uint8Array => {
   const data = new Uint8Array(length)
@@ -93,7 +108,7 @@ describe("HttpCompression", () => {
 
   it("server preference order picks br over gzip when supported", async () => {
     const response = await get(
-      makeHandler(bigJsonApp, undefined, platformContext(["gzip", "deflate", "br", "zstd"])),
+      makeHandler(bigJsonApp, undefined, negotiationPlatformContext(["gzip", "deflate", "br", "zstd"])),
       { "accept-encoding": "gzip, br" }
     )
     assert.strictEqual(response.headers.get("content-encoding"), "br")
@@ -101,7 +116,7 @@ describe("HttpCompression", () => {
 
   it("client q-values decide acceptability only, server order decides ranking", async () => {
     const response = await get(
-      makeHandler(bigJsonApp, undefined, platformContext(["gzip", "deflate", "br", "zstd"])),
+      makeHandler(bigJsonApp, undefined, negotiationPlatformContext(["gzip", "deflate", "br", "zstd"])),
       { "accept-encoding": "gzip;q=1, br;q=0.5" }
     )
     assert.strictEqual(response.headers.get("content-encoding"), "br")
