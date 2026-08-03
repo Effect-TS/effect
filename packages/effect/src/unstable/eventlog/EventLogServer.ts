@@ -175,17 +175,23 @@ export const layerRpcHandlers = (options: {
           .annotate(ChunkedMessageState, new Map())
       }),
       "EventLog.WriteSingle": Effect.fnUntraced(function*(request, { client }) {
-        yield* options.onWrite(request.data, Context.get(client.annotations, AuthenticatedIdentities))
+        yield* options.onWrite(
+          request.data,
+          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set()
+        )
       }),
       "EventLog.WriteChunked": Effect.fnUntraced(function*(request, { client }) {
         const state = Context.get(client.annotations, ChunkedMessageState)
         const data = ChunkedMessage.join(state, request)
         if (!data) return
-        yield* options.onWrite(data, Context.get(client.annotations, AuthenticatedIdentities))
+        yield* options.onWrite(
+          data,
+          Context.getOrUndefined(client.annotations, AuthenticatedIdentities) ?? new Set()
+        )
       }),
       "EventLog.Changes": (request, { client }) => {
-        const authenticatedIdentities = Context.get(client.annotations, AuthenticatedIdentities)
-        if (!authenticatedIdentities.has(request.publicKey)) {
+        const authenticatedIdentities = Context.getOrUndefined(client.annotations, AuthenticatedIdentities)
+        if (!authenticatedIdentities?.has(request.publicKey)) {
           return Stream.fail(
             new EventLogProtocolError({
               requestTag: "Changes",
@@ -251,9 +257,8 @@ export class ChunkedMessageState extends Context.Reference<
  * @category services
  * @since 4.0.0
  */
-export class AuthenticatedIdentities extends Context.Reference<Set<string>>(
-  "effect/eventlog/EventLogServer/AuthenticatedIdentities",
-  { defaultValue: () => new Set() }
+export class AuthenticatedIdentities extends Context.Service<AuthenticatedIdentities, Set<string>>()(
+  "effect/eventlog/EventLogServer/AuthenticatedIdentities"
 ) {}
 
 class SessionAuthCacheKey extends Data.Class<{
