@@ -85,7 +85,7 @@ describe("Primitive", () => {
         expectInvalidValues(
           Primitive.boolean,
           ["invalid"],
-          [`Expected "true" | "yes" | "on" | "1" | "y" | "false" | "no" | "off" | "0" | "n", got "invalid"`]
+          [`Expected "true" | "yes" | "on" | "1" | "y" | "false" | "no" | "off" | "0" | "n"`]
         ))
 
       it("should have correct _tag", () => {
@@ -107,7 +107,7 @@ describe("Primitive", () => {
 
       it.effect("should fail for invalid values", () =>
         expectInvalidValues(Primitive.float, ["not-a-number"], [
-          `Expected a string representing a finite number, got "not-a-number"`
+          `Expected a string representing a finite number`
         ]))
 
       it("should have correct _tag", () => {
@@ -145,7 +145,7 @@ describe("Primitive", () => {
         ]))
 
       it.effect("should fail for invalid values", () =>
-        expectInvalidValues(Primitive.date, ["not-a-date"], [`Expected a valid Date, got Invalid Date`]))
+        expectInvalidValues(Primitive.date, ["not-a-date"], [`Expected a valid Date`]))
 
       it("should have correct _tag", () => {
         assert.strictEqual(Primitive.date._tag, "Date")
@@ -168,7 +168,7 @@ describe("Primitive", () => {
         expectInvalidValues(
           Primitive.integer,
           ["3.14", "not-a-number"],
-          [`Expected an integer, got 3.14`, `Expected a string representing a finite number, got "not-a-number"`]
+          [`Expected an integer`, `Expected a string representing a finite number`]
         ))
 
       it("should have correct _tag", () => {

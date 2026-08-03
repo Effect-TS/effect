@@ -961,7 +961,7 @@ export const Schema = <
     [success_, Schema_.Cause(error, Schema_.Defect())],
     ([value, cause]) => (input, ast, options) => {
       if (!isAsyncResult(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
       switch (input._tag) {
         case "Initial":
@@ -971,8 +971,7 @@ export const Schema = <
             SchemaParser.decodeUnknownEffect(value)(input.value, options),
             {
               onSuccess: (value) => success(value, input),
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(ast, Option.some(input), [new SchemaIssue.Pointer(["value"], issue)])
+              onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["value"], issue)])
             }
           )
         case "Failure": {
@@ -983,7 +982,7 @@ export const Schema = <
                 {
                   onSuccess: (value) => Option.some(success<A["Type"], E["Type"]>(value, ps)),
                   onFailure: (issue) =>
-                    new SchemaIssue.Composite(ast, Option.some(input), [
+                    new SchemaIssue.Composite(ast, [
                       new SchemaIssue.Pointer(["previousSuccess", "value"], issue)
                     ])
                 }
@@ -993,7 +992,7 @@ export const Schema = <
           )
           const causeEffect = Effect.mapErrorEager(
             SchemaParser.decodeUnknownEffect(cause)(input.cause, options),
-            (issue) => new SchemaIssue.Composite(ast, Option.some(input), [new SchemaIssue.Pointer(["cause"], issue)])
+            (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["cause"], issue)])
           )
           return Effect.flatMapEager(
             prevSuccessEffect,
