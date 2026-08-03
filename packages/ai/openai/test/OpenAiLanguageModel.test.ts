@@ -403,7 +403,7 @@ describe("OpenAiLanguageModel", () => {
 
         it.effect("emits only the specialized output for apply_patch results", () =>
           Effect.gen(function*() {
-            const toolkit = Toolkit.make(OpenAiTool.ApplyPatch())
+            const toolkit = Toolkit.make(OpenAiTool.ApplyPatch({}))
             yield* LanguageModel.generateText({
               prompt: Prompt.make([
                 { role: "user", content: "Apply a patch" },
@@ -444,7 +444,7 @@ describe("OpenAiLanguageModel", () => {
 
         it.effect("emits only the specialized output for shell results", () =>
           Effect.gen(function*() {
-            const toolkit = Toolkit.make(OpenAiTool.Shell())
+            const toolkit = Toolkit.make(OpenAiTool.Shell({}))
             yield* LanguageModel.generateText({
               prompt: Prompt.make([
                 { role: "user", content: "Run a shell command" },
@@ -494,7 +494,7 @@ describe("OpenAiLanguageModel", () => {
 
         it.effect("emits only the specialized output for local_shell results", () =>
           Effect.gen(function*() {
-            const toolkit = Toolkit.make(OpenAiTool.LocalShell())
+            const toolkit = Toolkit.make(OpenAiTool.LocalShell({}))
             yield* LanguageModel.generateText({
               prompt: Prompt.make([
                 { role: "user", content: "Run a local shell command" },
