@@ -8,7 +8,9 @@ declare module "node:stream" {
     static fromWeb(stream: unknown): Readable
     static toWeb(stream: Readable): unknown
     on(event: "error", listener: (cause: unknown) => void): this
+    on(event: "close", listener: () => void): this
     pipe<T>(destination: T): T
+    destroy(cause?: unknown): void
   }
   export class Duplex extends Readable {
     destroy(cause?: unknown): void

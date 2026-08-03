@@ -94,6 +94,7 @@ const compression: Platform.Compression = {
         const transform = compressTransform(algorithm, options)
         readable.on("error", (cause) => transform.destroy(cause))
         transform.on("error", (cause) => readable.destroy(cause))
+        transform.on("close", () => readable.destroy())
         return compressedBody(response, HttpBody.raw(readable.pipe(transform), { contentType: body.contentType }))
       }
       default: {

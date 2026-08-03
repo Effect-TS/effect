@@ -58,6 +58,7 @@ const compression = Platform.makeCompressionWeb({
             })
           const source = Readable.fromWeb(stream as any)
           source.on("error", (cause) => transform.destroy(cause))
+          transform.on("close", () => source.destroy())
           return Readable.toWeb(source.pipe(transform)) as ReadableStream<Uint8Array>
         }
       }

@@ -437,6 +437,15 @@ export const cors = (options?: {
  * explicitly flush each input chunk, so incremental delivery depends on the
  * runtime's implementation.
  *
+ * **Security**
+ *
+ * Compression can expose secrets through BREACH-style attacks when one
+ * response contains both secret data and attacker-controlled input and an
+ * attacker can observe the compressed response length. For affected routes,
+ * disable compression with `Content-Encoding: identity` or
+ * `Cache-Control: no-transform`, or use `compressible` to restrict which
+ * response content types can be compressed.
+ *
  * @category compression
  * @since 4.0.0
  */
