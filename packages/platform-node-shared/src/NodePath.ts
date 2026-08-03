@@ -15,27 +15,28 @@ import { BadArgument } from "effect/PlatformError"
 import * as NodePath from "node:path"
 import * as NodeUrl from "node:url"
 
-const fromFileUrl = (url: URL): Effect.Effect<string, BadArgument> =>
-  Effect.try({
-    try: () => NodeUrl.fileURLToPath(url),
-    catch: (cause) =>
-      new BadArgument({
-        module: "Path",
-        method: "fromFileUrl",
-        cause
-      })
-  })
-
-const toFileUrl = (path: string): Effect.Effect<URL, BadArgument> =>
-  Effect.try({
-    try: () => NodeUrl.pathToFileURL(path),
-    catch: (cause) =>
-      new BadArgument({
-        module: "Path",
-        method: "toFileUrl",
-        cause
-      })
-  })
+const fileUrlOps = (windows: boolean | undefined) => ({
+  fromFileUrl: (url: URL): Effect.Effect<string, BadArgument> =>
+    Effect.try({
+      try: () => NodeUrl.fileURLToPath(url, { windows }),
+      catch: (cause) =>
+        new BadArgument({
+          module: "Path",
+          method: "fromFileUrl",
+          cause
+        })
+    }),
+  toFileUrl: (path: string): Effect.Effect<URL, BadArgument> =>
+    Effect.try({
+      try: () => NodeUrl.pathToFileURL(path, { windows }),
+      catch: (cause) =>
+        new BadArgument({
+          module: "Path",
+          method: "toFileUrl",
+          cause
+        })
+    })
+})
 
 /**
  * Provides the `Path` service using Node's POSIX path implementation plus
@@ -47,8 +48,7 @@ const toFileUrl = (path: string): Effect.Effect<URL, BadArgument> =>
 export const layerPosix: Layer.Layer<Path> = Layer.succeed(Path)({
   [TypeId]: TypeId,
   ...NodePath.posix,
-  fromFileUrl,
-  toFileUrl
+  ...fileUrlOps(false)
 })
 
 /**
@@ -61,8 +61,7 @@ export const layerPosix: Layer.Layer<Path> = Layer.succeed(Path)({
 export const layerWin32: Layer.Layer<Path> = Layer.succeed(Path)({
   [TypeId]: TypeId,
   ...NodePath.win32,
-  fromFileUrl,
-  toFileUrl
+  ...fileUrlOps(true)
 })
 
 /**
@@ -75,6 +74,5 @@ export const layerWin32: Layer.Layer<Path> = Layer.succeed(Path)({
 export const layer: Layer.Layer<Path> = Layer.succeed(Path)({
   [TypeId]: TypeId,
   ...NodePath,
-  fromFileUrl,
-  toFileUrl
+  ...fileUrlOps(undefined)
 })
