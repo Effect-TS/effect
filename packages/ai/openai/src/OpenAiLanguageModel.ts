@@ -782,7 +782,7 @@ const prepareMessages = Effect.fnUntraced(
       Tool.isProviderDefined(tool) && tool.name === "OpenAiCodeInterpreter"
     )
     const shellTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.Shell> =>
-      Tool.isProviderDefined(tool) && tool.name === "OpenAiFunctionShell"
+      Tool.isProviderDefined(tool) && tool.name === "OpenAiShell"
     )
     const localShellTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.LocalShell> =>
       Tool.isProviderDefined(tool) && tool.name === "OpenAiLocalShell"
@@ -1130,6 +1130,7 @@ const prepareMessages = Effect.fnUntraced(
                 call_id: part.id,
                 ...(part.result as any)
               })
+              continue
             }
 
             if (Predicate.isNotUndefined(shellTool) && toolName === "shell") {
@@ -1140,6 +1141,7 @@ const prepareMessages = Effect.fnUntraced(
                 output: part.result as any,
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
+              continue
             }
 
             if (Predicate.isNotUndefined(localShellTool) && toolName === "local_shell") {
@@ -1150,6 +1152,7 @@ const prepareMessages = Effect.fnUntraced(
                 output: part.result as any,
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
+              continue
             }
 
             messages.push({
