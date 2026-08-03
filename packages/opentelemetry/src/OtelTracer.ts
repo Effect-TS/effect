@@ -550,7 +550,7 @@ const makeSpanContext = (
     return {
       ...otelParent,
       traceFlags: traceFlags ?? otelParent.traceFlags,
-      ...(traceState ? { traceState } : {})
+      traceState: traceState ?? otelParent.traceState!
     }
   }
   const traceFlags = makeTraceFlags(span, annotations)
