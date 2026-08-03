@@ -10547,9 +10547,9 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRefs.forkAs` -> `none`: Context is inherited automatically when a v4 child fiber is forked; custom per-reference fork patches were removed.
 
-- `FiberRefs.get` -> `Context.getOption`: Read an explicitly stored service from Context; Context.Reference defaults can be read with Context.getReferenceUnsafe.
+- `FiberRefs.get` -> `Context.getOption`: Read an explicitly stored service from Context; Context.Reference defaults can be read with Context.get.
 
-- `FiberRefs.getOrDefault` -> `Context.getReferenceUnsafe`: Reads an override or the Context.Reference default value.
+- `FiberRefs.getOrDefault` -> `Context.get`: Reads an override or the Context.Reference default value.
 
 - `FiberRefs.joinAs` -> `none`: Child-to-parent FiberRef joining was removed; pass results explicitly or merge ordinary Context values where appropriate.
 
@@ -12782,7 +12782,7 @@ Schema.toFormatter(schema)
 
 - `Runtime.setFiberRef` -> `Context.add`: FiberRefs became Context.Reference values; add the Reference override to the Context.
 
-- `Runtime.updateFiberRefs` -> `Context.mutate`: There is no aggregate FiberRefs update; mutate targeted Context.Reference overrides explicitly.
+- `Runtime.updateFiberRefs` -> `Context.add`: There is no aggregate FiberRefs update; add targeted Context.Reference overrides explicitly.
 
 - `Runtime.updateRuntimeFlags` -> `none`: Runtime flags and aggregate patches were removed; configure each semantic behavior independently.
 

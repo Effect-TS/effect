@@ -158,12 +158,12 @@ export const make = Effect.fnUntraced(
 
         function handler(request: Request, server: BunServer<WebSocketContext>) {
           return new Promise<Response>((resolve, _reject) => {
-            const map = new Map(services.mapUnsafe)
-            map.set(
-              ServerRequest.HttpServerRequest.key,
+            const context = Context.add(
+              services,
+              ServerRequest.HttpServerRequest,
               new BunServerRequest(request, resolve, removeHost(request.url), server)
             )
-            const fiber = Fiber.runIn(Effect.runForkWith(Context.makeUnsafe<any>(map))(httpEffect), scope)
+            const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
             request.signal.addEventListener("abort", () => {
               fiber.interruptUnsafe(parent.id, Error.ClientAbort.annotation)
             }, { once: true })

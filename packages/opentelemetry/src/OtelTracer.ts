@@ -130,24 +130,20 @@ export const makeExternalSpan = (options: {
   readonly traceFlags?: number | undefined
   readonly traceState?: string | Otel.TraceState | undefined
 }): Tracer.ExternalSpan => {
-  const annotations = Context.mutate(Context.empty(), (annotations) => {
-    let next = annotations
-    if (options.traceFlags !== undefined) {
-      next = Context.add(next, OtelTraceFlags, options.traceFlags)
-    }
+  let annotations = Context.empty()
+  if (options.traceFlags !== undefined) {
+    annotations = Context.add(annotations, OtelTraceFlags, options.traceFlags)
+  }
 
-    if (typeof options.traceState === "string") {
-      try {
-        next = Context.add(next, OtelTraceState, Otel.createTraceState(options.traceState))
-      } catch {
-        //
-      }
-    } else if (options.traceState) {
-      next = Context.add(next, OtelTraceState, options.traceState)
+  if (typeof options.traceState === "string") {
+    try {
+      annotations = Context.add(annotations, OtelTraceState, Otel.createTraceState(options.traceState))
+    } catch {
+      //
     }
-
-    return next
-  })
+  } else if (options.traceState) {
+    annotations = Context.add(annotations, OtelTraceState, options.traceState)
+  }
 
   return {
     _tag: "ExternalSpan",

@@ -206,9 +206,8 @@ export const makeHandler = <
       nodeRequest: Http.IncomingMessage,
       nodeResponse: Http.ServerResponse
     ) {
-      const map = new Map(services.mapUnsafe)
-      map.set(HttpServerRequest.key, new ServerRequestImpl(nodeRequest, nodeResponse))
-      const fiber = Fiber.runIn(Effect.runForkWith(Context.makeUnsafe<any>(map))(handled), options.scope)
+      const context = Context.add(services, HttpServerRequest, new ServerRequestImpl(nodeRequest, nodeResponse))
+      const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handled), options.scope)
       nodeResponse.on("close", () => {
         if (!nodeResponse.writableEnded) {
           fiber.interruptUnsafe(parent.id, ClientAbort.annotation)
@@ -273,9 +272,12 @@ export const makeUpgradeHandler = <
             (ws) => Effect.sync(() => ws.close())
           )
       ))
-      const map = new Map(services.mapUnsafe)
-      map.set(HttpServerRequest.key, new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect))
-      const fiber = Fiber.runIn(Effect.runForkWith(Context.makeUnsafe<any>(map))(handledApp), options.scope)
+      const context = Context.add(
+        services,
+        HttpServerRequest,
+        new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
+      )
+      const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handledApp), options.scope)
       socket.on("close", () => {
         if (!socket.writableEnded) {
           fiber.interruptUnsafe(parent.id, ClientAbort.annotation)

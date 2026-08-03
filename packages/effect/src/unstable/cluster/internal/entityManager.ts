@@ -163,14 +163,13 @@ export const make = Effect.fnUntraced(function*<
       Effect.fnUntraced(function*(scope) {
         let isShuttingDown = false
 
-        const handlerContext = Context.mutate(context, (context) =>
-          context.pipe(
-            Context.add(CurrentAddress, address),
-            Context.add(CurrentRunnerAddress, options.runnerAddress),
-            Context.add(KeepAliveLatch, keepAliveLatch),
-            Context.add(Scope.Scope, scope),
-            Context.add(CurrentLogAnnotations, {})
-          ))
+        const handlerContext = context.pipe(
+          Context.add(CurrentAddress, address),
+          Context.add(CurrentRunnerAddress, options.runnerAddress),
+          Context.add(KeepAliveLatch, keepAliveLatch),
+          Context.add(Scope.Scope, scope),
+          Context.add(CurrentLogAnnotations, {})
+        )
 
         // Initiate the behavior for the entity
         const handlers = yield* (entity.protocol.toHandlers(buildHandlers as any).pipe(
