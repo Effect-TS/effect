@@ -263,12 +263,11 @@ export const make = (
         return this.runRaw(sql, params, format).pipe(
           Effect.flatMap((result) => {
             if ("json" in result) {
-              return Effect.promise(() =>
-                result.json().then(
-                  (result) => "data" in result ? result.data : result as any,
-                  () => []
-                )
-              )
+              return Effect.tryPromise({
+                try: () => result.json().then((result) => "data" in result ? result.data : result as any),
+                catch: (cause) =>
+                  new SqlError({ reason: classifyError(cause, "Failed to parse result", "parseResult") })
+              })
             }
             return Effect.succeed([])
           })
