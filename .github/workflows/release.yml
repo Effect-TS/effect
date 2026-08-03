@@ -20,7 +20,7 @@ jobs:
       pull-requests: write
       id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           # This is required to ensure the `GITHUB_TOKEN` we provide below is
           # **always** used when pushing updates to the changesets release branch.
@@ -35,7 +35,7 @@ jobs:
         run: |
           sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
       - name: Create Release Pull Request or Publish
-        uses: changesets/action@v1
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
         with:
           version: pnpm changeset-version
           publish: pnpm changeset-publish
