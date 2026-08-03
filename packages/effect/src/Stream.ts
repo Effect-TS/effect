@@ -1570,14 +1570,15 @@ export const range = (
   chunkSize = Channel.DefaultChunkSize
 ): Stream<number> =>
   min > max ? empty : fromPull(Effect.sync(() => {
+    const size = Math.max(1, chunkSize)
     let start = min
     let done = false
     return Effect.suspend(() => {
       if (done) return Cause.done()
       const remaining = max - start + 1
-      if (remaining > chunkSize) {
-        const chunk = Arr.range(start, start + chunkSize - 1)
-        start += chunkSize
+      if (remaining > size) {
+        const chunk = Arr.range(start, start + size - 1)
+        start += size
         return Effect.succeed(chunk)
       }
       const chunk = Arr.range(start, start + remaining - 1)
