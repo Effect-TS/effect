@@ -8,6 +8,7 @@
  *
  * @since 4.0.0
  */
+import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as EtagImpl from "effect/unstable/http/Etag"
@@ -24,15 +25,56 @@ import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as NodeStream from "./NodeStream.ts"
 
 const compressionAlgorithms: Array<Platform.CompressionAlgorithm> = ["gzip", "deflate", "br"]
-if (typeof Zlib.createZstdCompress === "function") {
+if (typeof Zlib.zstdCompress === "function") {
   compressionAlgorithms.push("zstd")
 }
 
-const brotliParams = (level: number | undefined): Zlib.BrotliOptions =>
-  level === undefined ? {} : { params: { [Zlib.constants.BROTLI_PARAM_QUALITY]: level } }
+const brotliParams = (level: number | undefined, sizeHint?: number): Zlib.BrotliOptions => {
+  const params: Record<number, number> = {}
+  if (level !== undefined) {
+    params[Zlib.constants.BROTLI_PARAM_QUALITY] = level
+  }
+  if (sizeHint !== undefined) {
+    params[Zlib.constants.BROTLI_PARAM_SIZE_HINT] = sizeHint
+  }
+  return { params }
+}
 
-const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
-  level === undefined ? {} : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
+const zstdParams = (level: number | undefined): Zlib.ZstdOptions | undefined =>
+  level === undefined || level === 3 ? undefined : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
+
+const compress = (
+  data: Uint8Array,
+  algorithm: Platform.CompressionAlgorithm,
+  options?: Platform.CompressionOptions | undefined
+): Effect.Effect<Uint8Array> =>
+  Effect.callback((resume) => {
+    const complete = (error: Error | null, result: Uint8Array) =>
+      resume(error === null ? Effect.succeed(result) : Effect.die(error))
+    switch (algorithm) {
+      case "gzip": {
+        Zlib.gzip(data, { level: options?.level }, complete)
+        break
+      }
+      case "deflate": {
+        Zlib.deflate(data, { level: options?.level }, complete)
+        break
+      }
+      case "br": {
+        Zlib.brotliCompress(data, brotliParams(options?.level, data.byteLength), complete)
+        break
+      }
+      case "zstd": {
+        const params = zstdParams(options?.level)
+        if (params === undefined) {
+          Zlib.zstdCompress(data, complete)
+        } else {
+          Zlib.zstdCompress(data, params, complete)
+        }
+        break
+      }
+    }
+  })
 
 const compressTransform = (
   algorithm: Platform.CompressionAlgorithm,
@@ -73,8 +115,16 @@ const compression: Platform.Compression = {
   compressResponse(response, algorithm, options) {
     const body = response.body
     switch (body._tag) {
+      case "Uint8Array": {
+        return Effect.map(compress(body.body, algorithm, options), (result) =>
+          ServerResponse.setHeader(
+            ServerResponse.setBody(response, HttpBody.uint8Array(result, body.contentType)),
+            "content-length",
+            result.byteLength.toString()
+          ))
+      }
       case "Stream": {
-        return compressedBody(
+        return Effect.succeed(compressedBody(
           response,
           HttpBody.stream(
             NodeStream.pipeThroughDuplex(body.stream, {
@@ -82,23 +132,22 @@ const compression: Platform.Compression = {
             }),
             body.contentType
           )
-        )
+        ))
       }
-      case "Uint8Array":
       case "Raw": {
-        const readable = body._tag === "Uint8Array"
-          ? Readable.from([body.body])
-          : body.body instanceof Readable
+        const readable = body.body instanceof Readable
           ? body.body
           : Readable.fromWeb(new Response(body.body as BodyInit).body as any)
         const transform = compressTransform(algorithm, options)
         readable.on("error", (cause) => transform.destroy(cause))
         transform.on("error", (cause) => readable.destroy(cause))
         transform.on("close", () => readable.destroy())
-        return compressedBody(response, HttpBody.raw(readable.pipe(transform), { contentType: body.contentType }))
+        return Effect.succeed(
+          compressedBody(response, HttpBody.raw(readable.pipe(transform), { contentType: body.contentType }))
+        )
       }
       default: {
-        return response
+        return Effect.succeed(response)
       }
     }
   }

@@ -51,7 +51,8 @@ const platformContext = (compression: HttpPlatform.Compression): Context.Context
 const negotiationPlatformContext = (algorithms: ReadonlyArray<HttpPlatform.CompressionAlgorithm>) =>
   platformContext({
     algorithms: new Set(algorithms),
-    compressResponse: (response, algorithm) => HttpServerResponse.setHeader(response, "content-encoding", algorithm)
+    compressResponse: (response, algorithm) =>
+      Effect.succeed(HttpServerResponse.setHeader(response, "content-encoding", algorithm))
   })
 
 const makeHandler = (

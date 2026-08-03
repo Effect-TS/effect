@@ -57,7 +57,7 @@ const fileInfo: FileSystem.File.Info = {
 
 const stubCompression: HttpPlatform.Compression = {
   algorithms: new Set(),
-  compressResponse: (response) => response
+  compressResponse: Effect.succeed
 }
 
 const makeHandler = async () => {

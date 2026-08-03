@@ -28,14 +28,24 @@ declare module "node:zlib" {
     readonly flush?: number | undefined
     readonly params?: Record<number, number> | undefined
   }
+  export interface ZlibCompressOptions {
+    readonly level?: number | undefined
+  }
+  export type CompressCallback = (error: Error | null, result: Uint8Array) => void
 
   export const constants: {
     readonly BROTLI_PARAM_QUALITY: number
+    readonly BROTLI_PARAM_SIZE_HINT: number
     readonly BROTLI_OPERATION_FLUSH: number
     readonly ZSTD_c_compressionLevel: number
     readonly ZSTD_e_flush: number
   }
 
+  export const gzip: (data: Uint8Array, options: ZlibCompressOptions, callback: CompressCallback) => void
+  export const deflate: (data: Uint8Array, options: ZlibCompressOptions, callback: CompressCallback) => void
+  export const brotliCompress: (data: Uint8Array, options: BrotliOptions, callback: CompressCallback) => void
+  export function zstdCompress(data: Uint8Array, callback: CompressCallback): void
+  export function zstdCompress(data: Uint8Array, options: ZstdOptions, callback: CompressCallback): void
   export const createBrotliCompress: (options?: BrotliOptions) => Duplex
   export const createZstdCompress: (options?: ZstdOptions) => Duplex
 }

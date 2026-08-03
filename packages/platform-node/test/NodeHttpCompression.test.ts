@@ -22,7 +22,7 @@ import * as Zlib from "node:zlib"
 const bigJson = JSON.stringify({ text: "All work and no play makes Jack a dull boy. ".repeat(100) })
 const bigJsonApp = Effect.succeed(HttpServerResponse.text(bigJson, { contentType: "application/json" }))
 
-const zstdSupported = typeof Zlib.createZstdCompress === "function"
+const zstdSupported = typeof Zlib.zstdCompress === "function"
 
 type App = Effect.Effect<HttpServerResponse.HttpServerResponse, any, any>
 type CompressionOptions = Parameters<typeof HttpMiddleware.compression>[0]
@@ -59,13 +59,13 @@ describe("NodeHttpCompression", () => {
       assert.strictEqual(platform.compression.algorithms.has("zstd"), zstdSupported)
     }).pipe(Effect.provide(NodeHttpPlatform.layer)))
 
-  it("compresses one-shot bodies with gzip through the streaming path", () =>
+  it("compresses one-shot bodies asynchronously with gzip and an exact Content-Length", () =>
     withHandler(bigJsonApp, undefined, async (handler) => {
       const response = await get(handler, { "accept-encoding": "gzip" })
       assert.strictEqual(response.headers.get("content-encoding"), "gzip")
       assert.strictEqual(response.headers.get("vary"), "Accept-Encoding")
       const compressed = new Uint8Array(await response.arrayBuffer())
-      assert.strictEqual(response.headers.get("content-length"), null)
+      assert.strictEqual(response.headers.get("content-length"), compressed.byteLength.toString())
       assert.strictEqual(Zlib.gunzipSync(compressed).toString(), bigJson)
     }))
 
@@ -74,7 +74,7 @@ describe("NodeHttpCompression", () => {
       const response = await get(handler, { "accept-encoding": "gzip, br" })
       assert.strictEqual(response.headers.get("content-encoding"), "br")
       const compressed = new Uint8Array(await response.arrayBuffer())
-      assert.strictEqual(response.headers.get("content-length"), null)
+      assert.strictEqual(response.headers.get("content-length"), compressed.byteLength.toString())
       assert.strictEqual(Zlib.brotliDecompressSync(compressed).toString(), bigJson)
     }))
 
@@ -82,7 +82,9 @@ describe("NodeHttpCompression", () => {
     withHandler(bigJsonApp, undefined, async (handler) => {
       const response = await get(handler, { "accept-encoding": "deflate" })
       assert.strictEqual(response.headers.get("content-encoding"), "deflate")
-      assert.strictEqual(Zlib.inflateSync(new Uint8Array(await response.arrayBuffer())).toString(), bigJson)
+      const compressed = new Uint8Array(await response.arrayBuffer())
+      assert.strictEqual(response.headers.get("content-length"), compressed.byteLength.toString())
+      assert.strictEqual(Zlib.inflateSync(compressed).toString(), bigJson)
     }))
 
   it.skipIf(!zstdSupported)(
@@ -91,7 +93,9 @@ describe("NodeHttpCompression", () => {
       withHandler(bigJsonApp, { algorithms: ["zstd", "gzip"] }, async (handler) => {
         const response = await get(handler, { "accept-encoding": "zstd" })
         assert.strictEqual(response.headers.get("content-encoding"), "zstd")
-        assert.strictEqual(Zlib.zstdDecompressSync(new Uint8Array(await response.arrayBuffer())).toString(), bigJson)
+        const compressed = new Uint8Array(await response.arrayBuffer())
+        assert.strictEqual(response.headers.get("content-length"), compressed.byteLength.toString())
+        assert.strictEqual(Zlib.zstdDecompressSync(compressed).toString(), bigJson)
       })
   )
 

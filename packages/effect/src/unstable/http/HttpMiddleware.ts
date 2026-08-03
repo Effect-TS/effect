@@ -489,40 +489,42 @@ export const compression = (
     compression: HttpPlatform["Service"]["compression"],
     acceptEncoding: string | undefined,
     response: HttpServerResponse
-  ): HttpServerResponse => {
+  ): Effect.Effect<HttpServerResponse> => {
     if (
       response.status < 200 ||
       response.status === 204 ||
       response.status === 206 ||
       response.status === 304
     ) {
-      return response
+      return Effect.succeed(response)
     }
     const currentEncoding = response.headers["content-encoding"]
     if (currentEncoding !== undefined) {
-      return currentEncoding.trim().toLowerCase() === "identity"
-        ? Response.removeHeader(response, "content-encoding")
-        : response
+      return Effect.succeed(
+        currentEncoding.trim().toLowerCase() === "identity"
+          ? Response.removeHeader(response, "content-encoding")
+          : response
+      )
     }
     const body = response.body
     if (body._tag === "Empty" || body._tag === "FormData") {
-      return response
+      return Effect.succeed(response)
     }
     const cacheControl = response.headers["cache-control"]
     if (cacheControl !== undefined && noTransformRegex.test(cacheControl)) {
-      return response
+      return Effect.succeed(response)
     }
     const contentType = response.headers["content-type"] ?? body.contentType
     if (contentType === undefined || !compressible(contentType)) {
-      return response
+      return Effect.succeed(response)
     }
     const algorithm = compressionInternal.negotiate(acceptEncoding, preferred, compression.algorithms)
     if (algorithm === undefined) {
-      return withVary(response)
+      return Effect.succeed(withVary(response))
     }
     const contentLength = body.contentLength ?? contentLengthHeader(response.headers)
     if (contentLength !== undefined && contentLength < minSize) {
-      return withVary(response)
+      return Effect.succeed(withVary(response))
     }
     return compression.compressResponse(response, algorithm, levelOptions[algorithm])
   }
@@ -533,7 +535,7 @@ export const compression = (
       const request = Context.getUnsafe(fiber.context, HttpServerRequest)
       const compression = Context.getUnsafe(fiber.context, HttpPlatform).compression
       appendPreResponseHandlerUnsafe(request, (request, response) =>
-        Effect.succeed(transform(compression, request.headers["accept-encoding"], response)))
+        transform(compression, request.headers["accept-encoding"], response))
       return httpApp
     })
 }

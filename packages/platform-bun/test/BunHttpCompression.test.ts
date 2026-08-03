@@ -71,8 +71,9 @@ describe("BunHttpCompression", () => {
         const response = await get(handler, algorithm)
         assert.strictEqual(response.headers.get("content-encoding"), algorithm)
         assert.strictEqual(response.headers.get("vary"), "Accept-Encoding")
-        assert.strictEqual(response.headers.get("content-length"), null)
-        assert.strictEqual(decompress(algorithm, new Uint8Array(await response.arrayBuffer())), bigJson)
+        const compressed = new Uint8Array(await response.arrayBuffer())
+        assert.strictEqual(response.headers.get("content-length"), compressed.byteLength.toString())
+        assert.strictEqual(decompress(algorithm, compressed), bigJson)
       }))
 
     it(`compresses stream bodies with ${algorithm}`, () =>

@@ -1,3 +1,4 @@
+import * as Effect from "../../../Effect.ts"
 import { identity } from "../../../Function.ts"
 import * as Stream from "../../../Stream.ts"
 import type * as Headers from "../Headers.ts"
@@ -21,20 +22,21 @@ export const varyAcceptEncoding = (headers: Headers.Headers): string | undefined
 export const wrapCompression = (impl: Compression): Compression => ({
   algorithms: impl.algorithms,
   compressResponse(response, algorithm, options) {
-    const compressed = impl.compressResponse(response, algorithm, options)
-    if (compressed === response) {
-      return response
-    }
-    const headers: Record<string, string> = { "content-encoding": algorithm }
-    const vary = varyAcceptEncoding(compressed.headers)
-    if (vary !== undefined) {
-      headers["vary"] = vary
-    }
-    const etag = compressed.headers["etag"]
-    if (etag !== undefined && !etag.startsWith("W/")) {
-      headers["etag"] = `W/${etag}`
-    }
-    return Response.setHeaders(compressed, headers)
+    return Effect.map(impl.compressResponse(response, algorithm, options), (compressed) => {
+      if (compressed === response) {
+        return response
+      }
+      const headers: Record<string, string> = { "content-encoding": algorithm }
+      const vary = varyAcceptEncoding(compressed.headers)
+      if (vary !== undefined) {
+        headers["vary"] = vary
+      }
+      const etag = compressed.headers["etag"]
+      if (etag !== undefined && !etag.startsWith("W/")) {
+        headers["etag"] = `W/${etag}`
+      }
+      return Response.setHeaders(compressed, headers)
+    })
   }
 })
 
@@ -65,32 +67,32 @@ export const makeCompressionWeb = (options: {
     switch (body._tag) {
       case "Uint8Array": {
         const data = body.body
-        return streamBody(
+        return Effect.succeed(streamBody(
           response,
           () => options.transform(algorithm, opts)(singleChunkStream(data)),
           body.contentType
-        )
+        ))
       }
       case "Stream": {
         const stream = body.stream
-        return streamBody(
+        return Effect.succeed(streamBody(
           response,
           () => options.transform(algorithm, opts)(Stream.toReadableStream(stream)),
           body.contentType
-        )
+        ))
       }
       case "Raw": {
         const readable = rawReadableStream(body.body)
         if (readable === undefined) {
-          return response
+          return Effect.succeed(response)
         }
-        return setBodyWithoutLength(
+        return Effect.succeed(setBodyWithoutLength(
           response,
           HttpBody.raw(options.transform(algorithm, opts)(readable), { contentType: body.contentType })
-        )
+        ))
       }
       default: {
-        return response
+        return Effect.succeed(response)
       }
     }
   }

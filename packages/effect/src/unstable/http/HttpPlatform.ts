@@ -219,7 +219,7 @@ export interface Compression {
     response: Response.HttpServerResponse,
     algorithm: CompressionAlgorithm,
     options?: CompressionOptions | undefined
-  ) => Response.HttpServerResponse
+  ) => Effect.Effect<Response.HttpServerResponse>
 }
 
 /**
@@ -245,9 +245,8 @@ export const compressionTransformWeb: (
  *
  * **Details**
  *
- * `Uint8Array` bodies are compressed through `transform` as a single-chunk
- * stream. `Stream` and `Raw` bodies are also transformed as streams. The
- * `Content-Length` header is dropped in every case.
+ * All supported bodies are transformed as streams. The `Content-Length`
+ * header is dropped in every case.
  *
  * @category compression
  * @since 4.0.0
