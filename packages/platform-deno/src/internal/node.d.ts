@@ -22,6 +22,7 @@ declare module "node:zlib" {
     readonly params?: Record<number, number> | undefined
   }
   export interface ZstdOptions {
+    readonly flush?: number | undefined
     readonly params?: Record<number, number> | undefined
   }
   export interface ZlibCompressOptions {
@@ -33,6 +34,7 @@ declare module "node:zlib" {
     readonly BROTLI_PARAM_SIZE_HINT: number
     readonly BROTLI_OPERATION_FLUSH: number
     readonly ZSTD_c_compressionLevel: number
+    readonly ZSTD_e_flush: number
   }
 
   export const gzipSync: (data: Uint8Array, options?: ZlibCompressOptions) => Uint8Array

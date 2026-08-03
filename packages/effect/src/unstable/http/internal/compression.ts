@@ -1,7 +1,6 @@
 import { identity } from "../../../Function.ts"
 import * as Stream from "../../../Stream.ts"
 import * as Headers from "../Headers.ts"
-import * as HttpBody from "../HttpBody.ts"
 import type { Compression, CompressionAlgorithm, CompressionOptions } from "../HttpPlatform.ts"
 import * as Response from "../HttpServerResponse.ts"
 
@@ -22,6 +21,9 @@ export const wrapCompression = (impl: Compression): Compression => ({
   algorithms: impl.algorithms,
   compressResponse(response, algorithm, options) {
     const compressed = impl.compressResponse(response, algorithm, options)
+    if (compressed === response) {
+      return response
+    }
     const headers: Record<string, string> = { "content-encoding": algorithm }
     const vary = varyAcceptEncoding(compressed.headers)
     if (vary !== undefined) {
@@ -42,25 +44,12 @@ export const makeCompression = (options: {
     algorithm: CompressionAlgorithm,
     options?: CompressionOptions | undefined
   ) => (stream: ReadableStream<Uint8Array>) => ReadableStream<Uint8Array>
-  readonly compressSync?:
-    | ((
-      data: Uint8Array,
-      algorithm: CompressionAlgorithm,
-      options?: CompressionOptions | undefined
-    ) => Uint8Array)
-    | undefined
 }): Compression => ({
   algorithms: new Set(options.algorithms),
   compressResponse(response, algorithm, opts) {
     const body = response.body
     switch (body._tag) {
       case "Uint8Array": {
-        if (options.compressSync !== undefined) {
-          return Response.setBody(
-            response,
-            HttpBody.uint8Array(options.compressSync(body.body, algorithm, opts), body.contentType)
-          )
-        }
         const data = body.body
         return streamBodyResponse(
           response,
@@ -159,7 +148,7 @@ export const defaultCompressible = (contentType: string): boolean => {
   return type.endsWith("+json") || type.endsWith("+xml")
 }
 
-const acceptMember = /^([a-z0-9!#$%&'*+.^_`|~-]+|\*)(?:;q=(0(?:\.[0-9]{0,3})?|1(?:\.0{0,3})?))?$/
+const acceptMember = /^([a-z0-9!#$%&'*+.^_`|~-]+)(?:;q=(0(?:\.[0-9]{0,3})?|1(?:\.0{0,3})?))?$/
 
 /** @internal */
 export const parseAcceptEncoding = (header: string): ReadonlyMap<string, number> | undefined => {

@@ -17,13 +17,14 @@ import * as Zlib from "node:zlib"
 const bigJson = JSON.stringify({ text: "All work and no play makes Jack a dull boy. ".repeat(100) })
 const bigJsonApp = Effect.succeed(HttpServerResponse.text(bigJson, { contentType: "application/json" }))
 
-const zstdSupported = typeof Zlib.zstdCompressSync === "function"
+const zstdSupported = typeof Zlib.createZstdCompress === "function"
 
 type App = Effect.Effect<HttpServerResponse.HttpServerResponse, any, any>
+type CompressionOptions = Parameters<typeof HttpMiddleware.compression>[0]
 
 const withHandler = async (
   app: App,
-  options: HttpMiddleware.CompressionMiddlewareOptions | undefined,
+  options: CompressionOptions,
   run: (handler: (request: Request) => Promise<Response>) => Promise<void>
 ) => {
   const { dispose, handler } = HttpEffect.toWebHandlerLayer(
@@ -53,13 +54,13 @@ describe("DenoHttpCompression", () => {
       assert.strictEqual(platform.compression.algorithms.has("zstd"), zstdSupported)
     }).pipe(Effect.provide(DenoHttpPlatform.layer)))
 
-  it("compresses one-shot bodies with gzip and an exact Content-Length", () =>
+  it("compresses one-shot bodies with gzip through the streaming path", () =>
     withHandler(bigJsonApp, undefined, async (handler) => {
       const response = await get(handler, { "accept-encoding": "gzip" })
       assert.strictEqual(response.headers.get("content-encoding"), "gzip")
       assert.strictEqual(response.headers.get("vary"), "Accept-Encoding")
       const compressed = new Uint8Array(await response.arrayBuffer())
-      assert.strictEqual(response.headers.get("content-length"), compressed.length.toString())
+      assert.strictEqual(response.headers.get("content-length"), null)
       assert.strictEqual(Zlib.gunzipSync(compressed).toString(), bigJson)
     }))
 
@@ -68,7 +69,7 @@ describe("DenoHttpCompression", () => {
       const response = await get(handler, { "accept-encoding": "gzip, br" })
       assert.strictEqual(response.headers.get("content-encoding"), "br")
       const compressed = new Uint8Array(await response.arrayBuffer())
-      assert.strictEqual(response.headers.get("content-length"), compressed.length.toString())
+      assert.strictEqual(response.headers.get("content-length"), null)
       assert.strictEqual(Zlib.brotliDecompressSync(compressed).toString(), bigJson)
     }))
 

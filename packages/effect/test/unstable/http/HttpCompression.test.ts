@@ -17,10 +17,11 @@ const bigJson = JSON.stringify({ text: bigText })
 const bigJsonApp = Effect.succeed(HttpServerResponse.text(bigJson, { contentType: "application/json" }))
 
 type App = Effect.Effect<HttpServerResponse.HttpServerResponse, any, HttpServerRequest>
+type CompressionOptions = Parameters<typeof HttpMiddleware.compression>[0]
 
 const makeHandler = (
   app: App,
-  options?: HttpMiddleware.CompressionMiddlewareOptions,
+  options?: CompressionOptions,
   context?: Context.Context<never>
 ) =>
   HttpEffect.toWebHandlerWith<never, HttpServerRequest | Scope.Scope>(context ?? Context.empty())(
@@ -203,6 +204,20 @@ describe("HttpCompression", () => {
     assert.strictEqual(response.headers.get("content-encoding"), "br")
     assert.strictEqual(response.headers.get("vary"), null)
     assert.strictEqual(await response.text(), bigJson)
+  })
+
+  it("does not stamp headers when a Raw body cannot be transformed", async () => {
+    const app = Effect.succeed(
+      HttpServerResponse.raw(new Response(null), {
+        contentType: "application/json",
+        headers: { etag: "\"abc\"" }
+      })
+    )
+    const response = await get(makeHandler(app), { "accept-encoding": "gzip" })
+    assert.strictEqual(response.headers.get("content-encoding"), null)
+    assert.strictEqual(response.headers.get("vary"), null)
+    assert.strictEqual(response.headers.get("etag"), "\"abc\"")
+    assert.strictEqual(await response.text(), "")
   })
 
   it("strips a Content-Encoding: identity opt-out before sending", async () => {

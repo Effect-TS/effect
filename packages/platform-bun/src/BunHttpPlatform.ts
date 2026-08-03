@@ -15,7 +15,6 @@ import * as Layer from "effect/Layer"
 import * as Etag from "effect/unstable/http/Etag"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as Response from "effect/unstable/http/HttpServerResponse"
-import * as Zlib from "node:zlib"
 import * as BunFileSystem from "./BunFileSystem.ts"
 
 // Bun's CompressionStream supports an extended format set covering brotli and
@@ -34,36 +33,7 @@ const compression = Platform.makeCompression({
       new CompressionStream(
         compressionFormats[algorithm] as CompressionFormat
       ) as unknown as ReadableWritablePair<Uint8Array, Uint8Array>
-    ),
-  compressSync: (data, algorithm, options) => {
-    switch (algorithm) {
-      case "gzip": {
-        return Bun.gzipSync(data as Uint8Array<ArrayBuffer>, { level: options?.level as any })
-      }
-      case "deflate": {
-        return Bun.deflateSync(data as Uint8Array<ArrayBuffer>, { level: options?.level as any })
-      }
-      case "br": {
-        return Zlib.brotliCompressSync(
-          data,
-          options?.level === undefined
-            ? { params: { [Zlib.constants.BROTLI_PARAM_SIZE_HINT]: data.length } }
-            : {
-              params: {
-                [Zlib.constants.BROTLI_PARAM_QUALITY]: options.level,
-                [Zlib.constants.BROTLI_PARAM_SIZE_HINT]: data.length
-              }
-            }
-        )
-      }
-      case "zstd": {
-        return Bun.zstdCompressSync(
-          data as Uint8Array<ArrayBuffer>,
-          options?.level === undefined ? undefined : { level: options.level }
-        )
-      }
-    }
-  }
+    )
 })
 
 /**

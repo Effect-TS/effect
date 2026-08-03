@@ -408,65 +408,6 @@ export const cors = (options?: {
 }
 
 /**
- * Options for the `compression` middleware.
- *
- * @category compression
- * @since 4.0.0
- */
-export interface CompressionMiddlewareOptions {
-  /**
-   * Server preference order. Negotiation picks the first entry the client
-   * accepts (respecting q-values) that the platform supports.
-   *
-   * The effective set is this list intersected with the platform's advertised
-   * algorithms. Defaults to `["br", "gzip", "deflate"]`; `zstd` is excluded by
-   * default and must be opted into by listing it.
-   */
-  readonly algorithms?: ReadonlyArray<CompressionAlgorithm> | undefined
-  /**
-   * Minimum body size in bytes to compress, applied when the length is
-   * knowable. Unknown-length streaming bodies always compress. Defaults to
-   * `1024`.
-   */
-  readonly minSize?: number | undefined
-  /**
-   * Predicate deciding whether a content type is compressible, replacing the
-   * default predicate wholesale.
-   */
-  readonly compressible?: ((contentType: string) => boolean) | undefined
-  /**
-   * Per-algorithm compression levels. Platforms without a level knob ignore
-   * them.
-   */
-  readonly levels?: {
-    readonly gzip?: number | undefined
-    readonly deflate?: number | undefined
-    readonly br?: number | undefined
-    readonly zstd?: number | undefined
-  } | undefined
-}
-
-const defaultAlgorithms: ReadonlyArray<CompressionAlgorithm> = ["br", "gzip", "deflate"]
-
-const defaultLevels = {
-  gzip: 6,
-  deflate: 6,
-  br: 4,
-  zstd: 3
-} as const
-
-const noTransformRegex = /(?:^|[\s,])no-transform(?:$|[\s,;])/i
-
-const contentLengthHeader = (headers: Headers.Headers): number | undefined => {
-  const value = headers["content-length"]
-  if (value === undefined) {
-    return undefined
-  }
-  const parsed = Number(value)
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
-}
-
-/**
  * Middleware that compresses HTTP response bodies based on the request's
  * `Accept-Encoding` header.
  *
@@ -492,10 +433,39 @@ const contentLengthHeader = (headers: Headers.Headers): number | undefined => {
  * status and content type, including ones skipped by negotiation or
  * `minSize`.
  *
+ * Do not combine this middleware with Deno's automatic response compression.
+ * On edge runtimes that already apply automatic compression, the middleware
+ * is unnecessary. Platforms backed by Web `CompressionStream` also cannot
+ * explicitly flush each input chunk, so incremental delivery depends on the
+ * runtime's implementation.
+ *
  * @category compression
  * @since 4.0.0
  */
-export const compression = (options?: CompressionMiddlewareOptions | undefined): <E, R>(
+export const compression = (
+  options?: {
+    /**
+     * Server preference order. Negotiation picks the first accepted algorithm
+     * supported by the platform. Defaults to `["br", "gzip", "deflate"]`;
+     * `zstd` must be explicitly opted into.
+     */
+    readonly algorithms?: ReadonlyArray<CompressionAlgorithm> | undefined
+    /**
+     * Minimum body size in bytes when the length is known. Unknown-length bodies
+     * are always compressed. Defaults to `1024`.
+     */
+    readonly minSize?: number | undefined
+    /** Replaces the default content-type predicate. */
+    readonly compressible?: ((contentType: string) => boolean) | undefined
+    /** Per-algorithm levels. Platforms without a level knob ignore them. */
+    readonly levels?: {
+      readonly gzip?: number | undefined
+      readonly deflate?: number | undefined
+      readonly br?: number | undefined
+      readonly zstd?: number | undefined
+    } | undefined
+  } | undefined
+): <E, R>(
   httpApp: Effect.Effect<HttpServerResponse, E, R>
 ) => Effect.Effect<HttpServerResponse, E, R | HttpServerRequest> => {
   const preferred = options?.algorithms ?? defaultAlgorithms
@@ -559,4 +529,24 @@ export const compression = (options?: CompressionMiddlewareOptions | undefined):
         Effect.succeed(transform(compression, acceptEncoding, response)))
       return httpApp
     })
+}
+
+const defaultAlgorithms: ReadonlyArray<CompressionAlgorithm> = ["br", "gzip", "deflate"]
+
+const defaultLevels = {
+  gzip: 6,
+  deflate: 6,
+  br: 4,
+  zstd: 3
+} as const
+
+const noTransformRegex = /(?:^|[\s,])no-transform(?:$|[\s,;])/i
+
+const contentLengthHeader = (headers: Headers.Headers): number | undefined => {
+  const value = headers["content-length"]
+  if (value === undefined) {
+    return undefined
+  }
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined
 }

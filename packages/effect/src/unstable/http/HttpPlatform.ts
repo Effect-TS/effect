@@ -56,9 +56,9 @@ export interface CompressionOptions {
  *
  * `compressResponse` is only called when compression is definitely happening —
  * all skip logic runs in the shared middleware first. The platform owns the
- * body transform and `Content-Length`: the exact new value when it compresses
- * in one shot, or no `Content-Length` when it streams. The `make` wrapper owns
- * the `Content-Encoding` and `Vary` headers.
+ * body transform and removes `Content-Length` when the compressed size is not
+ * known in advance. The `make` wrapper owns the `Content-Encoding` and `Vary`
+ * headers.
  *
  * @category compression
  * @since 4.0.0
@@ -73,15 +73,14 @@ export interface Compression {
 }
 
 /**
- * Creates a `Compression` implementation from Web `ReadableStream` transforms
- * and an optional synchronous one-shot compressor.
+ * Creates a `Compression` implementation from Web `ReadableStream`
+ * transforms.
  *
  * **Details**
  *
- * `Uint8Array` bodies use `compressSync` when available, preserving an exact
- * `Content-Length`; otherwise they are compressed through `transform` as a
- * single-chunk stream. `Stream` and `Raw` bodies are always transformed as
- * streams with the `Content-Length` header dropped.
+ * `Uint8Array` bodies are compressed through `transform` as a single-chunk
+ * stream. `Stream` and `Raw` bodies are also transformed as streams. The
+ * `Content-Length` header is dropped in every case.
  *
  * @category compression
  * @since 4.0.0
@@ -92,13 +91,6 @@ export const makeCompression: (options: {
     algorithm: CompressionAlgorithm,
     options?: CompressionOptions | undefined
   ) => (stream: ReadableStream<Uint8Array>) => ReadableStream<Uint8Array>
-  readonly compressSync?:
-    | ((
-      data: Uint8Array,
-      algorithm: CompressionAlgorithm,
-      options?: CompressionOptions | undefined
-    ) => Uint8Array)
-    | undefined
 }) => Compression = internal.makeCompression
 
 /**

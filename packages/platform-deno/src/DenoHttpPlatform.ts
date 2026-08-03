@@ -23,17 +23,14 @@ import * as Zlib from "node:zlib"
 import * as DenoFileSystem from "./DenoFileSystem.ts"
 
 const compressionAlgorithms: Array<Platform.CompressionAlgorithm> = ["gzip", "deflate", "br"]
-if (typeof Zlib.zstdCompressSync === "function") {
+if (typeof Zlib.createZstdCompress === "function") {
   compressionAlgorithms.push("zstd")
 }
 
-const brotliParams = (level: number | undefined, sizeHint?: number): Zlib.BrotliOptions => {
+const brotliParams = (level: number | undefined): Zlib.BrotliOptions => {
   const params: Record<number, number> = {}
   if (level !== undefined) {
     params[Zlib.constants.BROTLI_PARAM_QUALITY] = level
-  }
-  if (sizeHint !== undefined) {
-    params[Zlib.constants.BROTLI_PARAM_SIZE_HINT] = sizeHint
   }
   return { params }
 }
@@ -41,8 +38,9 @@ const brotliParams = (level: number | undefined, sizeHint?: number): Zlib.Brotli
 const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
   level === undefined ? {} : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
 
-// gzip and deflate use the native CompressionStream; br and zstd go through
-// the node:zlib compatibility streams
+// gzip and deflate use the native CompressionStream, which does not expose a
+// per-chunk flush control. br and zstd go through node:zlib compatibility
+// streams and flush each input chunk.
 const compression = Platform.makeCompression({
   algorithms: compressionAlgorithms,
   transform: (algorithm, options) => (stream) => {
@@ -60,26 +58,13 @@ const compression = Platform.makeCompression({
             ...brotliParams(options?.level),
             flush: Zlib.constants.BROTLI_OPERATION_FLUSH
           })
-          : Zlib.createZstdCompress(zstdParams(options?.level))
+          : Zlib.createZstdCompress({
+            ...zstdParams(options?.level),
+            flush: Zlib.constants.ZSTD_e_flush
+          })
         const source = Readable.fromWeb(stream as any)
         source.on("error", (cause) => transform.destroy(cause))
         return Readable.toWeb(source.pipe(transform)) as ReadableStream<Uint8Array>
-      }
-    }
-  },
-  compressSync: (data, algorithm, options) => {
-    switch (algorithm) {
-      case "gzip": {
-        return Zlib.gzipSync(data, { level: options?.level })
-      }
-      case "deflate": {
-        return Zlib.deflateSync(data, { level: options?.level })
-      }
-      case "br": {
-        return Zlib.brotliCompressSync(data, brotliParams(options?.level, data.length))
-      }
-      case "zstd": {
-        return Zlib.zstdCompressSync(data, zstdParams(options?.level))
       }
     }
   }

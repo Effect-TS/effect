@@ -10,9 +10,9 @@
  */
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
+import * as Stream from "effect/Stream"
 import * as EtagImpl from "effect/unstable/http/Etag"
 import * as Headers from "effect/unstable/http/Headers"
-import * as HttpBody from "effect/unstable/http/HttpBody"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import * as Fs from "node:fs"
@@ -24,44 +24,20 @@ import * as NodeFileSystem from "./NodeFileSystem.ts"
 import * as NodeStream from "./NodeStream.ts"
 
 const compressionAlgorithms: Array<Platform.CompressionAlgorithm> = ["gzip", "deflate", "br"]
-if (typeof Zlib.zstdCompressSync === "function") {
+if (typeof Zlib.createZstdCompress === "function") {
   compressionAlgorithms.push("zstd")
 }
 
-const brotliParams = (level: number | undefined, sizeHint?: number): Zlib.BrotliOptions => {
+const brotliParams = (level: number | undefined): Zlib.BrotliOptions => {
   const params: Record<number, number> = {}
   if (level !== undefined) {
     params[Zlib.constants.BROTLI_PARAM_QUALITY] = level
-  }
-  if (sizeHint !== undefined) {
-    params[Zlib.constants.BROTLI_PARAM_SIZE_HINT] = sizeHint
   }
   return { params }
 }
 
 const zstdParams = (level: number | undefined): Zlib.ZstdOptions =>
   level === undefined ? {} : { params: { [Zlib.constants.ZSTD_c_compressionLevel]: level } }
-
-const compressSync = (
-  data: Uint8Array,
-  algorithm: Platform.CompressionAlgorithm,
-  options?: Platform.CompressionOptions | undefined
-): Uint8Array => {
-  switch (algorithm) {
-    case "gzip": {
-      return Zlib.gzipSync(data, { level: options?.level })
-    }
-    case "deflate": {
-      return Zlib.deflateSync(data, { level: options?.level })
-    }
-    case "br": {
-      return Zlib.brotliCompressSync(data, brotliParams(options?.level, data.length))
-    }
-    case "zstd": {
-      return Zlib.zstdCompressSync(data, zstdParams(options?.level))
-    }
-  }
-}
 
 const compressTransform = (
   algorithm: Platform.CompressionAlgorithm,
@@ -81,7 +57,10 @@ const compressTransform = (
       })
     }
     case "zstd": {
-      return Zlib.createZstdCompress(zstdParams(options?.level))
+      return Zlib.createZstdCompress({
+        ...zstdParams(options?.level),
+        flush: Zlib.constants.ZSTD_e_flush
+      })
     }
   }
 }
@@ -92,9 +71,17 @@ const compression: Platform.Compression = {
     const body = response.body
     switch (body._tag) {
       case "Uint8Array": {
-        return ServerResponse.setBody(
-          response,
-          HttpBody.uint8Array(compressSync(body.body, algorithm, options), body.contentType)
+        return ServerResponse.stream(
+          NodeStream.pipeThroughDuplex(Stream.succeed(body.body), {
+            evaluate: () => compressTransform(algorithm, options)
+          }),
+          {
+            status: response.status,
+            statusText: response.statusText,
+            cookies: response.cookies,
+            headers: Headers.remove(response.headers, "content-length"),
+            contentType: body.contentType
+          }
         )
       }
       case "Stream": {
@@ -117,6 +104,7 @@ const compression: Platform.Compression = {
           : Readable.fromWeb(new Response(body.body as BodyInit).body as any)
         const transform = compressTransform(algorithm, options)
         readable.on("error", (cause) => transform.destroy(cause))
+        transform.on("error", (cause) => readable.destroy(cause))
         return ServerResponse.raw(readable.pipe(transform), {
           status: response.status,
           statusText: response.statusText,
