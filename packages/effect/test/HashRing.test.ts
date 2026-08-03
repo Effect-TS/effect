@@ -23,4 +23,25 @@ describe("HashRing", () => {
 
     assert.strictEqual(HashRing.get(ring, "request"), updated)
   })
+
+  it("updates the stored node when changing its weight", () => {
+    const first = {
+      name: "first",
+      [PrimaryKey.symbol]() {
+        return "node"
+      }
+    }
+    const updated = {
+      name: "updated",
+      [PrimaryKey.symbol]() {
+        return "node"
+      }
+    }
+    const ring = HashRing.make<typeof first>()
+
+    HashRing.add(ring, first)
+    HashRing.add(ring, updated, { weight: 2 })
+
+    assert.strictEqual(HashRing.get(ring, "request"), updated)
+  })
 })
