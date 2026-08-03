@@ -46,7 +46,7 @@ describe("Config", () => {
     it("fail creates an always-failing config", async () => {
       await assertFailure(
         Config.fail(
-          new Schema.SchemaError(new SchemaIssue.Forbidden(Option.none(), { message: "failure message" }))
+          new Schema.SchemaError(new SchemaIssue.Forbidden({ message: "failure message" }))
         ),
         ConfigProvider.fromUnknown({}),
         `failure message`
@@ -64,7 +64,7 @@ describe("Config", () => {
       await assertFailure(
         Config.string("b"),
         provider,
-        `Expected string, got undefined
+        `Expected string
   at ["b"]`
       )
     })
@@ -75,7 +75,7 @@ describe("Config", () => {
       await assertFailure(
         Config.nonEmptyString("b"),
         provider,
-        `Expected a value with a length of at least 1, got ""
+        `Expected a value with a length of at least 1
   at ["b"]`
       )
     })
@@ -87,7 +87,7 @@ describe("Config", () => {
       await assertFailure(
         Config.number("b"),
         provider,
-        `Expected string | "Infinity" | "-Infinity" | "NaN", got undefined
+        `Expected string | "Infinity" | "-Infinity" | "NaN"
   at ["b"]`
       )
     })
@@ -98,13 +98,13 @@ describe("Config", () => {
       await assertFailure(
         Config.finite("b"),
         provider,
-        `Expected a string representing a finite number, got "a"
+        `Expected a string representing a finite number
   at ["b"]`
       )
       await assertFailure(
         Config.finite("c"),
         provider,
-        `Expected a string representing a finite number, got "Infinity"
+        `Expected a string representing a finite number
   at ["c"]`
       )
     })
@@ -115,7 +115,7 @@ describe("Config", () => {
       await assertFailure(
         Config.int("b"),
         provider,
-        `Expected an integer, got 1.2
+        `Expected an integer
   at ["b"]`
       )
     })
@@ -126,7 +126,7 @@ describe("Config", () => {
       await assertFailure(
         Config.literal("-", "a"),
         provider,
-        `Expected "-", got "L"
+        `Expected "-"
   at ["a"]`
       )
     })
@@ -137,7 +137,7 @@ describe("Config", () => {
       await assertFailure(
         Config.literals(["development", "production"], "b"),
         provider,
-        `Expected "development" | "production", got "staging"
+        `Expected "development" | "production"
   at ["b"]`
       )
     })
@@ -148,7 +148,7 @@ describe("Config", () => {
       await assertFailure(
         Config.literals([1, 2], "b"),
         provider,
-        `Expected "1" | "2", got "3"
+        `Expected "1" | "2"
   at ["b"]`
       )
     })
@@ -159,12 +159,12 @@ describe("Config", () => {
       await assertFailure(
         Config.date("b"),
         provider,
-        `Expected a valid Date, got Invalid Date
+        `Expected a valid Date
   at ["b"]`
       )
     })
 
-    it("redacted hides values in validation errors", async () => {
+    it("redacted creates redacted values and reports missing input", async () => {
       const provider = ConfigProvider.fromUnknown({
         a: "value"
       })
@@ -173,7 +173,7 @@ describe("Config", () => {
       await assertFailure(
         Config.redacted("failure"),
         provider,
-        `Invalid data <redacted>
+        `Expected string
   at ["failure"]`
       )
     })
@@ -187,7 +187,7 @@ describe("Config", () => {
       await assertFailure(
         Config.url("failure"),
         provider,
-        `Expected string, got undefined
+        `Expected string
   at ["failure"]`
       )
     })
@@ -215,7 +215,7 @@ describe("Config", () => {
         s === ""
           ? Effect.fail(
             new Config.ConfigError(
-              new Schema.SchemaError(new SchemaIssue.InvalidValue(Option.some(s), { message: "empty" }))
+              new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "empty" }))
             )
           )
           : Effect.succeed(s.toUpperCase())
@@ -266,7 +266,7 @@ describe("Config", () => {
           })
         ).parse(provider)
         const recovered = Config.fail(
-          new Schema.SchemaError(new SchemaIssue.Forbidden(Option.none(), { message: "failure" }))
+          new Schema.SchemaError(new SchemaIssue.Forbidden({ message: "failure" }))
         ).pipe(
           Config.orElse(() => {
             orElseCalls++
@@ -295,13 +295,13 @@ describe("Config", () => {
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ a: "", b: "1" }, { preserveEmptyStrings: true }),
-          `Expected a value with a length of at least 1, got ""
+          `Expected a value with a length of at least 1
   at ["a"]`
         )
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ a: "a", b: "b" }),
-          `Expected a string representing a finite number, got "b"
+          `Expected a string representing a finite number
   at ["b"]`
         )
       })
@@ -313,13 +313,13 @@ describe("Config", () => {
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ a: "", b: "1" }, { preserveEmptyStrings: true }),
-          `Expected a value with a length of at least 1, got ""
+          `Expected a value with a length of at least 1
   at ["a"]`
         )
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ a: "a", b: "b" }),
-          `Expected a string representing a finite number, got "b"
+          `Expected a string representing a finite number
   at ["b"]`
         )
       })
@@ -331,13 +331,13 @@ describe("Config", () => {
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ b: "", d: "1" }, { preserveEmptyStrings: true }),
-          `Expected a value with a length of at least 1, got ""
+          `Expected a value with a length of at least 1
   at ["b"]`
         )
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ b: "b", d: "b" }),
-          `Expected a string representing a finite number, got "b"
+          `Expected a string representing a finite number
   at ["d"]`
         )
       })
@@ -353,7 +353,7 @@ describe("Config", () => {
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ a: "value" }),
-          `Expected a string representing a finite number, got "value"
+          `Expected a string representing a finite number
   at ["a"]`
         )
       })
@@ -384,9 +384,9 @@ describe("Config", () => {
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: { a: "" }, preserveEmptyStrings: true }),
-          `Expected a string representing a finite number, got ""
+          `Expected a string representing a finite number
   at ["a"]
-Expected "Infinity" | "-Infinity" | "NaN", got ""
+Expected "Infinity" | "-Infinity" | "NaN"
   at ["a"]`
         )
       })
@@ -402,20 +402,20 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ b: "b" }),
-          `Expected string, got undefined
+          `Expected string
   at ["d"]`
         )
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ d: "1" }),
-          `Expected string, got undefined
+          `Expected string
   at ["b"]`
         )
 
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ b: "", d: "1" }, { preserveEmptyStrings: true }),
-          `Expected a value with a length of at least 1, got ""
+          `Expected a value with a length of at least 1
   at ["b"]`
         )
       })
@@ -427,16 +427,14 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ LOG_LEVEL: "debug" }),
-          `Expected "All" | "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "Trace" | "None", got "debug"
+          `Expected "All" | "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "Trace" | "None"
   at ["LOG_LEVEL"]`
         )
       })
 
       it("does not recover from schema refinement failures", async () => {
         const schema = Schema.String.check(
-          Schema.makeFilter((s) =>
-            s === "a" ? undefined : new SchemaIssue.InvalidValue(Option.none(), { message: `must be "a"` })
-          )
+          Schema.makeFilter((s) => s === "a" ? undefined : new SchemaIssue.InvalidValue({ message: `must be "a"` }))
         )
         const config = Config.schema(schema, "a").pipe(Config.withDefault("fallback"))
 
@@ -559,7 +557,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ a: "value" }),
-          `Expected a string representing a finite number, got "value"
+          `Expected a string representing a finite number
   at ["a"]`
         )
       })
@@ -574,26 +572,26 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ b: "b" }),
-          `Expected string, got undefined
+          `Expected string
   at ["d"]`
         )
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ d: "1" }),
-          `Expected string, got undefined
+          `Expected string
   at ["b"]`
         )
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ b: "", d: "1" }),
-          `Expected string, got undefined
+          `Expected string
   at ["b"]`
         )
 
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ b: "", d: "1" }, { preserveEmptyStrings: true }),
-          `Expected a value with a length of at least 1, got ""
+          `Expected a value with a length of at least 1
   at ["b"]`
         )
       })
@@ -662,7 +660,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             allConfig.pipe(Config.withDefault(fallback)),
             provider,
-            `Expected string, got undefined
+            `Expected string
   at ["database"]["port"]`
           )
         })
@@ -746,7 +744,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           ).pipe(Effect.flip)
           assert.strictEqual(
             error.cause.message,
-            `Expected string, got undefined
+            `Expected string
   at ["required"]`
           )
         }))
@@ -763,7 +761,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
 
           assert.strictEqual(
             error.cause.message,
-            `Expected string, got undefined
+            `Expected string
   at ["required"]`
           )
         }))
@@ -794,7 +792,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
 
           assert.strictEqual(
             error.cause.message,
-            `Expected string, got undefined
+            `Expected string
   at ["fallback"]`
           )
         }))
@@ -802,7 +800,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
       it.effect("preserves provider input evidence through mapOrFail and orElse", () =>
         Effect.gen(function*() {
           const validationError = new Config.ConfigError(
-            new Schema.SchemaError(new SchemaIssue.Forbidden(Option.none(), { message: "invalid value" }))
+            new Schema.SchemaError(new SchemaIssue.Forbidden({ message: "invalid value" }))
           )
           const config = Config.all({
             recovered: Config.string("recovered").pipe(
@@ -817,7 +815,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
 
           assert.strictEqual(
             error.cause.message,
-            `Expected string, got undefined
+            `Expected string
   at ["required"]`
           )
         }))
@@ -843,7 +841,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
 
           assert.strictEqual(
             error.cause.message,
-            `Expected string, got undefined
+            `Expected string
   at ["required"]`
           )
         }))
@@ -953,7 +951,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromUnknown({}),
-            `Expected string, got undefined
+            `Expected string
   at ["a"]`
           )
         })
@@ -969,7 +967,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromUnknown({}),
-            `Expected string, got undefined
+            `Expected string
   at ["b"]["a"]`
           )
         })
@@ -985,7 +983,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromUnknown({ c: { b: {} } }),
-            `Expected string, got undefined
+            `Expected string
   at ["c"]["b"]["a"]`
           )
         })
@@ -1004,7 +1002,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromUnknown({}),
-            `Expected string, got undefined
+            `Expected string
   at ["database"]["host"]`
           )
         })
@@ -1022,7 +1020,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: {} }),
-            `Expected string, got undefined
+            `Expected string
   at ["a"]`
           )
         })
@@ -1038,7 +1036,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: {} }),
-            `Expected string, got undefined
+            `Expected string
   at ["b"]["a"]`
           )
         })
@@ -1054,7 +1052,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: { "c_b": "value" } }),
-            `Expected string, got undefined
+            `Expected string
   at ["c"]["b"]["a"]`
           )
         })
@@ -1073,7 +1071,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: {} }),
-            `Expected string, got undefined
+            `Expected string
   at ["database"]["host"]`
           )
         })
@@ -1088,7 +1086,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: {} }).pipe(ConfigProvider.nested("app")),
-            `Expected string, got undefined
+            `Expected string
   at ["database"]["host"]`
           )
         })
@@ -1102,9 +1100,9 @@ Expected "Infinity" | "-Infinity" | "NaN", got ""
           await assertFailure(
             Config.number("port"),
             provider,
-            `Expected a string representing a finite number, got "abc"
+            `Expected a string representing a finite number
   at ["port"]
-Expected "Infinity" | "-Infinity" | "NaN", got "abc"
+Expected "Infinity" | "-Infinity" | "NaN"
   at ["port"]`
           )
         })
@@ -1137,11 +1135,11 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
   })
 
   describe("schema", () => {
-    it("does not expose redacted input in errors", async () => {
+    it("reports missing redacted input", async () => {
       await assertFailure(
         Config.schema(Schema.Redacted(Schema.Literal("secret")), "a"),
         ConfigProvider.fromUnknown({}),
-        `Invalid data <redacted>
+        `Expected "secret"
   at ["a"]`
       )
     })
@@ -1175,7 +1173,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           Config.boolean("failure"),
           provider,
-          `Expected "true" | "yes" | "on" | "1" | "y" | "false" | "no" | "off" | "0" | "n", got "value"
+          `Expected "true" | "yes" | "on" | "1" | "y" | "false" | "no" | "off" | "0" | "n"
   at ["failure"]`
         )
       })
@@ -1196,7 +1194,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           Config.duration("failure"),
           provider,
-          `Invalid Duration string: value
+          `Expected a valid Duration string
   at ["failure"]`
         )
       })
@@ -1211,7 +1209,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           Config.port("failure"),
           provider,
-          `Expected a value between 1 and 65535, got -1
+          `Expected a value between 1 and 65535
   at ["failure"]`
         )
       })
@@ -1227,13 +1225,13 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           Config.logLevel("failure_1"),
           provider,
-          `Expected "All" | "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "Trace" | "None", got "info"
+          `Expected "All" | "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "Trace" | "None"
   at ["failure_1"]`
         )
         await assertFailure(
           Config.logLevel("failure_2"),
           provider,
-          `Expected "All" | "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "Trace" | "None", got "value"
+          `Expected "All" | "Fatal" | "Error" | "Warn" | "Info" | "Debug" | "Trace" | "None"
   at ["failure_2"]`
         )
       })
@@ -1612,7 +1610,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           await assertFailure(
             config,
             provider,
-            `Expected exactly one member to match the input <configuration>
+            `Expected exactly one member to match
   at ["database"]["value"]`
           )
         })
@@ -1643,7 +1641,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
             const error = yield* config.parse(provider).pipe(Effect.flip)
             assert.strictEqual(
               error.cause.message,
-              `Expected string, got undefined
+              `Expected string
   at ["required"]`
             )
           }))
@@ -1656,7 +1654,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
             ]).check(
               Schema.makeFilter((value) =>
                 typeof value === "string"
-                  ? new SchemaIssue.InvalidValue(Option.none(), { message: "union check failed" })
+                  ? new SchemaIssue.InvalidValue({ message: "union check failed" })
                   : undefined
               )
             )
@@ -1751,7 +1749,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: {} }),
-          `Expected "null", got undefined
+          `Expected "null"
   at ["a"]`
         )
       })
@@ -1764,7 +1762,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: {} }),
-          `Expected string, got undefined
+          `Expected string
   at ["a"]`
         )
       })
@@ -1777,7 +1775,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: {} }),
-          `Expected string | "Infinity" | "-Infinity" | "NaN", got undefined
+          `Expected string | "Infinity" | "-Infinity" | "NaN"
   at ["a"]`
         )
       })
@@ -1790,7 +1788,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: {} }),
-          `Expected string, got undefined
+          `Expected string
   at ["a"]`
         )
       })
@@ -1803,7 +1801,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: {} }),
-          `Expected string, got undefined
+          `Expected string
   at ["a"]`
         )
       })
@@ -1817,7 +1815,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: {} }),
-          `Expected "true" | "false", got undefined
+          `Expected "true" | "false"
   at ["a"]`
         )
       })
@@ -1862,13 +1860,13 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: { a: "" }, preserveEmptyStrings: true }),
-            `Expected array, got undefined
+            `Expected array
   at ["a"]`
           )
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: { a: "1" } }),
-            `Expected array, got undefined
+            `Expected array
   at ["a"]`
           )
           await assertSuccess(config, ConfigProvider.fromEnv({ env: { a_0: "1" } }), { a: [1] })
@@ -1877,7 +1875,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: {} }),
-            `Expected object, got undefined`
+            `Expected object`
           )
         })
       })
@@ -1891,7 +1889,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: { a: "1", b: "value" } }),
-          `Expected a string representing a finite number, got "value"
+          `Expected a string representing a finite number
   at ["b"]`
         )
       })
@@ -1904,7 +1902,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: { a: "" }, preserveEmptyStrings: true }),
-            `Expected array, got undefined
+            `Expected array
   at ["a"]`
           )
         })
@@ -1916,7 +1914,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: { a: "1" } }),
-            `Expected array, got undefined
+            `Expected array
   at ["a"]`
           )
         })
@@ -1929,13 +1927,13 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: { a: "a" } }),
-            `Expected array, got undefined
+            `Expected array
   at ["a"]`
           )
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: { a_0: "a", a_1: "value" } }),
-            `Expected a string representing a finite number, got "value"
+            `Expected a string representing a finite number
   at ["a"][1]`
           )
         })
@@ -1948,7 +1946,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: { a: "1,2,3" } }),
-          `Expected array, got undefined
+          `Expected array
   at ["a"]`
         )
         await assertSuccess(config, ConfigProvider.fromEnv({ env: { a_0: "1", a_1: "2" } }), { a: [1, 2] })
@@ -1956,13 +1954,13 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: { a_0: "1", a_2: "2" } }),
-          `Expected string, got undefined
+          `Expected string
   at ["a"][1]`
         )
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: { a_0: "1", a_1: "value" } }),
-          `Expected a string representing a finite number, got "value"
+          `Expected a string representing a finite number
   at ["a"][1]`
         )
       })
@@ -2000,7 +1998,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
           await assertFailure(
             config,
             ConfigProvider.fromEnv({ env: { a: "a", b: "1" } }),
-            `Expected exactly one member to match the input <configuration>`
+            "Expected exactly one member to match"
           )
         })
 
@@ -2021,7 +2019,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         })
       })
 
-      it("redacts Int validation errors", async () => {
+      it("reports Int validation errors", async () => {
         const schema = Schema.Redacted(Schema.Int)
         const config = Config.schema(schema, "a")
 
@@ -2029,13 +2027,13 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: {} }),
-          `Invalid data <redacted>
+          `Expected string
   at ["a"]`
         )
         await assertFailure(
           config,
           ConfigProvider.fromEnv({ env: { a: "1.1" } }),
-          `Invalid data <redacted>
+          `Expected an integer
   at ["a"]`
         )
       })
@@ -2065,7 +2063,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         const config = Config.schema(schema)
 
         await assertSuccess(config, ConfigProvider.fromUnknown(undefined), undefined)
-        await assertFailure(config, ConfigProvider.fromUnknown("a"), `Expected undefined, got "a"`)
+        await assertFailure(config, ConfigProvider.fromUnknown("a"), `Expected undefined`)
       })
 
       it("decodes Null", async () => {
@@ -2073,7 +2071,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         const config = Config.schema(schema)
 
         await assertSuccess(config, ConfigProvider.fromUnknown("null"), null)
-        await assertFailure(config, ConfigProvider.fromUnknown("a"), `Expected "null", got "a"`)
+        await assertFailure(config, ConfigProvider.fromUnknown("a"), `Expected "null"`)
       })
 
       it("decodes String and rejects object input", async () => {
@@ -2081,7 +2079,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         const config = Config.schema(schema)
 
         await assertSuccess(config, ConfigProvider.fromUnknown("value"), "value")
-        await assertFailure(config, ConfigProvider.fromUnknown({}), `Expected string, got undefined`)
+        await assertFailure(config, ConfigProvider.fromUnknown({}), `Expected string`)
       })
 
       it("decodes Number and rejects invalid input", async () => {
@@ -2092,8 +2090,8 @@ Expected "Infinity" | "-Infinity" | "NaN", got "abc"
         await assertFailure(
           config,
           ConfigProvider.fromUnknown("a"),
-          `Expected a string representing a finite number, got "a"
-Expected "Infinity" | "-Infinity" | "NaN", got "a"`
+          `Expected a string representing a finite number
+Expected "Infinity" | "-Infinity" | "NaN"`
         )
       })
 
@@ -2105,7 +2103,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         await assertFailure(
           config,
           ConfigProvider.fromUnknown("a"),
-          `Expected a string representing a finite number, got "a"`
+          `Expected a string representing a finite number`
         )
       })
 
@@ -2117,7 +2115,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         await assertFailure(
           config,
           ConfigProvider.fromUnknown("a"),
-          `Expected a string representing a finite number, got "a"`
+          `Expected a string representing a finite number`
         )
       })
 
@@ -2127,7 +2125,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
 
         await assertSuccess(config, ConfigProvider.fromUnknown("true"), true)
         await assertSuccess(config, ConfigProvider.fromUnknown("false"), false)
-        await assertFailure(config, ConfigProvider.fromUnknown("a"), `Expected "true" | "false", got "a"`)
+        await assertFailure(config, ConfigProvider.fromUnknown("a"), `Expected "true" | "false"`)
       })
 
       describe("Struct", () => {
@@ -2145,7 +2143,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
           await assertFailure(
             config,
             ConfigProvider.fromUnknown({ a: "value" }),
-            `Expected a string representing a finite number, got "value"
+            `Expected a string representing a finite number
   at ["a"]`
           )
         })
@@ -2188,13 +2186,13 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
           await assertFailure(
             config,
             ConfigProvider.fromUnknown({ a: "" }, { preserveEmptyStrings: true }),
-            `Expected array, got undefined
+            `Expected array
   at ["a"]`
           )
           await assertFailure(
             config,
             ConfigProvider.fromUnknown({ a: "1" }),
-            `Expected array, got undefined
+            `Expected array
   at ["a"]`
           )
         })
@@ -2209,7 +2207,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ a: "1", b: "value" }),
-          `Expected a string representing a finite number, got "value"
+          `Expected a string representing a finite number
   at ["b"]`
         )
       })
@@ -2220,7 +2218,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
           const config = Config.schema(schema)
 
           await assertSuccess(config, ConfigProvider.fromUnknown(["1"]), [1])
-          await assertFailure(config, ConfigProvider.fromUnknown("1"), `Expected array, got undefined`)
+          await assertFailure(config, ConfigProvider.fromUnknown("1"), `Expected array`)
         })
 
         it("requires and validates every tuple element", async () => {
@@ -2237,7 +2235,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
           await assertFailure(
             config,
             ConfigProvider.fromUnknown(["a", "value"]),
-            `Expected a string representing a finite number, got "value"
+            `Expected a string representing a finite number
   at [1]`
           )
         })
@@ -2248,12 +2246,12 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         const config = Config.schema(schema)
 
         await assertSuccess(config, ConfigProvider.fromUnknown(["1"]), [1])
-        await assertFailure(config, ConfigProvider.fromUnknown("1"), `Expected array, got undefined`)
+        await assertFailure(config, ConfigProvider.fromUnknown("1"), `Expected array`)
         await assertSuccess(config, ConfigProvider.fromUnknown(["1", "2"]), [1, 2])
         await assertFailure(
           config,
           ConfigProvider.fromUnknown(["1", "value"]),
-          `Expected a string representing a finite number, got "value"
+          `Expected a string representing a finite number
   at [1]`
         )
       })
@@ -2291,7 +2289,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
           await assertFailure(
             config,
             ConfigProvider.fromUnknown({ a: "a", b: "1" }),
-            `Expected exactly one member to match the input <configuration>`
+            "Expected exactly one member to match"
           )
         })
 
@@ -2330,7 +2328,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         })
       })
 
-      it("redacts nested Int validation errors", async () => {
+      it("reports nested Int validation errors", async () => {
         const schema = Schema.Struct({ a: Schema.Redacted(Schema.Int) })
         const config = Config.schema(schema)
 
@@ -2344,7 +2342,7 @@ Expected "Infinity" | "-Infinity" | "NaN", got "a"`
         await assertFailure(
           config,
           ConfigProvider.fromUnknown({ a: "1.1" }),
-          `Invalid data <redacted>
+          `Expected an integer
   at ["a"]`
         )
       })
