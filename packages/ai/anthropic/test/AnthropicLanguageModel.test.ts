@@ -112,6 +112,122 @@ describe("AnthropicLanguageModel", () => {
         assert.deepStrictEqual(toolCall.params, toolParams)
       }))
 
+    const codeExecutionCases = [
+      {
+        providerName: "bash_code_execution",
+        toolParams: { command: "pwd" },
+        expectedParams: { type: "bash_code_execution", command: "pwd" }
+      },
+      {
+        providerName: "text_editor_code_execution",
+        toolParams: { command: "view", path: "/tmp/example.txt" },
+        expectedParams: {
+          type: "text_editor_code_execution",
+          command: "view",
+          path: "/tmp/example.txt"
+        }
+      }
+    ] as const
+
+    for (const { expectedParams, providerName, toolParams } of codeExecutionCases) {
+      it.effect(`emits valid JSON for streamed ${providerName} parameters`, () =>
+        Effect.gen(function*() {
+          const toolkit = Toolkit.make(AnthropicTool.CodeExecution_20250522())
+          const layer = AnthropicClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+            Layer.provide(Layer.succeed(
+              HttpClient.HttpClient,
+              makeHttpClient((request) =>
+                Effect.succeed(sseResponse(request, [
+                  {
+                    type: "message_start",
+                    message: {
+                      id: "msg_test_1",
+                      type: "message",
+                      role: "assistant",
+                      model: "claude-sonnet-4-20250514",
+                      content: [],
+                      stop_reason: null,
+                      stop_sequence: null,
+                      usage: {
+                        cache_creation: null,
+                        cache_creation_input_tokens: null,
+                        cache_read_input_tokens: null,
+                        inference_geo: null,
+                        input_tokens: 1,
+                        output_tokens: 0,
+                        service_tier: null
+                      }
+                    }
+                  },
+                  {
+                    type: "content_block_start",
+                    index: 0,
+                    content_block: {
+                      type: "server_tool_use",
+                      id: "srvtoolu_test_1",
+                      name: providerName,
+                      input: {}
+                    }
+                  },
+                  {
+                    type: "content_block_delta",
+                    index: 0,
+                    delta: {
+                      type: "input_json_delta",
+                      partial_json: JSON.stringify(toolParams)
+                    }
+                  },
+                  {
+                    type: "content_block_stop",
+                    index: 0
+                  },
+                  {
+                    type: "message_delta",
+                    delta: {
+                      stop_reason: "tool_use",
+                      stop_sequence: null
+                    },
+                    usage: {
+                      cache_creation_input_tokens: null,
+                      cache_read_input_tokens: null,
+                      input_tokens: null,
+                      output_tokens: 1
+                    }
+                  },
+                  {
+                    type: "message_stop"
+                  }
+                ]))
+              )
+            ))
+          )
+
+          const partsChunk = yield* LanguageModel.streamText({
+            prompt: "run pwd",
+            toolkit,
+            disableToolCallResolution: true
+          }).pipe(
+            Stream.runCollect,
+            Effect.provide(AnthropicLanguageModel.model("claude-sonnet-4-20250514")),
+            Effect.provide(layer)
+          )
+
+          const parts = globalThis.Array.from(partsChunk)
+
+          const delta = parts.find((part) => part.type === "tool-params-delta")
+          assert.isDefined(delta)
+          if (delta?.type === "tool-params-delta") {
+            assert.deepStrictEqual(JSON.parse(delta.delta), expectedParams)
+          }
+
+          const toolCall = parts.find((part) => part.type === "tool-call")
+          assert.isDefined(toolCall)
+          if (toolCall?.type === "tool-call") {
+            assert.deepStrictEqual(toolCall.params, expectedParams)
+          }
+        }))
+    }
+
     // `Model` is an open enum in Anthropic's spec (`anyOf: [{ type: string }, ...consts]`), and it is
     // $ref'd by response schemas. Responses must therefore decode for model ids that are newer than the
     // generated literals, and the id must survive decoding unchanged.

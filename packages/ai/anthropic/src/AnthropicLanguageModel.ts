@@ -2575,7 +2575,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   (contentBlock.providerName === "bash_code_execution" ||
                     contentBlock.providerName === "text_editor_code_execution")
                 ) {
-                  delta = `{"type":${contentBlock.providerName},${delta.substring(1)}}`
+                  delta = `{"type":${JSON.stringify(contentBlock.providerName)},${delta.substring(1)}`
                 }
 
                 parts.push({
@@ -2650,7 +2650,7 @@ const makeStreamResponse = Effect.fnUntraced(
                   }
 
                   const params = contentBlock.providerExecuted === true
-                    ? finalParams
+                    ? Tool.unsafeSecureJsonParse(finalParams)
                     : yield* transformToolCallParams(
                       options.tools,
                       contentBlock.name,
