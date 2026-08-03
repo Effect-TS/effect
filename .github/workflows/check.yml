@@ -100,7 +100,7 @@ jobs:
         run: node ./packages/tools/bundle/src/bin.ts compare --base-dir base/packages/tools/bundle/fixtures
       - name: Upload stats artifact
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: bundle-stats
           path: stats.txt
