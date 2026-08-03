@@ -3398,7 +3398,7 @@ export declare namespace Struct {
   type MakeInView<
     F extends Fields,
     O extends keyof F = TypeOptionalKeys<F> | TypeConstructorDefaultedKeys<F>
-  > = [O] extends [never] ? ReadonlyMakeIn<F> : Simplify<SetOptional<ReadonlyMakeIn<F>, O>>
+  > = [O] extends [never] ? Simplify<ReadonlyMakeIn<F>> : Simplify<SetOptional<ReadonlyMakeIn<F>, O>>
 
   /**
    * Computes the input object type accepted when constructing a struct value.
