@@ -1601,6 +1601,28 @@ export const zonedOffsetIso: (self: Zoned) => string = Internal.zonedOffsetIso
 export const toEpochMillis: (self: DateTime) => number = Internal.toEpochMillis
 
 /**
+ * Converts a `DateTime` to the number of seconds since the Unix epoch.
+ *
+ * **Details**
+ *
+ * This returns the UTC timestamp regardless of any time zone information.
+ * The result is floored to the nearest second.
+ *
+ * **Example** (Reading epoch seconds)
+ *
+ * ```ts import.meta.vitest
+ * import { DateTime } from "effect"
+ *
+ * const dt = DateTime.makeUnsafe("2024-01-01T00:00:00Z")
+ * DateTime.toEpochSeconds(dt) // => 1704067200
+ * ```
+ *
+ * @category converting
+ * @since 4.0.0
+ */
+export const toEpochSeconds: (self: DateTime) => number = Internal.toEpochSeconds
+
+/**
  * Removes the time aspect of a `DateTime`, first adjusting for the time
  * zone. It will return a `DateTime.Utc` only containing the date.
  *

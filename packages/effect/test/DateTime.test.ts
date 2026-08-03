@@ -381,6 +381,18 @@ describe("DateTime", () => {
     })
   })
 
+  describe("toEpochSeconds", () => {
+    it("returns epoch seconds", () => {
+      const dt = DateTime.makeUnsafe("2024-01-01T00:00:00Z")
+      strictEqual(DateTime.toEpochSeconds(dt), 1704067200)
+    })
+
+    it("floors to nearest second", () => {
+      const dt = DateTime.makeUnsafe("2024-01-01T00:00:00.999Z")
+      strictEqual(DateTime.toEpochSeconds(dt), 1704067200)
+    })
+  })
+
   describe("makeZonedFromString", () => {
     it.effect("parses an instant with an offset and IANA zone", () =>
       Effect.gen(function*() {
