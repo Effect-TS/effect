@@ -728,11 +728,11 @@ export const prepend: {
 export const take: {
   (n: number): <A>(self: Chunk<A>) => Chunk<A>
   <A>(self: Chunk<A>, n: number): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, n: number): Chunk<A> => {
-  const _n = Math.floor(n)
-  if (_n <= 0) {
+} = dual(2, <A>(self: Chunk<A>, _n: number): Chunk<A> => {
+  const n = Math.floor(_n)
+  if (n <= 0) {
     return _empty
-  } else if (_n >= self.length) {
+  } else if (n >= self.length) {
     return self
   } else {
     switch (self.backing._tag) {
@@ -740,27 +740,27 @@ export const take: {
         return makeChunk({
           _tag: "ISlice",
           chunk: self.backing.chunk,
-          length: _n,
+          length: n,
           offset: self.backing.offset
         })
       }
       case "IConcat": {
-        if (_n > self.left.length) {
+        if (n > self.left.length) {
           return makeChunk({
             _tag: "IConcat",
             left: self.left,
-            right: take(self.right, _n - self.left.length)
+            right: take(self.right, n - self.left.length)
           })
         }
 
-        return take(self.left, _n)
+        return take(self.left, n)
       }
       default: {
         return makeChunk({
           _tag: "ISlice",
           chunk: self,
           offset: 0,
-          length: _n
+          length: n
         })
       }
     }
@@ -785,11 +785,11 @@ export const take: {
 export const drop: {
   (n: number): <A>(self: Chunk<A>) => Chunk<A>
   <A>(self: Chunk<A>, n: number): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, n: number): Chunk<A> => {
-  const _n = Math.floor(n)
-  if (_n <= 0) {
+} = dual(2, <A>(self: Chunk<A>, _n: number): Chunk<A> => {
+  const n = Math.floor(_n)
+  if (n <= 0) {
     return self
-  } else if (_n >= self.length) {
+  } else if (n >= self.length) {
     return _empty
   } else {
     switch (self.backing._tag) {
@@ -797,17 +797,17 @@ export const drop: {
         return makeChunk({
           _tag: "ISlice",
           chunk: self.backing.chunk,
-          offset: self.backing.offset + _n,
-          length: self.backing.length - _n
+          offset: self.backing.offset + n,
+          length: self.backing.length - n
         })
       }
       case "IConcat": {
-        if (_n > self.left.length) {
-          return drop(self.right, _n - self.left.length)
+        if (n > self.left.length) {
+          return drop(self.right, n - self.left.length)
         }
         return makeChunk({
           _tag: "IConcat",
-          left: drop(self.left, _n),
+          left: drop(self.left, n),
           right: self.right
         })
       }
@@ -815,8 +815,8 @@ export const drop: {
         return makeChunk({
           _tag: "ISlice",
           chunk: self,
-          offset: _n,
-          length: self.length - _n
+          offset: n,
+          length: self.length - n
         })
       }
     }
