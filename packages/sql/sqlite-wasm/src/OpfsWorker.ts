@@ -45,7 +45,10 @@ export const run = (
   Effect.gen(function*() {
     const factory = yield* Effect.promise(() => SQLiteESMFactory())
     const sqlite3 = WaSqlite.Factory(factory)
-    const vfs = yield* Effect.promise(() => AccessHandlePoolVFS.create("opfs", factory))
+    const vfs = yield* Effect.acquireRelease(
+      Effect.promise(() => AccessHandlePoolVFS.create("opfs", factory)),
+      (vfs) => Effect.promise(() => vfs.close())
+    )
     sqlite3.vfs_register(vfs, false)
     const db = yield* Effect.acquireRelease(
       Effect.try({
