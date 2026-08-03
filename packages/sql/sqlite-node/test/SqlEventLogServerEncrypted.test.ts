@@ -112,6 +112,14 @@ const makeAuthenticatedRpcClient = Effect.fnUntraced(function*(
   return rpcClient
 })
 
+const assertForbidden = Effect.fnUntraced(function*<A>(
+  effect: Effect.Effect<A, EventLogMessage.EventLogProtocolError>
+) {
+  const error = yield* Effect.flip(effect)
+  assert.instanceOf(error, EventLogMessage.EventLogProtocolError)
+  assert.strictEqual(error.code, "Forbidden")
+})
+
 describe("SqlEventLogServer", () => {
   it.effect("forbids reading another identity's changes", () =>
     Effect.gen(function*() {
@@ -185,6 +193,62 @@ describe("SqlEventLogServer", () => {
       assert.strictEqual(error.code, "Forbidden")
       const written = yield* storage.write(identityB.publicKey, storeIdA, [makePersistedEntry(2)])
       assert.deepStrictEqual(written.map((entry) => entry.sequence), [1])
+    }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
+
+  it.effect("isolates authenticated identities between connections", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      const storage = yield* SqlEventLogServer.makeStorage().pipe(
+        Effect.provideService(SqlClient.SqlClient, sql)
+      )
+      const encryption = yield* EventLogEncryption.EventLogEncryption
+      const identityA = yield* encryption.generateIdentity
+      const identityB = yield* encryption.generateIdentity
+      const handlers = yield* Layer.build(
+        EventLogServer.layerRpcHandlers.pipe(
+          Layer.provide(Layer.succeed(EventLogServer.Storage, storage))
+        )
+      )
+      const rpcClientA = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
+        Effect.provide(handlers)
+      )
+      const rpcClientB = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
+        Effect.provide(handlers)
+      )
+      const helloA = yield* rpcClientA["EventLog.Hello"]()
+      yield* rpcClientA["EventLog.Authenticate"](
+        yield* makeAuthenticateRequest({
+          identity: identityA,
+          challenge: helloA.challenge,
+          remoteId: helloA.remoteId
+        })
+      )
+      const helloB = yield* rpcClientB["EventLog.Hello"]()
+      yield* rpcClientB["EventLog.Authenticate"](
+        yield* makeAuthenticateRequest({
+          identity: identityB,
+          challenge: helloB.challenge,
+          remoteId: helloB.remoteId
+        })
+      )
+      const data = yield* encodeWrite(encryption, identityB, makeEntry(1))
+      const midpoint = Math.ceil(data.byteLength / 2)
+      const parts = [
+        new EventLogMessage.ChunkedMessage({ id: 1, part: [0, 2], data: data.subarray(0, midpoint) }),
+        new EventLogMessage.ChunkedMessage({ id: 1, part: [1, 2], data: data.subarray(midpoint) })
+      ] as const
+
+      yield* storage.write(identityB.publicKey, storeIdA, [makePersistedEntry(1)])
+      yield* assertForbidden(
+        rpcClientA["EventLog.Changes"]({
+          publicKey: identityB.publicKey,
+          storeId: storeIdA,
+          startSequence: 0
+        }).pipe(Stream.take(1), Stream.runCollect)
+      )
+      yield* assertForbidden(rpcClientA["EventLog.WriteSingle"]({ data }))
+      yield* rpcClientA["EventLog.WriteChunked"](parts[0])
+      yield* assertForbidden(rpcClientA["EventLog.WriteChunked"](parts[1]))
     }).pipe(Effect.provide([Reactivity.layer, EventLogEncryption.layerSubtle])))
 
   it.effect("supports multiple authenticated identities on one connection", () =>

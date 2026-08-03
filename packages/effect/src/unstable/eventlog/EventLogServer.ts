@@ -162,7 +162,9 @@ export const layerRpcHandlers = (options: {
           })
         }
 
-        const authenticatedIdentities = Context.get(client.annotations, AuthenticatedIdentities)
+        const authenticatedIdentities = new Set(
+          Context.getOrUndefined(client.annotations, AuthenticatedIdentities)
+        )
         authenticatedIdentities.add(request.publicKey)
         void client
           .annotate(EventLog.Identity, {
