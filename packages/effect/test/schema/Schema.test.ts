@@ -6492,7 +6492,7 @@ Expected a value between -2147483648 and 2147483647`
 
       const asserts = new TestSchema.Asserts(Box)
       const make = asserts.make()
-      await make.fail({ items: [{ n: 0 }] }, `Expected positive n, got {"n":0}\n  at ["items"][0]`)
+      await make.fail({ items: [{ n: 0 }] }, `Expected positive n\n  at ["items"][0]`)
     })
 
     it("decoding validates the class struct once", () => {
