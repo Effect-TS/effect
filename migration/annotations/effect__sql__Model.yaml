@@ -28,3 +28,6 @@
 "@effect/sql/Model#Override":
   replacement: "effect/unstable/schema/Model#Override"
   note: "Moved with the same explicit-default override purpose."
+"@effect/sql/Model#fields":
+  replacement: "effect/unstable/schema/Model#fields"
+  note: "Moved with the variant-model helpers into core Effect's unstable schema package."

@@ -22,3 +22,6 @@
 "@effect/platform/HttpServer#UnixAddress":
   replacement: "HttpServer.UnixAddress"
   note: "Moved unchanged."
+"@effect/platform/HttpServer#serve":
+  replacement: "effect/unstable/http/HttpServer#serve"
+  note: "Moved to the v4 HTTP module; the application is now an Effect producing HttpServerResponse rather than the separate HttpApp model."

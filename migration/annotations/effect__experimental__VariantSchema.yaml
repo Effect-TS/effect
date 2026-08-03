@@ -34,3 +34,6 @@
 "@effect/experimental/VariantSchema#TypeId":
   replacement: effect/unstable/schema/VariantSchema#TypeId
   note: Use the retained runtime value; in type position use typeof VariantSchema.TypeId.
+"@effect/experimental/VariantSchema#Extract":
+  replacement: effect/unstable/schema/VariantSchema#Extract
+  note: Import the retained helper from the v4 module; its erased schema constraint is Schema.Top.
