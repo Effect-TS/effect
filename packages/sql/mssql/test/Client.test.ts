@@ -6,6 +6,18 @@ import * as Statement from "effect/unstable/sql/Statement"
 const sql = Statement.make(Effect.void as any, MssqlClient.makeCompiler(), [], undefined)
 
 describe("mssql", () => {
+  it("preserves fractional JavaScript numbers with the default parameter mapping", () => {
+    const value = MssqlClient.defaultParameterTypes.number.validate(1.5, undefined)
+
+    expect(value).toBe(1.5)
+  })
+
+  it("preserves Unicode JavaScript strings with the default parameter mapping", () => {
+    const value = MssqlClient.defaultParameterTypes.string.validate("lambda: \u03bb", undefined)
+
+    expect(value).toBe("lambda: \u03bb")
+  })
+
   it("insert helper", () => {
     const [query, params] = sql`INSERT INTO ${sql("people")} ${sql.insert({ name: "Tim", age: 10 })}`.compile()
     expect(query).toEqual(

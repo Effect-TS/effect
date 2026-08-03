@@ -711,8 +711,8 @@ function numberToParamName(n: number) {
  * @since 4.0.0
  */
 export const defaultParameterTypes: Record<Statement.PrimitiveKind, DataType> = {
-  string: Tedious.TYPES.VarChar,
-  number: Tedious.TYPES.Int,
+  string: Tedious.TYPES.NVarChar,
+  number: Tedious.TYPES.Float,
   bigint: Tedious.TYPES.BigInt,
   boolean: Tedious.TYPES.Bit,
   Date: Tedious.TYPES.DateTime,
