@@ -128,7 +128,7 @@ export class HttpPlatform extends Context.Service<HttpPlatform, {
  */
 export const make: (impl: {
   readonly platform: "deno" | "node" | "bun" | "web"
-  readonly compression?: Compression | undefined
+  readonly compression: Compression
   readonly fileResponse: (
     path: string,
     status: number,
@@ -159,7 +159,7 @@ export const make: (impl: {
 
   return HttpPlatform.of({
     platform: impl.platform,
-    compression: internal.wrapCompression(impl.compression ?? internal.compressionWeb()),
+    compression: internal.wrapCompression(impl.compression),
     fileResponse: Effect.fnUntraced(function*(path, options) {
       const info = yield* fs.stat(path)
       const etag = yield* etagGen.fromFileInfo(info)
@@ -221,6 +221,7 @@ export const layer = Layer.effect(HttpPlatform)(
   Effect.flatMap(FileSystem.FileSystem, (fs) =>
     make({
       platform: "web",
+      compression: internal.compressionWeb(),
       fileResponse(path, status, statusText, headers, start, end, contentLength) {
         return Response.stream(
           fs.stream(path, {
