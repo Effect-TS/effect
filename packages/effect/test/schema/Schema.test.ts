@@ -6433,6 +6433,32 @@ Expected a value between -2147483648 and 2147483647, got 9007199254740992`
       deepStrictEqual(Effect.runSync(A.makeEffect()), new A())
     })
 
+    it("make passes already valid class instances through unchanged", () => {
+      class Row extends Schema.Class<Row>("Row")({
+        v: Schema.String,
+        tag: Schema.String.pipe(Schema.optionalKey, Schema.withConstructorDefault(Effect.succeed("defaulted")))
+      }) {}
+      class Table extends Schema.Class<Table>("Table")({ rows: Schema.Array(Row) }) {}
+
+      // an existing instance keeps its identity instead of being re-constructed
+      const row = Row.make({ v: "a" })
+      strictEqual(Table.make({ rows: [row] }).rows[0], row)
+
+      // constructor semantics still apply to inputs that are not yet instances
+      deepStrictEqual(Table.make({ rows: [{ v: "b" }] }).rows[0], new Row({ v: "b", tag: "defaulted" }))
+    })
+
+    it("make still reports check failures on class fields without the instance check", async () => {
+      class Pos extends Schema.Class<Pos>("Pos")(
+        Schema.Struct({ n: Schema.Number }).check(Schema.makeFilter(({ n }) => n > 0, { expected: "positive n" }))
+      ) {}
+      class Box extends Schema.Class<Box>("Box")({ items: Schema.Array(Pos) }) {}
+
+      const asserts = new TestSchema.Asserts(Box)
+      const make = asserts.make()
+      await make.fail({ items: [{ n: 0 }] }, `Expected positive n, got {"n":0}\n  at ["items"][0]`)
+    })
+
     it("decoding validates the class struct once", () => {
       let checks = 0
       const schema = Schema.Struct({

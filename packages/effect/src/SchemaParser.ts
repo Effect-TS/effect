@@ -24,6 +24,14 @@ import type * as Schema from "./Schema.ts"
 import * as SchemaAST from "./SchemaAST.ts"
 import * as SchemaIssue from "./SchemaIssue.ts"
 
+// Constructor-form class ASTs whose encoding chain may be skipped when the input
+// already satisfies the declaration. Re-running the constructor over a value
+// that is already an instance allocates a fresh copy and discards the caller's
+// reference for no gain, so `makeParser` consults this set to pass such inputs
+// through unchanged. Only constructor-form ASTs are registered, so the decoding
+// and encoding directions are unaffected.
+const identityConstructorASTs = new WeakSet<SchemaAST.AST>()
+
 // Converts a type-side AST into its constructor form by recursively restoring
 // constructor encodings for nested classes and fields with constructor defaults.
 const toConstructorAST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
@@ -32,7 +40,9 @@ const toConstructorAST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
       const getLink = ast.annotations?.[SchemaAST.ClassTypeId]
       if (Predicate.isFunction(getLink)) {
         const link = getLink(ast.typeParameters)
-        return SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, toConstructorAST)])
+        const out = SchemaAST.replaceEncoding(ast, [SchemaAST.mapLink(link, toConstructorAST)])
+        identityConstructorASTs.add(out)
+        return out
       }
       return ast
     }
@@ -1111,12 +1121,23 @@ function makeParser(ast: SchemaAST.AST): Parser {
       ? (input, options) => parseLocal(input, mergeParseOptions(options, astOptions))
       : parseLocal
   }
+  const skipEncodingWhenValid = identityConstructorASTs.has(ast)
   return (
     input: unknown,
     options: SchemaAST.ParseOptions
   ) => {
     if (astOptions) {
       options = mergeParseOptions(options, astOptions)
+    }
+    // An input that already satisfies the declaration and its checks needs no
+    // re-construction, so return it unchanged. A failure here is discarded
+    // rather than reported: the encoding chain below still runs and produces the
+    // authoritative issue, keeping error messages identical to the slow path.
+    if (skipEncodingWhenValid && input !== InternalParser.missing) {
+      const direct = parseLocal(input, options)
+      if (effectIsExit(direct) && direct._tag === "Success") {
+        return direct
+      }
     }
     const parsers = encodingParsers ??= links.map((link) => compile(link.to))
     let current = input
