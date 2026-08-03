@@ -1,56 +1,70 @@
-import { glob, hasMagic } from "glob"
-import { existsSync, statSync } from "node:fs"
-import { dirname, extname, isAbsolute, join, normalize, resolve } from "node:path"
+import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
+import * as Path from "effect/Path"
+import { hasMagic } from "glob"
 import { parse } from "tsconfck"
+import { DoctestError, fromUnknown } from "./DoctestError.ts"
 
 const sourceExtensions = new Set([".cts", ".md", ".mts", ".ts", ".tsx"])
 const toPosix = (path: string): string => path.replaceAll("\\", "/")
-const canonical = (path: string): string => {
-  const normalized = normalize(path)
-  return process.platform === "win32" ? normalized.toLowerCase() : normalized
-}
 
-const resolvePattern = (pattern: string, directory: string): string => {
-  const substituted = pattern.replaceAll("${configDir}", directory)
-  return toPosix(isAbsolute(substituted) ? substituted : resolve(directory, substituted))
-}
-
-const recursiveDirectory = (pattern: string): string => {
-  const native = normalize(pattern)
-  if (
-    !hasMagic(pattern) &&
-    ((existsSync(native) && statSync(native).isDirectory()) || (!existsSync(native) && extname(native) === ""))
-  ) {
-    return `${pattern.replace(/\/$/, "")}/**/*`
+export const discover = Effect.fnUntraced(function*(
+  patterns: ReadonlyArray<string>,
+  configuredTsconfig: string | undefined
+) {
+  const fs = yield* FileSystem.FileSystem
+  const path = yield* Path.Path
+  const cwd = path.resolve()
+  const canonical = (file: string): string => {
+    const normalized = path.normalize(file)
+    return path.sep === "\\" ? normalized.toLowerCase() : normalized
   }
-  return pattern
-}
-
-const expand = (patterns: ReadonlyArray<string>, cwd = process.cwd()): Promise<Array<string>> => {
-  const literalFiles = patterns
-    .map((pattern) => resolve(cwd, pattern))
-    .filter((file) => existsSync(file) && !statSync(file).isDirectory())
-  const globPatterns = patterns.filter((pattern) => {
-    const file = resolve(cwd, pattern)
-    return !existsSync(file) || statSync(file).isDirectory()
-  }).map((pattern) => {
-    const file = resolve(cwd, pattern)
-    return toPosix(existsSync(file) && statSync(file).isDirectory() ? join(pattern, "**/*") : pattern)
+  const resolvePattern = (pattern: string, directory: string): string => {
+    const substituted = pattern.replaceAll("${configDir}", directory)
+    return toPosix(path.isAbsolute(substituted) ? substituted : path.resolve(directory, substituted))
+  }
+  const recursiveDirectory = Effect.fnUntraced(function*(pattern: string) {
+    const native = path.normalize(pattern)
+    const exists = yield* fs.exists(native)
+    if (
+      !hasMagic(pattern) &&
+      ((exists && (yield* fs.stat(native)).type === "Directory") || (!exists && path.extname(native) === ""))
+    ) {
+      return `${pattern.replace(/\/$/, "")}/**/*`
+    }
+    return pattern
   })
-  const expanded = globPatterns.length === 0
-    ? Promise.resolve([])
-    : glob(globPatterns, {
-      absolute: true,
-      cwd,
-      nodir: true,
-      windowsPathsNoEscape: true,
-      withFileTypes: false
+  const expand = Effect.fnUntraced(function*(patterns: ReadonlyArray<string>) {
+    const literalFiles: Array<string> = []
+    const globPatterns: Array<string> = []
+    for (const pattern of patterns) {
+      const file = path.resolve(cwd, pattern)
+      const exists = yield* fs.exists(file)
+      const directory = exists && (yield* fs.stat(file)).type === "Directory"
+      if (exists && !directory) {
+        literalFiles.push(file)
+      } else {
+        globPatterns.push(toPosix(directory ? path.join(pattern, "**/*") : pattern))
+      }
+    }
+    const expanded = yield* Effect.forEach(
+      globPatterns,
+      (pattern) =>
+        fs.glob(pattern, { root: cwd }).pipe(
+          Effect.flatMap((files) =>
+            Effect.filter(files, (file) =>
+              fs.stat(path.resolve(cwd, file)).pipe(Effect.map((info) => info.type === "File")))
+          )
+        ),
+      { concurrency: "unbounded" }
+    )
+    return [...new Set([...literalFiles, ...expanded.flat().map((file) => path.resolve(cwd, file))])]
+  })
+  const configuredFiles = Effect.fnUntraced(function*(tsconfig: string) {
+    const parsed = yield* Effect.tryPromise({
+      try: () => parse(tsconfig),
+      catch: (cause) => fromUnknown(cause, `Could not parse TypeScript configuration '${tsconfig}'`)
     })
-  return expanded.then((files) => [...new Set([...literalFiles, ...files])])
-}
-
-const configuredFiles = (tsconfig: string): Promise<Array<string>> =>
-  parse(tsconfig).then((parsed) => {
     const configurations = (parsed.extended ?? [parsed]) as ReadonlyArray<{
       readonly tsconfig: {
         readonly compilerOptions?: unknown
@@ -60,12 +74,12 @@ const configuredFiles = (tsconfig: string): Promise<Array<string>> =>
       }
       readonly tsconfigFile: string
     }>
-    const rootDirectory = dirname(parsed.tsconfigFile)
+    const rootDirectory = path.dirname(parsed.tsconfigFile)
     const setting = (name: "exclude" | "files" | "include") => {
       const source = configurations.find(({ tsconfig }) => Object.hasOwn(tsconfig, name))
       const value = source?.tsconfig[name]
       return {
-        directory: source === undefined ? rootDirectory : dirname(source.tsconfigFile),
+        directory: source === undefined ? rootDirectory : path.dirname(source.tsconfigFile),
         values: Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : undefined
       }
     }
@@ -82,58 +96,61 @@ const configuredFiles = (tsconfig: string): Promise<Array<string>> =>
         return undefined
       }
       const value = (source.tsconfig.compilerOptions as Record<string, unknown>)[name]
-      return typeof value === "string" ? resolvePattern(value, dirname(source.tsconfigFile)) : undefined
+      return typeof value === "string" ? resolvePattern(value, path.dirname(source.tsconfigFile)) : undefined
     }
 
     const configuredFiles = setting("files")
     const configuredInclude = setting("include")
     const configuredExclude = setting("exclude")
     const listed = (configuredFiles.values ?? []).map((file) => resolvePattern(file, configuredFiles.directory))
-    const include = (configuredInclude.values ?? (configuredFiles.values === undefined ? ["**/*"] : []))
-      .map((pattern) => recursiveDirectory(resolvePattern(pattern, configuredInclude.directory)))
-    const defaultExclude = ["node_modules", "bower_components", "jspm_packages"]
-      .map((pattern) => recursiveDirectory(resolvePattern(pattern, rootDirectory)))
-    const outputDirectories = [compilerPath("outDir"), compilerPath("declarationDir")]
-      .filter((path): path is string => path !== undefined)
-      .map(recursiveDirectory)
+    const include = yield* Effect.forEach(
+      configuredInclude.values ?? (configuredFiles.values === undefined ? ["**/*"] : []),
+      (pattern) => recursiveDirectory(resolvePattern(pattern, configuredInclude.directory))
+    )
+    const defaultExclude = yield* Effect.forEach(
+      ["node_modules", "bower_components", "jspm_packages"],
+      (pattern) => recursiveDirectory(resolvePattern(pattern, rootDirectory))
+    )
+    const outputDirectories = yield* Effect.forEach(
+      [compilerPath("outDir"), compilerPath("declarationDir")].filter((path): path is string => path !== undefined),
+      recursiveDirectory
+    )
     const exclude = configuredExclude.values === undefined
       ? [...defaultExclude, ...outputDirectories]
-      : configuredExclude.values.map((pattern) =>
-        recursiveDirectory(resolvePattern(pattern, configuredExclude.directory))
+      : yield* Effect.forEach(
+        configuredExclude.values,
+        (pattern) => recursiveDirectory(resolvePattern(pattern, configuredExclude.directory))
       )
-
-    return glob(include, {
-      absolute: true,
-      ignore: exclude,
-      nodir: true,
-      windowsPathsNoEscape: true,
-      withFileTypes: false
-    }).then((included) => [...new Set([...listed, ...included])])
+    const included = yield* Effect.forEach(
+      include,
+      (pattern) =>
+        fs.glob(pattern, { exclude }).pipe(
+          Effect.flatMap((files) =>
+            Effect.filter(files, (file) => fs.stat(path.resolve(file)).pipe(Effect.map((info) => info.type === "File")))
+          )
+        ),
+      { concurrency: "unbounded" }
+    )
+    return [...new Set([...listed, ...included.flat().map((file) => path.resolve(file))])]
   })
 
-export const discover = (
-  patterns: ReadonlyArray<string>,
-  configuredTsconfig: string | undefined
-): Promise<Array<string>> => {
   if (configuredTsconfig === undefined && patterns.length === 0) {
-    return Promise.reject(new Error("Provide --tsconfig or at least one source file or glob pattern"))
+    return yield* new DoctestError({ message: "Provide --tsconfig or at least one source file or glob pattern" })
   }
 
-  const discovered = configuredTsconfig === undefined
-    ? expand(patterns)
-    : configuredFiles(configuredTsconfig)
-  return discovered.then((files) =>
-    configuredTsconfig !== undefined && patterns.length > 0
-      ? expand(patterns).then((selectedFiles) => {
-        const selected = new Set(selectedFiles.map(canonical))
-        return files.filter((file) => selected.has(canonical(file)))
-      })
-      : files
-  ).then((files) => {
-    const matched = files.filter((file) => sourceExtensions.has(extname(file))).sort()
-    if (matched.length === 0) {
-      throw new Error("No source files matched the provided patterns")
-    }
-    return matched
-  })
-}
+  const files = configuredTsconfig === undefined
+    ? yield* expand(patterns)
+    : yield* configuredFiles(configuredTsconfig)
+  const selectedFiles = configuredTsconfig !== undefined && patterns.length > 0
+    ? yield* expand(patterns)
+    : undefined
+  const selected = selectedFiles === undefined ? undefined : new Set(selectedFiles.map(canonical))
+  const matched = files
+    .filter((file) => selected === undefined || selected.has(canonical(file)))
+    .filter((file) => sourceExtensions.has(path.extname(file)))
+    .sort()
+  if (matched.length === 0) {
+    return yield* new DoctestError({ message: "No source files matched the provided patterns" })
+  }
+  return matched
+})

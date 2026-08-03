@@ -4,14 +4,16 @@
 
 import * as Console from "effect/Console"
 import * as Effect from "effect/Effect"
+import * as FileSystem from "effect/FileSystem"
 import * as Option from "effect/Option"
 import * as Argument from "effect/unstable/cli/Argument"
 import * as CliError from "effect/unstable/cli/CliError"
 import * as Command from "effect/unstable/cli/Command"
 import * as Flag from "effect/unstable/cli/Flag"
 import * as Files from "./internal/Files.ts"
-import { Linter } from "./internal/Linter.ts"
-import { Typechecker } from "./internal/Typechecker.ts"
+import * as Linter from "./internal/Linter.ts"
+import * as OxlintLsp from "./internal/OxlintLsp.ts"
+import * as Typechecker from "./internal/Typechecker.ts"
 import * as Source from "./Source.ts"
 
 const files = Argument.string("files").pipe(
@@ -29,33 +31,23 @@ const oxlintConfig = Flag.file("oxlint-config", { mustExist: true }).pipe(
   Flag.optional
 )
 
-const diagnosticHeader = "Documentation example typecheck failed:\n\n"
-const lintDiagnosticHeader = "Documentation example lint failed:\n\n"
 const run = Effect.fnUntraced(function*(patterns: ReadonlyArray<string>, configuredTsconfig: string | undefined) {
-  const matched = yield* Effect.tryPromise(() => Files.discover(patterns, configuredTsconfig))
-
-  const extracted = yield* Effect.tryPromise(() =>
-    Promise.all(matched.map((file) => Source.extractFile(file).then((snippets) => ({ file, snippets }))))
+  const fs = yield* FileSystem.FileSystem
+  const matched = yield* Files.discover(patterns, configuredTsconfig)
+  const extracted = yield* Effect.forEach(
+    matched,
+    (file) =>
+      fs.readFileString(file).pipe(
+        Effect.map((source) => ({
+          file,
+          snippets: Source.extract(source, file.endsWith(".md") ? "markdown" : "jsdoc")
+        }))
+      ),
+    { concurrency: "unbounded" }
   )
   const examples = extracted.filter(({ snippets }) => snippets.length > 0)
-
-  const failures = yield* Effect.acquireUseRelease(
-    Effect.sync(() => new Typechecker(configuredTsconfig)),
-    (typechecker) =>
-      Effect.promise(() => Promise.allSettled(examples.map(({ file, snippets }) => typechecker.check(file, snippets))))
-        .pipe(Effect.map((results) =>
-          results.flatMap((result) => {
-            if (result.status !== "rejected") return []
-            const message = result.reason instanceof Error ? result.reason.message : String(result.reason)
-            return [message.startsWith(diagnosticHeader) ? message.slice(diagnosticHeader.length) : message]
-          })
-        )),
-    (typechecker) => Effect.promise(() => typechecker.close())
-  )
-
-  if (failures.length > 0) {
-    return yield* Effect.fail(new Error(`${diagnosticHeader}${failures.join("\n\n")}`))
-  }
+  const typechecker = yield* Typechecker.Typechecker
+  yield* typechecker.check(examples)
 
   const count = examples.reduce((total, { snippets }) => total + snippets.length, 0)
   yield* Console.log(
@@ -70,29 +62,21 @@ const runLint = Effect.fnUntraced(function*(
   configuredTsconfig: string | undefined,
   configuredOxlint: string | undefined
 ) {
-  const matched = yield* Effect.tryPromise(() => Files.discover(patterns, configuredTsconfig))
-  const extracted = yield* Effect.tryPromise(() =>
-    Promise.all(matched.map((file) => Source.extractFile(file).then((snippets) => ({ file, snippets }))))
+  const fs = yield* FileSystem.FileSystem
+  const matched = yield* Files.discover(patterns, configuredTsconfig)
+  const extracted = yield* Effect.forEach(
+    matched,
+    (file) =>
+      fs.readFileString(file).pipe(
+        Effect.map((source) => ({
+          file,
+          snippets: Source.extract(source, file.endsWith(".md") ? "markdown" : "jsdoc")
+        }))
+      ),
+    { concurrency: "unbounded" }
   )
   const examples = extracted.filter(({ snippets }) => snippets.length > 0)
-
-  const failures = yield* Effect.acquireUseRelease(
-    Effect.sync(() => new Linter(configuredOxlint)),
-    (linter) =>
-      Effect.promise(() => Promise.allSettled(examples.map(({ file, snippets }) => linter.check(file, snippets))))
-        .pipe(Effect.map((results) =>
-          results.flatMap((result) => {
-            if (result.status !== "rejected") return []
-            const message = result.reason instanceof Error ? result.reason.message : String(result.reason)
-            return [message.startsWith(lintDiagnosticHeader) ? message.slice(lintDiagnosticHeader.length) : message]
-          })
-        )),
-    (linter) => Effect.promise(() => linter.close())
-  )
-
-  if (failures.length > 0) {
-    return yield* Effect.fail(new Error(`${lintDiagnosticHeader}${failures.join("\n\n")}`))
-  }
+  yield* Linter.check(examples).pipe(Effect.provide(OxlintLsp.layer(configuredOxlint)))
 
   const count = examples.reduce((total, { snippets }) => total + snippets.length, 0)
   yield* Console.log(
@@ -112,6 +96,7 @@ export const cli = Command.make("doctest-typecheck", { files, tsconfig }).pipe(
   Command.withDescription("Typecheck marked TypeScript documentation examples without writing temporary files"),
   Command.withHandler(({ files, tsconfig }) =>
     run(files, Option.getOrUndefined(tsconfig)).pipe(
+      Effect.provide(Typechecker.layer(Option.getOrUndefined(tsconfig))),
       Effect.mapError((cause) => new CliError.UserError({ cause }))
     )
   )
