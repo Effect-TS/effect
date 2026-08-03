@@ -148,6 +148,21 @@ jobs:
         if: matrix.runtime == 'Deno'
         run: deno task test --shard ${{ matrix.shard }}
 
+  test-bun:
+    name: Test on Bun
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+        with:
+          bun-version: 1.3.13
+      - name: Test
+        run: bun node_modules/vitest/vitest.mjs run --project @effect/platform-bun
+
   doctest:
     name: Documentation Tests
     runs-on: ubuntu-latest

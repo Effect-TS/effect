@@ -526,17 +526,20 @@ const handleResponse = (
 
   if (request.method === "HEAD") {
     nodeResponse.writeHead(response.status, headers)
-    return Effect.callback<void>((resume) => {
-      let completed = false
-      const done = () => {
-        if (completed) return
-        completed = true
-        nodeResponse.off("close", done)
-        resume(Effect.void)
-      }
-      nodeResponse.once("close", done)
-      nodeResponse.end(done)
-    })
+    return Effect.andThen(
+      cancelResponseBody(response.body),
+      Effect.callback<void>((resume) => {
+        let completed = false
+        const done = () => {
+          if (completed) return
+          completed = true
+          nodeResponse.off("close", done)
+          resume(Effect.void)
+        }
+        nodeResponse.once("close", done)
+        nodeResponse.end(done)
+      })
+    )
   }
   const body = response.body
   switch (body._tag) {
@@ -633,6 +636,14 @@ const handleResponse = (
       )
     }
   }
+}
+
+const cancelResponseBody = (body: HttpServerResponse["body"]): Effect.Effect<void> => {
+  const stream = body._tag === "Raw" ? body.body : undefined
+  if (stream instanceof Readable) {
+    return Effect.sync(() => stream.destroy())
+  }
+  return Effect.void
 }
 
 const handleCause = (
