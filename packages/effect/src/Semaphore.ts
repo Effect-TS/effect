@@ -204,6 +204,24 @@ export interface Semaphore {
  */
 export const makeUnsafe = (permits: number): Semaphore => new SemaphoreImpl(permits)
 
+const waitForPermits = <A, E, R>(
+  self: SemaphoreImpl,
+  n: number,
+  effect: Effect.Effect<A, E, R>
+): Effect.Effect<A, E, R> =>
+  internal.callback((resume) => {
+    if (self.free >= n) return resume(effect)
+    const observer = () => {
+      if (self.free < n) return
+      self.waiters.delete(observer)
+      resume(effect)
+    }
+    self.waiters.add(observer)
+    return internal.sync(() => {
+      self.waiters.delete(observer)
+    })
+  })
+
 class SemaphoreImpl implements Semaphore {
   public waiters = new Set<() => void>()
   public taken = 0
@@ -220,18 +238,7 @@ class SemaphoreImpl implements Semaphore {
   take(n: number): Effect.Effect<number> {
     const take: Effect.Effect<number> = internal.suspend(() => {
       if (this.free < n) {
-        return internal.callback((resume) => {
-          if (this.free >= n) return resume(take)
-          const observer = () => {
-            if (this.free < n) return
-            this.waiters.delete(observer)
-            resume(take)
-          }
-          this.waiters.add(observer)
-          return internal.sync(() => {
-            this.waiters.delete(observer)
-          })
-        })
+        return waitForPermits(this, n, take)
       }
       this.taken += n
       return internal.succeed(n)
@@ -247,40 +254,34 @@ class SemaphoreImpl implements Semaphore {
     })
   }
 
-  updateTakenUnsafe(fiber: Fiber<any, any>, f: (n: number) => number): number {
-    this.taken = f(this.taken)
+  releaseUnsafe(fiber: Fiber<any, any>, n: number): number {
+    this.taken -= n
     if (this.waiters.size > 0) {
       fiber.currentDispatcher.scheduleTask(() => {
-        const iter = this.waiters.values()
-        let item = iter.next()
-        while (item.done === false && this.free > 0) {
-          item.value()
-          item = iter.next()
+        for (const observer of this.waiters) {
+          if (this.free <= 0) break
+          observer()
         }
       }, 0)
     }
     return this.free
   }
 
-  updateTaken(f: (n: number) => number): Effect.Effect<number> {
-    return core.withFiber((fiber) => internal.succeed(this.updateTakenUnsafe(fiber, f)))
-  }
-
   resize(permits: number) {
     return core.withFiber((fiber) => {
       this.permits = permits
       if (this.free < 0) return internal.void
-      this.updateTakenUnsafe(fiber, (taken) => taken)
+      this.releaseUnsafe(fiber, 0)
       return internal.void
     })
   }
 
   release(n: number): Effect.Effect<number> {
-    return this.updateTaken((taken) => taken - n)
+    return core.withFiber((fiber) => internal.succeed(this.releaseUnsafe(fiber, n)))
   }
 
   get releaseAll(): Effect.Effect<number> {
-    return this.updateTaken((_) => 0)
+    return core.withFiber((fiber) => internal.succeed(this.releaseUnsafe(fiber, this.taken)))
   }
 
   withPermits(n: number) {
@@ -288,25 +289,14 @@ class SemaphoreImpl implements Semaphore {
       internal.uninterruptibleMask((restore) => {
         const acquire: Effect.Effect<A, E, R> = internal.suspend(() => {
           if (this.free < n) {
-            const wait = internal.callback<void>((resume) => {
-              if (this.free >= n) return resume(internal.void)
-              const observer = () => {
-                if (this.free < n) return
-                this.waiters.delete(observer)
-                resume(internal.void)
-              }
-              this.waiters.add(observer)
-              return internal.sync(() => {
-                this.waiters.delete(observer)
-              })
-            })
+            const wait = waitForPermits(this, n, internal.void)
             return internal.flatMap(restore(wait), () => acquire)
           }
           this.taken += n
           return internal.onExitPrimitive(
             restore(self),
             () => {
-              this.updateTakenUnsafe(internal.getCurrentFiber()!, (taken) => taken - n)
+              this.releaseUnsafe(internal.getCurrentFiber()!, n)
               return undefined
             },
             true
@@ -324,7 +314,7 @@ class SemaphoreImpl implements Semaphore {
         if (this.free < n) return internal.succeedNone
         this.taken += n
         return internal.onExitPrimitive(restore(internal.asSome(self)), () => {
-          this.updateTakenUnsafe(internal.getCurrentFiber()!, (taken) => taken - n)
+          this.releaseUnsafe(internal.getCurrentFiber()!, n)
           return undefined
         }, true)
       })
