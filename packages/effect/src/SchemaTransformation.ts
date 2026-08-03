@@ -59,7 +59,7 @@ import * as SchemaIssue from "./SchemaIssue.ts"
  *   (effect) => Effect.catch(effect, () => Effect.succeed(Option.some("fallback"))),
  *   (effect) => effect
  * )
- * const issue = new SchemaIssue.InvalidValue(Option.none(), { message: "Missing value" })
+ * const issue = new SchemaIssue.InvalidValue({ message: "Missing value" })
  * await Effect.runPromise(fallback.decode(Effect.fail(issue), {})) // => Option.some("fallback")
  * ```
  *
@@ -266,7 +266,7 @@ export const make = <T, E, RD = never, RE = never>(options: {
  *       decode: (s) => {
  *         const d = new Date(s)
  *         return isNaN(d.getTime())
- *           ? Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: "Invalid date" }))
+ *           ? Effect.fail(new SchemaIssue.InvalidValue({ message: "Invalid date" }))
  *           : Effect.succeed(d)
  *       },
  *       encode: (d) => Effect.succeed(d.toISOString())
@@ -976,8 +976,7 @@ export const durationFromString: Transformation<Duration.Duration, string> = tra
 >({
   decode: (s) =>
     Option.match(Duration.fromInput(s as Duration.Input), {
-      onNone: () =>
-        Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: `Invalid Duration string: ${s}` })),
+      onNone: () => Effect.fail(new SchemaIssue.InvalidValue({ message: "Expected a valid Duration string" })),
       onSome: Effect.succeed
     }),
   encode: (duration) => Effect.succeed(globalThis.String(duration))
@@ -1020,7 +1019,7 @@ export const durationFromNanos: Transformation<Duration.Duration, bigint> = tran
     Option.match(Duration.toNanos(a), {
       onNone: () =>
         Effect.fail(
-          new SchemaIssue.InvalidValue(Option.some(a), { message: `Unable to encode ${a} into a bigint` })
+          new SchemaIssue.InvalidValue({ message: "Expected a Duration representable as a bigint" })
         ),
       onSome: (nanos) => Effect.succeed(nanos)
     })
@@ -1399,7 +1398,7 @@ export const urlFromString: Transformation<URL, string> = transformOrFail<URL, s
   decode: (s) =>
     URL.canParse(s)
       ? Effect.succeed(new URL(s))
-      : Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: `Invalid URL string: ${s}` })),
+      : Effect.fail(new SchemaIssue.InvalidValue({ message: "Expected a valid URL string" })),
   encode: (url) => Effect.succeed(url.href)
 })
 
@@ -1428,7 +1427,7 @@ export const bigDecimalFromString: Transformation<BigDecimal.BigDecimal, string>
   decode: (s) => {
     const result = BigDecimal.fromString(s)
     return Option.isNone(result)
-      ? Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: `Invalid BigDecimal string: ${s}` }))
+      ? Effect.fail(new SchemaIssue.InvalidValue({ message: "Expected a valid BigDecimal string" }))
       : Effect.succeed(result.value)
   },
   encode: (bd) => Effect.succeed(BigDecimal.format(bd))
@@ -1787,8 +1786,7 @@ export const timeZoneNamedFromString: Transformation<DateTime.TimeZone.Named, st
 >({
   decode: (s) => {
     return Option.match(DateTime.zoneMakeNamed(s), {
-      onNone: () =>
-        Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: `Invalid IANA time zone: ${s}` })),
+      onNone: () => Effect.fail(new SchemaIssue.InvalidValue({ message: "Expected a valid IANA time zone" })),
       onSome: Effect.succeed
     })
   },
@@ -1822,7 +1820,7 @@ export const timeZoneFromString: Transformation<DateTime.TimeZone, string> = tra
 >({
   decode: (s) => {
     return Option.match(DateTime.zoneFromString(s), {
-      onNone: () => Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: `Invalid time zone: ${s}` })),
+      onNone: () => Effect.fail(new SchemaIssue.InvalidValue({ message: "Expected a valid time zone" })),
       onSome: Effect.succeed
     })
   },
@@ -1856,8 +1854,7 @@ export const dateTimeUtcFromString: Transformation<DateTime.Utc, string> = trans
 >({
   decode: (s) => {
     return Option.match(DateTime.make(s), {
-      onNone: () =>
-        Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: `Invalid UTC DateTime string: ${s}` })),
+      onNone: () => Effect.fail(new SchemaIssue.InvalidValue({ message: "Expected a valid UTC DateTime string" })),
       onSome: (result) => Effect.succeed(DateTime.toUtc(result))
     })
   },
@@ -1891,7 +1888,9 @@ export const dateTimeZonedFromString: Transformation<DateTime.Zoned, string> = t
   decode: (s) => {
     return Option.match(DateTime.makeZonedFromString(s), {
       onNone: () =>
-        Effect.fail(new SchemaIssue.InvalidValue(Option.some(s), { message: `Invalid Zoned DateTime string: ${s}` })),
+        Effect.fail(
+          new SchemaIssue.InvalidValue({ message: "Expected a valid Zoned DateTime string" })
+        ),
       onSome: Effect.succeed
     })
   },

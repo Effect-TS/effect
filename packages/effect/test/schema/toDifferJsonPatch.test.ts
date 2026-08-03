@@ -102,7 +102,7 @@ describe("Schema.toDifferJsonPatch", () => {
 
       throws(
         () => differ.diff(new Date("1970-01-01T00:00:00.000Z"), new Date(NaN)),
-        "Expected a valid Date, got Invalid Date"
+        "Expected a valid Date"
       )
     })
 

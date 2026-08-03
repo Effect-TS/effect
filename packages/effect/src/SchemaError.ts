@@ -14,9 +14,11 @@ const TypeId = "~effect/SchemaError/SchemaError"
  * **Details**
  *
  * The `issue` field contains a structured {@link Issue} tree describing
- * every validation failure, including the path to the problematic value,
- * expected types, and actual values received. `message` renders the issue tree
- * as a human-readable string.
+ * every validation failure, including the path to the problematic value and
+ * the expected type or constraint. Built-in issues have no `actual` field,
+ * and built-in messages do not include the rejected value. Other Issue fields
+ * and custom annotations or messages are not sanitized. `message` renders the
+ * issue tree as a human-readable string.
  *
  * Use {@link isSchemaError} to narrow an unknown value to `SchemaError`.
  *
@@ -29,7 +31,7 @@ const TypeId = "~effect/SchemaError/SchemaError"
  *   Schema.decodeUnknownSync(Schema.Number)("not a number")
  * } catch (err) {
  *   if (Schema.isSchemaError(err)) {
- *     err.message // => "Expected number, got \"not a number\""
+ *     err.message // => "Expected number"
  *   }
  * }
  * ```
