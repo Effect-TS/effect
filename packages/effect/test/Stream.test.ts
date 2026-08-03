@@ -404,6 +404,16 @@ describe("Stream", () => {
         assert.deepStrictEqual(result, [1, 2, 3])
       }))
 
+    it.effect("range - zero chunk size does not change the emitted range", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.range(1, 3, 0).pipe(
+          Stream.take(4),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual(result, [1, 2, 3])
+      }))
+
     it.effect("service", () =>
       Effect.gen(function*() {
         const result = yield* Stream.service(Greeter).pipe(
