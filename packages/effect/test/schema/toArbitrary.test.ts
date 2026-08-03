@@ -1,4 +1,4 @@
-import { BigDecimal, Chunk, DateTime, Effect, HashMap, HashSet, Option, Order, Schema, SchemaIssue } from "effect"
+import { BigDecimal, Chunk, DateTime, Effect, HashMap, HashSet, Order, Schema, SchemaIssue } from "effect"
 import { FastCheck, TestSchema } from "effect/testing"
 import { describe, it } from "vitest"
 import { assertInclude, assertInstanceOf, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
@@ -55,7 +55,7 @@ function CustomArray<A extends Schema.Constraint>(
     () => (input, ast) =>
       globalThis.Array.isArray(input)
         ? Effect.succeed(input as ReadonlyArray<A["Type"]>)
-        : Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input))),
+        : Effect.fail(new SchemaIssue.InvalidType(ast)),
     { toArbitrary }
   )
 }

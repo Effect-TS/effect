@@ -314,7 +314,7 @@ Success("a@b.com")
 
 console.log(String(Schema.decodeUnknownExit(email)("@b.com")))
 /*
-Failure(Cause([Fail(SchemaError(Expected a string matching template literal parts, got "@b.com"))]))
+Failure(Cause([Fail(SchemaError(Expected a string matching template literal parts))]))
 */
 ```
 
@@ -340,11 +340,11 @@ console.log(String(Schema.decodeUnknownExit(schema)("aa:1")))
 // Success(["aa",":",1])
 
 console.log(String(Schema.decodeUnknownExit(schema)("a:1")))
-// Failure(Cause([Fail(SchemaError(Expected a value with a length of at least 2, got "a"
+// Failure(Cause([Fail(SchemaError(Expected a value with a length of at least 2
 //   at [0]))]))
 
 console.log(String(Schema.decodeUnknownExit(schema)("aa:1.2")))
-// Failure(Cause([Fail(SchemaError(Expected an integer, got 1.2
+// Failure(Cause([Fail(SchemaError(Expected an integer
 //   at [2]))]))
 ```
 
@@ -1165,7 +1165,7 @@ console.log(
     })
   )
 )
-// Failure(Cause([Fail(SchemaError: Expected a === b, got {"a":"a","b":"b","c":"c"})]))
+// Failure(Cause([Fail(SchemaError: Expected a === b)]))
 ```
 
 #### Mapping individual fields
@@ -1642,7 +1642,7 @@ import { Schema } from "effect"
 const schema = Schema.UniqueArray(Schema.String)
 
 console.log(String(Schema.decodeUnknownExit(schema)(["a", "b", "a"])))
-// Failure(Cause([Fail(SchemaError: Expected an array with unique items, got ["a","b","a"])]))
+// Failure(Cause([Fail(SchemaError: Expected an array with unique items)]))
 ```
 
 ## Records
@@ -1706,7 +1706,7 @@ console.log(String(Schema.decodeUnknownExit(schema)({ 1.1: "ignored" })))
 // Success({})
 
 console.log(String(Schema.decodeUnknownExit(schema)({ 1: null })))
-// Failure(Cause([Fail(SchemaError(Expected string, got null
+// Failure(Cause([Fail(SchemaError(Expected string
 //  at ["1"]))]))
 ```
 
@@ -1816,7 +1816,7 @@ import { Schema } from "effect"
 const schema = Schema.Union([Schema.NonEmptyString, Schema.Number])
 
 console.log(String(Schema.decodeUnknownExit(schema)("")))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1, got "")]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1)]))
 ```
 
 If none of the union members match the input, the union fails with a message at the top level.
@@ -1829,7 +1829,7 @@ import { Schema } from "effect"
 const schema = Schema.Union([Schema.NonEmptyString, Schema.Number])
 
 console.log(String(Schema.decodeUnknownExit(schema)(null)))
-// Failure(Cause([Fail(SchemaError: Expected string | number, got null)]))
+// Failure(Cause([Fail(SchemaError: Expected string | number)]))
 ```
 
 This behavior is especially helpful when working with literal values. Instead of producing a separate error for each literal (as in version 3), the schema reports a single, clear message.
@@ -1842,7 +1842,7 @@ import { Schema } from "effect"
 const schema = Schema.Literals(["a", "b"])
 
 console.log(String(Schema.decodeUnknownExit(schema)(null)))
-// Failure(Cause([Fail(SchemaError: Expected "a" | "b", got null)]))
+// Failure(Cause([Fail(SchemaError: Expected "a" | "b")]))
 ```
 
 ### Exclusive Unions
@@ -1859,7 +1859,7 @@ const schema = Schema.Union([Schema.Struct({ a: Schema.String }), Schema.Struct(
 })
 
 console.log(String(Schema.decodeUnknownExit(schema)({ a: "a", b: 1 })))
-// Failure(Cause([Fail(SchemaError: Expected exactly one member to match the input {"a":"a","b":1})]))
+// Failure(Cause([Fail(SchemaError: Expected exactly one member to match)]))
 ```
 
 ### Deriving Unions
@@ -2211,7 +2211,7 @@ console.log(String(Schema.decodeUnknownExit(URLSchema)(new URL("https://example.
 // Success(https://example.com/)
 
 console.log(String(Schema.decodeUnknownExit(URLSchema)(null)))
-// Failure(Cause([Fail(SchemaError(Expected <Declaration>, got null))]))
+// Failure(Cause([Fail(SchemaError(Expected <Declaration>))]))
 ```
 
 > **Tip**: For simple `instanceof` checks, prefer `Schema.instanceOf(URL)`, it wraps `Schema.declare` with an `instanceof` guard automatically.
@@ -2231,7 +2231,7 @@ const URLSchema = Schema.declare(
 )
 
 console.log(String(Schema.decodeUnknownExit(URLSchema)(null)))
-// Failure(Cause([Fail(SchemaError(Expected URL, got null))]))
+// Failure(Cause([Fail(SchemaError(Expected URL))]))
 //                                          ^^^
 //                          Now the error message shows "URL" instead of "<Declaration>"
 ```
@@ -2267,7 +2267,7 @@ You build a `Link` using `Schema.link<T>()`, which takes two arguments:
 **Example** (Making `URL` JSON-serializable)
 
 ```ts
-import { Effect, Option, Schema, SchemaIssue, SchemaTransformation } from "effect"
+import { Effect, Schema, SchemaIssue, SchemaTransformation } from "effect"
 
 const URLSchema = Schema.declare(
   (u): u is URL => u instanceof URL,
@@ -2284,7 +2284,7 @@ const URLSchema = Schema.declare(
           decode: (s) =>
             Effect.try({
               try: () => new URL(s),
-              catch: (e) => new SchemaIssue.InvalidValue(Option.some(s), { message: globalThis.String(e) })
+              catch: () => new SchemaIssue.InvalidValue({ message: "Invalid URL string" })
             }),
           // URL -> JSON string (always succeeds)
           encode: (url) => Effect.succeed(url.href)
@@ -2339,7 +2339,7 @@ The parsing function you return from `run` is responsible for:
 **Example** (A generic `Box<A>` container)
 
 ```ts
-import { Effect, Option, Schema, SchemaIssue, SchemaParser } from "effect"
+import { Effect, Schema, SchemaIssue, SchemaParser } from "effect"
 
 // 1. Define the type
 interface Box<A> {
@@ -2360,7 +2360,7 @@ const Box = <A extends Schema.Top>(item: A) =>
     (u, ast, options) => {
       // First, check the outer shape
       if (!isBox(u)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(u)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
       // Then, decode the inner value using the item codec
       return Effect.mapBothEager(
@@ -2381,7 +2381,7 @@ console.log(String(Schema.decodeUnknownExit(schema)({ value: "1" })))
 // Success({ value: 1 })
 
 console.log(String(Schema.decodeUnknownExit(schema)({ value: "a" })))
-// Failure(Cause([Fail(SchemaError(Expected a finite number, got NaN
+// Failure(Cause([Fail(SchemaError(Expected a finite number
 //   at ["value"]))]))
 ```
 
@@ -2404,7 +2404,7 @@ import { Schema } from "effect"
 const schema = Schema.String.check(Schema.makeFilter((s) => s.length >= 3))
 
 console.log(String(Schema.decodeUnknownExit(schema)("")))
-// Failure(Cause([Fail(SchemaError: Expected <filter>, got "")]))
+// Failure(Cause([Fail(SchemaError: Expected <filter>)]))
 ```
 
 You can attach annotations and provide a custom error message when defining a filter.
@@ -2449,10 +2449,10 @@ import { Schema } from "effect"
 const Username = Schema.NonEmptyString.annotate({ identifier: "Username" })
 
 console.log(String(Schema.decodeUnknownExit(Username)(null)))
-// Failure(Cause([Fail(SchemaError: Expected Username, got null)]))
+// Failure(Cause([Fail(SchemaError: Expected Username)]))
 
 console.log(String(Schema.decodeUnknownExit(Username)("")))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1, got "")]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1)]))
 ```
 
 ### Filter return shapes
@@ -2563,7 +2563,7 @@ const schema = Schema.String.check(
 )
 
 console.log(String(Schema.decodeUnknownExit(schema)(" a")))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got " a")]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3)]))
 ```
 
 **Example** (Using `isMinLength` with an object that has `length`)
@@ -2575,7 +2575,7 @@ import { Schema } from "effect"
 const schema = Schema.Struct({ length: Schema.Number }).check(Schema.isMinLength(3))
 
 console.log(String(Schema.decodeUnknownExit(schema)({ length: 2 })))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got {"length":2}]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3)]))
 ```
 
 **Example** (Validating array length)
@@ -2587,7 +2587,7 @@ import { Schema } from "effect"
 const schema = Schema.Array(Schema.String).check(Schema.isMinLength(3))
 
 console.log(String(Schema.decodeUnknownExit(schema)(["a", "b"])))
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got ["a","b"]]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3)]))
 ```
 
 ## Multiple Issues Reporting
@@ -2609,8 +2609,8 @@ console.log(
   )
 )
 /*
-Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got " a"
-Expected a string with no leading or trailing whitespace, got " a")]))
+Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3
+Expected a string with no leading or trailing whitespace)]))
 */
 ```
 
@@ -2635,7 +2635,7 @@ console.log(
     })
   )
 )
-// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3, got " a")]))
+// Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 3)]))
 ```
 
 ## Filter Groups
@@ -2714,7 +2714,7 @@ const schema = Schema.Struct({
 
 console.log(String(Schema.decodeUnknownExit(schema)({ tags: ["a", ""] }, { errors: "all" })))
 /*
-Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1, got ""
+Failure(Cause([Fail(SchemaError: Expected a value with a length of at least 1
   at ["tags"][1])]))
 */
 ```
@@ -2728,7 +2728,7 @@ Define an effectful filter with `Getter.checkEffect` as part of a transformation
 **Example** (Asynchronous validation of a numeric value)
 
 ```ts
-import { Effect, Option, Result, Schema, SchemaGetter, SchemaIssue } from "effect"
+import { Effect, Result, Schema, SchemaGetter, SchemaIssue } from "effect"
 
 // Simulated API call that fails when userId is 0
 const myapi = (userId: number) =>
@@ -2747,7 +2747,7 @@ const schema = Schema.Finite.pipe(
         const user = yield* Effect.result(myapi(n))
 
         // If the result is an error, return a SchemaIssue
-        return Result.isFailure(user) ? new SchemaIssue.InvalidValue(Option.some(n), { title: "not found" }) : undefined // No issue, value is valid
+        return Result.isFailure(user) ? new SchemaIssue.InvalidValue({ title: "not found" }) : undefined // No issue, value is valid
       })
     ),
     encode: SchemaGetter.passthrough()
@@ -3210,7 +3210,7 @@ This is useful when you need to validate input or enforce rules that may not alw
 **Example** (Converting a string URL into a `URL` object)
 
 ```ts
-import { Effect, Option, Schema, SchemaIssue, SchemaTransformation } from "effect"
+import { Effect, Schema, SchemaIssue, SchemaTransformation } from "effect"
 
 const URLFromString = Schema.String.pipe(
   Schema.decodeTo(
@@ -3219,7 +3219,7 @@ const URLFromString = Schema.String.pipe(
       decode: (s) =>
         Effect.try({
           try: () => new URL(s),
-          catch: () => new Issue.InvalidValue(Option.some(s), { message: `Invalid URL string: ${s}` })
+          catch: () => new SchemaIssue.InvalidValue({ message: "Invalid URL string" })
         }),
       encode: (url) => Effect.succeed(url.href)
     })
@@ -3679,7 +3679,7 @@ class Person extends Schema.Opaque<Person>()(
 ) {}
 
 console.log(String(Schema.decodeUnknownExit(Person)(null)))
-// Failure(Cause([Fail(SchemaError: Expected Person, got null)]))
+// Failure(Cause([Fail(SchemaError: Expected Person)]))
 ```
 
 When you call methods like `annotate` on an opaque struct, you get back the original struct, not a new class.
@@ -3925,7 +3925,7 @@ try {
   }
 }
 /*
-Expected a finite number, got NaN
+Expected a finite number
   at [1]
 */
 ```
@@ -4131,14 +4131,14 @@ try {
 } catch (error: any) {
   console.log(error.message)
 }
-// Expected a === b, got {"a":"a","b":"b"}
+// Expected a === b
 
 try {
   Schema.decodeUnknownSync(A)({ a: "a", b: "b" })
 } catch (error: any) {
   console.log(error.message)
 }
-// Expected a === b, got {"a":"a","b":"b"}
+// Expected a === b
 ```
 
 #### Branded Classes
@@ -5837,7 +5837,7 @@ Generic declarations receive one derivation per type parameter:
 For an opaque wrapper type, you usually map both sources in the same way:
 
 ```ts
-import { Effect, Option, Schema, SchemaIssue, SchemaParser } from "effect"
+import { Effect, Schema, SchemaIssue, SchemaParser } from "effect"
 
 class Box<A> {
   private constructor(private readonly value: A) {}
@@ -5858,7 +5858,7 @@ const BoxSchema = <A extends Schema.Top>(value: A) =>
     [value],
     ([valueCodec]) => (input, ast, options) => {
       if (!isBox(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
       return Effect.map(
         SchemaParser.decodeUnknownEffect(valueCodec)(Box.unbox(input), options),
@@ -6521,7 +6521,7 @@ Output:
 {
   issues: [
     { path: [ 'a' ], message: 'Missing key' },
-    { path: [ 'b' ], message: 'Expected a value with a length of at least 1, got ""' }
+    { path: [ 'b' ], message: 'Expected a value with a length of at least 1' }
   ]
 }
 */
@@ -6717,7 +6717,7 @@ if (r._tag === "Failure") {
 {
   issues: [
     {
-      message: 'Expected a value with a length of at least 1, got ""',
+      message: 'Expected a value with a length of at least 1',
       path: [ 'a' ]
     },
     { message: 'Missing key', path: [ 'c', 0 ] },

@@ -5,12 +5,12 @@ import { assertTrue, strictEqual, throws } from "../utils/assert.ts"
 describe("SchemaParser", () => {
   const makeMixedCause = () =>
     Cause.combine(
-      Cause.fail(new SchemaIssue.InvalidValue(Option.some("a"), { message: "schema issue" })),
+      Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
       Cause.die(new Error("defect"))
     )
   const makeMixedSchemaErrorCause = () =>
     Cause.combine(
-      Cause.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue(Option.some("a"), { message: "schema issue" }))),
+      Cause.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "schema issue" }))),
       Cause.die(new Error("defect"))
     )
 
@@ -20,7 +20,7 @@ describe("SchemaParser", () => {
       throws(() => SchemaParser.make(schema)(null as any), (e) => {
         assertTrue(e instanceof Error)
         assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.message, "Expected string, got null")
+        strictEqual(e.message, "Expected string")
       })
     })
 
@@ -69,12 +69,12 @@ describe("SchemaParser", () => {
       throws(() => SchemaParser.decodeUnknownSync(schema)(null), (e) => {
         assertTrue(e instanceof Error)
         assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.message, "Expected string, got null")
+        strictEqual(e.message, "Expected string")
       })
       throws(() => SchemaParser.encodeUnknownSync(schema)(null), (e) => {
         assertTrue(e instanceof Error)
         assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.message, "Expected string, got null")
+        strictEqual(e.message, "Expected string")
       })
     })
 
@@ -108,12 +108,12 @@ describe("SchemaParser", () => {
       assertTrue(Result.isFailure(r1))
       assertTrue(r1.failure instanceof Error)
       assertTrue(SchemaIssue.isIssue(r1.failure.cause))
-      strictEqual(r1.failure.message, "Expected string, got null")
+      strictEqual(r1.failure.message, "Expected string")
       const r2 = await SchemaParser.encodeUnknownPromise(schema)(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r2))
       assertTrue(r2.failure instanceof Error)
       assertTrue(SchemaIssue.isIssue(r2.failure.cause))
-      strictEqual(r2.failure.message, "Expected string, got null")
+      strictEqual(r2.failure.message, "Expected string")
     })
 
     it("should reject with an error when the cause contains both an Issue and a defect", async () => {
@@ -387,7 +387,7 @@ describe("SchemaParser", () => {
 
       let rejectedReads = 0
       const rejectedKey = Schema.String.pipe(Schema.decode({
-        decode: new SchemaGetter.Getter((input) => Effect.fail(new SchemaIssue.InvalidValue(input))),
+        decode: new SchemaGetter.Getter(() => Effect.fail(new SchemaIssue.InvalidValue())),
         encode: SchemaGetter.passthrough()
       }))
       const rejectedInput = {
@@ -483,9 +483,9 @@ describe("SchemaParser", () => {
     it.effect("wraps an asynchronous failure from a uniquely selected union member", () =>
       Effect.gen(function*() {
         const failing = Schema.String.pipe(Schema.decode({
-          decode: new SchemaGetter.Getter((input) =>
+          decode: new SchemaGetter.Getter(() =>
             Effect.yieldNow.pipe(
-              Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue(input)))
+              Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue()))
             )
           ),
           encode: SchemaGetter.passthrough()
@@ -507,9 +507,9 @@ describe("SchemaParser", () => {
     it.effect("resolves an unchanged concurrent union candidate", () =>
       Effect.gen(function*() {
         const delayedFailure = Schema.String.pipe(Schema.decode({
-          decode: new SchemaGetter.Getter((input) =>
+          decode: new SchemaGetter.Getter(() =>
             Effect.yieldNow.pipe(
-              Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue(input)))
+              Effect.andThen(Effect.fail(new SchemaIssue.InvalidValue()))
             )
           ),
           encode: SchemaGetter.passthrough()

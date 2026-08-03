@@ -67,7 +67,7 @@ describe("Optic generation", () => {
         const modify = optic.modify((n) => schema.make(n - 1))
 
         strictEqual(modify(schema.make(2)), 1)
-        throws(() => modify(schema.make(1)), "Expected a value greater than 0, got 0")
+        throws(() => modify(schema.make(1)), "Expected a value greater than 0")
       })
     })
 

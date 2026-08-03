@@ -8,7 +8,6 @@ import {
   Effect,
   Fiber,
   Layer,
-  Option,
   Schema,
   SchemaGetter,
   SchemaIssue,
@@ -69,7 +68,7 @@ const VerifyId = Schema.String.pipe(
         const { maxLength } = yield* VerifyContext
         if (s.length > maxLength) {
           return yield* Effect.fail(
-            new SchemaIssue.InvalidValue(Option.some(s), {
+            new SchemaIssue.InvalidValue({
               message: "Max length exceeded"
             })
           )

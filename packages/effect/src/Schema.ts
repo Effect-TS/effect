@@ -449,7 +449,7 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  * **Example** (Schema for a parametric `Box<A>` type)
  *
  * ```ts import.meta.vitest
- * import { Effect, Option, Schema, SchemaIssue as Issue, SchemaParser } from "effect"
+ * import { Effect, Schema, SchemaIssue as Issue, SchemaParser } from "effect"
  *
  * interface Box<A> {
  *   readonly value: A
@@ -464,7 +464,7 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  *     ([itemCodec]) =>
  *       (u, ast, options) => {
  *         if (!isBox(u)) {
- *           return Effect.fail(new SchemaIssue.InvalidType(ast, Option.some(u)))
+ *           return Effect.fail(new SchemaIssue.InvalidType(ast))
  *         }
  *         return Effect.map(
  *           SchemaParser.decodeUnknownEffect(itemCodec)(u.value, options),
@@ -555,7 +555,7 @@ export function declare<T, Iso = T>(
     () => (input, ast) =>
       is(input) ?
         Effect.succeed(input) :
-        Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input))),
+        Effect.fail(new SchemaIssue.InvalidType(ast)),
     annotations
   )
 }
@@ -1160,22 +1160,22 @@ export {
    * **Details**
    *
    * The `issue` field contains a structured {@link SchemaIssue.Issue} tree describing
-   * every validation failure, including the path to the problematic value,
-   * expected types, and actual values received. `message` renders the issue tree
-   * as a human-readable string.
+   * every validation failure, including the path to the problematic value and
+   * the expected type or constraint. Built-in issues have no `actual` field,
+   * and built-in messages do not include the rejected value. Other Issue fields
+   * and custom annotations or messages are not sanitized. `message` renders the
+   * issue tree as a human-readable string.
    *
    * Use {@link isSchemaError} to narrow an unknown value to `SchemaError`.
    *
    * **Example** (Inspecting a SchemaError)
    *
    * ```ts import.meta.vitest
-   * import { Option, Result, Schema, SchemaIssue } from "effect"
+   * import { Result, Schema } from "effect"
    *
    * const result = Schema.decodeUnknownResult(Schema.Number)("not a number")
-   * const actual = Result.isFailure(result) && result.failure.issue instanceof SchemaIssue.InvalidType
-   *   ? result.failure.issue.actual
-   *   : Option.none()
-   * actual // => Option.some("not a number")
+   * const message = Result.isFailure(result) ? result.failure.message : ""
+   * message // => "Expected number"
    * ```
    *
    * @category errors
@@ -6551,8 +6551,8 @@ export const makeFilter: <T>(
  * **Details**
  *
  * - `string`: failure with that string as the message. Produces an
- *   {@link SchemaIssue.InvalidValue} wrapping the input, with the string used as
- *   the issue's `message` annotation.
+ *   {@link SchemaIssue.InvalidValue} with the string used as the issue's
+ *   `message` annotation.
  * - {@link SchemaIssue.Issue}: a fully-formed issue, returned as-is.
  * - `{ path, issue }`: failure attached to a nested path. `issue` is either
  *   a `string` (wrapped in an {@link SchemaIssue.InvalidValue}) or a full
@@ -6578,8 +6578,8 @@ export type FilterIssue = string | SchemaIssue.Issue | {
  * - `undefined`: success. The input satisfies the filter.
  * - `true`: success. Equivalent to `undefined`, useful when the predicate is
  *   a plain boolean expression.
- * - `false`: generic failure. Produces an {@link SchemaIssue.InvalidValue} wrapping
- *   the input, with no custom message.
+ * - `false`: generic failure. Produces an {@link SchemaIssue.InvalidValue}
+ *   with no custom message.
  * - {@link FilterIssue}: a single failure. See {@link FilterIssue} for the
  *   shapes (`string`, {@link SchemaIssue.Issue}, or `{ path, issue }`).
  * - `ReadonlyArray<FilterIssue>`: several failures reported together. An
@@ -9379,7 +9379,7 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
         }
       }
       if (Arr.isArrayNonEmpty(issues)) {
-        return new SchemaIssue.Composite(ast, Option_.some(input), issues)
+        return new SchemaIssue.Composite(ast, issues)
       }
       return true
     },
@@ -9580,12 +9580,11 @@ export function Option<A extends Constraint>(value: A): Option<A> {
           SchemaParser.decodeUnknownEffect(value)(input.value, options),
           {
             onSuccess: Option_.some,
-            onFailure: (issue) =>
-              new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["value"], issue)])
+            onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["value"], issue)])
           }
         )
       }
-      return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+      return Effect.fail(new SchemaIssue.InvalidType(ast))
     },
     {
       representation: {
@@ -9898,20 +9897,18 @@ export function Result<A extends Constraint, E extends Constraint>(
     [success, failure],
     ([success, failure]) => (input, ast, options) => {
       if (!Result_.isResult(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
       switch (input._tag) {
         case "Success":
           return Effect.mapBothEager(SchemaParser.decodeEffect(success)(input.success, options), {
             onSuccess: Result_.succeed,
-            onFailure: (issue) =>
-              new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["success"], issue)])
+            onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["success"], issue)])
           })
         case "Failure":
           return Effect.mapBothEager(SchemaParser.decodeEffect(failure)(input.failure, options), {
             onSuccess: Result_.fail,
-            onFailure: (issue) =>
-              new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["failure"], issue)])
+            onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["failure"], issue)])
           })
       }
     },
@@ -10034,13 +10031,7 @@ const RedactedOptionsPayload = declare((input): input is RedactedRepresentationO
 const RedactedRepresentationPayload: Decoder<RedactedRepresentationPayload> = Union([Null, RedactedOptionsPayload])
 
 /**
- * Schema for values that hide sensitive information from error output and
- * inspection.
- *
- * **Details**
- *
- * If the wrapped schema fails, the issue will be redacted to prevent both
- * the actual value and the schema details from being exposed.
+ * Schema for `Redacted` values, which hide their contents from inspection.
  *
  * Options:
  *
@@ -10088,17 +10079,16 @@ export function Redacted<S extends Constraint>(value: S, options?: {
               SchemaParser.decodeUnknownEffect(value)(Redacted_.value(input), poptions),
               {
                 onSuccess: () => input,
-                onFailure: (/** ignore the actual issue because of security reasons */) => {
-                  const oinput = Option_.some(input)
-                  return new SchemaIssue.Composite(ast, oinput, [
-                    new SchemaIssue.Pointer(["value"], new SchemaIssue.InvalidValue(oinput))
+                onFailure: (/** ignore the issue because of security reasons */) => {
+                  return new SchemaIssue.Composite(ast, [
+                    new SchemaIssue.Pointer(["value"], new SchemaIssue.InvalidValue())
                   ])
                 }
               }
             )
         )
       }
-      return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+      return Effect.fail(new SchemaIssue.InvalidType(ast))
     },
     {
       representation: {
@@ -10115,7 +10105,7 @@ export function Redacted<S extends Constraint>(value: S, options?: {
       expected: "Redacted",
       toCodecJson: ([value]) =>
         link<Redacted_.Redacted<S["Encoded"]>>()(
-          redact(value),
+          value,
           {
             decode: SchemaGetter.transform((e) => Redacted_.make(e, { label })),
             encode: disallowJsonEncode ?
@@ -10164,21 +10154,8 @@ export const RedactedReviver = InternalSchema.makeDeclarationReviver(
  * @category models
  * @since 4.0.0
  */
-export interface RedactedFromValue<S extends Constraint>
-  extends decodeTo<Redacted<toType<S>>, middlewareDecoding<S, S["DecodingServices"]>>
-{
+export interface RedactedFromValue<S extends Constraint> extends decodeTo<Redacted<toType<S>>, S> {
   readonly "Rebuild": RedactedFromValue<S>
-}
-
-/**
- * Middleware that wraps decoded errors in `Redacted`, preventing sensitive
- * schema details from leaking in error messages.
- *
- * @category transforming
- * @since 4.0.0
- */
-export function redact<S extends Constraint>(schema: S): middlewareDecoding<S, S["DecodingServices"]> {
-  return middlewareDecoding<S, S["DecodingServices"]>(Effect.mapErrorEager(SchemaIssue.redact))(schema)
 }
 
 /**
@@ -10194,23 +10171,21 @@ export function RedactedFromValue<S extends Constraint>(value: S, options?: {
   readonly label?: string | undefined
   readonly disallowEncode?: boolean | undefined
 }): RedactedFromValue<S> {
-  return redact(value).pipe(
-    decodeTo(
-      Redacted(toType(value), {
-        label: options?.label,
-        disallowJsonEncode: options?.disallowEncode
-      }),
-      {
-        decode: SchemaGetter.transform((t) => Redacted_.make(t, { label: options?.label })),
-        encode: options?.disallowEncode ?
-          SchemaGetter.forbidden((oe) =>
-            "Cannot encode Redacted" +
-            (Option_.isSome(oe) && typeof oe.value.label === "string" ? ` with label: "${oe.value.label}"` : "")
-          ) :
-          SchemaGetter.transform(Redacted_.value)
-      }
-    )
-  )
+  return decodeTo<Redacted<toType<S>>, S>(
+    Redacted(toType(value), {
+      label: options?.label,
+      disallowJsonEncode: options?.disallowEncode
+    }),
+    {
+      decode: SchemaGetter.transform((t) => Redacted_.make(t, { label: options?.label })),
+      encode: options?.disallowEncode ?
+        SchemaGetter.forbidden((oe) =>
+          "Cannot encode Redacted" +
+          (Option_.isSome(oe) && typeof oe.value.label === "string" ? ` with label: "${oe.value.label}"` : "")
+        ) :
+        SchemaGetter.transform(Redacted_.value)
+    }
+  )(value)
 }
 
 /**
@@ -10279,7 +10254,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
     [error, defect],
     ([error, defect]) => (input, ast, options) => {
       if (!Cause_.isReason(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
       switch (input._tag) {
         case "Fail":
@@ -10287,8 +10262,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
             SchemaParser.decodeUnknownEffect(error)(input.error, options),
             {
               onSuccess: Cause_.makeFailReason,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["error"], issue)])
+              onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["error"], issue)])
             }
           )
         case "Die":
@@ -10296,8 +10270,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
             SchemaParser.decodeUnknownEffect(defect)(input.defect, options),
             {
               onSuccess: Cause_.makeDieReason,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["defect"], issue)])
+              onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["defect"], issue)])
             }
           )
         case "Interrupt":
@@ -10472,12 +10445,11 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
       const failures = ArraySchema(CauseReason(error, defect))
       return (input, ast, options) => {
         if (!Cause_.isCause(input)) {
-          return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+          return Effect.fail(new SchemaIssue.InvalidType(ast))
         }
         return Effect.mapBothEager(SchemaParser.decodeUnknownEffect(failures)(input.reasons, options), {
           onSuccess: Cause_.fromReasons,
-          onFailure: (issue) =>
-            new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["failures"], issue)])
+          onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["failures"], issue)])
         })
       }
     },
@@ -10817,7 +10789,7 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
       const cause = Cause(error, defect)
       return (input, ast, options) => {
         if (!Exit_.isExit(input)) {
-          return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+          return Effect.fail(new SchemaIssue.InvalidType(ast))
         }
         switch (input._tag) {
           case "Success":
@@ -10825,8 +10797,7 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
               SchemaParser.decodeUnknownEffect(value)(input.value, options),
               {
                 onSuccess: Exit_.succeed,
-                onFailure: (issue) =>
-                  new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["value"], issue)])
+                onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["value"], issue)])
               }
             )
           case "Failure":
@@ -10834,8 +10805,7 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
               SchemaParser.decodeUnknownEffect(cause)(input.cause, options),
               {
                 onSuccess: Exit_.failCause,
-                onFailure: (issue) =>
-                  new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["cause"], issue)])
+                onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["cause"], issue)])
               }
             )
         }
@@ -11076,12 +11046,11 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
             SchemaParser.decodeUnknownEffect(array)([...input], options),
             {
               onSuccess: (array: ReadonlyArray<readonly [Key["Type"], Value["Type"]]>) => new globalThis.Map(array),
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["entries"], issue)])
+              onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["entries"], issue)])
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
     },
     {
@@ -11189,12 +11158,11 @@ export function HashMap<Key extends Constraint, Value extends Constraint>(key: K
             SchemaParser.decodeUnknownEffect(entries)(HashMap_.toEntries(input), options),
             {
               onSuccess: HashMap_.fromIterable,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["entries"], issue)])
+              onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["entries"], issue)])
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
     },
     {
@@ -11300,12 +11268,11 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
             SchemaParser.decodeUnknownEffect(array)([...input], options),
             {
               onSuccess: (array: ReadonlyArray<Value["Type"]>) => new globalThis.Set(array),
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["values"], issue)])
+              onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["values"], issue)])
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
     },
     {
@@ -11411,12 +11378,11 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
             SchemaParser.decodeUnknownEffect(values)(Arr.fromIterable(input), options),
             {
               onSuccess: HashSet_.fromIterable,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["values"], issue)])
+              onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["values"], issue)])
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
     },
     {
@@ -11529,12 +11495,11 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
             SchemaParser.decodeUnknownEffect(values)(Arr.fromIterable(input), options),
             {
               onSuccess: Chunk_.fromIterable,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(ast, Option_.some(input), [new SchemaIssue.Pointer(["values"], issue)])
+              onFailure: (issue) => new SchemaIssue.Composite(ast, [new SchemaIssue.Pointer(["values"], issue)])
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast))
       }
     },
     {
@@ -11634,7 +11599,7 @@ export const RegExp: RegExp = instanceOf(
           decode: (e) =>
             Effect.try({
               try: () => new globalThis.RegExp(e.source, e.flags),
-              catch: (e) => new SchemaIssue.InvalidValue(Option_.some(e), { message: globalThis.String(e) })
+              catch: () => new SchemaIssue.InvalidValue({ message: "Expected valid RegExp source and flags" })
             }),
           encode: (regExp) =>
             Effect.succeed({
@@ -12465,10 +12430,10 @@ export const File: File = instanceOf(globalThis.File, {
       SchemaTransformation.transformOrFail({
         decode: (e) =>
           Result_.match(Encoding.decodeBase64(e.data), {
-            onFailure: (error) =>
+            onFailure: () =>
               Effect.fail(
-                new SchemaIssue.InvalidValue(Option_.some(e.data), {
-                  message: error.message
+                new SchemaIssue.InvalidValue({
+                  message: "Expected a valid Base64 string"
                 })
               ),
             onSuccess: (bytes) => {
@@ -12489,9 +12454,9 @@ export const File: File = instanceOf(globalThis.File, {
                 lastModified: file.lastModified
               }
             },
-            catch: (e) =>
-              new SchemaIssue.InvalidValue(Option_.some(file), {
-                message: globalThis.String(e)
+            catch: () =>
+              new SchemaIssue.InvalidValue({
+                message: "Expected File to be readable"
               })
           })
       })
@@ -14172,7 +14137,7 @@ function getClassSchemaFactory<S extends Constraint>(
           return input instanceof self ||
               Predicate.hasProperty(input, getClassTypeId(identifier)) ?
             Effect.succeed(input) :
-            Effect.fail(new SchemaIssue.InvalidType(ast, Option_.some(input)))
+            Effect.fail(new SchemaIssue.InvalidType(ast))
         },
         {
           identifier,
@@ -16104,7 +16069,7 @@ export declare namespace Annotations {
      * `message` first, then `expected`, and finally falls back to `<filter>`.
      *
      * Use this to name a failed filter in the default message:
-     * `Expected <expected>, got <actual>`.
+     * `Expected <expected>`.
      */
     readonly expected?: string | undefined
     readonly title?: string | undefined
@@ -16163,7 +16128,7 @@ export declare namespace Annotations {
      * only changing the expected label. For a filter or refinement failure,
      * annotate the filter with `message` to replace the whole filter failure
      * message, or `expected` to keep the default
-     * `Expected <expected>, got <actual>` shape.
+     * `Expected <expected>` shape.
      */
     readonly message?: string | undefined
     /**
@@ -16178,7 +16143,7 @@ export declare namespace Annotations {
      * Identifiers are used by schema tooling, including JSON Schema
      * generation, to name references. The default formatter also uses
      * `identifier` as the expected label for type-level failures, such as
-     * `Expected UserId, got null`.
+     * `Expected UserId`.
      *
      * `identifier` does not name a failed filter or refinement. If the base
      * type matches and a filter fails, put `expected` or `message` on the

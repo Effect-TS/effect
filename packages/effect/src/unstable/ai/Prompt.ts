@@ -12,7 +12,6 @@
 import * as Arr from "../../Array.ts"
 import * as Effect from "../../Effect.ts"
 import { dual } from "../../Function.ts"
-import * as Option from "../../Option.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import * as Predicate from "../../Predicate.ts"
 import * as Schema from "../../Schema.ts"
@@ -1833,8 +1832,7 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
           SchemaParser.decodeEffect(Schema.Array(Message))(input.content),
           {
             onSuccess: makePrompt,
-            onFailure: () =>
-              new SchemaIssue.InvalidValue(Option.some(input.content), { message: "Invalid Prompt messages" })
+            onFailure: () => new SchemaIssue.InvalidValue({ message: "Invalid Prompt messages" })
           }
         ),
       encode: (prompt) =>
@@ -1842,8 +1840,7 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
           SchemaParser.encodeEffect(Schema.Array(Message))(prompt.content),
           {
             onSuccess: (messages) => ({ content: messages }),
-            onFailure: () =>
-              new SchemaIssue.InvalidValue(Option.some(prompt.content), { message: "Invalid Prompt messages" })
+            onFailure: () => new SchemaIssue.InvalidValue({ message: "Invalid Prompt messages" })
           }
         )
     })
