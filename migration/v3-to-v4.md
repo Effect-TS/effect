@@ -4,7 +4,7 @@
 
 Base: `3d390f232bdbc3f0d3d6a2ae3c775084f494b547` (`3d390f232bdbc3f0d3d6a2ae3c775084f494b547`)
 
-Head: `main` (`24e0e93dc307dc2c2ae86caacb7289e1dab3c103`)
+Head: `main` (`a94cbed84e9e49bea4bff925599c0f19c4e3deab`)
 
 This file is generated from the API diff and `migration/annotations/*.yaml`.
 
@@ -5171,6 +5171,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `CliApp.make` -> `Command.make`: Build the executable Command directly; there is no separate CliApp wrapper.
 
+- `CliApp.run` -> `Command.run`: The CliApp wrapper was removed. Attach the execute function with Command.withHandler, then run the Command with its version; v4 reads arguments through the CLI environment instead of accepting args and execute at this call.
+
 ### `@effect/cli/CliConfig`
 
 - `CliConfig.CliConfig` -> `CliConfig.CliConfig.Service`: The service was redesigned to configure built-in global flags; old parser and help switches were removed.
@@ -5178,6 +5180,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `CliConfig.defaultConfig` -> `CliConfig.defaults`: Renamed to defaults with the redesigned service shape.
 
 - `CliConfig.defaultLayer` -> `CliConfig.layer`: Call CliConfig.layer() to provide the defaults.
+
+- `CliConfig.layer` -> `CliConfig.layer`: The layer constructor remains, but its options configure the redesigned CliConfig.Service for built-in global flags.
 
 - `CliConfig.make` -> `CliConfig.make`: The constructor remains but accepts the redesigned service options.
 
@@ -5324,6 +5328,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HelpDoc.h3` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
 
 - `HelpDoc.isDescriptionList` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
+
+- `HelpDoc.isEmpty` -> `none`: The Empty variant was removed when HelpDoc became a structured record; inspect the relevant flags, args, subcommands, and examples arrays when an application-specific emptiness test is needed.
 
 - `HelpDoc.isEnumeration` -> `none`: The v3 document-node ADT was removed; v4 uses a structured HelpDoc record rendered by CliOutput.
 
@@ -5601,6 +5607,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/Entity`
 
+- `Entity.HandlersFrom` -> `effect/unstable/cluster/Entity#HandlersFrom`: Moved into core Effect; handler results now use Rpc.WrapperOr, which accepts either the raw RPC result or its wrapper.
+
+- `Entity.Replier.Success` -> `effect/unstable/cluster/Entity#Replier.Success`: Moved into core Effect; streaming replies may use Queue.Dequeue with Cause.Done instead of the removed Mailbox type.
+
 - `Entity.TypeId` -> `none`: The entity marker is private in v4. Use Entity.isEntity for runtime refinement.
 
 ### `@effect/cluster/EntityAddress`
@@ -5667,6 +5677,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/cluster/MessageStorage`
 
+- `MessageStorage.Encoded` -> `effect/unstable/cluster/MessageStorage#Encoded`: Moved into core Effect; use the v4 Envelope.Encoded and Reply.Encoded aliases in custom encoded storage implementations.
+
 - `MessageStorage.make` -> `effect/unstable/cluster/MessageStorage#make`: Moved into core Effect. Context service projections now use the Service property instead of Type.
 
 ### `@effect/cluster/Reply`
@@ -5685,9 +5697,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RunnerAddress.TypeId` -> `none`: The runner-address marker is private in v4. Use the exported RunnerAddress class and schema.
 
+### `@effect/cluster/RunnerStorage`
+
+- `RunnerStorage.makeMemory` -> `effect/unstable/cluster/RunnerStorage#makeMemory`: Moved into core Effect; it still constructs the in-memory RunnerStorage service implementation.
+
 ### `@effect/cluster/Runners`
 
 - `Runners.make` -> `effect/unstable/cluster/Runners#make`: Moved into core Effect with the same callbacks and requirements; Context service projections now use Service instead of Type.
+
+- `Runners.makeNoop` -> `effect/unstable/cluster/Runners#makeNoop`: Moved into core Effect; it returns the Context.Service implementation through the Service projection instead of Type.
 
 ### `@effect/cluster/ShardId`
 
@@ -5810,6 +5828,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `EventJournal.RemoteIdTypeId` -> `effect/unstable/eventlog/EventJournal#RemoteIdTypeId`: Import RemoteIdTypeId from the v4 EventJournal module; it is now a string brand.
 
 - `EventJournal.makeEntryId` -> `effect/unstable/eventlog/EventJournal#makeEntryIdUnsafe`: The unchecked EntryId constructor was renamed to makeEntryIdUnsafe.
+
+- `EventJournal.makeMemory` -> `effect/unstable/eventlog/EventJournal#makeMemory`: The in-memory constructor moved into core Effect and now returns the Context.Service implementation through its Service projection.
 
 - `EventJournal.makeRemoteId` -> `effect/unstable/eventlog/EventJournal#makeRemoteIdUnsafe`: The unchecked RemoteId constructor was renamed to makeRemoteIdUnsafe.
 
@@ -5978,6 +5998,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Sse.RetryTypeId` -> `none`: The Retry identifier is private in v4; use effect/unstable/encoding/Sse#Retry and Retry.is instead of inspecting the brand.
 
 ### `@effect/experimental/VariantSchema`
+
+- `VariantSchema.Extract` -> `effect/unstable/schema/VariantSchema#Extract`: Import the retained helper from the v4 module; its erased schema constraint is Schema.Top.
 
 - `VariantSchema.Field.Any` -> `effect/unstable/schema/VariantSchema#Field.Any`: Import the retained Field.Any helper type from the v4 unstable VariantSchema module.
 
@@ -6871,6 +6893,10 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpClient.retry` -> `HttpClient.retry`: Retained; the Schedule error channel is included in the resulting client error type.
 
+- `HttpClient.tap` -> `effect/unstable/http/HttpClient#tap`: Moved to the v4 HTTP module with the same response-effect callback and client error/service widening.
+
+- `HttpClient.transform` -> `effect/unstable/http/HttpClient#transform`: Moved to the v4 HTTP module with the same request-aware transformation shape.
+
 - `HttpClient.withSpanNameGenerator` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.SpanNameGenerator, f))`: The convenience combinator was removed; provide the reference around response effects.
 
 - `HttpClient.withTracerDisabledWhen` -> `HttpClient.transformResponse(Effect.provideService(HttpClient.TracerDisabledWhen, predicate))`: The convenience combinator was removed; provide the reference around response effects.
@@ -6943,6 +6969,14 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpLayerRouter.PathInput` -> `HttpRouter.PathInput`: Moved to the consolidated v4 router.
 
+- `HttpLayerRouter.Request.From` -> `HttpRouter.Request.From`: Moved with the layer-oriented router into the consolidated HttpRouter module.
+
+- `HttpLayerRouter.Request.Only` -> `HttpRouter.Request.Only`: Moved with the layer-oriented router into the consolidated HttpRouter module.
+
+- `HttpLayerRouter.Route.Context` -> `HttpRouter.Route.Context`: Moved with the Route helper types into the consolidated HttpRouter module.
+
+- `HttpLayerRouter.Route.Error` -> `HttpRouter.Route.Error`: Moved with the Route helper types into the consolidated HttpRouter module.
+
 - `HttpLayerRouter.RouteContext` -> `HttpRouter.RouteContext`: Moved to the consolidated v4 router.
 
 - `HttpLayerRouter.RouteTypeId` -> `none`: Route nominal ids are internal in v4; construct routes with HttpRouter.route.
@@ -6951,9 +6985,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpLayerRouter.TypeId` -> `none`: The router nominal service id is internal in v4; use HttpRouter.HttpRouter.
 
+- `HttpLayerRouter.add` -> `HttpRouter.add`: Moved to the consolidated HttpRouter; it still returns a route-registration Layer.
+
+- `HttpLayerRouter.addAll` -> `HttpRouter.addAll`: Moved to the consolidated HttpRouter; it still registers route values through a Layer and supports a prefix option.
+
 - `HttpLayerRouter.addHttpApi` -> `HttpApiBuilder.layer`: HTTP API registration moved to effect/unstable/httpapi.
 
 - `HttpLayerRouter.cors` -> `HttpRouter.cors`: HttpLayerRouter was consolidated into v4 HttpRouter.
+
+- `HttpLayerRouter.layer` -> `HttpRouter.layer`: Use the layer for the consolidated HttpRouter service.
 
 - `HttpLayerRouter.make` -> `HttpRouter.make`: The layer-oriented router became the sole v4 HttpRouter implementation.
 
@@ -6962,6 +7002,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `HttpLayerRouter.schemaNoBody` -> `HttpRouter.schemaNoBody`: Moved to the consolidated router with v4 Schema types.
 
 - `HttpLayerRouter.serve` -> `HttpRouter.serve`: Moved to the consolidated router; pass the route-registration layer.
+
+- `HttpLayerRouter.toHttpEffect` -> `HttpRouter.toHttpEffect`: Moved to the consolidated HttpRouter; route-not-found failures now use HttpServerError.HttpServerError.
 
 - `HttpLayerRouter.toWebHandler` -> `HttpRouter.toWebHandler`: Moved to the consolidated router for building a Fetch handler and disposer.
 
@@ -7075,6 +7117,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `HttpServer.make` -> `HttpServer.make`: Retained; it returns the Context.Service implementation.
 
+- `HttpServer.serve` -> `effect/unstable/http/HttpServer#serve`: Moved to the v4 HTTP module; the application is now an Effect producing HttpServerResponse rather than the separate HttpApp model.
+
 ### `@effect/platform/HttpServerError`
 
 - `HttpServerError.HttpServerError` -> `HttpServerError.HttpServerError | HttpServerError.ServeError`: Handler failures became a tagged wrapper, while ServeError remains separate.
@@ -7187,11 +7231,15 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Multipart.TypeId` -> `typeof Multipart.TypeId`: The runtime marker remains exported, but the separate type alias was removed.
 
+- `Multipart.makeChannel` -> `effect/unstable/http/Multipart#makeChannel`: The channel constructor moved and no longer accepts bufferSize; input and output chunks use non-empty readonly arrays.
+
 - `Multipart.schemaJson` -> `Multipart.schemaJson`: The JSON-field decoder remains in effect/unstable/http/Multipart and uses v4 Schema constraints.
 
 - `Multipart.withFieldMimeTypes` -> `Effect.provideService(Multipart.FieldMimeTypes, mimeTypes)`: Provide the v4 Context.Reference around the effect.
 
 - `Multipart.withLimits` -> `Effect.provideContext(effect, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the effect; Option-valued limits became optional plain values.
+
+- `Multipart.withLimits.Options` -> `Multipart.withLimits.Options`: Limit fields now use optional plain numbers or SizeInput values; convert Option.none to undefined and Option.some(value) to value.
 
 - `Multipart.withLimitsStream` -> `Stream.provideContext(stream, Multipart.limitsServices(options))`: Build the multipart limit context and provide it to the stream; Option-valued limits became optional plain values.
 
@@ -7485,6 +7533,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Rpc.SuccessChunkEncoded` -> `Rpc.SuccessExitSchema<R>["Encoded"]`: The alias was removed; for a streaming RPC the exit success schema is the stream element schema.
 
+- `Rpc.SuccessEncoded` -> `effect/unstable/rpc/Rpc#SuccessEncoded`: Retained after the module move and now accounts for the RPC's explicit service-requirement parameter.
+
 - `Rpc.SuccessExitEncoded` -> `Rpc.SuccessExitSchema<R>["Encoded"]`: Use the new exit success schema and select its Encoded member; streaming RPC exits use the element schema separately from the terminal void exit.
 
 - `Rpc.SuccessSchema` -> `effect/unstable/rpc/Rpc#SuccessSchema`: Retained and uses the v4 Schema.Top constraint.
@@ -7505,6 +7555,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `RpcClient.Protocol` -> `effect/unstable/rpc/RpcClient#Protocol`: Retained as a Context.Service; custom transports now route multiple client ids through run and send.
 
+- `RpcClient.RpcClient.From` -> `effect/unstable/rpc/RpcClient#RpcClient.From`: Generated clients now preserve full RPC tags as property names, remove the Prefix type parameter, and expose streaming results through the asQueue option instead of asMailbox.
+
 - `RpcClient.RpcClient.NonPrefixed` -> `none`: The prefix-partition helper was removed; v4 clients map every RPC tag directly to an object property.
 
 - `RpcClient.RpcClient.Prefixes` -> `none`: Nested prefix client objects were removed; v4 preserves the full RPC tag as the generated client property.
@@ -7521,6 +7573,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 ### `@effect/rpc/RpcGroup`
 
+- `RpcGroup.Any` -> `effect/unstable/rpc/RpcGroup#Any`: Moved unchanged as the erased RpcGroup constraint.
+
 - `RpcGroup.HandlerContext` -> `effect/unstable/rpc/RpcGroup#HandlerServices`: Renamed for v4 service terminology and now includes explicit RPC requirements after removing middleware-provided services.
 
 - `RpcGroup.HandlersContext` -> `effect/unstable/rpc/RpcGroup#HandlersServices`: Renamed; it unions HandlerServices across the handler object.
@@ -7528,6 +7582,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `RpcGroup.TypeId` -> `none`: The group marker is private in v4; use RpcGroup.Any for an erased group constraint.
 
 ### `@effect/rpc/RpcMessage`
+
+- `RpcMessage.RequestId` -> `effect/unstable/rpc/RpcMessage#RequestId`: Request ids are now branded string or number values; convert bigint ids before calling the retained RequestId constructor.
 
 - `RpcMessage.RequestIdTypeId` -> `effect/unstable/rpc/RpcMessage#RequestId`: The public symbol marker was removed; use the branded RequestId type and RequestId constructor rather than inspecting its brand.
 
@@ -7580,6 +7636,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `RpcServer.fiberIdClientInterrupt` -> `effect/unstable/rpc/RpcSchema#ClientAbort`: The sentinel FiberId was replaced by a Cause annotation; inspect ClientAbort in the interruption cause when client cancellation must be distinguished.
 
 - `RpcServer.fiberIdTransientInterrupt` -> `none`: The internal transient sentinel was removed; protocol shutdown and disconnect now interrupt with the active parent fiber identity.
+
+- `RpcServer.layer` -> `effect/unstable/rpc/RpcServer#layer`: Moved to core Effect; server requirements are now derived with Rpc.ServicesServer rather than the former combined Rpc.Context alias.
 
 - `RpcServer.layerHttpRouter` -> `effect/unstable/rpc/RpcServer#layerHttp`: Renamed; it installs an HTTP or WebSocket RPC route into the v4 HttpRouter service.
 
@@ -7739,6 +7797,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Model.fieldFromKey` -> `effect/Schema#encodeKeys`: The field helper was removed; apply encodeKeys to each concrete struct or model-variant schema that crosses the naming boundary.
 
+- `Model.fields` -> `effect/unstable/schema/Model#fields`: Moved with the variant-model helpers into core Effect's unstable schema package.
+
 - `Model.makeDataLoaders` -> `effect/unstable/sql/SqlModel#makeResolvers`: Returns RequestResolvers instead of callable loaders; execute with SqlResolver.request and use RequestResolver delay/batch combinators for batching controls.
 
 ### `@effect/sql/SqlClient`
@@ -7804,6 +7864,8 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 - `Statement.join` -> `effect/unstable/sql/Statement#join`: Moved with the same empty, single, and multiple-clause behavior.
 
 - `Statement.make` -> `effect/unstable/sql/Statement#make`: Moved with the same constructor inputs.
+
+- `Statement.makeCompiler` -> `effect/unstable/sql/Statement#makeCompiler`: Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks.
 
 - `Statement.setTransformer` -> `Layer.succeed(Statement.CurrentTransformer, transformer)`: The helper was removed; provide the CurrentTransformer reference as a layer.
 
@@ -8935,7 +8997,7 @@ Schema.toArbitraryLazy(schema)
 
 - `Clock.CancelToken` -> `none`: The public clock scheduler and cancellation-token protocol were removed. Use Effect.sleep for delays and Effect interruption or Fiber.interrupt for cancellation.
 
-- `Clock.Clock` -> `Clock.Clock`: The service interface remains, but unsafeCurrentTimeMillis and unsafeCurrentTimeNanos were renamed to currentTimeMillisUnsafe and currentTimeNanosUnsafe, and the public type-id field was removed.
+- `Clock.Clock` -> `Clock.Clock`: The service interface remains, but unsafeCurrentTimeMillis and unsafeCurrentTimeNanos were renamed to currentTimeMillisUnsafe and currentTimeNanosUnsafe, the public type-id field was removed, and custom implementations must add monotonicTimeNanosUnsafe plus monotonicTimeNanos for elapsed-time measurement.
 
 - `Clock.ClockScheduler` -> `none`: The low-level clock scheduler is no longer public. Express scheduling with Effect.sleep and cancel the running fiber through normal Effect interruption.
 
@@ -10547,7 +10609,7 @@ FastCheck.uuid({ version: 4 })
 
 - `FiberRefs.forkAs` -> `none`: Context is inherited automatically when a v4 child fiber is forked; custom per-reference fork patches were removed.
 
-- `FiberRefs.get` -> `Context.getOption`: Read an explicitly stored service from Context; Context.Reference defaults can be read with Context.get.
+- `FiberRefs.get` -> `Context.getOption`: Read the service as an Option. Context.Reference defaults also produce Some; use Context.getOrUndefined when only stored overrides should count.
 
 - `FiberRefs.getOrDefault` -> `Context.get`: Reads an override or the Context.Reference default value.
 
@@ -10695,6 +10757,8 @@ stream.pipe(
 - `HashSet.flatMap` -> `HashSet.fromIterable + Iterable.flatMap`: Preserve set deduplication with HashSet.fromIterable(Iterable.flatMap(self, f)); no direct flatMap remains.
 
 - `HashSet.forEach` -> `Iterable.forEach`: HashSet remains Iterable, so Iterable.forEach(self, f) preserves eager side-effecting traversal.
+
+- `HashSet.mutate` -> `none`: Transient mutation was removed; reassign immutable HashSet.add/remove results or build a complete replacement with HashSet.fromIterable.
 
 - `HashSet.partition` -> `HashSet.filter`: Build [excluded, satisfying] with complementary HashSet.filter calls, or use one reduction when the predicate is expensive.
 
@@ -10976,6 +11040,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `List.empty` -> `Array.empty`: List was removed; use Array.empty. It preserves ordering but returns arrays rather than persistent linked lists.
 
+- `List.every` -> `Array.every`: List was removed; run the predicate against the replacement array with Array.every.
+
 - `List.filter` -> `Array.filter`: List was removed; use Array.filter. It preserves ordering but returns arrays rather than persistent linked lists.
 
 - `List.filterMap` -> `Array.filterMap`: List was removed; use Array.filterMap and change the callback from Option to Result.
@@ -11017,6 +11083,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 - `List.reverse` -> `Array.reverse`: List was removed; use Array.reverse. It preserves ordering but returns arrays rather than persistent linked lists.
 
 - `List.size` -> `Array.length`: List was removed; use the replacement array length helper or the .length property.
+
+- `List.some` -> `Array.some`: List was removed; run the predicate against the replacement array with Array.some.
 
 - `List.splitAt` -> `Array.splitAt`: List was removed; use Array.splitAt. It preserves ordering but returns arrays rather than persistent linked lists.
 
@@ -11616,6 +11684,8 @@ JsonSchema.toDocumentDraft07(Schema.toJsonSchemaDocument(schema))
 
 - `Micro.acquireUseRelease` -> `Effect.acquireUseRelease`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
+- `Micro.all` -> `Effect.all`: Micro was removed in v4; use Effect.all with the same iterable-or-record input and concurrency/discard options.
+
 - `Micro.as` -> `Effect.as`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
 
 - `Micro.asSome` -> `Effect.asSome`: Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect.
@@ -12128,6 +12198,8 @@ SchemaIssue.makeFormatterStandardSchemaV1()(error.issue).issues
 
 - `ParseResult.DecodeUnknown` -> `Schema.decodeUnknownEffect`: Use the function type returned by Schema.decodeUnknownEffect.
 
+- `ParseResult.Forbidden` -> `SchemaIssue.Forbidden`: Forbidden failures use the v4 SchemaIssue class; its constructor takes issue annotations only and no longer stores the schema AST or actual input value.
+
 - `ParseResult.Missing` -> `SchemaIssue.MissingKey`: Missing-key failures use the v4 SchemaIssue class.
 
 - `ParseResult.ParseErrorTypeId` -> `none`: The public symbol was removed; use Schema.isSchemaError for runtime narrowing.
@@ -12435,6 +12507,8 @@ Schema.toFormatter(schema)
 - `Queue.droppingStrategy` -> `Queue.make({ strategy: "dropping" })`: Strategies are now constructor options rather than public Strategy values; Queue.dropping is the bounded convenience constructor.
 
 - `Queue.isEmpty` -> `Effect.map(Queue.size(self), (size) => size === 0)`: The dedicated helper was removed; derive emptiness from Queue.size.
+
+- `Queue.isShutdown` -> `queue.state._tag === "Done"`: The dedicated helper was removed; inspect the public queue lifecycle state. Done includes normal completion and failure, not only explicit shutdown.
 
 - `Queue.slidingStrategy` -> `Queue.make({ strategy: "sliding" })`: Strategies are now constructor options rather than public Strategy values; Queue.sliding is the bounded convenience constructor.
 
@@ -12782,7 +12856,9 @@ Schema.toFormatter(schema)
 
 - `Runtime.setFiberRef` -> `Context.add`: FiberRefs became Context.Reference values; add the Reference override to the Context.
 
-- `Runtime.updateFiberRefs` -> `Context.add`: There is no aggregate FiberRefs update; add targeted Context.Reference overrides explicitly.
+- `Runtime.updateContext` -> `Context transformation + Effect.run*With`: Runtime values were removed; transform the carried Context directly, then pass the result to the corresponding Effect.run\*With function.
+
+- `Runtime.updateFiberRefs` -> `Context.add`: There is no aggregate FiberRefs update; add targeted Context.Reference overrides to the carried Context explicitly.
 
 - `Runtime.updateRuntimeFlags` -> `none`: Runtime flags and aggregate patches were removed; configure each semantic behavior independently.
 
@@ -14744,6 +14820,8 @@ Schema.toFormatter(schema)
 
 - `SortedMap.getOrder` -> `none`: HashMap does not store an Order; retain and pass the key Order explicitly.
 
+- `SortedMap.has` -> `HashMap.has`: Use direct membership testing on the replacement HashMap; retain the key Order separately for sorted observations.
+
 - `SortedMap.headOption` -> `HashMap.entries + Array.sortWith + Array.head`: Sort entries by key with the retained Order, then take the optional first entry.
 
 - `SortedMap.isEmpty` -> `HashMap.isEmpty`: Direct emptiness check on the replacement immutable map.
@@ -14761,6 +14839,8 @@ Schema.toFormatter(schema)
 - `SortedMap.map` -> `HashMap.map`: The value-and-key callback remains, but result iteration is unordered until explicitly sorted.
 
 - `SortedMap.partition` -> `HashMap.filter`: Build [excluded, satisfying] with complementary HashMap.filter calls; adapt the callback to the old key predicate.
+
+- `SortedMap.reduce` -> `HashMap.reduce`: Reduce the replacement HashMap, but explicitly sort entries first if the old key-order traversal affected the result.
 
 - `SortedMap.remove` -> `HashMap.remove`: Direct persistent removal; explicitly sort only when observing entries.
 
@@ -14782,11 +14862,15 @@ Schema.toFormatter(schema)
 
 - `SortedSet.empty` -> `HashSet.empty`: SortedSet was removed; use an immutable HashSet and retain the element Order separately.
 
+- `SortedSet.every` -> `HashSet.every`: Run the predicate against the replacement HashSet; sort first only if traversal order has observable effects.
+
 - `SortedSet.filter` -> `HashSet.filter`: Direct persistent filtering on the replacement set; traversal is unordered until explicitly sorted.
 
 - `SortedSet.fromIterable` -> `HashSet.fromIterable`: Use HashSet.fromIterable and retain the element Order separately.
 
 - `SortedSet.getEquivalence` -> `Equal.asEquivalence`: HashSet implements Effect equality by set content; use Equal.asEquivalence\<HashSet.HashSet\<A\>\>().
+
+- `SortedSet.has` -> `HashSet.has`: Use direct membership testing on the replacement HashSet.
 
 - `SortedSet.intersection` -> `HashSet.intersection + HashSet.fromIterable`: Convert the old general iterable argument to HashSet before taking the intersection.
 
@@ -14801,6 +14885,8 @@ Schema.toFormatter(schema)
 - `SortedSet.remove` -> `HashSet.remove`: Direct persistent removal on the replacement set.
 
 - `SortedSet.size` -> `HashSet.size`: Direct size query on the replacement immutable set.
+
+- `SortedSet.some` -> `HashSet.some`: Run the predicate against the replacement HashSet; sort first only if traversal order has observable effects.
 
 - `SortedSet.union` -> `HashSet.union + HashSet.fromIterable`: Convert the old general iterable argument to HashSet before taking the union.
 
@@ -15299,6 +15385,8 @@ switch (strategy) {
 
 - `TArray.empty` -> `TxChunk.empty`: TArray was removed; TxChunk is the closest v4 transactional indexed collection.
 
+- `TArray.every` -> `Effect.map(TxChunk.get(self), Chunk.every(predicate))`: TArray was removed; read the TxChunk snapshot and test every element inside the surrounding Effect.tx transaction.
+
 - `TArray.everySTM` -> `Effect.tx + TxChunk.get + Effect traversal`: TArray was removed. Read the TxChunk snapshot and perform the effectful traversal explicitly within the same Effect.tx transaction.
 
 - `TArray.findFirstIndex` -> `TxChunk.get + Chunk/Array operation`: TArray was removed. Read the TxChunk snapshot and perform the equivalent pure collection query inside the surrounding Effect.tx transaction.
@@ -15346,6 +15434,8 @@ switch (strategy) {
 - `TArray.reduceSTM` -> `Effect.tx + TxChunk.get + Effect traversal`: TArray was removed. Read the TxChunk snapshot and perform the effectful traversal explicitly within the same Effect.tx transaction.
 
 - `TArray.size` -> `TxChunk.size`: TxChunk is the closest v4 rewrite target. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TArray.some` -> `Effect.map(TxChunk.get(self), Chunk.some(predicate))`: TArray was removed; read the TxChunk snapshot and test for a matching element inside the surrounding Effect.tx transaction.
 
 - `TArray.someSTM` -> `Effect.tx + TxChunk.get + Effect traversal`: TArray was removed. Read the TxChunk snapshot and perform the effectful traversal explicitly within the same Effect.tx transaction.
 
@@ -15461,6 +15551,10 @@ switch (strategy) {
 
 - `TPriorityQueue.size` -> `TxPriorityQueue.size`: Import TxPriorityQueue from "effect/TxPriorityQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TPriorityQueue.take` -> `TxPriorityQueue.take`: Import TxPriorityQueue from "effect/TxPriorityQueue"; the operation now returns an ordinary Effect, so compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TPriorityQueue.takeAll` -> `TxPriorityQueue.takeAll`: Import TxPriorityQueue from "effect/TxPriorityQueue"; it returns an ordinary Effect containing the priority-ordered Array.
+
 - `TPriorityQueue.toArray` -> `TxPriorityQueue.toArray`: Import TxPriorityQueue from "effect/TxPriorityQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 - `TPriorityQueue.toChunk` -> `Effect.map(TxPriorityQueue.toArray(self), Chunk.fromIterable)`: The direct Chunk conversion was removed; convert the retained Array snapshot explicitly.
@@ -15480,6 +15574,8 @@ switch (strategy) {
 - `TPubSub.isEmpty` -> `TxPubSub.isEmpty`: Import TxPubSub from "effect/TxPubSub"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 - `TPubSub.isFull` -> `TxPubSub.isFull`: Import TxPubSub from "effect/TxPubSub"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TPubSub.isShutdown` -> `TxPubSub.isShutdown`: Import TxPubSub from "effect/TxPubSub"; the operation now returns an ordinary Effect.
 
 - `TPubSub.shutdown` -> `TxPubSub.shutdown`: Import TxPubSub from "effect/TxPubSub"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
@@ -15519,6 +15615,8 @@ switch (strategy) {
 
 - `TQueue.isFull` -> `TxQueue.isFull`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
+- `TQueue.isShutdown` -> `TxQueue.isShutdown`: Import TxQueue from "effect/TxQueue"; it checks the richer done lifecycle and returns an ordinary Effect.
+
 - `TQueue.isTDequeue` -> `TxQueue.isTxDequeue`: The runtime guard was renamed with the TxDequeue type.
 
 - `TQueue.isTEnqueue` -> `TxQueue.isTxEnqueue`: The runtime guard was renamed with the TxEnqueue type.
@@ -15540,6 +15638,8 @@ switch (strategy) {
 - `TQueue.sliding` -> `TxQueue.sliding`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
 - `TQueue.take` -> `TxQueue.take`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
+
+- `TQueue.takeAll` -> `TxQueue.takeAll`: The operation now blocks until at least one item is available, returns a NonEmptyArray, and propagates the queue error channel through an ordinary Effect.
 
 - `TQueue.takeBetween` -> `TxQueue.takeBetween`: Import TxQueue from "effect/TxQueue"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic.
 
