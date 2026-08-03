@@ -752,6 +752,38 @@ describe("OpenAiLanguageModel", () => {
           }
         }))))
 
+      it.each(["gpt-4.1", "gpt-5.6"] as const)(
+        "maps stable web search action to tool call parameters with %s",
+        (model) =>
+          Effect.runPromise(
+            Effect.gen(function*() {
+              const toolkit = Toolkit.make(OpenAiTool.WebSearch({}))
+              const result = yield* LanguageModel.generateText({
+                prompt: "Search the web",
+                toolkit
+              }).pipe(Effect.provide(OpenAiLanguageModel.model(model)))
+
+              const toolCall = result.content.find((part) => part.type === "tool-call")
+              assert.isDefined(toolCall)
+              assert.deepStrictEqual(toolCall.params, {
+                action: { type: "search", query: "Effect TypeScript" }
+              })
+
+              const toolResult = result.content.find((part) => part.type === "tool-result")
+              assert.isDefined(toolResult)
+              assert.deepStrictEqual(toolResult.result, {
+                action: { type: "search", query: "Effect TypeScript" },
+                status: "completed"
+              })
+            }).pipe(Effect.provide(makeTestLayer({
+              body: {
+                model,
+                output: [makeWebSearchCall()]
+              }
+            })))
+          )
+      )
+
       it.effect("uses canonical OpenAiMcp name for mcp_approval_request", () =>
         Effect.gen(function*() {
           const result = yield* LanguageModel.generateText({
@@ -1097,6 +1129,59 @@ describe("OpenAiLanguageModel", () => {
 
         const toolParamsEnd = parts.find((part) => part.type === "tool-params-end" && part.id === "call_1")
         assert.isDefined(toolParamsEnd)
+      }))
+
+    it.effect("waits for the stable streamed web search action before emitting the tool call", () =>
+      Effect.gen(function*() {
+        const toolkit = Toolkit.make(OpenAiTool.WebSearch({}))
+        const streamEvents = [
+          {
+            type: "response.created",
+            sequence_number: 1,
+            response: makeDefaultResponse({ status: "in_progress" })
+          },
+          {
+            type: "response.output_item.added",
+            sequence_number: 2,
+            output_index: 0,
+            item: {
+              type: "web_search_call",
+              id: "ws_123",
+              status: "in_progress"
+            }
+          },
+          {
+            type: "response.output_item.done",
+            sequence_number: 3,
+            output_index: 0,
+            item: makeWebSearchCall()
+          }
+        ] as unknown as ReadonlyArray<typeof Generated.ResponseStreamEvent.Type>
+
+        const parts = yield* LanguageModel.streamText({
+          prompt: "Search the web",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer(streamEvents))
+        )
+
+        const toolCalls = parts.filter((part) => part.type === "tool-call")
+        strictEqual(toolCalls.length, 1)
+        const toolCall = toolCalls[0]
+        assert.isDefined(toolCall)
+        assert.deepStrictEqual(toolCall.params, {
+          action: { type: "search", query: "Effect TypeScript" }
+        })
+
+        const toolResult = parts.find((part) => part.type === "tool-result")
+        assert.isDefined(toolResult)
+        assert.deepStrictEqual(toolResult.result, {
+          action: { type: "search", query: "Effect TypeScript" },
+          status: "completed"
+        })
       }))
 
     it.effect("handles reasoning summary events when reasoning state is missing", () =>
@@ -1509,6 +1594,16 @@ const makeFunctionCall = (
   name,
   arguments: JSON.stringify(args),
   status: "completed",
+  ...overrides
+})
+
+const makeWebSearchCall = (
+  overrides: Partial<Generated.WebSearchToolCall> = {}
+): Generated.WebSearchToolCall => ({
+  type: "web_search_call",
+  id: "ws_123",
+  status: "completed",
+  action: { type: "search", query: "Effect TypeScript" },
   ...overrides
 })
 
