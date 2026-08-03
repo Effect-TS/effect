@@ -653,6 +653,22 @@ export const fromDateUnsafe: (date: Date) => Utc = Internal.fromDateUnsafe
 export const makeUnsafe: <A extends DateTime.Input>(input: A) => DateTime.PreserveZone<A> = Internal.makeUnsafe
 
 /**
+ * Creates a `DateTime.Utc` from the number of seconds since the Unix epoch.
+ *
+ * **Example** (Creating from epoch seconds)
+ *
+ * ```ts import.meta.vitest
+ * import { DateTime } from "effect"
+ *
+ * DateTime.fromEpochSeconds(1704067200).toJSON() // => "2024-01-01T00:00:00.000Z"
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromEpochSeconds: (seconds: number) => Utc = Internal.fromEpochSeconds
+
+/**
  * Create a `DateTime.Zoned` using `DateTime.makeUnsafe` and a time zone.
  *
  * **When to use**
