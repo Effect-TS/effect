@@ -47,7 +47,7 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
     remoteId,
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       storage.getOrCreateSessionAuthBinding(publicKey, signingPublicKey),
-    onWrite: Effect.fnUntraced(function*(data) {
+    onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys) {
       const request = yield* WriteEntries.decode(data).pipe(
         Effect.mapError((_) =>
           new EventLogProtocolError({
@@ -58,6 +58,14 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
           })
         )
       )
+      if (!authenticatedPublicKeys.has(request.publicKey)) {
+        return yield* new EventLogProtocolError({
+          requestTag: "WriteEntries",
+          publicKey: request.publicKey,
+          code: "Forbidden",
+          message: "Identity is not authenticated"
+        })
+      }
       if (request.encryptedEntries.length === 0) return
       const entries = request.encryptedEntries.map(({ encryptedEntry, entryId }) =>
         new PersistedEntry({
