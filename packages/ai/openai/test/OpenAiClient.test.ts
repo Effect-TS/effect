@@ -10,6 +10,8 @@ import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientError from "effect/unstable/http/HttpClientError"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
+import * as Socket from "effect/unstable/socket/Socket"
+import { WS } from "vitest-websocket-mock"
 
 describe("OpenAiClient", () => {
   describe("make", () => {
@@ -448,6 +450,59 @@ describe("OpenAiClient", () => {
   })
 
   describe("createResponseStream", () => {
+    it.live("terminates an SSE stream at response.failed", () =>
+      Effect.gen(function*() {
+        const client = yield* OpenAiClient.OpenAiClient
+        const [, stream] = yield* client.createResponseStream({ model: "gpt-4o", input: "test" })
+        const result = yield* Stream.runCollect(stream).pipe(Effect.timeoutOption("100 millis"))
+
+        assert.strictEqual(result._tag, "Some")
+      }).pipe(Effect.provide(makeTestLayer(undefined, {
+        _tag: "Sse",
+        events: [{
+          type: "response.failed",
+          sequence_number: 1,
+          response: makeResponseBody({ status: "failed" })
+        }],
+        keepOpen: true
+      }))))
+
+    it.live("terminates a WebSocket stream at response.failed", () =>
+      Effect.gen(function*() {
+        const server = yield* Effect.acquireRelease(
+          Effect.sync(() => new WS("wss://api.openai.com/v1/responses", { jsonProtocol: true })),
+          (server) =>
+            Effect.sync(() => {
+              server.close()
+              WS.clean()
+            })
+        )
+        const event = {
+          type: "response.failed",
+          sequence_number: 1,
+          response: makeResponseBody({ status: "failed" })
+        }
+        const result = yield* OpenAiClient.withWebSocketMode(
+          Effect.gen(function*() {
+            const client = yield* OpenAiClient.OpenAiClient
+            const [, stream] = yield* client.createResponseStream({ model: "gpt-4o", input: "test" })
+            const [events] = yield* Effect.all([
+              Stream.runCollect(stream),
+              Effect.promise(() => server.nextMessage).pipe(
+                Effect.tap(() => Effect.sync(() => server.send(event)))
+              )
+            ], { concurrency: "unbounded" })
+            return events
+          })
+        ).pipe(
+          Effect.provide(makeTestLayer()),
+          Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url)),
+          Effect.timeoutOption("1 second")
+        )
+
+        assert.strictEqual(result._tag, "Some")
+      }))
+
     it.effect("accepts keepalive stream events", () =>
       Effect.gen(function*() {
         const client = yield* OpenAiClient.OpenAiClient
@@ -537,6 +592,7 @@ type MockResponse =
   | {
     readonly _tag: "Sse"
     readonly events: ReadonlyArray<typeof OpenAiSchema.ResponseStreamEvent.Encoded>
+    readonly keepOpen?: boolean | undefined
     readonly status?: number | undefined
     readonly headers?: Record<string, string> | undefined
   }
@@ -657,7 +713,7 @@ const makeResponse = (
     ? JSON.stringify(response.body)
     : response.events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("")
 
-  return HttpClientResponse.fromWeb(
+  const httpResponse = HttpClientResponse.fromWeb(
     request,
     new Response(body, {
       status: response.status ?? 200,
@@ -667,4 +723,18 @@ const makeResponse = (
       }
     })
   )
+  if (response._tag !== "Sse" || response.keepOpen !== true) return httpResponse
+
+  const stream = Stream.concat(
+    Stream.succeed(new TextEncoder().encode(body)),
+    Stream.never
+  )
+  // `fromWeb` stores the ReadableStream internally, so a proxy is needed to replace it with a non-terminating test stream.
+  return new Proxy(httpResponse, {
+    get(target, property) {
+      if (property === "stream") return stream
+      const value = Reflect.get(target, property, target)
+      return typeof value === "function" ? value.bind(target) : value
+    }
+  })
 }
