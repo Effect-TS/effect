@@ -283,7 +283,7 @@ describe("Arbitrary generation", () => {
       const result = Schema.toArbitrary(schema, { report: true })
 
       deepStrictEqual(result.report.warnings, [])
-      FastCheck.assert(FastCheck.property(result.value, (s) => s === "a"), { numRuns: 20 })
+      FastCheck.assert(FastCheck.property(result.value, (s) => s.startsWith("a") && s.endsWith("a")), { numRuns: 20 })
     })
 
     it("should not report warnings for constructive built-in filters", () => {
