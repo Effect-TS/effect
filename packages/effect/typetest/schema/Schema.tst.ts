@@ -1,4 +1,3 @@
-import type { SchemaAST } from "effect"
 import {
   Brand,
   Context,
@@ -7,6 +6,7 @@ import {
   Option,
   Predicate,
   Schema,
+  type SchemaAST,
   SchemaGetter,
   SchemaTransformation,
   Struct,
@@ -26,6 +26,12 @@ const revealClass = <Self, S extends Schema.Struct<Schema.Struct.Fields>, Inheri
 ): Schema.Class<Self, S, Inherited> => klass
 
 describe("Schema", () => {
+  it("RedactedFromValue", () => {
+    const schema = Schema.RedactedFromValue(Schema.String)
+    expect(schema).type.toBe<Schema.RedactedFromValue<Schema.String>>()
+    expect(schema.from).type.toBe<Schema.String>()
+  })
+
   describe("variance", () => {
     it("Type", () => {
       const f1 = hole<

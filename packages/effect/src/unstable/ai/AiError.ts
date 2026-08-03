@@ -729,7 +729,7 @@ export class InvalidOutputError extends Schema.ErrorClass<InvalidOutputError>(
    *   Schema.decodeUnknownEffect(Schema.Number)("not a number").pipe(Effect.flip)
    * )
    * const parseError = AiError.InvalidOutputError.fromSchemaError(schemaError)
-   * parseError.description // => 'Expected number, got "not a number"'
+   * parseError.description // => "Expected number"
    * ```
    *
    * @since 4.0.0

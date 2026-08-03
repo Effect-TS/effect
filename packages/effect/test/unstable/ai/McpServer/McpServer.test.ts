@@ -253,7 +253,7 @@ describe("McpServer", () => {
         assert.isFalse(handlerInvoked)
         assert.instanceOf(error, McpSchema.InvalidParams)
         assert.match(error.message, /Invalid parameters for tool 'OptionalStringTool'/)
-        assert.match(error.message, /Expected string \| undefined, got null/)
+        assert.match(error.message, /Expected string \| undefined/)
         assert.match(error.message, /at \["signature"\]/)
       }))
 
