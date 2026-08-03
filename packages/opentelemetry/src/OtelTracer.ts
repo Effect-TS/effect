@@ -543,8 +543,8 @@ const makeSpanContext = (
   annotations?: Context.Context<never>
 ): Otel.SpanContext => {
   const otelParent = Context.getOrUndefined(span.annotations, OtelParentSpanContext)
-  if (Predicate.isNotUndefined(otelParent)) {
-    if (Predicate.isUndefined(annotations)) return otelParent
+  if (otelParent !== undefined) {
+    if (annotations === undefined) return otelParent
     const traceFlags = extractTraceService(span, annotations, OtelTraceFlags)
     const traceState = extractTraceService(span, annotations, OtelTraceState)
     return {
