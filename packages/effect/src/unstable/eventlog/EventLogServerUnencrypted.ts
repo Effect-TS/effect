@@ -146,7 +146,7 @@ export const layerRpcHandlers: Layer.Layer<
     remoteId,
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       storage.getOrCreateSessionAuthBinding(publicKey, signingPublicKey),
-    onWrite: Effect.fnUntraced(function*(data) {
+    onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys) {
       const request = yield* WriteEntriesUnencrypted.decode(data).pipe(
         Effect.mapError((_) =>
           new EventLogProtocolError({
@@ -157,6 +157,14 @@ export const layerRpcHandlers: Layer.Layer<
           })
         )
       )
+      if (!authenticatedPublicKeys.has(request.publicKey)) {
+        return yield* new EventLogProtocolError({
+          requestTag: "WriteEntries",
+          publicKey: request.publicKey,
+          code: "Forbidden",
+          message: "Identity is not authenticated"
+        })
+      }
       if (!Arr.isReadonlyArrayNonEmpty(request.entries)) return
 
       const resolvedStoreId = yield* mapping.resolve({
