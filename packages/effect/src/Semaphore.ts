@@ -285,20 +285,35 @@ class SemaphoreImpl implements Semaphore {
 
   withPermits(n: number) {
     return <A, E, R>(self: Effect.Effect<A, E, R>) =>
-      internal.uninterruptibleMask((restore) =>
-        internal.flatMap(
-          restore(this.take(n)),
-          (permits) =>
-            internal.onExitPrimitive(
-              restore(self),
-              () => {
-                this.updateTakenUnsafe(internal.getCurrentFiber()!, (taken) => taken - permits)
-                return undefined
-              },
-              true
-            )
-        )
-      )
+      internal.uninterruptibleMask((restore) => {
+        const acquire: Effect.Effect<A, E, R> = internal.suspend(() => {
+          if (this.free < n) {
+            const wait = internal.callback<void>((resume) => {
+              if (this.free >= n) return resume(internal.void)
+              const observer = () => {
+                if (this.free < n) return
+                this.waiters.delete(observer)
+                resume(internal.void)
+              }
+              this.waiters.add(observer)
+              return internal.sync(() => {
+                this.waiters.delete(observer)
+              })
+            })
+            return internal.flatMap(restore(wait), () => acquire)
+          }
+          this.taken += n
+          return internal.onExitPrimitive(
+            restore(self),
+            () => {
+              this.updateTakenUnsafe(internal.getCurrentFiber()!, (taken) => taken - n)
+              return undefined
+            },
+            true
+          )
+        })
+        return acquire
+      })
   }
 
   readonly withPermit = this.withPermits(1)
