@@ -60,7 +60,7 @@ describe("Multipart", () => {
       strictEqual(error.reason._tag, "TooManyParts")
     }))
 
-  it.effect("uses distinct persisted paths for files with the same client filename", () =>
+  it.effect("returns distinct persisted file paths for files with the same client filename", () =>
     Effect.scoped(Effect.gen(function*() {
       const formData = new FormData()
       formData.append("first", new File(["one"], "same.txt"))
@@ -69,16 +69,22 @@ describe("Multipart", () => {
         HttpClientRequest.bodyFormData(HttpClientRequest.post("https://example.com"), formData)
       )
       const writes: Array<string> = []
-      yield* Multipart.toPersisted(
+      const persisted = yield* Multipart.toPersisted(
         request.multipartStream,
         (path) => Effect.sync(() => writes.push(path))
       ).pipe(
-        Effect.provideService(FileSystem.FileSystem, {
-          makeTempDirectoryScoped: () => Effect.succeed("/tmp/audit")
-        } as any),
+        Effect.provideService(
+          FileSystem.FileSystem,
+          FileSystem.makeNoop({
+            makeTempDirectoryScoped: () => Effect.succeed("/tmp/audit")
+          })
+        ),
         Effect.provide(Path.layer)
       )
-      notStrictEqual(writes[0], writes[1])
+      const first = (persisted.first as Array<Multipart.PersistedFile>)[0]
+      const second = (persisted.second as Array<Multipart.PersistedFile>)[0]
+      notStrictEqual(first.path, second.path)
+      deepStrictEqual(writes, [first.path, second.path])
     })))
 
   it.effect("responds based on the reason and is ignored by the ErrorReporter", () =>
