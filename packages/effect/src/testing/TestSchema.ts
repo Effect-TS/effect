@@ -459,7 +459,7 @@ export class Encoding<S extends Schema.Constraint> {
   readonly encodeUnknownEffect: (
     input: unknown,
     options?: SchemaAST.ParseOptions
-  ) => Effect.Effect<S["Type"], SchemaIssue.Issue, S["EncodingServices"]>
+  ) => Effect.Effect<S["Encoded"], SchemaIssue.Issue, S["EncodingServices"]>
   readonly options?: {
     readonly parseOptions?: SchemaAST.ParseOptions | undefined
   } | undefined
