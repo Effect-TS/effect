@@ -23,7 +23,7 @@ const MemoryLive = MessageStorage.layerMemory.pipe(
 
 describe("MessageStorage", () => {
   it("keeps distinct address and RPC key tuples distinct", () => {
-    const first = Envelope.primaryKeyByAddress({
+    const firstOptions = {
       address: EntityAddress.make({
         shardId: ShardId.make("default", 1),
         entityType: EntityType.make("a/b"),
@@ -31,7 +31,8 @@ describe("MessageStorage", () => {
       }),
       tag: "d",
       id: "e"
-    })
+    }
+    const first = Envelope.primaryKeyByAddress(firstOptions)
     const second = Envelope.primaryKeyByAddress({
       address: EntityAddress.make({
         shardId: ShardId.make("default", 1),
@@ -42,6 +43,7 @@ describe("MessageStorage", () => {
       id: "e"
     })
     assert.notStrictEqual(first, second)
+    assert.strictEqual(first, Envelope.primaryKeyByAddress(firstOptions))
   })
 
   describe("memory", () => {

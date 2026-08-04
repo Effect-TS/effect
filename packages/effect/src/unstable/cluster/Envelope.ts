@@ -417,6 +417,8 @@ export const primaryKey = <R extends Rpc.Any>(envelope: Envelope<R>): string | n
   })
 }
 
+const encodePrimaryKeyComponent = (value: string): string => value.replaceAll("%", "%25").replaceAll("/", "%2F")
+
 /**
  * Builds a storage primary-key string from an entity address, RPC tag, and
  * payload primary-key ID.
@@ -431,4 +433,6 @@ export const primaryKeyByAddress = (options: {
 }): string =>
   // storage drivers with fixed-width key columns (e.g. SqlMessageStorage)
   // hash this composed key at their own boundary
-  `${options.address.entityType}/${options.address.entityId}/${options.tag}/${options.id}`
+  `${encodePrimaryKeyComponent(options.address.entityType)}/${encodePrimaryKeyComponent(options.address.entityId)}/${
+    encodePrimaryKeyComponent(options.tag)
+  }/${encodePrimaryKeyComponent(options.id)}`
