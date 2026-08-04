@@ -49,6 +49,19 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
 
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
 
+describe("Prompt.date", () => {
+  it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
+    Effect.gen(function*() {
+      const initial = new Date(2024, 0, 11, 12, 0, 0)
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "YY Do A" }))
+      const output = (yield* MockTerminal.displayLines).map(String).join("\n")
+
+      assert.include(output, "24 11th PM")
+    }).pipe(Effect.provide(TestLayer)))
+})
+
 describe("Prompt.integer", () => {
   it.effect("submits the default value", () =>
     Effect.gen(function*() {
