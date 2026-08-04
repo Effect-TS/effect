@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import {
@@ -22,6 +22,28 @@ const MemoryLive = MessageStorage.layerMemory.pipe(
 )
 
 describe("MessageStorage", () => {
+  it("keeps distinct address and RPC key tuples distinct", () => {
+    const first = Envelope.primaryKeyByAddress({
+      address: EntityAddress.make({
+        shardId: ShardId.make("default", 1),
+        entityType: EntityType.make("a/b"),
+        entityId: EntityId.make("c")
+      }),
+      tag: "d",
+      id: "e"
+    })
+    const second = Envelope.primaryKeyByAddress({
+      address: EntityAddress.make({
+        shardId: ShardId.make("default", 1),
+        entityType: EntityType.make("a"),
+        entityId: EntityId.make("b/c")
+      }),
+      tag: "d",
+      id: "e"
+    })
+    assert.notStrictEqual(first, second)
+  })
+
   describe("memory", () => {
     it.effect("saves a request", () =>
       Effect.gen(function*() {
