@@ -62,6 +62,16 @@ describe("Prompt.date", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
+describe("Prompt.all", () => {
+  it("constructs a prompt for an empty record", () => {
+    assert.isTrue(Prompt.isPrompt(Prompt.all({})))
+  })
+
+  it("constructs a prompt for a non-array iterable", () => {
+    assert.isTrue(Prompt.isPrompt(Prompt.all(new Set([Prompt.succeed(1)]))))
+  })
+})
+
 describe("Prompt.integer", () => {
   it.effect("submits the default value", () =>
     Effect.gen(function*() {
