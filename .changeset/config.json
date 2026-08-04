@@ -22,6 +22,7 @@
       "@effect/atom-solid",
       "@effect/atom-vue",
       "@effect/docgen",
+      "@effect/doctest",
       "@effect/openapi-generator",
       "@effect/opentelemetry",
       "@effect/platform-browser",

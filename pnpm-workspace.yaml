@@ -31,3 +31,4 @@ onlyBuiltDependencies:
 
 patchedDependencies:
   '@changesets/get-github-info@1.0.0-next.4': patches/@changesets__get-github-info@1.0.0-next.4.patch
+  '@changesets/read@1.0.0-next.10': patches/@changesets__read@1.0.0-next.10.patch
