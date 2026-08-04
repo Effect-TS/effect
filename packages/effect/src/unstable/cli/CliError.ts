@@ -115,7 +115,7 @@ export type CliError =
  * @category errors
  * @since 4.0.0
  */
-export class UnrecognizedOption extends Schema.TaggedErrorClass<UnrecognizedOption>(
+export class UnrecognizedOption extends Schema.TaggedError<UnrecognizedOption>(
   `${TypeId}/UnrecognizedOption`
 )("UnrecognizedOption", {
   option: Schema.String,
@@ -168,7 +168,7 @@ export class UnrecognizedOption extends Schema.TaggedErrorClass<UnrecognizedOpti
  * @category errors
  * @since 4.0.0
  */
-export class DuplicateOption extends Schema.TaggedErrorClass<DuplicateOption>(
+export class DuplicateOption extends Schema.TaggedError<DuplicateOption>(
   `${TypeId}/DuplicateOption`
 )("DuplicateOption", {
   option: Schema.String,
@@ -225,7 +225,7 @@ export class DuplicateOption extends Schema.TaggedErrorClass<DuplicateOption>(
  * @category errors
  * @since 4.0.0
  */
-export class MissingOption extends Schema.TaggedErrorClass<MissingOption>(
+export class MissingOption extends Schema.TaggedError<MissingOption>(
   `${TypeId}/MissingOption`
 )("MissingOption", {
   option: Schema.String
@@ -278,7 +278,7 @@ export class MissingOption extends Schema.TaggedErrorClass<MissingOption>(
  * @category errors
  * @since 4.0.0
  */
-export class MissingArgument extends Schema.TaggedErrorClass<MissingArgument>(
+export class MissingArgument extends Schema.TaggedError<MissingArgument>(
   `${TypeId}/MissingArgument`
 )("MissingArgument", {
   argument: Schema.String
@@ -319,7 +319,7 @@ export class MissingArgument extends Schema.TaggedErrorClass<MissingArgument>(
  * @category errors
  * @since 4.0.0
  */
-export class UnexpectedArgument extends Schema.TaggedErrorClass<UnexpectedArgument>(
+export class UnexpectedArgument extends Schema.TaggedError<UnexpectedArgument>(
   `${TypeId}/UnexpectedArgument`
 )("UnexpectedArgument", {
   arguments: Schema.Array(Schema.String)
@@ -376,7 +376,7 @@ export class UnexpectedArgument extends Schema.TaggedErrorClass<UnexpectedArgume
  * @category errors
  * @since 4.0.0
  */
-export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
+export class InvalidValue extends Schema.TaggedError<InvalidValue>(
   `${TypeId}/InvalidValue`
 )("InvalidValue", {
   option: Schema.String,
@@ -446,7 +446,7 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
  * @category errors
  * @since 4.0.0
  */
-export class UnknownSubcommand extends Schema.TaggedErrorClass<UnknownSubcommand>(
+export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
   `${TypeId}/UnknownSubcommand`
 )("UnknownSubcomand", {
   subcommand: Schema.String,
@@ -513,7 +513,7 @@ export class UnknownSubcommand extends Schema.TaggedErrorClass<UnknownSubcommand
  * @category errors
  * @since 4.0.0
  */
-export class UserError extends Schema.TaggedErrorClass<UserError>(
+export class UserError extends Schema.TaggedError<UserError>(
   `${TypeId}/UserError`
 )("UserError", {
   cause: Schema.Defect()
@@ -585,7 +585,7 @@ export type NonShowHelpErrors = typeof NonShowHelpErrors.Type
  * @category errors
  * @since 4.0.0
  */
-export class ShowHelp extends Schema.TaggedErrorClass<ShowHelp>(
+export class ShowHelp extends Schema.TaggedError<ShowHelp>(
   `${TypeId}/ShowHelp`
 )("ShowHelp", {
   commandPath: Schema.Array(Schema.String),

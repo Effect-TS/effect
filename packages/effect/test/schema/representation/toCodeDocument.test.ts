@@ -100,20 +100,20 @@ describe("toCodeDocument", () => {
     })
 
     it("Error", () => {
-      assertSchema({ schema: Schema.Error() }, {
-        codes: makeCode(`Schema.Error()`, "globalThis.Error")
+      assertSchema({ schema: Schema.ErrorInstance() }, {
+        codes: makeCode(`Schema.ErrorInstance()`, "globalThis.Error")
       })
     })
 
     it("Error with stack", () => {
-      assertSchema({ schema: Schema.Error({ includeStack: true }) }, {
-        codes: makeCode(`Schema.Error({"includeStack":true})`, "globalThis.Error")
+      assertSchema({ schema: Schema.ErrorInstance({ includeStack: true }) }, {
+        codes: makeCode(`Schema.ErrorInstance({"includeStack":true})`, "globalThis.Error")
       })
     })
 
     it("Error with excluded cause", () => {
-      assertSchema({ schema: Schema.Error({ excludeCause: true }) }, {
-        codes: makeCode(`Schema.Error({"excludeCause":true})`, "globalThis.Error")
+      assertSchema({ schema: Schema.ErrorInstance({ excludeCause: true }) }, {
+        codes: makeCode(`Schema.ErrorInstance({"excludeCause":true})`, "globalThis.Error")
       })
     })
 
