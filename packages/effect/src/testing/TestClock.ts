@@ -247,6 +247,7 @@ export const make = Effect.fnUntraced(function*(
   const warningSemaphore = yield* Semaphore.make(1)
 
   let currentTimestamp: number = new Date(0).getTime()
+  let currentWallNanos = BigInt(0)
   let currentMonotonicNanos = BigInt(0)
   let warningState: WarningState = WarningState.Start()
 
@@ -255,7 +256,7 @@ export const make = Effect.fnUntraced(function*(
   }
 
   function currentTimeNanosUnsafe(): bigint {
-    return BigInt(Math.floor(currentTimestamp * 1000000))
+    return currentWallNanos
   }
 
   function monotonicTimeNanosUnsafe(): bigint {
@@ -338,6 +339,9 @@ export const make = Effect.fnUntraced(function*(
       const deltaMillis = timestamp - currentTimestamp
       if (deltaMillis > 0 && Number.isFinite(deltaMillis)) {
         currentMonotonicNanos += BigInt(Math.round(deltaMillis * 1_000_000))
+      }
+      if (Number.isFinite(timestamp)) {
+        currentWallNanos = BigInt(Math.floor(timestamp * 1_000_000))
       }
       currentTimestamp = timestamp
     }
