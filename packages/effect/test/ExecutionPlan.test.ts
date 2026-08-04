@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual } from "@effect/vitest/utils"
 import { Array, Context, Effect, ExecutionPlan, Exit, Fiber, Latch, Layer, Scheduler, Stream } from "effect"
 
@@ -43,6 +43,19 @@ describe("ExecutionPlan", () => {
     )
   }, {
     provide: Service.C
+  })
+
+  describe("make", () => {
+    it("rejects zero attempts", () => {
+      assert.throws(
+        () =>
+          ExecutionPlan.make({
+            provide: Context.empty(),
+            attempts: 0
+          }),
+        /ExecutionPlan\.make: step\[0\]\.attempts must be greater than 0/
+      )
+    })
   })
 
   describe("Stream.withExecutionPlan", () => {

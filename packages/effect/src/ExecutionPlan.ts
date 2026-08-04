@@ -179,7 +179,7 @@ export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
     | (Steps[number]["schedule"] extends Schedule.Schedule<infer _O, infer _I, infer R> ? R : never)
 }> =>
   makeProto(steps.map((options, i) => {
-    if (options.attempts && options.attempts < 1) {
+    if (options.attempts !== undefined && options.attempts < 1) {
       throw new Error(`ExecutionPlan.make: step[${i}].attempts must be greater than 0`)
     }
     return {
