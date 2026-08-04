@@ -160,7 +160,7 @@ export type TypeId = typeof TypeId
 /**
  * Microsoft SQL Server client service, extending `SqlClient` with typed parameter fragments and stored procedure calls.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface MssqlClient extends Client.SqlClient {
@@ -655,7 +655,7 @@ export const layer = (
 /**
  * Creates the SQL Server statement compiler, using `@1`-style placeholders, bracket-escaped identifiers, and SQL Server `OUTPUT INSERTED` returning clauses.
  *
- * @category compiler
+ * @category constructors
  * @since 4.0.0
  */
 export const makeCompiler = (transform?: (_: string) => string) =>
@@ -707,12 +707,12 @@ function numberToParamName(n: number) {
 /**
  * Default mapping from Effect SQL primitive value kinds to Tedious SQL Server parameter data types.
  *
- * @category configuration
+ * @category constants
  * @since 4.0.0
  */
 export const defaultParameterTypes: Record<Statement.PrimitiveKind, DataType> = {
-  string: Tedious.TYPES.VarChar,
-  number: Tedious.TYPES.Int,
+  string: Tedious.TYPES.NVarChar,
+  number: Tedious.TYPES.Float,
   bigint: Tedious.TYPES.BigInt,
   boolean: Tedious.TYPES.Bit,
   Date: Tedious.TYPES.DateTime,

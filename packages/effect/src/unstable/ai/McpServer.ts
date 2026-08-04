@@ -104,7 +104,7 @@ type CompletionContext = typeof Complete.payloadSchema.Type["context"]
  * Handlers use this service to register capabilities and resolve incoming MCP
  * requests.
  *
- * @category server
+ * @category services
  * @since 4.0.0
  */
 export class McpServer extends Context.Service<McpServer, {
@@ -452,7 +452,7 @@ const layerMcpProtocolState = (
  * tools, resources, and prompts, and forwards queued server notifications to
  * initialized clients.
  *
- * @category constructors
+ * @category running
  * @since 4.0.0
  */
 export const run: (options: {
@@ -1243,7 +1243,7 @@ const toolErrorResult = (message: string): CallToolResult =>
 /**
  * Registers a `Toolkit` with the `McpServer`.
  *
- * @category tools
+ * @category handlers
  * @since 4.0.0
  */
 export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
@@ -1331,7 +1331,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
 /**
  * Registers an `AiToolkit` with the `McpServer`.
  *
- * @category tools
+ * @category layers
  * @since 4.0.0
  */
 export const toolkit = <Tools extends Record<string, Tool.Any>>(
@@ -1395,7 +1395,7 @@ export type ResourceCompletions<Schemas extends ReadonlyArray<Schema.Constraint>
  *
  * @see {@link resource} for the layer-based resource registration wrapper
  *
- * @category resources
+ * @category handlers
  * @since 4.0.0
  */
 export const registerResource: {
@@ -1574,7 +1574,7 @@ export const registerResource: {
  *
  * @see {@link registerResource} for the Effect-level resource registration API
  *
- * @category resources
+ * @category layers
  * @since 4.0.0
  */
 export const resource: {
@@ -1647,7 +1647,7 @@ export const resource: {
  *
  * @see {@link prompt} for the layer-based prompt registration wrapper
  *
- * @category prompts
+ * @category handlers
  * @since 4.0.0
  */
 export const registerPrompt = <
@@ -1772,7 +1772,7 @@ export const registerPrompt = <
  *
  * @see {@link registerPrompt} for the Effect-level prompt registration API
  *
- * @category prompts
+ * @category layers
  * @since 4.0.0
  */
 export const prompt = <
@@ -1810,7 +1810,7 @@ export const prompt = <
  * Accepted content is decoded with the supplied schema, declined requests fail
  * with `ElicitationDeclined`, and canceled requests interrupt the effect.
  *
- * @category elicitation
+ * @category accessors
  * @since 4.0.0
  */
 export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>, unknown>>(options: {
@@ -1847,7 +1847,7 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
 /**
  * Accesses the current client's capabilities.
  *
- * @category capabilities
+ * @category accessors
  * @since 4.0.0
  */
 export const clientCapabilities: Effect.Effect<

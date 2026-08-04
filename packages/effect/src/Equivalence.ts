@@ -54,7 +54,7 @@ import * as Reducer from "./Reducer.ts"
  *
  * @see {@link make}
  * @see {@link strictEqual}
- * @category type class
+ * @category models
  * @since 2.0.0
  */
 export type Equivalence<in A> = (self: A, that: A) => boolean
@@ -89,7 +89,7 @@ export type Equivalence<in A> = (self: A, that: A) => boolean
  *
  * @see {@link Equivalence}
  * @see {@link TypeLambda}
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface EquivalenceTypeLambda extends TypeLambda {

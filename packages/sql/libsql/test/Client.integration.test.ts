@@ -1,6 +1,7 @@
 import { LibsqlClient } from "@effect/sql-libsql"
-import { assert, describe, layer } from "@effect/vitest"
-import { Effect, Layer } from "effect"
+import { assert, describe, it, layer } from "@effect/vitest"
+import { Effect, Exit, Layer } from "effect"
+import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { LibsqlContainer } from "./util.ts"
 
 const Migrations = Layer.effectDiscard(
@@ -15,6 +16,38 @@ const Migrations = Layer.effectDiscard(
 )
 
 describe("Client", () => {
+  it.effect("releases transaction serialization after begin fails", () => {
+    let transactionCalls = 0
+    const transaction = {
+      execute: () => Promise.resolve({ rows: [] }),
+      commit: () => Promise.resolve(),
+      rollback: () => Promise.resolve()
+    }
+    const liveClient = {
+      execute: () => Promise.resolve({ rows: [] }),
+      transaction: () => {
+        transactionCalls++
+        return transactionCalls === 1
+          ? Promise.reject(new Error("transient begin failure"))
+          : Promise.resolve(transaction)
+      }
+    }
+
+    return Effect.gen(function*() {
+      const client = yield* LibsqlClient.make({ liveClient: liveClient as any })
+      const first = yield* Effect.exit(client.withTransaction(Effect.void))
+      assert.isTrue(Exit.isFailure(first))
+
+      yield* Effect.forkChild(client.withTransaction(Effect.void))
+      yield* Effect.yieldNow
+
+      assert.strictEqual(transactionCalls, 2)
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    )
+  })
+
   layer(LibsqlContainer.layerClient, { timeout: "30 seconds" })((it) => {
     it.effect("should work", () =>
       Effect.gen(function*() {

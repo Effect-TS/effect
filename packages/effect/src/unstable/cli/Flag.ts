@@ -491,7 +491,7 @@ export const withAlias: {
  * const kinds = [portFlag.kind, configFlag.kind] // => ["flag", "flag"]
  * ```
  *
- * @category help documentation
+ * @category metadata
  * @since 4.0.0
  */
 export const withDescription: {

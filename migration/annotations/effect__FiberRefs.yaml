@@ -18,9 +18,9 @@ effect/FiberRefs#forkAs:
   note: "Context is inherited automatically when a v4 child fiber is forked; custom per-reference fork patches were removed."
 effect/FiberRefs#get:
   replacement: "Context.getOption"
-  note: "Read an explicitly stored service from Context; Context.Reference defaults can be read with Context.getReferenceUnsafe."
+  note: "Read the service as an Option. Context.Reference defaults also produce Some; use Context.getOrUndefined when only stored overrides should count."
 effect/FiberRefs#getOrDefault:
-  replacement: "Context.getReferenceUnsafe"
+  replacement: "Context.get"
   note: "Reads an override or the Context.Reference default value."
 effect/FiberRefs#joinAs:
   replacement: "none"

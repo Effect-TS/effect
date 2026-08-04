@@ -183,7 +183,7 @@ export interface Metric<in Input, out State> extends Pipeable {
  * const counts = [result.requests.count, result.bytes.count] // => [6, 1024n]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 2.0.0
  */
 export interface Counter<in Input extends number | bigint> extends Metric<Input, CounterState<Input>> {}
@@ -243,7 +243,7 @@ export interface Counter<in Input extends number | bigint> extends Metric<Input,
  * const counts = [result.requests.total, result.errors.total, result.bytes.total] // => [3, 3, 1024000n]
  * ```
  *
- * @category Counter
+ * @category models
  * @since 4.0.0
  */
 export interface CounterState<in Input extends number | bigint> {
@@ -317,7 +317,7 @@ export interface CounterState<in Input extends number | bigint> {
  * const values = [result.statusAnalysis.mostFrequent, result.actionAnalysis.mostFrequent] // => ["200", "login"]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 2.0.0
  */
 export interface Frequency extends Metric<string, FrequencyState> {}
@@ -401,7 +401,7 @@ export interface Frequency extends Metric<string, FrequencyState> {}
  * mostCommon.map(({ key, count }) => [key, count]) // => [["200", 3], ["click", 3]]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 4.0.0
  */
 export interface FrequencyState {
@@ -462,7 +462,7 @@ export interface FrequencyState {
  * const values = [result.memory.currentValue, result.disk.currentValue] // => [704, 5000000000n]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 2.0.0
  */
 export interface Gauge<in Input extends number | bigint> extends Metric<Input, GaugeState<Input>> {}
@@ -530,7 +530,7 @@ export interface Gauge<in Input extends number | bigint> extends Metric<Input, G
  * values // => [23.1, 5000000000n, 15]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 4.0.0
  */
 export interface GaugeState<in Input extends number | bigint> {
@@ -618,7 +618,7 @@ export interface GaugeState<in Input extends number | bigint> {
  * values // => [4, 445, 118]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 2.0.0
  */
 export interface Histogram<Input> extends Metric<Input, HistogramState> {}
@@ -705,7 +705,7 @@ export interface Histogram<Input> extends Metric<Input, HistogramState> {}
  * values // => [5, 50, 750, 1295]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 4.0.0
  */
 export interface HistogramState {
@@ -810,7 +810,7 @@ export interface HistogramState {
  * counts // => [5, 1461, 3]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 2.0.0
  */
 export interface Summary<Input> extends Metric<Input, SummaryState> {}
@@ -892,7 +892,7 @@ export interface Summary<Input> extends Metric<Input, SummaryState> {}
  * values // => [7, 45, 890, 1879]
  * ```
  *
- * @category metrics
+ * @category models
  * @since 4.0.0
  */
 export interface SummaryState {
@@ -974,7 +974,7 @@ export declare namespace Metric {
    * const actual = types // => ["Counter", "Gauge", "Frequency", "Histogram", "Summary"]
    * ```
    *
-   * @category types
+   * @category models
    * @since 4.0.0
    */
   export type Type = "Counter" | "Frequency" | "Gauge" | "Histogram" | "Summary"
@@ -1049,7 +1049,7 @@ export declare namespace Metric {
    * sameAttributes // => [{ service: "api", environment: "production", version: "1.2.3" }, { service: "api", environment: "production", version: "1.2.3" }]
    * ```
    *
-   * @category types
+   * @category models
    * @since 4.0.0
    */
   export type Attributes = AttributeSet | ReadonlyArray<[string, string]>
@@ -1126,7 +1126,7 @@ export declare namespace Metric {
    * const validation = [result.attributes.isValid, result.attributes.totalKeys] // => [true, 9]
    * ```
    *
-   * @category types
+   * @category models
    * @since 4.0.0
    */
   export type AttributeSet = Readonly<Record<string, string>>
@@ -1178,7 +1178,7 @@ export declare namespace Metric {
    * metricIds // => ["requests:Counter", "bytes:Counter", "status_codes:Frequency", "cpu_usage:Gauge", "response_time:Histogram"]
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type Input<A> = A extends Metric<infer _Input, infer _State> ? _Input
@@ -1241,7 +1241,7 @@ export declare namespace Metric {
    * values // => [10, 85.5, 1]
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type State<A> = A extends Metric<infer _Input, infer _State> ? _State
@@ -1286,7 +1286,7 @@ export declare namespace Metric {
    * const state = result // => { currentCount: 6, isIncremental: false }
    * ```
    *
-   * @category interfaces
+   * @category models
    * @since 4.0.0
    */
   export interface Hooks<in Input, out State> {
@@ -1351,7 +1351,7 @@ export declare namespace Metric {
    * const types = [result.counter.type, result.gauge.type, result.frequency.type] // => ["Counter", "Gauge", "Frequency"]
    * ```
    *
-   * @category interfaces
+   * @category models
    * @since 4.0.0
    */
   export interface Metadata<in Input, out State> {
@@ -1423,7 +1423,7 @@ export declare namespace Metric {
    * const counts = [result.counter?.count, result.histogram?.observations] // => [25, 2]
    * ```
    *
-   * @category interfaces
+   * @category models
    * @since 4.0.0
    */
   export interface SnapshotProto<T extends Type, State> {
@@ -1499,7 +1499,7 @@ export declare namespace Metric {
    * const types = result.metricTypes // => ["Counter", "Gauge", "Frequency", "Histogram", "Summary"]
    * ```
    *
-   * @category types
+   * @category models
    * @since 4.0.0
    */
   export type Snapshot =
@@ -1555,7 +1555,7 @@ export declare namespace Metric {
  * const key = result // => { keyValue: "effect/Metric/CurrentMetricAttributes", keyType: "string", isConstant: true }
  * ```
  *
- * @category references
+ * @category constants
  * @since 4.0.0
  */
 export const CurrentMetricAttributesKey = "effect/Metric/CurrentMetricAttributes" as const
@@ -1602,7 +1602,7 @@ export const CurrentMetricAttributesKey = "effect/Metric/CurrentMetricAttributes
  * const actual = attributes // => { service: "api", version: "1.0" }
  * ```
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const CurrentMetricAttributes = Context.Reference<Metric.AttributeSet>(CurrentMetricAttributesKey, {
@@ -1634,7 +1634,7 @@ const MetricRegistryKey = "~effect/observability/Metric/MetricRegistryKey"
  * @see {@link snapshot} for reading all registered metrics from the current `Effect` context
  * @see {@link snapshotUnsafe} for reading all registered metrics from an explicit `Context`
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const MetricRegistry = Context.Reference<Map<string, Metric.Metadata<any, any>>>(
@@ -2021,19 +2021,15 @@ class MetricTransform<in Input, out State, in Input2> extends Metric$<Input2, St
  * ```ts import.meta.vitest
  * import { Metric } from "effect"
  *
- * const counter = Metric.counter("requests")
- * const gauge = Metric.gauge("temperature")
- * const notAMetric = { name: "fake-metric" }
- *
- * const checks = [Metric.isMetric(counter), Metric.isMetric(gauge), Metric.isMetric(notAMetric), Metric.isMetric(null)]
- * checks // => [false, false, false, false]
+ * Metric.isMetric(Metric.counter("requests")) // => true
+ * Metric.isMetric({ name: "requests" }) // => false
  * ```
  *
  * @category guards
  * @since 4.0.0
  */
-export const isMetric = (u: unknown): u is Metric<unknown, never> =>
-  Predicate.hasProperty(u, "~effect/Metric") && u["~effect/Metric"] === "~effect/Metric"
+export const isMetric = (u: unknown): u is Metric<never, unknown> =>
+  Predicate.hasProperty(u, TypeId) && u[TypeId] === TypeId
 
 /**
  * Represents a Counter metric that tracks cumulative numerical values over
@@ -2746,7 +2742,7 @@ export const update: {
  * const values = [value.count, value.sum] // => [1, 250]
  * ```
  *
- * @category mapping
+ * @category annotations
  * @since 2.0.0
  */
 export const mapInput: {
@@ -2808,7 +2804,7 @@ export const mapInput: {
  * const count = value.count // => 3
  * ```
  *
- * @category Input
+ * @category mapping
  * @since 2.0.0
  */
 export const withConstantInput: {
@@ -2873,7 +2869,7 @@ export const withConstantInput: {
  * await Effect.runPromise(Effect.provideService(result, Metric.MetricRegistry, new Map())) // => [2, 1]
  * ```
  *
- * @category Attributes
+ * @category mapping
  * @since 4.0.0
  */
 export const withAttributes: {
@@ -2936,7 +2932,7 @@ export const withAttributes: {
  * const ids = snapshots.map((snapshot) => snapshot.id).sort() // => ["http_requests", "response_time_ms"]
  * ```
  *
- * @category Snapshotting
+ * @category snapshotting
  * @since 2.0.0
  */
 export const snapshot: Effect<ReadonlyArray<Metric.Snapshot>> = InternalEffect.map(
@@ -2995,7 +2991,7 @@ export const snapshot: Effect<ReadonlyArray<Metric.Snapshot>> = InternalEffect.m
  * included // => [true, true, true]
  * ```
  *
- * @category Debugging
+ * @category formatting
  * @since 4.0.0
  */
 export const dump: Effect<string> = InternalEffect.flatMap(InternalEffect.context(), (context) => {
@@ -3063,7 +3059,7 @@ export const dump: Effect<string> = InternalEffect.flatMap(InternalEffect.contex
  * await Effect.runPromise(Effect.provideService(program, Metric.MetricRegistry, new Map())) // => ["http_requests"]
  * ```
  *
- * @category Snapshotting
+ * @category snapshotting
  * @since 4.0.0
  */
 export const snapshotUnsafe = (context: Context.Context<never>): ReadonlyArray<Metric.Snapshot> => {
@@ -3152,7 +3148,7 @@ const attributesToString = (attributes: Metric.AttributeSet): string => {
  * Metric.boundariesFromIterable([-5, 0, 10, 10, 25, 50]) // => [10, 25, 50, Infinity]
  * ```
  *
- * @category boundaries
+ * @category constructors
  * @since 4.0.0
  */
 export const boundariesFromIterable = (iterable: Iterable<number>): ReadonlyArray<number> =>
@@ -3177,7 +3173,7 @@ export const boundariesFromIterable = (iterable: Iterable<number>): ReadonlyArra
  * Metric.linearBoundaries({ start: 10, width: 20, count: 5 }) // => [10, 30, 50, 70, Infinity]
  * ```
  *
- * @category boundaries
+ * @category constructors
  * @since 4.0.0
  */
 export const linearBoundaries = (options: {
@@ -3203,7 +3199,7 @@ export const linearBoundaries = (options: {
  * Metric.exponentialBoundaries({ start: 1, factor: 2, count: 5 }) // => [1, 2, 4, 8, Infinity]
  * ```
  *
- * @category boundaries
+ * @category constructors
  * @since 4.0.0
  */
 export const exponentialBoundaries = (options: {
@@ -3242,7 +3238,7 @@ const fiberFailures = counter("child_fiber_failures", {
  * Metric.FiberRuntimeMetricsKey // => "effect/observability/Metric/FiberRuntimeMetricsKey"
  * ```
  *
- * @category metrics
+ * @category constants
  * @since 4.0.0
  */
 export const FiberRuntimeMetricsKey: "effect/observability/Metric/FiberRuntimeMetricsKey" =
@@ -3271,7 +3267,7 @@ export const FiberRuntimeMetricsKey: "effect/observability/Metric/FiberRuntimeMe
  * events // => ["start", "success"]
  * ```
  *
- * @category metrics
+ * @category services
  * @since 4.0.0
  */
 export interface FiberRuntimeMetricsService {
@@ -3310,12 +3306,12 @@ export interface FiberRuntimeMetricsService {
  * const isDefault = result // => true
  * ```
  *
- * @category runtime metrics
+ * @category services
  * @since 4.0.0
  */
 export const FiberRuntimeMetrics = Context.Reference<FiberRuntimeMetricsService | undefined>(
   InternalMetric.FiberRuntimeMetricsKey,
-  { defaultValue: constUndefined }
+  { fiberCached: true, defaultValue: constUndefined }
 )
 
 /**
@@ -3332,7 +3328,7 @@ export const FiberRuntimeMetrics = Context.Reference<FiberRuntimeMetricsService 
  * ] // => ["function", "function"]
  * ```
  *
- * @category metrics
+ * @category services
  * @since 4.0.0
  */
 export const FiberRuntimeMetricsImpl: FiberRuntimeMetricsService = {
@@ -3372,7 +3368,7 @@ export const FiberRuntimeMetricsImpl: FiberRuntimeMetricsService = {
  * await Effect.runPromise(Effect.provide(program, Metric.enableRuntimeMetricsLayer)) // => true
  * ```
  *
- * @category metrics
+ * @category layers
  * @since 4.0.0
  */
 export const enableRuntimeMetricsLayer = Layer.succeed(FiberRuntimeMetrics)(FiberRuntimeMetricsImpl)
@@ -3411,7 +3407,7 @@ export const enableRuntimeMetricsLayer = Layer.succeed(FiberRuntimeMetrics)(Fibe
  * const values = [result.counterValue.count, result.metricsEnabled] // => [1, false]
  * ```
  *
- * @category metrics
+ * @category layers
  * @since 4.0.0
  */
 export const disableRuntimeMetricsLayer = Layer.succeed(FiberRuntimeMetrics)(undefined)
@@ -3438,7 +3434,7 @@ export const disableRuntimeMetricsLayer = Layer.succeed(FiberRuntimeMetrics)(und
  * await Effect.runPromise(Metric.enableRuntimeMetrics(program)) // => true
  * ```
  *
- * @category metrics
+ * @category providing services
  * @since 4.0.0
  */
 export const enableRuntimeMetrics: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = InternalEffect.provideService(
@@ -3467,7 +3463,7 @@ export const enableRuntimeMetrics: <A, E, R>(self: Effect<A, E, R>) => Effect<A,
  * await Effect.runPromise(Metric.disableRuntimeMetrics(program)) // => true
  * ```
  *
- * @category metrics
+ * @category providing services
  * @since 4.0.0
  */
 export const disableRuntimeMetrics: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = InternalEffect.provideService(
@@ -3500,11 +3496,7 @@ function makeHooks<Input, State>(
 }
 
 function serializeAttributes(attributes: Metric.Attributes): string {
-  return serializeEntries(Array.isArray(attributes) ? attributes : Object.entries(attributes))
-}
-
-function serializeEntries(entries: ReadonlyArray<[string, string]>): string {
-  return entries.map(([key, value]) => `${key}=${value}`).join(",")
+  return JSON.stringify(Array.isArray(attributes) ? attributes : Object.entries(attributes))
 }
 
 function mergeAttributes(

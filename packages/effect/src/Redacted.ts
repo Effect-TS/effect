@@ -153,7 +153,7 @@ export declare namespace Redacted {
  * Redacted.isRedacted(plainString) // => false
  * ```
  *
- * @category refinements
+ * @category guards
  * @since 3.3.0
  */
 export const isRedacted = (u: unknown): u is Redacted<unknown> => hasProperty(u, TypeId)

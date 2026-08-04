@@ -52,7 +52,7 @@ import * as InternalStructuredOutput from "./internal/structured-output.ts"
  * - Compatibility targets standard OpenAI models. Fine-tuned models support a
  *   smaller JSON Schema subset.
  *
- * @category Codec Transformation
+ * @category transforming
  * @since 4.0.0
  */
 export function toCodecOpenAI<T, E, RD, RE>(

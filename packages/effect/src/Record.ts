@@ -152,7 +152,7 @@ export declare namespace ReadonlyRecord {
  * defaults // => { port: 3000, retries: 3 }
  * ```
  *
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface ReadonlyRecordTypeLambda<K extends string = string> extends TypeLambda {
@@ -396,7 +396,7 @@ export const size = <K extends string, A>(self: ReadonlyRecord<K, A>): number =>
  * Record.has(Record.empty<string>(), "c") // => false
  * ```
  *
- * @category guards
+ * @category predicates
  * @since 2.0.0
  */
 export const has: {
@@ -1175,7 +1175,7 @@ export const reduce: {
  * Record.every({ a: 1, b: -1 }, (n) => n > 0) // => false
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 2.0.0
  */
 export const every: {
@@ -1498,7 +1498,7 @@ export function makeReducerIntersection<K extends string, A>(
  * ) // => Option.some(["c", 3])
  * ```
  *
- * @category elements
+ * @category searching
  * @since 3.14.0
  */
 export const findFirst: {

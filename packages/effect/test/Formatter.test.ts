@@ -88,6 +88,11 @@ describe("Formatter", () => {
       strictEqual(format(obj), `{"a":1,"b":[Circular]}`)
     })
 
+    it("preserves repeated non-circular references", () => {
+      const shared = { value: 1 }
+      strictEqual(format({ first: shared, second: shared }), `{"first":{"value":1},"second":{"value":1}}`)
+    })
+
     it("object with null prototype", () => {
       strictEqual(format(Object.create(null)), `{}`)
       strictEqual(format(Object.create(null, { a: { value: 1 } })), `{"a":1}`)
@@ -161,8 +166,8 @@ describe("Formatter", () => {
       strictEqual(format(new A({ a: "a" })), `A({"a":"a"})`)
     })
 
-    it("Schema.ErrorClass", () => {
-      class E extends Schema.ErrorClass<E>("E")({
+    it("Schema.Error", () => {
+      class E extends Schema.Error<E>("E")({
         a: Schema.String
       }) {}
       strictEqual(format(new E({ a: "a" })), `E`)
@@ -225,6 +230,10 @@ describe("Formatter", () => {
   })
 
   describe("formatJson", () => {
+    it("returns valid JSON for undefined input", () => {
+      strictEqual(formatJson(undefined), `null`)
+    })
+
     it("should omit circular references", () => {
       const obj: any = { a: 1 }
       obj.self = obj

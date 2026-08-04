@@ -78,7 +78,7 @@ export const TypeId = "~effect/platform/Path"
  * result.resolved // => "/base/relative/path"
  * ```
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Path {

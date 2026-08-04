@@ -3,7 +3,7 @@
   note: "The public clock scheduler and cancellation-token protocol were removed. Use Effect.sleep for delays and Effect interruption or Fiber.interrupt for cancellation."
 "effect/Clock#Clock":
   replacement: "Clock.Clock"
-  note: "The service interface remains, but unsafeCurrentTimeMillis and unsafeCurrentTimeNanos were renamed to currentTimeMillisUnsafe and currentTimeNanosUnsafe, and the public type-id field was removed."
+  note: "The service interface remains, but unsafeCurrentTimeMillis and unsafeCurrentTimeNanos were renamed to currentTimeMillisUnsafe and currentTimeNanosUnsafe, the public type-id field was removed, and custom implementations must add monotonicTimeNanosUnsafe plus monotonicTimeNanos for elapsed-time measurement."
 "effect/Clock#ClockScheduler":
   replacement: "none"
   note: "The low-level clock scheduler is no longer public. Express scheduling with Effect.sleep and cancel the running fiber through normal Effect interruption."

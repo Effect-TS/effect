@@ -92,7 +92,7 @@ export interface FiberMap<in out K, out A = unknown, out E = unknown>
  * actual // => [true, false, false]
  * ```
  *
- * @category refinements
+ * @category guards
  * @since 2.0.0
  */
 export const isFiberMap = (u: unknown): u is FiberMap<unknown> => Predicate.hasProperty(u, TypeId)

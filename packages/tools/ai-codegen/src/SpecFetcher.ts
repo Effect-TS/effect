@@ -43,7 +43,7 @@ export class SpecFetchError extends Data.TaggedError("SpecFetchError")<{
 /**
  * Service for fetching OpenAPI specifications.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface SpecFetcher {

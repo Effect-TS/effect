@@ -109,7 +109,7 @@ export function format(input: unknown, options?: {
   readonly ignoreToString?: boolean | undefined
 }): string {
   const space = options?.space ?? 0
-  const seen = new WeakSet<object>()
+  const ancestors = new WeakSet<object>()
   const gap = !space ? "" : (typeof space === "number" ? " ".repeat(space) : space)
   const ind = (d: number) => gap.repeat(d)
 
@@ -128,11 +128,13 @@ export function format(input: unknown, options?: {
 
   function recur(v: unknown, d = 0): string {
     if (Array.isArray(v)) {
-      if (seen.has(v)) return CIRCULAR
-      seen.add(v)
-      if (!gap || v.length <= 1) return `[${v.map((x) => recur(x, d)).join(",")}]`
-      const inner = v.map((x) => recur(x, d + 1)).join(",\n" + ind(d + 1))
-      return `[\n${ind(d + 1)}${inner}\n${ind(d)}]`
+      if (ancestors.has(v)) return CIRCULAR
+      ancestors.add(v)
+      const output = !gap || v.length <= 1
+        ? `[${v.map((x) => recur(x, d)).join(",")}]`
+        : `[\n${ind(d + 1)}${v.map((x) => recur(x, d + 1)).join(",\n" + ind(d + 1))}\n${ind(d)}]`
+      ancestors.delete(v)
+      return output
     }
 
     if (v instanceof Date) return formatDate(v)
@@ -163,24 +165,28 @@ export function format(input: unknown, options?: {
     if (typeof v === "bigint") return String(v) + "n"
 
     if (typeof v === "object" || typeof v === "function") {
-      if (seen.has(v)) return CIRCULAR
-      seen.add(v)
+      if (ancestors.has(v)) return CIRCULAR
+      ancestors.add(v)
 
-      if (symbolRedactable in v) return format(getRedacted(v as any))
-
-      if (Symbol.iterator in v) {
-        return `${v.constructor.name}(${recur(Array.from(v as any), d)})`
+      let output: string
+      if (symbolRedactable in v) {
+        output = format(getRedacted(v as any))
+      } else if (Symbol.iterator in v) {
+        output = `${v.constructor.name}(${recur(Array.from(v as any), d)})`
+      } else {
+        const keys = ownKeys(v)
+        if (!gap || keys.length <= 1) {
+          const body = `{${keys.map((k) => `${formatPropertyKey(k)}:${recur((v as any)[k], d)}`).join(",")}}`
+          output = wrap(v, body)
+        } else {
+          const body = `{\n${
+            keys.map((k) => `${ind(d + 1)}${formatPropertyKey(k)}: ${recur((v as any)[k], d + 1)}`).join(",\n")
+          }\n${ind(d)}}`
+          output = wrap(v, body)
+        }
       }
-
-      const keys = ownKeys(v)
-      if (!gap || keys.length <= 1) {
-        const body = `{${keys.map((k) => `${formatPropertyKey(k)}:${recur((v as any)[k], d)}`).join(",")}}`
-        return wrap(v, body)
-      }
-      const body = `{\n${
-        keys.map((k) => `${ind(d + 1)}${formatPropertyKey(k)}: ${recur((v as any)[k], d + 1)}`).join(",\n")
-      }\n${ind(d)}}`
-      return wrap(v, body)
+      ancestors.delete(v)
+      return output
     }
 
     return String(v)
@@ -244,9 +250,15 @@ function safeToString(input: any): string {
  * Uses `JSON.stringify` internally with a replacer that tracks the current
  * object ancestry. Circular references are replaced with `undefined`, which
  * omits them from object output. `Redactable` values are automatically redacted
- * before serialization. Values not supported by JSON, such as `BigInt`,
- * `Symbol`, `undefined`, and functions, follow standard `JSON.stringify`
- * behavior. The `space` parameter controls indentation and defaults to `0`.
+ * before serialization. Values not supported by JSON otherwise follow standard
+ * `JSON.stringify` behavior. The `space` parameter controls indentation and
+ * defaults to `0`.
+ *
+ * **Gotchas**
+ *
+ * When the root input is `undefined`, a symbol, or a function, `formatJson`
+ * returns `"null"` instead of the `undefined` returned by `JSON.stringify`.
+ * Nested values retain standard `JSON.stringify` behavior.
  *
  * **Example** (Formatting compact JSON)
  *
@@ -301,5 +313,5 @@ export function formatJson(input: unknown, options?: {
       return redacted
     },
     options?.space
-  )
+  ) ?? "null"
 }

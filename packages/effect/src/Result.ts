@@ -206,7 +206,7 @@ export interface ResultUnifyIgnore {}
  * (e.g., `map`, `flatMap` abstractions). You typically do not need to
  * reference this directly.
  *
- * @category type lambdas
+ * @category utility types
  * @since 4.0.0
  */
 export interface ResultTypeLambda extends TypeLambda {
@@ -240,14 +240,14 @@ export declare namespace Result {
   /**
    * Extracts the failure type `E` from `Result<A, E>`.
    *
-   * @category Type Level
+   * @category utility types
    * @since 4.0.0
    */
   export type Failure<T extends Result<any, any>> = [T] extends [Result<infer _A, infer _E>] ? _E : never
   /**
    * Extracts the success type `A` from `Result<A, E>`.
    *
-   * @category Type Level
+   * @category utility types
    * @since 4.0.0
    */
   export type Success<T extends Result<any, any>> = [T] extends [Result<infer _A, infer _E>] ? _A : never
@@ -1538,7 +1538,7 @@ export const gen: Gen.Gen<ResultTypeLambda> = (...args) => {
  * @see {@link gen} for an alternative generator-based syntax
  * @see {@link bindTo} for starting a do-notation chain from an existing Result
  *
- * @category do notation
+ * @category constructors
  * @since 2.0.0
  */
 export const Do: Result<{}> = succeed({})
@@ -1575,7 +1575,7 @@ export const Do: Result<{}> = succeed({})
  * @see {@link let_ let} for pure computed fields
  * @see {@link bindTo} to wrap an initial Result into a named field
  *
- * @category do notation
+ * @category sequencing
  * @since 2.0.0
  */
 export const bind: {
@@ -1618,7 +1618,7 @@ export const bind: {
  * @see {@link Do} to start from an empty object
  * @see {@link bind} to add more fields
  *
- * @category do notation
+ * @category mapping
  * @since 2.0.0
  */
 export const bindTo: {
@@ -1669,7 +1669,7 @@ export {
    * @see {@link Do} to start the do-notation chain
    * @see {@link bind} for Result-producing fields
    *
-   * @category do notation
+   * @category mapping
    * @since 2.0.0
    */
   let_ as let
@@ -1701,7 +1701,7 @@ export {
  *
  * @see {@link transposeMapOption} to map and transpose in one step
  *
- * @category Transposing
+ * @category transposing
  * @since 3.14.0
  */
 export const transposeOption = <A = never, E = never>(
@@ -1742,7 +1742,7 @@ export const transposeOption = <A = never, E = never>(
  *
  * @see {@link transposeOption} when the Option already contains a Result
  *
- * @category Transposing
+ * @category transposing
  * @since 3.15.0
  */
 export const transposeMapOption = dual<

@@ -184,7 +184,7 @@ export interface Strategy<A, E> {
  *
  * This predicate narrows the input to `Pool<unknown, unknown>`.
  *
- * @category refinements
+ * @category guards
  * @since 2.0.0
  */
 export const isPool = (u: unknown): u is Pool<unknown, unknown> => hasProperty(u, TypeId)

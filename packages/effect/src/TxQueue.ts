@@ -608,11 +608,13 @@ export const offerAll: {
   <A, E>(self: TxEnqueue<A, E>, values: Iterable<A>): Effect.Effect<Array<A>>
 } = dual(
   2,
-  <A, E>(self: TxEnqueue<A, E>, values: Iterable<A>): Effect.Effect<Array<A>> =>
-    Effect.gen(function*() {
+  <A, E>(self: TxEnqueue<A, E>, values: Iterable<A>): Effect.Effect<Array<A>> => {
+    const valuesArray = Array.from(values)
+
+    return Effect.gen(function*() {
       const rejected: Array<A> = []
 
-      for (const value of values) {
+      for (const value of valuesArray) {
         const accepted = yield* offer(self, value)
         if (!accepted) {
           rejected.push(value)
@@ -621,6 +623,7 @@ export const offerAll: {
 
       return rejected
     }).pipe(Effect.tx)
+  }
 )
 
 /**
@@ -725,6 +728,11 @@ export const poll = <A, E>(self: TxDequeue<A, E>): Effect.Effect<Option.Option<A
     }
 
     yield* TxChunk.drop(self.items, 1)
+
+    if (state._tag === "Closing" && (yield* isEmpty(self))) {
+      yield* TxRef.set(self.stateRef, { _tag: "Done", cause: state.cause })
+    }
+
     return Option.some(head.value)
   }).pipe(Effect.tx)
 
@@ -1073,7 +1081,7 @@ export const size = (self: TxQueueState): Effect.Effect<number> => TxChunk.size(
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty = (self: TxQueueState): Effect.Effect<boolean> => TxChunk.isEmpty(self.items)
@@ -1099,7 +1107,7 @@ export const isEmpty = (self: TxQueueState): Effect.Effect<boolean> => TxChunk.i
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 2.0.0
  */
 export const isFull = (self: TxQueueState): Effect.Effect<boolean> =>
@@ -1269,12 +1277,11 @@ export const end = <A, E>(self: TxEnqueue<A, E | Cause.Done>): Effect.Effect<boo
   failCause(self, Cause.fail(Cause.Done()))
 
 /**
- * Removes and returns all currently buffered elements without changing the
- * queue state.
+ * Removes and returns all currently buffered elements.
  *
  * **Details**
  *
- * If the queue is already done with a `Cause.Done` error, returns an empty array. If the queue is done for any other cause, including interruption or failure, that cause is propagated.
+ * If the queue is closing, draining its buffered elements transitions it to done. If the queue is already done with a `Cause.Done` error, returns an empty array. If the queue is done for any other cause, including interruption or failure, that cause is propagated.
  *
  * **Example** (Clearing queues)
  *
@@ -1311,6 +1318,9 @@ export const clear = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<Array<A>, Excl
     }
     const chunk = yield* TxChunk.get(self.items)
     yield* TxChunk.set(self.items, Chunk.empty())
+    if (state._tag === "Closing") {
+      yield* TxRef.set(self.stateRef, { _tag: "Done", cause: state.cause })
+    }
     return Chunk.toArray(chunk)
   }).pipe(Effect.tx)
 
@@ -1373,7 +1383,7 @@ export const shutdown = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isOpen = (self: TxQueueState): Effect.Effect<boolean> =>
@@ -1401,7 +1411,7 @@ export const isOpen = (self: TxQueueState): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isClosing = (self: TxQueueState): Effect.Effect<boolean> =>
@@ -1428,7 +1438,7 @@ export const isClosing = (self: TxQueueState): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isDone = (self: TxQueueState): Effect.Effect<boolean> =>
@@ -1455,7 +1465,7 @@ export const isDone = (self: TxQueueState): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 2.0.0
  */
 export const isShutdown = (self: TxQueueState): Effect.Effect<boolean> => isDone(self)

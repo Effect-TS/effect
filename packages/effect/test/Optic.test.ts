@@ -319,7 +319,7 @@ describe("Optic", () => {
       type S = number
       const optic = Optic.id<S>().check(Schema.isGreaterThan(0))
       assertSuccess(optic.getResult(1), 1)
-      assertFailure(optic.getResult(0), `Expected a value greater than 0, got 0`)
+      assertFailure(optic.getResult(0), `Expected a value greater than 0`)
       strictEqual(optic.set(1), 1)
       strictEqual(optic.set(0), 0)
       deepStrictEqual(optic.modify(addOne)(1), 2)
@@ -330,12 +330,12 @@ describe("Optic", () => {
       type S = number
       const optic = Optic.id<S>().check(Schema.isInt(), Schema.isGreaterThan(0))
       assertSuccess(optic.getResult(1), 1)
-      assertFailure(optic.getResult(0), `Expected a value greater than 0, got 0`)
-      assertFailure(optic.getResult(1.1), `Expected an integer, got 1.1`)
+      assertFailure(optic.getResult(0), `Expected a value greater than 0`)
+      assertFailure(optic.getResult(1.1), `Expected an integer`)
       assertFailure(
         optic.getResult(-1.1),
-        `Expected an integer, got -1.1
-Expected a value greater than 0, got -1.1`
+        `Expected an integer
+Expected a value greater than 0`
       )
       deepStrictEqual(optic.modify(addOne)(1), 2)
       deepStrictEqual(optic.modify(addOne)(0), 0)
@@ -350,8 +350,8 @@ Expected a value greater than 0, got -1.1`
 
       assertFailure(
         optic.getResult(-1.1),
-        `Expected an integer, got -1.1
-Expected a value greater than 0, got -1.1`
+        `Expected an integer
+Expected a value greater than 0`
       )
     })
   })
@@ -365,7 +365,7 @@ Expected a value greater than 0, got -1.1`
     ).key("b")
 
     assertSuccess(optic.getResult({ _tag: "b", b: 1 }), 1)
-    assertFailure(optic.getResult({ _tag: "a", a: "value" }), `Expected "b" tag, got {"_tag":"a","a":"value"}`)
+    assertFailure(optic.getResult({ _tag: "a", a: "value" }), `Expected "b" tag`)
     deepStrictEqual(optic.modify(addOne)({ _tag: "a", a: "value" }), { _tag: "a", a: "value" })
     deepStrictEqual(optic.modify(addOne)({ _tag: "b", b: 1 }), { _tag: "b", b: 2 })
   })
@@ -410,9 +410,9 @@ Expected a value greater than 0, got -1.1`
     type S = { readonly a: number }
     const optic = Optic.id<S>().key("a").check(Schema.isGreaterThan(0))
     assertSuccess(optic.getResult({ a: 1 }), 1)
-    assertFailure(optic.getResult({ a: 0 }), `Expected a value greater than 0, got 0`)
+    assertFailure(optic.getResult({ a: 0 }), `Expected a value greater than 0`)
     assertSuccess(optic.replaceResult(2, { a: 1 }), { a: 2 })
-    assertFailure(optic.replaceResult(2, { a: 0 }), `Expected a value greater than 0, got 0`)
+    assertFailure(optic.replaceResult(2, { a: 0 }), `Expected a value greater than 0`)
     deepStrictEqual(optic.replace(2, { a: 1 }), { a: 2 })
     deepStrictEqual(optic.replace(2, { a: 0 }), { a: 0 })
   })
@@ -530,7 +530,7 @@ Expected a value greater than 0, got -1.1`
   it("notUndefined", () => {
     const optic = Optic.id<number | undefined>().notUndefined()
     assertSuccess(optic.getResult(1), 1)
-    assertFailure(optic.getResult(undefined), "Expected a value other than `undefined`, got undefined")
+    assertFailure(optic.getResult(undefined), "Expected a value other than `undefined`")
 
     deepStrictEqual(optic.replace(2, undefined), 2)
     deepStrictEqual(optic.replace(2, 1), 2)
@@ -591,22 +591,22 @@ Expected a value greater than 0, got -1.1`
   it("fromChecks", () => {
     const optic = Optic.id<number>().compose(Optic.fromChecks(Schema.isGreaterThan(0), Schema.isInt()))
     assertSuccess(optic.getResult(1), 1)
-    assertFailure(optic.getResult(0), `Expected a value greater than 0, got 0`)
-    assertFailure(optic.getResult(1.1), `Expected an integer, got 1.1`)
+    assertFailure(optic.getResult(0), `Expected a value greater than 0`)
+    assertFailure(optic.getResult(1.1), `Expected an integer`)
   })
 
   describe("Option", () => {
     it("some", () => {
       const optic = Optic.id<Option.Option<number>>().compose(Optic.some())
       assertSuccess(optic.getResult(Option.some(1)), 1)
-      assertFailure(optic.getResult(Option.none()), `Expected a Some value, got none()`)
+      assertFailure(optic.getResult(Option.none()), `Expected a Some value`)
       deepStrictEqual(optic.set(2), Option.some(2))
     })
 
     it("none", () => {
       const optic = Optic.id<Option.Option<number>>().compose(Optic.none())
       assertSuccess(optic.getResult(Option.none()), undefined)
-      assertFailure(optic.getResult(Option.some(1)), `Expected a None value, got some(1)`)
+      assertFailure(optic.getResult(Option.some(1)), `Expected a None value`)
       deepStrictEqual(optic.set(undefined), Option.none())
     })
   })
@@ -615,14 +615,14 @@ Expected a value greater than 0, got -1.1`
     it("success", () => {
       const optic = Optic.id<Result.Result<number, string>>().compose(Optic.success())
       assertSuccess(optic.getResult(Result.succeed(1)), 1)
-      assertFailure(optic.getResult(Result.fail("error")), `Expected a Result.Success value, got failure("error")`)
+      assertFailure(optic.getResult(Result.fail("error")), `Expected a Result.Success value`)
       deepStrictEqual(optic.set(2), Result.succeed(2))
     })
 
     it("failure", () => {
       const optic = Optic.id<Result.Result<number, string>>().compose(Optic.failure())
       assertSuccess(optic.getResult(Result.fail("error")), "error")
-      assertFailure(optic.getResult(Result.succeed(1)), `Expected a Result.Failure value, got success(1)`)
+      assertFailure(optic.getResult(Result.succeed(1)), `Expected a Result.Failure value`)
       deepStrictEqual(optic.set("new error"), Result.fail("new error"))
     })
   })

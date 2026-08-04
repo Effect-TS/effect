@@ -28,3 +28,6 @@
 "effect/HashSet#values":
   replacement: "none"
   note: "The HashSet itself is iterable; iterate it directly or call self[Symbol.iterator]() when an iterator object is required."
+"effect/HashSet#mutate":
+  replacement: "none"
+  note: "Transient mutation was removed; reassign immutable HashSet.add/remove results or build a complete replacement with HashSet.fromIterable."
