@@ -21,6 +21,7 @@ import * as PrimaryKey from "../../PrimaryKey.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
 import type * as Scope from "../../Scope.ts"
+import * as Semaphore from "../../Semaphore.ts"
 import * as SqlClient from "../sql/SqlClient.ts"
 import type { SqlError } from "../sql/SqlError.ts"
 import * as KeyValueStore from "./KeyValueStore.ts"
@@ -1019,8 +1020,9 @@ end
  *
  * **Details**
  *
- * Each store id becomes a key prefix, and values are stored as JSON with
- * optional expiration timestamps.
+ * Store ids and entry keys are encoded into composite keys, with a per-store
+ * index used for scoped clearing. Values are stored as JSON with optional
+ * expiration timestamps.
  *
  * @category layers
  * @since 4.0.0
@@ -1032,14 +1034,50 @@ export const layerBackingKvs: Layer.Layer<
 > = Layer.effect(BackingPersistence)(Effect.gen(function*() {
   const backing = yield* KeyValueStore.KeyValueStore
   const clock = yield* Clock.Clock
+  const semaphore = yield* Semaphore.make(1)
   return BackingPersistence.of({
     make: (storeId) =>
       Effect.sync(() => {
-        const store = KeyValueStore.prefix(backing, storeId)
+        const indexKey = JSON.stringify(["effect/persistence", storeId])
+        const entryKey = (key: string) => JSON.stringify(["effect/persistence", storeId, key])
+        const readIndex = Effect.flatMap(
+          backing.get(indexKey),
+          (value) => {
+            if (value === undefined) return Effect.succeed<Array<string>>([])
+            try {
+              const parsed: unknown = JSON.parse(value)
+              return Array.isArray(parsed) && parsed.every((key): key is string => typeof key === "string")
+                ? Effect.succeed(parsed)
+                : Effect.fail(new Error("Invalid persistence store index"))
+            } catch (cause) {
+              return Effect.fail(cause)
+            }
+          }
+        )
+        const addToIndex = (key: string) =>
+          Effect.flatMap(readIndex, (keys) =>
+            keys.includes(key)
+              ? Effect.void
+              : backing.set(indexKey, JSON.stringify([...keys, key])))
+        const removeFromIndex = (key: string) =>
+          Effect.flatMap(readIndex, (keys) => {
+            if (!keys.includes(key)) return Effect.void
+            const updated = keys.filter((item) => item !== key)
+            return updated.length === 0
+              ? backing.remove(indexKey)
+              : backing.set(indexKey, JSON.stringify(updated))
+          })
+        const remove = (key: string) =>
+          semaphore.withPermit(
+            Effect.andThen(
+              backing.remove(entryKey(key)),
+              removeFromIndex(key)
+            )
+          )
         const get = (key: string) =>
           Effect.flatMap(
             Effect.mapError(
-              store.get(key),
+              backing.get(entryKey(key)),
               (error) =>
                 new PersistenceError({
                   message: `Failed to get key ${key} from backing store`,
@@ -1055,7 +1093,7 @@ export const layerBackingKvs: Layer.Layer<
                 if (!Array.isArray(parsed)) return Effect.undefined
                 const [value, expires] = parsed as [object, number | null]
                 if (expires !== null && expires <= clock.currentTimeMillisUnsafe()) {
-                  return Effect.as(Effect.ignore(store.remove(key)), undefined)
+                  return Effect.as(Effect.ignore(remove(key)), undefined)
                 }
                 return Effect.succeed(value)
               } catch (cause) {
@@ -1075,7 +1113,12 @@ export const layerBackingKvs: Layer.Layer<
             Effect.suspend(() => {
               try {
                 return Effect.mapError(
-                  store.set(key, JSON.stringify([value, unsafeTtlToExpires(clock, ttl)])),
+                  semaphore.withPermit(
+                    Effect.andThen(
+                      addToIndex(key),
+                      backing.set(entryKey(key), JSON.stringify([value, unsafeTtlToExpires(clock, ttl)]))
+                    )
+                  ),
                   (cause) =>
                     new PersistenceError({
                       message: `Failed to set key ${key} in backing store`,
@@ -1096,7 +1139,12 @@ export const layerBackingKvs: Layer.Layer<
               const expires = unsafeTtlToExpires(clock, ttl)
               if (expires === null) return Effect.void
               const encoded = JSON.stringify([value, expires])
-              return store.set(key, encoded)
+              return semaphore.withPermit(
+                Effect.andThen(
+                  addToIndex(key),
+                  backing.set(entryKey(key), encoded)
+                )
+              )
             }, { concurrency: "unbounded", discard: true }).pipe(
               Effect.mapError((cause) =>
                 new PersistenceError({
@@ -1107,11 +1155,21 @@ export const layerBackingKvs: Layer.Layer<
             ),
           remove: (key) =>
             Effect.mapError(
-              store.remove(key),
+              remove(key),
               (cause) => new PersistenceError({ message: `Failed to remove key ${key} from backing store`, cause })
             ),
-          clear: Effect.mapError(store.clear, (cause) =>
-            new PersistenceError({ message: `Failed to clear backing store`, cause }))
+          clear: semaphore.withPermit(
+            Effect.flatMap(readIndex, (keys) =>
+              Effect.andThen(
+                Effect.forEach(keys, (key) => backing.remove(entryKey(key)), {
+                  concurrency: "unbounded",
+                  discard: true
+                }),
+                backing.remove(indexKey)
+              ))
+          ).pipe(
+            Effect.mapError((cause) => new PersistenceError({ message: `Failed to clear backing store`, cause }))
+          )
         })
       })
   })
