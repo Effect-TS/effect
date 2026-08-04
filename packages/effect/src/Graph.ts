@@ -2709,7 +2709,7 @@ export const neighbors: {
  * @see {@link predecessors} for incoming neighbors in a directed graph
  * @see {@link neighbors} for generic neighbor lookup across graph kinds
  *
- * @category queries
+ * @category getters
  * @since 4.0.0
  */
 export const successors: {
@@ -2745,7 +2745,7 @@ export const successors: {
  * @see {@link successors} for outgoing neighbors in a directed graph
  * @see {@link neighbors} for generic neighbor lookup across graph kinds
  *
- * @category queries
+ * @category getters
  * @since 4.0.0
  */
 export const predecessors: {
@@ -2803,7 +2803,7 @@ export const predecessors: {
  * @deprecated Use {@link successors} for outgoing neighbors or {@link predecessors} for incoming neighbors.
  * @see {@link successors} for outgoing neighbors in a directed graph
  * @see {@link predecessors} for incoming neighbors in a directed graph
- * @category queries
+ * @category getters
  * @since 3.18.0
  */
 export const neighborsDirected: {

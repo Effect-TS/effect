@@ -74,8 +74,11 @@ export const layerIndexedDb = (options?: {
 
       return KeyValueStore.make({
         clear: Effect.suspend(() => {
-          const store = getKvsEntriesStore(db, "readwrite")
-          return idbRequest({ method: "clear", message: "Failed to clear backing store" }, () => store.clear())
+          return idbWriteRequest(
+            db,
+            { method: "clear", message: "Failed to clear backing store" },
+            (store) => store.clear()
+          )
         }),
         get: (key: string) =>
           Effect.map(
@@ -103,10 +106,10 @@ export const layerIndexedDb = (options?: {
           ),
         set: (key: string, value: string | Uint8Array) =>
           Effect.asVoid(Effect.suspend(() => {
-            const store = getKvsEntriesStore(db, "readwrite")
-            return idbRequest(
+            return idbWriteRequest(
+              db,
               { method: "set", message: "Failed to set value in backing store", key },
-              () => store.put({ key, value })
+              (store) => store.put({ key, value })
             )
           })),
         size: Effect.suspend(() => {
@@ -118,10 +121,10 @@ export const layerIndexedDb = (options?: {
         }),
         remove: (key: string) =>
           Effect.asVoid(Effect.suspend(() => {
-            const store = getKvsEntriesStore(db, "readwrite")
-            return idbRequest(
+            return idbWriteRequest(
+              db,
               { method: "remove", message: "Failed to remove value from backing store", key },
-              () => store.delete(key)
+              (store) => store.delete(key)
             )
           }))
       })
@@ -169,6 +172,45 @@ const idbRequest = <A>(
           cause: request.error
         })
       ))
+  })
+
+const idbWriteRequest = <A>(
+  db: IDBDatabase,
+  failArgs: { method: string; message: string; key?: string },
+  evaluate: (store: IDBObjectStore) => IDBRequest<A>
+): Effect.Effect<A, KeyValueStore.KeyValueStoreError> =>
+  Effect.callback<A, KeyValueStore.KeyValueStoreError>((resume) => {
+    const transaction = db.transaction(entriesStoreName, "readwrite")
+    const request = evaluate(transaction.objectStore(entriesStoreName))
+    let result: A
+    let done = false
+
+    const fail = (cause: unknown) => {
+      if (done) return
+      done = true
+      resume(Effect.fail(new KeyValueStore.KeyValueStoreError({ ...failArgs, cause })))
+    }
+
+    if (request.readyState === "done") {
+      result = request.result
+    } else {
+      request.onsuccess = () => {
+        result = request.result
+      }
+      request.onerror = () => fail(request.error)
+    }
+
+    transaction.oncomplete = () => {
+      if (done) return
+      done = true
+      resume(Effect.succeed(result!))
+    }
+    transaction.onerror = () => fail(transaction.error)
+    transaction.onabort = () => fail(transaction.error)
+
+    return Effect.sync(() => {
+      if (!done) transaction.abort()
+    })
   })
 
 const getKvsEntriesStore = (db: IDBDatabase, mode: IDBTransactionMode) => {

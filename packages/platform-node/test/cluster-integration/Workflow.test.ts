@@ -71,7 +71,7 @@ const RestartWorkflow = Workflow.make("ClusterIntegrationRestart", {
 
 const RestartWorkflowLayer = RestartWorkflow.toLayer(() => DurableDeferred.await(RestartGate))
 
-class RetryError extends Schema.ErrorClass<RetryError>("ClusterIntegrationRetryError")({
+class RetryError extends Schema.Error<RetryError>("ClusterIntegrationRetryError")({
   _tag: Schema.tag("ClusterIntegrationRetryError"),
   attempt: Schema.Number
 }) {}

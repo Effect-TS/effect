@@ -230,7 +230,7 @@ export const get = <A>(self: Ref<A>) => Effect.sync(() => self.ref.current)
  * @see {@link getAndSet} for setting while returning the previous value
  * @see {@link setAndGet} for setting while returning the new value
  *
- * @category setters
+ * @category mutations
  * @since 2.0.0
  */
 export const set = dual<
@@ -455,7 +455,7 @@ export const setAndGet = dual<
  * @see {@link updateAndGet} for returning the new stored value
  * @see {@link modifySome} for optionally updating while returning a separate result
  *
- * @category setters
+ * @category mutations
  * @since 2.0.0
  */
 export const modify = dual<
@@ -515,7 +515,7 @@ export const modify = dual<
  * @see {@link modify} for always storing a new value
  * @see {@link updateSome} for optional updates without a separate return value
  *
- * @category setters
+ * @category mutations
  * @since 2.0.0
  */
 export const modifySome: {
@@ -567,7 +567,7 @@ export const modifySome: {
  * @see {@link updateAndGet} for returning the new value
  * @see {@link getAndUpdate} for returning the previous value
  *
- * @category setters
+ * @category mutations
  * @since 2.0.0
  */
 export const update = dual<
@@ -652,7 +652,7 @@ export const updateAndGet = dual<
  * @see {@link update} for always applying an update
  * @see {@link updateSomeAndGet} for returning the resulting current value
  *
- * @category setters
+ * @category mutations
  * @since 2.0.0
  */
 export const updateSome = dual<

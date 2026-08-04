@@ -381,6 +381,9 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       }).pipe(Effect.forkChild({ startImmediately: true }))
 
       yield* TestClock.adjust(2000)
+      while (!flags.has("suspended")) {
+        yield* Effect.yieldNow
+      }
 
       assert.isTrue(flags.get("suspended"))
       assert.include(flags.get("cause"), "boom")
@@ -435,7 +438,7 @@ const TestWorkflowEngine = ClusterWorkflowEngine.layer.pipe(
   Layer.provide(TestShardingConfig)
 )
 
-class SendEmailError extends Schema.ErrorClass<SendEmailError>("SendEmailError")({
+class SendEmailError extends Schema.Error<SendEmailError>("SendEmailError")({
   _tag: Schema.tag("SendEmailError"),
   message: Schema.String
 }) {}

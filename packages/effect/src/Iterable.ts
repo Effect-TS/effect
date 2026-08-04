@@ -727,7 +727,7 @@ export const drop: {
  * findSquareRoot // => Option.some(1)
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findFirst: {
@@ -787,7 +787,7 @@ export const findFirst: {
  * lastString // => Option.some("world")
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findLast: {
@@ -1033,7 +1033,7 @@ export const intersperse: {
  * hasAlmostTwo // => true
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
@@ -1082,7 +1082,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  * containsThree([4, 5, 6]) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const contains: {
@@ -1543,19 +1543,20 @@ export const flatten = <A>(self: Iterable<Iterable<A>>): Iterable<A> => ({
     const outerIterator = self[Symbol.iterator]()
     let innerIterator: Iterator<A> | undefined
     function next() {
-      if (innerIterator === undefined) {
-        const next = outerIterator.next()
-        if (next.done) {
-          return next
+      while (true) {
+        if (innerIterator === undefined) {
+          const next = outerIterator.next()
+          if (next.done) {
+            return next
+          }
+          innerIterator = next.value[Symbol.iterator]()
         }
-        innerIterator = next.value[Symbol.iterator]()
-      }
-      const result = innerIterator.next()
-      if (result.done) {
+        const result = innerIterator.next()
+        if (!result.done) {
+          return result
+        }
         innerIterator = undefined
-        return next()
       }
-      return result
     }
     return { next }
   }
@@ -1971,7 +1972,7 @@ export const flatMapNullishOr: {
  * hasString // => true
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const some: {
@@ -2085,7 +2086,7 @@ export const unfold = <B, A>(b: B, f: (b: B) => Option<readonly [A, B]>): Iterab
  * processed // => [[1, 2], [3, 4], [5, 6]]
  * ```
  *
- * @category elements
+ * @category traversing
  * @since 2.0.0
  */
 export const forEach: {
@@ -2315,7 +2316,7 @@ export const dedupeAdjacent: <A>(self: Iterable<A>) => Iterable<A> = dedupeAdjac
  * Array.from(testCases) // => ["admin_can_read", "admin_can_write", "admin_can_delete", "user_can_read", "user_can_write", "user_can_delete"]
  * ```
  *
- * @category elements
+ * @category combining
  * @since 2.0.0
  */
 export const cartesianWith: {
@@ -2389,7 +2390,7 @@ export const cartesianWith: {
  * Array.from(withEmpty) // => []
  * ```
  *
- * @category elements
+ * @category combining
  * @since 2.0.0
  */
 export const cartesian: {

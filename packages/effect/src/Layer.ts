@@ -270,7 +270,7 @@ const memoMapReuse = <RIn, E, ROut>(
  * Layer.isLayer(notALayer) // => false
  * ```
  *
- * @category getters
+ * @category guards
  * @since 2.0.0
  */
 export const isLayer = (u: unknown): u is Layer<unknown, unknown, unknown> => hasProperty(u, TypeId)
@@ -447,11 +447,13 @@ class MemoMapImpl implements MemoMap {
     scope: Scope.Scope,
     build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
   ): Effect<Context.Context<ROut>, E, RIn> {
-    const existing = this.get(layer, scope)
-    if (existing) {
-      return existing
-    }
-    return memoMapBuild(this, layer, scope, build)
+    return internalEffect.suspend(() => {
+      const existing = this.get(layer, scope)
+      if (existing) {
+        return existing
+      }
+      return memoMapBuild(this, layer, scope, build)
+    })
   }
 }
 
@@ -484,7 +486,7 @@ class MemoMapImpl implements MemoMap {
  * Effect.runSync(database.query("SELECT 1")) // => "result"
  * ```
  *
- * @category memo map
+ * @category constructors
  * @since 4.0.0
  */
 export const makeMemoMapUnsafe = (): MemoMap => new MemoMapImpl()
@@ -503,7 +505,7 @@ export const makeMemoMapUnsafe = (): MemoMap => new MemoMapImpl()
  * @see {@link forkMemoMap} for allocating the child memo map inside `Effect`
  * @see {@link makeMemoMapUnsafe} for creating a root memo map without a parent
  *
- * @category memo map
+ * @category constructors
  * @since 4.0.0
  */
 export const forkMemoMapUnsafe = (parent: MemoMap): MemoMap => new MemoMapImpl(parent)
@@ -537,7 +539,7 @@ export const forkMemoMapUnsafe = (parent: MemoMap): MemoMap => new MemoMapImpl(p
  * Effect.runSync(database.query("SELECT 1")) // => "result"
  * ```
  *
- * @category memo map
+ * @category constructors
  * @since 2.0.0
  */
 export const makeMemoMap: Effect<MemoMap> = internalEffect.sync(makeMemoMapUnsafe)
@@ -556,7 +558,7 @@ export const makeMemoMap: Effect<MemoMap> = internalEffect.sync(makeMemoMapUnsaf
  * @see {@link forkMemoMapUnsafe} for the synchronous constructor variant
  * @see {@link buildWithMemoMap} for building layers with an explicit memo map
  *
- * @category memo map
+ * @category constructors
  * @since 4.0.0
  */
 export const forkMemoMap = (parent: MemoMap): Effect<MemoMap> => internalEffect.sync(() => forkMemoMapUnsafe(parent))
@@ -576,7 +578,7 @@ export const forkMemoMap = (parent: MemoMap): Effect<MemoMap> => internalEffect.
  *
  * @see {@link MemoMap} the memoization map type wrapped by this service
  *
- * @category models
+ * @category services
  * @since 3.13.0
  */
 export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("effect/Layer/CurrentMemoMap") {
@@ -637,7 +639,7 @@ export class CurrentMemoMap extends Context.Service<CurrentMemoMap, MemoMap>()("
  * logs // => ["ready"]
  * ```
  *
- * @category memo map
+ * @category destructors
  * @since 2.0.0
  */
 export const buildWithMemoMap: {

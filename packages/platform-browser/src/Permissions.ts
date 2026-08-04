@@ -21,7 +21,7 @@ const ErrorTypeId = "~@effect/platform-browser/Permissions/PermissionsError"
  * Wrapper on the Permission API (`navigator.permissions`) with methods for
  * querying status of permissions.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Permissions {

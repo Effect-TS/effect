@@ -23,10 +23,20 @@ describe("Duration", () => {
     deepStrictEqual(Duration.fromInputUnsafe("10 nanos"), Duration.nanos(10n))
     deepStrictEqual(Duration.fromInputUnsafe("1.5 nanos"), Duration.nanos(2n))
     deepStrictEqual(Duration.fromInputUnsafe("-1.5 nanos"), Duration.nanos(-2n))
+    deepStrictEqual(Duration.fromInputUnsafe("9007199254740993.1 nanos"), Duration.nanos(9_007_199_254_740_993n))
+    deepStrictEqual(Duration.fromInputUnsafe("-9007199254740993.5 nanos"), Duration.nanos(-9_007_199_254_740_994n))
     deepStrictEqual(Duration.fromInputUnsafe("1 micro"), Duration.micros(1n))
     deepStrictEqual(Duration.fromInputUnsafe("10 micros"), Duration.micros(10n))
     deepStrictEqual(Duration.fromInputUnsafe("1.5 micros"), Duration.nanos(1500n))
     deepStrictEqual(Duration.fromInputUnsafe("-1.5 micros"), Duration.nanos(-1500n))
+    deepStrictEqual(
+      Duration.fromInputUnsafe("9007199254740993.1 micros"),
+      Duration.nanos(9_007_199_254_740_993_100n)
+    )
+    deepStrictEqual(
+      Duration.fromInputUnsafe("-9007199254740993.0005 micros"),
+      Duration.nanos(-9_007_199_254_740_993_001n)
+    )
     deepStrictEqual(Duration.fromInputUnsafe("1 milli"), Duration.millis(1))
     deepStrictEqual(Duration.fromInputUnsafe("10 millis"), Duration.millis(10))
     deepStrictEqual(Duration.fromInputUnsafe("1 second"), Duration.seconds(1))
@@ -281,8 +291,8 @@ describe("Duration", () => {
     // nanos
     deepStrictEqual(Duration.divideUnsafe(Duration.nanos(2n), 2), Duration.nanos(1n))
     deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), 3), Duration.zero)
-    throws(() => Duration.divideUnsafe(Duration.nanos(1n), 0.5))
-    throws(() => Duration.divideUnsafe(Duration.nanos(1n), 1.5))
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), 0.5), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), 1.5), Duration.zero)
 
     // infinity
     deepStrictEqual(Duration.divideUnsafe(Duration.infinity, 2), Duration.infinity)

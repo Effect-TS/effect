@@ -23,7 +23,7 @@ import { WorkerError, WorkerSendError } from "./WorkerError.ts"
  * Service that spawns effect `Worker` instances for numeric worker ids using
  * the configured `Spawner`.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class WorkerPlatform extends Context.Service<WorkerPlatform, {
@@ -60,7 +60,7 @@ export interface Worker<O = unknown, I = unknown> {
  * platform ready/data messages and running the optional `onSpawn` effect when
  * the worker reports readiness.
  *
- * @category models
+ * @category constructors
  * @since 4.0.0
  */
 export const makeUnsafe = (options: {

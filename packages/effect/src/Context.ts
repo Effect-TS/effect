@@ -94,7 +94,7 @@ export interface Key<out Identifier, out Shape> extends Effect<Shape, never, Ide
  * Context.get(context, Database).query("SELECT 1") // => "Result: SELECT 1"
  * ```
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Service<in out Identifier, in out Shape> extends Key<Identifier, Shape> {
@@ -119,7 +119,7 @@ export interface Service<in out Identifier, in out Shape> extends Key<Identifier
  *
  * @see {@link Service} for creating function-style keys or class-style service keys
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface ServiceClass<in out Self, in out Identifier extends string, in out Shape>
@@ -140,7 +140,7 @@ export declare namespace ServiceClass {
    * Runtime and type-level metadata carried by a class-style service key,
    * including its service type identifier, string key, and service shape.
    *
-   * @category models
+   * @category services
    * @since 4.0.0
    */
   export interface Shape<Identifier extends string, Service> {
@@ -197,11 +197,17 @@ export declare namespace ServiceClass {
  *
  * @see {@link Reference} for service keys with default values
  *
- * @category constructors
+ * @category services
  * @since 4.0.0
  */
 export const Service: {
-  <Identifier, Shape = Identifier>(key: string): Service<Identifier, Shape>
+  <Identifier, Shape = Identifier>(
+    key: string,
+    options?: {
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
+    } | undefined
+  ): Service<Identifier, Shape>
   <Self, Shape>(): <
     const Identifier extends string,
     E,
@@ -210,7 +216,9 @@ export const Service: {
   >(
     id: Identifier,
     options?: {
-      readonly make: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
+      readonly make?: ((...args: Args) => Effect<Shape, E, R>) | Effect<Shape, E, R> | undefined
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     } | undefined
   ) =>
     & ServiceClass<Self, Identifier, Shape>
@@ -223,6 +231,8 @@ export const Service: {
     id: Identifier,
     options: {
       readonly make: Make
+      /** @internal */
+      readonly fiberCached?: boolean | undefined
     }
   ) =>
     & ServiceClass<
@@ -247,23 +257,25 @@ export const Service: {
       return err.stack
     }
   })
-  if (arguments.length > 0) {
-    self.key = arguments[0]
-    if (arguments[1]?.defaultValue) {
-      self[ReferenceTypeId] = ReferenceTypeId
-      self.defaultValue = arguments[1].defaultValue
-    }
-    return self
-  }
-  return function(key: string, options?: {
+  const init = (key: string, options?: {
+    readonly defaultValue?: any
     readonly make?: any
-  }) {
+    readonly fiberCached?: boolean
+  }) => {
     self.key = key
+    if (options?.defaultValue) {
+      self[ReferenceTypeId] = ReferenceTypeId
+      self.defaultValue = options.defaultValue
+    }
     if (options?.make) {
       ;(self as any).make = options.make
     }
+    if (options?.fiberCached) {
+      cacheKeys.add(key)
+    }
     return self
   }
+  return arguments.length > 0 ? init(arguments[0], arguments[1]) : init
 } as any
 
 const ServiceProto: any = {
@@ -298,6 +310,8 @@ const ServiceProto: any = {
   }
 }
 
+const cacheKeys = new Set<string>()
+
 const ReferenceTypeId = "~effect/Context/Reference" as const
 
 /**
@@ -328,7 +342,7 @@ const ReferenceTypeId = "~effect/Context/Reference" as const
  * messages // => ["default logger"]
  * ```
  *
- * @category models
+ * @category services
  * @since 3.11.0
  */
 export interface Reference<in out Shape> extends Service<never, Shape> {
@@ -379,7 +393,7 @@ export declare namespace Service {
    * services.map((service) => service.key) // => ["Logger", "Database"]
    * ```
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type Any = Key<never, any> | Key<any, any>
@@ -403,7 +417,7 @@ export declare namespace Service {
    * Database.key // => "Database"
    * ```
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type Shape<T> = T extends Key<infer _I, infer S> ? S : never
@@ -427,7 +441,7 @@ export declare namespace Service {
    * Database.key // => "Database"
    * ```
    *
-   * @category models
+   * @category utility types
    * @since 2.0.0
    */
   export type Identifier<T> = T extends Key<infer I, infer _S> ? I : never
@@ -468,7 +482,81 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
     readonly _Services: Types.Contravariant<Services>
   }
   readonly mapUnsafe: ReadonlyMap<string, any>
-  mutable: boolean
+}
+
+interface ContextImpl<in Services> extends Context<Services> {
+  cacheRoot: ContextImpl<any> | undefined
+  base: ReadonlyMap<string, any>
+  baseHits: number
+  overlay: Overlay | undefined
+  depth: number
+  _flat: ReadonlyMap<string, any> | undefined
+}
+
+interface Overlay {
+  readonly key: string
+  readonly value: unknown
+  readonly parent: Overlay | undefined
+}
+
+const MaxDepth = 8
+const FlattenAfterBaseHits = 8
+
+const makeImpl = <Services>(
+  cacheRoot: ContextImpl<any> | undefined,
+  base: ReadonlyMap<string, any>,
+  overlay: Overlay | undefined,
+  depth: number
+): ContextImpl<Services> => {
+  const self: ContextImpl<Services> = Object.create(Proto)
+  self.cacheRoot = cacheRoot ?? self
+  self.base = base
+  self.overlay = overlay
+  self.depth = depth
+  self._flat = undefined
+  self.baseHits = 0
+  return self
+}
+
+const applyOverlays = (map: Map<string, any>, overlay: Overlay | undefined): void => {
+  if (!overlay) return
+  applyOverlays(map, overlay.parent)
+  map.set(overlay.key, overlay.value)
+}
+
+const flatten = (self: ContextImpl<any>): ReadonlyMap<string, any> => {
+  if (self._flat) return self._flat
+  if (!self.overlay) return self._flat = self.base
+  const map = new Map(self.base)
+  applyOverlays(map, self.overlay)
+  return self._flat = map
+}
+
+const withFlat = <B>(self: Context<any>, f: (map: Map<string, any>) => void): Context<B> => {
+  const map = new Map(self.mapUnsafe)
+  f(map)
+  return makeUnsafe(map)
+}
+
+// A private symbol so user code cannot forge a value that reads as absent
+const notFound = Symbol()
+
+const lookup = (self: Context<any>, key: string): unknown => {
+  const impl = self as ContextImpl<any>
+  for (let overlay = impl.overlay; overlay; overlay = overlay.parent) {
+    if (overlay.key === key) return overlay.value
+  }
+  const value = impl.base.get(key)
+  // Misses must not advance the counter: reference-default lookups miss the
+  // base on every fiber cache refresh, which would flatten every short-lived
+  // request context and reintroduce the O(services) per-request cost
+  if (value === undefined && !impl.base.has(key)) return notFound
+  if (impl.overlay && ++impl.baseHits >= FlattenAfterBaseHits) {
+    impl.base = flatten(impl)
+    impl.overlay = undefined
+    impl.depth = 0
+  }
+  return value
 }
 
 /**
@@ -481,9 +569,9 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
  *
  * **Gotchas**
  *
- * This is unsafe because later mutation of the provided map can affect the
- * created `Context`. Prefer `empty`, `make`, `add`, or `merge` for normal
- * Context construction.
+ * The provided map is retained without copying and must not be mutated after
+ * construction. Prefer `empty`, `make`, `add`, or `merge` for normal Context
+ * construction.
  *
  * **Example** (Creating a context from a map)
  *
@@ -502,17 +590,19 @@ export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable
  * @category constructors
  * @since 4.0.0
  */
-export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>): Context<Services> => {
-  const self = Object.create(Proto)
-  self.mapUnsafe = mapUnsafe
-  self.mutable = false
-  return self
-}
+export const makeUnsafe = <Services = never>(mapUnsafe: ReadonlyMap<string, any>): Context<Services> =>
+  makeImpl(undefined, mapUnsafe, undefined, 0)
 
-const Proto: Omit<Context<never>, "mapUnsafe" | "mutable"> = {
+const Proto: Omit<
+  ContextImpl<never>,
+  "cacheRoot" | "base" | "overlay" | "depth" | "_flat" | "baseHits"
+> = {
   ...PipeInspectableProto,
   [TypeId]: {
     _Services: (_: never) => _
+  },
+  get mapUnsafe() {
+    return flatten(this as any as ContextImpl<any>)
   },
   toJSON(this: Context<never>) {
     return {
@@ -521,17 +611,12 @@ const Proto: Omit<Context<never>, "mapUnsafe" | "mutable"> = {
     }
   },
   [Equal.symbol]<A>(this: Context<A>, that: unknown): boolean {
-    if (
-      !isContext(that)
-      || this.mapUnsafe.size !== that.mapUnsafe.size
-    ) return false
-    for (const k of this.mapUnsafe.keys()) {
-      if (
-        !that.mapUnsafe.has(k) ||
-        !Equal.equals(this.mapUnsafe.get(k), that.mapUnsafe.get(k))
-      ) {
-        return false
-      }
+    if (!isContext(that)) return false
+    const self = this.mapUnsafe
+    const other = that.mapUnsafe
+    if (self.size !== other.size) return false
+    for (const [key, value] of self) {
+      if (!other.has(key) || !Equal.equals(value, other.get(key))) return false
     }
     return true
   },
@@ -539,6 +624,12 @@ const Proto: Omit<Context<never>, "mapUnsafe" | "mutable"> = {
     return Hash.number(this.mapUnsafe.size)
   }
 }
+
+/** @internal */
+export const hasSameCache = <Services, Services2>(
+  self: Context<Services>,
+  that: Context<Services2>
+): boolean => (self as ContextImpl<Services>).cacheRoot === (that as ContextImpl<Services2>).cacheRoot
 
 /**
  * Checks whether the provided argument is a `Context`.
@@ -607,7 +698,7 @@ export const isKey = (u: unknown): u is Key<any, any> => hasProperty(u, ServiceT
  * @category guards
  * @since 3.11.0
  */
-export const isReference = (u: unknown): u is Reference<any> => hasProperty(u, ReferenceTypeId)
+export const isReference = <I, S>(u: Key<I, S>): u is Reference<S> => !!(u as Reference<S>)[ReferenceTypeId]
 
 /**
  * Returns an empty `Context`.
@@ -681,7 +772,7 @@ export const make = <I, S>(
  *
  * @see {@link addOrOmit} for adding or removing a service from an `Option`
  *
- * @category adders
+ * @category combining
  * @since 2.0.0
  */
 export const add: {
@@ -698,10 +789,24 @@ export const add: {
   self: Context<Services>,
   key: Key<I, S>,
   service: Types.NoInfer<S>
-): Context<Services | I> =>
-  withMapUnsafe(self, (map) => {
+): Context<Services | I> => {
+  const impl = self as ContextImpl<Services>
+  const cacheRoot = cacheKeys.has(key.key) ? undefined : impl.cacheRoot
+  if (impl.depth >= MaxDepth) {
+    // Rebase the overlay chain into a flat map, keeping the cacheRoot so a
+    // rebase on an ordinary key does not invalidate fiber caches
+    const map = new Map(impl.mapUnsafe)
     map.set(key.key, service)
-  }))
+    return makeImpl(cacheRoot, map, undefined, 0)
+  }
+
+  return makeImpl(
+    cacheRoot,
+    impl.base,
+    { key: key.key, value: service, parent: impl.overlay },
+    impl.depth + 1
+  )
+})
 
 /**
  * Adds or removes a service depending on an `Option`.
@@ -735,31 +840,27 @@ export const add: {
  *
  * @see {@link add} for always storing a service value
  *
- * @category adders
+ * @category combining
  * @since 4.0.0
  */
 export const addOrOmit: {
   <I, S>(
     key: Key<I, S>,
     service: Option.Option<Types.NoInfer<S>>
-  ): <Services>(self: Context<Services>) => Context<Services | I>
+  ): <Services>(self: Context<Services>) => Context<Exclude<Services, I>>
   <Services, I, S>(
     self: Context<Services>,
     key: Key<I, S>,
     service: Option.Option<Types.NoInfer<S>>
-  ): Context<Services | I>
+  ): Context<Exclude<Services, I>>
 } = dual(3, <Services, I, S>(
   self: Context<Services>,
   key: Key<I, S>,
   service: Option.Option<Types.NoInfer<S>>
-): Context<Services | I> =>
-  withMapUnsafe(self, (map) => {
-    if (service._tag === "None") {
-      map.delete(key.key)
-    } else {
-      map.set(key.key, service.value)
-    }
-  }))
+): Context<Exclude<Services, I>> =>
+  service._tag === "None"
+    ? omit(key)(self)
+    : add(self, key, service.value) as any)
 
 /**
  * Gets the service for a key, or evaluates the fallback when a non-reference
@@ -812,9 +913,8 @@ export const getOrElse: {
   <S, I, B>(key: Key<I, S>, orElse: LazyArg<B>): <Services>(self: Context<Services>) => S | B
   <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B
 } = dual(3, <Services, S, I, B>(self: Context<Services>, key: Key<I, S>, orElse: LazyArg<B>): S | B => {
-  if (self.mapUnsafe.has(key.key)) {
-    return self.mapUnsafe.get(key.key)! as any
-  }
+  const value = lookup(self, key.key)
+  if (value !== notFound) return value as any
   return isReference(key) ? getDefaultValue(key) : orElse()
 })
 
@@ -842,8 +942,14 @@ export const getOrUndefined: {
   <Services, S, I>(self: Context<Services>, key: Key<I, S>): S | undefined
 } = dual(
   2,
-  <Services, S, I>(self: Context<Services>, key: Key<I, S>): S | undefined => self.mapUnsafe.get(key.key)
+  <Services, S, I>(self: Context<Services>, key: Key<I, S>): S | undefined => getOrUndefinedUnsafe(self, key.key)
 )
+
+/** @internal */
+export const getOrUndefinedUnsafe = <A, Services = never>(self: Context<Services>, key: string): A | undefined => {
+  const value = lookup(self, key)
+  return value === notFound ? undefined : value as A
+}
 
 /**
  * Gets the service for a key, throwing if an absent non-reference key cannot be
@@ -886,11 +992,12 @@ export const getUnsafe: {
 } = dual(
   2,
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S => {
-    if (!self.mapUnsafe.has(service.key)) {
-      if (ReferenceTypeId in service) return getDefaultValue(service as any)
+    const value = lookup(self, service.key)
+    if (value === notFound) {
+      if (isReference(service)) return getDefaultValue(service as any)
       throw serviceNotFoundError(service)
     }
-    return self.mapUnsafe.get(service.key)! as any
+    return value as any
   }
 )
 
@@ -928,56 +1035,6 @@ export const get: {
   <Services, I extends Services, S>(service: Key<I, S>): (self: Context<Services>) => S
   <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): S
 } = getUnsafe
-
-/**
- * Gets the value for a `Context.Reference`, returning its cached default when
- * the context does not contain an override.
- *
- * **When to use**
- *
- * Use when you need a `Context.Reference` value resolved from either a stored
- * override or the reference's default value.
- *
- * **Details**
- *
- * Stored overrides take precedence. If no override is present, the reference's
- * default value is computed lazily and cached on the reference itself.
- *
- * **Gotchas**
- *
- * Mutable default values can be shared across contexts unless an override is
- * provided, because the default is cached on the `Context.Reference`.
- *
- * **Example** (Getting reference defaults unsafely)
- *
- * ```ts import.meta.vitest
- * import { Context } from "effect"
- *
- * const messages: Array<string> = []
- * const LoggerRef = Context.Reference("Logger", {
- *   defaultValue: () => ({ log: (msg: string) => messages.push(msg) })
- * })
- *
- * const context = Context.empty()
- * const logger = Context.getReferenceUnsafe(context, LoggerRef)
- *
- * logger.log("message")
- * messages // => ["message"]
- * ```
- *
- * @see {@link getUnsafe} for unsafe access with any service key
- * @see {@link get} for type-checked reference-aware access
- * @see {@link getOption} for optional access to non-reference keys
- *
- * @category unsafe
- * @since 4.0.0
- */
-export const getReferenceUnsafe = <Services, S>(self: Context<Services>, service: Reference<S>): S => {
-  if (!self.mapUnsafe.has(service.key)) {
-    return getDefaultValue(service as any)
-  }
-  return self.mapUnsafe.get(service.key)! as any
-}
 
 const defaultValueCacheKey = "~effect/Context/defaultValue" as const
 
@@ -1046,9 +1103,8 @@ export const getOption: {
   <S, I>(service: Key<I, S>): <Services>(self: Context<Services>) => Option.Option<S>
   <Services, S, I>(self: Context<Services>, service: Key<I, S>): Option.Option<S>
 } = dual(2, <Services, I extends Services, S>(self: Context<Services>, service: Key<I, S>): Option.Option<S> => {
-  if (self.mapUnsafe.has(service.key)) {
-    return Option.some(self.mapUnsafe.get(service.key)! as any)
-  }
+  const value = lookup(self, service.key)
+  if (value !== notFound) return Option.some(value as any)
   return isReference(service) ? Option.some(getDefaultValue(service as any)) : Option.none()
 })
 
@@ -1092,9 +1148,7 @@ export const merge: {
 } = dual(2, <Services, R1>(self: Context<Services>, that: Context<R1>): Context<Services | R1> => {
   if (self.mapUnsafe.size === 0) return that as any
   if (that.mapUnsafe.size === 0) return self as any
-  return withMapUnsafe(self, (map) => {
-    that.mapUnsafe.forEach((value, key) => map.set(key, value))
-  })
+  return withFlat(self, (map) => that.mapUnsafe.forEach((value, key) => map.set(key, value)))
 })
 
 /**
@@ -1182,14 +1236,13 @@ export const mergeAll = <T extends Array<unknown>>(
 export const pick = <S extends ReadonlyArray<Key<any, any>>>(
   ...services: S
 ) =>
-<Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> =>
-  withMapUnsafe(self, (map) => {
-    const keySet = new Set(services.map((key) => key.key))
+<Services>(self: Context<Services>): Context<Services & Service.Identifier<S[number]>> => {
+  const keep = new Set(services.map((key) => key.key))
+  return withFlat(self, (map) =>
     map.forEach((_, key) => {
-      if (keySet.has(key)) return
-      map.delete(key)
-    })
-  })
+      if (!keep.has(key)) map.delete(key)
+    }))
+}
 
 /**
  * Returns a new `Context` with the specified service keys removed.
@@ -1226,55 +1279,11 @@ export const omit = <S extends ReadonlyArray<Key<any, any>>>(
   ...keys: S
 ) =>
 <Services>(self: Context<Services>): Context<Exclude<Services, Service.Identifier<S[number]>>> =>
-  withMapUnsafe(self, (map) => {
+  withFlat(self, (map) => {
     for (let i = 0; i < keys.length; i++) {
       map.delete(keys[i].key)
     }
   })
-
-/**
- * Performs a series of mutations on a `Context`. Prevents unnecessary copying
- * of the underlying map when multiple mutations are needed.
- *
- * **When to use**
- *
- * Use to apply several `Context` transformations in one callback while copying
- * the underlying service map only once.
- *
- * @see {@link add} for adding or replacing a service
- * @see {@link addOrOmit} for adding or removing a service from an `Option`
- * @see {@link merge} for combining two contexts
- * @see {@link pick} for keeping selected services
- * @see {@link omit} for removing selected services
- *
- * @category mutations
- * @since 4.0.0
- */
-export const mutate: {
-  <Services, B>(
-    f: (context: Context<Services>) => Context<B>
-  ): <Services>(self: Context<Services>) => Context<B>
-  <Services, B>(self: Context<Services>, f: (context: Context<Services>) => Context<B>): Context<B>
-} = dual(
-  2,
-  <Services, B>(self: Context<Services>, f: (context: Context<Services>) => Context<B>): Context<B> => {
-    const next = makeUnsafe<Services>(new Map(self.mapUnsafe))
-    next.mutable = true
-    const result = f(next)
-    result.mutable = false
-    return result
-  }
-)
-
-const withMapUnsafe = <Services, B>(self: Context<Services>, f: (map: Map<string, any>) => void): Context<B> => {
-  if (self.mutable) {
-    f(self.mapUnsafe as any)
-    return self as any
-  }
-  const map = new Map(self.mapUnsafe)
-  f(map)
-  return makeUnsafe(map)
-}
 
 /**
  * Creates a context key with a default value.
@@ -1319,10 +1328,14 @@ const withMapUnsafe = <Services, B>(self: Context<Services>, f: (map: Map<string
  *
  * @see {@link Service} for required services without default values
  *
- * @category references
+ * @category services
  * @since 3.11.0
  */
 export const Reference: <Service>(
   key: string,
-  options: { readonly defaultValue: () => Service }
+  options: {
+    readonly defaultValue: () => Service
+    /** @internal */
+    readonly fiberCached?: boolean | undefined
+  }
 ) => Reference<Service> = Service as any

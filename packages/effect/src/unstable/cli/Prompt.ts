@@ -684,7 +684,7 @@ export declare namespace All {
  * await Effect.runPromise(Effect.provide(allWithRecord, services)) // => { username: "alice", password: "secret" }
  * ```
  *
- * @category collecting & elements
+ * @category combining
  * @since 4.0.0
  */
 export const all: <
@@ -1082,7 +1082,7 @@ export const password = (
  * The returned effect may fail with `Terminal.QuitError` if terminal input ends
  * or the prompt is quit.
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const run: <Output>(
@@ -1999,6 +1999,9 @@ class Day extends DatePart {
   }
 
   private ordinalIndicator(day: number): string {
+    if (day >= 11 && day <= 13) {
+      return "th"
+    }
     switch (day % 10) {
       case 1:
         return "st"
@@ -2057,7 +2060,7 @@ class Year extends DatePart {
   override toString() {
     const year = `${this.date.getFullYear()}`.padStart(4, "0")
     return this.token.length === 2
-      ? year.substring(-2)
+      ? year.slice(-2)
       : year
   }
 }
@@ -2074,7 +2077,7 @@ class Meridiem extends DatePart {
   setValue(_value: string): void {}
 
   override toString() {
-    const meridiem = this.date.getHours() > 12 ? "pm" : "am"
+    const meridiem = this.date.getHours() >= 12 ? "pm" : "am"
     return /A/.test(this.token)
       ? meridiem.toUpperCase()
       : meridiem
@@ -2875,7 +2878,11 @@ const defaultFloatProcessor = (input: string, state: NumberState) => {
     return Effect.succeed(Action.NextFrame({
       state: {
         ...state,
-        value: input === "." ? `${parsed}.` : `${parsed}`,
+        value: input === "."
+          ? `${parsed}.`
+          : state.value.includes(".") && /^\d$/.test(input)
+          ? state.value + input
+          : `${parsed}`,
         error: Option.none()
       }
     }))

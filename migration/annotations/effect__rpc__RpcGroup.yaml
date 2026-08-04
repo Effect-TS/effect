@@ -10,3 +10,6 @@
 "@effect/rpc/RpcGroup#TypeId":
   replacement: "none"
   note: "The group marker is private in v4; use RpcGroup.Any for an erased group constraint."
+"@effect/rpc/RpcGroup#Any":
+  replacement: "effect/unstable/rpc/RpcGroup#Any"
+  note: "Moved unchanged as the erased RpcGroup constraint."

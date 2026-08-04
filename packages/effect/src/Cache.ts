@@ -305,7 +305,7 @@ export const make = <
 > =>
   makeWith<Key, A, E, R, ServiceMode>(options.lookup, {
     ...options,
-    timeToLive: options.timeToLive ? () => options.timeToLive! : defaultTimeToLive
+    timeToLive: options.timeToLive !== undefined ? () => options.timeToLive! : defaultTimeToLive
   })
 
 const Proto = {
@@ -434,7 +434,10 @@ export const get: {
       const entry = new EntryImpl(fiber, self.lookup(key))
       entry.fiber.addObserver((exit) => {
         if (effect.exitHasInterrupts(exit)) {
-          MutableHashMap.remove(self.map, key)
+          const current = MutableHashMap.get(self.map, key)
+          if (Option.isSome(current) && current.value === entry) {
+            MutableHashMap.remove(self.map, key)
+          }
           return
         }
         const ttl = self.timeToLive(exit, key)

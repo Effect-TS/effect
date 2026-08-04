@@ -2,12 +2,12 @@ import { IndexedDb, IndexedDbDatabase, IndexedDbTable, IndexedDbVersion } from "
 import { afterEach, assert, describe, it } from "@effect/vitest"
 import {
   Array,
+  Cause,
   Context,
   DateTime,
   Effect,
   Fiber,
   Layer,
-  Option,
   Schema,
   SchemaGetter,
   SchemaIssue,
@@ -68,7 +68,7 @@ const VerifyId = Schema.String.pipe(
         const { maxLength } = yield* VerifyContext
         if (s.length > maxLength) {
           return yield* Effect.fail(
-            new SchemaIssue.InvalidValue(Option.some(s), {
+            new SchemaIssue.InvalidValue({
               message: "Max length exceeded"
             })
           )
@@ -1454,6 +1454,97 @@ describe.sequential("IndexedDbQueryBuilder", () => {
 
       const data2 = yield* api.from("todo").select("titleCount").equals(["test2", 3]).first()
       assert.deepStrictEqual(data2, { id: 3, title: "test2", count: 3, completed: false })
+    }).pipe(provideDb(Db))
+  })
+
+  it.effect("rolls back withTransaction writes when the effect fails", () => {
+    class Db extends IndexedDbDatabase.make(V1, (api) => api.createObjectStore("todo")) {}
+
+    return Effect.gen(function*() {
+      const api = yield* Db
+      yield* Effect.result(
+        api.withTransaction({ tables: ["todo"], mode: "readwrite" })(
+          Effect.andThen(
+            api.from("todo").insert({ id: 1, title: "committed", count: 1, completed: false }),
+            Effect.fail("rollback")
+          )
+        )
+      )
+
+      assert.deepStrictEqual(yield* api.from("todo").select(), [])
+    }).pipe(provideDb(Db))
+  })
+
+  it.effect("applies reverse before a select limit", () => {
+    class Db extends IndexedDbDatabase.make(
+      V1,
+      Effect.fn(function*(api) {
+        yield* api.createObjectStore("todo")
+        yield* api.from("todo").insertAll([
+          { id: 1, title: "one", count: 1, completed: false },
+          { id: 2, title: "two", count: 2, completed: false },
+          { id: 3, title: "three", count: 3, completed: false }
+        ])
+      })
+    ) {}
+
+    return Effect.gen(function*() {
+      const api = yield* Db
+      const rows = yield* api.from("todo").select().reverse().limit(2)
+      assert.deepStrictEqual(rows.map((row) => row.id), [3, 2])
+    }).pipe(provideDb(Db))
+  })
+
+  it.effect("honors an indexed range when delete has a limit", () => {
+    class Db extends IndexedDbDatabase.make(
+      V1,
+      Effect.fn(function*(api) {
+        yield* api.createObjectStore("todo")
+        yield* api.createIndex("todo", "titleIndex")
+        yield* api.from("todo").insertAll([
+          { id: 1, title: "keep", count: 1, completed: false },
+          { id: 2, title: "delete", count: 2, completed: false }
+        ])
+      })
+    ) {}
+
+    return Effect.gen(function*() {
+      const api = yield* Db
+      yield* api.from("todo").delete("titleIndex").equals("delete").limit(1)
+      const rows = yield* api.from("todo").select()
+      assert.deepStrictEqual(rows.map((row) => row.id), [1])
+    }).pipe(provideDb(Db))
+  })
+
+  it.effect("can consume the same paged select stream twice", () => {
+    class Db extends IndexedDbDatabase.make(
+      V1,
+      Effect.fn(function*(api) {
+        yield* api.createObjectStore("todo")
+        yield* api.from("todo").insertAll([
+          { id: 1, title: "one", count: 1, completed: false },
+          { id: 2, title: "two", count: 2, completed: false },
+          { id: 3, title: "three", count: 3, completed: false }
+        ])
+      })
+    ) {}
+
+    return Effect.gen(function*() {
+      const api = yield* Db
+      const stream = api.from("todo").select().stream({ chunkSize: 2 })
+      const first = yield* Stream.runCollect(stream)
+      const second = yield* Stream.runCollect(stream)
+      assert.deepStrictEqual(second.map((row) => row.id), first.map((row) => row.id))
+    }).pipe(provideDb(Db))
+  })
+
+  it.effect("reports NoSuchElementError for an empty ranged first query", () => {
+    class Db extends IndexedDbDatabase.make(V1, (api) => api.createObjectStore("todo")) {}
+
+    return Effect.gen(function*() {
+      const api = yield* Db
+      const error = yield* Effect.flip(api.from("todo").select().equals(1).first())
+      assert.instanceOf(error, Cause.NoSuchElementError)
     }).pipe(provideDb(Db))
   })
 })

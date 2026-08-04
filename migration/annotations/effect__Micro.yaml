@@ -1,3 +1,6 @@
+effect/Micro#all:
+  replacement: "Effect.all"
+  note: "Micro was removed in v4; use Effect.all with the same iterable-or-record input and concurrency/discard options."
 effect/Micro#acquireUseRelease:
   replacement: "Effect.acquireUseRelease"
   note: "Micro was removed in v4; the rewritten Effect runtime is itself lightweight and replaces it. Same-name equivalent on effect/Effect."

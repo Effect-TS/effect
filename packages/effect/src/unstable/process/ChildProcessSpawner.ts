@@ -217,7 +217,7 @@ export const makeHandle = (params: Omit<ChildProcessHandle, typeof HandleTypeId>
  * Creates a `ChildProcessSpawner` service from a `spawn` function, deriving
  * helpers for exit codes and output collection from that implementation.
  *
- * @category models
+ * @category constructors
  * @since 4.0.0
  */
 export const make = (spawn: ChildProcessSpawner["Service"]["spawn"]): ChildProcessSpawner["Service"] => {

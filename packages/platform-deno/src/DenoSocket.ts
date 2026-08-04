@@ -25,7 +25,7 @@ import * as Socket from "effect/unstable/socket/Socket"
 /**
  * Options for opening a TCP or Unix connection.
  *
- * @category types
+ * @category options
  * @since 4.0.0
  */
 export type ConnectOptions = (Deno.ConnectOptions | Deno.UnixConnectOptions) & {
@@ -36,7 +36,7 @@ export type ConnectOptions = (Deno.ConnectOptions | Deno.UnixConnectOptions) & {
 /**
  * Options for opening a TCP or Unix connection.
  *
- * @category types
+ * @category options
  * @since 4.0.0
  */
 export type TcpOptions = ConnectOptions & {

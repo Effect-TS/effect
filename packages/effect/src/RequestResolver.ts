@@ -582,7 +582,7 @@ export const fromEffectTagged = <A extends Request.Any & { readonly _tag: string
  * Array.of(delayRan, RequestResolver.isRequestResolver(resolverWithCustomDelay)) // => [true, true]
  * ```
  *
- * @category delay
+ * @category delays & timeouts
  * @since 4.0.0
  */
 export const setDelayEffect: {
@@ -625,7 +625,7 @@ export const setDelayEffect: {
  * await Effect.runPromise(program) // => "data"
  * ```
  *
- * @category delay
+ * @category delays & timeouts
  * @since 4.0.0
  */
 export const setDelay: {
@@ -1208,7 +1208,7 @@ export const withCache: {
  * @see {@link withCache} for in-memory resolver caching that does not require persistable request values or a persistence store
  * @see {@link asCache} for exposing resolver results through a `Cache` instead of returning another resolver
  *
- * @category Persistence
+ * @category caching
  * @since 4.0.0
  */
 export const persisted: {

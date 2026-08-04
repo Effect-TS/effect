@@ -38,6 +38,17 @@ const makeRedirectClient = Effect.fnUntraced(function*(status: number, location:
 const RateLimiterTestLayer = RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory))
 
 describe("HttpClient", () => {
+  it.effect("preserves source bytes after reading response text", () =>
+    Effect.gen(function*() {
+      const response = HttpClientResponse.fromWeb(
+        HttpClientRequest.get("https://example.com"),
+        new Response(new Uint8Array([0xef, 0xbb, 0xbf, 0x61]))
+      )
+      yield* response.text
+      const bytes = new Uint8Array(yield* response.arrayBuffer)
+      assert.deepStrictEqual(Array.from(bytes), [0xef, 0xbb, 0xbf, 0x61])
+    }))
+
   describe("tracer", () => {
     it.effect("includes request and response headers by default", () =>
       Effect.gen(function*() {

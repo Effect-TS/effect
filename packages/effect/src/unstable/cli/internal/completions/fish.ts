@@ -18,7 +18,7 @@ const escapeFishString = (s: string): string => s.replace(/'/g, "\\'")
  * Build a Fish condition that checks the current subcommand context.
  *
  * For root-level completions with subcommands: `__fish_use_subcommand`
- * For nested commands: verify the parent subcommand is active AND none of its
+ * For nested commands: verify the full parent path is active AND none of its
  * child subcommands have been entered yet.
  */
 const subcommandCondition = (
@@ -31,14 +31,12 @@ const subcommandCondition = (
     }
     return ``
   }
-  const parent = parentPath[parentPath.length - 1]
+  const parentCondition = parentPath.map((parent) => `__fish_seen_subcommand_from ${parent}`).join("; and ")
   if (childSubcommandNames.length > 0) {
-    // Show only when parent is active but no child subcommand has been entered
-    return `__fish_seen_subcommand_from ${parent}; and not __fish_seen_subcommand_from ${
-      childSubcommandNames.join(" ")
-    }`
+    // Show only when the parent path is active but no child subcommand has been entered
+    return `${parentCondition}; and not __fish_seen_subcommand_from ${childSubcommandNames.join(" ")}`
   }
-  return `__fish_seen_subcommand_from ${parent}`
+  return parentCondition
 }
 
 /**

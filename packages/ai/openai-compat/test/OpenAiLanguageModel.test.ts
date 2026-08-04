@@ -329,6 +329,55 @@ describe("OpenAiLanguageModel", () => {
         assert.strictEqual(functionTool.function.strict, true)
       }))
 
+    it.effect("decodes tool call params with the OpenAI codec", () =>
+      Effect.gen(function*() {
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(jsonResponse(
+                request,
+                makeChatCompletion({
+                  choices: [{
+                    index: 0,
+                    finish_reason: "tool_calls",
+                    message: {
+                      role: "assistant",
+                      content: null,
+                      tool_calls: [{
+                        id: "call_record_1",
+                        type: "function",
+                        function: {
+                          name: "RecordTool",
+                          arguments: JSON.stringify({ env: [{ 0: "PATH", 1: "/usr/bin" }] })
+                        }
+                      }]
+                    }
+                  }]
+                })
+              ))
+            )
+          ))
+        )
+
+        const result = yield* LanguageModel.generateText({
+          prompt: "read the environment",
+          toolkit: RecordToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(RecordToolkitLayer),
+          Effect.provide(layer)
+        )
+
+        const toolCall = result.content.find((part) => part.type === "tool-call")
+        assert.isDefined(toolCall)
+        if (toolCall?.type !== "tool-call") {
+          return
+        }
+        assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
+      }))
+
     it.effect("groups parallel tool calls into one assistant message", () =>
       Effect.gen(function*() {
         let capturedRequest: HttpClientRequest.HttpClientRequest | undefined
@@ -370,13 +419,15 @@ describe("OpenAiLanguageModel", () => {
                   id: "call_1",
                   name: "TestTool",
                   isFailure: false,
-                  result: { output: "first" }
+                  result: { output: "first" },
+                  providerExecuted: false
                 }),
                 Prompt.toolResultPart({
                   id: "call_2",
                   name: "TestTool",
                   isFailure: false,
-                  result: { output: "second" }
+                  result: { output: "second" },
+                  providerExecuted: false
                 })
               ]
             }
@@ -850,6 +901,59 @@ describe("OpenAiLanguageModel", () => {
         }
       }))
 
+    it.effect("decodes streamed tool call params with the OpenAI codec", () =>
+      Effect.gen(function*() {
+        const layer = OpenAiClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            makeHttpClient((request) =>
+              Effect.succeed(sseResponse(request, [
+                {
+                  id: "chatcmpl_record_1",
+                  object: "chat.completion.chunk",
+                  model: "gpt-4o-mini",
+                  created: 1,
+                  choices: [{
+                    index: 0,
+                    delta: {
+                      tool_calls: [{
+                        index: 0,
+                        id: "call_record_1",
+                        type: "function",
+                        function: {
+                          name: "RecordTool",
+                          arguments: JSON.stringify({ env: [{ 0: "PATH", 1: "/usr/bin" }] })
+                        }
+                      }]
+                    },
+                    finish_reason: "tool_calls"
+                  }]
+                },
+                "[DONE]"
+              ]))
+            )
+          ))
+        )
+
+        const partsChunk = yield* LanguageModel.streamText({
+          prompt: "read the environment",
+          toolkit: RecordToolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+          Effect.provide(RecordToolkitLayer),
+          Effect.provide(layer)
+        )
+
+        const toolCall = globalThis.Array.from(partsChunk).find((part) => part.type === "tool-call")
+        assert.isDefined(toolCall)
+        if (toolCall?.type !== "tool-call") {
+          return
+        }
+        assert.deepStrictEqual(toolCall.params, { env: { PATH: "/usr/bin" } })
+      }))
+
     it.effect("maps local shell stream tool calls to local_shell call outputs", () =>
       Effect.gen(function*() {
         const capturedRequests = yield* Ref.make<ReadonlyArray<HttpClientRequest.HttpClientRequest>>([])
@@ -922,7 +1026,8 @@ describe("OpenAiLanguageModel", () => {
                 id: toolCall.id,
                 name: toolCall.name,
                 isFailure: false,
-                result: "done"
+                result: "done",
+                providerExecuted: false
               })]
             }
           ]),
@@ -1502,6 +1607,19 @@ const TestToolkit = Toolkit.make(TestTool)
 
 const TestToolkitLayer = TestToolkit.toLayer({
   TestTool: ({ input }) => Effect.succeed({ output: input })
+})
+
+const RecordTool = Tool.make("RecordTool", {
+  parameters: Schema.Struct({
+    env: Schema.Record(Schema.String, Schema.String)
+  }),
+  success: Schema.String
+})
+
+const RecordToolkit = Toolkit.make(RecordTool)
+
+const RecordToolkitLayer = RecordToolkit.toLayer({
+  RecordTool: () => Effect.succeed("done")
 })
 
 const CompatApplyPatchTool = Tool.providerDefined({

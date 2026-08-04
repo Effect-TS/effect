@@ -255,6 +255,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   let buffer: string
   let startingPosition: number
   let startingFieldLength: number
+  let discardTrailingNewline: boolean
 
   // Event state
   let eventId: string | undefined
@@ -270,6 +271,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     buffer = ""
     startingPosition = 0
     startingFieldLength = -1
+    discardTrailingNewline = false
 
     eventId = undefined
     eventName = undefined
@@ -291,7 +293,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     // Set up chunk-specific processing state
     const length = buffer.length
     let position = 0
-    let discardTrailingNewline = false
 
     // Read the current buffer byte by byte
     while (position < length) {

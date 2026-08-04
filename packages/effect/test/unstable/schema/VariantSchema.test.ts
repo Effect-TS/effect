@@ -37,6 +37,31 @@ describe("VariantSchema", () => {
     assert.deepStrictEqual(Schema.decodeSync(User.b)({ name: "Alice" }), { name: "Alice" })
     assert.deepStrictEqual(Object.keys(User.fields), ["id", "name"])
   })
+
+  it("includes plain variant structs in the default union", () => {
+    const Test = VariantSchema.make({ variants: ["a", "b"], defaultVariant: "a" })
+    const first = Test.Struct({ value: Schema.String })
+    const second = Test.Struct({ value: Schema.Number })
+    const union = Test.Union([first, second])
+
+    assert.strictEqual(union.members.length, 2)
+    assert.deepStrictEqual(Schema.decodeUnknownSync(union)({ value: "foo" }), { value: "foo" })
+    assert.deepStrictEqual(Schema.decodeUnknownSync(union)({ value: 42 }), { value: 42 })
+  })
+
+  it("omits undefined fields accepted by VariantSchema.Struct", () => {
+    const Test = VariantSchema.make({ variants: ["a"], defaultVariant: "a" })
+    const struct = Test.Struct({ value: Schema.String, skipped: undefined })
+
+    assert.deepStrictEqual(Object.keys(Test.extract(struct, "a").fields), ["value"])
+  })
+
+  it("omits undefined fields selected by VariantSchema.Field", () => {
+    const Test = VariantSchema.make({ variants: ["a"], defaultVariant: "a" })
+    const struct = Test.Struct({ value: Schema.String, skipped: Test.Field({ a: undefined }) })
+
+    assert.deepStrictEqual(Object.keys(Test.extract(struct, "a").fields), ["value"])
+  })
 })
 
 describe("Model", () => {

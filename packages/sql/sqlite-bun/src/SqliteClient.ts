@@ -48,7 +48,7 @@ export type TypeId = "~@effect/sql-sqlite-bun/SqliteClient"
 /**
  * Bun SQLite client service, extending `SqlClient` with database export and extension loading helpers. `updateValues` is not supported.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface SqliteClient extends Client.SqlClient {
@@ -115,14 +115,15 @@ export const make = (
       undefined
 
     const makeConnection = Effect.gen(function*() {
+      const readonly = options.readonly === true
       const db = new Database(options.filename, {
-        readonly: options.readonly,
-        readwrite: options.readwrite ?? true,
-        create: options.create ?? true
+        readonly,
+        readwrite: readonly ? false : options.readwrite ?? true,
+        create: readonly ? false : options.create ?? true
       } as any)
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
 
-      if (options.disableWAL !== true) {
+      if (options.disableWAL !== true && !readonly) {
         db.run("PRAGMA journal_mode = WAL;")
       }
 

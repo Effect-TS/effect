@@ -18,7 +18,6 @@ import type { FileSystem } from "../../FileSystem.ts"
 import { identity } from "../../Function.ts"
 import { stringOrRedacted } from "../../internal/redacted.ts"
 import * as Layer from "../../Layer.ts"
-import * as Option from "../../Option.ts"
 import type { Path } from "../../Path.ts"
 import { type Pipeable, pipeArguments } from "../../Pipeable.ts"
 import { hasProperty } from "../../Predicate.ts"
@@ -58,7 +57,7 @@ import * as OpenApi from "./OpenApi.ts"
 /**
  * Registers an `HttpApi` with a `HttpRouter`.
  *
- * @category constructors
+ * @category layers
  * @since 4.0.0
  */
 export const layer = <Id extends string, Groups extends HttpApiGroup.Constraint>(
@@ -724,10 +723,10 @@ function decodePayload(
         }
         try {
           return decode(JSON.parse(text))
-        } catch (cause) {
+        } catch {
           return Effect.fail(
             new Schema.SchemaError(
-              new SchemaIssue.InvalidValue(Option.some(text), { message: `Invalid JSON: ${cause}` })
+              new SchemaIssue.InvalidValue({ message: "Expected a valid JSON body" })
             )
           )
         }
@@ -933,7 +932,7 @@ function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undef
     return (response, context) => {
       if (!Stream.isStream(response)) {
         return hasBuffered ? undefined : new Schema.SchemaError(
-          new SchemaIssue.InvalidValue(Option.some(response), { message: "Expected a streaming response" })
+          new SchemaIssue.InvalidValue({ message: "Expected a streaming response" })
         )
       }
 
@@ -952,7 +951,7 @@ function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undef
   return (response, context) => {
     if (!Stream.isStream(response)) {
       return hasBuffered ? undefined : new Schema.SchemaError(
-        new SchemaIssue.InvalidValue(Option.some(response), { message: "Expected a streaming response" })
+        new SchemaIssue.InvalidValue({ message: "Expected a streaming response" })
       )
     }
 
@@ -1087,7 +1086,7 @@ function getResponseTransformation(
   )
 
   return SchemaTransformation.transformOrFail({
-    decode: (res) => Effect.fail(new SchemaIssue.Forbidden(Option.some(res), { message: "Encode only schema" })),
+    decode: () => Effect.fail(new SchemaIssue.Forbidden({ message: "Encode only schema" })),
     encode
   })
 }
@@ -1106,8 +1105,10 @@ function getResponseEncode<E>(
         try {
           const s = JSON.stringify(e)
           return Effect.succeed(Response.text(s, { status, contentType: encoding.contentType }))
-        } catch (error) {
-          return Effect.fail(new SchemaIssue.InvalidValue(Option.some(e), { message: globalThis.String(error) }))
+        } catch {
+          return Effect.fail(
+            new SchemaIssue.InvalidValue({ message: "Expected a JSON-serializable response body" })
+          )
         }
       })
     }

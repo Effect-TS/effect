@@ -334,7 +334,7 @@ export interface Top extends
 /**
  * Extracts the endpoint identifier literal from an `HttpApiEndpoint`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Identifier<Endpoint> = Endpoint extends Constraint ? Endpoint["identifier"] : never
@@ -342,7 +342,7 @@ export type Identifier<Endpoint> = Endpoint extends Constraint ? Endpoint["ident
 /**
  * Extracts the success schema associated with an endpoint.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Success<Endpoint> = Endpoint extends Constraint ? Endpoint["~Success"] : never
@@ -350,7 +350,7 @@ export type Success<Endpoint> = Endpoint extends Constraint ? Endpoint["~Success
 /**
  * Extracts the error schema associated with an endpoint.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Error<Endpoint> = Endpoint extends Constraint ? Endpoint["~Error"] : never
@@ -358,7 +358,7 @@ export type Error<Endpoint> = Endpoint extends Constraint ? Endpoint["~Error"] :
 /**
  * Extracts the schema used for an endpoint's path parameters.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Params<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~Params"]
@@ -367,7 +367,7 @@ export type Params<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~P
 /**
  * Extracts the schema used for an endpoint's query parameters.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Query<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~Query"]
@@ -376,7 +376,7 @@ export type Query<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~Qu
 /**
  * Extracts the schema used for an endpoint's request payload.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Payload<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~Payload"]
@@ -385,7 +385,7 @@ export type Payload<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~
 /**
  * Extracts the schema used for an endpoint's request headers.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Headers<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~Headers"]
@@ -394,7 +394,7 @@ export type Headers<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~
 /**
  * Extracts the middleware identifiers attached to an endpoint.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Middleware<Endpoint> = Endpoint extends { readonly "~Middleware": infer M } ? M
@@ -403,7 +403,7 @@ export type Middleware<Endpoint> = Endpoint extends { readonly "~Middleware": in
 /**
  * Computes the services provided by the middleware attached to an endpoint.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type MiddlewareProvides<Endpoint> = HttpApiMiddleware.Provides<Middleware<Endpoint>>
@@ -411,7 +411,7 @@ export type MiddlewareProvides<Endpoint> = HttpApiMiddleware.Provides<Middleware
 /**
  * Computes the client-side middleware services required by an endpoint.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type MiddlewareClient<Endpoint> = HttpApiMiddleware.MiddlewareClient<Middleware<Endpoint>>
@@ -420,7 +420,7 @@ export type MiddlewareClient<Endpoint> = HttpApiMiddleware.MiddlewareClient<Midd
  * Computes the error types that can be produced by the middleware attached to an
  * endpoint.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type MiddlewareError<Endpoint> = HttpApiMiddleware.Error<Middleware<Endpoint>>
@@ -429,7 +429,7 @@ export type MiddlewareError<Endpoint> = HttpApiMiddleware.Error<Middleware<Endpo
  * Computes the full error value union for an endpoint, including the endpoint
  * error schema's type and errors introduced by middleware.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Errors<Endpoint> = Endpoint extends ConstraintRequest ?
@@ -440,7 +440,7 @@ export type Errors<Endpoint> = Endpoint extends ConstraintRequest ?
  * Computes the services required to encode an endpoint's error responses,
  * including services required by middleware error encoders.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ErrorServicesEncode<Endpoint> = Endpoint extends ConstraintRequest ?
@@ -453,7 +453,7 @@ export type ErrorServicesEncode<Endpoint> = Endpoint extends ConstraintRequest ?
  * available params, query, payload, headers, the raw request, endpoint, and group.
  * Multipart stream payloads are exposed as streams of parts.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Request<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~Request"]
@@ -464,7 +464,7 @@ export type Request<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~
  * params, query, and headers plus the raw request, endpoint, and group, while
  * leaving payload handling to the raw request.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type RequestRaw<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint["~RequestRaw"]
@@ -475,7 +475,7 @@ export type RequestRaw<Endpoint> = Endpoint extends ConstraintRequest ? Endpoint
  * the params, query, headers, payload, and response mode fields required by the
  * endpoint. Multipart payloads are supplied as `FormData`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ClientRequest<
@@ -511,7 +511,7 @@ export type ClientResponseMode = "decoded-only" | "decoded-and-response" | "resp
  * Computes the services required on the server to decode endpoint inputs and
  * encode endpoint success, error, and middleware error responses.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ServerServices<Endpoint> = Endpoint extends ConstraintRequest ?
@@ -528,7 +528,7 @@ export type ServerServices<Endpoint> = Endpoint extends ConstraintRequest ?
  * Computes the services required on the client to encode endpoint requests and
  * decode endpoint success or error responses.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ClientServices<Endpoint> = Endpoint extends ConstraintRequest ?
@@ -543,7 +543,7 @@ export type ClientServices<Endpoint> = Endpoint extends ConstraintRequest ?
 /**
  * Extracts the additional services required by middleware applied to an endpoint.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type MiddlewareServices<Endpoint> = Endpoint extends { readonly "~MiddlewareServices": infer R } ? R
@@ -553,7 +553,7 @@ export type MiddlewareServices<Endpoint> = Endpoint extends { readonly "~Middlew
  * Computes the services required to decode an endpoint's error responses,
  * including services required by middleware error decoders.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ErrorServicesDecode<Endpoint> = Endpoint extends ConstraintRequest ?
@@ -565,7 +565,7 @@ export type ErrorServicesDecode<Endpoint> = Endpoint extends ConstraintRequest ?
  * The normal server handler for an endpoint, accepting the decoded request shape
  * and returning either the endpoint success value or a custom `HttpServerResponse`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Handler<Endpoint extends Constraint, E, R> = (
@@ -576,7 +576,7 @@ export type Handler<Endpoint extends Constraint, E, R> = (
  * The raw server handler for an endpoint, receiving a request shape without a
  * decoded payload so the handler can read the raw `HttpServerRequest` directly.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type HandlerRaw<Endpoint extends Constraint, E, R> = (
@@ -586,7 +586,7 @@ export type HandlerRaw<Endpoint extends Constraint, E, R> = (
 /**
  * Selects the endpoint with the specified identifier from a union of endpoints.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type WithIdentifier<Endpoints, Identifier extends string> = Extract<
@@ -597,7 +597,7 @@ export type WithIdentifier<Endpoints, Identifier extends string> = Extract<
 /**
  * Removes endpoints with the specified identifier from a union of endpoints.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ExcludeIdentifier<Endpoints, Identifier extends string> = Exclude<
@@ -609,7 +609,7 @@ export type ExcludeIdentifier<Endpoints, Identifier extends string> = Exclude<
  * Derives the normal handler type for the endpoint with the specified identifier
  * in an endpoint union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type HandlerWithIdentifier<Endpoints extends Constraint, Identifier extends string, E, R> = Handler<
@@ -622,7 +622,7 @@ export type HandlerWithIdentifier<Endpoints extends Constraint, Identifier exten
  * Derives the raw handler type for the endpoint with the specified identifier in
  * an endpoint union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type HandlerRawWithIdentifier<Endpoints extends Constraint, Identifier extends string, E, R> = HandlerRaw<
@@ -635,7 +635,7 @@ export type HandlerRawWithIdentifier<Endpoints extends Constraint, Identifier ex
  * Extracts the decoded success value type for the endpoint with the specified
  * identifier in an endpoint union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type SuccessWithIdentifier<Endpoints extends Constraint, Identifier extends string> = Success<
@@ -646,7 +646,7 @@ export type SuccessWithIdentifier<Endpoints extends Constraint, Identifier exten
  * Computes the full error value union for the endpoint with the specified
  * identifier in an endpoint union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ErrorsWithIdentifier<Endpoints extends Constraint, Identifier extends string> = Errors<
@@ -657,7 +657,7 @@ export type ErrorsWithIdentifier<Endpoints extends Constraint, Identifier extend
  * Computes the server-side service requirements for the endpoint with the
  * specified identifier in an endpoint union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ServerServicesWithIdentifier<Endpoints extends Constraint, Identifier extends string> = ServerServices<
@@ -668,7 +668,7 @@ export type ServerServicesWithIdentifier<Endpoints extends Constraint, Identifie
  * Extracts the middleware identifiers for the endpoint with the specified
  * identifier in an endpoint union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type MiddlewareWithIdentifier<Endpoints extends Constraint, Identifier extends string> = Middleware<
@@ -679,7 +679,7 @@ export type MiddlewareWithIdentifier<Endpoints extends Constraint, Identifier ex
  * Extracts the middleware service requirements for the endpoint with the
  * specified identifier in an endpoint union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type MiddlewareServicesWithIdentifier<Endpoints extends Constraint, Identifier extends string> =
@@ -689,7 +689,7 @@ export type MiddlewareServicesWithIdentifier<Endpoints extends Constraint, Ident
  * Removes services provided by the HTTP router and the selected endpoint's
  * middleware from a service requirement union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ExcludeProvidedWithIdentifier<Endpoints extends Constraint, Identifier extends string, R> = ExcludeProvided<
@@ -701,7 +701,7 @@ export type ExcludeProvidedWithIdentifier<Endpoints extends Constraint, Identifi
  * Removes services provided by the HTTP router and endpoint middleware from a
  * service requirement union.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type ExcludeProvided<Endpoint extends Constraint, R> = Exclude<
@@ -714,7 +714,7 @@ export type ExcludeProvided<Endpoint extends Constraint, R> = Exclude<
  * Returns an endpoint type with the supplied path prefix prepended while
  * preserving the endpoint's schemas, method, errors, and middleware.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type AddPrefix<Endpoint, Prefix extends HttpRouter.PathInput> = Endpoint extends HttpApiEndpoint<
@@ -748,7 +748,7 @@ export type AddPrefix<Endpoint, Prefix extends HttpRouter.PathInput> = Endpoint 
  * Returns an endpoint type with additional middleware applied and the endpoint's
  * middleware service requirements updated accordingly.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type AddMiddleware<Endpoint, M extends HttpApiMiddleware.AnyId> = Endpoint extends HttpApiEndpoint<
@@ -869,7 +869,7 @@ function makeProto<
  * Constraint for path parameter schemas: each parameter must encode to
  * `string | undefined`, or the schema must encode to a record of those values.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type ParamsConstraint =
@@ -880,7 +880,7 @@ export type ParamsConstraint =
  * Constraint for header schemas: each header must encode to `string | undefined`,
  * or the schema must encode to a record of those values.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type HeadersConstraint =
@@ -891,7 +891,7 @@ export type HeadersConstraint =
  * Constraint for query schemas: each field must encode to `string`, an array of
  * strings, or `undefined`, or the schema must encode to a record of those values.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type QueryConstraint =
@@ -906,7 +906,7 @@ export type QueryConstraint =
  * - for body methods, payload may be any `Schema.Top` (or content-type keyed
  *   schemas) and OpenAPI uses `requestBody` instead of `parameters`
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMethod.NoBody ? Record<
@@ -920,7 +920,7 @@ export type PayloadConstraint<Method extends HttpMethod> = Method extends HttpMe
  * accept field records for query-style encoding, while body methods accept one or
  * more schemas.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type PayloadConstraintCodecs<Method extends HttpMethod> = Method extends HttpMethod.NoBody ?
@@ -931,7 +931,7 @@ export type PayloadConstraintCodecs<Method extends HttpMethod> = Method extends 
  * Constraint for success response schemas, allowing either a single schema or a
  * readonly array of schemas.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type SuccessConstraint = Schema.Top | ReadonlyArray<Schema.Top>
@@ -940,7 +940,7 @@ export type SuccessConstraint = Schema.Top | ReadonlyArray<Schema.Top>
  * Constraint for error response schemas, allowing either a single schema or a
  * readonly array of schemas.
  *
- * @category constraints
+ * @category utility types
  * @since 4.0.0
  */
 export type ErrorConstraint = Schema.Top | ReadonlyArray<Schema.Top>

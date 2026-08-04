@@ -49,7 +49,7 @@ export declare namespace OpenAiConfig {
    * Configuration values read by OpenAI provider operations when executing
    * requests.
    *
-   * @category models
+   * @category services
    * @since 4.0.0
    */
   export interface Service {

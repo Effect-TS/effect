@@ -320,7 +320,7 @@ export const evolve: {
  * ```
  *
  * @see {@link evolve} – transform element values instead of positions
- * @category Index utilities
+ * @category transforming
  * @since 4.0.0
  */
 export const renameIndices: {

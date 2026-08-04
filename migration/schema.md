@@ -898,14 +898,14 @@ const NumberFromString = Schema.transformOrFail(Schema.String, Schema.Number, {
 v4
 
 ```ts
-import { Effect, Number, Option, Schema, SchemaGetter, SchemaIssue } from "effect"
+import { Effect, Number, Schema, SchemaGetter, SchemaIssue } from "effect"
 
 const NumberFromString = Schema.String.pipe(
   Schema.decodeTo(Schema.Number, {
     decode: SchemaGetter.transformOrFail((s) => {
       const n = Number.parse(s)
       if (n === undefined) {
-        return Effect.fail(new SchemaIssue.InvalidValue(Option.some(s)))
+        return Effect.fail(new SchemaIssue.InvalidValue())
       }
       return Effect.succeed(n)
     }),

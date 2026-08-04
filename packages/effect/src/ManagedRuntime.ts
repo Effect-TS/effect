@@ -279,7 +279,7 @@ export interface ManagedRuntime<in R, out ER> {
  * @see {@link Layer.MemoMap} for shared layer memoization
  * @see {@link Layer.build} for lower-level scoped layer construction
  *
- * @category runtime class
+ * @category constructors
  * @since 2.0.0
  */
 export const make = <R, ER>(

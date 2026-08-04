@@ -270,6 +270,27 @@ describe("OtlpExporter", () => {
       })
     ))
 
+  it.effect("retries status 429 with HTTP-date retry-after delay", () =>
+    Effect.scoped(
+      Effect.gen(function*() {
+        const { attempts, httpClient } = yield* makeHttpClient("Thu, 01 Jan 1970 00:01:00 GMT")
+        const exporter = yield* makeExporter(httpClient)
+
+        exporter.push({ value: 1 })
+        yield* yieldNowN(3)
+
+        assert.strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("5 seconds")
+        yield* yieldNowN(2)
+        assert.strictEqual(yield* Ref.get(attempts), 1)
+
+        yield* TestClock.adjust("55 seconds")
+        yield* yieldNowN(2)
+        assert.strictEqual(yield* Ref.get(attempts), 2)
+      })
+    ))
+
   it.effect("uses fallback retry-after delay when header is non-numeric", () =>
     Effect.scoped(
       Effect.gen(function*() {

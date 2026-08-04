@@ -154,7 +154,7 @@ export const make = <A>(value: A): Effect.Effect<SubscriptionRef<A>> =>
  * await Effect.runPromise(program) // => [0, 1, 2]
  * ```
  *
- * @category changes
+ * @category subscriptions
  * @since 4.0.0
  */
 export const changes = <A>(self: SubscriptionRef<A>): Stream.Stream<A> => Stream.fromPubSub(self.pubsub)
@@ -374,7 +374,7 @@ export const getAndUpdateSome: {
     const current = self.value
     const option = update(current)
     if (Option.isNone(option)) {
-      return Effect.succeed(current)
+      return current
     }
     setUnsafe(self, option.value)
     return current
@@ -460,7 +460,7 @@ export const getAndUpdateSomeEffect: {
  * await Effect.runPromise(program) // => ["Old value was 10", 20]
  * ```
  *
- * @category modifications
+ * @category mutations
  * @since 2.0.0
  */
 export const modify: {
@@ -500,7 +500,7 @@ export const modify: {
  * await Effect.runPromise(program) // => ["Doubled from 10", 20]
  * ```
  *
- * @category modifications
+ * @category mutations
  * @since 2.0.0
  */
 export const modifyEffect: {
@@ -556,7 +556,7 @@ export const modifyEffect: {
  * await Effect.runPromise(program) // => ["Updated", 20]
  * ```
  *
- * @category modifications
+ * @category mutations
  * @since 2.0.0
  */
 export const modifySome: {
@@ -616,7 +616,7 @@ export const modifySome: {
  * await Effect.runPromise(program) // => ["Updated", 15]
  * ```
  *
- * @category modifications
+ * @category mutations
  * @since 2.0.0
  */
 export const modifySomeEffect: {
@@ -659,7 +659,7 @@ export const modifySomeEffect: {
  * await Effect.runPromise(program) // => 42
  * ```
  *
- * @category setters
+ * @category mutations
  * @since 2.0.0
  */
 export const set: {
@@ -688,7 +688,7 @@ export const set: {
  * await Effect.runPromise(program) // => 42
  * ```
  *
- * @category setters
+ * @category mutations
  * @since 2.0.0
  */
 export const setAndGet: {
@@ -720,7 +720,7 @@ export const setAndGet: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
- * @category updating
+ * @category mutations
  * @since 2.0.0
  */
 export const update: {
@@ -752,7 +752,7 @@ export const update: {
  * await Effect.runPromise(program) // => 15
  * ```
  *
- * @category updating
+ * @category mutations
  * @since 2.0.0
  */
 export const updateEffect: {
@@ -784,7 +784,7 @@ export const updateEffect: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
- * @category updating
+ * @category mutations
  * @since 2.0.0
  */
 export const updateAndGet: {
@@ -819,7 +819,7 @@ export const updateAndGet: {
  * await Effect.runPromise(program) // => 15
  * ```
  *
- * @category updating
+ * @category mutations
  * @since 2.0.0
  */
 export const updateAndGetEffect: {
@@ -860,7 +860,7 @@ export const updateAndGetEffect: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
- * @category updating
+ * @category mutations
  * @since 2.0.0
  */
 export const updateSome: {
@@ -909,7 +909,7 @@ export const updateSome: {
  * await Effect.runPromise(program) // => 13
  * ```
  *
- * @category updating
+ * @category mutations
  * @since 2.0.0
  */
 export const updateSomeEffect: {
@@ -962,7 +962,7 @@ export const updateSomeEffect: {
  * await Effect.runPromise(program) // => 20
  * ```
  *
- * @category updating
+ * @category mutations
  * @since 2.0.0
  */
 export const updateSomeAndGet: {
@@ -1011,7 +1011,7 @@ export const updateSomeAndGet: {
  * await Effect.runPromise(program) // => 13
  * ```
  *
- * @category updating
+ * @category mutations
  * @since 2.0.0
  */
 export const updateSomeAndGetEffect: {

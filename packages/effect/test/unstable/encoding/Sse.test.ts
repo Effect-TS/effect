@@ -4,6 +4,21 @@ import * as Schema from "effect/Schema"
 import * as Sse from "effect/unstable/encoding/Sse"
 
 describe("Sse", () => {
+  it("treats CRLF split across chunks as one line ending", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed("data: first\r")
+    parser.feed("\ndata: second\n\n")
+
+    assert.deepStrictEqual(events, [{
+      _tag: "Event",
+      event: "message",
+      id: undefined,
+      data: "first\nsecond"
+    }])
+  })
+
   it("Event preserves string payloads", () => {
     const decode = Schema.decodeUnknownSync(Sse.Event)
     const encode = Schema.encodeSync(Sse.Event)

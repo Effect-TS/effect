@@ -74,7 +74,7 @@ export class EventLogServerUnencrypted extends Context.Service<EventLogServerUne
  * Creates a typed server-side write function for events in the supplied
  * `EventLogSchema`.
  *
- * @category EventLogServerUnencrypted
+ * @category constructors
  * @since 4.0.0
  */
 export const makeWrite = <Groups extends EventGroup.Any>(
@@ -146,7 +146,7 @@ export const layerRpcHandlers: Layer.Layer<
     remoteId,
     getOrCreateSessionAuthBinding: (publicKey, signingPublicKey) =>
       storage.getOrCreateSessionAuthBinding(publicKey, signingPublicKey),
-    onWrite: Effect.fnUntraced(function*(data) {
+    onWrite: Effect.fnUntraced(function*(data, authenticatedPublicKeys) {
       const request = yield* WriteEntriesUnencrypted.decode(data).pipe(
         Effect.mapError((_) =>
           new EventLogProtocolError({
@@ -157,6 +157,14 @@ export const layerRpcHandlers: Layer.Layer<
           })
         )
       )
+      if (!authenticatedPublicKeys.has(request.publicKey)) {
+        return yield* new EventLogProtocolError({
+          requestTag: "WriteEntries",
+          publicKey: request.publicKey,
+          code: "Forbidden",
+          message: "Identity is not authenticated"
+        })
+      }
       if (!Arr.isReadonlyArrayNonEmpty(request.entries)) return
 
       const resolvedStoreId = yield* mapping.resolve({
@@ -322,7 +330,7 @@ const toStoreNotFoundError = (options: {
  * Provides a `StoreMapping` that accepts only one configured store id and fails
  * all other store ids as not found.
  *
- * @category store
+ * @category layers
  * @since 4.0.0
  */
 export const layerStoreMappingStatic = (options: {
@@ -352,7 +360,7 @@ export const layerStoreMappingStatic = (options: {
  * allocates remote sequence numbers, persists entries, streams changes, and
  * exposes a transaction boundary.
  *
- * @category storage
+ * @category services
  * @since 4.0.0
  */
 export class Storage extends Context.Service<Storage, {
@@ -556,7 +564,7 @@ export const compactBacklog = Effect.fnUntraced(function*(options: {
  * in memory, publishes live changes, and serializes transactions with a
  * semaphore.
  *
- * @category storage
+ * @category constructors
  * @since 4.0.0
  */
 export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.Scope> = Effect.gen(function*() {
@@ -663,7 +671,7 @@ export const makeStorageMemory: Effect.Effect<Storage["Service"], never, Scope.S
 /**
  * Provides unencrypted server `Storage` using the in-memory implementation.
  *
- * @category storage
+ * @category layers
  * @since 4.0.0
  */
 export const layerStorageMemory: Layer.Layer<Storage> = Layer.effect(Storage)(makeStorageMemory)

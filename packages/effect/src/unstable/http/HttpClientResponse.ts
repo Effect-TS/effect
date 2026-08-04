@@ -201,7 +201,7 @@ export const matchStatus: {
 /**
  * Succeeds with the response when its status satisfies the predicate, otherwise fails with `HttpClientError`.
  *
- * @category filters
+ * @category filtering
  * @since 4.0.0
  */
 export const filterStatus: {
@@ -228,7 +228,7 @@ export const filterStatus: {
 /**
  * Succeeds with the response only when its status is in the 2xx range, otherwise fails with `HttpClientError`.
  *
- * @category filters
+ * @category filtering
  * @since 4.0.0
  */
 export const filterStatusOk = (self: HttpClientResponse): Effect.Effect<HttpClientResponse, Error.HttpClientError> =>
@@ -333,22 +333,7 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
 
   private textBody?: Effect.Effect<string, Error.HttpClientError>
   get text(): Effect.Effect<string, Error.HttpClientError> {
-    if (this.textBody) {
-      return this.textBody
-    }
-    this.textBody = Effect.tryPromise({
-      try: () => this.source.text(),
-      catch: (cause) =>
-        new Error.HttpClientError({
-          reason: new Error.DecodeError({
-            request: this.request,
-            response: this,
-            cause
-          })
-        })
-    }).pipe(Effect.cached, Effect.runSync)
-    this.arrayBufferBody = Effect.map(this.textBody, (_) => new TextEncoder().encode(_).buffer)
-    return this.textBody
+    return this.textBody ??= Effect.map(this.arrayBuffer, (_) => new TextDecoder().decode(_))
   }
 
   get urlParamsBody(): Effect.Effect<UrlParams.UrlParams, Error.HttpClientError> {
@@ -397,7 +382,6 @@ class WebHttpClientResponse extends Inspectable.Class implements HttpClientRespo
           })
         })
     }).pipe(Effect.cached, Effect.runSync)
-    this.textBody = Effect.map(this.arrayBufferBody, (_) => new TextDecoder().decode(_))
     return this.arrayBufferBody
   }
 

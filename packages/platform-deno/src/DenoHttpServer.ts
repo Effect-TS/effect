@@ -125,12 +125,12 @@ export const make = Effect.fnUntraced(function*(
         info: Deno.ServeHandlerInfo<Deno.NetAddr | Deno.UnixAddr>
       ): Promise<Response> {
         return new Promise<Response>((resolve) => {
-          const map = new Map(services.mapUnsafe)
-          map.set(
-            ServerRequest.HttpServerRequest.key,
+          const context = Context.add(
+            services,
+            ServerRequest.HttpServerRequest,
             new DenoServerRequest(request, info.remoteAddr, resolve, removeHost(request.url), websocket)
           )
-          const fiber = Fiber.runIn(Effect.runForkWith(Context.makeUnsafe<any>(map))(httpEffect), scope)
+          const fiber = Fiber.runIn(Effect.runForkWith(context)(httpEffect), scope)
           request.signal.addEventListener("abort", () => {
             fiber.interruptUnsafe(parent.id, Error.ClientAbort.annotation)
           }, { once: true })
@@ -251,7 +251,7 @@ export const layer = (
 /**
  * Starts a Deno HTTP server on an ephemeral loopback port for tests.
  *
- * @category layers
+ * @category testing
  * @since 4.0.0
  */
 export const layerTest: Layer.Layer<
