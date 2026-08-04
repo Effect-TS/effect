@@ -304,7 +304,8 @@ export const layerBackingSqlMultiTable: Layer.Layer<
   return BackingPersistence.of({
     make: Effect.fnUntraced(function*(storeId) {
       const clock = yield* Clock.Clock
-      const table = sql(`effect_persistence_${storeId}`)
+      const tableName = `effect_persistence_${storeId}`
+      const table = sql(tableName)
       yield* sql.onDialectOrElse({
         mysql: () =>
           sql`
@@ -324,7 +325,7 @@ export const layerBackingSqlMultiTable: Layer.Layer<
           `,
         mssql: () =>
           sql`
-            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${table} AND xtype='U')
+            IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${tableName} AND xtype='U')
             CREATE TABLE ${table} (
               id NVARCHAR(450) PRIMARY KEY,
               value NVARCHAR(MAX) NOT NULL,
@@ -554,7 +555,7 @@ export const layerBackingSql: Layer.Layer<
       `,
     mssql: () =>
       sql`
-        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${table} AND xtype='U')
+        IF NOT EXISTS (SELECT * FROM sysobjects WHERE name=${"effect_persistence"} AND xtype='U')
         CREATE TABLE ${table} (
           store_id NVARCHAR(191) NOT NULL,
           id NVARCHAR(191) NOT NULL,
