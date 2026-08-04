@@ -47,7 +47,7 @@ import * as Reducer from "./Reducer.ts"
  *
  * @see {@link make} to create an order from a comparison function
  * @see {@link Ordering} for the result type of comparisons
- * @category type class
+ * @category models
  * @since 2.0.0
  */
 export interface Order<in A> {
@@ -66,7 +66,7 @@ export interface Order<in A> {
  * This is type-level only, has no runtime representation, and is used
  * internally by the Effect type system.
  *
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface OrderTypeLambda extends TypeLambda {

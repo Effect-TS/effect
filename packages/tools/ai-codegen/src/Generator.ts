@@ -69,7 +69,7 @@ export class PatchError extends Data.TaggedError("PatchError")<{
 /**
  * Service for generating Effect code from OpenAPI specs.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface CodeGenerator {

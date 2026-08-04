@@ -49,7 +49,7 @@ export type TypeId = "~@effect/sql-sqlite-node/SqliteClient"
 /**
  * Node SQLite client service, extending `SqlClient` with database export, backup, and extension loading helpers. `updateValues` is not supported.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface SqliteClient extends Client.SqlClient {

@@ -283,7 +283,7 @@ export const BaseProto: Inspectable = {
  * user[Inspectable.NodeInspectSymbol]() // => { _tag: "User", id: 1, name: "Alice", email: "alice@example.com" }
  * ```
  *
- * @category classes
+ * @category models
  * @since 2.0.0
  */
 export abstract class Class {

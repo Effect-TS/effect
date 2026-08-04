@@ -48,7 +48,7 @@ export type TypeId = "~@effect/sql-sqlite-bun/SqliteClient"
 /**
  * Bun SQLite client service, extending `SqlClient` with database export and extension loading helpers. `updateValues` is not supported.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface SqliteClient extends Client.SqlClient {

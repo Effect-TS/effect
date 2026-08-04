@@ -136,7 +136,7 @@ export const fromString: {
  * mutatedUrl.toString() // => "https://user:pass@example.com/"
  * ```
  *
- * @category modifiers
+ * @category transforming
  * @since 4.0.0
  */
 export const mutate: {
@@ -358,7 +358,7 @@ export const urlParams = (url: URL): UrlParams.UrlParams => UrlParams.fromInput(
  * changedUrl.toString() // => "https://example.com/?foo=bar&key=value"
  * ```
  *
- * @category modifiers
+ * @category transforming
  * @since 4.0.0
  */
 export const modifyUrlParams: {

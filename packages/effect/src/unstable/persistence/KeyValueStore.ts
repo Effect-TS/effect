@@ -701,7 +701,7 @@ const SchemaStoreTypeId = "~effect/persistence/KeyValueStore/SchemaStore" as con
 /**
  * Schema-aware view of a `KeyValueStore` that stores values as encoded JSON.
  *
- * @category SchemaStore
+ * @category models
  * @since 4.0.0
  */
 export interface SchemaStore<S extends Schema.Constraint> {
@@ -762,7 +762,7 @@ export interface SchemaStore<S extends Schema.Constraint> {
 /**
  * Adapts a `KeyValueStore` into a `SchemaStore` using the schema's JSON codec.
  *
- * @category SchemaStore
+ * @category converting
  * @since 4.0.0
  */
 export const toSchemaStore = <S extends Schema.Constraint>(self: KeyValueStore, schema: S): SchemaStore<S> => {

@@ -205,7 +205,7 @@ export interface Service {
  * express every constraint; the returned codec remains authoritative for
  * validating model output.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type CodecTransformer = <T, E, RD, RE>(schema: Schema.ConstraintCodec<T, E, RD, RE>) => {
@@ -1728,7 +1728,7 @@ export const generateText: {
  * await Effect.runPromise(program) // => { title: "Tech Conference", date: "March 15th", location: "San Francisco" }
  * ```
  *
- * @category object generation
+ * @category generators
  * @since 4.0.0
  */
 export const generateObject = <
@@ -2055,7 +2055,8 @@ const executeApprovedToolCalls = <Tools extends Record<string, Tool.Any>>(
       id: approval.toolCallId,
       name: toolCall.name,
       isFailure: terminalResult.isFailure,
-      result: terminalResult.encodedResult
+      result: terminalResult.encodedResult,
+      providerExecuted: false
     })
   })
 
@@ -2075,7 +2076,8 @@ const createDenialResults = (
           id: denial.toolCallId,
           name: denial.toolCall.name,
           isFailure: true,
-          result: { type: "execution-denied", reason: denial.reason }
+          result: { type: "execution-denied", reason: denial.reason },
+          providerExecuted: false
         })
       )
     }

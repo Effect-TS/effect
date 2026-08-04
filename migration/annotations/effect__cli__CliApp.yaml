@@ -7,3 +7,6 @@
 "@effect/cli/CliApp#make":
   replacement: "Command.make"
   note: "Build the executable Command directly; there is no separate CliApp wrapper."
+"@effect/cli/CliApp#run":
+  replacement: "Command.run"
+  note: "The CliApp wrapper was removed. Attach the execute function with Command.withHandler, then run the Command with its version; v4 reads arguments through the CLI environment instead of accepting args and execute at this call."

@@ -187,7 +187,7 @@ export declare namespace Option {
    * const witness: MyType = "value"
    * ```
    *
-   * @category Type-level Utils
+   * @category utility types
    * @since 2.0.0
    */
   export type Value<T extends Option<any>> = [T] extends [Option<infer _A>] ? _A : never
@@ -218,7 +218,7 @@ export interface OptionUnifyIgnore {}
  * Use when defining higher-kinded abstractions that must accept optional-value
  * types as one of their type-lambda inputs.
  *
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface OptionTypeLambda extends TypeLambda {
@@ -1715,7 +1715,7 @@ export const zipWith: {
  * pipe(items, Option.reduceCompact(0, (b, a) => b + a)) // => 3
  * ```
  *
- * @category reducing
+ * @category folding
  * @since 2.0.0
  */
 export const reduceCompact: {
@@ -2072,7 +2072,7 @@ export const liftPredicate: { // Note: I intentionally avoid using the NoInfer p
  *
  * @see {@link contains} for a version using default equality
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
@@ -2107,7 +2107,7 @@ export const containsWith = <A>(isEquivalent: (self: A, that: A) => boolean): {
  * @see {@link containsWith} for custom equality
  * @see {@link exists} to test with a predicate
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const contains: {
@@ -2144,7 +2144,7 @@ export const contains: {
  * @see {@link filter} to keep or discard based on a predicate
  * @see {@link contains} to test for a specific value
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const exists: {
@@ -2188,7 +2188,7 @@ export const exists: {
  * @see {@link bind} to add `Option` values
  * @see {@link let_ let} to add plain values
  *
- * @category do notation
+ * @category mapping
  * @since 2.0.0
  */
 export const bindTo: {
@@ -2234,7 +2234,7 @@ export {
    * @see {@link bind} to add `Option` values
    * @see {@link bindTo} to start by naming an existing `Option`
    *
-   * @category do notation
+   * @category mapping
    * @since 2.0.0
    */
   let_ as let
@@ -2266,7 +2266,7 @@ export {
  * @see {@link let_ let} to add plain values
  * @see {@link bindTo} to start by naming an existing `Option`
  *
- * @category do notation
+ * @category sequencing
  * @since 2.0.0
  */
 export const bind: {
@@ -2308,7 +2308,7 @@ export const bind: {
  * @see {@link let_ let} to add plain values
  * @see {@link bindTo} to start by naming an existing `Option`
  *
- * @category do notation
+ * @category constructors
  * @since 2.0.0
  */
 export const Do: Option<{}> = some({})
@@ -2390,7 +2390,7 @@ export const gen: Gen.Gen<OptionTypeLambda> = (...args) => {
  *
  * @see {@link makeReducerFailFast} for fail-fast semantics
  *
- * @category Reducer
+ * @category constructors
  * @since 4.0.0
  */
 export function makeReducer<A>(combiner: Combiner.Combiner<A>): Reducer.Reducer<Option<A>> {
@@ -2428,7 +2428,7 @@ export function makeReducer<A>(combiner: Combiner.Combiner<A>): Reducer.Reducer<
  *
  * @see {@link makeReducerFailFast} to get a full `Reducer`
  *
- * @category Combiner
+ * @category constructors
  * @since 4.0.0
  */
 export function makeCombinerFailFast<A>(combiner: Combiner.Combiner<A>): Combiner.Combiner<Option<A>> {
@@ -2466,7 +2466,7 @@ export function makeCombinerFailFast<A>(combiner: Combiner.Combiner<A>): Combine
  * @see {@link makeCombinerFailFast} for just the combiner
  * @see {@link makeReducer} for non-fail-fast semantics
  *
- * @category Reducer
+ * @category constructors
  * @since 4.0.0
  */
 export function makeReducerFailFast<A>(reducer: Reducer.Reducer<A>): Reducer.Reducer<Option<A>> {

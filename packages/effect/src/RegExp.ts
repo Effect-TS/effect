@@ -72,7 +72,7 @@ export const isRegExp: (input: unknown) => input is RegExp = predicate.isRegExp
  * RegExp.escape("a*b") // => "a\\*b"
  * ```
  *
- * @category RegExp
+ * @category transforming
  * @since 2.0.0
  */
 export const escape = (string: string): string => string.replace(/[/\\^$*+?.()|[\]{}]/g, "\\$&")

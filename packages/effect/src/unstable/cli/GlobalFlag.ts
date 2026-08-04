@@ -58,7 +58,7 @@ export interface Action<A> {
 /**
  * Setting flag: configure command handler's environment (--log-level, --config).
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Setting<Id extends string, A> extends Context.Service<Setting.Identifier<Id>, A> {

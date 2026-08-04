@@ -39,14 +39,14 @@ export {
   /**
    * Context reference for the `fetch` implementation used by the fetch-based HTTP client.
    *
-   * @category fetch
+   * @category services
    * @since 4.0.0
    */
   Fetch,
   /**
    * Layer that provides an `HttpClient` implementation backed by the configured `Fetch` function.
    *
-   * @category fetch
+   * @category layers
    * @since 4.0.0
    */
   layer as layerFetch,
@@ -58,7 +58,7 @@ export {
    * Use to provide default credentials, cache, redirect, integrity, or other
    * fetch options for browser HTTP requests.
    *
-   * @category fetch
+   * @category services
    * @since 4.0.0
    */
   RequestInit
@@ -87,7 +87,7 @@ export type XHRResponseType = "arraybuffer" | "text"
  * @see {@link XHRResponseType} for the allowed response body modes
  * @see {@link withXHRArrayBuffer} for scoping XHR response handling to `ArrayBuffer`
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const CurrentXHRResponseType: Context.Reference<XHRResponseType> = Context.Reference(
@@ -98,7 +98,7 @@ export const CurrentXHRResponseType: Context.Reference<XHRResponseType> = Contex
 /**
  * Runs an effect with `CurrentXHRResponseType` set to `"arraybuffer"` so the XHR HTTP client receives response bodies as `ArrayBuffer` values.
  *
- * @category references
+ * @category providing services
  * @since 4.0.0
  */
 export const withXHRArrayBuffer = <A, E, R>(

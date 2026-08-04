@@ -22,7 +22,7 @@ import * as PlatformError from "effect/PlatformError"
  * Use to override the browser `Crypto` object used by the platform crypto
  * layer.
  *
- * @category references
+ * @category services
  * @since 1.0.0
  */
 export const WebCrypto = Context.Reference<Crypto>("@effect/platform-browser/Crypto/WebCrypto", {

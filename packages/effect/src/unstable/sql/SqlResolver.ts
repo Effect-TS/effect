@@ -29,7 +29,7 @@ import { ResultLengthMismatch } from "./SqlError.ts"
  * Request type used by SQL request resolvers, carrying the input payload
  * together with the resolver's result, error, and environment types.
  *
- * @category requests
+ * @category models
  * @since 4.0.0
  */
 export interface SqlRequest<In, A, E, R> extends Request.Request<A, E | Schema.SchemaError, R> {
@@ -53,7 +53,7 @@ const SqlRequestProto = {
  * Runs a payload as a `SqlRequest` through a request resolver, either directly
  * with a payload and resolver or curried by resolver.
  *
- * @category requests
+ * @category running
  * @since 4.0.0
  */
 export const request: {
@@ -76,7 +76,7 @@ export const request: {
  * Constructs a `SqlRequest` from a payload. Equality and hashing are based on
  * the payload so equal requests can be batched and deduplicated.
  *
- * @category requests
+ * @category constructors
  * @since 4.0.0
  */
 export const SqlRequest = <In, A, E, R>(payload: In): SqlRequest<In, A, E, R> => {

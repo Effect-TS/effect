@@ -355,7 +355,7 @@ const WritableProto = {
 /**
  * Returns `true` when an atom is writable.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isWritable = <R, W>(atom: Atom<R>): atom is Writable<R, W> => WritableTypeId in atom
@@ -1890,7 +1890,7 @@ const shouldRevalidateSWR = <A, E>(result: AsyncResult.AsyncResult<A, E>, staleT
  * transitions finish, the source atom is refreshed, and failures roll the value
  * back to the latest source value.
  *
- * @category Optimistic
+ * @category constructors
  * @since 4.0.0
  */
 export const optimistic = <A>(self: Atom<A>): Writable<A, Atom<AsyncResult.AsyncResult<A, unknown>>> => {
@@ -1993,7 +1993,7 @@ export const optimistic = <A>(self: Atom<A>): Writable<A, Atom<AsyncResult.Async
  * input. The wrapped function result then completes the transition or updates the
  * optimistic value through the provided setter callback.
  *
- * @category Optimistic
+ * @category combinators
  * @since 4.0.0
  */
 export const optimisticFn: {
@@ -2077,7 +2077,7 @@ export const batch: (f: () => void) => void = Registry.batch
  * It listens for `visibilitychange` events on `window` and removes the listener
  * when the atom is disposed.
  *
- * @category Focus
+ * @category constants
  * @since 4.0.0
  */
 export const windowFocusSignal: Atom<number> = readable((get) => {
@@ -2103,7 +2103,7 @@ export const windowFocusSignal: Atom<number> = readable((get) => {
  * The derived atom also subscribes to the source atom so normal source updates are
  * forwarded to its own value.
  *
- * @category Focus
+ * @category constructors
  * @since 4.0.0
  */
 export const makeRefreshOnSignal = <_>(signal: Atom<_>) => <A extends Atom<any>>(self: A): WithoutSerializable<A> =>
@@ -2122,7 +2122,7 @@ export const makeRefreshOnSignal = <_>(signal: Atom<_>) => <A extends Atom<any>>
  * This helper is browser-only because `windowFocusSignal` depends on `window` and
  * `document.visibilityState`.
  *
- * @category Focus
+ * @category combinators
  * @since 4.0.0
  */
 export const refreshOnWindowFocus: <A extends Atom<any>>(self: A) => WithoutSerializable<A> = makeRefreshOnSignal(
@@ -2142,7 +2142,7 @@ export const refreshOnWindowFocus: <A extends Atom<any>>(self: A) => WithoutSeri
  * exposes the decoded value and writes the default value when the key is missing;
  * in async mode it exposes an `AsyncResult` of the decoded value.
  *
- * @category KeyValueStore
+ * @category constructors
  * @since 4.0.0
  */
 export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode extends "sync" | "async" = never>(options: {
@@ -2207,7 +2207,7 @@ export const kvs = <S extends Schema.ConstraintCodec<any, any>, const Mode exten
  *
  * If you pass a schema, it has to be synchronous and have no context.
  *
- * @category search params
+ * @category constructors
  * @since 4.0.0
  */
 export const searchParam = <S extends Schema.ConstraintCodec<any, string> = never>(
@@ -2450,7 +2450,7 @@ export type SerializableTypeId = "~effect-atom/atom/Atom/Serializable"
  * The key identifies the atom in dehydrated state, and the encode/decode
  * functions convert between the atom value and the schema encoded value.
  *
- * @category Serializable
+ * @category models
  * @since 4.0.0
  */
 export interface Serializable<S extends Schema.Constraint> {
@@ -2464,7 +2464,7 @@ export interface Serializable<S extends Schema.Constraint> {
 /**
  * Returns `true` when an atom carries `Serializable` metadata.
  *
- * @category Serializable
+ * @category guards
  * @since 4.0.0
  */
 export const isSerializable = (self: Atom<any>): self is Atom<any> & Serializable<any> => SerializableTypeId in self
@@ -2516,7 +2516,7 @@ export const ServerValueTypeId = "~effect-atom/atom/Atom/ServerValue" as const
 /**
  * Sets the value of an Atom when read on the server.
  *
- * @category ServerValue
+ * @category transforming
  * @since 4.0.0
  */
 export const withServerValue: {
@@ -2535,7 +2535,7 @@ export const withServerValue: {
  * Sets an `AsyncResult` atom's server-side value to
  * `AsyncResult.initial(true)`.
  *
- * @category ServerValue
+ * @category transforming
  * @since 4.0.0
  */
 export const withServerValueInitial = <A extends Atom<AsyncResult.AsyncResult<any, any>>>(self: A): A =>
@@ -2549,7 +2549,7 @@ export const withServerValueInitial = <A extends Atom<AsyncResult.AsyncResult<an
  *
  * Nested reads performed by the override are resolved against the same registry.
  *
- * @category ServerValue
+ * @category getters
  * @since 4.0.0
  */
 export const getServerValue: {

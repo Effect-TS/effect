@@ -33,7 +33,7 @@ import type { HttpApiSecurity } from "./HttpApiSecurity.ts"
 /**
  * OpenAPI annotation for overriding generated identifiers, including operation ids.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Identifier extends Context.Service<Identifier, string>()("effect/httpapi/OpenApi/Identifier") {}
@@ -41,7 +41,7 @@ export class Identifier extends Context.Service<Identifier, string>()("effect/ht
 /**
  * OpenAPI annotation for setting the API title or group tag name.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Title extends Context.Service<Title, string>()("effect/httpapi/OpenApi/Title") {}
@@ -49,7 +49,7 @@ export class Title extends Context.Service<Title, string>()("effect/httpapi/Open
 /**
  * OpenAPI annotation for setting the generated API version.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Version extends Context.Service<Version, string>()("effect/httpapi/OpenApi/Version") {}
@@ -57,7 +57,7 @@ export class Version extends Context.Service<Version, string>()("effect/httpapi/
 /**
  * OpenAPI annotation for setting generated descriptions on APIs, groups, endpoints, or security schemes.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Description extends Context.Service<Description, string>()("effect/httpapi/OpenApi/Description") {}
@@ -65,7 +65,7 @@ export class Description extends Context.Service<Description, string>()("effect/
 /**
  * OpenAPI annotation for setting the generated API license metadata.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class License extends Context.Service<License, OpenAPISpecLicense>()("effect/httpapi/OpenApi/License") {}
@@ -73,7 +73,7 @@ export class License extends Context.Service<License, OpenAPISpecLicense>()("eff
 /**
  * OpenAPI annotation for adding external documentation metadata to groups or endpoints.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class ExternalDocs
@@ -83,7 +83,7 @@ export class ExternalDocs
 /**
  * OpenAPI annotation for setting the generated API server list.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Servers
@@ -93,7 +93,7 @@ export class Servers
 /**
  * OpenAPI annotation for setting the format metadata, such as a bearer token format on security schemes.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Format extends Context.Service<Format, string>()("effect/httpapi/OpenApi/Format") {}
@@ -101,7 +101,7 @@ export class Format extends Context.Service<Format, string>()("effect/httpapi/Op
 /**
  * OpenAPI annotation for setting generated summary text.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Summary extends Context.Service<Summary, string>()("effect/httpapi/OpenApi/Summary") {}
@@ -109,7 +109,7 @@ export class Summary extends Context.Service<Summary, string>()("effect/httpapi/
 /**
  * OpenAPI annotation for marking a generated endpoint operation as deprecated.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Deprecated extends Context.Service<Deprecated, boolean>()("effect/httpapi/OpenApi/Deprecated") {}
@@ -117,7 +117,7 @@ export class Deprecated extends Context.Service<Deprecated, boolean>()("effect/h
 /**
  * OpenAPI annotation for shallowly merging additional fields into a generated OpenAPI object.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Override extends Context.Service<Override, Record<string, unknown>>()("effect/httpapi/OpenApi/Override") {}
@@ -131,7 +131,7 @@ export class Override extends Context.Service<Override, Record<string, unknown>>
  * Use to hide internal, experimental, or otherwise undocumented HTTP API groups
  * and endpoints from generated OpenAPI output.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export const Exclude = Context.Reference<boolean>("effect/httpapi/OpenApi/Exclude", {
@@ -146,7 +146,7 @@ export const Exclude = Context.Reference<boolean>("effect/httpapi/OpenApi/Exclud
  * The function is applied during generation to the annotated API, group tag, or
  * endpoint operation.
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Transform extends Context.Service<

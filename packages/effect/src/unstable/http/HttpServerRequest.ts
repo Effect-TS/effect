@@ -45,7 +45,7 @@ export {
    * Use to configure the maximum body size accepted while reading server
    * request bodies.
    *
-   * @category fiber refs
+   * @category references
    * @since 4.0.0
    */
   MaxBodySize
@@ -105,7 +105,7 @@ export interface HttpServerRequest extends HttpIncomingMessage.HttpIncomingMessa
  * Use to access the request currently being handled by HTTP server routes and
  * middleware.
  *
- * @category context
+ * @category services
  * @since 4.0.0
  */
 export const HttpServerRequest: Context.Service<HttpServerRequest, HttpServerRequest> = Context.Service(
@@ -125,7 +125,7 @@ export const HttpServerRequest: Context.Service<HttpServerRequest, HttpServerReq
  * Each key maps to a string value, or to an array when the parameter appears more
  * than once.
  *
- * @category search params
+ * @category services
  * @since 4.0.0
  */
 export class ParsedSearchParams extends Context.Service<
@@ -140,7 +140,7 @@ export class ParsedSearchParams extends Context.Service<
  *
  * Repeated parameters are represented as arrays in insertion order.
  *
- * @category search params
+ * @category parsing
  * @since 4.0.0
  */
 export const searchParamsFromURL = (url: URL): ReadonlyRecord<string, string | Array<string>> => {
