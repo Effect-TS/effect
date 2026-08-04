@@ -737,16 +737,18 @@ export const fromWebSocket = <RO>(
 
     const write = (chunk: Uint8Array | string | CloseEvent) =>
       latch.whenOpen(
-        Effect.try({
-          try: () => {
+        Effect.suspend(() => {
+          try {
             const ws = currentWS!
             if (isCloseEvent(chunk)) {
               ws.close(chunk.code, chunk.reason)
             } else {
               ws.send(chunk as string | Uint8Array<ArrayBuffer>)
             }
-          },
-          catch: (cause) => new SocketError({ reason: new SocketWriteError({ cause }) })
+            return Effect.void
+          } catch (cause) {
+            return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
+          }
         })
       )
     const writer = Effect.succeed(write)
