@@ -780,7 +780,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -988,7 +989,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -1082,7 +1084,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -1744,7 +1747,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),
@@ -1823,7 +1827,8 @@ describe("LanguageModel", () => {
                 id: toolCallId,
                 name: "ApprovalTool",
                 result: { result: "approved-result" },
-                isFailure: false
+                isFailure: false,
+                providerExecuted: false
               })
             ]
           }),

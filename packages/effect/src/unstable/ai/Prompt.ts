@@ -631,7 +631,8 @@ export const toolCallPart = (params: PartConstructorParams<ToolCallPart>): ToolC
  *     temperature: 22,
  *     condition: "sunny",
  *     humidity: 65
- *   }
+ *   },
+ *   providerExecuted: false
  * })
  * const result = [toolResultPart.name, toolResultPart.isFailure] // => ["get_weather", false]
  * ```
@@ -656,6 +657,10 @@ export interface ToolResultPart extends BasePart<"tool-result", ToolResultPartOp
    * The result returned by the tool execution.
    */
   readonly result: unknown
+  /**
+   * Whether the tool was executed by the provider (true) or framework (false).
+   */
+  readonly providerExecuted: boolean
 }
 
 /**
@@ -681,6 +686,10 @@ export interface ToolResultPartEncoded extends BasePartEncoded<"tool-result", To
    * The result returned by the tool execution.
    */
   readonly result: unknown
+  /**
+   * Whether the tool was executed by the provider (true) or framework (false).
+   */
+  readonly providerExecuted?: boolean | undefined
 }
 
 /**
@@ -704,6 +713,7 @@ export const ToolResultPart: Schema.Struct<{
   readonly name: Schema.String
   readonly isFailure: Schema.Boolean
   readonly result: Schema.Unknown
+  readonly providerExecuted: Schema.withDecodingDefault<Schema.Boolean>
   readonly "~effect/ai/Prompt/Part": Schema.withDecodingDefaultKey<Schema.Literal<"~effect/ai/Prompt/Part">>
   readonly options: Schema.withDecodingDefault<
     Schema.$Record<
@@ -717,7 +727,8 @@ export const ToolResultPart: Schema.Struct<{
   id: Schema.String,
   name: Schema.String,
   isFailure: Schema.Boolean,
-  result: Schema.Unknown
+  result: Schema.Unknown,
+  providerExecuted: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false)))
 }).annotate({ identifier: "ToolResultPart" })
 
 /**
@@ -1420,7 +1431,8 @@ export const userMessage = (params: MessageConstructorParams<UserMessage>): User
  *         result: {
  *           temperature: 72,
  *           condition: "sunny"
- *         }
+ *         },
+ *         providerExecuted: true
  *       }),
  *       Prompt.makePart("text", {
  *         text: "The weather in San Francisco is currently 72°F and sunny."
@@ -1627,7 +1639,8 @@ export const assistantMessage = (params: MessageConstructorParams<AssistantMessa
  *           { title: "TypeScript Handbook", url: "https://..." },
  *           { title: "Effective TypeScript", url: "https://..." }
  *         ]
- *       }
+ *       },
+ *       providerExecuted: false
  *     })
  *   ]
  * })
@@ -2096,11 +2109,13 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
       // Tool Result Parts (skip preliminary results)
       case "tool-result": {
         if (part.preliminary !== true) {
-          toolParts.push(makePart("tool-result", {
+          const target = part.providerExecuted === true ? assistantParts : toolParts
+          target.push(makePart("tool-result", {
             id: part.id,
             name: part.name,
             isFailure: part.isFailure,
-            result: part.encodedResult
+            result: part.encodedResult,
+            providerExecuted: part.providerExecuted ?? false
           }))
         }
         break
