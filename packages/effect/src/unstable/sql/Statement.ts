@@ -14,6 +14,7 @@ import { Clock } from "../../Clock.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Effectable from "../../Effectable.ts"
+import * as Equal from "../../Equal.ts"
 import type * as Fiber from "../../Fiber.ts"
 import { constUndefined } from "../../Function.ts"
 import * as internalEffect from "../../internal/effect.ts"
@@ -535,9 +536,16 @@ export const make = (
   spanAttributes: ReadonlyArray<readonly [string, unknown]>,
   transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
 ): Constructor => {
-  const cache = transformRows === undefined ? constructorCache.noTransforms : constructorCache.transforms
-  if (cache.has(acquirer)) {
-    return cache.get(acquirer)!
+  const cache = constructorCache.get(acquirer)
+  if (cache !== undefined) {
+    const entry = cache.find((entry) =>
+      entry.compiler === compiler &&
+      Equal.equals(entry.spanAttributes, spanAttributes) &&
+      entry.transformRows === transformRows
+    )
+    if (entry !== undefined) {
+      return entry.constructor
+    }
   }
   const self = Object.assign(
     function sql(strings: unknown, ...args: Array<any>): any {
@@ -597,15 +605,29 @@ export const make = (
     }
   )
 
-  cache.set(acquirer, self)
+  const entry: ConstructorCacheEntry = {
+    compiler,
+    spanAttributes,
+    transformRows,
+    constructor: self
+  }
+  if (cache === undefined) {
+    constructorCache.set(acquirer, [entry])
+  } else {
+    cache.push(entry)
+  }
 
   return self
 }
 
-const constructorCache = {
-  transforms: new WeakMap<Acquirer, Constructor>(),
-  noTransforms: new WeakMap<Acquirer, Constructor>()
+interface ConstructorCacheEntry {
+  readonly compiler: Compiler
+  readonly spanAttributes: ReadonlyArray<readonly [string, unknown]>
+  readonly transformRows: (<A extends object>(row: ReadonlyArray<A>) => ReadonlyArray<A>) | undefined
+  readonly constructor: Constructor
 }
+
+const constructorCache = new WeakMap<Acquirer, Array<ConstructorCacheEntry>>()
 
 /**
  * Builds a `Statement` from template strings and arguments, preserving

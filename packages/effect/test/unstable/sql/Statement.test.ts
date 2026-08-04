@@ -16,7 +16,7 @@ describe("Statement", () => {
     assert.deepStrictEqual(flat.array([row]), [{ OWN: 2 }])
   })
 
-  it("keeps compiler configuration when an acquirer is reused", () => {
+  it("caches constructors by their full configuration", () => {
     const acquirer = Effect.die("not executed")
     const postgres = Statement.makeCompiler({
       dialect: "pg",
@@ -25,10 +25,25 @@ describe("Statement", () => {
       onRecordUpdate: () => ["", []],
       onCustom: () => ["", []]
     })
-    const pg = Statement.make(acquirer, postgres, [], undefined)
-    const sqlite = Statement.make(acquirer, Statement.makeCompilerSqlite(), [], undefined)
+    const transformRows = <A extends object>(rows: ReadonlyArray<A>) => rows
+    const otherTransformRows = <A extends object>(rows: ReadonlyArray<A>) => rows
+    const spanAttributes = [["db.system", "postgresql"]] as const
+    const pg = Statement.make(acquirer, postgres, spanAttributes, transformRows)
+    const sqlite = Statement.make(acquirer, Statement.makeCompilerSqlite(), spanAttributes, transformRows)
 
     assert.deepStrictEqual(pg`select ${1}`.compile(), ["select $1", [1]])
     assert.deepStrictEqual(sqlite`select ${1}`.compile(), ["select ?", [1]])
+    assert.strictEqual(
+      pg,
+      Statement.make(acquirer, postgres, [["db.system", "postgresql"]], transformRows)
+    )
+    assert.notStrictEqual(
+      pg,
+      Statement.make(acquirer, postgres, [["db.system", "sqlite"]], transformRows)
+    )
+    assert.notStrictEqual(
+      pg,
+      Statement.make(acquirer, postgres, spanAttributes, otherTransformRows)
+    )
   })
 })
