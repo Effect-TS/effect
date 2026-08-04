@@ -13,10 +13,12 @@ vi.mock("tedious", async (importOriginal) => {
 
   class MockRequest {
     readonly listeners: Record<string, (...args: Array<any>) => void> = {}
+
     constructor(
       readonly sql: string,
       readonly callback: (cause: unknown, rowCount: number, rows: ReadonlyArray<any>) => void
     ) {}
+
     addParameter() {}
     addOutputParameter() {}
     on(event: string, listener: (...args: Array<any>) => void) {

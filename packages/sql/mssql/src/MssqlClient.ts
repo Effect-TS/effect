@@ -373,6 +373,7 @@ export const make = (
 
           conn.cancel()
           conn.execSql(req)
+          return Effect.sync(() => conn.cancel())
         })
 
       const runProcedure = (
@@ -421,6 +422,7 @@ export const make = (
 
           conn.cancel()
           conn.callProcedure(req)
+          return Effect.sync(() => conn.cancel())
         })
 
       const connection = identity<MssqlConnection>({
