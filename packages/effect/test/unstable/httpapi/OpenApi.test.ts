@@ -196,6 +196,31 @@ describe("OpenApi", () => {
     })
   })
 
+  it("emits headers for an error wrapped in WithHeaders", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("error", "/error", {
+          error: HttpApiSchema.WithHeaders(
+            Schema.Struct({ message: Schema.String }).pipe(HttpApiSchema.status(429)),
+            { "X-Retry-After": Schema.Int }
+          )
+        })
+      )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(spec.paths["/error"]?.get?.responses[429]?.headers, {
+      "x-retry-after": {
+        schema: {
+          type: "string",
+          allOf: [{ pattern: "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$" }]
+        },
+        required: true
+      }
+    })
+  })
+
   it("emits stream response headers", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(

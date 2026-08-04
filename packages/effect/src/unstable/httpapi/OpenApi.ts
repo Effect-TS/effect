@@ -587,7 +587,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
       processResponseBodies(
         extractResponseBodies(
           HttpApiEndpoint.getErrorSchemas(endpoint),
-          (schema) => HttpApiSchema.getStatusError(schema.ast),
+          HttpApiSchema.getStatusErrorSchema,
           resolveDescriptionOrIdentifier
         ),
         () => "Error"

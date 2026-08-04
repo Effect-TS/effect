@@ -406,6 +406,39 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.strictEqual(yield* response.text, "slow down")
     }))
 
+  it.effect("encodes and decodes an error wrapped in WithHeaders", () =>
+    Effect.gen(function*() {
+      const RateLimited = HttpApiSchema.WithHeaders(
+        Schema.Struct({
+          _tag: Schema.Literal("RateLimited"),
+          message: Schema.String
+        }).pipe(HttpApiSchema.status(429)),
+        { "retry-after": Schema.Int }
+      )
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("limited", "/test", { error: RateLimited })
+        )
+      )
+      const expected = HttpApiSchema.withHeaders({
+        body: { _tag: "RateLimited" as const, message: "slow down" },
+        headers: { "retry-after": 30 }
+      })
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("limited", () => Effect.fail(expected))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.limited({ responseMode: "response-only" })
+
+      assert.strictEqual(response.status, 429)
+      assert.strictEqual(response.headers["retry-after"], "30")
+      assert.deepStrictEqual(yield* response.json, expected.body)
+      assert.deepStrictEqual(yield* Effect.flip(client.test.limited({})), expected)
+    }))
+
   it.effect("stringifies encodeToWithHeaders values when endpoint codecs are disabled", () =>
     Effect.gen(function*() {
       class RateLimited extends Schema.TaggedError<RateLimited>()("RateLimited", {

@@ -517,18 +517,20 @@ export const WithHeadersValueTypeId = "~effect/httpapi/HttpApiSchema/WithHeaders
 export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
 
 /**
- * A success response schema wrapping a body schema together with a response
- * headers schema.
+ * A response schema wrapping a body schema together with a response headers
+ * schema.
  *
  * **Details**
  *
  * `WithHeaders` is a branded declaration schema: it carries the inner success
  * schema and the headers schema as properties, and server, client, and OpenAPI
- * integrations detect the brand and handle body and headers separately.
+ * integrations detect the brand and handle body and headers separately. It is
+ * supported for error responses, though {@link encodeToWithHeaders} is usually
+ * more convenient there because handlers can fail with the domain error value.
  *
- * - `schema` is the inner success schema. Anything valid as a success schema is
- *   valid here, including `StreamSse` and `StreamUint8Array`. Nesting
- *   `WithHeaders` is rejected at construction.
+ * - `schema` is the inner response schema. Success responses may wrap
+ *   `StreamSse` and `StreamUint8Array`; error responses remain non-streaming.
+ *   Nesting `WithHeaders` is rejected at construction.
  * - `headers` is any schema; integrations encode and decode it via
  *   `Schema.toCodecStringTree`, so leaves become `string | undefined` on the
  *   wire and `undefined` leaves are omitted from the response.
@@ -583,7 +585,8 @@ export declare namespace WithHeaders {
   }
 }
 
-const isWithHeadersValue = (u: unknown): u is WithHeaders.Value<unknown, unknown> =>
+/** @internal */
+export const isWithHeadersValue = (u: unknown): u is WithHeaders.Value<unknown, unknown> =>
   Predicate.hasProperty(u, WithHeadersValueTypeId)
 
 const withHeadersValueSchema = Schema.declare(isWithHeadersValue)
@@ -1067,4 +1070,12 @@ export function getStatusStream(self: StreamSchema): number {
 /** @internal */
 export function getStatusError(self: SchemaAST.AST): number {
   return resolveHttpApiStatus(self) ?? 500
+}
+
+/** @internal */
+export function getStatusErrorSchema(schema: Schema.Constraint): number {
+  if (isWithHeaders(schema)) {
+    return resolveHttpApiStatus(schema.ast) ?? getStatusError(schema.schema.ast)
+  }
+  return getStatusError(schema.ast)
 }

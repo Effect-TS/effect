@@ -208,7 +208,7 @@ describe("HttpApiEndpoint streaming success schemas", () => {
   })
 })
 
-describe("HttpApiEndpoint WithHeaders success schemas", () => {
+describe("HttpApiEndpoint WithHeaders schemas", () => {
   it("keeps the wrapper in the success set with codec-transformed parts", () => {
     const endpoint = HttpApiEndpoint.get("list", "/users", {
       success: HttpApiSchema.WithHeaders(Schema.Struct({ a: Schema.String }), {
@@ -297,11 +297,22 @@ describe("HttpApiEndpoint WithHeaders success schemas", () => {
     )
   })
 
-  it("WithHeaders in error throws during endpoint construction", () => {
-    assert.throws(() =>
-      HttpApiEndpoint.get("list", "/users", {
-        error: HttpApiSchema.WithHeaders(Schema.String, { "x-count": Schema.Int }) as any
-      })
-    )
+  it("keeps WithHeaders in the error set with codec-transformed parts", () => {
+    const endpoint = HttpApiEndpoint.get("list", "/users", {
+      error: HttpApiSchema.WithHeaders(
+        Schema.Struct({ message: Schema.String }).pipe(HttpApiSchema.status(429)),
+        { "retry-after": Schema.Int }
+      )
+    })
+
+    const [schema] = Array.from(endpoint.error)
+    assert.isTrue(HttpApiSchema.isWithHeaders(schema))
+    assert.strictEqual(HttpApiSchema.getStatusErrorSchema(schema), 429)
+    if (HttpApiSchema.isWithHeaders(schema)) {
+      assert.deepStrictEqual(
+        Schema.encodeSync(schema.headers as any)({ "retry-after": 30 }),
+        { "retry-after": "30" }
+      )
+    }
   })
 })

@@ -803,10 +803,9 @@ function handlerToHttpEffect(
         return response
       }
       let responseHeaders: unknown | undefined
-      if (encodeWithHeaders !== undefined && hasProperty(response, HttpApiSchema.WithHeadersValueTypeId)) {
-        const withHeaders = response as unknown as HttpApiSchema.WithHeaders.Value<unknown, unknown>
-        responseHeaders = yield* HttpApiSchemaError.wrap("ResponseHeaders", encodeWithHeaders(withHeaders.headers))
-        response = withHeaders.body
+      if (encodeWithHeaders !== undefined && HttpApiSchema.isWithHeadersValue(response)) {
+        responseHeaders = yield* HttpApiSchemaError.wrap("ResponseHeaders", encodeWithHeaders(response.headers))
+        response = response.body
       }
       const streamResponse = encodeStream?.(response, context)
       if (streamResponse !== undefined) {
@@ -1065,7 +1064,41 @@ function renderSseEvent(event: Sse.EventEncoded) {
 }
 
 const toResponseSuccessSchema = toResponseSchema(HttpApiSchema.getStatusSuccess)
-const toResponseErrorSchema = toResponseSchema(HttpApiSchema.getStatusError)
+const toResponseErrorSchemaPlain = toResponseSchema(HttpApiSchema.getStatusError)
+
+function toResponseErrorSchema(
+  schema: Schema.Constraint
+): Schema.ConstraintEncoder<HttpServerResponse, unknown> {
+  if (!HttpApiSchema.isWithHeaders(schema)) return toResponseErrorSchemaPlain(schema)
+
+  const encodeBody = Schema.encodeUnknownEffect(schema.schema)
+  const encodeHeaders = Schema.encodeUnknownEffect(schema.headers)
+  const encodeResponse = getResponseEncode(
+    HttpApiSchema.getStatusErrorSchema(schema),
+    HttpApiSchema.getResponseEncodingSchema(schema),
+    HttpApiSchema.isNoContent(schema.schema.ast)
+  )
+  const transformation = SchemaTransformation.transformOrFail<
+    HttpApiSchema.WithHeaders.Value<unknown, Schema.StringTree>,
+    Response.HttpServerResponse,
+    never,
+    unknown
+  >({
+    decode: () => Effect.fail(new SchemaIssue.Forbidden({ message: "Encode only schema" })),
+    encode: (value) => {
+      return Effect.flatMap(
+        encodeBody(value.body).pipe(Effect.mapError((error) => error.issue)),
+        (body) =>
+          Effect.flatMap(encodeResponse(body), (response) =>
+            Effect.map(
+              encodeHeaders(value.headers).pipe(Effect.mapError((error) => error.issue)),
+              (headers) => Response.setHeaders(response, headers as any)
+            ))
+      )
+    }
+  })
+  return $HttpServerResponse.pipe(Schema.decodeTo(schema, transformation))
+}
 
 function makeSuccessSchema(
   endpoint: HttpApiEndpoint.Top

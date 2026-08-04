@@ -958,9 +958,11 @@ export type SuccessConstraint = Schema.Top | ReadonlyArray<Schema.Top>
  */
 export type ErrorConstraint = Schema.Top | ReadonlyArray<Schema.Top>
 
+type ErrorSchema<S> = S extends HttpApiSchema.WithHeaders<infer Inner, Schema.Top> ? Inner : S
+
 type ErrorNoStream<S extends ErrorConstraint> = [
   Extract<
-    S extends ReadonlyArray<Schema.Constraint> ? S[number] : S,
+    ErrorSchema<S extends ReadonlyArray<Schema.Constraint> ? S[number] : S>,
     HttpApiSchema.StreamSchema
   >
 ] extends [never] ? S : never
@@ -1173,14 +1175,18 @@ function getErrorResponse(
   if (error === undefined) return new Set()
   const schemas = Arr.ensure(error)
   for (const schema of schemas) {
-    if (HttpApiSchema.isStreamSchema(schema)) {
+    const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
+    if (HttpApiSchema.isStreamSchema(body)) {
       throw new Error("Streaming schemas are not supported in error responses")
     }
-    if (HttpApiSchema.isWithHeaders(schema)) {
-      throw new Error("WithHeaders is not supported in error responses, use encodeToWithHeaders instead")
-    }
   }
-  return new Set(disableCodecs ? schemas : schemas.map(transformResponse))
+  return new Set(disableCodecs ? schemas : schemas.map(transformError))
+}
+
+function transformError(schema: Schema.Top): Schema.Top {
+  if (!HttpApiSchema.isWithHeaders(schema)) return transformResponse(schema)
+  const inner = applyResponseEncoding(schema.schema, HttpApiSchema.getResponseEncodingSchema(schema))
+  return HttpApiSchema.rebuildWithHeaders(schema, inner, Schema.toCodecStringTree(schema.headers))
 }
 
 function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod) {
