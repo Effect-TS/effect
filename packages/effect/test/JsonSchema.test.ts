@@ -1,4 +1,4 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import * as JsonSchema from "effect/JsonSchema"
 
@@ -1209,6 +1209,23 @@ describe("JsonSchema", () => {
           "B_C": { type: "string" }
         }
       })
+    })
+
+    it("sanitizes the definition token in nested references", () => {
+      const input: JsonSchema.MultiDocument<"draft-2020-12"> = {
+        dialect: "draft-2020-12",
+        schemas: [{ $ref: "#/$defs/A$B/properties/value" }],
+        definitions: {
+          "A$B": {
+            type: "object",
+            properties: { value: { type: "string" } }
+          }
+        }
+      }
+
+      const result = JsonSchema.toMultiDocumentOpenApi3_1(input)
+
+      assert.deepStrictEqual(result.schemas[0], { $ref: "#/components/schemas/A_B/properties/value" })
     })
   })
 
