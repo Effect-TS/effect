@@ -128,7 +128,7 @@ export const makeNdjson = (options?: StreamOptions): RpcSerialization["Service"]
       }
       return ({
         decode: (bytes) => {
-          buffer += typeof bytes === "string" ? bytes : decoder.decode(bytes)
+          buffer += typeof bytes === "string" ? bytes : decoder.decode(bytes, { stream: true })
           let position = 0
           let nlIndex = buffer.indexOf("\n", position)
           const items: Array<unknown> = []
