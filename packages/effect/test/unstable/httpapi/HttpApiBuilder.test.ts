@@ -123,6 +123,75 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
 })
 
 it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
+  it.effect("decodes a buffered success body and its declared headers", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("created", "/test", {
+            success: HttpApiSchema.WithHeaders(
+              Schema.Struct({ id: Schema.Int }).pipe(HttpApiSchema.status(201)),
+              { "x-count": Schema.Int }
+            )
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("created", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: { id: 1 },
+              headers: { "x-count": 2 }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const value = yield* client.test.created({})
+
+      assert.deepStrictEqual(
+        value,
+        HttpApiSchema.withHeaders({
+          body: { id: 1 },
+          headers: { "x-count": 2 }
+        })
+      )
+    }))
+
+  it.effect("round trips a client-received branded value through another handler", () =>
+    Effect.gen(function*() {
+      const Success = HttpApiSchema.WithHeaders(
+        Schema.Struct({ id: Schema.Int }).pipe(HttpApiSchema.status(201)),
+        { "x-count": Schema.Int }
+      )
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test")
+          .add(HttpApiEndpoint.get("created", "/created", { success: Success }))
+          .add(HttpApiEndpoint.get("forwarded", "/forwarded", { success: Success }))
+      )
+      let forwarded: typeof Success.Type | undefined
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers
+            .handle("created", () =>
+              Effect.succeed(HttpApiSchema.withHeaders({
+                body: { id: 1 },
+                headers: { "x-count": 2 }
+              })))
+            .handle("forwarded", () => Effect.succeed(forwarded!))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const [value, response] = yield* client.test.created({ responseMode: "decoded-and-response" })
+      forwarded = value
+      const result = yield* client.test.forwarded({})
+
+      assert.strictEqual(response.status, 201)
+      assert.deepStrictEqual(result, value)
+    }))
+
   it.effect("encodes a buffered success body and its declared headers", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
@@ -251,6 +320,46 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.strictEqual(response.headers["content-type"], "text/plain")
       assert.strictEqual(response.headers["retry-after"], "30")
       assert.strictEqual(yield* response.text, "slow down")
+    }))
+
+  it.effect("decodes an error body and headers through encodeToWithHeaders", () =>
+    Effect.gen(function*() {
+      class RateLimited extends Schema.TaggedError<RateLimited>()("RateLimited", {
+        message: Schema.String,
+        retryAfter: Schema.Int
+      }) {}
+      const RateLimitedResponse = RateLimited.pipe(
+        HttpApiSchema.encodeToWithHeaders({
+          body: Schema.String.pipe(HttpApiSchema.status(429), HttpApiSchema.asText()),
+          headers: { "retry-after": Schema.Int }
+        }, {
+          decode: ({ body, headers }) =>
+            new RateLimited({
+              message: body,
+              retryAfter: headers["retry-after"]
+            }),
+          encode: (error) => ({
+            body: error.message,
+            headers: { "retry-after": error.retryAfter }
+          })
+        })
+      )
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("limited", "/test", { error: RateLimitedResponse })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("limited", () => Effect.fail(new RateLimited({ message: "slow down", retryAfter: 30 })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const error = yield* Effect.flip(client.test.limited({}))
+
+      assert.deepStrictEqual(error, new RateLimited({ message: "slow down", retryAfter: 30 }))
     }))
 
   it.effect("defects with ResponseHeaders when success header encoding fails", () =>

@@ -291,6 +291,48 @@ describe("HttpApiClient", () => {
       }))
   })
 
+  describe("response headers", () => {
+    it.effect("fails response decoding when a declared header is invalid", () =>
+      Effect.gen(function*() {
+        const Api = HttpApi.make("Api").add(
+          HttpApiGroup.make("test").add(
+            HttpApiEndpoint.get("created", "/created", {
+              success: HttpApiSchema.WithHeaders(
+                Schema.Struct({ id: Schema.Int }),
+                { "x-count": Schema.Int }
+              )
+            })
+          )
+        )
+        const decodeFailure = Effect.fnUntraced(function*(body: unknown, count: string) {
+          const client = yield* HttpApiClient.makeWith(Api, {
+            baseUrl: "http://test",
+            httpClient: clientFromResponse(() =>
+              new Response(JSON.stringify(body), {
+                status: 200,
+                headers: {
+                  "content-type": "application/json",
+                  "x-count": count
+                }
+              })
+            )
+          })
+          const exit = yield* Effect.exit(client.test.created({}))
+          assert.strictEqual(exit._tag, "Failure")
+          if (exit._tag === "Success") {
+            throw new Error("Expected response decoding to fail")
+          }
+          return Cause.squash(exit.cause) as { readonly _tag?: string }
+        })
+
+        const bodyError = yield* decodeFailure({ id: "invalid" }, "1")
+        const headerError = yield* decodeFailure({ id: 1 }, "invalid")
+
+        assert.strictEqual(bodyError._tag, "SchemaError")
+        assert.strictEqual(headerError._tag, bodyError._tag)
+      }))
+  })
+
   describe("urlBuilder", () => {
     const Api = HttpApi.make("Api")
       .add(

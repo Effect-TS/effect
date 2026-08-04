@@ -359,7 +359,21 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
 
         const successAlternatives = new Map<number, Array<ResponseAlternative>>()
+        const successSchemasByStatus = new Map<number, [Schema.Top, ...Array<Schema.Top>]>()
         for (const [status, schemas] of successes.entries()) {
+          for (const schema of schemas) {
+            const schemaStatus = HttpApiSchema.isWithHeaders(schema)
+              ? HttpApiSchema.getStatusSuccessSchema(schema)
+              : status
+            const existing = successSchemasByStatus.get(schemaStatus)
+            if (existing === undefined) {
+              successSchemasByStatus.set(schemaStatus, [schema])
+            } else {
+              existing.push(schema)
+            }
+          }
+        }
+        for (const [status, schemas] of successSchemasByStatus.entries()) {
           const grouped = groupSchemasByContentType(schemas)
           for (const [contentType, schemas] of grouped.entries()) {
             addResponseAlternative(successAlternatives, status, contentType, schemasToResponse(schemas))
@@ -722,9 +736,43 @@ const compilePath = (path: string) => {
 }
 
 function schemasToResponse(schemas: readonly [Schema.Constraint, ...Array<Schema.Constraint>]) {
-  const codec = toCodecArrayBuffer(schemas)
+  const hasWithHeaders = schemas.some((schema) =>
+    HttpApiSchema.isWithHeaders(schema) || HttpApiSchema.getWithHeadersAnnotation(schema.ast) !== undefined
+  )
+  const codec = hasWithHeaders
+    ? Schema.Union(schemas.map(toCodecArrayBufferWithHeaders))
+    : toCodecArrayBuffer(schemas)
   const decode = Schema.decodeEffect(codec)
-  return (response: HttpClientResponse.HttpClientResponse) => Effect.flatMap(response.arrayBuffer, decode)
+  return (response: HttpClientResponse.HttpClientResponse) =>
+    Effect.flatMap(
+      response.arrayBuffer,
+      hasWithHeaders
+        ? (body) => decode({ body, headers: response.headers })
+        : decode
+    )
+}
+
+function toCodecArrayBufferWithHeaders(schema: Schema.Constraint): Schema.Top {
+  const isWithHeaders = HttpApiSchema.isWithHeaders(schema)
+  const annotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
+  if (annotation !== undefined) {
+    return Schema.Struct({
+      body: fromArrayBuffer(annotation.body),
+      headers: Schema.toCodecStringTree(Schema.toEncoded(annotation.headers))
+    }).pipe(Schema.decodeTo(schema))
+  }
+  return Schema.Struct({
+    body: toCodecArrayBuffer([isWithHeaders ? schema.schema : schema]),
+    headers: isWithHeaders ? schema.headers : Schema.Unknown
+  }).pipe(
+    Schema.decodeTo(
+      isWithHeaders ? schema : Schema.toType(schema),
+      SchemaTransformation.transform({
+        decode: (value) => isWithHeaders ? HttpApiSchema.withHeaders(value) : value.body,
+        encode: (value: any) => isWithHeaders ? value : { body: value, headers: undefined }
+      }) as any
+    )
+  )
 }
 
 type ResponseDecoder = (response: HttpClientResponse.HttpClientResponse) => Effect.Effect<unknown, unknown, unknown>
@@ -768,9 +816,10 @@ function groupSchemasByContentType(
 ): Map<string, Arr.NonEmptyReadonlyArray<Schema.Top>> {
   const grouped = new Map<string, [Schema.Top, ...Array<Schema.Top>]>()
   for (const schema of schemas) {
-    const contentType = HttpApiSchema.isNoContent(schema.ast)
+    const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
+    const contentType = HttpApiSchema.isNoContent(body.ast)
       ? ""
-      : MediaType.normalize(HttpApiSchema.getResponseEncoding(schema.ast).contentType)
+      : MediaType.normalize(HttpApiSchema.getResponseEncodingSchema(schema).contentType)
     const existing = grouped.get(contentType)
     if (existing === undefined) {
       grouped.set(contentType, [schema])
@@ -940,31 +989,34 @@ function toCodecArrayBuffer(schemas: readonly [Schema.Constraint, ...Array<Schem
   return Schema.Union(schemas.map(onSchema))
 
   function onSchema(schema: Schema.Constraint) {
-    const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
-    switch (encoding._tag) {
-      case "Json": {
-        // handle json codecs that transform void schemas to null
-        const encodedIsNull = SchemaAST.isNull(SchemaAST.toEncoded(schema.ast))
-        return UnknownFromArrayBuffer.pipe(Schema.decodeTo(
-          schema,
-          encodedIsNull ?
+    return fromArrayBuffer(schema).pipe(Schema.decodeTo(schema))
+  }
+}
+
+function fromArrayBuffer(schema: Schema.Constraint): Schema.Top {
+  const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
+  switch (encoding._tag) {
+    case "Json": {
+      // handle json codecs that transform void schemas to null
+      const encodedIsNull = SchemaAST.isNull(SchemaAST.toEncoded(schema.ast))
+      return encodedIsNull
+        ? UnknownFromArrayBuffer.pipe(
+          Schema.decodeTo(
+            Schema.Unknown,
             SchemaTransformation.transform({
               decode: (a) => a === undefined ? null : a,
               encode: (a) => a === null ? undefined : a
-            }) as any :
-            undefined
-        ))
-      }
-      case "FormUrlEncoded":
-        return StringFromArrayBuffer.pipe(
-          Schema.decodeTo(UrlParams.schemaRecord),
-          Schema.decodeTo(schema)
+            }) as any
+          )
         )
-      case "Uint8Array":
-        return Uint8ArrayFromArrayBuffer.pipe(Schema.decodeTo(schema))
-      case "Text":
-        return StringFromArrayBuffer.pipe(Schema.decodeTo(schema))
+        : UnknownFromArrayBuffer
     }
+    case "FormUrlEncoded":
+      return StringFromArrayBuffer.pipe(Schema.decodeTo(UrlParams.schemaRecord))
+    case "Uint8Array":
+      return Uint8ArrayFromArrayBuffer
+    case "Text":
+      return StringFromArrayBuffer
   }
 }
 
