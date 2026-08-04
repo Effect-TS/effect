@@ -1,7 +1,8 @@
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
-import { CliOutput, Command, Flag } from "effect/unstable/cli"
+import { Argument, CliOutput, Command, Flag } from "effect/unstable/cli"
+import { toImpl } from "effect/unstable/cli/internal/command"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
 import * as Cli from "./fixtures/ComprehensiveCli.ts"
 import * as MockTerminal from "./services/MockTerminal.ts"
@@ -38,6 +39,24 @@ const runCommand = Effect.fnUntraced(
 )
 
 describe("Command help output", () => {
+  it("marks optional flags as not required in structured help", () => {
+    const command = Command.make("app", {
+      output: Flag.string("output").pipe(Flag.optional)
+    })
+    const help = toImpl(command).buildHelpDoc(["app"])
+
+    assert.isFalse(help.flags[0].required)
+  })
+
+  it("marks zero-minimum variadic arguments as not required in structured help", () => {
+    const command = Command.make("app", {
+      files: Argument.string("files").pipe(Argument.variadic())
+    })
+    const help = toImpl(command).buildHelpDoc(["app"])
+
+    assert.isFalse(help.args![0].required)
+  })
+
   it.effect("renders root command help", () =>
     Effect.gen(function*() {
       const helpText = yield* runCommand(["--help"])
