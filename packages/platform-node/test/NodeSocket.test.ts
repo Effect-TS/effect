@@ -147,5 +147,28 @@ describe("Socket", () => {
         assert.deepStrictEqual(chunks, ["Hello", "World"])
         assert.deepStrictEqual(received, ["A", "B", "C"])
       }))
+
+    it.effect("reports writable stream rejection as SocketError", () =>
+      Effect.gen(function*() {
+        const socket = yield* Socket.fromTransformStream(Effect.succeed({
+          readable: new ReadableStream<Uint8Array>({}),
+          writable: new WritableStream<Uint8Array>({
+            write: () => Promise.reject(new Error("write failed"))
+          })
+        }))
+        const exit = yield* Effect.scoped(Effect.gen(function*() {
+          const run = yield* Effect.forkChild(socket.runRaw(() => {}))
+          const write = yield* socket.writer
+          const exit = yield* Effect.exit(write(new Uint8Array([1])))
+          yield* Fiber.interrupt(run)
+          return exit
+        }))
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          assert.strictEqual(exit.cause.reasons[0]?._tag, "Fail")
+          const reason = exit.cause.reasons[0]
+          if (reason?._tag === "Fail") assert.isTrue(Socket.SocketError.is(reason.error))
+        }
+      }))
   })
 })
