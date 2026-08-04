@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import { execFileSync } from "node:child_process"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 import * as Completions from "effect/unstable/cli/Completions"
 import * as Bash from "effect/unstable/cli/internal/completions/bash"
@@ -339,6 +340,33 @@ describe("Zsh completions", () => {
 // ---------------------------------------------------------------------------
 
 describe("Fish completions", () => {
+  it("scopes nested completions by the full command path", () => {
+    const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
+      name,
+      description: undefined,
+      flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
+      arguments: [],
+      subcommands: []
+    })
+    const descriptor: Completions.CommandDescriptor = {
+      name: "tool",
+      description: undefined,
+      flags: [],
+      arguments: [],
+      subcommands: [
+        { name: "alpha", description: undefined, flags: [], arguments: [], subcommands: [leaf("common", "alpha-only")] },
+        { name: "beta", description: undefined, flags: [], arguments: [], subcommands: [leaf("common", "beta-only")] }
+      ]
+    }
+    const script = Fish.generate("tool", descriptor)
+    const output = execFileSync("fish", ["-c", `${script}\ncomplete -C 'tool alpha common --'`], {
+      encoding: "utf8"
+    })
+
+    assert.include(output, "--alpha-only")
+    assert.notInclude(output, "--beta-only")
+  })
+
   it("generates complete commands for root subcommands", () => {
     const desc = fromCommand(withSubcommands)
     const script = Fish.generate("server", desc)
