@@ -22,3 +22,6 @@
 "@effect/rpc/RpcClient#withHeadersEffect":
   replacement: "Effect.flatMap(headers, (value) => RpcClient.withHeaders(effect, value))"
   note: "withHeaders now accepts Headers.Input synchronously; evaluate effectful headers first and then scope the client effect."
+"@effect/rpc/RpcClient#RpcClient.From":
+  replacement: "effect/unstable/rpc/RpcClient#RpcClient.From"
+  note: "Generated clients now preserve full RPC tags as property names, remove the Prefix type parameter, and expose streaming results through the asQueue option instead of asMailbox."

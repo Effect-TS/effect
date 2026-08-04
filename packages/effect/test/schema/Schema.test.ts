@@ -3143,7 +3143,7 @@ Expected a value between -2147483648 and 2147483647`
     await encoding.succeed(noPrototypeObject, { message: "a" })
   })
 
-  it("Error and Defect memoize equivalent options", () => {
+  it("ErrorInstance and Defect memoize equivalent options", () => {
     const assertMemoized = <S>(schema: (options?: Schema.ErrorOptions) => S) => {
       strictEqual(schema(), schema({}))
       strictEqual(schema(), schema({ includeStack: false }))
@@ -3163,7 +3163,7 @@ Expected a value between -2147483648 and 2147483647`
       assertFalse(schema({ excludeCause: true }) === schema({ includeStack: true, excludeCause: true }))
     }
 
-    assertMemoized(Schema.Error)
+    assertMemoized(Schema.ErrorInstance)
     assertMemoized(Schema.Defect)
   })
 
@@ -3238,7 +3238,7 @@ Expected a value between -2147483648 and 2147483647`
   })
 
   it("Error", async () => {
-    const schema = Schema.Error()
+    const schema = Schema.ErrorInstance()
     const asserts = new TestSchema.Asserts(schema)
 
     if (verifyGeneration) {
@@ -7026,16 +7026,16 @@ Expected a value between -2147483648 and 2147483647`
     })
   })
 
-  describe("ErrorClass", () => {
+  describe("Error", () => {
     it("make with void input", () => {
-      class E extends Schema.ErrorClass<E>("E")({}) {}
+      class E extends Schema.Error<E>("E")({}) {}
       deepStrictEqual(E.make(), new E())
       deepStrictEqual(E.makeOption(), Option.some(new E()))
       deepStrictEqual(Effect.runSync(E.makeEffect()), new E())
     })
 
     it("fields argument", async () => {
-      class E extends Schema.ErrorClass<E>("E")({
+      class E extends Schema.Error<E>("E")({
         id: Schema.Number
       }) {}
       const asserts = new TestSchema.Asserts(E)
@@ -7052,7 +7052,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("constructor ignores excess properties by default", () => {
-      class E extends Schema.ErrorClass<E>("E")({
+      class E extends Schema.Error<E>("E")({
         message: Schema.String,
         cause: Schema.optionalKey(Schema.Unknown),
         code: Schema.Number
@@ -7068,7 +7068,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("constructor preserves excess properties when requested", () => {
-      class E extends Schema.ErrorClass<E>("E")({
+      class E extends Schema.Error<E>("E")({
         message: Schema.String,
         code: Schema.Number
       }) {}
@@ -7083,7 +7083,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("Struct argument", async () => {
-      class E extends Schema.ErrorClass<E>("E")(Schema.Struct({
+      class E extends Schema.Error<E>("E")(Schema.Struct({
         id: Schema.Number
       })) {}
       const asserts = new TestSchema.Asserts(E)
@@ -7104,7 +7104,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("extend", async () => {
-      class A extends Schema.ErrorClass<A>("A")({
+      class A extends Schema.Error<A>("A")({
         a: Schema.String
       }) {
         readonly _a = 1
@@ -7140,7 +7140,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("extended constructor ignores excess properties by default", () => {
-      class A extends Schema.ErrorClass<A>("A")({
+      class A extends Schema.Error<A>("A")({
         message: Schema.String
       }) {}
       class B extends A.extend<B>("B")({
@@ -7155,7 +7155,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("extended constructor does not treat subclass fields as excess properties", () => {
-      class A extends Schema.ErrorClass<A>("A")({
+      class A extends Schema.Error<A>("A")({
         message: Schema.String
       }) {}
       class B extends A.extend<B>("B")({
@@ -7171,7 +7171,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("`toString` to match native `Error` output format", async () => {
-      class E extends Schema.ErrorClass<E>("E")({
+      class E extends Schema.Error<E>("E")({
         message: Schema.String
       }) {}
       const err = new E({ message: "my message" })
@@ -7179,16 +7179,16 @@ Expected a value between -2147483648 and 2147483647`
     })
   })
 
-  describe("TaggedErrorClass", () => {
+  describe("TaggedError", () => {
     it("make with void input", () => {
-      class E extends Schema.TaggedErrorClass<E>()("E", {}) {}
+      class E extends Schema.TaggedError<E>()("E", {}) {}
       deepStrictEqual(E.make(), new E())
       deepStrictEqual(E.makeOption(), Option.some(new E()))
       deepStrictEqual(Effect.runSync(E.makeEffect()), new E())
     })
 
     it("fields argument", async () => {
-      class E extends Schema.TaggedErrorClass<E>()("E", {
+      class E extends Schema.TaggedError<E>()("E", {
         id: Schema.Number
       }) {}
       const asserts = new TestSchema.Asserts(E)
@@ -7210,7 +7210,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("constructor ignores excess properties by default", () => {
-      class E extends Schema.TaggedErrorClass<E>()("E", {
+      class E extends Schema.TaggedError<E>()("E", {
         id: Schema.Number
       }) {}
 
@@ -7222,7 +7222,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("Struct argument", async () => {
-      class E extends Schema.TaggedErrorClass<E>()(
+      class E extends Schema.TaggedError<E>()(
         "E",
         Schema.Struct({
           id: Schema.Number
@@ -7236,7 +7236,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("name matches tag", () => {
-      class E extends Schema.TaggedErrorClass<E>()("TaggedErrorName", {
+      class E extends Schema.TaggedError<E>()("TaggedErrorName", {
         id: Schema.Number
       }) {}
 
@@ -7245,7 +7245,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("name matches identifier", () => {
-      class E extends Schema.TaggedErrorClass<E>("A")("B", {
+      class E extends Schema.TaggedError<E>("A")("B", {
         a: Schema.Number
       }) {}
 
@@ -7254,7 +7254,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("name matches identifier after extend", () => {
-      class E extends Schema.TaggedErrorClass<E>("A")("B", {
+      class E extends Schema.TaggedError<E>("A")("B", {
         a: Schema.Number
       }) {}
       class E2 extends E.extend<E2>("C")({
@@ -7265,8 +7265,8 @@ Expected a value between -2147483648 and 2147483647`
       strictEqual(err.name, "C")
     })
 
-    it("zero-field TaggedErrorClass allows omitting props argument", () => {
-      class NotFoundError extends Schema.TaggedErrorClass<NotFoundError>()("NotFoundError", {}) {}
+    it("zero-field TaggedError allows omitting props argument", () => {
+      class NotFoundError extends Schema.TaggedError<NotFoundError>()("NotFoundError", {}) {}
 
       // new NotFoundError() should work without passing {}
       const a = new NotFoundError()
@@ -7280,7 +7280,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("extend", async () => {
-      class A extends Schema.TaggedErrorClass<A>()("A", {
+      class A extends Schema.TaggedError<A>()("A", {
         a: Schema.String
       }) {}
       class B extends A.extend<B>("B")({
@@ -7293,7 +7293,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("extended constructor ignores excess properties by default", () => {
-      class A extends Schema.TaggedErrorClass<A>()("A", {
+      class A extends Schema.TaggedError<A>()("A", {
         a: Schema.String
       }) {}
       class B extends A.extend<B>("B")({
@@ -7309,7 +7309,7 @@ Expected a value between -2147483648 and 2147483647`
     })
 
     it("extended constructor does not treat subclass fields as excess properties", () => {
-      class A extends Schema.TaggedErrorClass<A>()("A", {
+      class A extends Schema.TaggedError<A>()("A", {
         a: Schema.String
       }) {}
       class B extends A.extend<B>("B")({

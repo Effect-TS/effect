@@ -34,7 +34,7 @@ const OptionalStringTool = Tool.make("OptionalStringTool", {
 
 const PublicFailureTool = Tool.make("PublicFailureTool", {
   success: Schema.String,
-  failure: Schema.Error()
+  failure: Schema.ErrorInstance()
 })
 
 const InternalAiErrorTool = Tool.make("InternalAiErrorTool", {

@@ -49,3 +49,12 @@
 "effect/SortedSet#values":
   replacement: "Array.sort"
   note: "Sort the replacement HashSet with the retained Order and iterate the resulting array."
+"effect/SortedSet#every":
+  replacement: "HashSet.every"
+  note: "Run the predicate against the replacement HashSet; sort first only if traversal order has observable effects."
+"effect/SortedSet#has":
+  replacement: "HashSet.has"
+  note: "Use direct membership testing on the replacement HashSet."
+"effect/SortedSet#some":
+  replacement: "HashSet.some"
+  note: "Run the predicate against the replacement HashSet; sort first only if traversal order has observable effects."

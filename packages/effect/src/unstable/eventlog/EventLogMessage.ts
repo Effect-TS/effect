@@ -63,7 +63,7 @@ export const StoreId = Schema.String.pipe(Schema.brand(StoreIdTypeId))
  * @category protocols
  * @since 4.0.0
  */
-export class EventLogProtocolError extends Schema.TaggedErrorClass<EventLogProtocolError>(
+export class EventLogProtocolError extends Schema.TaggedError<EventLogProtocolError>(
   "effect/eventlog/EventLogRemote/ProtocolError"
 )("EventLogProtocolError", {
   requestTag: Schema.String,

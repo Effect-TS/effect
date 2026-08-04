@@ -34,7 +34,7 @@ export const isWorkerError = (u: unknown): u is WorkerError => hasProperty(u, Ty
  * @category errors
  * @since 4.0.0
  */
-export class WorkerSpawnError extends Schema.ErrorClass<WorkerSpawnError>(
+export class WorkerSpawnError extends Schema.Error<WorkerSpawnError>(
   "effect/workers/WorkerError/WorkerSpawnError"
 )({
   _tag: Schema.tag("WorkerSpawnError"),
@@ -48,7 +48,7 @@ export class WorkerSpawnError extends Schema.ErrorClass<WorkerSpawnError>(
  * @category errors
  * @since 4.0.0
  */
-export class WorkerSendError extends Schema.ErrorClass<WorkerSendError>(
+export class WorkerSendError extends Schema.Error<WorkerSendError>(
   "effect/workers/WorkerError/WorkerSendError"
 )({
   _tag: Schema.tag("WorkerSendError"),
@@ -63,7 +63,7 @@ export class WorkerSendError extends Schema.ErrorClass<WorkerSendError>(
  * @category errors
  * @since 4.0.0
  */
-export class WorkerReceiveError extends Schema.ErrorClass<WorkerReceiveError>(
+export class WorkerReceiveError extends Schema.Error<WorkerReceiveError>(
   "effect/workers/WorkerError/WorkerReceiveError"
 )({
   _tag: Schema.tag("WorkerReceiveError"),
@@ -77,7 +77,7 @@ export class WorkerReceiveError extends Schema.ErrorClass<WorkerReceiveError>(
  * @category errors
  * @since 4.0.0
  */
-export class WorkerUnknownError extends Schema.ErrorClass<WorkerUnknownError>(
+export class WorkerUnknownError extends Schema.Error<WorkerUnknownError>(
   "effect/workers/WorkerError/WorkerUnknownError"
 )({
   _tag: Schema.tag("WorkerUnknownError"),
@@ -122,7 +122,7 @@ export const WorkerErrorReason: Schema.Union<[
  * @category errors
  * @since 4.0.0
  */
-export class WorkerError extends Schema.ErrorClass<WorkerError>(TypeId)({
+export class WorkerError extends Schema.Error<WorkerError>(TypeId)({
   _tag: Schema.tag("WorkerError"),
   reason: WorkerErrorReason
 }) {

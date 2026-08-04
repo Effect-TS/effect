@@ -653,6 +653,22 @@ export const fromDateUnsafe: (date: Date) => Utc = Internal.fromDateUnsafe
 export const makeUnsafe: <A extends DateTime.Input>(input: A) => DateTime.PreserveZone<A> = Internal.makeUnsafe
 
 /**
+ * Creates a `DateTime.Utc` from the number of seconds since the Unix epoch.
+ *
+ * **Example** (Creating from epoch seconds)
+ *
+ * ```ts import.meta.vitest
+ * import { DateTime } from "effect"
+ *
+ * DateTime.fromEpochSeconds(1704067200).toJSON() // => "2024-01-01T00:00:00.000Z"
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const fromEpochSeconds: (seconds: number) => Utc = Internal.fromEpochSeconds
+
+/**
  * Create a `DateTime.Zoned` using `DateTime.makeUnsafe` and a time zone.
  *
  * **When to use**
@@ -1599,6 +1615,28 @@ export const zonedOffsetIso: (self: Zoned) => string = Internal.zonedOffsetIso
  * @since 3.6.0
  */
 export const toEpochMillis: (self: DateTime) => number = Internal.toEpochMillis
+
+/**
+ * Converts a `DateTime` to the number of seconds since the Unix epoch.
+ *
+ * **Details**
+ *
+ * This returns the UTC timestamp regardless of any time zone information.
+ * The result is floored to the nearest second.
+ *
+ * **Example** (Reading epoch seconds)
+ *
+ * ```ts import.meta.vitest
+ * import { DateTime } from "effect"
+ *
+ * const dt = DateTime.makeUnsafe("2024-01-01T00:00:00Z")
+ * DateTime.toEpochSeconds(dt) // => 1704067200
+ * ```
+ *
+ * @category converting
+ * @since 4.0.0
+ */
+export const toEpochSeconds: (self: DateTime) => number = Internal.toEpochSeconds
 
 /**
  * Removes the time aspect of a `DateTime`, first adjusting for the time

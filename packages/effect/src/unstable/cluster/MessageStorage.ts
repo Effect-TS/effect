@@ -606,11 +606,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) =>
-      Effect.flatMap(
-        Reply.serialize(reply),
-        encoded.saveReply
-      ),
+    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply), encoded.saveReply),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()

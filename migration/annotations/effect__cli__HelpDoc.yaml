@@ -73,3 +73,6 @@
 "@effect/cli/HelpDoc#toAnsiText":
   replacement: "CliOutput.defaultFormatter().formatHelpDoc"
   note: "Format the structured help record; inside Effect code prefer the CliOutput.Formatter service."
+"@effect/cli/HelpDoc#isEmpty":
+  replacement: "none"
+  note: "The Empty variant was removed when HelpDoc became a structured record; inspect the relevant flags, args, subcommands, and examples arrays when an application-specific emptiness test is needed."

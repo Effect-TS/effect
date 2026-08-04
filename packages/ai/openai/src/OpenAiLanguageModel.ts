@@ -782,7 +782,7 @@ const prepareMessages = Effect.fnUntraced(
       Tool.isProviderDefined(tool) && tool.name === "OpenAiCodeInterpreter"
     )
     const shellTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.Shell> =>
-      Tool.isProviderDefined(tool) && tool.name === "OpenAiFunctionShell"
+      Tool.isProviderDefined(tool) && tool.name === "OpenAiShell"
     )
     const localShellTool = options.tools.find((tool): tool is ReturnType<typeof OpenAiTool.LocalShell> =>
       Tool.isProviderDefined(tool) && tool.name === "OpenAiLocalShell"
@@ -1130,6 +1130,7 @@ const prepareMessages = Effect.fnUntraced(
                 call_id: part.id,
                 ...(part.result as any)
               })
+              continue
             }
 
             if (Predicate.isNotUndefined(shellTool) && toolName === "shell") {
@@ -1140,6 +1141,7 @@ const prepareMessages = Effect.fnUntraced(
                 output: part.result as any,
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
+              continue
             }
 
             if (Predicate.isNotUndefined(localShellTool) && toolName === "local_shell") {
@@ -1150,6 +1152,7 @@ const prepareMessages = Effect.fnUntraced(
                 output: part.result as any,
                 ...(Predicate.isNotNull(status) ? { status } : {})
               })
+              continue
             }
 
             messages.push({
@@ -1615,7 +1618,9 @@ const makeResponse = Effect.fnUntraced(
             type: "tool-call",
             id: part.id,
             name: toolName,
-            params: {},
+            params: webSearchTool?.name === "OpenAiWebSearchPreview"
+              ? {}
+              : { action: part.action },
             providerExecuted: true
           })
           parts.push({
@@ -1943,6 +1948,9 @@ const makeStreamResponse = Effect.fnUntraced(
                   id: event.item.id,
                   name: toolName
                 }
+                if (webSearchTool?.name === "OpenAiWebSearch") {
+                  break
+                }
                 parts.push({
                   type: "tool-params-start",
                   id: event.item.id,
@@ -2256,6 +2264,15 @@ const makeStreamResponse = Effect.fnUntraced(
                 const toolName = toolNameMapper.getCustomName(
                   webSearchTool?.name ?? "web_search"
                 )
+                if (webSearchTool?.name === "OpenAiWebSearch") {
+                  parts.push({
+                    type: "tool-call",
+                    id: event.item.id,
+                    name: toolName,
+                    params: { action: event.item.action },
+                    providerExecuted: true
+                  })
+                }
                 parts.push({
                   type: "tool-result",
                   id: event.item.id,

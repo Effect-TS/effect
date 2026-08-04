@@ -76,3 +76,6 @@ effect/Queue#takeUpTo:
 effect/Queue#unsafeOffer:
   replacement: "Queue.offerUnsafe"
   note: "The unsafe suffix moved to the end."
+effect/Queue#isShutdown:
+  replacement: "queue.state._tag === \"Done\""
+  note: "The dedicated helper was removed; inspect the public queue lifecycle state. Done includes normal completion and failure, not only explicit shutdown."

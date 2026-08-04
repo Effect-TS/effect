@@ -728,7 +728,8 @@ export const prepend: {
 export const take: {
   (n: number): <A>(self: Chunk<A>) => Chunk<A>
   <A>(self: Chunk<A>, n: number): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, n: number): Chunk<A> => {
+} = dual(2, <A>(self: Chunk<A>, _n: number): Chunk<A> => {
+  const n = Math.floor(_n)
   if (n <= 0) {
     return _empty
   } else if (n >= self.length) {
@@ -784,7 +785,8 @@ export const take: {
 export const drop: {
   (n: number): <A>(self: Chunk<A>) => Chunk<A>
   <A>(self: Chunk<A>, n: number): Chunk<A>
-} = dual(2, <A>(self: Chunk<A>, n: number): Chunk<A> => {
+} = dual(2, <A>(self: Chunk<A>, _n: number): Chunk<A> => {
+  const n = Math.floor(_n)
   if (n <= 0) {
     return self
   } else if (n >= self.length) {

@@ -1096,9 +1096,12 @@ function interpolate(envValue: string, parsed: Record<string, string>): string {
 
   if (match !== null) {
     const [_, group, variableName, defaultValue] = match
+    const value = Object.hasOwn(parsed, variableName) && parsed[variableName] !== ""
+      ? parsed[variableName]
+      : defaultValue ?? ""
 
     return interpolate(
-      envValue.replace(group, defaultValue || (Object.hasOwn(parsed, variableName) ? parsed[variableName] : "")),
+      envValue.replace(group, value),
       parsed
     )
   }

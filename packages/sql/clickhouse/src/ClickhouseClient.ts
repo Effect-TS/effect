@@ -175,16 +175,16 @@ export const make = (
       ? Statement.defaultTransforms(options.transformResultNames).array
       : undefined
 
-    const client = Clickhouse.createClient(options)
+    const client = yield* Effect.acquireRelease(
+      Effect.sync(() => Clickhouse.createClient(options)),
+      (client) => Effect.promise(() => client.close())
+    )
 
-    yield* Effect.acquireRelease(
-      Effect.tryPromise({
-        try: () => client.exec({ query: "SELECT 1" }),
-        catch: (cause) =>
-          new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
-      }),
-      () => Effect.promise(() => client.close())
-    ).pipe(
+    yield* Effect.tryPromise({
+      try: () => client.exec({ query: "SELECT 1" }),
+      catch: (cause) =>
+        new SqlError({ reason: classifyError(cause, "ClickhouseClient: Failed to connect", "connect", "connection") })
+    }).pipe(
       Effect.timeoutOrElse({
         duration: Duration.seconds(5),
         orElse: () =>
@@ -263,12 +263,11 @@ export const make = (
         return this.runRaw(sql, params, format).pipe(
           Effect.flatMap((result) => {
             if ("json" in result) {
-              return Effect.promise(() =>
-                result.json().then(
-                  (result) => "data" in result ? result.data : result as any,
-                  () => []
-                )
-              )
+              return Effect.tryPromise({
+                try: () => result.json().then((result) => "data" in result ? result.data : result as any),
+                catch: (cause) =>
+                  new SqlError({ reason: classifyError(cause, "Failed to parse result", "parseResult") })
+              })
             }
             return Effect.succeed([])
           })
@@ -484,7 +483,7 @@ const typeFromUnknown = (value: unknown): string => {
   }
   switch (typeof value) {
     case "number":
-      return "Decimal"
+      return "Float64"
     case "bigint":
       return "Int64"
     case "boolean":

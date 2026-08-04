@@ -131,6 +131,7 @@ export default defineConfig({
           setupFiles: [path.join(__dirname, "packages/platform-browser/vitest.setup.ts")]
         }
       }),
+      ...project("@effect/platform-bun", "packages/platform-bun", isBun),
       ...project("@effect/platform-deno", "packages/platform-deno", isDeno),
       ...project("@effect/platform-node", "packages/platform-node", isNode),
       ...project(

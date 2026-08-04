@@ -438,7 +438,7 @@ const TestWorkflowEngine = ClusterWorkflowEngine.layer.pipe(
   Layer.provide(TestShardingConfig)
 )
 
-class SendEmailError extends Schema.ErrorClass<SendEmailError>("SendEmailError")({
+class SendEmailError extends Schema.Error<SendEmailError>("SendEmailError")({
   _tag: Schema.tag("SendEmailError"),
   message: Schema.String
 }) {}

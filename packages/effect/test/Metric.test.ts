@@ -6,6 +6,19 @@ import { TestClock } from "effect/testing"
 const attributes = { x: "a", y: "b" }
 
 describe("Metric", () => {
+  it.effect("keeps distinct attribute sets in separate series", () =>
+    Effect.gen(function*() {
+      const id = nextId()
+      const first = Metric.counter(id, { attributes: { a: "b,c=d" } })
+      const second = Metric.counter(id, { attributes: { a: "b", c: "d" } })
+
+      yield* Metric.update(first, 1)
+      yield* Metric.update(second, 10)
+
+      assert.strictEqual((yield* Metric.value(first)).count, 1)
+      assert.strictEqual((yield* Metric.value(second)).count, 10)
+    }))
+
   it.effect("should be referentially transparent", () =>
     Effect.gen(function*() {
       const id = nextId()
