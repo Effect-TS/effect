@@ -103,6 +103,16 @@ describe("RpcSerialization", () => {
     assert.deepStrictEqual(parser.decode("x".repeat(1024)), [])
   })
 
+  it("ndjson decodes a multibyte character split across byte chunks", () => {
+    const parser = RpcSerialization.ndjson.makeUnsafe()
+    const message = { value: "\u20ac" }
+    const bytes = new TextEncoder().encode(parser.encode(message)!)
+    const split = bytes.indexOf(0xe2) + 1
+
+    assert.deepStrictEqual(parser.decode(bytes.slice(0, split)), [])
+    assert.deepStrictEqual(parser.decode(bytes.slice(split)), [message])
+  })
+
   it.effect("layerNdjsonWith forwards maxBufferSize to its decoder", () =>
     Effect.gen(function*() {
       const serialization = yield* RpcSerialization.RpcSerialization
