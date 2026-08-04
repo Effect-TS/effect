@@ -18,6 +18,12 @@ describe("Context", () => {
     deepStrictEqual([...result.mapUnsafe], [[A.key, 1], [B.key, 2]])
   })
 
+  it("removes a service with addOrOmit", () => {
+    const context = Context.make(A, 1).pipe(Context.addOrOmit(A, Option.none()))
+
+    assertTrue(Context.getOption(context, A)._tag === "None")
+  })
+
   it("preserves Map insertion order for replacements and appends", () => {
     const Ref = Context.Reference<number>("ContextTest/OrderRef", { defaultValue: () => 0 })
     const context = Context.empty().pipe(

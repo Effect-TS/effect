@@ -847,20 +847,20 @@ export const addOrOmit: {
   <I, S>(
     key: Key<I, S>,
     service: Option.Option<Types.NoInfer<S>>
-  ): <Services>(self: Context<Services>) => Context<Services | I>
+  ): <Services>(self: Context<Services>) => Context<Exclude<Services, I>>
   <Services, I, S>(
     self: Context<Services>,
     key: Key<I, S>,
     service: Option.Option<Types.NoInfer<S>>
-  ): Context<Services | I>
+  ): Context<Exclude<Services, I>>
 } = dual(3, <Services, I, S>(
   self: Context<Services>,
   key: Key<I, S>,
   service: Option.Option<Types.NoInfer<S>>
-): Context<Services | I> =>
+): Context<Exclude<Services, I>> =>
   service._tag === "None"
-    ? omit(key)(self) as any
-    : add(self, key, service.value))
+    ? omit(key)(self)
+    : add(self, key, service.value) as any)
 
 /**
  * Gets the service for a key, or evaluates the fallback when a non-reference
