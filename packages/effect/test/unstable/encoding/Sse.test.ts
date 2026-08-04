@@ -57,6 +57,7 @@ describe("Sse", () => {
 
     parser.feed("event:\ndata: ok\n\n")
 
+    assert.strictEqual(events.length, 1)
     assert.strictEqual((events[0] as Sse.Event).event, "message")
   })
 
