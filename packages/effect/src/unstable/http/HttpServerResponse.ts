@@ -34,6 +34,7 @@ import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type { HttpPlatform } from "./HttpPlatform.ts"
+import * as bodyInternal from "./internal/httpBody.ts"
 import * as Template from "./Template.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -931,7 +932,8 @@ export const setBody: {
   (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse
 } = dual(
   2,
-  (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse => makeResponse({ ...self, body })
+  (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse =>
+    makeResponse({ ...self, headers: bodyInternal.updateHeaders(self.headers, body), body })
 )
 
 /**
@@ -1345,13 +1347,13 @@ const makeResponse = (options: {
   self.body = options.body ?? Body.empty
   if (
     self.body._tag !== "Empty" &&
-    (self.body.contentType || self.body.contentLength)
+    (self.body.contentType || self.body.contentLength !== undefined)
   ) {
     const newHeaders = Headers.fromRecordUnsafe({ ...options.headers }) as any
     if (self.body.contentType) {
       newHeaders["content-type"] = self.body.contentType
     }
-    if (self.body.contentLength) {
+    if (self.body.contentLength !== undefined) {
       newHeaders["content-length"] = self.body.contentLength.toString()
     }
     self.headers = newHeaders
