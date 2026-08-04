@@ -43,6 +43,19 @@ describe("Cache", () => {
         assert.isFalse(yield* Cache.has(cache, "test"))
       }))
 
+    it.effect("make - uses a numeric zero TTL", () =>
+      Effect.gen(function*() {
+        const cache = yield* Cache.make<string, number>({
+          capacity: 10,
+          lookup: (key) => Effect.succeed(key.length),
+          timeToLive: 0
+        })
+
+        yield* Cache.get(cache, "test")
+
+        assert.isFalse(yield* Cache.has(cache, "test"))
+      }))
+
     it.effect("make - lookup function context is preserved", () =>
       Effect.gen(function*() {
         class TestService extends Context.Service<TestService, { value: number }>()("TestService") {}
