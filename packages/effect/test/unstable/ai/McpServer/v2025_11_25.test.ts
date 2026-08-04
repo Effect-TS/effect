@@ -4,11 +4,13 @@ import * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
 import * as CompletionTest from "./McpConformance/CompletionTest.ts"
+import * as ElicitationTest from "./McpConformance/ElicitationTest.ts"
 import * as LifecycleTest from "./McpConformance/LifecycleTest.ts"
 import * as LoggingTest from "./McpConformance/LoggingTest.ts"
 import { layer as makeMcpConformanceLayer, McpConformance } from "./McpConformance/McpConformance.ts"
 import * as PromptsTest from "./McpConformance/PromptsTest.ts"
 import * as ResourcesTest from "./McpConformance/ResourcesTest.ts"
+import * as SamplingTest from "./McpConformance/SamplingTest.ts"
 import * as ToolsTest from "./McpConformance/ToolsTest.ts"
 import * as TransportsTest from "./McpConformance/TransportsTest.ts"
 import * as UtilitiesTest from "./McpConformance/UtilitiesTest.ts"
@@ -25,6 +27,8 @@ ResourcesTest.suite(protocol, testLayer)
 PromptsTest.suite(protocol, testLayer)
 CompletionTest.suite(protocol, testLayer)
 LoggingTest.suite(protocol, testLayer)
+SamplingTest.suite(protocol, testLayer)
+ElicitationTest.suite(protocol, testLayer)
 
 it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
   describe("Tools", () => {
