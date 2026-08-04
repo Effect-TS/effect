@@ -532,7 +532,7 @@ export const defaultParseOptions: ParseOptions = {}
  *
  * - `isOptional` — the property key may be absent from the input.
  * - `isMutable` — the property is `readonly` when `false`.
- * - `defaultValue` — an {@link Encoding} applied during construction to
+ * - `constructorDefault` — a {@link Link} applied during construction to
  *   supply missing values.
  * - `annotations` — key-level annotations (e.g. description of the key
  *   itself).
@@ -546,19 +546,19 @@ export class Context {
   readonly isOptional: boolean
   readonly isMutable: boolean
   /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-  readonly defaultValue: Encoding | undefined
+  readonly constructorDefault: Link | undefined
   readonly annotations: Schema.Annotations.Key<unknown> | undefined
 
   constructor(
     isOptional: boolean,
     isMutable: boolean,
     /** Used for constructor default values (e.g. `withConstructorDefault` API) */
-    defaultValue: Encoding | undefined = undefined,
+    constructorDefault: Link | undefined = undefined,
     annotations: Schema.Annotations.Key<unknown> | undefined = undefined
   ) {
     this.isOptional = isOptional
     this.isMutable = isMutable
-    this.defaultValue = defaultValue
+    this.constructorDefault = constructorDefault
     this.annotations = annotations
   }
 }
@@ -1141,8 +1141,8 @@ export class TemplateLiteral extends Base {
     this.suffixLengths = suffixLengths
   }
   /** @internal */
-  getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
-    const parser = recur(this.asTemplateLiteralParser())
+  getParser(compile: SchemaParser.Compiler): SchemaParser.Parser {
+    const parser = compile(this.asTemplateLiteralParser())
     return (input, options) => {
       if (input === InternalParser.missing) return InternalParser.missingExit
       const result = parser(input, options)
@@ -1684,7 +1684,10 @@ export class Arrays extends Base {
     }
   }
   /** @internal */
-  getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileConstructorDefault: SchemaParser.Compiler = compile
+  ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
     type ElementParser = { readonly ast: AST; readonly parser: SchemaParser.Parser }
@@ -1715,8 +1718,8 @@ export class Arrays extends Base {
         return yield* Effect.fail(new SchemaIssue.InvalidType(ast))
       }
       if (!elements) {
-        elements = ast.elements.map((ast) => ({ ast, parser: recur(ast) }))
-        rest = ast.rest.map((ast) => ({ ast, parser: recur(ast) }))
+        elements = ast.elements.map((ast) => ({ ast, parser: compileConstructorDefault(ast) }))
+        rest = ast.rest.map((ast) => ({ ast, parser: compileConstructorDefault(ast) }))
       }
 
       const len = input.length
@@ -2076,7 +2079,10 @@ export class Objects extends Base {
     }
   }
   /** @internal */
-  getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileConstructorDefault: SchemaParser.Compiler = compile
+  ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
     const expectedKeys: Array<PropertyKey> = []
@@ -2175,15 +2181,15 @@ export class Objects extends Base {
       }
       if (!properties) {
         properties = ast.propertySignatures.map((ps) => ({
-          parser: recur(ps.type),
+          parser: compileConstructorDefault(ps.type),
           name: ps.name,
           type: ps.type
         }))
         indexes = indexCount
           ? ast.indexSignatures.map((is) => ({
             is,
-            parserKey: recur(parameterFromPropertyKey(is.parameter)),
-            parserValue: recur(is.type)
+            parserKey: compile(parameterFromPropertyKey(is.parameter)),
+            parserValue: compileConstructorDefault(is.type)
           }))
           : undefined
       }
@@ -2577,7 +2583,7 @@ export function collectSentinels(ast: AST): Array<Sentinel> {
 }
 
 type CandidateIndex =
-  | ((input: any) => ReadonlyArray<AST>)
+  | ((input: any, isConstructor: boolean) => ReadonlyArray<AST>)
   | {
     bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
     otherwise?: { [K in Type]?: Array<number> }
@@ -2636,10 +2642,14 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       for (const [literal, indexes] of byValue) {
         candidates.set(literal, Object.freeze(indexes.map((index) => types[index])))
       }
-      idx = (input) =>
-        Predicate.isObjectKeyword(input) && Object.hasOwn(input, key)
-          ? candidates.get((input as any)[key]) ?? emptyCandidates
-          : emptyCandidates
+      idx = (input, isConstructor) => {
+        if (Predicate.isObjectKeyword(input)) {
+          const value = Object.hasOwn(input, key) ? (input as any)[key] : undefined
+          if (value !== undefined) return candidates.get(value) ?? emptyCandidates
+          if (isConstructor) return types
+        }
+        return emptyCandidates
+      }
     }
   }
 
@@ -2664,9 +2674,13 @@ function filterLiterals(input: any) {
  *
  * @internal
  */
-export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyArray<AST> {
+export function getCandidates(
+  input: any,
+  types: ReadonlyArray<AST>,
+  isConstructor = false
+): ReadonlyArray<AST> {
   const idx = getIndex(types)
-  if (typeof idx === "function") return idx(input)
+  if (typeof idx === "function") return idx(input, isConstructor)
 
   const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
 
@@ -2676,10 +2690,15 @@ export function getCandidates(input: any, types: ReadonlyArray<AST>): ReadonlyAr
     if (Predicate.isObjectKeyword(input)) {
       const selected = new Set(base)
       for (const [k, m] of idx.bySentinel) {
-        if (Object.hasOwn(input, k)) {
-          const match = m.get((input as any)[k])
+        const value = Object.hasOwn(input, k) ? (input as any)[k] : undefined
+        if (value !== undefined) {
+          const match = m.get(value)
           if (match) {
             for (const candidate of match) selected.add(candidate)
+          }
+        } else if (isConstructor) {
+          for (const indexes of m.values()) {
+            for (const candidate of indexes) selected.add(candidate)
           }
         }
       }
@@ -2743,7 +2762,10 @@ export class Union<A extends AST = AST> extends Base {
     this.encodingChecks = encodingChecks
   }
   /** @internal */
-  getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
+  getParser(
+    compile: SchemaParser.Compiler,
+    compileConstructorDefault?: SchemaParser.Compiler
+  ): SchemaParser.Parser {
     // oxlint-disable-next-line @typescript-eslint/no-this-alias
     const ast = this
 
@@ -2751,10 +2773,10 @@ export class Union<A extends AST = AST> extends Base {
       if (input === InternalParser.missing) {
         return InternalParser.missingExit
       }
-      const candidates = getCandidates(input, ast.types)
+      const candidates = getCandidates(input, ast.types, compileConstructorDefault !== undefined)
 
       if (candidates.length === 1) {
-        const result = recur(candidates[0])(input, options)
+        const result = compile(candidates[0])(input, options)
         if ((result as Exit.Exit<unknown, SchemaIssue.Issue>)._tag === "Success") return result
         return effectIsExit(result)
           ? failSingleUnionCandidate(ast, (result as Exit.Failure<unknown, SchemaIssue.Issue>).cause)
@@ -2763,7 +2785,7 @@ export class Union<A extends AST = AST> extends Base {
 
       const state = {
         ast,
-        recur,
+        compile,
         input,
         out: undefined,
         successes: ast.mode === "oneOf" ? [] : undefined,
@@ -2854,7 +2876,7 @@ function failSingleUnionCandidate(
 }
 
 const parseUnion = iterateEager<{
-  readonly recur: (ast: AST) => SchemaParser.Parser
+  readonly compile: (ast: AST) => SchemaParser.Parser
   readonly ast: Union
   readonly input: unknown
   readonly options: ParseOptions
@@ -2863,7 +2885,7 @@ const parseUnion = iterateEager<{
   issues: Array<SchemaIssue.Issue> | undefined
 }, AST>()({
   onItem(s, ast) {
-    const parser = s.recur(ast)
+    const parser = s.compile(ast)
     return parser(s.input, s.options)
   },
   step(s, candidate, exit) {
@@ -2966,9 +2988,9 @@ export class Suspend extends Base {
     this.thunk = memoizeThunk(thunk)
   }
   /** @internal */
-  getParser(recur: (ast: AST) => SchemaParser.Parser): SchemaParser.Parser {
+  getParser(compile: SchemaParser.Compiler): SchemaParser.Parser {
     let parser: SchemaParser.Parser
-    return (input, options) => (parser ??= recur(this.thunk()))(input, options)
+    return (input, options) => (parser ??= compile(this.thunk()))(input, options)
   }
   /** @internal */
   recur(recur: (ast: AST) => AST) {
@@ -3364,7 +3386,7 @@ export function annotateKey<A extends AST>(ast: A, annotations: Schema.Annotatio
     new Context(
       ast.context.isOptional,
       ast.context.isMutable,
-      ast.context.defaultValue,
+      ast.context.constructorDefault,
       { ...ast.context.annotations, ...annotations }
     ) :
     new Context(false, false, undefined, annotations)
@@ -3390,7 +3412,7 @@ const optionalKeyLastLink = applyToLastLink(optionalKey)
 export function optionalKey<A extends AST>(ast: A): A {
   const context = ast.context ?
     ast.context.isOptional === false ?
-      new Context(true, ast.context.isMutable, ast.context.defaultValue, ast.context.annotations) :
+      new Context(true, ast.context.isMutable, ast.context.constructorDefault, ast.context.annotations) :
       ast.context :
     new Context(true, false)
   return optionalKeyLastLink(replaceContext(ast, context))
@@ -3402,7 +3424,7 @@ const mutableKeyLastLink = applyToLastLink(mutableKey)
 export function mutableKey<A extends AST>(ast: A): A {
   const context = ast.context ?
     ast.context.isMutable === false ?
-      new Context(ast.context.isOptional, true, ast.context.defaultValue, ast.context.annotations) :
+      new Context(ast.context.isOptional, true, ast.context.constructorDefault, ast.context.annotations) :
       ast.context :
     new Context(false, true)
   return mutableKeyLastLink(replaceContext(ast, context))
@@ -3417,10 +3439,10 @@ export function withConstructorDefault<A extends AST>(
     SchemaGetter.withDefault(defaultValue),
     SchemaGetter.passthrough()
   )
-  const encoding: Encoding = [new Link(unknown, transformation)]
+  const constructorDefault = new Link(unknown, transformation)
   const context = ast.context ?
-    new Context(ast.context.isOptional, ast.context.isMutable, encoding, ast.context.annotations) :
-    new Context(false, false, encoding)
+    new Context(ast.context.isOptional, ast.context.isMutable, constructorDefault, ast.context.annotations) :
+    new Context(false, false, constructorDefault)
   return replaceContext(ast, context)
 }
 
@@ -3949,7 +3971,17 @@ export function runChecks<T>(
 }
 
 /** @internal */
-export const ClassTypeId = "~effect/Schema/Class"
+export interface ConstructorDescriptor {
+  readonly isConstructed: Predicate.Predicate<unknown>
+  readonly link: Link
+}
+
+/** @internal */
+export function getConstructorDescriptor(ast: AST): ConstructorDescriptor | undefined {
+  if (!isDeclaration(ast)) return undefined
+  const getDescriptor = ast.annotations?.[InternalAnnotations.CONSTRUCTOR_ANNOTATION_KEY]
+  return Predicate.isFunction(getDescriptor) ? getDescriptor(ast.typeParameters) : undefined
+}
 
 /**
  * Returns all annotations from the AST node.

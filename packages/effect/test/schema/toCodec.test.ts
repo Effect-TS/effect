@@ -334,11 +334,11 @@ describe("Serializers", () => {
           strictEqual(ast._tag, "Objects")
           if (ast._tag === "Objects") {
             const type = ast.propertySignatures[0].type
-            assertTrue(type.context?.defaultValue !== undefined)
+            assertTrue(type.context?.constructorDefault !== undefined)
             const encoded = SchemaAST.getLastEncoding(type)
             strictEqual(encoded.context?.isOptional, true)
             strictEqual(encoded.context?.isMutable, true)
-            strictEqual(encoded.context?.defaultValue, undefined)
+            strictEqual(encoded.context?.constructorDefault, undefined)
             deepStrictEqual(encoded.context?.annotations, { description: "a" })
           }
         })
@@ -1636,11 +1636,11 @@ describe("Serializers", () => {
       strictEqual(ast._tag, "Objects")
       if (ast._tag === "Objects") {
         const type = ast.propertySignatures[0].type
-        assertTrue(type.context?.defaultValue !== undefined)
+        assertTrue(type.context?.constructorDefault !== undefined)
         const encoded = SchemaAST.getLastEncoding(type)
         strictEqual(encoded.context?.isOptional, true)
         strictEqual(encoded.context?.isMutable, true)
-        strictEqual(encoded.context?.defaultValue, undefined)
+        strictEqual(encoded.context?.constructorDefault, undefined)
         deepStrictEqual(encoded.context?.annotations, { description: "a" })
       }
     })
@@ -1666,11 +1666,11 @@ describe("Serializers", () => {
       strictEqual(ast._tag, "Objects")
       if (ast._tag === "Objects") {
         const type = ast.propertySignatures[0].type
-        assertTrue(type.context?.defaultValue !== undefined)
+        assertTrue(type.context?.constructorDefault !== undefined)
         const encoded = SchemaAST.getLastEncoding(type)
         strictEqual(encoded.context?.isOptional, true)
         strictEqual(encoded.context?.isMutable, true)
-        strictEqual(encoded.context?.defaultValue, undefined)
+        strictEqual(encoded.context?.constructorDefault, undefined)
         deepStrictEqual(encoded.context?.annotations, { description: "a" })
       }
     })
