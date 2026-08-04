@@ -760,6 +760,7 @@ function handlerToHttpEffect(
   const decodeHeaders = UndefinedOr.map(endpoint.headers, Schema.decodeUnknownEffect)
   const decodeQuery = UndefinedOr.map(endpoint.query, Schema.decodeUnknownEffect)
   const encodeStream = makeStreamEncoder(endpoint)
+  const encodeWithHeaders = makeWithHeadersEncoder(endpoint)
 
   const shouldParsePayload = endpoint.payload.size > 0 && !isRaw
   const payloadBy = shouldParsePayload ? buildPayloadDecoders(endpoint.payload) : undefined
@@ -797,15 +798,23 @@ function handlerToHttpEffect(
           request.payload = yield* HttpApiSchemaError.wrap("Payload", result)
         }
       }
-      const response = yield* handler(request)
+      let response = yield* handler(request)
       if (Response.isHttpServerResponse(response)) {
         return response
       }
+      let responseHeaders: unknown | undefined
+      if (encodeWithHeaders !== undefined && hasProperty(response, HttpApiSchema.WithHeadersValueTypeId)) {
+        const withHeaders = response as unknown as HttpApiSchema.WithHeaders.Value<unknown, unknown>
+        responseHeaders = yield* HttpApiSchemaError.wrap("ResponseHeaders", encodeWithHeaders(withHeaders.headers))
+        response = withHeaders.body
+      }
       const streamResponse = encodeStream?.(response, context)
       if (streamResponse !== undefined) {
-        return yield* HttpApiSchemaError.wrap("Body", streamResponse)
+        const encoded = yield* HttpApiSchemaError.wrap("Body", streamResponse)
+        return responseHeaders === undefined ? encoded : Response.setHeaders(encoded, responseHeaders as any)
       }
-      return yield* HttpApiSchemaError.wrap("Body", encodeSuccess(response))
+      const encoded = yield* HttpApiSchemaError.wrap("Body", encodeSuccess(response))
+      return responseHeaders === undefined ? encoded : Response.setHeaders(encoded, responseHeaders as any)
     })
   ).pipe(
     Effect.withErrorReporting,
@@ -918,6 +927,19 @@ type StreamEncoder = (response: unknown, context: Context.Context<never>) =>
   | Effect.Effect<HttpServerResponse, Schema.SchemaError, unknown>
   | undefined
 
+type WithHeadersEncoder = (headers: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
+
+function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): WithHeadersEncoder | undefined {
+  const schemas: Array<Schema.Top> = []
+  for (const schema of endpoint.success) {
+    if (HttpApiSchema.isWithHeaders(schema)) {
+      schemas.push(schema.headers)
+    }
+  }
+  if (schemas.length === 0) return undefined
+  return Schema.encodeUnknownEffect(schemas.length === 1 ? schemas[0] : Schema.Union(schemas))
+}
+
 function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undefined {
   const streamSchema = getStreamSuccessSchema(endpoint)
   if (streamSchema === undefined) {
@@ -967,15 +989,17 @@ function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undef
 
 function getStreamSuccessSchema(endpoint: HttpApiEndpoint.Top) {
   for (const schema of endpoint.success) {
-    if (HttpApiSchema.isStreamSchema(schema)) {
-      return schema
+    const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
+    if (HttpApiSchema.isStreamSchema(body)) {
+      return body
     }
   }
 }
 
 function hasBufferedSuccess(endpoint: HttpApiEndpoint.Top): boolean {
   for (const schema of endpoint.success) {
-    if (Schema.isSchema(schema) && !HttpApiSchema.isStreamSchema(schema)) return true
+    const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
+    if (Schema.isSchema(body) && !HttpApiSchema.isStreamSchema(body)) return true
   }
   return endpoint.success.size === 0
 }
@@ -1062,14 +1086,20 @@ function toResponseSchema(getStatus: (ast: SchemaAST.AST) => number) {
   const cache = new WeakMap<SchemaAST.AST, Schema.Top>()
 
   return (schema: Schema.Constraint): Schema.ConstraintEncoder<HttpServerResponse, unknown> => {
-    const cached = cache.get(schema.ast)
-    if (cached !== undefined) {
-      return cached as any
+    const isWithHeaders = HttpApiSchema.isWithHeaders(schema)
+    if (!isWithHeaders) {
+      const cached = cache.get(schema.ast)
+      if (cached !== undefined) {
+        return cached as any
+      }
     }
+    const bodySchema = isWithHeaders ? schema.schema : schema
     const responseSchema = $HttpServerResponse.pipe(
-      Schema.decodeTo(schema, getResponseTransformation(getStatus, schema))
+      Schema.decodeTo(bodySchema, getResponseTransformation(getStatus, schema))
     )
-    cache.set(schema.ast, responseSchema)
+    if (!isWithHeaders) {
+      cache.set(schema.ast, responseSchema)
+    }
     return responseSchema
   }
 }
@@ -1077,12 +1107,47 @@ function toResponseSchema(getStatus: (ast: SchemaAST.AST) => number) {
 function getResponseTransformation(
   getStatus: (ast: SchemaAST.AST) => number,
   schema: Schema.Constraint
-): SchemaTransformation.Transformation<unknown, Response.HttpServerResponse> {
+): SchemaTransformation.Transformation<unknown, Response.HttpServerResponse, never, unknown> {
+  const withHeaders = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
+  if (withHeaders !== undefined) {
+    const encodeBody = getResponseEncode(
+      getStatus(withHeaders.body.ast),
+      HttpApiSchema.getResponseEncoding(withHeaders.body.ast),
+      HttpApiSchema.isNoContent(withHeaders.body.ast)
+    )
+    const headersCodec = withHeaders.headersCodec
+    const encodeHeaders = headersCodec === undefined ? undefined : (
+      headers: unknown
+    ): Effect.Effect<unknown, SchemaIssue.Issue, unknown> =>
+      Schema.decodeUnknownEffect(withHeaders.headers)(headers).pipe(
+        Effect.flatMap(Schema.encodeUnknownEffect(headersCodec)),
+        Effect.mapError((error) => error.issue)
+      )
+    return SchemaTransformation.transformOrFail<unknown, Response.HttpServerResponse, never, unknown>({
+      decode: () => Effect.fail(new SchemaIssue.Forbidden({ message: "Encode only schema" })),
+      encode: (value) => {
+        const withHeaders = value as { readonly body: unknown; readonly headers: unknown }
+        return Effect.flatMap(encodeBody(withHeaders.body), (response) => {
+          if (encodeHeaders === undefined) {
+            return Effect.succeed(Response.setHeaders(response, withHeaders.headers as any))
+          }
+          return Effect.map(
+            encodeHeaders(withHeaders.headers),
+            (headers) => Response.setHeaders(response, headers as any)
+          )
+        })
+      }
+    })
+  }
+
+  const responseSchema = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
   const ast = schema.ast
   const encode = getResponseEncode(
-    getStatus(ast),
-    HttpApiSchema.getResponseEncoding(ast),
-    HttpApiSchema.isNoContent(ast)
+    HttpApiSchema.isWithHeaders(schema) ? HttpApiSchema.getStatusSuccessSchema(schema) : getStatus(ast),
+    HttpApiSchema.isWithHeaders(schema)
+      ? HttpApiSchema.getResponseEncodingSchema(schema)
+      : HttpApiSchema.getResponseEncoding(ast),
+    HttpApiSchema.isNoContent(responseSchema.ast)
   )
 
   return SchemaTransformation.transformOrFail({

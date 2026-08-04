@@ -1297,7 +1297,14 @@ function hasReservedEventLiteral(ast: AST.AST, seen: Set<AST.AST>): boolean {
 }
 
 function transformResponse(schema: Schema.Top): Schema.Top {
-  return applyResponseEncoding(schema, HttpApiSchema.getResponseEncoding(schema.ast))
+  const transformed = applyResponseEncoding(schema, HttpApiSchema.getResponseEncoding(schema.ast))
+  const withHeaders = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
+  return withHeaders === undefined ? transformed : transformed.annotate({
+    "~httpApiWithHeaders": {
+      ...withHeaders,
+      headersCodec: Schema.toCodecStringTree(withHeaders.headers)
+    }
+  })
 }
 
 function applyResponseEncoding(schema: Schema.Top, encoding: HttpApiSchema.ResponseEncoding): Schema.Top {

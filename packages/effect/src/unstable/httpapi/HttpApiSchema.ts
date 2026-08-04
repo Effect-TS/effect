@@ -47,6 +47,7 @@ declare module "../../Schema.ts" {
 export interface WithHeadersAnnotation {
   readonly body: Schema.Top
   readonly headers: Schema.Top
+  readonly headersCodec?: Schema.Top | undefined
 }
 
 /**
@@ -962,6 +963,9 @@ export const isNoContent = (ast: SchemaAST.AST): boolean => {
 }
 
 const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
+
+/** @internal */
+export const getWithHeadersAnnotation = SchemaAST.resolveAt<WithHeadersAnnotation>("~httpApiWithHeaders")
 
 const resolveHttpApiStatus = SchemaAST.resolveAt<number>("httpApiStatus")
 

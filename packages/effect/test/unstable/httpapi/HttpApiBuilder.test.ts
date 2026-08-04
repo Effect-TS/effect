@@ -122,6 +122,169 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
     }))
 })
 
+it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
+  it.effect("encodes a buffered success body and its declared headers", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("created", "/test", {
+            success: HttpApiSchema.WithHeaders(
+              Schema.Struct({ id: Schema.Int }).pipe(HttpApiSchema.status(201)),
+              {
+                "x-count": Schema.Int,
+                "x-optional": Schema.optional(Schema.String)
+              }
+            )
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("created", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: { id: 1 },
+              headers: { "x-count": 2, "x-optional": undefined }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.created({ responseMode: "response-only" })
+
+      assert.strictEqual(response.status, 201)
+      assert.strictEqual(response.headers["x-count"], "2")
+      assert.isFalse("x-optional" in response.headers)
+      assert.deepStrictEqual(yield* response.json, { id: 1 })
+    }))
+
+  it.effect("does not unwrap an unbranded value in a mixed success union", () =>
+    Effect.gen(function*() {
+      const Plain = Schema.Struct({
+        body: Schema.String,
+        headers: Schema.Struct({ "x-source": Schema.String })
+      }).pipe(HttpApiSchema.asJson({ contentType: "application/vnd.plain+json" }))
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("mixed", "/test", {
+            success: [
+              HttpApiSchema.WithHeaders(Schema.String, { "x-source": Schema.String }),
+              Plain
+            ]
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("mixed", () => Effect.succeed({ body: "plain", headers: { "x-source": "body" } }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.mixed({ responseMode: "response-only" })
+
+      assert.strictEqual(response.headers["content-type"], "application/vnd.plain+json")
+      assert.isFalse("x-source" in response.headers)
+      assert.deepStrictEqual(yield* response.json, { body: "plain", headers: { "x-source": "body" } })
+    }))
+
+  it.effect("applies declared headers after body encoding", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("override", "/test", {
+            success: HttpApiSchema.WithHeaders(
+              Schema.String.pipe(HttpApiSchema.asText({ contentType: "text/plain" })),
+              { "content-type": Schema.String, "x-source": Schema.String }
+            )
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("override", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: "ok",
+              headers: { "content-type": "application/custom", "x-source": "schema" }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.override({ responseMode: "response-only" })
+
+      assert.strictEqual(response.headers["content-type"], "application/custom")
+      assert.strictEqual(response.headers["x-source"], "schema")
+      assert.strictEqual(yield* response.text, "ok")
+    }))
+
+  it.effect("encodes error headers through encodeToWithHeaders", () =>
+    Effect.gen(function*() {
+      class RateLimited extends Schema.TaggedError<RateLimited>()("RateLimited", {
+        retryAfter: Schema.Int
+      }) {}
+      const RateLimitedResponse = RateLimited.pipe(
+        HttpApiSchema.encodeToWithHeaders({
+          body: Schema.String.pipe(HttpApiSchema.status(429), HttpApiSchema.asText()),
+          headers: { "retry-after": Schema.Int }
+        }, {
+          decode: ({ headers }) => new RateLimited({ retryAfter: headers["retry-after"] }),
+          encode: (error) => ({ body: "slow down", headers: { "retry-after": error.retryAfter } })
+        })
+      )
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("limited", "/test", { error: RateLimitedResponse })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("limited", () => Effect.fail(new RateLimited({ retryAfter: 30 })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.limited({ responseMode: "response-only" })
+
+      assert.strictEqual(response.status, 429)
+      assert.strictEqual(response.headers["content-type"], "text/plain")
+      assert.strictEqual(response.headers["retry-after"], "30")
+      assert.strictEqual(yield* response.text, "slow down")
+    }))
+
+  it.effect("defects with ResponseHeaders when success header encoding fails", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("invalid", "/test", {
+            success: HttpApiSchema.WithHeaders(Schema.String, { "x-count": Schema.Int })
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("invalid", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: "ok",
+              headers: { "x-count": "invalid" as any }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const exit = yield* Effect.exit(client.test.invalid({ responseMode: "response-only" }))
+
+      assert.strictEqual(exit._tag, "Failure")
+      if (exit._tag === "Failure") {
+        const error = Cause.squash(exit.cause) as any
+        assert.strictEqual(error._tag, "HttpApiSchemaError")
+        assert.strictEqual(error.kind, "ResponseHeaders")
+      }
+    }))
+})
+
 it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
   it.effect("emits StreamUint8Array handler responses as streamed bytes with the declared content type", () =>
     Effect.gen(function*() {

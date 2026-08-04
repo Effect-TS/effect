@@ -437,15 +437,15 @@ export type HttpApiSchemaErrorTypeId = "~effect/httpapi/HttpApiError/HttpApiSche
 export const HttpApiSchemaErrorTypeId: HttpApiSchemaErrorTypeId = "~effect/httpapi/HttpApiError/HttpApiSchemaError"
 
 /**
- * Error raised when an HTTP API request component fails schema decoding. It records
- * which component failed and responds as an empty `400 Bad Request` when rendered
- * as a server response.
+ * Error raised when an HTTP API request or response component fails schema
+ * decoding or encoding. It records which component failed and responds as an
+ * empty `400 Bad Request` when rendered as a server response.
  *
  * @category errors
  * @since 4.0.0
  */
 export class HttpApiSchemaError extends Data.TaggedClass("HttpApiSchemaError")<{
-  readonly kind: "Params" | "Headers" | "Query" | "Body" | "Payload"
+  readonly kind: "Params" | "Headers" | "Query" | "Body" | "Payload" | "ResponseHeaders"
   readonly cause: Schema.SchemaError
 }> {
   readonly [HttpApiSchemaErrorTypeId]: HttpApiSchemaErrorTypeId = HttpApiSchemaErrorTypeId
