@@ -28,7 +28,7 @@ const TodoWithoutId = Schema.Struct({
   ...Struct.omit(Todo.fields, ["id"])
 })
 
-const makeJsonPlaceholder = Effect.gen(function*() {
+const makeLocalServerClient = Effect.gen(function*() {
   const client = yield* HttpClient.HttpClient
   const createTodo = (todo: typeof TodoWithoutId.Type) =>
     HttpClientRequest.post("/todos").pipe(
@@ -41,32 +41,30 @@ const makeJsonPlaceholder = Effect.gen(function*() {
     createTodo
   } as const
 })
-interface JsonPlaceholder extends Effect.Success<typeof makeJsonPlaceholder> {}
-const JsonPlaceholder = Context.Service<JsonPlaceholder>("test/JsonPlaceholder")
-const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
-const JsonPlaceholderRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(router) {
-  yield* router.addAll([
-    HttpRouter.route(
-      "GET",
-      "/todos/1",
-      Effect.succeed(HttpServerResponse.jsonUnsafe({
-        userId: 1,
-        id: 1,
-        title: "test",
-        completed: false
-      }))
-    ),
-    HttpRouter.route(
-      "POST",
-      "/todos",
-      Effect.gen(function*() {
-        const todo = yield* HttpServerRequest.schemaBodyJson(TodoWithoutId)
-        return HttpServerResponse.jsonUnsafe({ ...todo, id: 201 })
-      })
-    ),
-    HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
-  ])
-})))
+interface LocalServerClient extends Effect.Success<typeof makeLocalServerClient> {}
+const LocalServerClient = Context.Service<LocalServerClient>("test/LocalServerClient")
+const LocalServerClientLive = Layer.effect(LocalServerClient)(makeLocalServerClient)
+const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
+  HttpRouter.route(
+    "GET",
+    "/todos/1",
+    Effect.succeed(HttpServerResponse.jsonUnsafe({
+      userId: 1,
+      id: 1,
+      title: "test",
+      completed: false
+    }))
+  ),
+  HttpRouter.route(
+    "POST",
+    "/todos",
+    Effect.gen(function*() {
+      const todo = yield* HttpServerRequest.schemaBodyJson(TodoWithoutId)
+      return HttpServerResponse.jsonUnsafe({ ...todo, id: 201 })
+    })
+  ),
+  HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
+]))
 ;[
   {
     name: "fetch",
@@ -85,7 +83,7 @@ const JsonPlaceholderRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(
     Layer.provide(layer),
     Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
   )
-  const jsonPlaceholderTestLayer = Layer.merge(JsonPlaceholderLive, JsonPlaceholderRoutes).pipe(
+  const localServerTestLayer = Layer.merge(LocalServerClientLive, LocalServerRoutes).pipe(
     Layer.provideMerge(layerTest)
   )
 
@@ -125,28 +123,28 @@ const JsonPlaceholderRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(
         }).pipe(Effect.provide(layer))
       ))
 
-    it.effect("jsonplaceholder", () =>
+    it.effect("local server", () =>
       Effect.gen(function*() {
-        const jp = yield* JsonPlaceholder
-        const response = yield* jp.client.get("/todos/1").pipe(
+        const local = yield* LocalServerClient
+        const response = yield* local.client.get("/todos/1").pipe(
           Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
         )
         expect(response.id).toBe(1)
       }).pipe(
-        Effect.provide(jsonPlaceholderTestLayer)
+        Effect.provide(localServerTestLayer)
       ))
 
-    it.effect("jsonplaceholder schemaBodyJson", () =>
+    it.effect("local server schemaBodyJson", () =>
       Effect.gen(function*() {
-        const jp = yield* JsonPlaceholder
-        const response = yield* jp.createTodo({
+        const local = yield* LocalServerClient
+        const response = yield* local.createTodo({
           userId: 1,
           title: "test",
           completed: false
         })
         expect(response.title).toBe("test")
       }).pipe(
-        Effect.provide(jsonPlaceholderTestLayer)
+        Effect.provide(localServerTestLayer)
       ))
 
     it.effect("head request with schemaJson", () =>
@@ -158,7 +156,7 @@ const JsonPlaceholderRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(
           )
         )
         expect(response).toEqual({ status: 200 })
-      }).pipe(Effect.provide(jsonPlaceholderTestLayer)))
+      }).pipe(Effect.provide(localServerTestLayer)))
 
     it.live("interrupt", () =>
       Effect.gen(function*() {
