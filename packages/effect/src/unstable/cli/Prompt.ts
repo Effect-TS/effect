@@ -2561,9 +2561,9 @@ const renderMultiSelectChoices = <A>(
   renderOptions?: RenderOptions | undefined
 ) => {
   const choices = options.choices
-  const totalChoices = choices.length
-  const selectedCount = state.selectedIndices.size
-  const allSelected = selectedCount === totalChoices
+  const selectableCount = choices.filter((choice) => !choice.disabled).length
+  const selectedCount = Array.from(state.selectedIndices).filter((index) => !choices[index].disabled).length
+  const allSelected = selectedCount === selectableCount
 
   const selectAllText = allSelected
     ? options?.selectNone ?? "Select None"
@@ -2599,8 +2599,9 @@ const renderMultiSelectChoices = <A>(
       const annotatedCheckbox = isHighlighted && renderOptions?.plain !== true
         ? Ansi.annotate(checkbox, Ansi.cyanBright)
         : checkbox
-      const title = renderMultiSelectTitle(choice.title, isHighlighted, renderOptions)
-      const description = renderChoiceDescription(choice as SelectChoice<A>, isHighlighted, renderOptions)
+      const selectChoice = choice as SelectChoice<A>
+      const title = renderChoiceTitle(selectChoice, isHighlighted, renderOptions)
+      const description = renderChoiceDescription(selectChoice, isHighlighted, renderOptions)
       documents.push(prefix + " " + annotatedCheckbox + " " + title + " " + description)
     }
   }
@@ -2655,9 +2656,7 @@ const processSpace = <A>(
       selectedIndices.clear()
     } else {
       for (let i = 0; i < options.choices.length; i++) {
-        if (options.choices[i].disabled) {
-          selectedIndices.delete(i)
-        } else {
+        if (!options.choices[i].disabled) {
           selectedIndices.add(i)
         }
       }
@@ -2673,7 +2672,7 @@ const processSpace = <A>(
   } else {
     const choiceIndex = state.index - metaOptionsCount
     if (options.choices[choiceIndex].disabled) {
-      return Effect.succeed(Action.NextFrame({ state }))
+      return Effect.succeed(Action.Beep())
     } else if (selectedIndices.has(choiceIndex)) {
       selectedIndices.delete(choiceIndex)
     } else {

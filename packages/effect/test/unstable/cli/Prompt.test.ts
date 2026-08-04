@@ -497,6 +497,8 @@ describe("Prompt.multiSelect", () => {
       const value = yield* Prompt.run(prompt)
 
       assert.deepStrictEqual(value, [])
+      const output = yield* MockTerminal.displayLines
+      assert.isTrue(output.some((line) => String(line).includes("\x07")))
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("does not select disabled choices when selecting all", () =>
@@ -514,6 +516,8 @@ describe("Prompt.multiSelect", () => {
       const value = yield* Prompt.run(prompt)
 
       assert.deepStrictEqual(value, ["available"])
+      const output = yield* MockTerminal.displayLines
+      assert.isTrue(findFrame(toFrames(output), "Select None") !== undefined)
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("does not select disabled choices when inverting the selection", () =>
@@ -552,6 +556,8 @@ describe("Prompt.multiSelect", () => {
       const output = yield* MockTerminal.displayLines
       const initialFrame = findFrame(toFrames(output), "Unavailable")
       assert.isTrue(initialFrame?.includes("☐ Unavailable"))
+      const rawInitialFrame = findFrame(toRawFrames(output), "Unavailable")
+      assert.isTrue(rawInitialFrame?.includes(`${escape}[9m${escape}[90mUnavailable`))
     }).pipe(Effect.provide(TestLayer)))
 
   it.effect("underlines the active label", () =>
