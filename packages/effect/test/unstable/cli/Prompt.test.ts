@@ -98,6 +98,16 @@ describe("Prompt.integer", () => {
 })
 
 describe("Prompt.float", () => {
+  it.effect("preserves a leading zero in the fractional part", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("0.05")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(Prompt.float({ message: "Rate" }))
+
+      assert.strictEqual(value, 0.05)
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("renders appended input without literal parsed", () =>
     Effect.gen(function*() {
       const prompt = Prompt.float({ message: "Rate" })
