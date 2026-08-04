@@ -309,7 +309,7 @@ export const protocol = McpProtocol.make({
     }),
     createMessage: Effect.fnUntraced(function*(request) {
       yield* requireCapability(profile, "sampling/createMessage", "sampling")
-      const wireRequest = yield* McpProtocol.transcode(
+      const wireRequest = yield* McpProtocol.transcodeStrict(
         PublicMcpSchema.CreateMessage.payloadSchema,
         McpSchema.CreateMessage.payloadSchema,
         request

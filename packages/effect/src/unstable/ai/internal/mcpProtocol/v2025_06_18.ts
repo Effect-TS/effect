@@ -2,6 +2,7 @@ import * as Effect from "../../../../Effect.ts"
 import * as Encoding from "../../../../Encoding.ts"
 import * as Match from "../../../../Match.ts"
 import * as Schema from "../../../../Schema.ts"
+import * as Struct from "../../../../Struct.ts"
 import * as PublicMcpSchema from "../../McpSchema.ts"
 import * as McpCore from "../mcpCore.ts"
 import * as McpProtocol from "../mcpProtocol.ts"
@@ -305,7 +306,7 @@ export const protocol = McpProtocol.make({
     }),
     createMessage: Effect.fnUntraced(function*(request) {
       yield* requireCapability(profile, "sampling/createMessage", "sampling")
-      const wireRequest = yield* McpProtocol.transcode(
+      const wireRequest = yield* McpProtocol.transcodeStrict(
         PublicMcpSchema.CreateMessage.payloadSchema,
         McpSchema.CreateMessage.payloadSchema,
         request
@@ -327,11 +328,13 @@ export const protocol = McpProtocol.make({
     }),
     elicit: Effect.fnUntraced(function*(request) {
       yield* requireCapability(profile, "elicitation/create", "elicitation")
-      const wireRequest = yield* McpProtocol.transcode(
-        PublicMcpSchema.Elicit.payloadSchema,
+      const projected = request.mode === "form"
+        ? Struct.omit(request, ["mode"])
+        : request
+      const wireRequest = yield* Schema.decodeUnknownEffect(
         McpSchema.Elicit.payloadSchema,
-        request
-      ).pipe(
+        { onExcessProperty: "error" }
+      )(projected).pipe(
         Effect.mapError(() => unsupported("elicitation/create", "Request is not representable by this protocol"))
       )
       const result = yield* client["elicitation/create"](wireRequest).pipe(

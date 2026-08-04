@@ -2053,10 +2053,10 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
   const { getClient } = yield* McpServerClient
   const client = yield* getClient
   const schema = options.schema
-  const request = Elicit.payloadSchema.make({
+  const request = yield* Schema.decodeUnknownEffect(Elicit.payloadSchema)({
     message: options.message,
     requestedSchema: Tool.getJsonSchemaFromSchema(schema)
-  })
+  }).pipe(Effect.orDie)
   const res = yield* client.elicit(request).pipe(
     Effect.catchCause((cause) => Effect.fail(new ElicitationDeclined({ cause: Cause.squash(cause), request })))
   )
