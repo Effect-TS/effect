@@ -13,6 +13,16 @@ import * as Toolkit from "effect/unstable/ai/Toolkit"
 import * as RpcClient from "effect/unstable/rpc/RpcClient"
 import { makeHttpHarness } from "./TestUtils/McpHttpHarness.ts"
 
+const ServerIcon = McpSchema.Icon.make({
+  src: "https://example.com/server.svg",
+  mimeType: "image/svg+xml",
+  sizes: ["48x48", "any"],
+  theme: "dark"
+})
+const ResourceIcon = McpSchema.Icon.make({ src: "https://example.com/resource.svg" })
+const PromptIcon = McpSchema.Icon.make({ src: "https://example.com/prompt.svg" })
+const ToolIcon = McpSchema.Icon.make({ src: "https://example.com/tool.svg" })
+
 const SharedTool = Tool.make("shared", {
   parameters: Tool.EmptyParams,
   success: Schema.String
@@ -163,8 +173,16 @@ const makeFixture = Effect.fnUntraced(function*() {
     Layer.provide(McpServer.layerHttp({
       name: "ProtocolAdapterServer",
       version: "1.0.0",
+      description: "Protocol adapter fixture",
+      websiteUrl: "https://example.com/mcp",
+      icons: [McpSchema.Icon.make({
+        src: "https://example.com/server.svg",
+        mimeType: "image/svg+xml",
+        sizes: ["any"]
+      })],
       path: "/mcp",
       protocols: [
+        McpProtocol.v2025_11_25,
         McpProtocol.v2025_06_18,
         McpProtocol.v2025_03_26,
         McpProtocol.v2024_11_05
@@ -210,6 +228,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         resource: new McpSchema.Resource({
           uri: "file:///metadata.txt",
           name: "metadata-resource",
+          icons: [ResourceIcon],
           _meta: { descriptor: "fixture" }
         }),
         annotations: Context.empty(),
@@ -223,6 +242,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
       yield* server.addPrompt({
         prompt: new McpSchema.Prompt({
           name: "metadata-prompt",
+          icons: [PromptIcon],
           _meta: { descriptor: "fixture" }
         }),
         annotations: Context.empty(),
@@ -251,6 +271,7 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
         tool: new McpSchema.Tool({
           name: "title-precedence",
           title: "Canonical title",
+          icons: [ToolIcon],
           inputSchema: {
             type: "object",
             properties: {}
@@ -463,8 +484,12 @@ const makeLowLevelFixture = Effect.fnUntraced(function*() {
     Layer.provide(McpServer.layerHttp({
       name: "LowLevelProtocolAdapterServer",
       version: "1.0.0",
+      description: "Low-level protocol adapter fixture",
+      websiteUrl: "https://example.com/low-level-mcp",
+      icons: [ServerIcon],
       path: "/mcp",
       protocols: [
+        McpProtocol.v2025_11_25,
         McpProtocol.v2025_06_18,
         McpProtocol.v2025_03_26,
         McpProtocol.v2024_11_05
@@ -496,7 +521,7 @@ const decodeJsonRpcResponse = Schema.decodeUnknownEffect(JsonRpcResponse)
 
 const initialize = Effect.fnUntraced(function*(
   post: Effect.Success<ReturnType<typeof makeFixture>>["post"],
-  protocolVersion: "2025-06-18" | "2025-03-26" | "2024-11-05",
+  protocolVersion: "2025-11-25" | "2025-06-18" | "2025-03-26" | "2024-11-05",
   options?: {
     readonly capabilities?: Record<string, unknown>
     readonly clientInfo?: {

@@ -50,7 +50,6 @@ import type * as McpProtocol from "./McpProtocol.ts"
 import * as McpSchema from "./McpSchema.ts"
 import {
   CallToolResult,
-  Elicit,
   ElicitationDeclined,
   EnabledWhen,
   GetPromptResult,
@@ -646,6 +645,9 @@ const layerMcpProtocolState = (
 export const run: (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }) => Effect.Effect<
@@ -655,6 +657,9 @@ export const run: (options: {
 > = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }) {
@@ -668,6 +673,9 @@ export const run: (options: {
 const runWithProtocolState = Effect.fnUntraced(function*(options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
 }, protocolState: McpProtocolState["Service"]) {
   const protocolRegistry = protocolState.protocolRegistry
@@ -1119,6 +1127,9 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
 export const layer = (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, RpcServer.Protocol> =>
@@ -1129,6 +1140,9 @@ export const layer = (options: {
 const layerWithProtocolState = (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, never, RpcServer.Protocol | McpProtocolState> =>
   Layer.effectDiscard(
@@ -1163,6 +1177,9 @@ const layerWithProtocolState = (options: {
 export const layerStdio = (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
 }): Layer.Layer<McpServer | McpServerClient, Cause.IllegalArgumentError, Stdio> =>
@@ -1269,6 +1286,9 @@ const mcpStdioSerialization = (
 export const layerHttp = (options: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly path: HttpRouter.PathInput
   readonly protocols: Arr.NonEmptyReadonlyArray<McpProtocol.ProtocolAdapter>
   readonly extensions?: ServerExtensions | undefined
@@ -2053,7 +2073,8 @@ export const elicit: <S extends Schema.ConstraintEncoder<Record<string, unknown>
   const { getClient } = yield* McpServerClient
   const client = yield* getClient
   const schema = options.schema
-  const request = yield* Schema.decodeUnknownEffect(Elicit.payloadSchema)({
+  const request = yield* Schema.decodeUnknownEffect(McpSchema.ElicitRequestFormParams)({
+    mode: "form",
     message: options.message,
     requestedSchema: Tool.getJsonSchemaFromSchema(schema)
   }).pipe(Effect.orDie)
@@ -2132,6 +2153,9 @@ const PingRpcs = RpcGroup.make(Ping).middleware(McpServerClientMiddleware)
 const layerHandlers = (serverInfo: {
   readonly name: string
   readonly version: string
+  readonly description?: string | undefined
+  readonly websiteUrl?: string | undefined
+  readonly icons?: ReadonlyArray<McpSchema.Icon> | undefined
   readonly extensions?: ServerExtensions | undefined
 }, options: {
   readonly sessions: Sessions
@@ -2216,10 +2240,13 @@ const layerHandlers = (serverInfo: {
                 }
                 return Effect.succeed({
                   capabilities,
-                  serverInfo: {
+                  serverInfo: McpSchema.Implementation.make({
                     name: serverInfo.name,
-                    version: serverInfo.version
-                  }
+                    version: serverInfo.version,
+                    description: serverInfo.description,
+                    websiteUrl: serverInfo.websiteUrl,
+                    icons: serverInfo.icons
+                  })
                 })
               })
             }
