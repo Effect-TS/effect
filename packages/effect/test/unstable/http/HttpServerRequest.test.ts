@@ -116,6 +116,23 @@ describe("HttpServerRequest", () => {
       assert.strictEqual(yield* server.text, "abc")
     }))
 
+  it.effect("reads raw BodyInit bytes after conversion from a client request", () =>
+    Effect.gen(function*() {
+      const client = HttpClientRequest.setBody(HttpClientRequest.post("https://example.com"), HttpBody.raw("abc"))
+      const server = HttpServerRequest.fromClientRequest(client)
+      assert.deepStrictEqual(new Uint8Array(yield* server.arrayBuffer), new Uint8Array([97, 98, 99]))
+    }))
+
+  it.effect("streams a raw URLSearchParams after conversion from a client request", () =>
+    Effect.gen(function*() {
+      const client = HttpClientRequest.setBody(
+        HttpClientRequest.post("https://example.com"),
+        HttpBody.raw(new URLSearchParams({ a: "1", b: "two" }))
+      )
+      const server = HttpServerRequest.fromClientRequest(client)
+      assert.strictEqual(yield* server.stream.pipe(Stream.decodeText(), Stream.mkString), "a=1&b=two")
+    }))
+
   it.effect("schemaBodyJson applies parse options", () =>
     Effect.gen(function*() {
       const request = HttpServerRequest.fromWeb(
