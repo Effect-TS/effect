@@ -1,5 +1,5 @@
 import { assert, it, vi } from "@effect/vitest"
-import { Cause, Effect, FileSystem, Layer, Path, Redacted, Schema, Stream } from "effect"
+import { Cause, DateTime, Effect, FileSystem, Layer, Path, Redacted, Schema, Stream } from "effect"
 import { Etag, HttpPlatform } from "effect/unstable/http"
 import {
   HttpApi,
@@ -158,6 +158,33 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       )
     }))
 
+  it.effect("decodes a transforming buffered success body and its declared headers", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("created", "/test", {
+            success: HttpApiSchema.WithHeaders(Schema.Date, { "x-source": Schema.String })
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("created", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: DateTime.makeUnsafe("2024-01-02T03:04:05.000Z").pipe(DateTime.toDate),
+              headers: { "x-source": "schema" }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const value = yield* client.test.created({})
+
+      assert.strictEqual(value.body.toISOString(), "2024-01-02T03:04:05.000Z")
+      assert.deepStrictEqual(value.headers, { "x-source": "schema" })
+    }))
+
   it.effect("round trips a client-received branded value through another handler", () =>
     Effect.gen(function*() {
       const Success = HttpApiSchema.WithHeaders(
@@ -255,6 +282,30 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.strictEqual(response.headers["content-type"], "application/vnd.plain+json")
       assert.isFalse("x-source" in response.headers)
       assert.deepStrictEqual(yield* response.json, { body: "plain", headers: { "x-source": "body" } })
+    }))
+
+  it.effect("decodes a plain value in a mixed WithHeaders success union", () =>
+    Effect.gen(function*() {
+      const Wrapped = HttpApiSchema.WithHeaders(
+        Schema.Struct({ _tag: Schema.Literal("Wrapped"), value: Schema.String }),
+        { "x-source": Schema.String }
+      )
+      const Plain = Schema.Struct({ _tag: Schema.Literal("Plain"), value: Schema.String })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("mixed", "/test", { success: [Wrapped, Plain] })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("mixed", () => Effect.succeed({ _tag: "Plain" as const, value: "plain" }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const value = yield* client.test.mixed({})
+
+      assert.deepStrictEqual(value, { _tag: "Plain", value: "plain" })
     }))
 
   it.effect("applies declared headers after body encoding", () =>
