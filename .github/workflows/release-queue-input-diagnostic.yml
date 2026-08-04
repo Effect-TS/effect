@@ -10,7 +10,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: Effect-TS/next-release-action@adcadc451f23d8dfc6c47d61642e8a223a299fb0
+      - uses: Effect-TS/next-release-action@424506b3d0ee3412705866639f391fcd5a5c93fa
         with:
           github_token: ${{ github.token }}
           eligible_branches: "v4/next-minor,v4/next-major"
