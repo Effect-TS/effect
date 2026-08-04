@@ -87,7 +87,7 @@ export declare namespace Struct {
   export type Validate<A, Variant extends string> = {
     readonly [K in keyof A]: A[K] extends { readonly [TypeId]: infer _ } ? Validate<A[K], Variant> :
       A[K] extends Field<infer Config> ? [keyof Config] extends [Variant] ? {} : "field must have valid variants"
-      : {}
+      : unknown
   }
 }
 
@@ -144,7 +144,7 @@ export declare namespace Field {
    * @since 4.0.0
    */
   export type ConfigWithKeys<K extends string> = {
-    readonly [P in K]?: Schema.Top
+    readonly [P in K]?: Schema.Top | undefined
   }
 
   /**
@@ -222,6 +222,9 @@ const extract: {
     const fields: Record<string, any> = {}
     for (const key of Object.keys(self[TypeId])) {
       const value = self[TypeId][key]
+      if (value === undefined) {
+        continue
+      }
       if (TypeId in value) {
         if (options?.isDefault === true && Schema.isSchema(value)) {
           InternalRecord.assignProperty(fields, key, value)
@@ -230,7 +233,10 @@ const extract: {
         }
       } else if (FieldTypeId in value) {
         if (Object.hasOwn(value.schemas, variant)) {
-          InternalRecord.assignProperty(fields, key, value.schemas[variant])
+          const schema = value.schemas[variant]
+          if (schema !== undefined) {
+            InternalRecord.assignProperty(fields, key, schema)
+          }
         }
       } else {
         InternalRecord.assignProperty(fields, key, value)

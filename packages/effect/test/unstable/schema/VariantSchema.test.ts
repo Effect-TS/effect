@@ -55,6 +55,13 @@ describe("VariantSchema", () => {
 
     assert.deepStrictEqual(Object.keys(Test.extract(struct, "a").fields), ["value"])
   })
+
+  it("omits undefined fields selected by VariantSchema.Field", () => {
+    const Test = VariantSchema.make({ variants: ["a"], defaultVariant: "a" })
+    const struct = Test.Struct({ value: Schema.String, skipped: Test.Field({ a: undefined }) })
+
+    assert.deepStrictEqual(Object.keys(Test.extract(struct, "a").fields), ["value"])
+  })
 })
 
 describe("Model", () => {
