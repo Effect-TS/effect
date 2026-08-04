@@ -278,6 +278,13 @@ export const makeUpgradeHandler = <
         new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
       )
       const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handledApp), options.scope)
+      // Node removes its own listeners from the socket when it emits `upgrade`,
+      // and `ws` only attaches its own once `handleUpgrade` runs. Without a
+      // listener here, a peer that resets the connection in between - or one
+      // whose upgrade never completes - turns into an unhandled 'error' event,
+      // which takes the process down. The connection is already gone by then,
+      // so there is nothing to do but swallow it; `close` below still fires.
+      socket.on("error", () => {})
       socket.on("close", () => {
         if (!socket.writableEnded) {
           fiber.interruptUnsafe(parent.id, ClientAbort.annotation)
