@@ -35,7 +35,7 @@ jobs:
         if: github.event.pull_request
         env:
           GITHUB_TOKEN: ${{ secrets.EFFECT_BOT_GH }}
-      - uses: Effect-TS/next-release-action@a348015146e63f8c0b42c25ee26fdb9bae306a3a
+      - uses: Effect-TS/next-release-action@73b52b4034f708dbed94db384459ca5ba9437979
         with:
           github_token: ${{ secrets.EFFECT_BOT_GH }}
           base_branch: main
