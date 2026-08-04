@@ -296,12 +296,13 @@ type MissingSelfGeneric<Params extends string = ""> =
  * @category models
  * @since 4.0.0
  */
-export interface Union<Members extends ReadonlyArray<Struct<any>>> extends
-  Schema.Union<
-    {
-      readonly [K in keyof Members]: [Members[K]] extends [Schema.Top] ? Members[K] : never
-    }
-  >
+export interface Union<Members extends ReadonlyArray<Struct<any>>, Default extends string = string>
+  extends
+    Schema.Union<
+      {
+        readonly [K in keyof Members]: Extract<Default, Members[K], true>
+      }
+    >
 {}
 
 /**
@@ -410,7 +411,7 @@ export const make = <
       }
   readonly Union: <const Members extends ReadonlyArray<Struct<any>>>(
     members: Members
-  ) => Union<Members> & Union.Variants<Members, Variants[number]>
+  ) => Union<Members, Default> & Union.Variants<Members, Variants[number]>
   readonly extract: {
     <V extends Variants[number]>(
       variant: V
@@ -469,7 +470,7 @@ export const make = <
     }
   }
   function UnionVariants(members: ReadonlyArray<Struct<any>>) {
-    return Union(members, options.variants)
+    return Union(members, options.defaultVariant, options.variants)
   }
   const fieldEvolve = dual(
     2,
@@ -582,11 +583,18 @@ const Field = <const A extends Field.Config>(schemas: A): Field<A> => {
   return self
 }
 
-const Union = <Members extends ReadonlyArray<Struct<any>>, Variants extends ReadonlyArray<string>>(
+const Union = <
+  Members extends ReadonlyArray<Struct<any>>,
+  Default extends string,
+  Variants extends ReadonlyArray<string>
+>(
   members: Members,
+  defaultVariant: Default,
   variants: Variants
 ) => {
-  const VariantUnion = Schema.Union(members.filter((member) => Schema.isSchema(member))) as any
+  const VariantUnion = Schema.Union(
+    members.map((member) => Schema.isSchema(member) ? member : extract(member, defaultVariant, { isDefault: true }))
+  ) as any
   for (const variant of variants) {
     Object.defineProperty(VariantUnion, variant, {
       value: Schema.Union(members.map((member) => extract(member, variant)))

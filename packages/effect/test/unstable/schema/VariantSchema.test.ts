@@ -45,6 +45,8 @@ describe("VariantSchema", () => {
     const union = Test.Union([first, second])
 
     assert.strictEqual(union.members.length, 2)
+    assert.deepStrictEqual(Schema.decodeUnknownSync(union)({ value: "foo" }), { value: "foo" })
+    assert.deepStrictEqual(Schema.decodeUnknownSync(union)({ value: 42 }), { value: 42 })
   })
 })
 
