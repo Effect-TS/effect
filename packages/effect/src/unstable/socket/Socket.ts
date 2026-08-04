@@ -220,7 +220,7 @@ export const isSocketError = (u: unknown): u is SocketError => Predicate.hasProp
  * @category errors
  * @since 4.0.0
  */
-export class SocketReadError extends Schema.ErrorClass<SocketReadError>("effect/socket/Socket/SocketReadError")({
+export class SocketReadError extends Schema.Error<SocketReadError>("effect/socket/Socket/SocketReadError")({
   _tag: Schema.tag("SocketReadError"),
   cause: Schema.Defect()
 }) {
@@ -238,7 +238,7 @@ export class SocketReadError extends Schema.ErrorClass<SocketReadError>("effect/
  * @category errors
  * @since 4.0.0
  */
-export class SocketWriteError extends Schema.ErrorClass<SocketWriteError>("effect/socket/Socket/SocketWriteError")({
+export class SocketWriteError extends Schema.Error<SocketWriteError>("effect/socket/Socket/SocketWriteError")({
   _tag: Schema.tag("SocketWriteError"),
   cause: Schema.Defect()
 }) {
@@ -257,7 +257,7 @@ export class SocketWriteError extends Schema.ErrorClass<SocketWriteError>("effec
  * @category errors
  * @since 4.0.0
  */
-export class SocketOpenError extends Schema.ErrorClass<SocketOpenError>("effect/socket/Socket/SocketOpenError")({
+export class SocketOpenError extends Schema.Error<SocketOpenError>("effect/socket/Socket/SocketOpenError")({
   _tag: Schema.tag("SocketOpenError"),
   kind: Schema.Literals(["Unknown", "Timeout"]),
   cause: Schema.Defect()
@@ -281,7 +281,7 @@ export class SocketOpenError extends Schema.ErrorClass<SocketOpenError>("effect/
  * @category errors
  * @since 4.0.0
  */
-export class SocketCloseError extends Schema.ErrorClass<SocketCloseError>("effect/socket/Socket/SocketCloseError")({
+export class SocketCloseError extends Schema.Error<SocketCloseError>("effect/socket/Socket/SocketCloseError")({
   _tag: Schema.tag("SocketCloseError"),
   code: Schema.Int,
   closeReason: Schema.optional(Schema.String)
@@ -339,7 +339,7 @@ export type SocketErrorReason =
  * @category errors
  * @since 4.0.0
  */
-export class SocketError extends Schema.TaggedErrorClass<SocketError>(SocketErrorTypeId)("SocketError", {
+export class SocketError extends Schema.TaggedError<SocketError>(SocketErrorTypeId)("SocketError", {
   _tag: Schema.tag("SocketError"),
   reason: SocketErrorReason
 }) {

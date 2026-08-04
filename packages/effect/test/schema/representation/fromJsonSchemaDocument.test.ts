@@ -1737,6 +1737,14 @@ describe("fromJsonSchemaDocument", () => {
           }
         )
       })
+
+      it("does not require uniqueness when uniqueItems is false", () => {
+        const schema = toSchemaFromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "array", uniqueItems: false })
+        )
+
+        assertTrue(Schema.is(schema)(["a", "a"]))
+      })
     })
   })
 

@@ -223,7 +223,7 @@ describe("Schema.toDifferJsonPatch", () => {
       roundtrip(Schema.Option(Schema.String))
       roundtrip(Schema.Result(Schema.Number, Schema.String))
       roundtrip(Schema.ReadonlyMap(Schema.String, Schema.Number))
-      roundtrip(Schema.Error())
+      roundtrip(Schema.ErrorInstance())
       roundtrip(Schema.Json)
       roundtrip(Schema.Exit(Schema.Number, Schema.String, Schema.Json))
 
@@ -231,7 +231,7 @@ describe("Schema.toDifferJsonPatch", () => {
       class B extends Schema.Class<B>("B")({ a: A }) {}
       roundtrip(B)
 
-      class E extends Schema.ErrorClass<E>("E")({ message: Schema.String }) {}
+      class E extends Schema.Error<E>("E")({ message: Schema.String }) {}
       roundtrip(E)
     })
   })

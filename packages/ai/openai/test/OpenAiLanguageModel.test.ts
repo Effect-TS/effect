@@ -342,7 +342,8 @@ describe("OpenAiLanguageModel", () => {
                       id: "call_abc",
                       name: "TestTool",
                       isFailure: false,
-                      result: { output: "result" }
+                      result: { output: "result" },
+                      providerExecuted: false
                     })
                   ]
                 }
@@ -384,7 +385,8 @@ describe("OpenAiLanguageModel", () => {
                       id: "call_abc",
                       name: "TestTool",
                       isFailure: false,
-                      result: { output: "result" }
+                      result: { output: "result" },
+                      providerExecuted: false
                     })
                   ]
                 }
@@ -400,6 +402,144 @@ describe("OpenAiLanguageModel", () => {
             strictEqual(toolOutput.call_id, "call_abc")
             strictEqual(toolOutput.output, JSON.stringify({ output: "result" }))
           }).pipe(Effect.provide([makeTestLayer(), TestToolkitLayer])))
+
+        it.effect("emits only the specialized output for apply_patch results", () =>
+          Effect.gen(function*() {
+            const toolkit = Toolkit.make(OpenAiTool.ApplyPatch({}))
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Apply a patch" },
+                {
+                  role: "assistant",
+                  content: [Prompt.toolCallPart({
+                    id: "call_apply_patch",
+                    name: "OpenAiApplyPatch",
+                    params: {
+                      call_id: "call_apply_patch",
+                      operation: { type: "delete_file", path: "old.ts" }
+                    },
+                    providerExecuted: false
+                  })]
+                },
+                {
+                  role: "tool",
+                  content: [Prompt.toolResultPart({
+                    id: "call_apply_patch",
+                    name: "OpenAiApplyPatch",
+                    isFailure: false,
+                    result: { status: "completed", output: "deleted" },
+                    providerExecuted: false
+                  })]
+                }
+              ]),
+              toolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const outputs = body.input.filter((item: any) =>
+              item.call_id === "call_apply_patch" && item.type.endsWith("_output")
+            )
+
+            deepStrictEqual(outputs.map((item: any) => item.type), ["apply_patch_call_output"])
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("emits only the specialized output for shell results", () =>
+          Effect.gen(function*() {
+            const toolkit = Toolkit.make(OpenAiTool.Shell({}))
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Run a shell command" },
+                {
+                  role: "assistant",
+                  content: [Prompt.toolCallPart({
+                    id: "call_shell",
+                    name: "OpenAiShell",
+                    params: {
+                      action: {
+                        commands: ["echo hello"],
+                        timeout_ms: null,
+                        max_output_length: null
+                      }
+                    },
+                    providerExecuted: false
+                  })]
+                },
+                {
+                  role: "tool",
+                  content: [Prompt.toolResultPart({
+                    id: "call_shell",
+                    name: "OpenAiShell",
+                    isFailure: false,
+                    result: {
+                      output: [{
+                        stdout: "hello\n",
+                        stderr: "",
+                        outcome: { type: "exit", exit_code: 0 }
+                      }]
+                    },
+                    providerExecuted: false
+                  })]
+                }
+              ]),
+              toolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const outputs = body.input.filter((item: any) =>
+              item.call_id === "call_shell" && item.type.endsWith("_output")
+            )
+
+            deepStrictEqual(outputs.map((item: any) => item.type), ["shell_call_output"])
+          }).pipe(Effect.provide(makeTestLayer())))
+
+        it.effect("emits only the specialized output for local_shell results", () =>
+          Effect.gen(function*() {
+            const toolkit = Toolkit.make(OpenAiTool.LocalShell({}))
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                { role: "user", content: "Run a local shell command" },
+                {
+                  role: "assistant",
+                  content: [Prompt.toolCallPart({
+                    id: "call_local_shell",
+                    name: "OpenAiLocalShell",
+                    params: {
+                      action: {
+                        type: "exec",
+                        command: ["echo", "hello"],
+                        env: {}
+                      }
+                    },
+                    providerExecuted: false
+                  })]
+                },
+                {
+                  role: "tool",
+                  content: [Prompt.toolResultPart({
+                    id: "call_local_shell",
+                    name: "OpenAiLocalShell",
+                    isFailure: false,
+                    result: { output: "hello\n" },
+                    providerExecuted: false
+                  })]
+                }
+              ]),
+              toolkit,
+              disableToolCallResolution: true
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const outputs = body.input.filter((item: any) =>
+              item.call_id === "call_local_shell" && item.type.endsWith("_output")
+            )
+
+            deepStrictEqual(outputs.map((item: any) => item.type), ["local_shell_call_output"])
+          }).pipe(Effect.provide(makeTestLayer())))
       })
     })
 

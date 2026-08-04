@@ -367,7 +367,7 @@ export type ErrorTypeId = "~@effect/experimental/RateLimiter/RateLimiterError"
  * @category errors
  * @since 4.0.0
  */
-export class RateLimitExceeded extends Schema.ErrorClass<RateLimitExceeded>(
+export class RateLimitExceeded extends Schema.Error<RateLimitExceeded>(
   "effect/persistence/RateLimiter/RateLimitExceeded"
 )({
   _tag: Schema.tag("RateLimitExceeded"),
@@ -392,7 +392,7 @@ export class RateLimitExceeded extends Schema.ErrorClass<RateLimitExceeded>(
  * @category errors
  * @since 4.0.0
  */
-export class RateLimitStoreError extends Schema.ErrorClass<RateLimitStoreError>(
+export class RateLimitStoreError extends Schema.Error<RateLimitStoreError>(
   "effect/persistence/RateLimiter/RateLimitStoreError"
 )({
   _tag: Schema.tag("RateLimitStoreError"),
@@ -426,7 +426,7 @@ export const RateLimiterErrorReason: Schema.Union<[
  * @category errors
  * @since 4.0.0
  */
-export class RateLimiterError extends Schema.ErrorClass<RateLimiterError>(ErrorTypeId)({
+export class RateLimiterError extends Schema.Error<RateLimiterError>(ErrorTypeId)({
   _tag: Schema.tag("RateLimiterError"),
   reason: RateLimiterErrorReason
 }) {

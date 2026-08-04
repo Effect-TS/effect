@@ -419,13 +419,15 @@ describe("OpenAiLanguageModel", () => {
                   id: "call_1",
                   name: "TestTool",
                   isFailure: false,
-                  result: { output: "first" }
+                  result: { output: "first" },
+                  providerExecuted: false
                 }),
                 Prompt.toolResultPart({
                   id: "call_2",
                   name: "TestTool",
                   isFailure: false,
-                  result: { output: "second" }
+                  result: { output: "second" },
+                  providerExecuted: false
                 })
               ]
             }
@@ -1024,7 +1026,8 @@ describe("OpenAiLanguageModel", () => {
                 id: toolCall.id,
                 name: toolCall.name,
                 isFailure: false,
-                result: "done"
+                result: "done",
+                providerExecuted: false
               })]
             }
           ]),

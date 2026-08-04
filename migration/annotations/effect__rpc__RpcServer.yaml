@@ -46,3 +46,6 @@
 "@effect/rpc/RpcServer#toWebHandler":
   replacement: "HttpRouter.toWebHandler(RpcServer.layerHttp(options).pipe(Layer.provide(options.layer)))"
   note: "The RPC convenience wrapper was removed; build the RPC route layer and convert it with the generic v4 HttpRouter web-handler adapter."
+"@effect/rpc/RpcServer#layer":
+  replacement: "effect/unstable/rpc/RpcServer#layer"
+  note: "Moved to core Effect; server requirements are now derived with Rpc.ServicesServer rather than the former combined Rpc.Context alias."

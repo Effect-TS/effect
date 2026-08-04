@@ -34,3 +34,6 @@
 "@effect/sql/Statement#withTransformerDisabled":
   replacement: "Effect.provideService(Statement.CurrentTransformer, undefined)"
   note: "The helper was removed; locally provide undefined for the transformer reference."
+"@effect/sql/Statement#makeCompiler":
+  replacement: "effect/unstable/sql/Statement#makeCompiler"
+  note: "Moved to core Effect; the constructor options are exposed as Statement.CompilerOptions and retain the dialect-specific callbacks."

@@ -270,7 +270,8 @@ export const make = Effect.fnUntraced(
         Stream.pipeThroughChannel(Sse.decodeDataSchema(OpenAiSchema.ResponseStreamEvent)),
         Stream.takeUntil((event) =>
           event.data.type === "response.completed" ||
-          event.data.type === "response.incomplete"
+          event.data.type === "response.incomplete" ||
+          event.data.type === "response.failed"
         ),
         Stream.map((event) => event.data),
         Stream.catchTags({
@@ -637,7 +638,7 @@ const makeSocket = Effect.gen(function*() {
 
         return Stream.fromQueue(incoming).pipe(
           Stream.takeUntil((e) => {
-            done = e.type === "response.completed" || e.type === "response.incomplete"
+            done = e.type === "response.completed" || e.type === "response.incomplete" || e.type === "response.failed"
             return done
           })
         )

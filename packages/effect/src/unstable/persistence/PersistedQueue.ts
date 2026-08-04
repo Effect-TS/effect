@@ -217,7 +217,7 @@ export type ErrorTypeId = "~@effect/experimental/PersistedQueue/PersistedQueueEr
  * @category errors
  * @since 4.0.0
  */
-export class PersistedQueueError extends Schema.ErrorClass<PersistedQueueError>(
+export class PersistedQueueError extends Schema.Error<PersistedQueueError>(
   "effect/persistence/PersistedQueue/PersistedQueueError"
 )({
   _tag: Schema.tag("PersistedQueueError"),

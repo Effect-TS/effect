@@ -13,3 +13,6 @@
 "@effect/cli/CliConfig#normalizeCase":
   replacement: "none"
   note: "Case normalization is no longer configurable through CliConfig."
+"@effect/cli/CliConfig#layer":
+  replacement: "CliConfig.layer"
+  note: "The layer constructor remains, but its options configure the redesigned CliConfig.Service for built-in global flags."
