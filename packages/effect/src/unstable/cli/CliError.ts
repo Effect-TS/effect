@@ -425,7 +425,7 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
  *   suggestions: ["deploy", "destroy"]
  * })
  *
- * unknownSubcommandError._tag // => "UnknownSubcomand"
+ * unknownSubcommandError._tag // => "UnknownSubcommand"
  * unknownSubcommandError.subcommand // => "deplyo"
  * unknownSubcommandError.parent // => ["myapp"]
  *
@@ -440,7 +440,7 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
  *   })
  *
  * const parseError = await Effect.runPromise(Effect.flip(parseSubcommand("deplyo")))
- * parseError._tag // => "UnknownSubcomand"
+ * parseError._tag // => "UnknownSubcommand"
  * ```
  *
  * @category models
@@ -448,7 +448,7 @@ export class InvalidValue extends Schema.TaggedErrorClass<InvalidValue>(
  */
 export class UnknownSubcommand extends Schema.TaggedErrorClass<UnknownSubcommand>(
   `${TypeId}/UnknownSubcommand`
-)("UnknownSubcomand", {
+)("UnknownSubcommand", {
   subcommand: Schema.String,
   parent: Schema.optional(Schema.Array(Schema.String)),
   suggestions: Schema.Array(Schema.String)
