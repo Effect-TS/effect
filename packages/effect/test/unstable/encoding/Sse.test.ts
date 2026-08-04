@@ -19,6 +19,15 @@ describe("Sse", () => {
     }])
   })
 
+  it("retains the last event ID for later events", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed("id: 1\ndata: first\n\ndata: second\n\n")
+
+    assert.strictEqual((events[1] as Sse.Event).id, "1")
+  })
+
   it("Event preserves string payloads", () => {
     const decode = Schema.decodeUnknownSync(Sse.Event)
     const encode = Schema.encodeSync(Sse.Event)
