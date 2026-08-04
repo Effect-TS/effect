@@ -63,13 +63,17 @@ describe("Prompt.date", () => {
 })
 
 describe("Prompt.all", () => {
-  it("constructs a prompt for an empty record", () => {
-    assert.isTrue(Prompt.isPrompt(Prompt.all({})))
-  })
+  it.effect("supports an empty record", () =>
+    Effect.gen(function*() {
+      const result = yield* Prompt.all({})
+      assert.deepStrictEqual(result, {})
+    }).pipe(Effect.provide(TestLayer)))
 
-  it("constructs a prompt for a non-array iterable", () => {
-    assert.isTrue(Prompt.isPrompt(Prompt.all(new Set([Prompt.succeed(1)]))))
-  })
+  it.effect("supports a non-array iterable", () =>
+    Effect.gen(function*() {
+      const result = yield* Prompt.all(new Set([Prompt.succeed(1)]))
+      assert.deepStrictEqual(result, [1])
+    }).pipe(Effect.provide(TestLayer)))
 })
 
 describe("Prompt.integer", () => {
