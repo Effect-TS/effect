@@ -34,6 +34,7 @@ import * as HttpClientRequest from "./HttpClientRequest.ts"
 import * as HttpClientResponse from "./HttpClientResponse.ts"
 import * as HttpIncomingMessage from "./HttpIncomingMessage.ts"
 import type { HttpPlatform } from "./HttpPlatform.ts"
+import * as bodyInternal from "./internal/httpBody.ts"
 import * as Template from "./Template.ts"
 import * as UrlParams from "./UrlParams.ts"
 
@@ -913,20 +914,8 @@ export const setBody: {
   (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse
 } = dual(
   2,
-  (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse => {
-    let headers = self.headers
-    if (body._tag === "Empty" || body._tag === "FormData") {
-      headers = Headers.remove(Headers.remove(headers, "content-type"), "content-length")
-    } else {
-      headers = body.contentType === undefined
-        ? Headers.remove(headers, "content-type")
-        : Headers.set(headers, "content-type", body.contentType)
-      headers = body.contentLength === undefined
-        ? Headers.remove(headers, "content-length")
-        : Headers.set(headers, "content-length", body.contentLength.toString())
-    }
-    return makeResponse({ ...self, headers, body })
-  }
+  (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse =>
+    makeResponse({ ...self, headers: bodyInternal.updateHeaders(self.headers, body), body })
 )
 
 /**
