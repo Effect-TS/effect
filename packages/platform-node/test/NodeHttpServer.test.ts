@@ -838,17 +838,10 @@ describe("HttpServer", () => {
       const server = yield* HttpServer.HttpServer
       const port = (server.address as HttpServer.TcpAddress).port
 
-      // A socket with no 'error' listener turns a reset into an uncaught
-      // exception, which normally ends the process outright - collect them so
-      // the failure is an assertion rather than a dead worker.
-      const uncaught: Array<unknown> = []
       const onUncaught = (error: unknown) => uncaught.push(error)
       process.on("uncaughtException", onUncaught)
       yield* Effect.addFinalizer(() => Effect.sync(() => process.off("uncaughtException", onUncaught)))
 
-      // Reach the upgrade handler with a raw socket, then reset the connection
-      // rather than closing it politely. Nothing has completed the handshake at
-      // this point, so the socket is still the bare one node handed over.
       yield* Effect.callback<void>((resume) => {
         const socket = Net.connect({ port, host: "127.0.0.1" }, () => {
           socket.write(
