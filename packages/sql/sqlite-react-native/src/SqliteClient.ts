@@ -143,8 +143,7 @@ export const make = (
 
       const run = (
         sql: string,
-        params: ReadonlyArray<unknown> = [],
-        values = false
+        params: ReadonlyArray<unknown> = []
       ) =>
         Effect.withFiber<Array<any>, SqlError>((fiber) => {
           if (fiber.getRef(AsyncQuery)) {
@@ -154,14 +153,29 @@ export const make = (
                 catch: (cause) =>
                   new SqlError({ reason: classifyError(cause, "Failed to execute statement (async)", "execute") })
               }),
-              (result) => values ? result.rawRows ?? [] : result.rows
+              (result) => result.rows
             )
           }
           return Effect.try({
-            try: () => {
-              const result = db.executeSync(sql, params as Array<any>)
-              return values ? result.rawRows ?? [] : result.rows
-            },
+            try: () => db.executeSync(sql, params as Array<any>).rows,
+            catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
+          })
+        })
+
+      const runValues = (
+        sql: string,
+        params: ReadonlyArray<unknown> = []
+      ) =>
+        Effect.withFiber<Array<any>, SqlError>((fiber) => {
+          if (fiber.getRef(AsyncQuery)) {
+            return Effect.tryPromise({
+              try: () => db.executeRaw(sql, params as Array<any>),
+              catch: (cause) =>
+                new SqlError({ reason: classifyError(cause, "Failed to execute statement (async)", "execute") })
+            })
+          }
+          return Effect.try({
+            try: () => db.executeRawSync(sql, params as Array<any>),
             catch: (cause) => new SqlError({ reason: classifyError(cause, "Failed to execute statement", "execute") })
           })
         })
@@ -176,10 +190,10 @@ export const make = (
           return run(sql, params)
         },
         executeValues(sql, params) {
-          return run(sql, params, true)
+          return runValues(sql, params)
         },
         executeValuesUnprepared(sql, params) {
-          return run(sql, params, true)
+          return runValues(sql, params)
         },
         executeUnprepared(sql, params, transformRows) {
           return this.execute(sql, params, transformRows)
