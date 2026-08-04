@@ -218,8 +218,7 @@ export function stream<A extends ReadonlyArray<InterpolatedWithStream>>(
   return Stream.flatMap(
     Stream.fromIterable(chunks),
     (chunk) =>
-      typeof chunk === "string" ? Stream.succeed(chunk) : Effect.isEffect(chunk) ? Stream.fromEffect(chunk) : chunk,
-    { concurrency: "unbounded" }
+      typeof chunk === "string" ? Stream.succeed(chunk) : Effect.isEffect(chunk) ? Stream.fromEffect(chunk) : chunk
   )
 }
 
