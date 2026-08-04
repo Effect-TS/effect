@@ -1562,9 +1562,12 @@ export class CallTool extends Rpc.make("tools/call", {
   payload: {
     ...RequestMeta.fields,
     name: Schema.String,
-    arguments: Schema.Record(
-      Schema.String,
-      Schema.Any
+    arguments: optionalWithDefault(
+      Schema.Record(
+        Schema.String,
+        Schema.Any
+      ),
+      () => ({})
     )
   }
 }) {}

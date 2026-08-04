@@ -20,6 +20,9 @@ import * as UtilitiesTest from "./McpConformance/UtilitiesTest.ts"
 it("accepts tools/call without optional arguments", () => {
   const decoded = Schema.decodeUnknownExit(McpSchema.CallTool.payloadSchema)({ name: "ping" })
   assert.strictEqual(decoded._tag, "Success")
+  if (decoded._tag === "Success") {
+    assert.deepStrictEqual(decoded.value.arguments, {})
+  }
 })
 
 const protocol = McpProtocol.v2025_06_18
