@@ -124,8 +124,8 @@ const makePredicate = (pattern: unknown): Predicate.Predicate<unknown> => {
       return true
     }
   } else if (pattern !== null && typeof pattern === "object") {
-    const keysAndPredicates = Object.entries(pattern).map(
-      ([k, p]) => [k, makePredicate(p)] as const
+    const keysAndPredicates = Reflect.ownKeys(pattern).map(
+      (key) => [key, makePredicate((pattern as any)[key])] as const
     )
     const len = keysAndPredicates.length
 
