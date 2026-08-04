@@ -102,6 +102,43 @@ describe("Socket", () => {
       }).pipe(
         Effect.provideService(Socket.WebSocketConstructor, (url) => new globalThis.WebSocket(url))
       ))
+
+    it.effect("reports send errors as SocketError", () =>
+      Effect.gen(function*() {
+        class ThrowingWebSocket extends EventTarget {
+          readonly readyState = globalThis.WebSocket.OPEN
+
+          close(): void {}
+
+          send(): void {
+            throw new Error("send failed")
+          }
+        }
+        const webSocket = new ThrowingWebSocket()
+        const socket = yield* Socket.makeWebSocket(Effect.succeed(url), { closeCodeIsError: () => false }).pipe(
+          Effect.provideService(
+            Socket.WebSocketConstructor,
+            () => webSocket as unknown as globalThis.WebSocket
+          )
+        )
+        const exit = yield* Effect.scoped(Effect.gen(function*() {
+          const run = yield* Effect.forkChild(socket.runRaw(() => {}))
+          const write = yield* socket.writer
+          const exit = yield* Effect.exit(write(new Uint8Array([1])))
+          webSocket.dispatchEvent(new CloseEvent("close", { code: 1000 }))
+          yield* Fiber.join(run)
+          return exit
+        }))
+        assert.strictEqual(exit._tag, "Failure")
+        if (exit._tag === "Failure") {
+          assert.strictEqual(exit.cause.reasons[0]?._tag, "Fail")
+          const reason = exit.cause.reasons[0]
+          if (reason?._tag === "Fail") {
+            assert.isTrue(Socket.SocketError.is(reason.error))
+            assert.strictEqual(reason.error.reason._tag, "SocketWriteError")
+          }
+        }
+      }))
   })
 
   describe("TransformStream", () => {
@@ -167,7 +204,10 @@ describe("Socket", () => {
         if (exit._tag === "Failure") {
           assert.strictEqual(exit.cause.reasons[0]?._tag, "Fail")
           const reason = exit.cause.reasons[0]
-          if (reason?._tag === "Fail") assert.isTrue(Socket.SocketError.is(reason.error))
+          if (reason?._tag === "Fail") {
+            assert.isTrue(Socket.SocketError.is(reason.error))
+            assert.strictEqual(reason.error.reason._tag, "SocketWriteError")
+          }
         }
       }))
   })
