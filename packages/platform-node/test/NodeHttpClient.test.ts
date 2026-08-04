@@ -1,3 +1,4 @@
+import { NodeHttpServer } from "@effect/platform-node"
 import * as NodeClient from "@effect/platform-node/NodeHttpClient"
 import { describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
@@ -6,7 +7,16 @@ import * as Effect from "effect/Effect"
 import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
-import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import {
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "effect/unstable/http"
+import * as Http from "node:http"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -19,10 +29,7 @@ const TodoWithoutId = Schema.Struct({
 })
 
 const makeJsonPlaceholder = Effect.gen(function*() {
-  const defaultClient = yield* HttpClient.HttpClient
-  const client = defaultClient.pipe(
-    HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
-  )
+  const client = yield* HttpClient.HttpClient
   const createTodo = (todo: typeof TodoWithoutId.Type) =>
     HttpClientRequest.post("/todos").pipe(
       HttpClientRequest.schemaBodyJson(TodoWithoutId)(todo),
@@ -37,6 +44,29 @@ const makeJsonPlaceholder = Effect.gen(function*() {
 interface JsonPlaceholder extends Effect.Success<typeof makeJsonPlaceholder> {}
 const JsonPlaceholder = Context.Service<JsonPlaceholder>("test/JsonPlaceholder")
 const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
+const JsonPlaceholderRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(router) {
+  yield* router.addAll([
+    HttpRouter.route(
+      "GET",
+      "/todos/1",
+      Effect.succeed(HttpServerResponse.jsonUnsafe({
+        userId: 1,
+        id: 1,
+        title: "test",
+        completed: false
+      }))
+    ),
+    HttpRouter.route(
+      "POST",
+      "/todos",
+      Effect.gen(function*() {
+        const todo = yield* HttpServerRequest.schemaBodyJson(TodoWithoutId)
+        return HttpServerResponse.jsonUnsafe({ ...todo, id: 201 })
+      })
+    ),
+    HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
+  ])
+})))
 ;[
   {
     name: "fetch",
@@ -51,6 +81,14 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
     layer: NodeClient.layerUndici
   }
 ].forEach(({ layer, name }) => {
+  const layerTest = HttpServer.layerTestClient.pipe(
+    Layer.provide(layer),
+    Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+  )
+  const jsonPlaceholderTestLayer = Layer.merge(JsonPlaceholderLive, JsonPlaceholderRoutes).pipe(
+    Layer.provideMerge(layerTest)
+  )
+
   describe(`NodeHttpClient - ${name}`, () => {
     it.effect("google", () =>
       Effect.gen(function*() {
@@ -95,10 +133,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
         )
         expect(response.id).toBe(1)
       }).pipe(
-        Effect.provide(JsonPlaceholderLive.pipe(
-          Layer.provide(layer)
-        )),
-        flaky
+        Effect.provide(jsonPlaceholderTestLayer)
       ))
 
     it.effect("jsonplaceholder schemaBodyJson", () =>
@@ -111,22 +146,19 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
         })
         expect(response.title).toBe("test")
       }).pipe(
-        Effect.provide(JsonPlaceholderLive.pipe(
-          Layer.provide(layer)
-        )),
-        flaky
+        Effect.provide(jsonPlaceholderTestLayer)
       ))
 
     it.effect("head request with schemaJson", () =>
       Effect.gen(function*() {
         const client = yield* HttpClient.HttpClient
-        const response = yield* client.head("https://jsonplaceholder.typicode.com/todos").pipe(
+        const response = yield* client.head("/todos").pipe(
           Effect.flatMap(
             HttpClientResponse.schemaJson(Schema.Struct({ status: Schema.Literal(200) }))
           )
         )
         expect(response).toEqual({ status: 200 })
-      }).pipe(Effect.provide(layer), flaky))
+      }).pipe(Effect.provide(jsonPlaceholderTestLayer)))
 
     it.live("interrupt", () =>
       Effect.gen(function*() {
