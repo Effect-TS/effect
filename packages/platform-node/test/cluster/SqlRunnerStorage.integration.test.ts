@@ -110,7 +110,7 @@ describe("SqlRunnerStorage", () => {
       yield* storage.acquire(runnerAddress1, shards)
       partitioned.current = true
       yield* storage.refresh(runnerAddress1, shards).pipe(Effect.exit, TestClock.withLive)
-      yield* Effect.sleep(150).pipe(TestClock.withLive)
+      yield* waitUntil(() => partitioned.activeQueries === 0)
 
       partitioned.current = false
       expect(
