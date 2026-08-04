@@ -150,9 +150,15 @@ export type StatusLiteral = keyof typeof statusCodeByLiteral
  *
  * **Details**
  *
- * This is equivalent to calling `.annotate({ httpApiStatus: code })` on the
+ * This is equivalent to calling `.annotateKey({ httpApiStatus: code })` on the
  * schema. You can pass either a numeric status code (for example, `201`) or a
  * common literal name (for example, `"Created"`).
+ *
+ * The status is carried in the AST's key context rather than its annotations:
+ * the status describes how one endpoint uses the schema, not what the schema
+ * is, and context is excluded from representation identity. A named schema
+ * reused with different statuses therefore stays one schema — and one OpenAPI
+ * component — instead of forking into duplicate identifiers.
  *
  * @category schemas
  * @since 4.0.0
@@ -165,7 +171,7 @@ export function status(code: StatusLiteral): {
 }
 export function status(code: number | StatusLiteral) {
   const statusCode = typeof code === "string" ? statusCodeByLiteral[code] : code
-  return <S extends Schema.Top>(self: S): S["Rebuild"] => self.annotate({ httpApiStatus: statusCode })
+  return <S extends Schema.Top>(self: S): S["Rebuild"] => self.annotateKey({ httpApiStatus: statusCode })
 }
 
 /**
@@ -667,7 +673,15 @@ export const isNoContent = (ast: SchemaAST.AST): boolean => {
 
 const resolveHttpApiEncoding = SchemaAST.resolveAt<Encoding>("~httpApiEncoding")
 
-const resolveHttpApiStatus = SchemaAST.resolveAt<number>("httpApiStatus")
+const resolveHttpApiStatusAnnotation = SchemaAST.resolveAt<number>("httpApiStatus")
+
+// `status` stores the code in the key context (see `status` for why); the
+// annotation fallback keeps declaration-site statuses like the `HttpApiError`
+// classes working.
+function resolveHttpApiStatus(ast: SchemaAST.AST): number | undefined {
+  const fromContext = ast.context?.annotations?.httpApiStatus
+  return typeof fromContext === "number" ? fromContext : resolveHttpApiStatusAnnotation(ast)
+}
 
 const defaultJsonEncoding: Encoding = {
   _tag: "Json",

@@ -167,6 +167,26 @@ describe("SchemaRepresentation.toRepresentations", () => {
       )
     })
 
+    it("shares a named reference across context-only copies whose derivation rebuilds a container", () => {
+      const Widget = Schema.Struct({
+        id: Schema.String,
+        metadata: Schema.Unknown
+      }).annotate({ identifier: "Widget" })
+      const forked = Widget.annotateKey({ description: "context-only fork" })
+
+      const base = Schema.toCodecJson(Widget)
+      const fork = Schema.toCodecJson(forked)
+      assert.notStrictEqual(base.ast, fork.ast)
+
+      const document = SchemaRepresentation.toRepresentations([base.ast, fork.ast])
+
+      assert.deepStrictEqual(Object.keys(document.references), ["Widget"])
+      assert.deepStrictEqual(document.representations, [
+        { _tag: "Reference", $ref: "Widget" },
+        { _tag: "Reference", $ref: "Widget" }
+      ])
+    })
+
     it("suffixes referentially distinct ASTs with equal representations", () => {
       const first = Schema.String.annotate({ identifier: "Value" })
       const second = Schema.String.annotate({ identifier: "Value" })
