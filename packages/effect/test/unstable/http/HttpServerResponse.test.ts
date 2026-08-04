@@ -83,5 +83,12 @@ describe("HttpServerResponse", () => {
     const replaced = HttpServerResponse.setBody(HttpServerResponse.text("abc"), HttpBody.empty)
     assert.notProperty(replaced.headers, "content-type")
     assert.notProperty(replaced.headers, "content-length")
+
+    const streamed = HttpServerResponse.setBody(
+      HttpServerResponse.text("abc"),
+      HttpBody.stream(Stream.empty, "application/octet-stream")
+    )
+    assert.strictEqual(streamed.headers["content-type"], "application/octet-stream")
+    assert.notProperty(streamed.headers, "content-length")
   })
 })

@@ -913,7 +913,20 @@ export const setBody: {
   (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse
 } = dual(
   2,
-  (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse => makeResponse({ ...self, body })
+  (self: HttpServerResponse, body: Body.HttpBody): HttpServerResponse => {
+    let headers = self.headers
+    if (body._tag === "Empty" || body._tag === "FormData") {
+      headers = Headers.remove(Headers.remove(headers, "content-type"), "content-length")
+    } else {
+      headers = body.contentType === undefined
+        ? Headers.remove(headers, "content-type")
+        : Headers.set(headers, "content-type", body.contentType)
+      headers = body.contentLength === undefined
+        ? Headers.remove(headers, "content-length")
+        : Headers.set(headers, "content-length", body.contentLength.toString())
+    }
+    return makeResponse({ ...self, headers, body })
+  }
 )
 
 /**
@@ -1327,13 +1340,13 @@ const makeResponse = (options: {
   self.body = options.body ?? Body.empty
   if (
     self.body._tag !== "Empty" &&
-    (self.body.contentType || self.body.contentLength)
+    (self.body.contentType || self.body.contentLength !== undefined)
   ) {
     const newHeaders = Headers.fromRecordUnsafe({ ...options.headers }) as any
     if (self.body.contentType) {
       newHeaders["content-type"] = self.body.contentType
     }
-    if (self.body.contentLength) {
+    if (self.body.contentLength !== undefined) {
       newHeaders["content-length"] = self.body.contentLength.toString()
     }
     self.headers = newHeaders
