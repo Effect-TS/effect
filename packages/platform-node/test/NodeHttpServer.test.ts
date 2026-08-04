@@ -31,6 +31,7 @@ import * as HttpApiError from "effect/unstable/httpapi/HttpApiError"
 import * as Buffer from "node:buffer"
 import { EventEmitter } from "node:events"
 import * as Http from "node:http"
+import * as Net from "node:net"
 
 const Todo = Schema.Struct({
   id: Schema.Number,
@@ -826,6 +827,43 @@ describe("HttpServer", () => {
       // ...and clients that do not offer it still connect uncompressed.
       const plain = yield* connect(false)
       expect(plain.extensions).not.toContain("permessage-deflate")
+    }).pipe(Effect.scoped, Effect.provide(layerTestWebsocket)))
+
+  it.effect("an upgrade connection reset by the peer does not crash the process", () =>
+    Effect.gen(function*() {
+      yield* HttpRouter.add("GET", "/", HttpServerResponse.text("ok")).pipe(
+        HttpRouter.serve,
+        Layer.build
+      )
+      const server = yield* HttpServer.HttpServer
+      const port = (server.address as HttpServer.TcpAddress).port
+
+      const uncaught: Array<unknown> = []
+      const onUncaught = (error: unknown) => uncaught.push(error)
+      process.on("uncaughtException", onUncaught)
+      yield* Effect.addFinalizer(() => Effect.sync(() => process.off("uncaughtException", onUncaught)))
+
+      yield* Effect.callback<void>((resume) => {
+        const socket = Net.connect({ port, host: "127.0.0.1" }, () => {
+          socket.write(
+            "GET /ws HTTP/1.1\r\n" +
+              "Host: 127.0.0.1\r\n" +
+              "Upgrade: websocket\r\n" +
+              "Connection: Upgrade\r\n" +
+              "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n" +
+              "Sec-WebSocket-Version: 13\r\n\r\n"
+          )
+          setTimeout(() => {
+            socket.resetAndDestroy()
+            setTimeout(() => resume(Effect.void), 50)
+          }, 50)
+        })
+        socket.on("error", () => {})
+      })
+
+      expect(uncaught).toEqual([])
+      const response = yield* HttpClient.get("/")
+      expect(response.status).toEqual(200)
     }).pipe(Effect.scoped, Effect.provide(layerTestWebsocket)))
 })
 
