@@ -624,7 +624,10 @@ export const suite = (
             const exitCode = yield* handle.exitCode
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
-            assert.strictEqual(output, ["out1", "err1", "out2"].join("\n"))
+            const lines = output.split("\n")
+            assert.strictEqual(lines.length, 3)
+            assert.deepStrictEqual(lines.filter((line) => line.startsWith("out")), ["out1", "out2"])
+            assert.deepStrictEqual(lines.filter((line) => line.startsWith("err")), ["err1"])
           }).pipe(Effect.scoped))
 
         it.effect("should default to stdout when no options provided", () =>

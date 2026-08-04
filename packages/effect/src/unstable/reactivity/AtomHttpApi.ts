@@ -37,7 +37,7 @@ import * as Reactivity from "./Reactivity.ts"
  * It exposes the generated HTTP API client, an atom runtime, mutation helpers that
  * return `AtomResultFn`s, and query helpers that return atoms of endpoint results.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface AtomHttpApiClient<Self, Id extends string, Groups extends HttpApiGroup.Constraint>

@@ -690,7 +690,7 @@ export const interruptWith: {
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category getters
+ * @category predicates
  * @since 2.0.0
  */
 export const isDone = <A, E>(self: Deferred<A, E>): Effect<boolean> => internalEffect.sync(() => isDoneUnsafe(self))
@@ -706,7 +706,7 @@ export const isDone = <A, E>(self: Deferred<A, E>): Effect<boolean> => internalE
  * @see {@link isDone} for checking completion inside `Effect`
  * @see {@link poll} for reading the completed effect when available
  *
- * @category getters
+ * @category predicates
  * @since 4.0.0
  */
 export const isDoneUnsafe = <A, E>(self: Deferred<A, E>): boolean => self.effect !== undefined
@@ -894,7 +894,7 @@ export const doneUnsafe = <A, E>(self: Deferred<A, E>, effect: Effect<A, E>): bo
  * await Effect.runPromise(program) // => [true, 42]
  * ```
  *
- * @category Synchronization Utilities
+ * @category completion
  * @since 4.0.0
  */
 export const into: {

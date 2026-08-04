@@ -280,7 +280,7 @@ const Proto = {
  * Param.isParam(maybeParam) // => true
  * ```
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isParam = (u: unknown): u is Param<any, ParamKind> => Predicate.hasProperty(u, TypeId)
@@ -300,7 +300,7 @@ export const isParam = (u: unknown): u is Param<any, ParamKind> => Predicate.has
  * Param.isSingle(optionalParam) // => false
  * ```
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isSingle = <const Kind extends ParamKind, A>(

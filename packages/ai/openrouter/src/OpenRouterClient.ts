@@ -37,7 +37,7 @@ import { OpenRouterConfig } from "./OpenRouterConfig.ts"
  * Provides methods for interacting with OpenRouter's Chat Completions API,
  * including both synchronous and streaming message creation.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Service {

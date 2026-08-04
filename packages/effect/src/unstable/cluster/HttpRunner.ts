@@ -139,7 +139,7 @@ export const layerClientProtocolWebsocketDefault: Layer.Layer<
  * The returned effect is produced from `RunnerServer.layerHandlers` and the
  * cluster runner RPC group.
  *
- * @category http app
+ * @category running
  * @since 4.0.0
  */
 export const toHttpEffect: Effect.Effect<
@@ -163,7 +163,7 @@ export const toHttpEffect: Effect.Effect<
  * The returned effect is produced from `RunnerServer.layerHandlers` and the
  * cluster runner RPC group.
  *
- * @category http app
+ * @category running
  * @since 4.0.0
  */
 export const toHttpEffectWebsocket: Effect.Effect<

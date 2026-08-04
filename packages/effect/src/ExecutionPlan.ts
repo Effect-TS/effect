@@ -363,7 +363,7 @@ export interface Metadata {
  * Use to read the active plan step and attempt while code is running under an
  * execution plan.
  *
- * @category metadata
+ * @category services
  * @since 4.0.0
  */
 export const CurrentMetadata = Context.Reference<Metadata>("effect/ExecutionPlan/CurrentMetadata", {

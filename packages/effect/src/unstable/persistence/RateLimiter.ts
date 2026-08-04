@@ -367,7 +367,7 @@ export type ErrorTypeId = "~@effect/experimental/RateLimiter/RateLimiterError"
  * @category errors
  * @since 4.0.0
  */
-export class RateLimitExceeded extends Schema.ErrorClass<RateLimitExceeded>(
+export class RateLimitExceeded extends Schema.Error<RateLimitExceeded>(
   "effect/persistence/RateLimiter/RateLimitExceeded"
 )({
   _tag: Schema.tag("RateLimitExceeded"),
@@ -392,7 +392,7 @@ export class RateLimitExceeded extends Schema.ErrorClass<RateLimitExceeded>(
  * @category errors
  * @since 4.0.0
  */
-export class RateLimitStoreError extends Schema.ErrorClass<RateLimitStoreError>(
+export class RateLimitStoreError extends Schema.Error<RateLimitStoreError>(
   "effect/persistence/RateLimiter/RateLimitStoreError"
 )({
   _tag: Schema.tag("RateLimitStoreError"),
@@ -426,7 +426,7 @@ export const RateLimiterErrorReason: Schema.Union<[
  * @category errors
  * @since 4.0.0
  */
-export class RateLimiterError extends Schema.ErrorClass<RateLimiterError>(ErrorTypeId)({
+export class RateLimiterError extends Schema.Error<RateLimiterError>(ErrorTypeId)({
   _tag: Schema.tag("RateLimiterError"),
   reason: RateLimiterErrorReason
 }) {
@@ -497,7 +497,7 @@ export type AdaptivePhase = "inactive" | "cooldown" | "learning" | "learned"
 /**
  * Options for consuming tokens from the adaptive rate limiter store.
  *
- * @category models
+ * @category options
  * @since 4.0.0
  */
 export interface AdaptiveConsumeOptions {
@@ -548,7 +548,7 @@ export interface AdaptiveConsumeResult {
 /**
  * Options for reporting response feedback to the adaptive rate limiter store.
  *
- * @category models
+ * @category options
  * @since 4.0.0
  */
 export interface AdaptiveFeedbackOptions {
@@ -586,7 +586,7 @@ export interface AdaptiveFeedbackOptions {
  * Use to provide the shared counter storage and adaptive feedback state used by
  * persistent rate-limit checks.
  *
- * @category store
+ * @category services
  * @since 4.0.0
  */
 export class RateLimiterStore extends Context.Service<
@@ -666,7 +666,7 @@ interface AdaptiveState {
 /**
  * Provides a process-local in-memory `RateLimiterStore`.
  *
- * @category RateLimiterStore
+ * @category layers
  * @since 4.0.0
  */
 export const layerStoreMemory: Layer.Layer<
@@ -885,7 +885,7 @@ export const layerStoreMemory: Layer.Layer<
  * Creates a Redis-backed `RateLimiterStore` using Lua scripts and the
  * configured key prefix.
  *
- * @category RateLimiterStore
+ * @category constructors
  * @since 4.0.0
  */
 export const makeStoreRedis = Effect.fnUntraced(function*(

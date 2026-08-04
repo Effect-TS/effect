@@ -170,7 +170,7 @@ export const get: {
  *
  * @see {@link get} – access a single key's value
  * @see {@link pick} – select a subset of keys into a new struct
- * @category Key utilities
+ * @category getters
  * @since 3.6.0
  */
 export const keys = <S extends object>(self: S): Array<(keyof S) & string> =>
@@ -372,7 +372,7 @@ type KeyEvolved<S, E> = Simplify<
  * @see {@link renameKeys} – rename keys with a static mapping
  * @see {@link evolve} – transform values instead of keys
  * @see {@link evolveEntries} – transform both keys and values
- * @category Key utilities
+ * @category transforming
  * @since 4.0.0
  */
 export const evolveKeys: {
@@ -466,7 +466,7 @@ export const evolveEntries: {
  *
  * @see {@link evolveKeys} – rename keys using functions
  * @see {@link evolveEntries} – rename keys and transform values
- * @category Key utilities
+ * @category transforming
  * @since 4.0.0
  */
 export const renameKeys: {
@@ -581,7 +581,7 @@ export const makeOrder = order.Struct
  * @see {@link Apply} – apply a Lambda to a concrete type
  * @see {@link lambda} – create a runtime lambda value
  * @see {@link map} – use a lambda to transform all struct values
- * @category Lambda
+ * @category utility types
  * @since 4.0.0
  */
 export interface Lambda {
@@ -619,7 +619,7 @@ export interface Lambda {
  * ```
  *
  * @see {@link Lambda} – the base interface
- * @category Lambda
+ * @category utility types
  * @since 4.0.0
  */
 export type Apply<L extends Lambda, V> = (L & { readonly "~lambda.in": V })["~lambda.out"]
@@ -657,7 +657,7 @@ export type Apply<L extends Lambda, V> = (L & { readonly "~lambda.in": V })["~la
  *
  * @see {@link Lambda} – the type-level interface
  * @see {@link map} – apply a lambda to all struct values
- * @category Lambda
+ * @category constructors
  * @since 4.0.0
  */
 export const lambda = <L extends (a: any) => any>(

@@ -48,7 +48,7 @@ import * as OpenAiStructuredOutput from "./OpenAiStructuredOutput.ts"
  * @see {@link LanguageModel.CodecTransformer} for the structured-output transformer contract
  * @see {@link OpenAiStructuredOutput.toCodecOpenAI} for the OpenAI-specific transformer
  *
- * @category Codec Transformation
+ * @category transforming
  * @since 4.0.0
  */
 export function toCodecAnthropic<T, E, RD, RE>(

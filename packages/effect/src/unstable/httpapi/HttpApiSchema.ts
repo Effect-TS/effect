@@ -140,7 +140,7 @@ const StreamSchemaTypeId = "~effect/httpapi/HttpApiSchema/Stream"
 /**
  * Common HTTP status code literals accepted by {@link status}.
  *
- * @category status
+ * @category models
  * @since 4.0.0
  */
 export type StatusLiteral = keyof typeof statusCodeByLiteral
@@ -154,7 +154,7 @@ export type StatusLiteral = keyof typeof statusCodeByLiteral
  * schema. You can pass either a numeric status code (for example, `201`) or a
  * common literal name (for example, `"Created"`).
  *
- * @category status
+ * @category schemas
  * @since 4.0.0
  */
 export function status(code: number): {
@@ -174,7 +174,7 @@ export function status(code: number | StatusLiteral) {
  *
  * @see {@link NoContent} for the predefined 204 no content schema.
  *
- * @category Empty
+ * @category constructors
  * @since 4.0.0
  */
 export const Empty = (code: number): Schema.Void => Schema.Void.pipe(status(code))
@@ -190,7 +190,7 @@ export interface NoContent extends Schema.Void {}
 /**
  * Schema for empty HTTP responses with status code 204.
  *
- * @category Empty
+ * @category schemas
  * @since 4.0.0
  */
 export const NoContent: NoContent = Empty(204)
@@ -206,7 +206,7 @@ export interface Created extends Schema.Void {}
 /**
  * Schema for empty HTTP responses with status code 201.
  *
- * @category Empty
+ * @category schemas
  * @since 4.0.0
  */
 export const Created: Created = Empty(201)
@@ -222,7 +222,7 @@ export interface Accepted extends Schema.Void {}
 /**
  * Schema for empty HTTP responses with status code 202.
  *
- * @category Empty
+ * @category schemas
  * @since 4.0.0
  */
 export const Accepted: Accepted = Empty(202)

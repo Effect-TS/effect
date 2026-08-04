@@ -72,6 +72,21 @@ describe("ScopedRef", () => {
       strictEqual(acquired, 3)
       strictEqual(released, 3)
     }))
+  it.effect("keeps the current resource when replacement acquisition fails", () =>
+    Effect.gen(function*() {
+      let released = false
+      const ref = yield* ScopedRef.fromAcquire(
+        Effect.acquireRelease(Effect.succeed(1), () =>
+          Effect.sync(() => {
+            released = true
+          }))
+      )
+
+      yield* ScopedRef.set(ref, Effect.fail("boom")).pipe(Effect.catch(() => Effect.void))
+
+      strictEqual(released, false, "failed replacement must not release the current resource")
+      strictEqual(yield* ScopedRef.get(ref), 1)
+    }))
   it.effect("fromAcquire tracks the initial resource through replacement and scope close", () =>
     Effect.gen(function*() {
       const ref = yield* Effect.scoped(ScopedRef.make(() => 0))

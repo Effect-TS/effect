@@ -384,7 +384,7 @@ export declare namespace TaggedEnum {
    *
    * @see {@link taggedEnum} — creates constructors and matchers
    *
-   * @category types
+   * @category utility types
    * @since 3.1.0
    */
   export type Constructor<A extends { readonly _tag: string }> = Types.Simplify<

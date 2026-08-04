@@ -376,7 +376,7 @@ export const whenOpen: {
  *
  * Use to check the state of the latch without suspending or changing its state.
  *
- * @category getters
+ * @category predicates
  * @since 4.0.0
  */
 export const isOpen = (self: Latch): boolean => self.isOpen()

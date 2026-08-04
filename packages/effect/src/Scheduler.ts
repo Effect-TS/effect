@@ -26,7 +26,7 @@ import type * as Fiber from "./Fiber.ts"
  * priorities, and decides when fibers should yield control after consuming
  * their operation budget.
  *
- * @category models
+ * @category services
  * @since 2.0.0
  */
 export interface Scheduler {
@@ -72,10 +72,11 @@ export interface SchedulerDispatcher {
  * The default value creates a `MixedScheduler`. Provide this service to
  * customize execution mode, task dispatching, or yield behavior.
  *
- * @category references
+ * @category services
  * @since 2.0.0
  */
 export const Scheduler: Context.Reference<Scheduler> = Context.Reference<Scheduler>("effect/Scheduler", {
+  fiberCached: true,
   defaultValue: () => new MixedScheduler()
 })
 
@@ -145,7 +146,7 @@ class PriorityBuckets {
  * operation counts to decide when fibers should yield, and is the default
  * scheduler implementation.
  *
- * @category schedulers
+ * @category models
  * @since 2.0.0
  */
 export class MixedScheduler implements Scheduler {
@@ -262,10 +263,11 @@ class MixedSchedulerDispatcher implements SchedulerDispatcher {
  *
  * @see {@link PreventSchedulerYield} for bypassing scheduler yield checks entirely rather than tuning the operation budget
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/MaxOpsBeforeYield", {
+  fiberCached: true,
   defaultValue: () => 2048
 })
 
@@ -287,9 +289,10 @@ export const MaxOpsBeforeYield = Context.Reference<number>("effect/Scheduler/Max
  * @see {@link MaxOpsBeforeYield} for tuning yield frequency without disabling yield checks
  * @see {@link Scheduler} for providing custom scheduler yield behavior
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const PreventSchedulerYield = Context.Reference<boolean>("effect/Scheduler/PreventSchedulerYield", {
+  fiberCached: true,
   defaultValue: () => false
 })

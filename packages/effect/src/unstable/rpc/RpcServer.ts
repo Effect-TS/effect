@@ -63,7 +63,7 @@ import { withRun } from "./Utils.ts"
  * The decoded RPC server boundary, accepting client messages for a client id
  * and allowing that client to be disconnected.
  *
- * @category server
+ * @category models
  * @since 4.0.0
  */
 export interface RpcServer<A extends Rpc.Any> {
@@ -78,7 +78,7 @@ export interface RpcServer<A extends Rpc.Any> {
  * handlers for a group and sending decoded server responses through
  * `onFromServer`.
  *
- * @category server
+ * @category constructors
  * @since 4.0.0
  */
 export const makeNoSerialization: <Rpcs extends Rpc.Any>(
@@ -483,7 +483,7 @@ const applyMiddleware = <A, E, R>(
  * requests, invoking handlers, encoding responses, and managing in-flight
  * request lifetime.
  *
- * @category server
+ * @category running
  * @since 4.0.0
  */
 export const make: <Rpcs extends Rpc.Any>(
@@ -762,7 +762,7 @@ export const make: <Rpcs extends Rpc.Any>(
  * Provides a scoped layer that starts an RPC server for a group using the
  * current server `Protocol`.
  *
- * @category server
+ * @category layers
  * @since 4.0.0
  */
 export const layer = <Rpcs extends Rpc.Any>(
@@ -791,7 +791,7 @@ export const layer = <Rpcs extends Rpc.Any>(
  * Defaults to using websockets for communication, but can be configured to use
  * HTTP.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerHttp = <Rpcs extends Rpc.Any>(options: {
@@ -830,7 +830,7 @@ export const layerHttp = <Rpcs extends Rpc.Any>(options: {
  * Use to provide the transport boundary for RPC servers over HTTP, WebSocket,
  * workers, sockets, or custom protocols.
  *
- * @category protocols
+ * @category services
  * @since 4.0.0
  */
 export class Protocol extends Context.Service<
@@ -880,7 +880,7 @@ export const makeProtocolSocketServer = Effect.gen(function*() {
 /**
  * RPC protocol that uses `SocketServer` for communication.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolSocketServer: Layer.Layer<
@@ -947,7 +947,7 @@ export const makeProtocolWebsocket: (options: {
 /**
  * RPC protocol that uses WebSockets for communication.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolWebsocket = (options: {
@@ -1152,7 +1152,7 @@ export const makeProtocolHttp: (options: {
  * Provides a server `Protocol` that uses HTTP POST requests for RPC
  * communication.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolHttp = (options: {
@@ -1165,7 +1165,7 @@ export const layerProtocolHttp = (options: {
  * Starts an RPC server for a group and returns the HTTP request/response effect
  * that serves the non-websocket HTTP RPC protocol.
  *
- * @category http app
+ * @category running
  * @since 4.0.0
  */
 export const toHttpEffect: <Rpcs extends Rpc.Any>(
@@ -1206,7 +1206,7 @@ export const toHttpEffect: <Rpcs extends Rpc.Any>(
  * Starts an RPC server for a group and returns the HTTP effect that upgrades
  * requests to the websocket RPC protocol.
  *
- * @category http app
+ * @category running
  * @since 4.0.0
  */
 export const toHttpEffectWebsocket: <Rpcs extends Rpc.Any>(
@@ -1308,7 +1308,7 @@ export const makeProtocolStdio = Effect.gen(function*() {
  * Provides a server `Protocol` that reads RPC messages from `Stdio.stdin` and
  * writes encoded responses to `Stdio.stdout`.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolStdio: Layer.Layer<
@@ -1379,7 +1379,7 @@ export const makeProtocolWorkerRunner: Effect.Effect<
 /**
  * Provides a server `Protocol` backed by the current `WorkerRunnerPlatform`.
  *
- * @category protocols
+ * @category layers
  * @since 4.0.0
  */
 export const layerProtocolWorkerRunner: Layer.Layer<

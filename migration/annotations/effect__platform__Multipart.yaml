@@ -49,3 +49,9 @@
 "@effect/platform/Multipart#withMaxParts":
   replacement: "Effect.provideService(Multipart.MaxParts, count)"
   note: "Provide the v4 Context.Reference around the effect, converting Option.none to undefined."
+"@effect/platform/Multipart#makeChannel":
+  replacement: "effect/unstable/http/Multipart#makeChannel"
+  note: "The channel constructor moved and no longer accepts bufferSize; input and output chunks use non-empty readonly arrays."
+"@effect/platform/Multipart#withLimits.Options":
+  replacement: "Multipart.withLimits.Options"
+  note: "Limit fields now use optional plain numbers or SizeInput values; convert Option.none to undefined and Option.some(value) to value."

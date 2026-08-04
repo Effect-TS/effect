@@ -51,7 +51,7 @@ export declare namespace HttpMethod {
 /**
  * Returns `true` when a method can carry a request body and narrows it to `HttpMethod.WithBody`.
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const hasBody = (method: HttpMethod): method is HttpMethod.WithBody =>
@@ -115,7 +115,7 @@ export const allShort = [
  * HttpMethod.isHttpMethod(1) // => false
  * ```
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isHttpMethod = (u: unknown): u is HttpMethod => all.has(u as HttpMethod)

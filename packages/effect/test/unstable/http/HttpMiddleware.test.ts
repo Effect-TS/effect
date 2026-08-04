@@ -1,5 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Cause from "effect/Cause"
+import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
 import * as Exit from "effect/Exit"
 import * as Logger from "effect/Logger"
@@ -59,6 +60,26 @@ describe("HttpMiddleware", () => {
   })
 
   describe("tracer", () => {
+    it.effect("restores the ParentSpan context identity", () => {
+      const request = HttpServerRequest.fromWeb(new Request("http://localhost:3000/"))
+      return Effect.gen(function*() {
+        const before = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
+        let during: typeof before | undefined
+
+        yield* HttpMiddleware.tracer(
+          Effect.withFiber((fiber) => {
+            during = fiber.context
+            assert.strictEqual(Context.getOrUndefined(fiber.context, Tracer.ParentSpan) !== undefined, true)
+            return Effect.succeed(HttpServerResponse.empty())
+          })
+        )
+
+        const after = yield* Effect.withFiber((fiber) => Effect.succeed(fiber.context))
+        assert.notStrictEqual(during, before)
+        assert.strictEqual(after, before)
+      }).pipe(Effect.provideService(HttpServerRequest.HttpServerRequest, request))
+    })
+
     it.effect("records attributes for sampled spans", () =>
       Effect.gen(function*() {
         let serverSpan: Tracer.NativeSpan | undefined

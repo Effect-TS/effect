@@ -1147,7 +1147,7 @@ export const mapLeftover: {
  * If more elements are pulled than needed, the remaining elements from the same
  * array are returned as leftovers.
  *
- * @category collecting
+ * @category constructors
  * @since 2.0.0
  */
 export const take = <In>(n: number): Sink<Array<In>, In, In> =>
@@ -1244,7 +1244,7 @@ export const flatMap: {
  * A sink that reduces input elements from the provided `initial` state with
  * `f` while the specified `predicate` returns `true`.
  *
- * @category reducing
+ * @category folding
  * @since 4.0.0
  */
 export const reduceWhile = <S, In>(
@@ -1280,7 +1280,7 @@ export const reduceWhile = <S, In>(
  * A sink that effectfully reduces input elements from the provided `initial`
  * state with `f` while the specified `predicate` returns `true`.
  *
- * @category reducing
+ * @category folding
  * @since 4.0.0
  */
 export const reduceWhileEffect = <S, In, E, R>(
@@ -1321,7 +1321,7 @@ export const reduceWhileEffect = <S, In, E, R>(
  * A sink that reduces non-empty input arrays from the provided `initial` state
  * with `f` while the specified `predicate` returns `true`.
  *
- * @category reducing
+ * @category folding
  * @since 4.0.0
  */
 export const reduceWhileArray = <S, In>(
@@ -1336,11 +1336,9 @@ export const reduceWhileArray = <S, In>(
     }
     return upstream.pipe(
       Effect.flatMap((arr) => {
-        for (let i = 0; i < arr.length; i++) {
-          state = f(state, arr)
-          if (!contFn(state)) {
-            return Cause.done()
-          }
+        state = f(state, arr)
+        if (!contFn(state)) {
+          return Cause.done()
         }
         return Effect.void
       }),
@@ -1353,7 +1351,7 @@ export const reduceWhileArray = <S, In>(
  * A sink that effectfully reduces non-empty input arrays from the provided
  * `initial` state with `f` while the specified `predicate` returns `true`.
  *
- * @category reducing
+ * @category folding
  * @since 4.0.0
  */
 export const reduceWhileArrayEffect = <S, In, E, R>(
@@ -1384,7 +1382,7 @@ export const reduceWhileArrayEffect = <S, In, E, R>(
  * A sink that reduces its inputs using the provided function `f` starting from
  * the provided `initial` state.
  *
- * @category reducing
+ * @category folding
  * @since 4.0.0
  */
 export const reduce = <S, In>(initial: LazyArg<S>, f: (s: S, input: In) => S): Sink<S, In> =>
@@ -1399,7 +1397,7 @@ export const reduce = <S, In>(initial: LazyArg<S>, f: (s: S, input: In) => S): S
  * A sink that reduces its inputs using the provided function `f` starting from
  * the specified `initial` state.
  *
- * @category reducing
+ * @category folding
  * @since 4.0.0
  */
 export const reduceArray = <S, In>(
@@ -1422,7 +1420,7 @@ export const reduceArray = <S, In>(
  * A sink that reduces its inputs using the provided effectful function `f`
  * starting from the specified `initial` state.
  *
- * @category reducing
+ * @category folding
  * @since 4.0.0
  */
 export const reduceEffect = <S, In, E, R>(
@@ -1968,7 +1966,7 @@ export const timed: Sink<Duration.Duration, unknown> = map(withDuration(drain), 
  * Services contained in the provided context are removed from the sink's
  * service requirements.
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideContext: {
@@ -1997,7 +1995,7 @@ export const provideContext: {
  * The service identified by `key` is removed from the sink's service
  * requirements.
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const provideService: {
@@ -2146,7 +2144,7 @@ export {
  * The effect receives the sink's `Exit` for the result value. The original
  * sink result and leftovers are preserved unless the finalizer itself fails.
  *
- * @category Finalization
+ * @category resource management
  * @since 4.0.0
  */
 export const onExit: {
@@ -2174,7 +2172,7 @@ export const onExit: {
  * The original sink result and leftovers are preserved unless the finalizer
  * itself fails.
  *
- * @category Finalization
+ * @category resource management
  * @since 2.0.0
  */
 export const ensuring: {

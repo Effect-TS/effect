@@ -118,3 +118,9 @@
 "effect/List#unsafeTail":
   replacement: "Array.tailNonEmpty"
   note: "Use a NonEmptyReadonlyArray proof before taking the tail; the v4 helper does not accept an empty array."
+"effect/List#every":
+  replacement: "Array.every"
+  note: "List was removed; run the predicate against the replacement array with Array.every."
+"effect/List#some":
+  replacement: "Array.some"
+  note: "List was removed; run the predicate against the replacement array with Array.some."

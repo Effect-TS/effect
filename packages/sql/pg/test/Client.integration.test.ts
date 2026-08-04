@@ -251,6 +251,39 @@ it.layer(PgContainer.layerClient, { timeout: "30 seconds" })("PgClient", (it) =>
         { "generate_series": 3 }
       ])
     }))
+
+  it.effect("preserves successful concurrent nested transactions", () =>
+    Effect.gen(function*() {
+      const sql = yield* PgClient.PgClient
+      const firstStarted = yield* Deferred.make<void>()
+      const firstInserted = yield* Deferred.make<void>()
+
+      const rows = yield* sql.withTransaction(
+        Effect.gen(function*() {
+          yield* sql`CREATE TEMP TABLE nested_transactions (value TEXT) ON COMMIT DROP`
+          yield* Effect.all([
+            sql.withTransaction(
+              Effect.gen(function*() {
+                yield* Deferred.succeed(firstStarted, undefined)
+                yield* Effect.sleep("100 millis")
+                yield* sql`INSERT INTO nested_transactions VALUES ('first')`
+                yield* Deferred.succeed(firstInserted, undefined)
+              })
+            ),
+            Deferred.await(firstStarted).pipe(
+              Effect.andThen(sql.withTransaction(
+                Deferred.await(firstInserted).pipe(
+                  Effect.andThen(Effect.fail("rollback"))
+                )
+              ))
+            )
+          ], { concurrency: "unbounded" }).pipe(Effect.catch(() => Effect.void))
+          return yield* sql<{ value: string }>`SELECT value FROM nested_transactions`
+        })
+      )
+
+      assert.deepStrictEqual(rows, [{ value: "first" }])
+    }).pipe(TestClock.withLive))
 })
 
 it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeClient", (it) => {
@@ -399,7 +432,7 @@ it.effect("serializes transactions that share one pg.Client", () =>
       off() {},
       query(sql: string, _params: ReadonlyArray<unknown>, callback: (error: null, result: unknown) => void) {
         if (sql === "BEGIN" && ++beginCalls === 2) {
-          Effect.runFork(Deferred.succeed(secondBegin, undefined))
+          Deferred.doneUnsafe(secondBegin, Effect.void)
         }
         callback(null, { rows: [] })
       }

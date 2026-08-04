@@ -201,7 +201,7 @@ export const matchStatus: {
 /**
  * Succeeds with the response when its status satisfies the predicate, otherwise fails with `HttpClientError`.
  *
- * @category filters
+ * @category filtering
  * @since 4.0.0
  */
 export const filterStatus: {
@@ -228,7 +228,7 @@ export const filterStatus: {
 /**
  * Succeeds with the response only when its status is in the 2xx range, otherwise fails with `HttpClientError`.
  *
- * @category filters
+ * @category filtering
  * @since 4.0.0
  */
 export const filterStatusOk = (self: HttpClientResponse): Effect.Effect<HttpClientResponse, Error.HttpClientError> =>

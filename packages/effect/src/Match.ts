@@ -514,7 +514,7 @@ export const withReturnType: <Ret>() => <I, F, R, A, Pr, _>(
  * @see {@link not} for handling inputs that do not match a pattern
  * @see {@link orElse} for providing a fallback when no pattern case matches
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const when: <
@@ -574,7 +574,7 @@ export const when: <
  * handleError({ _tag: "ValidationError", field: "email" }) // => "Invalid field: email"
  * ```
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const whenOr: <
@@ -630,7 +630,7 @@ export const whenOr: <
  * checkUser({ age: 20, role: "user" }) // => "Access denied"
  * ```
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const whenAnd: <
@@ -688,7 +688,7 @@ export const whenAnd: <
  * @see {@link discriminators} for defining several discriminator handlers at once
  * @see {@link discriminatorStartsWith} for matching string discriminator values by prefix
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const discriminator: <D extends string>(
@@ -739,7 +739,7 @@ export const discriminator: <D extends string>(
  *
  * @see {@link discriminator} for matching exact discriminator values
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const discriminatorStartsWith: <D extends string>(
@@ -802,7 +802,7 @@ export const discriminatorStartsWith: <D extends string>(
  * @see {@link discriminator} for adding one discriminator case to a matcher pipeline
  * @see {@link discriminatorsExhaustive} for handling every discriminator value and finalizing the matcher
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const discriminators: <D extends string>(
@@ -865,7 +865,7 @@ export const discriminators: <D extends string>(
  *
  * @see {@link discriminators} for defining discriminator handlers without finalizing the matcher
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const discriminatorsExhaustive: <D extends string>(
@@ -922,7 +922,7 @@ export const discriminatorsExhaustive: <D extends string>(
  * match({ _tag: "error", error: new Error("Oops!") }) // => "Error: Oops!"
  * ```
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const tag: <
@@ -970,7 +970,7 @@ export const tag: <
  * match({ _tag: "A.A" }) // => 1
  * ```
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const tagStartsWith: <
@@ -1025,7 +1025,7 @@ export const tagStartsWith: <
  * match({ _tag: "A", a: "ok" }) // => "ok"
  * ```
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const tags: <
@@ -1080,7 +1080,7 @@ export const tags: <
  * match({ _tag: "B", b: 42 }) // => 42
  * ```
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const tagsExhaustive: <
@@ -1129,7 +1129,7 @@ export const tagsExhaustive: <
  *
  * @see {@link when} for adding a positive pattern case
  *
- * @category Defining patterns
+ * @category defining patterns
  * @since 4.0.0
  */
 export const not: <
@@ -1183,7 +1183,7 @@ export const not: <
  *
  * @see {@link string} for matching any string
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptyString
@@ -1224,7 +1224,7 @@ export const nonEmptyString: SafeRefinement<string, never> = internal.nonEmptySt
  * handleStatus("pending") // => "Unknown status: pending"
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const is: <
@@ -1256,7 +1256,7 @@ export const is: <
  * processValue(true) // => "Boolean: yes"
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const string: Predicate.Refinement<unknown, string> = Predicate.isString
@@ -1297,7 +1297,7 @@ export const string: Predicate.Refinement<unknown, string> = Predicate.isString
  *
  * @see {@link bigint} for matching primitive bigint values
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const number: Predicate.Refinement<unknown, number> = Predicate.isNumber
@@ -1346,7 +1346,7 @@ export const number: Predicate.Refinement<unknown, number> = Predicate.isNumber
  * @see {@link defined} for matching only non-nullish values
  * @see {@link orElse} for providing a fallback after earlier cases
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const any: SafeRefinement<unknown, any> = internal.any
@@ -1389,7 +1389,7 @@ export const any: SafeRefinement<unknown, any> = internal.any
  *
  * @see {@link any} for matching every value without excluding nullish inputs
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const defined: <A>(u: A) => u is A & {} = internal.defined
@@ -1430,7 +1430,7 @@ export const defined: <A>(u: A) => u is A & {} = internal.defined
  *
  * @see {@link is} for matching specific literal boolean values
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const boolean: Predicate.Refinement<unknown, boolean> = Predicate.isBoolean
@@ -1452,7 +1452,7 @@ export {
    * @see {@link defined} for matching non-nullish values
    * @see {@link is} for matching literal values
    *
-   * @category predicates
+   * @category guards
    * @since 4.0.0
    */
   _undefined as undefined
@@ -1475,7 +1475,7 @@ export {
    * @see {@link defined} for matching non-nullish values
    * @see {@link is} for matching literal values
    *
-   * @category predicates
+   * @category guards
    * @since 4.0.0
    */
   _null as null
@@ -1517,7 +1517,7 @@ export {
  *
  * @see {@link number} for matching primitive number values
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
@@ -1555,7 +1555,7 @@ export const bigint: Predicate.Refinement<unknown, bigint> = Predicate.isBigInt
  * handleSymbol("string") // => "Not a symbol"
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
@@ -1597,7 +1597,7 @@ export const symbol: Predicate.Refinement<unknown, symbol> = Predicate.isSymbol
  *
  * @see {@link instanceOf} for matching instances of any constructor
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
@@ -1642,7 +1642,7 @@ export const date: Predicate.Refinement<unknown, Date> = Predicate.isDate
  *
  * @see {@link instanceOf} for matching a specific constructor
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const record: Predicate.Refinement<unknown, { [x: PropertyKey]: unknown }> = Predicate.isObject
@@ -1701,7 +1701,7 @@ export const record: Predicate.Refinement<unknown, { [x: PropertyKey]: unknown }
  * @see {@link instanceOfUnsafe} for constructor matching without the same type-safety guarantee
  * @see {@link record} for matching broad non-null, non-array objects
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const instanceOf: <A extends abstract new(...args: any) => any>(
@@ -1746,7 +1746,7 @@ export const instanceOf: <A extends abstract new(...args: any) => any>(
  *
  * @see {@link instanceOf} for type-safe constructor matching
  *
- * @category predicates
+ * @category guards
  * @since 4.0.0
  */
 export const instanceOfUnsafe: <A extends abstract new(...args: any) => any>(
@@ -2051,7 +2051,7 @@ export declare namespace Types {
    * // Result: { type: "user"; name: string }
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type WhenMatch<R, P> =
@@ -2093,7 +2093,7 @@ export declare namespace Types {
    * // Result: "b" | "c"
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type NotMatch<R, P> = Exclude<R, ExtractMatch<R, PForNotMatch<P>>>
@@ -2123,7 +2123,7 @@ export declare namespace Types {
    * // Result: { name: string }
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type PForMatch<P> = [ResolvePred<P>] extends [infer X] ? X
@@ -2151,7 +2151,7 @@ export declare namespace Types {
    * // Used internally to filter out admin objects
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type PForExclude<P> = [SafeRefinementR<ToSafeRefinement<P>>] extends [infer X] ? X
@@ -2228,7 +2228,7 @@ export declare namespace Types {
    * result // => "Admin: Alice"
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type PatternBase<A> = A extends ReadonlyArray<infer _T> ? ReadonlyArray<any> | PatternPrimitive<A>
@@ -2246,7 +2246,7 @@ export declare namespace Types {
    * literal values, and safe refinements. These are the atomic patterns that
    * can be composed into more complex matching logic.
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type PatternPrimitive<A> = PredicateA<A> | A | SafeRefinement<any>
@@ -2274,7 +2274,7 @@ export declare namespace Types {
    * match(42) // => "not string: 42"
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export interface Without<out X> {
@@ -2305,7 +2305,7 @@ export declare namespace Types {
    * match("ok") // => "string: ok"
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export interface Only<out X> {
@@ -2337,7 +2337,7 @@ export declare namespace Types {
    * match(true) // => "not string"
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type AddWithout<A, X> = [A] extends [Without<infer WX>] ? Without<X | WX>
@@ -2367,7 +2367,7 @@ export declare namespace Types {
    * match({ type: "admin", name: "Alice" }) // => "Alice"
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type AddOnly<A, X> = [A] extends [Without<infer WX>] ? [X] extends [WX] ? never
@@ -2404,7 +2404,7 @@ export declare namespace Types {
    * // Result: number | boolean
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type ApplyFilters<I, A> = A extends Only<infer X> ? X
@@ -2441,7 +2441,7 @@ export declare namespace Types {
    * // Result: "user" | "admin"
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type Tags<D extends string, P> = P extends Record<D, infer X> ? X : never
@@ -2473,7 +2473,7 @@ export declare namespace Types {
    * // for advanced pattern matching scenarios
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type ArrayToIntersection<A extends ReadonlyArray<any>> = T.UnionToIntersection<
@@ -2511,7 +2511,7 @@ export declare namespace Types {
    * //                      ^^^ s is correctly typed as string
    * ```
    *
-   * @category types
+   * @category utility types
    * @since 4.0.0
    */
   export type ExtractMatch<I, P> = [ExtractAndNarrow<I, P>] extends [infer EI] ? EI
