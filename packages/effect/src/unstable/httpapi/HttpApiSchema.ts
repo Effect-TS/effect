@@ -29,8 +29,24 @@ declare module "../../Schema.ts" {
        * @internal
        */
       readonly "~httpApiEncoding"?: Encoding | undefined
+      /**
+       * Marks schemas produced by `encodeToWithHeaders`, carrying the body and
+       * headers schemas so integrations can split the encoded pair.
+       * @internal
+       */
+      readonly "~httpApiWithHeaders"?: WithHeadersAnnotation | undefined
     }
   }
+}
+
+/**
+ * Annotation payload attached by `encodeToWithHeaders`.
+ *
+ * @internal
+ */
+export interface WithHeadersAnnotation {
+  readonly body: Schema.Top
+  readonly headers: Schema.Top
 }
 
 /**
@@ -468,6 +484,286 @@ function defaultStreamContentType(mode: StreamMode): string {
 }
 
 /**
+ * Runtime brand key used to mark `WithHeaders` response schemas.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export const WithHeadersTypeId = "~effect/httpapi/HttpApiSchema/WithHeaders"
+
+/**
+ * Type-level brand identifier used by `WithHeaders`.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export type WithHeadersTypeId = typeof WithHeadersTypeId
+
+/**
+ * Runtime brand key used to mark `WithHeaders` response values.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export const WithHeadersValueTypeId = "~effect/httpapi/HttpApiSchema/WithHeadersValue"
+
+/**
+ * Type-level brand identifier used by `WithHeaders` response values.
+ *
+ * @category type IDs
+ * @since 4.0.0
+ */
+export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
+
+/**
+ * A success response schema wrapping a body schema together with a response
+ * headers schema.
+ *
+ * **Details**
+ *
+ * `WithHeaders` is a branded declaration schema: it carries the inner success
+ * schema and the headers schema as properties, and server, client, and OpenAPI
+ * integrations detect the brand and handle body and headers separately.
+ *
+ * - `schema` is the inner success schema. Anything valid as a success schema is
+ *   valid here, including `StreamSse` and `StreamUint8Array`. Nesting
+ *   `WithHeaders` is rejected at construction.
+ * - `headers` is any schema; integrations encode and decode it via
+ *   `Schema.toCodecStringTree`, so leaves become `string | undefined` on the
+ *   wire and `undefined` leaves are omitted from the response.
+ * - Status and response-encoding annotations are resolved from the wrapper
+ *   first, falling through to the inner schema.
+ * - `Rebuild` preserves the brand and both parts, so `.annotate` keeps the
+ *   wrapper intact.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface WithHeaders<S extends Schema.Top, H extends Schema.Top> extends
+  Schema.Bottom<
+    WithHeaders.Value<S["Type"], H["Type"]>,
+    WithHeaders.Value<S["Encoded"], Schema.StringTree>,
+    S["DecodingServices"] | H["DecodingServices"],
+    S["EncodingServices"] | H["EncodingServices"],
+    SchemaAST.Declaration,
+    WithHeaders<S, H>
+  >
+{
+  readonly "Rebuild": WithHeaders<S, H>
+  readonly [WithHeadersTypeId]: typeof WithHeadersTypeId
+  readonly schema: S
+  readonly headers: H
+}
+
+/**
+ * Namespace for `WithHeaders` types.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export declare namespace WithHeaders {
+  /**
+   * The Type of a `WithHeaders` schema: what handlers return and what the
+   * client resolves to, constructed via {@link withHeaders}.
+   *
+   * `body` is the inner success value. For stream success schemas it is the
+   * `Stream` itself, so headers are decided before the body starts streaming.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Value<A, H> {
+    readonly [WithHeadersValueTypeId]: WithHeadersValueTypeId
+    readonly body: A
+    readonly headers: H
+  }
+}
+
+const isWithHeadersValue = (u: unknown): u is WithHeaders.Value<unknown, unknown> =>
+  Predicate.hasProperty(u, WithHeadersValueTypeId)
+
+const withHeadersValueSchema = Schema.declare(isWithHeadersValue)
+
+/**
+ * Wraps a success schema with a response headers schema.
+ *
+ * Headers accept either a schema or a fields shorthand, mirroring the
+ * request-side headers option.
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { HttpApiSchema } from "effect/unstable/httpapi"
+ *
+ * const schema = HttpApiSchema.WithHeaders(Schema.String, {
+ *   "x-total-count": Schema.FiniteFromString
+ * })
+ * ```
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export function WithHeaders<S extends Schema.Top, H extends Schema.Struct.Fields>(
+  schema: S,
+  headers: H
+): WithHeaders<S, Schema.Struct<H>>
+export function WithHeaders<S extends Schema.Top, H extends Schema.Top>(
+  schema: S,
+  headers: H
+): WithHeaders<S, H>
+export function WithHeaders(
+  schema: Schema.Top,
+  headers: Schema.Top | Schema.Struct.Fields
+): WithHeaders<Schema.Top, Schema.Top> {
+  if (isWithHeaders(schema)) {
+    throw new Error("WithHeaders schemas cannot be nested")
+  }
+  return Schema.make<WithHeaders<Schema.Top, Schema.Top>>(withHeadersValueSchema.ast, {
+    [WithHeadersTypeId]: WithHeadersTypeId,
+    schema,
+    headers: Schema.isSchema(headers) ? headers : Schema.Struct(headers)
+  })
+}
+
+/**
+ * Constructs a `WithHeaders` response value from a body and headers.
+ *
+ * The returned value is branded so servers and clients can detect it exactly,
+ * including in mixed success unions. The same shape is used on both sides: a
+ * value received from a client can be returned from another handler unchanged.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const withHeaders = <A, H>(options: {
+  readonly body: A
+  readonly headers: H
+}): WithHeaders.Value<A, H> => ({
+  [WithHeadersValueTypeId]: WithHeadersValueTypeId,
+  body: options.body,
+  headers: options.headers
+})
+
+/**
+ * Returns `true` when a schema is a `WithHeaders` response schema.
+ *
+ * @category predicates
+ * @since 4.0.0
+ */
+export const isWithHeaders = (u: unknown): u is WithHeaders<Schema.Top, Schema.Top> =>
+  Schema.isSchema(u) && Predicate.hasProperty(u, WithHeadersTypeId)
+
+/** @internal */
+export function rebuildWithHeaders(
+  self: WithHeaders<Schema.Top, Schema.Top>,
+  schema: Schema.Top,
+  headers: Schema.Top
+): WithHeaders<Schema.Top, Schema.Top> {
+  return Schema.make<WithHeaders<Schema.Top, Schema.Top>>(self.ast, {
+    [WithHeadersTypeId]: WithHeadersTypeId,
+    schema,
+    headers
+  })
+}
+
+/**
+ * Schema type returned by `encodeToWithHeaders`, encoding as a `{ body, headers }`
+ * pair while decoding to the source schema type.
+ *
+ * @category schemas
+ * @since 4.0.0
+ */
+export interface encodeToWithHeaders<
+  S extends Schema.Top,
+  Body extends Schema.Top,
+  Headers extends Schema.Struct.Fields
+> extends
+  Schema.decodeTo<
+    Schema.toType<S>,
+    Schema.Struct<{
+      readonly body: Body
+      readonly headers: Schema.Struct<Headers>
+    }>
+  >
+{}
+
+/**
+ * Encodes a schema as a `{ body, headers }` pair, folding response headers into
+ * an opaque domain type such as an error class.
+ *
+ * **Details**
+ *
+ * The encoded side is the pair of the body schema and the headers fields; the
+ * Type stays the source schema's Type. The body schema is authoritative for
+ * everything wire-level: status, content type, and response encoding resolve
+ * from the body schema's annotations.
+ *
+ * The mappings are pure total functions: validation lives in the body and
+ * header schemas, the mappings only reshape valid data.
+ *
+ * ```ts
+ * import { Schema } from "effect"
+ * import { HttpApiSchema } from "effect/unstable/httpapi"
+ *
+ * class UserNotFound extends Schema.TaggedError<UserNotFound>()("UserNotFound", {
+ *   userId: Schema.Int
+ * }) {}
+ *
+ * const UserNotFoundWithHeaders = UserNotFound.pipe(
+ *   HttpApiSchema.encodeToWithHeaders({
+ *     body: HttpApiSchema.Empty(404),
+ *     headers: {
+ *       "x-user-id": Schema.Int
+ *     }
+ *   }, {
+ *     decode: ({ headers }) => new UserNotFound({ userId: headers["x-user-id"] }),
+ *     encode: (error) => ({
+ *       headers: { "x-user-id": error.userId },
+ *       body: undefined
+ *     })
+ *   })
+ * )
+ * ```
+ *
+ * @see {@link WithHeaders} for the structural wrapper recommended for success
+ * responses, including streams.
+ *
+ * @category encoding
+ * @since 4.0.0
+ */
+export function encodeToWithHeaders<
+  S extends Schema.Top,
+  Body extends Schema.Top,
+  Headers extends Schema.Struct.Fields
+>(options: {
+  readonly body: Body
+  readonly headers: Headers
+}, transformation: {
+  readonly decode: (
+    value: Schema.Struct.Type<{ readonly body: Body; readonly headers: Schema.Struct<Headers> }>
+  ) => S["Type"]
+  readonly encode: (
+    value: S["Type"]
+  ) => Schema.Struct.Type<{ readonly body: Body; readonly headers: Schema.Struct<Headers> }>
+}) {
+  return (self: S): encodeToWithHeaders<S, Body, Headers> => {
+    const body = options.body
+    const headers = Schema.Struct(options.headers)
+    const status = resolveHttpApiStatus(body.ast)
+    const encoding = resolveHttpApiEncoding(body.ast)
+    return Schema.Struct({ body, headers }).pipe(
+      Schema.decodeTo(
+        Schema.toType(self),
+        SchemaTransformation.transform(transformation)
+      )
+    ).annotate({
+      "~httpApiWithHeaders": { body, headers },
+      ...(status !== undefined ? { httpApiStatus: status } : undefined),
+      ...(encoding !== undefined ? { "~httpApiEncoding": encoding } : undefined)
+    })
+  }
+}
+
+/**
  * Runtime brand key used to mark schemas as buffered multipart payloads.
  *
  * @category type IDs
@@ -701,6 +997,29 @@ export function getResponseEncoding(ast: SchemaAST.AST): ResponseEncoding {
 /** @internal */
 export function getStatusSuccess(self: SchemaAST.AST): number {
   return resolveHttpApiStatus(self) ?? 200
+}
+
+/** @internal */
+export function getStatusSuccessSchema(schema: Schema.Constraint): number {
+  if (isWithHeaders(schema)) {
+    return resolveHttpApiStatus(schema.ast) ?? getStatusSuccess(schema.schema.ast)
+  }
+  return getStatusSuccess(schema.ast)
+}
+
+/** @internal */
+export function getResponseEncodingSchema(schema: Schema.Constraint): ResponseEncoding {
+  if (isWithHeaders(schema)) {
+    const encoding = resolveHttpApiEncoding(schema.ast)
+    if (encoding !== undefined) {
+      if (encoding._tag === "Multipart") {
+        throw new Error("Multipart is not supported in response")
+      }
+      return encoding
+    }
+    return getResponseEncoding(schema.schema.ast)
+  }
+  return getResponseEncoding(schema.ast)
 }
 
 /** @internal */

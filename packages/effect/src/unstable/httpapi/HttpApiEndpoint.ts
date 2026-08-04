@@ -44,11 +44,15 @@ const TypeId = "~effect/httpapi/HttpApiEndpoint"
  */
 export const isHttpApiEndpoint = (u: unknown): u is Top => Predicate.hasProperty(u, TypeId)
 
-type SuccessType<S> = S extends HttpApiSchema.StreamSse<
-  infer _Events,
-  infer _Error,
-  infer _Value
-> ? Stream.Stream<_Value, _Error["Type"], never>
+type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
+  infer _Inner,
+  infer _Headers
+> ? HttpApiSchema.WithHeaders.Value<SuccessType<_Inner>, _Headers["Type"]>
+  : S extends HttpApiSchema.StreamSse<
+    infer _Events,
+    infer _Error,
+    infer _Value
+  > ? Stream.Stream<_Value, _Error["Type"], never>
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, unknown, never>
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -75,15 +79,24 @@ type UnwrapReadonlyArray<S> = S extends ReadonlyArray<infer A> ? A : S
 
 type ExtractBufferedSuccess<S extends SuccessConstraint> = Exclude<
   Extract<UnwrapReadonlyArray<S>, Schema.Top>,
-  HttpApiSchema.StreamSchema
+  HttpApiSchema.StreamSchema | HttpApiSchema.WithHeaders<Schema.Top, Schema.Top>
 >
 
 type ExtractStreamSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
   Success extends HttpApiSchema.StreamSchema ? Success : never
   : never
 
-type ToSuccessCodec<S extends SuccessConstraint> = [ExtractBufferedSuccess<S>] extends [never] ? ExtractStreamSuccess<S>
-  : Schema.toCodecJson<ExtractBufferedSuccess<S>> | ExtractStreamSuccess<S>
+type ExtractWithHeadersSuccess<S extends SuccessConstraint> = UnwrapReadonlyArray<S> extends infer Success ?
+  Success extends HttpApiSchema.WithHeaders<infer _Inner, infer _Headers> ? HttpApiSchema.WithHeaders<
+      _Inner extends HttpApiSchema.StreamSchema ? _Inner : Schema.toCodecJson<_Inner>,
+      Schema.toCodecStringTree<_Headers>
+    > :
+  never
+  : never
+
+type ToSuccessCodec<S extends SuccessConstraint> = [ExtractBufferedSuccess<S>] extends [never] ?
+  ExtractStreamSuccess<S> | ExtractWithHeadersSuccess<S>
+  : Schema.toCodecJson<ExtractBufferedSuccess<S>> | ExtractStreamSuccess<S> | ExtractWithHeadersSuccess<S>
 
 type ToJsonCodec<S> = [S] extends [never] ? never
   : [S] extends [Schema.Constraint] ? Schema.toCodecJson<S>
@@ -1139,11 +1152,18 @@ function getSuccessResponse(
   if (success === undefined) return new Set()
   const schemas = Arr.ensure(success)
   validateSuccessResponse(schemas, method)
-  return new Set(
-    disableCodecs ?
-      schemas :
-      schemas.map((schema) => HttpApiSchema.isStreamSchema(schema) ? schema : transformResponse(schema))
-  )
+  return new Set(disableCodecs ? schemas : schemas.map(transformSuccess))
+}
+
+function transformSuccess(schema: Schema.Top): Schema.Top {
+  if (HttpApiSchema.isStreamSchema(schema)) return schema
+  if (HttpApiSchema.isWithHeaders(schema)) {
+    const inner = HttpApiSchema.isStreamSchema(schema.schema)
+      ? schema.schema
+      : applyResponseEncoding(schema.schema, HttpApiSchema.getResponseEncodingSchema(schema))
+    return HttpApiSchema.rebuildWithHeaders(schema, inner, Schema.toCodecStringTree(schema.headers))
+  }
+  return transformResponse(schema)
 }
 
 function getErrorResponse(
@@ -1155,6 +1175,9 @@ function getErrorResponse(
   for (const schema of schemas) {
     if (HttpApiSchema.isStreamSchema(schema)) {
       throw new Error("Streaming schemas are not supported in error responses")
+    }
+    if (HttpApiSchema.isWithHeaders(schema)) {
+      throw new Error("WithHeaders is not supported in error responses, use encodeToWithHeaders instead")
     }
   }
   return new Set(disableCodecs ? schemas : schemas.map(transformResponse))
@@ -1168,9 +1191,10 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
   }>()
 
   for (const schema of schemas) {
-    if (HttpApiSchema.isStreamSchema(schema)) {
-      validateStreamSuccess(schema, method)
-      const status = HttpApiSchema.getStatusStream(schema)
+    const inner = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
+    const status = HttpApiSchema.getStatusSuccessSchema(schema)
+    if (HttpApiSchema.isStreamSchema(inner)) {
+      validateStreamSuccess(inner, method)
       const entry = getStatusEntry(statuses, status)
       if (entry.stream !== undefined) {
         throw new Error(`Multiple streaming success responses for status: ${status}`)
@@ -1178,21 +1202,20 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
       if (entry.noContent) {
         throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
       }
-      if (entry.bufferedContentTypes.has(MediaType.normalize(schema.contentType))) {
+      if (entry.bufferedContentTypes.has(MediaType.normalize(inner.contentType))) {
         throw new Error(
-          `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${schema.contentType}`
+          `Cannot combine buffered and streaming success responses for status ${status} and content-type: ${inner.contentType}`
         )
       }
-      statuses.set(status, { ...entry, stream: schema })
+      statuses.set(status, { ...entry, stream: inner })
     } else {
-      const status = HttpApiSchema.getStatusSuccess(schema.ast)
       const entry = getStatusEntry(statuses, status)
-      const noContent = HttpApiSchema.isNoContent(schema.ast)
+      const noContent = HttpApiSchema.isNoContent(inner.ast)
       if (entry.stream !== undefined) {
         if (noContent) {
           throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
         }
-        const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
+        const encoding = HttpApiSchema.getResponseEncodingSchema(schema)
         if (
           MediaType.normalize(encoding.contentType) === MediaType.normalize(entry.stream.contentType)
         ) {
@@ -1203,7 +1226,7 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
       }
       if (!noContent) {
         entry.bufferedContentTypes.add(
-          MediaType.normalize(HttpApiSchema.getResponseEncoding(schema.ast).contentType)
+          MediaType.normalize(HttpApiSchema.getResponseEncodingSchema(schema).contentType)
         )
       }
       entry.noContent = entry.noContent || noContent
@@ -1274,7 +1297,10 @@ function hasReservedEventLiteral(ast: AST.AST, seen: Set<AST.AST>): boolean {
 }
 
 function transformResponse(schema: Schema.Top): Schema.Top {
-  const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
+  return applyResponseEncoding(schema, HttpApiSchema.getResponseEncoding(schema.ast))
+}
+
+function applyResponseEncoding(schema: Schema.Top, encoding: HttpApiSchema.ResponseEncoding): Schema.Top {
   switch (encoding._tag) {
     case "Json":
       return Schema.toCodecJson(schema)

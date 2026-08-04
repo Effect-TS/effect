@@ -207,3 +207,101 @@ describe("HttpApiEndpoint streaming success schemas", () => {
     )
   })
 })
+
+describe("HttpApiEndpoint WithHeaders success schemas", () => {
+  it("keeps the wrapper in the success set with codec-transformed parts", () => {
+    const endpoint = HttpApiEndpoint.get("list", "/users", {
+      success: HttpApiSchema.WithHeaders(Schema.Struct({ a: Schema.String }), {
+        "x-count": Schema.Int
+      })
+    })
+
+    const [schema] = Array.from(endpoint.success)
+    assert.isTrue(HttpApiSchema.isWithHeaders(schema))
+    if (HttpApiSchema.isWithHeaders(schema)) {
+      assert.deepStrictEqual(
+        Schema.encodeSync(schema.headers as any)({ "x-count": 3 }),
+        { "x-count": "3" }
+      )
+    }
+  })
+
+  it("leaves the wrapper untouched when codecs are disabled", () => {
+    const wrapped = HttpApiSchema.WithHeaders(Schema.Struct({ a: Schema.String }), {
+      "x-count": Schema.Int
+    })
+    const endpoint = HttpApiEndpoint.get("list", "/users", {
+      disableCodecs: true,
+      success: wrapped
+    })
+
+    assert.isTrue(endpoint.success.has(wrapped))
+  })
+
+  it("keeps a wrapped stream schema as the inner schema", () => {
+    const stream = sse()
+    const endpoint = HttpApiEndpoint.get("events", "/events", {
+      success: HttpApiSchema.WithHeaders(stream, { "x-count": Schema.Int })
+    })
+
+    const [schema] = Array.from(endpoint.success)
+    assert.isTrue(HttpApiSchema.isWithHeaders(schema))
+    if (HttpApiSchema.isWithHeaders(schema)) {
+      assert.strictEqual(schema.schema, stream)
+    }
+  })
+
+  it("preserves wrapper annotations through endpoint construction", () => {
+    const endpoint = HttpApiEndpoint.get("list", "/users", {
+      success: HttpApiSchema.WithHeaders(Schema.Struct({ a: Schema.String }), {
+        "x-count": Schema.Int
+      }).pipe(HttpApiSchema.status(201))
+    })
+
+    const [schema] = Array.from(endpoint.success)
+    assert.strictEqual(HttpApiSchema.getStatusSuccessSchema(schema), 201)
+  })
+
+  it("validates a wrapped stream like a bare stream", () => {
+    assert.throws(() =>
+      HttpApiEndpoint.get("events", "/events", {
+        success: [
+          HttpApiSchema.WithHeaders(sse(), { "x-count": Schema.Int }),
+          HttpApiSchema.StreamUint8Array({ contentType: "application/custom-stream" })
+        ]
+      })
+    )
+    assert.throws(() =>
+      HttpApiEndpoint.head("events", "/events", {
+        success: HttpApiSchema.WithHeaders(sse(), { "x-count": Schema.Int }) as any
+      })
+    )
+  })
+
+  it("resolves the status from the wrapper when validating per-status combinations", () => {
+    const wrapped = HttpApiSchema.WithHeaders(sse(), { "x-count": Schema.Int })
+      .pipe(HttpApiSchema.status(206))
+    const endpoint = HttpApiEndpoint.get("events", "/events", {
+      success: [wrapped, sse()]
+    })
+
+    assert.strictEqual(endpoint.success.size, 2)
+
+    assert.throws(() =>
+      HttpApiEndpoint.get("events", "/events", {
+        success: [
+          HttpApiSchema.WithHeaders(sse(), { "x-count": Schema.Int }),
+          sse()
+        ]
+      })
+    )
+  })
+
+  it("WithHeaders in error throws during endpoint construction", () => {
+    assert.throws(() =>
+      HttpApiEndpoint.get("list", "/users", {
+        error: HttpApiSchema.WithHeaders(Schema.String, { "x-count": Schema.Int }) as any
+      })
+    )
+  })
+})
