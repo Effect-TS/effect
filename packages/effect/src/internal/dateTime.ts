@@ -221,7 +221,7 @@ export const makeUnsafe = <A extends DateTime.DateTime.Input>(input: A): DateTim
     return fromDateUnsafe(input) as DateTime.DateTime.PreserveZone<A>
   } else if (typeof input === "object") {
     if ("epochMilliseconds" in input) {
-      return makeUtc(input.epochMilliseconds) as DateTime.DateTime.PreserveZone<A>
+      return fromDateUnsafe(new Date(input.epochMilliseconds)) as DateTime.DateTime.PreserveZone<A>
     }
     const date = new Date(0)
     setPartsDate(date, input)
