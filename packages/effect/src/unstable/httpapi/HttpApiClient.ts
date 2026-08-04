@@ -68,15 +68,19 @@ export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api e
   HttpApi.HttpApi<infer _Id, infer Groups> ? Client<Groups, E, R> :
   never
 
-type SuccessType<S> = S extends HttpApiSchema.StreamSse<
-  infer _Events,
-  infer _Error,
-  infer _Value
-> ? Stream.Stream<
-    _Value,
-    _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
-    never
-  >
+type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
+  infer _Inner,
+  infer _Headers
+> ? HttpApiSchema.WithHeaders.Value<SuccessType<_Inner>, _Headers["Type"]>
+  : S extends HttpApiSchema.StreamSse<
+    infer _Events,
+    infer _Error,
+    infer _Value
+  > ? Stream.Stream<
+      _Value,
+      _Error["Type"] | HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
+      never
+    >
   : S extends HttpApiSchema.StreamUint8Array ? Stream.Stream<Uint8Array, HttpClientError.HttpClientError, never>
   : S extends Schema.Constraint ? S["Type"]
   : never
@@ -362,6 +366,9 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         const successSchemasByStatus = new Map<number, [Schema.Top, ...Array<Schema.Top>]>()
         for (const [status, schemas] of successes.entries()) {
           for (const schema of schemas) {
+            if (HttpApiSchema.isWithHeaders(schema) && HttpApiSchema.isStreamSchema(schema.schema)) {
+              continue
+            }
             const schemaStatus = HttpApiSchema.isWithHeaders(schema)
               ? HttpApiSchema.getStatusSuccessSchema(schema)
               : status
@@ -380,10 +387,14 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
           }
         }
         for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
+          const isWithHeaders = isWithHeadersStreamSuccess(streamSuccess)
+          const streamSchema = isWithHeaders ? streamSuccess.schema : streamSuccess
           addResponseAlternative(
             successAlternatives,
-            HttpApiSchema.getStatusStream(streamSuccess),
-            streamSuccess.contentType,
+            isWithHeaders
+              ? HttpApiSchema.getStatusSuccessSchema(streamSuccess)
+              : HttpApiSchema.getStatusStream(streamSuccess),
+            streamSchema.contentType,
             streamToResponse(streamSuccess)
           )
         }
@@ -851,24 +862,35 @@ function failUnsupportedContentType(
 
 const reservedStreamFailureEvent = "effect/httpapi/stream/failure"
 
-function getStreamSuccessSchemas(endpoint: HttpApiEndpoint.Top): Array<HttpApiSchema.StreamSchema> {
-  const schemas: Array<HttpApiSchema.StreamSchema> = []
+type StreamSuccessSchema =
+  | HttpApiSchema.StreamSchema
+  | HttpApiSchema.WithHeaders<HttpApiSchema.StreamSchema, Schema.Top>
+
+const isWithHeadersStreamSuccess = (
+  schema: StreamSuccessSchema
+): schema is HttpApiSchema.WithHeaders<HttpApiSchema.StreamSchema, Schema.Top> => HttpApiSchema.isWithHeaders(schema)
+
+function getStreamSuccessSchemas(endpoint: HttpApiEndpoint.Top): Array<StreamSuccessSchema> {
+  const schemas: Array<StreamSuccessSchema> = []
   for (const schema of endpoint.success) {
-    if (HttpApiSchema.isStreamSchema(schema)) {
-      schemas.push(schema)
+    const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
+    if (HttpApiSchema.isStreamSchema(body)) {
+      schemas.push(schema as StreamSuccessSchema)
     }
   }
   return schemas
 }
 
-function streamToResponse(streamSchema: HttpApiSchema.StreamSchema) {
+function streamToResponse(successSchema: StreamSuccessSchema) {
+  const isWithHeaders = isWithHeadersStreamSuccess(successSchema)
+  const streamSchema = isWithHeaders ? successSchema.schema : successSchema
   const sse = HttpApiSchema.isStreamUint8Array(streamSchema)
     ? undefined
     : {
       declaration: streamSchema,
       decoder: makeSseDecoder(streamSchema)
     }
-  return (response: HttpClientResponse.HttpClientResponse) =>
+  const toStream = (response: HttpClientResponse.HttpClientResponse) =>
     Effect.map(Effect.context<never>(), (context) =>
       Stream.provideContext(
         sse === undefined ?
@@ -876,6 +898,14 @@ function streamToResponse(streamSchema: HttpApiSchema.StreamSchema) {
           decodeSseStream(response.stream, sse.declaration, sse.decoder),
         context as Context.Context<unknown>
       ))
+  if (!isWithHeaders) return toStream
+
+  const decodeHeaders = Schema.decodeUnknownEffect(successSchema.headers)
+  return (response: HttpClientResponse.HttpClientResponse) =>
+    Effect.flatMap(
+      decodeHeaders(response.headers),
+      (headers) => Effect.map(toStream(response), (body) => HttpApiSchema.withHeaders({ body, headers }))
+    )
 }
 
 function makeSseDecoder(

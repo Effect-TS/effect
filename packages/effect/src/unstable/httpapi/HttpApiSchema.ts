@@ -701,6 +701,10 @@ export interface encodeToWithHeaders<
  * The mappings are pure total functions: validation lives in the body and
  * header schemas, the mappings only reshape valid data.
  *
+ * Streams used as the body schema turn mid-stream transport errors into
+ * defects on the client. Stream responses should use {@link WithHeaders},
+ * which preserves the body stream's error channel in the generated client.
+ *
  * ```ts
  * import { Schema } from "effect"
  * import { HttpApiSchema } from "effect/unstable/httpapi"

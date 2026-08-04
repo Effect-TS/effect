@@ -1116,26 +1116,25 @@ function getResponseTransformation(
       HttpApiSchema.isNoContent(withHeaders.body.ast)
     )
     const headersCodec = withHeaders.headersCodec
-    const encodeHeaders = headersCodec === undefined ? undefined : (
+    const encodeHeaders = (
       headers: unknown
     ): Effect.Effect<unknown, SchemaIssue.Issue, unknown> =>
-      Schema.decodeUnknownEffect(withHeaders.headers)(headers).pipe(
-        Effect.flatMap(Schema.encodeUnknownEffect(headersCodec)),
-        Effect.mapError((error) => error.issue)
-      )
+      (headersCodec === undefined
+        ? Schema.encodeUnknownEffect(Schema.toCodecStringTree(Schema.toEncoded(withHeaders.headers)))(headers)
+        : Schema.decodeUnknownEffect(withHeaders.headers)(headers).pipe(
+          Effect.flatMap(Schema.encodeUnknownEffect(headersCodec))
+        )).pipe(
+          Effect.mapError((error) => error.issue)
+        )
     return SchemaTransformation.transformOrFail<unknown, Response.HttpServerResponse, never, unknown>({
       decode: () => Effect.fail(new SchemaIssue.Forbidden({ message: "Encode only schema" })),
       encode: (value) => {
         const withHeaders = value as { readonly body: unknown; readonly headers: unknown }
-        return Effect.flatMap(encodeBody(withHeaders.body), (response) => {
-          if (encodeHeaders === undefined) {
-            return Effect.succeed(Response.setHeaders(response, withHeaders.headers as any))
-          }
-          return Effect.map(
+        return Effect.flatMap(encodeBody(withHeaders.body), (response) =>
+          Effect.map(
             encodeHeaders(withHeaders.headers),
             (headers) => Response.setHeaders(response, headers as any)
-          )
-        })
+          ))
       }
     })
   }

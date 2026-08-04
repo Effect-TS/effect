@@ -373,6 +373,42 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.strictEqual(yield* response.text, "slow down")
     }))
 
+  it.effect("stringifies encodeToWithHeaders values when endpoint codecs are disabled", () =>
+    Effect.gen(function*() {
+      class RateLimited extends Schema.TaggedError<RateLimited>()("RateLimited", {
+        retryAfter: Schema.Int
+      }) {}
+      const RateLimitedResponse = RateLimited.pipe(
+        HttpApiSchema.encodeToWithHeaders({
+          body: Schema.String.pipe(HttpApiSchema.status(429), HttpApiSchema.asText()),
+          headers: { "retry-after": Schema.Int }
+        }, {
+          decode: ({ headers }) => new RateLimited({ retryAfter: headers["retry-after"] }),
+          encode: (error) => ({ body: "slow down", headers: { "retry-after": error.retryAfter } })
+        })
+      )
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("limited", "/test", {
+            disableCodecs: true,
+            error: RateLimitedResponse
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("limited", () => Effect.fail(new RateLimited({ retryAfter: 30 })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.limited({ responseMode: "response-only" })
+
+      assert.strictEqual(response.status, 429)
+      assert.strictEqual(response.headers["retry-after"], "30")
+      assert.strictEqual(yield* response.text, "slow down")
+    }))
+
   it.effect("decodes an error body and headers through encodeToWithHeaders", () =>
     Effect.gen(function*() {
       class RateLimited extends Schema.TaggedError<RateLimited>()("RateLimited", {
@@ -477,6 +513,41 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       assert.deepStrictEqual(Array.from(chunks, (chunk) => Array.from(chunk)), [[1, 2], [3]])
     }))
 
+  it.effect("unwraps WithHeaders StreamUint8Array responses before stream dispatch", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("download", "/test", {
+            success: HttpApiSchema.WithHeaders(
+              HttpApiSchema.status(206)(
+                HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
+              ),
+              { "content-type": Schema.String, "x-count": Schema.Int }
+            )
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("download", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: Stream.make(new Uint8Array([1, 2]), new Uint8Array([3])),
+              headers: { "content-type": "application/overridden", "x-count": 2 }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.download({ responseMode: "response-only" })
+      const chunks = yield* response.stream.pipe(Stream.runCollect)
+
+      assert.strictEqual(response.status, 206)
+      assert.strictEqual(response.headers["content-type"], "application/overridden")
+      assert.strictEqual(response.headers["x-count"], "2")
+      assert.deepStrictEqual(Array.from(chunks, (chunk) => Array.from(chunk)), [[1, 2], [3]])
+    }))
+
   it.effect("renders successful StreamSse events incrementally with the declared content type", () =>
     Effect.gen(function*() {
       const Events = Schema.Struct({
@@ -518,6 +589,85 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         Array.from(chunks, (chunk) => textDecoder.decode(chunk)),
         ["event: first\ndata: one\n\n", "event: second\ndata: two\n\n"]
       )
+    }))
+
+  it.effect("unwraps WithHeaders StreamSse responses before SSE encoding", () =>
+    Effect.gen(function*() {
+      const Events = Schema.Struct({
+        event: Schema.String,
+        data: Schema.String
+      })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("events", "/test", {
+            success: HttpApiSchema.WithHeaders(
+              HttpApiSchema.status(202)(
+                HttpApiSchema.StreamSse({
+                  contentType: "text/event-stream; charset=utf-8",
+                  events: Events,
+                  error: StreamError
+                })
+              ),
+              { "x-count": Schema.Int }
+            )
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("events", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: Stream.make({ event: "first", data: "one" }),
+              headers: { "x-count": 1 }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.events({ responseMode: "response-only" })
+      const chunks = yield* response.stream.pipe(Stream.runCollect)
+
+      assert.strictEqual(response.status, 202)
+      assert.strictEqual(response.headers["content-type"], "text/event-stream; charset=utf-8")
+      assert.strictEqual(response.headers["x-count"], "1")
+      assert.deepStrictEqual(Array.from(chunks, (chunk) => textDecoder.decode(chunk)), [
+        "event: first\ndata: one\n\n"
+      ])
+    }))
+
+  it.effect("fails WithHeaders stream header encoding before returning a response", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("download", "/test", {
+            success: HttpApiSchema.WithHeaders(
+              HttpApiSchema.StreamUint8Array(),
+              { "x-count": Schema.Int }
+            )
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("download", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: Stream.make(new Uint8Array([1])),
+              headers: { "x-count": "invalid" as any }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const exit = yield* Effect.exit(client.test.download({ responseMode: "response-only" }))
+
+      assert.strictEqual(exit._tag, "Failure")
+      if (exit._tag === "Failure") {
+        const error = Cause.squash(exit.cause) as any
+        assert.strictEqual(error._tag, "HttpApiSchemaError")
+        assert.strictEqual(error.kind, "ResponseHeaders")
+      }
     }))
 
   it.effect("renders StreamSse failures as one reserved event containing an encoded full cause", () =>
@@ -607,6 +757,67 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
       assert.deepStrictEqual(Array.from(chunks, (chunk) => textDecoder.decode(chunk)), [
         `data: {"text":"hello"}\n\n`
       ])
+    }))
+
+  it.effect("keeps a plain buffered alternative when the stream is wrapped", () =>
+    Effect.gen(function*() {
+      const Buffered = Schema.Struct({ message: Schema.String })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("result", "/test", {
+            success: [
+              HttpApiSchema.WithHeaders(
+                HttpApiSchema.StreamUint8Array(),
+                { "x-source": Schema.String }
+              ),
+              Buffered
+            ]
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("result", () => Effect.succeed({ message: "done" }))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.result({ responseMode: "response-only" })
+
+      assert.strictEqual(response.headers["content-type"], "application/json")
+      assert.deepStrictEqual(yield* response.json, { message: "done" })
+    }))
+
+  it.effect("detects a wrapped buffered alternative alongside a plain stream", () =>
+    Effect.gen(function*() {
+      const Buffered = Schema.Struct({ message: Schema.String })
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("result", "/test", {
+            success: [
+              HttpApiSchema.StreamUint8Array(),
+              HttpApiSchema.WithHeaders(Buffered, { "x-source": Schema.String })
+            ]
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("result", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: { message: "done" },
+              headers: { "x-source": "buffered" }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.result({ responseMode: "response-only" })
+
+      assert.strictEqual(response.headers["content-type"], "application/json")
+      assert.strictEqual(response.headers["x-source"], "buffered")
+      assert.deepStrictEqual(yield* response.json, { message: "done" })
     }))
 
   it.effect("registers handleAll handlers at runtime", () =>
