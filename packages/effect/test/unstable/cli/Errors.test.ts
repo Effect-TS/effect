@@ -25,6 +25,15 @@ const TestLayer = Layer.mergeAll(
 )
 
 describe("Command errors", () => {
+  it("uses the UnknownSubcommand class name as its runtime tag", () => {
+    const error = new CliError.UnknownSubcommand({
+      subcommand: "deplyo",
+      suggestions: ["deploy"]
+    })
+
+    assert.strictEqual(error._tag as string, "UnknownSubcommand")
+  })
+
   describe("parse", () => {
     it.effect("fails with MissingOption when a required flag is absent", () =>
       Effect.gen(function*() {
