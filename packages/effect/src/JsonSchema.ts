@@ -678,11 +678,12 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
   function rewrite(schema: JsonSchema): JsonSchema {
     return rewrite_refs(schema, ($ref) => {
       const tokens = $ref.split("/")
-      if (tokens.length > 0) {
-        const identifier = unescapeToken(tokens[tokens.length - 1])
+      if (tokens.length > 2 && tokens[0] === "#" && tokens[1] === "$defs") {
+        const identifier = unescapeToken(tokens[2])
         const sanitized = keyMap.get(identifier)
         if (sanitized !== undefined) {
-          $ref = tokens.slice(0, -1).join("/") + "/" + sanitized
+          tokens[2] = sanitized
+          $ref = tokens.join("/")
         }
       }
       return $ref.replace(RE_DEFS, "#/components/schemas")

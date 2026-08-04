@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { describe, it } from "@effect/vitest"
 import { deepStrictEqual } from "@effect/vitest/utils"
 import * as JsonSchema from "effect/JsonSchema"
 
@@ -1225,7 +1225,7 @@ describe("JsonSchema", () => {
 
       const result = JsonSchema.toMultiDocumentOpenApi3_1(input)
 
-      assert.deepStrictEqual(result.schemas[0], { $ref: "#/components/schemas/A_B/properties/value" })
+      deepStrictEqual(result.schemas[0], { $ref: "#/components/schemas/A_B/properties/value" })
     })
   })
 
