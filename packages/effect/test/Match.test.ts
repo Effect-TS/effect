@@ -33,6 +33,8 @@ describe("Match", () => {
       Match.orElse(() => "miss")
     )
 
+    strictEqual(match({ [key]: "expected" }), "hit")
     strictEqual(match({ [key]: "other" }), "miss")
+    strictEqual(match({} as any), "miss")
   })
 })
