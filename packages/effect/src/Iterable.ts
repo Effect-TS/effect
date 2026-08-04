@@ -1543,19 +1543,20 @@ export const flatten = <A>(self: Iterable<Iterable<A>>): Iterable<A> => ({
     const outerIterator = self[Symbol.iterator]()
     let innerIterator: Iterator<A> | undefined
     function next() {
-      if (innerIterator === undefined) {
-        const next = outerIterator.next()
-        if (next.done) {
-          return next
+      while (true) {
+        if (innerIterator === undefined) {
+          const next = outerIterator.next()
+          if (next.done) {
+            return next
+          }
+          innerIterator = next.value[Symbol.iterator]()
         }
-        innerIterator = next.value[Symbol.iterator]()
-      }
-      const result = innerIterator.next()
-      if (result.done) {
+        const result = innerIterator.next()
+        if (!result.done) {
+          return result
+        }
         innerIterator = undefined
-        return next()
       }
-      return result
     }
     return { next }
   }
