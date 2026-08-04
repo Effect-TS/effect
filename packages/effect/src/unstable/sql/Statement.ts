@@ -799,21 +799,24 @@ export const makeCompiler = <C extends Custom<any, any, any, any> = any>(
   self.options = options
   self.dialect = options.dialect
   self.disableTransforms = false
+  self.statementCache = new WeakMap<Fragment, CompiledStatement>()
+  self.statementCacheNoTransform = new WeakMap<Fragment, CompiledStatement>()
   return self
 }
+
+type CompiledStatement = readonly [sql: string, binds: ReadonlyArray<unknown>]
 
 interface CompilerImpl extends Compiler {
   readonly options: CompilerOptions
   readonly disableTransforms: boolean
+  readonly statementCache: WeakMap<Fragment, CompiledStatement>
+  readonly statementCacheNoTransform: WeakMap<Fragment, CompiledStatement>
   compile(
     statement: Fragment,
     withoutTransform?: boolean,
     placeholderOverride?: (u: unknown) => string
-  ): readonly [sql: string, binds: ReadonlyArray<unknown>]
+  ): CompiledStatement
 }
-
-const statementCacheSymbol = Symbol.for("effect/unstable/sql/Statement/statementCache")
-const statementCacheNoTransformSymbol = Symbol.for("effect/unstable/sql/Statement/statementCacheNoTransform")
 
 const CompilerProto = {
   compile(
@@ -824,9 +827,10 @@ const CompilerProto = {
   ): readonly [sql: string, binds: ReadonlyArray<unknown>] {
     const opts = this.options
     withoutTransform = withoutTransform || this.disableTransforms
-    const cacheSymbol = withoutTransform ? statementCacheNoTransformSymbol : statementCacheSymbol
-    if (cacheSymbol in statement) {
-      return (statement as any)[cacheSymbol]
+    const cache = withoutTransform ? this.statementCacheNoTransform : this.statementCache
+    const cached = cache.get(statement)
+    if (cached !== undefined) {
+      return cached
     }
 
     const segments = statement.segments
@@ -1033,7 +1037,8 @@ const CompilerProto = {
     if (placeholderOverride !== undefined) {
       return result
     }
-    return (statement as any)[cacheSymbol] = result
+    cache.set(statement, result)
+    return result
   },
 
   get withoutTransform() {

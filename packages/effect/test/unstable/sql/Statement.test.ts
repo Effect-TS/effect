@@ -29,7 +29,7 @@ describe("Statement", () => {
       Statement.parameter(1)
     ])
 
-    assert.deepStrictEqual(postgres.compile(fragment), ["\"value\"$1", [1]])
-    assert.deepStrictEqual(sqlite.compile(fragment), ["\"value\"?", [1]])
+    assert.deepStrictEqual(postgres.compile(fragment, false), ["\"value\"$1", [1]])
+    assert.deepStrictEqual(sqlite.compile(fragment, false), ["\"value\"?", [1]])
   })
 })
