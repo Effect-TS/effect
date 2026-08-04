@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Config, ConfigProvider, Effect, FileSystem, Layer, Option, Path, Ref, Stdio } from "effect"
+import { Config, ConfigProvider, Effect, FileSystem, Layer, Option, Path, Ref, Result, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
 import { Argument, CliError, Command, Flag, Param, Primitive, Prompt } from "effect/unstable/cli"
 import * as Lexer from "effect/unstable/cli/internal/lexer"
@@ -39,6 +39,22 @@ describe("Param", () => {
 
       assert.isUndefined(parsed.errors)
       assert.deepStrictEqual(parsed.flags["config-url"], ["https://example.com"])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("registers and parses the alternate flag declared by orElseResult", () =>
+    Effect.gen(function*() {
+      const flag = Flag.string("config").pipe(
+        Flag.orElseResult(() => Flag.string("config-url"))
+      )
+
+      assert.deepStrictEqual(Param.extractSingleParams(flag).map((param) => param.name), ["config", "config-url"])
+
+      const [, result] = yield* flag.parse({
+        flags: { "config-url": ["https://example.com"] },
+        arguments: []
+      })
+
+      assert.deepStrictEqual(result, Result.fail("https://example.com"))
     }).pipe(Effect.provide(TestLayer)))
 
   it("preserves __proto__ as an own makeSingle option", () => {
