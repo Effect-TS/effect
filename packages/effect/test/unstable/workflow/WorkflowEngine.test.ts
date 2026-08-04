@@ -88,7 +88,7 @@ describe("WorkflowEngine", () => {
         yield* DurableDeferred.succeed(gate, { token, value: void 0 })
         yield* Suspends.execute(payload)
 
-        assert.strictEqual(finalized.includes(1), true)
+        assert.deepStrictEqual(finalized, [2, 1])
       }).pipe(Effect.provide(layer))
     }))
 })
