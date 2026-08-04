@@ -37,7 +37,7 @@ import * as Reactivity from "./Reactivity.ts"
  * It exposes the RPC client, an atom runtime, mutation helpers that return `AtomResultFn`s, and query helpers that
  * return atoms or pull atoms for RPC results.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface AtomRpcClient<Self, Id extends string, Rpcs extends Rpc.Any> extends

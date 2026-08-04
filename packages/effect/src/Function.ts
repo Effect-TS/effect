@@ -29,7 +29,7 @@ import { pipeArguments } from "./Pipeable.ts"
  * // Equivalent to: (a: string) => number
  * ```
  *
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface FunctionTypeLambda extends TypeLambda {

@@ -73,7 +73,7 @@ export interface Predicate<in A> {
  * ```
  *
  * @see {@link Predicate}
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface PredicateTypeLambda extends TypeLambda {
@@ -452,7 +452,7 @@ export const isTupleOfAtLeast: {
  *
  * @see {@link isNullish}
  * @see {@link isNotNullish}
- * @category guards
+ * @category predicates
  * @since 2.0.0
  */
 export function isTruthy(input: unknown): boolean {
@@ -1830,7 +1830,7 @@ export const nand: {
  *
  * @see {@link some}
  * @see {@link and}
- * @category elements
+ * @category combining
  * @since 2.0.0
  */
 export function every<A>(collection: Iterable<Predicate<A>>): Predicate<A> {
@@ -1868,7 +1868,7 @@ export function every<A>(collection: Iterable<Predicate<A>>): Predicate<A> {
  *
  * @see {@link every}
  * @see {@link or}
- * @category elements
+ * @category combining
  * @since 2.0.0
  */
 export function some<A>(collection: Iterable<Predicate<A>>): Predicate<A> {

@@ -684,7 +684,7 @@ export declare namespace All {
  * await Effect.runPromise(Effect.provide(allWithRecord, services)) // => { username: "alice", password: "secret" }
  * ```
  *
- * @category collecting & elements
+ * @category combining
  * @since 4.0.0
  */
 export const all: <
@@ -1082,7 +1082,7 @@ export const password = (
  * The returned effect may fail with `Terminal.QuitError` if terminal input ends
  * or the prompt is quit.
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const run: <Output>(

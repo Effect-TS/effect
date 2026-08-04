@@ -50,7 +50,7 @@ export declare namespace OpenAiConfig {
    * Configuration consumed by OpenAI-compatible clients when they build or
    * resolve the underlying HTTP client.
    *
-   * @category models
+   * @category services
    * @since 4.0.0
    */
   export interface Service {

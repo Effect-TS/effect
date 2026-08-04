@@ -4,6 +4,19 @@ import { constant, constUndefined } from "effect/Function"
 import { TestClock } from "effect/testing"
 
 describe("Schedule", () => {
+  describe("constructors", () => {
+    it.effect("during recurs while the duration has not elapsed", () =>
+      Effect.gen(function*() {
+        const step = yield* Schedule.toStep(Schedule.during("1 second"))
+        const completed = yield* Pull.catchDone(
+          step(0, undefined).pipe(Effect.as(false)),
+          () => Effect.succeed(true)
+        )
+
+        assert.isFalse(completed)
+      }))
+  })
+
   describe("combining", () => {
     it.effect("max - outputs the slowest schedule duration", () =>
       Effect.gen(function*() {

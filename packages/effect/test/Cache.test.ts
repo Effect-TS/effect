@@ -336,6 +336,28 @@ describe("Cache", () => {
           yield* lookupInterrupted.await
           assert.strictEqual(yield* Cache.get(cache, "K1"), 42)
         }))
+
+      it.effect("concurrent access - interrupted lookup does not remove a newer set value", () =>
+        Effect.gen(function*() {
+          const lookupStarted = yield* Latch.make()
+          const lookupInterrupted = yield* Latch.make()
+          const cache = yield* Cache.make<string, number>({
+            capacity: 1,
+            lookup: () =>
+              Effect.onInterrupt(
+                lookupStarted.open.pipe(Effect.andThen(Effect.never)),
+                () => lookupInterrupted.open
+              )
+          })
+
+          const getter = yield* Cache.get(cache, "key").pipe(Effect.forkChild({ startImmediately: true }))
+          yield* lookupStarted.await
+          yield* Cache.set(cache, "key", 99)
+          yield* Fiber.interrupt(getter)
+          yield* lookupInterrupted.await
+
+          assert.deepStrictEqual(yield* Cache.getSuccess(cache, "key"), Option.some(99))
+        }))
     })
 
     describe("getOption", () => {

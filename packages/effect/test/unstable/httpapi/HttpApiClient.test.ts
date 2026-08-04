@@ -552,7 +552,7 @@ const Events = Schema.Struct({
   data: Schema.String
 })
 
-class EndpointError extends Schema.TaggedErrorClass<EndpointError>()("EndpointError", {
+class EndpointError extends Schema.TaggedError<EndpointError>()("EndpointError", {
   message: Schema.String
 }, { httpApiStatus: 400 }) {}
 

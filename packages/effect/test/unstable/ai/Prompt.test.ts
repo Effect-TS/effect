@@ -117,6 +117,59 @@ describe("Prompt", () => {
       assert.strictEqual(typeof toolContent[0] === "object" && toolContent[0].type, "tool-result")
     })
 
+    it("places provider-executed tool results in the assistant message", () => {
+      const parts = [
+        Response.makePart("tool-call", {
+          id: "ws-1",
+          name: "web_search",
+          params: {},
+          providerExecuted: true
+        }),
+        Response.makePart("tool-result", {
+          id: "ws-1",
+          name: "web_search",
+          isFailure: false,
+          result: { sources: 3 },
+          encodedResult: { sources: 3 },
+          preliminary: false,
+          providerExecuted: true
+        }),
+        Response.makePart("tool-call", {
+          id: "call-1",
+          name: "get_weather",
+          params: { city: "London" },
+          providerExecuted: false
+        }),
+        Response.makePart("tool-result", {
+          id: "call-1",
+          name: "get_weather",
+          isFailure: false,
+          result: { temp: 20 },
+          encodedResult: { temp: 20 },
+          preliminary: false,
+          providerExecuted: false
+        })
+      ]
+      const prompt = Prompt.fromResponseParts(parts)
+
+      // Provider-executed pair stays in the assistant message; only the
+      // framework-executed result forms a tool message
+      assert.strictEqual(prompt.content.length, 2)
+      assert.strictEqual(prompt.content[0].role, "assistant")
+      assert.strictEqual(prompt.content[1].role, "tool")
+
+      const assistantContent = prompt.content[0].content
+      assert.strictEqual(assistantContent.length, 3)
+      assert.strictEqual(typeof assistantContent[1] === "object" && assistantContent[1].type, "tool-result")
+      assert.deepStrictEqual((assistantContent[1] as any).id, "ws-1")
+      assert.strictEqual((assistantContent[1] as any).providerExecuted, true)
+
+      const toolContent = prompt.content[1].content
+      assert.strictEqual(toolContent.length, 1)
+      assert.deepStrictEqual((toolContent[0] as any).id, "call-1")
+      assert.strictEqual((toolContent[0] as any).providerExecuted, false)
+    })
+
     it("should handle out-of-order tool results (result before call in stream)", () => {
       // This simulates concurrent tool execution where results may arrive
       // in different order than their corresponding calls

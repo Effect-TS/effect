@@ -1,4 +1,5 @@
 import { afterAll, assert, describe, expect, it, layer } from "@effect/vitest"
+import * as testAssert from "@effect/vitest/utils"
 import { Clock, Context, Duration, Effect, Fiber, Layer, Schema } from "effect"
 import { FastCheck, TestClock } from "effect/testing"
 
@@ -10,6 +11,14 @@ it.live(
   "live",
   () => Effect.acquireRelease(Effect.sync(() => expect(1).toEqual(1)), () => Effect.void)
 )
+
+it("throws fails when the thunk does not throw", () => {
+  expect(() => testAssert.throws(() => {})).toThrow()
+})
+
+it("throwsAsync fails when the promise resolves", async () => {
+  await expect(testAssert.throwsAsync(() => Promise.resolve())).rejects.toThrow()
+})
 
 // each
 

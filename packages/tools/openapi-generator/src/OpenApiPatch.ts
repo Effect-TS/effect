@@ -49,7 +49,7 @@ import * as Yaml from "yaml"
  * @category errors
  * @since 4.0.0
  */
-export class JsonPatchParseError extends Schema.ErrorClass<JsonPatchParseError>("JsonPatchParseError")({
+export class JsonPatchParseError extends Schema.Error<JsonPatchParseError>("JsonPatchParseError")({
   _tag: Schema.tag("JsonPatchParseError"),
   source: Schema.String,
   reason: Schema.String
@@ -86,7 +86,7 @@ export class JsonPatchParseError extends Schema.ErrorClass<JsonPatchParseError>(
  * @category errors
  * @since 4.0.0
  */
-export class JsonPatchValidationError extends Schema.ErrorClass<JsonPatchValidationError>("JsonPatchValidationError")({
+export class JsonPatchValidationError extends Schema.Error<JsonPatchValidationError>("JsonPatchValidationError")({
   _tag: Schema.tag("JsonPatchValidationError"),
   source: Schema.String,
   reason: Schema.String
@@ -125,16 +125,14 @@ export class JsonPatchValidationError extends Schema.ErrorClass<JsonPatchValidat
  * @category errors
  * @since 4.0.0
  */
-export class JsonPatchApplicationError
-  extends Schema.ErrorClass<JsonPatchApplicationError>("JsonPatchApplicationError")({
-    _tag: Schema.tag("JsonPatchApplicationError"),
-    source: Schema.String,
-    operationIndex: Schema.Natural,
-    operation: Schema.String,
-    path: Schema.String,
-    reason: Schema.String
-  })
-{
+export class JsonPatchApplicationError extends Schema.Error<JsonPatchApplicationError>("JsonPatchApplicationError")({
+  _tag: Schema.tag("JsonPatchApplicationError"),
+  source: Schema.String,
+  operationIndex: Schema.Natural,
+  operation: Schema.String,
+  path: Schema.String,
+  reason: Schema.String
+}) {
   override get message() {
     return `Failed to apply patch from ${this.source}: operation ${this.operationIndex} ` +
       `(${this.operation} at ${this.path}): ${this.reason}`
@@ -179,7 +177,7 @@ export class JsonPatchApplicationError
  * @category errors
  * @since 4.0.0
  */
-export class JsonPatchAggregateError extends Schema.ErrorClass<JsonPatchAggregateError>("JsonPatchAggregateError")({
+export class JsonPatchAggregateError extends Schema.Error<JsonPatchAggregateError>("JsonPatchAggregateError")({
   _tag: Schema.tag("JsonPatchAggregateError"),
   errors: Schema.Array(Schema.Unknown)
 }) {
@@ -300,7 +298,7 @@ export const JsonPatchDocument = Schema.Array(JsonPatchOperation)
 /**
  * Type for a JSON Patch document.
  *
- * @category types
+ * @category models
  * @since 4.0.0
  */
 export type JsonPatchDocument = typeof JsonPatchDocument.Type
@@ -497,7 +495,7 @@ export const parsePatchInput = Effect.fn("parsePatchInput")(function*(input: str
  * Effect.runSync(program) // => "New Title"
  * ```
  *
- * @category application
+ * @category transforming
  * @since 4.0.0
  */
 export const applyPatches = Effect.fn("applyPatches")(function*(

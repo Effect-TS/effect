@@ -158,6 +158,7 @@ export const make: <
   lookup: (key: K) => Layer.Layer<I, EL, RL>,
   options?: {
     readonly idleTimeToLive?: IdleTimeToLiveInput<K> | undefined
+    readonly preloadKeys?: Iterable<K> | undefined
   } | undefined
 ) {
   const context = yield* Effect.context<never>()
@@ -170,6 +171,12 @@ export const make: <
       ),
     idleTimeToLive: options?.idleTimeToLive
   })
+
+  if (options?.preloadKeys) {
+    for (const key of options.preloadKeys) {
+      yield* Effect.scoped(RcMap.get(rcMap, key))
+    }
+  }
 
   return identity<LayerMap<K, I, any>>({
     [TypeId]: TypeId,
@@ -437,7 +444,7 @@ export declare namespace Service {
   /**
    * Extracts the key type accepted by a `LayerMap.Service` definition.
    *
-   * @category services
+   * @category utility types
    * @since 3.14.0
    */
   export type Key<Options> = Options extends { readonly lookup: (key: infer K) => any } ? K
@@ -447,7 +454,7 @@ export declare namespace Service {
   /**
    * Extracts the layer type produced by a `LayerMap.Service` definition.
    *
-   * @category services
+   * @category utility types
    * @since 3.14.0
    */
   export type Layers<Options> = Options extends { readonly lookup: (key: infer _K) => infer Layers } ? Layers
@@ -458,7 +465,7 @@ export declare namespace Service {
    * Extracts the services provided by the layers in a `LayerMap.Service`
    * definition.
    *
-   * @category services
+   * @category utility types
    * @since 3.14.0
    */
   export type Success<Options> = Layers<Options> extends Layer.Layer<infer _A, infer _E, infer _R> ? _A : never
@@ -466,7 +473,7 @@ export declare namespace Service {
   /**
    * Extracts the error type of the layers in a `LayerMap.Service` definition.
    *
-   * @category services
+   * @category utility types
    * @since 3.14.0
    */
   export type Error<Options> = Layers<Options> extends Layer.Layer<infer _A, infer _E, infer _R> ? _E : never
@@ -475,7 +482,7 @@ export declare namespace Service {
    * Extracts the service requirements of the layers in a `LayerMap.Service`
    * definition.
    *
-   * @category services
+   * @category utility types
    * @since 4.0.0
    */
   export type Services<Options> = Layers<Options> extends Layer.Layer<infer _A, infer _E, infer _R> ? _R : never

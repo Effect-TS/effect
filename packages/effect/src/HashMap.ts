@@ -221,7 +221,7 @@ export declare namespace HashMap {
  * HashMap.isHashMap(null) // => false
  * ```
  *
- * @category refinements
+ * @category guards
  * @since 2.0.0
  */
 export const isHashMap: {
@@ -298,7 +298,7 @@ export const fromIterable: <K, V>(entries: Iterable<readonly [K, V]>) => HashMap
  * HashMap.isEmpty(nonEmptyMap) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty: <K, V>(self: HashMap<K, V>) => boolean = internal.isEmpty
@@ -321,7 +321,7 @@ export const isEmpty: <K, V>(self: HashMap<K, V>) => boolean = internal.isEmpty
  * HashMap.get("b")(map) // => Option.some(2)
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const get: {
@@ -354,7 +354,7 @@ export const get: {
  * HashMap.getHash(userMap, "user999", Hash.string("user999")) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const getHash: {
@@ -422,7 +422,7 @@ export const getUnsafe: {
  * HashMap.has("b")(map) // => true
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const has: {
@@ -457,7 +457,7 @@ export const has: {
  * HashMap.hasHash(userMap, "Admin", lowercaseHash) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const hasHash: {
@@ -478,7 +478,7 @@ export const hasHash: {
  * HashMap.hasBy(hm, (value) => value === "b") // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 3.16.0
  */
 export const hasBy: {
@@ -1141,7 +1141,7 @@ export const filterMap: {
  * HashMap.findFirst(map, (value, key) => key === "b" && value > 1) // => Option.some(["b", 2])
  * ```
  *
- * @category elements
+ * @category searching
  * @since 2.0.0
  */
 export const findFirst: {
@@ -1163,7 +1163,7 @@ export const findFirst: {
  * HashMap.some(map, (value) => value > 5) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 3.13.0
  */
 export const some: {
@@ -1185,7 +1185,7 @@ export const some: {
  * HashMap.every(map, (value) => value > 1) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 3.14.0
  */
 export const every: {

@@ -21,7 +21,7 @@ describe("ShardingConfig", () => {
       ).pipe(Effect.flip)
       assert.strictEqual(
         missingHost.cause.message,
-        `Expected string, got undefined
+        `Expected string
   at ["listenHost"]`
       )
 
@@ -30,7 +30,7 @@ describe("ShardingConfig", () => {
       ).pipe(Effect.flip)
       assert.strictEqual(
         invalidPort.cause.message,
-        `Expected a string representing a finite number, got "invalid"
+        `Expected a string representing a finite number
   at ["listenPort"]`
       )
     }))

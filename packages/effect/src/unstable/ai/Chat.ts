@@ -699,7 +699,7 @@ export const fromJson = (data: string): Effect.Effect<
  * @category errors
  * @since 4.0.0
  */
-export class ChatNotFoundError extends Schema.ErrorClass<ChatNotFoundError>(
+export class ChatNotFoundError extends Schema.Error<ChatNotFoundError>(
   "effect/ai/Chat/ChatNotFoundError"
 )({
   _tag: Schema.tag("ChatNotFoundError"),
@@ -958,7 +958,7 @@ export const makePersisted = Effect.fnUntraced(function*(options: {
  *
  * @see {@link makePersisted} for the effect constructor when building the service directly instead of providing it as a layer
  *
- * @category constructors
+ * @category layers
  * @since 4.0.0
  */
 export const layerPersisted = (options: {

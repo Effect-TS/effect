@@ -601,6 +601,12 @@ export const zonedOffsetIso = (self: DateTime.Zoned): string => offsetToString(z
 export const toEpochMillis = (self: DateTime.DateTime): number => self.epochMilliseconds
 
 /** @internal */
+export const toEpochSeconds = (self: DateTime.DateTime): number => Math.floor(self.epochMilliseconds / 1000)
+
+/** @internal */
+export const fromEpochSeconds = (seconds: number): DateTime.Utc => makeUtc(seconds * 1000)
+
+/** @internal */
 export const removeTime = (self: DateTime.DateTime): DateTime.Utc =>
   withDate(self, (date) => {
     date.setUTCHours(0, 0, 0, 0)

@@ -136,13 +136,17 @@ export interface IndexedDbQueryBuilder<
     readonly tables: Tables
     readonly mode: Mode
     readonly durability?: IDBTransactionDurability
-  }) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E, Exclude<R, IndexedDbTransaction>>
+  }) => <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<
+    A,
+    E | IndexedDbQueryError,
+    Exclude<R, IndexedDbTransaction>
+  >
 }
 
 /**
  * Valid key-path type for a table schema, using encoded fields whose values are IndexedDB-valid keys.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type KeyPath<TableSchema extends IndexedDbTable.AnySchemaStruct> =
@@ -152,7 +156,7 @@ export type KeyPath<TableSchema extends IndexedDbTable.AnySchemaStruct> =
 /**
  * Valid numeric key-path type for a table schema, used for auto-increment key paths.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type KeyPathNumber<TableSchema extends IndexedDbTable.AnySchemaStruct> =
@@ -168,7 +172,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Decoded row type returned by select queries, adding a `key` field when the table does not define a key path.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type SelectType<
@@ -181,7 +185,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Input type for insert and upsert operations, adjusted for auto-increment keys and out-of-line keys.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type ModifyType<
@@ -215,7 +219,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Value type accepted by `equals` comparisons for a table key path or index.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type EqualsType<
@@ -229,7 +233,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Value type accepted by range comparisons for a table key path or index, including partial tuples for compound indexes.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type ExtractIndexType<
@@ -248,7 +252,7 @@ export declare namespace IndexedDbQuery {
   /**
    * Mutation input type for insert and upsert operations, including any required key fields.
    *
-   * @category models
+   * @category utility types
    * @since 4.0.0
    */
   export type ModifyWithKey<Table extends IndexedDbTable.AnyWithProps> = ModifyType<Table>
@@ -719,7 +723,7 @@ export declare namespace IndexedDbQuery {
 /**
  * Service tag for the active `IDBTransaction` used to share a transaction across IndexedDB query effects.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class IndexedDbTransaction extends Context.Service<IndexedDbTransaction, globalThis.IDBTransaction>()(
@@ -752,6 +756,7 @@ const applyDelete = (query: IndexedDbQuery.Delete<any, never>) =>
       durability: query.delete.from.table.durability
     })
     const objectStore = transaction.objectStore(query.delete.from.table.tableName)
+    const store = query.delete.index === undefined ? objectStore : objectStore.index(query.delete.index)
     const predicate = query.predicate
 
     let keyRange: globalThis.IDBKeyRange | undefined = undefined
@@ -782,8 +787,8 @@ const applyDelete = (query: IndexedDbQuery.Delete<any, never>) =>
 
     let request: globalThis.IDBRequest
 
-    if (query.limitValue !== undefined || predicate) {
-      const cursorRequest = objectStore.openCursor()
+    if (query.delete.index !== undefined || query.limitValue !== undefined || predicate) {
+      const cursorRequest = store.openCursor(keyRange)
       let count = 0
 
       cursorRequest.onerror = () => {
@@ -897,7 +902,7 @@ const applySelect = Effect.fnUntraced(function*(
   const keyPath = query.from.table.keyPath
   const predicate = query.predicate
 
-  const data = predicate || keyPath === undefined || query.offsetValue !== undefined ?
+  const data = predicate || keyPath === undefined || query.offsetValue !== undefined || query.reverseValue ?
     yield* Effect.callback<Array<any>, IndexedDbQueryError>((resume) => {
       const { keyRange, store } = getReadonlyObjectStore(query)
 
@@ -1001,7 +1006,13 @@ const applyFirst = Effect.fnUntraced(function*(
       }
 
       request.onsuccess = () => {
-        resume(Effect.succeed(request.result))
+        if (request.result === undefined) {
+          resume(
+            Effect.fail(new Cause.NoSuchElementError(`No such element in table ${query.select.from.table.tableName}`))
+          )
+        } else {
+          resume(Effect.succeed(request.result))
+        }
       }
     } else {
       const request = store.openCursor()
@@ -1516,7 +1527,7 @@ const DeleteProto: Omit<
   filter(this: IndexedDbQuery.Delete<any, never>, filter: (value: IndexedDbTable.Encoded<any>) => boolean) {
     const prev = this.predicate
     return makeDelete({
-      delete: this.delete,
+      ...this,
       predicate: prev ? (item) => prev(item) && filter(item) : filter
     })
   },
@@ -1760,18 +1771,22 @@ const SelectProto: Omit<
   }) {
     const limit = this.limitValue
     const chunkSize = Math.min(options?.chunkSize ?? 100, limit ?? Number.MAX_SAFE_INTEGER)
-    const initial = this.limit(chunkSize)
+    const initialOffset = this.offsetValue ?? 0
     return Stream.suspend(() => {
       let total = 0
+      const initial = this.limit(chunkSize)
       return Stream.paginate(initial, (select) =>
         Effect.map(
           applySelect(select as any),
           (data) => {
             total += data.length
-            ;(select as any).offsetValue = total
             const reachedLimit = limit && total >= limit
             const isPartial = data.length < chunkSize
-            return [data, isPartial || reachedLimit ? Option.none() : Option.some(select)] as const
+            const next = makeSelect({
+              ...select,
+              offsetValue: initialOffset + total
+            })
+            return [data, isPartial || reachedLimit ? Option.none() : Option.some(next)] as const
           }
         ))
     })
@@ -1987,13 +2002,41 @@ const QueryBuilderProto: Omit<
     return (effect) =>
       Effect.suspend(() => {
         const transaction = this.database.current.transaction(options.tables, options.mode, options)
-        return Effect.provideService(effect, IndexedDbTransaction, transaction)
+        return Effect.provideService(effect, IndexedDbTransaction, transaction).pipe(
+          Effect.onExit((exit) =>
+            exit._tag === "Success" ? awaitTransaction(transaction) : abortTransaction(transaction)
+          )
+        )
       }).pipe(
         // To prevent async gaps between transaction queries
         Effect.provideService(References.PreventSchedulerYield, true)
       )
   }
 }
+
+const abortTransaction = (transaction: globalThis.IDBTransaction) =>
+  Effect.try({
+    try: () => transaction.abort(),
+    catch: () => undefined
+  }).pipe(Effect.ignore)
+
+const awaitTransaction = (transaction: globalThis.IDBTransaction) =>
+  Effect.callback<void, IndexedDbQueryError>((resume) => {
+    transaction.oncomplete = () => {
+      resume(Effect.void)
+    }
+    transaction.onabort = () => {
+      resume(
+        Effect.fail(
+          new IndexedDbQueryError({
+            reason: "TransactionError",
+            cause: transaction.error
+          })
+        )
+      )
+    }
+    return abortTransaction(transaction)
+  })
 
 /**
  * Creates an `IndexedDbQueryBuilder` from an open database reference, key-range constructor, table map, and reactivity service.
