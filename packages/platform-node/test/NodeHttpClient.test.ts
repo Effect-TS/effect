@@ -63,6 +63,8 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       return HttpServerResponse.jsonUnsafe({ ...todo, id: 201 })
     })
   ),
+  HttpRouter.route("GET", "/redirect", Effect.succeed(HttpServerResponse.redirect("/redirected"))),
+  HttpRouter.route("GET", "/redirected", Effect.succeed(HttpServerResponse.text("redirected"))),
   HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
 ]))
 ;[
@@ -96,18 +98,16 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         expect(response).toContain("Google")
       }).pipe(Effect.provide(layer), flaky))
 
-    it.effect("google followRedirects", () =>
-      flaky(
-        Effect.gen(function*() {
-          const client = (yield* HttpClient.HttpClient).pipe(
-            HttpClient.followRedirects()
-          )
-          const response = yield* client.get("http://google.com/").pipe(
-            Effect.flatMap((_) => _.text)
-          )
-          expect(response).toContain("Google")
-        }).pipe(Effect.provide(layer))
-      ))
+    it.effect("local server followRedirects", () =>
+      Effect.gen(function*() {
+        const client = (yield* HttpClient.HttpClient).pipe(
+          HttpClient.followRedirects()
+        )
+        const response = yield* client.get("/redirect").pipe(
+          Effect.flatMap((_) => _.text)
+        )
+        expect(response).toBe("redirected")
+      }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("google stream", () =>
       flaky(
