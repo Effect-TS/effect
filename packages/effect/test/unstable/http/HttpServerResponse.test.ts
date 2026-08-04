@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Context, Effect, Stream } from "effect"
-import { HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/unstable/http"
+import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } from "effect/unstable/http"
 
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
@@ -75,4 +75,13 @@ describe("HttpServerResponse", () => {
       assert.strictEqual(response.status, 200)
       assert.strictEqual(yield* roundTrip.text, "")
     }))
+
+  it("synchronizes body metadata headers for empty and replaced bodies", () => {
+    const emptyBytes = HttpServerResponse.uint8Array(new Uint8Array())
+    assert.strictEqual(emptyBytes.headers["content-length"], "0")
+
+    const replaced = HttpServerResponse.setBody(HttpServerResponse.text("abc"), HttpBody.empty)
+    assert.notProperty(replaced.headers, "content-type")
+    assert.notProperty(replaced.headers, "content-length")
+  })
 })
