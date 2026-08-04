@@ -1216,7 +1216,7 @@ export const multiSelect = <const A>(
   const initialSelected = new Set<number>()
   for (let i = 0; i < opts.choices.length; i++) {
     const choice = opts.choices[i] as SelectChoice<A>
-    if (choice.selected === true) {
+    if (choice.selected === true && !choice.disabled) {
       initialSelected.add(i)
     }
   }
@@ -2649,16 +2649,22 @@ const processSpace = <A>(
 ) => {
   const selectedIndices = new Set(state.selectedIndices)
   if (state.index === 0) {
-    if (state.selectedIndices.size === options.choices.length) {
+    const selectableCount = options.choices.filter((choice) => !choice.disabled).length
+    const selectedCount = Array.from(state.selectedIndices).filter((index) => !options.choices[index].disabled).length
+    if (selectedCount === selectableCount) {
       selectedIndices.clear()
     } else {
       for (let i = 0; i < options.choices.length; i++) {
-        selectedIndices.add(i)
+        if (options.choices[i].disabled) {
+          selectedIndices.delete(i)
+        } else {
+          selectedIndices.add(i)
+        }
       }
     }
   } else if (state.index === 1) {
     for (let i = 0; i < options.choices.length; i++) {
-      if (state.selectedIndices.has(i)) {
+      if (options.choices[i].disabled || state.selectedIndices.has(i)) {
         selectedIndices.delete(i)
       } else {
         selectedIndices.add(i)
@@ -2666,7 +2672,9 @@ const processSpace = <A>(
     }
   } else {
     const choiceIndex = state.index - metaOptionsCount
-    if (selectedIndices.has(choiceIndex)) {
+    if (options.choices[choiceIndex].disabled) {
+      return Effect.succeed(Action.NextFrame({ state }))
+    } else if (selectedIndices.has(choiceIndex)) {
       selectedIndices.delete(choiceIndex)
     } else {
       selectedIndices.add(choiceIndex)
@@ -2706,7 +2714,8 @@ const handleMultiSelectProcess = <A>(options: SelectOptionsReq<A> & MultiSelectO
       }
       case "enter":
       case "return": {
-        const selectedCount = state.selectedIndices.size
+        const selectedIndices = Array.from(state.selectedIndices).filter((index) => !options.choices[index].disabled)
+        const selectedCount = selectedIndices.length
         if (options.min !== undefined && selectedCount < options.min) {
           return Effect.succeed(
             Action.NextFrame({ state: { ...state, error: Option.some(`At least ${options.min} are required`) } })
@@ -2717,9 +2726,7 @@ const handleMultiSelectProcess = <A>(options: SelectOptionsReq<A> & MultiSelectO
             Action.NextFrame({ state: { ...state, error: Option.some(`At most ${options.max} choices are allowed`) } })
           )
         }
-        const selectedValues = Array.from(state.selectedIndices).sort(EffectNumber.Order).map((index) =>
-          options.choices[index].value
-        )
+        const selectedValues = selectedIndices.sort(EffectNumber.Order).map((index) => options.choices[index].value)
         return Effect.succeed(Action.Submit({ value: selectedValues }))
       }
       default: {
