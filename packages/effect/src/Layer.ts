@@ -447,11 +447,13 @@ class MemoMapImpl implements MemoMap {
     scope: Scope.Scope,
     build: (memoMap: MemoMap, scope: Scope.Scope) => Effect<Context.Context<ROut>, E, RIn>
   ): Effect<Context.Context<ROut>, E, RIn> {
-    const existing = this.get(layer, scope)
-    if (existing) {
-      return existing
-    }
-    return memoMapBuild(this, layer, scope, build)
+    return internalEffect.suspend(() => {
+      const existing = this.get(layer, scope)
+      if (existing) {
+        return existing
+      }
+      return memoMapBuild(this, layer, scope, build)
+    })
   }
 }
 
