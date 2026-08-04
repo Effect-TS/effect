@@ -1,7 +1,8 @@
 import { PgClient } from "@effect/sql-pg"
 import { assert, expect, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Redacted, Stream, String } from "effect"
+import { Deferred, Effect, Fiber, Option, Redacted, Stream, String } from "effect"
 import { TestClock } from "effect/testing"
+import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { SqlClient } from "effect/unstable/sql"
 import * as Statement from "effect/unstable/sql/Statement"
 import { parse as parsePgConnectionString } from "pg-connection-string"
@@ -413,3 +414,51 @@ it.layer(PgContainer.layerClientSingleConnection, { timeout: "30 seconds" })("Pg
       expect(Array.from(payloads)).toEqual(["payload"])
     }).pipe(TestClock.withLive), 20_000)
 })
+
+it.effect("serializes transactions that share one pg.Client", () =>
+  Effect.gen(function*() {
+    const secondBegin = yield* Deferred.make<void>()
+    const firstBodyStarted = yield* Deferred.make<void>()
+    const releaseFirstBody = yield* Deferred.make<void>()
+    let beginCalls = 0
+    const pg = {
+      host: "localhost",
+      port: 5432,
+      database: "postgres",
+      user: "postgres",
+      password: undefined,
+      ssl: false,
+      on() {},
+      off() {},
+      query(sql: string, _params: ReadonlyArray<unknown>, callback: (error: null, result: unknown) => void) {
+        if (sql === "BEGIN" && ++beginCalls === 2) {
+          Deferred.doneUnsafe(secondBegin, Effect.void)
+        }
+        callback(null, { rows: [] })
+      }
+    }
+
+    const sql = yield* PgClient.fromClient({
+      acquire: Effect.succeed(pg as any),
+      acquireForStream: false
+    })
+    const first = yield* sql.withTransaction(Effect.gen(function*() {
+      yield* Deferred.succeed(firstBodyStarted, undefined)
+      yield* Deferred.await(releaseFirstBody)
+    })).pipe(Effect.forkScoped)
+    yield* Deferred.await(firstBodyStarted)
+    const second = yield* sql.withTransaction(Effect.void).pipe(Effect.forkScoped)
+
+    const overlap = yield* Deferred.await(secondBegin).pipe(
+      Effect.timeoutOption("100 millis"),
+      TestClock.withLive
+    )
+    yield* Deferred.succeed(releaseFirstBody, undefined)
+    yield* Fiber.join(first)
+    yield* Fiber.join(second)
+
+    assert.isTrue(Option.isNone(overlap))
+  }).pipe(
+    Effect.scoped,
+    Effect.provide(Reactivity.layer)
+  ))
