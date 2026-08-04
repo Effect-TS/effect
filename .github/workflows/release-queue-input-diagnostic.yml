@@ -1,0 +1,18 @@
+name: Release queue input diagnostic
+on:
+  pull_request:
+
+permissions: {}
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: Effect-TS/next-release-action@adcadc451f23d8dfc6c47d61642e8a223a299fb0
+        with:
+          github_token: ${{ github.token }}
+          eligible_branches: "v4/next-minor,v4/next-major"
+        env:
+          NEXT_RELEASE_ACTION_DIAGNOSTIC: "true"
