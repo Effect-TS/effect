@@ -222,15 +222,24 @@ export const make = (
 
   const randomBytes: Crypto["randomBytes"] = (size) => Effect.map(validateSize("randomBytes", size), randomBytesUnsafe)
 
-  const nextDoubleUnsafe = (): number => {
-    const bytes = randomBytesUnsafe(7)
-    const value = ((bytes[0] & 0x1f) * 2 ** 48) + (bytes[1] * 2 ** 40) + (bytes[2] * 2 ** 32) +
-      (bytes[3] * 2 ** 24) + (bytes[4] * 2 ** 16) + (bytes[5] * 2 ** 8) + bytes[6]
-    return value / 2 ** 53
-  }
+  const readUint53 = (bytes: Uint8Array): number =>
+    ((bytes[0] & 0x1f) * 2 ** 48) + (bytes[1] * 2 ** 40) + (bytes[2] * 2 ** 32) +
+    (bytes[3] * 2 ** 24) + (bytes[4] * 2 ** 16) + (bytes[5] * 2 ** 8) + bytes[6]
 
-  const nextIntUnsafe = (): number =>
-    Math.floor(nextDoubleUnsafe() * (Number.MAX_SAFE_INTEGER - Number.MIN_SAFE_INTEGER + 1)) + Number.MIN_SAFE_INTEGER
+  const nextDoubleUnsafe = (): number => readUint53(randomBytesUnsafe(7)) / 2 ** 53
+
+  const nextIntUnsafe = (): number => {
+    while (true) {
+      const bytes = randomBytesUnsafe(7)
+      const value = readUint53(bytes)
+      if ((bytes[0] & 0x20) === 0) {
+        return value + Number.MIN_SAFE_INTEGER
+      }
+      if (value < Number.MAX_SAFE_INTEGER) {
+        return value + 1
+      }
+    }
+  }
 
   return Crypto.of({
     [TypeId]: TypeId,
