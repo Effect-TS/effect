@@ -1,18 +1,23 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Stream } from "effect"
+import { Effect, Stream } from "effect"
 import * as Schema from "effect/Schema"
 import * as Ndjson from "effect/unstable/encoding/Ndjson"
 
 describe("Ndjson", () => {
-  it.effect("fails instead of emitting invalid NDJSON for undefined", () =>
+  it.effect("fails for values without a JSON representation", () =>
     Effect.gen(function*() {
-      const exit = yield* Stream.make(undefined).pipe(
-        Stream.pipeThroughChannel(Ndjson.encodeString()),
-        Stream.runCollect,
-        Effect.exit
-      )
+      const inputs = [undefined, () => {}, Symbol("x")]
 
-      assert.isTrue(Exit.isFailure(exit))
+      for (const input of inputs) {
+        const error = yield* Stream.make(input).pipe(
+          Stream.pipeThroughChannel(Ndjson.encodeString()),
+          Stream.runCollect,
+          Effect.flip
+        )
+
+        assert.instanceOf(error, Ndjson.NdjsonError)
+        assert.strictEqual(error.kind, "Pack")
+      }
     }))
 
   it.effect("decodeSchema decodes records split across Uint8Array chunks", () =>
