@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Data, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
+import { Data, DateTime, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
 import { Prompt } from "effect/unstable/cli"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
@@ -48,6 +48,19 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
     .filter((line) => stripAnsi(line).split(bell).join("").trim().length > 0)
 
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
+
+describe("Prompt.date", () => {
+  it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
+    Effect.gen(function*() {
+      const initial = DateTime.toDateUtc(DateTime.makeUnsafe({ year: 2024, month: 1, day: 11, hour: 12 }))
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "YY Do A" }))
+      const output = (yield* MockTerminal.displayLines).map(String).join("\n")
+
+      assert.include(output, "24 11th PM")
+    }).pipe(Effect.provide(TestLayer)))
+})
 
 describe("Prompt.integer", () => {
   it.effect("submits the default value", () =>
