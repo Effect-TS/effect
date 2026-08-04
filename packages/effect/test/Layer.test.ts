@@ -457,6 +457,7 @@ describe("Layer", () => {
       const scope = Scope.makeUnsafe()
       const layer = Layer.effectDiscard(Effect.void)
 
+      // @effect-diagnostics-next-line floatingEffect:off
       Layer.buildWithMemoMap(layer, memoMap, scope)
 
       assert.strictEqual((memoMap as any).map.size, 0)
