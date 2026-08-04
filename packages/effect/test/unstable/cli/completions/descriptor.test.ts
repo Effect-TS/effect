@@ -68,6 +68,24 @@ describe("CommandDescriptor", () => {
       assert.deepStrictEqual(configFlag.type, { _tag: "Path", pathType: "either" })
     })
 
+    it("retains path semantics when a path flag has a custom metavar", () => {
+      const command = Command.make("app", {
+        directory: Flag.path("directory", { pathType: "directory", typeName: "DIR" })
+      })
+      const descriptor = fromCommand(command)
+
+      assert.deepStrictEqual(descriptor.flags[0].type, { _tag: "Path", pathType: "directory" })
+    })
+
+    it("classifies file-backed flags as file paths", () => {
+      const command = Command.make("app", {
+        config: Flag.fileText("config")
+      })
+      const descriptor = fromCommand(command)
+
+      assert.deepStrictEqual(descriptor.flags[0].type, { _tag: "Path", pathType: "file" })
+    })
+
     it("extracts choice flags with values", () => {
       const cmd = Command.make("test", {
         color: Flag.choice("color", ["red", "green", "blue"])
