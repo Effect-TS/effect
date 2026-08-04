@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import { execFileSync } from "node:child_process"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 import * as Completions from "effect/unstable/cli/Completions"
 import * as Bash from "effect/unstable/cli/internal/completions/bash"
@@ -91,6 +92,26 @@ const emptyCmd = Command.make("noop").pipe(
 // ---------------------------------------------------------------------------
 
 describe("Bash completions", () => {
+  it("completes the active positional argument instead of always using the first", () => {
+    const descriptor: Completions.CommandDescriptor = {
+      name: "tool",
+      description: undefined,
+      flags: [],
+      arguments: [
+        { name: "source", description: undefined, required: true, variadic: false, type: { _tag: "Choice", values: ["one"] } },
+        { name: "target", description: undefined, required: true, variadic: false, type: { _tag: "Choice", values: ["two"] } }
+      ],
+      subcommands: []
+    }
+    const script = Bash.generate("tool", descriptor)
+    const builtins = `complete() { :; }\ncompgen() { for word in $2; do printf '%s\\n' "$word"; done; }`
+    const output = execFileSync("bash", ["-c", `${builtins}\n${script}\nCOMP_WORDS=(tool one "")\nCOMP_CWORD=2\n_tool\nprintf '%s\\n' "\${COMPREPLY[@]}"`], {
+      encoding: "utf8"
+    }).trim().split("\n")
+
+    assert.deepStrictEqual(output, ["two"])
+  })
+
   it("generates completion function for root command", () => {
     const desc = fromCommand(simpleCmd)
     const script = Bash.generate("greet", desc)
