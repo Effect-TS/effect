@@ -1,24 +1,22 @@
 import { MssqlClient, Procedure } from "@effect/sql-mssql"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Fiber } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as Statement from "effect/unstable/sql/Statement"
 import type * as Tedious from "tedious"
 import { vi } from "vitest"
 
-const state = vi.hoisted(() => ({ type: {} }))
+const state = vi.hoisted(() => ({ cancelCalls: 0, completeRequests: true, type: {} }))
 
 vi.mock("tedious", async (importOriginal) => {
   const original = await importOriginal<typeof Tedious>()
 
   class MockRequest {
     readonly listeners: Record<string, (...args: Array<any>) => void> = {}
-
     constructor(
       readonly sql: string,
       readonly callback: (cause: unknown, rowCount: number, rows: ReadonlyArray<any>) => void
     ) {}
-
     addParameter() {}
     addOutputParameter() {}
     on(event: string, listener: (...args: Array<any>) => void) {
@@ -32,9 +30,13 @@ vi.mock("tedious", async (importOriginal) => {
     }
     close() {}
     on() {}
-    cancel() {}
+    cancel() {
+      state.cancelCalls++
+    }
     execSql(request: MockRequest) {
-      request.callback(null, 0, [])
+      if (state.completeRequests) {
+        request.callback(null, 0, [])
+      }
     }
     callProcedure(request: MockRequest) {
       request.listeners.returnValue("answer", 42)
@@ -166,6 +168,23 @@ describe("mssql", () => {
       const result = yield* client.call(Procedure.compile(definition)({}))
 
       assert.deepStrictEqual(result, { output: { answer: 42 }, rows: [] })
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
+
+  it.effect("cancels an in-flight Tedious request when interrupted", () =>
+    Effect.gen(function*() {
+      state.cancelCalls = 0
+      state.completeRequests = true
+      const client = yield* MssqlClient.make({ server: "localhost" })
+      state.completeRequests = false
+      const fiber = yield* Effect.forkChild(client`WAITFOR DELAY '00:01:00'`)
+      yield* Effect.yieldNow
+      const callsBeforeInterrupt = state.cancelCalls
+      yield* Fiber.interrupt(fiber)
+
+      assert.strictEqual(state.cancelCalls, callsBeforeInterrupt + 1)
     }).pipe(
       Effect.scoped,
       Effect.provide(Reactivity.layer)
