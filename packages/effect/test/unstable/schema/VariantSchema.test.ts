@@ -65,13 +65,21 @@ describe("VariantSchema", () => {
 
   it("does not collide the __default variant with the default-schema cache entry", () => {
     const Test = VariantSchema.make({ variants: ["a", "__default"], defaultVariant: "a" })
-    const struct = Test.Struct({
+    const defaultFirst = Test.Struct({
       value: Test.Field({ a: Schema.String, __default: Schema.Number })
     })
 
-    Test.extract(struct, "a")
+    Test.extract(defaultFirst, "a")
 
-    assert.strictEqual(Test.extract(struct, "__default").fields.value, Schema.Number)
+    assert.strictEqual(Test.extract(defaultFirst, "__default").fields.value, Schema.Number)
+
+    const namedFirst = Test.Struct({
+      value: Test.Field({ a: Schema.String, __default: Schema.Number })
+    })
+
+    Test.extract(namedFirst, "__default")
+
+    assert.strictEqual(Test.extract(namedFirst, "a").fields.value, Schema.String)
   })
 })
 
