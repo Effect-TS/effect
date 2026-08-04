@@ -1,8 +1,8 @@
-import { afterEach, describe, it } from "@effect/vitest"
+import { afterEach, assert, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import type { Layer } from "effect"
-import { Effect, Option, Schema } from "effect"
+import { Effect, Layer, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
+import * as Persistence from "effect/unstable/persistence/Persistence"
 
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
   const run = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.KeyValueStore>) =>
@@ -87,6 +87,24 @@ export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>)
 }
 
 describe("KeyValueStore / layerMemory", () => testLayer(KeyValueStore.layerMemory))
+
+describe("Persistence / layerBackingKvs", () => {
+  it.effect("isolates keys and clear operations by store id", () =>
+    Effect.gen(function*() {
+      const backing = yield* Persistence.BackingPersistence
+      const storeA = yield* backing.make("a")
+      const storeAB = yield* backing.make("ab")
+
+      yield* storeAB.set("c", { owner: "ab" }, undefined)
+      assert.isUndefined(yield* storeA.get("bc"))
+
+      yield* storeA.clear
+      assert.deepStrictEqual(yield* storeAB.get("c"), { owner: "ab" })
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Persistence.layerBackingKvs.pipe(Layer.provide(KeyValueStore.layerMemory)))
+    ))
+})
 
 describe("KeyValueStore / prefix", () => {
   it.effect("prefixes the keys", () =>
