@@ -362,6 +362,20 @@ export const layerBackingSqlMultiTable: Layer.Layer<
             INSERT INTO ${table} ${sql.insert(entries)}
             ON DUPLICATE KEY UPDATE value=VALUES(value), expires=VALUES(expires)
           `.unprepared,
+        mssql: (): UpsertFn => (entries) =>
+          Effect.forEach(
+            entries,
+            (entry) =>
+              sql`
+                MERGE ${table} AS target
+                USING (SELECT ${entry.id} AS id, ${entry.value} AS value, ${entry.expires} AS expires) AS source
+                ON target.id = source.id
+                WHEN MATCHED THEN UPDATE SET value = source.value, expires = source.expires
+                WHEN NOT MATCHED THEN INSERT (id, value, expires)
+                VALUES (source.id, source.value, source.expires);
+              `,
+            { discard: true }
+          ),
         // sqlite
         orElse: (): UpsertFn => (entries) =>
           sql`
