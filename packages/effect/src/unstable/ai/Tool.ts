@@ -1712,7 +1712,7 @@ const getJsonSchemaFromSchemaWith = <S extends Schema.Constraint>(
  * Context.getUnsafe(myTool.annotations, Tool.Title) // => "Tip Calculator"
  * ```
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Title extends Context.Service<Title, string>()("effect/ai/Tool/Title") {}
@@ -1731,7 +1731,7 @@ export class Title extends Context.Service<Title, string>()("effect/ai/Tool/Titl
  * "ui" in Context.getUnsafe(myCalculatorUi.annotations, Tool.Meta) // => true
  * ```
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export class Meta extends Context.Service<Meta, Record<string, unknown>>()("effect/ai/Tool/Meta") {}
@@ -1755,7 +1755,7 @@ export class Meta extends Context.Service<Meta, Record<string, unknown>>()("effe
  * Context.get(readOnlyTool.annotations, Tool.Readonly) // => true
  * ```
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export const Readonly = Context.Reference<boolean>("effect/ai/Tool/Readonly", {
@@ -1781,7 +1781,7 @@ export const Readonly = Context.Reference<boolean>("effect/ai/Tool/Readonly", {
  * Context.get(safeTool.annotations, Tool.Destructive) // => false
  * ```
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export const Destructive = Context.Reference<boolean>("effect/ai/Tool/Destructive", {
@@ -1808,7 +1808,7 @@ export const Destructive = Context.Reference<boolean>("effect/ai/Tool/Destructiv
  * Context.get(idempotentTool.annotations, Tool.Idempotent) // => true
  * ```
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export const Idempotent = Context.Reference<boolean>("effect/ai/Tool/Idempotent", {
@@ -1835,7 +1835,7 @@ export const Idempotent = Context.Reference<boolean>("effect/ai/Tool/Idempotent"
  * Context.get(restrictedTool.annotations, Tool.OpenWorld) // => false
  * ```
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export const OpenWorld = Context.Reference<boolean>("effect/ai/Tool/OpenWorld", {
@@ -1865,7 +1865,7 @@ export const OpenWorld = Context.Reference<boolean>("effect/ai/Tool/OpenWorld", 
  * Tool.getStrictMode(flexibleTool) // => false
  * ```
  *
- * @category annotations
+ * @category services
  * @since 4.0.0
  */
 export const Strict = Context.Reference<boolean | undefined>("effect/ai/Tool/Strict", {

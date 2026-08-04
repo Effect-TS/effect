@@ -138,7 +138,7 @@ export interface EffectUnify<A extends { [Unify.typeSymbol]?: any }> {
 /**
  * Type lambda used to represent `Effect` in higher-kinded APIs.
  *
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface EffectTypeLambda extends TypeLambda {
@@ -168,7 +168,7 @@ export interface Variance<A, E, R> {
  * @see {@link Error} for extracting the failure type from the same `Effect`
  * @see {@link Services} for extracting the required services from the same `Effect`
  *
- * @category models
+ * @category utility types
  * @since 2.0.0
  */
 export type Success<T> = T extends Effect<infer _A, infer _E, infer _R> ? _A
@@ -189,7 +189,7 @@ export type Success<T> = T extends Effect<infer _A, infer _E, infer _R> ? _A
  * @see {@link Success} for extracting the success value type instead
  * @see {@link Services} for extracting the required services type instead
  *
- * @category models
+ * @category utility types
  * @since 2.0.0
  */
 export type Error<T> = T extends Effect<infer _A, infer _E, infer _R> ? _E
@@ -206,7 +206,7 @@ export type Error<T> = T extends Effect<infer _A, infer _E, infer _R> ? _E
  * @see {@link Success} for extracting the success value type instead
  * @see {@link Error} for extracting the failure type instead
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Services<T> = T extends Effect<infer _A, infer _E, infer _R> ? _R
@@ -488,7 +488,7 @@ export declare namespace All {
  * ```
  *
  * @see {@link forEach} for iterating over elements and applying an effect.
- * @category collecting
+ * @category combining
  * @since 2.0.0
  */
 export const all: <
@@ -529,7 +529,7 @@ export const all: <
  * await Effect.runPromise(program) // => [['0 is even', '2 is even'], [1, 3]]
  * ```
  *
- * @category collecting
+ * @category filtering
  * @since 2.0.0
  */
 export const partition: {
@@ -578,7 +578,7 @@ export const partition: {
  * output // => ["Adding 1 at index 0", "Adding 2 at index 1", "Adding 3 at index 2", 6]
  * ```
  *
- * @category collecting
+ * @category folding
  * @since 2.0.0
  */
 export const reduce: {
@@ -617,7 +617,7 @@ export const reduce: {
  * await Effect.runPromiseExit(program) // => Exit.fail(["0 is even", "2 is even"])
  * ```
  *
- * @category error accumulation
+ * @category validation
  * @since 2.0.0
  */
 export const validate: {
@@ -671,7 +671,7 @@ export const validate: {
  * await Effect.runPromise(program) // => Option.some(3)
  * ```
  *
- * @category collecting
+ * @category searching
  * @since 2.0.0
  */
 export const findFirst: {
@@ -699,7 +699,7 @@ export const findFirst: {
  *
  * @see {@link findFirst} for the simpler effectful predicate-based variant
  *
- * @category collecting
+ * @category searching
  * @since 4.0.0
  */
 export const findFirstFilter: {
@@ -773,7 +773,7 @@ export const findFirstFilter: {
  * ```
  *
  * @see {@link all} for combining multiple effects into one.
- * @category collecting
+ * @category sequencing
  * @since 2.0.0
  */
 export const forEach: {
@@ -809,7 +809,7 @@ export const forEach: {
  * output // => ["Current count: 1", "Current count: 2", "Current count: 3", "Current count: 4", "Current count: 5"]
  * ```
  *
- * @category collecting
+ * @category repetition
  * @since 2.0.0
  */
 export const whileLoop: <A, E, R>(options: {
@@ -1242,7 +1242,7 @@ export const never: Effect<never> = internal.never
  * Effect.runSync(program) // => { x: 2, y: 3, sum: 5 }
  * ```
  *
- * @category do notation
+ * @category constructors
  * @since 2.0.0
  */
 export const Do: Effect<{}> = internal.Do
@@ -1259,7 +1259,7 @@ export const Do: Effect<{}> = internal.Do
  * @see {@link Do} for starting from an empty accumulated record
  * @see {@link bind} for adding fields produced by effects
  *
- * @category do notation
+ * @category mapping
  * @since 2.0.0
  */
 export const bindTo: {
@@ -1301,7 +1301,7 @@ export {
    * @see {@link Do} for starting from an empty accumulated record
    * @see {@link gen} for sequencing without accumulating a record
    *
-   * @category do notation
+   * @category mapping
    * @since 2.0.0
    */
   let_ as let
@@ -1331,7 +1331,7 @@ export {
  * @see {@link bindTo} for naming the success value of an existing effect
  * @see {@link gen} for generator-based sequencing without accumulating a record
  *
- * @category do notation
+ * @category sequencing
  * @since 2.0.0
  */
 export const bind: {
@@ -2209,7 +2209,7 @@ export const tap: {
  * @see {@link option} for a version that uses `Option` instead.
  * @see {@link exit} for a version that encapsulates both recoverable errors and defects in an `Exit`.
  *
- * @category outcome encapsulation
+ * @category error handling
  * @since 4.0.0
  */
 export const result: <A, E, R>(self: Effect<A, E, R>) => Effect<Result.Result<A, E>, never, R> = internal.result
@@ -2252,7 +2252,7 @@ export const result: <A, E, R>(self: Effect<A, E, R>) => Effect<Result.Result<A,
  * @see {@link result} for a version that uses `Result` instead.
  * @see {@link exit} for a version that encapsulates both recoverable errors and defects in an `Exit`.
  *
- * @category outcome encapsulation
+ * @category error handling
  * @since 2.0.0
  */
 export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option<A>, never, R> = internal.option
@@ -2294,7 +2294,7 @@ export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option<A>, never
  * @see {@link option} for a version that uses `Option` instead.
  * @see {@link result} for a version that uses `Result` instead.
  *
- * @category outcome encapsulation
+ * @category error handling
  * @since 2.0.0
  */
 export const exit: <A, E, R>(
@@ -3622,7 +3622,7 @@ export const mapBoth: {
  * Effect.runSyncExit(program) // => Exit.die(new DivideByZeroError())
  * ```
  *
- * @category converting failures to defects
+ * @category error handling
  * @since 2.0.0
  */
 export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = internal.orDie
@@ -4283,7 +4283,7 @@ export const ignoreCause: <
  * Effect.runSync(program) // => "good"
  * ```
  *
- * @category fallback
+ * @category error handling
  * @since 3.16.0
  */
 export const withExecutionPlan: {
@@ -4354,7 +4354,7 @@ export const withErrorReporting: <
  * Effect.runSyncExit(program) // => Exit.succeed(18)
  * ```
  *
- * @category fallback
+ * @category error handling
  * @since 2.0.0
  */
 export const orElseSucceed: {
@@ -4407,7 +4407,7 @@ export const orElseSucceed: {
  * Effect.runSync(program) // => "secondary result"
  * ```
  *
- * @category fallback
+ * @category error handling
  * @since 2.0.0
  */
 export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
@@ -5177,7 +5177,7 @@ export const filterMapOrFail: {
  * output // => ["Condition is true!", Option.some(undefined)]
  * ```
  *
- * @category conditional operators
+ * @category filtering
  * @since 2.0.0
  */
 export const when: {
@@ -5600,7 +5600,7 @@ export const matchEffect: {
  * output // => [true]
  * ```
  *
- * @category condition checking
+ * @category predicates
  * @since 2.0.0
  */
 export const isFailure: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, never, R> = internal.isFailure
@@ -5630,7 +5630,7 @@ export const isFailure: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  * output // => ["ok: true", "failed: false"]
  * ```
  *
- * @category condition checking
+ * @category predicates
  * @since 2.0.0
  */
 export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, never, R> = internal.isSuccess
@@ -5687,7 +5687,7 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  * @see {@link contextWith} for deriving an effect from the complete context
  * @see {@link service} for reading one service from the context
  *
- * @category environment
+ * @category accessors
  * @since 2.0.0
  */
 export const context: <R = never>() => Effect<Context.Context<R>, never, R> = internal.context
@@ -5746,7 +5746,7 @@ export const context: <R = never>() => Effect<Context.Context<R>, never, R> = in
  * @see {@link context} for reading the complete context as a value
  * @see {@link service} for reading one service from the context
  *
- * @category environment
+ * @category accessors
  * @since 2.0.0
  */
 export const contextWith: <R, A, E, R2>(
@@ -5783,7 +5783,7 @@ export const contextWith: <R, A, E, R2>(
  * await Effect.runPromise(provided) // => "Result for: SELECT * FROM users"
  * ```
  *
- * @category environment
+ * @category providing services
  * @since 2.0.0
  */
 export const provide: {
@@ -5874,7 +5874,7 @@ export const provide: {
  * output // => ["Querying database", "result"]
  * ```
  *
- * @category environment
+ * @category providing services
  * @since 4.0.0
  */
 export const provideContext: {
@@ -5925,7 +5925,7 @@ export const provideContext: {
  * @see {@link provideContext} for partially satisfying an effect's context requirements.
  * @see {@link updateContext} for deriving the required context from the current one.
  *
- * @category environment
+ * @category providing services
  * @since 4.0.0
  */
 export const setContext: {
@@ -5958,7 +5958,7 @@ export const setContext: {
  * Effect.runSync(runnable) // => "Result for: SELECT * FROM users"
  * ```
  *
- * @category context
+ * @category accessors
  * @since 4.0.0
  */
 export const service: <I, S>(service: Context.Key<I, S>) => Effect<S, never, I> = internal.service
@@ -6004,7 +6004,7 @@ export const service: <I, S>(service: Context.Key<I, S>) => Effect<S, never, I> 
  * output // => ["Service not available"]
  * ```
  *
- * @category context
+ * @category accessors
  * @since 2.0.0
  */
 export const serviceOption: <I, S>(key: Context.Key<I, S>) => Effect<Option<S>> = internal.serviceOption
@@ -6048,7 +6048,7 @@ export const serviceOption: <I, S>(key: Context.Key<I, S>) => Effect<Option<S>> 
  * Effect.runSync(result) // => "Hello World!"
  * ```
  *
- * @category context
+ * @category providing services
  * @since 4.0.0
  */
 export const updateContext: {
@@ -6093,7 +6093,7 @@ export const updateContext: {
  * output // => ["Updated count: 1", 1]
  * ```
  *
- * @category context
+ * @category providing services
  * @since 2.0.0
  */
 export const updateService: {
@@ -6164,7 +6164,7 @@ export const updateService: {
  *
  * @see {@link updateService} for updating a service only within a wrapped effect
  *
- * @category context
+ * @category providing services
  * @since 4.0.0
  */
 export const updateServiceScoped: <I, A>(
@@ -6219,7 +6219,7 @@ export const updateServiceScoped: <I, A>(
  * @see {@link provide} for providing multiple layers to an effect.
  * @see {@link provideServiceEffect} for acquiring the service implementation effectfully.
  * @see {@link provideContext} for providing a complete context.
- * @category context
+ * @category providing services
  * @since 2.0.0
  */
 export const provideService: {
@@ -6292,7 +6292,7 @@ export const provideService: {
  * output // => ["Establishing database connection...", "Database connected!", "Result for: SELECT * FROM users"]
  * ```
  *
- * @category context
+ * @category providing services
  * @since 2.0.0
  */
 export const provideServiceEffect: {
@@ -7615,7 +7615,7 @@ export const repeatOrElse: {
  * @see {@link all} for running the returned effects and collecting results
  * @see {@link replicateEffect} for repeating an effect and collecting results in one step with concurrency and discard options
  *
- * @category collecting
+ * @category repetition
  * @since 2.0.0
  */
 export const replicate: {
@@ -7650,7 +7650,7 @@ export const replicate: {
  * output // => [[1, 1, 1]]
  * ```
  *
- * @category collecting
+ * @category repetition
  * @since 2.0.0
  */
 export const replicateEffect: {
@@ -8351,7 +8351,7 @@ export const withParentSpan: {
  *
  * @see {@link requestUnsafe} for the low-level entry point when you already have a `Context` and need to enqueue outside an `Effect`
  *
- * @category requests & batching
+ * @category running
  * @since 2.0.0
  */
 export const request: {
@@ -8378,7 +8378,7 @@ export const request: {
  *
  * @see {@link request} for the `Effect`-returning API used for normal request execution
  *
- * @category requests & batching
+ * @category unsafe
  * @since 4.0.0
  */
 export const requestUnsafe: <A extends Request.Any>(
@@ -8433,7 +8433,7 @@ export const requestUnsafe: <A extends Request.Any>(
  * await Effect.runPromise(program) // => "result"
  * ```
  *
- * @category supervision & fibers
+ * @category forking
  * @since 4.0.0
  */
 export const forkChild: <
@@ -8476,7 +8476,7 @@ export const forkChild: <
  * await Effect.runPromise(program) // => "done"
  * ```
  *
- * @category supervision & fibers
+ * @category forking
  * @since 2.0.0
  */
 export const forkIn: {
@@ -8519,7 +8519,7 @@ export const forkIn: {
  * await Effect.runPromise(program) // => "scope completed"
  * ```
  *
- * @category supervision & fibers
+ * @category forking
  * @since 2.0.0
  */
 export const forkScoped: <
@@ -8559,7 +8559,7 @@ export const forkScoped: <
  * await Effect.runPromise(program) // => "daemon result"
  * ```
  *
- * @category supervision & fibers
+ * @category forking
  * @since 4.0.0
  */
 export const forkDetach: <
@@ -8598,7 +8598,7 @@ export const forkDetach: <
  * @see {@link forkIn} for forking into an explicit scope
  * @see {@link forkScoped} for forking fibers tied to the current scope
  *
- * @category supervision & fibers
+ * @category sequencing
  * @since 2.0.0
  */
 export const awaitAllChildren: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = internal.awaitAllChildren
@@ -8621,7 +8621,7 @@ export const awaitAllChildren: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, 
  * output // => ["number"]
  * ```
  *
- * @category supervision & fibers
+ * @category accessors
  * @since 4.0.0
  */
 export const fiber: Effect<Fiber<unknown, unknown>> = internal.fiber
@@ -8638,7 +8638,7 @@ export const fiber: Effect<Fiber<unknown, unknown>> = internal.fiber
  * Effect.runSync(program) // => "number"
  * ```
  *
- * @category supervision & fibers
+ * @category accessors
  * @since 2.0.0
  */
 export const fiberId: Effect<number> = internal.fiberId
@@ -13389,7 +13389,7 @@ export declare namespace fn {
  * Effect.runSync(program) // => "hello"
  * ```
  *
- * @category functions
+ * @category constructors
  * @since 3.12.0
  */
 export const fnUntraced: fn.Untraced = internal.fnUntraced
@@ -13513,7 +13513,7 @@ export const fnUntraced: fn.Untraced = internal.fnUntraced
  * Effect.runSync(program) // => "hello"
  * ```
  *
- * @category functions
+ * @category constructors
  * @since 3.11.0
  */
 export const fn: fn.Traced & {
@@ -13542,7 +13542,7 @@ export const fn: fn.Traced & {
  * Effect.runSync(program) // => "Clock is available"
  * ```
  *
- * @category clock
+ * @category accessors
  * @since 2.0.0
  */
 export const clockWith: <A, E, R>(
@@ -14037,7 +14037,7 @@ export const withLogSpan = dual<
  * Effect.runSync(Metric.value(exitTracker)).occurrences.get("success") // => 1
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const track: {
@@ -14112,7 +14112,7 @@ export const track: {
  * Effect.runSync(Metric.value(requestSizeGauge)).value // => 12
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const trackSuccesses: {
@@ -14189,7 +14189,7 @@ export const trackSuccesses: {
  * Effect.runSync(Metric.value(errorTypeFrequency)).occurrences.get("ConnectionFailedError") // => 1
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const trackErrors: {
@@ -14267,7 +14267,7 @@ export const trackErrors: {
  * Effect.runSync(Metric.value(defectTypeFrequency)).occurrences.get("Error") // => 1
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const trackDefects: {
@@ -14337,7 +14337,7 @@ export const trackDefects: {
  * Effect.runSync(Metric.value(durationGauge)).value // => 1
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const trackDuration: {
@@ -14409,7 +14409,7 @@ export const trackDuration: {
  * Effect.runSync(runnable) // => "Transaction complete"
  * ```
  *
- * @category transactions
+ * @category services
  * @since 4.0.0
  */
 export class Transaction extends Context.Service<
@@ -14621,7 +14621,7 @@ export declare namespace Effectify {
   /**
    * Converts a callback-based function type into an `Effect`-returning function type.
    *
-   * @category effectify
+   * @category utility types
    * @since 4.0.0
    */
   export type Effectify<T, E> = T extends {
@@ -14769,7 +14769,7 @@ export declare namespace Effectify {
   /**
    * Extracts the callback error type from a callback-based function type.
    *
-   * @category effectify
+   * @category utility types
    * @since 4.0.0
    */
   export type EffectifyError<T> = T extends {
@@ -14899,7 +14899,7 @@ export declare namespace Effectify {
  * error.message // => "Failed to process hello: unavailable"
  * ```
  *
- * @category effectify
+ * @category converting
  * @since 4.0.0
  */
 export const effectify: {
@@ -15057,7 +15057,7 @@ export const satisfiesServicesType = <R>() => <A, E, R2 extends R>(effect: Effec
  * await Effect.runPromise(Effect.all([mapped, mappedPending])) // => [10, 10]
  * ```
  *
- * @category eager
+ * @category mapping
  * @since 4.0.0
  */
 export const mapEager: {
@@ -15104,7 +15104,7 @@ export const mapEager: {
  * output // => [['mapped: original error', 'mapped: error']]
  * ```
  *
- * @category eager
+ * @category error handling
  * @since 4.0.0
  */
 export const mapErrorEager: {
@@ -15150,7 +15150,7 @@ export const mapErrorEager: {
  * output // => [10, "Failed: error"]
  * ```
  *
- * @category eager
+ * @category mapping
  * @since 4.0.0
  */
 export const mapBothEager: {
@@ -15196,7 +15196,7 @@ export const mapBothEager: {
  * await Effect.runPromise(Effect.all([flatMapped, flatMappedPending])) // => [10, 10]
  * ```
  *
- * @category eager
+ * @category sequencing
  * @since 4.0.0
  */
 export const flatMapEager: {
@@ -15253,7 +15253,7 @@ export const flatMapEager: {
  * output // => [['recovered from: original error', 42, 'recovered from: error']]
  * ```
  *
- * @category eager
+ * @category error handling
  * @since 4.0.0
  */
 export const catchEager: {
@@ -15289,7 +15289,7 @@ export const catchEager: {
  * Effect.runSync(effect) // => "computed eagerly"
  * ```
  *
- * @category eager
+ * @category constructors
  * @since 4.0.0
  */
 export const fnUntracedEager: fn.Untraced = internal.fnUntracedEager

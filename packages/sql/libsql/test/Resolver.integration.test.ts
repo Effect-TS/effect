@@ -1,6 +1,6 @@
 import { LibsqlClient } from "@effect/sql-libsql"
 import { assert, describe, layer } from "@effect/vitest"
-import { Cause, Effect, Iterable } from "effect"
+import { Cause, Effect } from "effect"
 import * as Schema from "effect/Schema"
 import { SqlError, SqlResolver } from "effect/unstable/sql"
 import { LibsqlContainer } from "./util.ts"
@@ -8,9 +8,14 @@ import { LibsqlContainer } from "./util.ts"
 const seededClient = Effect.gen(function*() {
   const sql = yield* LibsqlClient.LibsqlClient
   yield* sql`CREATE TABLE test (id INTEGER PRIMARY KEY, name TEXT)`
-  for (const id of Iterable.range(1, 100)) {
-    yield* sql`INSERT INTO test ${sql.insert({ id, name: `name${id}` })}`
-  }
+  yield* sql`INSERT INTO test ${
+    sql.insert([
+      { id: 1, name: "name1" },
+      { id: 2, name: "name2" },
+      { id: 3, name: "name3" },
+      { id: 100, name: "name100" }
+    ])
+  }`
   yield* Effect.addFinalizer(() => sql`DROP TABLE test;`.pipe(Effect.orDie))
   return sql
 })

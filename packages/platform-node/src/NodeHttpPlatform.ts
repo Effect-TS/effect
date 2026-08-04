@@ -8,16 +8,63 @@
  *
  * @since 4.0.0
  */
+import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
+import * as Effect from "effect/Effect"
 import { pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import * as EtagImpl from "effect/unstable/http/Etag"
 import * as Headers from "effect/unstable/http/Headers"
+import * as HttpBody from "effect/unstable/http/HttpBody"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as ServerResponse from "effect/unstable/http/HttpServerResponse"
 import * as Fs from "node:fs"
 import { Readable } from "node:stream"
 import Mime from "./Mime.ts"
 import * as NodeFileSystem from "./NodeFileSystem.ts"
+import * as NodeStream from "./NodeStream.ts"
+
+// replaces the response body while keeping every other field, dropping the
+// now-stale Content-Length header
+const compressedBody = (
+  response: ServerResponse.HttpServerResponse,
+  body: HttpBody.HttpBody
+): ServerResponse.HttpServerResponse =>
+  ServerResponse.removeHeader(ServerResponse.setBody(response, body), "content-length")
+
+const compression = NodeHttpCompression.make({
+  algorithms: NodeHttpCompression.algorithms,
+  compressResponse(response, algorithm, options) {
+    const body = response.body
+    switch (body._tag) {
+      case "Stream": {
+        return Effect.succeed(compressedBody(
+          response,
+          HttpBody.stream(
+            NodeStream.pipeThroughDuplex(body.stream, {
+              evaluate: () => NodeHttpCompression.compressTransform(algorithm, options)
+            }),
+            body.contentType
+          )
+        ))
+      }
+      case "Raw": {
+        const readable = body.body instanceof Readable
+          ? body.body
+          : Readable.fromWeb(new Response(body.body as BodyInit).body as any)
+        const transform = NodeHttpCompression.compressTransform(algorithm, options)
+        readable.on("error", (cause) => transform.destroy(cause))
+        transform.on("error", (cause) => readable.destroy(cause))
+        transform.on("close", () => readable.destroy())
+        return Effect.succeed(
+          compressedBody(response, HttpBody.raw(readable.pipe(transform), { contentType: body.contentType }))
+        )
+      }
+      default: {
+        return Effect.succeed(response)
+      }
+    }
+  }
+})
 
 /**
  * Creates the Node `HttpPlatform`, serving file responses from Node readable
@@ -28,6 +75,7 @@ import * as NodeFileSystem from "./NodeFileSystem.ts"
  */
 export const make = Platform.make({
   platform: "node",
+  compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
     const stream = contentLength === 0
       ? Readable.from([])

@@ -11,6 +11,7 @@
  *
  * @since 4.0.0
  */
+import * as NodeHttpCompression from "@effect/platform-node-shared/NodeHttpCompression"
 import { contentType } from "@std/media-types"
 import { extname } from "@std/path"
 import { ByteSliceStream } from "@std/streams"
@@ -19,6 +20,17 @@ import * as Etag from "effect/unstable/http/Etag"
 import * as Platform from "effect/unstable/http/HttpPlatform"
 import * as Response from "effect/unstable/http/HttpServerResponse"
 import * as DenoFileSystem from "./DenoFileSystem.ts"
+
+// gzip and deflate use the native CompressionStream, which does not expose a
+// per-chunk flush control. br and zstd go through node:zlib compatibility
+// streams and flush each input chunk.
+const compression = NodeHttpCompression.make(Platform.makeCompressionWeb({
+  algorithms: NodeHttpCompression.algorithms,
+  transform: (algorithm, options) =>
+    algorithm === "gzip" || algorithm === "deflate"
+      ? Platform.compressionTransformWeb(algorithm)
+      : NodeHttpCompression.compressTransformWeb(algorithm, options)
+}))
 
 /**
  * Creates the Deno `HttpPlatform`, serving file responses from resource-backed
@@ -29,6 +41,7 @@ import * as DenoFileSystem from "./DenoFileSystem.ts"
  */
 export const make = Platform.make({
   platform: "deno",
+  compression,
   fileResponse(path, status, statusText, headers, start, end, contentLength) {
     let body: ReadableStream<Uint8Array>
     if (contentLength === 0) {

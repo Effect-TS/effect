@@ -60,7 +60,7 @@ export type TypeId = "~@effect/sql-sqlite-wasm/SqliteClient"
 /**
  * SQLite WASM client service interface, extending `SqlClient` with database `export` and `import` operations and marking `updateValues` as unsupported for SQLite.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface SqliteClient extends Client.SqlClient {
@@ -467,7 +467,7 @@ const extractRows = (rows: [Array<string>, Array<any>]) => rows[1]
 /**
  * Fiber reference that stores transferables to include with worker-backed SQLite WASM query messages.
  *
- * @category transferables
+ * @category services
  * @since 4.0.0
  */
 export const Transferables = Context.Reference<ReadonlyArray<Transferable>>(

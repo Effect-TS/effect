@@ -115,3 +115,9 @@ effect/TArray#update:
 effect/TArray#updateSTM:
   replacement: "Effect.tx + TxChunk.get/TxChunk.set"
   note: "Read, effectfully update the indexed element, and write the rebuilt Chunk within one Effect.tx transaction."
+effect/TArray#every:
+  replacement: "Effect.map(TxChunk.get(self), Chunk.every(predicate))"
+  note: "TArray was removed; read the TxChunk snapshot and test every element inside the surrounding Effect.tx transaction."
+effect/TArray#some:
+  replacement: "Effect.map(TxChunk.get(self), Chunk.some(predicate))"
+  note: "TArray was removed; read the TxChunk snapshot and test for a matching element inside the surrounding Effect.tx transaction."

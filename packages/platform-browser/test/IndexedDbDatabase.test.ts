@@ -1,6 +1,6 @@
 import { IndexedDb, IndexedDbDatabase, IndexedDbTable, IndexedDbVersion } from "@effect/platform-browser"
 import { afterEach, assert, describe, it } from "@effect/vitest"
-import { Effect, Layer, Schema } from "effect"
+import { Effect, Layer, Result, Schema } from "effect"
 import { IDBKeyRange, indexedDB } from "fake-indexeddb"
 
 const databaseName = "db"
@@ -249,5 +249,37 @@ describe.sequential("IndexedDbDatabase", () => {
       ])
       assert.deepStrictEqual(Array.from(objectStoreNames), ["user"])
     }).pipe(provideMigration(Migration))
+  })
+
+  it.effect("aborts the versionchange transaction when a migration fails", () => {
+    const Table = IndexedDbTable.make({
+      name: "entries",
+      schema: Schema.Struct({ id: Schema.Number }),
+      keyPath: "id"
+    })
+    const Version = IndexedDbVersion.make(Table)
+    class Database extends IndexedDbDatabase.make(Version, (transaction) =>
+      Effect.andThen(
+        transaction.createObjectStore("entries"),
+        Effect.fail("migration failed")
+      ))
+    {}
+    const open = Effect.callback<IDBDatabase, Error>((resume) => {
+      const request = indexedDB.open(databaseName)
+      request.onerror = () => resume(Effect.fail(request.error ?? new Error("IndexedDB open request failed")))
+      request.onblocked = () => resume(Effect.fail(new Error("IndexedDB open request blocked")))
+      request.onsuccess = () => resume(Effect.succeed(request.result))
+    })
+
+    return Effect.gen(function*() {
+      const migration = yield* Effect.result(
+        Effect.service(IndexedDbDatabase.IndexedDbDatabase).pipe(provideMigration(Database))
+      )
+      assert.isTrue(Result.isFailure(migration))
+
+      const database = yield* open
+      assert.deepStrictEqual(Array.from(database.objectStoreNames), [])
+      database.close()
+    })
   })
 })

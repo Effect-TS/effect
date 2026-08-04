@@ -205,7 +205,7 @@ export const SchemaTypeId: SchemaTypeId = "~effect/eventlog/EventLog/Schema"
 /**
  * Returns `true` when a value carries the `EventLogSchema` marker.
  *
- * @category schemas
+ * @category guards
  * @since 4.0.0
  */
 export const isEventLogSchema = (u: unknown): u is EventLogSchema<EventGroup.Any> =>
@@ -410,7 +410,7 @@ export declare namespace Handlers {
  *
  * Defaults to the branded store id `"default"`.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class CurrentStoreId extends Context.Reference<StoreId>("effect/eventlog/EventLog/CurrentStoreId", {
@@ -1012,7 +1012,7 @@ export const layer = <Groups extends EventGroup.Any, E, R>(
  * The returned function delegates to the `EventLog` service and preserves each
  * event's success and error types.
  *
- * @category client
+ * @category constructors
  * @since 4.0.0
  */
 export const makeClient = <Groups extends EventGroup.Any>(

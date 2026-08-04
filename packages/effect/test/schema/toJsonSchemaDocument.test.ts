@@ -563,7 +563,7 @@ describe("toJsonSchemaDocument", () => {
     })
 
     it("Error", () => {
-      const schema = Schema.Error()
+      const schema = Schema.ErrorInstance()
       assertJsonSchemaDocument(schema, {
         schema: {
           "type": "object",
@@ -3699,8 +3699,8 @@ describe("toJsonSchemaDocument", () => {
     )
   })
 
-  it("ErrorClass preserves its identifier as a canonical reference", () => {
-    class E extends Schema.ErrorClass<E>("E")({
+  it("Error preserves its identifier as a canonical reference", () => {
+    class E extends Schema.Error<E>("E")({
       a: Schema.String
     }) {}
     assertJsonSchemaDocument(E, {

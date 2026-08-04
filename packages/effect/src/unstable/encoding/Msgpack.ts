@@ -17,8 +17,6 @@ import * as ChannelSchema from "../../ChannelSchema.ts"
 import * as Data from "../../Data.ts"
 import * as Effect from "../../Effect.ts"
 import { dual } from "../../Function.ts"
-import * as Option from "../../Option.ts"
-import * as Predicate from "../../Predicate.ts"
 import type * as Pull from "../../Pull.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaIssue from "../../SchemaIssue.ts"
@@ -347,10 +345,10 @@ export const transformation: SchemaTransformation.Transformation<
   decode(e, _options) {
     try {
       return Effect.succeed(Msgpackr.decode(e))
-    } catch (cause) {
+    } catch {
       return Effect.fail(
-        new SchemaIssue.InvalidValue(Option.some(e), {
-          message: Predicate.hasProperty(cause, "message") ? String(cause.message) : String(cause)
+        new SchemaIssue.InvalidValue({
+          message: "Expected valid MessagePack bytes"
         })
       )
     }
@@ -358,10 +356,10 @@ export const transformation: SchemaTransformation.Transformation<
   encode(t, _options) {
     try {
       return Effect.succeed(Msgpackr.encode(t) as Uint8Array<ArrayBuffer>)
-    } catch (cause) {
+    } catch {
       return Effect.fail(
-        new SchemaIssue.InvalidValue(Option.some(t), {
-          message: Predicate.hasProperty(cause, "message") ? String(cause.message) : String(cause)
+        new SchemaIssue.InvalidValue({
+          message: "Expected a MessagePack-serializable value"
         })
       )
     }

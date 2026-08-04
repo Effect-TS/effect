@@ -178,7 +178,7 @@ export const formatUnsafe = (
  * const result = [Layer.isLayer(PrometheusLayer), Layer.isLayer(CustomPrometheusLayer)] // => [true, true]
  * ```
  *
- * @category Http
+ * @category layers
  * @since 4.0.0
  */
 export const layerHttp = (

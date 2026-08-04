@@ -66,7 +66,7 @@ export class PostProcessError extends Data.TaggedError("PostProcessError")<{
 /**
  * Service for post-processing generated code.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface PostProcessor {

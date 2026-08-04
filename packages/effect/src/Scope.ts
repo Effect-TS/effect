@@ -39,7 +39,7 @@ const CloseableTypeId = effect.ScopeCloseableTypeId
  * Effect.runSync(program) // => [["sequential", "Empty"], "Closed"]
  * ```
  *
- * @category models
+ * @category services
  * @since 2.0.0
  */
 export interface Scope {

@@ -106,6 +106,18 @@ describe("Sink", () => {
         strictEqual(result, 45)
       }))
   })
+
+  describe("reduceWhileArray", () => {
+    it.effect("applies the reducer once per non-empty input array", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.fromArrays([1, 2, 3]).pipe(
+          Stream.run(Sink.reduceWhileArray(() => 0, constTrue, (count) => count + 1))
+        )
+
+        strictEqual(result, 1, "the reducer must run once for each input array")
+      }))
+  })
+
   describe("reduceWhileEffect", () => {
     it.effect("short circuits", () =>
       Effect.gen(function*() {

@@ -281,8 +281,8 @@ describe("Duration", () => {
     // nanos
     deepStrictEqual(Duration.divideUnsafe(Duration.nanos(2n), 2), Duration.nanos(1n))
     deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), 3), Duration.zero)
-    throws(() => Duration.divideUnsafe(Duration.nanos(1n), 0.5))
-    throws(() => Duration.divideUnsafe(Duration.nanos(1n), 1.5))
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), 0.5), Duration.zero)
+    deepStrictEqual(Duration.divideUnsafe(Duration.nanos(1n), 1.5), Duration.zero)
 
     // infinity
     deepStrictEqual(Duration.divideUnsafe(Duration.infinity, 2), Duration.infinity)

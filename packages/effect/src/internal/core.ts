@@ -239,7 +239,7 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
 }
 
 /** @internal */
-export const constEmptyAnnotations = new Map<string, unknown>()
+export const constEmptyAnnotations: ReadonlyMap<string, unknown> = new Map<string, unknown>()
 
 /** @internal */
 export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {

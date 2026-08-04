@@ -207,7 +207,7 @@ export class Asserts<S extends Schema.Constraint> {
    * const asserts = new TestSchema.Asserts(Schema.NumberFromString)
    * const decoding = asserts.decoding()
    * await decoding.succeed("42", 42) // => undefined
-   * await decoding.fail(null, "Expected string, got null") // => undefined
+   * await decoding.fail(null, "Expected string") // => undefined
    * ```
    *
    * @see {@link Decoding}
@@ -389,7 +389,7 @@ export class Decoding<S extends Schema.Constraint> {
    * import { TestSchema } from "effect/testing"
    *
    * const decoding = new TestSchema.Asserts(Schema.String).decoding()
-   * await decoding.fail(42, "Expected string, got 42") // => undefined
+   * await decoding.fail(42, "Expected string") // => undefined
    * ```
    *
    * @see {@link succeed} for asserting successful decoding
@@ -529,7 +529,7 @@ export class Encoding<S extends Schema.Constraint> {
    * import { TestSchema } from "effect/testing"
    *
    * const encoding = new TestSchema.Asserts(Schema.NumberFromString).encoding()
-   * await encoding.fail("not-a-number", "Expected number, got \"not-a-number\"") // => undefined
+   * await encoding.fail("not-a-number", "Expected number") // => undefined
    * ```
    *
    * @see {@link succeed} for asserting successful encoding

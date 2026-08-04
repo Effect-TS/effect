@@ -64,7 +64,7 @@ export type EncodingErrorTypeId = typeof EncodingErrorTypeId
  * message.
  *
  * @see {@link isEncodingError} for checking whether a value is an EncodingError
- * @category constructors
+ * @category errors
  * @since 4.0.0
  */
 export class EncodingError extends Data.TaggedError("EncodingError")<{

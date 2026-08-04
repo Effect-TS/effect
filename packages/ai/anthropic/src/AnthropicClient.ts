@@ -36,7 +36,7 @@ import * as Errors from "./internal/errors.ts"
  * Represents the Anthropic client service with methods for the Messages API, including regular and streaming message
  * creation.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Service {

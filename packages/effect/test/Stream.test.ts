@@ -404,6 +404,16 @@ describe("Stream", () => {
         assert.deepStrictEqual(result, [1, 2, 3])
       }))
 
+    it.effect("range - zero chunk size does not change the emitted range", () =>
+      Effect.gen(function*() {
+        const result = yield* Stream.range(1, 3, 0).pipe(
+          Stream.take(4),
+          Stream.runCollect
+        )
+
+        assert.deepStrictEqual(result, [1, 2, 3])
+      }))
+
     it.effect("service", () =>
       Effect.gen(function*() {
         const result = yield* Stream.service(Greeter).pipe(
@@ -2251,6 +2261,31 @@ describe("Stream", () => {
   })
 
   describe("aggregateWithin", () => {
+    it.effect("does not grow the fiber continuation stack while upstream is idle", () =>
+      Effect.gen(function*() {
+        const continuationCounts: Array<number> = []
+        const schedule = Schedule.spaced("10 millis").pipe(
+          Schedule.tap(() =>
+            Effect.withFiber((fiber) =>
+              Effect.sync(() => {
+                continuationCounts.push(
+                  (fiber as unknown as { readonly _stack: ReadonlyArray<unknown> })._stack.length
+                )
+              })
+            )
+          )
+        )
+        const fiber = yield* Stream.never.pipe(
+          Stream.aggregateWithin(Sink.take(25), schedule),
+          Stream.runDrain,
+          Effect.forkChild({ startImmediately: true })
+        )
+        yield* TestClock.adjust("1 second")
+        assert.isAbove(continuationCounts.length, 1)
+        assert.strictEqual(continuationCounts.at(-1), continuationCounts[0])
+        yield* Fiber.interrupt(fiber)
+      }))
+
     it.effect("groupedWithin does not emit empty arrays when upstream is idle", () =>
       Effect.gen(function*() {
         const fiber = yield* Stream.never.pipe(
