@@ -1,4 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
+import { Effect } from "effect"
 import * as Statement from "effect/unstable/sql/Statement"
 
 describe("Statement", () => {
@@ -13,5 +14,21 @@ describe("Statement", () => {
     assert.deepStrictEqual(nested.array([row]), [{ OWN: 2 }])
     assert.deepStrictEqual(nested.array([[row]]), [[{ OWN: 2 }]])
     assert.deepStrictEqual(flat.array([row]), [{ OWN: 2 }])
+  })
+
+  it("keeps compiler configuration when an acquirer is reused", () => {
+    const acquirer = Effect.die("not executed")
+    const postgres = Statement.makeCompiler({
+      dialect: "pg",
+      placeholder: (index) => `$${index}`,
+      onIdentifier: Statement.defaultEscape("\""),
+      onRecordUpdate: () => ["", []],
+      onCustom: () => ["", []]
+    })
+    const pg = Statement.make(acquirer, postgres, [], undefined)
+    const sqlite = Statement.make(acquirer, Statement.makeCompilerSqlite(), [], undefined)
+
+    assert.deepStrictEqual(pg`select ${1}`.compile(), ["select $1", [1]])
+    assert.deepStrictEqual(sqlite`select ${1}`.compile(), ["select ?", [1]])
   })
 })
