@@ -24,19 +24,31 @@ vi.mock("tedious", () => {
   }
 
   class MockConnection {
-    connect(callback: (cause: unknown) => void) { callback(null) }
+    connect(callback: (cause: unknown) => void) {
+      callback(null)
+    }
     close() {}
     on() {}
     cancel() {}
-    execSql(request: MockRequest) { request.callback(null, 0, []) }
+    execSql(request: MockRequest) {
+      request.callback(null, 0, [])
+    }
     callProcedure(request: MockRequest) {
       request.listeners.returnValue("answer", 42)
       request.callback(null, 0, [])
     }
-    beginTransaction(callback: (cause: unknown) => void) { callback(null) }
-    commitTransaction(callback: (cause: unknown) => void) { callback(null) }
-    saveTransaction(callback: (cause: unknown) => void) { callback(null) }
-    rollbackTransaction(callback: (cause: unknown) => void) { callback(null) }
+    beginTransaction(callback: (cause: unknown) => void) {
+      callback(null)
+    }
+    commitTransaction(callback: (cause: unknown) => void) {
+      callback(null)
+    }
+    saveTransaction(callback: (cause: unknown) => void) {
+      callback(null)
+    }
+    rollbackTransaction(callback: (cause: unknown) => void) {
+      callback(null)
+    }
   }
 
   return {
