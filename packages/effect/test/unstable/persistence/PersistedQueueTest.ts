@@ -100,6 +100,22 @@ export const suite = (name: string, layer: Layer.Layer<PersistedQueue.PersistedQ
         assert.isUndefined(fiber.pollUnsafe())
       }))
 
+    it.effect("deduplicates custom ids independently in each queue", () =>
+      Effect.gen(function*() {
+        const first = yield* PersistedQueue.make({ name: "custom-id-first", schema: Item })
+        const second = yield* PersistedQueue.make({ name: "custom-id-second", schema: Item })
+
+        yield* first.offer({ n: 1n }, { id: "shared-custom-id" })
+        yield* second.offer({ n: 2n }, { id: "shared-custom-id" })
+
+        const fiber = yield* second.take(Effect.succeed).pipe(Effect.forkScoped)
+        yield* TestClock.adjust(1000)
+        yield* Effect.sleep(1000).pipe(TestClock.withLive)
+
+        assert.isDefined(fiber.pollUnsafe())
+        assert.deepStrictEqual(yield* Fiber.join(fiber), { n: 2n })
+      }))
+
     it.effect("does not redeliver in-flight elements", () =>
       Effect.gen(function*() {
         const queue = yield* PersistedQueue.make({

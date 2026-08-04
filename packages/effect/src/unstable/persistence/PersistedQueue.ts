@@ -294,9 +294,9 @@ export const layerStoreMemory: Layer.Layer<
     attempts: number
     readonly element: unknown
   }
-  const ids = new Set<string>()
   const queues = new Map<string, {
     latch: Latch.Latch
+    ids: Set<string>
     items: Set<Entry>
   }>()
   const getOrCreateQueue = (name: string) => {
@@ -304,6 +304,7 @@ export const layerStoreMemory: Layer.Layer<
     if (!queue) {
       queue = {
         latch: Latch.makeUnsafe(false),
+        ids: new Set(),
         items: new Set()
       }
       queues.set(name, queue)
@@ -314,9 +315,9 @@ export const layerStoreMemory: Layer.Layer<
   return PersistedQueueStore.of({
     offer: (options) =>
       Effect.sync(() => {
-        if (ids.has(options.id)) return
-        ids.add(options.id)
         const queue = getOrCreateQueue(options.name)
+        if (queue.ids.has(options.id)) return
+        queue.ids.add(options.id)
         queue.items.add({ id: options.id, attempts: 0, element: options.element })
         queue.latch.openUnsafe()
       }),
@@ -857,9 +858,11 @@ export const makeStoreSql: (
   yield* sql.onDialectOrElse({
     mssql: () =>
       sql`IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = N'idx_${tableName}_id')
-        CREATE UNIQUE INDEX idx_${tableNameSql}_id ON ${tableNameSql} (id)`,
-    mysql: () => sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id)`.pipe(Effect.ignore),
-    orElse: () => sql`CREATE UNIQUE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id)`
+        CREATE UNIQUE INDEX idx_${tableNameSql}_id ON ${tableNameSql} (id, queue_name)`,
+    mysql: () =>
+      sql`CREATE UNIQUE INDEX ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`.pipe(Effect.ignore),
+    orElse: () =>
+      sql`CREATE UNIQUE INDEX IF NOT EXISTS ${sql(`idx_${tableName}_id`)} ON ${tableNameSql} (id, queue_name)`
   })
 
   yield* sql.onDialectOrElse({
@@ -894,7 +897,7 @@ export const makeStoreSql: (
       sql`
         INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
         VALUES (${id}, ${name}, ${element}, FALSE, 0, ${sqlNow}, ${sqlNow})
-        ON CONFLICT (id) DO NOTHING
+        ON CONFLICT (id, queue_name) DO NOTHING
       `,
     mysql: () => (id: string, name: string, element: string) =>
       sql`
@@ -903,7 +906,7 @@ export const makeStoreSql: (
       `,
     mssql: () => (id: string, name: string, element: string) =>
       sql`
-        IF NOT EXISTS (SELECT 1 FROM ${tableNameSql} WHERE id = ${id})
+        IF NOT EXISTS (SELECT 1 FROM ${tableNameSql} WHERE id = ${id} AND queue_name = ${name})
         BEGIN
           INSERT INTO ${tableNameSql} (id, queue_name, element, completed, attempts, created_at, updated_at)
           VALUES (${id}, ${name}, ${element}, 0, 0, ${sqlNow}, ${sqlNow})
