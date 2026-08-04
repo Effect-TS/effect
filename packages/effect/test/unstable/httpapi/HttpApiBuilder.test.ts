@@ -156,6 +156,54 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       )
     }))
 
+  it.effect("stringifies WithHeaders values when endpoint codecs are disabled", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test")
+          .add(
+            HttpApiEndpoint.get("success", "/success", {
+              disableCodecs: true,
+              success: HttpApiSchema.WithHeaders(
+                Schema.String.pipe(HttpApiSchema.asText()),
+                { "x-count": Schema.Int }
+              )
+            })
+          )
+          .add(
+            HttpApiEndpoint.get("error", "/error", {
+              disableCodecs: true,
+              error: HttpApiSchema.WithHeaders(
+                Schema.String.pipe(HttpApiSchema.status(429), HttpApiSchema.asText()),
+                { "retry-after": Schema.Int }
+              )
+            })
+          )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers
+            .handle("success", () =>
+              Effect.succeed(HttpApiSchema.withHeaders({
+                body: "ok",
+                headers: { "x-count": 2 }
+              })))
+            .handle("error", () =>
+              Effect.fail(HttpApiSchema.withHeaders({
+                body: "slow down",
+                headers: { "retry-after": 30 }
+              })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const success = yield* client.test.success({ responseMode: "response-only" })
+      const error = yield* client.test.error({ responseMode: "response-only" })
+
+      assert.strictEqual(success.headers["x-count"], "2")
+      assert.strictEqual(error.headers["retry-after"], "30")
+    }))
+
   it.effect("decodes a buffered success body and its declared headers", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(

@@ -930,7 +930,7 @@ function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): WithHeadersEncod
   const schemas: Array<Schema.Top> = []
   for (const schema of endpoint.success) {
     if (HttpApiSchema.isWithHeaders(schema)) {
-      schemas.push(schema.headers)
+      schemas.push(Schema.toCodecStringTree(schema.headers))
     }
   }
   if (schemas.length === 0) return undefined
@@ -1070,7 +1070,7 @@ function toResponseErrorSchema(
   if (!HttpApiSchema.isWithHeaders(schema)) return toResponseErrorSchemaPlain(schema)
 
   const encodeBody = Schema.encodeUnknownEffect(schema.schema)
-  const encodeHeaders = Schema.encodeUnknownEffect(schema.headers)
+  const encodeHeaders = Schema.encodeUnknownEffect(Schema.toCodecStringTree(schema.headers))
   const encodeResponse = getResponseEncode(
     HttpApiSchema.getStatusErrorSchema(schema),
     HttpApiSchema.getResponseEncodingSchema(schema),
