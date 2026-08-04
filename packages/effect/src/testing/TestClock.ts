@@ -255,7 +255,7 @@ export const make = Effect.fnUntraced(function*(
   }
 
   function currentTimeNanosUnsafe(): bigint {
-    return BigInt(Math.floor(currentTimestamp * 1000000))
+    return BigInt(Math.floor(currentTimestamp)) * BigInt(1_000_000)
   }
 
   function monotonicTimeNanosUnsafe(): bigint {
