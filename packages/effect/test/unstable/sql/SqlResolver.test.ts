@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Effect, Exit } from "effect"
 import * as Schema from "effect/Schema"
 import { SqlResolver } from "effect/unstable/sql"
 
@@ -32,6 +32,26 @@ describe("SqlResolver", () => {
           }
         )
         assert.deepStrictEqual(batches, [[1, 2]])
+      }))
+  })
+
+  describe("ordered", () => {
+    it.effect("keeps valid results aligned when another request fails encoding", () =>
+      Effect.gen(function*() {
+        const resolver = SqlResolver.ordered({
+          Request: Schema.Number.check(Schema.isGreaterThan(0)),
+          Result: Schema.String,
+          execute: (inputs) => Effect.succeed(inputs.map((input) => `value-${input}`))
+        })
+        const execute = SqlResolver.request(resolver)
+        const [invalid, valid] = yield* Effect.all([
+          Effect.exit(execute(-1)),
+          Effect.exit(execute(2))
+        ], { concurrency: "unbounded" })
+
+        assert(Exit.isFailure(invalid))
+        assert(Exit.isSuccess(valid))
+        assert.strictEqual(valid.value, "value-2")
       }))
   })
 })
