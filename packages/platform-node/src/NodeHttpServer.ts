@@ -277,9 +277,9 @@ export const makeUpgradeHandler = <
         HttpServerRequest,
         new ServerRequestImpl(nodeRequest, nodeResponse, upgradeEffect)
       )
-const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handledApp), options.scope)
+      const fiber = Fiber.runIn(Effect.runForkWith(context as Context.Context<any>)(handledApp), options.scope)
       socket.on("error", () => {})
-socket.on("close", () => {
+      socket.on("close", () => {
         if (!socket.writableEnded) {
           fiber.interruptUnsafe(parent.id, ClientAbort.annotation)
         }

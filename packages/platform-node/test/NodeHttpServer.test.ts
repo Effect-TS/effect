@@ -838,6 +838,7 @@ describe("HttpServer", () => {
       const server = yield* HttpServer.HttpServer
       const port = (server.address as HttpServer.TcpAddress).port
 
+      const uncaught: Array<unknown> = []
       const onUncaught = (error: unknown) => uncaught.push(error)
       process.on("uncaughtException", onUncaught)
       yield* Effect.addFinalizer(() => Effect.sync(() => process.off("uncaughtException", onUncaught)))
