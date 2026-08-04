@@ -534,7 +534,7 @@ export const setHeader: {
     makeResponse({
       ...self,
       headers: Headers.set(self.headers, key, value)
-    })
+    }, true)
 )
 
 /**

@@ -123,6 +123,39 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
 })
 
 it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
+  it.effect("round trips user-managed header codecs through HttpApiTest", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("result", "/test", {
+            disableCodecs: true,
+            success: HttpApiSchema.WithHeaders(
+              Schema.String.pipe(HttpApiSchema.asText()),
+              { "x-count": Schema.FiniteFromString }
+            )
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("result", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: "ok",
+              headers: { "x-count": 2 }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const result = yield* client.test.result({})
+
+      assert.deepStrictEqual(
+        result,
+        HttpApiSchema.withHeaders({ body: "ok", headers: { "x-count": 2 } })
+      )
+    }))
+
   it.effect("decodes a buffered success body and its declared headers", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(

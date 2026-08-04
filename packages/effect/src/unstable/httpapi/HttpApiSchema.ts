@@ -534,6 +534,9 @@ export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
  *   wire and `undefined` leaves are omitted from the response.
  * - Status and response-encoding annotations are resolved from the wrapper
  *   first, falling through to the inner schema.
+ * - When a success union has multiple `WithHeaders` members, header encoding
+ *   uses the first matching union member. Keep their header shapes disjoint so
+ *   a value cannot encode against the wrong member.
  * - `Rebuild` preserves the brand and both parts, so `.annotate` keeps the
  *   wrapper intact.
  *
@@ -591,13 +594,21 @@ const withHeadersValueSchema = Schema.declare(isWithHeadersValue)
  * Headers accept either a schema or a fields shorthand, mirroring the
  * request-side headers option.
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { HttpApiSchema } from "effect/unstable/httpapi"
  *
  * const schema = HttpApiSchema.WithHeaders(Schema.String, {
  *   "x-total-count": Schema.FiniteFromString
  * })
+ * const response: typeof schema.Type = HttpApiSchema.withHeaders({
+ *   body: "created",
+ *   headers: { "x-total-count": 1 }
+ * })
+ *
+ * HttpApiSchema.isWithHeaders(schema) // => true
+ * response.body // => "created"
+ * response.headers // => { "x-total-count": 1 }
  * ```
  *
  * @category constructors
@@ -632,6 +643,9 @@ export function WithHeaders(
  * including in mixed success unions. The same shape is used on both sides: a
  * value received from a client can be returned from another handler unchanged.
  *
+ * See {@link WithHeaders} for an example that constructs a schema and its
+ * corresponding response value.
+ *
  * @category constructors
  * @since 4.0.0
  */
@@ -646,6 +660,18 @@ export const withHeaders = <A, H>(options: {
 
 /**
  * Returns `true` when a schema is a `WithHeaders` response schema.
+ *
+ * ```ts import.meta.vitest
+ * import { Schema } from "effect"
+ * import { HttpApiSchema } from "effect/unstable/httpapi"
+ *
+ * const schema = HttpApiSchema.WithHeaders(Schema.String, {
+ *   "x-request-id": Schema.String
+ * })
+ *
+ * HttpApiSchema.isWithHeaders(schema) // => true
+ * HttpApiSchema.isWithHeaders(Schema.String) // => false
+ * ```
  *
  * @category predicates
  * @since 4.0.0
@@ -705,7 +731,7 @@ export interface encodeToWithHeaders<
  * defects on the client. Stream responses should use {@link WithHeaders},
  * which preserves the body stream's error channel in the generated client.
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Schema } from "effect"
  * import { HttpApiSchema } from "effect/unstable/httpapi"
  *
@@ -727,6 +753,9 @@ export interface encodeToWithHeaders<
  *     })
  *   })
  * )
+ *
+ * const encoded = Schema.encodeSync(UserNotFoundWithHeaders)(new UserNotFound({ userId: 123 }))
+ * encoded // => { body: undefined, headers: { "x-user-id": 123 } }
  * ```
  *
  * @see {@link WithHeaders} for the structural wrapper recommended for success

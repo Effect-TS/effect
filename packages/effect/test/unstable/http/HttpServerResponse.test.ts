@@ -5,6 +5,16 @@ import { HttpBody, HttpClientRequest, HttpClientResponse, HttpServerResponse } f
 const TestValue = Context.Reference<number>("test/TestValue", { defaultValue: () => 0 })
 
 describe("HttpServerResponse", () => {
+  it("setHeader overrides body-derived content headers", () => {
+    const response = HttpServerResponse.text("body").pipe(
+      HttpServerResponse.setHeader("content-type", "text/custom"),
+      HttpServerResponse.setHeader("content-length", "1")
+    )
+
+    assert.strictEqual(response.headers["content-type"], "text/custom")
+    assert.strictEqual(response.headers["content-length"], "1")
+  })
+
   it.effect("fromClientResponse preserves status, headers, cookies, and json", () =>
     Effect.gen(function*() {
       const request = HttpClientRequest.get("http://localhost:3000/todos/1")
