@@ -1,8 +1,8 @@
 import { describe, it } from "@effect/vitest"
-import { Effect, ErrorReporter, identity, Schema, Stream, Unify } from "effect"
-import { Multipart } from "effect/unstable/http"
+import { Effect, ErrorReporter, FileSystem, identity, Path, Schema, Stream, Unify } from "effect"
+import { HttpClientRequest, HttpServerRequest, Multipart } from "effect/unstable/http"
 import * as HttpServerRespondable from "effect/unstable/http/HttpServerRespondable"
-import { deepStrictEqual, strictEqual } from "node:assert"
+import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert"
 
 describe("Multipart", () => {
   it.effect("parses fields and streams file content", () =>
@@ -59,6 +59,27 @@ describe("Multipart", () => {
       strictEqual(error._tag, "MultipartError")
       strictEqual(error.reason._tag, "TooManyParts")
     }))
+
+  it.effect("uses distinct persisted paths for files with the same client filename", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const formData = new FormData()
+      formData.append("first", new File(["one"], "same.txt"))
+      formData.append("second", new File(["two"], "same.txt"))
+      const request = HttpServerRequest.fromClientRequest(
+        HttpClientRequest.bodyFormData(HttpClientRequest.post("https://example.com"), formData)
+      )
+      const writes: Array<string> = []
+      yield* Multipart.toPersisted(
+        request.multipartStream,
+        (path) => Effect.sync(() => writes.push(path))
+      ).pipe(
+        Effect.provideService(FileSystem.FileSystem, {
+          makeTempDirectoryScoped: () => Effect.succeed("/tmp/audit")
+        } as any),
+        Effect.provide(Path.layer)
+      )
+      notStrictEqual(writes[0], writes[1])
+    })))
 
   it.effect("responds based on the reason and is ignored by the ErrorReporter", () =>
     Effect.gen(function*() {
