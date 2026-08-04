@@ -1,6 +1,50 @@
-import { describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { SqliteClient } from "@effect/sql-sqlite-wasm"
+import { assert, describe, it } from "@effect/vitest"
+import { Deferred, Effect, Fiber, Option } from "effect"
+import { TestClock } from "effect/testing"
+import { Reactivity } from "effect/unstable/reactivity"
+
+class FakeWorker extends EventTarget {
+  onerror: unknown = null
+
+  constructor(readonly queryPosted: Deferred.Deferred<void>) {
+    super()
+  }
+
+  override addEventListener(
+    type: string,
+    listener: EventListenerOrEventListenerObject | null,
+    options?: unknown
+  ): void {
+    super.addEventListener(type, listener, options as boolean)
+    if (type === "message") {
+      queueMicrotask(() => this.dispatchEvent(new MessageEvent("message", { data: ["ready"] })))
+    }
+  }
+
+  postMessage(message: ReadonlyArray<unknown>): void {
+    if (typeof message[0] === "number") {
+      Effect.runFork(Deferred.succeed(this.queryPosted, undefined))
+    }
+  }
+}
 
 describe("Client", () => {
   it.effect("should work", () => Effect.void)
+
+  it.effect("settles an in-flight query when the worker errors and reconnects", () =>
+    Effect.gen(function*() {
+      const queryPosted = yield* Deferred.make<void>()
+      const worker = new FakeWorker(queryPosted)
+      const sql = yield* SqliteClient.make({ worker: Effect.succeed(worker as unknown as Worker) })
+      const fiber = yield* Effect.forkChild(sql`SELECT 1`)
+
+      yield* Deferred.await(queryPosted)
+      worker.dispatchEvent(new Event("error"))
+
+      const joinFiber = yield* Fiber.join(fiber).pipe(Effect.timeoutOption("100 millis"), Effect.forkChild)
+      yield* TestClock.adjust("100 millis")
+      const result = yield* Fiber.join(joinFiber)
+      assert(Option.isSome(result), "the request remained pending after worker replacement")
+    }).pipe(Effect.provide(Reactivity.layer)))
 })
