@@ -37,6 +37,17 @@ describe("VariantSchema", () => {
     assert.deepStrictEqual(Schema.decodeSync(User.b)({ name: "Alice" }), { name: "Alice" })
     assert.deepStrictEqual(Object.keys(User.fields), ["id", "name"])
   })
+
+  it("includes plain variant structs in the default union", () => {
+    const Test = VariantSchema.make({ variants: ["a", "b"], defaultVariant: "a" })
+    const first = Test.Struct({ value: Schema.String })
+    const second = Test.Struct({ value: Schema.Number })
+    const union = Test.Union([first, second])
+
+    assert.strictEqual(union.members.length, 2)
+    assert.deepStrictEqual(Schema.decodeUnknownSync(union)({ value: "foo" }), { value: "foo" })
+    assert.deepStrictEqual(Schema.decodeUnknownSync(union)({ value: 42 }), { value: 42 })
+  })
 })
 
 describe("Model", () => {
