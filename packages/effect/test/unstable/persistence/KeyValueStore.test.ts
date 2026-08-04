@@ -1,6 +1,7 @@
-import { afterEach, assert, describe, it } from "@effect/vitest"
+import { afterEach, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Effect, Layer, Option, Schema } from "effect"
+import type { Layer } from "effect"
+import { Effect, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 import * as Persistence from "effect/unstable/persistence/Persistence"
 
@@ -84,24 +85,24 @@ export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>)
       strictEqual(value, undefined)
       strictEqual(length, 0)
     })))
+
+  it("setMany stores entries without a TTL", () =>
+    run(
+      Effect.gen(function*() {
+        const backing = yield* Persistence.BackingPersistence
+        const store = yield* backing.make("store")
+
+        yield* store.setMany([["key", { value: 1 }, undefined]])
+
+        deepStrictEqual(yield* store.get("key"), { value: 1 })
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(Persistence.layerBackingKvs)
+      )
+    ))
 }
 
 describe("KeyValueStore / layerMemory", () => testLayer(KeyValueStore.layerMemory))
-
-describe("Persistence / layerBackingKvs", () => {
-  it.effect("stores entries without a TTL", () =>
-    Effect.gen(function*() {
-      const backing = yield* Persistence.BackingPersistence
-      const store = yield* backing.make("store")
-
-      yield* store.setMany([["key", { value: 1 }, undefined]])
-
-      assert.deepStrictEqual(yield* store.get("key"), { value: 1 })
-    }).pipe(
-      Effect.scoped,
-      Effect.provide(Persistence.layerBackingKvs.pipe(Layer.provide(KeyValueStore.layerMemory)))
-    ))
-})
 
 describe("KeyValueStore / prefix", () => {
   it.effect("prefixes the keys", () =>
