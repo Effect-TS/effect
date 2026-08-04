@@ -567,6 +567,18 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
   const snowflakeGen = yield* Snowflake.Generator
   const clock = yield* Clock
 
+  const serializeReply = <R extends Rpc.Any>(reply: Reply.ReplyWithContext<R>) =>
+    Effect.catchTag(
+      Reply.serialize(reply),
+      "MalformedMessage",
+      (error) =>
+        Effect.orDie(Reply.serialize(Reply.ReplyWithContext.fromDefect({
+          id: reply.reply.id,
+          requestId: reply.reply.requestId,
+          defect: error
+        })))
+    )
+
   const storage: MessageStorage["Service"] = yield* make({
     saveRequest: (message) =>
       Message.serializeEnvelope(message).pipe(
@@ -606,11 +618,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) =>
-      Effect.flatMap(
-        Reply.serialize(reply),
-        encoded.saveReply
-      ),
+    saveReply: (reply) => Effect.flatMap(serializeReply(reply), encoded.saveReply),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
