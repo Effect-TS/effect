@@ -39,22 +39,36 @@ const runCommand = Effect.fnUntraced(
 )
 
 describe("Command help output", () => {
-  it("marks optional flags as not required in structured help", () => {
+  it("marks omittable flags as not required in structured help", () => {
     const command = Command.make("app", {
-      output: Flag.string("output").pipe(Flag.optional)
+      required: Flag.string("required"),
+      optional: Flag.string("optional").pipe(Flag.optional),
+      defaulted: Flag.string("defaulted").pipe(Flag.withDefault("output.txt"))
     })
     const help = toImpl(command).buildHelpDoc(["app"])
 
-    assert.isFalse(help.flags[0].required)
+    assert.deepStrictEqual(help.flags.map((flag) => flag.required), [true, false, false])
   })
 
-  it("marks zero-minimum variadic arguments as not required in structured help", () => {
-    const command = Command.make("app", {
+  it("marks omittable arguments as not required in structured help", () => {
+    const requiredVariadic = Command.make("app", {
+      files: Argument.string("files").pipe(Argument.variadic({ min: 1 }))
+    })
+    const optionalVariadic = Command.make("app", {
       files: Argument.string("files").pipe(Argument.variadic())
     })
-    const help = toImpl(command).buildHelpDoc(["app"])
+    const defaulted = Command.make("app", {
+      output: Argument.string("output").pipe(Argument.withDefault("output.txt"))
+    })
 
-    assert.isFalse(help.args![0].required)
+    assert.deepStrictEqual(
+      [
+        toImpl(requiredVariadic).buildHelpDoc(["app"]).args![0].required,
+        toImpl(optionalVariadic).buildHelpDoc(["app"]).args![0].required,
+        toImpl(defaulted).buildHelpDoc(["app"]).args![0].required
+      ],
+      [true, false, false]
+    )
   })
 
   it.effect("renders root command help", () =>
