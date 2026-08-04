@@ -363,37 +363,17 @@ export const makeClient = <ApiId extends string, Groups extends HttpApiGroup.Con
         }
 
         const successAlternatives = new Map<number, Array<ResponseAlternative>>()
-        const successSchemasByStatus = new Map<number, [Schema.Top, ...Array<Schema.Top>]>()
         for (const [status, schemas] of successes.entries()) {
-          for (const schema of schemas) {
-            if (HttpApiSchema.isWithHeaders(schema) && HttpApiSchema.isStreamSchema(schema.schema)) {
-              continue
-            }
-            const schemaStatus = HttpApiSchema.isWithHeaders(schema)
-              ? HttpApiSchema.getStatusSuccessSchema(schema)
-              : status
-            const existing = successSchemasByStatus.get(schemaStatus)
-            if (existing === undefined) {
-              successSchemasByStatus.set(schemaStatus, [schema])
-            } else {
-              existing.push(schema)
-            }
-          }
-        }
-        for (const [status, schemas] of successSchemasByStatus.entries()) {
           const grouped = groupSchemasByContentType(schemas)
           for (const [contentType, schemas] of grouped.entries()) {
             addResponseAlternative(successAlternatives, status, contentType, schemasToResponse(schemas))
           }
         }
         for (const streamSuccess of getStreamSuccessSchemas(endpoint)) {
-          const isWithHeaders = isWithHeadersStreamSuccess(streamSuccess)
-          const streamSchema = isWithHeaders ? streamSuccess.schema : streamSuccess
+          const streamSchema = isWithHeadersStreamSuccess(streamSuccess) ? streamSuccess.schema : streamSuccess
           addResponseAlternative(
             successAlternatives,
-            isWithHeaders
-              ? HttpApiSchema.getStatusSuccessSchema(streamSuccess)
-              : HttpApiSchema.getStatusStream(streamSuccess),
+            HttpApiSchema.getStatusSuccessSchema(streamSuccess),
             streamSchema.contentType,
             streamToResponse(streamSuccess)
           )
@@ -772,8 +752,9 @@ function toCodecArrayBufferWithHeaders(schema: Schema.Constraint): Schema.Top {
       headers: Schema.toCodecStringTree(Schema.toEncoded(annotation.headers))
     }).pipe(Schema.decodeTo(schema))
   }
+  const body = isWithHeaders ? schema.schema : schema
   return Schema.Struct({
-    body: toCodecArrayBuffer([isWithHeaders ? schema.schema : schema]),
+    body: fromArrayBuffer(body).pipe(Schema.decodeTo(body)),
     headers: isWithHeaders ? schema.headers : Schema.Unknown
   }).pipe(
     Schema.decodeTo(

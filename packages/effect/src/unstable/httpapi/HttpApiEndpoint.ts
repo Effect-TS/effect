@@ -1154,10 +1154,10 @@ function getSuccessResponse(
   if (success === undefined) return new Set()
   const schemas = Arr.ensure(success)
   validateSuccessResponse(schemas, method)
-  return new Set(disableCodecs ? schemas : schemas.map(transformSuccess))
+  return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
-function transformSuccess(schema: Schema.Top): Schema.Top {
+function transformResponseSchema(schema: Schema.Top): Schema.Top {
   if (HttpApiSchema.isStreamSchema(schema)) return schema
   if (HttpApiSchema.isWithHeaders(schema)) {
     const inner = HttpApiSchema.isStreamSchema(schema.schema)
@@ -1180,13 +1180,7 @@ function getErrorResponse(
       throw new Error("Streaming schemas are not supported in error responses")
     }
   }
-  return new Set(disableCodecs ? schemas : schemas.map(transformError))
-}
-
-function transformError(schema: Schema.Top): Schema.Top {
-  if (!HttpApiSchema.isWithHeaders(schema)) return transformResponse(schema)
-  const inner = applyResponseEncoding(schema.schema, HttpApiSchema.getResponseEncodingSchema(schema))
-  return HttpApiSchema.rebuildWithHeaders(schema, inner, Schema.toCodecStringTree(schema.headers))
+  return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
 function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod) {

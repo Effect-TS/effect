@@ -728,39 +728,36 @@ function extractResponseBodies(
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : annotation?.body ?? schema
     const headers = HttpApiSchema.isWithHeaders(schema) ? schema.headers : annotation?.headers
     const status = getStatus(schema)
-    if (HttpApiSchema.isStreamSchema(body)) {
-      addStreamContent(body, status, headers)
-      return
-    }
     const ast = body.ast
-    if (HttpApiSchema.isNoContent(ast)) {
-      addNoContent(status, getDescription(schema.ast) ?? getDescription(ast) ?? "<No Content>", headers)
+    if (HttpApiSchema.isStreamSchema(body)) {
+      addStreamContent(body, status)
+    } else if (HttpApiSchema.isNoContent(ast)) {
+      addNoContent(status, getDescription(schema.ast) ?? getDescription(ast) ?? "<No Content>")
     } else {
       addContent(
         body,
         status,
         HttpApiSchema.getResponseEncodingSchema(schema),
-        getDescription(schema.ast) ?? getDescription(ast),
-        headers
+        getDescription(schema.ast) ?? getDescription(ast)
       )
+    }
+    if (headers !== undefined) {
+      map.get(status)!.headers.push(headers)
     }
   }
 
-  function addNoContent(status: number, description: string, headers: Schema.Constraint | undefined) {
+  function addNoContent(status: number, description: string) {
     const statusMap = map.get(status)
     if (statusMap === undefined) {
       map.set(status, {
         descriptions: new Set([description]),
         content: undefined,
-        headers: headers === undefined ? [] : [headers],
+        headers: [],
         streamContent: undefined
       })
     } else {
       if (description !== undefined) {
         statusMap.descriptions.add(description)
-      }
-      if (headers !== undefined) {
-        statusMap.headers.push(headers)
       }
     }
   }
@@ -769,8 +766,7 @@ function extractResponseBodies(
     schema: Schema.Constraint,
     status: number,
     encoding: HttpApiSchema.Encoding,
-    description: string | undefined,
-    headers: Schema.Constraint | undefined
+    description: string | undefined
   ) {
     const statusMap = map.get(status)
     const { _tag, contentType } = encoding
@@ -778,16 +774,13 @@ function extractResponseBodies(
       map.set(status, {
         descriptions: new Set(description !== undefined ? [description] : []),
         content: new Map([[_tag, new Map([[contentType, new Set([schema])]])]]),
-        headers: headers === undefined ? [] : [headers],
+        headers: [],
         streamContent: undefined
       })
     } else {
       // concat descriptions
       if (description !== undefined) {
         statusMap.descriptions.add(description)
-      }
-      if (headers !== undefined) {
-        statusMap.headers.push(headers)
       }
 
       if (statusMap.content === undefined) {
@@ -810,21 +803,17 @@ function extractResponseBodies(
 
   function addStreamContent(
     stream: HttpApiSchema.StreamSchema,
-    status: number,
-    headers: Schema.Constraint | undefined
+    status: number
   ) {
     const statusMap = map.get(status)
     if (statusMap === undefined) {
       map.set(status, {
         descriptions: new Set(),
         content: undefined,
-        headers: headers === undefined ? [] : [headers],
+        headers: [],
         streamContent: new Map([[stream.contentType, stream]])
       })
     } else {
-      if (headers !== undefined) {
-        statusMap.headers.push(headers)
-      }
       if (statusMap.streamContent === undefined) {
         statusMap.streamContent = new Map([[stream.contentType, stream]])
       } else {

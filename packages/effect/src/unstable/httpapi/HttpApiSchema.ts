@@ -1049,14 +1049,7 @@ export function getStatusSuccessSchema(schema: Schema.Constraint): number {
 
 /** @internal */
 export function getResponseEncodingSchema(schema: Schema.Constraint): ResponseEncoding {
-  if (isWithHeaders(schema)) {
-    const encoding = resolveHttpApiEncoding(schema.ast)
-    if (encoding !== undefined) {
-      if (encoding._tag === "Multipart") {
-        throw new Error("Multipart is not supported in response")
-      }
-      return encoding
-    }
+  if (isWithHeaders(schema) && resolveHttpApiEncoding(schema.ast) === undefined) {
     return getResponseEncoding(schema.schema.ast)
   }
   return getResponseEncoding(schema.ast)

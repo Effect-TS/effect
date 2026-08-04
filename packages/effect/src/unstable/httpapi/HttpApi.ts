@@ -313,7 +313,8 @@ const extractResponseContent = (
   return map
 
   function add(schema: Schema.Top) {
-    if (HttpApiSchema.isStreamSchema(schema)) return
+    const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
+    if (HttpApiSchema.isStreamSchema(body)) return
     const status = getStatus(schema)
     const schemas = map.get(status)
     if (schemas === undefined) {
