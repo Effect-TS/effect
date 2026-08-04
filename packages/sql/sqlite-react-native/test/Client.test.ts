@@ -1,6 +1,29 @@
-import { describe, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
+import { Reactivity } from "effect/unstable/reactivity"
+import { vi } from "vitest"
+
+const state = vi.hoisted(() => ({
+  database: {
+    close() {},
+    execute: async () => ({ rowsAffected: 0, rows: [{ value: 1 }] }),
+    executeSync: () => ({ rowsAffected: 0, rows: [{ value: 1 }] })
+  }
+}))
+
+vi.mock("@op-engineering/op-sqlite", () => ({
+  open: () => state.database
+}))
+
+import { SqliteClient } from "@effect/sql-sqlite-react-native"
 
 describe("Client", () => {
   it.effect("should work", () => Effect.void)
+
+  it.effect("returns array rows from values queries", () =>
+    Effect.gen(function*() {
+      const sql = yield* SqliteClient.make({ filename: "test.db" })
+      const rows = yield* sql`SELECT 1 AS value`.values
+      assert.deepStrictEqual(rows, [[1]])
+    }).pipe(Effect.provide(Reactivity.layer)))
 })
