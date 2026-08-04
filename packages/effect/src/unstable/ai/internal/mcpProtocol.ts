@@ -198,7 +198,8 @@ export const makeNotificationProjector = Effect.fn(function*(
       payload: PublicMcpSchema.PromptListChangedNotification.payloadSchema.make({
         _meta: notification.metadata
       })
-    })
+    }),
+    ElicitationComplete: () => undefined
   })
 })
 

@@ -2046,11 +2046,11 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
     /**
      * Tools that the model may call while producing the response.
      */
-    tools: optional(Schema.Array(Tool)),
+    tools: optional(Schema.Array(Schema.Struct(Tool.fields))),
     /**
      * Controls whether the model may or must call a tool.
      */
-    toolChoice: optional(ToolChoice)
+    toolChoice: optional(Schema.Struct(ToolChoice.fields))
   }
 }) {}
 

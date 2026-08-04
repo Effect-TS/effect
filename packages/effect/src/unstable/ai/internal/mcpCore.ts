@@ -293,6 +293,7 @@ export type ServerNotification = Data.TaggedEnum<{
   ResourcesChanged: { readonly metadata?: Schema.JsonObject | undefined }
   ToolsChanged: { readonly metadata?: Schema.JsonObject | undefined }
   PromptsChanged: { readonly metadata?: Schema.JsonObject | undefined }
+  ElicitationComplete: { readonly elicitationId: string }
 }>
 
 /** @internal */

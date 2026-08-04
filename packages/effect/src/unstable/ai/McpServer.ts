@@ -88,14 +88,21 @@ import type * as Toolkit from "./Toolkit.ts"
 
 type CompletionContext = typeof Complete.payloadSchema.Type["context"]
 
+interface QueuedServerNotification {
+  readonly notification: McpCore.ServerNotification
+  readonly targetClientId?: number | undefined
+}
+
 const internalState = new WeakMap<object, {
   readonly core: McpCore.McpCore
-  readonly notifications: Queue.Dequeue<McpCore.ServerNotification>
+  readonly notifications: Queue.Dequeue<QueuedServerNotification>
 }>()
 type ServerExtensions = NonNullable<typeof ServerCapabilities.Type["extensions"]>
 type ServerNotificationRequest<
-  R extends Rpc.Any = RpcGroup.Rpcs<typeof ServerNotificationRpcs>
+  R extends Rpc.Any = RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>
 > = R extends Rpc.Any ? RpcMessage.Request<R> : never
+
+const BroadcastServerNotificationRpcs = ServerNotificationRpcs.omit("notifications/elicitation/complete")
 
 const validateStructuredContent = (
   toolName: string,
@@ -164,7 +171,11 @@ const toInternalServerNotification = (
  * @since 4.0.0
  */
 export class McpServer extends Context.Service<McpServer, {
-  readonly notifications: RpcClient.RpcClient<RpcGroup.Rpcs<typeof ServerNotificationRpcs>>
+  readonly notifications: RpcClient.RpcClient<RpcGroup.Rpcs<typeof BroadcastServerNotificationRpcs>>
+  readonly notifyElicitationComplete: (options: {
+    readonly clientId: number
+    readonly elicitationId: string
+  }) => Effect.Effect<void>
   readonly initializedClients: Set<number>
   readonly tools: ReadonlyArray<{
     readonly tool: McpTool
@@ -269,9 +280,9 @@ export class McpServer extends Context.Service<McpServer, {
       readonly prompt: Prompt
       readonly annotations: Context.Context<never>
     }> = []
-    const notificationsQueue = yield* Queue.make<McpCore.ServerNotification>()
+    const notificationsQueue = yield* Queue.make<QueuedServerNotification>()
     const listChangedHandles = new Map<string, any>()
-    const notifications = yield* RpcClient.makeNoSerialization(ServerNotificationRpcs, {
+    const notifications = yield* RpcClient.makeNoSerialization(BroadcastServerNotificationRpcs, {
       spanPrefix: "McpServer/Notifications",
       onFromClient: (options) =>
         Effect.suspend((): Effect.Effect<void> => {
@@ -288,13 +299,13 @@ export class McpServer extends Context.Service<McpServer, {
               listChangedHandles.set(
                 message.tag,
                 setTimeout(() => {
-                  Queue.offerUnsafe(notificationsQueue, notification)
+                  Queue.offerUnsafe(notificationsQueue, { notification })
                   listChangedHandles.delete(message.tag)
                 }, 0)
               )
             }
           } else {
-            Queue.offerUnsafe(notificationsQueue, notification)
+            Queue.offerUnsafe(notificationsQueue, { notification })
           }
           return notifications.write({
             clientId: 0,
@@ -307,6 +318,11 @@ export class McpServer extends Context.Service<McpServer, {
 
     const service = McpServer.of({
       notifications: notifications.client,
+      notifyElicitationComplete: ({ clientId, elicitationId }) =>
+        Queue.offer(notificationsQueue, {
+          notification: McpCore.ServerNotification.ElicitationComplete({ elicitationId }),
+          targetClientId: clientId
+        }),
       initializedClients: new Set(),
       get tools() {
         return tools
@@ -1025,7 +1041,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   })
 
   yield* Queue.take(internalState.get(server)!.notifications).pipe(
-    Effect.flatMap(Effect.fnUntraced(function*(notification) {
+    Effect.flatMap(Effect.fnUntraced(function*({ notification, targetClientId }) {
       const clientIds = yield* patchedProtocol.clientIds
       for (const clientId of clientProtocols.keys()) {
         if (!clientIds.has(clientId)) {
@@ -1038,6 +1054,9 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
         }
       }
       for (const clientId of server.initializedClients.keys()) {
+        if (targetClientId !== undefined && clientId !== targetClientId) {
+          continue
+        }
         if (!clientIds.has(clientId)) {
           server.initializedClients.delete(clientId)
           continue
