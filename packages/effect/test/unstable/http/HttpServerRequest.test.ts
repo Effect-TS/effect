@@ -2,7 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { assertNone, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import { Effect, Schema, Stream } from "effect"
 import * as Option from "effect/Option"
-import { HttpClientRequest, HttpServerRequest } from "effect/unstable/http"
+import { HttpBody, HttpClientRequest, HttpServerRequest } from "effect/unstable/http"
 
 describe("HttpServerRequest", () => {
   it("toClientRequest", async () => {
@@ -107,6 +107,13 @@ describe("HttpServerRequest", () => {
         assert.strictEqual(parts[1].contentType, "text/plain")
         assert.strictEqual(new TextDecoder().decode(yield* parts[1].contentEffect), "hello")
       }
+    }))
+
+  it.effect("reads a raw BodyInit after conversion from a client request", () =>
+    Effect.gen(function*() {
+      const client = HttpClientRequest.setBody(HttpClientRequest.post("https://example.com"), HttpBody.raw("abc"))
+      const server = HttpServerRequest.fromClientRequest(client)
+      assert.strictEqual(yield* server.text, "abc")
     }))
 
   it.effect("schemaBodyJson applies parse options", () =>
