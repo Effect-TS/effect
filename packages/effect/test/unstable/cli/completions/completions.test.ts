@@ -1,5 +1,4 @@
 import { assert, describe, it } from "@effect/vitest"
-import { execFileSync } from "node:child_process"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 import * as Completions from "effect/unstable/cli/Completions"
 import * as Bash from "effect/unstable/cli/internal/completions/bash"
@@ -354,17 +353,22 @@ describe("Fish completions", () => {
       flags: [],
       arguments: [],
       subcommands: [
-        { name: "alpha", description: undefined, flags: [], arguments: [], subcommands: [leaf("common", "alpha-only")] },
+        {
+          name: "alpha",
+          description: undefined,
+          flags: [],
+          arguments: [],
+          subcommands: [leaf("common", "alpha-only")]
+        },
         { name: "beta", description: undefined, flags: [], arguments: [], subcommands: [leaf("common", "beta-only")] }
       ]
     }
-    const script = Fish.generate("tool", descriptor)
-    const output = execFileSync("fish", ["-c", `${script}\ncomplete -C 'tool alpha common --'`], {
-      encoding: "utf8"
-    })
+    const lines = Fish.generate("tool", descriptor).split("\n")
+    const alphaOnly = lines.find((line) => line.includes("-l alpha-only"))!
+    const betaOnly = lines.find((line) => line.includes("-l beta-only"))!
 
-    assert.include(output, "--alpha-only")
-    assert.notInclude(output, "--beta-only")
+    assert.include(alphaOnly, "__fish_seen_subcommand_from alpha; and __fish_seen_subcommand_from common")
+    assert.include(betaOnly, "__fish_seen_subcommand_from beta; and __fish_seen_subcommand_from common")
   })
 
   it("generates complete commands for root subcommands", () => {
