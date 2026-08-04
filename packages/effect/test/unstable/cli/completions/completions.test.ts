@@ -91,6 +91,52 @@ const emptyCmd = Command.make("noop").pipe(
 // ---------------------------------------------------------------------------
 
 describe("Bash completions", () => {
+  it("completes the active positional argument instead of always using the first", () => {
+    const descriptor: Completions.CommandDescriptor = {
+      name: "tool",
+      description: undefined,
+      flags: [
+        {
+          name: "verbose",
+          aliases: ["v"],
+          description: undefined,
+          type: { _tag: "Boolean" }
+        },
+        {
+          name: "format",
+          aliases: ["f"],
+          description: undefined,
+          type: { _tag: "Choice", values: ["json", "text"] }
+        }
+      ],
+      arguments: [
+        {
+          name: "source",
+          description: undefined,
+          required: true,
+          variadic: false,
+          type: { _tag: "Choice", values: ["one"] }
+        },
+        {
+          name: "target",
+          description: undefined,
+          required: true,
+          variadic: false,
+          type: { _tag: "Choice", values: ["two"] }
+        }
+      ],
+      subcommands: []
+    }
+    const script = Bash.generate("tool", descriptor)
+
+    assert.include(script, `for ((i = _command_index + 1; i < cword; i++)); do`)
+    assert.include(script, `--verbose|-v|--no-verbose) ;;`)
+    assert.include(script, `--format|-f) _skip_next=1 ;;`)
+    assert.include(script, `--format=*|-f=*) ;;`)
+    assert.include(script, `0)\n      COMPREPLY=( $(compgen -W 'one' -- "$cur") )`)
+    assert.include(script, `1)\n      COMPREPLY=( $(compgen -W 'two' -- "$cur") )`)
+  })
+
   it("generates completion function for root command", () => {
     const desc = fromCommand(simpleCmd)
     const script = Bash.generate("greet", desc)
@@ -149,6 +195,7 @@ describe("Bash completions", () => {
     assert.include(script, "_server()")
     assert.include(script, "_server_start()")
     assert.include(script, "_server_stop()")
+    assert.include(script, `_server_start "$i"`)
   })
 
   it("handles commands with no subcommands", () => {
