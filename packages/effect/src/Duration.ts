@@ -27,6 +27,8 @@ const TypeId = "~effect/time/Duration"
 
 const bigint0 = BigInt(0)
 const bigint1 = BigInt(1)
+const bigint2 = BigInt(2)
+const bigint10 = BigInt(10)
 const bigint24 = BigInt(24)
 const bigint60 = BigInt(60)
 const bigint1e3 = BigInt(1_000)
@@ -38,8 +40,20 @@ const roundTiesAwayFromZero = (input: number): bigint =>
 
 const roundMillisToNanos = (millis: number): bigint => roundTiesAwayFromZero(millis * 1_000_000)
 
-const parseNanos = (input: string, scale: bigint): bigint =>
-  input.includes(".") ? roundTiesAwayFromZero(Number(input) * Number(scale)) : BigInt(input) * scale
+const parseNanos = (input: string, scale: bigint): bigint => {
+  const decimalIndex = input.indexOf(".")
+  if (decimalIndex === -1) return BigInt(input) * scale
+
+  const isNegative = input[0] === "-"
+  const fractional = input.slice(decimalIndex + 1)
+  const fractionalScale = bigint10 ** BigInt(fractional.length)
+  const scaled = (
+    BigInt(input.slice(isNegative ? 1 : 0, decimalIndex)) * fractionalScale + BigInt(fractional)
+  ) * scale
+  const rounded = scaled / fractionalScale +
+    (scaled % fractionalScale * bigint2 >= fractionalScale ? bigint1 : bigint0)
+  return isNegative ? -rounded : rounded
+}
 
 const nanosToHrTime = (nanos: bigint): [seconds: number, nanos: number] => {
   const sign = nanos < bigint0 ? -bigint1 : bigint1
