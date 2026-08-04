@@ -1,7 +1,8 @@
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, FileSystem, Layer, Path, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
-import { CliOutput, Command, Flag } from "effect/unstable/cli"
+import { Argument, CliOutput, Command, Flag } from "effect/unstable/cli"
+import { toImpl } from "effect/unstable/cli/internal/command"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
 import * as Cli from "./fixtures/ComprehensiveCli.ts"
 import * as MockTerminal from "./services/MockTerminal.ts"
@@ -38,6 +39,38 @@ const runCommand = Effect.fnUntraced(
 )
 
 describe("Command help output", () => {
+  it("marks omittable flags as not required in structured help", () => {
+    const command = Command.make("app", {
+      required: Flag.string("required"),
+      optional: Flag.string("optional").pipe(Flag.optional),
+      defaulted: Flag.string("defaulted").pipe(Flag.withDefault("output.txt"))
+    })
+    const help = toImpl(command).buildHelpDoc(["app"])
+
+    assert.deepStrictEqual(help.flags.map((flag) => flag.required), [true, false, false])
+  })
+
+  it("marks omittable arguments as not required in structured help", () => {
+    const requiredVariadic = Command.make("app", {
+      files: Argument.string("files").pipe(Argument.variadic({ min: 1 }))
+    })
+    const optionalVariadic = Command.make("app", {
+      files: Argument.string("files").pipe(Argument.variadic())
+    })
+    const defaulted = Command.make("app", {
+      output: Argument.string("output").pipe(Argument.withDefault("output.txt"))
+    })
+
+    assert.deepStrictEqual(
+      [
+        toImpl(requiredVariadic).buildHelpDoc(["app"]).args![0].required,
+        toImpl(optionalVariadic).buildHelpDoc(["app"]).args![0].required,
+        toImpl(defaulted).buildHelpDoc(["app"]).args![0].required
+      ],
+      [true, false, false]
+    )
+  })
+
   it.effect("renders root command help", () =>
     Effect.gen(function*() {
       const helpText = yield* runCommand(["--help"])
