@@ -64,6 +64,22 @@ describe.concurrent("Sharding", () => {
       expect(driver.unprocessed.size).toEqual(0)
     }).pipe(Effect.provide(TestSharding)))
 
+  it.live("defects instead of hanging when persisted failures contain non-JSON Error values", () =>
+    Effect.gen(function*() {
+      const driver = yield* MessageStorage.MemoryDriver
+      const makeClient = yield* TestEntity.client
+      const client = makeClient("1")
+      const cause = yield* client.Fail().pipe(
+        Effect.timeout("2 seconds"),
+        Effect.sandbox,
+        Effect.flip
+      )
+      assert(Cause.hasDies(cause))
+      assert.include(Cause.pretty(cause), "MalformedMessage")
+      assert.strictEqual(driver.replyIds.size, 1)
+      assert.strictEqual(driver.unprocessed.size, 0)
+    }).pipe(Effect.provide(TestSharding)))
+
   it.effect("routes durable interrupts through storage", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
