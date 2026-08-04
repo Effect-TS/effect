@@ -10,9 +10,8 @@
  * @since 2.0.0
  */
 import type { Equivalence } from "./Equivalence.ts"
-import * as Hash from "./Hash.ts"
+import type * as Hash from "./Hash.ts"
 import { byReferenceInstances, getAllObjectKeys } from "./internal/equal.ts"
-import { hasProperty } from "./Predicate.ts"
 
 /**
  * Defines the unique string identifier for the `Equal` interface.
@@ -130,9 +129,8 @@ export interface Equal extends Hash.Hash {
  * Functions without an `Equal` implementation compare by reference. Circular
  * references are handled when both structures are circular at the same depth.
  *
- * Hash values are checked first as a fast-path rejection. The function also
- * supports dual data-last usage: call it with one argument to get a curried
- * predicate.
+ * The function also supports dual data-last usage: call it with one argument
+ * to get a curried predicate.
  *
  * **Gotchas**
  *
@@ -229,9 +227,7 @@ const visitedRight = new WeakSet<object>()
 
 /** Helper to perform cached object comparison */
 function compareObjects(self: object, that: object): boolean {
-  if (Hash.hash(self) !== Hash.hash(that)) {
-    return false
-  } else if (self instanceof Date) {
+  if (self instanceof Date) {
     if (!(that instanceof Date)) return false
     const selfTime = self.getTime()
     const thatTime = that.getTime()
@@ -441,7 +437,8 @@ const compareSets = makeCompareSet(compareBoth)
  * @category guards
  * @since 2.0.0
  */
-export const isEqual = (u: unknown): u is Equal => hasProperty(u, symbol)
+export const isEqual = (u: unknown): u is Equal =>
+  ((typeof u === "object" && u !== null) || typeof u === "function") && symbol in u
 
 /**
  * Wraps {@link equals} as an `Equivalence<A>`.
