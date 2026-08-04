@@ -3,11 +3,14 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as Statement from "effect/unstable/sql/Statement"
+import type * as Tedious from "tedious"
 import { vi } from "vitest"
 
 const state = vi.hoisted(() => ({ type: {} }))
 
-vi.mock("tedious", () => {
+vi.mock("tedious", async (importOriginal) => {
+  const original = await importOriginal<typeof Tedious>()
+
   class MockRequest {
     readonly listeners: Record<string, (...args: Array<any>) => void> = {}
 
@@ -52,16 +55,9 @@ vi.mock("tedious", () => {
   }
 
   return {
+    ...original,
     Connection: MockConnection,
-    Request: MockRequest,
-    TYPES: {
-      VarChar: state.type,
-      Int: state.type,
-      BigInt: state.type,
-      Bit: state.type,
-      DateTime: state.type,
-      VarBinary: state.type
-    }
+    Request: MockRequest
   }
 })
 
