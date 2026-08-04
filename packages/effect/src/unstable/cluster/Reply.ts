@@ -434,6 +434,27 @@ export const serialize = <R extends Rpc.Any>(
 }
 
 /**
+ * Serializes a `ReplyWithContext`, falling back to a serializable defect reply
+ * when the original reply cannot be encoded.
+ *
+ * @category serialization
+ * @since 4.0.0
+ */
+export const serializeOrDefect = <R extends Rpc.Any>(
+  self: ReplyWithContext<R>
+): Effect.Effect<Encoded> =>
+  Effect.catchTag(
+    serialize(self),
+    "MalformedMessage",
+    (error) =>
+      Effect.orDie(serialize(ReplyWithContext.fromDefect({
+        id: self.reply.id,
+        requestId: self.reply.requestId,
+        defect: error
+      })))
+  )
+
+/**
  * Serializes an outgoing request's last received reply when one exists, returning
  * `None` when no reply has been received and refailing encoding errors as
  * `MalformedMessage`.
