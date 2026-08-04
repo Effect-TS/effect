@@ -506,6 +506,83 @@ describe("Prompt.file", () => {
 })
 
 describe("Prompt.multiSelect", () => {
+  it.effect("does not allow a disabled multi-select choice to be selected", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [{ title: "Unavailable", value: "unavailable", disabled: true }]
+      })
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, [])
+      const output = yield* MockTerminal.displayLines
+      assert.isTrue(output.some((line) => String(line).includes("\x07")))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("does not select disabled choices when selecting all", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available" },
+          { title: "Unavailable", value: "unavailable", disabled: true }
+        ]
+      })
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+      const output = yield* MockTerminal.displayLines
+      assert.isTrue(findFrame(toFrames(output), "Select None") !== undefined)
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("does not select disabled choices when inverting the selection", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available" },
+          { title: "Unavailable", value: "unavailable", disabled: true }
+        ]
+      })
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("ignores disabled preselected choices when validating and submitting", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available", selected: true },
+          { title: "Unavailable", value: "unavailable", disabled: true, selected: true }
+        ],
+        max: 1
+      })
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+      const output = yield* MockTerminal.displayLines
+      const initialFrame = findFrame(toFrames(output), "Unavailable")
+      assert.isTrue(initialFrame?.includes("☐ Unavailable"))
+      const rawInitialFrame = findFrame(toRawFrames(output), "Unavailable")
+      assert.isTrue(rawInitialFrame?.includes(`${escape}[9m${escape}[90mUnavailable`))
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("underlines the active label", () =>
     Effect.gen(function*() {
       const prompt = Prompt.multiSelect({
