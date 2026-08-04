@@ -24,7 +24,7 @@ import * as ShardId from "./ShardId.ts"
  * Represents a generic interface to the persistent storage required by the
  * cluster.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class RunnerStorage extends Context.Service<RunnerStorage, {
@@ -84,7 +84,7 @@ export class RunnerStorage extends Context.Service<RunnerStorage, {
  * String-encoded runner storage interface used by adapters that persist runner
  * addresses, runners, machine ids, and shard ids outside the in-memory model.
  *
- * @category Encoded
+ * @category services
  * @since 4.0.0
  */
 export interface Encoded {

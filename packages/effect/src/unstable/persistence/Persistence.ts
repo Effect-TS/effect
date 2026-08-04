@@ -35,7 +35,7 @@ const ErrorTypeId = "~effect/persistence/Persistence/PersistenceError" as const
  * @category errors
  * @since 4.0.0
  */
-export class PersistenceError extends Schema.ErrorClass<PersistenceError>(ErrorTypeId)({
+export class PersistenceError extends Schema.Error<PersistenceError>(ErrorTypeId)({
   _tag: Schema.tag("PersistenceError"),
   message: Schema.String,
   cause: Schema.optional(Schema.Defect())
@@ -52,7 +52,7 @@ export class PersistenceError extends Schema.ErrorClass<PersistenceError>(ErrorT
  * Service for creating scoped stores of persisted `Persistable` request
  * results.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export class Persistence extends Context.Service<Persistence, {
@@ -99,7 +99,7 @@ export interface PersistenceStore {
 /**
  * Service for creating raw backing stores for persistence store ids.
  *
- * @category BackingPersistence
+ * @category services
  * @since 4.0.0
  */
 export class BackingPersistence extends Context.Service<BackingPersistence, {
@@ -110,7 +110,7 @@ export class BackingPersistence extends Context.Service<BackingPersistence, {
  * Raw persistence backing store for JSON-compatible objects with optional
  * TTLs.
  *
- * @category BackingPersistence
+ * @category services
  * @since 4.0.0
  */
 export interface BackingPersistenceStore {
@@ -414,18 +414,16 @@ export const layerBackingSqlMultiTable: Layer.Layer<
               })
             ),
             Effect.flatMap((rows) => {
-              const out = new Array<object | undefined>(keys.length)
+              const values = new Map<string, object>()
               for (let i = 0; i < rows.length; i++) {
                 const row = rows[i]
-                const index = keys.indexOf(row.id)
-                if (index === -1) continue
                 try {
-                  out[index] = JSON.parse(row.value)
+                  values.set(row.id, JSON.parse(row.value))
                 } catch {
                   // ignore
                 }
               }
-              return Effect.succeed(out as Arr.NonEmptyArray<object | undefined>)
+              return Effect.succeed(keys.map((key) => values.get(key)) as Arr.NonEmptyArray<object | undefined>)
             })
           ),
         set: (key, value, ttl) =>
@@ -761,18 +759,16 @@ export const layerBackingSql: Layer.Layer<
               })
             ),
             Effect.flatMap((rows) => {
-              const out = new Array<object | undefined>(keys.length)
+              const values = new Map<string, object>()
               for (let i = 0; i < rows.length; i++) {
                 const row = rows[i]
-                const index = keys.indexOf(row.id)
-                if (index === -1) continue
                 try {
-                  out[index] = JSON.parse(row.value)
+                  values.set(row.id, JSON.parse(row.value))
                 } catch {
                   // ignore
                 }
               }
-              return Effect.succeed(out as Arr.NonEmptyArray<object | undefined>)
+              return Effect.succeed(keys.map((key) => values.get(key)) as Arr.NonEmptyArray<object | undefined>)
             })
           ),
         set: (key, value, ttl) =>
@@ -965,7 +961,7 @@ export const layerBackingRedis: Layer.Layer<
               ({ cause }) => new PersistenceError({ message: `Failed to remove key ${key} from Redis`, cause })
             ),
           clear: redis.send<Array<string>>("KEYS", `${prefix}:*`).pipe(
-            Effect.flatMap((keys) => redis.send("DEL", ...keys)),
+            Effect.flatMap((keys) => keys.length === 0 ? Effect.void : redis.send("DEL", ...keys)),
             Effect.mapError(({ cause }) =>
               new PersistenceError({
                 message: `Failed to clear keys from Redis`,

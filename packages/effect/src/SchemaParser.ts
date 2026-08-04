@@ -170,7 +170,7 @@ export function make<S extends Schema.Constraint>(schema: S) {
  * that contain defects, interruptions, or asynchronous work at this synchronous
  * boundary throw an `Error` whose cause is the underlying `Cause`.
  *
- * @category Asserting
+ * @category guards
  * @since 3.10.0
  */
 export function is<S extends Schema.Constraint>(schema: S): <I>(input: I) => input is I & S["Type"] {
@@ -222,7 +222,7 @@ export function _issue<T>(ast: SchemaAST.AST) {
  * synchronous boundary throw an `Error` whose cause is the underlying `Cause`,
  * instead of being converted to a schema validation error.
  *
- * @category Asserting
+ * @category guards
  * @since 4.0.0
  */
 export function asserts<S extends Schema.Constraint, I>(schema: S, input: I): asserts input is I & S["Type"] {
@@ -916,7 +916,7 @@ const mergeParseOptions = (
 
 const getValue = (value: unknown): Effect.Effect<any, SchemaIssue.Issue> => {
   if (value === InternalParser.missing) {
-    return Effect.fail(new SchemaIssue.InvalidValue(Option.none()))
+    return Effect.fail(new SchemaIssue.InvalidValue())
   }
   return Effect.succeed(value)
 }
@@ -1055,7 +1055,7 @@ function makeParser(ast: SchemaAST.AST): Parser {
             const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
             if (issues) {
               result = Effect.fail(
-                new SchemaIssue.Composite(ast, InternalParser.toOption(input), issues)
+                new SchemaIssue.Composite(ast, issues)
               )
             }
           }
@@ -1066,7 +1066,7 @@ function makeParser(ast: SchemaAST.AST): Parser {
             const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
             if (issues) {
               return Effect.fail(
-                new SchemaIssue.Composite(ast, InternalParser.toOption(input), issues)
+                new SchemaIssue.Composite(ast, issues)
               )
             }
           }
@@ -1085,7 +1085,7 @@ function makeParser(ast: SchemaAST.AST): Parser {
           const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
           if (issues) {
             result = Effect.fail(
-              new SchemaIssue.Composite(ast, InternalParser.toOption(value), issues)
+              new SchemaIssue.Composite(ast, issues)
             )
           }
         }
@@ -1095,7 +1095,7 @@ function makeParser(ast: SchemaAST.AST): Parser {
             const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
             if (issues) {
               return Effect.fail(
-                new SchemaIssue.Composite(ast, InternalParser.toOption(value), issues)
+                new SchemaIssue.Composite(ast, issues)
               )
             }
           }
@@ -1169,10 +1169,7 @@ function makeParser(ast: SchemaAST.AST): Parser {
     }
     result = Effect.catchCause(
       result,
-      (cause) =>
-        Effect.failCauseSync(() =>
-          Cause.map(cause, (issue) => new SchemaIssue.Encoding(ast, InternalParser.toOption(input), issue))
-        )
+      (cause) => Effect.failCauseSync(() => Cause.map(cause, (issue) => new SchemaIssue.Encoding(ast, issue)))
     )
     return Effect.flatMapEager(result, (value) => {
       const local = parseLocal(value, options)

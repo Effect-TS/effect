@@ -19,7 +19,7 @@ import type { Scope } from "./Scope.ts"
 /**
  * Represents a console interface for logging, debugging, timing, and grouping output.
  *
- * @category models
+ * @category services
  * @since 2.0.0
  */
 export interface Console {
@@ -77,7 +77,7 @@ export interface Console {
  *
  * @see {@link consoleWith} for using the current console service inside an effect
  *
- * @category references
+ * @category services
  * @since 2.0.0
  */
 export const Console: Context.Reference<Console> = effect.ConsoleRef

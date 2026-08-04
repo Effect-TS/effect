@@ -438,7 +438,7 @@ export const size: <V>(self: Trie<V>) => number = TR.size
  * Trie.get(trie, "mea") // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const get: {
@@ -471,7 +471,7 @@ export const get: {
  * Trie.has(trie, "mea") // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const has: {
@@ -494,7 +494,7 @@ export const has: {
  * Trie.isEmpty(trie1) // => false
  * ```
  *
- * @category elements
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty: <V>(self: Trie<V>) => boolean = TR.isEmpty

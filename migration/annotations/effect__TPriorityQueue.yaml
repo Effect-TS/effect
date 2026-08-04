@@ -34,3 +34,9 @@ effect/TPriorityQueue#toArray:
 effect/TPriorityQueue#toChunk:
   replacement: "Effect.map(TxPriorityQueue.toArray(self), Chunk.fromIterable)"
   note: "The direct Chunk conversion was removed; convert the retained Array snapshot explicitly."
+effect/TPriorityQueue#take:
+  replacement: "TxPriorityQueue.take"
+  note: "Import TxPriorityQueue from \"effect/TxPriorityQueue\"; the operation now returns an ordinary Effect, so compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TPriorityQueue#takeAll:
+  replacement: "TxPriorityQueue.takeAll"
+  note: "Import TxPriorityQueue from \"effect/TxPriorityQueue\"; it returns an ordinary Effect containing the priority-ordered Array."

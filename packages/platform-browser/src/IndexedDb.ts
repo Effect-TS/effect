@@ -19,7 +19,7 @@ const TypeId = "~@effect/platform-browser/IndexedDb"
 /**
  * Service interface that provides the browser `indexedDB` factory and `IDBKeyRange` constructor.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface IndexedDb {
@@ -93,7 +93,7 @@ export const make = (impl: Omit<IndexedDb, typeof TypeId>): IndexedDb => Indexed
 /**
  * Layer that provides `IndexedDb` from `window.indexedDB` and `window.IDBKeyRange`, failing with a config error when they are unavailable.
  *
- * @category constructors
+ * @category layers
  * @since 4.0.0
  */
 export const layerWindow: Layer.Layer<IndexedDb> = Layer.effect(

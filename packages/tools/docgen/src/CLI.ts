@@ -236,7 +236,7 @@ const command = docgenCommand.pipe(
 /**
  * Runs the docgen command-line program.
  *
- * @category CLI
+ * @category running
  * @since 0.6.0
  */
 export const cli = Command.runWith(command, {

@@ -44,7 +44,7 @@ const ErrorTypeId = "~@effect/platform-browser/Geolocation/GeolocationError"
  * @see {@link GeolocationError} for represented browser geolocation failures
  * @see {@link layer} for the browser-backed service implementation
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Geolocation {

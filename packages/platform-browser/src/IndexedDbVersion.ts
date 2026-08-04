@@ -27,7 +27,7 @@ const TypeId = "~@effect/platform-browser/IndexedDbVersion"
 /**
  * Typed IndexedDB version definition containing the tables available in that schema version.
  *
- * @category interface
+ * @category models
  * @since 4.0.0
  */
 export interface IndexedDbVersion<
@@ -59,7 +59,7 @@ export type AnyWithProps = IndexedDbVersion<IndexedDbTable.AnyWithProps>
 /**
  * Extracts the table union from an `IndexedDbVersion`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Tables<Db extends Any> = Db extends IndexedDbVersion<infer _Tables> ? _Tables : never
@@ -67,7 +67,7 @@ export type Tables<Db extends Any> = Db extends IndexedDbVersion<infer _Tables> 
 /**
  * Selects a table by name from an `IndexedDbVersion`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type TableWithName<
@@ -78,7 +78,7 @@ export type TableWithName<
 /**
  * Extracts the schema for a named table within an `IndexedDbVersion`.
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type SchemaWithName<

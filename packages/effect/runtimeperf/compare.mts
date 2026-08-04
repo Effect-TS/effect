@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process"
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from "node:fs"
 import os from "node:os"
-import { dirname, join, relative } from "node:path"
+import { join } from "node:path"
 import process from "node:process"
+import { materializeFixture } from "./materialize.mts"
 import { analyzePairs } from "./stats.mts"
 import {
   aggregateMeasurements,
@@ -22,8 +23,6 @@ import {
   repoRoot,
   reportPath,
   resolveDefaults,
-  runtimeperfDir,
-  sanitize,
   selectFixtures,
   sha256,
   workerPath,
@@ -88,14 +87,6 @@ const createWorktree = (runRoot, name, sha) => {
     removeWorktree(path)
     throw error
   }
-  return path
-}
-
-const materializeFixture = (targetRoot, fixture) => {
-  const name = sanitize(relative(runtimeperfDir, fixture.fixturePath))
-  const path = join(targetRoot, "packages", "effect", ".runtimeperf-compare", name)
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, readFileSync(fixture.fixturePath))
   return path
 }
 

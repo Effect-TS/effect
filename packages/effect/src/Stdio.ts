@@ -57,7 +57,7 @@ export const TypeId: TypeId = "~effect/Stdio"
  * standard error, and a stream of standard input bytes. I/O operations can fail
  * with `PlatformError`.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Stdio {

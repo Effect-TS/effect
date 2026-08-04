@@ -70,3 +70,6 @@
 "@effect/rpc/Rpc#wrap":
   replacement: "effect/unstable/rpc/Rpc#wrap"
   note: "Retained after the module move; it still applies fork and uninterruptible handler options, while the return type is now uniformly Rpc.Wrapper."
+"@effect/rpc/Rpc#SuccessEncoded":
+  replacement: "effect/unstable/rpc/Rpc#SuccessEncoded"
+  note: "Retained after the module move and now accounts for the RPC's explicit service-requirement parameter."

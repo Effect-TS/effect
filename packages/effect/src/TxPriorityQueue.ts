@@ -217,7 +217,7 @@ export const size = <A>(self: TxPriorityQueue<A>): Effect.Effect<number> => Effe
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category getters
+ * @category predicates
  * @since 2.0.0
  */
 export const isEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> => Effect.map(size(self), (n) => n === 0)
@@ -238,7 +238,7 @@ export const isEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> => 
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category getters
+ * @category predicates
  * @since 2.0.0
  */
 export const isNonEmpty = <A>(self: TxPriorityQueue<A>): Effect.Effect<boolean> => Effect.map(size(self), (n) => n > 0)

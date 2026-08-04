@@ -131,6 +131,7 @@ export default defineConfig({
           setupFiles: [path.join(__dirname, "packages/platform-browser/vitest.setup.ts")]
         }
       }),
+      ...project("@effect/platform-bun", "packages/platform-bun", isBun),
       ...project("@effect/platform-deno", "packages/platform-deno", isDeno),
       ...project("@effect/platform-node", "packages/platform-node", isNode),
       ...project(
@@ -159,7 +160,23 @@ export default defineConfig({
       ...project("@effect/sql-d1", "packages/sql/d1", !isDeno),
       ...project("@effect/sql-libsql", "packages/sql/libsql"),
       ...project("@effect/sql-mssql", "packages/sql/mssql"),
-      ...project("@effect/sql-mysql2", "packages/sql/mysql2"),
+      // MySQL starts a fresh container per integration test, so avoid competing
+      // with the other container-backed projects on Deno CI runners.
+      ...project(
+        "@effect/sql-mysql2",
+        "packages/sql/mysql2",
+        true,
+        isDeno && integrationTestsEnabled
+          ? {
+            test: {
+              fileParallelism: false,
+              sequence: {
+                groupOrder: 1
+              }
+            }
+          }
+          : {}
+      ),
       ...project("@effect/sql-pg", "packages/sql/pg"),
       ...project("@effect/sql-pglite", "packages/sql/pglite"),
       ...project("@effect/sql-sqlite-bun", "packages/sql/sqlite-bun"),

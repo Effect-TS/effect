@@ -166,7 +166,7 @@ export const make = <T>(value: T): MutableRef<T> => {
  * MutableRef.get(ref) // => "final"
  * ```
  *
- * @category general
+ * @category mutations
  * @since 2.0.0
  */
 export const compareAndSet: {
@@ -218,7 +218,7 @@ export const compareAndSet: {
  * MutableRef.get(countdown) // => 0
  * ```
  *
- * @category numeric
+ * @category mutations
  * @since 2.0.0
  */
 export const decrement = (self: MutableRef<number>): MutableRef<number> => update(self, (n) => n - 1)
@@ -261,7 +261,7 @@ export const decrement = (self: MutableRef<number>): MutableRef<number> => updat
  * MutableRef.get(attempts) // => -1
  * ```
  *
- * @category numeric
+ * @category mutations
  * @since 2.0.0
  */
 export const decrementAndGet = (self: MutableRef<number>): number => updateAndGet(self, (n) => n - 1)
@@ -299,7 +299,7 @@ export const decrementAndGet = (self: MutableRef<number>): number => updateAndGe
  * value1 === value2 // => true
  * ```
  *
- * @category general
+ * @category getters
  * @since 2.0.0
  */
 export const get = <T>(self: MutableRef<T>): T => self.current
@@ -344,7 +344,7 @@ export const get = <T>(self: MutableRef<T>): T => self.current
  * nextIndex // => 2
  * ```
  *
- * @category numeric
+ * @category mutations
  * @since 2.0.0
  */
 export const getAndDecrement = (self: MutableRef<number>): number => getAndUpdate(self, (n) => n - 1)
@@ -396,7 +396,7 @@ export const getAndDecrement = (self: MutableRef<number>): number => getAndUpdat
  * MutableRef.get(iterations) // => 5
  * ```
  *
- * @category numeric
+ * @category mutations
  * @since 2.0.0
  */
 export const getAndIncrement = (self: MutableRef<number>): number => getAndUpdate(self, (n) => n + 1)
@@ -445,7 +445,7 @@ export const getAndIncrement = (self: MutableRef<number>): number => getAndUpdat
  * MutableRef.get(buffer) // => []
  * ```
  *
- * @category general
+ * @category mutations
  * @since 2.0.0
  */
 export const getAndSet: {
@@ -510,7 +510,7 @@ export const getAndSet: {
  * MutableRef.get(list) // => [1, 2, 3, 4]
  * ```
  *
- * @category general
+ * @category mutations
  * @since 2.0.0
  */
 export const getAndUpdate: {
@@ -561,7 +561,7 @@ export const getAndUpdate: {
  * MutableRef.get(counter) // => 9
  * ```
  *
- * @category numeric
+ * @category mutations
  * @since 2.0.0
  */
 export const increment = (self: MutableRef<number>): MutableRef<number> => update(self, (n) => n + 1)
@@ -607,7 +607,7 @@ export const increment = (self: MutableRef<number>): MutableRef<number> => updat
  * MutableRef.get(attempts) // => 1
  * ```
  *
- * @category numeric
+ * @category mutations
  * @since 2.0.0
  */
 export const incrementAndGet = (self: MutableRef<number>): number => updateAndGet(self, (n) => n + 1)
@@ -659,7 +659,7 @@ export const incrementAndGet = (self: MutableRef<number>): number => updateAndGe
  * MutableRef.get(state) // => "success"
  * ```
  *
- * @category general
+ * @category mutations
  * @since 2.0.0
  */
 export const set: {
@@ -716,7 +716,7 @@ export const set: {
  * MutableRef.get(ref1) // => 3
  * ```
  *
- * @category general
+ * @category mutations
  * @since 2.0.0
  */
 export const setAndGet: {
@@ -782,7 +782,7 @@ export const setAndGet: {
  * MutableRef.get(list) // => [1, 2, 3, 4]
  * ```
  *
- * @category general
+ * @category mutations
  * @since 2.0.0
  */
 export const update: {
@@ -847,7 +847,7 @@ export const update: {
  * MutableRef.get(list) // => [2, 4, 6]
  * ```
  *
- * @category general
+ * @category mutations
  * @since 2.0.0
  */
 export const updateAndGet: {
@@ -907,7 +907,7 @@ export const updateAndGet: {
  * MutableRef.get(flag) // => true
  * ```
  *
- * @category boolean
+ * @category mutations
  * @since 2.0.0
  */
 export const toggle = (self: MutableRef<boolean>): MutableRef<boolean> => update(self, (_) => !_)

@@ -54,6 +54,15 @@ const suite = (name: string, layer: Layer.Layer<Persistence.BackingPersistence, 
         ])
       }))
 
+    it.effect("getMany with duplicate keys", () =>
+      Effect.gen(function*() {
+        const persistence = yield* Persistence.BackingPersistence
+        const store = yield* persistence.make("test_store_duplicate_keys")
+        yield* store.set("key", { value: 1 }, undefined)
+
+        expect(yield* store.getMany(["key", "key"])).toEqual([{ value: 1 }, { value: 1 }])
+      }))
+
     it.effect("remove", () =>
       Effect.gen(function*() {
         const persistence = yield* Persistence.BackingPersistence
@@ -141,16 +150,7 @@ it.layer(ClientLayer)("Persistence SQL cleanup", (it) => {
 
       yield* Layer.build(Persistence.layerBackingSql).pipe(TestClock.withLive)
 
-      let expired = yield* SqlCleanupTest.waitForCount(
-        expiredCount,
-        (count) => count < SqlCleanupTest.expiredEntryCount
-      )
-      assert.strictEqual(expired, 1)
-
-      while (expired > 0) {
-        const previous = expired
-        expired = yield* SqlCleanupTest.waitForCount(expiredCount, (count) => count < previous)
-      }
+      const expired = yield* SqlCleanupTest.waitForCount(expiredCount, (count) => count === 0)
       assert.strictEqual(expired, 0)
       const live = yield* sql<{ readonly count: number }>`
         SELECT COUNT(*) AS count FROM ${table} WHERE store_id = 'live'

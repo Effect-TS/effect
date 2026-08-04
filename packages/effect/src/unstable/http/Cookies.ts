@@ -28,7 +28,7 @@ const TypeId = "~effect/http/Cookies"
 /**
  * Returns `true` when a value is a `Cookies` collection.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isCookies = (u: unknown): u is Cookies => Predicate.hasProperty(u, TypeId)
@@ -419,7 +419,7 @@ export const empty: Cookies = fromIterable([])
 /**
  * Returns `true` when the `Cookies` collection contains no cookies.
  *
- * @category refinements
+ * @category predicates
  * @since 4.0.0
  */
 export const isEmpty = (self: Cookies): boolean => Record.isEmptyRecord(self.cookies)

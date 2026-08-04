@@ -108,7 +108,7 @@ export const ConfigurationSchema = Schema.Struct({
 /**
  * Resolved configuration used by the docgen services.
  *
- * @category models
+ * @category services
  * @since 0.6.0
  */
 export interface ConfigurationShape {

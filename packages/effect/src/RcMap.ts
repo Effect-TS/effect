@@ -233,7 +233,7 @@ const makeUnsafe = <K, A, E>(options: {
  * @see {@link get} for acquiring or retaining a resource by key
  * @see {@link invalidate} for removing a resource from the map
  *
- * @category models
+ * @category constructors
  * @since 3.5.0
  */
 export const make: {

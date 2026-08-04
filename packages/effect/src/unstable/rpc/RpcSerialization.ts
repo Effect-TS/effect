@@ -27,7 +27,7 @@ import type * as RpcMessage from "./RpcMessage.ts"
  * Use to provide the serialization boundary shared by RPC clients and servers
  * for a chosen wire format.
  *
- * @category serialization
+ * @category services
  * @since 4.0.0
  */
 export class RpcSerialization extends Context.Service<RpcSerialization, {
@@ -571,7 +571,7 @@ export const msgPack: RpcSerialization["Service"] = makeMsgPack({ useRecords: tr
  *
  * @see {@link layerNdjson} for transports that need newline-delimited framing
  *
- * @category serialization
+ * @category layers
  * @since 4.0.0
  */
 export const layerJson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(json)
@@ -585,7 +585,7 @@ export const layerJson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeriali
  *
  * @see {@link layerJson} for transports that already provide message framing
  *
- * @category serialization
+ * @category layers
  * @since 4.0.0
  */
 export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(ndjson)
@@ -593,7 +593,7 @@ export const layerNdjson: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeria
 /**
  * RPC serialization layer that uses NDJSON with custom streaming options.
  *
- * @category serialization
+ * @category layers
  * @since 4.0.0
  */
 export const layerNdjsonWith = (options?: StreamOptions): Layer.Layer<RpcSerialization> =>
@@ -602,7 +602,7 @@ export const layerNdjsonWith = (options?: StreamOptions): Layer.Layer<RpcSeriali
 /**
  * RPC serialization layer that uses JSON-RPC for serialization.
  *
- * @category serialization
+ * @category layers
  * @since 4.0.0
  */
 export const layerJsonRpc = (options?: {
@@ -613,7 +613,7 @@ export const layerJsonRpc = (options?: {
  * RPC serialization layer that uses newline-delimited JSON-RPC for
  * serialization.
  *
- * @category serialization
+ * @category layers
  * @since 4.0.0
  */
 export const layerNdJsonRpc = (options?: {
@@ -629,7 +629,7 @@ export const layerNdJsonRpc = (options?: {
  * MessagePack has a more compact binary format compared to JSON and NDJSON. It
  * also has better support for binary data.
  *
- * @category serialization
+ * @category layers
  * @since 4.0.0
  */
 export const layerMsgPack: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSerialization)(msgPack)
@@ -637,7 +637,7 @@ export const layerMsgPack: Layer.Layer<RpcSerialization> = Layer.succeed(RpcSeri
 /**
  * RPC serialization layer that uses MessagePack with custom options.
  *
- * @category serialization
+ * @category layers
  * @since 4.0.0
  */
 export const layerMsgPackWith = (

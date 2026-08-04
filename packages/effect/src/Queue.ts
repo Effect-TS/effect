@@ -639,7 +639,7 @@ export const unbounded = <A, E = never>(): Effect<Queue<A, E>> => make()
  * await Effect.runPromise(program) // => { offered: [true, true], size: 2 }
  * ```
  *
- * @category Offering
+ * @category offering
  * @since 2.0.0
  */
 export const offer = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Effect<boolean> =>
@@ -702,7 +702,7 @@ export const offer = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): Eff
  * await Effect.runPromise(program) // => { offered: [true, true], size: 2 }
  * ```
  *
- * @category Offering
+ * @category offering
  * @since 4.0.0
  */
 export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>): boolean => {
@@ -756,7 +756,7 @@ export const offerUnsafe = <A, E>(self: Enqueue<A, E>, message: Types.NoInfer<A>
  * await Effect.runPromise(program) // => [4, 5]
  * ```
  *
- * @category Offering
+ * @category offering
  * @since 2.0.0
  */
 export const offerAll = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effect<Array<A>> =>
@@ -806,7 +806,7 @@ export const offerAll = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Effe
  * await Effect.runPromise(program) // => { remaining: [4, 5], size: 3 }
  * ```
  *
- * @category Offering
+ * @category offering
  * @since 4.0.0
  */
 export const offerAllUnsafe = <A, E>(self: Enqueue<A, E>, messages: Iterable<A>): Array<A> => {
@@ -1681,7 +1681,7 @@ export const size = <A, E>(self: Dequeue<A, E>): Effect<number> => internalEffec
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category sizes
+ * @category predicates
  * @since 2.0.0
  */
 export const isFull = <A, E>(self: Dequeue<A, E>): Effect<boolean> => internalEffect.sync(() => isFullUnsafe(self))
@@ -1764,7 +1764,7 @@ export const sizeUnsafe = <A, E>(self: Dequeue<A, E>): number => self.state._tag
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category sizes
+ * @category predicates
  * @since 4.0.0
  */
 export const isFullUnsafe = <A, E>(self: Dequeue<A, E>): boolean => sizeUnsafe(self) === self.capacity

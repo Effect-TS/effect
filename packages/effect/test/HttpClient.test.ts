@@ -1,7 +1,16 @@
 import { expect, it } from "@effect/vitest"
 import { Context, Effect, Layer, Schema, Stream, Struct } from "effect"
 import { TestClock } from "effect/testing"
-import { FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
+import {
+  FetchHttpClient,
+  HttpClient,
+  HttpClientRequest,
+  HttpClientResponse,
+  HttpRouter,
+  HttpServer,
+  HttpServerRequest,
+  HttpServerResponse
+} from "effect/unstable/http"
 
 const Todo = Schema.Struct({
   userId: Schema.Number,
@@ -14,10 +23,7 @@ const TodoWithoutId = Schema.Struct({
 })
 
 const makeJsonPlaceholder = Effect.gen(function*() {
-  const defaultClient = yield* HttpClient.HttpClient
-  const client = defaultClient.pipe(
-    HttpClient.mapRequest(HttpClientRequest.prependUrl("https://jsonplaceholder.typicode.com"))
-  )
+  const client = yield* HttpClient.HttpClient
   const createTodo = (todo: typeof TodoWithoutId.Type) =>
     HttpClientRequest.post("/todos").pipe(
       HttpClientRequest.schemaBodyJson(TodoWithoutId)(todo),
@@ -32,12 +38,58 @@ const makeJsonPlaceholder = Effect.gen(function*() {
 interface JsonPlaceholder extends Effect.Success<typeof makeJsonPlaceholder> {}
 const JsonPlaceholder = Context.Service<JsonPlaceholder>("test/JsonPlaceholder")
 const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
+const JsonPlaceholderRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(router) {
+  yield* router.addAll([
+    HttpRouter.route(
+      "GET",
+      "/todos/1",
+      Effect.succeed(HttpServerResponse.jsonUnsafe({
+        userId: 1,
+        id: 1,
+        title: "test",
+        completed: false
+      }))
+    ),
+    HttpRouter.route(
+      "POST",
+      "/todos",
+      Effect.gen(function*() {
+        const todo = yield* HttpServerRequest.schemaBodyJson(TodoWithoutId)
+        return HttpServerResponse.jsonUnsafe({ ...todo, id: 201 })
+      })
+    ),
+    HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
+  ])
+})))
+const DenoHttpServerUrl = new URL("../../platform-deno/src/DenoHttpServer.ts", import.meta.url).href
+const TestServerLive = Layer.unwrap(Effect.promise(() =>
+  "Deno" in globalThis
+    ? (import(DenoHttpServerUrl) as Promise<{
+      readonly layerServer: (options: {
+        readonly hostname: string
+        readonly port: number
+        readonly onListen: () => void
+      }) => Layer.Layer<HttpServer.HttpServer>
+    }>).then((DenoHttpServer) => DenoHttpServer.layerServer({ hostname: "127.0.0.1", port: 0, onListen: () => {} }))
+    : Promise.all([
+      import("@effect/platform-node/NodeHttpServer"),
+      import("node:http")
+    ]).then(([NodeHttpServer, Http]) => NodeHttpServer.layerServer(Http.createServer, { port: 0 }))
+))
 ;[
   {
     name: "FetchHttpClient",
     layer: FetchHttpClient.layer
   }
 ].forEach(({ layer, name }) => {
+  const layerTest = HttpServer.layerTestClient.pipe(
+    Layer.provide(layer),
+    Layer.provideMerge(TestServerLive)
+  )
+  const jsonPlaceholderTestLayer = Layer.merge(JsonPlaceholderLive, JsonPlaceholderRoutes).pipe(
+    Layer.provideMerge(layerTest)
+  )
+
   it.layer(layer)(name, (it) => {
     it.effect("google", () =>
       flakyTest(Effect.gen(function*() {
@@ -77,7 +129,7 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
           Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
         )
         expect(response.id).toBe(1)
-      }).pipe(flakyTest, Effect.provide(JsonPlaceholderLive)))
+      }).pipe(Effect.provide(jsonPlaceholderTestLayer)))
 
     it.effect("jsonplaceholder schemaBodyJson", () =>
       Effect.gen(function*() {
@@ -88,18 +140,18 @@ const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
           completed: false
         })
         expect(response.title).toBe("test")
-      }).pipe(Effect.provide(JsonPlaceholderLive), flakyTest))
+      }).pipe(Effect.provide(jsonPlaceholderTestLayer)))
 
     it.effect("head request with schemaJson", () =>
-      flakyTest(Effect.gen(function*() {
+      Effect.gen(function*() {
         const client = yield* HttpClient.HttpClient
-        const response = yield* client.head("https://jsonplaceholder.typicode.com/todos").pipe(
+        const response = yield* client.head("/todos").pipe(
           Effect.flatMap(
             HttpClientResponse.schemaJson(Schema.Struct({ status: Schema.Literal(200) }))
           )
         )
         expect(response).toEqual({ status: 200 })
-      })))
+      }).pipe(Effect.provide(jsonPlaceholderTestLayer)))
 
     it.effect("interrupt", () =>
       Effect.gen(function*() {
