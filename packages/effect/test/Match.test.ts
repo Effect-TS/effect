@@ -24,4 +24,15 @@ describe("Match", () => {
     strictEqual(match({ _tag: "A.one" }), "hit")
     strictEqual(match(null), "miss")
   })
+
+  it("checks symbol-keyed object pattern properties", () => {
+    const key = Symbol("key")
+    const match = pipe(
+      Match.type<{ readonly [key]: "expected" | "other" }>(),
+      Match.when({ [key]: "expected" }, () => "hit"),
+      Match.orElse(() => "miss")
+    )
+
+    strictEqual(match({ [key]: "other" }), "miss")
+  })
 })
