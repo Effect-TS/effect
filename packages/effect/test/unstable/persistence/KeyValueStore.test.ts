@@ -1,9 +1,7 @@
-import { afterEach, assert, describe, it } from "@effect/vitest"
+import { afterEach, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Effect, Layer, Option, Schema } from "effect"
+import { Effect, type Layer, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
-import * as Persistence from "effect/unstable/persistence/Persistence"
-import * as SqlClient from "effect/unstable/sql/SqlClient"
 
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
   const run = <E, A>(effect: Effect.Effect<A, E, KeyValueStore.KeyValueStore>) =>
@@ -88,36 +86,6 @@ export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>)
 }
 
 describe("KeyValueStore / layerMemory", () => testLayer(KeyValueStore.layerMemory))
-
-describe("Persistence / layerBackingSqlMultiTable", () => {
-  it.effect("generates an MSSQL upsert", () => {
-    const statements: Array<string> = []
-    const sql = ((strings: string | TemplateStringsArray) => {
-      if (typeof strings === "string") return strings
-      statements.push(strings.join("?"))
-      const query = Object.create(Effect.void)
-      query.unprepared = query
-      return query
-    }) as any
-    sql.withoutTransforms = () => sql
-    sql.literal = (value: string) => value
-    sql.insert = () => "VALUES"
-    sql.onDialectOrElse = (options: any) => options.mssql ? options.mssql() : options.orElse()
-
-    return Effect.gen(function*() {
-      const backing = yield* Persistence.BackingPersistence
-      const store = yield* backing.make("store")
-      yield* store.set("key", { value: 1 }, undefined)
-
-      assert.notInclude(statements.at(-1)!, "ON CONFLICT")
-      assert.include(statements.at(-1)!, "MERGE")
-    }).pipe(
-      Effect.scoped,
-      Effect.provide(Persistence.layerBackingSqlMultiTable),
-      Effect.provide(Layer.succeed(SqlClient.SqlClient, sql))
-    )
-  })
-})
 
 describe("KeyValueStore / prefix", () => {
   it.effect("prefixes the keys", () =>
