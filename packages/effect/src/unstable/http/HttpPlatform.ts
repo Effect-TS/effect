@@ -156,13 +156,44 @@ export const layer = Layer.effect(HttpPlatform)(
           { contentLength, headers, status, statusText }
         )
       },
-      fileWebResponse(file, status, statusText, headers, _options) {
+      fileWebResponse(file, status, statusText, headers, options) {
+        const offset = Number(options?.offset ?? 0)
+        const bytesToRead = options?.bytesToRead !== undefined ? Number(options.bytesToRead) : undefined
+        const chunkSize = options?.chunkSize !== undefined ? Math.max(1, Number(options.chunkSize)) : Infinity
+        const contentLength = bytesToRead ?? file.size - offset
+        const source = Stream.fromReadableStream({
+          evaluate: () => file.stream() as ReadableStream<Uint8Array>,
+          onError: identity
+        })
+        const stream = bytesToRead !== undefined && bytesToRead <= 0
+          ? Stream.empty
+          : source.pipe(
+            Stream.mapAccum(
+              () => ({ offset, remaining: bytesToRead }),
+              (state, bytes) => {
+                const start = Math.min(state.offset, bytes.length)
+                const offset = state.offset - start
+                const length = state.remaining === undefined
+                  ? bytes.length - start
+                  : Math.min(state.remaining, bytes.length - start)
+                const end = start + length
+                const remaining = state.remaining === undefined ? undefined : state.remaining - length
+                const chunks: Array<{ readonly bytes: Uint8Array; readonly done: boolean }> = []
+                for (let index = start; index < end; index += chunkSize) {
+                  chunks.push({
+                    bytes: bytes.subarray(index, Math.min(index + chunkSize, end)),
+                    done: remaining === 0 && index + chunkSize >= end
+                  })
+                }
+                return [{ offset, remaining }, chunks] as const
+              }
+            ),
+            Stream.takeUntil((chunk) => chunk.done),
+            Stream.map((chunk) => chunk.bytes)
+          )
         return Response.stream(
-          Stream.fromReadableStream({
-            evaluate: () => file.stream() as ReadableStream<Uint8Array>,
-            onError: identity
-          }),
-          { headers, status, statusText }
+          stream,
+          { contentLength, headers, status, statusText }
         )
       }
     }))
