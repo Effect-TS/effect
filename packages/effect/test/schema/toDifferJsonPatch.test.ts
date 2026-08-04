@@ -102,7 +102,7 @@ describe("Schema.toDifferJsonPatch", () => {
 
       throws(
         () => differ.diff(new Date("1970-01-01T00:00:00.000Z"), new Date(NaN)),
-        "Expected a valid Date, got Invalid Date"
+        "Expected a valid Date"
       )
     })
 
@@ -223,7 +223,7 @@ describe("Schema.toDifferJsonPatch", () => {
       roundtrip(Schema.Option(Schema.String))
       roundtrip(Schema.Result(Schema.Number, Schema.String))
       roundtrip(Schema.ReadonlyMap(Schema.String, Schema.Number))
-      roundtrip(Schema.Error())
+      roundtrip(Schema.ErrorInstance())
       roundtrip(Schema.Json)
       roundtrip(Schema.Exit(Schema.Number, Schema.String, Schema.Json))
 
@@ -231,7 +231,7 @@ describe("Schema.toDifferJsonPatch", () => {
       class B extends Schema.Class<B>("B")({ a: A }) {}
       roundtrip(B)
 
-      class E extends Schema.ErrorClass<E>("E")({ message: Schema.String }) {}
+      class E extends Schema.Error<E>("E")({ message: Schema.String }) {}
       roundtrip(E)
     })
   })

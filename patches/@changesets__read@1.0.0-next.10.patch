@@ -1,0 +1,12 @@
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 012be78..2c23f84 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -30,7 +30,6 @@ async function readChangesets(rootDir, sinceRef) {
+ 	} catch (err) {
+ 		if (err.code !== "ENOENT") throw err;
+ 	}
+-	console.log(changesets);
+ 	if (sinceRef != null) changesets = await filterChangesetsSinceRef(changesets, changesetBase, sinceRef);
+ 	changesets = changesets.filter((file) => {
+ 		file = path.basename(file);

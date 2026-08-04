@@ -74,8 +74,11 @@ effect/Runtime#setFiberRef:
   replacement: "Context.add"
   note: "FiberRefs became Context.Reference values; add the Reference override to the Context."
 effect/Runtime#updateFiberRefs:
-  replacement: "Context.mutate"
-  note: "There is no aggregate FiberRefs update; mutate targeted Context.Reference overrides explicitly."
+  replacement: "Context.add"
+  note: "There is no aggregate FiberRefs update; add targeted Context.Reference overrides to the carried Context explicitly."
+effect/Runtime#updateContext:
+  replacement: "Context transformation + Effect.run*With"
+  note: "Runtime values were removed; transform the carried Context directly, then pass the result to the corresponding Effect.run*With function."
 effect/Runtime#updateRuntimeFlags:
   replacement: "none"
   note: "Runtime flags and aggregate patches were removed; configure each semantic behavior independently."

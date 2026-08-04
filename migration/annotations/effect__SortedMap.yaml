@@ -58,3 +58,9 @@
 "effect/SortedMap#values":
   replacement: "HashMap.entries + Array.sortWith + Array.map"
   note: "Sort entries by key, map to values, and iterate the resulting array."
+"effect/SortedMap#has":
+  replacement: "HashMap.has"
+  note: "Use direct membership testing on the replacement HashMap; retain the key Order separately for sorted observations."
+"effect/SortedMap#reduce":
+  replacement: "HashMap.reduce"
+  note: "Reduce the replacement HashMap, but explicitly sort entries first if the old key-order traversal affected the result."

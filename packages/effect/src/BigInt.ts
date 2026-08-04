@@ -609,7 +609,7 @@ export const gcd: {
     that = self % that
     self = t
   }
-  return self
+  return abs(self)
 })
 
 /**
@@ -637,7 +637,11 @@ export const gcd: {
 export const lcm: {
   (that: bigint): (self: bigint) => bigint
   (self: bigint, that: bigint): bigint
-} = dual(2, (self: bigint, that: bigint): bigint => (self * that) / gcd(self, that))
+} = dual(
+  2,
+  (self: bigint, that: bigint): bigint =>
+    self === bigint0 || that === bigint0 ? bigint0 : abs((self * that) / gcd(self, that))
+)
 
 /**
  * Returns the integer square root of a non-negative `bigint`.

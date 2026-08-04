@@ -701,7 +701,7 @@ export interface ExtractSnapshotOptions {
   readonly modules?: ReadonlyArray<string>
 }
 
-export class SnapshotExtractionError extends Schema.TaggedErrorClass<SnapshotExtractionError>()(
+export class SnapshotExtractionError extends Schema.TaggedError<SnapshotExtractionError>()(
   "SnapshotExtractionError",
   {
     message: Schema.String,

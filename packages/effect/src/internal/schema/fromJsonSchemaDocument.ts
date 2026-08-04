@@ -814,7 +814,7 @@ function translateJsonSchemaMultiDocument(
       addNumberCheck(checks, schema.minItems, "effect/schema/isMinLength", "minLength")
       addNumberCheck(checks, schema.maxItems, "effect/schema/isMaxLength", "maxLength")
     }
-    if (typeof schema.uniqueItems === "boolean") {
+    if (schema.uniqueItems === true) {
       checks.push(jsonSchemaFilter("effect/schema/isUnique", null))
     }
     return checks

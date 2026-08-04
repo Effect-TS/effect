@@ -27,6 +27,11 @@ export * as NodeFileSystem from "./NodeFileSystem.ts"
 /**
  * @since 4.0.0
  */
+export * as NodeHttpCompression from "./NodeHttpCompression.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as NodePath from "./NodePath.ts"
 
 /**

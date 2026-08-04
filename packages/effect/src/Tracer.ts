@@ -22,7 +22,7 @@ import * as Option from "./Option.ts"
  * `span` to allocate a span from the supplied name, parent, annotations,
  * links, start time, kind, root flag, and sampling decision.
  *
- * @category models
+ * @category services
  * @since 2.0.0
  */
 export interface Tracer {
@@ -167,7 +167,7 @@ export const ParentSpanKey = "effect/Tracer/ParentSpan"
  * @category services
  * @since 2.0.0
  */
-export class ParentSpan extends Context.Service<ParentSpan, AnySpan>()(ParentSpanKey) {}
+export class ParentSpan extends Context.Service<ParentSpan, AnySpan>()(ParentSpanKey, { fiberCached: true }) {}
 
 /**
  * Represents a span created outside Effect's tracer, carrying trace and span
@@ -533,7 +533,7 @@ export const externalSpan = (
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category references
+ * @category services
  * @since 3.12.0
  */
 export const DisablePropagation = Context.Reference<boolean>(
@@ -556,7 +556,7 @@ export const DisablePropagation = Context.Reference<boolean>(
  *
  * @see {@link MinimumTraceLevel} for the threshold that decides whether spans at that level are sampled
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const CurrentTraceLevel: Context.Reference<LogLevel> = Context.Reference<LogLevel>(
@@ -585,7 +585,7 @@ export const CurrentTraceLevel: Context.Reference<LogLevel> = Context.Reference<
  *
  * @see {@link CurrentTraceLevel} for the default span level used when options do not specify one
  *
- * @category references
+ * @category services
  * @since 4.0.0
  */
 export const MinimumTraceLevel = Context.Reference<
@@ -600,7 +600,7 @@ export const MinimumTraceLevel = Context.Reference<
  * Use when you need the raw context key for active tracer lookup in lower-level
  * tracing code.
  *
- * @category references
+ * @category constants
  * @since 4.0.0
  */
 export const TracerKey = "effect/Tracer"
@@ -625,10 +625,11 @@ export const TracerKey = "effect/Tracer"
  * await Effect.runPromise(program) // => true
  * ```
  *
- * @category references
+ * @category services
  * @since 2.0.0
  */
 export const Tracer: Context.Reference<Tracer> = Context.Reference<Tracer>(TracerKey, {
+  fiberCached: true,
   defaultValue: () =>
     make({
       span: (options) => new NativeSpan(options)
@@ -648,7 +649,7 @@ export const Tracer: Context.Reference<Tracer> = Context.Reference<Tracer>(Trace
  *
  * @see {@link Span} for the interface implemented by native spans
  *
- * @category native tracer
+ * @category models
  * @since 4.0.0
  */
 export class NativeSpan implements Span {

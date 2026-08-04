@@ -6486,7 +6486,7 @@ export const mergeEffect: {
  * result // => ["hello", "world"]
  * ```
  *
- * @category String manipulation
+ * @category splitting
  * @since 2.0.0
  */
 export const splitLines = <Err, Done>(): Channel<
@@ -6600,7 +6600,7 @@ export const splitLines = <Err, Done>(): Channel<
  * span `Uint8Array` boundaries. The optional `encoding` and `options` are
  * passed to `TextDecoder`.
  *
- * @category String manipulation
+ * @category decoding
  * @since 4.0.0
  */
 export const decodeText = <Err, Done>(encoding?: string, options?: TextDecoderOptions): Channel<
@@ -6626,7 +6626,7 @@ export const decodeText = <Err, Done>(encoding?: string, options?: TextDecoderOp
  *
  * Each string inside an emitted array is encoded independently.
  *
- * @category String manipulation
+ * @category encoding
  * @since 4.0.0
  */
 export const encodeText = <Err, Done>(): Channel<
@@ -6900,7 +6900,7 @@ export const embedInput: {
  *
  * @see {@link bufferArray} for buffering elements from array outputs
  *
- * @category Buffering
+ * @category buffering
  * @since 2.0.0
  */
 export const buffer: {
@@ -6966,7 +6966,7 @@ export const buffer: {
  *
  * @see {@link buffer} for buffering output elements without flattening arrays
  *
- * @category Buffering
+ * @category buffering
  * @since 4.0.0
  */
 export const bufferArray: {
@@ -7329,7 +7329,7 @@ const runWith = <
 /**
  * Creates a channel from the specified services.
  *
- * @category services
+ * @category accessors
  * @since 2.0.0
  */
 export const contextWith = <Env, OutElem, OutErr, OutDone, InElem, InErr, InDone, Env2>(
@@ -7343,7 +7343,7 @@ export const contextWith = <Env, OutElem, OutErr, OutDone, InElem, InErr, InDone
  * Provides a `Context` to the channel, removing the corresponding service
  * requirements from the returned channel.
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideContext: {
@@ -7371,7 +7371,7 @@ export const provideContext: {
  * Provides a concrete service for a context key, removing that service
  * requirement from the returned channel.
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const provideService: {
@@ -7411,7 +7411,7 @@ export const provideService: {
  * If the service effect fails, the returned channel fails. The provided service
  * removes the corresponding service requirement from the returned channel.
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const provideServiceEffect: {
@@ -7448,7 +7448,7 @@ export const provideServiceEffect: {
  * builds the layer in the channel scope. Use `options.local` to build a fresh
  * layer instance for this provision.
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const provide: {
@@ -7496,7 +7496,7 @@ export const provide: {
  * provide to the channel. The returned channel requires the services needed to
  * build that context.
  *
- * @category services
+ * @category providing services
  * @since 4.0.0
  */
 export const updateContext: {
@@ -7528,7 +7528,7 @@ export const updateContext: {
  * The existing service is read from the context. The updated service is
  * provided to the channel under the same key.
  *
- * @category services
+ * @category providing services
  * @since 2.0.0
  */
 export const updateService: {
@@ -7608,7 +7608,7 @@ const withSpanImpl = <OutElem, OutErr, OutDone, InElem, InErr, InDone, R>(
 /**
  * The starting channel for Do notation, emitting an empty object.
  *
- * @category do notation
+ * @category constructors
  * @since 4.0.0
  */
 export const Do: Channel<{}> = succeed({})
@@ -7662,7 +7662,7 @@ export {
   /**
    * Adds a computed field to each object emitted by a channel.
    *
-   * @category do notation
+   * @category mapping
    * @since 4.0.0
    */
   let_ as let
@@ -7678,7 +7678,7 @@ export {
  * channel's output becomes the value of the new field. `options.concurrency`
  * and `options.bufferSize` control how derived channels are flattened.
  *
- * @category do notation
+ * @category sequencing
  * @since 4.0.0
  */
 export const bind: {
@@ -7784,7 +7784,7 @@ export const bind: {
  * @see {@link bind} for adding a field produced by another channel
  * @see {@link let_ let} for adding a computed field
  *
- * @category do notation
+ * @category mapping
  * @since 4.0.0
  */
 export const bindTo: {
@@ -7845,7 +7845,7 @@ export const bindTo: {
  * Effect.runSync(countEffect) // => 5
  * ```
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const runCount = <OutElem, OutErr, OutDone, Env>(
@@ -7874,7 +7874,7 @@ export const runCount = <OutElem, OutErr, OutDone, Env>(
  * Effect.runSync(drainEffect) // => "completed"
  * ```
  *
- * @category execution
+ * @category running
  * @since 2.0.0
  */
 export const runDrain = <OutElem, OutErr, OutDone, Env>(
@@ -7907,7 +7907,7 @@ export const runDrain = <OutElem, OutErr, OutDone, Env>(
  * processed // => [1, 2, 3]
  * ```
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const runForEach: {
@@ -7938,7 +7938,7 @@ export const runForEach: {
  * Returning `true` continues consuming the channel. Returning `false` stops
  * consumption early. The returned effect completes with `void`.
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const runForEachWhile: {
@@ -7986,7 +7986,7 @@ export const runForEachWhile: {
  * Effect.runSync(collectEffect) // => [1, 2, 3, 4, 5]
  * ```
  *
- * @category execution
+ * @category running
  * @since 2.0.0
  */
 export const runCollect = <OutElem, OutErr, OutDone, Env>(
@@ -8000,7 +8000,7 @@ export const runCollect = <OutElem, OutErr, OutDone, Env>(
 /**
  * Runs a channel and outputs the done value.
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const runDone = <OutElem, OutErr, OutDone, Env>(
@@ -8016,7 +8016,7 @@ export const runDone = <OutElem, OutErr, OutDone, Env>(
  * Returns `Option.some` with the first output element, or `Option.none` if the
  * channel completes without emitting output.
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const runHead = <OutElem, OutErr, OutDone, Env>(
@@ -8043,7 +8043,7 @@ export const runHead = <OutElem, OutErr, OutDone, Env>(
  * Returns `Option.some` with the last emitted element, or `Option.none` if the
  * channel completes without emitting output.
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const runLast = <OutElem, OutErr, OutDone, Env>(
@@ -8087,7 +8087,7 @@ export const runLast = <OutElem, OutErr, OutDone, Env>(
  * Effect.runSync(sumEffect) // => 15
  * ```
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const runFold: {
@@ -8137,7 +8137,7 @@ export const runFold: {
  * the effectful accumulator function. The returned effect succeeds with the
  * final accumulator value.
  *
- * @category execution
+ * @category running
  * @since 4.0.0
  */
 export const runFoldEffect: {

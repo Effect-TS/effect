@@ -67,7 +67,7 @@ describe("Optic generation", () => {
         const modify = optic.modify((n) => schema.make(n - 1))
 
         strictEqual(modify(schema.make(2)), 1)
-        throws(() => modify(schema.make(1)), "Expected a value greater than 0, got 0")
+        throws(() => modify(schema.make(1)), "Expected a value greater than 0")
       })
     })
 
@@ -309,7 +309,7 @@ describe("Optic generation", () => {
     })
 
     it("Error", () => {
-      const schema = Schema.Error()
+      const schema = Schema.ErrorInstance()
       const optic = Schema.toIso(schema)
       const modify = optic.modify((e) => new Error(e.message + "!"))
 
@@ -317,7 +317,7 @@ describe("Optic generation", () => {
     })
 
     it("Exit", () => {
-      const schema = Schema.Exit(Value, Schema.Error(), Schema.Defect())
+      const schema = Schema.Exit(Value, Schema.ErrorInstance(), Schema.Defect())
       const optic = Schema.toIso(schema).tag("Success").key("value").key("a")
       const modify = optic.modify(addOne)
 

@@ -225,6 +225,7 @@ export const prepend = <A>(self: MutableList<A>, message: A): void => {
     offset: 0,
     next: self.head
   }
+  if (!self.tail) self.tail = self.head
   self.length++
 }
 
@@ -411,7 +412,7 @@ export const clear = <A>(self: MutableList<A>): void => {
  * list.length // => 7
  * ```
  *
- * @category elements
+ * @category mutations
  * @since 4.0.0
  */
 export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
@@ -461,7 +462,7 @@ export const takeN = <A>(self: MutableList<A>, n: number): Array<A> => {
  * @see {@link takeN} for removing up to `n` values and returning them as an array
  * @see {@link clear} for removing every value from the list
  *
- * @category elements
+ * @category mutations
  * @since 4.0.0
  */
 export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
@@ -504,7 +505,7 @@ export const takeNVoid = <A>(self: MutableList<A>, n: number): void => {
  * list.length // => 0
  * ```
  *
- * @category elements
+ * @category mutations
  * @since 4.0.0
  */
 export const takeAll = <A>(self: MutableList<A>): Array<A> => takeN(self, self.length)
@@ -527,7 +528,7 @@ export const takeAll = <A>(self: MutableList<A>): Array<A> => takeN(self, self.l
  * list.length // => 2
  * ```
  *
- * @category elements
+ * @category mutations
  * @since 4.0.0
  */
 export const take = <A>(self: MutableList<A>): Empty | A => {
@@ -557,10 +558,11 @@ export const take = <A>(self: MutableList<A>): Empty | A => {
  *
  * @see {@link takeN} for removing up to `n` values and returning them as an array
  *
- * @category elements
+ * @category converting
  * @since 4.0.0
  */
 export const toArrayN = <A>(self: MutableList<A>, n: number): Array<A> => {
+  if (n <= 0) return []
   const length = Math.min(n, self.length)
   const out = new Array<A>(length)
   let index = 0
@@ -586,7 +588,7 @@ export const toArrayN = <A>(self: MutableList<A>, n: number): Array<A> => {
  *
  * @see {@link takeAll} for converting all elements to an array and clearing the list
  *
- * @category elements
+ * @category converting
  * @since 4.0.0
  */
 export const toArray = <A>(self: MutableList<A>): Array<A> => toArrayN(self, self.length)

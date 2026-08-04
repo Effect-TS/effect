@@ -305,7 +305,7 @@ export const errorExitCode: errorExitCode = "~effect/Runtime/errorExitCode"
  *
  * @see {@link errorExitCode} for the marker read by this function
  *
- * @category accessors
+ * @category getters
  * @since 4.0.0
  */
 export const getErrorExitCode = (u: unknown): number => {
@@ -393,7 +393,7 @@ export const errorReported: errorReported = "~effect/Runtime/errorReported"
  *
  * @see {@link errorReported} for the marker read by this function
  *
- * @category accessors
+ * @category getters
  * @since 4.0.0
  */
 export const getErrorReported = (u: unknown): boolean => {

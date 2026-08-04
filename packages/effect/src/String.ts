@@ -387,7 +387,7 @@ export const slice = (start?: number, end?: number) => (self: string): string =>
  * String.isEmpty("a") // => false
  * ```
  *
- * @category predicates
+ * @category guards
  * @since 2.0.0
  */
 export const isEmpty = (self: string): self is "" => self.length === 0
@@ -404,7 +404,7 @@ export const isEmpty = (self: string): self is "" => self.length === 0
  * String.isNonEmpty("a") // => true
  * ```
  *
- * @category guards
+ * @category predicates
  * @since 2.0.0
  */
 export const isNonEmpty = (self: string): boolean => self.length > 0
@@ -516,7 +516,7 @@ export const endsWith = (searchString: string, position?: number) => (self: stri
  * String.charCodeAt("abc", 4) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const charCodeAt: {
@@ -557,7 +557,7 @@ export const substring = (start: number, end?: number) => (self: string): string
  * pipe("abc", String.at(4)) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const at: {
@@ -577,7 +577,7 @@ export const at: {
  * pipe("abc", String.charAt(4)) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const charAt: {
@@ -600,7 +600,7 @@ export const charAt: {
  * pipe("abc", String.codePointAt(10)) // => Option.none()
  * ```
  *
- * @category elements
+ * @category getters
  * @since 2.0.0
  */
 export const codePointAt: {
@@ -659,7 +659,7 @@ export const lastIndexOf = (searchString: string) => (self: string): Option.Opti
  * pipe("a", String.localeCompare("a")) // => 0
  * ```
  *
- * @category comparing
+ * @category comparisons
  * @since 2.0.0
  */
 export const localeCompare =
@@ -1034,6 +1034,7 @@ export const stripMargin = (self: string): string => stripMarginWith(self, "|")
  * @since 2.0.0
  */
 export const snakeToCamel = (self: string): string => {
+  if (self.length === 0) return self
   let str = self[0]
   for (let i = 1; i < self.length; i++) {
     str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
@@ -1057,6 +1058,7 @@ export const snakeToCamel = (self: string): string => {
  * @since 2.0.0
  */
 export const snakeToPascal = (self: string): string => {
+  if (self.length === 0) return self
   let str = self[0].toUpperCase()
   for (let i = 1; i < self.length; i++) {
     str += self[i] === "_" ? self[++i].toUpperCase() : self[i]
@@ -1234,15 +1236,20 @@ export const noCase: {
   readonly delimiter?: string | undefined
   readonly transform?: (part: string, index: number, parts: ReadonlyArray<string>) => string
 }): string => {
+  const splitRegExp = toRegExpArray(options?.splitRegExp ?? SPLIT_REGEXP)
+  const stripRegExp = toRegExpArray(options?.stripRegExp ?? STRIP_REGEXP)
   const delimiter = options?.delimiter ?? " "
   const transform = options?.transform ?? toLowerCase
-  return normalizeCase(input, SPLIT_REGEXP, STRIP_REGEXP, delimiter, transform)
+  return normalizeCase(input, splitRegExp, stripRegExp, delimiter, transform)
 })
+
+const toRegExpArray = (regexp: RegExp | ReadonlyArray<RegExp>): ReadonlyArray<RegExp> =>
+  predicate.isRegExp(regexp) ? [regexp] : regexp
 
 const normalizeCase = (
   input: string,
   splitRegExp: ReadonlyArray<RegExp>,
-  stripRegExp: RegExp,
+  stripRegExp: ReadonlyArray<RegExp>,
   delimiter: string,
   transform: (part: string, index: number, parts: ReadonlyArray<string>) => string
 ): string => {
@@ -1250,7 +1257,9 @@ const normalizeCase = (
   for (const regexp of splitRegExp) {
     result = result.replace(regexp, "$1\0$2")
   }
-  result = result.replace(stripRegExp, "\0")
+  for (const regexp of stripRegExp) {
+    result = result.replace(regexp, "\0")
+  }
   let start = 0
   let end = result.length
   // Trim the delimiter from around the output string.
@@ -1370,7 +1379,7 @@ export const constantCase: (self: string) => string = noCase({
  * @since 4.0.0
  */
 export const configCase: (self: string) => string = (self) =>
-  normalizeCase(self, CONFIG_SPLIT_REGEXP, STRIP_REGEXP, "_", toUpperCase)
+  normalizeCase(self, CONFIG_SPLIT_REGEXP, [STRIP_REGEXP], "_", toUpperCase)
 
 /**
  * Converts a string to kebab-case (lowercase with hyphens).

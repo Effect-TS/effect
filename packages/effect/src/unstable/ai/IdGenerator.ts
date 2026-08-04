@@ -297,7 +297,7 @@ export const make = Effect.fnUntraced(function*({
  * const result = [toolCallId.startsWith("tool_call_"), toolCallId.length] // => [true, 22]
  * ```
  *
- * @category constructors
+ * @category layers
  * @since 4.0.0
  */
 export const layer = (options: MakeOptions): Layer.Layer<IdGenerator, Cause.IllegalArgumentError> =>

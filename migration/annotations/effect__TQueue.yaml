@@ -79,3 +79,9 @@ effect/TQueue#takeN:
 effect/TQueue#unbounded:
   replacement: "TxQueue.unbounded"
   note: "Import TxQueue from \"effect/TxQueue\"; the operation keeps its name. V4 Tx operations return ordinary Effects; compose multiple operations under one outer Effect.tx to keep them atomic."
+effect/TQueue#isShutdown:
+  replacement: "TxQueue.isShutdown"
+  note: "Import TxQueue from \"effect/TxQueue\"; it checks the richer done lifecycle and returns an ordinary Effect."
+effect/TQueue#takeAll:
+  replacement: "TxQueue.takeAll"
+  note: "The operation now blocks until at least one item is available, returns a NonEmptyArray, and propagates the queue error channel through an ordinary Effect."

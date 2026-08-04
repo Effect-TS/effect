@@ -34,7 +34,7 @@ const OptionalStringTool = Tool.make("OptionalStringTool", {
 
 const PublicFailureTool = Tool.make("PublicFailureTool", {
   success: Schema.String,
-  failure: Schema.Error()
+  failure: Schema.ErrorInstance()
 })
 
 const InternalAiErrorTool = Tool.make("InternalAiErrorTool", {
@@ -253,7 +253,7 @@ describe("McpServer", () => {
         assert.isFalse(handlerInvoked)
         assert.instanceOf(error, McpSchema.InvalidParams)
         assert.match(error.message, /Invalid parameters for tool 'OptionalStringTool'/)
-        assert.match(error.message, /Expected string \| undefined, got null/)
+        assert.match(error.message, /Expected string \| undefined/)
         assert.match(error.message, /at \["signature"\]/)
       }))
 

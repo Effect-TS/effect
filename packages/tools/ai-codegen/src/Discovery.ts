@@ -52,7 +52,7 @@ export interface DiscoveredProvider {
 /**
  * Service for discovering AI provider configurations.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface ProviderDiscovery {

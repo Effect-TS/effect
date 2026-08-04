@@ -504,7 +504,7 @@ export const size = <A>(self: TxChunk<A>): Effect.Effect<number> =>
  * await Effect.runPromise(program) // => [true, false]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>
@@ -532,7 +532,7 @@ export const isEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>
  * await Effect.runPromise(program) // => [false, true]
  * ```
  *
- * @category combinators
+ * @category predicates
  * @since 4.0.0
  */
 export const isNonEmpty = <A>(self: TxChunk<A>): Effect.Effect<boolean> =>

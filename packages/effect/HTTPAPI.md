@@ -2024,7 +2024,7 @@ import {
 import { createServer } from "node:http"
 
 // Define a custom error for validation failures
-class ValidationError extends Schema.TaggedErrorClass<ValidationError>()(
+class ValidationError extends Schema.TaggedError<ValidationError>()(
   "ValidationError",
   {
     message: Schema.String
@@ -2263,7 +2263,7 @@ import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSecur
 class User extends Schema.Class<User>("User")({ id: Schema.Finite }) {}
 
 // Define a schema for the "Unauthorized" error
-class Unauthorized extends Schema.TaggedErrorClass<Unauthorized>()(
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   {},
   // Specify the HTTP status code for unauthorized errors
@@ -2322,7 +2322,7 @@ import { HttpApiMiddleware, HttpApiSecurity } from "effect/unstable/httpapi"
 
 class User extends Schema.Class<User>("User")({ id: Schema.Finite }) {}
 
-class Unauthorized extends Schema.TaggedErrorClass<Unauthorized>()(
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   {},
   // Specify the HTTP status code for unauthorized errors
@@ -2378,7 +2378,7 @@ import { HttpApiMiddleware, HttpApiSecurity, OpenApi } from "effect/unstable/htt
 
 class User extends Schema.Class<User>("User")({ id: Schema.Finite }) {}
 
-class Unauthorized extends Schema.TaggedErrorClass<Unauthorized>()(
+class Unauthorized extends Schema.TaggedError<Unauthorized>()(
   "Unauthorized",
   {},
   // Specify the HTTP status code for unauthorized errors

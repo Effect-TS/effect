@@ -201,7 +201,7 @@ export function makeArray(length: number, value?: string): Node {
  * @see {@link ConfigProvider} – the interface whose `load` may fail with this
  *   error
  *
- * @category models
+ * @category errors
  * @since 4.0.0
  */
 export class SourceError extends Data.TaggedError("SourceError")<{
@@ -263,7 +263,7 @@ export type Path = ReadonlyArray<string | number>
  * @see {@link make} – construct a provider from a lookup function
  * @see {@link orElse} – compose providers with fallback
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface ConfigProvider extends Pipeable {
@@ -773,7 +773,7 @@ export const layerAdd = <E = never, R = never>(
  * @see {@link fromEnv} – for environment variables
  * @see {@link make} – for custom backing stores
  *
- * @category ConfigProviders
+ * @category constructors
  * @since 4.0.0
  */
 export function fromUnknown(root: unknown, options?: {
@@ -882,7 +882,7 @@ function emptyStringAsMissing(value: string | undefined, preserveEmptyStrings: b
  * @see {@link fromUnknown} – for JSON objects
  * @see {@link constantCase} – bridge camelCase keys to SCREAMING_SNAKE_CASE
  *
- * @category ConfigProviders
+ * @category constructors
  * @since 2.0.0
  */
 export function fromEnv(options?: {
@@ -1005,7 +1005,7 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  * @see {@link fromDotEnv} – loads a `.env` file from disk
  * @see {@link fromEnv} – for raw environment variable access
  *
- * @category ConfigProviders
+ * @category constructors
  * @since 4.0.0
  */
 export function fromDotEnvContents(lines: string, options?: {
@@ -1157,7 +1157,7 @@ function searchLast(str: string, rgx: RegExp): number {
  * @see {@link fromDotEnvContents} – parse a `.env` string directly
  * @see {@link fromEnv} – read from the runtime environment
  *
- * @category ConfigProviders
+ * @category constructors
  * @since 4.0.0
  */
 export const fromDotEnv: (options?: {
@@ -1228,7 +1228,7 @@ export const fromDotEnv: (options?: {
  * @see {@link fromEnv} – for environment variables
  * @see {@link fromDotEnv} – for `.env` files
  *
- * @category ConfigProviders
+ * @category constructors
  * @since 4.0.0
  */
 export const fromDir: (options?: {

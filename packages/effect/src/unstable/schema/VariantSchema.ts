@@ -167,7 +167,7 @@ export declare namespace Field {
  * Computes the `Schema.Struct` field map for a variant by selecting matching
  * field schemas and recursively extracting nested structs.
  *
- * @category extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type ExtractFields<V extends string, Fields extends Struct.Fields, IsDefault = false> = {
@@ -186,7 +186,7 @@ export type ExtractFields<V extends string, Fields extends Struct.Fields, IsDefa
  * Computes the schema type produced by extracting a single variant from a variant
  * schema struct.
  *
- * @category extractors
+ * @category utility types
  * @since 4.0.0
  */
 export type Extract<V extends string, A extends Struct<any>, IsDefault = false> = [A] extends [
@@ -506,7 +506,7 @@ export const make = <
 /**
  * Marks a value as an explicit override for an `Overrideable` schema default.
  *
- * @category overrideable
+ * @category constructors
  * @since 4.0.0
  */
 export const Override = <A>(value: A): A & Brand<"Override"> => value as any
@@ -515,7 +515,7 @@ export const Override = <A>(value: A): A & Brand<"Override"> => value as any
  * Schema type whose constructor can use an effectful default unless a value is
  * explicitly branded with `Override`.
  *
- * @category overrideable
+ * @category schemas
  * @since 4.0.0
  */
 export interface Overrideable<S extends Schema.Top & Schema.WithoutConstructorDefault> extends
@@ -543,7 +543,7 @@ export interface Overrideable<S extends Schema.Top & Schema.WithoutConstructorDe
  * Wraps a schema with an effectful constructor default while allowing explicit
  * values to be marked with `Override`.
  *
- * @category overrideable
+ * @category schemas
  * @since 4.0.0
  */
 export const Overrideable = <S extends Schema.Top & Schema.WithoutConstructorDefault>(

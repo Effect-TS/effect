@@ -290,7 +290,7 @@ export class WorkflowInstance extends Context.Service<
  * Low-level workflow engine contract that works with encoded payloads and
  * results before `makeUnsafe` adds typed schema decoding and encoding.
  *
- * @category Encoded
+ * @category services
  * @since 4.0.0
  */
 export interface Encoded {

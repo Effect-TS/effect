@@ -1612,7 +1612,7 @@ export const provideEffectDiscard: {
  * await Effect.runPromise(program) // => ["app"]
  * ```
  *
- * @category command execution
+ * @category running
  * @since 4.0.0
  */
 export const wizard = <Name extends string, Input, E, R, ContextInput>(
@@ -1728,7 +1728,7 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
  *
  * @see {@link runWith} for running a command with an explicit argument array
  *
- * @category command execution
+ * @category running
  * @since 4.0.0
  */
 export const run: {
@@ -1810,7 +1810,7 @@ export const run: {
  * output // => ["Hello, Alice!", "Hello, Alice!"]
  * ```
  *
- * @category command execution
+ * @category running
  * @since 4.0.0
  */
 export const runWith = <const Name extends string, Input, E, R, ContextInput>(
