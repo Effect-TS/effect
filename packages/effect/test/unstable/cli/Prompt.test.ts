@@ -483,6 +483,22 @@ describe("Prompt.file", () => {
 })
 
 describe("Prompt.multiSelect", () => {
+  it.effect("does not allow a disabled multi-select choice to be selected", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [{ title: "Unavailable", value: "unavailable", disabled: true }]
+      })
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, [])
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("underlines the active label", () =>
     Effect.gen(function*() {
       const prompt = Prompt.multiSelect({
