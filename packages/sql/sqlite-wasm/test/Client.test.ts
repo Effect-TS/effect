@@ -1,6 +1,6 @@
 import { SqliteClient } from "@effect/sql-sqlite-wasm"
 import { assert, describe, it } from "@effect/vitest"
-import { Deferred, Effect, Fiber, Option } from "effect"
+import { Deferred, Effect, Exit, Fiber, Option } from "effect"
 import { TestClock } from "effect/testing"
 import { Reactivity } from "effect/unstable/reactivity"
 
@@ -42,9 +42,10 @@ describe("Client", () => {
       yield* Deferred.await(queryPosted)
       worker.dispatchEvent(new Event("error"))
 
-      const joinFiber = yield* Fiber.join(fiber).pipe(Effect.timeoutOption("100 millis"), Effect.forkChild)
+      const joinFiber = yield* Fiber.join(fiber).pipe(Effect.exit, Effect.timeoutOption("100 millis"), Effect.forkChild)
       yield* TestClock.adjust("100 millis")
       const result = yield* Fiber.join(joinFiber)
       assert(Option.isSome(result), "the request remained pending after worker replacement")
+      assert(Exit.isFailure(result.value))
     }).pipe(Effect.provide(Reactivity.layer)))
 })

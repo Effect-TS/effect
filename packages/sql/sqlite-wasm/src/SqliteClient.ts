@@ -306,10 +306,9 @@ export const make = (
     const transformRows = options.transformResultNames ?
       Statement.defaultTransforms(options.transformResultNames).array :
       undefined
-    const pending = new Map<number, (effect: Exit.Exit<any, SqlError>) => void>()
-
     const makeConnection = Effect.gen(function*() {
       let currentId = 0
+      const pending = new Map<number, (effect: Exit.Exit<any, SqlError>) => void>()
       const scope = yield* Effect.scope
       const readyDeferred = yield* Deferred.make<void>()
 
@@ -345,7 +344,15 @@ export const make = (
       }
       port.addEventListener("message", onMessage)
 
-      function onError() {
+      function onError(cause: Event) {
+        const exit = Exit.fail(
+          new SqlError({ reason: classifyError(cause, "SQLite WASM worker failed", "worker") })
+        )
+        const requests = Array.from(pending.values())
+        pending.clear()
+        for (const resume of requests) {
+          resume(exit)
+        }
         Effect.runFork(ScopedRef.set(connectionRef, makeConnection))
       }
       if ("onerror" in worker) {
