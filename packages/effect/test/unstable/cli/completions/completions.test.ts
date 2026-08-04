@@ -386,6 +386,38 @@ describe("Zsh completions", () => {
 // ---------------------------------------------------------------------------
 
 describe("Fish completions", () => {
+  it("scopes nested completions by the full command path", () => {
+    const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
+      name,
+      description: undefined,
+      flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
+      arguments: [],
+      subcommands: []
+    })
+    const descriptor: Completions.CommandDescriptor = {
+      name: "tool",
+      description: undefined,
+      flags: [],
+      arguments: [],
+      subcommands: [
+        {
+          name: "alpha",
+          description: undefined,
+          flags: [],
+          arguments: [],
+          subcommands: [leaf("common", "alpha-only")]
+        },
+        { name: "beta", description: undefined, flags: [], arguments: [], subcommands: [leaf("common", "beta-only")] }
+      ]
+    }
+    const lines = Fish.generate("tool", descriptor).split("\n")
+    const alphaOnly = lines.find((line) => line.includes("-l alpha-only"))!
+    const betaOnly = lines.find((line) => line.includes("-l beta-only"))!
+
+    assert.include(alphaOnly, "__fish_seen_subcommand_from alpha; and __fish_seen_subcommand_from common")
+    assert.include(betaOnly, "__fish_seen_subcommand_from beta; and __fish_seen_subcommand_from common")
+  })
+
   it("generates complete commands for root subcommands", () => {
     const desc = fromCommand(withSubcommands)
     const script = Fish.generate("server", desc)
