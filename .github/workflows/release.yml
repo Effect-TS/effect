@@ -35,12 +35,11 @@ jobs:
         run: |
           sed -i 's/"stripInternal": false/"stripInternal": true/' tsconfig.base.json
       - name: Create Release Pull Request or Publish
-        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1
+        uses: changesets/action@d0ee272882939fa35f22d979828acb7e61e0bd47 # v2.0.0-next.4
         with:
-          version: pnpm changeset-version
-          publish: pnpm changeset-publish
-        env:
+          version-script: pnpm changeset-version
+          publish-script: pnpm changeset-publish
           # Use a personal access token instead of the one that GitHub generates
           # automatically to ensure workflows get triggered on the changesets
           # release branch.
-          GITHUB_TOKEN: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
+          github-token: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
