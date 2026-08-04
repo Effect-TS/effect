@@ -811,10 +811,10 @@ function handlerToHttpEffect(
         "Body",
         encodeStream?.(response, context) ?? encodeSuccess(response)
       )
-      if (responseHeaders === undefined) return encoded
+      if (encodeWithHeaders === undefined || responseHeaders === undefined) return encoded
       const encodedHeaders = yield* HttpApiSchemaError.wrap(
         "ResponseHeaders",
-        encodeWithHeaders!.get(encoded.status)!(responseHeaders)
+        encodeWithHeaders.get(encoded.status)!(responseHeaders)
       )
       return Response.setHeaders(encoded, encodedHeaders as any)
     })
@@ -936,11 +936,12 @@ function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): Map<number, With
   for (const schema of endpoint.success) {
     if (HttpApiSchema.isWithHeaders(schema)) {
       const status = HttpApiSchema.getStatusSuccessSchema(schema)
+      const headersSchema = Schema.toCodecStringTree(schema.headers)
       const schemas = schemasByStatus.get(status)
       if (schemas === undefined) {
-        schemasByStatus.set(status, [Schema.toCodecStringTree(schema.headers)])
+        schemasByStatus.set(status, [headersSchema])
       } else {
-        schemas.push(Schema.toCodecStringTree(schema.headers))
+        schemas.push(headersSchema)
       }
     }
   }

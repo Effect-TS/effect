@@ -1272,17 +1272,14 @@ function validateResponseExclusivity(
     const key = `${status} ${contentType}`
     const withHeaders = HttpApiSchema.isWithHeaders(schema) || withHeadersAnnotation !== undefined
     const existing = occupied.get(key)
-    if (existing !== undefined) {
-      if (withHeaders || existing) {
-        throw new Error(
-          `Cannot combine a response with headers with another response for status ${status} and content-type: ${
-            contentType || "<no content>"
-          }`
-        )
-      }
-    } else {
-      occupied.set(key, withHeaders)
+    if (existing !== undefined && (existing || withHeaders)) {
+      throw new Error(
+        `Cannot combine a response with headers with another response for status ${status} and content-type: ${
+          contentType || "<no content>"
+        }`
+      )
     }
+    occupied.set(key, withHeaders)
   }
 }
 
