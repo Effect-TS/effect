@@ -30,15 +30,12 @@ const toFlagType = (single: Param.Single<"flag", unknown>): Completions.FlagType
       const keys = Primitive.getChoiceKeys(single.primitiveType)
       return { _tag: "Choice", values: keys ?? [] }
     }
-    case "Path": {
-      const typeName = single.typeName
-      const pathType: "file" | "directory" | "either" = typeName === "file"
-        ? "file"
-        : typeName === "directory"
-        ? "directory"
-        : "either"
-      return { _tag: "Path", pathType }
-    }
+    case "Path":
+      return { _tag: "Path", pathType: Primitive.getPathType(single.primitiveType) ?? "either" }
+    case "FileText":
+    case "FileParse":
+    case "FileSchema":
+      return { _tag: "Path", pathType: "file" }
     default:
       return { _tag: "String" }
   }
@@ -57,15 +54,12 @@ const toArgumentType = (single: Param.Single<"argument", unknown>): Completions.
       const keys = Primitive.getChoiceKeys(single.primitiveType)
       return { _tag: "Choice", values: keys ?? [] }
     }
-    case "Path": {
-      const typeName = single.typeName
-      const pathType: "file" | "directory" | "either" = typeName === "file"
-        ? "file"
-        : typeName === "directory"
-        ? "directory"
-        : "either"
-      return { _tag: "Path", pathType }
-    }
+    case "Path":
+      return { _tag: "Path", pathType: Primitive.getPathType(single.primitiveType) ?? "either" }
+    case "FileText":
+    case "FileParse":
+    case "FileSchema":
+      return { _tag: "Path", pathType: "file" }
     default:
       return { _tag: "String" }
   }
