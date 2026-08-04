@@ -25,7 +25,20 @@ describe("Sse", () => {
 
     parser.feed("id: 1\ndata: first\n\ndata: second\n\n")
 
-    assert.strictEqual((events[1] as Sse.Event).id, "1")
+    assert.deepStrictEqual(events, [
+      {
+        _tag: "Event",
+        id: "1",
+        event: "message",
+        data: "first"
+      },
+      {
+        _tag: "Event",
+        id: "1",
+        event: "message",
+        data: "second"
+      }
+    ])
   })
 
   it("Event preserves string payloads", () => {

@@ -258,7 +258,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   let discardTrailingNewline: boolean
 
   // Event state
-  let eventId: string | undefined
   let lastEventId: string | undefined
   let eventName: string | undefined
   let data: string
@@ -273,7 +272,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     startingFieldLength = -1
     discardTrailingNewline = false
 
-    eventId = undefined
+    lastEventId = undefined
     eventName = undefined
     data = ""
   }
@@ -365,12 +364,11 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
       if (data.length > 0) {
         onParse({
           _tag: "Event",
-          id: eventId,
+          id: lastEventId,
           event: eventName ?? "message",
           data: data.slice(0, -1) // remove trailing newline
         })
         data = ""
-        eventId = undefined
       }
       eventName = undefined
       return
@@ -397,7 +395,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     } else if (field === "event") {
       eventName = value
     } else if (field === "id" && !value.includes("\u0000")) {
-      eventId = value
       lastEventId = value
     } else if (field === "retry") {
       const retry = parseInt(value, 10)
