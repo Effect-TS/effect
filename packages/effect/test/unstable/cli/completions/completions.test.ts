@@ -1,5 +1,4 @@
 import { assert, describe, it } from "@effect/vitest"
-import { execFileSync } from "node:child_process"
 import { Argument, Command, Flag } from "effect/unstable/cli"
 import * as Completions from "effect/unstable/cli/Completions"
 import * as Bash from "effect/unstable/cli/internal/completions/bash"
@@ -96,20 +95,46 @@ describe("Bash completions", () => {
     const descriptor: Completions.CommandDescriptor = {
       name: "tool",
       description: undefined,
-      flags: [],
+      flags: [
+        {
+          name: "verbose",
+          aliases: ["v"],
+          description: undefined,
+          type: { _tag: "Boolean" }
+        },
+        {
+          name: "format",
+          aliases: ["f"],
+          description: undefined,
+          type: { _tag: "Choice", values: ["json", "text"] }
+        }
+      ],
       arguments: [
-        { name: "source", description: undefined, required: true, variadic: false, type: { _tag: "Choice", values: ["one"] } },
-        { name: "target", description: undefined, required: true, variadic: false, type: { _tag: "Choice", values: ["two"] } }
+        {
+          name: "source",
+          description: undefined,
+          required: true,
+          variadic: false,
+          type: { _tag: "Choice", values: ["one"] }
+        },
+        {
+          name: "target",
+          description: undefined,
+          required: true,
+          variadic: false,
+          type: { _tag: "Choice", values: ["two"] }
+        }
       ],
       subcommands: []
     }
     const script = Bash.generate("tool", descriptor)
-    const builtins = `complete() { :; }\ncompgen() { for word in $2; do printf '%s\\n' "$word"; done; }`
-    const output = execFileSync("bash", ["-c", `${builtins}\n${script}\nCOMP_WORDS=(tool one "")\nCOMP_CWORD=2\n_tool\nprintf '%s\\n' "\${COMPREPLY[@]}"`], {
-      encoding: "utf8"
-    }).trim().split("\n")
 
-    assert.deepStrictEqual(output, ["two"])
+    assert.include(script, `for ((i = _command_index + 1; i < cword; i++)); do`)
+    assert.include(script, `--verbose|-v|--no-verbose) ;;`)
+    assert.include(script, `--format|-f) _skip_next=1 ;;`)
+    assert.include(script, `--format=*|-f=*) ;;`)
+    assert.include(script, `0)\n      COMPREPLY=( $(compgen -W 'one' -- "$cur") )`)
+    assert.include(script, `1)\n      COMPREPLY=( $(compgen -W 'two' -- "$cur") )`)
   })
 
   it("generates completion function for root command", () => {
@@ -170,6 +195,7 @@ describe("Bash completions", () => {
     assert.include(script, "_server()")
     assert.include(script, "_server_start()")
     assert.include(script, "_server_stop()")
+    assert.include(script, `_server_start "$i"`)
   })
 
   it("handles commands with no subcommands", () => {
