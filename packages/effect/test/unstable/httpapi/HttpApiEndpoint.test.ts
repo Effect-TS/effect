@@ -209,6 +209,45 @@ describe("HttpApiEndpoint streaming success schemas", () => {
 })
 
 describe("HttpApiEndpoint WithHeaders schemas", () => {
+  it("rejects a WithHeaders success sharing its status and content type", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.get("get", "/", {
+          success: [
+            Schema.Struct({ plain: Schema.String }),
+            HttpApiSchema.WithHeaders(
+              Schema.Struct({ wrapped: Schema.String }),
+              { "x-trace-id": Schema.String }
+            )
+          ]
+        }),
+      "Cannot combine a response with headers with another response for status 200 and content-type: application/json"
+    )
+  })
+
+  it("rejects an encodeToWithHeaders error sharing its status and content type", () => {
+    const ErrorWithHeaders = Schema.String.pipe(
+      HttpApiSchema.encodeToWithHeaders({
+        body: Schema.Struct({ wrapped: Schema.String }),
+        headers: { "x-trace-id": Schema.String }
+      }, {
+        decode: ({ body }) => body.wrapped,
+        encode: (message) => ({ body: { wrapped: message }, headers: { "x-trace-id": "trace" } })
+      })
+    )
+
+    assert.throws(
+      () =>
+        HttpApiEndpoint.get("get", "/", {
+          error: [
+            Schema.Struct({ plain: Schema.String }),
+            ErrorWithHeaders
+          ]
+        }),
+      "Cannot combine a response with headers with another response for status 500 and content-type: application/json"
+    )
+  })
+
   it("keeps the wrapper in the success set with codec-transformed parts", () => {
     const endpoint = HttpApiEndpoint.get("list", "/users", {
       success: HttpApiSchema.WithHeaders(Schema.Struct({ a: Schema.String }), {

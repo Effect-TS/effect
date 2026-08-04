@@ -536,9 +536,10 @@ export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
  *   wire and `undefined` leaves are omitted from the response.
  * - Status and response-encoding annotations are resolved from the wrapper
  *   first, falling through to the inner schema.
- * - When a success union has multiple `WithHeaders` members, header encoding
- *   uses the first matching union member. Keep their header shapes disjoint so
- *   a value cannot encode against the wrong member.
+ * - A header-carrying response cannot share its status and content type with
+ *   another response in the same success or error union. Endpoint construction
+ *   rejects ambiguous declarations, including those made with
+ *   {@link encodeToWithHeaders}.
  * - `Rebuild` preserves the brand and both parts, so `.annotate` keeps the
  *   wrapper intact.
  *

@@ -1180,6 +1180,7 @@ function getErrorResponse(
       throw new Error("Streaming schemas are not supported in error responses")
     }
   }
+  validateResponseExclusivity(schemas, HttpApiSchema.getStatusErrorSchema)
   return new Set(disableCodecs ? schemas : schemas.map(transformResponseSchema))
 }
 
@@ -1232,6 +1233,8 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
       entry.noContent = entry.noContent || noContent
     }
   }
+
+  validateResponseExclusivity(schemas, HttpApiSchema.getStatusSuccessSchema)
 }
 
 function getStatusEntry(
@@ -1248,6 +1251,39 @@ function getStatusEntry(
     statuses.set(status, entry)
   }
   return entry
+}
+
+function validateResponseExclusivity(
+  schemas: ReadonlyArray<Schema.Constraint>,
+  getStatus: (schema: Schema.Constraint) => number
+) {
+  const occupied = new Map<string, boolean>()
+  for (const schema of schemas) {
+    const status = getStatus(schema)
+    const withHeadersAnnotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
+    const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : withHeadersAnnotation?.body ?? schema
+    const contentType = HttpApiSchema.isNoContent(body.ast)
+      ? ""
+      : MediaType.normalize(
+        HttpApiSchema.isStreamSchema(body)
+          ? body.contentType
+          : HttpApiSchema.getResponseEncodingSchema(schema).contentType
+      )
+    const key = `${status} ${contentType}`
+    const withHeaders = HttpApiSchema.isWithHeaders(schema) || withHeadersAnnotation !== undefined
+    const existing = occupied.get(key)
+    if (existing !== undefined) {
+      if (withHeaders || existing) {
+        throw new Error(
+          `Cannot combine a response with headers with another response for status ${status} and content-type: ${
+            contentType || "<no content>"
+          }`
+        )
+      }
+    } else {
+      occupied.set(key, withHeaders)
+    }
+  }
 }
 
 function validateStreamSuccess(schema: HttpApiSchema.StreamSchema, method: HttpMethod) {

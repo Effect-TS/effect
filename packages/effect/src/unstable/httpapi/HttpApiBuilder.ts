@@ -804,14 +804,19 @@ function handlerToHttpEffect(
       }
       let responseHeaders: unknown | undefined
       if (encodeWithHeaders !== undefined && HttpApiSchema.isWithHeadersValue(response)) {
-        responseHeaders = yield* HttpApiSchemaError.wrap("ResponseHeaders", encodeWithHeaders(response.headers))
+        responseHeaders = response.headers
         response = response.body
       }
       const encoded = yield* HttpApiSchemaError.wrap(
         "Body",
         encodeStream?.(response, context) ?? encodeSuccess(response)
       )
-      return responseHeaders === undefined ? encoded : Response.setHeaders(encoded, responseHeaders as any)
+      if (responseHeaders === undefined) return encoded
+      const encodedHeaders = yield* HttpApiSchemaError.wrap(
+        "ResponseHeaders",
+        encodeWithHeaders!.get(encoded.status)!(responseHeaders)
+      )
+      return Response.setHeaders(encoded, encodedHeaders as any)
     })
   ).pipe(
     Effect.withErrorReporting,
@@ -926,15 +931,25 @@ type StreamEncoder = (response: unknown, context: Context.Context<never>) =>
 
 type WithHeadersEncoder = (headers: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
 
-function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): WithHeadersEncoder | undefined {
-  const schemas: Array<Schema.Top> = []
+function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): Map<number, WithHeadersEncoder> | undefined {
+  const schemasByStatus = new Map<number, Array<Schema.Top>>()
   for (const schema of endpoint.success) {
     if (HttpApiSchema.isWithHeaders(schema)) {
-      schemas.push(Schema.toCodecStringTree(schema.headers))
+      const status = HttpApiSchema.getStatusSuccessSchema(schema)
+      const schemas = schemasByStatus.get(status)
+      if (schemas === undefined) {
+        schemasByStatus.set(status, [Schema.toCodecStringTree(schema.headers)])
+      } else {
+        schemas.push(Schema.toCodecStringTree(schema.headers))
+      }
     }
   }
-  if (schemas.length === 0) return undefined
-  return Schema.encodeUnknownEffect(schemas.length === 1 ? schemas[0] : Schema.Union(schemas))
+  if (schemasByStatus.size === 0) return undefined
+  const encoders = new Map<number, WithHeadersEncoder>()
+  for (const [status, schemas] of schemasByStatus) {
+    encoders.set(status, Schema.encodeUnknownEffect(schemas.length === 1 ? schemas[0] : Schema.Union(schemas)))
+  }
+  return encoders
 }
 
 function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undefined {

@@ -1,5 +1,16 @@
 import { assert, it, vi } from "@effect/vitest"
-import { Cause, DateTime, Effect, FileSystem, Layer, Path, Redacted, Schema, Stream } from "effect"
+import {
+  Cause,
+  DateTime,
+  Effect,
+  FileSystem,
+  Layer,
+  Path,
+  Redacted,
+  Schema,
+  SchemaTransformation,
+  Stream
+} from "effect"
 import { Etag, HttpPlatform } from "effect/unstable/http"
 import {
   HttpApi,
@@ -123,6 +134,49 @@ it.layer(TestServices)("HttpApiBuilder payload content types", (it) => {
 })
 
 it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
+  it.effect("encodes WithHeaders using the schema for the response status", () =>
+    Effect.gen(function*() {
+      const encodedHeader = (prefix: string) =>
+        Schema.String.pipe(
+          Schema.decodeTo(
+            Schema.String,
+            SchemaTransformation.transform({
+              decode: (value) => value,
+              encode: (value) => `${prefix}:${value}`
+            })
+          )
+        )
+      const Ok = HttpApiSchema.WithHeaders(
+        Schema.Struct({ _tag: Schema.Literal("Ok") }),
+        { "x-source": encodedHeader("ok") }
+      )
+      const Created = HttpApiSchema.WithHeaders(
+        Schema.Struct({ _tag: Schema.Literal("Created") }).pipe(HttpApiSchema.status(201)),
+        { "x-source": encodedHeader("created") }
+      )
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("result", "/test", { success: [Ok, Created] })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("result", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: { _tag: "Created" as const },
+              headers: { "x-source": "value" }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.result({ responseMode: "response-only" })
+
+      assert.strictEqual(response.status, 201)
+      assert.strictEqual(response.headers["x-source"], "created:value")
+    }))
+
   it.effect("round trips user-managed header codecs through HttpApiTest", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
@@ -371,7 +425,9 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
         Schema.Struct({ _tag: Schema.Literal("Wrapped"), value: Schema.String }),
         { "x-source": Schema.String }
       )
-      const Plain = Schema.Struct({ _tag: Schema.Literal("Plain"), value: Schema.String })
+      const Plain = Schema.Struct({ _tag: Schema.Literal("Plain"), value: Schema.String }).pipe(
+        HttpApiSchema.asJson({ contentType: "application/vnd.plain+json" })
+      )
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
           HttpApiEndpoint.get("mixed", "/test", { success: [Wrapped, Plain] })
