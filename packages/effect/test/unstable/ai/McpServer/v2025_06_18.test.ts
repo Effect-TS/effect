@@ -1,6 +1,8 @@
 import { assert, describe, it } from "@effect/vitest"
 import * as Effect from "effect/Effect"
+import * as Schema from "effect/Schema"
 import * as McpProtocol from "effect/unstable/ai/McpProtocol"
+import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as BaseProtocolTest from "./McpConformance/BaseProtocolTest.ts"
 import * as CompletionTest from "./McpConformance/CompletionTest.ts"
 import * as ElicitationTest from "./McpConformance/ElicitationTest.ts"
@@ -14,6 +16,14 @@ import * as SamplingTest from "./McpConformance/SamplingTest.ts"
 import * as ToolsTest from "./McpConformance/ToolsTest.ts"
 import * as TransportsTest from "./McpConformance/TransportsTest.ts"
 import * as UtilitiesTest from "./McpConformance/UtilitiesTest.ts"
+
+it("accepts tools/call without optional arguments", () => {
+  const decoded = Schema.decodeUnknownExit(McpSchema.CallTool.payloadSchema)({ name: "ping" })
+  assert.strictEqual(decoded._tag, "Success")
+  if (decoded._tag === "Success") {
+    assert.deepStrictEqual(decoded.value.arguments, {})
+  }
+})
 
 const protocol = McpProtocol.v2025_06_18
 const testLayer = makeMcpConformanceLayer(protocol)
