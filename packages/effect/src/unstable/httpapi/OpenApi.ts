@@ -369,11 +369,30 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
       const method = endpoint.method.toLowerCase() as OpenAPISpecMethodName
 
       function processResponseBodies(bodies: ResponseBodies, defaultDescription: () => string) {
-        for (const [status, { content, descriptions, streamContent }] of bodies) {
+        for (const [status, { content, descriptions, headers, streamContent }] of bodies) {
           const description = descriptions.size > 0 ? Array.from(descriptions).join(" | ") : defaultDescription()
           InternalRecord.assignProperty(op.responses, status, {
             description
           })
+          for (const schema of headers) {
+            const ast = SchemaAST.getLastEncoding(schema.ast)
+            if (SchemaAST.isObjects(ast)) {
+              for (const ps of ast.propertySignatures) {
+                const name = String(ps.name).toLowerCase()
+                if (name === "content-type") continue
+                op.responses[status].headers ??= {}
+                InternalRecord.assignProperty(op.responses[status].headers, name, {
+                  schema: {},
+                  required: !SchemaAST.isOptional(ps.type)
+                })
+                pathOps.push({
+                  _tag: "parameter",
+                  ast: ps.type,
+                  path: ["paths", path, method, "responses", String(status), "headers", name, "schema"]
+                })
+              }
+            }
+          }
           if (content !== undefined) {
             content.forEach((map, encoding) => {
               map.forEach((schemas, contentType) => {
@@ -568,7 +587,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
       processResponseBodies(
         extractResponseBodies(
           HttpApiEndpoint.getErrorSchemas(endpoint),
-          HttpApiSchema.getStatusError,
+          (schema) => HttpApiSchema.getStatusError(schema.ast),
           resolveDescriptionOrIdentifier
         ),
         () => "Error"
@@ -673,6 +692,7 @@ type ResponseBodies = Map<
   {
     descriptions: Set<string>
     content: Content | undefined // undefined means no content
+    headers: Array<Schema.Constraint>
     streamContent: StreamContent | undefined
   }
 >
@@ -682,19 +702,20 @@ const reservedStreamFailureEvent = "effect/httpapi/stream/failure"
 function extractSuccessResponseBodies(endpoint: HttpApiEndpoint.Top): ResponseBodies {
   return extractResponseBodies(
     HttpApiEndpoint.getSuccessSchemas(endpoint),
-    HttpApiSchema.getStatusSuccess,
+    HttpApiSchema.getStatusSuccessSchema,
     resolveDescriptionOrIdentifier
   )
 }
 
 function extractResponseBodies(
   schemas: Array<Schema.Constraint>,
-  getStatus: (ast: SchemaAST.AST) => number,
+  getStatus: (schema: Schema.Constraint) => number,
   getDescription: (ast: SchemaAST.AST) => string | undefined
 ): ResponseBodies {
   const map = new Map<number, {
     descriptions: Set<string>
     content: Content | undefined
+    headers: Array<Schema.Constraint>
     streamContent: StreamContent | undefined
   }>()
 
@@ -703,48 +724,70 @@ function extractResponseBodies(
   return map
 
   function process(schema: Schema.Constraint) {
-    if (HttpApiSchema.isStreamSchema(schema)) {
-      addStreamContent(schema)
+    const annotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
+    const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : annotation?.body ?? schema
+    const headers = HttpApiSchema.isWithHeaders(schema) ? schema.headers : annotation?.headers
+    const status = getStatus(schema)
+    if (HttpApiSchema.isStreamSchema(body)) {
+      addStreamContent(body, status, headers)
       return
     }
-    const ast = schema.ast
-    const status = getStatus(ast)
+    const ast = body.ast
     if (HttpApiSchema.isNoContent(ast)) {
-      addNoContent(status, getDescription(schema.ast) ?? "<No Content>")
+      addNoContent(status, getDescription(schema.ast) ?? getDescription(ast) ?? "<No Content>", headers)
     } else {
-      addContent(schema, status, HttpApiSchema.getResponseEncoding(ast))
+      addContent(
+        body,
+        status,
+        HttpApiSchema.getResponseEncodingSchema(schema),
+        getDescription(schema.ast) ?? getDescription(ast),
+        headers
+      )
     }
   }
 
-  function addNoContent(status: number, description: string) {
+  function addNoContent(status: number, description: string, headers: Schema.Constraint | undefined) {
     const statusMap = map.get(status)
     if (statusMap === undefined) {
       map.set(status, {
         descriptions: new Set([description]),
         content: undefined,
+        headers: headers === undefined ? [] : [headers],
         streamContent: undefined
       })
     } else {
       if (description !== undefined) {
         statusMap.descriptions.add(description)
       }
+      if (headers !== undefined) {
+        statusMap.headers.push(headers)
+      }
     }
   }
 
-  function addContent(schema: Schema.Constraint, status: number, encoding: HttpApiSchema.Encoding) {
-    const description = getDescription(schema.ast)
+  function addContent(
+    schema: Schema.Constraint,
+    status: number,
+    encoding: HttpApiSchema.Encoding,
+    description: string | undefined,
+    headers: Schema.Constraint | undefined
+  ) {
     const statusMap = map.get(status)
     const { _tag, contentType } = encoding
     if (statusMap === undefined) {
       map.set(status, {
         descriptions: new Set(description !== undefined ? [description] : []),
         content: new Map([[_tag, new Map([[contentType, new Set([schema])]])]]),
+        headers: headers === undefined ? [] : [headers],
         streamContent: undefined
       })
     } else {
       // concat descriptions
       if (description !== undefined) {
         statusMap.descriptions.add(description)
+      }
+      if (headers !== undefined) {
+        statusMap.headers.push(headers)
       }
 
       if (statusMap.content === undefined) {
@@ -765,19 +808,28 @@ function extractResponseBodies(
     }
   }
 
-  function addStreamContent(stream: HttpApiSchema.StreamSchema) {
-    const status = HttpApiSchema.getStatusStream(stream)
+  function addStreamContent(
+    stream: HttpApiSchema.StreamSchema,
+    status: number,
+    headers: Schema.Constraint | undefined
+  ) {
     const statusMap = map.get(status)
     if (statusMap === undefined) {
       map.set(status, {
         descriptions: new Set(),
         content: undefined,
+        headers: headers === undefined ? [] : [headers],
         streamContent: new Map([[stream.contentType, stream]])
       })
-    } else if (statusMap.streamContent === undefined) {
-      statusMap.streamContent = new Map([[stream.contentType, stream]])
     } else {
-      statusMap.streamContent.set(stream.contentType, stream)
+      if (headers !== undefined) {
+        statusMap.headers.push(headers)
+      }
+      if (statusMap.streamContent === undefined) {
+        statusMap.streamContent = new Map([[stream.contentType, stream]])
+      } else {
+        statusMap.streamContent.set(stream.contentType, stream)
+      }
     }
   }
 }
@@ -1042,7 +1094,16 @@ export type OpenApiSpecContent = {
 export interface OpenApiSpecResponse {
   description: string
   content?: OpenApiSpecContent
+  headers?: Record<string, OpenAPISpecHeader>
 }
+
+/**
+ * Generated OpenAPI response header object.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type OpenAPISpecHeader = Omit<OpenAPISpecParameter, "name" | "in">
 
 /**
  * Generated OpenAPI media type object containing the JSON Schema for a request or response body.
