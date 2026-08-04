@@ -678,6 +678,7 @@ export const toPersisted = (
     const path_ = yield* Path.Path
     const dir = yield* fs.makeTempDirectoryScoped()
     const persisted: Record<string, Array<PersistedFile> | Array<string> | string> = Object.create(null)
+    const usedPaths = new Set<string>()
     let fileIndex = 0
     yield* Stream.runForEach(stream, (part) => {
       if (part._tag === "Field") {
@@ -693,7 +694,12 @@ export const toPersisted = (
         return Effect.void
       }
       const file = part
-      const path = path_.join(dir, `${fileIndex++}-${path_.basename(file.name).slice(-128)}`)
+      const fileName = path_.basename(file.name).slice(-128)
+      let path = path_.join(dir, fileName)
+      while (usedPaths.has(path)) {
+        path = path_.join(dir, `${fileIndex++}-${fileName}`)
+      }
+      usedPaths.add(path)
       const filePart = new PersistedFileImpl(
         file.key,
         file.name,

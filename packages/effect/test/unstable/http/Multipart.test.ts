@@ -83,6 +83,7 @@ describe("Multipart", () => {
       )
       const first = (persisted.first as Array<Multipart.PersistedFile>)[0]
       const second = (persisted.second as Array<Multipart.PersistedFile>)[0]
+      strictEqual(first.path, "/tmp/audit/same.txt")
       notStrictEqual(first.path, second.path)
       deepStrictEqual(writes, [first.path, second.path])
     })))
