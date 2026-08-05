@@ -41,6 +41,16 @@ describe("Sse", () => {
     ])
   })
 
+  it("roundtrips an SSE event with empty data", () => {
+    const input: Sse.Event = { _tag: "Event", event: "message", id: undefined, data: "" }
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed(Sse.encoder.write(input))
+
+    assert.deepStrictEqual(events, [input])
+  })
+
   it("Event preserves string payloads", () => {
     const decode = Schema.decodeUnknownSync(Sse.Event)
     const encode = Schema.encodeSync(Sse.Event)

@@ -660,9 +660,7 @@ export const encoder: Encoder = {
         if (event.event !== "message") {
           data += `event: ${event.event}\n`
         }
-        if (event.data !== "") {
-          data += `data: ${event.data.replace(/\n/g, "\ndata: ")}\n`
-        }
+        data += `data: ${event.data.replace(/\n/g, "\ndata: ")}\n`
         return data + "\n"
       }
       case "Retry": {
