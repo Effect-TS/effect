@@ -57,6 +57,7 @@
   },
   "files": [
     "src/**/*.ts",
+    "src/unstable/http/Multipasta/internal/LICENSE",
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
@@ -118,7 +119,6 @@
     "ini": "^7.0.0",
     "kubernetes-types": "^1.30.0",
     "msgpackr": "^2.0.4",
-    "multipasta": "^0.2.8",
     "toml": "^4.1.2",
     "uuid": "^14.0.1",
     "yaml": "^2.9.0"

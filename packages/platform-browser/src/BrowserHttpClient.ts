@@ -28,8 +28,8 @@ import * as HttpClientError from "effect/unstable/http/HttpClientError"
 import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import * as HttpIncomingMessage from "effect/unstable/http/HttpIncomingMessage"
+import * as HeaderParser from "effect/unstable/http/Multipasta/HeadersParser"
 import * as UrlParams from "effect/unstable/http/UrlParams"
-import * as HeaderParser from "multipasta/HeadersParser"
 
 // =============================================================================
 // Fetch

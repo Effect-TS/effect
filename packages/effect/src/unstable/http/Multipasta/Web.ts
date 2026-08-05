@@ -1,5 +1,5 @@
 /**
- * Re-exports the Web multipart helpers from `multipasta`.
+ * Exposes the Web multipart helpers.
  *
  * This module keeps the Web-specific parser helpers available from the Effect
  * HTTP namespace without wrapping or changing them.
@@ -8,7 +8,7 @@
  */
 
 /**
- * @category re-exports
+ * @category multipart
  * @since 4.0.0
  */
-export * from "multipasta/web"
+export * from "./internal/web.ts"

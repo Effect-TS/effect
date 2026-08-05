@@ -1,5 +1,5 @@
 /**
- * Re-exports the `multipasta` header parser used by multipart HTTP parsing.
+ * Exposes the header parser used by multipart HTTP parsing.
  *
  * This module keeps the parser available from the Effect HTTP namespace without
  * wrapping or changing it.
@@ -8,7 +8,7 @@
  */
 
 /**
- * @category re-exports
+ * @category multipart
  * @since 4.0.0
  */
-export * from "multipasta/HeadersParser"
+export * from "./internal/headersParserApi.ts"
