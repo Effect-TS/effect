@@ -177,6 +177,47 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.strictEqual(response.headers["x-source"], "created:value")
     }))
 
+  it.effect("defects with ResponseHeaders when a branded response encodes to a plain status", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("result", "/test", {
+            success: [
+              HttpApiSchema.WithHeaders(
+                Schema.Struct({ _tag: Schema.Literal("A") }),
+                { "x-source": Schema.String }
+              ),
+              Schema.Struct({ _tag: Schema.Literal("B") }).pipe(HttpApiSchema.status(201))
+            ]
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("result", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: { _tag: "B" as const },
+              headers: { "x-source": "value" }
+            }) as any))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const exit = yield* Effect.exit(client.test.result({ responseMode: "response-only" }))
+
+      assert.strictEqual(exit._tag, "Failure")
+      if (exit._tag === "Failure") {
+        const error = Cause.squash(exit.cause) as any
+        assert.strictEqual(error._tag, "HttpApiSchemaError")
+        assert.strictEqual(error.kind, "ResponseHeaders")
+        assert.strictEqual(
+          error.cause.message,
+          "Endpoint declares no header-carrying response for encoded status: 201"
+        )
+      }
+    }))
+
   it.effect("round trips user-managed header codecs through HttpApiTest", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(

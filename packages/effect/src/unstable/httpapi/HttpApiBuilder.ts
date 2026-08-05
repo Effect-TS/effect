@@ -812,9 +812,18 @@ function handlerToHttpEffect(
         encodeStream?.(response, context) ?? encodeSuccess(response)
       )
       if (encodeWithHeaders === undefined || responseHeaders === undefined) return encoded
+      const encodeHeaders = encodeWithHeaders.get(encoded.status)
       const encodedHeaders = yield* HttpApiSchemaError.wrap(
         "ResponseHeaders",
-        encodeWithHeaders.get(encoded.status)!(responseHeaders)
+        encodeHeaders === undefined
+          ? Effect.fail(
+            new Schema.SchemaError(
+              new SchemaIssue.InvalidValue({
+                message: `Endpoint declares no header-carrying response for encoded status: ${encoded.status}`
+              })
+            )
+          )
+          : encodeHeaders(responseHeaders)
       )
       return Response.setHeaders(encoded, encodedHeaders as any)
     })
