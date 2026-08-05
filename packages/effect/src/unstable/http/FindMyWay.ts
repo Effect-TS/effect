@@ -1,3 +1,10 @@
+/**
+ * A radix-tree HTTP router used by the unstable HTTP routing modules.
+ *
+ * @since 4.0.0
+ */
+import * as internal from "./FindMyWay/internal/router.ts"
+
 /*
  * MIT License
  *
@@ -21,13 +28,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
-/**
- * A radix-tree HTTP router used by the unstable HTTP routing modules.
- *
- * @since 4.0.0
- */
-import * as internal from "./FindMyWay/internal/router.ts"
 
 /**
  * @since 4.0.0
