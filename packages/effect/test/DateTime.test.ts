@@ -394,6 +394,10 @@ describe("DateTime", () => {
   })
 
   describe("fromEpochSeconds", () => {
+    it("rejects finite epoch seconds outside the Date range", () => {
+      throws(() => DateTime.fromEpochSeconds(8_640_000_000_001))
+    })
+
     it("creates DateTime from epoch seconds", () => {
       const dt = DateTime.fromEpochSeconds(1704067200)
       strictEqual(dt.toJSON(), "2024-01-01T00:00:00.000Z")
