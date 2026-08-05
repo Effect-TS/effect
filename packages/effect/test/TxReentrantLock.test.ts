@@ -423,4 +423,17 @@ describe("TxReentrantLock", () => {
       yield* Scope.close(scope, Exit.void)
       assert.isFalse(yield* TxReentrantLock.readLocked(lock))
     }))
+
+  it.effect("releases a scoped write lock when another fiber closes the scope", () =>
+    Effect.gen(function*() {
+      const lock = yield* TxReentrantLock.make()
+      const scope = yield* Scope.make()
+      const fiber = yield* TxReentrantLock.writeLock(lock).pipe(
+        Effect.provideService(Scope.Scope, scope),
+        Effect.forkChild
+      )
+      yield* Fiber.join(fiber)
+      yield* Scope.close(scope, Exit.void)
+      assert.isFalse(yield* TxReentrantLock.writeLocked(lock))
+    }))
 })
