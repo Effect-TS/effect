@@ -98,7 +98,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
   readonly description?: string | undefined
   readonly shortDescription?: string | undefined
   readonly alias?: string | undefined
-  readonly hidden?: boolean | undefined
+  readonly unlisted?: boolean | undefined
   readonly examples?: ReadonlyArray<Command.Example> | undefined
   readonly subcommands?: ReadonlyArray<SubcommandGroup> | undefined
   readonly parse?: ((input: ParsedTokens) => Effect.Effect<Input, CliError.CliError, Environment>) | undefined
@@ -147,9 +147,9 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
     }
 
     let usage = commandPath.length > 0 ? commandPath.join(" ") : options.name
-    // Only render `<subcommand>` in usage when at least one visible subcommand
-    // exists; an all-hidden subcommand tree should look like a leaf command.
-    if (subcommands.some((group) => group.commands.some((c) => !c.hidden))) {
+    // Only render `<subcommand>` in usage when at least one listed subcommand
+    // exists; an entirely unlisted subcommand tree should look like a leaf command.
+    if (subcommands.some((group) => group.commands.some((c) => !c.unlisted))) {
       usage += " <subcommand>"
     }
     usage += " [flags]"
@@ -172,10 +172,10 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
     const subcommandDocs: Array<SubcommandGroupDoc> = []
 
     for (const group of subcommands) {
-      // Hidden subcommands still parse on the command line but are omitted
+      // Unlisted subcommands still parse on the command line but are omitted
       // from --help. Drop the whole group when nothing visible remains so we
       // don't render an empty heading.
-      const visible = group.commands.filter((c) => !c.hidden)
+      const visible = group.commands.filter((c) => !c.unlisted)
       if (visible.length === 0) continue
       subcommandDocs.push({
         group: group.group,
@@ -208,7 +208,7 @@ export const makeCommand = <const Name extends string, Input, E, R, ContextInput
     annotations,
     globalFlags,
     subcommands,
-    hidden: options.hidden ?? false,
+    unlisted: options.unlisted ?? false,
     config,
     contextConfig,
     service,
