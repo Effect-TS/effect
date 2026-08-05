@@ -517,6 +517,40 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.strictEqual(yield* response.text, "slow down")
     }))
 
+  it.effect("encodes annotation headers from their declared encoded shape", () =>
+    Effect.gen(function*() {
+      class RateLimited extends Schema.TaggedError<RateLimited>()("RateLimited", {
+        expiresAt: Schema.Date
+      }) {}
+      const RateLimitedResponse = RateLimited.pipe(
+        HttpApiSchema.encodeToWithHeaders({
+          body: Schema.String.pipe(HttpApiSchema.status(429)),
+          headers: { "expires-at": Schema.Date }
+        }, {
+          decode: ({ headers }) => new RateLimited({ expiresAt: headers["expires-at"] }),
+          encode: (error) => ({ body: "slow down", headers: { "expires-at": error.expiresAt } })
+        })
+      )
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("limited", "/test", { error: RateLimitedResponse })
+        )
+      )
+      const expiresAt = DateTime.makeUnsafe("2026-08-05T02:00:00.000Z").pipe(DateTime.toDate)
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) => handlers.handle("limited", () => Effect.fail(new RateLimited({ expiresAt })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.limited({ responseMode: "response-only" })
+      const error = yield* Effect.flip(client.test.limited({}))
+
+      assert.strictEqual(response.headers["expires-at"], "2026-08-05T02:00:00.000Z")
+      assert.deepStrictEqual(error, new RateLimited({ expiresAt }))
+    }))
+
   it.effect("encodes and decodes an error wrapped in WithHeaders", () =>
     Effect.gen(function*() {
       const RateLimited = HttpApiSchema.WithHeaders(
