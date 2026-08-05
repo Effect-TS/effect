@@ -54,7 +54,7 @@ const promptCommand: (
 ) => Effect.Effect<void, CliError.CliError | Terminal.QuitError, Command.Environment> = Effect.fnUntraced(
   function*(command, commandLine, sectionName) {
     const impl = toImpl(command)
-    const visibleSubcommands = command.subcommands.flatMap((group) => group.commands.filter((child) => !child.hidden))
+    const visibleSubcommands = command.subcommands.flatMap((group) => group.commands.filter((child) => !child.unlisted))
     const config = visibleSubcommands.length === 0 ? impl.config : impl.contextConfig
 
     if (config.flags.length > 0) {
@@ -103,7 +103,7 @@ const promptCommand: (
 )
 
 const hasWizardSteps = (command: Command.Command.Any): boolean => {
-  const hasVisibleSubcommands = command.subcommands.some((group) => group.commands.some((child) => !child.hidden))
+  const hasVisibleSubcommands = command.subcommands.some((group) => group.commands.some((child) => !child.unlisted))
   return hasVisibleSubcommands || toImpl(command).config.orderedParams.length > 0
 }
 
