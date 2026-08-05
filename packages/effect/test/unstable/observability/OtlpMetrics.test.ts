@@ -5,15 +5,16 @@ import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/uns
 import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
 
 describe("OtlpMetrics", () => {
-  it.effect("retains a delta after a failed export", () =>
+  it.effect("retains delta checkpoints after a failed export", () =>
     Effect.scoped(Effect.gen(function*() {
-      const bodies = yield* Ref.make<Array<any>>([])
+      const bodies = yield* Ref.make<ReadonlyArray<OtlpExportRequest>>([])
       const attempts = yield* Ref.make(0)
       const client = HttpClient.makeWith(
         Effect.fnUntraced(function*(requestEffect) {
           const request = yield* requestEffect
           if (request.body._tag === "Uint8Array") {
-            yield* Ref.update(bodies, (all) => [...all, JSON.parse(new TextDecoder().decode(request.body.body))])
+            const body = JSON.parse(new TextDecoder().decode(request.body.body)) as OtlpExportRequest
+            yield* Ref.update(bodies, Array.append(body))
           }
           const attempt = yield* Ref.updateAndGet(attempts, (n) => n + 1)
           return HttpClientResponse.fromWeb(request, new Response(null, { status: attempt === 1 ? 400 : 200 }))
@@ -30,15 +31,46 @@ describe("OtlpMetrics", () => {
         Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, client))
       )
       yield* Effect.gen(function*() {
-        yield* Metric.update(Metric.counter("repro_delta"), 5)
+        yield* Metric.update(Metric.counter("repro_counter"), 5)
+        const histogram = Metric.histogram("repro_histogram", { boundaries: [10, 50, 100] })
+        yield* Metric.update(histogram, 25)
+        yield* Metric.update(histogram, 75)
+        const frequency = Metric.frequency("repro_frequency")
+        yield* Metric.update(frequency, "a")
+        yield* Metric.update(frequency, "a")
+        yield* Metric.update(frequency, "b")
+        const summary = Metric.summary("repro_summary", {
+          maxAge: "1 minute",
+          maxSize: 100,
+          quantiles: [0.5]
+        })
+        yield* Metric.update(summary, 10)
+        yield* Metric.update(summary, 20)
+        yield* Metric.update(summary, 30)
         const flusher = yield* OtlpExporter.Flusher
         yield* flusher.flush
         yield* TestClock.adjust("60 seconds")
         yield* flusher.flush
       }).pipe(Effect.provide(layer), Effect.provideService(Metric.MetricRegistry, new Map()))
-      const values = (yield* Ref.get(bodies)).map((body) => body.resourceMetrics[0].scopeMetrics[0].metrics
-        .find((metric: any) => metric.name === "repro_delta").sum.dataPoints[0].asDouble)
-      assert.deepStrictEqual(values.slice(0, 2), [5, 5])
+      const [first, second] = yield* Ref.get(bodies)
+      assert.strictEqual(findMetric(first, "repro_counter")?.sum?.dataPoints[0].asDouble, 5)
+      assert.strictEqual(findMetric(second, "repro_counter")?.sum?.dataPoints[0].asDouble, 5)
+      assert.strictEqual(findMetric(first, "repro_histogram")?.histogram?.dataPoints[0].count, 2)
+      assert.strictEqual(findMetric(second, "repro_histogram")?.histogram?.dataPoints[0].count, 2)
+      assert.strictEqual(findMetric(first, "repro_histogram")?.histogram?.dataPoints[0].sum, 100)
+      assert.strictEqual(findMetric(second, "repro_histogram")?.histogram?.dataPoints[0].sum, 100)
+      assert.strictEqual(findFrequencyValue(first, "repro_frequency", "a"), 2)
+      assert.strictEqual(findFrequencyValue(second, "repro_frequency", "a"), 2)
+      assert.strictEqual(findFrequencyValue(first, "repro_frequency", "b"), 1)
+      assert.strictEqual(findFrequencyValue(second, "repro_frequency", "b"), 1)
+      assert.strictEqual(findMetric(first, "repro_summary_count")?.sum?.dataPoints[0].asInt, 3)
+      assert.strictEqual(findMetric(second, "repro_summary_count")?.sum?.dataPoints[0].asInt, 3)
+      assert.strictEqual(findMetric(first, "repro_summary_sum")?.sum?.dataPoints[0].asDouble, 60)
+      assert.strictEqual(findMetric(second, "repro_summary_sum")?.sum?.dataPoints[0].asDouble, 60)
+      assert.strictEqual(
+        findMetric(second, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano,
+        findMetric(first, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano
+      )
     })))
 
   describe("cumulative temporality", () => {
@@ -552,3 +584,12 @@ const findMetric = (request: OtlpExportRequest, name: string): OtlpMetric | unde
   }
   return undefined
 }
+
+const findFrequencyValue = (request: OtlpExportRequest, name: string, key: string): number | undefined =>
+  findMetric(request, name)?.sum?.dataPoints.find((dataPoint) =>
+    dataPoint.attributes.some((attribute) =>
+      attribute.key === "key" &&
+      Predicate.hasProperty(attribute.value, "stringValue") &&
+      attribute.value.stringValue === key
+    )
+  )?.asInt

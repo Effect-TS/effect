@@ -43,7 +43,7 @@ const makeExporter = (
     headers: undefined,
     exportInterval: options?.exportInterval ?? "1 hour",
     maxBatchSize: options?.maxBatchSize ?? 1,
-    body: options?.body ?? (() => HttpBody.empty),
+    body: (data) => [options?.body?.(data) ?? HttpBody.empty, Effect.void],
     shutdownTimeout: options?.shutdownTimeout ?? "1 second"
   }).pipe(
     Effect.provideService(HttpClient.HttpClient, httpClient),
@@ -57,7 +57,7 @@ const makeExporterRaw = (maxBatchSize: number | "disabled" = 1) =>
     headers: undefined,
     exportInterval: "1 hour",
     maxBatchSize,
-    body: () => HttpBody.empty,
+    body: () => [HttpBody.empty, Effect.void],
     shutdownTimeout: "1 second"
   })
 
