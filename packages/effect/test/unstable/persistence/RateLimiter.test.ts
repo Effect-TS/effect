@@ -4,24 +4,33 @@ import { TestClock } from "effect/testing"
 import { RateLimiter } from "effect/unstable/persistence"
 
 describe(`RateLimiter`, () => {
-  it.effect("supports data-first and data-last sleep", () =>
+  it.effect("supports partially applied sleep", () =>
     Effect.gen(function*() {
       const limiter = yield* RateLimiter.make
-      const dataFirst = yield* RateLimiter.sleep(limiter, {
+      const sleep = RateLimiter.sleep(limiter)
+      const result = yield* sleep({
         algorithm: "fixed-window",
         window: "1 minute",
         limit: 5,
-        key: "data-first"
+        key: "partial"
       })
-      const dataLast = yield* RateLimiter.sleep({
+
+      assert.strictEqual(result.remaining, 4)
+    }).pipe(
+      Effect.provide(RateLimiter.layerStoreMemory)
+    ))
+
+  it.effect("supports uncurried sleep", () =>
+    Effect.gen(function*() {
+      const limiter = yield* RateLimiter.make
+      const result = yield* RateLimiter.sleep(limiter, {
         algorithm: "fixed-window",
         window: "1 minute",
         limit: 5,
-        key: "data-last"
-      })(limiter)
+        key: "direct"
+      })
 
-      assert.strictEqual(dataFirst.remaining, 4)
-      assert.strictEqual(dataLast.remaining, 4)
+      assert.strictEqual(result.remaining, 4)
     }).pipe(
       Effect.provide(RateLimiter.layerStoreMemory)
     ))
