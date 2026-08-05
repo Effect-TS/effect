@@ -13193,7 +13193,9 @@ Schema.toFormatter(schema)
 
 - `Schedule.addDelayEffect` -> `Schedule.addDelay`: The v4 function is effectful by default and its callback receives full Schedule.Metadata; read metadata.output when only the prior output is needed.
 
-- `Schedule.andThenEither` -> `Schedule.andThenResult`: Sequential phase tagging now uses Result: self outputs are Result.fail and the following schedule outputs are Result.succeed.
+- `Schedule.andThen` -> `Schedule.concat`: The sequencing combinator was renamed to Schedule.concat.
+
+- `Schedule.andThenEither` -> `Schedule.concatResult`: Sequential phase tagging now uses Result: self outputs are Result.fail and the following schedule outputs are Result.succeed.
 
 - `Schedule.as` -> `Schedule.map`: Map the metadata to the constant output; Schedule.map accepts either a plain value or an Effect.
 
@@ -13245,7 +13247,7 @@ Schema.toFormatter(schema)
 
 - `Schedule.fromDelay` -> `Schedule.duration`: The duration constructor recurs once after the supplied delay.
 
-- `Schedule.fromDelays` -> `Schedule.duration + Schedule.andThen`: Build one Schedule.duration per delay and sequence them with Schedule.andThen.
+- `Schedule.fromDelays` -> `Schedule.duration + Schedule.concat`: Build one Schedule.duration per delay and sequence them with Schedule.concat.
 
 - `Schedule.fromFunction` -> `Schedule.identity + Schedule.map`: Start with Schedule.identity\<A\>() and map metadata.input through the function.
 

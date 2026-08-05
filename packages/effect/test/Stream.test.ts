@@ -5149,7 +5149,7 @@ describe("Stream", () => {
 
   describe("broadcastN", () => {
     it.effect("fans out to a fixed number of streams", () =>
-      Effect.scoped(Effect.gen(function*() {
+      Effect.gen(function*() {
         const [left, right] = yield* Stream.make(1, 2, 3).pipe(
           Stream.broadcastN({ n: 2, capacity: 4 })
         )
@@ -5160,10 +5160,10 @@ describe("Stream", () => {
         ], { concurrency: "unbounded" })
 
         assert.deepStrictEqual(result, [[1, 2, 3], [1, 2, 3]])
-      })))
+      }))
 
     it.effect("propagates failures to all downstream streams", () =>
-      Effect.scoped(Effect.gen(function*() {
+      Effect.gen(function*() {
         const [left, right] = yield* Stream.fail("boom").pipe(
           Stream.broadcastN({ n: 2, capacity: 4 })
         )
@@ -5174,7 +5174,7 @@ describe("Stream", () => {
         ], { concurrency: "unbounded" })
 
         assert.deepStrictEqual(result, [Exit.fail("boom"), Exit.fail("boom")])
-      })))
+      }))
   })
 })
 

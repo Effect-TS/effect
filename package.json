@@ -31,7 +31,7 @@
     "api-diff": "pnpm --dir packages/tools/api-diff exec node src/bin.ts",
     "test-types": "tstyche --target '>=5.9'",
     "changeset-version": "changeset version",
-    "changeset-publish": "pnpm codemod && pnpm build && changeset publish"
+    "changeset-publish": "node scripts/set-strip-internal.mjs && pnpm codemod && pnpm build && changeset publish"
   },
   "devDependencies": {
     "@babel/cli": "^8.0.4",

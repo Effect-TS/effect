@@ -59,7 +59,6 @@ describe("FileSystem", () => {
       const event = yield* Fiber.join(fiber)
       assert.strictEqual(event.path, "direct.txt")
     }).pipe(
-      Effect.scoped,
       Effect.provide(NodeFileSystem.layer)
     ))
 
@@ -78,7 +77,6 @@ describe("FileSystem", () => {
       const event = yield* Fiber.join(fiber)
       assert.strictEqual(event.path, "direct.txt")
     }).pipe(
-      Effect.scoped,
       Effect.provide(NodeFileSystem.layer)
     ))
 
@@ -96,7 +94,6 @@ describe("FileSystem", () => {
       const event = yield* Fiber.join(fiber)
       assert(event.path.endsWith("nested.txt"))
     }).pipe(
-      Effect.scoped,
       Effect.provide(NodeFileSystem.layer)
     ))
 })

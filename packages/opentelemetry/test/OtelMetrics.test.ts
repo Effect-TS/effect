@@ -340,7 +340,7 @@ describe("Metrics", () => {
     }))
 
   it.effect("reports the same delta to every registered reader", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       class Reader extends MetricReader {
         protected onShutdown(): Promise<void> {
           return Promise.resolve()
@@ -362,5 +362,5 @@ describe("Metrics", () => {
       const firstValue = (firstResult.resourceMetrics.scopeMetrics[0]!.metrics[0] as any).dataPoints[0].value
       const secondValue = (secondResult.resourceMetrics.scopeMetrics[0]!.metrics[0] as any).dataPoints[0].value
       assert.deepStrictEqual([firstValue, secondValue], [1, 1])
-    })).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
+    }).pipe(Effect.provideService(Metric.MetricRegistry, new Map())))
 })

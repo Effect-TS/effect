@@ -240,6 +240,8 @@ const make = Effect.gen(function*() {
   const runnerStorage = yield* RunnerStorage
 
   const entityManagers = new Map<string, EntityManagerState>()
+  let entityRegistrationStartMillis: number | undefined
+  let entityRegistrationFallbackStartMillis: number | undefined
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
@@ -591,7 +593,6 @@ const make = Effect.gen(function*() {
     const entityRegistrationTimeoutMillis = Duration.toMillis(
       Duration.fromInputUnsafe(config.entityRegistrationTimeout)
     )
-    const storageStartMillis = clock.currentTimeMillisUnsafe()
 
     yield* Effect.gen(function*() {
       yield* Effect.logDebug("Starting")
@@ -617,8 +618,15 @@ const make = Effect.gen(function*() {
           }
           const state = entityManagers.get(address.entityType)
           if (!state) {
-            const sinceStart = clock.currentTimeMillisUnsafe() - storageStartMillis
-            if (sinceStart < entityRegistrationTimeoutMillis) {
+            const now = clock.currentTimeMillisUnsafe()
+            const registrationStarted = entityRegistrationStartMillis !== undefined
+            const timeoutStartMillis = entityRegistrationStartMillis ??
+              (entityRegistrationFallbackStartMillis ??= now)
+            // If registration never starts, allow two intervals from the first missing read before failing.
+            const timeoutMillis = registrationStarted
+              ? entityRegistrationTimeoutMillis
+              : entityRegistrationTimeoutMillis * 2
+            if (now - timeoutStartMillis < timeoutMillis) {
               // reset address in the case that the entity is slow to register
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
@@ -961,13 +969,13 @@ const make = Effect.gen(function*() {
     void,
     MailboxFull | AlreadyProcessingMessage | PersistenceError
   > {
+    const isPersisted = Context.get(
+      message._tag === "OutgoingRequest" ? message.annotations : message.rpc.annotations,
+      Persisted
+    )
     return Effect.catchFilter(
       Effect.suspend(() => {
         const address = message.envelope.address
-        const isPersisted = Context.get(
-          message._tag === "OutgoingRequest" ? message.annotations : message.rpc.annotations,
-          Persisted
-        )
         if (isPersisted && !storageEnabled) {
           return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
         }
@@ -989,6 +997,25 @@ const make = Effect.gen(function*() {
           ? Result.succeed(error)
           : Result.fail(error),
       (error) => {
+        // Abandon the message during teardown: retrying would loop forever once the runner is shutting down
+        if (error._tag === "EntityNotAssignedToRunner") {
+          const targetManager = entityManagers.get(message.envelope.address.entityType)
+          const cannotRecover = MutableRef.get(isShutdown) ||
+            (targetManager !== undefined && targetManager.status !== "alive")
+          if (cannotRecover) {
+            if (!isPersisted) {
+              return Effect.logDebug("Abandoning outgoing message during shutdown", message.envelope.address)
+            }
+            const persist = message._tag === "OutgoingRequest"
+              ? storage.saveRequest(message)
+              : storage.saveEnvelope(message)
+            return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
+              Effect.andThen(
+                Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
+              )
+            )
+          }
+        }
         if (retries === 0) {
           return Effect.die(error)
         }
@@ -1461,6 +1488,7 @@ const make = Effect.gen(function*() {
       // register entities while storage is idle
       // this ensures message order is preserved
       yield* withStorageReadLock(Effect.sync(() => {
+        entityRegistrationStartMillis ??= clock.currentTimeMillisUnsafe()
         entityManagers.set(entity.type, state)
         if (entityManagerLatches.has(entity.type)) {
           entityManagerLatches.get(entity.type)!.openUnsafe()

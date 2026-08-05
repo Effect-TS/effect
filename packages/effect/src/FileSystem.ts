@@ -1010,7 +1010,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
  * const file: FileSystem.File = {
  *   [FileSystem.FileTypeId]: FileSystem.FileTypeId,
  *   stat: Effect.succeed({ size: FileSystem.Size(5) } as FileSystem.File.Info),
- *   seek: () => Effect.void,
+ *   seek: () => Effect.succeed(FileSystem.Size(0)),
  *   sync: Effect.void,
  *   read: (buffer) => Effect.sync(() => {
  *     buffer.set([1, 2, 3, 4, 5])
@@ -1040,7 +1040,7 @@ export const isFile = (u: unknown): u is File => hasProperty(u, FileTypeId)
 export interface File {
   readonly [FileTypeId]: typeof FileTypeId
   readonly stat: Effect.Effect<File.Info, PlatformError>
-  readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<void>
+  readonly seek: (offset: SizeInput, from: SeekMode) => Effect.Effect<Size>
   readonly sync: Effect.Effect<void, PlatformError>
   readonly read: (buffer: Uint8Array) => Effect.Effect<Size, PlatformError>
   readonly readAlloc: (size: SizeInput) => Effect.Effect<Option.Option<Uint8Array>, PlatformError>

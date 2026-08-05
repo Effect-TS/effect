@@ -5,6 +5,7 @@ import {
   Context,
   Data,
   Effect,
+  type ExecutionPlan,
   Fiber,
   type Layer,
   type Option,
@@ -82,6 +83,10 @@ class UpdateServiceScopedService extends Context.Service<UpdateServiceScopedServ
 const UpdateServiceScopedReference = Context.Reference<number>("UpdateServiceScopedReference", {
   defaultValue: () => 0
 })
+
+class ProvideServiceEffectServiceLiteral extends Context.Service<ProvideServiceEffectServiceLiteral, "LITERAL">()(
+  "ProvideServiceEffectServiceLiteral"
+) {}
 
 describe("Types", () => {
   describe("ReasonOf", () => {
@@ -1126,5 +1131,95 @@ describe("Effect.scheduleFrom", () => {
     const schedule = null as unknown as Schedule.Schedule<number, string, "schedule-error">
     expect(Effect.fail("effect-error" as const).pipe(Effect.scheduleFrom("initial", schedule)))
       .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
+  })
+})
+
+describe("Effect.provideServiceEffect", () => {
+  it("data-first disallows supertype return", () => {
+    Effect.provideServiceEffect(
+      Effect.void,
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Argument of type 'Effect<string, never, never>' is not assignable to parameter of type 'Effect<"LITERAL", never, never>'
+      Effect.gen(function*() {
+        return "test"
+      })
+    )
+  })
+
+  it("data-last disallows supertype return", () => {
+    Effect.provideServiceEffect(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Argument of type 'Effect<string, never, never>' is not assignable to parameter of type 'Effect<"LITERAL", never, never>'
+      Effect.gen(function*() {
+        return "test"
+      })
+    )
+  })
+})
+
+describe("Effect.updateService", () => {
+  it("data-first disallows supertype return", () => {
+    Effect.updateService(
+      Effect.void,
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+
+  it("data-last disallows supertype return", () => {
+    Effect.updateService(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+})
+
+describe("Effect.updateServiceScoped", () => {
+  it("disallows supertype return", () => {
+    Effect.updateServiceScoped(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+})
+
+describe("Effect.withExecutionPlan", () => {
+  const plan = null as unknown as ExecutionPlan.ExecutionPlan<{
+    provides: "provided"
+    input: string
+    error: "plan-error"
+    requirements: "plan-dep"
+  }>
+  const self = null as unknown as Effect.Effect<number, string, "provided" | "other-dep">
+
+  it("data-first adds handler requirements to R", () => {
+    const result = Effect.withExecutionPlan(self, plan, {
+      onEvent: (event) => {
+        expect(event).type.toBe<ExecutionPlan.Event<string>>()
+        return null as unknown as Effect.Effect<void, never, "handler-dep">
+      }
+    })
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep" | "handler-dep">>()
+  })
+
+  it("data-last adds handler requirements to R", () => {
+    const result = pipe(
+      self,
+      Effect.withExecutionPlan(plan, {
+        onEvent: (event) => {
+          expect(event).type.toBe<ExecutionPlan.Event<string>>()
+          return null as unknown as Effect.Effect<void, never, "handler-dep">
+        }
+      })
+    )
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep" | "handler-dep">>()
+  })
+
+  it("without options the requirements are unchanged", () => {
+    const result = Effect.withExecutionPlan(self, plan)
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
   })
 })

@@ -74,7 +74,7 @@ describe("DenoChildProcessSpawner options", () => {
           description: "The detached option is unsupported because Deno has no equivalent"
         })
       )
-    }).pipe(Effect.scoped, Effect.provide(layer)))
+    }).pipe(Effect.provide(layer)))
 
   it.effect("rejects additionalFds", () =>
     Effect.gen(function*() {
@@ -89,7 +89,7 @@ describe("DenoChildProcessSpawner options", () => {
           description: "The additionalFds option is unsupported because Deno has no equivalent"
         })
       )
-    }).pipe(Effect.scoped, Effect.provide(layer)))
+    }).pipe(Effect.provide(layer)))
 
   it.effect("rejects additional fd pipe sources", () =>
     Effect.gen(function*() {
@@ -105,7 +105,7 @@ describe("DenoChildProcessSpawner options", () => {
           description: "The additionalFds option is unsupported because Deno has no equivalent"
         })
       )
-    }).pipe(Effect.scoped, Effect.provide(layer)))
+    }).pipe(Effect.provide(layer)))
 
   it.effect("kills every process in a pipeline", () =>
     Effect.gen(function*() {
@@ -137,7 +137,7 @@ describe("DenoChildProcessSpawner options", () => {
 
       assert.strictEqual(rootFinalSize, rootSizeAfterKill)
       assert.strictEqual(childFinalSize, childSizeAfterKill)
-    }).pipe(Effect.scoped, Effect.provide(layer)))
+    }).pipe(Effect.provide(layer)))
 
   it.effect("emulates shell true without escaping joined arguments", () =>
     Effect.gen(function*() {

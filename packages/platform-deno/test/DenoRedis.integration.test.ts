@@ -74,7 +74,7 @@ it.layer(PersistedQueueRedisLayer, { timeout: "30 seconds" })(
 )
 
 it.effect("closes the connection when interrupted during acquisition", () =>
-  Effect.scoped(Effect.gen(function*() {
+  Effect.gen(function*() {
     const listener = yield* makeListener
     const authReceived = yield* Deferred.make<void>()
     const sendAuthReply = yield* Deferred.make<void>()
@@ -100,10 +100,10 @@ it.effect("closes the connection when interrupted during acquisition", () =>
     yield* Fiber.join(interruptFiber)
 
     assert.isNull(yield* Fiber.join(server))
-  })))
+  }))
 
 it.effect("uses the URL username for two-argument AUTH", () =>
-  Effect.scoped(Effect.gen(function*() {
+  Effect.gen(function*() {
     const listener = yield* makeListener
     const server = yield* Effect.gen(function*() {
       const connection = yield* accept(listener)
@@ -122,10 +122,10 @@ it.effect("uses the URL username for two-argument AUTH", () =>
       yield* Fiber.join(server),
       "*3\r\n$4\r\nAUTH\r\n$5\r\nalice\r\n$6\r\nsecret\r\n"
     )
-  })))
+  }))
 
 it.effect("prefers explicit credentials over URL credentials", () =>
-  Effect.scoped(Effect.gen(function*() {
+  Effect.gen(function*() {
     const listener = yield* makeListener
     const server = yield* Effect.gen(function*() {
       const connection = yield* accept(listener)
@@ -145,7 +145,7 @@ it.effect("prefers explicit credentials over URL credentials", () =>
       yield* Fiber.join(server),
       "*3\r\n$4\r\nAUTH\r\n$3\r\nbob\r\n$5\r\nother\r\n"
     )
-  })))
+  }))
 
 const RedisItem = Schema.Struct({
   n: Schema.Number

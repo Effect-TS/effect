@@ -26,7 +26,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             yield* peer.client["roots/list"](undefined)
 
             assert.strictEqual((yield* peer.takeRequest).method, "roots/list")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MUST accept roots requests when the client advertises list changes", () =>
           Effect.gen(function*() {
@@ -41,7 +41,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             yield* peer.client["roots/list"](undefined)
 
             assert.strictEqual((yield* peer.takeRequest).method, "roots/list")
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe("Listing Roots", () => {
@@ -70,7 +70,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 { uri: "file:///unnamed", name: undefined }
               ]
             )
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MAY accept an empty roots list", () =>
           Effect.gen(function*() {
@@ -85,7 +85,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             const result = yield* peer.client["roots/list"](undefined)
 
             assert.deepStrictEqual(result.roots, [])
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MUST surface client errors returned by roots/list", () =>
           Effect.gen(function*() {
@@ -106,7 +106,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.instanceOf(error, McpSchema.InternalError)
             assert.strictEqual(error.message, "Roots unavailable")
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe("Root List Changes", () => {
