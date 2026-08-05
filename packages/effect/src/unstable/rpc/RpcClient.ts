@@ -1008,6 +1008,7 @@ export const layerProtocolHttp = (options: {
 export const makeProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
   readonly retryPolicy?: Schedule.Schedule<any, Socket.SocketError> | undefined
+  readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
 }): Effect.Effect<
   Protocol["Service"],
   never,
@@ -1096,18 +1097,19 @@ export const makeProtocolSocket = (options?: {
       Effect.tapCause((cause) => {
         const error = Cause.findError(cause)
         const hasError = Result.isSuccess(error)
-        if (
-          options?.retryTransientErrors && hasError &&
-          error.success.reason._tag === "SocketOpenError"
-        ) {
-          return Effect.void
-        }
-        currentError = new RpcClientError({
+        const rpcError = new RpcClientError({
           reason: hasError ? error.success.reason : new RpcClientDefect({
             message: "Unknown socket error",
             cause: Cause.squash(cause)
           })
         })
+        if (
+          options?.retryTransientErrors && hasError &&
+          error.success.reason._tag === "SocketOpenError"
+        ) {
+          return options.onTransientError?.(rpcError) ?? Effect.void
+        }
+        currentError = rpcError
         return broadcast({
           _tag: "ClientProtocolError",
           error: currentError
@@ -1176,6 +1178,7 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
  */
 export const layerProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
+  readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
 }): Layer.Layer<
   Protocol,
   never,

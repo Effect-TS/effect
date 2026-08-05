@@ -1,9 +1,10 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Cause, Effect, Layer, Schema, Stream } from "effect"
+import { Cause, Deferred, Effect, Layer, Schedule, Schema, Stream } from "effect"
 import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/unstable/rpc"
 import { RpcClientError } from "effect/unstable/rpc/RpcClientError"
+import * as Socket from "effect/unstable/socket/Socket"
 
 const TestGroup = RpcGroup.make(
   Rpc.make("Ping", { success: Schema.String }),
@@ -80,4 +81,45 @@ describe("RpcClient", () => {
       assert.strictEqual(error.reason._tag, "RpcClientDefect")
       assert.strictEqual(error.reason.message, "HTTP response ended before RPC request completed")
     }))
+
+  it.effect("reports transient socket open errors without failing in-flight streams", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const requestSent = yield* Deferred.make<void>()
+      const threeErrors = yield* Deferred.make<void>()
+      const errors: Array<RpcClientError> = []
+      const socketError = new Socket.SocketError({
+        reason: new Socket.SocketOpenError({
+          kind: "Unknown",
+          cause: new Error("connection refused")
+        })
+      })
+      const socket = Socket.make({
+        runRaw: () => Deferred.await(requestSent).pipe(Effect.andThen(Effect.fail(socketError))),
+        writer: Effect.succeed(() => Deferred.succeed(requestSent, void 0))
+      })
+      const protocol = yield* RpcClient.makeProtocolSocket({
+        retryTransientErrors: true,
+        retryPolicy: Schedule.recurs(2),
+        onTransientError: (error) =>
+          Effect.suspend(() => {
+            errors.push(error)
+            return errors.length === 3 ? Deferred.succeed(threeErrors, void 0) : Effect.void
+          })
+      }).pipe(
+        Effect.provideService(Socket.Socket, socket),
+        Effect.provide(RpcSerialization.layerNdjson)
+      )
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provideService(RpcClient.Protocol, protocol)
+      )
+      const streamFiber = yield* client.Events().pipe(Stream.runDrain, Effect.forkChild)
+
+      yield* Deferred.await(threeErrors).pipe(Effect.timeout("1 second"))
+
+      assert.lengthOf(errors, 3)
+      for (const error of errors) {
+        assert.strictEqual(error.reason._tag, "SocketOpenError")
+      }
+      assert.isUndefined(streamFiber.pollUnsafe())
+    })))
 })
