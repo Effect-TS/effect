@@ -2,9 +2,45 @@ import { assert, describe, it } from "@effect/vitest"
 import { Array, Context, Effect, Layer, Metric, Predicate, Ref } from "effect"
 import { TestClock } from "effect/testing"
 import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/unstable/http"
-import { OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
+import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
 
 describe("OtlpMetrics", () => {
+  it.effect("retains a delta after a failed export", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const bodies = yield* Ref.make<Array<any>>([])
+      const attempts = yield* Ref.make(0)
+      const client = HttpClient.makeWith(
+        Effect.fnUntraced(function*(requestEffect) {
+          const request = yield* requestEffect
+          if (request.body._tag === "Uint8Array") {
+            yield* Ref.update(bodies, (all) => [...all, JSON.parse(new TextDecoder().decode(request.body.body))])
+          }
+          const attempt = yield* Ref.updateAndGet(attempts, (n) => n + 1)
+          return HttpClientResponse.fromWeb(request, new Response(null, { status: attempt === 1 ? 400 : 200 }))
+        }),
+        Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+      )
+      const layer = OtlpMetrics.layer({
+        url: "http://localhost:4318/v1/metrics",
+        resource: { serviceName: "repro" },
+        temporality: "delta",
+        exportInterval: "1 hour"
+      }).pipe(
+        Layer.provide(OtlpSerialization.layerJson),
+        Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, client))
+      )
+      yield* Effect.gen(function*() {
+        yield* Metric.update(Metric.counter("repro_delta"), 5)
+        const flusher = yield* OtlpExporter.Flusher
+        yield* flusher.flush
+        yield* TestClock.adjust("60 seconds")
+        yield* flusher.flush
+      }).pipe(Effect.provide(layer), Effect.provideService(Metric.MetricRegistry, new Map()))
+      const values = (yield* Ref.get(bodies)).map((body) => body.resourceMetrics[0].scopeMetrics[0].metrics
+        .find((metric: any) => metric.name === "repro_delta").sum.dataPoints[0].asDouble)
+      assert.deepStrictEqual(values.slice(0, 2), [5, 5])
+    })))
+
   describe("cumulative temporality", () => {
     it.effect("reports counter totals across export intervals", () =>
       Effect.gen(function*() {
