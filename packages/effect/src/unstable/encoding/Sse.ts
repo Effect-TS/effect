@@ -280,10 +280,10 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   function feed(chunk: string): SseError | undefined {
     buffer = buffer ? buffer + chunk : chunk
 
-    // Strip any UTF8 byte order mark (BOM) at the start of the stream.
+    // Strip any UTF-8 byte order mark (BOM) at the start of the stream.
     // Note that we do not strip any non - UTF8 BOM, as eventsource streams are
     // always decoded as UTF8 as per the specification.
-    if (isFirstChunk && hasBom(buffer)) {
+    if (isFirstChunk && buffer.startsWith(BOM)) {
       buffer = buffer.slice(BOM.length)
     }
 
@@ -405,11 +405,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   }
 }
 
-const BOM = [239, 187, 191]
-
-function hasBom(buffer: string) {
-  return BOM.every((charCode: number, index: number) => buffer.charCodeAt(index) === charCode)
-}
+const BOM = "\uFEFF"
 
 /**
  * Stateful Server-Sent Events parser returned by `makeParser`.

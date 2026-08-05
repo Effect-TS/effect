@@ -51,6 +51,20 @@ describe("Sse", () => {
     assert.deepStrictEqual(events, [input])
   })
 
+  it("strips a UTF-8 BOM from the start of an SSE stream", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed("\uFEFFdata: ok\n\n")
+
+    assert.deepStrictEqual(events, [{
+      _tag: "Event",
+      event: "message",
+      id: undefined,
+      data: "ok"
+    }])
+  })
+
   it("uses message for an empty SSE event type", () => {
     const events: Array<Sse.AnyEvent> = []
     const parser = Sse.makeParser((event) => events.push(event))
