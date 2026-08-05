@@ -2,6 +2,14 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
 import * as EventJournal from "effect/unstable/eventlog/EventJournal"
 
+const entry = (msecs: number) =>
+  new EventJournal.Entry({
+    id: EventJournal.makeEntryIdUnsafe({ msecs }),
+    event: "Repro",
+    primaryKey: "key",
+    payload: new Uint8Array()
+  }, { disableChecks: true })
+
 describe("EventJournal", () => {
   it.effect("relays an imported entry to another remote", () =>
     Effect.gen(function*() {
@@ -50,6 +58,24 @@ describe("EventJournal", () => {
         effect: () => Effect.void
       })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
+    }))
+
+  it.effect("reports the first newer conflicting entry", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const newer = entry(2_000)
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: newer })],
+        effect: () => Effect.void
+      })
+      let conflicts: ReadonlyArray<EventJournal.Entry> = []
+      yield* journal.writeFromRemote({
+        remoteId: EventJournal.makeRemoteIdUnsafe(),
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry: entry(1_000) })],
+        effect: (options) => Effect.sync(() => conflicts = options.conflicts)
+      })
+      assert.deepStrictEqual(conflicts.map((item) => item.idString), [newer.idString])
     }))
 
   it.effect("records entries in memory and publishes local changes", () =>
