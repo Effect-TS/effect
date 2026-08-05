@@ -241,6 +241,7 @@ const make = Effect.gen(function*() {
 
   const entityManagers = new Map<string, EntityManagerState>()
   let entityRegistrationStartMillis: number | undefined
+  let entityRegistrationFallbackStartMillis: number | undefined
 
   const shardAssignments = MutableHashMap.empty<ShardId, RunnerAddress>()
   const selfShards = MutableHashSet.empty<ShardId>()
@@ -617,11 +618,16 @@ const make = Effect.gen(function*() {
           }
           const state = entityManagers.get(address.entityType)
           if (!state) {
-            if (entityRegistrationStartMillis === undefined) {
-              return Effect.void
-            }
-            const sinceStart = clock.currentTimeMillisUnsafe() - entityRegistrationStartMillis
-            if (sinceStart < entityRegistrationTimeoutMillis) {
+            const now = clock.currentTimeMillisUnsafe()
+            const registrationStarted = entityRegistrationStartMillis !== undefined
+            const timeoutStartMillis = entityRegistrationStartMillis ??
+              (entityRegistrationFallbackStartMillis ??= now)
+            // If registration never starts, hold and warn for one interval,
+            // then use a second interval as the hard fallback.
+            const timeoutMillis = registrationStarted
+              ? entityRegistrationTimeoutMillis
+              : entityRegistrationTimeoutMillis * 2
+            if (now - timeoutStartMillis < timeoutMillis) {
               // reset address in the case that the entity is slow to register
               MutableHashSet.add(resetAddresses, address)
               return Effect.void
