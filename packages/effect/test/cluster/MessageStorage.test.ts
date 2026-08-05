@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import {
@@ -23,6 +23,32 @@ const MemoryLive = MessageStorage.layerMemory.pipe(
 
 describe("MessageStorage", () => {
   describe("memory", () => {
+    it.effect("removes the primary-key index when clearing an address", () =>
+      Effect.gen(function*() {
+        const driver = yield* MessageStorage.MemoryDriver
+        const address = EntityAddress.make({
+          shardId: ShardId.make("default", 1),
+          entityType: EntityType.make("Repro"),
+          entityId: EntityId.make("one")
+        })
+        const envelope = {
+          _tag: "Request",
+          requestId: "1",
+          address: { shardId: { group: "default", id: 1 }, entityType: "Repro", entityId: "one" },
+          tag: "Repro",
+          payload: {},
+          headers: {}
+        } as any
+        yield* driver.encoded.saveEnvelope({ envelope, primaryKey: "dedup-key", deliverAt: null })
+        yield* driver.encoded.clearAddress(address)
+        const result = yield* driver.encoded.saveEnvelope({
+          envelope: { ...envelope, requestId: "2" },
+          primaryKey: "dedup-key",
+          deliverAt: null
+        })
+        assert.strictEqual(result._tag, "Success")
+      }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
+
     it.effect("saves a request", () =>
       Effect.gen(function*() {
         const storage = yield* MessageStorage.MessageStorage
