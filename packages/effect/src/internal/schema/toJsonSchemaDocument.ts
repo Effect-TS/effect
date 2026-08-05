@@ -369,6 +369,7 @@ function compileJsonSchema(
         if (representation.propertySignatures.length > 0) out.properties = properties
         if (required.length > 0) out.required = required
         out.additionalProperties = options?.additionalProperties ?? false
+        let hasBroadIndexSignature = false
         const patternProperties: Record<string, JsonSchema.JsonSchema | false> = {}
         for (let index = 0; index < representation.indexSignatures.length; index++) {
           const signature = representation.indexSignatures[index]
@@ -383,6 +384,7 @@ function compileJsonSchema(
             new Set()
           )
           if (patterns.length === 0) {
+            hasBroadIndexSignature = true
             out.additionalProperties = type
           } else {
             for (const pattern of patterns) InternalRecord.assignProperty(patternProperties, pattern, type)
@@ -390,7 +392,7 @@ function compileJsonSchema(
         }
         if (Object.keys(patternProperties).length > 0) {
           out.patternProperties = patternProperties
-          delete out.additionalProperties
+          if (!hasBroadIndexSignature) delete out.additionalProperties
         }
         if (
           typeof out.additionalProperties === "object" &&
