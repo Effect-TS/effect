@@ -3,7 +3,7 @@ import * as OtelLogger from "@effect/opentelemetry/OtelLogger"
 import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import { SeverityNumber } from "@opentelemetry/api-logs"
-import { InMemoryLogRecordExporter, LoggerProvider, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs"
+import { InMemoryLogRecordExporter, type LogRecordProcessor, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
@@ -14,19 +14,17 @@ describe("Logger", () => {
   it.effect("shuts down the logger provider after forceFlush rejects", () =>
     Effect.gen(function*() {
       let shutdowns = 0
-      const originalFlush = LoggerProvider.prototype.forceFlush
-      const originalShutdown = LoggerProvider.prototype.shutdown
-      LoggerProvider.prototype.forceFlush = () => Promise.reject(new Error("flush failed"))
-      LoggerProvider.prototype.shutdown = () => {
-        shutdowns++
-        return Promise.resolve()
+      const processor: LogRecordProcessor = {
+        onEmit() {},
+        forceFlush: () => Promise.reject(new Error("flush failed")),
+        shutdown: () => {
+          shutdowns++
+          return Promise.resolve()
+        }
       }
-      const processor = { onEmit() {}, shutdown: async () => {}, forceFlush: async () => {} } as any
       yield* Effect.exit(
         Effect.scoped(Layer.build(OtelLogger.layerLoggerProvider(processor)).pipe(Effect.provide(Resource.layerEmpty)))
       )
-      LoggerProvider.prototype.forceFlush = originalFlush
-      LoggerProvider.prototype.shutdown = originalShutdown
       assert.strictEqual(shutdowns, 1)
     }))
 
