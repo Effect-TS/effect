@@ -310,7 +310,7 @@ const makeOtelSpan = (span: Tracer.Span, clock: Clock.Clock): Otel.Span => {
       return self
     },
     setStatus(status) {
-      exit = Otel.SpanStatusCode.ERROR
+      exit = status.code === Otel.SpanStatusCode.ERROR
         ? Exit.die(status.message ?? "Unknown error")
         : Exit.void
       return self

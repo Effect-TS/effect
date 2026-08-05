@@ -89,15 +89,30 @@ describe("Tracer", () => {
         Effect.provide(TracingLive)
       ))
 
-    it.effect("honors a non-error wrapper status", () =>
+    it.effect.each([OtelApi.SpanStatusCode.UNSET, OtelApi.SpanStatusCode.OK])(
+      "honors non-error wrapper status %s",
+      (status) =>
+        Effect.gen(function*() {
+          const span = yield* Effect.currentSpan
+          const wrapper = yield* OtelTracer.currentOtelSpan
+          wrapper.setStatus({ code: status })
+          wrapper.end()
+          assert.strictEqual(span.status._tag, "Ended")
+          if (span.status._tag === "Ended") {
+            assert.strictEqual(span.status.exit._tag, "Success")
+          }
+        }).pipe(Effect.withSpan("repro"))
+    )
+
+    it.effect("honors an error wrapper status", () =>
       Effect.gen(function*() {
         const span = yield* Effect.currentSpan
         const wrapper = yield* OtelTracer.currentOtelSpan
-        wrapper.setStatus({ code: OtelApi.SpanStatusCode.OK })
+        wrapper.setStatus({ code: OtelApi.SpanStatusCode.ERROR })
         wrapper.end()
         assert.strictEqual(span.status._tag, "Ended")
         if (span.status._tag === "Ended") {
-          assert.strictEqual(span.status.exit._tag, "Success")
+          assert.strictEqual(span.status.exit._tag, "Failure")
         }
       }).pipe(Effect.withSpan("repro")))
 
