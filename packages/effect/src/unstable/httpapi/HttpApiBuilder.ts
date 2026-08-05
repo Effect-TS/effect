@@ -936,7 +936,7 @@ function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): Map<number, With
   for (const schema of endpoint.success) {
     if (HttpApiSchema.isWithHeaders(schema)) {
       const status = HttpApiSchema.getStatusSuccessSchema(schema)
-      const headersSchema = Schema.toCodecStringTree(schema.headers)
+      const headersSchema = schema.headers
       const schemas = schemasByStatus.get(status)
       if (schemas === undefined) {
         schemasByStatus.set(status, [headersSchema])
@@ -1086,7 +1086,7 @@ function toResponseErrorSchema(
   if (!HttpApiSchema.isWithHeaders(schema)) return toResponseErrorSchemaPlain(schema)
 
   const encodeBody = Schema.encodeUnknownEffect(schema.schema)
-  const encodeHeaders = Schema.encodeUnknownEffect(Schema.toCodecStringTree(schema.headers))
+  const encodeHeaders = Schema.encodeUnknownEffect(schema.headers)
   const encodeResponse = getResponseEncode(
     HttpApiSchema.getStatusErrorSchema(schema),
     HttpApiSchema.getResponseEncodingSchema(schema),
@@ -1151,13 +1151,9 @@ function getResponseTransformation(
     const headersCodec = withHeaders.headersCodec
     let encodeHeaders: (headers: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
     if (headersCodec === undefined) {
-      // The annotation transform has already encoded the declared headers schema,
-      // so disableCodecs only skips its automatic codec and not HTTP stringification.
-      encodeHeaders = Schema.encodeUnknownEffect(Schema.toCodecStringTree(Schema.toEncoded(withHeaders.headers)))
+      encodeHeaders = Schema.encodeUnknownEffect(Schema.toEncoded(withHeaders.headers))
     } else {
-      const decodeHeaders = Schema.decodeUnknownEffect(withHeaders.headers)
-      const encodeCodec = Schema.encodeUnknownEffect(headersCodec)
-      encodeHeaders = (headers) => Effect.flatMap(decodeHeaders(headers), encodeCodec)
+      encodeHeaders = Schema.encodeUnknownEffect(headersCodec)
     }
     return withHeadersTransformation(encodeBody, encodeHeaders)
   }

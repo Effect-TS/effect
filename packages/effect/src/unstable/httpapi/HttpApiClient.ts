@@ -749,7 +749,7 @@ function toCodecArrayBufferWithHeaders(schema: Schema.Constraint): Schema.Top {
   if (annotation !== undefined) {
     return Schema.Struct({
       body: fromArrayBuffer(annotation.body),
-      headers: Schema.toCodecStringTree(Schema.toEncoded(annotation.headers))
+      headers: annotation.headersCodec ?? Schema.toEncoded(annotation.headers)
     }).pipe(Schema.decodeTo(schema))
   }
   const body = isWithHeaders ? schema.schema : schema

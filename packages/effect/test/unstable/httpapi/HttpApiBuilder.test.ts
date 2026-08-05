@@ -210,7 +210,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       )
     }))
 
-  it.effect("stringifies WithHeaders values when endpoint codecs are disabled", () =>
+  it.effect("passes through string-shaped WithHeaders when endpoint codecs are disabled", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test")
@@ -219,7 +219,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
               disableCodecs: true,
               success: HttpApiSchema.WithHeaders(
                 Schema.String.pipe(HttpApiSchema.asText()),
-                { "x-count": Schema.Int }
+                { "x-count": Schema.String }
               )
             })
           )
@@ -228,7 +228,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
               disableCodecs: true,
               error: HttpApiSchema.WithHeaders(
                 Schema.String.pipe(HttpApiSchema.status(429), HttpApiSchema.asText()),
-                { "retry-after": Schema.Int }
+                { "retry-after": Schema.String }
               )
             })
           )
@@ -241,24 +241,30 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
             .handle("success", () =>
               Effect.succeed(HttpApiSchema.withHeaders({
                 body: "ok",
-                headers: { "x-count": 2 }
+                headers: { "x-count": "2" }
               })))
             .handle("error", () =>
               Effect.fail(HttpApiSchema.withHeaders({
                 body: "slow down",
-                headers: { "retry-after": 30 }
+                headers: { "retry-after": "30" }
               })))
       )
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
-      const success = yield* client.test.success({ responseMode: "response-only" })
-      const error = yield* client.test.error({ responseMode: "response-only" })
+      const [success, successResponse] = yield* client.test.success({ responseMode: "decoded-and-response" })
+      const error = yield* Effect.flip(client.test.error({}))
+      const errorResponse = yield* client.test.error({ responseMode: "response-only" })
+      if (!HttpApiSchema.isWithHeadersValue(error)) {
+        throw new Error("Expected WithHeaders error")
+      }
 
-      assert.strictEqual(success.headers["x-count"], "2")
-      assert.strictEqual(error.headers["retry-after"], "30")
+      assert.strictEqual(successResponse.headers["x-count"], "2")
+      assert.deepStrictEqual(success.headers, { "x-count": "2" })
+      assert.strictEqual(errorResponse.headers["retry-after"], "30")
+      assert.deepStrictEqual(error.headers, { "retry-after": "30" })
     }))
 
-  it.effect("decodes a buffered success body and its declared headers", () =>
+  it.effect("encodes and decodes response headers with codecs enabled", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
@@ -282,8 +288,9 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       )
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
-      const value = yield* client.test.created({})
+      const [value, response] = yield* client.test.created({ responseMode: "decoded-and-response" })
 
+      assert.strictEqual(response.headers["x-count"], "2")
       assert.deepStrictEqual(
         value,
         HttpApiSchema.withHeaders({
@@ -543,15 +550,15 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.deepStrictEqual(yield* Effect.flip(client.test.limited({})), expected)
     }))
 
-  it.effect("stringifies encodeToWithHeaders values when endpoint codecs are disabled", () =>
+  it.effect("passes through string-shaped encodeToWithHeaders values when endpoint codecs are disabled", () =>
     Effect.gen(function*() {
       class RateLimited extends Schema.TaggedError<RateLimited>()("RateLimited", {
-        retryAfter: Schema.Int
+        retryAfter: Schema.String
       }) {}
       const RateLimitedResponse = RateLimited.pipe(
         HttpApiSchema.encodeToWithHeaders({
           body: Schema.String.pipe(HttpApiSchema.status(429), HttpApiSchema.asText()),
-          headers: { "retry-after": Schema.Int }
+          headers: { "retry-after": Schema.String }
         }, {
           decode: ({ headers }) => new RateLimited({ retryAfter: headers["retry-after"] }),
           encode: (error) => ({ body: "slow down", headers: { "retry-after": error.retryAfter } })
@@ -568,7 +575,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       const GroupLive = HttpApiBuilder.group(
         Api,
         "test",
-        (handlers) => handlers.handle("limited", () => Effect.fail(new RateLimited({ retryAfter: 30 })))
+        (handlers) => handlers.handle("limited", () => Effect.fail(new RateLimited({ retryAfter: "30" })))
       )
 
       const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
@@ -577,6 +584,10 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.strictEqual(response.status, 429)
       assert.strictEqual(response.headers["retry-after"], "30")
       assert.strictEqual(yield* response.text, "slow down")
+      assert.deepStrictEqual(
+        yield* Effect.flip(client.test.limited({})),
+        new RateLimited({ retryAfter: "30" })
+      )
     }))
 
   it.effect("decodes an error body and headers through encodeToWithHeaders", () =>

@@ -1335,7 +1335,7 @@ function transformResponse(schema: Schema.Top): Schema.Top {
   return withHeaders === undefined ? transformed : transformed.annotate({
     "~httpApiWithHeaders": {
       ...withHeaders,
-      headersCodec: Schema.toCodecStringTree(withHeaders.headers)
+      headersCodec: Schema.toCodecStringTree(Schema.toEncoded(withHeaders.headers))
     }
   })
 }
