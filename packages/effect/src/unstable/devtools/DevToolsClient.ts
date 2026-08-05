@@ -25,7 +25,9 @@ import * as Socket from "../socket/Socket.ts"
 import * as DevToolsSchema from "./DevToolsSchema.ts"
 
 const RequestSchema = Schema.toCodecJson(DevToolsSchema.Request)
+const EncodedRequestSchema = Schema.toEncoded(RequestSchema)
 const ResponseSchema = Schema.toCodecJson(DevToolsSchema.Response)
+const encodeRequest = Schema.encodeSync(RequestSchema)
 
 /**
  * Service for sending span and span-event telemetry to the Effect devtools
@@ -46,11 +48,11 @@ export class DevToolsClient extends Context.Service<
 const makeEffect = Effect.gen(function*() {
   const socket = yield* Socket.Socket
   const services = yield* Effect.context<never>()
-  const requests = yield* Queue.unbounded<DevToolsSchema.Request>()
+  const requests = yield* Queue.unbounded<(typeof RequestSchema)["Encoded"]>()
   const connected = yield* Deferred.make<void>()
 
   const offerMetricsSnapshot = Effect.sync(() => {
-    Queue.offerUnsafe(requests, toMetricsSnapshot(services))
+    Queue.offerUnsafe(requests, encodeRequest(toMetricsSnapshot(services)))
   })
 
   const handleResponse = (
@@ -69,7 +71,7 @@ const makeEffect = Effect.gen(function*() {
   const fiber = yield* Stream.fromQueue(requests).pipe(
     Stream.pipeThroughChannel(
       Ndjson.duplexSchemaString(Socket.toChannelString(socket), {
-        inputSchema: RequestSchema,
+        inputSchema: EncodedRequestSchema,
         outputSchema: ResponseSchema
       })
     ),
@@ -87,7 +89,7 @@ const makeEffect = Effect.gen(function*() {
     )
   )
 
-  yield* Effect.suspend(() => Queue.offer(requests, { _tag: "Ping" })).pipe(
+  yield* Effect.suspend(() => Queue.offer(requests, encodeRequest({ _tag: "Ping" }))).pipe(
     Effect.delay("3 seconds"),
     Effect.forever,
     Effect.forkScoped
@@ -100,7 +102,7 @@ const makeEffect = Effect.gen(function*() {
 
   return DevToolsClient.of({
     sendUnsafe(request: DevToolsSchema.Span | DevToolsSchema.SpanEvent) {
-      Queue.offerUnsafe(requests, request)
+      Queue.offerUnsafe(requests, encodeRequest(request))
     }
   })
 })
