@@ -1,5 +1,5 @@
+import { OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
 import * as OpenAiSchema from "@effect/ai-openai/OpenAiSchema"
-import { type Generated, OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Schema, Stream } from "effect"
 import { LanguageModel } from "effect/unstable/ai"
@@ -294,30 +294,49 @@ describe("OpenAiSchema", () => {
   })
 
   it.effect("exposes the response.failed error payload", () => {
-    const response = HttpClientResponse.fromWeb(HttpClientRequest.get("https://api.openai.com/v1/responses"), new Response())
-    const failed = {
-      id: "resp_1",
-      object: "response",
-      created_at: 1,
-      model: "gpt-4o-mini",
-      status: "failed",
-      output: [],
-      error: { code: "server_error", message: "provider exploded" }
-    }
-    const client = Layer.succeed(OpenAiClient.OpenAiClient, OpenAiClient.OpenAiClient.of({
-      client: undefined as any,
-      createResponse: () => Effect.die("unexpected"),
-      createResponseStream: () => Effect.succeed([
-        response,
-        Stream.make({ type: "response.failed", sequence_number: 1, response: failed } as any as Generated.ResponseStreamEvent)
-      ]),
-      createEmbedding: () => Effect.die("unexpected")
-    }))
+    const response = HttpClientResponse.fromWeb(
+      HttpClientRequest.get("https://api.openai.com/v1/responses"),
+      new Response()
+    )
+    const failed = Schema.decodeUnknownSync(OpenAiSchema.ResponseStreamEvent)({
+      type: "response.failed",
+      sequence_number: 1,
+      response: {
+        id: "resp_1",
+        object: "response",
+        created_at: 1,
+        model: "gpt-4o-mini",
+        status: "failed",
+        output: [],
+        error: { code: "server_error", message: "provider exploded" }
+      }
+    })
+    const client = Layer.succeed(
+      OpenAiClient.OpenAiClient,
+      OpenAiClient.OpenAiClient.of({
+        client: undefined as any,
+        createResponse: () => Effect.die("unexpected"),
+        createResponseStream: () =>
+          Effect.succeed([
+            response,
+            Stream.make(failed)
+          ]),
+        createEmbedding: () => Effect.die("unexpected")
+      })
+    )
 
     return LanguageModel.streamText({ prompt: "test" }).pipe(
       Stream.runCollect,
-      Effect.map((parts) => Array.from(parts).find((part) => part.type === "error")),
-      Effect.tap((error) => Effect.sync(() => assert.isDefined(error))),
+      Effect.tap((parts) =>
+        Effect.sync(() => {
+          const error = Array.from(parts).find((part) => part.type === "error")
+          const finish = Array.from(parts).find((part) => part.type === "finish")
+          assert.isDefined(error)
+          assert.deepStrictEqual(error.error, { code: "server_error", message: "provider exploded" })
+          assert.isDefined(finish)
+          assert.strictEqual(finish.reason, "error")
+        })
+      ),
       Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
       Effect.provide(client)
     )
