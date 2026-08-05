@@ -231,10 +231,11 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.isTrue(flags.get("child-end"))
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
-  it.effect("routes durable clock wakeups to the workflow shard group", () =>
+  it.effect("routes fractional millisecond durable clock wakeups to the workflow shard group", () =>
     Effect.gen(function*() {
       const driver = yield* MessageStorage.MemoryDriver
       const sharding = yield* Sharding.Sharding
+      const startedAt = yield* DateTime.now
 
       const fiber = yield* ShardedClockWorkflow.execute({
         id: "sharded-clock"
@@ -247,8 +248,11 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
       assert(envelope)
       assert.strictEqual(envelope.address.shardId.group, "workflow")
+      const deliverAt = driver.requests.get(envelope.requestId)?.deliverAt
+      assert.isNumber(deliverAt)
+      assert.strictEqual(deliverAt, DateTime.toEpochMillis(startedAt) + 10001)
 
-      yield* TestClock.adjust("10 seconds")
+      yield* TestClock.adjust(10001)
       yield* sharding.pollStorage
       yield* TestClock.adjust(5000)
       yield* Fiber.join(fiber)
@@ -687,7 +691,7 @@ const ShardedClockWorkflow = Workflow.make("ShardedClockWorkflow", {
 const ShardedClockWorkflowLayer = ShardedClockWorkflow.toLayer(Effect.fnUntraced(function*() {
   yield* DurableClock.sleep({
     name: "ShardedClock",
-    duration: "10 seconds",
+    duration: 10000.5,
     inMemoryThreshold: Duration.zero
   })
 }))
