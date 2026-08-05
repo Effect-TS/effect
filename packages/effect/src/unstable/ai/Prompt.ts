@@ -1840,20 +1840,28 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
   Schema.decodeTo(
     $Prompt,
     SchemaTransformation.transformOrFail({
-      decode: (input) =>
+      decode: (input, options) =>
         Effect.mapBothEager(
           SchemaParser.decodeEffect(Schema.Array(Message))(input.content),
           {
             onSuccess: makePrompt,
-            onFailure: () => new SchemaIssue.InvalidValue({ message: "Invalid Prompt messages" })
+            onFailure: () =>
+              new SchemaIssue.InvalidValue(
+                { message: "Invalid Prompt messages" },
+                SchemaIssue.reportInput(input.content, options)
+              )
           }
         ),
-      encode: (prompt) =>
+      encode: (prompt, options) =>
         Effect.mapBothEager(
           SchemaParser.encodeEffect(Schema.Array(Message))(prompt.content),
           {
             onSuccess: (messages) => ({ content: messages }),
-            onFailure: () => new SchemaIssue.InvalidValue({ message: "Invalid Prompt messages" })
+            onFailure: () =>
+              new SchemaIssue.InvalidValue(
+                { message: "Invalid Prompt messages" },
+                SchemaIssue.reportInput(prompt.content, options)
+              )
           }
         )
     })

@@ -1065,41 +1065,51 @@ function getEncodePayloadSchemaFromBody(
   const out = $HttpBody.pipe(Schema.decodeTo(
     schema,
     SchemaTransformation.transformOrFail<unknown, HttpBody.HttpBody>({
-      decode() {
-        return Effect.fail(new SchemaIssue.Forbidden({ message: "Encode only schema" }))
+      decode(input, options) {
+        return Effect.fail(
+          new SchemaIssue.Forbidden({ message: "Encode only schema" }, SchemaIssue.reportInput(input, options))
+        )
       },
-      encode(t) {
+      encode(t, options) {
         switch (encoding._tag) {
           case "Multipart":
-            return Effect.fail(new SchemaIssue.Forbidden({ message: "Payload must be a FormData" }))
+            return Effect.fail(
+              new SchemaIssue.Forbidden(
+                { message: "Payload must be a FormData" },
+                SchemaIssue.reportInput(t, options)
+              )
+            )
           case "Json": {
             try {
               const body = JSON.stringify(t)
               return Effect.succeed(HttpBody.text(body, encoding.contentType))
             } catch {
-              return Effect.fail(
-                new SchemaIssue.InvalidValue({ message: "Expected a JSON-serializable request body" })
-              )
+              return Effect.fail(SchemaIssue.makeInvalidValue("a JSON-serializable request body", t, options))
             }
           }
           case "Text": {
             if (typeof t !== "string") {
               return Effect.fail(
-                new SchemaIssue.InvalidValue({ message: "Expected a string" })
+                new SchemaIssue.InvalidValue({ message: "Expected a string" }, SchemaIssue.reportInput(t, options))
               )
             }
             return Effect.succeed(HttpBody.text(t, encoding.contentType))
           }
           case "FormUrlEncoded": {
             if (!Predicate.isObject(t)) {
-              return Effect.fail(new SchemaIssue.InvalidValue({ message: "Expected a record" }))
+              return Effect.fail(
+                new SchemaIssue.InvalidValue({ message: "Expected a record" }, SchemaIssue.reportInput(t, options))
+              )
             }
             return Effect.succeed(HttpBody.urlParams(UrlParams.fromInput(t as any), encoding.contentType))
           }
           case "Uint8Array": {
             if (!(t instanceof Uint8Array)) {
               return Effect.fail(
-                new SchemaIssue.InvalidValue({ message: "Expected a Uint8Array" })
+                new SchemaIssue.InvalidValue(
+                  { message: "Expected a Uint8Array" },
+                  SchemaIssue.reportInput(t, options)
+                )
               )
             }
             return Effect.succeed(HttpBody.uint8Array(t, encoding.contentType))

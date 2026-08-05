@@ -15,10 +15,10 @@ const TypeId = "~effect/SchemaError/SchemaError"
  *
  * The `issue` field contains a structured {@link Issue} tree describing
  * every validation failure, including the path to the problematic value and
- * the expected type or constraint. Built-in issues have no `actual` field,
- * and built-in messages do not include the rejected value. Other Issue fields
- * and custom annotations or messages are not sanitized. `message` renders the
- * issue tree as a human-readable string.
+ * the expected type or constraint. When input reporting is enabled, built-in
+ * messages may include reported input. Other Issue fields and custom
+ * annotations or messages are not sanitized. `message` renders the issue tree
+ * as a human-readable string.
  *
  * Use {@link isSchemaError} to narrow an unknown value to `SchemaError`.
  *

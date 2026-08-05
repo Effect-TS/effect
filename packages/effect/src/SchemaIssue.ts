@@ -11,8 +11,9 @@
  */
 import type { StandardSchemaV1 } from "@standard-schema/spec"
 import * as Arr from "./Array.ts"
-import { formatPath, type Formatter as FormatterI } from "./Formatter.ts"
+import { format, formatPath, type Formatter as FormatterI } from "./Formatter.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
+import * as InternalParser from "./internal/schema/parser.ts"
 import { hasProperty } from "./Predicate.ts"
 import type * as Schema from "./Schema.ts"
 import type * as SchemaAST from "./SchemaAST.ts"
@@ -49,6 +50,39 @@ const TypeId = "~effect/SchemaIssue/Issue"
  */
 export function isIssue(u: unknown): u is Issue {
   return hasProperty(u, TypeId) && u[TypeId] === TypeId
+}
+
+/**
+ * Returns `true` when an issue contains an input reported by the schema parser.
+ *
+ * **When to use**
+ *
+ * Use when reading `Issue.input`, especially when `undefined` is a valid input
+ * value.
+ *
+ * **Details**
+ *
+ * Reported input is stored as a non-enumerable own property. This guard checks
+ * for that property and narrows `input` from optional to required.
+ *
+ * **Example** (Reading a reported input)
+ *
+ * ```ts import.meta.vitest
+ * import { Result, Schema, SchemaIssue } from "effect"
+ *
+ * const result = Schema.decodeUnknownResult(Schema.String)(1, { reportInput: true })
+ * if (Result.isFailure(result) && SchemaIssue.hasInput(result.failure.issue)) {
+ *   result.failure.issue.input // => 1
+ * }
+ * ```
+ *
+ * @see {@link Issue} for the complete issue model
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export function hasInput(issue: Issue): issue is Issue & { readonly input: unknown } {
+  return Object.hasOwn(issue, "input")
 }
 
 /**
@@ -93,13 +127,16 @@ export type Leaf =
  * {@link Filter}, {@link Encoding}, {@link Pointer}, {@link Composite},
  * {@link AnyOf}. All `Issue` instances have a `toString()` that delegates to
  * the default formatter, so `String(issue)` produces a human-readable message.
- * Built-in issues have no `actual` field, and built-in messages do not include
- * the rejected value. This is not a general sanitization boundary: paths,
- * ASTs, union successes, and custom annotations or messages are preserved as
- * supplied and remain the caller's responsibility.
+ * When parsing with `reportInput: true`, value-bearing issues expose the
+ * rejected value through a non-enumerable `input` field. Built-in formatters
+ * may include reported input in default messages. This is not a general
+ * sanitization boundary: paths, ASTs, union successes, and custom annotations
+ * or messages are preserved as supplied and remain the caller's
+ * responsibility.
  *
  * @see {@link Leaf} — the terminal subset
  * @see {@link isIssue} — type guard
+ * @see {@link hasInput} — checks whether an issue reports an input
  * @category models
  * @since 4.0.0
  */
@@ -112,8 +149,74 @@ export type Issue =
   | Composite
   | AnyOf
 
+/**
+ * Captures an input that should be reported by a value-bearing schema issue.
+ *
+ * **When to use**
+ *
+ * Use when constructing a schema issue that should retain the rejected input.
+ *
+ * **Details**
+ *
+ * An input report is passed to value-bearing issue constructors. Its `value`
+ * becomes the issue's non-enumerable `input` property.
+ *
+ * @see {@link reportInput} for respecting the parser's `reportInput` option
+ * @category models
+ * @since 4.0.0
+ */
+export interface InputReport<out A = unknown> {
+  readonly value: A
+}
+
+/**
+ * Captures an input when input reporting is enabled in the parse options.
+ *
+ * **When to use**
+ *
+ * Use when constructing a custom schema issue that should respect the parser's
+ * `reportInput` option.
+ *
+ * **Details**
+ *
+ * Returns `undefined` when input reporting is disabled or the parser value is
+ * missing. Otherwise, returns a capture that preserves the input, including an
+ * input whose value is `undefined`.
+ *
+ * **Example** (Respecting input reporting)
+ *
+ * ```ts import.meta.vitest
+ * import { SchemaAST, SchemaIssue } from "effect"
+ *
+ * const options: SchemaAST.ParseOptions = { reportInput: true }
+ * const issue = new SchemaIssue.InvalidValue(
+ *   { message: "Invalid value" },
+ *   SchemaIssue.reportInput("secret", options)
+ * )
+ *
+ * SchemaIssue.hasInput(issue) // => true
+ * ```
+ *
+ * @see {@link InputReport} for the value passed to issue constructors
+ * @category constructors
+ * @since 4.0.0
+ */
+export function reportInput<A>(input: A, options?: SchemaAST.ParseOptions): InputReport<A> | undefined {
+  return options?.reportInput === true && input !== InternalParser.missing ? { value: input } : undefined
+}
+
 class Base {
   readonly [TypeId] = TypeId
+  /**
+   * The input reported by the schema parser, when input reporting is enabled
+   * and the issue is associated with a present value.
+   */
+  declare readonly input?: unknown
+  constructor(report?: InputReport) {
+    if (report !== undefined) {
+      Object.defineProperty(this, "input", { value: report.value })
+    }
+  }
   toString(this: Issue): string {
     return defaultFormatter(this)
   }
@@ -176,9 +279,10 @@ export class Filter extends Base {
     /**
      * The issue that occurred.
      */
-    issue: Issue
+    issue: Issue,
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.filter = filter
     this.issue = issue
   }
@@ -222,9 +326,10 @@ export class Encoding extends Base {
     /**
      * The issue that occurred.
      */
-    issue: Issue
+    issue: Issue,
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.ast = ast
     this.issue = issue
   }
@@ -343,9 +448,10 @@ export class UnexpectedKey extends Base {
     /**
      * The schema that caused the issue.
      */
-    ast: SchemaAST.AST
+    ast: SchemaAST.AST,
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.ast = ast
   }
 }
@@ -388,9 +494,10 @@ export class Composite extends Base {
     /**
      * The issues that occurred.
      */
-    issues: readonly [Issue, ...Array<Issue>]
+    issues: readonly [Issue, ...Array<Issue>],
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.ast = ast
     this.issues = issues
   }
@@ -434,9 +541,10 @@ export class InvalidType extends Base {
     /**
      * The schema that caused the issue.
      */
-    ast: SchemaAST.AST
+    ast: SchemaAST.AST,
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.ast = ast
   }
 }
@@ -479,11 +587,21 @@ export class InvalidValue extends Base {
   readonly annotations: Schema.Annotations.Issue | undefined
 
   constructor(
-    annotations?: Schema.Annotations.Issue | undefined
+    annotations?: Schema.Annotations.Issue | undefined,
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.annotations = annotations
   }
+}
+
+/** @internal */
+export function makeInvalidValue(
+  issueExpected: string,
+  issueInput: unknown,
+  parseOptions?: SchemaAST.ParseOptions
+): InvalidValue {
+  return new InvalidValue({ expected: issueExpected }, reportInput(issueInput, parseOptions))
 }
 
 /**
@@ -527,9 +645,10 @@ export class Forbidden extends Base {
     /**
      * The metadata for the issue.
      */
-    annotations: Schema.Annotations.Issue | undefined
+    annotations: Schema.Annotations.Issue | undefined,
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.annotations = annotations
   }
 }
@@ -577,9 +696,10 @@ export class AnyOf extends Base {
     /**
      * The issues that occurred.
      */
-    issues: ReadonlyArray<Issue>
+    issues: ReadonlyArray<Issue>,
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.ast = ast
     this.issues = issues
   }
@@ -625,52 +745,57 @@ export class OneOf extends Base {
     /**
      * The schemas that were successful.
      */
-    successes: ReadonlyArray<SchemaAST.AST>
+    successes: ReadonlyArray<SchemaAST.AST>,
+    report?: InputReport
   ) {
-    super()
+    super(report)
     this.ast = ast
     this.successes = successes
   }
 }
 
-function makeFilterIssue(entry: Schema.FilterIssue): Issue {
+function makeFilterIssue(entry: Schema.FilterIssue, report?: InputReport): Issue {
   if (isIssue(entry)) {
     return entry
   }
   if (typeof entry === "string") {
-    return new InvalidValue({ message: entry })
+    return new InvalidValue({ message: entry }, report)
   }
   const inner = typeof entry.issue === "string"
-    ? new InvalidValue({ message: entry.issue })
+    ? new InvalidValue({ message: entry.issue }, report)
     : entry.issue
   return new Pointer(entry.path, inner)
 }
 
 /** @internal */
-export function makeSingle(out: undefined | boolean | Schema.FilterIssue): Issue | undefined {
+export function makeSingle(
+  out: undefined | boolean | Schema.FilterIssue,
+  report?: InputReport
+): Issue | undefined {
   if (out === undefined) {
     return undefined
   }
   if (typeof out === "boolean") {
-    return out ? undefined : new InvalidValue()
+    return out ? undefined : new InvalidValue(undefined, report)
   }
-  return makeFilterIssue(out)
+  return makeFilterIssue(out, report)
 }
 
 /** @internal */
 export function normalizeFilterOutput(
   ast: SchemaAST.AST,
-  out: Schema.FilterOutput
+  out: Schema.FilterOutput,
+  report?: InputReport
 ): Issue | undefined {
   if (Array.isArray(out)) {
     if (!Arr.isReadonlyArrayNonEmpty(out)) {
       return undefined
     }
     return out.length === 1
-      ? makeFilterIssue(out[0])
-      : new Composite(ast, Arr.map(out, makeFilterIssue))
+      ? makeFilterIssue(out[0], report)
+      : new Composite(ast, Arr.map(out, (entry) => makeFilterIssue(entry, report)), report)
   }
-  return makeSingle(out as undefined | boolean | Schema.FilterIssue)
+  return makeSingle(out as undefined | boolean | Schema.FilterIssue, report)
 }
 
 /**
@@ -712,13 +837,18 @@ export type LeafHook = (issue: Leaf) => string
  * **Details**
  *
  * - Checks for a `message` annotation first; returns it if present.
- * - Otherwise generates a default message per `_tag`:
- *   - `InvalidType` → `"Expected <type>"`
- *   - `InvalidValue` → `"Expected a valid value"`
+ * - For `InvalidValue`, an `expected` annotation uses the standard expected
+ *   value message and includes reported input when available.
+ * - Otherwise generates a default message per `_tag`. When the issue reports
+ *   input, the message includes its formatted value where applicable:
+ *   - `InvalidType` → `"Expected <type>"` or `"Expected <type>, got <input>"`
+ *   - `InvalidValue` → `"Expected a valid value"` or `"Invalid data <input>"`
  *   - `MissingKey` → `"Missing key"`
- *   - `UnexpectedKey` → `"Expected no excess property"`
+ *   - `UnexpectedKey` → `"Expected no excess property"` or
+ *     `"Unexpected key with value <input>"`
  *   - `Forbidden` → `"Forbidden operation"`
- *   - `OneOf` → `"Expected exactly one member to match"`
+ *   - `OneOf` → `"Expected exactly one member to match"` or
+ *     `"Expected exactly one member to match the input <input>"`
  *
  * **Example** (Formatting Standard Schema issues with defaultLeafHook)
  *
@@ -742,17 +872,27 @@ export const defaultLeafHook: LeafHook = (issue): string => {
   if (message !== undefined) return message
   switch (issue._tag) {
     case "InvalidType":
-      return getExpectedMessage(InternalAnnotations.getExpected(issue.ast))
-    case "InvalidValue":
-      return "Expected a valid value"
+      return getExpectedMessage(InternalAnnotations.getExpected(issue.ast), issue)
+    case "InvalidValue": {
+      const expected = findExpected(issue)
+      if (expected !== undefined) return getExpectedMessage(expected, issue)
+      const input = formatInput(issue)
+      return input === undefined ? "Expected a valid value" : `Invalid data ${input}`
+    }
     case "MissingKey":
       return "Missing key"
-    case "UnexpectedKey":
-      return "Expected no excess property"
+    case "UnexpectedKey": {
+      const input = formatInput(issue)
+      return input === undefined ? "Expected no excess property" : `Unexpected key with value ${input}`
+    }
     case "Forbidden":
       return "Forbidden operation"
-    case "OneOf":
-      return "Expected exactly one member to match"
+    case "OneOf": {
+      const input = formatInput(issue)
+      return input === undefined
+        ? "Expected exactly one member to match"
+        : `Expected exactly one member to match the input ${input}`
+    }
   }
 }
 
@@ -768,8 +908,6 @@ export const defaultLeafHook: LeafHook = (issue): string => {
  *
  * - Returns `string` to override the message, or `undefined` to fall back to
  *   the default formatting.
- * - Built-in issues have no `actual` field.
- *
  * @see {@link defaultCheckHook} — the built-in implementation
  * @see {@link Filter} — the issue type this hook formats
  *
@@ -790,7 +928,8 @@ export type CheckHook = (issue: Filter) => string | undefined
  * - Looks for a `message` annotation on the inner issue first, then on the
  *   filter itself.
  * - Returns `undefined` when no annotation is found, causing the formatter to
- *   fall back to `"Expected <filter>"`.
+ *   fall back to `"Expected <filter>"` or, when the filter reports input,
+ *   `"Expected <filter>, got <input>"`.
  *
  * @see {@link CheckHook}
  * @see {@link makeFormatterStandardSchemaV1}
@@ -798,9 +937,7 @@ export type CheckHook = (issue: Filter) => string | undefined
  * @category formatting
  * @since 4.0.0
  */
-export const defaultCheckHook: CheckHook = (issue): string | undefined => {
-  return findMessage(issue.issue) ?? findMessage(issue)
-}
+export const defaultCheckHook: CheckHook = (issue): string | undefined => findMessage(issue.issue) ?? findMessage(issue)
 
 /**
  * Creates a {@link Formatter} that produces a `StandardSchemaV1.FailureResult`.
@@ -818,6 +955,15 @@ export const defaultCheckHook: CheckHook = (issue): string | undefined => {
  * - `Pointer` paths are accumulated to produce full property paths.
  * - Falls back to {@link defaultLeafHook} / {@link defaultCheckHook} when no
  *   hooks are provided.
+ * - Default messages include reported input when the issue that produces the
+ *   message has an `input` field. The returned Standard Schema issues do not
+ *   receive an `input` field.
+ *
+ * **Gotchas**
+ *
+ * Reported input can appear inside the Standard Schema `message` string even
+ * though it is not exposed as a separate property. Custom hooks control their
+ * complete message and are not modified.
  *
  * **Example** (Creating a Standard Schema V1 formatter)
  *
@@ -850,8 +996,18 @@ type DefaultIssue = {
   readonly path: ReadonlyArray<PropertyKey>
 }
 
-function getExpectedMessage(expected: string): string {
-  return `Expected ${expected}`
+function formatInput(issue: Issue): string | undefined {
+  return hasInput(issue) ? format(issue.input) : undefined
+}
+
+function findExpected(issue: InvalidValue): string | undefined {
+  const expected = issue.annotations?.expected
+  return typeof expected === "string" ? expected : undefined
+}
+
+function getExpectedMessage(expected: string, issue: Issue): string {
+  const input = formatInput(issue)
+  return input === undefined ? `Expected ${expected}` : `Expected ${expected}, got ${input}`
 }
 
 function toDefaultIssues(
@@ -866,15 +1022,16 @@ function toDefaultIssues(
       if (message !== undefined) {
         return [{ path, message }]
       }
-      switch (issue.issue._tag) {
-        case "InvalidValue":
-          return [{
-            path,
-            message: getExpectedMessage(formatCheck(issue.filter))
-          }]
-        default:
-          return toDefaultIssues(issue.issue, path, leafHook, checkHook)
+      if (issue.issue._tag !== "InvalidValue") {
+        return toDefaultIssues(issue.issue, path, leafHook, checkHook)
       }
+      const expected = findExpected(issue.issue)
+      return [{
+        path,
+        message: expected === undefined
+          ? getExpectedMessage(formatCheck(issue.filter), issue)
+          : getExpectedMessage(expected, issue.issue)
+      }]
     }
     case "Encoding":
       return toDefaultIssues(issue.issue, path, leafHook, checkHook)
@@ -886,7 +1043,7 @@ function toDefaultIssues(
       if (issue.issues.length === 0) {
         return [{
           path,
-          message: findMessage(issue) ?? getExpectedMessage(InternalAnnotations.getExpected(issue.ast))
+          message: findMessage(issue) ?? getExpectedMessage(InternalAnnotations.getExpected(issue.ast), issue)
         }]
       }
       return issue.issues.flatMap((issue) => toDefaultIssues(issue, path, leafHook, checkHook))
@@ -923,8 +1080,16 @@ function formatCheck<T>(check: SchemaAST.Check<T>): string {
  *
  * - Flattens the issue tree into `{ message, path }` entries using
  *   {@link defaultLeafHook} and {@link defaultCheckHook}.
+ * - Includes reported input in default messages when the node producing the
+ *   message has an `input` field.
  * - Each entry is rendered as `"<message>"` or `"<message>\n  at <path>"`.
  * - Multiple entries are joined with newlines.
+ *
+ * **Gotchas**
+ *
+ * Formatting an issue can disclose input retained with `reportInput: true`.
+ * Wrapper inputs are not inherited by child messages, and custom messages are
+ * returned unchanged.
  *
  * **Example** (Formatting an issue as a string)
  *
