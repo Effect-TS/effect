@@ -70,7 +70,7 @@ export const layerTracerProvider = (
         }),
         (provider) =>
           Effect.ignore(
-            Effect.promise(() => provider.forceFlush().then(() => provider.shutdown()))
+            Effect.promise(() => provider.forceFlush().finally(() => provider.shutdown()))
           )
       )
     })

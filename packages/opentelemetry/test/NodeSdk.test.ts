@@ -14,9 +14,19 @@ it.effect("shuts down the Node provider after forceFlush rejects", () =>
       shutdowns++
       return Promise.resolve()
     }
-    const processor = { onStart() {}, onEnd() {}, shutdown: async () => {}, forceFlush: async () => {} } as any
-    yield* Effect.exit(Effect.scoped(Layer.build(NodeSdk.layerTracerProvider(processor)).pipe(Effect.provide(Resource.layerEmpty))))
-    NodeTracerProvider.prototype.forceFlush = originalFlush
-    NodeTracerProvider.prototype.shutdown = originalShutdown
+    const processor = {
+      onStart() {},
+      onEnd() {},
+      shutdown: () => Promise.resolve(),
+      forceFlush: () => Promise.resolve()
+    } as any
+    yield* Effect.exit(
+      Effect.scoped(Layer.build(NodeSdk.layerTracerProvider(processor)).pipe(Effect.provide(Resource.layerEmpty)))
+    ).pipe(
+      Effect.ensuring(Effect.sync(() => {
+        NodeTracerProvider.prototype.forceFlush = originalFlush
+        NodeTracerProvider.prototype.shutdown = originalShutdown
+      }))
+    )
     assert.strictEqual(shutdowns, 1)
   }))
