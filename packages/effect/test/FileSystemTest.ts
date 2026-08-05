@@ -727,11 +727,31 @@ export const suite = (name: string, layer: Layer.Layer<FileSystem.FileSystem, un
           assert.strictEqual(yield* fs.readFileString(filePath), "foobarbaz")
         }))
 
-      // TODO: Decide whether File.seek returns the resulting cursor, then change its public return type from void to Size.
-      // it.effect("should return the resulting cursor when seeking", () => {})
+      it.effect("should return the resulting cursor when seeking", () =>
+        Effect.gen(function*() {
+          const { fs, path } = yield* makeTestContext
+          const file = yield* fs.open(path("seek-cursor.txt"), { flag: "w+" })
 
-      // TODO: Decide whether File.truncate clamps the calling handle's cursor.
-      // it.effect("should clamp a file-handle cursor when truncation shortens the file", () => {})
+          assert.strictEqual(yield* file.seek(6, "start"), FileSystem.Size(6))
+          assert.strictEqual(yield* file.seek(-2, "current"), FileSystem.Size(4))
+        }))
+
+      it.effect("should preserve or clamp a file-handle cursor based on the truncated length", () =>
+        Effect.gen(function*() {
+          const { fs, path } = yield* makeTestContext
+          const filePath = path("truncate-cursor.txt")
+          const file = yield* fs.open(filePath, { flag: "w+" })
+          yield* file.writeAll(encoder.encode("lorem ipsum dolor sit amet"))
+
+          yield* file.seek(6, "start")
+          yield* file.truncate(11)
+          yield* file.writeAll(encoder.encode("!"))
+          assert.strictEqual(yield* fs.readFileString(filePath), "lorem !psum")
+
+          yield* file.truncate(5)
+          yield* file.writeAll(encoder.encode("?"))
+          assert.strictEqual(yield* fs.readFileString(filePath), "lorem?")
+        }))
     })
 
     describe("copy and rename", () => {
@@ -948,7 +968,7 @@ export const suite = (name: string, layer: Layer.Layer<FileSystem.FileSystem, un
           }
         }))
 
-      // TODO: Define what ok, readable, and writable mean without user identity or permission state.
+      // TODO: Define what ok, readable, and writable mean for adapters without user identity or permission state.
       it.effect("should check readable and writable access when no virtual identity is available", () =>
         Effect.gen(function*() {
           const { fs, path } = yield* makeTestContext
@@ -1109,7 +1129,6 @@ export const suite = (name: string, layer: Layer.Layer<FileSystem.FileSystem, un
       // normalized paths, or watcher cleanup.
       // it.effect("should emit normalized events when watching registered paths", () => {})
 
-      // TODO: Decide whether a missing watch target reports `watch` or the host preflight operation. Node exposes `stat`.
       it.effect("should preserve error context when watching a missing path", () =>
         Effect.gen(function*() {
           const { fs, path } = yield* makeTestContext
@@ -1117,7 +1136,7 @@ export const suite = (name: string, layer: Layer.Layer<FileSystem.FileSystem, un
 
           const error = yield* fs.watch(missing).pipe(Stream.runDrain, Effect.flip)
 
-          assertSystemError(error, { tag: "NotFound", pathOrDescriptor: missing })
+          assertSystemError(error, { tag: "NotFound", method: "stat", pathOrDescriptor: missing })
         }))
     })
   })
