@@ -65,7 +65,7 @@ export class ResourceMap<K, A, E> {
       if (existing) {
         return Deferred.await(existing.deferred)
       }
-      const scope = Effect.runSync(Scope.make())
+      const scope = Scope.makeUnsafe()
       const deferred = Deferred.makeUnsafe<A, E>()
       backingSet(this.entries, key, { scope, deferred })
       return Effect.onExit(this.lookup(key, scope), (exit) => {
