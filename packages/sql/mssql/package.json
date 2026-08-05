@@ -58,6 +58,7 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
+    "@testcontainers/mssqlserver": "^12.0.4",
     "effect": "workspace:^"
   },
   "peerDependencies": {

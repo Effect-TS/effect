@@ -128,6 +128,7 @@ jobs:
           docker pull ghcr.io/tursodatabase/libsql-server:main &
           docker pull postgres:alpine &
           docker pull mysql:lts &
+          docker pull mcr.microsoft.com/mssql/server:2022-latest &
           docker pull vitess/vttestserver:mysql80 &
           docker pull redis:alpine &
           wait

@@ -1,7 +1,6 @@
 import { afterEach, describe, it } from "@effect/vitest"
 import { assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import type { Layer } from "effect"
-import { Effect, Option, Schema } from "effect"
+import { Effect, type Layer, Option, Schema } from "effect"
 import * as KeyValueStore from "effect/unstable/persistence/KeyValueStore"
 
 export const testLayer = <E>(layer: Layer.Layer<KeyValueStore.KeyValueStore, E>) => {
