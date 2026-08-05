@@ -12,6 +12,7 @@
 import { isArrayNonEmpty, type NonEmptyArray } from "../../Array.ts"
 import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
+import * as Equal from "../../Equal.ts"
 import * as Layer from "../../Layer.ts"
 import * as MutableHashMap from "../../MutableHashMap.ts"
 import type { PersistenceError } from "./ClusterError.ts"
@@ -203,8 +204,15 @@ export const makeEncoded = (encoded: Encoded) =>
  */
 export const makeMemory = Effect.gen(function*() {
   const runners = MutableHashMap.empty<RunnerAddress, Runner>()
-  let acquired: Array<ShardId.ShardId> = []
+  const acquired = MutableHashMap.empty<ShardId.ShardId, RunnerAddress>()
   let id = 0
+  const releaseAllShards = (address: RunnerAddress) => {
+    for (const [shardId, owner] of acquired) {
+      if (Equal.equals(owner, address)) {
+        MutableHashMap.remove(acquired, shardId)
+      }
+    }
+  }
 
   return RunnerStorage.of({
     getRunners: Effect.sync(() => Array.from(MutableHashMap.values(runners), (runner) => [runner, true])),
@@ -216,15 +224,38 @@ export const makeMemory = Effect.gen(function*() {
     unregister: (address) =>
       Effect.sync(() => {
         MutableHashMap.remove(runners, address)
+        releaseAllShards(address)
       }),
     setRunnerHealth: () => Effect.void,
-    acquire: (_address, shardIds) => {
-      acquired = Array.from(shardIds)
-      return Effect.succeed(acquired)
-    },
-    refresh: () => Effect.sync(() => acquired),
-    release: () => Effect.void,
-    releaseAll: () => Effect.void
+    acquire: (address, shardIds) =>
+      Effect.sync(() => {
+        const result: Array<ShardId.ShardId> = []
+        for (const shardId of shardIds) {
+          const owner = MutableHashMap.get(acquired, shardId).valueOrUndefined
+          if (owner !== undefined && !Equal.equals(owner, address)) continue
+          MutableHashMap.set(acquired, shardId, address)
+          result.push(shardId)
+        }
+        return result
+      }),
+    refresh: (address) =>
+      Effect.sync(() => {
+        const result: Array<ShardId.ShardId> = []
+        for (const [shardId, owner] of acquired) {
+          if (Equal.equals(owner, address)) {
+            result.push(shardId)
+          }
+        }
+        return result
+      }),
+    release: (address, shardId) =>
+      Effect.sync(() => {
+        const owner = MutableHashMap.get(acquired, shardId).valueOrUndefined
+        if (owner !== undefined && Equal.equals(owner, address)) {
+          MutableHashMap.remove(acquired, shardId)
+        }
+      }),
+    releaseAll: (address) => Effect.sync(() => releaseAllShards(address))
   })
 })
 

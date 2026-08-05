@@ -10,7 +10,22 @@ describe("RunnerStorage", () => {
       const second = RunnerAddress.make("localhost", 41002)
       const shard = ShardId.make("default", 1)
       assert.deepStrictEqual(yield* storage.acquire(first, [shard]), [shard])
+      assert.deepStrictEqual(yield* storage.acquire(first, [shard]), [shard])
       assert.deepStrictEqual(yield* storage.acquire(second, [shard]), [])
+      assert.deepStrictEqual(yield* storage.refresh(first, []), [shard])
+      assert.deepStrictEqual(yield* storage.refresh(second, []), [])
+
+      yield* storage.release(second, shard)
+      assert.deepStrictEqual(yield* storage.acquire(second, [shard]), [])
+
+      yield* storage.release(first, shard)
+      assert.deepStrictEqual(yield* storage.acquire(second, [shard]), [shard])
+
+      yield* storage.releaseAll(second)
+      assert.deepStrictEqual(yield* storage.acquire(first, [shard]), [shard])
+
+      yield* storage.unregister(first)
+      assert.deepStrictEqual(yield* storage.acquire(second, [shard]), [shard])
     }))
 
   it.effect("memory acquire accepts a one-shot iterable", () =>
