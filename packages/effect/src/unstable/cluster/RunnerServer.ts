@@ -129,6 +129,9 @@ export const layerHandlers = Runners.Rpcs.toLayer(Effect.gen(function*() {
               return Reply.serialize(reply).pipe(
                 Effect.flatMap((reply) => {
                   Queue.offerUnsafe(queue, reply)
+                  if (reply._tag === "WithExit") {
+                    Queue.endUnsafe(queue)
+                  }
                   return Effect.void
                 }),
                 Effect.catchTag("MalformedMessage", (error) =>

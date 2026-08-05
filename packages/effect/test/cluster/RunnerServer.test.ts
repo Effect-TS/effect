@@ -1,5 +1,5 @@
 import { assert, it } from "@effect/vitest"
-import { Effect, Fiber, Layer, Option, Queue, Schema, Stream } from "effect"
+import { Effect, Layer, Option, Queue, Schema, Stream } from "effect"
 import { TestClock } from "effect/testing"
 import {
   ClusterSchema,
@@ -7,7 +7,7 @@ import {
   EntityAddress,
   EntityId,
   EntityType,
-  type Envelope,
+  Envelope,
   MessageStorage,
   RunnerHealth,
   Runners,
@@ -61,12 +61,35 @@ it.effect("completes a successful runner stream", () =>
     } as Envelope.PartialRequest
     const client = yield* RpcTest.makeClient(Runners.Rpcs)
     const queue = yield* client.Stream({ request, persisted: false }, { asQueue: true })
-    const completion = yield* Queue.take(queue).pipe(
-      Effect.forever,
-      Effect.catchTag("Done", () => Effect.void),
-      Effect.timeoutOption(10),
-      Effect.forkChild
+    const first = yield* Queue.take(queue).pipe(
+      Effect.timeout("1 second"),
+      TestClock.withLive
     )
-    yield* TestClock.adjust(10)
-    assert.deepStrictEqual(yield* Fiber.join(completion), Option.some(undefined))
+    if (first._tag !== "Chunk") {
+      return assert.fail("expected the stream value before the terminal reply")
+    }
+    assert.deepStrictEqual(first.values, [1])
+
+    yield* client.Envelope({
+      envelope: new Envelope.AckChunk({
+        id: snowflake.nextUnsafe(),
+        address: request.address,
+        requestId: request.requestId,
+        replyId: Snowflake.Snowflake(first.id)
+      }),
+      persisted: false
+    })
+
+    const completion = yield* Effect.gen(function*() {
+      const last = yield* Queue.take(queue)
+      yield* Queue.take(queue).pipe(Effect.catchTag("Done", () => Effect.void))
+      return last
+    }).pipe(
+      Effect.timeoutOption("1 second"),
+      TestClock.withLive
+    )
+    if (Option.isNone(completion)) {
+      return assert.fail("expected the runner stream to complete")
+    }
+    assert.strictEqual(completion.value._tag, "WithExit")
   }).pipe(Effect.provide(handlers)))
