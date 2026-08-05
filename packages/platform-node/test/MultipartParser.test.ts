@@ -1,9 +1,7 @@
-import * as Multipart from "effect/unstable/http/Multipasta"
-import * as Node from "effect/unstable/http/Multipasta/Node"
-import * as Web from "effect/unstable/http/Multipasta/Web"
-import * as Crypto from "node:crypto"
-import * as FS from "node:fs"
+import * as Multipart from "effect/unstable/http/MultipartParser"
+import * as Web from "effect/unstable/http/MultipartParser/Web"
 import { assert, describe, test } from "vitest"
+import * as Node from "../src/NodeMultipartParser.ts"
 
 type Expected = Array<
   | [type: "field", name: string, value: string, contentType: string]
@@ -858,9 +856,16 @@ describe("web api", () => {
 describe("random data", () => {
   test("smoke test", () => {
     const boundary = "------WebKitFormBoundaryTB2MiQ36fnSJlrhY--"
+    let seed = 0x9e3779b9
+    const random = () => {
+      seed ^= seed << 13
+      seed ^= seed >>> 17
+      seed ^= seed << 5
+      return (seed >>> 0) / 0x1_0000_0000
+    }
     for (let i = 0; i < 100; i++) {
-      const size = Math.round(Math.random() * 1024 * 1024 * 100)
-      const data = Crypto.randomBytes(size)
+      const size = Math.round(random() * 1024 * 1024 * 100)
+      const data = Buffer.alloc(size, i)
       let success = false
 
       const parser = Multipart.make({
@@ -891,18 +896,17 @@ describe("random data", () => {
       let cursor = 0
       while (cursor < buffer.length) {
         const maxChunkSize = buffer.length - cursor
-        const chunkSize = Math.min(
-          Math.round(Math.random() * 128 * 1024 * 1024),
-          maxChunkSize
+        const chunkSize = Math.max(
+          1,
+          Math.min(
+            Math.round(random() * 128 * 1024 * 1024),
+            maxChunkSize
+          )
         )
         parser.write(buffer.subarray(cursor, cursor + chunkSize))
         cursor += chunkSize
       }
       parser.end()
-      if (!success) {
-        FS.writeFileSync("fail-data", buffer)
-      }
-
       assert.isTrue(success)
     }
   }, 30_000)

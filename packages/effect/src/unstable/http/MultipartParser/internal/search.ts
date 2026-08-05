@@ -1,5 +1,3 @@
-// Vendored from multipasta v0.2.8. Copyright (c) 2023-present The Contributors. MIT licensed.
-
 interface SearchState {
   readonly needle: Uint8Array
   readonly needleLength: number
@@ -29,14 +27,14 @@ function makeState(needle_: string): SearchState {
     firstByte: needle[0],
     previousChunk: undefined,
     previousChunkLength: 0,
-    matchIndex: 0,
+    matchIndex: 0
   }
 }
 
 export function make(
   needle: string,
   callback: (index: number, chunk: Uint8Array) => void,
-  seed?: Uint8Array,
+  seed?: Uint8Array
 ) {
   const state = makeState(needle)
   if (seed !== undefined) {
@@ -47,14 +45,14 @@ export function make(
   function makeIndexOf(): (
     chunk: Uint8Array,
     needle: Uint8Array,
-    fromIndex: number,
+    fromIndex: number
   ) => number {
     // on node.js use the Buffer api
     if (
       "Buffer" in globalThis &&
       !("Bun" in globalThis || "Deno" in globalThis)
     ) {
-      return function (chunk, needle, fromIndex) {
+      return function(chunk, needle, fromIndex) {
         return Buffer.prototype.indexOf.call(chunk, needle, fromIndex)
       }
     }
@@ -64,7 +62,7 @@ export function make(
       skipTable[state.needle[i]] = lastIndex - i
     }
 
-    return function (chunk, needle, fromIndex) {
+    return function(chunk, needle, fromIndex) {
       const lengthTotal = chunk.length
       let i = fromIndex + state.needleLength - 1
 
@@ -136,7 +134,7 @@ export function make(
           if (chunkLength - 1 - earliestIndex > pos) {
             callback(
               state.matchIndex,
-              chunk.subarray(pos, chunkLength - 1 - earliestIndex),
+              chunk.subarray(pos, chunkLength - 1 - earliestIndex)
             )
           }
           state.previousChunk = chunk.subarray(chunkLength - 1 - earliestIndex)

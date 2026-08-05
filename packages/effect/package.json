@@ -57,7 +57,6 @@
   },
   "files": [
     "src/**/*.ts",
-    "src/unstable/http/Multipasta/internal/LICENSE",
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",

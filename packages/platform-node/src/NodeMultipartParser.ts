@@ -1,24 +1,69 @@
-// Vendored from multipasta v0.2.8. Copyright (c) 2023-present The Contributors. MIT licensed.
-
+/**
+ * Node.js streams adapter for the low-level multipart parser.
+ *
+ * @since 4.0.0
+ */
+// oxlint-disable typescript/no-unsafe-declaration-merging
 /// <reference types="node" />
+import type { BaseConfig, MultipartError, Parser, PartInfo } from "effect/unstable/http/MultipartParser"
+import { make as makeParser } from "effect/unstable/http/MultipartParser"
 import type { IncomingHttpHeaders } from "node:http"
 import { Duplex, Readable } from "node:stream"
-import type { BaseConfig, MultipartError, Parser, PartInfo } from "./index.ts"
-import { make as makeParser } from "./multipart.ts"
 
-export type { MultipartError, PartInfo } from "./index.ts"
-export { decodeField } from "./index.ts"
+export type {
+  /**
+   * Re-exports the multipart parser error type.
+   *
+   * @category re-exports
+   * @since 4.0.0
+   */
+  MultipartError,
+  /**
+   * Re-exports the multipart part metadata type.
+   *
+   * @category re-exports
+   * @since 4.0.0
+   */
+  PartInfo
+} from "effect/unstable/http/MultipartParser"
 
+export {
+  /**
+   * Re-exports the multipart field decoder.
+   *
+   * @category re-exports
+   * @since 4.0.0
+   */
+  decodeField
+} from "effect/unstable/http/MultipartParser"
+
+/**
+ * A part emitted by the Node.js multipart parser.
+ *
+ * @category models
+ * @since 4.0.0
+ */
 export type Part = Field | FileStream
 
+/**
+ * A parsed multipart field.
+ *
+ * @category models
+ * @since 4.0.0
+ */
 export interface Field {
   readonly _tag: "Field"
   readonly info: PartInfo
   readonly value: Uint8Array
 }
 
-// oxlint-disable-next-line typescript/no-unsafe-declaration-merging
-export interface MultipastaStream extends Duplex {
+/**
+ * A Node.js duplex stream that emits parsed multipart parts.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MultipartStream extends Duplex {
   [Symbol.asyncIterator](): NodeJS.AsyncIterator<Part>
 
   on(event: "field", listener: (field: Field) => void): this
@@ -39,12 +84,23 @@ export interface MultipastaStream extends Duplex {
   read(size?: number): Part | null
 }
 
+/**
+ * Configuration for the Node.js multipart parser.
+ *
+ * @category models
+ * @since 4.0.0
+ */
 export type NodeConfig = Omit<BaseConfig, "headers"> & {
   readonly headers: IncomingHttpHeaders
 }
 
-// oxlint-disable-next-line typescript/no-unsafe-declaration-merging
-export class MultipastaStream extends Duplex {
+/**
+ * A Node.js duplex stream that parses multipart input.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export class MultipartStream extends Duplex {
   private _parser: Parser
   _canWrite = true
   private _writeCallback: (() => void) | undefined
@@ -61,13 +117,13 @@ export class MultipastaStream extends Duplex {
         this.push(field)
         this.emit("field", field)
       },
-      onFile: info => {
-        if (currentError !== undefined) return _ => {}
+      onFile: (info) => {
+        if (currentError !== undefined) return (_) => {}
         const file = new FileStream(info, this)
         currentFile = file
         this.push(file)
         this.emit("file", file)
-        return chunk => {
+        return (chunk) => {
           this._canWrite = file.push(chunk)
           if (chunk === null && !this._canWrite) {
             currentFile = undefined
@@ -75,14 +131,14 @@ export class MultipastaStream extends Duplex {
           }
         }
       },
-      onError: error => {
+      onError: (error) => {
         this.emit("error", error)
         currentFile?.emit("error", error)
         currentError = error
       },
       onDone: () => {
         this.push(null)
-      },
+      }
     })
   }
 
@@ -100,10 +156,10 @@ export class MultipastaStream extends Duplex {
   override _write(
     chunk: any,
     encoding: BufferEncoding,
-    callback: (error?: Error | null | undefined) => void,
+    callback: (error?: Error | null | undefined) => void
   ): void {
     this._parser.write(
-      chunk instanceof Uint8Array ? chunk : Buffer.from(chunk, encoding),
+      chunk instanceof Uint8Array ? chunk : Buffer.from(chunk, encoding)
     )
     if (this._canWrite) {
       callback()
@@ -118,17 +174,28 @@ export class MultipastaStream extends Duplex {
   }
 }
 
-export const make = (config: NodeConfig): MultipastaStream =>
-  new MultipastaStream(config)
+/**
+ * Creates a Node.js multipart parser stream.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = (config: NodeConfig): MultipartStream => new MultipartStream(config)
 
+/**
+ * A readable stream containing a parsed multipart file.
+ *
+ * @category models
+ * @since 4.0.0
+ */
 export class FileStream extends Readable {
   readonly _tag = "File"
   readonly filename: string
   readonly info: PartInfo
-  private _parent: MultipastaStream
+  private _parent: MultipartStream
   constructor(
     info: PartInfo,
-    parent: MultipastaStream,
+    parent: MultipartStream
   ) {
     super()
     this.info = info

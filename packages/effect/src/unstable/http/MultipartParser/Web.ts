@@ -1,35 +1,98 @@
-// Vendored from multipasta v0.2.8. Copyright (c) 2023-present The Contributors. MIT licensed.
+/**
+ * Web Streams adapter for the low-level multipart parser.
+ *
+ * @since 4.0.0
+ */
+import type { BaseConfig, MultipartError, PartInfo } from "../MultipartParser.ts"
+import { make as makeParser } from "./internal/multipart.ts"
 
-import type { BaseConfig, MultipartError, PartInfo } from "./index.ts"
-import { make as makeParser } from "./multipart.ts"
+export type {
+  /**
+   * Re-exports the multipart parser error type.
+   *
+   * @category re-exports
+   * @since 4.0.0
+   */
+  MultipartError,
+  /**
+   * Re-exports the multipart part metadata type.
+   *
+   * @category re-exports
+   * @since 4.0.0
+   */
+  PartInfo
+} from "../MultipartParser.ts"
 
-export type { MultipartError, PartInfo } from "./index.ts"
-export { decodeField } from "./index.ts"
+export {
+  /**
+   * Re-exports the multipart field decoder.
+   *
+   * @category re-exports
+   * @since 4.0.0
+   */
+  decodeField
+} from "../MultipartParser.ts"
 
+/**
+ * A part emitted by the Web Streams multipart parser.
+ *
+ * @category models
+ * @since 4.0.0
+ */
 export type Part = Field | File
 
+/**
+ * A parsed multipart field.
+ *
+ * @category models
+ * @since 4.0.0
+ */
 export interface Field {
   readonly _tag: "Field"
   readonly info: PartInfo
   readonly value: Uint8Array
 }
 
+/**
+ * A parsed multipart file backed by a readable stream.
+ *
+ * @category models
+ * @since 4.0.0
+ */
 export interface File {
   readonly _tag: "File"
   readonly info: PartInfo
   readonly readable: ReadableStream<Uint8Array>
 }
 
-export interface MultipastaStream {
+/**
+ * Web Streams interface for multipart input and parsed parts.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface MultipartStream {
   readonly writable: WritableStream<Uint8Array>
   readonly readable: ReadableStream<Part>
 }
 
+/**
+ * Configuration for the Web Streams multipart parser.
+ *
+ * @category models
+ * @since 4.0.0
+ */
 export type WebConfig = Omit<BaseConfig, "headers"> & {
   readonly headers: Headers
 }
 
-export const make = (config: WebConfig): MultipastaStream => {
+/**
+ * Creates a Web Streams multipart parser.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const make = (config: WebConfig): MultipartStream => {
   const headers = Object.fromEntries(config.headers)
   let error: MultipartError | undefined
   let partBuffer: Array<Part> = []
@@ -61,20 +124,20 @@ export const make = (config: WebConfig): MultipastaStream => {
           } else if (finished) {
             controller.close()
           } else {
-            return new Promise<void>(resolve => {
+            return new Promise<void>((resolve) => {
               chunkResolve = () => {
                 chunkResolve = undefined
                 resolve()
               }
             }).then(() => this.pull!(controller))
           }
-        },
+        }
       })
 
       partBuffer.push({ _tag: "File", info, readable })
       if (readResolve !== undefined) readResolve()
 
-      return function (chunk) {
+      return function(chunk) {
         if (chunk === null) {
           finished = true
         } else {
@@ -95,7 +158,7 @@ export const make = (config: WebConfig): MultipastaStream => {
     onDone() {
       finished = true
       if (readResolve !== undefined) readResolve()
-    },
+    }
   })
 
   const writable = new WritableStream<Uint8Array>({
@@ -104,7 +167,7 @@ export const make = (config: WebConfig): MultipastaStream => {
     },
     close() {
       parser.end()
-    },
+    }
   })
 
   const readable = new ReadableStream<Part>({
@@ -120,18 +183,18 @@ export const make = (config: WebConfig): MultipastaStream => {
       } else if (finished) {
         controller.close()
       } else {
-        return new Promise<void>(resolve => {
+        return new Promise<void>((resolve) => {
           readResolve = () => {
             readResolve = undefined
             resolve()
           }
         }).then(() => this.pull!(controller))
       }
-    },
+    }
   })
 
   return {
     writable,
-    readable,
+    readable
   }
 }

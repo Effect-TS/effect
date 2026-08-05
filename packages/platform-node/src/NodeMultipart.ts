@@ -17,11 +17,11 @@ import type * as Path from "effect/Path"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Multipart from "effect/unstable/http/Multipart"
-import * as MP from "effect/unstable/http/Multipasta/Node"
 import * as NFS from "node:fs"
 import type { IncomingHttpHeaders } from "node:http"
 import type { Readable } from "node:stream"
 import * as NodeStreamP from "node:stream/promises"
+import * as MP from "./NodeMultipartParser.ts"
 import * as NodeStream from "./NodeStream.ts"
 
 /**

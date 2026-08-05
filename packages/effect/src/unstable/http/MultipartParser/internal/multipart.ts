@@ -1,13 +1,11 @@
-// Vendored from multipasta v0.2.8. Copyright (c) 2023-present The Contributors. MIT licensed.
-
-import type { Config, MultipartError, PartInfo } from "./index.ts"
+import type { Config, MultipartError, PartInfo } from "../../MultipartParser.ts"
 import * as CT from "./contentType.ts"
 import * as HP from "./headers.ts"
 import * as Search from "./search.ts"
 
 const State = {
   headers: 0,
-  body: 1,
+  body: 1
 } as const
 type State = (typeof State)[keyof typeof State]
 
@@ -16,15 +14,15 @@ const errEndNotReached: MultipartError = { _tag: "EndNotReached" }
 const errMaxParts: MultipartError = { _tag: "ReachedLimit", limit: "MaxParts" }
 const errMaxTotalSize: MultipartError = {
   _tag: "ReachedLimit",
-  limit: "MaxTotalSize",
+  limit: "MaxTotalSize"
 }
 const errMaxPartSize: MultipartError = {
   _tag: "ReachedLimit",
-  limit: "MaxPartSize",
+  limit: "MaxPartSize"
 }
 const errMaxFieldSize: MultipartError = {
   _tag: "ReachedLimit",
-  limit: "MaxFieldSize",
+  limit: "MaxFieldSize"
 }
 
 const constCR = new TextEncoder().encode("\r\n")
@@ -53,14 +51,14 @@ export function make({
   maxParts = Infinity,
   maxTotalSize = Infinity,
   maxPartSize = Infinity,
-  maxFieldSize = 1024 * 1024,
+  maxFieldSize = 1024 * 1024
 }: Config) {
   const boundary = parseBoundary(headers)
   if (boundary === undefined) {
     onError({ _tag: "InvalidBoundary" })
     return {
       write: noopOnChunk,
-      end() {},
+      end() {}
     }
   }
 
@@ -75,7 +73,7 @@ export function make({
     totalSize: 0,
     isFile: false,
     fieldChunks: [] as Array<Uint8Array>,
-    fieldSize: 0,
+    fieldSize: 0
   }
 
   function skipBody() {
@@ -88,7 +86,7 @@ export function make({
 
   const split = Search.make(
     `\r\n--${boundary}`,
-    function (index, chunk) {
+    function(index, chunk) {
       if (index === 0) {
         // data before the first boundary
         skipBody()
@@ -149,7 +147,7 @@ export function make({
         const contentType = CT.parse(result.headers["content-type"] as string)
         const contentDisposition = CT.parse(
           result.headers["content-disposition"] as string,
-          true,
+          true
         )
 
         if (
@@ -171,16 +169,15 @@ export function make({
         state.info = {
           name: contentDisposition.parameters.name ?? "",
           filename: encodedFilename ?? contentDisposition.parameters.filename,
-          contentType:
-            contentType.value === ""
-              ? contentDisposition.parameters.filename !== undefined
-                ? "application/octet-stream"
-                : "text/plain"
-              : contentType.value,
+          contentType: contentType.value === ""
+            ? contentDisposition.parameters.filename !== undefined
+              ? "application/octet-stream"
+              : "text/plain"
+            : contentType.value,
           contentTypeParameters: contentType.parameters,
           contentDisposition: contentDisposition.value,
           contentDispositionParameters: contentDisposition.parameters as any,
-          headers: result.headers,
+          headers: result.headers
         }
 
         state.state = State.body
@@ -210,7 +207,7 @@ export function make({
         state.fieldChunks.push(chunk)
       }
     },
-    constCR,
+    constCR
   )
 
   return {
@@ -235,7 +232,7 @@ export function make({
       state.partSize = 0
       state.fieldChunks = []
       state.fieldSize = 0
-    },
+    }
   } as const
 }
 

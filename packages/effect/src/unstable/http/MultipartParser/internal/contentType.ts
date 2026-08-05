@@ -1,5 +1,3 @@
-// Vendored from multipasta v0.2.8. Copyright (c) 2023-present The Contributors. MIT licensed.
-
 // taken from https://github.com/fastify/fast-content-type-parse
 // under the MIT license
 
@@ -43,7 +41,7 @@ const defaultContentType = { value: "", parameters: Object.create(null) }
 
 export function parse(
   header: string | undefined,
-  withoutSlash = false,
+  withoutSlash = false
 ): {
   readonly value: string
   readonly parameters: Record<string, string>
@@ -62,7 +60,7 @@ export function parse(
 
   const result = {
     value: type.toLowerCase(),
-    parameters: Object.create(null),
+    parameters: Object.create(null)
   }
 
   // parse parameters
@@ -85,7 +83,7 @@ export function parse(
     key = match[1].toLowerCase()
     value = match[2]
 
-    if (value[0] === '"') {
+    if (value[0] === "\"") {
       // remove quotes and escapes
       value = value.slice(1, value.length - 1)
 

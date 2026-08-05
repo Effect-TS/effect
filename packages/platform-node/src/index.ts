@@ -67,6 +67,11 @@ export * as NodeMultipart from "./NodeMultipart.ts"
 /**
  * @since 4.0.0
  */
+export * as NodeMultipartParser from "./NodeMultipartParser.ts"
+
+/**
+ * @since 4.0.0
+ */
 export * as NodePath from "./NodePath.ts"
 
 /**

@@ -34,7 +34,7 @@ import * as UndefinedOr from "../../UndefinedOr.ts"
 import * as IncomingMessage from "./HttpIncomingMessage.ts"
 import * as HttpServerRespondable from "./HttpServerRespondable.ts"
 import * as HttpServerResponse from "./HttpServerResponse.ts"
-import * as MP from "./Multipasta.ts"
+import * as MP from "./MultipartParser.ts"
 
 /**
  * Type identifier used to brand multipart part values.
