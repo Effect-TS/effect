@@ -61,16 +61,21 @@ it.effect("indexes conflicts from the sliced history", () =>
       const storage = yield* EventLogServerUnencrypted.makeStorageMemory
       yield* storage.write(storeId, [oldSameKey, newerOtherKey, newerSameKey])
       const registry = yield* EventLog.Registry.pipe(Effect.provide(EventLog.layerRegistry))
-      const seen = yield* Ref.make<ReadonlyArray<EventJournal.Entry> | undefined>(undefined)
+      const seenOriginA = yield* Ref.make<ReadonlyArray<EventJournal.Entry> | undefined>(undefined)
+      const seenOriginB = yield* Ref.make<ReadonlyArray<EventJournal.Entry> | undefined>(undefined)
       registry.registerHandlerUnsafe({
         event: event.tag,
         handler: {
           event,
           context: Context.empty() as Context.Context<any>,
-          handler: ({ payload, conflicts }) =>
-            (payload as { value: number }).value === 30
-              ? Ref.set(seen, conflicts.map((conflict) => conflict.entry))
+          handler: ({ payload, conflicts }) => {
+            const value = (payload as { value: number }).value
+            return value === 10
+              ? Ref.set(seenOriginA, conflicts.map((conflict) => conflict.entry))
+              : value === 30
+              ? Ref.set(seenOriginB, conflicts.map((conflict) => conflict.entry))
               : Effect.void
+          }
         }
       })
 
@@ -104,8 +109,11 @@ it.effect("indexes conflicts from the sliced history", () =>
         entries: [originA, originB]
       }).encoded
       yield* client["EventLog.WriteSingle"]({ data })
-      const conflicts = yield* Ref.get(seen)
-      assert.isDefined(conflicts)
-      assert.deepStrictEqual(conflicts.map((entry) => entry.idString), [newerSameKey.idString])
+      const originAConflicts = yield* Ref.get(seenOriginA)
+      assert.isDefined(originAConflicts)
+      assert.deepStrictEqual(originAConflicts.map((entry) => entry.idString), [])
+      const originBConflicts = yield* Ref.get(seenOriginB)
+      assert.isDefined(originBConflicts)
+      assert.deepStrictEqual(originBConflicts.map((entry) => entry.idString), [newerSameKey.idString])
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle))
   ))
