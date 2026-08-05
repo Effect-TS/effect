@@ -82,6 +82,10 @@ const UpdateServiceScopedReference = Context.Reference<number>("UpdateServiceSco
   defaultValue: () => 0
 })
 
+class ProvideServiceEffectServiceLiteral extends Context.Service<ProvideServiceEffectServiceLiteral, "LITERAL">()(
+  "ProvideServiceEffectServiceLiteral"
+) {}
+
 describe("Types", () => {
   describe("ReasonOf", () => {
     it("extracts reason type", () => {
@@ -1097,5 +1101,28 @@ describe("Effect.retry", () => {
       })
     )
     expect(result).type.toBe<Effect.Effect<string, AiError | OtherError>>()
+  })
+})
+
+describe("Effect.provideServiceEffect", () => {
+  it("data-first disallows supertype return", () => {
+    Effect.provideServiceEffect(
+      Effect.void,
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Argument of type 'Effect<string, never, never>' is not assignable to parameter of type 'Effect<"LITERAL", never, never>'
+      Effect.gen(function*() {
+        return "test"
+      })
+    )
+  })
+
+  it("data-last disallows supertype return", () => {
+    Effect.provideServiceEffect(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Argument of type 'Effect<string, never, never>' is not assignable to parameter of type 'Effect<"LITERAL", never, never>'
+      Effect.gen(function*() {
+        return "test"
+      })
+    )
   })
 })
