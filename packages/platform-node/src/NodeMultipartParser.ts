@@ -10,33 +10,6 @@ import { make as makeParser } from "effect/unstable/http/MultipartParser"
 import type { IncomingHttpHeaders } from "node:http"
 import { Duplex, Readable } from "node:stream"
 
-export type {
-  /**
-   * Re-exports the multipart parser error type.
-   *
-   * @category re-exports
-   * @since 4.0.0
-   */
-  MultipartError,
-  /**
-   * Re-exports the multipart part metadata type.
-   *
-   * @category re-exports
-   * @since 4.0.0
-   */
-  PartInfo
-} from "effect/unstable/http/MultipartParser"
-
-export {
-  /**
-   * Re-exports the multipart field decoder.
-   *
-   * @category re-exports
-   * @since 4.0.0
-   */
-  decodeField
-} from "effect/unstable/http/MultipartParser"
-
 /**
  * A part emitted by the Node.js multipart parser.
  *

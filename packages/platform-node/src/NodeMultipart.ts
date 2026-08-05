@@ -17,6 +17,7 @@ import type * as Path from "effect/Path"
 import type * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import * as Multipart from "effect/unstable/http/Multipart"
+import * as MultipartParser from "effect/unstable/http/MultipartParser"
 import * as NFS from "node:fs"
 import type { IncomingHttpHeaders } from "node:http"
 import type { Readable } from "node:stream"
@@ -103,13 +104,13 @@ class FieldImpl extends PartBase implements Multipart.Field {
   readonly value: string
 
   constructor(
-    info: MP.PartInfo,
+    info: MultipartParser.PartInfo,
     value: Uint8Array
   ) {
     super()
     this.key = info.name
     this.contentType = info.contentType
-    this.value = MP.decodeField(info, value)
+    this.value = MultipartParser.decodeField(info, value)
   }
 
   toJSON(): unknown {
@@ -158,7 +159,7 @@ class FileImpl extends PartBase implements Multipart.File {
   }
 }
 
-function convertError(cause: MP.MultipartError): Multipart.MultipartError {
+function convertError(cause: MultipartParser.MultipartError): Multipart.MultipartError {
   switch (cause._tag) {
     case "ReachedLimit": {
       switch (cause.limit) {
