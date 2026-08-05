@@ -6099,12 +6099,12 @@ export const updateContext: {
 export const updateService: {
   <I, A>(
     service: Context.Key<I, A>,
-    f: (value: A) => A
+    f: (value: A) => NoInfer<A>
   ): <XA, E, R>(self: Effect<XA, E, R>) => Effect<XA, E, R | I>
   <XA, E, R, I, A>(
     self: Effect<XA, E, R>,
     service: Context.Key<I, A>,
-    f: (value: A) => A
+    f: (value: A) => NoInfer<A>
   ): Effect<XA, E, R | I>
 } = internal.updateService
 
@@ -6169,7 +6169,7 @@ export const updateService: {
  */
 export const updateServiceScoped: <I, A>(
   service: Context.Key<I, A>,
-  f: (value: A) => A,
+  f: (value: A) => NoInfer<A>,
   options?: {
     readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
   } | undefined

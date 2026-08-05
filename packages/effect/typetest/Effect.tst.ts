@@ -1126,3 +1126,32 @@ describe("Effect.provideServiceEffect", () => {
     )
   })
 })
+
+describe("Effect.updateService", () => {
+  it("data-first disallows supertype return", () => {
+    Effect.updateService(
+      Effect.void,
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+
+  it("data-last disallows supertype return", () => {
+    Effect.updateService(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+})
+
+describe("Effect.updateServiceScoped", () => {
+  it("disallows supertype return", () => {
+    Effect.updateServiceScoped(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+})
