@@ -17,6 +17,22 @@ function fromJsonSchemaRepresentation(
 }
 
 describe("fromJsonSchemaDocument", () => {
+  it("preserves maxItems semantics with prefixItems", () => {
+    const bounded = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+      type: "array",
+      prefixItems: [{ type: "string" }, { type: "number" }],
+      maxItems: 1
+    }))
+    const open = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+      type: "array",
+      prefixItems: [{ type: "string" }],
+      maxItems: 2
+    }))
+
+    assertFalse(Schema.is(bounded)(["a", 1]))
+    assertTrue(Schema.is(open)(["a", 1]))
+  })
+
   function assertFromJsonSchema(
     input: {
       readonly schema: JsonSchema.JsonSchema
