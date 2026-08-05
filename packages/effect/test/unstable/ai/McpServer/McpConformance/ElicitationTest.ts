@@ -87,7 +87,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             yield* peer.client["elicitation/create"](request)
 
             assert.strictEqual((yield* peer.takeRequest).method, "elicitation/create")
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe("Form Mode", () => {
@@ -119,7 +119,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
                 subscribed: true
               })
             }
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MUST decode accepted content against the requested schema", () =>
           Effect.gen(function*() {
@@ -145,7 +145,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             )
 
             assert.deepStrictEqual(result, { name: "Ada", age: 37 })
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("SCENARIO returns a typed failure when the user declines", () =>
           Effect.gen(function*() {
@@ -164,7 +164,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             ).pipe(Effect.flip)
 
             assert.instanceOf(error, McpSchema.ElicitationDeclined)
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("SCENARIO interrupts the operation when the user cancels", () =>
           Effect.gen(function*() {
@@ -186,7 +186,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             if (Exit.isFailure(exit)) {
               assert.isTrue(Cause.hasInterrupts(exit.cause))
             }
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MUST reject accepted content that does not match the requested schema", () =>
           Effect.gen(function*() {
@@ -212,7 +212,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             if (Exit.isFailure(exit)) {
               assert.isTrue(Cause.hasDies(exit.cause))
             }
-          }).pipe(Effect.scoped))
+          }))
       })
     })
   })

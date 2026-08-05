@@ -31,7 +31,6 @@ describe("Redis", () => {
       const store = yield* backing.make("empty")
       yield* store.clear
     }).pipe(
-      Effect.scoped,
       Effect.provide(Persistence.layerBackingRedis.pipe(Layer.provide(Layer.succeed(Redis.Redis, redis))))
     )
   })
@@ -68,7 +67,6 @@ describe("Redis", () => {
         expires: new Map([["ttl:batch", 2]])
       }])
     }).pipe(
-      Effect.scoped,
       Effect.provide(Persistence.layerBackingRedis.pipe(Layer.provide(Layer.succeed(Redis.Redis, redis))))
     )
   })

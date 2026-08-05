@@ -518,59 +518,51 @@ describe("PubSub", () => {
       }))
 
     it.effect("sliding preserves publish order with a lagging subscriber", () =>
-      Effect.scoped(
-        Effect.gen(function*() {
-          const pubsub = yield* PubSub.sliding<number>({ capacity: 4, replay: 3 })
-          yield* PubSub.subscribe(pubsub)
-          yield* PubSub.publishAll(pubsub, [1, 2])
-          const subscription = yield* PubSub.subscribe(pubsub)
-          yield* PubSub.publishAll(pubsub, [3, 4, 5])
+      Effect.gen(function*() {
+        const pubsub = yield* PubSub.sliding<number>({ capacity: 4, replay: 3 })
+        yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publishAll(pubsub, [1, 2])
+        const subscription = yield* PubSub.subscribe(pubsub)
+        yield* PubSub.publishAll(pubsub, [3, 4, 5])
 
-          const values = yield* PubSub.takeAll(subscription)
-          assert.isTrue(values.every((value, index) => index === 0 || values[index - 1] <= value))
-        })
-      ))
+        const values = yield* PubSub.takeAll(subscription)
+        assert.isTrue(values.every((value, index) => index === 0 || values[index - 1] <= value))
+      }))
   })
 
   it.effect("shutdown interrupts suspended subscribers", () =>
-    Effect.scoped(
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.unbounded<number>()
-        const subscription = yield* PubSub.subscribe(pubsub)
-        const fiber = yield* Effect.forkChild(PubSub.take(subscription), { startImmediately: true })
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.unbounded<number>()
+      const subscription = yield* PubSub.subscribe(pubsub)
+      const fiber = yield* Effect.forkChild(PubSub.take(subscription), { startImmediately: true })
 
-        yield* PubSub.shutdown(pubsub)
+      yield* PubSub.shutdown(pubsub)
 
-        const exit = yield* Fiber.await(fiber)
-        assert.isTrue(Exit.hasInterrupts(exit!))
-      })
-    ))
+      const exit = yield* Fiber.await(fiber)
+      assert.isTrue(Exit.hasInterrupts(exit!))
+    }))
 
   it.effect("publish succeeds after interrupting a suspended subscriber", () =>
-    Effect.scoped(
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.dropping<number>(1)
-        const subscription = yield* PubSub.subscribe(pubsub)
-        const fiber = yield* Effect.forkChild(PubSub.take(subscription), { startImmediately: true })
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.dropping<number>(1)
+      const subscription = yield* PubSub.subscribe(pubsub)
+      const fiber = yield* Effect.forkChild(PubSub.take(subscription), { startImmediately: true })
 
-        yield* Fiber.interrupt(fiber)
+      yield* Fiber.interrupt(fiber)
 
-        assert.isTrue(yield* PubSub.publish(pubsub, 42))
-        assert.strictEqual(yield* PubSub.take(subscription), 42)
-      })
-    ))
+      assert.isTrue(yield* PubSub.publish(pubsub, 42))
+      assert.strictEqual(yield* PubSub.take(subscription), 42)
+    }))
 
   it.effect("shutdown interrupts suspended takeAll subscribers", () =>
-    Effect.scoped(
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.unbounded<number>()
-        const subscription = yield* PubSub.subscribe(pubsub)
-        const fiber = yield* Effect.forkChild(PubSub.takeAll(subscription), { startImmediately: true })
-        yield* PubSub.shutdown(pubsub)
-        const exit = yield* Fiber.await(fiber)
-        assert.isTrue(Exit.hasInterrupts(exit))
-      })
-    ))
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.unbounded<number>()
+      const subscription = yield* PubSub.subscribe(pubsub)
+      const fiber = yield* Effect.forkChild(PubSub.takeAll(subscription), { startImmediately: true })
+      yield* PubSub.shutdown(pubsub)
+      const exit = yield* Fiber.await(fiber)
+      assert.isTrue(Exit.hasInterrupts(exit))
+    }))
 
   it.effect("Stream.fromPubSub completes after shutdown", () =>
     Effect.gen(function*() {
@@ -587,24 +579,20 @@ describe("PubSub", () => {
     }))
 
   it.effect("publish returns false after shutdown", () =>
-    Effect.scoped(
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.unbounded<number>()
-        yield* PubSub.shutdown(pubsub)
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.unbounded<number>()
+      yield* PubSub.shutdown(pubsub)
 
-        assert.strictEqual(yield* PubSub.publish(pubsub, 1), false)
-      })
-    ))
+      assert.strictEqual(yield* PubSub.publish(pubsub, 1), false)
+    }))
 
   it.effect("publishAll returns false after shutdown", () =>
-    Effect.scoped(
-      Effect.gen(function*() {
-        const pubsub = yield* PubSub.unbounded<number>()
-        yield* PubSub.shutdown(pubsub)
+    Effect.gen(function*() {
+      const pubsub = yield* PubSub.unbounded<number>()
+      yield* PubSub.shutdown(pubsub)
 
-        assert.strictEqual(yield* PubSub.publishAll(pubsub, [1, 2, 3]), false)
-      })
-    ))
+      assert.strictEqual(yield* PubSub.publishAll(pubsub, [1, 2, 3]), false)
+    }))
 })
 
 const retains = (root: object, target: object): boolean => {
