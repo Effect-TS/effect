@@ -438,7 +438,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
           if (entry !== undefined && entry.createdAtMillis > entryMillis) {
             continue
           }
-          for (let j = i + 2; j < journal.length; j++) {
+          for (let j = i + 1; j < journal.length; j++) {
             const scannedEntry = journal[j]!
             if (scannedEntry.event === originEntry.event && scannedEntry.primaryKey === originEntry.primaryKey) {
               conflicts.push(scannedEntry)
