@@ -134,60 +134,78 @@ describe.concurrent("Sharding", () => {
       expect(driver.replyIds.size).toEqual(0)
     }))
 
-  for (const preemptiveShutdown of [true, false]) {
-    it.live(`shutdown completes when a finalizing entity sends an outgoing message (preemptiveShutdown=${preemptiveShutdown})`, () =>
-      Effect.gen(function*() {
-        const Receiver = Entity.make("ShutdownDeadlockReceiver", [
-          Rpc.make("Ping").annotate(ClusterSchema.Persisted, false)
-        ])
-        const ReceiverLayer = Receiver.toLayer({ Ping: () => Effect.void })
+  for (const persisted of [false, true] as const) {
+    for (const preemptiveShutdown of [true, false]) {
+      it.live(
+        `shutdown completes when a finalizing entity sends an outgoing message (persisted=${persisted}, preemptiveShutdown=${preemptiveShutdown})`,
+        () =>
+          Effect.gen(function*() {
+            const Receiver = Entity.make("ShutdownDeadlockReceiver", [
+              Rpc.make("Ping").annotate(ClusterSchema.Persisted, persisted)
+            ])
+            const ReceiverLayer = Receiver.toLayer({ Ping: () => Effect.void })
 
-        const Sender = Entity.make("ShutdownDeadlockSender", [
-          Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
-        ])
-        const SenderLayer = Sender.toLayer(Effect.gen(function*() {
-          const receiver = yield* Receiver.client
-          // finalizer sends an outgoing message during entity teardown
-          yield* Effect.addFinalizer(() => receiver("peer").Ping(void 0, { discard: true }).pipe(Effect.ignore))
-          return { Arm: () => Effect.void }
-        }))
+            const Sender = Entity.make("ShutdownDeadlockSender", [
+              Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
+            ])
+            const SenderLayer = Sender.toLayer(Effect.gen(function*() {
+              const receiver = yield* Receiver.client
+              // finalizer sends an outgoing message during entity teardown
+              yield* Effect.addFinalizer(() => receiver("peer").Ping(void 0, { discard: true }).pipe(Effect.ignore))
+              return { Arm: () => Effect.void }
+            }))
 
-        const env = Layer.mergeAll(SenderLayer, ReceiverLayer).pipe(
-          Layer.provideMerge(Sharding.layer),
-          Layer.provide(RunnerStorage.layerMemory),
-          Layer.provide(RunnerHealth.layerNoop),
-          Layer.provide(Runners.layerNoop),
-          Layer.provide(MessageStorage.layerMemory),
-          Layer.provide(ShardingConfig.layer({
-            runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
-            shardsPerGroup: 8,
-            entityTerminationTimeout: 0,
-            entityMessagePollInterval: 50,
-            refreshAssignmentsInterval: 20,
-            sendRetryInterval: 10,
-            preemptiveShutdown
-          }))
-        )
+            const env = Layer.mergeAll(SenderLayer, ReceiverLayer).pipe(
+              Layer.provideMerge(Sharding.layer),
+              Layer.provide(RunnerStorage.layerMemory),
+              Layer.provide(RunnerHealth.layerNoop),
+              Layer.provide(Runners.layerNoop),
+              Layer.provideMerge(MessageStorage.layerMemory),
+              Layer.provide(ShardingConfig.layer({
+                runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+                shardsPerGroup: 8,
+                entityTerminationTimeout: 0,
+                entityMessagePollInterval: 50,
+                refreshAssignmentsInterval: 20,
+                sendRetryInterval: 10,
+                preemptiveShutdown
+              }))
+            )
 
-        const armed = Latch.makeUnsafe()
-        const runFiber = yield* Effect.gen(function*() {
-          const sharding = yield* Sharding.Sharding
-          const shardId = sharding.getShardId(EntityId.make("1"), "default")
-          for (let i = 0; i < 500 && !sharding.hasShardId(shardId); i++) {
-            yield* Effect.sleep(5)
-          }
-          yield* (yield* Sender.client)("1").Arm()
-          yield* armed.open
-          return yield* Effect.never
-        }).pipe(Effect.provide(env), Effect.scoped, Effect.forkChild)
+            const shardAcquired = Latch.makeUnsafe()
+            const armed = Latch.makeUnsafe()
+            let driver!: MessageStorage.MemoryDriver["Service"]
+            const runFiber = yield* Effect.gen(function*() {
+              driver = yield* MessageStorage.MemoryDriver
+              const sharding = yield* Sharding.Sharding
+              const shardId = sharding.getShardId(EntityId.make("1"), "default")
+              while (!sharding.hasShardId(shardId)) {
+                yield* Effect.sleep(5)
+              }
+              yield* shardAcquired.open
+              yield* (yield* Sender.client)("1").Arm()
+              yield* armed.open
+              return yield* Effect.never
+            }).pipe(Effect.provide(env), Effect.scoped, Effect.forkDetach)
 
-        yield* armed.await
+            const acquired = yield* shardAcquired.await.pipe(Effect.timeoutOption("8 seconds"))
+            if (Option.isNone(acquired)) {
+              runFiber.interruptUnsafe()
+              yield* Fiber.await(runFiber)
+            }
+            assert(Option.isSome(acquired), "Timed out waiting for sender shard acquisition")
+            yield* armed.await
 
-        // Interrupting the fiber closes the Sharding scope, running the entity
-        // finalizer (and its outgoing send) as part of teardown
-        const completed = yield* Fiber.interrupt(runFiber).pipe(Effect.timeoutOption("10 seconds"))
-        assert(Option.isSome(completed), "Sharding scope-close hung during shutdown (deadlock)")
-      }))
+            // Interrupting the fiber closes the Sharding scope, running the entity
+            // finalizer (and its outgoing send) as part of teardown
+            runFiber.interruptUnsafe()
+            const completed = yield* Fiber.await(runFiber).pipe(Effect.timeoutOption("4 seconds"))
+            assert(Option.isSome(completed), "Sharding scope-close hung during shutdown (deadlock)")
+            assert.strictEqual(driver.journal.length, persisted ? 1 : 0)
+          }),
+        20_000
+      )
+    }
   }
 
   it.effect("interrupts are sent for volatile messages on shutdown", () =>
