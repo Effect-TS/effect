@@ -1,6 +1,6 @@
+import * as Node from "@effect/platform-node/NodeMultipartParser"
 import * as Multipart from "effect/unstable/http/MultipartParser"
 import { assert, describe, test } from "vitest"
-import * as Node from "../src/NodeMultipartParser.ts"
 
 type Expected = Array<
   | [type: "field", name: string, value: string, contentType: string]
