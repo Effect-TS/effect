@@ -506,7 +506,7 @@ abstract class NodeBase {
 }
 
 abstract class ParentNode extends NodeBase {
-  readonly staticChildren: Record<string, StaticNode> = {}
+  readonly staticChildren: Record<string, StaticNode> = Object.create(null)
 
   findStaticMatchingChild(
     path: string,
@@ -760,7 +760,7 @@ function compileCreateParams(
 ): (paramsArray: ReadonlyArray<string>) => Record<string, string> {
   const len = params.length
   return function(paramsArray) {
-    const paramsObject: Record<string, string> = {}
+    const paramsObject: Record<string, string> = Object.create(null)
     for (let i = 0; i < len; i++) {
       paramsObject[params[i]] = paramsArray[i]
     }
@@ -895,6 +895,8 @@ function safeDecodeURIComponent(uriComponent: string) {
 
   for (let i = startIndex; i < uriComponent.length; i++) {
     if (uriComponent.charCodeAt(i) === 37) {
+      if (i + 2 >= uriComponent.length) break
+
       const highCharCode = uriComponent.charCodeAt(i + 1)
       const lowCharCode = uriComponent.charCodeAt(i + 2)
 

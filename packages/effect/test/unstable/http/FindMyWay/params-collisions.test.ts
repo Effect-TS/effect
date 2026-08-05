@@ -92,3 +92,10 @@ it("distinguishes routes with different static parts between parameters", () => 
   assert.strictEqual(router.find("GET", "/foo/x-y")?.handler, "dash")
   assert.strictEqual(router.find("GET", "/foo/x.y")?.handler, "dot")
 })
+
+it("preserves parameters named __proto__", () => {
+  const router = Router.make<boolean>()
+  router.on("GET", "/foo/:__proto__", true)
+
+  assert.strictEqual(router.find("GET", "/foo/value")?.params.__proto__, "value")
+})

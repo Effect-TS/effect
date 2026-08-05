@@ -71,6 +71,14 @@ it("safe decodeURIComponent", () => {
   assert.isUndefined(router.find("GET", "/test/hel%\"Flo"))
 })
 
+it("rejects truncated percent encodings", () => {
+  const router = Router.make<boolean>()
+  router.on("GET", "/test/:id", true)
+
+  assert.isUndefined(router.find("GET", "/test/a%"))
+  assert.isUndefined(router.find("GET", "/test/a%2"))
+})
+
 it("does not match an empty segment against a non-empty regex", () => {
   const router = Router.make<boolean>({
     ignoreTrailingSlash: false
@@ -106,4 +114,11 @@ it("avoids backtracking across static parameter separators", { timeout: 1_000 },
   router.on("GET", "/:foo-:bar-", true)
 
   router.find("GET", "/" + "-".repeat(16_000) + "a")
+})
+
+it("avoids backtracking across mixed static parameter separators", { timeout: 1_000 }, () => {
+  const router = Router.make<boolean>()
+  router.on("GET", "/:foo-:bar-", true)
+
+  router.find("GET", "/" + "a-".repeat(8_000) + "b")
 })
