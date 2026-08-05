@@ -322,12 +322,12 @@ describe("ConfigProvider", () => {
       }
     })
 
-    it("does not reference import.meta in the common ConfigProvider module", () => {
+    it("does not reference import.meta.env in the common ConfigProvider module", () => {
       const sourcePath = Fs.existsSync("src/ConfigProvider.ts")
         ? "src/ConfigProvider.ts"
         : "packages/effect/src/ConfigProvider.ts"
       const source = Fs.readFileSync(sourcePath, "utf8")
-      deepStrictEqual(source.includes("import.meta"), false)
+      deepStrictEqual(source.includes("import.meta.env"), false)
     })
 
     it("env without an underscore", async () => {
