@@ -969,13 +969,13 @@ const make = Effect.gen(function*() {
     void,
     MailboxFull | AlreadyProcessingMessage | PersistenceError
   > {
+    const isPersisted = Context.get(
+      message._tag === "OutgoingRequest" ? message.annotations : message.rpc.annotations,
+      Persisted
+    )
     return Effect.catchFilter(
       Effect.suspend(() => {
         const address = message.envelope.address
-        const isPersisted = Context.get(
-          message._tag === "OutgoingRequest" ? message.annotations : message.rpc.annotations,
-          Persisted
-        )
         if (isPersisted && !storageEnabled) {
           return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
         }
@@ -997,6 +997,25 @@ const make = Effect.gen(function*() {
           ? Result.succeed(error)
           : Result.fail(error),
       (error) => {
+        // Abandon the message during teardown: retrying would loop forever once the runner is shutting down
+        if (error._tag === "EntityNotAssignedToRunner") {
+          const targetManager = entityManagers.get(message.envelope.address.entityType)
+          const cannotRecover = MutableRef.get(isShutdown) ||
+            (targetManager !== undefined && targetManager.status !== "alive")
+          if (cannotRecover) {
+            if (!isPersisted) {
+              return Effect.logDebug("Abandoning outgoing message during shutdown", message.envelope.address)
+            }
+            const persist = message._tag === "OutgoingRequest"
+              ? storage.saveRequest(message)
+              : storage.saveEnvelope(message)
+            return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
+              Effect.andThen(
+                Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
+              )
+            )
+          }
+        }
         if (retries === 0) {
           return Effect.die(error)
         }
