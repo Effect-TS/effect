@@ -73,7 +73,8 @@ export function make({
     totalSize: 0,
     isFile: false,
     fieldChunks: [] as Array<Uint8Array>,
-    fieldSize: 0
+    fieldSize: 0,
+    done: false
   }
 
   function skipBody() {
@@ -120,6 +121,7 @@ export function make({
 
         // trailing --
         if (chunk[0] === 45 && chunk[1] === 45) {
+          state.done = true
           return onDone()
         }
 
@@ -223,7 +225,7 @@ export function make({
     },
     end() {
       split.end()
-      if (state.state === State.body) {
+      if (!state.done) {
         onError(errEndNotReached)
       }
 
@@ -236,6 +238,7 @@ export function make({
       state.partSize = 0
       state.fieldChunks = []
       state.fieldSize = 0
+      state.done = false
     }
   } as const
 }

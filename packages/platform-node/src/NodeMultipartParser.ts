@@ -97,6 +97,7 @@ export class MultipartStream extends Duplex {
         this.push(file)
         this.emit("file", file)
         return (chunk) => {
+          if (currentError !== undefined) return
           this._canWrite = file.push(chunk)
           if (chunk === null && !this._canWrite) {
             currentFile = undefined

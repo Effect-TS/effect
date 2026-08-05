@@ -177,11 +177,20 @@ const cases: ReadonlyArray<MultipartCase> = [
     name: "Resets maxPartSize between field parts"
   },
   {
-    source: [""],
+    source: [],
     boundary: "----WebKitFormBoundaryTB2MiQ36fnSJlrhY",
     expected: [],
     errors: ["EndNotReached"],
     name: "No fields and no files"
+  },
+  {
+    source: [
+      "--boundary\r\ncontent-disposition: form-data; nam"
+    ],
+    boundary: "boundary",
+    expected: [],
+    errors: ["EndNotReached"],
+    name: "Truncated mid-header"
   },
   {
     source: [
@@ -672,6 +681,32 @@ describe("multipart", () => {
 })
 
 describe("node api", () => {
+  test("stops sending file chunks after an error", () => {
+    const parser = Node.make({
+      headers: {
+        "content-type": "multipart/form-data; boundary=boundary"
+      },
+      maxPartSize: 100
+    })
+    let file: Node.FileStream | undefined
+    parser.on("file", (part) => {
+      file = part
+      part.on("error", () => {})
+    })
+    parser.on("error", () => {})
+
+    parser.write(
+      new TextEncoder().encode(
+        "--boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"a.txt\"\r\n\r\nA"
+      )
+    )
+    parser.write(new TextEncoder().encode("B".repeat(128)))
+
+    assert.strictEqual(file?.read().toString(), "A")
+    file?.destroy()
+    parser.destroy()
+  })
+
   test.each(cases)("$name", (opts) => {
     const parts: Expected = []
     const errors: Array<Multipart.MultipartError["_tag"]> = []
