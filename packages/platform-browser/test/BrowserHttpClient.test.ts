@@ -88,4 +88,17 @@ describe("BrowserHttpClient", () => {
         body: "{ \"message\": \"Success!\" }"
       }]
     }))))
+
+  it.effect("decodes an XHR response as FormData", () =>
+    Effect.gen(function*() {
+      const formData = yield* HttpClient.get("http://localhost/form").pipe(
+        Effect.flatMap((response) => response.formData)
+      )
+      assert.strictEqual(formData.get("value"), "test")
+    }).pipe(Effect.provide(layer({
+      get: ["http://localhost/form", {
+        headers: { "content-type": "multipart/form-data; boundary=x" },
+        body: "--x\r\nContent-Disposition: form-data; name=\"value\"\r\n\r\ntest\r\n--x--\r\n"
+      }]
+    }))))
 })

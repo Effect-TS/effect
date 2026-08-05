@@ -399,7 +399,11 @@ class ClientResponseImpl extends IncomingMessageImpl<HttpClientError.HttpClientE
   }
 
   get formData(): Effect.Effect<FormData, HttpClientError.HttpClientError> {
-    return Effect.die("Not implemented")
+    return Effect.flatMap(this.arrayBuffer, (body) =>
+      Effect.tryPromise({
+        try: () => new globalThis.Response(body, { headers: this.headers }).formData(),
+        catch: this.onError
+      }))
   }
 
   override toString(): string {
