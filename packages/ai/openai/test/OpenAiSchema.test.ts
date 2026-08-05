@@ -1,7 +1,10 @@
 import * as OpenAiSchema from "@effect/ai-openai/OpenAiSchema"
+import { type Generated, OpenAiClient, OpenAiLanguageModel } from "@effect/ai-openai"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Schema, Stream } from "effect"
+import { Effect, Layer, Schema, Stream } from "effect"
+import { LanguageModel } from "effect/unstable/ai"
 import * as Sse from "effect/unstable/encoding/Sse"
+import { HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
 const makeResponse = (overrides: Record<string, unknown> = {}) => ({
   id: "resp_123",
@@ -288,5 +291,35 @@ describe("OpenAiSchema", () => {
 
     assert.strictEqual(numeric.data[0].embedding[0], 0.1)
     assert.strictEqual(base64.data[0].embedding, "AQID")
+  })
+
+  it.effect("exposes the response.failed error payload", () => {
+    const response = HttpClientResponse.fromWeb(HttpClientRequest.get("https://api.openai.com/v1/responses"), new Response())
+    const failed = {
+      id: "resp_1",
+      object: "response",
+      created_at: 1,
+      model: "gpt-4o-mini",
+      status: "failed",
+      output: [],
+      error: { code: "server_error", message: "provider exploded" }
+    }
+    const client = Layer.succeed(OpenAiClient.OpenAiClient, OpenAiClient.OpenAiClient.of({
+      client: undefined as any,
+      createResponse: () => Effect.die("unexpected"),
+      createResponseStream: () => Effect.succeed([
+        response,
+        Stream.make({ type: "response.failed", sequence_number: 1, response: failed } as any as Generated.ResponseStreamEvent)
+      ]),
+      createEmbedding: () => Effect.die("unexpected")
+    }))
+
+    return LanguageModel.streamText({ prompt: "test" }).pipe(
+      Stream.runCollect,
+      Effect.map((parts) => Array.from(parts).find((part) => part.type === "error")),
+      Effect.tap((error) => Effect.sync(() => assert.isDefined(error))),
+      Effect.provide(OpenAiLanguageModel.model("gpt-4o-mini")),
+      Effect.provide(client)
+    )
   })
 })
