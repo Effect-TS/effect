@@ -1,14 +1,25 @@
 import { assert, it } from "@effect/vitest"
-import { Effect, Exit, Option } from "effect"
-import { ResourceRef } from "../../src/unstable/cluster/internal/resourceRef.ts"
+import { Effect, Exit, Option, Scope } from "effect"
+import { ResourceRef } from "effect/unstable/cluster/internal/resourceRef"
 
 it.live("does not wedge await after a failed rebuild", () =>
   Effect.scoped(Effect.gen(function*() {
     const parentScope = yield* Effect.scope
     let fail = false
-    const ref = yield* ResourceRef.from(parentScope, () => fail ? Effect.fail("failed") : Effect.succeed(1))
+    let releases = 0
+    const ref = yield* ResourceRef.from(parentScope, (scope) =>
+      Scope.addFinalizer(
+        scope,
+        Effect.sync(() => releases++)
+      ).pipe(
+        Effect.andThen(fail ? Effect.fail("failed") : Effect.succeed(1))
+      ))
     fail = true
-    assert.isTrue(Exit.isFailure(yield* Effect.exit(ref.rebuildUnsafe())))
+    assert.deepStrictEqual(yield* Effect.exit(ref.rebuildUnsafe()), Exit.fail("failed"))
+    assert.strictEqual(releases, 2)
     const completed = yield* Effect.exit(ref.await).pipe(Effect.timeoutOption(10))
-    assert.isTrue(Option.isSome(completed))
+    assert.deepStrictEqual(completed, Option.some(Exit.fail("failed")))
+    fail = false
+    yield* ref.rebuildUnsafe()
+    assert.strictEqual(yield* ref.await, 1)
   })))
