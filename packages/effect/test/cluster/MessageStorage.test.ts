@@ -1,4 +1,4 @@
-import { assert, describe, expect, it } from "@effect/vitest"
+import { describe, expect, it } from "@effect/vitest"
 import { Context, Effect, Exit, Fiber, Latch, Layer, Option, Schema } from "effect"
 import { TestClock } from "effect/testing"
 import {
@@ -31,14 +31,14 @@ describe("MessageStorage", () => {
           entityType: EntityType.make("Repro"),
           entityId: EntityId.make("one")
         })
-        const envelope = {
+        const envelope: Envelope.PartialRequestEncoded = {
           _tag: "Request",
           requestId: "1",
           address: { shardId: { group: "default", id: 1 }, entityType: "Repro", entityId: "one" },
           tag: "Repro",
           payload: {},
           headers: {}
-        } as any
+        }
         yield* driver.encoded.saveEnvelope({ envelope, primaryKey: "dedup-key", deliverAt: null })
         yield* driver.encoded.clearAddress(address)
         const result = yield* driver.encoded.saveEnvelope({
@@ -46,7 +46,7 @@ describe("MessageStorage", () => {
           primaryKey: "dedup-key",
           deliverAt: null
         })
-        assert.strictEqual(result._tag, "Success")
+        expect(result._tag).toEqual("Success")
       }).pipe(Effect.provide(MessageStorage.MemoryDriver.layer)))
 
     it.effect("saves a request", () =>
