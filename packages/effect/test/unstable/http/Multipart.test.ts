@@ -38,6 +38,30 @@ describe("Multipart", () => {
       ])
     }))
 
+  it.effect("parses non-Latin-1 filenames", () =>
+    Effect.gen(function*() {
+      const data = new globalThis.FormData()
+      data.append("file", new globalThis.File(["content"], "日本語.txt", { type: "text/plain" }))
+      const response = new Response(data)
+
+      const parts = yield* Stream.fromReadableStream({
+        evaluate: () => response.body!,
+        onError: identity
+      }).pipe(
+        Stream.pipeThroughChannel(Multipart.makeChannel(Object.fromEntries(response.headers))),
+        Stream.mapEffect((part) =>
+          Unify.unify(
+            part._tag === "File"
+              ? Stream.runDrain(part.content).pipe(Effect.as([part.key, part.name] as const))
+              : Effect.succeed([part.key, part.value] as const)
+          )
+        ),
+        Stream.runCollect
+      )
+
+      deepStrictEqual(parts, [["file", "日本語.txt"]])
+    }))
+
   it.effect("fails when a limit is exceeded even if the whole body arrives in one chunk", () =>
     Effect.gen(function*() {
       const boundary = "----testboundary"
