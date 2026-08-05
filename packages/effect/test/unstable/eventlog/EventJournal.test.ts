@@ -36,12 +36,20 @@ describe("EventJournal", () => {
         primaryKey: "key",
         payload: new Uint8Array()
       }, { disableChecks: true })
+
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 0)
       yield* journal.writeFromRemote({
         remoteId,
         entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
         effect: () => Effect.void
       })
       assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 1)
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 5, entry })],
+        effect: () => Effect.void
+      })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
     }))
 
   it.effect("records entries in memory and publishes local changes", () =>
