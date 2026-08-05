@@ -103,29 +103,29 @@ describe("Channel", () => {
         assert.deepStrictEqual(result, [[0, 1, 1], [2, 3]])
       }))
 
-    it.effect("closes synchronous iterators on early termination", () =>
+    it.effect.each(
+      [
+        ["fromIterator", false],
+        ["fromIteratorArray", true]
+      ] as const
+    )("%s closes synchronous iterators on early termination", ([_, array]) =>
       Effect.gen(function*() {
-        const check = Effect.fnUntraced(function*(array: boolean) {
-          let closed = false
-          function* values() {
-            try {
-              yield 1
-              yield 2
-            } finally {
-              closed = true
-            }
+        let closed = false
+        function* values() {
+          try {
+            yield 1
+            yield 2
+          } finally {
+            closed = true
           }
-          const channel = array
-            ? Channel.fromIteratorArray(() => values(), 1)
-            : Channel.fromIterator(() => values())
-          yield* Channel.runHead(channel)
-          return closed
-        })
+        }
+        if (array) {
+          yield* Channel.runHead(Channel.fromIteratorArray(() => values(), 1))
+        } else {
+          yield* Channel.runHead(Channel.fromIterator(() => values()))
+        }
 
-        assert.deepStrictEqual(
-          [yield* check(false), yield* check(true)],
-          [true, true]
-        )
+        assert.isTrue(closed)
       }))
 
     it.effect("fromIterable", () =>

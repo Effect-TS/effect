@@ -656,15 +656,16 @@ export const acquireRelease: {
  * @since 4.0.0
  */
 export const fromIterator = <A, L>(iterator: LazyArg<Iterator<A, L>>): Channel<A, never, L> =>
-  fromPull(
-    Effect.sync(() => {
-      const iter = iterator()
-      return Effect.suspend(() => {
-        const state = iter.next()
-        return state.done ? Cause.done(state.value) : Effect.succeed(state.value)
-      })
+  fromTransform(Effect.fnUntraced(function*(_, scope) {
+    const iter = iterator()
+    if (iter.return) {
+      yield* Scope.addFinalizer(scope, Effect.sync(() => iter.return!()))
+    }
+    return Effect.suspend(() => {
+      const state = iter.next()
+      return state.done ? Cause.done(state.value) : Effect.succeed(state.value)
     })
-  )
+  }))
 
 /**
  * Creates a `Channel` that emits all elements from an array.
@@ -755,28 +756,29 @@ export const fromIteratorArray = <A, L>(
   iterator: LazyArg<Iterator<A, L>>,
   chunkSize = DefaultChunkSize
 ): Channel<Arr.NonEmptyReadonlyArray<A>, never, L> =>
-  fromPull(
-    Effect.sync(() => {
-      const iter = iterator()
-      let done = Option.none<L>()
-      return Effect.suspend(() => {
-        if (done._tag === "Some") return Cause.done(done.value)
-        const buffer: Array<A> = []
-        while (buffer.length < chunkSize) {
-          const state = iter.next()
-          if (state.done) {
-            if (buffer.length === 0) {
-              return Cause.done(state.value)
-            }
-            done = Option.some(state.value)
-            break
+  fromTransform(Effect.fnUntraced(function*(_, scope) {
+    const iter = iterator()
+    if (iter.return) {
+      yield* Scope.addFinalizer(scope, Effect.sync(() => iter.return!()))
+    }
+    let done = Option.none<L>()
+    return Effect.suspend(() => {
+      if (done._tag === "Some") return Cause.done(done.value)
+      const buffer: Array<A> = []
+      while (buffer.length < chunkSize) {
+        const state = iter.next()
+        if (state.done) {
+          if (buffer.length === 0) {
+            return Cause.done(state.value)
           }
-          buffer.push(state.value)
+          done = Option.some(state.value)
+          break
         }
-        return Effect.succeed(buffer as any as Arr.NonEmptyReadonlyArray<A>)
-      })
+        buffer.push(state.value)
+      }
+      return Effect.succeed(buffer as any as Arr.NonEmptyReadonlyArray<A>)
     })
-  )
+  }))
 
 /**
  * Creates a `Channel` that emits all elements from an iterable.
