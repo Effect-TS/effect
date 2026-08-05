@@ -292,7 +292,13 @@ describe("McpServer", () => {
           arguments: {}
         })
 
-        assert.notStrictEqual(result.isError, true)
+        assert.deepStrictEqual(
+          result,
+          new McpSchema.CallToolResult({
+            isError: false,
+            content: []
+          })
+        )
       }))
 
     it.effect("returns schema-validated messages for declared handler failures", () =>

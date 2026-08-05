@@ -1299,7 +1299,7 @@ export const registerToolkit: <Tools extends Record<string, Tool.Any>>(
             new CallToolResult({
               isError: false,
               structuredContent: typeof result.encodedResult === "object" ? result.encodedResult : undefined,
-              content: [{
+              content: result.encodedResult === undefined ? [] : [{
                 type: "text",
                 text: JSON.stringify(result.encodedResult)
               }]
