@@ -15,7 +15,9 @@ it.effect("shuts down the Web provider after forceFlush rejects", () =>
       return Promise.resolve()
     }
     const processor = { onStart() {}, onEnd() {}, shutdown: async () => {}, forceFlush: async () => {} } as any
-    yield* Effect.exit(Effect.scoped(Layer.build(WebSdk.layerTracerProvider(processor)).pipe(Effect.provide(Resource.layerEmpty))))
+    yield* Effect.exit(
+      Effect.scoped(Layer.build(WebSdk.layerTracerProvider(processor)).pipe(Effect.provide(Resource.layerEmpty)))
+    )
     WebTracerProvider.prototype.forceFlush = originalFlush
     WebTracerProvider.prototype.shutdown = originalShutdown
     assert.strictEqual(shutdowns, 1)
