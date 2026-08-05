@@ -1,7 +1,65 @@
-import { MssqlClient } from "@effect/sql-mssql"
-import { describe, expect, it } from "@effect/vitest"
+import { MssqlClient, Procedure } from "@effect/sql-mssql"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect } from "effect"
+import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import * as Statement from "effect/unstable/sql/Statement"
+import type * as Tedious from "tedious"
+import { vi } from "vitest"
+
+const state = vi.hoisted(() => ({ type: {} }))
+
+vi.mock("tedious", async (importOriginal) => {
+  const original = await importOriginal<typeof Tedious>()
+
+  class MockRequest {
+    readonly listeners: Record<string, (...args: Array<any>) => void> = {}
+
+    constructor(
+      readonly sql: string,
+      readonly callback: (cause: unknown, rowCount: number, rows: ReadonlyArray<any>) => void
+    ) {}
+
+    addParameter() {}
+    addOutputParameter() {}
+    on(event: string, listener: (...args: Array<any>) => void) {
+      this.listeners[event] = listener
+    }
+  }
+
+  class MockConnection {
+    connect(callback: (cause: unknown) => void) {
+      callback(null)
+    }
+    close() {}
+    on() {}
+    cancel() {}
+    execSql(request: MockRequest) {
+      request.callback(null, 0, [])
+    }
+    callProcedure(request: MockRequest) {
+      request.listeners.returnValue("answer", 42)
+      request.callback(null, 0, [])
+    }
+    beginTransaction(callback: (cause: unknown) => void) {
+      callback(null)
+    }
+    commitTransaction(callback: (cause: unknown) => void) {
+      callback(null)
+    }
+    saveTransaction(callback: (cause: unknown) => void) {
+      callback(null)
+    }
+    rollbackTransaction(callback: (cause: unknown) => void) {
+      callback(null)
+    }
+  }
+
+  return {
+    ...original,
+    Connection: MockConnection,
+    Request: MockRequest
+  }
+})
 
 const sql = Statement.make(Effect.void as any, MssqlClient.makeCompiler(), [], undefined)
 
@@ -100,4 +158,16 @@ describe("mssql", () => {
     const [query] = sql`SELECT * FROM ${sql("peo[]ple.te[st]ing")}`.compile()
     expect(query).toEqual(`SELECT * FROM [peo[]]ple].[te[st]]ing]`)
   })
+
+  it.effect("returns stored procedure output parameters under output", () =>
+    Effect.gen(function*() {
+      const client = yield* MssqlClient.make({ server: "localhost" })
+      const definition = Procedure.outputParam<number>()("answer", state.type as any)(Procedure.make("get_answer"))
+      const result = yield* client.call(Procedure.compile(definition)({}))
+
+      assert.deepStrictEqual(result, { output: { answer: 42 }, rows: [] })
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
 })
