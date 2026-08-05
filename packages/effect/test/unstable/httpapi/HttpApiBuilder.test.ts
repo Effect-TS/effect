@@ -147,11 +147,11 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           )
         )
       const Ok = HttpApiSchema.WithHeaders(
-        Schema.Struct({ _tag: Schema.Literal("Ok") }),
+        Schema.TaggedStruct("Ok", {}),
         { "x-source": encodedHeader("ok") }
       )
       const Created = HttpApiSchema.WithHeaders(
-        Schema.Struct({ _tag: Schema.Literal("Created") }).pipe(HttpApiSchema.status(201)),
+        Schema.TaggedStruct("Created", {}).pipe(HttpApiSchema.status(201)),
         { "x-source": encodedHeader("created") }
       )
       const Api = HttpApi.make("Api").add(
@@ -217,10 +217,10 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
           HttpApiEndpoint.get("result", "/test", {
             success: [
               HttpApiSchema.WithHeaders(
-                Schema.Struct({ _tag: Schema.Literal("A") }),
+                Schema.TaggedStruct("A", {}),
                 { "x-source": Schema.String }
               ),
-              Schema.Struct({ _tag: Schema.Literal("B") }).pipe(HttpApiSchema.status(201))
+              Schema.TaggedStruct("B", {}).pipe(HttpApiSchema.status(201))
             ]
           })
         )
@@ -499,10 +499,10 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
   it.effect("decodes a plain value in a mixed WithHeaders success union", () =>
     Effect.gen(function*() {
       const Wrapped = HttpApiSchema.WithHeaders(
-        Schema.Struct({ _tag: Schema.Literal("Wrapped"), value: Schema.String }),
+        Schema.TaggedStruct("Wrapped", { value: Schema.String }),
         { "x-source": Schema.String }
       )
-      const Plain = Schema.Struct({ _tag: Schema.Literal("Plain"), value: Schema.String }).pipe(
+      const Plain = Schema.TaggedStruct("Plain", { value: Schema.String }).pipe(
         HttpApiSchema.asJson({ contentType: "application/vnd.plain+json" })
       )
       const Api = HttpApi.make("Api").add(
@@ -624,10 +624,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
   it.effect("encodes and decodes an error wrapped in WithHeaders", () =>
     Effect.gen(function*() {
       const RateLimited = HttpApiSchema.WithHeaders(
-        Schema.Struct({
-          _tag: Schema.Literal("RateLimited"),
-          message: Schema.String
-        }).pipe(HttpApiSchema.status(429)),
+        Schema.TaggedStruct("RateLimited", { message: Schema.String }).pipe(HttpApiSchema.status(429)),
         { "retry-after": Schema.Int }
       )
       const Api = HttpApi.make("Api").add(
@@ -1298,6 +1295,7 @@ it.layer(TestServices)("HttpApiBuilder streaming success responses", (it) => {
         message: Schema.String
       }, { httpApiStatus: 418 }) {}
 
+      // @effect-diagnostics-next-line leakingRequirements:off
       class M extends HttpApiMiddleware.Service<M>()("Security/HandlerFailure", {
         error: Schema.String.pipe(
           HttpApiSchema.status(401),
