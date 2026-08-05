@@ -4,9 +4,14 @@ import { assert, describe, expect, it } from "@effect/vitest"
 import { Effect, Fiber, FileSystem, Latch, Layer, Option } from "effect"
 import { TestClock } from "effect/testing"
 import {
+  Entity,
   Envelope,
   Message,
   MessageStorage,
+  RunnerHealth,
+  Runners,
+  RunnerStorage,
+  Sharding,
   ShardingConfig,
   Snowflake,
   SqlMessageStorage
@@ -15,6 +20,7 @@ import { SqlClient } from "effect/unstable/sql"
 import { MysqlContainer } from "../fixtures/mysql2-utils.ts"
 import { PgContainer } from "../fixtures/pg-utils.ts"
 import {
+  GetUserRpc,
   LongKeyRpc,
   makeAckChunk,
   makeChunkReply,
@@ -23,6 +29,11 @@ import {
   PrimaryKeyTest,
   StreamRpc
 } from "./MessageStorageTest.ts"
+
+const TestEntity = Entity.make("test", [GetUserRpc])
+const TestEntityLayer = TestEntity.toLayer({
+  GetUser: () => Effect.void
+})
 
 const StorageLive = SqlMessageStorage.layer.pipe(
   Layer.provideMerge(Snowflake.layerGenerator),
@@ -331,6 +342,43 @@ describe("SqlMessageStorage", () => {
         }))
     })
   })
+
+  it.effect("keeps held messages readable while entity layers build", () =>
+    Effect.gen(function*() {
+      const config = ShardingConfig.layer({
+        entityRegistrationTimeout: 6000,
+        entityTerminationTimeout: 0,
+        entityMessagePollInterval: 100,
+        refreshAssignmentsInterval: 0
+      })
+      const delayedEnv = TestEntityLayer.pipe(
+        Layer.provide(Layer.effectDiscard(Effect.sleep(10_000))),
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provide(config)
+      )
+      const storage = yield* MessageStorage.MessageStorage
+      const request = yield* makeRequest()
+      yield* storage.saveRequest(request)
+
+      const fiber = yield* Effect.never.pipe(
+        Effect.provide(delayedEnv),
+        Effect.scoped,
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(7500)
+      expect(yield* storage.repliesFor([request])).toHaveLength(0)
+
+      yield* TestClock.adjust(2500)
+      yield* TestClock.adjust(100)
+      expect(yield* storage.repliesFor([request])).toHaveLength(1)
+      yield* Fiber.interrupt(fiber)
+    }).pipe(Effect.provide(StorageLive.pipe(
+      Layer.provideMerge(SqliteLayer)
+    ))))
 })
 
 const SqliteLayer = Effect.gen(function*() {
