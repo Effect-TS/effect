@@ -196,6 +196,46 @@ describe("OpenApi", () => {
     })
   })
 
+  it("emits encodeToWithHeaders wire schemas according to codec mode", () => {
+    const ErrorWithHeaders = Schema.Number.pipe(
+      HttpApiSchema.encodeToWithHeaders({
+        body: HttpApiSchema.Empty(404),
+        headers: { "X-Error-Id": Schema.Int }
+      }, {
+        decode: ({ headers }) => headers["X-Error-Id"],
+        encode: (id) => ({ body: undefined, headers: { "X-Error-Id": id } })
+      })
+    )
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test")
+        .add(
+          HttpApiEndpoint.get("encoded", "/encoded", {
+            error: ErrorWithHeaders
+          })
+        )
+        .add(
+          HttpApiEndpoint.get("unencoded", "/unencoded", {
+            disableCodecs: true,
+            error: ErrorWithHeaders
+          })
+        )
+    )
+
+    const spec = OpenApi.fromApi(Api)
+
+    assert.deepStrictEqual(
+      spec.paths["/encoded"]?.get?.responses[404]?.headers?.["x-error-id"]?.schema,
+      {
+        type: "string",
+        allOf: [{ pattern: "^[+-]?\\d*\\.?\\d+(?:[Ee][+-]?\\d+)?$" }]
+      }
+    )
+    assert.deepStrictEqual(
+      spec.paths["/unencoded"]?.get?.responses[404]?.headers?.["x-error-id"]?.schema,
+      { type: "integer" }
+    )
+  })
+
   it("emits headers for an error wrapped in WithHeaders", () => {
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(

@@ -726,7 +726,7 @@ function extractResponseBodies(
   function process(schema: Schema.Constraint) {
     const annotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
     const body = HttpApiSchema.isWithHeaders(schema) ? schema.schema : annotation?.body ?? schema
-    const headers = HttpApiSchema.isWithHeaders(schema) ? schema.headers : annotation?.headers
+    const headers = HttpApiSchema.isWithHeaders(schema) ? schema.headers : annotation?.headersCodec
     const status = getStatus(schema)
     const ast = body.ast
     if (HttpApiSchema.isStreamSchema(body)) {
