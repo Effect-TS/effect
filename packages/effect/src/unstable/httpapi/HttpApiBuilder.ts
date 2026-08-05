@@ -1100,7 +1100,7 @@ function toResponseErrorSchema(
     HttpApiSchema.getResponseEncodingSchema(schema),
     HttpApiSchema.isNoContent(schema.schema.ast)
   )
-  const transformation = withHeadersTransformation<HttpApiSchema.WithHeaders.Value<unknown, Schema.StringTree>>(
+  const transformation = withHeadersTransformation<HttpApiSchema.withHeaders<unknown, Schema.StringTree>>(
     (body) =>
       encodeBody(body).pipe(
         Effect.mapError((error) => error.issue),

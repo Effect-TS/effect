@@ -487,7 +487,7 @@ describe("HttpApiEndpoint", () => {
         })
       })
 
-      type Success = HttpApiSchema.WithHeaders.Value<
+      type Success = HttpApiSchema.withHeaders<
         { readonly a: string },
         { readonly "x-count": number }
       >
@@ -509,7 +509,7 @@ describe("HttpApiEndpoint", () => {
         )
       })
 
-      type Success = HttpApiSchema.WithHeaders.Value<
+      type Success = HttpApiSchema.withHeaders<
         Stream.Stream<{ readonly id: string }, { readonly reason: string }>,
         { readonly "x-count": number }
       >
@@ -531,7 +531,7 @@ describe("HttpApiEndpoint", () => {
       })
 
       type Success =
-        | HttpApiSchema.WithHeaders.Value<{ readonly a: string }, { readonly "x-count": number }>
+        | HttpApiSchema.withHeaders<{ readonly a: string }, { readonly "x-count": number }>
         | string
 
       expect<HttpApiEndpoint.SuccessWithIdentifier<typeof endpoint, "a">>().type.toBe<Success>()

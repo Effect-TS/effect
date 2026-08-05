@@ -71,7 +71,7 @@ export type ForApi<Api extends HttpApi.Constraint, E = never, R = never> = Api e
 type SuccessType<S> = S extends HttpApiSchema.WithHeaders<
   infer _Inner,
   infer _Headers
-> ? HttpApiSchema.WithHeaders.Value<SuccessType<_Inner>, _Headers["Type"]>
+> ? HttpApiSchema.withHeaders<SuccessType<_Inner>, _Headers["Type"]>
   : S extends HttpApiSchema.StreamSse<
     infer _Events,
     infer _Error,

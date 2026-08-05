@@ -126,7 +126,7 @@ describe("HttpApiSchema", () => {
       expect(schema.schema).type.toBe<Schema.String>()
       expect(schema.headers).type.toBe<typeof Headers>()
       expect<typeof schema["Type"]>().type.toBe<
-        HttpApiSchema.WithHeaders.Value<string, { readonly "x-total-count": number }>
+        HttpApiSchema.withHeaders<string, { readonly "x-total-count": number }>
       >()
     })
 
@@ -160,7 +160,7 @@ describe("HttpApiSchema", () => {
     it("constructs a branded value", () => {
       const value = HttpApiSchema.withHeaders({ body: "a", headers: { "x-a": "1" } })
 
-      expect(value).type.toBe<HttpApiSchema.WithHeaders.Value<string, { "x-a": string }>>()
+      expect(value).type.toBe<HttpApiSchema.withHeaders<string, { "x-a": string }>>()
       expect(value.body).type.toBe<string>()
     })
   })

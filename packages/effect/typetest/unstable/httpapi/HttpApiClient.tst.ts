@@ -670,7 +670,7 @@ describe("HttpApiClient", () => {
         | Sse.Retry
         | Sse.SseError
       >
-      type Success = HttpApiSchema.WithHeaders.Value<ClientStream, { readonly "x-count": number }>
+      type Success = HttpApiSchema.withHeaders<ClientStream, { readonly "x-count": number }>
 
       expect(f()).type.toBe<
         Effect.Effect<Success, HttpClientError.HttpClientError | Schema.SchemaError>
@@ -701,7 +701,7 @@ describe("HttpApiClient", () => {
       )
       const f = client.group.a
 
-      type Success = HttpApiSchema.WithHeaders.Value<
+      type Success = HttpApiSchema.withHeaders<
         Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
         { readonly "x-count": number }
       >

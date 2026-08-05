@@ -548,8 +548,8 @@ export type WithHeadersValueTypeId = typeof WithHeadersValueTypeId
  */
 export interface WithHeaders<S extends Schema.Top, H extends Schema.Top> extends
   Schema.Bottom<
-    WithHeaders.Value<S["Type"], H["Type"]>,
-    WithHeaders.Value<S["Encoded"], Schema.StringTree>,
+    withHeaders<S["Type"], H["Type"]>,
+    withHeaders<S["Encoded"], Schema.StringTree>,
     S["DecodingServices"] | H["DecodingServices"],
     S["EncodingServices"] | H["EncodingServices"],
     SchemaAST.Declaration,
@@ -563,31 +563,23 @@ export interface WithHeaders<S extends Schema.Top, H extends Schema.Top> extends
 }
 
 /**
- * Namespace for `WithHeaders` types.
+ * The Type of a `WithHeaders` schema: what handlers return and what the
+ * client resolves to, constructed via {@link withHeaders}.
+ *
+ * `body` is the inner success value. For stream success schemas it is the
+ * `Stream` itself, so headers are decided before the body starts streaming.
  *
  * @category models
  * @since 4.0.0
  */
-export declare namespace WithHeaders {
-  /**
-   * The Type of a `WithHeaders` schema: what handlers return and what the
-   * client resolves to, constructed via {@link withHeaders}.
-   *
-   * `body` is the inner success value. For stream success schemas it is the
-   * `Stream` itself, so headers are decided before the body starts streaming.
-   *
-   * @category models
-   * @since 4.0.0
-   */
-  export interface Value<A, H> {
-    readonly [WithHeadersValueTypeId]: WithHeadersValueTypeId
-    readonly body: A
-    readonly headers: H
-  }
+export interface withHeaders<A, H> {
+  readonly [WithHeadersValueTypeId]: WithHeadersValueTypeId
+  readonly body: A
+  readonly headers: H
 }
 
 /** @internal */
-export const isWithHeadersValue = (u: unknown): u is WithHeaders.Value<unknown, unknown> =>
+export const isWithHeadersValue = (u: unknown): u is withHeaders<unknown, unknown> =>
   Predicate.hasProperty(u, WithHeadersValueTypeId)
 
 const withHeadersValueSchema = Schema.declare(isWithHeadersValue)
@@ -656,7 +648,7 @@ export function WithHeaders(
 export const withHeaders = <A, H>(options: {
   readonly body: A
   readonly headers: H
-}): WithHeaders.Value<A, H> => ({
+}): withHeaders<A, H> => ({
   [WithHeadersValueTypeId]: WithHeadersValueTypeId,
   body: options.body,
   headers: options.headers
