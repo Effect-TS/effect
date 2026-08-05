@@ -385,6 +385,19 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(1, ast.types), [])
     })
 
+    it("constructor mode should keep tagged candidates only when an object discriminator is missing", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ _tag: Schema.tag("a"), a: Schema.String }),
+        Schema.Struct({ _tag: Schema.tag("b"), b: Schema.Number })
+      ])
+      const ast = schema.ast
+
+      deepStrictEqual(SchemaAST.getCandidates({}, ast.types, true), ast.types)
+      deepStrictEqual(SchemaAST.getCandidates({ _tag: undefined }, ast.types, true), ast.types)
+      deepStrictEqual(SchemaAST.getCandidates({ _tag: "a" }, ast.types, true), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates("a", ast.types, true), [])
+    })
+
     it("should handle function-valued declarations with sentinels", () => {
       const a = Schema.declare(
         (input): input is () => void => typeof input === "function",

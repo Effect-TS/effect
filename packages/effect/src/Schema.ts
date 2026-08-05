@@ -14131,19 +14131,26 @@ function getClassSchemaFactory<S extends Constraint>(
     if (memo !== undefined) {
       return memo
     }
+    const ClassTypeId = getClassTypeId(identifier)
+    const isClassValue: Predicate.Predicate<unknown> = (input) =>
+      input instanceof self || Predicate.hasProperty(input, ClassTypeId)
     const transformation = getClassTransformation(self)
     const to = make<declareConstructor<Self, S["Encoded"], readonly [S]>>(
       new SchemaAST.Declaration(
         [from.ast],
         () => (input, ast) => {
-          return input instanceof self ||
-              Predicate.hasProperty(input, getClassTypeId(identifier)) ?
+          return isClassValue(input) ?
             Effect.succeed(input) :
             Effect.fail(new SchemaIssue.InvalidType(ast))
         },
         {
           identifier,
-          [SchemaAST.ClassTypeId]: ([from]: readonly [SchemaAST.AST]) => new SchemaAST.Link(from, transformation),
+          [InternalAnnotations.CONSTRUCTOR_ANNOTATION_KEY]: (
+            [from]: readonly [SchemaAST.AST]
+          ): SchemaAST.ConstructorDescriptor => ({
+            isConstructed: isClassValue,
+            link: new SchemaAST.Link(from, transformation)
+          }),
           toCodec: ([from]: readonly [ConstraintCodec<S["Encoded"], S["Encoded"]>]) =>
             new SchemaAST.Link(from.ast, transformation),
           toArbitrary: ([from]: readonly [Annotations.ToArbitrary.TypeParameter<S["Type"]>]) => () => ({
@@ -14934,7 +14941,7 @@ const toCodecJsonASTBase = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
 export const toCodecJsonAST = memoize(toCodecJsonASTBase)
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
-  return context.defaultValue === undefined ?
+  return context.constructorDefault === undefined ?
     context :
     new SchemaAST.Context(context.isOptional, context.isMutable, undefined, context.annotations)
 }
