@@ -997,6 +997,15 @@ const make = Effect.gen(function*() {
           ? Result.succeed(error)
           : Result.fail(error),
       (error) => {
+        // Abandon the message during teardown: retrying would loop forever once the runner is shutting down
+        if (error._tag === "EntityNotAssignedToRunner") {
+          const targetManager = entityManagers.get(message.envelope.address.entityType)
+          const cannotRecover = MutableRef.get(isShutdown) ||
+            (targetManager !== undefined && targetManager.status !== "alive")
+          if (cannotRecover) {
+            return Effect.logDebug("Abandoning outgoing message during shutdown", message.envelope.address)
+          }
+        }
         if (retries === 0) {
           return Effect.die(error)
         }
