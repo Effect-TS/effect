@@ -619,6 +619,8 @@ const make = Effect.gen(function*() {
         }
 
         const handle = handles[handles.length - 1]
+        const kill = (options?: ChildProcess.KillOptions | undefined) =>
+          Effect.forEach([...handles].reverse(), (handle) => Effect.ignore(handle.kill(options)), { discard: true })
         const unref = Effect.gen(function*() {
           const rerefs: Array<Effect.Effect<void, PlatformError.PlatformError>> = []
           for (const handle of handles) {
@@ -631,7 +633,7 @@ const make = Effect.gen(function*() {
           pid: handle.pid,
           exitCode: handle.exitCode,
           isRunning: handle.isRunning,
-          kill: handle.kill,
+          kill,
           stdin: handle.stdin,
           stdout: handle.stdout,
           stderr: handle.stderr,
