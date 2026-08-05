@@ -312,6 +312,7 @@ These v4 modules did not have a mapped v3 module. Treat them as v4-only unless a
 more specific migration guide says otherwise.
 
 ```text
+@effect/platform-node/NodeMultipartParser (barrel: @effect/platform-node)
 effect/ErrorReporter (barrel: effect)
 effect/Filter (barrel: effect)
 effect/JsonPatch (barrel: effect)
@@ -338,11 +339,9 @@ effect/unstable/eventlog/EventLogSessionAuth (barrel: effect/unstable/eventlog)
 effect/unstable/eventlog/SqlEventLogServerUnencrypted (barrel: effect/unstable/eventlog)
 effect/unstable/http/FindMyWay (barrel: effect/unstable/http)
 effect/unstable/http/HttpStaticServer (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta/HeadersParser (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta/Node (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta/Search (barrel: effect/unstable/http)
-effect/unstable/http/Multipasta/Web (barrel: effect/unstable/http)
+effect/unstable/http/MultipartParser (barrel: effect/unstable/http)
+effect/unstable/http/MultipartParser/HeadersParser (barrel: effect/unstable/http)
+effect/unstable/http/MultipartParser/Search (barrel: effect/unstable/http)
 effect/unstable/httpapi/HttpApiTest (barrel: effect/unstable/httpapi)
 effect/unstable/observability/PrometheusMetrics (barrel: effect/unstable/observability)
 effect/unstable/persistence/Redis (barrel: effect/unstable/persistence)
