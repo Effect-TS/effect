@@ -1,8 +1,16 @@
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"
-import { RunnerAddress, RunnerStorage, ShardId } from "effect/unstable/cluster"
+import { Runner, RunnerAddress, RunnerStorage, ShardId } from "effect/unstable/cluster"
 
 describe("RunnerStorage", () => {
+  it.effect("preserves runner health in memory", () =>
+    Effect.gen(function*() {
+      const storage = yield* RunnerStorage.makeMemory
+      const address = RunnerAddress.make("localhost", 41001)
+      yield* storage.register(Runner.make({ address, groups: ["default"], weight: 1 }), false)
+      assert.strictEqual((yield* storage.getRunners)[0][1], false)
+    }))
+
   it.effect("memory acquire accepts a one-shot iterable", () =>
     Effect.gen(function*() {
       const storage = yield* RunnerStorage.makeMemory
