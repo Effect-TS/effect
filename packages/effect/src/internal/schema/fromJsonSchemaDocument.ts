@@ -33,6 +33,40 @@ const never: ImportedJsonSchemaRepresentation = { _tag: "Never", checks: [] }
 const unknown: ImportedJsonSchemaRepresentation = { _tag: "Unknown", checks: [] }
 const string: ImportedJsonSchemaRepresentation = { _tag: "String", checks: [] }
 
+const additionalPropertyKeyFilterId = "effect/schema/isAdditionalPropertyKey"
+
+interface AdditionalPropertyKeyFilterPayload extends Schema.JsonObject {
+  readonly properties: ReadonlyArray<string>
+  readonly patterns: ReadonlyArray<string>
+}
+
+function additionalPropertyKeyFilter(
+  payload: AdditionalPropertyKeyFilterPayload,
+  annotations?: Schema.Annotations.Filter
+): SchemaAST.Filter<string> {
+  const properties = new Set(payload.properties)
+  const patterns = payload.patterns.map((pattern) => new globalThis.RegExp(pattern))
+  return Schema.makeFilter(
+    (key: string) => !properties.has(key) && patterns.every((pattern) => !pattern.test(key)),
+    {
+      representation: {
+        id: additionalPropertyKeyFilterId,
+        payload
+      },
+      ...annotations
+    }
+  )
+}
+
+const additionalPropertyKeyFilterReviver: SchemaRepresentation.FilterReviver<AdditionalPropertyKeyFilterPayload> = {
+  id: additionalPropertyKeyFilterId,
+  payloadSchema: Schema.Struct({
+    properties: Schema.Array(Schema.String),
+    patterns: Schema.Array(Schema.String)
+  }),
+  revive: ({ annotations, payload }) => additionalPropertyKeyFilter(payload, annotations)
+}
+
 function makeLiteral(literal: string | number | boolean): SchemaRepresentation.Literal {
   return { _tag: "Literal", literal, checks: [] }
 }
@@ -866,8 +900,23 @@ function translateJsonSchemaMultiDocument(
         type: unknown
       })
     } else if (typeof schema.additionalProperties === "object" && schema.additionalProperties !== null) {
+      const properties = typeof schema.properties === "object" &&
+          schema.properties !== null &&
+          !Array.isArray(schema.properties)
+        ? Object.keys(schema.properties)
+        : []
+      const patterns = typeof schema.patternProperties === "object" &&
+          schema.patternProperties !== null &&
+          !Array.isArray(schema.patternProperties)
+        ? Object.keys(schema.patternProperties)
+        : []
       signatures.push({
-        parameter: string,
+        parameter: properties.length === 0 && patterns.length === 0
+          ? string
+          : {
+            _tag: "String",
+            checks: [jsonSchemaFilter(additionalPropertyKeyFilterId, { properties, patterns })]
+          },
         type: recur(schema.additionalProperties, [...path, "additionalProperties"])
       })
     }
@@ -926,6 +975,7 @@ function toRepresentation(
 
 const jsonSchemaRevivers: ReadonlyArray<SchemaRepresentation.AnyReviver> = [
   Schema.JsonReviver,
+  additionalPropertyKeyFilterReviver,
   Schema.isPatternReviver,
   Schema.isFiniteReviver,
   Schema.isGreaterThanReviver,

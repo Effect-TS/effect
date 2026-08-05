@@ -26,6 +26,17 @@ describe("fromJsonSchemaDocument", () => {
     }))
 
     assertTrue(Schema.is(schema)({ a: "ok", extra: true }))
+    assertFalse(Schema.is(schema)({ a: "ok", extra: "not a boolean" }))
+  })
+
+  it("applies additionalProperties only to properties not matched by patternProperties", () => {
+    const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+      type: "object",
+      patternProperties: { "^x": { type: "string" } },
+      additionalProperties: { type: "boolean" }
+    }))
+
+    assertTrue(Schema.is(schema)({ xName: "ok", extra: true }))
   })
 
   function assertFromJsonSchema(
@@ -1921,7 +1932,19 @@ describe("fromJsonSchemaDocument", () => {
               {
                 "parameter": {
                   "_tag": "String",
-                  "checks": []
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "aborted": false,
+                      "representation": {
+                        "id": "effect/schema/isAdditionalPropertyKey",
+                        "payload": {
+                          "patterns": [],
+                          "properties": ["a"]
+                        }
+                      }
+                    }
+                  ]
                 },
                 "type": {
                   "_tag": "Boolean",
