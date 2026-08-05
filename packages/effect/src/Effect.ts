@@ -15,7 +15,7 @@ import type * as Cause from "./Cause.ts"
 import type { Clock } from "./Clock.ts"
 import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
-import type { ExecutionPlan } from "./ExecutionPlan.ts"
+import type * as ExecutionPlan from "./ExecutionPlan.ts"
 import * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import type * as Filter from "./Filter.ts"
@@ -4259,6 +4259,11 @@ export const ignoreCause: <
  * and retry timing is derived per step (the first attempt uses the remaining
  * attempts schedule; later retries apply the step schedule at least once).
  *
+ * Attempts can be observed from outside the effect by passing
+ * `options.onEvent`, which receives an `ExecutionPlan.Event` before each
+ * attempt and after it settles; see `ExecutionPlan.Options` for the handler
+ * semantics.
+ *
  * **Example** (Retrying with an execution plan)
  *
  * ```ts import.meta.vitest
@@ -4287,15 +4292,17 @@ export const ignoreCause: <
  * @since 3.16.0
  */
 export const withExecutionPlan: {
-  <Input, Provides, PlanE, PlanR>(
-    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
+  <Input, Provides, PlanE, PlanR, RX = never>(
+    plan: ExecutionPlan.ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>,
+    options?: ExecutionPlan.Options<Input | PlanE, RX>
   ): <A, E extends Input, R>(
     effect: Effect<A, E, R>
-  ) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
-  <A, E extends Input, R, Provides, Input, PlanE, PlanR>(
+  ) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR | RX>
+  <A, E extends Input, R, Provides, Input, PlanE, PlanR, RX = never>(
     effect: Effect<A, E, R>,
-    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
-  ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
+    plan: ExecutionPlan.ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>,
+    options?: ExecutionPlan.Options<E | PlanE, RX>
+  ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR | RX>
 } = internalExecutionPlan.withExecutionPlan
 
 /**

@@ -10,7 +10,9 @@
  * @since 3.16.0
  */
 import type { NonEmptyReadonlyArray } from "./Array.ts"
+import type * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
+import type * as Duration from "./Duration.ts"
 import type * as Effect from "./Effect.ts"
 import { constant } from "./Function.ts"
 import * as effect from "./internal/effect.ts"
@@ -372,3 +374,127 @@ export const CurrentMetadata = Context.Reference<Metadata>("effect/ExecutionPlan
     stepIndex: 0
   })
 })
+
+/**
+ * Lifecycle event emitted before an execution-plan attempt runs.
+ *
+ * **Details**
+ *
+ * `attempt` is the cumulative 1-based attempt number across all steps and
+ * matches `CurrentMetadata.attempt` for the same attempt. `stepAttempt` is the
+ * 1-based attempt number within the current step, and `stepIndex` is the
+ * 0-based index of the step being attempted.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface AttemptStart {
+  readonly _tag: "AttemptStart"
+  readonly attempt: number
+  readonly stepAttempt: number
+  readonly stepIndex: number
+}
+
+/**
+ * Lifecycle event emitted when an execution-plan attempt succeeds.
+ *
+ * **Details**
+ *
+ * A successful attempt completes the plan, so this is always the final event.
+ * `duration` is the elapsed time of the attempt.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface AttemptSuccess {
+  readonly _tag: "AttemptSuccess"
+  readonly attempt: number
+  readonly stepAttempt: number
+  readonly stepIndex: number
+  readonly duration: Duration.Duration
+}
+
+/**
+ * Lifecycle event emitted when an execution-plan attempt fails.
+ *
+ * **Details**
+ *
+ * `cause` holds the full failure cause, so defects and interruption are
+ * reported as well as expected errors. Whether the plan retries or fails over
+ * afterwards is decided by the step's `attempts`, `while`, and `schedule`; a
+ * following `AttemptStart` indicates another attempt was made.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface AttemptFailure<E> {
+  readonly _tag: "AttemptFailure"
+  readonly attempt: number
+  readonly stepAttempt: number
+  readonly stepIndex: number
+  readonly duration: Duration.Duration
+  readonly cause: Cause.Cause<E>
+}
+
+/**
+ * Union of the lifecycle events emitted while an execution plan runs.
+ *
+ * **Details**
+ *
+ * Every `AttemptStart` is followed by exactly one terminal event, either
+ * `AttemptSuccess` or `AttemptFailure`. An interrupted attempt emits
+ * `AttemptFailure` with the interruption cause.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Event<E> = AttemptStart | AttemptSuccess | AttemptFailure<E>
+
+/**
+ * Options accepted by `Effect.withExecutionPlan` and
+ * `Stream.withExecutionPlan` for observing plan execution.
+ *
+ * **Details**
+ *
+ * `onEvent` is awaited inline before and after every attempt, so events are
+ * strictly ordered; keep the handler cheap. The handler cannot fail, which
+ * keeps observation from changing the plan's outcome, and its requirements are
+ * added to the resulting effect or stream. Terminal events run like
+ * finalizers, so they are emitted even when the attempt is interrupted.
+ *
+ * **Example** (Observing execution-plan attempts)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, ExecutionPlan, Layer } from "effect"
+ *
+ * const Endpoint = Context.Service<{ url: string }>("Endpoint")
+ *
+ * const fetchUrl = Effect.gen(function*() {
+ *   const endpoint = yield* Effect.service(Endpoint)
+ *   if (endpoint.url === "bad") {
+ *     return yield* Effect.fail("Unavailable")
+ *   }
+ *   return endpoint.url
+ * })
+ *
+ * const plan = ExecutionPlan.make(
+ *   { provide: Layer.succeed(Endpoint, { url: "bad" }) },
+ *   { provide: Layer.succeed(Endpoint, { url: "good" }) }
+ * )
+ *
+ * const events: Array<string> = []
+ * const program = Effect.withExecutionPlan(fetchUrl, plan, {
+ *   onEvent: (event) => Effect.sync(() => events.push(`${event._tag}:${event.stepIndex}`))
+ * })
+ *
+ * await Effect.runPromise(program) // => "good"
+ *
+ * events // => ["AttemptStart:0", "AttemptFailure:0", "AttemptStart:1", "AttemptSuccess:1"]
+ * ```
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface Options<E, R> {
+  readonly onEvent?: ((event: Event<E>) => Effect.Effect<void, never, R>) | undefined
+}
