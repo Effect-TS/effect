@@ -490,14 +490,14 @@ export const addDelay: {
  * ```ts import.meta.vitest
  * import { Schedule } from "effect"
  *
- * const schedule = Schedule.andThen(Schedule.recurs(1), Schedule.recurs(2))
+ * const schedule = Schedule.concat(Schedule.recurs(1), Schedule.recurs(2))
  * Schedule.isSchedule(schedule) // => true
  * ```
  *
  * @category sequencing
  * @since 2.0.0
  */
-export const andThen: {
+export const concat: {
   <Output2, Input2, Error2, Env2>(
     other: Schedule<Output2, Input2, Error2, Env2>
   ): <Output, Input, Error, Env>(
@@ -511,7 +511,7 @@ export const andThen: {
   self: Schedule<Output, Input, Error, Env>,
   other: Schedule<Output2, Input2, Error2, Env2>
 ): Schedule<Output | Output2, Input & Input2, Error | Error2, Env | Env2> =>
-  map(andThenResult(self, other), ({ output }) => effect.succeed(Result.merge(output))))
+  map(concatResult(self, other), ({ output }) => effect.succeed(Result.merge(output))))
 
 /**
  * Returns a schedule that runs `self` to completion, then runs `other`, and
@@ -528,14 +528,14 @@ export const andThen: {
  * ```ts import.meta.vitest
  * import { Schedule } from "effect"
  *
- * const schedule = Schedule.andThenResult(Schedule.recurs(1), Schedule.recurs(2))
+ * const schedule = Schedule.concatResult(Schedule.recurs(1), Schedule.recurs(2))
  * Schedule.isSchedule(schedule) // => true
  * ```
  *
  * @category sequencing
  * @since 4.0.0
  */
-export const andThenResult: {
+export const concatResult: {
   <Output2, Input2, Error2, Env2>(
     other: Schedule<Output2, Input2, Error2, Env2>
   ): <Output, Input, Error, Env>(
