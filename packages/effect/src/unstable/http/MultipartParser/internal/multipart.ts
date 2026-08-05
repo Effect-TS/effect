@@ -95,7 +95,6 @@ export function make({
         if (state.index > 0) {
           if (state.isFile) {
             state.onChunk(null)
-            state.partSize = 0
           } else {
             if (state.fieldChunks.length === 1) {
               onField(state.info, state.fieldChunks[0])
@@ -113,6 +112,7 @@ export function make({
             state.fieldChunks = []
           }
         }
+        state.partSize = 0
 
         state.state = State.headers
         state.index = index

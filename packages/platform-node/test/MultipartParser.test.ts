@@ -152,6 +152,31 @@ const cases: ReadonlyArray<MultipartCase> = [
     name: "Fields only"
   },
   {
+    source: [
+      [
+        "------WebKitFormBoundaryTB2MiQ36fnSJlrhY",
+        "Content-Disposition: form-data; name=\"first\"",
+        "",
+        "A".repeat(32),
+        "------WebKitFormBoundaryTB2MiQ36fnSJlrhY",
+        "Content-Disposition: form-data; name=\"second\"",
+        "",
+        "B".repeat(32),
+        "------WebKitFormBoundaryTB2MiQ36fnSJlrhY--"
+      ].join("\r\n")
+    ],
+    boundary: "----WebKitFormBoundaryTB2MiQ36fnSJlrhY",
+    config: {
+      maxPartSize: 100
+    },
+    expected: [
+      ["field", "first", "A".repeat(32), "text/plain"],
+      ["field", "second", "B".repeat(32), "text/plain"]
+    ],
+    errors: [],
+    name: "Resets maxPartSize between field parts"
+  },
+  {
     source: [""],
     boundary: "----WebKitFormBoundaryTB2MiQ36fnSJlrhY",
     expected: [],
