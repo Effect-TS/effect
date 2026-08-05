@@ -34,7 +34,12 @@ it.live("kills every process in a pipeline", () =>
     )))
     yield* Effect.sleep("100 millis")
     yield* handle.kill({ killSignal: "SIGKILL" })
-    const rootSize = (yield* fs.stat(rootHeartbeat)).size
+    const rootSizeAfterKill = (yield* fs.stat(rootHeartbeat)).size
+    const childSizeAfterKill = (yield* fs.stat(childHeartbeat)).size
     yield* Effect.sleep("100 millis")
-    assert.strictEqual((yield* fs.stat(rootHeartbeat)).size, rootSize)
+    const rootFinalSize = (yield* fs.stat(rootHeartbeat)).size
+    const childFinalSize = (yield* fs.stat(childHeartbeat)).size
+
+    assert.strictEqual(rootFinalSize, rootSizeAfterKill)
+    assert.strictEqual(childFinalSize, childSizeAfterKill)
   }).pipe(Effect.scoped, Effect.provide(NodeServices)))
