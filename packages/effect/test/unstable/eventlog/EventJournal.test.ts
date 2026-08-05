@@ -3,6 +3,27 @@ import { Effect } from "effect"
 import * as EventJournal from "effect/unstable/eventlog/EventJournal"
 
 describe("EventJournal", () => {
+  it.effect("relays an imported entry to another remote", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const source = EventJournal.makeRemoteIdUnsafe()
+      const target = EventJournal.makeRemoteIdUnsafe()
+      yield* journal.nextRemoteSequence(target)
+      const entry = new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe(),
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array()
+      }, { disableChecks: true })
+      yield* journal.writeFromRemote({
+        remoteId: source,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+        effect: () => Effect.void
+      })
+      const missing = yield* journal.withRemoteUncommited(target, Effect.succeed)
+      assert.deepStrictEqual(missing.map((item) => item.idString), [entry.idString])
+    }))
+
   it.effect("records entries in memory and publishes local changes", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.EventJournal
