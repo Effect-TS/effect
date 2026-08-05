@@ -225,13 +225,13 @@ describe("Schedule", () => {
         ])
       }))
 
-    it.effect("andThenResult - sequences self then other when collecting delays", () =>
+    it.effect("concatResult - sequences self then other when collecting delays", () =>
       Effect.gen(function*() {
         const left = Schedule.fixed("500 millis").pipe(
           Schedule.while(({ attempt }) => Effect.succeed(attempt <= 3))
         )
         const right = Schedule.fixed("1 second")
-        const schedule = Schedule.andThenResult(left, right)
+        const schedule = Schedule.concatResult(left, right)
         const inputs = Array.makeBy(6, constUndefined)
         const outputs = yield* runDelays(schedule, inputs)
         expect(outputs).toEqual([
@@ -244,13 +244,13 @@ describe("Schedule", () => {
         ])
       }))
 
-    it.effect("andThenResult - includes finite other completion when collecting delays", () =>
+    it.effect("concatResult - includes finite other completion when collecting delays", () =>
       Effect.gen(function*() {
         const left = Schedule.fixed("500 millis").pipe(
           Schedule.while(({ attempt }) => Effect.succeed(attempt <= 2))
         )
         const right = Schedule.duration("1 second")
-        const schedule = Schedule.andThenResult(left, right)
+        const schedule = Schedule.concatResult(left, right)
         const inputs = Array.makeBy(5, constUndefined)
         const outputs = yield* runDelays(schedule, inputs)
         expect(outputs).toEqual([
@@ -261,11 +261,11 @@ describe("Schedule", () => {
         ])
       }))
 
-    it.effect("andThenResult - wraps self outputs as Failure and other outputs as Success", () =>
+    it.effect("concatResult - wraps self outputs as Failure and other outputs as Success", () =>
       Effect.gen(function*() {
         const left = Schedule.identity<string>().pipe(Schedule.upTo({ times: 2 }))
         const right = Schedule.identity<string>()
-        const step = yield* Schedule.toStep(Schedule.andThenResult(left, right))
+        const step = yield* Schedule.toStep(Schedule.concatResult(left, right))
 
         const first = yield* step(0, "left-1")
         const second = yield* step(0, "left-2")

@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Rename `Schedule.andThen` to `Schedule.concat`.
+Rename `Schedule.andThen` and `Schedule.andThenResult` to `Schedule.concat` and `Schedule.concatResult`.

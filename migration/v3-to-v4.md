@@ -13193,7 +13193,7 @@ Schema.toFormatter(schema)
 
 - `Schedule.addDelayEffect` -> `Schedule.addDelay`: The v4 function is effectful by default and its callback receives full Schedule.Metadata; read metadata.output when only the prior output is needed.
 
-- `Schedule.andThenEither` -> `Schedule.andThenResult`: Sequential phase tagging now uses Result: self outputs are Result.fail and the following schedule outputs are Result.succeed.
+- `Schedule.andThenEither` -> `Schedule.concatResult`: Sequential phase tagging now uses Result: self outputs are Result.fail and the following schedule outputs are Result.succeed.
 
 - `Schedule.as` -> `Schedule.map`: Map the metadata to the constant output; Schedule.map accepts either a plain value or an Effect.
 

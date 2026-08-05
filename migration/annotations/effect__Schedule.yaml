@@ -2,7 +2,7 @@
   replacement: "Schedule.addDelay"
   note: "The v4 function is effectful by default and its callback receives full Schedule.Metadata; read metadata.output when only the prior output is needed."
 "effect/Schedule#andThenEither":
-  replacement: "Schedule.andThenResult"
+  replacement: "Schedule.concatResult"
   note: "Sequential phase tagging now uses Result: self outputs are Result.fail and the following schedule outputs are Result.succeed."
 "effect/Schedule#as":
   replacement: "Schedule.map"

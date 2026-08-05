@@ -32,7 +32,7 @@ This cookbook intentionally defines schedules only. It does not apply them with
 | Adapt delay from metadata                 | `Schedule.addDelay`                                                                                               |
 | Replace or cap selected delay             | `Schedule.modifyDelay`                                                                                            |
 | Run phases in sequence                    | `Schedule.concat`                                                                                                 |
-| Preserve phase in output                  | `Schedule.andThenResult`                                                                                          |
+| Preserve phase in output                  | `Schedule.concatResult`                                                                                           |
 | Continue while all policies continue      | `Schedule.max`                                                                                                    |
 | Continue while any policy continues       | `Schedule.min`                                                                                                    |
 | Shape output from metadata                | `Schedule.map`                                                                                                    |
@@ -270,7 +270,7 @@ import { Result, Schedule } from "effect"
 
 const phasedRetryClassifier = Schedule.exponential("100 millis").pipe(
   Schedule.upTo({ times: 2 }),
-  Schedule.andThenResult(Schedule.fibonacci("500 millis").pipe(Schedule.upTo({ times: 3 }))),
+  Schedule.concatResult(Schedule.fibonacci("500 millis").pipe(Schedule.upTo({ times: 3 }))),
   Schedule.map(({ output: result }) =>
     Result.match(result, {
       onFailure: (delay) => ({ phase: "fast", delay }),
@@ -280,7 +280,7 @@ const phasedRetryClassifier = Schedule.exponential("100 millis").pipe(
 )
 ```
 
-Explanation: `Schedule.andThenResult` keeps phase information in the output.
+Explanation: `Schedule.concatResult` keeps phase information in the output.
 The first schedule is represented by the failure side, and the second schedule
 is represented by the success side.
 
