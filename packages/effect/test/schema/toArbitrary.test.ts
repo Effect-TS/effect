@@ -591,6 +591,18 @@ describe("Arbitrary generation", () => {
         Schema.Tuple([Schema.String, Schema.optional(Schema.Number)])
       )
     })
+
+    it("generates values valid for optional tuple positions", () => {
+      const schema = Schema.Tuple([
+        Schema.optionalKey(Schema.String),
+        Schema.optionalKey(Schema.Number)
+      ])
+
+      FastCheck.assert(FastCheck.property(Schema.toArbitrary(schema), Schema.is(schema)), {
+        numRuns: 100,
+        seed: 17
+      })
+    })
   })
 
   describe("Array", () => {
