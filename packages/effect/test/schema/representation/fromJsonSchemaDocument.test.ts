@@ -17,6 +17,17 @@ function fromJsonSchemaRepresentation(
 }
 
 describe("fromJsonSchemaDocument", () => {
+  it("applies additionalProperties only to undeclared properties", () => {
+    const schema = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
+      type: "object",
+      properties: { a: { type: "string" } },
+      required: ["a"],
+      additionalProperties: { type: "boolean" }
+    }))
+
+    assertTrue(Schema.is(schema)({ a: "ok", extra: true }))
+  })
+
   function assertFromJsonSchema(
     input: {
       readonly schema: JsonSchema.JsonSchema
