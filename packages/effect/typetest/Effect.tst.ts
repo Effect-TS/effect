@@ -10,6 +10,7 @@ import {
   type Option,
   pipe,
   Result,
+  type Schedule,
   type Scope,
   type Sink,
   type Stream,
@@ -1097,5 +1098,13 @@ describe("Effect.retry", () => {
       })
     )
     expect(result).type.toBe<Effect.Effect<string, AiError | OtherError>>()
+  })
+})
+
+describe("Effect.schedule", () => {
+  it("includes schedule errors", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, unknown, "schedule-error">
+    expect(Effect.schedule(Effect.fail("effect-error" as const), schedule))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
   })
 })
