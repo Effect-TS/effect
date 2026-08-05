@@ -252,6 +252,40 @@ describe("SchemaRepresentation.toJsonSchemaDocument", () => {
         { type: "object" }
       )
     })
+
+    it("preserves broad and pattern index constraints", () => {
+      assert.deepStrictEqual(
+        compile({
+          _tag: "Objects",
+          propertySignatures: [],
+          indexSignatures: [
+            { parameter: StringRepresentation, type: { _tag: "Boolean", checks: [] } },
+            {
+              parameter: {
+                _tag: "TemplateLiteral",
+                parts: [
+                  { _tag: "Literal", literal: "x_", checks: [] },
+                  StringRepresentation
+                ],
+                checks: []
+              },
+              type: StringRepresentation
+            }
+          ],
+          checks: []
+        }),
+        {
+          type: "object",
+          patternProperties: {
+            "^x_[\\s\\S]*?$": { type: "string" }
+          },
+          allOf: [{
+            type: "object",
+            additionalProperties: { type: "boolean" }
+          }]
+        }
+      )
+    })
   })
 
   describe("unions", () => {
