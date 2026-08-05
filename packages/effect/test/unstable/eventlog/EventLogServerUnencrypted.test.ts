@@ -62,12 +62,15 @@ it.effect("indexes conflicts from the sliced history", () =>
     const registry = yield* EventLog.Registry.pipe(Effect.provide(EventLog.layerRegistry))
     const seen = yield* Ref.make<ReadonlyArray<EventJournal.Entry> | undefined>(undefined)
     registry.registerHandlerUnsafe({
-      event,
-      context: Context.empty(),
-      handler: ({ payload, conflicts }) =>
-        (payload as { value: number }).value === 30
-          ? Ref.set(seen, conflicts.map((conflict) => conflict.entry))
-          : Effect.void
+      event: event.tag,
+      handler: {
+        event,
+        context: Context.empty() as Context.Context<any>,
+        handler: ({ payload, conflicts }) =>
+          (payload as { value: number }).value === 30
+            ? Ref.set(seen, conflicts.map((conflict) => conflict.entry))
+            : Effect.void
+      }
     })
 
     const client = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
