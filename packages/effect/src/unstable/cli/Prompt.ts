@@ -693,10 +693,13 @@ export const all: <
   if (arguments.length === 1) {
     if (isPrompt(arguments[0])) {
       return map(arguments[0], (x) => [x]) as any
-    } else if (Array.isArray(arguments[0])) {
-      return allTupled(arguments[0]) as any
+    } else if (Predicate.isIterable(arguments[0])) {
+      return allTupled(Arr.fromIterable(arguments[0] as Iterable<Prompt<any>>)) as any
     } else {
       const entries = Object.entries(arguments[0] as Readonly<{ [K: string]: Prompt<any> }>)
+      if (entries.length === 0) {
+        return succeed({}) as any
+      }
       let result = map(entries[0][1], (value) => ({ [entries[0][0]]: value }))
       if (entries.length === 1) {
         return result as any

@@ -62,6 +62,20 @@ describe("Prompt.date", () => {
     }).pipe(Effect.provide(TestLayer)))
 })
 
+describe("Prompt.all", () => {
+  it.effect("supports an empty record", () =>
+    Effect.gen(function*() {
+      const result = yield* Prompt.all({})
+      assert.deepStrictEqual(result, {})
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("supports a non-array iterable", () =>
+    Effect.gen(function*() {
+      const result = yield* Prompt.all(new Set([Prompt.succeed(1)]))
+      assert.deepStrictEqual(result, [1])
+    }).pipe(Effect.provide(TestLayer)))
+})
+
 describe("Prompt.integer", () => {
   it.effect("submits the default value", () =>
     Effect.gen(function*() {
