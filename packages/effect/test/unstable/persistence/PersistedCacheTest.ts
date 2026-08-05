@@ -1,6 +1,6 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, it } from "@effect/vitest"
 import type { Layer } from "effect"
-import { Context, Data, Effect, Exit, Result, Schema } from "effect"
+import { Context, Data, Effect, Exit, Schema } from "effect"
 import { Persistable, PersistedCache, Persistence } from "effect/unstable/persistence"
 
 class User extends Schema.Class<User>("User")({
@@ -21,7 +21,7 @@ export class TransientError extends Data.TaggedError("TransientError") {}
 class LookupService extends Context.Service<LookupService, { readonly value: string }>()("LookupService") {}
 
 export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistence, unknown>) =>
-  describe(`PersistedCache (${storeId})`, { timeout: 30_000 }, () => {
+  it.layer(layer, { timeout: "60 seconds" })(`PersistedCache (${storeId})`, (it) => {
     it.effect("smoke test", () =>
       Effect.gen(function*() {
         const persistence = yield* Persistence.Persistence
@@ -65,11 +65,7 @@ export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistenc
           Exit.fail("Not found"),
           Exit.succeed(new User({ id: 2, name: "Jane" }))
         ])
-      }).pipe(
-        Effect.provide(layer),
-        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void),
-        flakyTest
-      ))
+      }), 30_000)
 
     it.effect("requireServicesAt: 'lookup' requires lookup services at get-time", () =>
       Effect.gen(function*() {
@@ -95,17 +91,5 @@ export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistenc
         assert.deepStrictEqual(result1, new User({ id: 1, name: "first" }))
         assert.deepStrictEqual(result2, new User({ id: 2, name: "second" }))
         assert.deepStrictEqual(result3, new User({ id: 1, name: "first" }))
-      }).pipe(
-        Effect.provide(layer),
-        Effect.catchFilter((e) => e instanceof TransientError ? Result.succeed(e) : Result.fail(e), () => Effect.void),
-        flakyTest
-      ))
+      }), 30_000)
   })
-
-const flakyTest = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(
-    Effect.timeoutOrElse({
-      duration: "10 seconds",
-      orElse: () => Effect.void
-    })
-  )

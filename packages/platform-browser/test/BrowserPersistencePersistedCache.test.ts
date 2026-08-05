@@ -1,5 +1,5 @@
 import * as BrowserPersistence from "@effect/platform-browser/BrowserPersistence"
-import { afterEach, beforeEach, describe } from "@effect/vitest"
+import { afterAll, beforeAll, describe } from "@effect/vitest"
 import * as PersistedCacheTest from "effect-test/unstable/persistence/PersistedCacheTest"
 import { indexedDB as fakeIndexedDb } from "fake-indexeddb"
 
@@ -7,12 +7,12 @@ const database = "effect_persistence_integration"
 
 let previousIndexedDb: unknown
 
-beforeEach(() => {
+beforeAll(() => {
   previousIndexedDb = Reflect.get(globalThis, "indexedDB")
   Reflect.set(globalThis, "indexedDB", fakeIndexedDb)
 })
 
-afterEach(() => {
+afterAll(() => {
   fakeIndexedDb.deleteDatabase(database)
   if (previousIndexedDb === undefined) {
     Reflect.deleteProperty(globalThis, "indexedDB")
