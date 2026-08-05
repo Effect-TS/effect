@@ -22,6 +22,8 @@ describe("EventJournal", () => {
       })
       const missing = yield* journal.withRemoteUncommited(target, Effect.succeed)
       assert.deepStrictEqual(missing.map((item) => item.idString), [entry.idString])
+      const sourceMissing = yield* journal.withRemoteUncommited(source, Effect.succeed)
+      assert.deepStrictEqual(sourceMissing, [])
     }))
 
   it.effect("records entries in memory and publishes local changes", () =>
