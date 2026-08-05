@@ -62,6 +62,25 @@ describe("VariantSchema", () => {
 
     assert.deepStrictEqual(Object.keys(Test.extract(struct, "a").fields), ["value"])
   })
+
+  it("does not collide the __default variant with the default-schema cache entry", () => {
+    const Test = VariantSchema.make({ variants: ["a", "__default"], defaultVariant: "a" })
+    const defaultFirst = Test.Struct({
+      value: Test.Field({ a: Schema.String, __default: Schema.Number })
+    })
+
+    Test.extract(defaultFirst, "a")
+
+    assert.strictEqual(Test.extract(defaultFirst, "__default").fields.value, Schema.Number)
+
+    const namedFirst = Test.Struct({
+      value: Test.Field({ a: Schema.String, __default: Schema.Number })
+    })
+
+    Test.extract(namedFirst, "__default")
+
+    assert.strictEqual(Test.extract(namedFirst, "a").fields.value, Schema.String)
+  })
 })
 
 describe("Model", () => {

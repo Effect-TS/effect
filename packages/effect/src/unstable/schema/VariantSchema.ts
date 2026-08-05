@@ -26,6 +26,7 @@ import * as Struct_ from "../../Struct.ts"
 export const TypeId = "~effect/schema/VariantSchema"
 
 const cacheSymbol = Symbol.for(`${TypeId}/cache`)
+const defaultCacheSymbol = Symbol.for(`${TypeId}/defaultCache`)
 
 /**
  * Pipeable container of schema fields that can be extracted into per-variant
@@ -38,6 +39,8 @@ export interface Struct<in out A extends Field.Fields> extends Pipeable {
   readonly [TypeId]: A
   /** @internal */
   [cacheSymbol]?: Record<string, Schema.Top>
+  /** @internal */
+  [defaultCacheSymbol]?: Record<string, Schema.Top>
 }
 
 /**
@@ -214,10 +217,11 @@ const extract: {
       readonly isDefault?: boolean | undefined
     }
   ): Extract<V, A> => {
-    const cache = self[cacheSymbol] ?? (self[cacheSymbol] = Object.create(null))
-    const cacheKey = options?.isDefault === true ? "__default" : variant
-    if (Object.hasOwn(cache, cacheKey)) {
-      return cache[cacheKey] as any
+    const cache = options?.isDefault === true
+      ? self[defaultCacheSymbol] ?? (self[defaultCacheSymbol] = Object.create(null))
+      : self[cacheSymbol] ?? (self[cacheSymbol] = Object.create(null))
+    if (Object.hasOwn(cache, variant)) {
+      return cache[variant] as any
     }
     const fields: Record<string, any> = {}
     for (const key of Object.keys(self[TypeId])) {
@@ -243,7 +247,7 @@ const extract: {
       }
     }
     const schema = Schema.Struct(fields)
-    cache[cacheKey] = schema
+    cache[variant] = schema
     return schema as any
   }
 )
