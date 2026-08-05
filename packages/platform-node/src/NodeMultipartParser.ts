@@ -164,7 +164,7 @@ export const make = (config: NodeConfig): MultipartStream => new MultipartStream
  */
 export class FileStream extends Readable {
   readonly _tag = "File"
-  readonly filename: string
+  readonly filename: string | undefined
   readonly info: PartInfo
   private _parent: MultipartStream
   constructor(
@@ -174,7 +174,7 @@ export class FileStream extends Readable {
     super()
     this.info = info
     this._parent = parent
-    this.filename = info.filename!
+    this.filename = info.filename
   }
   override _read(_size: number) {
     if (this._parent._canWrite === false) {

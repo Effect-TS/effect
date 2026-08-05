@@ -1,6 +1,6 @@
 import * as Node from "@effect/platform-node/NodeMultipartParser"
 import * as Multipart from "effect/unstable/http/MultipartParser"
-import { assert, describe, test } from "vitest"
+import { assert, describe, expectTypeOf, test } from "vitest"
 
 type Expected = Array<
   | [type: "field", name: string, value: string, contentType: string]
@@ -681,6 +681,31 @@ describe("multipart", () => {
 })
 
 describe("node api", () => {
+  test("exposes missing filenames as undefined", () => {
+    const parser = Node.make({
+      headers: {
+        "content-type": "multipart/form-data; boundary=boundary"
+      }
+    })
+    let emitted = false
+    parser.on("file", (file) => {
+      emitted = true
+      expectTypeOf(file.filename).toEqualTypeOf<string | undefined>()
+      assert.strictEqual(file.filename, undefined)
+      file.resume()
+    })
+
+    parser.write(
+      new TextEncoder().encode(
+        "--boundary\r\nContent-Disposition: form-data; name=\"file\"\r\nContent-Type: application/octet-stream\r\n\r\ncontent\r\n--boundary--"
+      )
+    )
+    parser.end()
+
+    assert.isTrue(emitted)
+    parser.destroy()
+  })
+
   test("stops sending file chunks after an error", () => {
     const parser = Node.make({
       headers: {
