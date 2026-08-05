@@ -283,6 +283,24 @@ describe("McpServer", () => {
         )
       }))
 
+    it.effect("keeps void tool results successful", () =>
+      Effect.gen(function*() {
+        const client = yield* makeToolkitTestClient()
+
+        const result = yield* client["tools/call"]({
+          name: "UntypedTool",
+          arguments: {}
+        })
+
+        assert.deepStrictEqual(
+          result,
+          new McpSchema.CallToolResult({
+            isError: false,
+            content: []
+          })
+        )
+      }))
+
     it.effect("returns schema-validated messages for declared handler failures", () =>
       Effect.gen(function*() {
         const client = yield* makeToolkitTestClient()
