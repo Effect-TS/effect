@@ -347,9 +347,6 @@ importers:
       msgpackr:
         specifier: ^2.0.4
         version: 2.0.4
-      multipasta:
-        specifier: ^0.2.8
-        version: 0.2.8
       uuid:
         specifier: ^14.0.1
         version: 14.0.1
@@ -426,10 +423,6 @@ importers:
         version: 1.42.0
 
   packages/platform-browser:
-    dependencies:
-      multipasta:
-        specifier: ^0.2.8
-        version: 0.2.8
     devDependencies:
       effect:
         specifier: workspace:^
@@ -5226,9 +5219,6 @@ packages:
 
   msgpackr@2.0.4:
     resolution: {integrity: sha512-o1C5KRmuRt+apqMr1HuGSqWStZoRBUpEsCsl15uM9VdAF1qHLtvMOU2En747EnTyEl6c4pzPewRMFF31s1CNbA==}
-
-  multipasta@0.2.8:
-    resolution: {integrity: sha512-ZPWuMKyv0cSO29f7hozp+k6+crZbQijV8ipMvxNxRf2SwtYGTX1ZX89Kd20VV4H9Znonx+EQn+iy1wGQsJ+b+Q==}
 
   mysql2@3.22.6:
     resolution: {integrity: sha512-fPKmeDGUzvFP7bMD5SASlJ5zIgvCC4hbanTmhbUlEmhyrY1hR4Hi3xLOWgTd3luYjLVifx6uGvMNJ2m/LlqEpg==}
@@ -11092,8 +11082,6 @@ snapshots:
   msgpackr@2.0.4:
     optionalDependencies:
       msgpackr-extract: 3.0.4
-
-  multipasta@0.2.8: {}
 
   mysql2@3.22.6(@types/node@26.1.2):
     dependencies:

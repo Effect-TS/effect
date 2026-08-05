@@ -115,7 +115,6 @@
     "fast-check": "^4.9.0",
     "kubernetes-types": "^1.30.0",
     "msgpackr": "^2.0.4",
-    "multipasta": "^0.2.8",
     "uuid": "^14.0.1"
   }
 }
