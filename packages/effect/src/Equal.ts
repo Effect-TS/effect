@@ -366,7 +366,8 @@ export function makeCompareMap<K, V>(keyEquivalence: Equivalence<K>, valueEquiva
       for (let i = 0; i < thatEntries.length; i++) {
         const [thatKey, thatValue] = thatEntries[i]
         if (keyEquivalence(selfKey, thatKey) && valueEquivalence(selfValue, thatValue)) {
-          thatEntries.splice(i, 1)
+          thatEntries[i] = thatEntries[thatEntries.length - 1]
+          thatEntries.pop()
           found = true
           break
         }
@@ -391,7 +392,8 @@ export function makeCompareSet<A>(equivalence: Equivalence<A>) {
       for (let i = 0; i < thatValues.length; i++) {
         const thatValue = thatValues[i]
         if (equivalence(selfValue, thatValue)) {
-          thatValues.splice(i, 1)
+          thatValues[i] = thatValues[thatValues.length - 1]
+          thatValues.pop()
           found = true
           break
         }
