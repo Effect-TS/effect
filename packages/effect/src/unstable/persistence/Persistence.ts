@@ -1105,7 +1105,6 @@ export const layerBackingKvs: Layer.Layer<
           setMany: (entries) =>
             Effect.forEach(entries, ([key, value, ttl]) => {
               const expires = unsafeTtlToExpires(clock, ttl)
-              if (expires === null) return Effect.void
               const encoded = JSON.stringify([value, expires])
               return store.set(key, encoded)
             }, { concurrency: "unbounded", discard: true }).pipe(
