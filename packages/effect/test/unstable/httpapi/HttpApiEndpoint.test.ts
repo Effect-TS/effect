@@ -178,17 +178,16 @@ describe("HttpApiEndpoint streaming success schemas", () => {
     )
   })
 
-  it("two streaming successes for distinct statuses are allowed", () => {
+  it("two streaming successes for distinct statuses throw", () => {
     const stream = HttpApiSchema.status(206)(sse())
     const bytes = HttpApiSchema.status(200)(
       HttpApiSchema.StreamUint8Array({ contentType: "application/custom-stream" })
     )
-    const endpoint = HttpApiEndpoint.get("events", "/events", {
-      success: [stream, bytes]
-    })
 
-    assert.isTrue(endpoint.success.has(stream))
-    assert.isTrue(endpoint.success.has(bytes))
+    assert.throws(
+      () => HttpApiEndpoint.get("events", "/events", { success: [stream, bytes] }),
+      "Multiple streaming success responses are not supported"
+    )
   })
 
   it("statically detectable SSE reserved failure event name throws", () => {
@@ -419,22 +418,34 @@ describe("HttpApiEndpoint WithHeaders schemas", () => {
     )
   })
 
-  it("resolves the status from the wrapper when validating per-status combinations", () => {
-    const wrapped = HttpApiSchema.WithHeaders(sse(), { "x-count": Schema.Int })
-      .pipe(HttpApiSchema.status(206))
-    const endpoint = HttpApiEndpoint.get("events", "/events", {
-      success: [wrapped, sse()]
-    })
+  it("rejects wrapped and bare streams at distinct statuses", () => {
+    assert.throws(
+      () =>
+        HttpApiEndpoint.get("events", "/events", {
+          success: [
+            HttpApiSchema.status(206)(
+              HttpApiSchema.StreamUint8Array({ contentType: "application/custom-bytes" })
+            ),
+            HttpApiSchema.WithHeaders(
+              HttpApiSchema.status(201)(
+                HttpApiSchema.StreamUint8Array({ contentType: "application/other-bytes" })
+              ),
+              { "x-source": Schema.String }
+            )
+          ]
+        }),
+      "Multiple streaming success responses are not supported"
+    )
 
-    assert.strictEqual(endpoint.success.size, 2)
-
-    assert.throws(() =>
-      HttpApiEndpoint.get("events", "/events", {
-        success: [
-          HttpApiSchema.WithHeaders(sse(), { "x-count": Schema.Int }),
-          sse()
-        ]
-      })
+    assert.throws(
+      () =>
+        HttpApiEndpoint.get("events", "/events", {
+          success: [
+            HttpApiSchema.WithHeaders(sse(), { "x-count": Schema.Int }),
+            sse()
+          ]
+        }),
+      "Multiple streaming success responses are not supported"
     )
   })
 

@@ -1185,6 +1185,7 @@ function getErrorResponse(
 }
 
 function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, method: HttpMethod) {
+  let hasStream = false
   const statuses = new Map<number, {
     readonly stream?: HttpApiSchema.StreamSchema | undefined
     bufferedContentTypes: Set<string>
@@ -1196,10 +1197,11 @@ function validateSuccessResponse(schemas: ReadonlyArray<Schema.Constraint>, meth
     const status = HttpApiSchema.getStatusSuccessSchema(schema)
     if (HttpApiSchema.isStreamSchema(inner)) {
       validateStreamSuccess(inner, method)
-      const entry = getStatusEntry(statuses, status)
-      if (entry.stream !== undefined) {
-        throw new Error(`Multiple streaming success responses for status: ${status}`)
+      if (hasStream) {
+        throw new Error("Multiple streaming success responses are not supported")
       }
+      hasStream = true
+      const entry = getStatusEntry(statuses, status)
       if (entry.noContent) {
         throw new Error(`Cannot combine no-content and streaming success responses for status: ${status}`)
       }
