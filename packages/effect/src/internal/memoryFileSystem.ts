@@ -1687,21 +1687,22 @@ class MemoryFile implements FileSystem.File {
     return this.volume.withState((state) => Effect.asVoid(getOpenFile(state, this.fd, "sync")))
   }
 
-  seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode): Effect.Effect<void> {
+  seek(offset: FileSystem.SizeInput, from: FileSystem.SeekMode): Effect.Effect<FileSystem.Size> {
     return this.volume.mutate((state) =>
       Effect.sync(() => {
         const descriptor = Option.getOrUndefined(HashMap.get(state.descriptors, this.fd))
-        if (descriptor === undefined) return transitionResult(state, undefined)
+        if (descriptor === undefined) return transitionResult(state, FileSystem.Size(0))
         const size = FileSystem.Size(offset)
+        const position = from === "start"
+          ? size
+          : FileSystem.Size(descriptor.position + size)
         return transitionResult({
           ...state,
           descriptors: HashMap.set(state.descriptors, this.fd, {
             ...descriptor,
-            position: from === "start"
-              ? size
-              : FileSystem.Size(descriptor.position + size)
+            position
           })
-        }, undefined)
+        }, position)
       })
     )
   }
@@ -2580,7 +2581,7 @@ const watch = (volume: Volume) => (path: string) =>
       Effect.acquireRelease(
         volume.withState((state) =>
           Effect.gen(function*() {
-            const resolved = yield* resolve(state, path, { method: "watch" })
+            const resolved = yield* resolve(state, path, { method: "stat" })
             const subscription: WatchSubscription = {
               path: resolved.path,
               recursive: resolved.entry._tag === "Directory",
