@@ -177,7 +177,40 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       assert.strictEqual(response.headers["x-source"], "created:value")
     }))
 
-  it.effect("defects with ResponseHeaders when a branded response encodes to a plain status", () =>
+  it.effect("encodes a branded response against the header-carrying member when body shapes overlap", () =>
+    Effect.gen(function*() {
+      const Api = HttpApi.make("Api").add(
+        HttpApiGroup.make("test").add(
+          HttpApiEndpoint.get("result", "/test", {
+            success: [
+              Schema.Struct({ value: Schema.String }).pipe(HttpApiSchema.status(201)),
+              HttpApiSchema.WithHeaders(
+                Schema.Struct({ value: Schema.String }),
+                { "x-source": Schema.String }
+              )
+            ]
+          })
+        )
+      )
+      const GroupLive = HttpApiBuilder.group(
+        Api,
+        "test",
+        (handlers) =>
+          handlers.handle("result", () =>
+            Effect.succeed(HttpApiSchema.withHeaders({
+              body: { value: "wrapped" },
+              headers: { "x-source": "value" }
+            })))
+      )
+
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const response = yield* client.test.result({ responseMode: "response-only" })
+
+      assert.strictEqual(response.status, 200)
+      assert.strictEqual(response.headers["x-source"], "value")
+    }))
+
+  it.effect("fails with a Body schema error when a branded response body matches no header-carrying member", () =>
     Effect.gen(function*() {
       const Api = HttpApi.make("Api").add(
         HttpApiGroup.make("test").add(
@@ -210,11 +243,7 @@ it.layer(TestServices)("HttpApiBuilder WithHeaders responses", (it) => {
       if (exit._tag === "Failure") {
         const error = Cause.squash(exit.cause) as any
         assert.strictEqual(error._tag, "HttpApiSchemaError")
-        assert.strictEqual(error.kind, "ResponseHeaders")
-        assert.strictEqual(
-          error.cause.message,
-          "Endpoint declares no header-carrying response for encoded status: 201"
-        )
+        assert.strictEqual(error.kind, "Body")
       }
     }))
 

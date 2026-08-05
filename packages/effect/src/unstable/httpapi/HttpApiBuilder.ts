@@ -809,21 +809,13 @@ function handlerToHttpEffect(
       }
       const encoded = yield* HttpApiSchemaError.wrap(
         "Body",
-        encodeStream?.(response, context) ?? encodeSuccess(response)
+        encodeStream?.(response, context) ??
+          (responseHeaders !== undefined ? encodeWithHeaders!.encodeBody(response) : encodeSuccess(response))
       )
       if (encodeWithHeaders === undefined || responseHeaders === undefined) return encoded
-      const encodeHeaders = encodeWithHeaders.get(encoded.status)
       const encodedHeaders = yield* HttpApiSchemaError.wrap(
         "ResponseHeaders",
-        encodeHeaders === undefined
-          ? Effect.fail(
-            new Schema.SchemaError(
-              new SchemaIssue.InvalidValue({
-                message: `Endpoint declares no header-carrying response for encoded status: ${encoded.status}`
-              })
-            )
-          )
-          : encodeHeaders(responseHeaders)
+        encodeWithHeaders.encodeHeaders.get(encoded.status)!(responseHeaders)
       )
       return Response.setHeaders(encoded, encodedHeaders as any)
     })
@@ -940,15 +932,33 @@ type StreamEncoder = (response: unknown, context: Context.Context<never>) =>
 
 type WithHeadersEncoder = (headers: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
 
-function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): Map<number, WithHeadersEncoder> | undefined {
-  const encoders = new Map<number, WithHeadersEncoder>()
+interface WithHeadersEncoders {
+  readonly encodeBody: (body: unknown) => Effect.Effect<HttpServerResponse, Schema.SchemaError, unknown>
+  readonly encodeHeaders: ReadonlyMap<number, WithHeadersEncoder>
+}
+
+function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): WithHeadersEncoders | undefined {
+  const encodeHeaders = new Map<number, WithHeadersEncoder>()
+  const bodySchemas: Array<Schema.ConstraintEncoder<HttpServerResponse, unknown>> = []
   for (const schema of endpoint.success) {
-    if (HttpApiSchema.isWithHeaders(schema)) {
-      const status = HttpApiSchema.getStatusSuccessSchema(schema)
-      encoders.set(status, Schema.encodeUnknownEffect(schema.headers))
+    if (!HttpApiSchema.isWithHeaders(schema)) continue
+    encodeHeaders.set(HttpApiSchema.getStatusSuccessSchema(schema), Schema.encodeUnknownEffect(schema.headers))
+    if (!HttpApiSchema.isStreamSchema(schema.schema)) {
+      bodySchemas.push(toResponseSuccessSchema(schema))
     }
   }
-  return encoders.size === 0 ? undefined : encoders
+  if (encodeHeaders.size === 0) return undefined
+  // Branded response bodies encode against the header-carrying members only, so
+  // the encoded status always has a matching header schema.
+  const bodySchema: Schema.ConstraintEncoder<HttpServerResponse, unknown> = bodySchemas.length === 0
+    ? Schema.Never
+    : bodySchemas.length === 1
+    ? bodySchemas[0]
+    : Schema.Union(bodySchemas)
+  return {
+    encodeBody: Schema.encodeUnknownEffect(bodySchema),
+    encodeHeaders
+  }
 }
 
 function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undefined {
