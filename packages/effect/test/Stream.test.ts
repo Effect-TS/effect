@@ -4766,6 +4766,20 @@ describe("Stream", () => {
         deepStrictEqual(result1, result2)
       }))
 
+    it.effect("slidingSize is independent of upstream chunk boundaries", () =>
+      Effect.gen(function*() {
+        const contiguous = yield* Stream.make(1, 2, 3, 4, 5).pipe(
+          Stream.slidingSize(2, 3),
+          Stream.runCollect
+        )
+        const chunked = yield* Stream.fromArrays([1, 2], [3, 4, 5]).pipe(
+          Stream.slidingSize(2, 3),
+          Stream.runCollect
+        )
+
+        deepStrictEqual(chunked, contiguous, "sliding windows must not depend on upstream chunks")
+      }))
+
     it.effect("sliding - fails if upstream produces an error", () =>
       Effect.gen(function*() {
         const result = yield* pipe(
