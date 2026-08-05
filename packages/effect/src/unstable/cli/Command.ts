@@ -165,11 +165,11 @@ export interface Command<in out Name extends string, in Input, out ContextInput 
   readonly annotations: Context.Context<never>
 
   /**
-   * Whether this command is hidden from parent help output, shell
-   * completions, and unknown-subcommand suggestions. Hidden commands still
+   * Whether this command is omitted from parent help output, shell
+   * completions, and unknown-subcommand suggestions. Unlisted commands still
    * parse and execute normally when invoked by exact name.
    */
-  readonly hidden: boolean
+  readonly unlisted: boolean
 }
 
 /**
@@ -352,7 +352,7 @@ export declare namespace Command {
       readonly commands: NonEmptyReadonlyArray<Command.Any>
     }>
     readonly annotations: Context.Context<never>
-    readonly hidden: boolean
+    readonly unlisted: boolean
   }
 
   /**
@@ -925,7 +925,7 @@ export const withSubcommands: {
     description: impl.description,
     shortDescription: impl.shortDescription,
     alias: impl.alias,
-    hidden: impl.hidden,
+    unlisted: impl.unlisted,
     annotations: impl.annotations,
     globalFlags: impl.globalFlags,
     examples: impl.examples,
@@ -1025,7 +1025,7 @@ export const withSharedFlags: {
       description: impl.description,
       shortDescription: impl.shortDescription,
       alias: impl.alias,
-      hidden: impl.hidden,
+      unlisted: impl.unlisted,
       annotations: impl.annotations,
       globalFlags: impl.globalFlags,
       examples: impl.examples,
@@ -1210,7 +1210,7 @@ export const withAlias: {
 ) => makeCommand({ ...toImpl(self), alias }))
 
 /**
- * Hides a subcommand from parent help output, shell completions, and
+ * Omits a subcommand from parent help output, shell completions, and
  * "did you mean?" suggestions while keeping it fully invocable by exact name.
  *
  * **When to use**
@@ -1218,7 +1218,7 @@ export const withAlias: {
  * Use when experimental or internal subcommands should be accepted but not advertised on
  * the public CLI surface.
  *
- * **Example** (Hiding a subcommand)
+ * **Example** (Unlisting a subcommand)
  *
  * ```ts import.meta.vitest
  * import { Command } from "effect/unstable/cli"
@@ -1226,23 +1226,23 @@ export const withAlias: {
  * // `experimental` still runs when invoked as `mycli experimental`,
  * // but it does not appear under SUBCOMMANDS in `mycli --help`.
  * const experimental = Command.make("experimental").pipe(
- *   Command.withHidden
+ *   Command.unlisted
  * )
  *
  * const root = Command.make("mycli").pipe(
  *   Command.withSubcommands([experimental])
  * )
  *
- * root.subcommands[0].commands[0].hidden // => true
+ * root.subcommands[0].commands[0].unlisted // => true
  * ```
  *
  * @category combinators
  * @since 4.0.0
  */
-export const withHidden = <const Name extends string, Input, E, R, ContextInput>(
+export const unlisted = <const Name extends string, Input, E, R, ContextInput>(
   self: Command<Name, Input, ContextInput, E, R>
 ): Command<Name, Input, ContextInput, E, R> =>
-  makeCommand({ ...toImpl(self), hidden: true }) as Command<Name, Input, ContextInput, E, R>
+  makeCommand({ ...toImpl(self), unlisted: true }) as Command<Name, Input, ContextInput, E, R>
 
 /**
  * Adds a custom annotation to a command.

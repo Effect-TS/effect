@@ -826,12 +826,12 @@ const resolveFirstValue = (
   // Not a subcommand. Check if this looks like a typo.
   const expectsArgs = toImpl(command).config.arguments.length > 0
   if (!expectsArgs && subIndex.size > 0) {
-    // Exclude hidden subcommands so a typo cannot reveal a subcommand name
-    // that was intentionally kept out of --help. Hidden commands still
+    // Exclude unlisted subcommands so a typo cannot reveal a subcommand name
+    // that was intentionally kept out of --help. Unlisted commands still
     // resolve via subIndex when invoked by exact name.
     const visibleKeys: Array<string> = []
     for (const [key, sub] of subIndex) {
-      if (!sub.hidden) visibleKeys.push(key)
+      if (!sub.unlisted) visibleKeys.push(key)
     }
     const suggestions = suggest(value, visibleKeys)
     state.errors.push(

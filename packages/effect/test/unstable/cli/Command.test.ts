@@ -725,22 +725,22 @@ describe("Command", () => {
   })
 
   describe("withSubcommands", () => {
-    it("preserves hidden metadata when adding subcommands", () => {
+    it("preserves unlisted metadata when adding subcommands", () => {
       const withChild = Command.make("internal").pipe(
-        Command.withHidden,
+        Command.unlisted,
         Command.withSubcommands([Command.make("child")])
       )
 
-      assert.isTrue(withChild.hidden)
+      assert.isTrue(withChild.unlisted)
     })
 
-    it("preserves hidden metadata when adding shared flags", () => {
+    it("preserves unlisted metadata when adding shared flags", () => {
       const withShared = Command.make("internal").pipe(
-        Command.withHidden,
+        Command.unlisted,
         Command.withSharedFlags({ verbose: Flag.boolean("verbose") })
       )
 
-      assert.isTrue(withShared.hidden)
+      assert.isTrue(withShared.unlisted)
     })
 
     it.effect("should execute parent handler when no subcommand provided", () =>
