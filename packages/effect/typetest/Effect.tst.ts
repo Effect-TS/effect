@@ -5,6 +5,7 @@ import {
   Context,
   Data,
   Effect,
+  type ExecutionPlan,
   Fiber,
   type Layer,
   type Option,
@@ -1153,5 +1154,43 @@ describe("Effect.updateServiceScoped", () => {
       // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
       () => "test"
     )
+  })
+})
+
+describe("Effect.withExecutionPlan", () => {
+  const plan = null as unknown as ExecutionPlan.ExecutionPlan<{
+    provides: "provided"
+    input: string
+    error: "plan-error"
+    requirements: "plan-dep"
+  }>
+  const self = null as unknown as Effect.Effect<number, string, "provided" | "other-dep">
+
+  it("data-first adds handler requirements to R", () => {
+    const result = Effect.withExecutionPlan(self, plan, {
+      onEvent: (event) => {
+        expect(event).type.toBe<ExecutionPlan.Event<string>>()
+        return null as unknown as Effect.Effect<void, never, "handler-dep">
+      }
+    })
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep" | "handler-dep">>()
+  })
+
+  it("data-last adds handler requirements to R", () => {
+    const result = pipe(
+      self,
+      Effect.withExecutionPlan(plan, {
+        onEvent: (event) => {
+          expect(event).type.toBe<ExecutionPlan.Event<string>>()
+          return null as unknown as Effect.Effect<void, never, "handler-dep">
+        }
+      })
+    )
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep" | "handler-dep">>()
+  })
+
+  it("without options the requirements are unchanged", () => {
+    const result = Effect.withExecutionPlan(self, plan)
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
   })
 })
