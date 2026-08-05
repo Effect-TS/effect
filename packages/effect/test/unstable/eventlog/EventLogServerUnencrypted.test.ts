@@ -41,79 +41,77 @@ const authenticate = Effect.fnUntraced(function*(options: {
 })
 
 it.effect("indexes conflicts from the sliced history", () =>
-  Effect.scoped(
-    Effect.gen(function*() {
-      const encode = Schema.encodeUnknownEffect(event.payloadMsgPack)
-      const makeEntry = Effect.fnUntraced(function*(msecs: number, key: string, value: number) {
-        return new EventJournal.Entry({
-          id: EventJournal.makeEntryIdUnsafe({ msecs }),
-          event: "ReproEvent",
-          primaryKey: key,
-          payload: yield* encode({ key, value })
-        }, { disableChecks: true })
-      })
-      const originA = yield* makeEntry(1_000, "other-origin", 10)
-      const oldSameKey = yield* makeEntry(2_000, "key", 20)
-      const originB = yield* makeEntry(3_000, "key", 30)
-      const newerOtherKey = yield* makeEntry(4_000, "other", 40)
-      const newerSameKey = yield* makeEntry(5_000, "key", 50)
+  Effect.gen(function*() {
+    const encode = Schema.encodeUnknownEffect(event.payloadMsgPack)
+    const makeEntry = Effect.fnUntraced(function*(msecs: number, key: string, value: number) {
+      return new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe({ msecs }),
+        event: "ReproEvent",
+        primaryKey: key,
+        payload: yield* encode({ key, value })
+      }, { disableChecks: true })
+    })
+    const originA = yield* makeEntry(1_000, "other-origin", 10)
+    const oldSameKey = yield* makeEntry(2_000, "key", 20)
+    const originB = yield* makeEntry(3_000, "key", 30)
+    const newerOtherKey = yield* makeEntry(4_000, "other", 40)
+    const newerSameKey = yield* makeEntry(5_000, "key", 50)
 
-      const storage = yield* EventLogServerUnencrypted.makeStorageMemory
-      yield* storage.write(storeId, [oldSameKey, newerOtherKey, newerSameKey])
-      const registry = yield* EventLog.Registry.pipe(Effect.provide(EventLog.layerRegistry))
-      const seenOriginA = yield* Ref.make<ReadonlyArray<EventJournal.Entry> | undefined>(undefined)
-      const seenOriginB = yield* Ref.make<ReadonlyArray<EventJournal.Entry> | undefined>(undefined)
-      registry.registerHandlerUnsafe({
-        event: event.tag,
-        handler: {
-          event,
-          context: Context.empty() as Context.Context<any>,
-          handler: ({ payload, conflicts }) => {
-            const value = (payload as { value: number }).value
-            return value === 10
-              ? Ref.set(seenOriginA, conflicts.map((conflict) => conflict.entry))
-              : value === 30
-              ? Ref.set(seenOriginB, conflicts.map((conflict) => conflict.entry))
-              : Effect.void
-          }
+    const storage = yield* EventLogServerUnencrypted.makeStorageMemory
+    yield* storage.write(storeId, [oldSameKey, newerOtherKey, newerSameKey])
+    const registry = yield* EventLog.Registry.pipe(Effect.provide(EventLog.layerRegistry))
+    const seenOriginA = yield* Ref.make<ReadonlyArray<EventJournal.Entry> | undefined>(undefined)
+    const seenOriginB = yield* Ref.make<ReadonlyArray<EventJournal.Entry> | undefined>(undefined)
+    registry.registerHandlerUnsafe({
+      event: event.tag,
+      handler: {
+        event,
+        context: Context.empty() as Context.Context<any>,
+        handler: ({ payload, conflicts }) => {
+          const value = (payload as { value: number }).value
+          return value === 10
+            ? Ref.set(seenOriginA, conflicts.map((conflict) => conflict.entry))
+            : value === 30
+            ? Ref.set(seenOriginB, conflicts.map((conflict) => conflict.entry))
+            : Effect.void
         }
-      })
+      }
+    })
 
-      const client = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
-        Effect.provide(EventLogServerUnencrypted.layerRpcHandlers.pipe(
-          Layer.provide(Layer.succeed(EventLogServerUnencrypted.Storage, storage)),
-          Layer.provide(Layer.succeed(EventLog.Registry, registry)),
-          Layer.provide(Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
-            resolve: ({ storeId }) => Effect.succeed(storeId),
-            hasStore: () => Effect.succeed(true)
-          })),
-          Layer.provide(Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, {
-            authorizeWrite: () => Effect.void,
-            authorizeRead: () => Effect.void,
-            authorizeIdentity: () => Effect.void
-          }))
-        ))
-      )
-      const identity = yield* EventLog.makeIdentity
-      const hello = yield* client["EventLog.Hello"]()
-      yield* client["EventLog.Authenticate"](
-        yield* authenticate({
-          identity,
-          challenge: hello.challenge,
-          remoteId: hello.remoteId
-        })
-      )
-      const data = yield* new EventLogMessage.WriteEntriesUnencrypted({
-        publicKey: identity.publicKey,
-        storeId,
-        entries: [originA, originB]
-      }).encoded
-      yield* client["EventLog.WriteSingle"]({ data })
-      const originAConflicts = yield* Ref.get(seenOriginA)
-      assert.isDefined(originAConflicts)
-      assert.deepStrictEqual(originAConflicts.map((entry) => entry.idString), [])
-      const originBConflicts = yield* Ref.get(seenOriginB)
-      assert.isDefined(originBConflicts)
-      assert.deepStrictEqual(originBConflicts.map((entry) => entry.idString), [newerSameKey.idString])
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle))
-  ))
+    const client = yield* RpcTest.makeClient(EventLogMessage.EventLogRemoteRpcs).pipe(
+      Effect.provide(EventLogServerUnencrypted.layerRpcHandlers.pipe(
+        Layer.provide(Layer.succeed(EventLogServerUnencrypted.Storage, storage)),
+        Layer.provide(Layer.succeed(EventLog.Registry, registry)),
+        Layer.provide(Layer.succeed(EventLogServerUnencrypted.StoreMapping, {
+          resolve: ({ storeId }) => Effect.succeed(storeId),
+          hasStore: () => Effect.succeed(true)
+        })),
+        Layer.provide(Layer.succeed(EventLogServerUnencrypted.EventLogServerAuthorization, {
+          authorizeWrite: () => Effect.void,
+          authorizeRead: () => Effect.void,
+          authorizeIdentity: () => Effect.void
+        }))
+      ))
+    )
+    const identity = yield* EventLog.makeIdentity
+    const hello = yield* client["EventLog.Hello"]()
+    yield* client["EventLog.Authenticate"](
+      yield* authenticate({
+        identity,
+        challenge: hello.challenge,
+        remoteId: hello.remoteId
+      })
+    )
+    const data = yield* new EventLogMessage.WriteEntriesUnencrypted({
+      publicKey: identity.publicKey,
+      storeId,
+      entries: [originA, originB]
+    }).encoded
+    yield* client["EventLog.WriteSingle"]({ data })
+    const originAConflicts = yield* Ref.get(seenOriginA)
+    assert.isDefined(originAConflicts)
+    assert.deepStrictEqual(originAConflicts.map((entry) => entry.idString), [])
+    const originBConflicts = yield* Ref.get(seenOriginB)
+    assert.isDefined(originBConflicts)
+    assert.deepStrictEqual(originBConflicts.map((entry) => entry.idString), [newerSameKey.idString])
+  }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
