@@ -229,6 +229,8 @@ describe("SqlRunnerStorage", () => {
       expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
       expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([shard])
     }).pipe(
+      // Release the advisory-lock connections before the PostgreSQL layer.
+      Effect.scoped,
       Effect.provide(PgContainer.layerClient),
       Effect.provide(ShardingConfig.layer())
     ), 60_000)
@@ -242,6 +244,8 @@ describe("SqlRunnerStorage", () => {
       expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
       expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
     }).pipe(
+      // Release the advisory-lock connections before the PostgreSQL layer.
+      Effect.scoped,
       Effect.provide(PgContainer.layerClient),
       Effect.provide(ShardingConfig.layer())
     ), 60_000)
