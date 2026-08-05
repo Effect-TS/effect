@@ -7717,15 +7717,15 @@ export const replicateEffect: {
 export const schedule: {
   <Output, Error, Env>(
     schedule: Schedule<Output, unknown, Error, Env>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Output, E, R | Env>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Output, E | Error, R | Env>
   <A, E, R, Output, Error, Env>(
     self: Effect<A, E, R>,
     schedule: Schedule<Output, unknown, Error, Env>
-  ): Effect<Output, E, R | Env>
+  ): Effect<Output, E | Error, R | Env>
 } = dual(2, <A, E, R, Output, Error, Env>(
   self: Effect<A, E, R>,
   schedule: Schedule<Output, unknown, Error, Env>
-): Effect<Output, E, R | Env> => scheduleFrom(self, undefined, schedule))
+): Effect<Output, E | Error, R | Env> => scheduleFrom(self, undefined, schedule))
 
 /**
  * Runs an effect repeatedly according to a schedule that is initialized with a
@@ -7769,12 +7769,12 @@ export const scheduleFrom: {
   <Input, Output, Error, Env>(
     initial: Input,
     schedule: Schedule<Output, Input, Error, Env>
-  ): <E, R>(self: Effect<Input, E, R>) => Effect<Output, E, R | Env>
+  ): <E, R>(self: Effect<Input, E, R>) => Effect<Output, E | Error, R | Env>
   <Input, E, R, Output, Error, Env>(
     self: Effect<Input, E, R>,
     initial: Input,
     schedule: Schedule<Output, Input, Error, Env>
-  ): Effect<Output, E, R | Env>
+  ): Effect<Output, E | Error, R | Env>
 } = internalSchedule.scheduleFrom
 
 // -----------------------------------------------------------------------------
