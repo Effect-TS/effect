@@ -102,7 +102,6 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
-    "@types/ini": "^4.1.1",
     "@types/node": "^26.1.2",
     "ajv": "^8.20.0",
     "ajv-draft-04": "^1.0.0",
@@ -115,12 +114,9 @@
     "@standard-schema/spec": "^1.1.0",
     "fast-check": "^4.9.0",
     "find-my-way-ts": "^0.1.6",
-    "ini": "^7.0.0",
     "kubernetes-types": "^1.30.0",
     "msgpackr": "^2.0.4",
     "multipasta": "^0.2.8",
-    "toml": "^4.1.2",
-    "uuid": "^14.0.1",
-    "yaml": "^2.9.0"
+    "uuid": "^14.0.1"
   }
 }

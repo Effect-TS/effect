@@ -10,9 +10,6 @@
  *
  * @since 4.0.0
  */
-import * as Ini from "ini"
-import * as Toml from "toml"
-import * as Yaml from "yaml"
 import * as Config from "../../Config.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
@@ -24,6 +21,9 @@ import * as Schema from "../../Schema.ts"
 import type { Formatter } from "../../SchemaIssue.ts"
 import type * as Struct from "../../Struct.ts"
 import type { Covariant } from "../../Types.ts"
+import * as Ini from "../encoding/Ini.ts"
+import * as Toml from "../encoding/Toml.ts"
+import * as Yaml from "../encoding/Yaml.ts"
 import type { Environment } from "./Command.ts"
 
 const TypeId = "~effect/cli/Primitive"
