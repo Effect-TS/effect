@@ -8,6 +8,7 @@ import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import {
+  HttpBody,
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
@@ -177,6 +178,21 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       }).pipe(Effect.provide(layer), flaky))
   })
 })
+
+it.live("returns a stream body encoding failure", () =>
+  Effect.gen(function*() {
+    yield* Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      yield* request.text
+      return HttpServerResponse.empty()
+    }).pipe(HttpServer.serveEffect())
+    yield* HttpClient.post("/", {
+      body: HttpBody.stream(Stream.fail("encode failure"))
+    }).pipe(Effect.timeout("100 millis"))
+  }).pipe(Effect.provide(HttpServer.layerTestClient.pipe(
+    Layer.provide(NodeClient.layerNodeHttp),
+    Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+  ))))
 
 const flaky = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
