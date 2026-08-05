@@ -165,7 +165,7 @@ describe("NodeHttpCompression", () => {
       assert.strictEqual(head.status, 200)
       const result = yield* closed.await.pipe(Effect.timeoutOption("1 second"))
       assert.strictEqual(result._tag, "Some")
-    }).pipe(Effect.scoped, Effect.provide(NodeHttpServer.layerTest)))
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 
   it.effect("flushes compressed chunks incrementally over the wire", () =>
     Effect.gen(function*() {
@@ -204,5 +204,5 @@ describe("NodeHttpCompression", () => {
         )
       )
       assert.strictEqual(received.join(""), "data: first\n\ndata: second\n\n")
-    }).pipe(Effect.scoped, Effect.provide(NodeHttpServer.layerTest)))
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)))
 })

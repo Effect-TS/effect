@@ -45,7 +45,6 @@ describe("KeyValueStore / layerFileSystem", () => {
       assert.deepStrictEqual(yield* fs.readDirectory(directory), [])
       assert.strictEqual(yield* fs.readFileString(sibling), "sibling")
     }).pipe(
-      Effect.scoped,
       Effect.provide(NodeFileSystem.layer)
     ))
 })

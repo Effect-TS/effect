@@ -507,7 +507,7 @@ describe("DenoHttpServer", () => {
 
       const disposed = yield* Effect.promise(() => runtime.dispose()).pipe(Effect.timeoutOption("2 seconds"))
       assert.strictEqual(disposed._tag, "Some")
-    }).pipe(Effect.scoped))
+    }))
 
   describe("HttpServerRespondable", () => {
     it.effect("error/schema", () =>
@@ -683,7 +683,7 @@ describe("DenoHttpServer", () => {
 
       assert.deepStrictEqual(yield* Queue.take(received), new Uint8Array([1, 2, 3]))
       socket.close()
-    }).pipe(Effect.scoped, Effect.provide(DenoHttpServer.layerTest)))
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 })
 
 const serveWebSocket = (

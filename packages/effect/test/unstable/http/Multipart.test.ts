@@ -116,7 +116,7 @@ describe("Multipart", () => {
   })
 
   it.effect("returns distinct persisted file paths for files with the same client filename", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const formData = new FormData()
       formData.append("first", new File(["one"], "same.txt"))
       formData.append("second", new File(["two"], "same.txt"))
@@ -141,7 +141,7 @@ describe("Multipart", () => {
       strictEqual(first.path, "/tmp/audit/same.txt")
       notStrictEqual(first.path, second.path)
       deepStrictEqual(writes, [first.path, second.path])
-    })))
+    }))
 
   it.effect("responds based on the reason and is ignored by the ErrorReporter", () =>
     Effect.gen(function*() {

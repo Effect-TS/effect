@@ -42,7 +42,6 @@ describe("Tracer", () => {
         assert.instanceOf(span, OtelTracer.OtelSpan)
         assert.lengthOf(span.links, 1)
       }).pipe(
-        Effect.scoped,
         Effect.provide(TracingLive)
       ))
 
@@ -243,7 +242,6 @@ describe("Tracer", () => {
           })
         })
       }).pipe(
-        Effect.scoped,
         Effect.provide(TracingLive)
       ))
   })
