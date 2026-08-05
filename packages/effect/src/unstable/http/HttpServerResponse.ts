@@ -534,7 +534,7 @@ export const setHeader: {
     makeResponse({
       ...self,
       headers: Headers.set(self.headers, key, value)
-    })
+    }, true)
 )
 
 /**
@@ -570,7 +570,7 @@ export const setHeaders: {
     makeResponse({
       ...self,
       headers: Headers.setAll(self.headers, input)
-    })
+    }, true)
 )
 
 /**
@@ -1339,7 +1339,7 @@ const makeResponse = (options: {
   readonly headers?: Headers.Headers | undefined
   readonly cookies?: Cookies.Cookies | undefined
   readonly body?: Body.HttpBody | undefined
-}) => {
+}, preferHeaders = false) => {
   const self = Object.create(Proto) as Mutable<HttpServerResponse>
   self.status = options.status
   self.statusText = options.statusText
@@ -1350,10 +1350,10 @@ const makeResponse = (options: {
     (self.body.contentType || self.body.contentLength !== undefined)
   ) {
     const newHeaders = Headers.fromRecordUnsafe({ ...options.headers }) as any
-    if (self.body.contentType) {
+    if (self.body.contentType && (!preferHeaders || newHeaders["content-type"] === undefined)) {
       newHeaders["content-type"] = self.body.contentType
     }
-    if (self.body.contentLength !== undefined) {
+    if (self.body.contentLength !== undefined && (!preferHeaders || newHeaders["content-length"] === undefined)) {
       newHeaders["content-length"] = self.body.contentLength.toString()
     }
     self.headers = newHeaders

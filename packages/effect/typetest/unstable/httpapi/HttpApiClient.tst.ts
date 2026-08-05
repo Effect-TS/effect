@@ -641,6 +641,76 @@ describe("HttpApiClient", () => {
       >()
     })
 
+    it("widens only the body stream errors for WithHeaders StreamSse successes", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", {
+                success: HttpApiSchema.WithHeaders(
+                  HttpApiSchema.StreamSse({
+                    data: Schema.Struct({ id: Schema.String }),
+                    error: Schema.Struct({ reason: Schema.String })
+                  }),
+                  { "x-count": Schema.Int }
+                )
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+      const f = client.group.a
+
+      type ClientStream = Stream.Stream<
+        { readonly id: string },
+        | { readonly reason: string }
+        | HttpClientError.HttpClientError
+        | Schema.SchemaError
+        | Sse.Retry
+        | Sse.SseError
+      >
+      type Success = HttpApiSchema.withHeaders<ClientStream, { readonly "x-count": number }>
+
+      expect(f()).type.toBe<
+        Effect.Effect<Success, HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+      expect(f({ responseMode: "decoded-and-response" })).type.toBe<
+        Effect.Effect<
+          [Success, HttpClientResponse.HttpClientResponse],
+          HttpClientError.HttpClientError | Schema.SchemaError
+        >
+      >()
+    })
+
+    it("widens the body transport error for WithHeaders StreamUint8Array successes", () => {
+      const Api = HttpApi.make("Api")
+        .add(
+          HttpApiGroup.make("group")
+            .add(
+              HttpApiEndpoint.get("a", "/a", {
+                success: HttpApiSchema.WithHeaders(
+                  HttpApiSchema.StreamUint8Array(),
+                  { "x-count": Schema.Int }
+                )
+              })
+            )
+        )
+      const client = Effect.runSync(
+        HttpApiClient.make(Api).pipe(Effect.provide(FetchHttpClient.layer))
+      )
+      const f = client.group.a
+
+      type Success = HttpApiSchema.withHeaders<
+        Stream.Stream<Uint8Array, HttpClientError.HttpClientError>,
+        { readonly "x-count": number }
+      >
+
+      expect(f()).type.toBe<
+        Effect.Effect<Success, HttpClientError.HttpClientError | Schema.SchemaError>
+      >()
+    })
+
     it("returns decoded data streams for StreamSse data successes", () => {
       const Api = HttpApi.make("Api")
         .add(
