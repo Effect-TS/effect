@@ -89,6 +89,18 @@ describe("Tracer", () => {
         Effect.provide(TracingLive)
       ))
 
+    it.effect("honors a non-error wrapper status", () =>
+      Effect.gen(function*() {
+        const span = yield* Effect.currentSpan
+        const wrapper = yield* OtelTracer.currentOtelSpan
+        wrapper.setStatus({ code: OtelApi.SpanStatusCode.OK })
+        wrapper.end()
+        assert.strictEqual(span.status._tag, "Ended")
+        if (span.status._tag === "Ended") {
+          assert.strictEqual(span.status.exit._tag, "Success")
+        }
+      }).pipe(Effect.withSpan("repro")))
+
     it.effect("preserves the sampling decision of generic external spans", () =>
       Effect.gen(function*() {
         const span = yield* Effect.currentSpan
