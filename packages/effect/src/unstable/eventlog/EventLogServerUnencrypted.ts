@@ -411,7 +411,7 @@ const toConflicts = (
     const newHistory = history.slice(i)
     let conflicts: Array<Entry> = []
     for (let j = 0; j < newHistory.length; j++) {
-      const scannedEntry = history[j]!
+      const scannedEntry = newHistory[j]!
       if (scannedEntry.event === originEntry.event && scannedEntry.primaryKey === originEntry.primaryKey) {
         conflicts.push(scannedEntry)
       }
