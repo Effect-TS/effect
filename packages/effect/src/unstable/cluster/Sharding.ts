@@ -622,8 +622,7 @@ const make = Effect.gen(function*() {
             const registrationStarted = entityRegistrationStartMillis !== undefined
             const timeoutStartMillis = entityRegistrationStartMillis ??
               (entityRegistrationFallbackStartMillis ??= now)
-            // If registration never starts, hold and warn for one interval,
-            // then use a second interval as the hard fallback.
+            // If registration never starts, allow two intervals from the first missing read before failing.
             const timeoutMillis = registrationStarted
               ? entityRegistrationTimeoutMillis
               : entityRegistrationTimeoutMillis * 2
