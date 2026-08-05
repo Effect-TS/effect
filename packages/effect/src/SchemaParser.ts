@@ -1086,9 +1086,7 @@ function makeParser(
           if (input !== InternalParser.missing && output !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
             if (issues) {
-              result = Effect.fail(
-                new SchemaIssue.Composite(ast, issues)
-              )
+              result = Effect.fail(new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(input, options)))
             }
           }
         }
@@ -1097,9 +1095,7 @@ function makeParser(
           if (input !== InternalParser.missing && value !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
             if (issues) {
-              return Effect.fail(
-                new SchemaIssue.Composite(ast, issues)
-              )
+              return Effect.fail(new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(input, options)))
             }
           }
           return Effect.succeed(value)
@@ -1116,9 +1112,7 @@ function makeParser(
           if (value === InternalParser.missing) return result
           const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
           if (issues) {
-            result = Effect.fail(
-              new SchemaIssue.Composite(ast, issues)
-            )
+            result = Effect.fail(new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(value, options)))
           }
         }
       } else {
@@ -1126,9 +1120,7 @@ function makeParser(
           if (value !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
             if (issues) {
-              return Effect.fail(
-                new SchemaIssue.Composite(ast, issues)
-              )
+              return Effect.fail(new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(value, options)))
             }
           }
           return Effect.succeed(value)
@@ -1175,7 +1167,18 @@ function makeParser(
     }
     result = Effect.catchCause(
       result,
-      (cause) => Effect.failCauseSync(() => Cause.map(cause, (issue) => new SchemaIssue.Encoding(ast, issue)))
+      (cause) =>
+        Effect.failCauseSync(() =>
+          Cause.map(
+            cause,
+            (issue) =>
+              new SchemaIssue.Encoding(
+                ast,
+                issue,
+                SchemaIssue.reportInput(input, options)
+              )
+          )
+        )
     )
     return Effect.flatMapEager(result, (value) => {
       const local = parseLocal(value, options)

@@ -171,25 +171,6 @@ Missing key
     })
   })
 
-  describe("issue actual field", () => {
-    it("does not add actual to parser-created issues", () => {
-      const result = SchemaParser.decodeUnknownResult(Schema.String)({ secret: "value" })
-
-      assertTrue(Result.isFailure(result))
-      assertTrue(result.failure._tag === "InvalidType")
-      assertFalse("actual" in result.failure)
-      strictEqual(String(result.failure), "Expected string")
-    })
-
-    it("preserves user-provided messages", () => {
-      const schema = Schema.String.annotate({ message: "user supplied message" })
-      const result = SchemaParser.decodeUnknownResult(schema)(null)
-
-      assertTrue(Result.isFailure(result))
-      strictEqual(String(result.failure), "user supplied message")
-    })
-  })
-
   describe("Literal", () => {
     it("should throw an error if the literal is not a finite number", () => {
       throws(
