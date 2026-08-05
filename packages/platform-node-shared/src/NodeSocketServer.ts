@@ -52,12 +52,14 @@ export const make = Effect.fnUntraced(function*(
   options: Net.ServerOpts & Net.ListenOptions
 ) {
   const errorDeferred = Deferred.makeUnsafe<never, Error>()
-  const pending = new Set<Net.Socket>()
+  const pending = new Map<Net.Socket, () => void>()
   function defaultOnConnection(conn: Net.Socket) {
-    pending.add(conn)
     const remove = () => {
       pending.delete(conn)
+      conn.off("close", remove)
+      conn.off("error", remove)
     }
+    pending.set(conn, remove)
     conn.on("close", remove)
     conn.on("error", remove)
   }
@@ -66,6 +68,10 @@ export const make = Effect.fnUntraced(function*(
   let server: Net.Server | undefined
   yield* Effect.addFinalizer(() =>
     Effect.callback<void>((resume) => {
+      pending.forEach((remove, conn) => {
+        remove()
+        conn.destroy()
+      })
       server?.close(() => resume(Effect.void))
     })
   )
@@ -129,12 +135,10 @@ export const make = Effect.fnUntraced(function*(
         trackFiber
       )
     }
-    pending.forEach((conn) => {
-      conn.removeAllListeners("error")
-      conn.removeAllListeners("close")
+    pending.forEach((remove, conn) => {
+      remove()
       onConnection(conn)
     })
-    pending.clear()
     return yield* Effect.callback<never>((_resume) => {
       return Effect.suspend(() => {
         onConnection = prevOnConnection
@@ -190,20 +194,29 @@ export const makeWebSocket: (
 > = Effect.fnUntraced(function*(
   options: NodeWS.ServerOptions
 ) {
+  const pendingConnections = new Map<
+    globalThis.WebSocket,
+    readonly [request: Http.IncomingMessage, remove: () => void]
+  >()
   const server = yield* Effect.acquireRelease(
     Effect.sync(() => new NodeWS.WebSocketServer(options)),
     (server) =>
       Effect.callback<void>((resume) => {
+        pendingConnections.forEach(([, remove], conn) => {
+          remove()
+          const socket = conn as unknown as NodeWS.WebSocket
+          socket.terminate()
+        })
         server.close(() => resume(Effect.void))
       })
   )
-  const pendingConnections = new Set<readonly [globalThis.WebSocket, Http.IncomingMessage]>()
   function defaultHandler(conn: globalThis.WebSocket, req: Http.IncomingMessage) {
-    const entry = [conn, req] as const
-    pendingConnections.add(entry)
-    conn.addEventListener("close", () => {
-      pendingConnections.delete(entry)
-    })
+    const remove = () => {
+      pendingConnections.delete(conn)
+      conn.removeEventListener("close", remove)
+    }
+    pendingConnections.set(conn, [req, remove])
+    conn.addEventListener("close", remove)
   }
   let onConnection = defaultHandler
   server.on("connection", (conn, req) => onConnection(conn as any, req))
@@ -248,10 +261,10 @@ export const makeWebSocket: (
         trackFiber
       )
     }
-    for (const [conn, req] of pendingConnections) {
+    pendingConnections.forEach(([req, remove], conn) => {
+      remove()
       onConnection(conn, req)
-    }
-    pendingConnections.clear()
+    })
     return yield* Effect.callback<never>((_resume) => {
       return Effect.sync(() => {
         onConnection = prevOnConnection
