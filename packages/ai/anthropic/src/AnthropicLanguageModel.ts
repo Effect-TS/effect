@@ -889,7 +889,7 @@ const prepareMessages = Effect.fnUntraced(
                           : {
                             type: "text",
                             media_type: "text/plain",
-                            data: typeof part.data === "string" ? part.data : Encoding.encodeBase64(part.data)
+                            data: typeof part.data === "string" ? part.data : new TextDecoder().decode(part.data)
                           } as const
 
                         content.push({

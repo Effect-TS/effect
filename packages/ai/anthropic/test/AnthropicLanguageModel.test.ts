@@ -501,31 +501,40 @@ describe("AnthropicLanguageModel", () => {
       Effect.gen(function*() {
         let body: any
         const client = AnthropicClient.layer({ apiKey: Redacted.make("test") }).pipe(
-          Layer.provide(Layer.succeed(HttpClient.HttpClient, HttpClient.makeWith(
-            Effect.fnUntraced(function*(requestEffect) {
-              const request = yield* requestEffect
-              body = JSON.parse(new TextDecoder().decode((request.body as any).body))
-              return HttpClientResponse.fromWeb(request, new Response(JSON.stringify({
-                id: "msg_1",
-                type: "message",
-                role: "assistant",
-                model: "claude-sonnet-4-20250514",
-                content: [{ type: "text", text: "ok" }],
-                stop_reason: "end_turn",
-                stop_sequence: null,
-                usage: {
-                  cache_creation: null,
-                  cache_creation_input_tokens: null,
-                  cache_read_input_tokens: null,
-                  inference_geo: null,
-                  input_tokens: 1,
-                  output_tokens: 1,
-                  service_tier: null
-                }
-              }), { status: 200 }))
-            }),
-            Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
-          )))
+          Layer.provide(Layer.succeed(
+            HttpClient.HttpClient,
+            HttpClient.makeWith(
+              Effect.fnUntraced(function*(requestEffect) {
+                const request = yield* requestEffect
+                body = JSON.parse(new TextDecoder().decode((request.body as any).body))
+                return HttpClientResponse.fromWeb(
+                  request,
+                  new Response(
+                    JSON.stringify({
+                      id: "msg_1",
+                      type: "message",
+                      role: "assistant",
+                      model: "claude-sonnet-4-20250514",
+                      content: [{ type: "text", text: "ok" }],
+                      stop_reason: "end_turn",
+                      stop_sequence: null,
+                      usage: {
+                        cache_creation: null,
+                        cache_creation_input_tokens: null,
+                        cache_read_input_tokens: null,
+                        inference_geo: null,
+                        input_tokens: 1,
+                        output_tokens: 1,
+                        service_tier: null
+                      }
+                    }),
+                    { status: 200 }
+                  )
+                )
+              }),
+              Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+            )
+          ))
         )
 
         yield* LanguageModel.generateText({
