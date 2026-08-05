@@ -285,6 +285,37 @@ describe("ExecutionPlan", () => {
           ])
         }))
 
+      it.effect("event attempt matches CurrentMetadata across a failover boundary", () =>
+        Effect.gen(function*() {
+          const { events, onEvent } = makeCollector()
+          const inside = Array.empty<ExecutionPlan.Metadata>()
+          let runs = 0
+          const task = Effect.gen(function*() {
+            yield* ExecutionPlan.CurrentMetadata.use((meta) => {
+              inside.push(meta)
+              return Effect.void
+            })
+            runs++
+            return runs < 3 ? yield* Effect.fail("boom") : runs
+          })
+          const plan = ExecutionPlan.make(
+            { provide: Context.empty(), attempts: 2 },
+            { provide: Context.empty(), attempts: 2 }
+          )
+          const result = yield* Effect.withExecutionPlan(task, plan, { onEvent })
+          strictEqual(result, 3)
+          deepStrictEqual(inside, [
+            { attempt: 1, stepIndex: 0 },
+            { attempt: 2, stepIndex: 0 },
+            { attempt: 3, stepIndex: 1 }
+          ])
+          deepStrictEqual(
+            events.filter((event) => event._tag === "AttemptStart")
+              .map((event) => ({ attempt: event.attempt, stepIndex: event.stepIndex })),
+            inside
+          )
+        }))
+
       it.effect("emits AttemptFailure when a step layer fails to build", () =>
         Effect.gen(function*() {
           const { events, onEvent } = makeCollector()
@@ -403,6 +434,51 @@ describe("ExecutionPlan", () => {
             { _tag: "AttemptFailure", attempt: 1, stepAttempt: 1, stepIndex: 0, error: "Partial" },
             { _tag: "AttemptStart", attempt: 2, stepAttempt: 1, stepIndex: 1 },
             { _tag: "AttemptSuccess", attempt: 2, stepAttempt: 1, stepIndex: 1 }
+          ])
+        }))
+
+      it.effect("emits AttemptFailure when interrupted mid-attempt", () =>
+        Effect.gen(function*() {
+          const { events, onEvent } = makeCollector()
+          const started = yield* Latch.make()
+          const stream = Stream.fromEffect(Effect.gen(function*() {
+            yield* started.open
+            return yield* Effect.never
+          }))
+          const plan = ExecutionPlan.make({ provide: Context.empty(), attempts: 2 })
+          const fiber = yield* stream.pipe(
+            Stream.withExecutionPlan(plan, { onEvent }),
+            Stream.runDrain,
+            Effect.forkChild
+          )
+          yield* started.await
+          yield* Fiber.interrupt(fiber)
+          const exit = yield* Fiber.await(fiber)
+          assertTrue(Exit.hasInterrupts(exit))
+          strictEqual(events.length, 2)
+          deepStrictEqual(simplify(events[0]), { _tag: "AttemptStart", attempt: 1, stepAttempt: 1, stepIndex: 0 })
+          const failure = events[1]
+          assertTrue(failure._tag === "AttemptFailure")
+          strictEqual(failure.attempt, 1)
+          assertTrue(Cause.hasInterrupts(failure.cause))
+        }))
+
+      it.effect("emits AttemptFailure for defects without retrying", () =>
+        Effect.gen(function*() {
+          const { events, onEvent } = makeCollector()
+          const plan = ExecutionPlan.make(
+            { provide: Context.empty(), attempts: 2 },
+            { provide: Context.empty() }
+          )
+          const exit = yield* Stream.fromEffect(Effect.die("boom")).pipe(
+            Stream.withExecutionPlan(plan, { onEvent }),
+            Stream.runDrain,
+            Effect.exit
+          )
+          deepStrictEqual(exit, Exit.die("boom"))
+          deepStrictEqual(events.map(simplify), [
+            { _tag: "AttemptStart", attempt: 1, stepAttempt: 1, stepIndex: 0 },
+            { _tag: "AttemptFailure", attempt: 1, stepAttempt: 1, stepIndex: 0, error: "boom" }
           ])
         }))
 

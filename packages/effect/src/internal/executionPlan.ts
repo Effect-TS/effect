@@ -91,7 +91,9 @@ export const withExecutionPlan: {
       error: PlanE
       requirements: PlanR
     }>,
-    options?: Api.Options<Input | PlanE, RX>
+    options?: {
+      readonly onEvent?: ((event: Api.Event<Input | PlanE>) => Effect<void, never, RX>) | undefined
+    }
   ): <A, E extends Input, R>(effect: Effect<A, E, R>) => Effect<
     A,
     E | PlanE,
@@ -105,7 +107,9 @@ export const withExecutionPlan: {
       error: PlanE
       requirements: PlanR
     }>,
-    options?: Api.Options<E | PlanE, RX>
+    options?: {
+      readonly onEvent?: ((event: Api.Event<E | PlanE>) => Effect<void, never, RX>) | undefined
+    }
   ): Effect<
     A,
     E | PlanE,
@@ -119,7 +123,9 @@ export const withExecutionPlan: {
     error: PlanE
     requirements: PlanR
   }>,
-  options?: Api.Options<E | PlanE, RX>
+  options?: {
+    readonly onEvent?: ((event: Api.Event<E | PlanE>) => Effect<void, never, RX>) | undefined
+  }
 ) =>
   effect.suspend(() => {
     let i = 0

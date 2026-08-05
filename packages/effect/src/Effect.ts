@@ -4261,8 +4261,11 @@ export const ignoreCause: <
  *
  * Attempts can be observed from outside the effect by passing
  * `options.onEvent`, which receives an `ExecutionPlan.Event` before each
- * attempt and after it settles; see `ExecutionPlan.Options` for the handler
- * semantics.
+ * attempt and after it settles. The handler is awaited inline before and after
+ * every attempt, so events are strictly ordered; keep it cheap. It cannot
+ * fail, which keeps observation from changing the plan's outcome, and its
+ * requirements are added to the resulting effect. Terminal events run like
+ * finalizers, so they are emitted even when the attempt is interrupted.
  *
  * **Example** (Retrying with an execution plan)
  *
@@ -4288,20 +4291,54 @@ export const ignoreCause: <
  * Effect.runSync(program) // => "good"
  * ```
  *
+ * **Example** (Observing execution-plan attempts)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, ExecutionPlan, Layer } from "effect"
+ *
+ * const Endpoint = Context.Service<{ url: string }>("Endpoint")
+ *
+ * const fetchUrl = Effect.gen(function*() {
+ *   const endpoint = yield* Effect.service(Endpoint)
+ *   if (endpoint.url === "bad") {
+ *     return yield* Effect.fail("Unavailable")
+ *   }
+ *   return endpoint.url
+ * })
+ *
+ * const plan = ExecutionPlan.make(
+ *   { provide: Layer.succeed(Endpoint, { url: "bad" }) },
+ *   { provide: Layer.succeed(Endpoint, { url: "good" }) }
+ * )
+ *
+ * const events: Array<string> = []
+ * const program = Effect.withExecutionPlan(fetchUrl, plan, {
+ *   onEvent: (event) => Effect.sync(() => events.push(`${event._tag}:${event.stepIndex}`))
+ * })
+ *
+ * await Effect.runPromise(program) // => "good"
+ *
+ * events // => ["AttemptStart:0", "AttemptFailure:0", "AttemptStart:1", "AttemptSuccess:1"]
+ * ```
+ *
  * @category error handling
  * @since 3.16.0
  */
 export const withExecutionPlan: {
   <Input, Provides, PlanE, PlanR, RX = never>(
     plan: ExecutionPlan.ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>,
-    options?: ExecutionPlan.Options<Input | PlanE, RX>
+    options?: {
+      readonly onEvent?: ((event: ExecutionPlan.Event<Input | PlanE>) => Effect<void, never, RX>) | undefined
+    }
   ): <A, E extends Input, R>(
     effect: Effect<A, E, R>
   ) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR | RX>
   <A, E extends Input, R, Provides, Input, PlanE, PlanR, RX = never>(
     effect: Effect<A, E, R>,
     plan: ExecutionPlan.ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>,
-    options?: ExecutionPlan.Options<E | PlanE, RX>
+    options?: {
+      readonly onEvent?: ((event: ExecutionPlan.Event<E | PlanE>) => Effect<void, never, RX>) | undefined
+    }
   ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR | RX>
 } = internalExecutionPlan.withExecutionPlan
 

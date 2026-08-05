@@ -5922,8 +5922,10 @@ const retryWithoutReset = <A, E, R, X, E2, R2>(
  *
  * Attempts can be observed from outside the stream by passing
  * `options.onEvent`, which receives an `ExecutionPlan.Event` before each
- * attempt and after it settles; see `ExecutionPlan.Options` for the handler
- * semantics.
+ * attempt and after it settles; see `Effect.withExecutionPlan` for the handler
+ * semantics. When a downstream consumer stops pulling early (for example
+ * `Stream.take` outside the plan), the truncated attempt reports
+ * `AttemptSuccess`: the consumer stopped, not the source.
  *
  * **Example** (Applying an execution plan)
  *
