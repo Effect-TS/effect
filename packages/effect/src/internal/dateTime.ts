@@ -604,7 +604,7 @@ export const toEpochMillis = (self: DateTime.DateTime): number => self.epochMill
 export const toEpochSeconds = (self: DateTime.DateTime): number => Math.floor(self.epochMilliseconds / 1000)
 
 /** @internal */
-export const fromEpochSeconds = (seconds: number): DateTime.Utc => makeUtc(seconds * 1000)
+export const fromEpochSeconds = (seconds: number): DateTime.Utc => fromDateUnsafe(new Date(seconds * 1000))
 
 /** @internal */
 export const removeTime = (self: DateTime.DateTime): DateTime.Utc =>
