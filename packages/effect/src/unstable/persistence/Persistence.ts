@@ -943,7 +943,13 @@ export const layerBackingRedis: Layer.Layer<
             Effect.mapError(
               ttl === undefined
                 ? redis.send("SET", prefixed(key), JSON.stringify(value))
-                : redis.send("SET", prefixed(key), JSON.stringify(value), "PX", String(Duration.toMillis(ttl))),
+                : redis.send(
+                  "SET",
+                  prefixed(key),
+                  JSON.stringify(value),
+                  "PX",
+                  String(Math.ceil(Duration.toMillis(ttl)))
+                ),
               ({ cause }) =>
                 new PersistenceError({
                   message: `Failed to set key ${key} in Redis`,
@@ -958,7 +964,7 @@ export const layerBackingRedis: Layer.Layer<
                 const pkey = prefixed(key)
                 sets.set(pkey, JSON.stringify(value))
                 if (ttl) {
-                  expires.set(pkey, Duration.toMillis(ttl))
+                  expires.set(pkey, Math.ceil(Duration.toMillis(ttl)))
                 }
               }
               return Effect.mapError(
