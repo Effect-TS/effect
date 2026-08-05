@@ -435,6 +435,21 @@ const cases: ReadonlyArray<MultipartCase> = [
   {
     source: [
       [
+        "-----------------------------paZqsnEHRufoShdX6fh0lUhXBP4k",
+        "Content-Disposition: form-data; name=\"file\"; filename*=utf-8''%ZZ",
+        "Content-Type: application/octet-stream",
+        "",
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "-----------------------------paZqsnEHRufoShdX6fh0lUhXBP4k--"
+      ].join("\r\n")
+    ],
+    boundary: "---------------------------paZqsnEHRufoShdX6fh0lUhXBP4k",
+    expected: [["file", "file", 26, "%ZZ", "application/octet-stream"]],
+    name: "Malformed encoded filenames"
+  },
+  {
+    source: [
+      [
         "--asdasdasdasd\r\n",
         "Content-Type: text/plain\r\n",
         "Content-Disposition: form-data; name=\"foo\"\r\n",

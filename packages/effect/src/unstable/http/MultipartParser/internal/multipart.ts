@@ -162,7 +162,11 @@ export function make({
         if ("filename*" in contentDisposition.parameters) {
           const parts = contentDisposition.parameters["filename*"].split("''")
           if (parts.length === 2) {
-            encodedFilename = decodeURIComponent(parts[1])
+            try {
+              encodedFilename = decodeURIComponent(parts[1])
+            } catch {
+              encodedFilename = parts[1]
+            }
           }
         }
 
