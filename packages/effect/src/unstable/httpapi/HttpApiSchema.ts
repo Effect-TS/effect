@@ -47,7 +47,7 @@ declare module "../../Schema.ts" {
 export interface WithHeadersAnnotation {
   readonly body: Schema.Top
   readonly headers: Schema.Top
-  readonly headersCodec?: Schema.Top | undefined
+  readonly headersCodec: Schema.Top
 }
 
 /**
@@ -794,7 +794,7 @@ export function encodeToWithHeaders<
         SchemaTransformation.transform(transformation)
       )
     ).annotate({
-      "~httpApiWithHeaders": { body, headers },
+      "~httpApiWithHeaders": { body, headers, headersCodec: Schema.toEncoded(headers) },
       ...(status !== undefined ? { httpApiStatus: status } : undefined),
       ...(encoding !== undefined ? { "~httpApiEncoding": encoding } : undefined)
     })

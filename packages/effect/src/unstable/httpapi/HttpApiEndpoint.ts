@@ -1257,8 +1257,10 @@ function validateResponseExclusivity(
   schemas: ReadonlyArray<Schema.Constraint>,
   getStatus: (schema: Schema.Constraint) => number
 ) {
-  const occupied = new Map<string, boolean>()
-  const withHeadersStatuses = new Set<number>()
+  const statuses = new Map<number, {
+    headerContentType: string | undefined
+    readonly plainContentTypes: Set<string>
+  }>()
   for (const schema of schemas) {
     const status = getStatus(schema)
     const withHeadersAnnotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
@@ -1270,23 +1272,27 @@ function validateResponseExclusivity(
           ? body.contentType
           : HttpApiSchema.getResponseEncodingSchema(schema).contentType
       )
-    const key = `${status} ${contentType}`
-    const withHeaders = HttpApiSchema.isWithHeaders(schema) || withHeadersAnnotation !== undefined
-    if (withHeaders) {
-      if (withHeadersStatuses.has(status)) {
-        throw new Error(`Cannot declare multiple responses with headers for status ${status}`)
-      }
-      withHeadersStatuses.add(status)
+    let entry = statuses.get(status)
+    if (entry === undefined) {
+      entry = { headerContentType: undefined, plainContentTypes: new Set() }
+      statuses.set(status, entry)
     }
-    const existing = occupied.get(key)
-    if (existing !== undefined && (existing || withHeaders)) {
-      throw new Error(
+    const combineError = () =>
+      new Error(
         `Cannot combine a response with headers with another response for status ${status} and content-type: ${
           contentType || "<no content>"
         }`
       )
+    if (HttpApiSchema.isWithHeaders(schema) || withHeadersAnnotation !== undefined) {
+      if (entry.headerContentType !== undefined) {
+        throw new Error(`Cannot declare multiple responses with headers for status ${status}`)
+      }
+      if (entry.plainContentTypes.has(contentType)) throw combineError()
+      entry.headerContentType = contentType
+    } else {
+      if (entry.headerContentType === contentType) throw combineError()
+      entry.plainContentTypes.add(contentType)
     }
-    occupied.set(key, withHeaders)
   }
 }
 
@@ -1337,22 +1343,19 @@ function hasReservedEventLiteral(ast: AST.AST, seen: Set<AST.AST>): boolean {
 }
 
 function transformResponse(schema: Schema.Top): Schema.Top {
+  const encoding = HttpApiSchema.getResponseEncoding(schema.ast)
   const withHeaders = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
   if (withHeaders === undefined) {
-    return applyResponseEncoding(schema, HttpApiSchema.getResponseEncoding(schema.ast))
+    return applyResponseEncoding(schema, encoding)
   }
-  const body = applyResponseEncoding(
-    Schema.toEncoded(withHeaders.body),
-    HttpApiSchema.getResponseEncoding(schema.ast)
-  )
-  const transformed = Schema.Struct({
-    body,
-    headers: Schema.toEncoded(withHeaders.headers)
-  }).pipe(Schema.decodeTo(schema))
-  return transformed.annotate({
+  const headers = Schema.toEncoded(withHeaders.headers)
+  return Schema.Struct({
+    body: applyResponseEncoding(Schema.toEncoded(withHeaders.body), encoding),
+    headers
+  }).pipe(Schema.decodeTo(schema)).annotate({
     "~httpApiWithHeaders": {
       ...withHeaders,
-      headersCodec: Schema.toCodecStringTree(Schema.toEncoded(withHeaders.headers))
+      headersCodec: Schema.toCodecStringTree(headers)
     }
   })
 }

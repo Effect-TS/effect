@@ -1137,14 +1137,7 @@ function getResponseTransformation(
       HttpApiSchema.getResponseEncoding(withHeaders.body.ast),
       HttpApiSchema.isNoContent(withHeaders.body.ast)
     )
-    const headersCodec = withHeaders.headersCodec
-    let encodeHeaders: (headers: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
-    if (headersCodec === undefined) {
-      encodeHeaders = Schema.encodeUnknownEffect(Schema.toEncoded(withHeaders.headers))
-    } else {
-      encodeHeaders = Schema.encodeUnknownEffect(headersCodec)
-    }
-    return withHeadersTransformation(encodeBody, encodeHeaders)
+    return withHeadersTransformation(encodeBody, Schema.encodeUnknownEffect(withHeaders.headersCodec))
   }
 
   const bodySchema = HttpApiSchema.isWithHeaders(schema) ? schema.schema : schema
