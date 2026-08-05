@@ -6298,12 +6298,12 @@ export const provideService: {
 export const provideServiceEffect: {
   <I, S, E2, R2>(
     service: Context.Key<I, S>,
-    acquire: Effect<S, E2, R2>
+    acquire: Effect<NoInfer<S>, E2, R2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, I> | R2>
   <A, E, R, I, S, E2, R2>(
     self: Effect<A, E, R>,
     service: Context.Key<I, S>,
-    acquire: Effect<S, E2, R2>
+    acquire: Effect<NoInfer<S>, E2, R2>
   ): Effect<A, E | E2, Exclude<R, I> | R2>
 } = internal.provideServiceEffect
 
