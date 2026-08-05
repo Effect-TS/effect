@@ -31,7 +31,7 @@ This cookbook intentionally defines schedules only. It does not apply them with
 | Poll latest status                        | `Schedule.spaced` or `Schedule.fixed`, then `Schedule.setInputType`, `Schedule.passthrough`, and `Schedule.while` |
 | Adapt delay from metadata                 | `Schedule.addDelay`                                                                                               |
 | Replace or cap selected delay             | `Schedule.modifyDelay`                                                                                            |
-| Run phases in sequence                    | `Schedule.andThen`                                                                                                |
+| Run phases in sequence                    | `Schedule.concat`                                                                                                 |
 | Preserve phase in output                  | `Schedule.andThenResult`                                                                                          |
 | Continue while all policies continue      | `Schedule.max`                                                                                                    |
 | Continue while any policy continues       | `Schedule.min`                                                                                                    |
@@ -256,7 +256,7 @@ import { Schedule } from "effect"
 
 const cacheInvalidationSequence = Schedule.spaced("100 millis").pipe(
   Schedule.upTo({ times: 2 }),
-  Schedule.andThen(Schedule.spaced("30 seconds").pipe(Schedule.upTo({ times: 3 })))
+  Schedule.concat(Schedule.spaced("30 seconds").pipe(Schedule.upTo({ times: 3 })))
 )
 ```
 
@@ -543,8 +543,8 @@ import { Schedule } from "effect"
 
 const incidentEscalationCadence = Schedule.spaced("1 minute").pipe(
   Schedule.upTo({ times: 3 }),
-  Schedule.andThen(Schedule.spaced("5 minutes").pipe(Schedule.upTo({ times: 3 }))),
-  Schedule.andThen(Schedule.fixed("15 minutes"))
+  Schedule.concat(Schedule.spaced("5 minutes").pipe(Schedule.upTo({ times: 3 }))),
+  Schedule.concat(Schedule.fixed("15 minutes"))
 )
 ```
 
@@ -558,6 +558,6 @@ about 30 seconds, then switches to a cron schedule that recurs every day at
 import { Schedule } from "effect"
 
 const maintenanceCronAfterWarmup = Schedule.duration("30 seconds").pipe(
-  Schedule.andThen(Schedule.cron("0 3 * * *"))
+  Schedule.concat(Schedule.cron("0 3 * * *"))
 )
 ```

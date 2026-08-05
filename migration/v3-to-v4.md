@@ -13245,7 +13245,7 @@ Schema.toFormatter(schema)
 
 - `Schedule.fromDelay` -> `Schedule.duration`: The duration constructor recurs once after the supplied delay.
 
-- `Schedule.fromDelays` -> `Schedule.duration + Schedule.andThen`: Build one Schedule.duration per delay and sequence them with Schedule.andThen.
+- `Schedule.fromDelays` -> `Schedule.duration + Schedule.concat`: Build one Schedule.duration per delay and sequence them with Schedule.concat.
 
 - `Schedule.fromFunction` -> `Schedule.identity + Schedule.map`: Start with Schedule.identity\<A\>() and map metadata.input through the function.
 

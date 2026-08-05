@@ -81,6 +81,28 @@ describe("Schedule", () => {
   })
 
   describe("sequencing", () => {
+    it.effect("concat - sequences self then other and merges their outputs", () =>
+      Effect.gen(function*() {
+        const left = Schedule.identity<string>().pipe(
+          Schedule.upTo({ times: 2 }),
+          Schedule.map(({ output }) => `left:${output}`)
+        )
+        const right = Schedule.identity<string>().pipe(
+          Schedule.map(({ output }) => `right:${output}`)
+        )
+        const step = yield* Schedule.toStep(Schedule.concat(left, right))
+
+        const first = yield* step(0, "a")
+        const second = yield* step(0, "b")
+        const third = yield* step(0, "c")
+
+        assert.deepStrictEqual([first, second, third], [
+          ["left:a", Duration.zero],
+          ["left:b", Duration.zero],
+          ["right:c", Duration.zero]
+        ])
+      }))
+
     it.effect("tap - provides full metadata", () =>
       Effect.gen(function*() {
         const observed: Array<Schedule.Metadata<number, string>> = []

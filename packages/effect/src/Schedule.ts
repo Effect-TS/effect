@@ -490,14 +490,14 @@ export const addDelay: {
  * ```ts import.meta.vitest
  * import { Schedule } from "effect"
  *
- * const schedule = Schedule.andThen(Schedule.recurs(1), Schedule.recurs(2))
+ * const schedule = Schedule.concat(Schedule.recurs(1), Schedule.recurs(2))
  * Schedule.isSchedule(schedule) // => true
  * ```
  *
  * @category sequencing
  * @since 2.0.0
  */
-export const andThen: {
+export const concat: {
   <Output2, Input2, Error2, Env2>(
     other: Schedule<Output2, Input2, Error2, Env2>
   ): <Output, Input, Error, Env>(

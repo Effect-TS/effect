@@ -83,8 +83,8 @@
   replacement: "Schedule.duration"
   note: "The duration constructor recurs once after the supplied delay."
 "effect/Schedule#fromDelays":
-  replacement: "Schedule.duration + Schedule.andThen"
-  note: "Build one Schedule.duration per delay and sequence them with Schedule.andThen."
+  replacement: "Schedule.duration + Schedule.concat"
+  note: "Build one Schedule.duration per delay and sequence them with Schedule.concat."
 "effect/Schedule#fromFunction":
   replacement: "Schedule.identity + Schedule.map"
   note: "Start with Schedule.identity<A>() and map metadata.input through the function."
