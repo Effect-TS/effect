@@ -7850,7 +7850,7 @@ export const bindTo: {
  */
 export const runCount = <OutElem, OutErr, OutDone, Env>(
   self: Channel<OutElem, OutErr, OutDone, unknown, unknown, unknown, Env>
-): Effect.Effect<void, OutErr, Env> => runFold(self, () => 0, (acc) => acc + 1)
+): Effect.Effect<number, OutErr, Env> => runFold(self, () => 0, (acc) => acc + 1)
 
 /**
  * Runs a channel and discards all output elements, returning only the final result.

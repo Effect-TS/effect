@@ -1,4 +1,4 @@
-import { Channel, Data, Effect, pipe, Result } from "effect"
+import { Channel, Data, type Effect, pipe, Result } from "effect"
 import { describe, expect, it } from "tstyche"
 
 class ErrorA extends Data.TaggedError("ErrorA")<{ readonly message: string }> {}
