@@ -54,7 +54,7 @@ class RouterImpl<A> implements Router.Router<A> {
 
   readonly options: Router.RouterConfig
   routes: Array<Route> = []
-  trees: Record<string, StaticNode> = {}
+  trees: Record<string, StaticNode> = Object.create(null)
 
   on(
     method: string | Iterable<string>,
@@ -72,10 +72,10 @@ class RouterImpl<A> implements Router.Router<A> {
         OPTIONAL_PARAM_REGEXP,
         "$1$2"
       ) as Router.PathInput
-      const pathOptional = path.replace(
+      const pathOptional = (path.replace(
         OPTIONAL_PARAM_REGEXP,
         "$2"
-      ) as Router.PathInput
+      ) || "/") as Router.PathInput
 
       this.on(method, pathFull, handler)
       this.on(method, pathOptional, handler)
@@ -145,7 +145,10 @@ class RouterImpl<A> implements Router.Router<A> {
 
       if (isParametricNode) {
         let isRegexNode = false
+        let isParamSafe = true
+        let backtrack = ""
         const regexps = []
+        let nodePatternParts = ""
 
         let lastParamStartIndex = i + 1
         for (let j = lastParamStartIndex;; j++) {
@@ -168,8 +171,10 @@ class RouterImpl<A> implements Router.Router<A> {
               regexps.push(trimRegExpStartAndEnd(regexString))
 
               j = endOfRegexIndex + 1
+              isParamSafe = true
             } else {
-              regexps.push("(.*?)")
+              regexps.push(isParamSafe ? "(.*?)" : `(${backtrack}|(?:(?!${backtrack}).)*)`)
+              isParamSafe = false
             }
 
             const staticPartStartIndex = j
@@ -187,17 +192,18 @@ class RouterImpl<A> implements Router.Router<A> {
             if (staticPart) {
               staticPart = staticPart.split("::").join(":")
               staticPart = staticPart.split("%").join("%25")
-              regexps.push(escapeRegExp(staticPart))
+              regexps.push(backtrack = escapeRegExp(staticPart))
             }
 
             lastParamStartIndex = j + 1
+            nodePatternParts += "()" + staticPart
 
             if (
               isEndOfNode ||
               pattern.charCodeAt(j) === 47 ||
               j === pattern.length
             ) {
-              const nodePattern = isRegexNode ? "()" + staticPart : staticPart
+              const nodePattern = isRegexNode ? nodePatternParts : staticPart
               const nodePath = pattern.slice(i, j)
 
               pattern = pattern.slice(0, i + 1) + nodePattern + pattern.slice(j)
@@ -342,24 +348,23 @@ class RouterImpl<A> implements Router.Router<A> {
 
       currentNode = node
 
-      // static route
-      if (currentNode._tag === "StaticNode") {
-        pathIndex += currentNode.prefix.length
-        continue
-      }
-
-      if (currentNode._tag === "WildcardNode") {
-        let param = originPath.slice(pathIndex)
-        if (shouldDecodeParam) {
-          param = safeDecodeURIComponent(param)
+      while (true) {
+        if (currentNode._tag === "StaticNode") {
+          pathIndex += currentNode.prefix.length
+          break
         }
 
-        params.push(param)
-        pathIndex = pathLen
-        continue
-      }
+        if (currentNode._tag === "WildcardNode") {
+          let param = originPath.slice(pathIndex)
+          if (shouldDecodeParam) {
+            param = safeDecodeURIComponent(param)
+          }
 
-      if (currentNode._tag === "ParametricNode") {
+          params.push(param)
+          pathIndex = pathLen
+          break
+        }
+
         let paramEndIndex = originPath.indexOf("/", pathIndex)
         if (paramEndIndex === -1) {
           paramEndIndex = pathLen
@@ -372,23 +377,59 @@ class RouterImpl<A> implements Router.Router<A> {
 
         if (currentNode.regex !== undefined) {
           const matchedParameters: RegExpExecArray | null = currentNode.regex.exec(param)
-          if (matchedParameters === null) continue
-
-          for (let i = 1; i < matchedParameters.length; i++) {
-            const matchedParam: string = matchedParameters[i]
-            if (matchedParam.length > maxParamLength) {
+          if (matchedParameters === null) {
+            if (brothersNodesStack.length === 0) {
               return undefined
             }
-            params.push(matchedParam)
+
+            const brotherNodeState = brothersNodesStack.pop()!
+            pathIndex = brotherNodeState.brotherPathIndex
+            params.splice(brotherNodeState.paramsCount)
+            currentNode = brotherNodeState.brotherNode
+            continue
+          }
+
+          let maxParamLengthExceeded = false
+          for (let i = 1; i < matchedParameters.length; i++) {
+            const matchedParam = matchedParameters[i] ?? ""
+            if (matchedParam.length > maxParamLength) {
+              maxParamLengthExceeded = true
+              break
+            }
+          }
+
+          if (maxParamLengthExceeded) {
+            if (brothersNodesStack.length === 0) {
+              return undefined
+            }
+
+            const brotherNodeState = brothersNodesStack.pop()!
+            pathIndex = brotherNodeState.brotherPathIndex
+            params.splice(brotherNodeState.paramsCount)
+            currentNode = brotherNodeState.brotherNode
+            continue
+          }
+
+          for (let i = 1; i < matchedParameters.length; i++) {
+            params.push(matchedParameters[i] ?? "")
           }
         } else {
           if (param.length > maxParamLength) {
-            return undefined
+            if (brothersNodesStack.length === 0) {
+              return undefined
+            }
+
+            const brotherNodeState = brothersNodesStack.pop()!
+            pathIndex = brotherNodeState.brotherPathIndex
+            params.splice(brotherNodeState.paramsCount)
+            currentNode = brotherNodeState.brotherNode
+            continue
           }
           params.push(param)
         }
 
         pathIndex = paramEndIndex
+        break
       }
     }
   }
@@ -893,6 +934,7 @@ const httpMethods = [
   "PROPPATCH",
   "PURGE",
   "PUT",
+  "QUERY",
   "REBIND",
   "REPORT",
   "SEARCH",

@@ -33,10 +33,21 @@ it("Multi parametric route with optional param", () => {
   router.on("GET", "/a/:p1-:p2?", true)
 
   assert.deepStrictEqual(router.find("GET", "/a/foo-bar-baz")?.params, {
-    p1: "foo",
-    p2: "bar-baz"
+    p1: "foo-bar",
+    p2: "baz"
   })
   assert.deepStrictEqual(router.find("GET", "/a")?.params, {})
+})
+
+it("Optional parameter at root", () => {
+  const router = Router.make<boolean>()
+
+  router.on("GET", "/:optional?", true)
+
+  assert.deepStrictEqual(router.find("GET", "/")?.params, {})
+  assert.deepStrictEqual(router.find("GET", "/foo")?.params, {
+    optional: "foo"
+  })
 })
 
 it("Optional Parameter with ignoreTrailingSlash = true", () => {

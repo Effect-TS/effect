@@ -82,3 +82,13 @@ it("should set up regexp node and node with static ending", () => {
   assert.strictEqual(router.find("GET", "/foo/123")?.handler, 1)
   assert.strictEqual(router.find("GET", "/foo/123.jpeg")?.handler, 2)
 })
+
+it("distinguishes routes with different static parts between parameters", () => {
+  const router = Router.make<string>()
+
+  router.on("GET", "/foo/:a-:b", "dash")
+  router.on("GET", "/foo/:a.:b", "dot")
+
+  assert.strictEqual(router.find("GET", "/foo/x-y")?.handler, "dash")
+  assert.strictEqual(router.find("GET", "/foo/x.y")?.handler, "dot")
+})

@@ -70,3 +70,40 @@ it("safe decodeURIComponent", () => {
   router.on("GET", "/test/:id(^\\d+$)", true)
   assert.isUndefined(router.find("GET", "/test/hel%\"Flo"))
 })
+
+it("does not match an empty segment against a non-empty regex", () => {
+  const router = Router.make<boolean>({
+    ignoreTrailingSlash: false
+  })
+  router.on("GET", "/users/:userId(^\\d+)", true)
+
+  assert.isUndefined(router.find("GET", "/users/"))
+})
+
+it("matches undefined regex captures as empty strings", () => {
+  const router = Router.make<boolean>({
+    ignoreTrailingSlash: false
+  })
+  router.on("GET", "/test/:id(^((?!abc).)*$)", true)
+
+  assert.deepStrictEqual(router.find("GET", "/test/")?.params, {
+    id: ""
+  })
+})
+
+it("falls back when a parameter exceeds maxParamLength", () => {
+  const router = Router.make<string>({
+    maxParamLength: 3
+  })
+  router.on("GET", "/users/:userId", "parameter")
+  router.on("GET", "/users/*", "wildcard")
+
+  assert.strictEqual(router.find("GET", "/users/long")?.handler, "wildcard")
+})
+
+it("avoids backtracking across static parameter separators", { timeout: 1_000 }, () => {
+  const router = Router.make<boolean>()
+  router.on("GET", "/:foo-:bar-", true)
+
+  router.find("GET", "/" + "-".repeat(16_000) + "a")
+})
