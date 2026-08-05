@@ -1258,6 +1258,7 @@ function validateResponseExclusivity(
   getStatus: (schema: Schema.Constraint) => number
 ) {
   const occupied = new Map<string, boolean>()
+  const withHeadersStatuses = new Set<number>()
   for (const schema of schemas) {
     const status = getStatus(schema)
     const withHeadersAnnotation = HttpApiSchema.getWithHeadersAnnotation(schema.ast)
@@ -1271,6 +1272,12 @@ function validateResponseExclusivity(
       )
     const key = `${status} ${contentType}`
     const withHeaders = HttpApiSchema.isWithHeaders(schema) || withHeadersAnnotation !== undefined
+    if (withHeaders) {
+      if (withHeadersStatuses.has(status)) {
+        throw new Error(`Cannot declare multiple responses with headers for status ${status}`)
+      }
+      withHeadersStatuses.add(status)
+    }
     const existing = occupied.get(key)
     if (existing !== undefined && (existing || withHeaders)) {
       throw new Error(

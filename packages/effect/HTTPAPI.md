@@ -1555,6 +1555,8 @@ Response headers can be declared in the endpoint's schemas, so they are type-che
 - `HttpApiSchema.WithHeaders(schema, headers)` wraps a response schema together with a headers schema. Handlers return the body and headers as a pair. Recommended for success responses, including streams.
 - `HttpApiSchema.encodeToWithHeaders` folds headers into an opaque domain type such as an error class, so handlers keep working with plain domain values.
 
+Only one response schema carrying headers may be declared for each status, though plain responses with different content types may share that status.
+
 For headers that are not part of the API contract, `HttpEffect.appendPreResponseHandler` remains available as an untyped escape hatch.
 
 ### Declaring Response Headers with WithHeaders

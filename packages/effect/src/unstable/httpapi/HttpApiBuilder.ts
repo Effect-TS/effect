@@ -932,25 +932,14 @@ type StreamEncoder = (response: unknown, context: Context.Context<never>) =>
 type WithHeadersEncoder = (headers: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
 
 function makeWithHeadersEncoder(endpoint: HttpApiEndpoint.Top): Map<number, WithHeadersEncoder> | undefined {
-  const schemasByStatus = new Map<number, Array<Schema.Top>>()
+  const encoders = new Map<number, WithHeadersEncoder>()
   for (const schema of endpoint.success) {
     if (HttpApiSchema.isWithHeaders(schema)) {
       const status = HttpApiSchema.getStatusSuccessSchema(schema)
-      const headersSchema = schema.headers
-      const schemas = schemasByStatus.get(status)
-      if (schemas === undefined) {
-        schemasByStatus.set(status, [headersSchema])
-      } else {
-        schemas.push(headersSchema)
-      }
+      encoders.set(status, Schema.encodeUnknownEffect(schema.headers))
     }
   }
-  if (schemasByStatus.size === 0) return undefined
-  const encoders = new Map<number, WithHeadersEncoder>()
-  for (const [status, schemas] of schemasByStatus) {
-    encoders.set(status, Schema.encodeUnknownEffect(schemas.length === 1 ? schemas[0] : Schema.Union(schemas)))
-  }
-  return encoders
+  return encoders.size === 0 ? undefined : encoders
 }
 
 function makeStreamEncoder(endpoint: HttpApiEndpoint.Top): StreamEncoder | undefined {
