@@ -215,7 +215,7 @@ class FileImpl implements FileSystem.File {
       } else {
         this.position += size
       }
-      return this.position
+      return FileSystem.Size(this.position)
     })
   }
 
