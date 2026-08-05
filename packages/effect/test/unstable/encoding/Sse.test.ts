@@ -65,6 +65,16 @@ describe("Sse", () => {
     }])
   })
 
+  it("uses message for an empty SSE event type", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed("event:\ndata: ok\n\n")
+
+    assert.strictEqual(events.length, 1)
+    assert.strictEqual((events[0] as Sse.Event).event, "message")
+  })
+
   it("Event preserves string payloads", () => {
     const decode = Schema.decodeUnknownSync(Sse.Event)
     const encode = Schema.encodeSync(Sse.Event)

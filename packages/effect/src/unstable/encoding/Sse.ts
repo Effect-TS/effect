@@ -365,7 +365,7 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
         onParse({
           _tag: "Event",
           id: lastEventId,
-          event: eventName ?? "message",
+          event: eventName || "message",
           data: data.slice(0, -1) // remove trailing newline
         })
         data = ""
