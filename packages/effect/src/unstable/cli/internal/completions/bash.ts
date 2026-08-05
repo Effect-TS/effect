@@ -130,9 +130,19 @@ const generateFunction = (
   // Subcommand dispatch
   if (descriptor.subcommands.length > 0) {
     lines.push(`  # Subcommand dispatch`)
-    lines.push(`  local cmd`)
-    lines.push(`  for ((i = 1; i < cword; i++)); do`)
+    lines.push(`  local cmd _skip_next=0`)
+    lines.push(`  for ((i = _command_index + 1; i < cword; i++)); do`)
+    lines.push(`    if (( _skip_next )); then`)
+    lines.push(`      _skip_next=0`)
+    lines.push(`      continue`)
+    lines.push(`    fi`)
     lines.push(`    case "\${words[i]}" in`)
+    for (const flag of descriptor.flags) {
+      if (flag.type._tag === "Boolean") continue
+      const forms = flagNamesForWordlist(flag)
+      lines.push(`      ${forms.join("|")}) _skip_next=1 ;;`)
+      lines.push(`      ${forms.map((form) => `${form}=*`).join("|")}) ;;`)
+    }
     for (const sub of descriptor.subcommands) {
       const subFuncName = `_${[...currentPath, sub.name].map(sanitizeFunctionName).join("_")}`
       lines.push(`      ${sub.name})`)

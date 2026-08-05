@@ -44,7 +44,8 @@ const withSubcommands = (() => {
   }).pipe(Command.withDescription("Stop the server"))
 
   return Command.make("server", {
-    verbose: Flag.boolean("verbose").pipe(Flag.withAlias("v"))
+    verbose: Flag.boolean("verbose").pipe(Flag.withAlias("v")),
+    config: Flag.string("config")
   }).pipe(
     Command.withDescription("Server management"),
     Command.withSubcommands([start, stop])
@@ -150,6 +151,23 @@ describe("Bash completions", () => {
     const script = Bash.generate("server", desc)
     assert.include(script, "start)")
     assert.include(script, "stop)")
+  })
+
+  it("does not dispatch subcommands from flag values", () => {
+    const desc = fromCommand(withSubcommands)
+    const script = Bash.generate("server", desc)
+    assert.include(
+      script,
+      `for ((i = _command_index + 1; i < cword; i++)); do
+    if (( _skip_next )); then
+      _skip_next=0
+      continue
+    fi
+    case "\${words[i]}" in
+      --config) _skip_next=1 ;;
+      --config=*) ;;
+      start)`
+    )
   })
 
   it("includes long flag names with -- prefix", () => {
