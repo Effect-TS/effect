@@ -203,6 +203,14 @@ const SleepOrder = Order.flip(Order.Struct({
   sequence: Order.Number
 }))
 
+const nanosPerMilli = BigInt(1_000_000)
+
+const millisToNanos = (millis: number): bigint => {
+  const wholeMillis = Math.floor(millis)
+  const fractionalNanos = Math.floor((millis - wholeMillis) * 1_000_000)
+  return BigInt(wholeMillis) * nanosPerMilli + BigInt(fractionalNanos)
+}
+
 /**
  * Creates a `TestClock` with optional configuration.
  *
@@ -341,7 +349,7 @@ export const make = Effect.fnUntraced(function*(
         currentMonotonicNanos += BigInt(Math.round(deltaMillis * 1_000_000))
       }
       if (Number.isFinite(timestamp)) {
-        currentWallNanos = BigInt(Math.floor(timestamp * 1_000_000))
+        currentWallNanos = millisToNanos(timestamp)
       }
       currentTimestamp = timestamp
     }
