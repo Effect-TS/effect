@@ -3,12 +3,14 @@ import { Effect } from "effect"
 import { Runner, RunnerAddress, RunnerStorage, ShardId } from "effect/unstable/cluster"
 
 describe("RunnerStorage", () => {
-  it.effect("preserves runner health in memory", () =>
+  it.effect("tracks runner health in memory", () =>
     Effect.gen(function*() {
       const storage = yield* RunnerStorage.makeMemory
       const address = RunnerAddress.make("localhost", 41001)
       yield* storage.register(Runner.make({ address, groups: ["default"], weight: 1 }), false)
       assert.strictEqual((yield* storage.getRunners)[0][1], false)
+      yield* storage.setRunnerHealth(address, true)
+      assert.strictEqual((yield* storage.getRunners)[0][1], true)
     }))
 
   it.effect("memory acquire accepts a one-shot iterable", () =>
