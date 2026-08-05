@@ -14,7 +14,7 @@ import * as Config from "../../Config.ts"
 import * as Context from "../../Context.ts"
 import * as Duration from "../../Duration.ts"
 import * as Effect from "../../Effect.ts"
-import { flow, identity } from "../../Function.ts"
+import { dual, flow, identity } from "../../Function.ts"
 import * as Layer from "../../Layer.ts"
 import * as Schema from "../../Schema.ts"
 import * as Redis from "./Redis.ts"
@@ -285,7 +285,7 @@ export const makeWithRateLimiter: Effect.Effect<
 )
 
 /**
- * Accesses a function that sleeps when the rate limit is exceeded.
+ * Sleeps when the rate limit is exceeded.
  *
  * **Example** (Sleeping until rate limit permits)
  *
@@ -294,52 +294,62 @@ export const makeWithRateLimiter: Effect.Effect<
  * import { RateLimiter } from "effect/unstable/persistence"
  *
  * const program = Effect.gen(function*() {
- *   // Access the `sleep` function from the RateLimiter module
- *   const sleep = yield* RateLimiter.makeSleep
- *
- *   // Use the `sleep` function with specific rate limiting parameters.
- *   // This will only sleep if the rate limit has been exceeded.
- *   const result = yield* sleep({
- *     key: "some-key",
+ *   const limiter = yield* RateLimiter.RateLimiter
+ *   const dataFirst = yield* RateLimiter.sleep(limiter, {
+ *     key: "data-first",
  *     limit: 10,
  *     window: "5 seconds",
  *     algorithm: "fixed-window"
  *   })
- *   return result.remaining
+ *   const dataLast = yield* RateLimiter.sleep({
+ *     key: "data-last",
+ *     limit: 10,
+ *     window: "5 seconds",
+ *     algorithm: "fixed-window"
+ *   })(limiter)
+ *   return [dataFirst.remaining, dataLast.remaining]
  * }).pipe(
  *   Effect.provide(RateLimiter.layer.pipe(Layer.provide(RateLimiter.layerStoreMemory)))
  * )
  *
- * await Effect.runPromise(program) // => 9
+ * await Effect.runPromise(program) // => [9, 9]
  * ```
  *
  * @category accessors
  * @since 4.0.0
  */
-export const makeSleep: Effect.Effect<
-  ((options: {
+export const sleep: {
+  (options: {
     readonly algorithm?: "fixed-window" | "token-bucket" | undefined
     readonly window: Duration.Input
     readonly limit: number
     readonly key: string
     readonly tokens?: number | undefined
-  }) => Effect.Effect<ConsumeResult, RateLimiterError>),
-  never,
-  RateLimiter
-> = RateLimiter.use((limiter) =>
-  Effect.succeed((options) =>
-    Effect.flatMap(
-      limiter.consume({
-        ...options,
-        onExceeded: "delay"
-      }),
-      (result) => {
-        if (Duration.isZero(result.delay)) return Effect.succeed(result)
-        return Effect.as(Effect.sleep(result.delay), result)
-      }
-    )
-  )
-)
+  }): (self: RateLimiter) => Effect.Effect<ConsumeResult, RateLimiterError>
+  (self: RateLimiter, options: {
+    readonly algorithm?: "fixed-window" | "token-bucket" | undefined
+    readonly window: Duration.Input
+    readonly limit: number
+    readonly key: string
+    readonly tokens?: number | undefined
+  }): Effect.Effect<ConsumeResult, RateLimiterError>
+} = dual(2, (self: RateLimiter, options: {
+  readonly algorithm?: "fixed-window" | "token-bucket" | undefined
+  readonly window: Duration.Input
+  readonly limit: number
+  readonly key: string
+  readonly tokens?: number | undefined
+}): Effect.Effect<ConsumeResult, RateLimiterError> =>
+  Effect.flatMap(
+    self.consume({
+      ...options,
+      onExceeded: "delay"
+    }),
+    (result) => {
+      if (Duration.isZero(result.delay)) return Effect.succeed(result)
+      return Effect.as(Effect.sleep(result.delay), result)
+    }
+  ))
 
 /**
  * Runtime type identifier for `RateLimiterError`.

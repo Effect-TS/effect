@@ -4,6 +4,28 @@ import { TestClock } from "effect/testing"
 import { RateLimiter } from "effect/unstable/persistence"
 
 describe(`RateLimiter`, () => {
+  it.effect("supports data-first and data-last sleep", () =>
+    Effect.gen(function*() {
+      const limiter = yield* RateLimiter.make
+      const dataFirst = yield* RateLimiter.sleep(limiter, {
+        algorithm: "fixed-window",
+        window: "1 minute",
+        limit: 5,
+        key: "data-first"
+      })
+      const dataLast = yield* RateLimiter.sleep({
+        algorithm: "fixed-window",
+        window: "1 minute",
+        limit: 5,
+        key: "data-last"
+      })(limiter)
+
+      assert.strictEqual(dataFirst.remaining, 4)
+      assert.strictEqual(dataLast.remaining, 4)
+    }).pipe(
+      Effect.provide(RateLimiter.layerStoreMemory)
+    ))
+
   describe("fixed-window", () => {
     it.effect("returns accumulated delays after the fixed window is exceeded", () =>
       Effect.gen(function*() {
