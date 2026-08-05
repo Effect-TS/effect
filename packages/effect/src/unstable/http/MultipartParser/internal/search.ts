@@ -34,9 +34,11 @@ function makeState(needle_: string): SearchState {
 export function make(
   needle: string,
   callback: (index: number, chunk: Uint8Array) => void,
-  seed?: Uint8Array
+  seed?: Uint8Array,
+  minimumChunkLength?: number
 ) {
   const state = makeState(needle)
+  const minChunkLength = minimumChunkLength ?? state.needleLength
   if (seed !== undefined) {
     state.previousChunk = seed
     state.previousChunkLength = seed.length
@@ -95,14 +97,15 @@ export function make(
       state.previousChunk = undefined
     }
 
-    if (chunkLength < state.needleLength) {
-      state.previousChunk = chunk
-      state.previousChunkLength = chunkLength
-      return
-    }
-
     let pos = 0
     while (pos < chunkLength) {
+      const remaining = chunkLength - pos
+      if (remaining < minChunkLength) {
+        state.previousChunk = chunk.subarray(pos)
+        state.previousChunkLength = remaining
+        return
+      }
+
       const match = indexOf(chunk, state.needle, pos)
 
       if (match > -1) {

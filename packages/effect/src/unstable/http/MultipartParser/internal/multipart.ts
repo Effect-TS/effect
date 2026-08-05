@@ -213,7 +213,8 @@ export function make({
         state.fieldChunks.push(chunk)
       }
     },
-    constCR
+    constCR,
+    2
   )
 
   return {

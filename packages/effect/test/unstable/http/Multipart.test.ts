@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, ErrorReporter, FileSystem, identity, Path, Schema, Stream, Unify } from "effect"
-import { HttpClientRequest, HttpServerRequest, Multipart } from "effect/unstable/http"
+import { HttpClientRequest, HttpServerRequest, Multipart, MultipartParser } from "effect/unstable/http"
 import * as HttpServerRespondable from "effect/unstable/http/HttpServerRespondable"
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert"
 
@@ -83,6 +83,37 @@ describe("Multipart", () => {
       strictEqual(error._tag, "MultipartError")
       strictEqual(error.reason._tag, "TooManyParts")
     }))
+
+  it("handles the final boundary delimiter split between the trailing hyphens", () => {
+    const boundary = "----testboundary"
+    const encoder = new TextEncoder()
+    const decoder = new TextDecoder()
+    const errors: Array<MultipartParser.MultipartError> = []
+    const fields: Array<readonly [string, string]> = []
+    let done = false
+    const parser = MultipartParser.make({
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      onField(info, value) {
+        fields.push([info.name, decoder.decode(value)])
+      },
+      onFile: () => () => {},
+      onError(error) {
+        errors.push(error)
+      },
+      onDone() {
+        done = true
+      }
+    })
+    const body = `--${boundary}\r\nContent-Disposition: form-data; name="field"\r\n\r\nvalue`
+
+    parser.write(encoder.encode(`${body}\r\n--${boundary}-`))
+    parser.write(encoder.encode("-\r\n"))
+    strictEqual(done, true)
+    parser.end()
+
+    deepStrictEqual(fields, [["field", "value"]])
+    deepStrictEqual(errors, [])
+  })
 
   it.effect("returns distinct persisted file paths for files with the same client filename", () =>
     Effect.scoped(Effect.gen(function*() {
