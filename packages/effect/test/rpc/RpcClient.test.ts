@@ -84,7 +84,7 @@ describe("RpcClient", () => {
     }))
 
   it.effect("reports transient socket open errors without failing in-flight streams", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
       const threeErrors = yield* Deferred.make<void>()
       const errors: Array<RpcClientError> = []
@@ -123,10 +123,10 @@ describe("RpcClient", () => {
         assert.strictEqual(error.reason._tag, "SocketOpenError")
       }
       assert.isUndefined(streamFiber.pollUnsafe())
-    })))
+    }))
 
   it.effect("fails in-flight streams when transient retries are exhausted", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
       const socketError = new Socket.SocketError({
         reason: new Socket.SocketOpenError({
@@ -160,10 +160,10 @@ describe("RpcClient", () => {
 
       assert.instanceOf(error, RpcClientError)
       assert.strictEqual(error.reason._tag, "SocketOpenError")
-    })))
+    }))
 
   it.effect("continues retrying when the transient error hook defects", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const requestSent = yield* Deferred.make<void>()
       let attempts = 0
       const socketError = new Socket.SocketError({
@@ -204,5 +204,5 @@ describe("RpcClient", () => {
       assert.strictEqual(attempts, 3)
       assert.instanceOf(error, RpcClientError)
       assert.strictEqual(error.reason._tag, "SocketOpenError")
-    })))
+    }))
 })
