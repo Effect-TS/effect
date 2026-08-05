@@ -764,16 +764,19 @@ function translateJsonSchemaMultiDocument(
             type: recur(element, [...path, "prefixItems", index])
           }))
           : []
+        const isMaxItemsRepresentedByTuple = schema.items === undefined &&
+          Array.isArray(schema.prefixItems) &&
+          schema.maxItems === schema.prefixItems.length
         const rest = schema.items !== undefined
           ? [recur(schema.items, [...path, "items"])]
-          : schema.prefixItems !== undefined && typeof schema.maxItems === "number"
+          : isMaxItemsRepresentedByTuple
           ? []
           : [unknown]
         return {
           _tag: "Arrays",
           elements,
           rest,
-          checks: collectArrayChecks(schema)
+          checks: collectArrayChecks(schema, isMaxItemsRepresentedByTuple)
         }
       }
       case "object":
@@ -808,10 +811,15 @@ function translateJsonSchemaMultiDocument(
     return checks
   }
 
-  function collectArrayChecks(schema: JsonSchema.JsonSchema): Array<Check> {
+  function collectArrayChecks(
+    schema: JsonSchema.JsonSchema,
+    isMaxItemsRepresentedByTuple: boolean
+  ): Array<Check> {
     const checks: Array<Check> = []
     if (schema.prefixItems === undefined) {
       addNumberCheck(checks, schema.minItems, "effect/schema/isMinLength", "minLength")
+    }
+    if (!isMaxItemsRepresentedByTuple) {
       addNumberCheck(checks, schema.maxItems, "effect/schema/isMaxLength", "maxLength")
     }
     if (schema.uniqueItems === true) {
