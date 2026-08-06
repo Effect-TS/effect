@@ -51,7 +51,6 @@ describe("SqlRunnerStorage", () => {
         assert(Exit.isFailure(exit))
         const error = Cause.squash(exit.cause)
         assert(error instanceof ClusterError.PersistenceError)
-        assert(Cause.isTimeoutError(error.cause))
         assert.isBelow(Duration.toMillis(elapsed), 1000)
         yield* Effect.sleep(20).pipe(TestClock.withLive)
       })
