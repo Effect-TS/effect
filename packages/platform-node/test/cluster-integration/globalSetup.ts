@@ -13,10 +13,21 @@ declare module "vitest" {
   }
 }
 
+const makeMysqlContainer = () =>
+  new MySqlContainer("mysql:lts").withHealthCheck({
+    test: [
+      "CMD-SHELL",
+      "MYSQL_PWD=\"$MYSQL_ROOT_PASSWORD\" mysqladmin ping --protocol TCP --host 127.0.0.1 --user root --silent"
+    ],
+    interval: 250,
+    timeout: 1000,
+    retries: 1000
+  })
+
 export default function setup(project: TestProject) {
   return Promise.all([
     new PostgreSqlContainer("postgres:alpine").start(),
-    new MySqlContainer("mysql:lts").start()
+    makeMysqlContainer().start()
   ]).then(([pg, mysql]) => {
     project.provide("clusterDatabases", {
       mysql: mysql.getConnectionUri(),
