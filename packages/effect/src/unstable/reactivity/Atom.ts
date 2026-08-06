@@ -802,9 +802,7 @@ export function context(options?: {
         get.subscribe(atom, (value) => get.setSelf(value))
         return get.once(atom)
       }, { initialValueTarget: atom }) as any as A
-  return isAtom(memoMap)
-    ? factory as RegistryRuntimeFactory
-    : factory as SharedRuntimeFactory
+  return factory as any
 }
 
 /**
