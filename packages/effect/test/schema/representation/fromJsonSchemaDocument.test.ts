@@ -17,22 +17,6 @@ function fromJsonSchemaRepresentation(
 }
 
 describe("fromJsonSchemaDocument", () => {
-  it("preserves maxItems semantics with prefixItems", () => {
-    const bounded = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-      type: "array",
-      prefixItems: [{ type: "string" }, { type: "number" }],
-      maxItems: 1
-    }))
-    const open = toSchemaFromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12({
-      type: "array",
-      prefixItems: [{ type: "string" }],
-      maxItems: 2
-    }))
-
-    assertFalse(Schema.is(bounded)(["a", 1]))
-    assertTrue(Schema.is(open)(["a", 1]))
-  })
-
   function assertFromJsonSchema(
     input: {
       readonly schema: JsonSchema.JsonSchema
@@ -1503,6 +1487,179 @@ describe("fromJsonSchemaDocument", () => {
     })
 
     it("prefixItems", () => {
+      assertFromJsonSchema(
+        {
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "string" }, { type: "number" }],
+            maxItems: 1
+          }
+        },
+        {
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [
+              {
+                "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isMaxLength",
+                  "payload": {
+                    "maxLength": 1
+                  }
+                },
+                "annotations": {
+                  "expected": "a value with a length of at most 1",
+                  "~structural": true,
+                  "arbitrary": {
+                    "constraint": {
+                      "maxLength": 1
+                    }
+                  }
+                },
+                "aborted": false
+              }
+            ],
+            "elements": [
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              },
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "Number",
+                  "checks": [
+                    {
+                      "_tag": "Filter",
+                      "representation": {
+                        "id": "effect/schema/isFinite",
+                        "payload": null
+                      },
+                      "annotations": {
+                        "expected": "a finite number",
+                        "arbitrary": {
+                          "constraint": {
+                            "noInfinity": true,
+                            "noNaN": true
+                          }
+                        }
+                      },
+                      "aborted": false
+                    }
+                  ]
+                }
+              }
+            ],
+            "rest": [
+              {
+                "_tag": "Declaration",
+                "representation": {
+                  "id": "effect/schema/Json",
+                  "payload": null
+                },
+                "annotations": {
+                  "expected": "JSON value"
+                },
+                "typeParameters": [],
+                "checks": []
+              }
+            ]
+          },
+          "references": {}
+        }
+      )
+
+      assertFromJsonSchema(
+        {
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "string" }],
+            maxItems: 2
+          }
+        },
+        {
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [
+              {
+                "_tag": "Filter",
+                "representation": {
+                  "id": "effect/schema/isMaxLength",
+                  "payload": {
+                    "maxLength": 2
+                  }
+                },
+                "annotations": {
+                  "expected": "a value with a length of at most 2",
+                  "~structural": true,
+                  "arbitrary": {
+                    "constraint": {
+                      "maxLength": 2
+                    }
+                  }
+                },
+                "aborted": false
+              }
+            ],
+            "elements": [
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              }
+            ],
+            "rest": [
+              {
+                "_tag": "Declaration",
+                "representation": {
+                  "id": "effect/schema/Json",
+                  "payload": null
+                },
+                "annotations": {
+                  "expected": "JSON value"
+                },
+                "typeParameters": [],
+                "checks": []
+              }
+            ]
+          },
+          "references": {}
+        }
+      )
+
+      assertFromJsonSchema(
+        {
+          schema: {
+            type: "array",
+            prefixItems: [{ type: "string" }],
+            items: false,
+            maxItems: 2
+          }
+        },
+        {
+          "representation": {
+            "_tag": "Arrays",
+            "checks": [],
+            "elements": [
+              {
+                "isOptional": true,
+                "type": {
+                  "_tag": "String",
+                  "checks": []
+                }
+              }
+            ],
+            "rest": []
+          },
+          "references": {}
+        }
+      )
+
       assertFromJsonSchema(
         {
           schema: {

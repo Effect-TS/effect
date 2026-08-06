@@ -757,26 +757,23 @@ function translateJsonSchemaMultiDocument(
       case "boolean":
         return { _tag: "Boolean", checks: [] }
       case "array": {
+        const prefixItems = Array.isArray(schema.prefixItems) ? schema.prefixItems : undefined
         const minItems = typeof schema.minItems === "number" ? schema.minItems : 0
-        const elements = Array.isArray(schema.prefixItems)
-          ? schema.prefixItems.map((element, index) => ({
-            isOptional: index + 1 > minItems,
-            type: recur(element, [...path, "prefixItems", index])
-          }))
-          : []
-        const isMaxItemsRepresentedByTuple = schema.items === undefined &&
-          Array.isArray(schema.prefixItems) &&
-          schema.maxItems === schema.prefixItems.length
-        const rest = schema.items !== undefined
-          ? [recur(schema.items, [...path, "items"])]
-          : isMaxItemsRepresentedByTuple
-          ? []
-          : [unknown]
+        const elements = prefixItems?.map((element, index) => ({
+          isOptional: index + 1 > minItems,
+          type: recur(element, [...path, "prefixItems", index])
+        })) ?? []
+        const isTupleClosed = schema.items === false ||
+          (schema.items === undefined &&
+            prefixItems !== undefined &&
+            schema.maxItems === prefixItems.length)
         return {
           _tag: "Arrays",
           elements,
-          rest,
-          checks: collectArrayChecks(schema, isMaxItemsRepresentedByTuple)
+          rest: isTupleClosed
+            ? []
+            : [schema.items === undefined ? unknown : recur(schema.items, [...path, "items"])],
+          checks: collectArrayChecks(schema)
         }
       }
       case "object":
@@ -811,15 +808,18 @@ function translateJsonSchemaMultiDocument(
     return checks
   }
 
-  function collectArrayChecks(
-    schema: JsonSchema.JsonSchema,
-    isMaxItemsRepresentedByTuple: boolean
-  ): Array<Check> {
+  function collectArrayChecks(schema: JsonSchema.JsonSchema): Array<Check> {
     const checks: Array<Check> = []
     if (schema.prefixItems === undefined) {
       addNumberCheck(checks, schema.minItems, "effect/schema/isMinLength", "minLength")
     }
-    if (!isMaxItemsRepresentedByTuple) {
+    const maxItems = schema.maxItems
+    const prefixItemsLength = Array.isArray(schema.prefixItems) ? schema.prefixItems.length : undefined
+    const isMaxItemsRedundant = typeof maxItems === "number" &&
+      (schema.items === false
+        ? maxItems >= (prefixItemsLength ?? 0)
+        : schema.items === undefined && maxItems === prefixItemsLength)
+    if (!isMaxItemsRedundant) {
       addNumberCheck(checks, schema.maxItems, "effect/schema/isMaxLength", "maxLength")
     }
     if (schema.uniqueItems === true) {
