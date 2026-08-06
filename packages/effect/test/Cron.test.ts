@@ -218,10 +218,23 @@ describe("Cron", () => {
     )
   })
 
-  it("format", () => {
+  it("format preserves compact cron syntax", () => {
     strictEqual(
       Cron.format(Cron.parseUnsafe("23 0-20/2 * * 0", "Europe/Berlin")),
-      "0 23 0,2,4,6,8,10,12,14,16,18,20 * * 0"
+      "23 0-20/2 * * 0"
+    )
+  })
+
+  it("format compacts multiple runs within a field", () => {
+    strictEqual(
+      Cron.format(Cron.make({
+        minutes: [0, 1, 2, 10, 20, 30],
+        hours: [],
+        days: [],
+        months: [],
+        weekdays: []
+      })),
+      "0-2,10-30/10 * * * *"
     )
   })
 

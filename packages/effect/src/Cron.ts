@@ -613,7 +613,7 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string): Result.Res
 export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron => Result.getOrThrow(parse(cron, tz))
 
 /**
- * Formats a `Cron` instance as a six-field cron expression.
+ * Formats a `Cron` instance as a cron expression.
  *
  * **Warning**
  *
@@ -626,16 +626,42 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
  *
  * const cron = Cron.parseUnsafe("23 0-20/2 * * 0", "UTC")
  *
- * Cron.format(cron) // => "0 23 0,2,4,6,8,10,12,14,16,18,20 * * 0"
+ * Cron.format(cron) // => "23 0-20/2 * * 0"
  * ```
  *
  * @category getters
  * @since 4.0.0
  */
-export const format = (cron: Cron): string =>
-  [cron.seconds, cron.minutes, cron.hours, cron.days, cron.months, cron.weekdays]
-    .map((values) => values.size === 0 ? "*" : Array.from(values).join(","))
-    .join(" ")
+export const format = (cron: Cron): string => {
+  const segments = [cron.seconds, cron.minutes, cron.hours, cron.days, cron.months, cron.weekdays]
+    .map(formatSegment)
+  return (cron.seconds.size === 1 && cron.seconds.has(0) ? segments.slice(1) : segments).join(" ")
+}
+
+const formatSegment = (values: ReadonlySet<number>): string => {
+  if (values.size === 0) {
+    return "*"
+  }
+  const array = Array.from(values)
+  const segments: Array<string> = []
+  let index = 0
+  while (index < array.length) {
+    const start = array[index]!
+    const step = array[index + 1]! - start
+    if (index + 2 < array.length && array[index + 2]! - array[index + 1]! === step) {
+      let end = index + 2
+      while (end + 1 < array.length && array[end + 1]! - array[end]! === step) {
+        end++
+      }
+      segments.push(`${start}-${array[end]}${step === 1 ? "" : `/${step}`}`)
+      index = end + 1
+    } else {
+      segments.push(`${start}`)
+      index++
+    }
+  }
+  return segments.join(",")
+}
 
 /**
  * Returns `true` when a date/time matches a `Cron` schedule.
