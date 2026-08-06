@@ -31,7 +31,10 @@
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map"
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*"
   ],
   "publishConfig": {
     "access": "public",

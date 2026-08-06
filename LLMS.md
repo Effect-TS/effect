@@ -1,12 +1,10 @@
 # Effect library documentation
 
-This documentation resides in the Effect monorepo, which contains the source
-code for the Effect library and its related packages.
+This documentation covers the Effect library and its related packages.
 
-When you need to find any information about the Effect library, only use this
-documentation and the source code found in `./packages`. Do not use
-`node_modules` or any other external documentation, as it may be outdated or
-incorrect.
+When you need to find information about Effect, use this documentation and the
+Effect source code available in your environment. Avoid unrelated copies of
+Effect or external documentation, as they may be outdated or incorrect.
 
 **Note**: The examples in this documentation contain comments for illustration
 purposes. In practice, you would not include these comments in your code.
@@ -100,7 +98,7 @@ All validation and domain modeling in Effect is done with `Schema`.
 
 **AVOID using predicates or manual parsing**, instead use `Schema` to parse untrusted data and validate it.
 
-For a comprehensive guide, see [packages/effect/SCHEMA.md](./packages/effect/SCHEMA.md). Make sure to read the guide in chunks, as it is a large document.
+For a comprehensive guide, see [SCHEMA.md](https://github.com/Effect-TS/effect/blob/main/packages/effect/SCHEMA.md). Make sure to read the guide in chunks, as it is a large document.
 
 - **[Schema basics](./ai-docs/src/01_effect/02_schema/10_schema-basics.ts)**:
   Define `Schema.Class`s, decode unknown input into typed values, and

@@ -28,6 +28,9 @@ scratchpad/**/*
 
 # Agent instructions
 /AGENTS.md
+/packages/**/AGENTS.md
+/packages/**/CLAUDE.md
+/packages/**/ai-docs/
 
 # lalph
 .lalph/
