@@ -11,6 +11,7 @@ import {
   type Option,
   pipe,
   Result,
+  type Schedule,
   type Scope,
   type Sink,
   type Stream,
@@ -1102,6 +1103,34 @@ describe("Effect.retry", () => {
       })
     )
     expect(result).type.toBe<Effect.Effect<string, AiError | OtherError>>()
+  })
+})
+
+describe("Effect.schedule", () => {
+  it("includes schedule errors in data-first usage", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, unknown, "schedule-error">
+    expect(Effect.schedule(Effect.fail("effect-error" as const), schedule))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
+  })
+
+  it("includes schedule errors in data-last usage", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, unknown, "schedule-error">
+    expect(Effect.fail("effect-error" as const).pipe(Effect.schedule(schedule)))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
+  })
+})
+
+describe("Effect.scheduleFrom", () => {
+  it("includes schedule errors in data-first usage", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, string, "schedule-error">
+    expect(Effect.scheduleFrom(Effect.fail("effect-error" as const), "initial", schedule))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
+  })
+
+  it("includes schedule errors in data-last usage", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, string, "schedule-error">
+    expect(Effect.fail("effect-error" as const).pipe(Effect.scheduleFrom("initial", schedule)))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
   })
 })
 
