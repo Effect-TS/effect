@@ -15,8 +15,6 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    outputs:
-      published: ${{ steps.changesets.outputs.published }}
     permissions:
       contents: write
       pull-requests: write
@@ -43,9 +41,8 @@ jobs:
           # automatically to ensure workflows get triggered on the changesets
           # release branch.
           github-token: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
-
-  deploy-website:
-    needs: release
-    if: needs.release.outputs.published == 'true'
-    uses: ./.github/workflows/deploy-website.yml
-    secrets: inherit
+      - name: Deploy website
+        if: steps.changesets.outputs.published == 'true'
+        uses: ./.github/actions/deploy-website
+        with:
+          dispatch-token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
