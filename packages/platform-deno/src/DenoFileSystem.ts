@@ -439,17 +439,12 @@ const watch = (
     Stream.unwrap
   )
 
-const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) => {
-  const flag = options?.flag
-  return tryPromise("writeFile", path, (signal) =>
-    Deno.writeFile(path, data, {
-      append: flag?.startsWith("a") ?? false,
-      create: flag !== "r" && flag !== "r+",
-      createNew: flag?.includes("x") ?? false,
-      ...(options?.mode === undefined ? {} : { mode: options.mode }),
-      signal
-    }))
-}
+const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) =>
+  Effect.acquireUseRelease(
+    tryPromise("writeFile", path, () => Deno.open(path, openOptions(options?.flag ?? "w", options?.mode))),
+    (file) => new FileImpl(file, options?.flag?.startsWith("a") ?? false).writeAll(data),
+    (file) => close(file, "writeFile", path)
+  )
 
 const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend), (backend) =>
   FileSystem.make({
