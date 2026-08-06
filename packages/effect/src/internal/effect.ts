@@ -250,8 +250,12 @@ export const causeCombine: {
 
 const causeReasonEquals = (self: Cause.Reason<unknown>, that: Cause.Reason<unknown>): boolean => {
   if (self === that) return true
-  if (self._tag === "Fail" && that._tag === "Fail") return self.error === that.error
-  if (self._tag === "Die" && that._tag === "Die") return self.defect === that.defect
+  if (self._tag === "Fail" && that._tag === "Fail") {
+    return self.error === that.error && self.annotations === that.annotations
+  }
+  if (self._tag === "Die" && that._tag === "Die") {
+    return self.defect === that.defect && self.annotations === that.annotations
+  }
   return hasProperty(self, Equal.symbol) &&
     hasProperty(that, Equal.symbol) &&
     (self as any)[Equal.symbol](that)

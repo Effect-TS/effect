@@ -558,6 +558,38 @@ describe("Cause", () => {
       assert.strictEqual(Cause.combine(Cause.fail(defect), Cause.die(defect)).reasons.length, 2)
     })
 
+    it("preserves annotated Fail and Die reasons with shared payloads", () => {
+      const Annotation = Context.Service<string>("CauseTest/CombineAnnotation")
+      const error = { message: "error" }
+      const defect = { message: "defect" }
+      const failLeft = Cause.annotate(Cause.fail(error), Context.make(Annotation, "fail-left"))
+      const failRight = Cause.annotate(Cause.fail(error), Context.make(Annotation, "fail-right"))
+      const dieLeft = Cause.annotate(Cause.die(defect), Context.make(Annotation, "die-left"))
+      const dieRight = Cause.annotate(Cause.die(defect), Context.make(Annotation, "die-right"))
+
+      const failCombined = Cause.combine(failLeft, failRight)
+      const dieCombined = Cause.combine(dieLeft, dieRight)
+
+      assert.strictEqual(failCombined.reasons.length, 2)
+      assert.strictEqual(dieCombined.reasons.length, 2)
+      assert.strictEqual(
+        Context.getOrUndefined(Cause.reasonAnnotations(failCombined.reasons[0]), Annotation),
+        "fail-left"
+      )
+      assert.strictEqual(
+        Context.getOrUndefined(Cause.reasonAnnotations(failCombined.reasons[1]), Annotation),
+        "fail-right"
+      )
+      assert.strictEqual(
+        Context.getOrUndefined(Cause.reasonAnnotations(dieCombined.reasons[0]), Annotation),
+        "die-left"
+      )
+      assert.strictEqual(
+        Context.getOrUndefined(Cause.reasonAnnotations(dieCombined.reasons[1]), Annotation),
+        "die-right"
+      )
+    })
+
     it("delegates to reasons that explicitly implement Equal", () => {
       const left = Cause.makeInterruptReason(1) as any
       const right = Cause.makeInterruptReason(2) as any
