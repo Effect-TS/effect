@@ -10,12 +10,6 @@ describe("SchemaParser", () => {
       Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
       Cause.die(new Error("defect"))
     )
-  const makeMixedSchemaErrorCause = () =>
-    Cause.combine(
-      Cause.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "schema issue" }))),
-      Cause.die(new Error("defect"))
-    )
-
   describe("make", () => {
     it("should throw an error when the input is invalid", () => {
       const schema = Schema.String
@@ -29,7 +23,7 @@ describe("SchemaParser", () => {
 
     it("should throw an error when the cause contains both an Issue and a defect", () => {
       const schema = Schema.Struct({
-        a: Schema.String.pipe(Schema.withConstructorDefault(Effect.failCause(makeMixedSchemaErrorCause())))
+        a: Schema.String.pipe(Schema.withConstructorDefault(Effect.failCause(makeMixedCause())))
       })
 
       throws(() => SchemaParser.make(schema)({}), (e) => {
@@ -55,7 +49,7 @@ describe("SchemaParser", () => {
 
     it("should throw an error when the cause contains both an Issue and a defect", () => {
       const schema = Schema.Struct({
-        a: Schema.String.pipe(Schema.withConstructorDefault(Effect.failCause(makeMixedSchemaErrorCause())))
+        a: Schema.String.pipe(Schema.withConstructorDefault(Effect.failCause(makeMixedCause())))
       })
 
       throws(() => SchemaParser.makeOption(schema)({}), (e) => {
