@@ -1,5 +1,5 @@
 import { assert, expect, it } from "@effect/vitest"
-import { Array } from "effect"
+import { Array, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
@@ -137,8 +137,11 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       const fs = yield* Fs.FileSystem
       const path = yield* fs.makeTempFile()
 
-      yield* fs.writeFileString(path, "data", { flag: "r" }).pipe(Effect.flip)
+      const error = yield* fs.writeFileString(path, "data", { flag: "r" }).pipe(Effect.flip)
 
+      assert(error.reason._tag !== "BadArgument")
+      assert.strictEqual(error.reason.method, "writeFile")
+      assert.strictEqual(error.reason.pathOrDescriptor, path)
       assert.strictEqual(yield* fs.readFileString(path), "")
     })))
 
@@ -163,6 +166,26 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       yield* fs.writeFileString(path, "second", { flag: "wx" }).pipe(Effect.flip)
 
       assert.strictEqual(yield* fs.readFileString(path), "first")
+    })))
+
+  it("copy with overwrite false preserves an existing destination", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const root = yield* fs.makeTempDirectory()
+      const source = `${root}/source.txt`
+      const destination = `${root}/destination.txt`
+      yield* fs.writeFileString(source, "source")
+      yield* fs.writeFileString(destination, "destination")
+
+      const result = yield* Effect.result(fs.copy(source, destination, { overwrite: false }))
+
+      if (Result.isFailure(result)) {
+        assert(result.failure.reason._tag === "AlreadyExists")
+        assert.strictEqual(result.failure.reason.method, "copy")
+        assert.strictEqual(result.failure.reason.pathOrDescriptor, source)
+      }
+      assert.strictEqual(yield* fs.readFileString(source), "source")
+      assert.strictEqual(yield* fs.readFileString(destination), "destination")
     })))
 
   it("should track the cursor position when reading", () =>

@@ -452,7 +452,14 @@ const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) => {
   }
   return Effect.acquireUseRelease(
     tryPromise("writeFile", path, () => Deno.open(path, openOptions(flag, options?.mode))),
-    (file) => new FileImpl(file, flag.startsWith("a")).writeAll(data),
+    (file) =>
+      new FileImpl(file, flag.startsWith("a")).writeAll(data).pipe(
+        Effect.mapError((error) =>
+          error.reason._tag !== "BadArgument"
+            ? PlatformError.systemError({ ...error.reason, method: "writeFile", pathOrDescriptor: path })
+            : error
+        )
+      ),
     (file) => close(file, "writeFile", path)
   )
 }
