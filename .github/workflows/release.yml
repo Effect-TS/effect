@@ -15,6 +15,8 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
     permissions:
       contents: write
       pull-requests: write
@@ -32,6 +34,7 @@ jobs:
       - name: Upgrade npm for OIDC support
         run: npm install -g npm@11
       - name: Create Release Pull Request or Publish
+        id: changesets
         uses: changesets/action@d0ee272882939fa35f22d979828acb7e61e0bd47 # v2.0.0-next.4
         with:
           version-script: pnpm changeset-version
@@ -40,3 +43,9 @@ jobs:
           # automatically to ensure workflows get triggered on the changesets
           # release branch.
           github-token: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
+
+  deploy-website:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    uses: ./.github/workflows/deploy-website.yml
+    secrets: inherit

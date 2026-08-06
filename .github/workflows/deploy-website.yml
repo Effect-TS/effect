@@ -1,0 +1,49 @@
+name: Deploy website
+
+on:
+  workflow_call:
+    secrets:
+      WEBSITE_DISPATCH_TOKEN:
+        required: true
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-website
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    if: github.repository_owner == 'Effect-Ts'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve Effect revisions
+        id: revisions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v3=$(gh api "repos/${GITHUB_REPOSITORY}/commits/v3" --jq .sha)
+          v4=$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)
+          echo "v3=$v3" >> "$GITHUB_OUTPUT"
+          echo "v4=$v4" >> "$GITHUB_OUTPUT"
+
+      - name: Request website API reference publication
+        env:
+          GH_TOKEN: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+          V3_REVISION: ${{ steps.revisions.outputs.v3 }}
+          V4_REVISION: ${{ steps.revisions.outputs.v4 }}
+        run: |
+          jq -n \
+            --arg v3 "$V3_REVISION" \
+            --arg v4 "$V4_REVISION" \
+            '{
+              event_type: "publish-api-reference",
+              client_payload: {
+                repository: "Effect-TS/effect",
+                channels: { v3: $v3, v4: $v4 }
+              }
+            }' |
+            gh api --method POST repos/Effect-TS/website/dispatches --input -
