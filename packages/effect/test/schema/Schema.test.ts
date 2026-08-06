@@ -3386,7 +3386,7 @@ Expected a value between -2147483648 and 2147483647`
 
     it("should throw an error when the cause contains both a schema issue and a defect", () => {
       const cause = Cause.combine(
-        Cause.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "schema issue" }))),
+        Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
         Cause.die(new Error("defect"))
       )
       const schema = Schema.Struct({
@@ -3442,7 +3442,7 @@ Expected a value between -2147483648 and 2147483647`
         deepStrictEqual(success, Result.succeed({ a: 1 }))
 
         const failure = yield* schema.makeEffect({ a: -1 }).pipe(Effect.flip)
-        assertTrue(Schema.isSchemaError(failure))
+        assertTrue(SchemaIssue.isIssue(failure))
       }))
 
     it.effect("Class", () =>
@@ -3453,15 +3453,13 @@ Expected a value between -2147483648 and 2147483647`
         deepStrictEqual(success, new A({ a: 1 }))
 
         const failure = yield* A.makeEffect({ a: -1 }).pipe(Effect.flip)
-        assertTrue(Schema.isSchemaError(failure))
+        assertTrue(SchemaIssue.isIssue(failure))
       }))
 
-    it.effect("should preserve mixed schema error and defect causes", () =>
+    it.effect("should preserve mixed schema issue and defect causes", () =>
       Effect.gen(function*() {
         const cause = Cause.combine(
-          Cause.fail(
-            new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "schema issue" }))
-          ),
+          Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
           Cause.die(new Error("defect"))
         )
         const schema = Schema.Struct({
@@ -3473,7 +3471,7 @@ Expected a value between -2147483648 and 2147483647`
         assertTrue(Exit.hasDies(exit))
         const error = Cause.findError(exit.cause)
         assertTrue(Result.isSuccess(error))
-        assertTrue(Schema.isSchemaError(error.success))
+        assertTrue(SchemaIssue.isIssue(error.success))
       }))
   })
 
@@ -3584,12 +3582,10 @@ Expected a value between -2147483648 and 2147483647`
         await make.succeed({}, { a: -1 })
       })
 
-      it("Effect failing with SchemaError propagates as parse failure", async () => {
+      it("Effect failing with SchemaIssue propagates as parse failure", async () => {
         const schema = Schema.Struct({
           a: Schema.FiniteFromString.pipe(Schema.withConstructorDefault(
-            Effect.fail(
-              new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "ctor default failed" }))
-            )
+            Effect.fail(new SchemaIssue.InvalidValue({ message: "ctor default failed" }))
           ))
         })
         const asserts = new TestSchema.Asserts(schema)
