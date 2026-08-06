@@ -321,7 +321,7 @@ class FileImpl implements FileSystem.File {
   }
 
   writeAll(buffer: Uint8Array) {
-    return this.writeAllChunk(buffer)
+    return buffer.length === 0 ? Effect.void : this.writeAllChunk(buffer)
   }
 }
 
@@ -439,12 +439,23 @@ const watch = (
     Stream.unwrap
   )
 
-const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) =>
-  Effect.acquireUseRelease(
-    tryPromise("writeFile", path, () => Deno.open(path, openOptions(options?.flag ?? "w", options?.mode))),
-    (file) => new FileImpl(file, options?.flag?.startsWith("a") ?? false).writeAll(data),
+const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) => {
+  const flag = options?.flag ?? "w"
+  if (flag === "w" || flag === "wx" || flag === "a" || flag === "ax") {
+    return tryPromise("writeFile", path, (signal) =>
+      Deno.writeFile(path, data, {
+        append: flag.startsWith("a"),
+        createNew: flag.includes("x"),
+        ...(options?.mode === undefined ? {} : { mode: options.mode }),
+        signal
+      }))
+  }
+  return Effect.acquireUseRelease(
+    tryPromise("writeFile", path, () => Deno.open(path, openOptions(flag, options?.mode))),
+    (file) => new FileImpl(file, flag.startsWith("a")).writeAll(data),
     (file) => close(file, "writeFile", path)
   )
+}
 
 const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend), (backend) =>
   FileSystem.make({

@@ -113,9 +113,23 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       const path = yield* fs.makeTempFile()
 
       yield* fs.writeFileString(path, "abcdef")
-      yield* fs.writeFile(path, new TextEncoder().encode("xy"), { flag: "r+" })
+      yield* fs.writeFileString(path, "xy", { flag: "r+" })
 
       assert.strictEqual(yield* fs.readFileString(path), "xycdef")
+    })))
+
+  it("writeFile with empty data honors the flag", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const path = yield* fs.makeTempFile()
+
+      yield* fs.writeFileString(path, "abc")
+      yield* fs.writeFileString(path, "")
+      assert.strictEqual(yield* fs.readFileString(path), "")
+
+      yield* fs.writeFileString(path, "abc")
+      yield* fs.writeFileString(path, "", { flag: "r+" })
+      assert.strictEqual(yield* fs.readFileString(path), "abc")
     })))
 
   it("writeFile with r rejects writes", () =>
@@ -123,7 +137,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       const fs = yield* Fs.FileSystem
       const path = yield* fs.makeTempFile()
 
-      yield* fs.writeFile(path, new TextEncoder().encode("data"), { flag: "r" }).pipe(Effect.flip)
+      yield* fs.writeFileString(path, "data", { flag: "r" }).pipe(Effect.flip)
 
       assert.strictEqual(yield* fs.readFileString(path), "")
     })))
@@ -134,7 +148,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       const path = yield* fs.makeTempFile()
 
       yield* fs.writeFileString(path, "abc")
-      yield* fs.writeFile(path, new TextEncoder().encode("def"), { flag: "a" })
+      yield* fs.writeFileString(path, "def", { flag: "a" })
 
       assert.strictEqual(yield* fs.readFileString(path), "abcdef")
     })))
@@ -145,8 +159,8 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       const root = yield* fs.makeTempDirectory()
       const path = `${root}/file.txt`
 
-      yield* fs.writeFile(path, new TextEncoder().encode("first"), { flag: "wx" })
-      yield* fs.writeFile(path, new TextEncoder().encode("second"), { flag: "wx" }).pipe(Effect.flip)
+      yield* fs.writeFileString(path, "first", { flag: "wx" })
+      yield* fs.writeFileString(path, "second", { flag: "wx" }).pipe(Effect.flip)
 
       assert.strictEqual(yield* fs.readFileString(path), "first")
     })))
