@@ -641,7 +641,7 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
  * @since 4.0.0
  */
 export const format = (cron: Cron, options?: {
-  readonly includeSeconds?: boolean
+  readonly includeSeconds?: boolean | undefined
 }): string => {
   const segments = [cron.seconds, cron.minutes, cron.hours, cron.days, cron.months, cron.weekdays]
     .map(formatSegment)
