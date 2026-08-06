@@ -1,5 +1,25 @@
 # effect
 
+## 4.0.0-beta.105
+
+### Patch Changes
+
+- [#7087](https://github.com/Effect-TS/effect/pull/7087) [`0418564`](https://github.com/Effect-TS/effect/commit/04185644dabb8e4169f1ef6cbbc0b36c4db2f7f4) Thanks @tim-smart! - Recognize tagged Config and RPC errors across duplicated `effect` package copies.
+
+- [#6827](https://github.com/Effect-TS/effect/pull/6827) [`d334a85`](https://github.com/Effect-TS/effect/commit/d334a8593aafcd60753995a9449b654c67bfdcc1) Thanks @jaipaljadeja! - Add bounded 429 retries and custom response header names to `HttpClient.withRateLimiter`.
+
+- [#7084](https://github.com/Effect-TS/effect/pull/7084) [`f0be855`](https://github.com/Effect-TS/effect/commit/f0be8554da6ee00293a6b23869ac46a0b0d97dc8) Thanks @tim-smart! - Stop capturing definition-location stack frames in `Context.Service`.
+
+- [#7090](https://github.com/Effect-TS/effect/pull/7090) [`b206fa5`](https://github.com/Effect-TS/effect/commit/b206fa5d7655c1634c9993410a9203f6616a5ca2) Thanks @tim-smart! - Expose `stdinIsTerminal` and `stdoutIsTerminal` effects through the `Stdio` service.
+
+- [#7093](https://github.com/Effect-TS/effect/pull/7093) [`b938c8a`](https://github.com/Effect-TS/effect/commit/b938c8ad2823bd88493187922f7d9090eff037b6) Thanks @gcanti! - Add the opt-in `reportInput` parse option for retaining rejected inputs in enumerable fields on value-bearing schema issues and including them in default formatted messages. Value-bearing issue constructors accept the rejected input and parse options directly, and `Schema.Annotations.Issue` now supports `expected` for default messages.
+  
+  Schema issues no longer format implicitly through `Issue#toString`. Use `SchemaIssue.makeFormatterDefault()` when a human-readable message is needed. The throwing and Promise-based adapters in `SchemaParser` now use the generic message `"Schema validation failed"` and expose the structured `SchemaIssue.Issue` as the error `cause`; consumers that previously read the formatted error message should inspect and explicitly format that cause instead.
+  
+  `Schema.makeEffect` now returns `SchemaIssue.Issue` failures instead of wrapping them in `SchemaError`, and `Schema.withConstructorDefault` accepts an `Effect` that fails with `SchemaIssue.Issue`. Fallible `Optic` operations return structured `SchemaIssue.Issue` failures, while schema failures from `Schema.toIso` and `Schema.toDifferJsonPatch` use the generic error message and preserve the issue in `cause` instead of formatting it internally.
+
+- [#7097](https://github.com/Effect-TS/effect/pull/7097) [`8525f05`](https://github.com/Effect-TS/effect/commit/8525f05d1e14ea12298e9e1a0df497bfaac2ce9a) Thanks @tim-smart! - Add `Cron.format` for converting a `Cron` instance to a cron expression, with an option to include the seconds field.
+
 ## 4.0.0-beta.104
 
 ### Minor Changes
