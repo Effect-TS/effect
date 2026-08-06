@@ -96,10 +96,11 @@ export class ResourceRef<A, E = never> {
         }
         return Scope.close(scope, exit).pipe(
           Effect.ensuring(Effect.sync(() => {
-            if (this.state.current._tag !== "Closed") {
+            const state = this.state.current
+            if (state._tag === "Acquiring" && state.scope === scope) {
               MutableRef.set(this.state, { _tag: "Failed", scope, cause: exit.cause })
+              this.latch.openUnsafe()
             }
-            this.latch.openUnsafe()
           }))
         )
       })
