@@ -23,6 +23,7 @@ import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Pool from "../../Pool.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
 import * as Result from "../../Result.ts"
 import * as Schedule from "../../Schedule.ts"
@@ -50,6 +51,8 @@ import * as RpcSchema from "./RpcSchema.ts"
 import * as RpcSerialization from "./RpcSerialization.ts"
 import * as RpcWorker from "./RpcWorker.ts"
 import { withRunClient } from "./Utils.ts"
+
+const isRpcClientError = (u: unknown): u is RpcClientError => Predicate.isTagged(u, "RpcClientError")
 
 /**
  * The object-shaped client generated from a union of RPC definitions, with one
@@ -960,7 +963,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
             })
           })
         )).pipe(
-          Effect.mapError((cause) => cause instanceof RpcClientError ? cause : httpClientError(cause))
+          Effect.mapError((cause) => isRpcClientError(cause) ? cause : httpClientError(cause))
         )
       if (!hasResponse) {
         return yield* emptyResponseError(request)
