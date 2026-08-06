@@ -17,6 +17,7 @@
     "doctest": "vitest --config vitest.docs.ts",
     "coverage": "vitest --coverage",
     "check": "tsc -b tsconfig.json",
+    "check-ai-docs": "node scripts/check-ai-docs.mjs",
     "typeperf": "pnpm --dir packages/effect exec node typeperf/run.mjs",
     "typeperf-compare": "pnpm --dir packages/effect exec node typeperf/compare.mjs",
     "runtimeperf": "pnpm --dir packages/effect exec node runtimeperf/run.mts",

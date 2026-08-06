@@ -5,7 +5,7 @@ const dirs = [".", ...Glob.sync("packages/*/"), ...Glob.sync("packages/sql/*/"),
 dirs.forEach((pkg) => {
   const files = [".tsbuildinfo", "tsconfig.tsbuildinfo", "tsconfig.fixtures.tsbuildinfo", "tsconfig.src.tsbuildinfo", "docs", "build", "dist", "coverage"]
   if (pkg !== ".") {
-    files.push("AGENTS.md", "CLAUDE.md")
+    files.push("AGENTS.md", "CLAUDE.md", "ai-docs")
   }
 
   files.forEach((file) => {
