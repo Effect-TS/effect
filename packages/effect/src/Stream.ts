@@ -6962,12 +6962,18 @@ export const slidingSize: {
         let cause: Cause.Cause<E | Cause.Done> | null = null
         const list = MutableList.make<A>()
         let emitted = false
+        let skip = 0
         const pull: Pull.Pull<
           Arr.NonEmptyReadonlyArray<Arr.NonEmptyReadonlyArray<A>>,
           E | Cause.Done
         > = Effect.matchCauseEffect(upstream, {
           onSuccess(arr) {
             MutableList.appendAllUnsafe(list, arr)
+            if (skip > 0) {
+              const length = list.length
+              MutableList.takeNVoid(list, skip)
+              skip = Math.max(0, skip - length)
+            }
             if (list.length < chunkSize) return pull
             emitted = true
             const chunks = [] as any as Arr.NonEmptyArray<Arr.NonEmptyReadonlyArray<A>>
@@ -6976,10 +6982,12 @@ export const slidingSize: {
                 chunks.push(MutableList.takeN(list, chunkSize) as any)
               } else {
                 chunks.push(MutableList.toArrayN(list, chunkSize) as any)
-                if (chunkSize === 1) {
+                if (chunkSize === 1 && stepSize <= 0) {
                   MutableList.take(list)
                 } else {
+                  const length = list.length
                   MutableList.takeNVoid(list, stepSize)
+                  skip = Math.max(0, stepSize - length)
                 }
               }
             }
