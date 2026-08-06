@@ -107,6 +107,64 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       expect(after).toEqual("")
     })))
 
+  it("writeFile with r+ overwrites without truncating", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const path = yield* fs.makeTempFile()
+
+      yield* fs.writeFileString(path, "abcdef")
+      yield* fs.writeFileString(path, "xy", { flag: "r+" })
+
+      assert.strictEqual(yield* fs.readFileString(path), "xycdef")
+    })))
+
+  it("writeFile with empty data honors the flag", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const path = yield* fs.makeTempFile()
+
+      yield* fs.writeFileString(path, "abc")
+      yield* fs.writeFileString(path, "")
+      assert.strictEqual(yield* fs.readFileString(path), "")
+
+      yield* fs.writeFileString(path, "abc")
+      yield* fs.writeFileString(path, "", { flag: "r+" })
+      assert.strictEqual(yield* fs.readFileString(path), "abc")
+    })))
+
+  it("writeFile with r rejects writes", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const path = yield* fs.makeTempFile()
+
+      yield* fs.writeFileString(path, "data", { flag: "r" }).pipe(Effect.flip)
+
+      assert.strictEqual(yield* fs.readFileString(path), "")
+    })))
+
+  it("writeFile with a appends", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const path = yield* fs.makeTempFile()
+
+      yield* fs.writeFileString(path, "abc")
+      yield* fs.writeFileString(path, "def", { flag: "a" })
+
+      assert.strictEqual(yield* fs.readFileString(path), "abcdef")
+    })))
+
+  it("writeFile with wx exclusively creates", () =>
+    runPromise(Effect.gen(function*() {
+      const fs = yield* Fs.FileSystem
+      const root = yield* fs.makeTempDirectory()
+      const path = `${root}/file.txt`
+
+      yield* fs.writeFileString(path, "first", { flag: "wx" })
+      yield* fs.writeFileString(path, "second", { flag: "wx" }).pipe(Effect.flip)
+
+      assert.strictEqual(yield* fs.readFileString(path), "first")
+    })))
+
   it("should track the cursor position when reading", () =>
     runPromise(Effect.gen(function*() {
       const fs = yield* Fs.FileSystem
