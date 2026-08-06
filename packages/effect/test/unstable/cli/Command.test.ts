@@ -115,6 +115,65 @@ describe("Command", () => {
       }))
   })
 
+  describe("presentation", () => {
+    it.effect("should delegate built-in output to the configured presenter", () =>
+      Effect.gen(function*() {
+        const events: Array<CliOutput.Presenter.Event> = []
+        const presenter: CliOutput.Presenter = {
+          present: (event) => Effect.sync(() => events.push(event))
+        }
+        const command = Command.make("greet", {
+          name: Flag.string("name")
+        }, () => Effect.void)
+        const run = Command.runWith(command, { version: "1.0.0" })
+        const runImplicitHelp = Command.runWith(Command.make("empty"), { version: "1.0.0" })
+
+        const [failure, implicitHelp] = yield* Effect.gen(function*() {
+          yield* run(["--help"])
+          yield* run(["--version"])
+          const failure = yield* Effect.flip(run([]))
+          const implicitHelp = yield* Effect.flip(runImplicitHelp([]))
+          return [failure, implicitHelp] as const
+        }).pipe(Effect.provide(CliOutput.layerPresenter(presenter)))
+
+        assert.strictEqual(failure._tag, "ShowHelp")
+        assert.strictEqual(implicitHelp._tag, "ShowHelp")
+        assert.deepStrictEqual(
+          events.map((event) => {
+            switch (event._tag) {
+              case "Help":
+                return {
+                  tag: event._tag,
+                  reason: event.reason,
+                  commandPath: event.commandPath
+                }
+              case "InvalidInvocation":
+                return {
+                  tag: event._tag,
+                  commandPath: event.commandPath,
+                  errors: event.errors.map((error) => error._tag)
+                }
+              case "Version":
+                return {
+                  tag: event._tag,
+                  name: event.name,
+                  version: event.version
+                }
+            }
+          }),
+          [
+            { tag: "Help", reason: "Requested", commandPath: ["greet"] },
+            { tag: "Version", name: "greet", version: "1.0.0" },
+            { tag: "InvalidInvocation", commandPath: ["greet"], errors: ["MissingOption"] },
+            { tag: "Help", reason: "Implicit", commandPath: ["empty"] }
+          ]
+        )
+
+        assert.deepStrictEqual(yield* TestConsole.logLines, [])
+        assert.deepStrictEqual(yield* TestConsole.errorLines, [])
+      }).pipe(Effect.provide(TestLayer)))
+  })
+
   describe("run", () => {
     it.effect("should invoke the wizard programmatically from a command handler", () =>
       Effect.gen(function*() {

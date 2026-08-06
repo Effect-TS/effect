@@ -1669,12 +1669,22 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 ): Effect.Effect<void, CliError.CliError, Environment> =>
   Effect.gen(function*() {
     const { builtIns } = yield* CliConfig.CliConfig
-    const formatter = yield* CliOutput.Formatter
+    const presenter = yield* CliOutput.Presenter
     const helpDoc = yield* getHelpForCommandPath(command, error.commandPath, builtIns)
-    yield* Console.log(formatter.formatHelpDoc(helpDoc))
     if (error.errors.length > 0) {
-      yield* Console.error(formatter.formatErrors(error.errors as any))
+      return yield* presenter.present({
+        _tag: "InvalidInvocation",
+        commandPath: error.commandPath,
+        helpDoc,
+        errors: error.errors
+      })
     }
+    return yield* presenter.present({
+      _tag: "Help",
+      reason: "Implicit",
+      commandPath: error.commandPath,
+      helpDoc
+    })
   })
 
 /**

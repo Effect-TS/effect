@@ -1,16 +1,16 @@
 /**
- * Formats CLI help and errors as text.
+ * Formats and presents CLI help, errors, and version information.
  *
- * This module turns help documents, CLI errors, grouped errors, and version
- * information into strings. It does not write those strings to the terminal
- * itself. It includes the `Formatter` interface, the formatter service, a layer
- * for custom formatters, and the default formatter with configurable color
- * support.
+ * The `Formatter` service turns structured values into strings. The `Presenter`
+ * service handles semantic output events and can be replaced to suppress,
+ * redirect, or customize CLI output.
  *
  * @since 4.0.0
  */
 
+import * as Console from "../../Console.ts"
 import * as Context from "../../Context.ts"
+import * as Effect from "../../Effect.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import type * as CliError from "./CliError.ts"
@@ -198,6 +198,80 @@ export interface Formatter {
 }
 
 /**
+ * Handles semantic CLI output events.
+ *
+ * **When to use**
+ *
+ * Use when you need to replace how command help, invalid invocations, or
+ * version information are presented without changing their text formatter.
+ *
+ * @see {@link Formatter} for converting structured CLI output into text
+ * @category models
+ * @since 4.0.0
+ */
+export interface Presenter {
+  /**
+   * Presents a semantic CLI output event.
+   *
+   * @since 4.0.0
+   */
+  readonly present: (event: Presenter.Event) => Effect.Effect<void>
+}
+
+/**
+ * Types used by the `Presenter` service.
+ *
+ * @since 4.0.0
+ */
+export declare namespace Presenter {
+  /**
+   * Semantic output events produced while running a CLI command.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export type Event = Help | InvalidInvocation | Version
+
+  /**
+   * Help output for an explicit or implicit help request.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Help {
+    readonly _tag: "Help"
+    readonly reason: "Requested" | "Implicit"
+    readonly commandPath: ReadonlyArray<string>
+    readonly helpDoc: HelpDoc
+  }
+
+  /**
+   * Help and diagnostics for an invalid command invocation.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface InvalidInvocation {
+    readonly _tag: "InvalidInvocation"
+    readonly commandPath: ReadonlyArray<string>
+    readonly helpDoc: HelpDoc
+    readonly errors: ReadonlyArray<CliError.NonShowHelpErrors>
+  }
+
+  /**
+   * Version output for a CLI command.
+   *
+   * @category models
+   * @since 4.0.0
+   */
+  export interface Version {
+    readonly _tag: "Version"
+    readonly name: string
+    readonly version: string
+  }
+}
+
+/**
  * Service reference for the CLI output formatter. Provides a default implementation
  * that can be overridden for custom formatting or testing.
  *
@@ -227,6 +301,49 @@ export interface Formatter {
 export const Formatter: Context.Reference<Formatter> = Context.Reference(
   "effect/cli/CliOutput",
   { defaultValue: () => defaultFormatter() }
+)
+
+/**
+ * Default presenter that writes formatted CLI output through `Console`.
+ *
+ * **Details**
+ *
+ * Help and version events are written with `Console.log`. Invalid invocations
+ * write help with `Console.log` and diagnostics with `Console.error`.
+ *
+ * @see {@link Presenter} for replacing presentation behavior
+ * @category defaults
+ * @since 4.0.0
+ */
+export const defaultPresenter: Presenter = {
+  present: Effect.fnUntraced(function*(event) {
+    const formatter = yield* Formatter
+    switch (event._tag) {
+      case "Help":
+        return yield* Console.log(formatter.formatHelpDoc(event.helpDoc))
+      case "InvalidInvocation":
+        yield* Console.log(formatter.formatHelpDoc(event.helpDoc))
+        return yield* Console.error(formatter.formatErrors(event.errors))
+      case "Version":
+        return yield* Console.log(formatter.formatVersion(event.name, event.version))
+    }
+  })
+}
+
+/**
+ * Context reference for presenting semantic CLI output events.
+ *
+ * **When to use**
+ *
+ * Use when you need to suppress, redirect, or replace built-in CLI output.
+ *
+ * @see {@link defaultPresenter} for the default console-based behavior
+ * @category services
+ * @since 4.0.0
+ */
+export const Presenter: Context.Reference<Presenter> = Context.Reference(
+  "effect/cli/CliOutput/Presenter",
+  { defaultValue: () => defaultPresenter }
 )
 
 /**
@@ -262,6 +379,20 @@ const escapeControlCharacters = (text: string): string =>
   // oxlint-disable-next-line no-control-regex
   text.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, (character) =>
     `\\x${character.charCodeAt(0).toString(16).padStart(2, "0")}`)
+
+/**
+ * Creates a layer that provides a custom `Presenter` implementation.
+ *
+ * **When to use**
+ *
+ * Use when you want to configure CLI presentation as part of an application
+ * layer.
+ *
+ * @see {@link Presenter} for providing the service directly
+ * @category layers
+ * @since 4.0.0
+ */
+export const layerPresenter = (presenter: Presenter): Layer.Layer<never> => Layer.succeed(Presenter)(presenter)
 
 /**
  * Creates a default formatter with configurable options.
