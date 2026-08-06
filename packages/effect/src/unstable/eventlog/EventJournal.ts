@@ -86,7 +86,7 @@ export class EventJournal extends Context.Service<EventJournal, {
   ) => Effect.Effect<A, EventJournalError | E, R>
 
   /**
-   * Retrieve the last known sequence number for a remote source.
+   * Retrieve the first unused sequence number for a remote source.
    */
   readonly nextRemoteSequence: (remoteId: RemoteId) => Effect.Effect<number, EventJournalError>
 
@@ -417,8 +417,8 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       for (const remoteEntry of options.entries) {
         if (byId.has(remoteEntry.entry.idString)) {
           duplicateEntries.push(remoteEntry.entry)
-          if (remoteEntry.remoteSequence > remote.sequence) {
-            remote.sequence = remoteEntry.remoteSequence
+          if (remoteEntry.remoteSequence >= remote.sequence) {
+            remote.sequence = remoteEntry.remoteSequence + 1
           }
           continue
         }
@@ -456,8 +456,8 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
             target.missing.push(remoteEntry.entry)
           }
         })
-        if (remoteEntry.remoteSequence > remote.sequence) {
-          remote.sequence = remoteEntry.remoteSequence
+        if (remoteEntry.remoteSequence >= remote.sequence) {
+          remote.sequence = remoteEntry.remoteSequence + 1
         }
       }
       journal.sort((a, b) => a.createdAtMillis - b.createdAtMillis)

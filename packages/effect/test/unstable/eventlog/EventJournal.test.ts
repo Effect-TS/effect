@@ -26,6 +26,32 @@ describe("EventJournal", () => {
       assert.deepStrictEqual(sourceMissing, [])
     }))
 
+  it.effect("returns the next unused remote sequence", () =>
+    Effect.gen(function*() {
+      const journal = yield* EventJournal.makeMemory
+      const remoteId = EventJournal.makeRemoteIdUnsafe()
+      const entry = new EventJournal.Entry({
+        id: EventJournal.makeEntryIdUnsafe(),
+        event: "Repro",
+        primaryKey: "key",
+        payload: new Uint8Array()
+      }, { disableChecks: true })
+
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 0)
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 0, entry })],
+        effect: () => Effect.void
+      })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 1)
+      yield* journal.writeFromRemote({
+        remoteId,
+        entries: [new EventJournal.RemoteEntry({ remoteSequence: 5, entry })],
+        effect: () => Effect.void
+      })
+      assert.strictEqual(yield* journal.nextRemoteSequence(remoteId), 6)
+    }))
+
   it.effect("records entries in memory and publishes local changes", () =>
     Effect.gen(function*() {
       const journal = yield* EventJournal.EventJournal
