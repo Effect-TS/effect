@@ -1,5 +1,11 @@
 # effect
 
+## 3.22.2
+
+### Patch Changes
+
+- [#6233](https://github.com/Effect-TS/effect/pull/6233) [`291d5a9`](https://github.com/Effect-TS/effect/commit/291d5a9bf2ead7b766d613b880831f5d687fd44f) Thanks @mvanhorn! - Fix TMap.remove and removeAll erroneously clearing entire bucket on hash collision.
+
 ## 3.22.1
 
 ### Patch Changes
