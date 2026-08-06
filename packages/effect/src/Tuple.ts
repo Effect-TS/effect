@@ -43,7 +43,8 @@ import type { Apply, Lambda } from "./Struct.ts"
  * @category constructors
  * @since 2.0.0
  */
-export const make = <Elements extends ReadonlyArray<unknown>>(...elements: Elements): Elements => elements
+export const make = <const Elements extends ReadonlyArray<unknown>>(...elements: [...Elements]): [...Elements] =>
+  elements
 
 type Indices<T extends ReadonlyArray<unknown>> = Exclude<Partial<T>["length"], T["length"]>
 

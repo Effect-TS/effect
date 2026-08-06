@@ -7,6 +7,10 @@ const tuple = ["a", 2, true] as [string, number, boolean]
 const optionalTuple = ["a", 2, true] as [string?, number?, boolean?]
 
 describe("Tuple", () => {
+  it("make preserves argument literals", () => {
+    expect(Tuple.make("a", 1, true)).type.toBe<["a", 1, true]>()
+  })
+
   describe("get", () => {
     it("errors", () => {
       pipe(
