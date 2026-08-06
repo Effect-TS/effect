@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import * as DateTime from "effect/DateTime"
 import * as FastCheck from "effect/testing/FastCheck"
 import { describe, it } from "vitest"
-import { deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
+import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 /**
  * This suite intentionally avoids re-testing generic JSON Patch behavior
@@ -100,10 +100,9 @@ describe("Schema.toDifferJsonPatch", () => {
     it("Date: rejects an invalid Date on diff", () => {
       const differ = Schema.toDifferJsonPatch(Schema.Date)
 
-      throws(
-        () => differ.diff(new Date("1970-01-01T00:00:00.000Z"), new Date(NaN)),
-        "Expected a valid Date"
-      )
+      throws(() => differ.diff(new Date("1970-01-01T00:00:00.000Z"), new Date(NaN)), (error) => {
+        assertSchemaIssueError(error, "Expected a valid Date")
+      })
     })
 
     it("Defect: diff encodes an Error to a plain object; patch decodes back to Error", () => {

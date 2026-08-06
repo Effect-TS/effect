@@ -27,6 +27,7 @@ import * as Pull from "../../Pull.ts"
 import * as Queue from "../../Queue.ts"
 import * as Schedule from "../../Schedule.ts"
 import * as Schema from "../../Schema.ts"
+import * as SchemaIssue from "../../SchemaIssue.ts"
 import * as Scope from "../../Scope.ts"
 import * as Semaphore from "../../Semaphore.ts"
 import { Stdio } from "../../Stdio.ts"
@@ -635,7 +636,7 @@ export const make: <Rpcs extends Rpc.Any>(
       Effect.flatMap((a) => send(client.id, onSuccess(a), collector && collector.clearUnsafe())),
       Effect.catchCause((cause) => {
         client.schemas.delete(requestId)
-        const defect = Cause.squash(Cause.map(cause, (e) => e.issue.toString()))
+        const defect = Cause.squash(Cause.map(cause, (e) => SchemaIssue.defaultFormatter(e.issue)))
         return Effect.andThen(
           sendRequestDefect(client, requestId, encodeDefect, defect),
           server.write(client.id, { _tag: "Interrupt", requestId, interruptors: [] })
@@ -708,7 +709,8 @@ export const make: <Rpcs extends Rpc.Any>(
         return Effect.matchEffect(
           Effect.provideContext(schemas.decode(request.payload), schemas.context),
           {
-            onFailure: (error) => sendRequestDefect(client, requestId, schemas.encodeDefect, error.issue.toString()),
+            onFailure: (error) =>
+              sendRequestDefect(client, requestId, schemas.encodeDefect, SchemaIssue.defaultFormatter(error.issue)),
             onSuccess: (payload) => {
               client.schemas.set(
                 requestId,

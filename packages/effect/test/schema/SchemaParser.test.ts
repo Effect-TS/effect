@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { Cause, Effect, Exit, Option, Result, Schema, SchemaGetter, SchemaIssue, SchemaParser } from "effect"
-import { assertTrue, strictEqual, throws } from "../utils/assert.ts"
+import { assertSchemaIssueError, assertTrue, strictEqual, throws } from "../utils/assert.ts"
 
 describe("SchemaParser", () => {
   const makeMixedCause = () =>
@@ -8,25 +8,17 @@ describe("SchemaParser", () => {
       Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
       Cause.die(new Error("defect"))
     )
-  const makeMixedSchemaErrorCause = () =>
-    Cause.combine(
-      Cause.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "schema issue" }))),
-      Cause.die(new Error("defect"))
-    )
-
   describe("make", () => {
     it("should throw an error when the input is invalid", () => {
       const schema = Schema.String
       throws(() => SchemaParser.make(schema)(null as any), (e) => {
-        assertTrue(e instanceof Error)
-        assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.message, "Expected string")
+        assertSchemaIssueError(e, "Expected string")
       })
     })
 
     it("should throw an error when the cause contains both an Issue and a defect", () => {
       const schema = Schema.Struct({
-        a: Schema.String.pipe(Schema.withConstructorDefault(Effect.failCause(makeMixedSchemaErrorCause())))
+        a: Schema.String.pipe(Schema.withConstructorDefault(Effect.failCause(makeMixedCause())))
       })
 
       throws(() => SchemaParser.make(schema)({}), (e) => {
@@ -52,7 +44,7 @@ describe("SchemaParser", () => {
 
     it("should throw an error when the cause contains both an Issue and a defect", () => {
       const schema = Schema.Struct({
-        a: Schema.String.pipe(Schema.withConstructorDefault(Effect.failCause(makeMixedSchemaErrorCause())))
+        a: Schema.String.pipe(Schema.withConstructorDefault(Effect.failCause(makeMixedCause())))
       })
 
       throws(() => SchemaParser.makeOption(schema)({}), (e) => {
@@ -67,14 +59,10 @@ describe("SchemaParser", () => {
     it("should throw an error when the input is invalid", () => {
       const schema = Schema.String
       throws(() => SchemaParser.decodeUnknownSync(schema)(null), (e) => {
-        assertTrue(e instanceof Error)
-        assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.message, "Expected string")
+        assertSchemaIssueError(e, "Expected string")
       })
       throws(() => SchemaParser.encodeUnknownSync(schema)(null), (e) => {
-        assertTrue(e instanceof Error)
-        assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.message, "Expected string")
+        assertSchemaIssueError(e, "Expected string")
       })
     })
 
@@ -106,14 +94,10 @@ describe("SchemaParser", () => {
       const schema = Schema.String
       const r1 = await SchemaParser.decodeUnknownPromise(schema)(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r1))
-      assertTrue(r1.failure instanceof Error)
-      assertTrue(SchemaIssue.isIssue(r1.failure.cause))
-      strictEqual(r1.failure.message, "Expected string")
+      assertSchemaIssueError(r1.failure, "Expected string")
       const r2 = await SchemaParser.encodeUnknownPromise(schema)(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r2))
-      assertTrue(r2.failure instanceof Error)
-      assertTrue(SchemaIssue.isIssue(r2.failure.cause))
-      strictEqual(r2.failure.message, "Expected string")
+      assertSchemaIssueError(r2.failure, "Expected string")
     })
 
     it("should reject with an error when the cause contains both an Issue and a defect", async () => {
