@@ -473,7 +473,7 @@ export function checkEffect<T, R = never>(
 ): Getter<T, T, R> {
   return onSome((t, options) => {
     return f(t, options).pipe(Effect.flatMapEager((out) => {
-      const issue = SchemaIssue.makeSingle(out)
+      const issue = SchemaIssue.makeSingle(out, t, options)
       return issue ?
         Effect.fail(issue) :
         Effect.succeed(Option.some(t))

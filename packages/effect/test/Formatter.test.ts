@@ -397,6 +397,22 @@ describe("Formatter", () => {
       strictEqual(formatIssue(result.failure), `Invalid data "secret"`)
     })
 
+    it("reports input from effectful checks", () => {
+      const schema = Schema.String.pipe(
+        Schema.decode({
+          decode: SchemaGetter.checkEffect(() => Effect.succeed(false)),
+          encode: SchemaGetter.passthrough()
+        })
+      )
+      const result = SchemaParser.decodeUnknownResult(schema)("secret", { reportInput: true })
+
+      assertTrue(Result.isFailure(result))
+      assertTrue(result.failure._tag === "Encoding")
+      assertTrue(result.failure.issue._tag === "InvalidValue")
+      strictEqual(result.failure.issue.input, "secret")
+      strictEqual(formatIssue(result.failure), `Invalid data "secret"`)
+    })
+
     it("does not infer input through a user-provided pointer", () => {
       const inner = new SchemaIssue.InvalidValue()
       const pointer = new SchemaIssue.Pointer(["value"], inner)
