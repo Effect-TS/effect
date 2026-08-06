@@ -1759,14 +1759,27 @@ const makeStreamResponse = Effect.fnUntraced(
           }
 
           case "response.completed":
-          case "response.incomplete":
-          case "response.failed": {
+          case "response.incomplete": {
             parts.push({
               type: "finish",
               reason: InternalUtilities.resolveFinishReason(
                 event.response.incomplete_details?.reason,
                 hasToolCalls
               ),
+              usage: getUsage(event.response.usage),
+              response: buildHttpResponseDetails(response),
+              ...toServiceTier(event.response.service_tier)
+            })
+            break
+          }
+
+          case "response.failed": {
+            if (event.response.error) {
+              parts.push({ type: "error", error: event.response.error })
+            }
+            parts.push({
+              type: "finish",
+              reason: "error",
               usage: getUsage(event.response.usage),
               response: buildHttpResponseDetails(response),
               ...toServiceTier(event.response.service_tier)
