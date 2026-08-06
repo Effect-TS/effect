@@ -5,6 +5,7 @@ import type * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
+import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
@@ -247,13 +248,11 @@ export const causeCombine: {
   }
 )
 
-const EqualSymbol = "~effect/interfaces/Equal"
-
 const runtimeEquals = (self: unknown, that: unknown): boolean =>
   self === that ||
-  (hasProperty(self, EqualSymbol) &&
-    hasProperty(that, EqualSymbol) &&
-    (self as any)[EqualSymbol](that))
+  (hasProperty(self, Equal.symbol) &&
+    hasProperty(that, Equal.symbol) &&
+    (self as any)[Equal.symbol](that))
 
 /** @internal */
 export const causeMap: {
