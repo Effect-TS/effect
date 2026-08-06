@@ -94,6 +94,9 @@ export function makeOption<S extends Schema.Constraint>(schema: S) {
  *
  * The returned function constructs a value from constructor input and throws an
  * `Error` with the `SchemaIssue.Issue` in its `cause` when construction fails.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -184,6 +187,9 @@ export function _issue<T>(ast: SchemaAST.AST) {
  * The assertion returns normally when validation succeeds. When the input does
  * not satisfy the schema with a schema-only failure, it throws an `Error` with
  * the `SchemaIssue.Issue` in its `cause`.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -282,6 +288,9 @@ export const decodeEffect: <S extends Schema.Constraint>(
  *
  * The returned function resolves with the decoded `Type` on success and rejects
  * with an `Error` whose cause is a `SchemaIssue.Issue` on decoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -314,6 +323,9 @@ export function decodeUnknownPromise<S extends Schema.ConstraintDecoder<unknown>
  *
  * The returned function resolves with the decoded `Type` on success and rejects
  * with an `Error` whose cause is a `SchemaIssue.Issue` on decoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -492,6 +504,9 @@ export const decodeResult: <S extends Schema.ConstraintDecoder<unknown>>(
  *
  * The returned function returns the decoded `Type` on success and throws an
  * `Error` with the `SchemaIssue.Issue` in its `cause` on decoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -526,6 +541,9 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
  *
  * The returned function returns the decoded `Type` on success and throws an
  * `Error` with the `SchemaIssue.Issue` in its `cause` on decoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -620,6 +638,9 @@ export const encodeEffect: <S extends Schema.Constraint>(
  *
  * The returned function resolves with the schema's `Encoded` value on success and
  * rejects with an `Error` whose cause is a `SchemaIssue.Issue` on encoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -651,6 +672,9 @@ export const encodeUnknownPromise = <S extends Schema.ConstraintEncoder<unknown>
  *
  * The returned function resolves with the schema's `Encoded` value on success and
  * rejects with an `Error` whose cause is a `SchemaIssue.Issue` on encoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -826,6 +850,9 @@ export const encodeResult: <S extends Schema.ConstraintEncoder<unknown>>(
  *
  * The returned function returns the schema's `Encoded` value on success and throws
  * an `Error` with the `SchemaIssue.Issue` in its `cause` on encoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -859,6 +886,9 @@ export function encodeUnknownSync<S extends Schema.ConstraintEncoder<unknown>>(
  *
  * The returned function returns the schema's `Encoded` value on success and throws
  * an `Error` with the `SchemaIssue.Issue` in its `cause` on encoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
