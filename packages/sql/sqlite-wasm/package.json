@@ -65,7 +65,7 @@
     "effect": "workspace:^"
   },
   "peerDependencies": {
-    "@effect/wa-sqlite": "^0.1.2",
+    "@effect/wa-sqlite": ">=0.1.2 <0.2.0",
     "effect": "workspace:^"
   }
 }

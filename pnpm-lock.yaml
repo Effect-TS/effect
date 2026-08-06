@@ -291,10 +291,10 @@ importers:
         specifier: ^30.0.0
         version: 30.0.0
       react:
-        specifier: 19.2.7
+        specifier: ^19.2.7
         version: 19.2.7
       react-dom:
-        specifier: 19.2.7
+        specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
       react-error-boundary:
         specifier: ^6.1.2
@@ -487,7 +487,7 @@ importers:
         specifier: workspace:^
         version: link:../platform-node-shared
       ioredis:
-        specifier: ^5.7.0
+        specifier: '>=5.7.0 <6.0.0'
         version: 5.8.2
       mime:
         specifier: ^4.1.0
@@ -602,7 +602,7 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       pg-connection-string:
-        specifier: 2.14.0
+        specifier: ^2.14.0
         version: 2.14.0
       pg-cursor:
         specifier: ^2.21.0
@@ -673,7 +673,7 @@ importers:
   packages/sql/sqlite-react-native:
     devDependencies:
       '@op-engineering/op-sqlite':
-        specifier: 17.1.2
+        specifier: ^17.1.2
         version: 17.1.2(react-native@0.83.0(@babel/core@8.0.1)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
       effect:
         specifier: workspace:^
@@ -831,7 +831,7 @@ importers:
         specifier: ^7.0.6
         version: 7.27.0
       '@types/doctrine':
-        specifier: 0.0.9
+        specifier: ^0.0.9
         version: 0.0.9
       '@types/node':
         specifier: ^26.1.2
@@ -843,7 +843,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: 4.1.10
+        specifier: ^4.1.10
         version: 4.1.10(@edge-runtime/vm@5.0.0)(@opentelemetry/api@1.9.1)(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(jsdom@30.0.0)(vite@8.1.5(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
   packages/tools/doctest:
@@ -865,7 +865,7 @@ importers:
         specifier: ^8.1.5
         version: 8.1.5(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
       vitest:
-        specifier: 4.1.10
+        specifier: ^4.1.10
         version: 4.1.10(@edge-runtime/vm@5.0.0)(@opentelemetry/api@1.9.1)(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(jsdom@30.0.0)(vite@8.1.5(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
   packages/tools/jsdocs:

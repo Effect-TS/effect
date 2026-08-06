@@ -72,15 +72,15 @@
     "check": "tsc -b tsconfig.json"
   },
   "peerDependencies": {
-    "@opentelemetry/api": "^1.9",
+    "@opentelemetry/api": ">=1.9.0 <2.0.0",
     "@opentelemetry/api-logs": ">=0.203.0 <0.300.0",
-    "@opentelemetry/resources": "^2.0.0",
+    "@opentelemetry/resources": ">=2.0.0 <3.0.0",
     "@opentelemetry/sdk-logs": ">=0.203.0 <0.300.0",
-    "@opentelemetry/sdk-metrics": "^2.0.0",
-    "@opentelemetry/sdk-trace-base": "^2.0.0",
-    "@opentelemetry/sdk-trace-node": "^2.0.0",
-    "@opentelemetry/sdk-trace-web": "^2.0.0",
-    "@opentelemetry/semantic-conventions": "^1.33.0",
+    "@opentelemetry/sdk-metrics": ">=2.0.0 <3.0.0",
+    "@opentelemetry/sdk-trace-base": ">=2.0.0 <3.0.0",
+    "@opentelemetry/sdk-trace-node": ">=2.0.0 <3.0.0",
+    "@opentelemetry/sdk-trace-web": ">=2.0.0 <3.0.0",
+    "@opentelemetry/semantic-conventions": ">=1.33.0 <2.0.0",
     "effect": "workspace:^"
   },
   "peerDependenciesMeta": {

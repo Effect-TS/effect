@@ -71,7 +71,7 @@
   },
   "dependencies": {
     "pg": "^8.22.0",
-    "pg-connection-string": "2.14.0",
+    "pg-connection-string": "^2.14.0",
     "pg-cursor": "^2.21.0",
     "pg-pool": "^3.14.0",
     "pg-types": "^4.1.0"
