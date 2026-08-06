@@ -396,11 +396,9 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
       eventName = value
     } else if (field === "id" && !value.includes("\u0000")) {
       lastEventId = value
-    } else if (field === "retry") {
+    } else if (field === "retry" && /^\d+$/.test(value)) {
       const retry = parseInt(value, 10)
-      if (!Number.isNaN(retry)) {
-        onParse(new Retry({ duration: Duration.millis(retry), lastEventId }))
-      }
+      onParse(new Retry({ duration: Duration.millis(retry), lastEventId }))
     }
   }
 }

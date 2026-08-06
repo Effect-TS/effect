@@ -75,6 +75,15 @@ describe("Sse", () => {
     assert.strictEqual((events[0] as Sse.Event).event, "message")
   })
 
+  it("ignores retry values that are not ASCII digits", () => {
+    const events: Array<Sse.AnyEvent> = []
+    for (const value of ["123x", "+123", "-123", "1.5"]) {
+      Sse.makeParser((event) => events.push(event)).feed(`retry: ${value}\n`)
+    }
+
+    assert.deepStrictEqual(events, [])
+  })
+
   it("Event preserves string payloads", () => {
     const decode = Schema.decodeUnknownSync(Sse.Event)
     const encode = Schema.encodeSync(Sse.Event)
