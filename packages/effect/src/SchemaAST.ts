@@ -1202,7 +1202,10 @@ export class TemplateLiteral extends Base {
           const segments = segmentTemplateLiteralParts(this, s, options)
           if (segments) return Effect.succeed(segments)
           return Effect.fail(
-            SchemaIssue.makeInvalidValue("a string matching template literal parts", s, options)
+            new SchemaIssue.InvalidValue(
+              { expected: "a string matching template literal parts" },
+              SchemaIssue.reportInput(s, options)
+            )
           )
         }),
         SchemaGetter.transform((parts) => parts.join(""))

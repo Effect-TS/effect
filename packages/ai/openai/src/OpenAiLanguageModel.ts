@@ -19,6 +19,7 @@ import * as Predicate from "effect/Predicate"
 import * as Redactable from "effect/Redactable"
 import * as Schema from "effect/Schema"
 import * as AST from "effect/SchemaAST"
+import * as SchemaIssue from "effect/SchemaIssue"
 import * as Stream from "effect/Stream"
 import type { Span } from "effect/Tracer"
 import type { DeepMutable, Mutable, Simplify } from "effect/Types"
@@ -3158,7 +3159,7 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
       reason: new AiError.ToolParameterValidationError({
         toolName,
         toolParams,
-        description: error.issue.toString()
+        description: SchemaIssue.defaultFormatter(error.issue)
       })
     })
   ))

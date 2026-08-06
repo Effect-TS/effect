@@ -563,14 +563,7 @@ export class Complete<A, E> extends Data.TaggedClass("Complete")<{
           SchemaParser.decodeEffect(exit)(input.exit, options),
           {
             onSuccess: (exit) => new Complete({ exit }),
-            onFailure: (issue) =>
-              new SchemaIssue.Composite(
-                ast,
-                [
-                  new SchemaIssue.Pointer(["exit"], issue)
-                ],
-                SchemaIssue.reportInput(input, options)
-              )
+            onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "exit", issue, input, options)
           }
         )
       },

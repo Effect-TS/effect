@@ -1084,7 +1084,12 @@ function getEncodePayloadSchemaFromBody(
               const body = JSON.stringify(t)
               return Effect.succeed(HttpBody.text(body, encoding.contentType))
             } catch {
-              return Effect.fail(SchemaIssue.makeInvalidValue("a JSON-serializable request body", t, options))
+              return Effect.fail(
+                new SchemaIssue.InvalidValue(
+                  { expected: "a JSON-serializable request body" },
+                  SchemaIssue.reportInput(t, options)
+                )
+              )
             }
           }
           case "Text": {

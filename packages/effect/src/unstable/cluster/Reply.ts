@@ -245,12 +245,7 @@ export class Chunk<R extends Rpc.Any> extends Data.TaggedClass("Chunk")<{
           return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
         }
         return Effect.mapBothEager(SchemaParser.decodeEffect(Schema.NonEmptyArray(success))(input.values, options), {
-          onFailure: (issue) =>
-            new SchemaIssue.Composite(
-              ast,
-              [new SchemaIssue.Pointer(["values"], issue)],
-              SchemaIssue.reportInput(input, options)
-            ),
+          onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "values", issue, input, options),
           onSuccess: (values) => new Chunk({ ...input, values } as any)
         })
       },
@@ -359,12 +354,7 @@ export class WithExit<R extends Rpc.Any> extends Data.TaggedClass("WithExit")<{
           return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
         }
         return Effect.mapBothEager(SchemaParser.decodeEffect(exit)(input.exit, options), {
-          onFailure: (issue) =>
-            new SchemaIssue.Composite(
-              ast,
-              [new SchemaIssue.Pointer(["exit"], issue)],
-              SchemaIssue.reportInput(input, options)
-            ),
+          onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "exit", issue, input, options),
           onSuccess: (exit) => new WithExit({ ...input, exit: exit as any })
         })
       },
