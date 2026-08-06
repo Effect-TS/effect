@@ -1,7 +1,9 @@
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
+import * as OtelLogger from "@effect/opentelemetry/OtelLogger"
+import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import { SeverityNumber } from "@opentelemetry/api-logs"
-import { InMemoryLogRecordExporter, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs"
+import { InMemoryLogRecordExporter, type LogRecordProcessor, SimpleLogRecordProcessor } from "@opentelemetry/sdk-logs"
 import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Clock from "effect/Clock"
 import * as Effect from "effect/Effect"
@@ -9,6 +11,23 @@ import * as Layer from "effect/Layer"
 import * as References from "effect/References"
 
 describe("Logger", () => {
+  it.effect("shuts down the logger provider after forceFlush rejects", () =>
+    Effect.gen(function*() {
+      let shutdowns = 0
+      const processor: LogRecordProcessor = {
+        onEmit() {},
+        forceFlush: () => Promise.reject(new Error("flush failed")),
+        shutdown: () => {
+          shutdowns++
+          return Promise.resolve()
+        }
+      }
+      yield* Effect.exit(
+        Effect.scoped(Layer.build(OtelLogger.layerLoggerProvider(processor)).pipe(Effect.provide(Resource.layerEmpty)))
+      )
+      assert.strictEqual(shutdowns, 1)
+    }))
+
   describe("provided", () => {
     const exporter = new InMemoryLogRecordExporter()
 
