@@ -38,6 +38,9 @@
 "effect/FastCheck#constant":
   replacement: "FastCheck.constant"
   note: "Import FastCheck from effect/testing. The API remains; v4 infers literal types by default."
+"effect/FastCheck#context":
+  replacement: "FastCheck.context"
+  note: "Import FastCheck from effect/testing. The API is otherwise unchanged."
 "effect/FastCheck#fullUnicode":
   replacement: "FastCheck.string"
   note: "Import FastCheck from effect/testing. Use a one-unit binary Unicode string."

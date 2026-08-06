@@ -1133,11 +1133,11 @@ effect/Schema#TaggedClass:
   replacement: Schema.TaggedClass
   note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
 effect/Schema#TaggedError:
-  replacement: Schema.TaggedErrorClass
-  note: Rename the tagged error class constructor.
+  replacement: Schema.TaggedError
+  note: The constructor name is retained; update to the v4 fields-or-Struct signature and infer the resulting class types.
 effect/Schema#TaggedErrorClass:
-  replacement: Schema.TaggedErrorClass
-  note: The API remains public in v4, but its type/value declaration was consolidated; use the v4 declaration and update inferred types/signature as needed.
+  replacement: Schema.TaggedError
+  note: The exported helper interface was removed; use the class returned by Schema.TaggedError and infer its types.
 effect/Schema#TaggedRequest:
   replacement: effect/unstable/rpc/Rpc.make
   note: The Schema request/serialization protocol was removed; migrate RPC requests to the v4 Rpc APIs.
