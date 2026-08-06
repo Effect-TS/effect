@@ -123,6 +123,7 @@ Read `.patterns/testing.md` before writing or changing tests.
 - Test files are located in `packages/*/test/`.
 - Main Effect library tests are in `packages/effect/test/`.
 - Use `it.effect` for Effect-returning tests.
+- `it.effect` and `it.live` already provide and close a `Scope` for each test; do not wrap test bodies in `Effect.scoped`.
 - Use regular `it` for pure synchronous tests.
 - Do not use `Effect.runSync` in tests.
 - Do not use `expect` from Vitest; use `assert` from `@effect/vitest`.
