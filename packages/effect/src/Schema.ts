@@ -203,7 +203,9 @@ export interface BottomWithoutNew<
    * **Gotchas**
    *
    * Throws an `Error` with the schema issue in its `cause` when validation
-   * fails.
+   * fails. Schema validation failures use the generic message
+   * `"Schema validation failed"`; format the `cause` explicitly with
+   * `SchemaIssue.makeFormatterDefault()` when human-readable details are needed.
    * Causes that contain defects, interruptions, or other non-schema reasons
    * throw with the underlying `Cause` attached instead.
    *
@@ -454,7 +456,7 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  * **Example** (Schema for a parametric `Box<A>` type)
  *
  * ```ts import.meta.vitest
- * import { Effect, Schema, SchemaIssue as Issue, SchemaParser } from "effect"
+ * import { Effect, Schema, SchemaIssue, SchemaParser } from "effect"
  *
  * interface Box<A> {
  *   readonly value: A
@@ -469,7 +471,7 @@ export interface declareConstructor<T, E, TypeParameters extends ReadonlyArray<C
  *     ([itemCodec]) =>
  *       (u, ast, options) => {
  *         if (!isBox(u)) {
- *           return Effect.fail(new SchemaIssue.InvalidType(ast))
+ *           return Effect.fail(new SchemaIssue.InvalidType(ast, u, options))
  *         }
  *         return Effect.map(
  *           SchemaParser.decodeUnknownEffect(itemCodec)(u.value, options),
@@ -1423,6 +1425,9 @@ export const is = SchemaParser.is
  *
  * The input is narrowed if the assertion succeeds. If schema validation fails,
  * the assertion throws an `Error` whose cause is `SchemaIssue.Issue`.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -6568,12 +6573,13 @@ export const makeFilter: <T>(
  *
  * - `string`: failure with that string as the message. Produces an
  *   {@link SchemaIssue.InvalidValue} with the string used as the issue's
- *   `message` annotation.
- * - {@link SchemaIssue.Issue}: a fully-formed issue, returned as-is.
+ *   `message` annotation and honors `reportInput`.
+ * - {@link SchemaIssue.Issue}: a fully-formed issue, returned as-is. It is not
+ *   enriched when `reportInput` is enabled.
  * - `{ path, issue }`: failure attached to a nested path. `issue` is either
- *   a `string` (wrapped in an {@link SchemaIssue.InvalidValue}) or a full
- *   {@link SchemaIssue.Issue}; the result is wrapped in an {@link SchemaIssue.Pointer}
- *   at the given `path`.
+ *   a `string` (wrapped in an {@link SchemaIssue.InvalidValue} that honors
+ *   `reportInput`) or a full {@link SchemaIssue.Issue} (returned unchanged);
+ *   the result is wrapped in an {@link SchemaIssue.Pointer} at the given `path`.
  *
  * @category models
  * @since 3.10.0
@@ -6595,7 +6601,7 @@ export type FilterIssue = string | SchemaIssue.Issue | {
  * - `true`: success. Equivalent to `undefined`, useful when the predicate is
  *   a plain boolean expression.
  * - `false`: generic failure. Produces an {@link SchemaIssue.InvalidValue}
- *   with no custom message.
+ *   with no custom message and honors `reportInput`.
  * - {@link FilterIssue}: a single failure. See {@link FilterIssue} for the
  *   shapes (`string`, {@link SchemaIssue.Issue}, or `{ path, issue }`).
  * - `ReadonlyArray<FilterIssue>`: several failures reported together. An
@@ -14209,8 +14215,8 @@ type MissingSelfGeneric<Usage extends string> =
 
 /**
  * Creates a schema-backed class whose constructor validates input against a
- * {@link Struct} schema. Construction throws a {@link SchemaError} on invalid
- * input.
+ * {@link Struct} schema. Construction throws an `Error` with a
+ * `SchemaIssue.Issue` in its `cause` on invalid input.
  *
  * **When to use**
  *
@@ -15711,6 +15717,18 @@ export const isBetweenBigIntReviver: SchemaRepresentation.FilterReviver<{
  * Derives an `Iso` optic from a schema that isomorphically converts between
  * the schema's `Type` and its `Iso` (intermediate / serialized form).
  *
+ * **Details**
+ *
+ * Reading through the `Iso` encodes the schema value, while replacing through
+ * it decodes the new focus.
+ *
+ * **Gotchas**
+ *
+ * Either direction can throw an `Error` with the generic message
+ * `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Format
+ * the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
+ *
  * @category converting
  * @since 4.0.0
  */
@@ -15809,6 +15827,19 @@ export function overrideToCodecIso<S extends Constraint, Iso>(
  * Derives a JSON Patch differ from a codec. Serializes values to JSON (via
  * {@link toCodecJson}), computes RFC 6902 JSON Patch operations between old
  * and new values, and can apply patches back to the typed value.
+ *
+ * **Details**
+ *
+ * `diff` encodes both values before computing the patch. `patch` encodes the old
+ * value, applies the patch to its JSON representation, and decodes the result.
+ *
+ * **Gotchas**
+ *
+ * Schema encoding or decoding failures throw an `Error` with the generic message
+ * `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Format
+ * the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed. Errors produced by {@link JsonPatch.apply}
+ * for invalid patch operations are separate from schema validation failures.
  *
  * @category converting
  * @since 4.0.0

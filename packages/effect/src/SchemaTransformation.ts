@@ -263,10 +263,10 @@ export const make = <T, E, RD = never, RE = never>(options: {
  *   Schema.decodeTo(
  *     Schema.Date,
  *     SchemaTransformation.transformOrFail({
- *       decode: (s) => {
+ *       decode: (s, options) => {
  *         const d = new Date(s)
  *         return isNaN(d.getTime())
- *           ? Effect.fail(new SchemaIssue.InvalidValue({ message: "Invalid date" }))
+ *           ? Effect.fail(new SchemaIssue.InvalidValue({ message: "Invalid date" }, s, options))
  *           : Effect.succeed(d)
  *       },
  *       encode: (d) => Effect.succeed(d.toISOString())

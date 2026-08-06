@@ -640,6 +640,8 @@ export interface Optional<in out S, in out A> {
    * - On a {@link Prism}, returns a Prism.
    * - On an {@link Optional}, returns an Optional.
    * - Shorthand for `.refine(s => s._tag === tag)`.
+   * - A non-matching value fails with {@link SchemaIssue.InvalidValue} whose
+   *   `expected` annotation is `"<tag> tag"`.
    *
    * **Example** (Focusing a tagged variant)
    *
@@ -679,6 +681,9 @@ export interface Optional<in out S, in out A> {
    *
    * - Always returns an {@link Optional}.
    * - Does **not** work on union types (compile error).
+   * - A missing key fails with a {@link SchemaIssue.Pointer} at that key whose
+   *   inner issue is {@link SchemaIssue.MissingKey}, for both `getResult` and
+   *   `replaceResult`.
    *
    * **Example** (Accessing records safely)
    *
@@ -805,7 +810,9 @@ export interface Optional<in out S, in out A> {
    *   element. Non-focusable elements are skipped.
    * - **replaceResult** expects exactly as many values as were collected by
    *   `getResult` and writes them back in order. Fails with a
-   *   length-mismatch error if counts differ.
+   *   {@link SchemaIssue.InvalidValue} if counts differ. If an inner replacement
+   *   fails, its issue is wrapped in a {@link SchemaIssue.Pointer} at the element
+   *   index.
    *
    * **Example** (Incrementing liked posts)
    *

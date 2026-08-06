@@ -540,8 +540,9 @@ export interface ParseOptions {
    * input. To respect this option, pass the callback's input and parse options
    * directly to a value-bearing issue constructor. Custom messages and
    * annotations remain the caller's responsibility regardless of this option.
-   * Calling `String` on an issue, reading `SchemaError.message`, or formatting
-   * a Standard Schema failure can disclose retained input.
+   * Formatting an issue with `SchemaIssue.makeFormatterDefault()`, reading
+   * `SchemaError.message`, or formatting a Standard Schema failure can disclose
+   * retained input.
    *
    * @default false
    */

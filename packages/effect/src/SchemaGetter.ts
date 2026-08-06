@@ -542,10 +542,10 @@ export function transform<T, E>(f: (e: E) => T): Getter<T, E> {
  * import { Effect, Option, SchemaGetter, SchemaIssue } from "effect"
  *
  * const safeParseInt = SchemaGetter.transformOrFail<number, string>(
- *   (s) => {
+ *   (s, options) => {
  *     const n = parseInt(s, 10)
  *     return isNaN(n)
- *       ? Effect.fail(new SchemaIssue.InvalidValue({ message: "not an integer" }))
+ *       ? Effect.fail(new SchemaIssue.InvalidValue({ message: "not an integer" }, s, options))
  *       : Effect.succeed(n)
  *   }
  * )
@@ -1004,7 +1004,9 @@ type ParseJsonOptions = {
  * - Skips `None` inputs.
  * - Without `reviver`: returns `Schema.MutableJson` (typed JSON).
  * - With `reviver`: returns `unknown` (reviver may produce arbitrary values).
- * - On parse failure, fails with `SchemaIssue.InvalidValue` containing a static message.
+ * - On parse failure, fails with `SchemaIssue.InvalidValue` whose `expected`
+ *   annotation is `"a valid JSON string"`. Its default message includes the
+ *   reported input when `reportInput` is enabled.
  *
  * **Example** (Parsing JSON)
  *

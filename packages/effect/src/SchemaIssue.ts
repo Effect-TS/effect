@@ -222,7 +222,14 @@ export class Filter extends Base {
      * The issue that occurred.
      */
     issue: Issue,
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
@@ -270,7 +277,14 @@ export class Encoding extends Base {
      * The issue that occurred.
      */
     issue: Issue,
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
@@ -374,7 +388,8 @@ export class MissingKey extends Base {
  *
  * - `ast` is the schema that was being validated against.
  * - `annotations` on `ast` may contain a custom `messageUnexpectedKey`.
- * - The default formatter renders this as `"Expected no excess property"`.
+ * - The default formatter renders this as `"Expected no excess property"`, or
+ *   `"Unexpected key with value <input>"` when the issue reports an input.
  *
  * @see {@link MissingKey} — the opposite case (required key absent)
  * @see {@link Pointer} — wraps this issue with the unexpected key's path
@@ -393,7 +408,14 @@ export class UnexpectedKey extends Base {
      * The schema that caused the issue.
      */
     ast: SchemaAST.AST,
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
@@ -440,7 +462,14 @@ export class Composite extends Base {
      * The issues that occurred.
      */
     issues: readonly [Issue, ...Array<Issue>],
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
@@ -461,7 +490,8 @@ export class Composite extends Base {
  * **Details**
  *
  * - `ast` is the schema node that expected a different type.
- * - The default formatter renders this as `"Expected <type>"`.
+ * - The default formatter renders this as `"Expected <type>"`, adding
+ *   `", got <input>"` when the issue reports an input.
  *
  * **Example** (Formatting a type mismatch)
  *
@@ -489,7 +519,14 @@ export class InvalidType extends Base {
      * The schema that caused the issue.
      */
     ast: SchemaAST.AST,
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
@@ -508,9 +545,13 @@ export class InvalidType extends Base {
  *
  * **Details**
  *
- * - `annotations` optionally carries a `message` string for formatting.
- * - The default formatter renders this as `"Expected a valid value"` unless a
- *   custom `message` annotation is provided.
+ * - A `message` annotation is returned unchanged and takes precedence over all
+ *   other default formatting.
+ * - Without `message`, an `expected` annotation is formatted as
+ *   `"Expected <expected>"`, adding `", got <input>"` when input is reported.
+ * - Without either annotation, the default formatter renders
+ *   `"Expected a valid value"`, or `"Invalid data <input>"` when input is
+ *   reported.
  *
  * **Example** (Returning InvalidValue from a custom filter)
  *
@@ -536,8 +577,18 @@ export class InvalidValue extends Base {
   readonly annotations: Schema.Annotations.Issue | undefined
 
   constructor(
+    /**
+     * The metadata for the issue.
+     */
     annotations?: Schema.Annotations.Issue | undefined,
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
@@ -604,7 +655,14 @@ export class Forbidden extends Base {
      * The metadata for the issue.
      */
     annotations: Schema.Annotations.Issue | undefined,
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
@@ -628,7 +686,8 @@ export class Forbidden extends Base {
  * **Gotchas**
  *
  * `issues` is empty when no union member was applicable. In that case, the
- * default formatter reports the expected type for the union.
+ * default formatter reports the expected type for the union and appends
+ * `", got <input>"` when input is reported.
  *
  * @see {@link OneOf} — the opposite: *too many* members matched
  * @see {@link Composite} — groups multiple issues under a non-union schema
@@ -656,7 +715,14 @@ export class AnyOf extends Base {
      * The issues that occurred.
      */
     issues: ReadonlyArray<Issue>,
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
@@ -679,7 +745,9 @@ export class AnyOf extends Base {
  * - `ast` is the `Union` AST node.
  * - `successes` lists the AST nodes of each member that accepted the input.
  * - The default formatter renders this as
- *   `"Expected exactly one member to match"`.
+ *   `"Expected exactly one member to match"`, or
+ *   `"Expected exactly one member to match the input <input>"` when input is
+ *   reported.
  *
  * @see {@link AnyOf} — the opposite: *no* members matched
  *
@@ -706,7 +774,14 @@ export class OneOf extends Base {
      * The schemas that were successful.
      */
     successes: ReadonlyArray<SchemaAST.AST>,
+    /**
+     * The present input associated with the issue. It is retained only when
+     * `options.reportInput` is `true`.
+     */
     input?: unknown,
+    /**
+     * The effective parse options controlling input retention.
+     */
     options?: SchemaAST.ParseOptions
   ) {
     super(input, options)
