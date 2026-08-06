@@ -272,13 +272,17 @@ class FileImpl implements FileSystem.File {
     )
   }
 
-  private writeChunk(method: string, buffer: Uint8Array) {
+  private writeChunk(
+    method: string,
+    buffer: Uint8Array,
+    pathOrDescriptor?: string | number
+  ) {
     return Effect.suspend(() => {
       const position = this.position
       return Effect.map(
         tryPromise(
           method,
-          undefined,
+          pathOrDescriptor,
           async () => {
             if (!this.append && this.nativePosition !== position) {
               this.file.seekSync(position, Deno.SeekMode.Start)
@@ -304,24 +308,33 @@ class FileImpl implements FileSystem.File {
     return this.writeChunk("write", buffer)
   }
 
-  private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, PlatformError.PlatformError> {
-    return Effect.flatMap(this.writeChunk("writeAll", buffer), (bytesWritten) => {
+  private writeAllChunk(
+    buffer: Uint8Array,
+    method: string,
+    pathOrDescriptor?: string | number
+  ): Effect.Effect<void, PlatformError.PlatformError> {
+    return Effect.flatMap(this.writeChunk(method, buffer, pathOrDescriptor), (bytesWritten) => {
       if (bytesWritten === BigInt(0)) {
         return Effect.fail(PlatformError.systemError({
           module: "FileSystem",
-          method: "writeAll",
+          method,
+          pathOrDescriptor,
           _tag: "WriteZero",
           description: "write returned 0 bytes written"
         }))
       }
       return bytesWritten < buffer.length
-        ? this.writeAllChunk(buffer.subarray(Number(bytesWritten)))
+        ? this.writeAllChunk(buffer.subarray(Number(bytesWritten)), method, pathOrDescriptor)
         : Effect.void
     })
   }
 
-  writeAll(buffer: Uint8Array) {
-    return buffer.length === 0 ? Effect.void : this.writeAllChunk(buffer)
+  writeAll(
+    buffer: Uint8Array,
+    method = "writeAll",
+    pathOrDescriptor?: string | number
+  ) {
+    return buffer.length === 0 ? Effect.void : this.writeAllChunk(buffer, method, pathOrDescriptor)
   }
 }
 
@@ -452,7 +465,7 @@ const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) => {
   }
   return Effect.acquireUseRelease(
     tryPromise("writeFile", path, () => Deno.open(path, openOptions(flag, options?.mode))),
-    (file) => new FileImpl(file, flag.startsWith("a")).writeAll(data),
+    (file) => new FileImpl(file, flag.startsWith("a")).writeAll(data, "writeFile", path),
     (file) => close(file, "writeFile", path)
   )
 }
