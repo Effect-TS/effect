@@ -6,7 +6,6 @@
 "@effect/doctest": patch
 "@effect/opentelemetry": patch
 "@effect/platform-node": patch
-"@effect/platform-node-shared": patch
 "@effect/sql-pg": patch
 "@effect/sql-sqlite-react-native": patch
 "@effect/sql-sqlite-wasm": patch
