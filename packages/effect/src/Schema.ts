@@ -9582,12 +9582,7 @@ export function Option<A extends Constraint>(value: A): Option<A> {
           SchemaParser.decodeUnknownEffect(value)(input.value, options),
           {
             onSuccess: Option_.some,
-            onFailure: (issue) =>
-              new SchemaIssue.Composite(
-                ast,
-                [new SchemaIssue.Pointer(["value"], issue)],
-                SchemaIssue.reportInput(input, options)
-              )
+            onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "value", issue, input, options)
           }
         )
       }
@@ -9910,22 +9905,12 @@ export function Result<A extends Constraint, E extends Constraint>(
         case "Success":
           return Effect.mapBothEager(SchemaParser.decodeEffect(success)(input.success, options), {
             onSuccess: Result_.succeed,
-            onFailure: (issue) =>
-              new SchemaIssue.Composite(
-                ast,
-                [new SchemaIssue.Pointer(["success"], issue)],
-                SchemaIssue.reportInput(input, options)
-              )
+            onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "success", issue, input, options)
           })
         case "Failure":
           return Effect.mapBothEager(SchemaParser.decodeEffect(failure)(input.failure, options), {
             onSuccess: Result_.fail,
-            onFailure: (issue) =>
-              new SchemaIssue.Composite(
-                ast,
-                [new SchemaIssue.Pointer(["failure"], issue)],
-                SchemaIssue.reportInput(input, options)
-              )
+            onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "failure", issue, input, options)
           })
       }
     },
@@ -10286,12 +10271,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
             SchemaParser.decodeUnknownEffect(error)(input.error, options),
             {
               onSuccess: Cause_.makeFailReason,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(
-                  ast,
-                  [new SchemaIssue.Pointer(["error"], issue)],
-                  SchemaIssue.reportInput(input, options)
-                )
+              onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "error", issue, input, options)
             }
           )
         case "Die":
@@ -10299,12 +10279,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
             SchemaParser.decodeUnknownEffect(defect)(input.defect, options),
             {
               onSuccess: Cause_.makeDieReason,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(
-                  ast,
-                  [new SchemaIssue.Pointer(["defect"], issue)],
-                  SchemaIssue.reportInput(input, options)
-                )
+              onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "defect", issue, input, options)
             }
           )
         case "Interrupt":
@@ -10483,12 +10458,7 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
         }
         return Effect.mapBothEager(SchemaParser.decodeUnknownEffect(failures)(input.reasons, options), {
           onSuccess: Cause_.fromReasons,
-          onFailure: (issue) =>
-            new SchemaIssue.Composite(
-              ast,
-              [new SchemaIssue.Pointer(["failures"], issue)],
-              SchemaIssue.reportInput(input, options)
-            )
+          onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "failures", issue, input, options)
         })
       }
     },
@@ -10838,12 +10808,7 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
               SchemaParser.decodeUnknownEffect(value)(input.value, options),
               {
                 onSuccess: Exit_.succeed,
-                onFailure: (issue) =>
-                  new SchemaIssue.Composite(
-                    ast,
-                    [new SchemaIssue.Pointer(["value"], issue)],
-                    SchemaIssue.reportInput(input, options)
-                  )
+                onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "value", issue, input, options)
               }
             )
           case "Failure":
@@ -10851,12 +10816,7 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
               SchemaParser.decodeUnknownEffect(cause)(input.cause, options),
               {
                 onSuccess: Exit_.failCause,
-                onFailure: (issue) =>
-                  new SchemaIssue.Composite(
-                    ast,
-                    [new SchemaIssue.Pointer(["cause"], issue)],
-                    SchemaIssue.reportInput(input, options)
-                  )
+                onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "cause", issue, input, options)
               }
             )
         }
@@ -11097,12 +11057,7 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
             SchemaParser.decodeUnknownEffect(array)([...input], options),
             {
               onSuccess: (array: ReadonlyArray<readonly [Key["Type"], Value["Type"]]>) => new globalThis.Map(array),
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(
-                  ast,
-                  [new SchemaIssue.Pointer(["entries"], issue)],
-                  SchemaIssue.reportInput(input, options)
-                )
+              onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "entries", issue, input, options)
             }
           )
         }
@@ -11214,12 +11169,7 @@ export function HashMap<Key extends Constraint, Value extends Constraint>(key: K
             SchemaParser.decodeUnknownEffect(entries)(HashMap_.toEntries(input), options),
             {
               onSuccess: HashMap_.fromIterable,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(
-                  ast,
-                  [new SchemaIssue.Pointer(["entries"], issue)],
-                  SchemaIssue.reportInput(input, options)
-                )
+              onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "entries", issue, input, options)
             }
           )
         }
@@ -11329,12 +11279,7 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
             SchemaParser.decodeUnknownEffect(array)([...input], options),
             {
               onSuccess: (array: ReadonlyArray<Value["Type"]>) => new globalThis.Set(array),
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(
-                  ast,
-                  [new SchemaIssue.Pointer(["values"], issue)],
-                  SchemaIssue.reportInput(input, options)
-                )
+              onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "values", issue, input, options)
             }
           )
         }
@@ -11444,12 +11389,7 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
             SchemaParser.decodeUnknownEffect(values)(Arr.fromIterable(input), options),
             {
               onSuccess: HashSet_.fromIterable,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(
-                  ast,
-                  [new SchemaIssue.Pointer(["values"], issue)],
-                  SchemaIssue.reportInput(input, options)
-                )
+              onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "values", issue, input, options)
             }
           )
         }
@@ -11566,12 +11506,7 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
             SchemaParser.decodeUnknownEffect(values)(Arr.fromIterable(input), options),
             {
               onSuccess: Chunk_.fromIterable,
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(
-                  ast,
-                  [new SchemaIssue.Pointer(["values"], issue)],
-                  SchemaIssue.reportInput(input, options)
-                )
+              onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "values", issue, input, options)
             }
           )
         }
@@ -11675,7 +11610,11 @@ export const RegExp: RegExp = instanceOf(
           decode: (e, options) =>
             Effect.try({
               try: () => new globalThis.RegExp(e.source, e.flags),
-              catch: () => SchemaIssue.makeInvalidValue("valid RegExp source and flags", e, options)
+              catch: () =>
+                new SchemaIssue.InvalidValue(
+                  { expected: "valid RegExp source and flags" },
+                  SchemaIssue.reportInput(e, options)
+                )
             }),
           encode: (regExp) =>
             Effect.succeed({
@@ -12506,7 +12445,13 @@ export const File: File = instanceOf(globalThis.File, {
       SchemaTransformation.transformOrFail({
         decode: (e, options) =>
           Result_.match(Encoding.decodeBase64(e.data), {
-            onFailure: () => Effect.fail(SchemaIssue.makeInvalidValue("a valid Base64 string", e.data, options)),
+            onFailure: () =>
+              Effect.fail(
+                new SchemaIssue.InvalidValue(
+                  { expected: "a valid Base64 string" },
+                  SchemaIssue.reportInput(e.data, options)
+                )
+              ),
             onSuccess: (bytes) => {
               const buffer = new globalThis.Uint8Array(bytes)
               return Effect.succeed(
@@ -12525,7 +12470,11 @@ export const File: File = instanceOf(globalThis.File, {
                 lastModified: file.lastModified
               }
             },
-            catch: () => SchemaIssue.makeInvalidValue("a readable File", file, options)
+            catch: () =>
+              new SchemaIssue.InvalidValue(
+                { expected: "a readable File" },
+                SchemaIssue.reportInput(file, options)
+              )
           })
       })
     )

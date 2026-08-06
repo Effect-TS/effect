@@ -115,7 +115,7 @@ export function make<S extends Schema.Constraint>(schema: S) {
       exit.cause,
       "Constructor adapter can only throw schema issues"
     )
-    throw new Error(issue.toString(), { cause: issue })
+    throw new Error("Schema validation failed", { cause: issue })
   }
 }
 
@@ -202,7 +202,7 @@ export function asserts<S extends Schema.Constraint, I>(schema: S, input: I): as
       exit.cause,
       "Assertion adapter can only throw schema issues"
     )
-    throw new Error(issue.toString(), { cause: issue })
+    throw new Error("Schema validation failed", { cause: issue })
   }
 }
 
@@ -927,7 +927,7 @@ function asPromise<T, E>(
         exit.cause,
         "Promise adapter can only reject schema issues"
       )
-      throw new Error(issue.toString(), { cause: issue })
+      throw new Error("Schema validation failed", { cause: issue })
     })
 }
 
@@ -977,7 +977,7 @@ function asSync<T, E>(
       return exit.value
     }
     const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Sync adapter can only throw schema issues")
-    throw new Error(issue.toString(), { cause: issue })
+    throw new Error("Schema validation failed", { cause: issue })
   }
 }
 

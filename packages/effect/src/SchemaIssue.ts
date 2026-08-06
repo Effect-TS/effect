@@ -125,10 +125,10 @@ export type Leaf =
  * Every node has a `_tag` field for pattern-matching. The union includes both
  * terminal {@link Leaf} types and composite types that wrap inner issues:
  * {@link Filter}, {@link Encoding}, {@link Pointer}, {@link Composite},
- * {@link AnyOf}. All `Issue` instances have a `toString()` that delegates to
- * the default formatter, so `String(issue)` produces a human-readable message.
- * When parsing with `reportInput: true`, value-bearing issues expose the
- * rejected value through a non-enumerable `input` field. Built-in formatters
+ * {@link AnyOf}. Use {@link makeFormatterDefault} when a human-readable
+ * representation is needed. When parsing with `reportInput: true`,
+ * value-bearing issues expose the rejected value through a non-enumerable
+ * `input` field. Built-in formatters
  * may include reported input in default messages. This is not a general
  * sanitization boundary: paths, ASTs, union successes, and custom annotations
  * or messages are preserved as supplied and remain the caller's
@@ -217,9 +217,6 @@ class Base {
       Object.defineProperty(this, "input", { value: report.value })
     }
   }
-  toString(this: Issue): string {
-    return defaultFormatter(this)
-  }
 }
 
 /**
@@ -240,11 +237,13 @@ class Base {
  * ```ts import.meta.vitest
  * import { SchemaAST, SchemaIssue } from "effect"
  *
+ * const formatIssue = SchemaIssue.makeFormatterDefault()
+ *
  * function describe(issue: SchemaIssue.Issue): string {
  *   if (issue._tag === "Filter") {
- *     return `Filter failed: ${String(issue.issue)}`
+ *     return `Filter failed: ${formatIssue(issue.issue)}`
  *   }
- *   return String(issue)
+ *   return formatIssue(issue)
  * }
  *
  * const issue = new SchemaIssue.Filter(
@@ -522,8 +521,9 @@ export class Composite extends Base {
  * ```ts import.meta.vitest
  * import { Schema, SchemaIssue } from "effect"
  *
+ * const formatIssue = SchemaIssue.makeFormatterDefault()
  * const issue = new SchemaIssue.InvalidType(Schema.String.ast)
- * String(issue) // => "Expected string"
+ * formatIssue(issue) // => "Expected string"
  * ```
  *
  * @see {@link InvalidValue} — the input has the right type but fails a value constraint
@@ -569,8 +569,9 @@ export class InvalidType extends Base {
  * ```ts import.meta.vitest
  * import { SchemaIssue } from "effect"
  *
+ * const formatIssue = SchemaIssue.makeFormatterDefault()
  * const issue = new SchemaIssue.InvalidValue({ message: "must not be empty" })
- * String(issue) // => "must not be empty"
+ * formatIssue(issue) // => "must not be empty"
  * ```
  *
  * @see {@link InvalidType} — the input has the wrong type entirely
@@ -596,12 +597,18 @@ export class InvalidValue extends Base {
 }
 
 /** @internal */
-export function makeInvalidValue(
-  issueExpected: string,
-  issueInput: unknown,
+export function makeCompositeAtKey(
+  compositeAst: SchemaAST.AST,
+  pointerKey: PropertyKey,
+  pointerIssue: Issue,
+  compositeInput: unknown,
   parseOptions?: SchemaAST.ParseOptions
-): InvalidValue {
-  return new InvalidValue({ expected: issueExpected }, reportInput(issueInput, parseOptions))
+): Composite {
+  return new Composite(
+    compositeAst,
+    [new Pointer([pointerKey], pointerIssue)],
+    reportInput(compositeInput, parseOptions)
+  )
 }
 
 /**
@@ -623,10 +630,11 @@ export function makeInvalidValue(
  * ```ts import.meta.vitest
  * import { SchemaIssue } from "effect"
  *
+ * const formatIssue = SchemaIssue.makeFormatterDefault()
  * const issue = new SchemaIssue.Forbidden(
  *   { message: "async operation not allowed in sync context" }
  * )
- * String(issue) // => "async operation not allowed in sync context"
+ * formatIssue(issue) // => "async operation not allowed in sync context"
  * ```
  *
  * @see {@link InvalidValue} — for value-constraint failures (not operation failures)
@@ -1075,8 +1083,6 @@ function formatCheck<T>(check: SchemaAST.Check<T>): string {
  * logging, CLI output, or developer-facing diagnostics.
  *
  * **Details**
- *
- * This is the default formatter used by `SchemaIssue.toString()`.
  *
  * - Flattens the issue tree into `{ message, path }` entries using
  *   {@link defaultLeafHook} and {@link defaultCheckHook}.

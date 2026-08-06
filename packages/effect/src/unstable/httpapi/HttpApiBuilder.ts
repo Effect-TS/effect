@@ -1219,7 +1219,12 @@ function getResponseEncode<E>(
           const s = JSON.stringify(e)
           return Effect.succeed(Response.text(s, { status, contentType: encoding.contentType }))
         } catch {
-          return Effect.fail(SchemaIssue.makeInvalidValue("a JSON-serializable response body", e, options))
+          return Effect.fail(
+            new SchemaIssue.InvalidValue(
+              { expected: "a JSON-serializable response body" },
+              SchemaIssue.reportInput(e, options)
+            )
+          )
         }
       })
     }

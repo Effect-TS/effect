@@ -365,14 +365,24 @@ export const transformation: SchemaTransformation.Transformation<
     try {
       return Effect.succeed(Msgpackr.decode(e))
     } catch {
-      return Effect.fail(SchemaIssue.makeInvalidValue("valid MessagePack bytes", e, options))
+      return Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { expected: "valid MessagePack bytes" },
+          SchemaIssue.reportInput(e, options)
+        )
+      )
     }
   },
   encode(t, options) {
     try {
       return Effect.succeed(Msgpackr.encode(t) as Uint8Array<ArrayBuffer>)
     } catch {
-      return Effect.fail(SchemaIssue.makeInvalidValue("a MessagePack-serializable value", t, options))
+      return Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { expected: "a MessagePack-serializable value" },
+          SchemaIssue.reportInput(t, options)
+        )
+      )
     }
   }
 })

@@ -19,6 +19,7 @@ import { describe, it } from "vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const isDeno = "Deno" in globalThis
+const formatIssue = SchemaIssue.makeFormatterDefault()
 
 const FiniteFromDate = Schema.Date.pipe(Schema.decodeTo(
   Schema.Number,
@@ -2812,7 +2813,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     async function assertXmlFailure<T, E, RD>(schema: Schema.Codec<T, E, RD>, value: T, message: string) {
       const serializer = Schema.toEncoderXml(Schema.toCodecStringTree(schema))
       const r = await serializer(value).pipe(
-        Effect.mapError((err) => err.issue.toString()),
+        Effect.mapError((err) => formatIssue(err.issue)),
         Effect.result,
         Effect.runPromise
       )

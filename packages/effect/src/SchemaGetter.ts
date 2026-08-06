@@ -1026,7 +1026,11 @@ export function parseJson<E extends string>(options?: ParseJsonOptions | undefin
   return onSome((input, parseOptions) =>
     Effect.try({
       try: () => Option.some(JSON.parse(input, options?.reviver)),
-      catch: () => SchemaIssue.makeInvalidValue("a valid JSON string", input, parseOptions)
+      catch: () =>
+        new SchemaIssue.InvalidValue(
+          { expected: "a valid JSON string" },
+          SchemaIssue.reportInput(input, parseOptions)
+        )
     })
   )
 }
@@ -1087,7 +1091,11 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
         }
         return Option.some(output)
       },
-      catch: () => SchemaIssue.makeInvalidValue("a JSON-serializable value", input, parseOptions)
+      catch: () =>
+        new SchemaIssue.InvalidValue(
+          { expected: "a JSON-serializable value" },
+          SchemaIssue.reportInput(input, parseOptions)
+        )
     })
   )
 }
@@ -1318,7 +1326,11 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
   return transformOrFail((input, options) =>
     Effect.mapErrorEager(
       Effect.fromResult(Encoding.decodeBase64(input)),
-      () => SchemaIssue.makeInvalidValue("a valid Base64 string", input, options)
+      () =>
+        new SchemaIssue.InvalidValue(
+          { expected: "a valid Base64 string" },
+          SchemaIssue.reportInput(input, options)
+        )
     )
   )
 }
@@ -1348,7 +1360,13 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
 export function decodeBase64String<E extends string>(): Getter<string, E> {
   return transformOrFail((input, options) =>
     Result.match(Encoding.decodeBase64String(input), {
-      onFailure: () => Effect.fail(SchemaIssue.makeInvalidValue("a valid Base64 string", input, options)),
+      onFailure: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a valid Base64 string" },
+            SchemaIssue.reportInput(input, options)
+          )
+        ),
       onSuccess: Effect.succeed
     })
   )
@@ -1380,7 +1398,13 @@ export function decodeBase64String<E extends string>(): Getter<string, E> {
 export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
   return transformOrFail((input, options) =>
     Result.match(Encoding.decodeBase64Url(input), {
-      onFailure: () => Effect.fail(SchemaIssue.makeInvalidValue("a valid Base64Url string", input, options)),
+      onFailure: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a valid Base64Url string" },
+            SchemaIssue.reportInput(input, options)
+          )
+        ),
       onSuccess: Effect.succeed
     })
   )
@@ -1411,7 +1435,13 @@ export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
 export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
   return transformOrFail((input, options) =>
     Result.match(Encoding.decodeBase64UrlString(input), {
-      onFailure: () => Effect.fail(SchemaIssue.makeInvalidValue("a valid Base64Url string", input, options)),
+      onFailure: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a valid Base64Url string" },
+            SchemaIssue.reportInput(input, options)
+          )
+        ),
       onSuccess: Effect.succeed
     })
   )
@@ -1443,7 +1473,13 @@ export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
 export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
   return transformOrFail((input, options) =>
     Result.match(Encoding.decodeHex(input), {
-      onFailure: () => Effect.fail(SchemaIssue.makeInvalidValue("a valid hexadecimal string", input, options)),
+      onFailure: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a valid hexadecimal string" },
+            SchemaIssue.reportInput(input, options)
+          )
+        ),
       onSuccess: Effect.succeed
     })
   )
@@ -1474,7 +1510,13 @@ export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
 export function decodeHexString<E extends string>(): Getter<string, E> {
   return transformOrFail((input, options) =>
     Result.match(Encoding.decodeHexString(input), {
-      onFailure: () => Effect.fail(SchemaIssue.makeInvalidValue("a valid hexadecimal string", input, options)),
+      onFailure: () =>
+        Effect.fail(
+          new SchemaIssue.InvalidValue(
+            { expected: "a valid hexadecimal string" },
+            SchemaIssue.reportInput(input, options)
+          )
+        ),
       onSuccess: Effect.succeed
     })
   )
@@ -1533,7 +1575,12 @@ export function decodeUriComponent<E extends string>(): Getter<string, E> {
     try {
       return Effect.succeed(globalThis.decodeURIComponent(input))
     } catch {
-      return Effect.fail(SchemaIssue.makeInvalidValue("a valid URI component", input, options))
+      return Effect.fail(
+        new SchemaIssue.InvalidValue(
+          { expected: "a valid URI component" },
+          SchemaIssue.reportInput(input, options)
+        )
+      )
     }
   })
 }

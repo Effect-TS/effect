@@ -39,6 +39,7 @@ import { assertFalse, assertInclude, assertTrue, throws } from "../utils/assert.
 const verifyGeneration = true
 
 const equals = TestSchema.Asserts.ast.fields.equals
+const formatIssue = SchemaIssue.makeFormatterDefault()
 
 const SnakeToCamel = Schema.String.pipe(
   Schema.decode(
@@ -7979,7 +7980,9 @@ Expected a value between -2147483648 and 2147483647`
         fail("Expected asserts to throw an error")
       } catch (e) {
         ok(e instanceof Error)
-        strictEqual(e.message, `Expected number`)
+        strictEqual(e.message, "Schema validation failed")
+        assertTrue(SchemaIssue.isIssue(e.cause))
+        strictEqual(formatIssue(e.cause), "Expected number")
       }
     })
   })
@@ -8011,12 +8014,16 @@ Expected a value between -2147483648 and 2147483647`
       const r5 = await decodeUnknownPromiseIssue(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r5))
       assertTrue(r5.failure instanceof Error)
-      strictEqual(r5.failure.message, "Expected string")
+      strictEqual(r5.failure.message, "Schema validation failed")
+      assertTrue(SchemaIssue.isIssue(r5.failure.cause))
+      strictEqual(formatIssue(r5.failure.cause), "Expected string")
 
       const r6 = await encodeUnknownPromiseIssue(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r6))
       assertTrue(r6.failure instanceof Error)
-      strictEqual(r6.failure.message, "Expected number")
+      strictEqual(r6.failure.message, "Schema validation failed")
+      assertTrue(SchemaIssue.isIssue(r6.failure.cause))
+      strictEqual(formatIssue(r6.failure.cause), "Expected number")
     })
 
     it("should reject with an error when the cause contains both a schema issue and a defect", async () => {
@@ -8142,12 +8149,12 @@ Expected a value between -2147483648 and 2147483647`
       const r5 = SchemaParser.decodeUnknownResult(schema)(null)
       assertTrue(Result.isFailure(r5))
       assertTrue(SchemaIssue.isIssue(r5.failure))
-      strictEqual(r5.failure.toString(), "Expected string")
+      strictEqual(formatIssue(r5.failure), "Expected string")
 
       const r6 = SchemaParser.encodeUnknownResult(schema)(null)
       assertTrue(Result.isFailure(r6))
       assertTrue(SchemaIssue.isIssue(r6.failure))
-      strictEqual(r6.failure.toString(), "Expected number")
+      strictEqual(formatIssue(r6.failure), "Expected number")
     })
 
     it("should throw an error when the cause contains both a schema issue and a defect", () => {
@@ -8196,14 +8203,16 @@ Expected a value between -2147483648 and 2147483647`
 
       throws(() => SchemaParser.decodeUnknownSync(schema)(null), (e) => {
         assertTrue(e instanceof Error)
+        strictEqual(e.message, "Schema validation failed")
         assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.cause.toString(), "Expected string")
+        strictEqual(formatIssue(e.cause), "Expected string")
       })
 
       throws(() => SchemaParser.encodeUnknownSync(schema)(null), (e) => {
         assertTrue(e instanceof Error)
+        strictEqual(e.message, "Schema validation failed")
         assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.cause.toString(), "Expected number")
+        strictEqual(formatIssue(e.cause), "Expected number")
       })
     })
 

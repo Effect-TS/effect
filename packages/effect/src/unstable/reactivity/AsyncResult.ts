@@ -971,12 +971,7 @@ export const Schema = <
             SchemaParser.decodeUnknownEffect(value)(input.value, options),
             {
               onSuccess: (value) => success(value, input),
-              onFailure: (issue) =>
-                new SchemaIssue.Composite(
-                  ast,
-                  [new SchemaIssue.Pointer(["value"], issue)],
-                  SchemaIssue.reportInput(input, options)
-                )
+              onFailure: (issue) => SchemaIssue.makeCompositeAtKey(ast, "value", issue, input, options)
             }
           )
         case "Failure": {
@@ -1001,12 +996,7 @@ export const Schema = <
           )
           const causeEffect = Effect.mapErrorEager(
             SchemaParser.decodeUnknownEffect(cause)(input.cause, options),
-            (issue) =>
-              new SchemaIssue.Composite(
-                ast,
-                [new SchemaIssue.Pointer(["cause"], issue)],
-                SchemaIssue.reportInput(input, options)
-              )
+            (issue) => SchemaIssue.makeCompositeAtKey(ast, "cause", issue, input, options)
           )
           return Effect.flatMapEager(
             prevSuccessEffect,
