@@ -527,16 +527,40 @@ describe("Cause", () => {
     })
 
     it("deduplicates reasons by identity", () => {
-      const reason = Cause.makeFailReason("error")
+      const reason = Cause.makeInterruptReason(1)
       const self = Cause.fromReasons([reason])
 
       assert.strictEqual(Cause.combine(self, Cause.fromReasons([reason])), self)
-      assert.strictEqual(Cause.combine(Cause.fail("error"), Cause.fail("error")).reasons.length, 2)
+      assert.strictEqual(Cause.combine(Cause.interrupt(1), Cause.interrupt(1)).reasons.length, 2)
+    })
+
+    it("deduplicates Fail reasons by error identity", () => {
+      const error = { message: "error" }
+      const self = Cause.fail(error)
+
+      assert.strictEqual(Cause.combine(self, Cause.fail(error)), self)
+      assert.strictEqual(Cause.combine(Cause.fail("error"), Cause.fail("error")).reasons.length, 1)
+      assert.strictEqual(
+        Cause.combine(Cause.fail({ message: "error" }), Cause.fail({ message: "error" })).reasons.length,
+        2
+      )
+    })
+
+    it("deduplicates Die reasons by defect identity", () => {
+      const defect = { message: "defect" }
+      const self = Cause.die(defect)
+
+      assert.strictEqual(Cause.combine(self, Cause.die(defect)), self)
+      assert.strictEqual(
+        Cause.combine(Cause.die({ message: "defect" }), Cause.die({ message: "defect" })).reasons.length,
+        2
+      )
+      assert.strictEqual(Cause.combine(Cause.fail(defect), Cause.die(defect)).reasons.length, 2)
     })
 
     it("delegates to reasons that explicitly implement Equal", () => {
-      const left = Cause.makeFailReason("left") as any
-      const right = Cause.makeFailReason("right") as any
+      const left = Cause.makeInterruptReason(1) as any
+      const right = Cause.makeInterruptReason(2) as any
       left[Equal.symbol] = () => true
       right[Equal.symbol] = () => true
       const self = Cause.fromReasons([left])

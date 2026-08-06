@@ -240,7 +240,7 @@ export const causeCombine: {
     const reasons = self.reasons.slice() as Array<Cause.Reason<E | E2>>
     for (let i = 0; i < that.reasons.length; i++) {
       const reason = that.reasons[i]
-      if (!reasons.some((current) => runtimeEquals(current, reason))) {
+      if (!reasons.some((current) => causeReasonEquals(current, reason))) {
         reasons.push(reason)
       }
     }
@@ -248,11 +248,14 @@ export const causeCombine: {
   }
 )
 
-const runtimeEquals = (self: unknown, that: unknown): boolean =>
-  self === that ||
-  (hasProperty(self, Equal.symbol) &&
+const causeReasonEquals = (self: Cause.Reason<unknown>, that: Cause.Reason<unknown>): boolean => {
+  if (self === that) return true
+  if (self._tag === "Fail" && that._tag === "Fail") return self.error === that.error
+  if (self._tag === "Die" && that._tag === "Die") return self.defect === that.defect
+  return hasProperty(self, Equal.symbol) &&
     hasProperty(that, Equal.symbol) &&
-    (self as any)[Equal.symbol](that))
+    (self as any)[Equal.symbol](that)
+}
 
 /** @internal */
 export const causeMap: {
