@@ -272,17 +272,13 @@ class FileImpl implements FileSystem.File {
     )
   }
 
-  private writeChunk(
-    method: string,
-    buffer: Uint8Array,
-    pathOrDescriptor?: string | number
-  ) {
+  private writeChunk(method: string, buffer: Uint8Array) {
     return Effect.suspend(() => {
       const position = this.position
       return Effect.map(
         tryPromise(
           method,
-          pathOrDescriptor,
+          undefined,
           async () => {
             if (!this.append && this.nativePosition !== position) {
               this.file.seekSync(position, Deno.SeekMode.Start)
@@ -308,33 +304,24 @@ class FileImpl implements FileSystem.File {
     return this.writeChunk("write", buffer)
   }
 
-  private writeAllChunk(
-    buffer: Uint8Array,
-    method: string,
-    pathOrDescriptor?: string | number
-  ): Effect.Effect<void, PlatformError.PlatformError> {
-    return Effect.flatMap(this.writeChunk(method, buffer, pathOrDescriptor), (bytesWritten) => {
+  private writeAllChunk(buffer: Uint8Array): Effect.Effect<void, PlatformError.PlatformError> {
+    return Effect.flatMap(this.writeChunk("writeAll", buffer), (bytesWritten) => {
       if (bytesWritten === BigInt(0)) {
         return Effect.fail(PlatformError.systemError({
           module: "FileSystem",
-          method,
-          pathOrDescriptor,
+          method: "writeAll",
           _tag: "WriteZero",
           description: "write returned 0 bytes written"
         }))
       }
       return bytesWritten < buffer.length
-        ? this.writeAllChunk(buffer.subarray(Number(bytesWritten)), method, pathOrDescriptor)
+        ? this.writeAllChunk(buffer.subarray(Number(bytesWritten)))
         : Effect.void
     })
   }
 
-  writeAll(
-    buffer: Uint8Array,
-    method = "writeAll",
-    pathOrDescriptor?: string | number
-  ) {
-    return buffer.length === 0 ? Effect.void : this.writeAllChunk(buffer, method, pathOrDescriptor)
+  writeAll(buffer: Uint8Array) {
+    return buffer.length === 0 ? Effect.void : this.writeAllChunk(buffer)
   }
 }
 
@@ -465,7 +452,14 @@ const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) => {
   }
   return Effect.acquireUseRelease(
     tryPromise("writeFile", path, () => Deno.open(path, openOptions(flag, options?.mode))),
-    (file) => new FileImpl(file, flag.startsWith("a")).writeAll(data, "writeFile", path),
+    (file) =>
+      new FileImpl(file, flag.startsWith("a")).writeAll(data).pipe(
+        Effect.mapError((error) =>
+          error.reason instanceof PlatformError.SystemError
+            ? PlatformError.systemError({ ...error.reason, method: "writeFile", pathOrDescriptor: path })
+            : error
+        )
+      ),
     (file) => close(file, "writeFile", path)
   )
 }
