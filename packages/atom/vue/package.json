@@ -62,6 +62,6 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
-    "vue": "^3.5.0"
+    "vue": ">=3.5.39 <4.0.0"
   }
 }

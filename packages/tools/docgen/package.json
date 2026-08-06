@@ -72,10 +72,10 @@
   "devDependencies": {
     "@effect/vitest": "workspace:^",
     "@types/babel__code-frame": "^7.0.6",
-    "@types/doctrine": "0.0.9",
+    "@types/doctrine": "^0.0.9",
     "@types/node": "^26.1.2",
     "tsx": "^4.23.1",
     "typescript": "^6.0.3",
-    "vitest": "4.1.10"
+    "vitest": "^4.1.10"
   }
 }

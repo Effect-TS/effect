@@ -69,7 +69,7 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
-    "ioredis": "^5.7.0"
+    "ioredis": ">=5.7.0 <6.0.0"
   },
   "devDependencies": {
     "@testcontainers/mysql": "^12.0.4",

@@ -48,7 +48,7 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
-    "vitest": "^4.1.0"
+    "vitest": ">=4.1.0 <5.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

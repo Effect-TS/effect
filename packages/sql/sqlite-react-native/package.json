@@ -58,11 +58,11 @@
     "check": "tsc -b tsconfig.json"
   },
   "devDependencies": {
-    "@op-engineering/op-sqlite": "17.1.2",
+    "@op-engineering/op-sqlite": "^17.1.2",
     "effect": "workspace:^"
   },
   "peerDependencies": {
-    "@op-engineering/op-sqlite": "15.0.4",
+    "@op-engineering/op-sqlite": ">=17.1.2 <18.0.0",
     "effect": "workspace:^"
   }
 }
