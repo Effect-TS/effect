@@ -238,6 +238,35 @@ describe("Cron", () => {
     )
   })
 
+  it("format preserves non-uniform values", () => {
+    strictEqual(
+      Cron.format(Cron.make({
+        minutes: [1, 5, 11],
+        hours: [],
+        days: [],
+        months: [],
+        weekdays: []
+      })),
+      "1,5,11 * * * *"
+    )
+  })
+
+  it("format handles default, non-default, and unrestricted seconds", () => {
+    const format = (seconds?: Iterable<number>) =>
+      Cron.format(Cron.make({
+        seconds,
+        minutes: [],
+        hours: [],
+        days: [],
+        months: [],
+        weekdays: []
+      }))
+
+    strictEqual(format(), "* * * * *")
+    strictEqual(format([15, 30]), "15,30 * * * * *")
+    strictEqual(format([]), "* * * * * *")
+  })
+
   it("make supports requiring both days and weekdays", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const values = {
