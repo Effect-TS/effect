@@ -451,11 +451,19 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       for (const remoteEntry of uncommittedRemotes) {
         journal.push(remoteEntry.entry)
         byId.set(remoteEntry.entry.idString, remoteEntry.entry)
+        remotes.forEach((target) => {
+          if (target !== remote) {
+            target.missing.push(remoteEntry.entry)
+          }
+        })
         if (remoteEntry.remoteSequence > remote.sequence) {
           remote.sequence = remoteEntry.remoteSequence
         }
       }
       journal.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
+      remotes.forEach((remote) => {
+        remote.missing.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
+      })
       return {
         duplicateEntries
       }
