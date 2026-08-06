@@ -12,9 +12,7 @@
  */
 import type { Effect, EffectIterator } from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
-import * as Equal from "./Equal.ts"
 import { dual, type LazyArg } from "./Function.ts"
-import * as Hash from "./Hash.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import { exitSucceed, PipeInspectableProto, withFiber } from "./internal/core.ts"
 import * as Option from "./Option.ts"
@@ -464,7 +462,7 @@ const TypeId = "~effect/Context" as const
  * @category models
  * @since 2.0.0
  */
-export interface Context<in Services> extends Equal.Equal, Pipeable, Inspectable {
+export interface Context<in Services> extends Pipeable, Inspectable {
   readonly [TypeId]: {
     readonly _Services: Types.Contravariant<Services>
   }
@@ -596,19 +594,6 @@ const Proto: Omit<
       _id: "Context",
       services: Array.from(this.mapUnsafe).map(([key, value]) => ({ key, value }))
     }
-  },
-  [Equal.symbol]<A>(this: Context<A>, that: unknown): boolean {
-    if (!isContext(that)) return false
-    const self = this.mapUnsafe
-    const other = that.mapUnsafe
-    if (self.size !== other.size) return false
-    for (const [key, value] of self) {
-      if (!other.has(key) || !Equal.equals(value, other.get(key))) return false
-    }
-    return true
-  },
-  [Hash.symbol]<A>(this: Context<A>): number {
-    return Hash.number(this.mapUnsafe.size)
   }
 }
 

@@ -1,12 +1,26 @@
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
+import * as Equal from "effect/Equal"
 import { pipe } from "effect/Function"
+import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import * as Result from "effect/Result"
 import assert from "node:assert/strict"
 import { describe, it } from "vitest"
 
 describe("Cause", () => {
+  describe("equality", () => {
+    it("uses generic structural equality without implementing Equal or Hash", () => {
+      const left = Cause.fail({ message: "error" })
+      const right = Cause.fail({ message: "error" })
+
+      assert.strictEqual(Equal.isEqual(left), false)
+      assert.strictEqual(Hash.isHash(left), false)
+      assert.strictEqual(Equal.equals(left, right), true)
+      assert.strictEqual(Hash.hash(left), Hash.hash(right))
+    })
+  })
+
   describe("TypeId", () => {
     it("is a string constant", () => {
       assert.strictEqual(Cause.TypeId, "~effect/Cause")
@@ -510,6 +524,24 @@ describe("Cause", () => {
       const combined2 = Cause.combine(Cause.empty, cause)
       assert.strictEqual(combined1.reasons.length, 1)
       assert.strictEqual(combined2.reasons.length, 1)
+    })
+
+    it("deduplicates reasons by identity", () => {
+      const reason = Cause.makeFailReason("error")
+      const self = Cause.fromReasons([reason])
+
+      assert.strictEqual(Cause.combine(self, Cause.fromReasons([reason])), self)
+      assert.strictEqual(Cause.combine(Cause.fail("error"), Cause.fail("error")).reasons.length, 2)
+    })
+
+    it("delegates to reasons that explicitly implement Equal", () => {
+      const left = Cause.makeFailReason("left") as any
+      const right = Cause.makeFailReason("right") as any
+      left[Equal.symbol] = () => true
+      right[Equal.symbol] = () => true
+      const self = Cause.fromReasons([left])
+
+      assert.strictEqual(Cause.combine(self, Cause.fromReasons([right])), self)
     })
 
     it("combines mixed reason types", () => {

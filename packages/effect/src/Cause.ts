@@ -11,7 +11,6 @@
  */
 import * as Context from "./Context.ts"
 import type * as Effect from "./Effect.ts"
-import type { Equal } from "./Equal.ts"
 import type { Fiber } from "./Fiber.ts"
 import type { Inspectable } from "./Inspectable.ts"
 import * as core from "./internal/core.ts"
@@ -58,8 +57,7 @@ export const ReasonTypeId: "~effect/Cause/Reason" = core.CauseReasonTypeId
  *   of a given kind.
  * - Use {@link combine} to merge two causes.
  *
- * `Cause` implements `Equal` — two causes with the same reasons (by value)
- * compare as equal.
+ * Causes can be compared by value with `Equal.equals`.
  *
  * **Example** (Creating and inspecting a cause)
  *
@@ -72,7 +70,7 @@ export const ReasonTypeId: "~effect/Cause/Reason" = core.CauseReasonTypeId
  * @category models
  * @since 2.0.0
  */
-export interface Cause<out E> extends Pipeable, Inspectable, Equal {
+export interface Cause<out E> extends Pipeable, Inspectable {
   readonly [TypeId]: typeof TypeId
   readonly reasons: ReadonlyArray<Reason<E>>
 }
@@ -257,7 +255,7 @@ export declare namespace Cause {
    * @category models
    * @since 4.0.0
    */
-  export interface ReasonProto<Tag extends string> extends Inspectable, Equal {
+  export interface ReasonProto<Tag extends string> extends Inspectable {
     readonly [ReasonTypeId]: typeof ReasonTypeId
     readonly _tag: Tag
     readonly annotations: ReadonlyMap<string, unknown>

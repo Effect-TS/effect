@@ -1,6 +1,7 @@
 import { assertFalse, assertTrue, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
 import * as Context from "effect/Context"
 import * as Equal from "effect/Equal"
+import * as Hash from "effect/Hash"
 import * as Option from "effect/Option"
 import * as Redactable from "effect/Redactable"
 import { describe, it } from "vitest"
@@ -163,13 +164,22 @@ describe("Context", () => {
     deepStrictEqual(visited, [[A.key, 1], [B.key, 2]])
   })
 
-  it("supports equality and JSON materialization", () => {
+  it("uses generic structural equality without implementing Equal or Hash", () => {
     const left = Context.make(A, 1).pipe(Context.add(B, 2))
-    const right = Context.makeUnsafe(new Map([[A.key, 1], [B.key, 2]]))
+    const structurallyEqual = Context.make(A, 1).pipe(Context.add(B, 2))
+    const differentlyConstructed = Context.makeUnsafe(new Map([[A.key, 1], [B.key, 2]]))
 
-    assertTrue(Equal.equals(left, right))
+    assertFalse(Equal.isEqual(left))
+    assertFalse(Hash.isHash(left))
+    assertTrue(Equal.equals(left, structurallyEqual))
+    assertFalse(Equal.equals(left, differentlyConstructed))
     assertFalse(Equal.equals(left, Context.make(A, 2)))
-    deepStrictEqual(left.toJSON(), {
+  })
+
+  it("supports JSON materialization", () => {
+    const context = Context.make(A, 1).pipe(Context.add(B, 2))
+
+    deepStrictEqual(context.toJSON(), {
       _id: "Context",
       services: [{ key: A.key, value: 1 }, { key: B.key, value: 2 }]
     })

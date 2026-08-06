@@ -163,16 +163,6 @@ export class CauseImpl<E> implements Cause.Cause<E> {
   [NodeInspectSymbol]() {
     return this.toJSON()
   }
-  [Equal.symbol](that: any): boolean {
-    return (
-      isCause(that) &&
-      this.reasons.length === that.reasons.length &&
-      this.reasons.every((e, i) => Equal.equals(e, that.reasons[i]))
-    )
-  }
-  [Hash.symbol](): number {
-    return Hash.array(this.reasons)
-  }
 }
 
 const annotationsMap = new WeakMap<object, ReadonlyMap<string, unknown>>()
@@ -226,8 +216,6 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
   }
 
   abstract toJSON(): unknown
-  abstract [Equal.symbol](that: any): boolean
-  abstract [Hash.symbol](): number
 
   toString() {
     return format(this)
@@ -260,18 +248,6 @@ export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
       error: this.error
     }
   }
-  [Equal.symbol](that: any): boolean {
-    return (
-      isFailReason(that) &&
-      Equal.equals(this.error, that.error) &&
-      Equal.equals(this.annotations, that.annotations)
-    )
-  }
-  [Hash.symbol](): number {
-    return Hash.combine(Hash.string(this._tag))(
-      Hash.combine(Hash.hash(this.error))(Hash.hash(this.annotations))
-    )
-  }
 }
 
 /** @internal */
@@ -303,18 +279,6 @@ export class Die extends ReasonBase<"Die"> implements Cause.Die {
       _tag: "Die",
       defect: this.defect
     }
-  }
-  [Equal.symbol](that: any): boolean {
-    return (
-      isDieReason(that) &&
-      Equal.equals(this.defect, that.defect) &&
-      Equal.equals(this.annotations, that.annotations)
-    )
-  }
-  [Hash.symbol](): number {
-    return Hash.combine(Hash.string(this._tag))(
-      Hash.combine(Hash.hash(this.defect))(Hash.hash(this.annotations))
-    )
   }
 }
 
@@ -486,16 +450,6 @@ export const makeExit = <
         _tag: options.op,
         [options.prop]: this[args]
       }
-    },
-    [Equal.symbol](this: any, that: any): boolean {
-      return (
-        isExit(that) &&
-        that._tag === this._tag &&
-        Equal.equals(this[args], (that as any)[args])
-      )
-    },
-    [Hash.symbol](this: any): number {
-      return Hash.combine(Hash.string(options.op), Hash.hash(this[args]))
     }
   }
   return function(value: unknown) {

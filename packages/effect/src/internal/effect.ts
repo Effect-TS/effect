@@ -5,14 +5,12 @@ import type * as Console from "../Console.ts"
 import * as Context from "../Context.ts"
 import * as Duration from "../Duration.ts"
 import type * as Effect from "../Effect.ts"
-import * as Equal from "../Equal.ts"
 import type * as Exit from "../Exit.ts"
 import type * as Fiber from "../Fiber.ts"
 import * as Filter from "../Filter.ts"
 import { formatJson } from "../Formatter.ts"
 import type { LazyArg } from "../Function.ts"
 import { constant, constFalse, constTrue, constUndefined, constVoid, dual, identity } from "../Function.ts"
-import * as Hash from "../Hash.ts"
 import { toJson, toStringUnknown } from "../Inspectable.ts"
 import * as Iterable from "../Iterable.ts"
 import type * as _Latch from "../Latch.ts"
@@ -121,18 +119,6 @@ export class Interrupt extends ReasonBase<"Interrupt"> implements Cause.Interrup
       _tag: "Interrupt",
       fiberId: this.fiberId
     }
-  }
-  [Equal.symbol](that: any): boolean {
-    return (
-      isInterruptReason(that) &&
-      this.fiberId === that.fiberId &&
-      this.annotations === that.annotations
-    )
-  }
-  [Hash.symbol](): number {
-    return Hash.combine(Hash.string(`${this._tag}:${this.fiberId}`))(
-      Hash.random(this.annotations)
-    )
   }
 }
 
@@ -250,12 +236,24 @@ export const causeCombine: {
     } else if (that.reasons.length === 0) {
       return self as Cause.Cause<E | E2>
     }
-    const newCause = new CauseImpl<E | E2>(
-      Arr.union(self.reasons, that.reasons)
-    )
-    return Equal.equals(self, newCause) ? self : newCause
+    const reasons = self.reasons.slice() as Array<Cause.Reason<E | E2>>
+    for (let i = 0; i < that.reasons.length; i++) {
+      const reason = that.reasons[i]
+      if (!reasons.some((current) => runtimeEquals(current, reason))) {
+        reasons.push(reason)
+      }
+    }
+    return reasons.length === self.reasons.length ? self : new CauseImpl(reasons)
   }
 )
+
+const EqualSymbol = "~effect/interfaces/Equal"
+
+const runtimeEquals = (self: unknown, that: unknown): boolean =>
+  self === that ||
+  (hasProperty(self, EqualSymbol) &&
+    hasProperty(that, EqualSymbol) &&
+    (self as any)[EqualSymbol](that))
 
 /** @internal */
 export const causeMap: {
