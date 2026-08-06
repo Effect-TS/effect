@@ -455,8 +455,11 @@ export const makeNodeHttp = Effect.gen(function*() {
         headers: request.headers,
         signal
       })
-    return Effect.forkChild(sendBody(nodeRequest, request, request.body)).pipe(
-      Effect.flatMap(() => waitForResponse(nodeRequest, request)),
+    return Effect.raceFirst(
+      waitForResponse(nodeRequest, request),
+      sendBody(nodeRequest, request, request.body).pipe(Effect.andThen(Effect.never))
+    ).pipe(
+      Effect.onError(() => Effect.sync(() => nodeRequest.destroy())),
       Effect.map((_) => new NodeHttpResponse(request, _))
     )
   })
