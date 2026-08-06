@@ -28,6 +28,8 @@ scratchpad/**/*
 
 # Agent instructions
 /AGENTS.md
+/packages/**/AGENTS.md
+/packages/**/CLAUDE.md
 
 # lalph
 .lalph/
