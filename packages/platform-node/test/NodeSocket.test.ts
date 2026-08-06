@@ -1,9 +1,12 @@
 import { NodeSocket, NodeSocketServer } from "@effect/platform-node"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Queue } from "effect"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
+import * as Scope from "effect/Scope"
 import * as Stream from "effect/Stream"
 import { Socket, type SocketServer } from "effect/unstable/socket"
+import * as Net from "node:net"
 import { WS } from "vitest-websocket-mock"
 
 const makeServer = Effect.gen(function*() {
@@ -18,6 +21,48 @@ const makeServer = Effect.gen(function*() {
 })
 
 describe("Socket", () => {
+  it.live("closes with a pending pre-run socket", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const server = yield* NodeSocketServer.make({ host: "127.0.0.1", port: 0 }).pipe(Scope.provide(scope))
+      assert.strictEqual(server.address._tag, "TcpAddress")
+      if (server.address._tag !== "TcpAddress") return
+      const socket = Net.createConnection({ host: "127.0.0.1", port: server.address.port })
+      yield* Effect.promise(() =>
+        new Promise<void>((resolve, reject) => {
+          socket.once("connect", resolve)
+          socket.once("error", reject)
+        })
+      )
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+      const exit = yield* Fiber.await(closing).pipe(
+        Effect.timeout("1 second"),
+        Effect.ensuring(Effect.sync(() => socket.destroy()))
+      )
+      assert.isTrue(Exit.isSuccess(exit))
+    }))
+
+  it.live("closes with a pending pre-run WebSocket", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const server = yield* NodeSocketServer.makeWebSocket({ host: "127.0.0.1", port: 0 }).pipe(Scope.provide(scope))
+      assert.strictEqual(server.address._tag, "TcpAddress")
+      if (server.address._tag !== "TcpAddress") return
+      const socket = new NodeSocket.NodeWS.WebSocket(`ws://127.0.0.1:${server.address.port}`)
+      yield* Effect.promise(() =>
+        new Promise<void>((resolve, reject) => {
+          socket.once("open", resolve)
+          socket.once("error", reject)
+        })
+      )
+      const closing = yield* Scope.close(scope, Exit.void).pipe(Effect.forkChild)
+      const exit = yield* Fiber.await(closing).pipe(
+        Effect.timeout("1 second"),
+        Effect.ensuring(Effect.sync(() => socket.terminate()))
+      )
+      assert.isTrue(Exit.isSuccess(exit))
+    }))
+
   it.effect("open", () =>
     Effect.gen(function*() {
       const server = yield* makeServer
