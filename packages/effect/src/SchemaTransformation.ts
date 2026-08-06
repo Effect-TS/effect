@@ -980,7 +980,8 @@ export const durationFromString: Transformation<Duration.Duration, string> = tra
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid Duration string" },
-            SchemaIssue.reportInput(s, options)
+            s,
+            options
           )
         ),
       onSome: Effect.succeed
@@ -1027,7 +1028,8 @@ export const durationFromNanos: Transformation<Duration.Duration, bigint> = tran
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a Duration representable as a bigint" },
-            SchemaIssue.reportInput(a, options)
+            a,
+            options
           )
         ),
       onSome: (nanos) => Effect.succeed(nanos)
@@ -1410,7 +1412,8 @@ export const urlFromString: Transformation<URL, string> = transformOrFail<URL, s
       : Effect.fail(
         new SchemaIssue.InvalidValue(
           { expected: "a valid URL string" },
-          SchemaIssue.reportInput(s, options)
+          s,
+          options
         )
       ),
   encode: (url) => Effect.succeed(url.href)
@@ -1444,7 +1447,8 @@ export const bigDecimalFromString: Transformation<BigDecimal.BigDecimal, string>
       ? Effect.fail(
         new SchemaIssue.InvalidValue(
           { expected: "a valid BigDecimal string" },
-          SchemaIssue.reportInput(s, options)
+          s,
+          options
         )
       )
       : Effect.succeed(result.value)
@@ -1809,7 +1813,8 @@ export const timeZoneNamedFromString: Transformation<DateTime.TimeZone.Named, st
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid IANA time zone" },
-            SchemaIssue.reportInput(s, options)
+            s,
+            options
           )
         ),
       onSome: Effect.succeed
@@ -1849,7 +1854,8 @@ export const timeZoneFromString: Transformation<DateTime.TimeZone, string> = tra
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid time zone" },
-            SchemaIssue.reportInput(s, options)
+            s,
+            options
           )
         ),
       onSome: Effect.succeed
@@ -1889,7 +1895,8 @@ export const dateTimeUtcFromString: Transformation<DateTime.Utc, string> = trans
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid UTC DateTime string" },
-            SchemaIssue.reportInput(s, options)
+            s,
+            options
           )
         ),
       onSome: (result) => Effect.succeed(DateTime.toUtc(result))
@@ -1928,7 +1935,8 @@ export const dateTimeZonedFromString: Transformation<DateTime.Zoned, string> = t
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid Zoned DateTime string" },
-            SchemaIssue.reportInput(s, options)
+            s,
+            options
           )
         ),
       onSome: Effect.succeed

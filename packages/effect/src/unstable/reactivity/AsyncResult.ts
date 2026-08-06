@@ -961,7 +961,7 @@ export const Schema = <
     [success_, Schema_.Cause(error, Schema_.Defect())],
     ([value, cause]) => (input, ast, options) => {
       if (!isAsyncResult(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       switch (input._tag) {
         case "Initial":
@@ -987,7 +987,8 @@ export const Schema = <
                       [
                         new SchemaIssue.Pointer(["previousSuccess", "value"], issue)
                       ],
-                      SchemaIssue.reportInput(input, options)
+                      input,
+                      options
                     )
                 }
               )

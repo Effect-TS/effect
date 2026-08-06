@@ -524,19 +524,21 @@ export interface ParseOptions {
    *
    * **Details**
    *
-   * When enabled, value-bearing issues created by the parser expose a
-   * non-enumerable `input` field. Built-in formatters may include reported
-   * input in default messages. The input is retained by reference rather than
-   * copied.
+   * When enabled, value-bearing issues created by the parser expose an `input`
+   * field. Built-in formatters may include reported input in default messages.
+   * The input is retained by reference rather than copied.
    *
    * **Gotchas**
    *
    * Enabling this option can retain or disclose secrets, personally
-   * identifiable information, and large object graphs. Disabling it on a
-   * nested schema does not redact that value from an ancestor issue whose input
-   * reporting remains enabled. Issues returned directly by user-defined
-   * declarations, checks, transformations, and middleware are not modified;
-   * their authors decide whether to retain an input. Custom messages and
+   * identifiable information, and large object graphs. The `input` field is
+   * enumerable and may be included by object enumeration, spread, or
+   * serialization. Disabling it on a nested schema does not redact that value
+   * from an ancestor issue whose input reporting remains enabled. Issues
+   * returned directly by user-defined declarations, checks, transformations,
+   * and middleware are not modified; their authors decide whether to retain an
+   * input. To respect this option, pass the callback's input and parse options
+   * directly to a value-bearing issue constructor. Custom messages and
    * annotations remain the caller's responsibility regardless of this option.
    * Calling `String` on an issue, reading `SchemaError.message`, or formatting
    * a Standard Schema failure can disclose retained input.
@@ -1179,7 +1181,7 @@ export class TemplateLiteral extends Base {
       }
       return Effect.mapBothEager(result, {
         onSuccess: () => input,
-        onFailure: (issue) => new SchemaIssue.Composite(this, [issue], SchemaIssue.reportInput(input, options))
+        onFailure: (issue) => new SchemaIssue.Composite(this, [issue], input, options)
       })
     }
   }
@@ -1204,7 +1206,8 @@ export class TemplateLiteral extends Base {
           return Effect.fail(
             new SchemaIssue.InvalidValue(
               { expected: "a string matching template literal parts" },
-              SchemaIssue.reportInput(s, options)
+              s,
+              options
             )
           )
         }),
@@ -1744,7 +1747,7 @@ export class Arrays extends Base {
 
       // If the input is not an array, return early with an error
       if (!Array.isArray(input)) {
-        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       if (!elements) {
         elements = ast.elements.map((ast) => ({ ast, parser: compileConstructorDefault(ast) }))
@@ -1774,21 +1777,21 @@ export class Arrays extends Base {
       // ---------------------------------------------
       if (ast.rest.length === 0 && len > elementLen) {
         for (let i = elementLen; i <= len - 1; i++) {
-          const unexpected = new SchemaIssue.UnexpectedKey(ast, SchemaIssue.reportInput(input[i], options))
+          const unexpected = new SchemaIssue.UnexpectedKey(ast, input[i], options)
           const issue = new SchemaIssue.Pointer([i], unexpected)
           if (options.errors === "all") {
             if (state.issues) state.issues.push(issue)
             else state.issues = [issue]
           } else {
             return yield* Effect.fail(
-              new SchemaIssue.Composite(ast, [issue], SchemaIssue.reportInput(input, options))
+              new SchemaIssue.Composite(ast, [issue], input, options)
             )
           }
         }
       }
       if (state.issues) {
         return yield* Effect.fail(
-          new SchemaIssue.Composite(ast, state.issues, SchemaIssue.reportInput(input, options))
+          new SchemaIssue.Composite(ast, state.issues, input, options)
         )
       }
       return state.output
@@ -1859,7 +1862,7 @@ const parseArray = iterateEager<{
         else s.issues = [issue]
       } else {
         return Exit.fail(
-          new SchemaIssue.Composite(s.ast, [issue], SchemaIssue.reportInput(s.input, s.options))
+          new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
         )
       }
     }
@@ -1893,7 +1896,8 @@ const wrapPropertyKeyIssue = (
           new SchemaIssue.Composite(
             ast,
             [new SchemaIssue.Pointer([key], issue)],
-            SchemaIssue.reportInput(s.input, s.options)
+            s.input,
+            s.options
           )
       )
     )
@@ -1904,7 +1908,7 @@ const wrapPropertyKeyIssue = (
     else s.issues = [pointer]
   } else {
     return Exit.fail(
-      new SchemaIssue.Composite(ast, [pointer], SchemaIssue.reportInput(s.input, s.options))
+      new SchemaIssue.Composite(ast, [pointer], s.input, s.options)
     )
   }
 }
@@ -2208,7 +2212,7 @@ export class Objects extends Base {
 
       // If the input is not a record, return early with an error
       if (!(typeof input === "object" && input !== null && !Array.isArray(input))) {
-        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return yield* Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       if (!properties) {
         properties = ast.propertySignatures.map((ps) => ({
@@ -2250,7 +2254,7 @@ export class Objects extends Base {
           if (!expectedKeysSet.has(key)) {
             // key is unexpected
             if (onExcessPropertyError) {
-              const unexpected = new SchemaIssue.UnexpectedKey(ast, SchemaIssue.reportInput(record[key], options))
+              const unexpected = new SchemaIssue.UnexpectedKey(ast, record[key], options)
               const issue = new SchemaIssue.Pointer([key], unexpected)
               if (errorsAllOption) {
                 if (state.issues) {
@@ -2261,7 +2265,7 @@ export class Objects extends Base {
                 continue
               } else {
                 return yield* Effect.fail(
-                  new SchemaIssue.Composite(ast, [issue], SchemaIssue.reportInput(input, options))
+                  new SchemaIssue.Composite(ast, [issue], input, options)
                 )
               }
             } else {
@@ -2313,7 +2317,7 @@ export class Objects extends Base {
 
       if (state.issues) {
         return yield* Effect.fail(
-          new SchemaIssue.Composite(ast, state.issues, SchemaIssue.reportInput(input, options))
+          new SchemaIssue.Composite(ast, state.issues, input, options)
         )
       }
       if (options.propertyOrder === "original") {
@@ -2419,7 +2423,7 @@ const parseProperties = iterateEager<ObjectParserState, ParsedProperty>()({
         return
       } else {
         return Exit.fail(
-          new SchemaIssue.Composite(s.ast, [issue], SchemaIssue.reportInput(s.input, s.options))
+          new SchemaIssue.Composite(s.ast, [issue], s.input, s.options)
         )
       }
     }
@@ -2828,12 +2832,12 @@ export class Union<A extends AST = AST> extends Base {
       const eff = parseUnion(state, candidates, concurrency ? { ...concurrency, orderedStep: true } : undefined)
       if (!eff) {
         if (state.out) return state.out
-        return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
       }
       return Effect.flatMapEager(eff, (_) => {
         if (state.out === InternalParser.sameExit) return Effect.succeed(input)
         if (state.out) return state.out
-        return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.AnyOf(ast, state.issues ?? [], input, options))
       })
     }
   }
@@ -2906,7 +2910,7 @@ function failSingleUnionCandidate(
 ) {
   const issue = InternalSchemaCause.getSchemaIssue(cause)
   if (!issue) return Exit.failCause(cause)
-  return Exit.fail(new SchemaIssue.AnyOf(ast, [issue], SchemaIssue.reportInput(input, options)))
+  return Exit.fail(new SchemaIssue.AnyOf(ast, [issue], input, options))
 }
 
 const parseUnion = iterateEager<{
@@ -2933,7 +2937,7 @@ const parseUnion = iterateEager<{
     } else {
       if (s.out && s.successes) {
         s.successes.push(candidate)
-        return Exit.fail(new SchemaIssue.OneOf(s.ast, s.successes, SchemaIssue.reportInput(s.input, s.options)))
+        return Exit.fail(new SchemaIssue.OneOf(s.ast, s.successes, s.input, s.options))
       }
       s.out = exit
       if (s.successes) {
@@ -3159,8 +3163,7 @@ export function makeFilter<T>(
   aborted: boolean = false
 ): Filter<T> {
   return new Filter(
-    (input, ast, options) =>
-      SchemaIssue.normalizeFilterOutput(ast, filter(input, ast, options), SchemaIssue.reportInput(input, options)),
+    (input, ast, options) => SchemaIssue.normalizeFilterOutput(ast, filter(input, ast, options), input, options),
     annotations,
     aborted
   )
@@ -3172,8 +3175,7 @@ export function makeFilterByGuard<T extends E, E>(
   annotations?: Schema.Annotations.Filter
 ): Filter<any> {
   return new Filter(
-    (input: E, _ast, options) =>
-      is(input) ? undefined : new SchemaIssue.InvalidValue(undefined, SchemaIssue.reportInput(input, options)),
+    (input: E, _ast, options) => is(input) ? undefined : new SchemaIssue.InvalidValue(undefined, input, options),
     annotations,
     true // after a guard, we always want to abort
   )
@@ -3727,7 +3729,7 @@ function fromConst<const T>(
   return (input, options) => {
     if (input === InternalParser.missing) return InternalParser.missingExit
     if (input === value) return succeed
-    return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+    return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
   }
 }
 
@@ -3738,7 +3740,7 @@ function fromRefinement<T>(
   return (input, options) => {
     if (input === InternalParser.missing) return InternalParser.missingExit
     if (refinement(input)) return InternalParser.sameExit
-    return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+    return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
   }
 }
 
@@ -3934,7 +3936,8 @@ const symbolToString = new Link(
       return Effect.fail(
         new SchemaIssue.Forbidden(
           { message: "cannot serialize to string, Symbol is not registered" },
-          SchemaIssue.reportInput(sym, options)
+          sym,
+          options
         )
       )
     })
@@ -3978,7 +3981,7 @@ export function collectIssues<T>(
     } else {
       const issue = check.run(value, ast, options)
       if (issue) {
-        const filter = new SchemaIssue.Filter(check, issue, SchemaIssue.reportInput(value, options))
+        const filter = new SchemaIssue.Filter(check, issue, value, options)
         if (issues) issues.push(filter)
         else issues = [filter]
         if (options.errors !== "all" || check.aborted) {
@@ -4190,7 +4193,7 @@ export const Json = new Declaration(
   () => (input, ast, options) =>
     isJson(input) ?
       InternalParser.sameExit :
-      Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options))),
+      Effect.fail(new SchemaIssue.InvalidType(ast, input, options)),
   {
     representation: {
       id: "effect/schema/Json",
@@ -4242,7 +4245,7 @@ const StringTree = new Declaration(
   () => (input, ast, options) =>
     isStringTree(input) ?
       InternalParser.sameExit :
-      Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options))),
+      Effect.fail(new SchemaIssue.InvalidType(ast, input, options)),
   { expected: "StringTree", toCodecStringTree: () => undefined }
 )
 

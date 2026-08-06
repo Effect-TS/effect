@@ -560,7 +560,7 @@ export function declare<T, Iso = T>(
     () => (input, ast, options) =>
       is(input) ?
         Effect.succeed(input) :
-        Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options))),
+        Effect.fail(new SchemaIssue.InvalidType(ast, input, options)),
     annotations
   )
 }
@@ -1166,8 +1166,8 @@ export {
    *
    * The `issue` field contains a structured {@link SchemaIssue.Issue} tree describing
    * every validation failure, including the path to the problematic value and
-   * the expected type or constraint. Parsing with `reportInput: true` adds a
-   * non-enumerable `input` field to value-bearing issues created by the parser.
+   * the expected type or constraint. Parsing with `reportInput: true` adds an
+   * enumerable `input` field to value-bearing issues created by the parser.
    * Built-in messages may include reported input. Other issue fields and
    * custom annotations or messages are not sanitized.
    * `message` renders the issue tree as a human-readable string and can disclose
@@ -9395,7 +9395,7 @@ export function isPropertyNames(keySchema: Constraint, annotations?: Annotations
         }
       }
       if (Arr.isArrayNonEmpty(issues)) {
-        return new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(input, options))
+        return new SchemaIssue.Composite(ast, issues, input, options)
       }
       return true
     },
@@ -9600,7 +9600,7 @@ export function Option<A extends Constraint>(value: A): Option<A> {
           }
         )
       }
-      return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+      return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
     },
     {
       representation: {
@@ -9913,7 +9913,7 @@ export function Result<A extends Constraint, E extends Constraint>(
     [success, failure],
     ([success, failure]) => (input, ast, options) => {
       if (!Result_.isResult(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       switch (input._tag) {
         case "Success":
@@ -10101,17 +10101,18 @@ export function Redacted<S extends Constraint>(value: S, options?: {
                     [
                       new SchemaIssue.Pointer(
                         ["value"],
-                        new SchemaIssue.InvalidValue(undefined, SchemaIssue.reportInput(input, poptions))
+                        new SchemaIssue.InvalidValue(undefined, input, poptions)
                       )
                     ],
-                    SchemaIssue.reportInput(input, poptions)
+                    input,
+                    poptions
                   )
                 }
               }
             )
         )
       }
-      return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, poptions)))
+      return Effect.fail(new SchemaIssue.InvalidType(ast, input, poptions))
     },
     {
       representation: {
@@ -10277,7 +10278,7 @@ export function CauseReason<E extends Constraint, D extends Constraint>(error: E
     [error, defect],
     ([error, defect]) => (input, ast, options) => {
       if (!Cause_.isReason(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       switch (input._tag) {
         case "Fail":
@@ -10468,7 +10469,7 @@ export function Cause<E extends Constraint, D extends Constraint>(error: E, defe
       const failures = ArraySchema(CauseReason(error, defect))
       return (input, ast, options) => {
         if (!Cause_.isCause(input)) {
-          return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+          return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
         }
         return Effect.mapBothEager(SchemaParser.decodeUnknownEffect(failures)(input.reasons, options), {
           onSuccess: Cause_.fromReasons,
@@ -10814,7 +10815,7 @@ export function Exit<A extends Constraint, E extends Constraint, D extends Const
       const cause = Cause(error, defect)
       return (input, ast, options) => {
         if (!Exit_.isExit(input)) {
-          return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+          return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
         }
         switch (input._tag) {
           case "Success":
@@ -11075,7 +11076,7 @@ export function ReadonlyMap<Key extends Constraint, Value extends Constraint>(
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
     },
     {
@@ -11187,7 +11188,7 @@ export function HashMap<Key extends Constraint, Value extends Constraint>(key: K
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
     },
     {
@@ -11297,7 +11298,7 @@ export function ReadonlySet<Value extends Constraint>(value: Value): $ReadonlySe
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
     },
     {
@@ -11407,7 +11408,7 @@ export function HashSet<Value extends Constraint>(value: Value): HashSet<Value> 
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
     },
     {
@@ -11524,7 +11525,7 @@ export function Chunk<Value extends Constraint>(value: Value): Chunk<Value> {
             }
           )
         }
-        return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
     },
     {
@@ -11627,7 +11628,8 @@ export const RegExp: RegExp = instanceOf(
               catch: () =>
                 new SchemaIssue.InvalidValue(
                   { expected: "valid RegExp source and flags" },
-                  SchemaIssue.reportInput(e, options)
+                  e,
+                  options
                 )
             }),
           encode: (regExp) =>
@@ -12463,7 +12465,8 @@ export const File: File = instanceOf(globalThis.File, {
               Effect.fail(
                 new SchemaIssue.InvalidValue(
                   { expected: "a valid Base64 string" },
-                  SchemaIssue.reportInput(e.data, options)
+                  e.data,
+                  options
                 )
               ),
             onSuccess: (bytes) => {
@@ -12487,7 +12490,8 @@ export const File: File = instanceOf(globalThis.File, {
             catch: () =>
               new SchemaIssue.InvalidValue(
                 { expected: "a readable File" },
-                SchemaIssue.reportInput(file, options)
+                file,
+                options
               )
           })
       })
@@ -14170,7 +14174,7 @@ function getClassSchemaFactory<S extends Constraint>(
         () => (input, ast, options) => {
           return isClassValue(input) ?
             Effect.succeed(input) :
-            Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+            Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
         },
         {
           identifier,

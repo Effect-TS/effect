@@ -1067,7 +1067,7 @@ function getEncodePayloadSchemaFromBody(
     SchemaTransformation.transformOrFail<unknown, HttpBody.HttpBody>({
       decode(input, options) {
         return Effect.fail(
-          new SchemaIssue.Forbidden({ message: "Encode only schema" }, SchemaIssue.reportInput(input, options))
+          new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)
         )
       },
       encode(t, options) {
@@ -1076,7 +1076,8 @@ function getEncodePayloadSchemaFromBody(
             return Effect.fail(
               new SchemaIssue.Forbidden(
                 { message: "Payload must be a FormData" },
-                SchemaIssue.reportInput(t, options)
+                t,
+                options
               )
             )
           case "Json": {
@@ -1087,7 +1088,8 @@ function getEncodePayloadSchemaFromBody(
               return Effect.fail(
                 new SchemaIssue.InvalidValue(
                   { expected: "a JSON-serializable request body" },
-                  SchemaIssue.reportInput(t, options)
+                  t,
+                  options
                 )
               )
             }
@@ -1095,7 +1097,7 @@ function getEncodePayloadSchemaFromBody(
           case "Text": {
             if (typeof t !== "string") {
               return Effect.fail(
-                new SchemaIssue.InvalidValue({ message: "Expected a string" }, SchemaIssue.reportInput(t, options))
+                new SchemaIssue.InvalidValue({ message: "Expected a string" }, t, options)
               )
             }
             return Effect.succeed(HttpBody.text(t, encoding.contentType))
@@ -1103,7 +1105,7 @@ function getEncodePayloadSchemaFromBody(
           case "FormUrlEncoded": {
             if (!Predicate.isObject(t)) {
               return Effect.fail(
-                new SchemaIssue.InvalidValue({ message: "Expected a record" }, SchemaIssue.reportInput(t, options))
+                new SchemaIssue.InvalidValue({ message: "Expected a record" }, t, options)
               )
             }
             return Effect.succeed(HttpBody.urlParams(UrlParams.fromInput(t as any), encoding.contentType))
@@ -1113,7 +1115,8 @@ function getEncodePayloadSchemaFromBody(
               return Effect.fail(
                 new SchemaIssue.InvalidValue(
                   { message: "Expected a Uint8Array" },
-                  SchemaIssue.reportInput(t, options)
+                  t,
+                  options
                 )
               )
             }

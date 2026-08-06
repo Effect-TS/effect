@@ -557,7 +557,7 @@ export class Complete<A, E> extends Data.TaggedClass("Complete")<{
       [Schema.Exit(options.success, options.error, Schema.Defect())],
       ([exit]) => (input, ast, options) => {
         if (!(isResult(input) && input._tag === "Complete")) {
-          return Effect.fail(new SchemaIssue.InvalidType(ast, SchemaIssue.reportInput(input, options)))
+          return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
         }
         return Effect.mapBothEager(
           SchemaParser.decodeEffect(exit)(input.exit, options),

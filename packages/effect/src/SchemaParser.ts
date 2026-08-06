@@ -1086,7 +1086,7 @@ function makeParser(
           if (input !== InternalParser.missing && output !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
             if (issues) {
-              result = Effect.fail(new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(input, options)))
+              result = Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
             }
           }
         }
@@ -1095,7 +1095,7 @@ function makeParser(
           if (input !== InternalParser.missing && value !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
             if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(input, options)))
+              return Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
             }
           }
           return Effect.succeed(value)
@@ -1112,7 +1112,7 @@ function makeParser(
           if (value === InternalParser.missing) return result
           const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
           if (issues) {
-            result = Effect.fail(new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(value, options)))
+            result = Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
           }
         }
       } else {
@@ -1120,7 +1120,7 @@ function makeParser(
           if (value !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
             if (issues) {
-              return Effect.fail(new SchemaIssue.Composite(ast, issues, SchemaIssue.reportInput(value, options)))
+              return Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
             }
           }
           return Effect.succeed(value)
@@ -1175,7 +1175,8 @@ function makeParser(
               new SchemaIssue.Encoding(
                 ast,
                 issue,
-                SchemaIssue.reportInput(input, options)
+                input,
+                options
               )
           )
         )

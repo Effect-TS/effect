@@ -1848,7 +1848,8 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
             onFailure: () =>
               new SchemaIssue.InvalidValue(
                 { message: "Invalid Prompt messages" },
-                SchemaIssue.reportInput(input.content, options)
+                input.content,
+                options
               )
           }
         ),
@@ -1860,7 +1861,8 @@ export const Prompt: Schema.Codec<Prompt, PromptEncoded> = Schema.Struct({
             onFailure: () =>
               new SchemaIssue.InvalidValue(
                 { message: "Invalid Prompt messages" },
-                SchemaIssue.reportInput(prompt.content, options)
+                prompt.content,
+                options
               )
           }
         )

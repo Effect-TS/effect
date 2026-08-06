@@ -1169,7 +1169,7 @@ function getResponseTransformation(
   return SchemaTransformation.transformOrFail({
     decode: (input, options) =>
       Effect.fail(
-        new SchemaIssue.Forbidden({ message: "Encode only schema" }, SchemaIssue.reportInput(input, options))
+        new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)
       ),
     encode
   })
@@ -1188,7 +1188,7 @@ function withHeadersTransformation<T = unknown>(
   return SchemaTransformation.transformOrFail<T, Response.HttpServerResponse, never, unknown>({
     decode: (input, options) =>
       Effect.fail(
-        new SchemaIssue.Forbidden({ message: "Encode only schema" }, SchemaIssue.reportInput(input, options))
+        new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)
       ),
     encode: (value, options) => {
       const pair = value as { readonly body: unknown; readonly headers: unknown }
@@ -1222,7 +1222,8 @@ function getResponseEncode<E>(
           return Effect.fail(
             new SchemaIssue.InvalidValue(
               { expected: "a JSON-serializable response body" },
-              SchemaIssue.reportInput(e, options)
+              e,
+              options
             )
           )
         }
