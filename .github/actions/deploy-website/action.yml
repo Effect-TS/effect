@@ -1,39 +1,40 @@
 name: Deploy website
 description: Request API reference publication and deployment from the website repository.
 inputs:
+  channel:
+    description: API reference channel that was published
+    required: true
   dispatch-token:
     description: Token with permission to dispatch workflows in Effect-TS/website
+    required: true
+  revision:
+    description: Full Git commit SHA that was published
     required: true
 
 runs:
   using: composite
   steps:
-    - name: Resolve Effect revisions
-      id: revisions
-      shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        v3=$(gh api "repos/${GITHUB_REPOSITORY}/commits/v3" --jq .sha)
-        v4=$(gh api "repos/${GITHUB_REPOSITORY}/commits/main" --jq .sha)
-        echo "v3=$v3" >> "$GITHUB_OUTPUT"
-        echo "v4=$v4" >> "$GITHUB_OUTPUT"
-
     - name: Request website API reference publication
       shell: bash
       env:
+        CHANNEL: ${{ inputs.channel }}
         GH_TOKEN: ${{ inputs.dispatch-token }}
-        V3_REVISION: ${{ steps.revisions.outputs.v3 }}
-        V4_REVISION: ${{ steps.revisions.outputs.v4 }}
+        REVISION: ${{ inputs.revision }}
       run: |
+        if [[ ! "$CHANNEL" =~ ^v[34]$ || ! "$REVISION" =~ ^[a-f0-9]{40}$ ]]; then
+          echo "::error::Website deployment requires channel v3 or v4 and a full Git commit SHA"
+          exit 1
+        fi
+
         jq -n \
-          --arg v3 "$V3_REVISION" \
-          --arg v4 "$V4_REVISION" \
+          --arg channel "$CHANNEL" \
+          --arg revision "$REVISION" \
           '{
             event_type: "publish-api-reference",
             client_payload: {
               repository: "Effect-TS/effect",
-              channels: { v3: $v3, v4: $v4 }
+              channel: $channel,
+              revision: $revision
             }
           }' |
           gh api --method POST repos/Effect-TS/website/dispatches --input -

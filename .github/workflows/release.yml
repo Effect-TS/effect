@@ -48,4 +48,6 @@ jobs:
         if: steps.changesets.outputs.published == 'true'
         uses: ./.github/actions/deploy-website
         with:
+          channel: v3
           dispatch-token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
+          revision: ${{ github.sha }}
