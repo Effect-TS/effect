@@ -6,7 +6,7 @@ import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/ob
 
 describe("OtlpMetrics", () => {
   it.effect("retains delta checkpoints after a failed export", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const bodies = yield* Ref.make<ReadonlyArray<OtlpExportRequest>>([])
       const attempts = yield* Ref.make(0)
       const client = HttpClient.makeWith(
@@ -71,7 +71,7 @@ describe("OtlpMetrics", () => {
         findMetric(second, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano,
         findMetric(first, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano
       )
-    })))
+    }))
 
   it.effect("does not regress delta checkpoints when exports complete out of order", () =>
     Effect.scoped(Effect.gen(function*() {
