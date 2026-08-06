@@ -10,6 +10,16 @@ describe("Context", () => {
   const B = Context.Service<number>("ContextTest/B")
   const C = Context.Service<number>("ContextTest/C")
 
+  it("does not capture the service definition location", () => {
+    const Service = Context.Service<number>("ContextTest/NoDefinitionStack")
+
+    assertFalse("stack" in Service)
+    deepStrictEqual(Service.toJSON(), {
+      _id: "Service",
+      key: "ContextTest/NoDefinitionStack"
+    })
+  })
+
   it("keeps the source immutable across additions", () => {
     const source = Context.make(A, 1)
     const result = Context.add(source, B, 2)
