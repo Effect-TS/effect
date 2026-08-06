@@ -55,6 +55,8 @@ import {
 } from "./OpenAiClient.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 
+const formatIssue = SchemaIssue.makeFormatterDefault()
+
 /**
  * Image detail level for vision requests.
  */
@@ -1462,7 +1464,7 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
       reason: new AiError.ToolParameterValidationError({
         toolName,
         toolParams,
-        description: SchemaIssue.defaultFormatter(error.issue)
+        description: formatIssue(error.issue)
       })
     })
   ))

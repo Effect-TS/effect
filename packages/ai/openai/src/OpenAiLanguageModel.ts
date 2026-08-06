@@ -40,6 +40,8 @@ import type * as OpenAiSchema from "./OpenAiSchema.ts"
 import { addGenAIAnnotations } from "./OpenAiTelemetry.ts"
 import type * as OpenAiTool from "./OpenAiTool.ts"
 
+const formatIssue = SchemaIssue.makeFormatterDefault()
+
 const ResponseModelIds = Generated.ModelIdsResponses.members[1]
 const SharedModelIds = Generated.ModelIdsShared.members[1]
 
@@ -3159,7 +3161,7 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
       reason: new AiError.ToolParameterValidationError({
         toolName,
         toolParams,
-        description: SchemaIssue.defaultFormatter(error.issue)
+        description: formatIssue(error.issue)
       })
     })
   ))

@@ -40,6 +40,8 @@ import type { AnthropicTool } from "./AnthropicTool.ts"
 import type * as Generated from "./Generated.ts"
 import * as InternalUtilities from "./internal/utilities.ts"
 
+const formatIssue = SchemaIssue.makeFormatterDefault()
+
 /**
  * Known Anthropic Claude model identifiers exposed by the generated Anthropic schema.
  *
@@ -3099,7 +3101,7 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
       reason: new AiError.ToolParameterValidationError({
         toolName,
         toolParams,
-        description: SchemaIssue.defaultFormatter(error.issue)
+        description: formatIssue(error.issue)
       })
     })
   ))
