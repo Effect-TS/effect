@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Duration, Effect, Exit, FileSystem, Layer, Schedule } from "effect"
+import { Cause, Duration, Effect, Exit, FileSystem, Layer, Schedule } from "effect"
 import { TestClock } from "effect/testing"
 import {
   Runner,
@@ -48,7 +48,7 @@ describe("SqlRunnerStorage", () => {
           TestClock.withLive
         )
         assert(Exit.isFailure(exit))
-        assert.isAtLeast(Duration.toMillis(elapsed), 90)
+        assert(Cause.isTimeoutError(Cause.squash(exit.cause)))
         assert.isBelow(Duration.toMillis(elapsed), 1000)
         yield* Effect.sleep(20).pipe(TestClock.withLive)
       })
