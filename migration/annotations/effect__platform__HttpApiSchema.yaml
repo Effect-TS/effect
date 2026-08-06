@@ -29,14 +29,14 @@
   replacement: "effect/unstable/httpapi/HttpApiSchema#Empty"
   note: "The API remains and returns Schema.Void annotated with the supplied status."
 "@effect/platform/HttpApiSchema#EmptyError":
-  replacement: "effect/Schema#ErrorClass"
+  replacement: "effect/Schema#Error"
   note: "Define a normal schema error with httpApiStatus, then derive its no-content wire schema with asNoContent."
 "@effect/platform/HttpApiSchema#EmptyErrorClass":
-  replacement: "effect/Schema#ErrorClass"
-  note: "The class and no-content codec are separate in v4; combine ErrorClass with HttpApiSchema.asNoContent."
+  replacement: "effect/Schema#Error"
+  note: "The class and no-content codec are separate in v4; combine Schema.Error with HttpApiSchema.asNoContent."
 "@effect/platform/HttpApiSchema#EmptyErrorUnify":
   replacement: "none"
-  note: "Removed with EmptyError; Schema.ErrorClass instances already support yieldable-error behavior."
+  note: "Removed with EmptyError; Schema.Error instances already support yieldable-error behavior."
 "@effect/platform/HttpApiSchema#EmptyErrorUnifyIgnore":
   replacement: "none"
   note: "Removed with EmptyError; do not recreate the old Unify marker."
