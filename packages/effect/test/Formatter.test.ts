@@ -267,25 +267,25 @@ describe("Formatter", () => {
 
     it("supports every value-bearing issue constructor", () => {
       const input = { value: "secret" }
-      const report = { value: input, enumerable: true }
+      const options = { reportInput: true } as const
       const invalidValue = new SchemaIssue.InvalidValue()
       const union = Schema.Union([Schema.String, Schema.Number]).ast
       const issues: ReadonlyArray<SchemaIssue.Issue> = [
-        new SchemaIssue.InvalidType(Schema.String.ast, report),
-        new SchemaIssue.InvalidValue(undefined, report),
-        new SchemaIssue.UnexpectedKey(Schema.String.ast, report),
-        new SchemaIssue.Forbidden(undefined, report),
-        new SchemaIssue.OneOf(union, [Schema.String.ast], report),
-        new SchemaIssue.Filter(Schema.isMinLength(1), invalidValue, report),
-        new SchemaIssue.Encoding(Schema.String.ast, invalidValue, report),
-        new SchemaIssue.Composite(Schema.String.ast, [invalidValue], report),
-        new SchemaIssue.AnyOf(union, [invalidValue], report)
+        new SchemaIssue.InvalidType(Schema.String.ast, input, options),
+        new SchemaIssue.InvalidValue(undefined, input, options),
+        new SchemaIssue.UnexpectedKey(Schema.String.ast, input, options),
+        new SchemaIssue.Forbidden(undefined, input, options),
+        new SchemaIssue.OneOf(union, [Schema.String.ast], input, options),
+        new SchemaIssue.Filter(Schema.isMinLength(1), invalidValue, input, options),
+        new SchemaIssue.Encoding(Schema.String.ast, invalidValue, input, options),
+        new SchemaIssue.Composite(Schema.String.ast, [invalidValue], input, options),
+        new SchemaIssue.AnyOf(union, [invalidValue], input, options)
       ]
 
       for (const issue of issues) {
         assertTrue(SchemaIssue.hasInput(issue))
         strictEqual(issue.input, input)
-        assertFalse(Object.keys(issue).includes("input"))
+        assertTrue(Object.keys(issue).includes("input"))
       }
 
       assertFalse(SchemaIssue.hasInput(new SchemaIssue.InvalidType(Schema.String.ast)))
@@ -293,13 +293,7 @@ describe("Formatter", () => {
       assertFalse(SchemaIssue.hasInput(new SchemaIssue.MissingKey(undefined)))
     })
 
-    it("reports input according to parse options", () => {
-      deepStrictEqual(SchemaIssue.reportInput(undefined, { reportInput: true }), { value: undefined })
-      strictEqual(SchemaIssue.reportInput("secret", { reportInput: false }), undefined)
-      strictEqual(SchemaIssue.reportInput("secret", undefined), undefined)
-    })
-
-    it("reports input only when enabled and keeps it non-enumerable", () => {
+    it("reports input only when enabled", () => {
       const input = { secret: "value" }
       const disabled = SchemaParser.decodeUnknownResult(Schema.String)(input)
 
@@ -313,13 +307,13 @@ describe("Formatter", () => {
       assertTrue(enabled.failure._tag === "InvalidType")
       assertTrue(SchemaIssue.hasInput(enabled.failure))
       strictEqual(enabled.failure.input, input)
-      assertFalse(Object.keys(enabled.failure).includes("input"))
-      assertFalse(JSON.stringify(enabled.failure).includes("secret"))
+      assertTrue(Object.keys(enabled.failure).includes("input"))
+      assertTrue(JSON.stringify(enabled.failure).includes("secret"))
       deepStrictEqual(Object.getOwnPropertyDescriptor(enabled.failure, "input"), {
         value: input,
-        enumerable: false,
-        writable: false,
-        configurable: false
+        enumerable: true,
+        writable: true,
+        configurable: true
       })
       strictEqual(formatIssue(enabled.failure), `Expected string, got {"secret":"value"}`)
     })
@@ -389,7 +383,7 @@ describe("Formatter", () => {
       const schema = Schema.String.pipe(
         Schema.decode({
           decode: SchemaGetter.transformOrFail((input, options) =>
-            Effect.fail(new SchemaIssue.InvalidValue(undefined, SchemaIssue.reportInput(input, options)))
+            Effect.fail(new SchemaIssue.InvalidValue(undefined, input, options))
           ),
           encode: SchemaGetter.passthrough()
         })
@@ -475,39 +469,47 @@ describe("Formatter", () => {
       }))
 
     it("formats reported inputs with the historical templates", () => {
-      const report = { value: 1 }
+      const options = { reportInput: true } as const
       const invalidValue = new SchemaIssue.InvalidValue()
       const union = Schema.Union([Schema.String, Schema.Number]).ast
 
-      strictEqual(formatIssue(new SchemaIssue.InvalidType(Schema.String.ast, report)), "Expected string, got 1")
-      strictEqual(formatIssue(new SchemaIssue.InvalidValue(undefined, report)), "Invalid data 1")
+      strictEqual(formatIssue(new SchemaIssue.InvalidType(Schema.String.ast, 1, options)), "Expected string, got 1")
+      strictEqual(formatIssue(new SchemaIssue.InvalidValue(undefined, 1, options)), "Invalid data 1")
       strictEqual(
-        formatIssue(new SchemaIssue.UnexpectedKey(Schema.String.ast, report)),
+        formatIssue(new SchemaIssue.UnexpectedKey(Schema.String.ast, 1, options)),
         "Unexpected key with value 1"
       )
       strictEqual(
-        formatIssue(new SchemaIssue.OneOf(union, [Schema.String.ast], report)),
+        formatIssue(new SchemaIssue.OneOf(union, [Schema.String.ast], 1, options)),
         "Expected exactly one member to match the input 1"
       )
-      strictEqual(formatIssue(new SchemaIssue.Forbidden(undefined, report)), "Forbidden operation")
+      strictEqual(formatIssue(new SchemaIssue.Forbidden(undefined, 1, options)), "Forbidden operation")
       strictEqual(
-        formatIssue(new SchemaIssue.Filter(Schema.isMinLength(1), invalidValue, report)),
+        formatIssue(new SchemaIssue.Filter(Schema.isMinLength(1), invalidValue, 1, options)),
         "Expected a value with a length of at least 1, got 1"
       )
-      strictEqual(formatIssue(new SchemaIssue.AnyOf(union, [], report)), "Expected string | number, got 1")
+      strictEqual(formatIssue(new SchemaIssue.AnyOf(union, [], 1, options)), "Expected string | number, got 1")
     })
 
     it("does not inherit input from wrappers", () => {
-      const report = { value: "secret" }
+      const options = { reportInput: true } as const
       const inner = new SchemaIssue.InvalidValue()
 
-      strictEqual(formatIssue(new SchemaIssue.Encoding(Schema.String.ast, inner, report)), "Expected a valid value")
       strictEqual(
-        formatIssue(new SchemaIssue.Composite(Schema.String.ast, [inner], report)),
+        formatIssue(new SchemaIssue.Encoding(Schema.String.ast, inner, "secret", options)),
         "Expected a valid value"
       )
       strictEqual(
-        formatIssue(new SchemaIssue.Filter(Schema.isMinLength(1), new SchemaIssue.InvalidValue(undefined, report))),
+        formatIssue(new SchemaIssue.Composite(Schema.String.ast, [inner], "secret", options)),
+        "Expected a valid value"
+      )
+      strictEqual(
+        formatIssue(
+          new SchemaIssue.Filter(
+            Schema.isMinLength(1),
+            new SchemaIssue.InvalidValue(undefined, "secret", options)
+          )
+        ),
         "Expected a value with a length of at least 1"
       )
     })
@@ -515,22 +517,26 @@ describe("Formatter", () => {
     it("uses expected annotations only for InvalidValue", () => {
       strictEqual(formatIssue(new SchemaIssue.InvalidValue({ expected: "a valid value" })), "Expected a valid value")
       strictEqual(
-        formatIssue(new SchemaIssue.InvalidValue({ expected: "a valid value" }, { value: "secret" })),
+        formatIssue(new SchemaIssue.InvalidValue({ expected: "a valid value" }, "secret", { reportInput: true })),
         `Expected a valid value, got "secret"`
       )
       strictEqual(
         formatIssue(
-          new SchemaIssue.InvalidValue({ expected: "ignored", message: "custom message" }, { value: "secret" })
+          new SchemaIssue.InvalidValue(
+            { expected: "ignored", message: "custom message" },
+            "secret",
+            { reportInput: true }
+          )
         ),
         "custom message"
       )
       strictEqual(
-        formatIssue(new SchemaIssue.Forbidden({ expected: "a permitted operation" }, { value: "secret" })),
+        formatIssue(new SchemaIssue.Forbidden({ expected: "a permitted operation" }, "secret", { reportInput: true })),
         "Forbidden operation"
       )
       const filter = new SchemaIssue.Filter(
         Schema.isMinLength(1),
-        new SchemaIssue.InvalidValue({ expected: "a custom value" }, { value: "secret" })
+        new SchemaIssue.InvalidValue({ expected: "a custom value" }, "secret", { reportInput: true })
       )
       strictEqual(formatIssue(filter), `Expected a custom value, got "secret"`)
       deepStrictEqual(
@@ -563,17 +569,18 @@ describe("Formatter", () => {
     })
 
     it("preserves custom messages and hooks", () => {
-      const report = { value: "secret" }
+      const options = { reportInput: true } as const
       const invalidType = new SchemaIssue.InvalidType(
         Schema.String.annotate({ message: "custom message" }).ast,
-        report
+        "secret",
+        options
       )
       strictEqual(formatIssue(invalidType), "custom message")
 
       const leafFormatter = SchemaIssue.makeFormatterStandardSchemaV1({ leafHook: () => "redacted leaf" })
       deepStrictEqual(leafFormatter(invalidType).issues, [{ message: "redacted leaf", path: [] }])
 
-      const filter = new SchemaIssue.Filter(Schema.isMinLength(1), new SchemaIssue.InvalidValue(), report)
+      const filter = new SchemaIssue.Filter(Schema.isMinLength(1), new SchemaIssue.InvalidValue(), "secret", options)
       const checkFormatter = SchemaIssue.makeFormatterStandardSchemaV1({ checkHook: () => "redacted check" })
       deepStrictEqual(checkFormatter(filter).issues, [{ message: "redacted check", path: [] }])
     })

@@ -62,8 +62,8 @@ export function isIssue(u: unknown): u is Issue {
  *
  * **Details**
  *
- * Reported input is stored as a non-enumerable own property. This guard checks
- * for that property and narrows `input` from optional to required.
+ * Reported input is stored as an own property. This guard checks for that
+ * property and narrows `input` from optional to required.
  *
  * **Example** (Reading a reported input)
  *
@@ -127,12 +127,11 @@ export type Leaf =
  * {@link Filter}, {@link Encoding}, {@link Pointer}, {@link Composite},
  * {@link AnyOf}. Use {@link makeFormatterDefault} when a human-readable
  * representation is needed. When parsing with `reportInput: true`,
- * value-bearing issues expose the rejected value through a non-enumerable
- * `input` field. Built-in formatters
- * may include reported input in default messages. This is not a general
- * sanitization boundary: paths, ASTs, union successes, and custom annotations
- * or messages are preserved as supplied and remain the caller's
- * responsibility.
+ * value-bearing issues expose the rejected value through an enumerable `input`
+ * field. Built-in formatters may include reported input in default messages. This
+ * is not a general sanitization boundary: paths, ASTs, union successes, and
+ * custom annotations or messages are preserved as supplied and remain the
+ * caller's responsibility.
  *
  * @see {@link Leaf} — the terminal subset
  * @see {@link isIssue} — type guard
@@ -149,62 +148,6 @@ export type Issue =
   | Composite
   | AnyOf
 
-/**
- * Captures an input that should be reported by a value-bearing schema issue.
- *
- * **When to use**
- *
- * Use when constructing a schema issue that should retain the rejected input.
- *
- * **Details**
- *
- * An input report is passed to value-bearing issue constructors. Its `value`
- * becomes the issue's non-enumerable `input` property.
- *
- * @see {@link reportInput} for respecting the parser's `reportInput` option
- * @category models
- * @since 4.0.0
- */
-export interface InputReport<out A = unknown> {
-  readonly value: A
-}
-
-/**
- * Captures an input when input reporting is enabled in the parse options.
- *
- * **When to use**
- *
- * Use when constructing a custom schema issue that should respect the parser's
- * `reportInput` option.
- *
- * **Details**
- *
- * Returns `undefined` when input reporting is disabled or the parser value is
- * missing. Otherwise, returns a capture that preserves the input, including an
- * input whose value is `undefined`.
- *
- * **Example** (Respecting input reporting)
- *
- * ```ts import.meta.vitest
- * import { SchemaAST, SchemaIssue } from "effect"
- *
- * const options: SchemaAST.ParseOptions = { reportInput: true }
- * const issue = new SchemaIssue.InvalidValue(
- *   { message: "Invalid value" },
- *   SchemaIssue.reportInput("secret", options)
- * )
- *
- * SchemaIssue.hasInput(issue) // => true
- * ```
- *
- * @see {@link InputReport} for the value passed to issue constructors
- * @category constructors
- * @since 4.0.0
- */
-export function reportInput<A>(input: A, options?: SchemaAST.ParseOptions): InputReport<A> | undefined {
-  return options?.reportInput === true && input !== InternalParser.missing ? { value: input } : undefined
-}
-
 class Base {
   readonly [TypeId] = TypeId
   /**
@@ -212,9 +155,9 @@ class Base {
    * and the issue is associated with a present value.
    */
   declare readonly input?: unknown
-  constructor(report?: InputReport) {
-    if (report !== undefined) {
-      Object.defineProperty(this, "input", { value: report.value })
+  constructor(input?: unknown, options?: SchemaAST.ParseOptions) {
+    if (options?.reportInput === true && input !== InternalParser.missing) {
+      this.input = input
     }
   }
 }
@@ -279,9 +222,10 @@ export class Filter extends Base {
      * The issue that occurred.
      */
     issue: Issue,
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.filter = filter
     this.issue = issue
   }
@@ -326,9 +270,10 @@ export class Encoding extends Base {
      * The issue that occurred.
      */
     issue: Issue,
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.ast = ast
     this.issue = issue
   }
@@ -448,9 +393,10 @@ export class UnexpectedKey extends Base {
      * The schema that caused the issue.
      */
     ast: SchemaAST.AST,
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.ast = ast
   }
 }
@@ -494,9 +440,10 @@ export class Composite extends Base {
      * The issues that occurred.
      */
     issues: readonly [Issue, ...Array<Issue>],
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.ast = ast
     this.issues = issues
   }
@@ -542,9 +489,10 @@ export class InvalidType extends Base {
      * The schema that caused the issue.
      */
     ast: SchemaAST.AST,
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.ast = ast
   }
 }
@@ -589,9 +537,10 @@ export class InvalidValue extends Base {
 
   constructor(
     annotations?: Schema.Annotations.Issue | undefined,
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.annotations = annotations
   }
 }
@@ -607,7 +556,8 @@ export function makeCompositeAtKey(
   return new Composite(
     compositeAst,
     [new Pointer([pointerKey], pointerIssue)],
-    reportInput(compositeInput, parseOptions)
+    compositeInput,
+    parseOptions
   )
 }
 
@@ -654,9 +604,10 @@ export class Forbidden extends Base {
      * The metadata for the issue.
      */
     annotations: Schema.Annotations.Issue | undefined,
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.annotations = annotations
   }
 }
@@ -705,9 +656,10 @@ export class AnyOf extends Base {
      * The issues that occurred.
      */
     issues: ReadonlyArray<Issue>,
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.ast = ast
     this.issues = issues
   }
@@ -754,23 +706,28 @@ export class OneOf extends Base {
      * The schemas that were successful.
      */
     successes: ReadonlyArray<SchemaAST.AST>,
-    report?: InputReport
+    input?: unknown,
+    options?: SchemaAST.ParseOptions
   ) {
-    super(report)
+    super(input, options)
     this.ast = ast
     this.successes = successes
   }
 }
 
-function makeFilterIssue(entry: Schema.FilterIssue, report?: InputReport): Issue {
+function makeFilterIssue(
+  entry: Schema.FilterIssue,
+  input?: unknown,
+  options?: SchemaAST.ParseOptions
+): Issue {
   if (isIssue(entry)) {
     return entry
   }
   if (typeof entry === "string") {
-    return new InvalidValue({ message: entry }, report)
+    return new InvalidValue({ message: entry }, input, options)
   }
   const inner = typeof entry.issue === "string"
-    ? new InvalidValue({ message: entry.issue }, report)
+    ? new InvalidValue({ message: entry.issue }, input, options)
     : entry.issue
   return new Pointer(entry.path, inner)
 }
@@ -778,32 +735,34 @@ function makeFilterIssue(entry: Schema.FilterIssue, report?: InputReport): Issue
 /** @internal */
 export function makeSingle(
   out: undefined | boolean | Schema.FilterIssue,
-  report?: InputReport
+  input?: unknown,
+  options?: SchemaAST.ParseOptions
 ): Issue | undefined {
   if (out === undefined) {
     return undefined
   }
   if (typeof out === "boolean") {
-    return out ? undefined : new InvalidValue(undefined, report)
+    return out ? undefined : new InvalidValue(undefined, input, options)
   }
-  return makeFilterIssue(out, report)
+  return makeFilterIssue(out, input, options)
 }
 
 /** @internal */
 export function normalizeFilterOutput(
   ast: SchemaAST.AST,
   out: Schema.FilterOutput,
-  report?: InputReport
+  input?: unknown,
+  options?: SchemaAST.ParseOptions
 ): Issue | undefined {
   if (Array.isArray(out)) {
     if (!Arr.isReadonlyArrayNonEmpty(out)) {
       return undefined
     }
     return out.length === 1
-      ? makeFilterIssue(out[0], report)
-      : new Composite(ast, Arr.map(out, (entry) => makeFilterIssue(entry, report)), report)
+      ? makeFilterIssue(out[0], input, options)
+      : new Composite(ast, Arr.map(out, (entry) => makeFilterIssue(entry, input, options)), input, options)
   }
-  return makeSingle(out as undefined | boolean | Schema.FilterIssue, report)
+  return makeSingle(out as undefined | boolean | Schema.FilterIssue, input, options)
 }
 
 /**

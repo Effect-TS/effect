@@ -192,12 +192,12 @@ export function fail<T, E>(
  * @since 4.0.0
  */
 export function forbidden<T, E>(message: (oe: Option.Option<E>) => string): Getter<T, E> {
-  return fail<T, E>((oe, options) =>
-    new SchemaIssue.Forbidden(
-      { message: message(oe) },
-      Option.isSome(oe) ? SchemaIssue.reportInput(oe.value, options) : undefined
-    )
-  )
+  return fail<T, E>((oe, options) => {
+    const annotations = { message: message(oe) }
+    return Option.isSome(oe)
+      ? new SchemaIssue.Forbidden(annotations, oe.value, options)
+      : new SchemaIssue.Forbidden(annotations)
+  })
 }
 
 const passthrough_ = new Getter<any, any>(Effect.succeed)
@@ -1029,7 +1029,8 @@ export function parseJson<E extends string>(options?: ParseJsonOptions | undefin
       catch: () =>
         new SchemaIssue.InvalidValue(
           { expected: "a valid JSON string" },
-          SchemaIssue.reportInput(input, parseOptions)
+          input,
+          parseOptions
         )
     })
   )
@@ -1094,7 +1095,8 @@ export function stringifyJson(options?: StringifyJsonOptions): Getter<string, un
       catch: () =>
         new SchemaIssue.InvalidValue(
           { expected: "a JSON-serializable value" },
-          SchemaIssue.reportInput(input, parseOptions)
+          input,
+          parseOptions
         )
     })
   )
@@ -1329,7 +1331,8 @@ export function decodeBase64<E extends string>(): Getter<Uint8Array, E> {
       () =>
         new SchemaIssue.InvalidValue(
           { expected: "a valid Base64 string" },
-          SchemaIssue.reportInput(input, options)
+          input,
+          options
         )
     )
   )
@@ -1364,7 +1367,8 @@ export function decodeBase64String<E extends string>(): Getter<string, E> {
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid Base64 string" },
-            SchemaIssue.reportInput(input, options)
+            input,
+            options
           )
         ),
       onSuccess: Effect.succeed
@@ -1402,7 +1406,8 @@ export function decodeBase64Url<E extends string>(): Getter<Uint8Array, E> {
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid Base64Url string" },
-            SchemaIssue.reportInput(input, options)
+            input,
+            options
           )
         ),
       onSuccess: Effect.succeed
@@ -1439,7 +1444,8 @@ export function decodeBase64UrlString<E extends string>(): Getter<string, E> {
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid Base64Url string" },
-            SchemaIssue.reportInput(input, options)
+            input,
+            options
           )
         ),
       onSuccess: Effect.succeed
@@ -1477,7 +1483,8 @@ export function decodeHex<E extends string>(): Getter<Uint8Array, E> {
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid hexadecimal string" },
-            SchemaIssue.reportInput(input, options)
+            input,
+            options
           )
         ),
       onSuccess: Effect.succeed
@@ -1514,7 +1521,8 @@ export function decodeHexString<E extends string>(): Getter<string, E> {
         Effect.fail(
           new SchemaIssue.InvalidValue(
             { expected: "a valid hexadecimal string" },
-            SchemaIssue.reportInput(input, options)
+            input,
+            options
           )
         ),
       onSuccess: Effect.succeed
@@ -1578,7 +1586,8 @@ export function decodeUriComponent<E extends string>(): Getter<string, E> {
       return Effect.fail(
         new SchemaIssue.InvalidValue(
           { expected: "a valid URI component" },
-          SchemaIssue.reportInput(input, options)
+          input,
+          options
         )
       )
     }
@@ -1622,7 +1631,7 @@ export function dateTimeUtcFromInput<E extends DateTime.DateTime.Input>(): Gette
     return Option.match(DateTime.make(input), {
       onNone: () =>
         Effect.fail(
-          new SchemaIssue.InvalidValue({ message: "Invalid DateTime input" }, SchemaIssue.reportInput(input, options))
+          new SchemaIssue.InvalidValue({ message: "Invalid DateTime input" }, input, options)
         ),
       onSome: (dt) => Effect.succeed(DateTime.toUtc(dt))
     })

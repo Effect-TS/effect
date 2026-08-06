@@ -368,7 +368,8 @@ export const transformation: SchemaTransformation.Transformation<
       return Effect.fail(
         new SchemaIssue.InvalidValue(
           { expected: "valid MessagePack bytes" },
-          SchemaIssue.reportInput(e, options)
+          e,
+          options
         )
       )
     }
@@ -380,7 +381,8 @@ export const transformation: SchemaTransformation.Transformation<
       return Effect.fail(
         new SchemaIssue.InvalidValue(
           { expected: "a MessagePack-serializable value" },
-          SchemaIssue.reportInput(t, options)
+          t,
+          options
         )
       )
     }
