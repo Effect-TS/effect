@@ -615,9 +615,11 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
 /**
  * Formats a `Cron` instance as a cron expression.
  *
- * **Warning**
+ * **Gotchas**
  *
- * Formatting drops the timezone information stored by the `Cron` instance.
+ * Formatting drops the timezone information and the `and` restriction between
+ * days and weekdays. Parsing the result is therefore not guaranteed to produce
+ * an equivalent schedule.
  *
  * **Example** (Formatting a cron expression)
  *
