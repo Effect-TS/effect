@@ -35,6 +35,7 @@ jobs:
       - name: Upgrade npm for OIDC support
         run: npm install -g npm@11
       - name: Create Release Pull Request or Publish
+        id: changesets
         uses: changesets/action@v1
         with:
           version: pnpm changeset-version
@@ -43,3 +44,8 @@ jobs:
           commit: Version Packages (v3)
         env:
           GITHUB_TOKEN: ${{ secrets.CHANGESET_GITHUB_TOKEN }}
+      - name: Deploy website
+        if: steps.changesets.outputs.published == 'true'
+        uses: ./.github/actions/deploy-website
+        with:
+          dispatch-token: ${{ secrets.WEBSITE_DISPATCH_TOKEN }}
