@@ -717,7 +717,9 @@ function base(ast: SchemaAST.AST, path: ReadonlyArray<PropertyKey>): LazyArbitra
               : out.map(Option.some)
           }
         )
-        let out = fc.tuple(...elementArbitraries).map(Array.getSomes)
+        let out = fc.tuple(...elementArbitraries).map((elements) =>
+          Array.getSomes(Array.takeWhile(elements, Option.isSome))
+        )
         // ---------------------------------------------
         // handle rest element
         // ---------------------------------------------
