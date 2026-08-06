@@ -3,7 +3,6 @@ import { Array, Result } from "effect"
 import * as Effect from "effect/Effect"
 import * as Fs from "effect/FileSystem"
 import type * as Layer from "effect/Layer"
-import * as PlatformError from "effect/PlatformError"
 import * as Stream from "effect/Stream"
 
 export interface TestLayerOptions {
@@ -140,7 +139,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
 
       const error = yield* fs.writeFileString(path, "data", { flag: "r" }).pipe(Effect.flip)
 
-      assert(error.reason instanceof PlatformError.SystemError)
+      assert(error.reason._tag !== "BadArgument")
       assert.strictEqual(error.reason.method, "writeFile")
       assert.strictEqual(error.reason.pathOrDescriptor, path)
       assert.strictEqual(yield* fs.readFileString(path), "")
@@ -181,8 +180,7 @@ export const testLayer = <E>(layer: Layer.Layer<Fs.FileSystem, E>, options: Test
       const result = yield* Effect.result(fs.copy(source, destination, { overwrite: false }))
 
       if (Result.isFailure(result)) {
-        assert(result.failure.reason instanceof PlatformError.SystemError)
-        assert.strictEqual(result.failure.reason._tag, "AlreadyExists")
+        assert(result.failure.reason._tag === "AlreadyExists")
         assert.strictEqual(result.failure.reason.method, "copy")
         assert.strictEqual(result.failure.reason.pathOrDescriptor, source)
       }

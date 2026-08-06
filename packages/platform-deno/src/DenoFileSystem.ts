@@ -455,7 +455,7 @@ const writeFile: FileSystem.FileSystem["writeFile"] = (path, data, options) => {
     (file) =>
       new FileImpl(file, flag.startsWith("a")).writeAll(data).pipe(
         Effect.mapError((error) =>
-          error.reason instanceof PlatformError.SystemError
+          error.reason._tag !== "BadArgument"
             ? PlatformError.systemError({ ...error.reason, method: "writeFile", pathOrDescriptor: path })
             : error
         )
