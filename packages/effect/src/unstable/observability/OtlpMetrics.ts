@@ -112,9 +112,12 @@ export const make: (options: {
   let previousHistogramState = new Map<string, PreviousHistogramState>()
   let previousFrequencyState = new Map<string, Map<string, number>>()
   let previousSummaryState = new Map<string, PreviousSummaryState>()
+  let snapshotSequence = 0
+  let committedSnapshotSequence = -1
 
   const snapshot = (): readonly [body: HttpBody, onSuccess: Effect.Effect<void>] => {
     const snapshot = Metric.snapshotUnsafe(services)
+    const currentSnapshotSequence = snapshotSequence++
     const nowNanos = clock.currentTimeNanosUnsafe()
     const nowTime = String(nowNanos)
     const nextCounterState = new Map(previousCounterState)
@@ -441,11 +444,13 @@ export const make: (options: {
     })
     const onSuccess = isDelta
       ? Effect.sync(() => {
+        if (currentSnapshotSequence < committedSnapshotSequence) return
         previousCounterState = nextCounterState
         previousHistogramState = nextHistogramState
         previousFrequencyState = nextFrequencyState
         previousSummaryState = nextSummaryState
         previousExportTimeNanos = nowNanos
+        committedSnapshotSequence = currentSnapshotSequence
       })
       : Effect.void
     return [body, onSuccess]

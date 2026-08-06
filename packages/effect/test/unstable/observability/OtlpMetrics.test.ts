@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Array, Context, Effect, Layer, Metric, Predicate, Ref } from "effect"
+import { Array, Context, Deferred, Effect, Fiber, Layer, Metric, Predicate, Ref } from "effect"
 import { TestClock } from "effect/testing"
 import { HttpClient, type HttpClientError, HttpClientResponse } from "effect/unstable/http"
 import { OtlpExporter, OtlpMetrics, OtlpSerialization } from "effect/unstable/observability"
@@ -71,6 +71,62 @@ describe("OtlpMetrics", () => {
         findMetric(second, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano,
         findMetric(first, "repro_counter")?.sum?.dataPoints[0].startTimeUnixNano
       )
+    })))
+
+  it.effect("does not regress delta checkpoints when exports complete out of order", () =>
+    Effect.scoped(Effect.gen(function*() {
+      const bodies = yield* Ref.make<ReadonlyArray<OtlpExportRequest>>([])
+      const started = yield* Effect.forEach([0, 1], () => Deferred.make<void>())
+      const releases = yield* Effect.forEach([0, 1], () => Deferred.make<void>())
+      let requestIndex = 0
+      const client = HttpClient.makeWith(
+        Effect.fnUntraced(function*(requestEffect) {
+          const request = yield* requestEffect
+          if (request.body._tag === "Uint8Array") {
+            const body = JSON.parse(new TextDecoder().decode(request.body.body)) as OtlpExportRequest
+            yield* Ref.update(bodies, Array.append(body))
+          }
+          const index = requestIndex++
+          if (index < 2) {
+            yield* Deferred.succeed(started[index], undefined)
+            yield* Deferred.await(releases[index])
+          }
+          return HttpClientResponse.fromWeb(request, new Response())
+        }),
+        Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+      )
+      const layer = OtlpMetrics.layer({
+        url: "http://localhost:4318/v1/metrics",
+        resource: { serviceName: "repro" },
+        temporality: "delta",
+        exportInterval: "1 hour"
+      }).pipe(
+        Layer.provide(OtlpSerialization.layerJson),
+        Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, client))
+      )
+      yield* Effect.gen(function*() {
+        const counter = Metric.counter("concurrent_delta")
+        const flusher = yield* OtlpExporter.Flusher
+        yield* Metric.update(counter, 1)
+        const first = yield* Effect.forkChild(flusher.flush)
+        yield* Deferred.await(started[0])
+
+        yield* TestClock.adjust("1 second")
+        yield* Metric.update(counter, 1)
+        const second = yield* Effect.forkChild(flusher.flush)
+        yield* Deferred.await(started[1])
+
+        yield* Deferred.succeed(releases[1], undefined)
+        yield* Fiber.join(second)
+        yield* Deferred.succeed(releases[0], undefined)
+        yield* Fiber.join(first)
+
+        yield* TestClock.adjust("1 second")
+        yield* flusher.flush
+      }).pipe(Effect.provide(layer), Effect.provideService(Metric.MetricRegistry, new Map()))
+
+      const requests = yield* Ref.get(bodies)
+      assert.strictEqual(findMetric(requests[2], "concurrent_delta")?.sum?.dataPoints[0].asDouble, 0)
     })))
 
   describe("cumulative temporality", () => {
