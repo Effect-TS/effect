@@ -12,7 +12,7 @@ import * as Data from "./Data.ts"
 import type * as DateTime from "./DateTime.ts"
 import * as Equal from "./Equal.ts"
 import * as Equ from "./Equivalence.ts"
-import { format } from "./Formatter.ts"
+import { format as formatValue } from "./Formatter.ts"
 import { constVoid, dual, pipe } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
@@ -152,7 +152,7 @@ const CronProto = {
     return toPojo(this)
   },
   toString(this: Cron) {
-    return `Cron(${format(toPojo(this))})`
+    return `Cron(${formatValue(toPojo(this))})`
   },
   toJSON(this: Cron) {
     const out = toPojo(this)
@@ -611,6 +611,31 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string): Result.Res
  * @since 4.0.0
  */
 export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron => Result.getOrThrow(parse(cron, tz))
+
+/**
+ * Formats a `Cron` instance as a six-field cron expression.
+ *
+ * **Warning**
+ *
+ * Formatting drops the timezone information stored by the `Cron` instance.
+ *
+ * **Example** (Formatting a cron expression)
+ *
+ * ```ts import.meta.vitest
+ * import { Cron } from "effect"
+ *
+ * const cron = Cron.parseUnsafe("23 0-20/2 * * 0", "UTC")
+ *
+ * Cron.format(cron) // => "0 23 0,2,4,6,8,10,12,14,16,18,20 * * 0"
+ * ```
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const format = (cron: Cron): string =>
+  [cron.seconds, cron.minutes, cron.hours, cron.days, cron.months, cron.weekdays]
+    .map((values) => values.size === 0 ? "*" : Array.from(values).join(","))
+    .join(" ")
 
 /**
  * Returns `true` when a date/time matches a `Cron` schedule.

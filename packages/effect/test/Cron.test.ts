@@ -218,6 +218,13 @@ describe("Cron", () => {
     )
   })
 
+  it("format", () => {
+    strictEqual(
+      Cron.format(Cron.parseUnsafe("23 0-20/2 * * 0", "Europe/Berlin")),
+      "0 23 0,2,4,6,8,10,12,14,16,18,20 * * 0"
+    )
+  })
+
   it("make supports requiring both days and weekdays", () => {
     const utc = DateTime.zoneMakeNamedUnsafe("UTC")
     const values = {
