@@ -7,7 +7,7 @@ import * as Path from "effect/Path"
 import * as Stream from "effect/Stream"
 import * as ChildProcess from "effect/unstable/process/ChildProcess"
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner"
-import { ApiDiffError } from "./Error.ts"
+import { ApiDiffError, isApiDiffError } from "./Error.ts"
 import { decodeJson } from "./Json.ts"
 import type { ApiSnapshot } from "./Model.ts"
 import { snapshotCacheKey, Snapshotter } from "./Snapshot.ts"
@@ -186,7 +186,7 @@ export class Worktrees extends Context.Service<Worktrees, {
                   ...(options.modules === undefined ? {} : { modules: options.modules })
                 }).pipe(
                   Effect.mapError((cause) =>
-                    cause instanceof ApiDiffError
+                    isApiDiffError(cause)
                       ? cause
                       : new ApiDiffError({
                         message: `Could not extract the ${options.name} API snapshot`,
@@ -221,7 +221,7 @@ export class Worktrees extends Context.Service<Worktrees, {
       const prepareSnapshot = (options: PrepareSnapshotOptions): Effect.Effect<ApiSnapshot, ApiDiffError> =>
         prepareSnapshotInternal(options).pipe(
           Effect.mapError((cause) =>
-            cause instanceof ApiDiffError
+            isApiDiffError(cause)
               ? cause
               : new ApiDiffError({
                 message: `Could not prepare the ${options.name} API snapshot`,

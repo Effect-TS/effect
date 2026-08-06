@@ -194,13 +194,15 @@ const evaluationFailure = (error: ConfigError, hasInput: boolean): EvaluationFai
   hasInput
 })
 
+const isSourceError = (u: unknown): u is ConfigProvider.SourceError => Predicate.isTagged(u, "SourceError")
+
 const catchSourceError = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   hasInput: boolean
 ): Effect.Effect<A, E | EvaluationFailure, R> =>
   self.pipe(
     Effect.catchDefect((defect) =>
-      defect instanceof ConfigProvider.SourceError
+      isSourceError(defect)
         ? Effect.fail(evaluationFailure(new ConfigError(defect), hasInput))
         : Effect.die(defect)
     )

@@ -6,6 +6,8 @@ import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/unstable/rpc"
 import { RpcClientError } from "effect/unstable/rpc/RpcClientError"
 import * as Socket from "effect/unstable/socket/Socket"
+import { vi } from "vitest"
+import type * as RpcClientErrorModule from "../../src/unstable/rpc/RpcClientError.ts"
 
 const TestGroup = RpcGroup.make(
   Rpc.make("Ping", { success: Schema.String }),
@@ -22,14 +24,19 @@ const makeHttpClient = (body: string): HttpClient.HttpClient =>
     )
   )
 
-const makeProtocolLayer = (
+const makeProtocolLayerWithClient = (
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
-  body: string
+  client: HttpClient.HttpClient
 ) =>
   RpcClient.layerProtocolHttp({ url: "http://localhost/rpc" }).pipe(
     Layer.provideMerge(serializationLayer),
-    Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, makeHttpClient(body)))
+    Layer.provideMerge(Layer.succeed(HttpClient.HttpClient, client))
   )
+
+const makeProtocolLayer = (
+  serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
+  body: string
+) => makeProtocolLayerWithClient(serializationLayer, makeHttpClient(body))
 
 const assertEmptyResponseFailsRequest = (
   serializationLayer: Layer.Layer<RpcSerialization.RpcSerialization>,
@@ -53,6 +60,31 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  it("preserves RpcClientError failures from a reloaded module copy", async () => {
+    vi.resetModules()
+    const ForeignRpcClientError = await vi.importActual<typeof RpcClientErrorModule>(
+      "../../src/unstable/rpc/RpcClientError.ts"
+    )
+    const rpcClientError = new ForeignRpcClientError.RpcClientError({
+      reason: new ForeignRpcClientError.RpcClientDefect({ message: "boom", cause: undefined })
+    })
+    assert.isFalse(rpcClientError instanceof RpcClientError)
+
+    const httpClient = HttpClient.make((request) => {
+      const response = HttpClientResponse.fromWeb(request, new Response("", { status: 200 }))
+      Object.defineProperty(response, "stream", { value: Stream.fail(rpcClientError) })
+      return Effect.succeed(response)
+    })
+    const error = await Effect.gen(function*() {
+      const client = yield* RpcClient.make(TestGroup).pipe(
+        Effect.provide(makeProtocolLayerWithClient(RpcSerialization.layerNdjson, httpClient))
+      )
+      return yield* client.Ping().pipe(Effect.flip)
+    }).pipe(Effect.scoped, Effect.runPromise)
+
+    assert.strictEqual(error, rpcClientError)
+  })
+
   it.effect("fails request on empty HTTP response for unframed serialization", () =>
     assertEmptyResponseFailsRequest(RpcSerialization.layerJson, "[]"))
 

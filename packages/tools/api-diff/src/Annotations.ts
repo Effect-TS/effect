@@ -2,7 +2,7 @@ import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
 import * as Path from "effect/Path"
 import * as Yaml from "yaml"
-import { ApiDiffError } from "./Error.ts"
+import { ApiDiffError, isApiDiffError } from "./Error.ts"
 
 export interface MigrationAnnotation {
   readonly replacement: string
@@ -65,7 +65,7 @@ const loadAnnotationsInternal = Effect.fnUntraced(function*(directory: string) {
 export const loadAnnotations = (directory: string) =>
   loadAnnotationsInternal(directory).pipe(
     Effect.mapError((cause) =>
-      cause instanceof ApiDiffError
+      isApiDiffError(cause)
         ? cause
         : new ApiDiffError({ message: `Could not load annotations from ${directory}`, cause })
     )

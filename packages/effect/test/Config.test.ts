@@ -12,6 +12,8 @@ import {
   SchemaIssue,
   SchemaTransformation
 } from "effect"
+import { vi } from "vitest"
+import type * as ConfigProviderModule from "../src/ConfigProvider.ts"
 
 async function assertSuccess<T>(config: Config.Config<T>, provider: ConfigProvider.ConfigProvider, expected: T) {
   const r = await config.parse(provider).pipe(
@@ -31,6 +33,23 @@ async function assertFailure<T>(config: Config.Config<T>, provider: ConfigProvid
 }
 
 describe("Config", () => {
+  it("recognizes SourceError defects from a reloaded module copy", async () => {
+    vi.resetModules()
+    const ForeignConfigProvider = await vi.importActual<typeof ConfigProviderModule>(
+      "../src/ConfigProvider.ts"
+    )
+    const sourceError = new ForeignConfigProvider.SourceError({ message: "source unavailable" })
+    assert.isFalse(sourceError instanceof ConfigProvider.SourceError)
+
+    const provider = ConfigProvider.make(() => Effect.die(sourceError))
+    const error = await Config.string("value").parse(provider).pipe(
+      Effect.flip,
+      Effect.runPromise
+    )
+
+    assert.strictEqual(error.cause, sourceError)
+  })
+
   it.effect("uses the current ConfigProvider when yielded as an Effect", () =>
     Effect.gen(function*() {
       const provider = ConfigProvider.fromEnv({ env: { STRING: "value" } })
