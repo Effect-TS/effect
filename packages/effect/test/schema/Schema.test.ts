@@ -33,8 +33,8 @@ import {
 } from "effect"
 import { TestSchema } from "effect/testing"
 import { produce } from "immer"
-import { deepStrictEqual, fail, ok, strictEqual } from "node:assert"
-import { assertFalse, assertInclude, assertTrue, throws } from "../utils/assert.ts"
+import { deepStrictEqual, fail, strictEqual } from "node:assert"
+import { assertFalse, assertInclude, assertSchemaIssueError, assertTrue, throws } from "../utils/assert.ts"
 
 const verifyGeneration = true
 
@@ -7975,10 +7975,7 @@ Expected a value between -2147483648 and 2147483647`
         Schema.asserts(schema, "a")
         fail("Expected asserts to throw an error")
       } catch (e) {
-        ok(e instanceof Error)
-        strictEqual(e.message, "Schema validation failed")
-        assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(formatIssue(e.cause), "Expected number")
+        assertSchemaIssueError(e, "Expected number")
       }
     })
   })
@@ -8009,17 +8006,11 @@ Expected a value between -2147483648 and 2147483647`
 
       const r5 = await decodeUnknownPromiseIssue(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r5))
-      assertTrue(r5.failure instanceof Error)
-      strictEqual(r5.failure.message, "Schema validation failed")
-      assertTrue(SchemaIssue.isIssue(r5.failure.cause))
-      strictEqual(formatIssue(r5.failure.cause), "Expected string")
+      assertSchemaIssueError(r5.failure, "Expected string")
 
       const r6 = await encodeUnknownPromiseIssue(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r6))
-      assertTrue(r6.failure instanceof Error)
-      strictEqual(r6.failure.message, "Schema validation failed")
-      assertTrue(SchemaIssue.isIssue(r6.failure.cause))
-      strictEqual(formatIssue(r6.failure.cause), "Expected number")
+      assertSchemaIssueError(r6.failure, "Expected number")
     })
 
     it("should reject with an error when the cause contains both a schema issue and a defect", async () => {
@@ -8198,17 +8189,11 @@ Expected a value between -2147483648 and 2147483647`
       })
 
       throws(() => SchemaParser.decodeUnknownSync(schema)(null), (e) => {
-        assertTrue(e instanceof Error)
-        strictEqual(e.message, "Schema validation failed")
-        assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(formatIssue(e.cause), "Expected string")
+        assertSchemaIssueError(e, "Expected string")
       })
 
       throws(() => SchemaParser.encodeUnknownSync(schema)(null), (e) => {
-        assertTrue(e instanceof Error)
-        strictEqual(e.message, "Schema validation failed")
-        assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(formatIssue(e.cause), "Expected number")
+        assertSchemaIssueError(e, "Expected number")
       })
     })
 
