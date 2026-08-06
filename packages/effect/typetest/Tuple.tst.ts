@@ -54,6 +54,10 @@ describe("Tuple", () => {
     it("data-last", () => {
       expect(pipe(tuple, Tuple.pick([0, 2]))).type.toBe<[string, boolean]>()
     })
+
+    it("preserves index order and duplicates", () => {
+      expect(Tuple.pick(tuple, [2, 0, 2])).type.toBe<[boolean, string, boolean]>()
+    })
   })
 
   describe("omit", () => {
