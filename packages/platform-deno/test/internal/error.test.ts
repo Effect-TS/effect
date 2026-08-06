@@ -10,6 +10,7 @@ describe("handleError", () => {
     [withCode(new Deno.errors.NotFound(), "ENOENT"), "NotFound"],
     [withCode(new Deno.errors.NotADirectory(), "ENOTDIR"), "BadResource"],
     [new Deno.errors.AlreadyExists(), "AlreadyExists"],
+    [withCode(new Deno.errors.AlreadyExists(), "EEXIST"), "AlreadyExists"],
     [withCode(new Deno.errors.IsADirectory(), "EISDIR"), "BadResource"],
     [withCode(new Deno.errors.PermissionDenied(), "EACCES"), "PermissionDenied"],
     [new Deno.errors.NotCapable(), "PermissionDenied"],
