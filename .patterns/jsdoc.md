@@ -133,4 +133,4 @@ Use this checklist when authoring or reviewing an example:
   snippets inside tests, where nested test registration is invalid. Invoke registration APIs directly so the snippet still
   shows the intended top-level usage.
 - Leave intentionally non-executable snippets as plain `````ts`` fences.
-- Run `pnpm doctest --run <source files>` from the repository root after changing runnable examples. Also run `pnpm docgen` from the affected package directory because docgen typechecks examples while doctest executes marked examples.
+- Run `pnpm doctest --run <source files>` from the repository root after changing runnable examples.

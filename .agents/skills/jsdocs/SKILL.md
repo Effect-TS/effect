@@ -160,7 +160,6 @@ A good example:
 - Leave examples that register Vitest tests or suites as plain `````ts`` fences because the doctest collector executes
   runnable snippets inside tests. Call the registration API directly to show its intended top-level usage.
 - Keep documentation-only snippets as plain `````ts`` fences.
-- Treat targeted doctest runs and package-local `pnpm docgen` as complementary checks: doctest executes marked examples, while docgen typechecks documentation examples.
 
 When reviewing existing examples:
 
@@ -257,6 +256,5 @@ When refining an existing public API module, always do a dedicated `**Gotchas**`
 Run the narrowest validation that matches the change:
 
 - For runnable JSDoc example changes, run `pnpm doctest --run <source files>` from the repository root.
-- For JSDoc or example changes in a package with generated docs, run `pnpm docgen` from that package directory.
 - Run `pnpm lint` because the linter includes the custom rule that checks public API JSDoc.
 - Do not run broad validation for prose-only skill edits.

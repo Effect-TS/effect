@@ -25,7 +25,6 @@
     "jsdocs": "effect-jsdocs",
     "lint": "oxlint -f unix && dprint check",
     "lint-fix": "oxlint --fix && dprint fmt",
-    "docgen": "pnpm --recursive --filter \"./packages/**/*\" exec docgen && node scripts/docs.mjs",
     "ai-docgen": "effect-ai-docgen ai-docs/src -o LLMS.md",
     "ai-docgen:watch": "pnpm ai-docgen --watch",
     "api-diff": "pnpm --dir packages/tools/api-diff exec node src/bin.ts",
