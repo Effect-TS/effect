@@ -225,6 +225,13 @@ describe("Cron", () => {
     )
   })
 
+  it("format can include the default seconds field", () => {
+    strictEqual(
+      Cron.format(Cron.parseUnsafe("23 0-20/2 * * 0"), { includeSeconds: true }),
+      "0 23 0-20/2 * * 0"
+    )
+  })
+
   it("format compacts multiple runs within a field", () => {
     strictEqual(
       Cron.format(Cron.make({

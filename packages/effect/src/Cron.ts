@@ -615,6 +615,11 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
 /**
  * Formats a `Cron` instance as a cron expression.
  *
+ * **Details**
+ *
+ * The default seconds field (`0`) is omitted unless `includeSeconds` is `true`.
+ * Other seconds configurations are always included.
+ *
  * **Gotchas**
  *
  * Formatting drops the timezone information and the `and` restriction between
@@ -629,15 +634,20 @@ export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron
  * const cron = Cron.parseUnsafe("23 0-20/2 * * 0", "UTC")
  *
  * Cron.format(cron) // => "23 0-20/2 * * 0"
+ * Cron.format(cron, { includeSeconds: true }) // => "0 23 0-20/2 * * 0"
  * ```
  *
  * @category getters
  * @since 4.0.0
  */
-export const format = (cron: Cron): string => {
+export const format = (cron: Cron, options?: {
+  readonly includeSeconds?: boolean
+}): string => {
   const segments = [cron.seconds, cron.minutes, cron.hours, cron.days, cron.months, cron.weekdays]
     .map(formatSegment)
-  return (cron.seconds.size === 1 && cron.seconds.has(0) ? segments.slice(1) : segments).join(" ")
+  return (
+    options?.includeSeconds !== true && cron.seconds.size === 1 && cron.seconds.has(0) ? segments.slice(1) : segments
+  ).join(" ")
 }
 
 const formatSegment = (values: ReadonlySet<number>): string => {
