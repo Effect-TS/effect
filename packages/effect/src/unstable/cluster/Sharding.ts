@@ -973,11 +973,36 @@ const make = Effect.gen(function*() {
       message._tag === "OutgoingRequest" ? message.annotations : message.rpc.annotations,
       Persisted
     )
+    const abandon = (error: EntityNotAssignedToRunner) => {
+      const shouldFail = !discard &&
+        (message._tag === "OutgoingRequest" || message.envelope._tag === "AckChunk")
+      if (!isPersisted) {
+        return shouldFail
+          ? Effect.fail(error)
+          : Effect.logDebug("Abandoning outgoing message during shutdown", message.envelope.address)
+      }
+      const persist = message._tag === "OutgoingRequest"
+        ? storage.saveRequest(message)
+        : storage.saveEnvelope(message)
+      return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
+        Effect.andThen(
+          shouldFail
+            ? Effect.fail(error)
+            : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
+        )
+      )
+    }
     return Effect.catchFilter(
       Effect.suspend(() => {
         const address = message.envelope.address
         if (isPersisted && !storageEnabled) {
           return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
+        }
+        if (
+          MutableRef.get(isShutdown) &&
+          (message._tag === "OutgoingRequest" || message.envelope._tag === "AckChunk")
+        ) {
+          return abandon(new EntityNotAssignedToRunner({ address }))
         }
         const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
@@ -1003,22 +1028,7 @@ const make = Effect.gen(function*() {
           const cannotRecover = MutableRef.get(isShutdown) ||
             (targetManager !== undefined && targetManager.status !== "alive")
           if (cannotRecover) {
-            const awaitingReply = message._tag === "OutgoingRequest" && !discard
-            if (!isPersisted) {
-              return awaitingReply
-                ? Effect.fail(error)
-                : Effect.logDebug("Abandoning outgoing message during shutdown", message.envelope.address)
-            }
-            const persist = message._tag === "OutgoingRequest"
-              ? storage.saveRequest(message)
-              : storage.saveEnvelope(message)
-            return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
-              Effect.andThen(
-                awaitingReply
-                  ? Effect.fail(error)
-                  : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
-              )
-            )
+            return abandon(error)
           }
         }
         if (retries === 0) {
