@@ -4,17 +4,40 @@ import * as Schema from "effect/Schema"
 import { SqlResolver } from "effect/unstable/sql"
 
 describe("SqlResolver", () => {
+  describe("grouped", () => {
+    it.effect("does not execute a batch when every request fails encoding", () =>
+      Effect.gen(function*() {
+        let executions = 0
+        const resolver = SqlResolver.grouped({
+          Request: Schema.Number.check(Schema.isGreaterThan(0)),
+          RequestGroupKey: (request) => request,
+          Result: Schema.Number,
+          ResultGroupKey: (result) => result,
+          execute: (inputs) => {
+            executions++
+            return Effect.succeed(inputs)
+          }
+        })
+
+        const exit = yield* Effect.exit(SqlResolver.request(-1, resolver))
+        yield* Effect.yieldNow
+
+        assert(Exit.isFailure(exit))
+        assert.strictEqual(executions, 0)
+      }))
+  })
+
   describe("findById", () => {
-    it.effect("does not execute a batch when every id fails encoding", () =>
+    it.effect("does not execute a batch when every request fails encoding", () =>
       Effect.gen(function*() {
         let executions = 0
         const resolver = SqlResolver.findById({
           Id: Schema.Number.check(Schema.isGreaterThan(0)),
           Result: Schema.Struct({ id: Schema.Number }),
           ResultId: (result) => result.id,
-          execute: (ids) => {
+          execute: (inputs) => {
             executions++
-            return Effect.succeed(ids.map((id) => ({ id })))
+            return Effect.succeed(inputs.map((id) => ({ id })))
           }
         })
 
@@ -91,6 +114,26 @@ describe("SqlResolver", () => {
         assert(Exit.isFailure(invalid))
         assert(Exit.isSuccess(valid))
         assert.strictEqual(valid.value, "value-2")
+      }))
+  })
+
+  describe("void", () => {
+    it.effect("does not execute a batch when every request fails encoding", () =>
+      Effect.gen(function*() {
+        let executions = 0
+        const resolver = SqlResolver.void({
+          Request: Schema.Number.check(Schema.isGreaterThan(0)),
+          execute: (inputs) => {
+            executions++
+            return Effect.succeed(inputs)
+          }
+        })
+
+        const exit = yield* Effect.exit(SqlResolver.request(-1, resolver))
+        yield* Effect.yieldNow
+
+        assert(Exit.isFailure(exit))
+        assert.strictEqual(executions, 0)
       }))
   })
 })
