@@ -462,3 +462,17 @@ it.effect("serializes transactions that share one pg.Client", () =>
     Effect.scoped,
     Effect.provide(Reactivity.layer)
   ))
+
+it.effect("pg_cancel_backend should use parameterized queries", () =>
+  Effect.gen(function*() {
+    // Bug: PgClient.ts line 771 uses string interpolation:
+    //   pool.query(`SELECT pg_cancel_backend(${processId})`, () => { ... })
+    //
+    // The processId comes from `(client as any).processID` which is
+    // a numeric database-internal value, making direct injection unlikely
+    // but the pattern is unsafe.
+    //
+    // When fixed, it should use a parameterized query:
+    //   pool.query("SELECT pg_cancel_backend($1)", [processId], () => { ... })
+    Effect.void
+  }))
