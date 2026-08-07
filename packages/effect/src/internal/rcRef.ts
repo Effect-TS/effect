@@ -115,18 +115,21 @@ const getState = <A, E>(self: RcRefImpl<A, E>) =>
             return restore(Effect.provideContext(
               self.acquire as Effect.Effect<A, E>,
               Context.add(self.context, Scope.Scope, scope)
-            )).pipe(Effect.map((value) => {
-              const state: State.Acquired<A> = {
-                _tag: "Acquired",
-                value,
-                scope,
-                fiber: undefined,
-                refCount: 1,
-                invalidated: false
-              }
-              self.state = state
-              return state
-            }))
+            )).pipe(
+              Effect.map((value) => {
+                const state: State.Acquired<A> = {
+                  _tag: "Acquired",
+                  value,
+                  scope,
+                  fiber: undefined,
+                  refCount: 1,
+                  invalidated: false
+                }
+                self.state = state
+                return state
+              }),
+              Effect.onExit((exit) => Exit.isFailure(exit) ? Scope.close(scope, exit) : Effect.void)
+            )
           })
         )
       }
