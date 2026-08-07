@@ -3447,42 +3447,34 @@ export function annotateKey<A extends AST>(ast: A, annotations: Schema.Annotatio
   return replaceContext(ast, context)
 }
 
-const optionalKeyLastLink = applyToLastLink(optionalKey)
-
-/**
- * Marks an AST node's property key as optional by setting
- * {@link Context.isOptional} to `true`.
- *
- * **Details**
- *
- * Also propagates the optional flag through the last link of the encoding
- * chain if present.
- *
- * @see {@link isOptional}
- * @see {@link Context}
- * @category transforming
- * @since 4.0.0
- */
-export function optionalKey<A extends AST>(ast: A): A {
+/** @internal */
+export const optionalKey: <A extends AST>(ast: A) => A = memoizeIdempotent(<A extends AST>(ast: A): A => {
   const context = ast.context ?
     ast.context.isOptional === false ?
       new Context(true, ast.context.isMutable, ast.context.constructorDefault, ast.context.annotations) :
       ast.context :
     new Context(true, false)
   return optionalKeyLastLink(replaceContext(ast, context))
-}
+})
 
-const mutableKeyLastLink = applyToLastLink(mutableKey)
+const optionalKeyLastLink = applyToLastLink(optionalKey)
 
 /** @internal */
-export function mutableKey<A extends AST>(ast: A): A {
+export const optional = memoize(<A extends AST>(ast: A): Union<A | Undefined> =>
+  optionalKey(new Union([ast, undefined_], "anyOf"))
+)
+
+/** @internal */
+export const mutableKey = memoizeIdempotent(<A extends AST>(ast: A): A => {
   const context = ast.context ?
     ast.context.isMutable === false ?
       new Context(ast.context.isOptional, true, ast.context.constructorDefault, ast.context.annotations) :
       ast.context :
     new Context(false, true)
   return mutableKeyLastLink(replaceContext(ast, context))
-}
+})
+
+const mutableKeyLastLink = applyToLastLink(mutableKey)
 
 /** @internal */
 export function withConstructorDefault<A extends AST>(
