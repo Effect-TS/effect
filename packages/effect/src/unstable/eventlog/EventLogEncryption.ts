@@ -109,14 +109,13 @@ export const makeEncryptionSubtle = (crypto: Crypto): Effect.Effect<EventLogEncr
         const key = (yield* getIdentityRootSecretMaterial(identity)).encryptionKey
         return yield* Effect.promise(() =>
           Promise.all(
-            data.map(async (entry) => {
+            data.map((entry) => {
               const iv = crypto.getRandomValues(new Uint8Array(12))
-              const encryptedEntry = await crypto.subtle.encrypt(
+              return crypto.subtle.encrypt(
                 { name: "AES-GCM", iv: toBufferSource(iv), tagLength: 128 },
                 key,
                 toBufferSource(entry)
-              )
-              return { iv, encryptedEntry: new Uint8Array(encryptedEntry) }
+              ).then((encryptedEntry) => ({ iv, encryptedEntry: new Uint8Array(encryptedEntry) }))
             })
           )
         )
