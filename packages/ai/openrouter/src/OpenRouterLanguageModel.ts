@@ -1320,7 +1320,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 // The signature typically arrives in the last reasoning delta,
                 // but reasoning-start only carries the first delta's metadata.
                 metadata: accumulatedReasoningDetails.length > 0
-                  ? { openRouter: { reasoningDetails: accumulatedReasoningDetails } }
+                  ? { openrouter: { reasoningDetails: accumulatedReasoningDetails } }
                   : undefined
               })
               reasoningStarted = false
