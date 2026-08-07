@@ -90,13 +90,36 @@ export const make = Platform.make({
       statusText
     })
   },
-  fileWebResponse(file, status, statusText, headers, _options) {
-    return ServerResponse.raw(Readable.fromWeb(file.stream() as any), {
+  fileWebResponse(file, status, statusText, headers, options) {
+    const offset = Number(options?.offset ?? 0)
+    const bytesToRead = options?.bytesToRead !== undefined ? Number(options.bytesToRead) : undefined
+    const chunkSize = options?.chunkSize !== undefined ? Math.max(1, Number(options.chunkSize)) : Infinity
+    const end = offset + (bytesToRead ?? Infinity)
+    const contentLength = Math.min(
+      Math.max(0, file.size - offset),
+      bytesToRead !== undefined ? Math.max(0, bytesToRead) : Infinity
+    )
+    const stream = end <= offset
+      ? Readable.from([])
+      : Readable.from(async function*() {
+        let position = 0
+        for await (const bytes of Readable.fromWeb(file.stream() as any)) {
+          const next = position + bytes.length
+          const start = Math.min(Math.max(offset - position, 0), bytes.length)
+          const stop = Math.min(Math.max(end - position, 0), bytes.length)
+          for (let index = start; index < stop; index += chunkSize) {
+            yield bytes.subarray(index, Math.min(index + chunkSize, stop))
+          }
+          if (next >= end) return
+          position = next
+        }
+      }())
+    return ServerResponse.raw(stream, {
       headers: Headers.merge(
         headers,
         Headers.fromRecordUnsafe({
           "content-type": headers["content-type"] ?? Mime.getType(file.name) ?? "application/octet-stream",
-          "content-length": file.size.toString()
+          "content-length": contentLength.toString()
         })
       ),
       status,
