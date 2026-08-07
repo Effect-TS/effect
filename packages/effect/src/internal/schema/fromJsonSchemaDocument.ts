@@ -767,13 +767,16 @@ function translateJsonSchemaMultiDocument(
           (schema.items === undefined &&
             prefixItems !== undefined &&
             schema.maxItems === prefixItems.length)
+        const isMaxItemsRedundant = isTupleClosed &&
+          typeof schema.maxItems === "number" &&
+          schema.maxItems >= elements.length
         return {
           _tag: "Arrays",
           elements,
           rest: isTupleClosed
             ? []
             : [schema.items === undefined ? unknown : recur(schema.items, [...path, "items"])],
-          checks: collectArrayChecks(schema)
+          checks: collectArrayChecks(schema, isMaxItemsRedundant)
         }
       }
       case "object":
@@ -808,17 +811,11 @@ function translateJsonSchemaMultiDocument(
     return checks
   }
 
-  function collectArrayChecks(schema: JsonSchema.JsonSchema): Array<Check> {
+  function collectArrayChecks(schema: JsonSchema.JsonSchema, isMaxItemsRedundant: boolean): Array<Check> {
     const checks: Array<Check> = []
     if (schema.prefixItems === undefined) {
       addNumberCheck(checks, schema.minItems, "effect/schema/isMinLength", "minLength")
     }
-    const maxItems = schema.maxItems
-    const prefixItemsLength = Array.isArray(schema.prefixItems) ? schema.prefixItems.length : undefined
-    const isMaxItemsRedundant = typeof maxItems === "number" &&
-      (schema.items === false
-        ? maxItems >= (prefixItemsLength ?? 0)
-        : schema.items === undefined && maxItems === prefixItemsLength)
     if (!isMaxItemsRedundant) {
       addNumberCheck(checks, schema.maxItems, "effect/schema/isMaxLength", "maxLength")
     }

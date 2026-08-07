@@ -1486,7 +1486,7 @@ describe("fromJsonSchemaDocument", () => {
       )
     })
 
-    it("prefixItems", () => {
+    it("prefixItems preserves maxItems below the prefix length", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -1571,7 +1571,9 @@ describe("fromJsonSchemaDocument", () => {
           "references": {}
         }
       )
+    })
 
+    it("prefixItems preserves maxItems above the prefix length", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -1631,7 +1633,9 @@ describe("fromJsonSchemaDocument", () => {
           "references": {}
         }
       )
+    })
 
+    it("prefixItems omits maxItems redundant with items: false", () => {
       assertFromJsonSchema(
         {
           schema: {
@@ -1659,7 +1663,9 @@ describe("fromJsonSchemaDocument", () => {
           "references": {}
         }
       )
+    })
 
+    it("prefixItems", () => {
       assertFromJsonSchema(
         {
           schema: {
