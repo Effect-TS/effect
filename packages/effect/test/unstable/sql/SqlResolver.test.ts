@@ -5,6 +5,26 @@ import { SqlResolver } from "effect/unstable/sql"
 
 describe("SqlResolver", () => {
   describe("findById", () => {
+    it.effect("does not execute a batch when every id fails encoding", () =>
+      Effect.gen(function*() {
+        let executions = 0
+        const resolver = SqlResolver.findById({
+          Id: Schema.Number.check(Schema.isGreaterThan(0)),
+          Result: Schema.Struct({ id: Schema.Number }),
+          ResultId: (result) => result.id,
+          execute: (ids) => {
+            executions++
+            return Effect.succeed(ids.map((id) => ({ id })))
+          }
+        })
+
+        const exit = yield* Effect.exit(SqlResolver.request(-1, resolver))
+        yield* Effect.yieldNow
+
+        assert(Exit.isFailure(exit))
+        assert.strictEqual(executions, 0)
+      }))
+
     it.effect("deduplicates requests by id", () =>
       Effect.gen(function*() {
         const batches: Array<Array<number>> = []
@@ -36,6 +56,25 @@ describe("SqlResolver", () => {
   })
 
   describe("ordered", () => {
+    it.effect("does not execute a batch when every request fails encoding", () =>
+      Effect.gen(function*() {
+        let executions = 0
+        const resolver = SqlResolver.ordered({
+          Request: Schema.Number.check(Schema.isGreaterThan(0)),
+          Result: Schema.String,
+          execute: (inputs) => {
+            executions++
+            return Effect.succeed(inputs.map(String))
+          }
+        })
+
+        const exit = yield* Effect.exit(SqlResolver.request(-1, resolver))
+        yield* Effect.yieldNow
+
+        assert(Exit.isFailure(exit))
+        assert.strictEqual(executions, 0)
+      }))
+
     it.effect("keeps valid results aligned when another request fails encoding", () =>
       Effect.gen(function*() {
         const resolver = SqlResolver.ordered({

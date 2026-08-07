@@ -122,6 +122,7 @@ export const ordered = <Req extends Schema.Constraint, Res extends Schema.Constr
     key: transactionKey,
     resolver: Effect.fnUntraced(function*(entries) {
       const [inputs, encodedEntries] = yield* partitionRequests(entries, options.Request)
+      if (inputs.length === 0) return
       const results = yield* options.execute(inputs as any).pipe(
         Effect.provideContext(entries[0].context)
       )
@@ -178,6 +179,7 @@ export const grouped = <Req extends Schema.Constraint, Res extends Schema.Constr
     key: transactionKey,
     resolver: Effect.fnUntraced(function*(entries) {
       const [inputs] = yield* partitionRequests(entries, options.Request)
+      if (inputs.length === 0) return
       const resultMap = MutableHashMap.empty<K, Arr.NonEmptyArray<Res["Type"]>>()
       const results = yield* options.execute(inputs as any).pipe(
         Effect.provideContext(entries[0].context)
@@ -246,6 +248,7 @@ export const findById = <Id extends Schema.Constraint, Res extends Schema.Constr
     key: transactionKey,
     resolver: Effect.fnUntraced(function*(entries) {
       const [inputs, idMap] = yield* partitionRequestsById(entries, options.Id)
+      if (inputs.length === 0) return
       const results = yield* options.execute(inputs as any).pipe(
         Effect.provideContext(entries[0].context)
       )
@@ -299,6 +302,7 @@ const void_ = <Req extends Schema.Constraint, _, E, R>(
     key: transactionKey,
     resolver: Effect.fnUntraced(function*(entries) {
       const [inputs] = yield* partitionRequests(entries, options.Request)
+      if (inputs.length === 0) return
       yield* options.execute(inputs as any).pipe(
         Effect.provideContext(entries[0].context)
       )
