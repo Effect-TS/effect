@@ -67,5 +67,9 @@ describe("NodeTerminal", () => {
   })
 
   it.effect("disposes readline after its idle TTL", () =>
-    assertOpenResult("read-line-disposed", "line\n", "{\"line\":\"line\",\"dataListeners\":0}"))
+    assertOpenResult(
+      "read-line-disposed",
+      "line\n",
+      "{\"line\":\"line\",\"duringTtl\":1,\"dataListeners\":0}"
+    ))
 })

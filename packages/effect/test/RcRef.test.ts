@@ -154,7 +154,6 @@ describe("RcRef", () => {
     Effect.gen(function*() {
       let acquired = 0
       let released = 0
-      const refScope = yield* Scope.make()
       const ref = yield* RcRef.make({
         acquire: Effect.acquireRelease(
           Effect.sync(() => {
@@ -167,7 +166,7 @@ describe("RcRef", () => {
             })
         ),
         idleTimeToLive: "10 millis"
-      }).pipe(Scope.provide(refScope))
+      })
 
       assert.strictEqual(acquired, 0)
       assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
@@ -190,7 +189,5 @@ describe("RcRef", () => {
 
       yield* TestClock.adjust("10 millis")
       assert.strictEqual(released, 2)
-
-      yield* Scope.close(refScope, Exit.void)
     }))
 })
