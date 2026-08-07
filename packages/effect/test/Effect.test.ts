@@ -2947,6 +2947,19 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(result, "e2")
       }))
+    it.effect("receives interrupt causes on interruption", () =>
+      Effect.gen(function*() {
+        let caught = false
+        const fiber = yield* Effect.never.pipe(
+          Effect.catchCause(() => Effect.sync(() => {
+            caught = true
+          })),
+          Effect.forkChild({ startImmediately: true })
+        )
+
+        yield* Fiber.interrupt(fiber)
+        assert.isTrue(caught)
+      }))
   })
 
   describe("transaction (composable transactions)", () => {
