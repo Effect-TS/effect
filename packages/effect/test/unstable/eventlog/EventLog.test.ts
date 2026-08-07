@@ -76,6 +76,43 @@ describe("EventLog", () => {
       assert.strictEqual(decrypted[0].entry.idString, entry.idString)
     }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 
+  it.effect("uses a distinct AES-GCM IV for each entry", () =>
+    Effect.gen(function*() {
+      const ivs: Array<Array<number>> = []
+      const subtle = new Proxy(globalThis.crypto.subtle, {
+        get(target, property) {
+          if (property === "encrypt") {
+            return (algorithm: AesGcmParams, key: CryptoKey, data: BufferSource) => {
+              const iv = algorithm.iv as ArrayBufferView<ArrayBuffer>
+              ivs.push(Array.from(new Uint8Array(iv.buffer, iv.byteOffset, iv.byteLength)))
+              return target.encrypt(algorithm, key, data)
+            }
+          }
+          const value = Reflect.get(target, property, target)
+          return typeof value === "function" ? value.bind(target) : value
+        }
+      })
+      const encryption = yield* EventLogEncryption.makeEncryptionSubtle({
+        subtle,
+        getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
+        randomUUID: globalThis.crypto.randomUUID.bind(globalThis.crypto)
+      } as Crypto)
+      const identity = yield* encryption.generateIdentity
+      const entries = ["user-1", "user-2"].map((primaryKey, index) =>
+        new EventJournal.Entry({
+          id: EventJournal.makeEntryIdUnsafe(),
+          event: "UserCreated",
+          primaryKey,
+          payload: new Uint8Array([index])
+        }, { disableChecks: true })
+      )
+
+      yield* encryption.encrypt(identity, entries)
+
+      assert.lengthOf(ivs, 2)
+      assert.notDeepEqual(ivs[0], ivs[1])
+    }))
+
   it.effect("publishes local journal changes through a scoped subscription", () =>
     Effect.gen(function*() {
       const remoteId = EventJournal.makeRemoteIdUnsafe()
