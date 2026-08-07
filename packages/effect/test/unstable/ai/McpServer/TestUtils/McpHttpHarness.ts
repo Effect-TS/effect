@@ -17,20 +17,26 @@ export const makeHttpHarness = Effect.fnUntraced(function*<A, E>(
   let sessionId: string | null = null
   let protocolVersion: string | null = null
 
-  const fetch: typeof globalThis.fetch = async (input, init) => {
-    const request = input instanceof Request ? input : new Request(input, init)
-    if (sessionId !== null) {
-      request.headers.set("Mcp-Session-Id", sessionId)
-    }
-    if (protocolVersion !== null && !request.headers.has("Mcp-Protocol-Version")) {
-      request.headers.set("Mcp-Protocol-Version", protocolVersion)
-    }
-    const response = await handler(request)
-    sessionId = response.headers.get("Mcp-Session-Id") ?? sessionId
-    protocolVersion = response.headers.get("Mcp-Protocol-Version") ?? protocolVersion
-    responses.push(response.clone())
-    return response
-  }
+  const fetch = Object.assign(
+    async (
+      input: Parameters<typeof globalThis.fetch>[0],
+      init?: Parameters<typeof globalThis.fetch>[1]
+    ): Promise<Response> => {
+      const request = input instanceof Request ? input : new Request(input, init)
+      if (sessionId !== null) {
+        request.headers.set("Mcp-Session-Id", sessionId)
+      }
+      if (protocolVersion !== null && !request.headers.has("Mcp-Protocol-Version")) {
+        request.headers.set("Mcp-Protocol-Version", protocolVersion)
+      }
+      const response = await handler(request)
+      sessionId = response.headers.get("Mcp-Session-Id") ?? sessionId
+      protocolVersion = response.headers.get("Mcp-Protocol-Version") ?? protocolVersion
+      responses.push(response.clone())
+      return response
+    },
+    { preconnect() {} }
+  )
 
   const postText = (body: string, headers?: HeadersInit) =>
     Effect.promise(() =>
