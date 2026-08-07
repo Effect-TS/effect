@@ -246,6 +246,44 @@ describe("OpenRouterLanguageModel", () => {
           })
         }
       }))
+
+    it.effect("uses lowercase openrouter reasoning-end metadata", () =>
+      Effect.gen(function*() {
+        const reasoningDetails = [{
+          type: "reasoning.text",
+          text: "thinking",
+          signature: "signature-final",
+          format: "unknown"
+        }] as const
+        const parts = yield* LanguageModel.streamText({ prompt: "reason then answer" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer([
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [{ index: 0, delta: { reasoning_details: reasoningDetails } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [{ index: 0, finish_reason: "stop", delta: { content: "answer" } }]
+            }
+          ]))
+        )
+
+        const reasoningEnd = globalThis.Array.from(parts).find((part) => part.type === "reasoning-end")
+        assert.isDefined(reasoningEnd)
+        if (reasoningEnd?.type === "reasoning-end") {
+          assert.deepStrictEqual(reasoningEnd.metadata, {
+            openrouter: { reasoningDetails }
+          })
+        }
+      }))
   })
 })
 
