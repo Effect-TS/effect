@@ -301,6 +301,10 @@ describe("ConfigProvider", () => {
       await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["DEFINED"])))
     })
 
+    it("treats empty strings as missing by default", async () => {
+      await assertMissing(ConfigProvider.fromEnvRecord({ EMPTY: "" }), ["EMPTY"])
+    })
+
     it("preserves empty strings when requested", async () => {
       const provider = ConfigProvider.fromEnvRecord(
         { EMPTY: "" },

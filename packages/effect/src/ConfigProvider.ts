@@ -846,6 +846,12 @@ function emptyStringAsMissing(value: string | undefined, preserveEmptyStrings: b
  * `undefined` values are ignored. Path lookup and child discovery otherwise
  * use the same environment-variable semantics as {@link fromEnv}.
  *
+ * Environment variable names are captured at construction time to establish
+ * record keys and array lengths. The supplied record remains live for value
+ * lookups, so updates to known paths are observed by later loads. Keys added
+ * after construction can be loaded directly, but do not appear in captured
+ * parent record keys or array lengths.
+ *
  * Literal empty strings are treated as missing values by default. Pass
  * `{ preserveEmptyStrings: true }` to keep empty strings as explicit values.
  *
