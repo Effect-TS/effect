@@ -240,6 +240,25 @@ describe("ExecutionPlan", () => {
           assertTrue(events[1]._tag === "AttemptSuccess" && Duration.isDuration(events[1].duration))
         }))
 
+      it.effect("observer defects do not change the outcome or leave attempts unpaired", () =>
+        Effect.gen(function*() {
+          const events = Array.empty<string>()
+          const exit = yield* Effect.succeed("source-success").pipe(
+            Effect.withExecutionPlan(ExecutionPlan.make({ provide: Context.empty() }), {
+              onEvent: (event) =>
+                Effect.sync(() => events.push(event._tag)).pipe(
+                  Effect.andThen(event._tag === "AttemptStart" ? Effect.die("observer-defect") : Effect.void)
+                )
+            }),
+            Effect.exit
+          )
+
+          assert.deepStrictEqual(
+            { exit, events },
+            { exit: Exit.succeed("source-success"), events: ["AttemptStart", "AttemptSuccess"] }
+          )
+        }))
+
       it.effect("emits an event pair per attempt within a step", () =>
         Effect.gen(function*() {
           const { events, onEvent } = makeCollector()
