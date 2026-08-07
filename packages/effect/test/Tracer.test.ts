@@ -1,6 +1,6 @@
 import { describe, it } from "@effect/vitest"
 import { assertInclude, assertNone, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Cause, Context, Duration, Effect, Fiber, Layer, Tracer } from "effect"
+import { Cause, Context, Duration, Effect, Fiber, Layer, References, Tracer } from "effect"
 import { TestClock } from "effect/testing"
 import type { Span } from "effect/Tracer"
 import { HttpClient, HttpClientResponse } from "effect/unstable/http"
@@ -287,6 +287,23 @@ describe("Tracer", () => {
 
         strictEqual(span.status.startTime, 0n)
       }))
+
+    it.effect("should set start and end times to zero when timing is disabled", () =>
+      Effect.gen(function*() {
+        yield* TestClock.adjust("1 millis")
+
+        const useSpan = yield* Effect.useSpan("useSpan", (span) => Effect.succeed(span))
+        const withSpan = yield* Effect.currentSpan.pipe(Effect.withSpan("withSpan"))
+
+        deepStrictEqual(
+          [useSpan.status, withSpan.status].map((status) => {
+            strictEqual(status._tag, "Ended")
+            return status._tag === "Ended" ? [status.startTime, status.endTime] : undefined
+          }),
+          [[0n, 0n], [0n, 0n]],
+          "disabled span timing"
+        )
+      }).pipe(Effect.provideService(References.TracerTimingEnabled, false)))
   })
 
   describe("Effect.linkSpans", () => {
