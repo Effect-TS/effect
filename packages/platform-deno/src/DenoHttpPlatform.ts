@@ -67,12 +67,29 @@ export const make = Platform.make({
       statusText
     })
   },
-  fileWebResponse(file, status, statusText, headers, _options) {
-    return Response.raw(file, {
+  fileWebResponse(file, status, statusText, headers, options) {
+    const offset = Number(options?.offset ?? 0)
+    const available = Math.max(0, file.size - offset)
+    const contentLength = options?.bytesToRead === undefined
+      ? available
+      : Math.min(available, Math.max(0, Number(options.bytesToRead)))
+    let body: typeof file | ReadableStream<Uint8Array> = file
+    if (contentLength === 0) {
+      body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close()
+        }
+      })
+    } else if (offset > 0 || options?.bytesToRead !== undefined) {
+      body = (file.stream() as ReadableStream<Uint8Array>).pipeThrough(
+        new ByteSliceStream(offset, offset + contentLength - 1)
+      )
+    }
+    return Response.raw(body, {
       headers: {
         ...headers,
         "content-type": file.type,
-        "content-length": file.size.toString()
+        "content-length": contentLength.toString()
       },
       status,
       statusText
