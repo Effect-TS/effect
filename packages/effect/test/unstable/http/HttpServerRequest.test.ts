@@ -20,7 +20,7 @@ describe("HttpServerRequest", () => {
         catch: () => undefined
       }).pipe(Effect.option)
 
-      assert.deepStrictEqual(
+      deepStrictEqual(
         {
           multipartMime: webRequest.headers.get("content-type")?.startsWith("multipart/form-data; boundary=") ?? false,
           name: Option.isSome(parsed) ? parsed.value.get("name") : undefined
