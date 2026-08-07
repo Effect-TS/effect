@@ -84,6 +84,32 @@ describe("Multipart", () => {
       strictEqual(error.reason._tag, "TooManyParts")
     }))
 
+  it("stops delivering fields when maxParts is exceeded", () => {
+    const boundary = "----testboundary"
+    const encoder = new TextEncoder()
+    const fields: Array<string> = []
+    const errors: Array<MultipartParser.MultipartError> = []
+    const parser = MultipartParser.make({
+      headers: { "content-type": `multipart/form-data; boundary=${boundary}` },
+      maxParts: 2,
+      onField(info) {
+        fields.push(info.name)
+      },
+      onFile: () => () => {},
+      onError(error) {
+        errors.push(error)
+      },
+      onDone() {}
+    })
+    const part = (name: string) =>
+      `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${name}\r\n`
+
+    parser.write(encoder.encode(part("a") + part("b") + part("c") + part("d") + `--${boundary}--\r\n`))
+
+    deepStrictEqual(errors[0], { _tag: "ReachedLimit", limit: "MaxParts" })
+    deepStrictEqual(fields, ["a", "b"])
+  })
+
   it("handles the final boundary delimiter split between the trailing hyphens", () => {
     const boundary = "----testboundary"
     const encoder = new TextEncoder()
