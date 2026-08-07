@@ -609,16 +609,74 @@ describe("SchemaRepresentation.toRepresentation", () => {
       const parent = Schema.Struct({ child })
       const document = SchemaRepresentation.toRepresentation(Schema.Tuple([parent, parent]).ast)
 
-      assert.deepStrictEqual(Object.keys(document.references), ["Objects_"])
+      assert.deepStrictEqual(document.references, {
+        Objects_: {
+          _tag: "Objects",
+          propertySignatures: [{
+            name: "child",
+            type: {
+              _tag: "Objects",
+              propertySignatures: [{
+                name: "value",
+                type: { _tag: "String", checks: [] },
+                isOptional: false,
+                isMutable: false
+              }],
+              indexSignatures: [],
+              checks: []
+            },
+            isOptional: false,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: []
+        }
+      })
     })
 
-    it("does not extract shared trivial or Suspend schemas", () => {
+    it("extracts shared Suspend schemas but not shared trivial schemas", () => {
       const suspend = Schema.suspend(() => Schema.String)
       const document = SchemaRepresentation.toRepresentation(
         Schema.Tuple([Schema.String, Schema.String, suspend, suspend]).ast
       )
 
-      assert.deepStrictEqual(document.references, {})
+      assert.deepStrictEqual(document.references, {
+        Suspend_: {
+          _tag: "Suspend",
+          checks: [],
+          thunk: { _tag: "String", checks: [] }
+        }
+      })
+    })
+
+    it("extracts shared Declaration schemas", () => {
+      const declaration = Schema.declare<string>((input): input is string => typeof input === "string")
+      const document = SchemaRepresentation.toRepresentation(Schema.Tuple([declaration, declaration]).ast)
+
+      assert.deepStrictEqual(document, {
+        representation: {
+          _tag: "Arrays",
+          elements: [
+            {
+              isOptional: false,
+              type: { _tag: "Reference", $ref: "Declaration_" }
+            },
+            {
+              isOptional: false,
+              type: { _tag: "Reference", $ref: "Declaration_" }
+            }
+          ],
+          rest: [],
+          checks: []
+        },
+        references: {
+          Declaration_: {
+            _tag: "Declaration",
+            typeParameters: [],
+            checks: []
+          }
+        }
+      })
     })
   })
 

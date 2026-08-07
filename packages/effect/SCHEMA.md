@@ -6302,14 +6302,19 @@ const multiDocument = SchemaRepresentation.toRepresentations([
 ])
 ```
 
-Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. `toMultiDocument(document)`
-wraps a single document when a compiler requires multiple roots.
+Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. Repeated `Suspend` and
+`Declaration` nodes are reference candidates as well. For unions, enums, template literals, and string literals, the
+converter uses an inexpensive size estimate and creates an anonymous reference only when it expects the reference to be
+smaller than repeating the body. `toMultiDocument(document)` wraps a single document when a compiler requires multiple
+roots.
 
-An explicit `identifier` requests a reference name within a conversion. Reusing the same schema shares its reference. Copies
-whose AST fields are referentially identical once property-key context is ignored are canonicalized and also share a
-reference. Otherwise, when referentially distinct schemas request the same name, the first schema keeps it and later schemas
-receive numeric suffixes in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback
-allocation hints; their generated names use the `Encoded` suffix and follow the same collision rules.
+An explicit `identifier` requests a reference name within a conversion. Reusing the same schema shares its reference.
+Context-only copies created through `SchemaAST.replaceContext` retain the original AST as their reference owner, including
+across several successive context changes. Context still belongs to each occurrence and does not, by itself, make a node a
+reference candidate. Independently constructed ASTs are not canonicalized merely because their other fields contain the
+same references. When distinct schemas request the same name, the first schema keeps it and later schemas receive numeric
+suffixes in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation
+hints; their generated names use the `Encoded` suffix and follow the same collision rules.
 
 ## JSON persistence
 
@@ -6409,11 +6414,23 @@ The same reviver can then be included in the `revivers` array passed to `fromRep
 ### Exporting JSON Schema
 
 For a runtime schema, prefer `Schema.toJsonSchemaDocument(schema)`. It first derives the schema's canonical JSON codec,
-then compiles its encoded representation to JSON Schema Draft 2020-12.
+then compiles its encoded representation to JSON Schema Draft 2020-12. During this high-level conversion, declarations
+are not extracted into anonymous references: their JSON Schema body is unconstrained, and leaving it inline preserves
+empty-schema simplifications. Explicit and recursive references are unaffected.
 
 At the lower level, `SchemaRepresentation.toJsonSchemaDocument(document)` compiles a live `Document`, and
 `toJsonSchemaMultiDocument` compiles a live `MultiDocument`. Check-level `toJsonSchema` callbacks contribute JSON Schema
 constraints. Opaque declarations that have not been structurally lowered compile to an unconstrained JSON Schema.
+
+`toJsonSchema` callbacks must treat their input schemas as immutable and return a valid JSON Schema object graph. After a
+callback returns, it must not mutate that object or anything reachable from it; returning a new graph is the supported way
+to produce different output during a later compilation. The compiler may cache structural comparisons while
+deduplicating completed definitions, so mutating a previously returned graph can make equality results stale.
+
+Definitions are compared only with definitions in the same internal fallback-identifier group. Equal definitions in
+different groups and definitions with explicit identifiers remain distinct. After compilation, local `#/$defs/...`
+references are rewritten to the surviving definition, including references returned directly by callbacks. External
+references and other local JSON Pointers remain unchanged.
 
 Because compiler callbacks are not persisted, compile the live document before calling `toJson`, or rebuild and lower the
 schema with revivers first.
