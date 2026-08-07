@@ -132,7 +132,7 @@ describe("RpcClient", () => {
       yield* Fiber.join(secondSent)
       yield* Fiber.interrupt(second)
       assert.deepStrictEqual(sentRequestIds, [1, 2])
-    }).pipe(Effect.scoped))
+    }))
 
   it("preserves RpcClientError failures from a reloaded module copy", async () => {
     vi.resetModules()
