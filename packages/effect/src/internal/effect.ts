@@ -5862,11 +5862,8 @@ export const useSpan: {
   return withFiber((fiber) => {
     const span = makeSpanUnsafe(fiber, name, options)
     const clock = fiber.getRef(ClockRef)
-    return onExit(internalCall(() => evaluate(span)), (exit) =>
-      sync(() => {
-        if (span.status._tag === "Ended") return
-        span.end(clock.currentTimeNanosUnsafe(), exit)
-      }))
+    const timingEnabled = fiber.getRef(TracerTimingEnabled)
+    return onExit(internalCall(() => evaluate(span)), (exit) => endSpan(span, exit, clock, timingEnabled))
   })
 }
 
