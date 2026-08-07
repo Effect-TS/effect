@@ -8,7 +8,30 @@ const fixture = `${import.meta.dirname}/fixtures/text.txt`
 
 const readStream = (stream: ReadableStream<Uint8Array>) => Effect.promise(() => new globalThis.Response(stream).text())
 
+const readBody = (body: HttpBody.HttpBody) => {
+  assert.strictEqual(body._tag, "Raw")
+  return Effect.promise(() => new Response((body as HttpBody.Raw).body as BodyInit).text())
+}
+
 describe("DenoHttpPlatform", () => {
+  it.effect("fileWebResponse honors offset and bytesToRead including zero", () =>
+    Effect.gen(function*() {
+      const platform = yield* HttpPlatform.HttpPlatform
+      const file = new File(["abcd"], "file.txt", { type: "text/plain", lastModified: 0 })
+      const sliced = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 2 })
+      const empty = yield* platform.fileWebResponse(file, { offset: 1, bytesToRead: 0 })
+
+      assert.deepStrictEqual(
+        {
+          slicedLength: sliced.headers["content-length"],
+          slicedBody: yield* readBody(sliced.body),
+          emptyLength: empty.headers["content-length"],
+          emptyBody: yield* readBody(empty.body)
+        },
+        { slicedLength: "2", slicedBody: "bc", emptyLength: "0", emptyBody: "" }
+      )
+    }).pipe(Effect.provide(DenoHttpPlatform.layer)))
+
   it.effect("fileResponse reads exact bytesToRead", () =>
     Effect.gen(function*() {
       const platform = yield* HttpPlatform.HttpPlatform
