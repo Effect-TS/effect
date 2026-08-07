@@ -17,7 +17,7 @@ export const makeHttpHarness = Effect.fnUntraced(function*<A, E>(
   let sessionId: string | null = null
   let protocolVersion: string | null = null
 
-  const fetch: typeof globalThis.fetch = async (input, init) => {
+  const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const request = input instanceof Request ? input : new Request(input, init)
     if (sessionId !== null) {
       request.headers.set("Mcp-Session-Id", sessionId)
@@ -31,6 +31,7 @@ export const makeHttpHarness = Effect.fnUntraced(function*<A, E>(
     responses.push(response.clone())
     return response
   }
+  const fetch: typeof globalThis.fetch = Object.assign(fetchImpl, { preconnect() {} })
 
   const postText = (body: string, headers?: HeadersInit) =>
     Effect.promise(() =>
