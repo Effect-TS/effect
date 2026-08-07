@@ -53,9 +53,7 @@ describe("BrowserCrypto", () => {
     }).pipe(Effect.provide(BrowserCrypto.layer.pipe(
       Layer.provide(Layer.succeed(BrowserCrypto.WebCrypto, {
         ...crypto,
-        getRandomValues<T extends ArrayBufferView | null>(array: T): T {
-          return getRandomValues(array)
-        }
+        getRandomValues
       }))
     ))))
 
@@ -69,9 +67,7 @@ describe("BrowserCrypto", () => {
     }).pipe(Effect.provide(BrowserCrypto.layer.pipe(
       Layer.provide(Layer.succeed(BrowserCrypto.WebCrypto, {
         ...crypto,
-        getRandomValues<T extends ArrayBufferView | null>(array: T): T {
-          return getRandomValues(array)
-        }
+        getRandomValues
       }))
     ))))
 
