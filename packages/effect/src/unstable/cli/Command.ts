@@ -1677,6 +1677,12 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
     }
   })
 
+const showUserError = (error: CliError.UserError): Effect.Effect<void> =>
+  Effect.gen(function*() {
+    const formatter = yield* CliOutput.Formatter
+    yield* Console.error(formatter.formatError(error))
+  })
+
 /**
  * Runs a command using the arguments supplied by the `Stdio` service.
  *
@@ -1684,6 +1690,10 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
  *
  * Use when command-line arguments should come from `Stdio` at the application
  * entry point.
+ *
+ * By default, help and `CliError.UserError` failures are rendered with the
+ * installed `CliOutput.Formatter` before the error is rethrown. Set
+ * `renderErrors` to `false` when the host application owns error rendering.
  *
  * **Example** (Running commands with standard input)
  *
@@ -1736,6 +1746,7 @@ const showHelp = <Name extends string, Input, E, R, ContextInput>(
 export const run: {
   (config: {
     readonly version: string
+    readonly renderErrors?: boolean | undefined
   }): <Name extends string, Input, E, R, ContextInput>(
     command: Command<Name, Input, ContextInput, E, R>
   ) => Effect.Effect<void, E | CliError.CliError, R | Environment>
@@ -1743,12 +1754,14 @@ export const run: {
     command: Command<Name, Input, ContextInput, E, R>,
     config: {
       readonly version: string
+      readonly renderErrors?: boolean | undefined
     }
   ): Effect.Effect<void, E | CliError.CliError, R | Environment>
 } = dual(2, <Name extends string, Input, E, R, ContextInput>(
   command: Command<Name, Input, ContextInput, E, R>,
   config: {
     readonly version: string
+    readonly renderErrors?: boolean | undefined
   }
 ) =>
   Stdio.Stdio.use(({ args }) =>
@@ -1765,6 +1778,10 @@ export const run: {
  *
  * Use when you need to test CLI applications or programmatically execute
  * commands with specific arguments.
+ *
+ * By default, help and `CliError.UserError` failures are rendered with the
+ * installed `CliOutput.Formatter` before the error is rethrown. Set
+ * `renderErrors` to `false` when the host application owns error rendering.
  *
  * **Example** (Running commands with explicit arguments)
  *
@@ -1819,6 +1836,7 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
   command: Command<Name, Input, ContextInput, E, R>,
   config: {
     readonly version: string
+    readonly renderErrors?: boolean | undefined
   }
 ): (
   input: ReadonlyArray<string>
@@ -1930,10 +1948,17 @@ export const runWith = <const Name extends string, Input, E, R, ContextInput>(
     },
     Effect.catchFilter(
       (error) =>
-        CliError.isCliError(error) && error._tag === "ShowHelp"
+        config.renderErrors !== false && CliError.isCliError(error) && error._tag === "ShowHelp"
           ? Result.succeed(error)
           : Result.fail(error),
       (error) => Effect.andThen(showHelp(command, error), Effect.fail(error))
+    ),
+    Effect.catchFilter(
+      (error) =>
+        config.renderErrors !== false && CliError.isCliError(error) && error._tag === "UserError"
+          ? Result.succeed(error)
+          : Result.fail(error),
+      (error) => Effect.andThen(showUserError(error), Effect.fail(error))
     ),
     Effect.catchFilter(
       (e) =>

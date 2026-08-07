@@ -478,6 +478,10 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
 /**
  * Error wrapper for user handler failures in the CLI error channel.
  *
+ * `userMessage` can provide safe, user-facing text independently of the
+ * underlying cause. When omitted, `message` uses a string cause or a non-empty
+ * `Error.message`, then falls back to `"An error occurred"`.
+ *
  * **Example** (Wrapping user errors)
  *
  * ```ts import.meta.vitest
@@ -486,7 +490,8 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
  *
  * // Wrapping user errors
  * const userError = new CliError.UserError({
- *   cause: new Error("Database connection failed")
+ *   cause: new Error("Database connection failed for postgres://localhost"),
+ *   userMessage: "Could not connect to the database"
  * })
  *
  * // In command handler
@@ -516,7 +521,8 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
 export class UserError extends Schema.TaggedError<UserError>(
   `${TypeId}/UserError`
 )("UserError", {
-  cause: Schema.Defect()
+  cause: Schema.Defect(),
+  userMessage: Schema.optionalKey(Schema.String)
 }) {
   /**
    * Marks this value as a user handler error for runtime guards.
@@ -524,6 +530,26 @@ export class UserError extends Schema.TaggedError<UserError>(
    * @since 4.0.0
    */
   readonly [TypeId] = TypeId
+
+  /**
+   * Prevents the runtime logger from reporting an error already rendered by
+   * the CLI runner.
+   *
+   * @since 4.0.0
+   */
+  override readonly [Runtime.errorReported] = false
+
+  /**
+   * Returns the explicit user-facing message or a safe fallback from `cause`.
+   *
+   * @since 4.0.0
+   */
+  override get message() {
+    if (this.userMessage !== undefined) return this.userMessage
+    if (typeof this.cause === "string") return this.cause
+    if (this.cause instanceof Error && this.cause.message) return this.cause.message
+    return "An error occurred"
+  }
 }
 
 /**
