@@ -31,6 +31,7 @@ export const makeEventEmitter = (
 ): EventEmitter => {
   let lastStepIndex = -1
   let stepAttempt = 0
+  const emit = (event: Api.Event<any>) => effect.ignoreCause(onEvent(event))
   return {
     begin: effect.clockWith((clock) =>
       effect.suspend(() => {
@@ -47,7 +48,7 @@ export const makeEventEmitter = (
           startNanos: clock.monotonicTimeNanosUnsafe()
         }
         return effect.as(
-          onEvent({
+          emit({
             _tag: "AttemptStart",
             attempt: state.attempt,
             stepAttempt: state.stepAttempt,
@@ -60,7 +61,7 @@ export const makeEventEmitter = (
     end: (state, exit) =>
       effect.clockWith((clock) => {
         const duration = Duration.nanos(clock.monotonicTimeNanosUnsafe() - state.startNanos)
-        return onEvent(
+        return emit(
           exit._tag === "Success"
             ? {
               _tag: "AttemptSuccess",
