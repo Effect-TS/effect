@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Fiber, Option, TxPubSub, TxQueue } from "effect"
+import { Effect, Exit, Fiber, Option, Scope, TxPubSub, TxQueue } from "effect"
 
 describe("TxPubSub", () => {
   describe("constructors", () => {
@@ -331,6 +331,17 @@ describe("TxPubSub", () => {
   })
 
   describe("scope cleanup", () => {
+    it.effect("releases a subscriber after hub shutdown without interruption", () =>
+      Effect.gen(function*() {
+        const hub = yield* Effect.tx(TxPubSub.unbounded<number>())
+        const scope = yield* Scope.make()
+        yield* TxPubSub.subscribe(hub).pipe(Scope.provide(scope))
+        yield* Effect.tx(TxPubSub.shutdown(hub))
+
+        const release = yield* Effect.exit(Scope.close(scope, Exit.void))
+        assert(Exit.isSuccess(release))
+      }))
+
     it.effect("closing scope removes subscriber", () =>
       Effect.gen(function*() {
         const hub = yield* Effect.tx(TxPubSub.unbounded<number>())
