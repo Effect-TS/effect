@@ -68,9 +68,9 @@ describe("EventLog", () => {
       const encrypted = yield* encryption.encrypt(identity, [entry])
       const decrypted = yield* encryption.decrypt(identity, [{
         sequence: 0,
-        iv: encrypted.iv,
+        iv: encrypted[0].iv,
         entryId: entry.id,
-        encryptedEntry: encrypted.encryptedEntries[0]
+        encryptedEntry: encrypted[0].encryptedEntry
       }])
       assert.strictEqual(decrypted.length, 1)
       assert.strictEqual(decrypted[0].entry.idString, entry.idString)

@@ -261,8 +261,8 @@ export class WriteChunkedRpc extends Rpc.make("EventLog.WriteChunked", {
  *
  * **Details**
  *
- * It includes the client public key, target store id, AES-GCM initialization
- * vector, and encrypted entries.
+ * It includes the client public key, target store id, and encrypted entries
+ * with their AES-GCM initialization vectors.
  *
  * @category protocols
  * @since 4.0.0
@@ -270,7 +270,6 @@ export class WriteChunkedRpc extends Rpc.make("EventLog.WriteChunked", {
 export class WriteEntries extends Schema.Class<WriteEntries>("effect/eventlog/EventLogRemote/WriteEntries")({
   publicKey: Schema.String,
   storeId: StoreId,
-  iv: Transferable.Uint8Array,
   encryptedEntries: Schema.Array(EncryptedEntry)
 }) {
   static FromMsgpack = Msgpack.schema(WriteEntries)

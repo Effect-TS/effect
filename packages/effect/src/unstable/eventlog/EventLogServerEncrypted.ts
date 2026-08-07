@@ -67,10 +67,10 @@ export const layerRpcHandlers = Layer.unwrap(Effect.gen(function*() {
         })
       }
       if (request.encryptedEntries.length === 0) return
-      const entries = request.encryptedEntries.map(({ encryptedEntry, entryId }) =>
+      const entries = request.encryptedEntries.map(({ encryptedEntry, entryId, iv }) =>
         new PersistedEntry({
           entryId,
-          iv: request.iv,
+          iv,
           encryptedEntry
         })
       )
