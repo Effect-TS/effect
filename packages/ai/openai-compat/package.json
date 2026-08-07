@@ -1,6 +1,6 @@
 {
   "name": "@effect/ai-openai-compat",
-  "version": "4.0.0-beta.104",
+  "version": "4.0.0-beta.105",
   "type": "module",
   "license": "MIT",
   "description": "An OpenAI compat integration for Effect",
@@ -39,7 +39,10 @@
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map"
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*"
   ],
   "publishConfig": {
     "access": "public",

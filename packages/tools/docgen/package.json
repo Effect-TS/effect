@@ -1,6 +1,6 @@
 {
   "name": "@effect/docgen",
-  "version": "4.0.0-beta.104",
+  "version": "4.0.0-beta.105",
   "type": "module",
   "license": "MIT",
   "description": "An opinionated documentation generator for Effect projects",
@@ -31,7 +31,10 @@
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map"
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*"
   ],
   "publishConfig": {
     "access": "public",
@@ -72,10 +75,10 @@
   "devDependencies": {
     "@effect/vitest": "workspace:^",
     "@types/babel__code-frame": "^7.0.6",
-    "@types/doctrine": "0.0.9",
+    "@types/doctrine": "^0.0.9",
     "@types/node": "^26.1.2",
     "tsx": "^4.23.1",
     "typescript": "^6.0.3",
-    "vitest": "4.1.10"
+    "vitest": "^4.1.10"
   }
 }
