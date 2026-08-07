@@ -1,4 +1,4 @@
-import { assert, describe, it } from "@effect/vitest"
+import { assert, describe, it, test } from "@effect/vitest"
 import * as Cause from "effect/Cause"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -9,6 +9,8 @@ import * as Tracer from "effect/Tracer"
 import * as HttpMiddleware from "effect/unstable/http/HttpMiddleware"
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest"
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse"
+import * as HttpEffect from "effect/unstable/http/HttpEffect"
+import * as HttpServer from "effect/unstable/http/HttpServer"
 
 describe("HttpMiddleware", () => {
   describe("logger", () => {
@@ -179,5 +181,20 @@ describe("HttpMiddleware", () => {
           assert.deepStrictEqual(serverSpan.status.exit, Exit.fail(streamError))
         }
       }))
+  })
+
+  describe("cors", () => {
+    test("rejects unlisted origins in single-origin mode", async () => {
+      const handler = HttpEffect.toWebHandler(
+        HttpServerResponse.empty()
+      )
+
+      const response = await handler(new Request("https://api.example.com/data", {
+        method: "GET",
+        headers: { origin: "https://evil.com" }
+      }))
+
+      assert.strictEqual(response.status, 204)
+    })
   })
 })

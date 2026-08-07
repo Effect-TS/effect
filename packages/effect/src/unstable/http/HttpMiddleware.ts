@@ -326,9 +326,12 @@ export const cors = (options?: {
     ? constant({
       "access-control-allow-origin": "*"
     })
-    : constant({
-      "access-control-allow-origin": opts.allowedOrigins[0],
-      vary: "Origin"
+    : ((originHeader: string) => {
+      if (!isAllowedOrigin(originHeader)) return undefined
+      return {
+        "access-control-allow-origin": originHeader,
+        vary: "Origin"
+      }
     })
 
   const allowMethods = opts.allowedMethods.length > 0
