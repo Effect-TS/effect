@@ -276,13 +276,8 @@ describe("OpenRouterLanguageModel", () => {
           ]))
         )
 
-        const reasoningEnd = globalThis.Array.from(parts).find((part) => part.type === "reasoning-end")
-        assert.isDefined(reasoningEnd)
-        if (reasoningEnd?.type === "reasoning-end") {
-          assert.deepStrictEqual(reasoningEnd.metadata, {
-            openrouter: { reasoningDetails }
-          })
-        }
+        const reasoningEnd = parts.find((part) => part.type === "reasoning-end")
+        deepStrictEqual(reasoningEnd?.metadata, { openrouter: { reasoningDetails } })
       }))
   })
 })
@@ -377,7 +372,7 @@ const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
     return yield* Effect.die(new Error("Expected Uint8Array body"))
   })
 
-const makeStreamTestLayer = (events: ReadonlyArray<unknown>) => {
+const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ChatStreamChunk.Encoded>) => {
   const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n"
   const httpClient = HttpClient.makeWith(
     Effect.fnUntraced(function*(requestEffect) {
