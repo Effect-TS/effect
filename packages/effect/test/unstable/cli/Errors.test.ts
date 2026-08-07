@@ -325,10 +325,21 @@ describe("Command errors", () => {
       assert.strictEqual(error.message, "An error occurred")
     })
 
-    it("is marked as reported by the CLI runner", () => {
+    it("falls back past empty user-facing and cause messages", () => {
+      const emptyUserMessage = new CliError.UserError({
+        cause: new Error("Connection refused"),
+        userMessage: ""
+      })
+      const emptyCause = new CliError.UserError({ cause: "" })
+
+      assert.strictEqual(emptyUserMessage.message, "Connection refused")
+      assert.strictEqual(emptyCause.message, "An error occurred")
+    })
+
+    it("allows runtime reporting before the CLI runner renders it", () => {
       const error = new CliError.UserError({ cause: "failed" })
 
-      assert.strictEqual(error[Runtime.errorReported], false)
+      assert.isTrue(Runtime.getErrorReported(error))
     })
 
     it("escapes control characters in the user-facing message", () => {

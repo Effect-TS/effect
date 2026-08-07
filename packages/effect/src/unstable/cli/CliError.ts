@@ -479,8 +479,8 @@ export class UnknownSubcommand extends Schema.TaggedError<UnknownSubcommand>(
  * Error wrapper for user handler failures in the CLI error channel.
  *
  * `userMessage` can provide safe, user-facing text independently of the
- * underlying cause. When omitted, `message` uses a string cause or a non-empty
- * `Error.message`, then falls back to `"An error occurred"`.
+ * underlying cause. When omitted or empty, `message` uses a non-empty string
+ * cause or `Error.message`, then falls back to `"An error occurred"`.
  *
  * **Example** (Wrapping user errors)
  *
@@ -532,12 +532,12 @@ export class UserError extends Schema.TaggedError<UserError>(
   readonly [TypeId] = TypeId
 
   /**
-   * Prevents the runtime logger from reporting an error already rendered by
-   * the CLI runner.
+   * Controls whether the runtime logger should report this error. The CLI
+   * runner sets this to `false` after rendering the error itself.
    *
    * @since 4.0.0
    */
-  override readonly [Runtime.errorReported] = false
+  override [Runtime.errorReported] = true
 
   /**
    * Returns the explicit user-facing message or a safe fallback from `cause`.
@@ -545,8 +545,8 @@ export class UserError extends Schema.TaggedError<UserError>(
    * @since 4.0.0
    */
   override get message() {
-    if (this.userMessage !== undefined) return this.userMessage
-    if (typeof this.cause === "string") return this.cause
+    if (this.userMessage) return this.userMessage
+    if (typeof this.cause === "string" && this.cause) return this.cause
     if (this.cause instanceof Error && this.cause.message) return this.cause.message
     return "An error occurred"
   }
