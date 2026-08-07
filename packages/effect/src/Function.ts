@@ -1346,3 +1346,40 @@ export function memoize<A extends object, O extends {} | null>(f: (a: A) => O): 
     return result
   }
 }
+
+/**
+ * Creates a memoized idempotent object transformation that caches both inputs
+ * and their outputs by object identity.
+ *
+ * **When to use**
+ *
+ * Use when an object transformation is idempotent and its output can be safely
+ * reused as a fixed point.
+ *
+ * **Details**
+ *
+ * After computing an input, the returned function caches both the input and
+ * the output. Calling it with either reference returns the output without
+ * invoking the supplied function again.
+ *
+ * **Gotchas**
+ *
+ * The returned function treats each computed output as a fixed point. If
+ * applying the supplied function to an output would produce an observably
+ * different value, this memoization changes that behavior.
+ *
+ * @see {@link memoize} for memoizing functions without an idempotence requirement
+ * @category caching
+ * @since 4.0.0
+ */
+export function memoizeIdempotent<A extends object>(f: (a: A) => A): (a: A) => A {
+  const cache = new WeakMap<A, A>()
+  return (a) => {
+    const cached = cache.get(a)
+    if (cached !== undefined) return cached
+    const result = f(a)
+    cache.set(a, result)
+    cache.set(result, result)
+    return result
+  }
+}

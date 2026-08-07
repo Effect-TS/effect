@@ -129,6 +129,39 @@ describe("toJsonSchemaDocument", () => {
       )
     })
 
+    it("preserves repeated optional structural schemas with references", () => {
+      const shared = Schema.Struct({ value: Schema.String })
+
+      assertJsonSchemaDocument(
+        Schema.Struct({ left: Schema.optional(shared), right: Schema.optional(shared) }),
+        {
+          schema: {
+            type: "object",
+            properties: {
+              left: { $ref: "#/$defs/Union_" },
+              right: { $ref: "#/$defs/Union_" }
+            },
+            additionalProperties: false
+          },
+          definitions: {
+            Union_: {
+              anyOf: [
+                {
+                  type: "object",
+                  properties: {
+                    value: { type: "string" }
+                  },
+                  required: ["value"],
+                  additionalProperties: false
+                },
+                { type: "null" }
+              ]
+            }
+          }
+        }
+      )
+    })
+
     it("inlines shared canonical unions of leaf schemas", () => {
       assertJsonSchemaDocument(
         Schema.Struct({ left: Schema.Number, right: Schema.Number }),
