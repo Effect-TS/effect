@@ -183,7 +183,9 @@ export const set: {
         Scope.provide(scope),
         Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
       )
-      yield* Scope.close(self.backing.backing.ref.current[0], Exit.void)
+      yield* Scope.close(self.backing.backing.ref.current[0], Exit.void).pipe(
+        Effect.tapCause((cause) => Scope.close(scope, Exit.failCause(cause)))
+      )
       self.backing.backing.ref.current = [scope, value]
     },
     Effect.uninterruptible,
