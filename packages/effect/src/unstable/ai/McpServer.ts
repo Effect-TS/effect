@@ -489,6 +489,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
   const isHttp = Option.isSome(yield* Effect.serviceOption(HttpRouter.HttpRouter))
   const sessions = protocolState.sessions
   const clientProtocols = new Map<number, McpProtocol.ProtocolAdapter>()
+  const activeRequests = new Map<number, Set<string>>()
   const cancelledRequests = new Map<number, Set<string>>()
   const handlers = yield* Layer.build(layerHandlers(options, {
     sessions,
@@ -577,6 +578,10 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
     ...protocol,
     send: (clientId, response) => {
       if (response._tag === "Exit") {
+        const active = activeRequests.get(clientId)
+        if (active?.delete(requestKey(response.requestId)) === true && active.size === 0) {
+          activeRequests.delete(clientId)
+        }
         const requests = cancelledRequests.get(clientId)
         if (requests?.delete(requestKey(response.requestId)) === true) {
           if (requests.size === 0) {
@@ -670,8 +675,12 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
               if (request.tag === "notifications/cancelled") {
                 return decodeCancelledNotification(request.payload).pipe(
                   Effect.flatMap(({ requestId }) => {
+                    const key = requestKey(requestId)
+                    if (activeRequests.get(clientId)?.has(key) !== true) {
+                      return Effect.void
+                    }
                     const requests = cancelledRequests.get(clientId) ?? new Set<string>()
-                    requests.add(requestKey(requestId))
+                    requests.add(key)
                     cancelledRequests.set(clientId, requests)
                     return f(clientId, {
                       _tag: "Interrupt",
@@ -732,7 +741,14 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
             }
             return selectedProtocol.payloadCodecs(rpc).decode(request.payload).pipe(
               Effect.matchEffect({
-                onSuccess: () => f(clientId, routedRequest),
+                onSuccess: () => {
+                  if (request.isNotification !== true) {
+                    const requests = activeRequests.get(clientId) ?? new Set<string>()
+                    requests.add(requestKey(request.id))
+                    activeRequests.set(clientId, requests)
+                  }
+                  return f(clientId, routedRequest)
+                },
                 onFailure: () =>
                   request.isNotification
                     ? Effect.void
@@ -752,6 +768,7 @@ const runWithProtocolState = Effect.fnUntraced(function*(options: {
           case "Interrupt":
             return f(clientId, request)
           case "Eof":
+            activeRequests.delete(clientId)
             cancelledRequests.delete(clientId)
             return f(clientId, request)
           case "Pong":
