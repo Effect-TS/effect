@@ -124,7 +124,7 @@ export class Sharding extends Context.Service<Sharding, {
       entityId: string
     ) => RpcClient.RpcClient.From<
       Rpcs,
-      MailboxFull | AlreadyProcessingMessage | PersistenceError
+      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
     >
   >
 
@@ -178,7 +178,7 @@ export class Sharding extends Context.Service<Sharding, {
     discard: boolean
   ) => Effect.Effect<
     void,
-    MailboxFull | AlreadyProcessingMessage | PersistenceError
+    MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
   >
 
   /**
@@ -967,7 +967,7 @@ const make = Effect.gen(function*() {
     retries?: number
   ): Effect.Effect<
     void,
-    MailboxFull | AlreadyProcessingMessage | PersistenceError
+    MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
   > {
     const isPersisted = Context.get(
       message._tag === "OutgoingRequest" ? message.annotations : message.rpc.annotations,
@@ -1003,15 +1003,20 @@ const make = Effect.gen(function*() {
           const cannotRecover = MutableRef.get(isShutdown) ||
             (targetManager !== undefined && targetManager.status !== "alive")
           if (cannotRecover) {
+            const awaitingReply = message._tag === "OutgoingRequest" && !discard
             if (!isPersisted) {
-              return Effect.logDebug("Abandoning outgoing message during shutdown", message.envelope.address)
+              return awaitingReply
+                ? Effect.fail(error)
+                : Effect.logDebug("Abandoning outgoing message during shutdown", message.envelope.address)
             }
             const persist = message._tag === "OutgoingRequest"
               ? storage.saveRequest(message)
               : storage.saveEnvelope(message)
             return Effect.catchTag(persist, "MalformedMessage", Effect.die).pipe(
               Effect.andThen(
-                Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
+                awaitingReply
+                  ? Effect.fail(error)
+                  : Effect.logWarning("Persisting outgoing message abandoned during shutdown", message.envelope.address)
               )
             )
           }
@@ -1183,7 +1188,7 @@ const make = Effect.gen(function*() {
     Entity<any, any>,
     (entityId: string) => RpcClient.RpcClient<
       any,
-      MailboxFull | AlreadyProcessingMessage
+      MailboxFull | AlreadyProcessingMessage | EntityNotAssignedToRunner
     >,
     never
   > = yield* ResourceMap.make(
@@ -1196,7 +1201,7 @@ const make = Effect.gen(function*() {
         flatten: true,
         onFromClient(options): Effect.Effect<
           void,
-          MailboxFull | AlreadyProcessingMessage | PersistenceError
+          MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
         > {
           const address = Context.getUnsafe(options.context, ClientAddressTag)
           switch (options.message._tag) {
@@ -1337,7 +1342,7 @@ const make = Effect.gen(function*() {
   const makeClient = <Type extends string, Rpcs extends Rpc.Any>(entity: Entity<Type, Rpcs>): Effect.Effect<
     (
       entityId: string
-    ) => RpcClient.RpcClient.From<Rpcs, MailboxFull | AlreadyProcessingMessage>
+    ) => RpcClient.RpcClient.From<Rpcs, MailboxFull | AlreadyProcessingMessage | EntityNotAssignedToRunner>
   > => clients.get(entity) as any
 
   const clientRespondDiscard = (_reply: Reply.Reply<any>) => Effect.void
