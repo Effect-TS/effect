@@ -159,7 +159,7 @@ function compileJsonSchema(
   }
   const schemas = Arr.map(
     representations,
-    (representation, index) => finalizeJsonSchema(recur(representation, rootPaths[index]), rootPaths[index])
+    (representation, index) => finalizeJsonSchema(recur(representation, rootPaths[index]))
   )
   const definitions: Record<string, JsonSchema.JsonSchema> = {}
   for (const key of referenceKeys) {
@@ -167,7 +167,7 @@ function compileJsonSchema(
       InternalRecord.assignProperty(
         definitions,
         key,
-        finalizeJsonSchema(compiledDefinitions.get(key)!, ["references", key])
+        finalizeJsonSchema(compiledDefinitions.get(key)!)
       )
     }
   }
@@ -206,18 +206,18 @@ function compileJsonSchema(
     return canonical
   }
 
-  function finalizeJsonSchema(schema: JsonSchema.JsonSchema, path: Path): JsonSchema.JsonSchema {
-    return finalizeValue(schema, path) as JsonSchema.JsonSchema
+  function finalizeJsonSchema(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
+    return finalizeValue(schema) as JsonSchema.JsonSchema
   }
 
-  function finalizeValue(value: unknown, path: Path): unknown {
+  function finalizeValue(value: unknown): unknown {
     if (typeof value !== "object" || value === null) return value
     const cached = finalized.get(value)
     if (cached !== undefined) return cached
     if (Array.isArray(value)) {
       let changed = false
-      const output = value.map((item, index) => {
-        const out = finalizeValue(item, [...path, index])
+      const output = value.map((item) => {
+        const out = finalizeValue(item)
         if (out !== item) changed = true
         return out
       })
@@ -228,8 +228,8 @@ function compileJsonSchema(
     let output: Record<string, unknown> | undefined
     for (const [key, item] of Object.entries(value)) {
       const out = key === "$ref" && typeof item === "string"
-        ? finalizeReference(item, [...path, key])
-        : finalizeValue(item, [...path, key])
+        ? finalizeReference(item)
+        : finalizeValue(item)
       if (out !== item) {
         output ??= { ...value }
         InternalRecord.assignProperty(output, key, out)
@@ -240,15 +240,13 @@ function compileJsonSchema(
     return out
   }
 
-  function finalizeReference(reference: string, path: Path): string {
+  function finalizeReference(reference: string): string {
     const prefix = "#/$defs/"
     if (!reference.startsWith(prefix)) return reference
     const separator = reference.indexOf("/", prefix.length)
     const token = separator === -1 ? reference.slice(prefix.length) : reference.slice(prefix.length, separator)
     const key = unescapeToken(token)
-    if (!compiledDefinitions.has(key)) {
-      throw errorWithPath(`Invalid reference ${key}`, path)
-    }
+    if (!compiledDefinitions.has(key)) return reference
     const canonical = resolveAlias(key)
     return canonical === key
       ? reference

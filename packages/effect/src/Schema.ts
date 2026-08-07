@@ -5620,7 +5620,7 @@ export function decodeTo<To extends Constraint, From extends Constraint, RD = ne
  * ```
  *
  * @category transforming
- * @since 3.10.0
+ * @since 4.0.0
  */
 export function decode<S extends Constraint, RD = never, RE = never>(transformation: {
   readonly decode: SchemaGetter.Getter<S["Type"], S["Type"], RD>
@@ -5709,7 +5709,7 @@ export function encodeTo<To extends Constraint, From extends Constraint, RD = ne
  * ```
  *
  * @category transforming
- * @since 3.10.0
+ * @since 4.0.0
  */
 export function encode<S extends Constraint, RD = never, RE = never>(transformation: {
   readonly decode: SchemaGetter.Getter<S["Encoded"], S["Encoded"], RD>

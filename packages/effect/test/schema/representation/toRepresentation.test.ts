@@ -596,6 +596,55 @@ describe("SchemaRepresentation.toRepresentation", () => {
       }
     })
 
+    it("extracts leaf schemas only when references are estimated to be cheaper", () => {
+      const smallUnion = Schema.Union([Schema.String, Schema.Number])
+      const smallEnum = Schema.Enum({ A: "a", B: "b" })
+      const largeEnum = Schema.Enum({ A: "a", B: "b", C: "c" })
+      const smallTemplateLiteral = Schema.TemplateLiteral(["a", Schema.String])
+      const largeTemplateLiteral = Schema.TemplateLiteral(["a", Schema.String, "b"])
+      const shortLiteral = Schema.Literal("a".repeat(64))
+      const longLiteral = Schema.Literal("a".repeat(65))
+
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([smallUnion.ast, smallUnion.ast]).references),
+        []
+      )
+      assert.deepStrictEqual(
+        Object.keys(
+          SchemaRepresentation.toRepresentations([smallUnion.ast, smallUnion.ast, smallUnion.ast]).references
+        ),
+        ["Union_"]
+      )
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([smallEnum.ast, smallEnum.ast]).references),
+        []
+      )
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([largeEnum.ast, largeEnum.ast]).references),
+        ["Enum_"]
+      )
+      assert.deepStrictEqual(
+        Object.keys(
+          SchemaRepresentation.toRepresentations([smallTemplateLiteral.ast, smallTemplateLiteral.ast]).references
+        ),
+        []
+      )
+      assert.deepStrictEqual(
+        Object.keys(
+          SchemaRepresentation.toRepresentations([largeTemplateLiteral.ast, largeTemplateLiteral.ast]).references
+        ),
+        ["TemplateLiteral_"]
+      )
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([shortLiteral.ast, shortLiteral.ast]).references),
+        []
+      )
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([longLiteral.ast, longLiteral.ast]).references),
+        ["Literal_"]
+      )
+    })
+
     it("does not extract structurally equivalent schemas with distinct ASTs", () => {
       const first = Schema.Struct({ value: Schema.String })
       const second = Schema.Struct({ value: Schema.String })

@@ -454,6 +454,43 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       ])
     })
 
+    it("preserves unknown references returned by callbacks", () => {
+      const reference = { $ref: "#/$defs/Unknown" }
+      const output = SchemaRepresentation.toJsonSchemaMultiDocument({
+        representations: [{
+          _tag: "String",
+          checks: [{
+            _tag: "Filter",
+            aborted: false,
+            annotations: { toJsonSchema: () => reference }
+          }]
+        }],
+        references: {}
+      })
+
+      assert.deepStrictEqual(output.schemas, [{
+        type: "string",
+        allOf: [reference]
+      }])
+    })
+
+    it("preserves unknown references in annotation values", () => {
+      const reference = { $ref: "#/$defs/Unknown" }
+      const output = SchemaRepresentation.toJsonSchemaMultiDocument({
+        representations: [{
+          _tag: "String",
+          annotations: { default: reference },
+          checks: []
+        }],
+        references: {}
+      })
+
+      assert.deepStrictEqual(output.schemas, [{
+        type: "string",
+        default: reference
+      }])
+    })
+
     it("resolves referenced index-signature parameters and stops cycles", () => {
       const record = (
         parameter: SchemaRepresentation.Representation
