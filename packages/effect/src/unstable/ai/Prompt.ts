@@ -2004,6 +2004,17 @@ export const make = (input: RawInput): Prompt => {
  */
 export const fromMessages = (messages: ReadonlyArray<Message>): Prompt => makePrompt(messages)
 
+const mergeOptions = (left: ProviderOptions, right: ProviderOptions): ProviderOptions => {
+  const result: Record<string, ProviderOptions[string]> = { ...left }
+  for (const [provider, metadata] of Object.entries(right)) {
+    const previous = result[provider]
+    result[provider] = Predicate.isObject(previous) && Predicate.isObject(metadata)
+      ? Object.assign({}, previous, metadata)
+      : metadata
+  }
+  return result
+}
+
 /**
  * Creates a `Prompt` from response parts by folding completed text and
  * reasoning streams into assistant parts, preserving provider metadata as
@@ -2055,19 +2066,6 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
 
   const activeTextDeltas = new Map<string, { text: string; options: ProviderOptions }>()
   const activeReasoningDeltas = new Map<string, { text: string; options: ProviderOptions }>()
-
-  const mergeOptions = (left: ProviderOptions, right: ProviderOptions): ProviderOptions =>
-    Object.fromEntries(
-      Object.entries({ ...left, ...right }).map(([provider, metadata]) => {
-        const previous = left[provider]
-        return [
-          provider,
-          Predicate.isObject(previous) && Predicate.isObject(metadata)
-            ? Object.assign({}, previous, metadata)
-            : metadata
-        ]
-      })
-    )
 
   for (const part of parts) {
     switch (part.type) {
@@ -2149,7 +2147,7 @@ export const fromResponseParts = (parts: ReadonlyArray<Response.AnyPart>): Promp
             isFailure: part.isFailure,
             result: part.encodedResult,
             providerExecuted: part.providerExecuted ?? false,
-            options: part.metadata as ToolResultPartOptions
+            options: part.metadata
           }))
         }
         break
