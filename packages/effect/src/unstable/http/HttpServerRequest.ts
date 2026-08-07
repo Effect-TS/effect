@@ -436,14 +436,19 @@ export const toClientRequest = (request: HttpServerRequest): HttpClientRequest.H
     Option.getOrElse(toURL(request), () => request.url)
   )
 
-const toClientBody = (request: HttpServerRequest): HttpBody.HttpBody =>
-  hasBody(request.method)
+const toClientBody = (request: HttpServerRequest): HttpBody.HttpBody => {
+  if (!hasBody(request.method)) {
+    return HttpBody.empty
+  }
+  const formData = getFormDataBody(request)
+  return formData === undefined
     ? HttpBody.stream(
       request.stream,
       request.headers["content-type"],
       parseContentLength(request.headers["content-length"])
     )
-    : HttpBody.empty
+    : HttpBody.formData(formData)
+}
 
 const parseContentLength = (contentLength: string | undefined): number | undefined => {
   if (contentLength === undefined) {
