@@ -94,39 +94,44 @@ export const make = <A, E, R>(options: {
   })
 
 const getState = <A, E>(self: RcRefImpl<A, E>) =>
-  self.semaphore.withPermits(1)(
-    Effect.uninterruptibleMask((restore) => {
-      switch (self.state._tag) {
-        case "Closed": {
-          return Effect.interrupt
-        }
-        case "Acquired": {
-          self.state.refCount++
-          return self.state.fiber
-            ? Effect.as(Fiber.interrupt(self.state.fiber), self.state)
-            : Effect.succeed(self.state)
-        }
-        case "Empty": {
-          const scope = Scope.makeUnsafe()
-          return restore(Effect.provideContext(
-            self.acquire as Effect.Effect<A, E>,
-            Context.add(self.context, Scope.Scope, scope)
-          )).pipe(Effect.map((value) => {
-            const state: State.Acquired<A> = {
-              _tag: "Acquired",
-              value,
-              scope,
-              fiber: undefined,
-              refCount: 1,
-              invalidated: false
-            }
-            self.state = state
-            return state
-          }))
-        }
+  Effect.uninterruptibleMask(function loop(restore): Effect.Effect<State.Acquired<A>, E> {
+    switch (self.state._tag) {
+      case "Closed": {
+        return Effect.interrupt
       }
-    })
-  )
+      case "Acquired": {
+        self.state.refCount++
+        return self.state.fiber
+          ? Effect.as(Fiber.interrupt(self.state.fiber), self.state)
+          : Effect.succeed(self.state)
+      }
+      case "Empty": {
+        const scope = Scope.makeUnsafe()
+        return self.semaphore.withPermit(
+          Effect.suspend(() => {
+            if (self.state._tag !== "Empty") {
+              return loop(restore)
+            }
+            return restore(Effect.provideContext(
+              self.acquire as Effect.Effect<A, E>,
+              Context.add(self.context, Scope.Scope, scope)
+            )).pipe(Effect.map((value) => {
+              const state: State.Acquired<A> = {
+                _tag: "Acquired",
+                value,
+                scope,
+                fiber: undefined,
+                refCount: 1,
+                invalidated: false
+              }
+              self.state = state
+              return state
+            }))
+          })
+        )
+      }
+    }
+  })
 
 /** @internal */
 export const get = Effect.fnUntraced(function*<A, E>(

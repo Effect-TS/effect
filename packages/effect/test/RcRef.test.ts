@@ -124,43 +124,4 @@ describe("RcRef", () => {
         }
       )
     }))
-
-  // it.scoped("idleTimeToLive", () =>
-  //   Effect.gen(function*() {
-  //     let acquired = 0
-  //     let released = 0
-  //     const ref = yield* RcRef.make({
-  //       acquire: Effect.acquireRelease(
-  //         Effect.sync(() => {
-  //           acquired++
-  //           return "foo"
-  //         }),
-  //         () =>
-  //           Effect.sync(() => {
-  //             released++
-  //           })
-  //       ),
-  //       idleTimeToLive: 1000
-  //     })
-  //
-  //     assert.strictEqual(acquired, 0)
-  //     assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
-  //     assert.strictEqual(acquired, 1)
-  //     assert.strictEqual(released, 0)
-  //
-  //     yield* TestClock.adjust(1000)
-  //     assert.strictEqual(released, 1)
-  //
-  //     assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
-  //     assert.strictEqual(acquired, 2)
-  //     assert.strictEqual(released, 1)
-  //
-  //     yield* TestClock.adjust(500)
-  //     assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
-  //     assert.strictEqual(acquired, 2)
-  //     assert.strictEqual(released, 1)
-  //
-  //     yield* TestClock.adjust(1000)
-  //     assert.strictEqual(released, 2)
-  //   }))
 })
