@@ -1,13 +1,17 @@
 import * as NodeSdk from "@effect/opentelemetry/NodeSdk"
 import * as OtelTracer from "@effect/opentelemetry/OtelTracer"
+import * as Resource from "@effect/opentelemetry/Resource"
 import { assert, describe, it } from "@effect/vitest"
 import * as OtelApi from "@opentelemetry/api"
 import { AsyncHooksContextManager } from "@opentelemetry/context-async-hooks"
-import { InMemorySpanExporter, SimpleSpanProcessor } from "@opentelemetry/sdk-trace-base"
+import { InMemorySpanExporter, SimpleSpanProcessor, type SpanProcessor } from "@opentelemetry/sdk-trace-base"
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Fiber from "effect/Fiber"
+import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
+import * as TestClock from "effect/testing/TestClock"
 import * as EffectTracer from "effect/Tracer"
 
 const TracingLive = NodeSdk.layer(Effect.sync(() => ({
@@ -22,6 +26,40 @@ const contextManager = new AsyncHooksContextManager()
 OtelApi.context.setGlobalContextManager(contextManager)
 
 describe("Tracer", () => {
+  it.effect("bounds tracer provider release by shutdownTimeout", () =>
+    Effect.gen(function*() {
+      let shutdownResolve!: () => void
+      let shutdownStartedResolve!: () => void
+      const shutdownStarted = new Promise<void>((resolve) => {
+        shutdownStartedResolve = resolve
+      })
+      const processor: SpanProcessor = {
+        onStart() {},
+        onEnd() {},
+        forceFlush: () => Promise.resolve(),
+        shutdown: () => {
+          shutdownStartedResolve()
+          return new Promise<void>((resolve) => {
+            shutdownResolve = resolve
+          })
+        }
+      }
+      const releaseFiber = yield* Effect.scoped(
+        Layer.build(NodeSdk.layerTracerProvider(processor, { shutdownTimeout: "10 millis" })).pipe(
+          Effect.provide(Resource.layerEmpty)
+        )
+      ).pipe(Effect.forkChild)
+
+      yield* Effect.promise(() => shutdownStarted)
+      yield* TestClock.adjust("11 millis")
+      yield* Effect.yieldNow
+      const completed = releaseFiber.pollUnsafe()
+      shutdownResolve()
+      yield* Fiber.await(releaseFiber)
+
+      assert.isDefined(completed)
+    }))
+
   describe("provided", () => {
     it.effect("withSpan", () =>
       Effect.gen(function*() {
