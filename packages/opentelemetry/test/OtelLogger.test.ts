@@ -124,6 +124,28 @@ describe("Logger", () => {
         Effect.provideService(Clock.Clock, skewedClock)
       )
     })
+
+    it.effect("does not let annotations overwrite active span correlation", () => {
+      const logExporter = new InMemoryLogRecordExporter()
+      const spanExporter = new InMemorySpanExporter()
+      const TracingLive = NodeSdk.layer(Effect.sync(() => ({
+        resource: { serviceName: "test" },
+        spanProcessor: [new SimpleSpanProcessor(spanExporter)],
+        logRecordProcessor: [new SimpleLogRecordProcessor({ exporter: logExporter })]
+      })))
+
+      return Effect.gen(function*() {
+        yield* Effect.log("test").pipe(
+          Effect.annotateLogs({ traceId: "spoof-trace", spanId: "spoof-span" }),
+          Effect.withSpan("parent")
+        )
+
+        const log = logExporter.getFinishedLogRecords()[0]!
+        const span = spanExporter.getFinishedSpans()[0]!
+        assert.strictEqual(log.attributes.traceId, span.spanContext().traceId)
+        assert.strictEqual(log.attributes.spanId, span.spanContext().spanId)
+      }).pipe(Effect.provide(TracingLive))
+    })
   })
 
   describe("not provided", () => {
