@@ -1441,7 +1441,7 @@ const makeStreamResponse = Effect.fnUntraced(
                 parts.push({
                   type: "tool-params-delta",
                   id: activeToolCall.id,
-                  delta: activeToolCall.params
+                  delta: toolCall.function?.arguments ?? ""
                 })
               }
 
