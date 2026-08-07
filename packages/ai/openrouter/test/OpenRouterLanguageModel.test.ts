@@ -344,10 +344,13 @@ const makeStreamTestLayer = (events: ReadonlyArray<unknown>) => {
   const httpClient = HttpClient.makeWith(
     Effect.fnUntraced(function*(requestEffect) {
       const request = yield* requestEffect
-      return HttpClientResponse.fromWeb(request, new Response(body, {
-        status: 200,
-        headers: { "content-type": "text/event-stream" }
-      }))
+      return HttpClientResponse.fromWeb(
+        request,
+        new Response(body, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" }
+        })
+      )
     }),
     Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
   )

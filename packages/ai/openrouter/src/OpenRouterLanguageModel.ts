@@ -1361,7 +1361,7 @@ const makeStreamResponse = Effect.fnUntraced(
                         ? { startIndex: annotation.url_citation.start_index }
                         : undefined),
                       ...(Predicate.isNotUndefined(annotation.url_citation.end_index)
-                        ? { startIndex: annotation.url_citation.end_index }
+                        ? { endIndex: annotation.url_citation.end_index }
                         : undefined)
                     }
                   }
