@@ -255,6 +255,24 @@ describe("Effect", () => {
       ))
   })
 
+  it.effect("result and option preserve defects and interruptions in mixed causes", () =>
+    Effect.gen(function*() {
+      const causes = [
+        Cause.combine(Cause.fail("typed"), Cause.die("defect")),
+        Cause.combine(Cause.fail("typed"), Cause.interrupt(99))
+      ]
+      const observed = yield* Effect.forEach(causes, (cause) =>
+        Effect.all([
+          Effect.failCause(cause).pipe(Effect.result, Effect.exit),
+          Effect.failCause(cause).pipe(Effect.option, Effect.exit)
+        ]))
+
+      assert.deepStrictEqual<unknown>(
+        observed,
+        causes.map((cause) => [Exit.failCause(cause), Exit.failCause(cause)])
+      )
+    }))
+
   describe("try", () => {
     it.effect("succeeds with the returned value in direct-thunk form", () =>
       Effect.gen(function*() {
