@@ -361,25 +361,29 @@ export const transformation: SchemaTransformation.Transformation<
   unknown,
   Uint8Array<ArrayBuffer>
 > = SchemaTransformation.transformOrFail({
-  decode(e, _options) {
+  decode(e, options) {
     try {
       return Effect.succeed(Msgpackr.decode(e))
     } catch {
       return Effect.fail(
-        new SchemaIssue.InvalidValue({
-          message: "Expected valid MessagePack bytes"
-        })
+        new SchemaIssue.InvalidValue(
+          { expected: "valid MessagePack bytes" },
+          e,
+          options
+        )
       )
     }
   },
-  encode(t, _options) {
+  encode(t, options) {
     try {
       return Effect.succeed(Msgpackr.encode(t) as Uint8Array<ArrayBuffer>)
     } catch {
       return Effect.fail(
-        new SchemaIssue.InvalidValue({
-          message: "Expected a MessagePack-serializable value"
-        })
+        new SchemaIssue.InvalidValue(
+          { expected: "a MessagePack-serializable value" },
+          t,
+          options
+        )
       )
     }
   }

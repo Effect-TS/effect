@@ -8,6 +8,7 @@ import {
   Schema,
   type SchemaAST,
   SchemaGetter,
+  type SchemaIssue,
   SchemaTransformation,
   Struct,
   Tuple
@@ -19,7 +20,7 @@ type Make<In, Out> = (input: In, options?: Schema.MakeOptions | undefined) => Ou
 type MakeEffect<In, Out> = (
   input: In,
   options?: Schema.MakeOptions | undefined
-) => Effect.Effect<Out, Schema.SchemaError>
+) => Effect.Effect<Out, SchemaIssue.Issue>
 
 const revealClass = <Self, S extends Schema.Struct<Schema.Struct.Fields>, Inherited>(
   klass: Schema.Class<Self, S, Inherited>

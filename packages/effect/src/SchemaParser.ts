@@ -94,6 +94,9 @@ export function makeOption<S extends Schema.Constraint>(schema: S) {
  *
  * The returned function constructs a value from constructor input and throws an
  * `Error` with the `SchemaIssue.Issue` in its `cause` when construction fails.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -115,7 +118,7 @@ export function make<S extends Schema.Constraint>(schema: S) {
       exit.cause,
       "Constructor adapter can only throw schema issues"
     )
-    throw new Error(issue.toString(), { cause: issue })
+    throw new Error("Schema validation failed", { cause: issue })
   }
 }
 
@@ -184,6 +187,9 @@ export function _issue<T>(ast: SchemaAST.AST) {
  * The assertion returns normally when validation succeeds. When the input does
  * not satisfy the schema with a schema-only failure, it throws an `Error` with
  * the `SchemaIssue.Issue` in its `cause`.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -202,7 +208,7 @@ export function asserts<S extends Schema.Constraint, I>(schema: S, input: I): as
       exit.cause,
       "Assertion adapter can only throw schema issues"
     )
-    throw new Error(issue.toString(), { cause: issue })
+    throw new Error("Schema validation failed", { cause: issue })
   }
 }
 
@@ -282,6 +288,9 @@ export const decodeEffect: <S extends Schema.Constraint>(
  *
  * The returned function resolves with the decoded `Type` on success and rejects
  * with an `Error` whose cause is a `SchemaIssue.Issue` on decoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -314,6 +323,9 @@ export function decodeUnknownPromise<S extends Schema.ConstraintDecoder<unknown>
  *
  * The returned function resolves with the decoded `Type` on success and rejects
  * with an `Error` whose cause is a `SchemaIssue.Issue` on decoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -492,6 +504,9 @@ export const decodeResult: <S extends Schema.ConstraintDecoder<unknown>>(
  *
  * The returned function returns the decoded `Type` on success and throws an
  * `Error` with the `SchemaIssue.Issue` in its `cause` on decoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -526,6 +541,9 @@ export function decodeUnknownSync<S extends Schema.ConstraintDecoder<unknown>>(
  *
  * The returned function returns the decoded `Type` on success and throws an
  * `Error` with the `SchemaIssue.Issue` in its `cause` on decoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -620,6 +638,9 @@ export const encodeEffect: <S extends Schema.Constraint>(
  *
  * The returned function resolves with the schema's `Encoded` value on success and
  * rejects with an `Error` whose cause is a `SchemaIssue.Issue` on encoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -651,6 +672,9 @@ export const encodeUnknownPromise = <S extends Schema.ConstraintEncoder<unknown>
  *
  * The returned function resolves with the schema's `Encoded` value on success and
  * rejects with an `Error` whose cause is a `SchemaIssue.Issue` on encoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -826,6 +850,9 @@ export const encodeResult: <S extends Schema.ConstraintEncoder<unknown>>(
  *
  * The returned function returns the schema's `Encoded` value on success and throws
  * an `Error` with the `SchemaIssue.Issue` in its `cause` on encoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -859,6 +886,9 @@ export function encodeUnknownSync<S extends Schema.ConstraintEncoder<unknown>>(
  *
  * The returned function returns the schema's `Encoded` value on success and throws
  * an `Error` with the `SchemaIssue.Issue` in its `cause` on encoding failure.
+ * Schema validation failures use the generic message `"Schema validation failed"`.
+ * Format the `cause` explicitly with `SchemaIssue.makeFormatterDefault()` when
+ * human-readable details are needed.
  *
  * **Gotchas**
  *
@@ -927,7 +957,7 @@ function asPromise<T, E>(
         exit.cause,
         "Promise adapter can only reject schema issues"
       )
-      throw new Error(issue.toString(), { cause: issue })
+      throw new Error("Schema validation failed", { cause: issue })
     })
 }
 
@@ -977,7 +1007,7 @@ function asSync<T, E>(
       return exit.value
     }
     const issue = InternalSchemaCause.getSchemaIssueOrThrow(exit.cause, "Sync adapter can only throw schema issues")
-    throw new Error(issue.toString(), { cause: issue })
+    throw new Error("Schema validation failed", { cause: issue })
   }
 }
 
@@ -1086,9 +1116,7 @@ function makeParser(
           if (input !== InternalParser.missing && output !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
             if (issues) {
-              result = Effect.fail(
-                new SchemaIssue.Composite(ast, issues)
-              )
+              result = Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
             }
           }
         }
@@ -1097,9 +1125,7 @@ function makeParser(
           if (input !== InternalParser.missing && value !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(encodingChecks, input, undefined, ast, options)
             if (issues) {
-              return Effect.fail(
-                new SchemaIssue.Composite(ast, issues)
-              )
+              return Effect.fail(new SchemaIssue.Composite(ast, issues, input, options))
             }
           }
           return Effect.succeed(value)
@@ -1116,9 +1142,7 @@ function makeParser(
           if (value === InternalParser.missing) return result
           const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
           if (issues) {
-            result = Effect.fail(
-              new SchemaIssue.Composite(ast, issues)
-            )
+            result = Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
           }
         }
       } else {
@@ -1126,9 +1150,7 @@ function makeParser(
           if (value !== InternalParser.missing) {
             const issues = SchemaAST.collectIssues(checks, value, undefined, ast, options)
             if (issues) {
-              return Effect.fail(
-                new SchemaIssue.Composite(ast, issues)
-              )
+              return Effect.fail(new SchemaIssue.Composite(ast, issues, value, options))
             }
           }
           return Effect.succeed(value)
@@ -1175,7 +1197,19 @@ function makeParser(
     }
     result = Effect.catchCause(
       result,
-      (cause) => Effect.failCauseSync(() => Cause.map(cause, (issue) => new SchemaIssue.Encoding(ast, issue)))
+      (cause) =>
+        Effect.failCauseSync(() =>
+          Cause.map(
+            cause,
+            (issue) =>
+              new SchemaIssue.Encoding(
+                ast,
+                issue,
+                input,
+                options
+              )
+          )
+        )
     )
     return Effect.flatMapEager(result, (value) => {
       const local = parseLocal(value, options)

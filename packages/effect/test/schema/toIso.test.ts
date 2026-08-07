@@ -1,6 +1,13 @@
 import { Cause, Exit, HashMap, Option, Predicate, Record, Result, Schema, SchemaTransformation } from "effect"
 import { describe, it } from "vitest"
-import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
+import {
+  assertNone,
+  assertSchemaIssueError,
+  assertSome,
+  deepStrictEqual,
+  strictEqual,
+  throws
+} from "../utils/assert.ts"
 
 class Value extends Schema.Class<Value, { readonly brand: unique symbol }>("Value")({
   a: Schema.Date
@@ -67,7 +74,9 @@ describe("Optic generation", () => {
         const modify = optic.modify((n) => schema.make(n - 1))
 
         strictEqual(modify(schema.make(2)), 1)
-        throws(() => modify(schema.make(1)), "Expected a value greater than 0")
+        throws(() => modify(schema.make(1)), (error) => {
+          assertSchemaIssueError(error, "Expected a value greater than 0")
+        })
       })
     })
 

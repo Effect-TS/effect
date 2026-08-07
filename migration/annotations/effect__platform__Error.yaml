@@ -14,5 +14,5 @@
   replacement: "none"
   note: "The PlatformError runtime marker is internal in v4; use the PlatformError class/tag."
 "@effect/platform/Error#TypeIdError":
-  replacement: "Data.TaggedError or Schema.ErrorClass"
+  replacement: "Data.TaggedError or Schema.Error"
   note: "The platform-specific error-class factory was removed; define tagged data errors or schema-backed error classes directly."

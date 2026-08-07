@@ -3,6 +3,8 @@ import { Result, Schema, SchemaIssue } from "effect"
 import { assertFalse, assertTrue } from "../utils/assert.ts"
 
 describe("SchemaIssue", () => {
+  const formatIssue = SchemaIssue.makeFormatterDefault()
+
   it("isIssue", () => {
     assertTrue(SchemaIssue.isIssue(new SchemaIssue.MissingKey(undefined)))
     assertFalse(SchemaIssue.isIssue({ "~effect/SchemaIssue/Issue": false }))
@@ -58,23 +60,8 @@ describe("SchemaIssue", () => {
     ]
 
     for (const [issue, expected] of cases) {
-      assert.strictEqual(String(issue), expected)
+      assert.strictEqual(formatIssue(issue), expected)
     }
-  })
-
-  it("formats filters from their expected constraint", () => {
-    const issue = new SchemaIssue.Filter(
-      Schema.isMinLength(1),
-      new SchemaIssue.InvalidValue()
-    )
-
-    assert.strictEqual(String(issue), "Expected a value with a length of at least 1")
-  })
-
-  it("preserves user-provided messages", () => {
-    const issue = new SchemaIssue.InvalidValue({ message: "must not be empty" })
-
-    assert.strictEqual(String(issue), "must not be empty")
   })
 
   it("uses an empty AnyOf when no union candidates apply", () => {
@@ -83,6 +70,5 @@ describe("SchemaIssue", () => {
     assertTrue(Result.isFailure(result))
     assertTrue(result.failure.issue._tag === "AnyOf")
     assert.deepStrictEqual(result.failure.issue.issues, [])
-    assert.strictEqual(String(result.failure.issue), "Expected string | number")
   })
 })
