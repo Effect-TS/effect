@@ -833,13 +833,43 @@ function emptyStringAsMissing(value: string | undefined, preserveEmptyStrings: b
 }
 
 /**
+ * Creates a `ConfigProvider` backed by an explicit environment record.
+ *
+ * **When to use**
+ *
+ * Use when a restricted runtime cannot evaluate the automatic environment
+ * detection performed by {@link fromEnv}, or whenever the environment record
+ * must be supplied explicitly.
+ *
+ * **Details**
+ *
+ * `undefined` values are ignored. Path lookup and child discovery otherwise
+ * use the same environment-variable semantics as {@link fromEnv}.
+ *
+ * Literal empty strings are treated as missing values by default. Pass
+ * `{ preserveEmptyStrings: true }` to keep empty strings as explicit values.
+ *
+ * @see {@link fromEnv} – automatically reads the runtime environment
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export function fromEnvRecord(
+  env: Record<string, string | undefined>,
+  options?: { readonly preserveEmptyStrings?: boolean | undefined }
+): ConfigProvider {
+  const preserveEmptyStrings = options?.preserveEmptyStrings === true
+  const trie = buildEnvTrie(env)
+  return make((path) => Effect.succeed(nodeAtEnv(trie, env, path, preserveEmptyStrings)))
+}
+
+/**
  * Creates a `ConfigProvider` backed by environment variables.
  *
  * **When to use**
  *
  * Use to read configuration from `process.env`, which is the default when no
- * provider is explicitly set, or pass a custom env record for testing or
- * non-Node runtimes.
+ * provider is explicitly set, or pass a custom env record for testing.
  *
  * **Details**
  *
@@ -880,6 +910,7 @@ function emptyStringAsMissing(value: string | undefined, preserveEmptyStrings: b
  * ```
  *
  * @see {@link fromUnknown} – for JSON objects
+ * @see {@link fromEnvRecord} – for explicit records in restricted runtimes
  * @see {@link constantCase} – bridge camelCase keys to SCREAMING_SNAKE_CASE
  *
  * @category constructors
@@ -895,10 +926,7 @@ export function fromEnv(options?: {
     }).process?.env,
     ...(import.meta as any)?.env
   }
-  const preserveEmptyStrings = options?.preserveEmptyStrings === true
-  const trie = buildEnvTrie(env)
-
-  return make((path) => Effect.succeed(nodeAtEnv(trie, env, path, preserveEmptyStrings)))
+  return fromEnvRecord(env, { preserveEmptyStrings: options?.preserveEmptyStrings })
 }
 
 type EnvTrieNode = {
@@ -984,7 +1012,7 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  *
  * Parsing is based on the `dotenv` / `dotenv-expand` algorithm.
  *
- * Internally delegates to {@link fromEnv} with the parsed key-value pairs.
+ * Internally delegates to {@link fromEnvRecord} with the parsed key-value pairs.
  *
  * **Example** (Parsing .env contents)
  *
@@ -1003,6 +1031,7 @@ function trieNodeAt(root: EnvTrieNode, path: Path): EnvTrieNode | undefined {
  * ```
  *
  * @see {@link fromDotEnv} – loads a `.env` file from disk
+ * @see {@link fromEnvRecord} – for explicit environment records
  * @see {@link fromEnv} – for raw environment variable access
  *
  * @category constructors
@@ -1016,7 +1045,7 @@ export function fromDotEnvContents(lines: string, options?: {
   if (options?.expandVariables) {
     env = dotEnvExpand(env)
   }
-  return fromEnv({ env, preserveEmptyStrings: options?.preserveEmptyStrings })
+  return fromEnvRecord(env, { preserveEmptyStrings: options?.preserveEmptyStrings })
 }
 
 const DOT_ENV_LINE =

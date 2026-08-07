@@ -288,6 +288,29 @@ describe("ConfigProvider", () => {
     })
   })
 
+  describe("fromEnvRecord", () => {
+    it("reads defined values and skips undefined values", async () => {
+      const env: Record<string, string | undefined> = {
+        DEFINED: "value",
+        UNDEFINED: undefined
+      }
+      const provider = ConfigProvider.fromEnvRecord(env)
+
+      await assertSuccess(provider, ["DEFINED"], ConfigProvider.makeValue("value"))
+      await assertMissing(provider, ["UNDEFINED"])
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["DEFINED"])))
+    })
+
+    it("preserves empty strings when requested", async () => {
+      const provider = ConfigProvider.fromEnvRecord(
+        { EMPTY: "" },
+        { preserveEmptyStrings: true }
+      )
+
+      await assertSuccess(provider, ["EMPTY"], ConfigProvider.makeValue(""))
+    })
+  })
+
   describe("fromEnv", () => {
     it("env without an underscore", async () => {
       const env = { A: "value1" }
