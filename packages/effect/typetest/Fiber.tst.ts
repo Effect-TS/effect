@@ -1,4 +1,5 @@
-import { Effect, Fiber } from "effect"
+import type { Effect } from "effect"
+import { Fiber } from "effect"
 import { expect, it } from "tstyche"
 
 it("joinAll preserves input fiber errors", () => {
