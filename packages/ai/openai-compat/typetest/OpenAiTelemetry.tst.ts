@@ -1,7 +1,7 @@
-import type { OpenAiTelemetryAttributes } from "@effect/ai-openai/OpenAiTelemetry"
+import type { OpenAiTelemetryAttributes } from "@effect/ai-openai-compat/OpenAiTelemetry"
 import { describe, expect, it } from "tstyche"
 
-describe("OpenAI telemetry", () => {
+describe("OpenAI-compatible telemetry", () => {
   it("uses the emitted response namespace for response attributes", () => {
     expect(
       {
