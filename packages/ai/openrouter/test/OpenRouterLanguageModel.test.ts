@@ -320,6 +320,16 @@ describe("OpenRouterLanguageModel", () => {
               created: 1,
               choices: [{
                 index: 0,
+                delta: { tool_calls: [{ index: 0 }] }
+              }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [{
+                index: 0,
                 finish_reason: "tool_calls",
                 delta: { tool_calls: [{ index: 0, function: { arguments: "1}" } }] }
               }]
@@ -327,7 +337,7 @@ describe("OpenRouterLanguageModel", () => {
           ]))
         )
 
-        assert.deepStrictEqual(
+        deepStrictEqual(
           globalThis.Array.from(parts)
             .filter((part) => part.type === "tool-params-delta")
             .map((part) => part.delta),
