@@ -16,7 +16,7 @@ import * as Cause from "./Cause.ts"
 import * as Effect from "./Effect.ts"
 import * as Exit from "./Exit.ts"
 import { format, formatPropertyKey } from "./Formatter.ts"
-import { identity, memoize } from "./Function.ts"
+import { identity, memoize, memoizeIdempotent } from "./Function.ts"
 import { effectIsExit, iterateEager } from "./internal/effect.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as InternalAnnotations from "./internal/schema/annotations.ts"
@@ -2517,7 +2517,7 @@ export type Sentinel = {
   readonly literal: LiteralValue | symbol
 }
 
-const toCandidate = memoize((ast: AST): AST => {
+const toCandidate = memoizeIdempotent((ast: AST): AST => {
   while (true) {
     if (isSuspend(ast)) return unknown
     const encoding = ast.encoding
@@ -2581,7 +2581,7 @@ function getCandidateTypes(ast: AST): ReadonlyArray<Type> {
 }
 
 /** @internal */
-export function collectSentinels(ast: AST): Array<Sentinel> {
+export function collectSentinels(ast: AST): ReadonlyArray<Sentinel> {
   switch (ast._tag) {
     default:
       return []
@@ -3366,6 +3366,21 @@ export function applyToSelfOrLastLinkEncoding(f: (ast: AST) => AST) {
 }
 
 /** @internal */
+export function applyToSelfOrLastLinkEncodingIdempotent(
+  f: (ast: AST) => AST,
+  options?: { readonly stopAt?: (link: Link) => boolean }
+) {
+  function out(ast: AST): AST {
+    if (ast.encoding) {
+      const last = ast.encoding[ast.encoding.length - 1]
+      return options?.stopAt?.(last) ? ast : replaceEncoding(ast, updateLastLink(ast.encoding, out))
+    }
+    return f(ast)
+  }
+  return memoizeIdempotent(out)
+}
+
+/** @internal */
 export function middlewareDecoding(
   ast: AST,
   middleware: SchemaTransformation.Middleware<any, any, any, any, any, any>
@@ -3616,7 +3631,7 @@ function extractStructuralChecks(checks: Checks): Checks | undefined {
  * @category transforming
  * @since 4.0.0
  */
-export const toType = memoize(<A extends AST>(ast: A): A => {
+export const toType = memoizeIdempotent(<A extends AST>(ast: A): A => {
   if (ast.encoding) {
     return toType(replaceEncoding(ast, undefined))
   }
@@ -3663,7 +3678,7 @@ export const toType = memoize(<A extends AST>(ast: A): A => {
  * @category transforming
  * @since 4.0.0
  */
-export const toEncoded = memoize((ast: AST): AST => {
+export const toEncoded = memoizeIdempotent((ast: AST): AST => {
   return toType(flip(ast))
 })
 
@@ -3807,7 +3822,7 @@ export const enumsToLiterals = memoize((ast: Enum): Union<Literal> => {
   )
 })
 
-const parameterFromPropertyKey = applyToSelfOrLastLinkEncoding((ast) => {
+const parameterFromPropertyKey = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   switch (ast._tag) {
     default:
       return ast
@@ -3819,7 +3834,7 @@ const parameterFromPropertyKey = applyToSelfOrLastLinkEncoding((ast) => {
 })
 
 /** @internal */
-export const parameterFromString = applyToSelfOrLastLinkEncoding((ast) => {
+export const parameterFromString = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   switch (ast._tag) {
     default:
       return ast
@@ -3831,7 +3846,7 @@ export const parameterFromString = applyToSelfOrLastLinkEncoding((ast) => {
   }
 })
 
-const partFromString = applyToSelfOrLastLinkEncoding((ast) => {
+const partFromString = applyToSelfOrLastLinkEncodingIdempotent((ast) => {
   switch (ast._tag) {
     default:
       return ast

@@ -140,6 +140,20 @@ describe("SchemaAST", () => {
   })
 
   describe("toType", () => {
+    it("is idempotent for suspended schemas", () => {
+      const schema = Schema.suspend(() => Schema.Struct({ a: Schema.NumberFromString }))
+      const ast = SchemaAST.toType(schema.ast)
+
+      strictEqual(SchemaAST.toType(ast), ast)
+    })
+
+    it("toEncoded is idempotent for suspended schemas", () => {
+      const schema = Schema.suspend(() => Schema.Struct({ a: Schema.NumberFromString }))
+      const ast = SchemaAST.toEncoded(schema.ast)
+
+      strictEqual(SchemaAST.toEncoded(ast), ast)
+    })
+
     it("promotes encodingChecks when contained type shape is preserved", () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
         Schema.flip,

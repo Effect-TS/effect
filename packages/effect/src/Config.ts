@@ -11,7 +11,7 @@ import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
 import * as Effect from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
-import { dual } from "./Function.ts"
+import { dual, memoize } from "./Function.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as LogLevel_ from "./LogLevel.ts"
 import * as Option from "./Option.ts"
@@ -727,7 +727,7 @@ const hasProviderInput = (
   }
 }
 
-const toConfigCursorAST = (root: SchemaAST.AST): SchemaAST.AST => {
+const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
   const seen = new WeakSet<SchemaAST.AST>()
   const recur = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
     seen.add(ast)
@@ -791,7 +791,7 @@ const toConfigCursorAST = (root: SchemaAST.AST): SchemaAST.AST => {
     }
   })
   return recur(root)
-}
+})
 
 /**
  * Creates a `Config<T>` from a `Schema.Codec`.

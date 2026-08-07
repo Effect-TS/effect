@@ -14969,15 +14969,13 @@ export function toCodecJson<S extends Constraint>(schema: S): toCodecJson<S> {
   return make(toCodecJsonAST(schema.ast), { schema })
 }
 
-const toCodecJsonASTBase = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
-  const out = toCodecJsonBase(ast, toCodecJsonAST)
+/** @internal */
+export const toCodecJsonAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+  const out = toCodecJsonASTStep(ast, toCodecJsonAST)
   const context = ast.context
   if (out === ast || context === undefined) return out
   return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(context))
 })
-
-/** @internal */
-export const toCodecJsonAST = memoize(toCodecJsonASTBase)
 
 function withoutConstructorDefault(context: SchemaAST.Context): SchemaAST.Context {
   return context.constructorDefault === undefined ?
@@ -15029,7 +15027,7 @@ const toCodecJsonReorder = makeReorder((ast: SchemaAST.AST) => {
   }
 })
 
-function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
+function toCodecJsonASTStep(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
   switch (ast._tag) {
     case "Declaration": {
       const getLink = ast.annotations?.toCodecJson ?? ast.annotations?.toCodec
@@ -15088,17 +15086,17 @@ function toCodecJsonBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => Sche
  * @since 4.0.0
  */
 export function toCodecIso<S extends Constraint>(schema: S): Codec<S["Type"], S["Iso"]> {
-  return make(toCodecIsoTop(SchemaAST.toType(schema.ast)))
+  return make(toCodecIsoAST(SchemaAST.toType(schema.ast)))
 }
 
-const toCodecIsoTop = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
-  const out = toCodecIsoBase(ast, toCodecIsoTop)
+const toCodecIsoAST = memoize((ast: SchemaAST.AST): SchemaAST.AST => {
+  const out = toCodecIsoASTStep(ast, toCodecIsoAST)
   return out !== ast && ast.context !== undefined ?
     SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(ast.context)) :
     out
 })
 
-function toCodecIsoBase(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
+function toCodecIsoASTStep(ast: SchemaAST.AST, recur: (ast: SchemaAST.AST) => SchemaAST.AST): SchemaAST.AST {
   switch (ast._tag) {
     case "Declaration": {
       const getLink = ast.annotations?.toCodecIso ?? ast.annotations?.toCodec
@@ -15168,7 +15166,7 @@ export interface toCodecStringTree<S extends Constraint> extends
  * @since 4.0.0
  */
 export function toCodecStringTree<S extends Constraint>(schema: S): toCodecStringTree<S> {
-  return make(serializerStringTree(schema.ast), { schema })
+  return make(toCodecStringTreeAST(schema.ast), { schema })
 }
 
 /**
@@ -15217,7 +15215,7 @@ export interface toCodecArrayFromSingle<S extends Constraint> extends
  * @since 4.0.0
  */
 export function toCodecArrayFromSingle<S extends Constraint>(schema: S): toCodecArrayFromSingle<S> {
-  return make(toCodecArrayFromSingleTop(schema.ast))
+  return make(toCodecArrayFromSingleAST(schema.ast))
 }
 
 type XmlEncoderOptions = {
@@ -15354,7 +15352,7 @@ const toStringTreeReorder = makeReorder((ast: SchemaAST.AST) => {
   }
 })
 
-function serializerTree(
+function toCodecStringTreeASTStep(
   ast: SchemaAST.AST,
   recur: (ast: SchemaAST.AST) => SchemaAST.AST,
   onMissingAnnotation: (ast: SchemaAST.AST) => SchemaAST.AST
@@ -15433,37 +15431,29 @@ const booleanToString = new SchemaAST.Link(
   )
 )
 
-const SERIALIZER_ENSURE_ARRAY = "~effect/Schema/SERIALIZER_ENSURE_ARRAY"
+const arrayFromSingleTransformation = new SchemaTransformation.Transformation(
+  SchemaGetter.transform((input: ReadonlyArray<unknown> | string) => typeof input === "string" ? [input] : input),
+  SchemaGetter.passthrough()
+)
 
-const isSerializerArrayFromSingle = (ast: SchemaAST.AST): boolean =>
-  SchemaAST.isUnion(ast) && ast.annotations?.[SERIALIZER_ENSURE_ARRAY] === true
+const isCodecArrayFromSingleLink = (link: SchemaAST.Link): boolean =>
+  link.transformation === arrayFromSingleTransformation
 
-const serializerStringTree = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
-  if (isSerializerArrayFromSingle(ast)) {
-    return ast
-  }
-  const out = serializerTree(ast, serializerStringTree, (ast) => {
+const toCodecStringTreeAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+  const out = toCodecStringTreeASTStep(ast, toCodecStringTreeAST, (ast) => {
     throw new globalThis.Error("Missing structural codec for StringTree", { cause: ast })
   })
   if (out !== ast && ast.context !== undefined) {
     return SchemaAST.replaceContextLastLink(out, withoutConstructorDefault(ast.context))
   }
   return out
-})
+}, { stopAt: isCodecArrayFromSingleLink })
 
 const toArrayFromSingleInputElement = (ast: SchemaAST.AST): SchemaAST.AST =>
   SchemaAST.isOptional(ast) ? SchemaAST.optionalKey(SchemaAST.unknown) : SchemaAST.unknown
 
-const arrayFromSingleTransformation = new SchemaTransformation.Transformation(
-  SchemaGetter.transform((input: ReadonlyArray<unknown> | string) => typeof input === "string" ? [input] : input),
-  SchemaGetter.passthrough()
-)
-
-const toCodecArrayFromSingleTop = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
-  if (isSerializerArrayFromSingle(ast)) {
-    return ast
-  }
-  const out = onSerializerArrayFromSingle(ast)
+const toCodecArrayFromSingleAST = SchemaAST.applyToSelfOrLastLinkEncodingIdempotent((ast) => {
+  const out = toCodecArrayFromSingleASTStep(ast)
   if (SchemaAST.isArrays(out)) {
     const ensure = SchemaAST.decodeTo(
       new SchemaAST.Union(
@@ -15475,8 +15465,7 @@ const toCodecArrayFromSingleTop = SchemaAST.applyToSelfOrLastLinkEncoding((ast) 
           ),
           SchemaAST.string
         ],
-        "anyOf",
-        { [SERIALIZER_ENSURE_ARRAY]: true }
+        "anyOf"
       ),
       out,
       arrayFromSingleTransformation
@@ -15484,12 +15473,12 @@ const toCodecArrayFromSingleTop = SchemaAST.applyToSelfOrLastLinkEncoding((ast) 
     return SchemaAST.isOptional(ast) ? SchemaAST.optionalKey(ensure) : ensure
   }
   return out
-})
+}, { stopAt: isCodecArrayFromSingleLink })
 
-function onSerializerArrayFromSingle(ast: SchemaAST.AST): SchemaAST.AST {
+function toCodecArrayFromSingleASTStep(ast: SchemaAST.AST): SchemaAST.AST {
   return ast._tag === "Declaration" || ast._tag === "Arrays" || ast._tag === "Objects" || ast._tag === "Union" ||
       ast._tag === "Suspend"
-    ? ast.recur(toCodecArrayFromSingleTop)
+    ? ast.recur(toCodecArrayFromSingleAST)
     : ast
 }
 
