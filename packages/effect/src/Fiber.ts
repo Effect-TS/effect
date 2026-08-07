@@ -309,7 +309,7 @@ export const joinAll: <A extends Iterable<Fiber<any, any>>>(
     A,
     A extends Iterable<Fiber<infer _A, infer _E>> ? _A : never
   >,
-  A extends Fiber<infer _A, infer _E> ? _E : never
+  A extends Iterable<Fiber<infer _A, infer _E>> ? _E : never
 > = effect.fiberJoinAll
 
 /**
