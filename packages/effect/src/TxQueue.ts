@@ -1358,7 +1358,7 @@ export const clear = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<Array<A>, Excl
  */
 export const shutdown = <A, E>(self: TxEnqueue<A, E>): Effect.Effect<boolean> =>
   Effect.gen(function*() {
-    yield* Effect.ignore(clear(self))
+    yield* Effect.ignoreCause(clear(self))
     return yield* interrupt(self)
   }).pipe(Effect.tx)
 
