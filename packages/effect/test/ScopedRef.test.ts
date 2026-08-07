@@ -110,6 +110,7 @@ describe("ScopedRef", () => {
           () => Ref.update(replacementReleased, (n) => n + 1)
         )
       ).pipe(Effect.exit)
+      strictEqual(yield* ScopedRef.get(ref), 0)
       const ownerCloseExit = yield* Scope.close(ownerScope, Exit.void).pipe(Effect.exit)
 
       assert.deepStrictEqual(setExit, Exit.die("old-release-defect"))
