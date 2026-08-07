@@ -1285,6 +1285,11 @@ export const makeProtocolWorker = (
           undefined
       }).pipe(
         Effect.tapCause((cause) => {
+          for (const [requestId, entry] of entries) {
+            if (entry.worker !== backing) continue
+            entries.delete(requestId)
+            entry.latch.openUnsafe()
+          }
           const error = Cause.findError(cause)
           return broadcast({
             _tag: "ClientProtocolError",

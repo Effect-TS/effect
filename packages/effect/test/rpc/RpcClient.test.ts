@@ -6,6 +6,8 @@ import * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
 import { Rpc, RpcClient, RpcGroup, RpcMessage, RpcSchema, RpcSerialization } from "effect/unstable/rpc"
 import { RpcClientError } from "effect/unstable/rpc/RpcClientError"
 import * as Socket from "effect/unstable/socket/Socket"
+import * as Worker from "effect/unstable/workers/Worker"
+import { WorkerError, WorkerReceiveError } from "effect/unstable/workers/WorkerError"
 import { vi } from "vitest"
 import type * as RpcClientErrorModule from "../../src/unstable/rpc/RpcClientError.ts"
 
@@ -60,6 +62,78 @@ const assertEmptyResponseFailsRequest = (
   })
 
 describe("RpcClient", () => {
+  it.effect("releases a worker pool slot when the worker run fails", () =>
+    Effect.gen(function*() {
+      const runFailure = yield* Deferred.make<never, WorkerError>()
+      const firstRequestSent = yield* Deferred.make<void>()
+      const secondRequestSent = yield* Deferred.make<void>()
+      const protocolErrorReceived = yield* Deferred.make<void>()
+      const sentRequestIds: Array<string | number> = []
+      let runCount = 0
+      const backing: Worker.Worker<any, any> = {
+        send(message) {
+          return Effect.sync(() => {
+            if (message._tag !== "Request") return
+            sentRequestIds.push(message.id)
+          }).pipe(
+            Effect.andThen(
+              message._tag === "Request" && message.id === 1
+                ? Deferred.succeed(firstRequestSent, void 0)
+                : message._tag === "Request" && message.id === 2
+                ? Deferred.succeed(secondRequestSent, void 0)
+                : Effect.void
+            )
+          )
+        },
+        run() {
+          return runCount++ === 0 ? Deferred.await(runFailure) : Effect.never
+        }
+      }
+      const workerPlatform = Worker.WorkerPlatform.of({
+        spawn: () => Effect.succeed(backing)
+      })
+      const protocol = yield* RpcClient.makeProtocolWorker({ size: 1, concurrency: 1 }).pipe(
+        Effect.provideService(Worker.WorkerPlatform, workerPlatform),
+        Effect.provideService(Worker.Spawner, (() => undefined) as Worker.SpawnerFn)
+      )
+      yield* protocol.run(0, (response) =>
+        response._tag === "ClientProtocolError"
+          ? Deferred.succeed(protocolErrorReceived, void 0)
+          : Effect.void).pipe(Effect.forkScoped)
+
+      const request = (id: number) => ({
+        _tag: "Request" as const,
+        id,
+        tag: "Test",
+        payload: null,
+        headers: []
+      })
+      const first = yield* protocol.send(0, request(1)).pipe(Effect.forkChild)
+      yield* Deferred.await(firstRequestSent)
+      yield* Deferred.fail(
+        runFailure,
+        new WorkerError({ reason: new WorkerReceiveError({ message: "worker exited" }) })
+      )
+      yield* Deferred.await(protocolErrorReceived)
+
+      const firstCompleted = yield* Fiber.join(first).pipe(
+        Effect.timeout("1 second"),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust("1 second")
+      yield* Fiber.join(firstCompleted)
+
+      const second = yield* protocol.send(0, request(2)).pipe(Effect.forkChild)
+      const secondSent = yield* Deferred.await(secondRequestSent).pipe(
+        Effect.timeout("1 second"),
+        Effect.forkChild
+      )
+      yield* TestClock.adjust("1 second")
+      yield* Fiber.join(secondSent)
+      yield* Fiber.interrupt(second)
+      assert.deepStrictEqual(sentRequestIds, [1, 2])
+    }))
+
   it("preserves RpcClientError failures from a reloaded module copy", async () => {
     vi.resetModules()
     const ForeignRpcClientError = await vi.importActual<typeof RpcClientErrorModule>(
