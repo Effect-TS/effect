@@ -26,4 +26,24 @@ describe("BunHttpServer", () => {
       yield* Scope.close(firstScope, Exit.void)
       assert.strictEqual(yield* Effect.promise(() => fetch(url).then((response) => response.text())), "second")
     }))
+
+  it.effect("closing the newer serve scope restores the older handler", () =>
+    Effect.gen(function*() {
+      const ownerScope = yield* Effect.scope
+      const server = yield* BunHttpServer.make({
+        hostname: "127.0.0.1",
+        port: 0,
+        disablePreemptiveShutdown: true
+      })
+      const firstScope = yield* Scope.fork(ownerScope)
+      const secondScope = yield* Scope.fork(ownerScope)
+
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("first"))).pipe(Scope.provide(firstScope))
+      yield* server.serve(Effect.succeed(HttpServerResponse.text("second"))).pipe(Scope.provide(secondScope))
+      const url = HttpServer.formatAddress(server.address)
+
+      assert.strictEqual(yield* Effect.promise(() => fetch(url).then((response) => response.text())), "second")
+      yield* Scope.close(secondScope, Exit.void)
+      assert.strictEqual(yield* Effect.promise(() => fetch(url).then((response) => response.text())), "first")
+    }))
 })
