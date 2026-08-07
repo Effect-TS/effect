@@ -94,21 +94,21 @@ export const make = <A, E, R>(options: {
   })
 
 const getState = <A, E>(self: RcRefImpl<A, E>) =>
-  Effect.uninterruptibleMask((restore) => {
-    switch (self.state._tag) {
-      case "Closed": {
-        return Effect.interrupt
-      }
-      case "Acquired": {
-        self.state.refCount++
-        return self.state.fiber
-          ? Effect.as(Fiber.interrupt(self.state.fiber), self.state)
-          : Effect.succeed(self.state)
-      }
-      case "Empty": {
-        const scope = Scope.makeUnsafe()
-        return self.semaphore.withPermits(1)(
-          restore(Effect.provideContext(
+  self.semaphore.withPermits(1)(
+    Effect.uninterruptibleMask((restore) => {
+      switch (self.state._tag) {
+        case "Closed": {
+          return Effect.interrupt
+        }
+        case "Acquired": {
+          self.state.refCount++
+          return self.state.fiber
+            ? Effect.as(Fiber.interrupt(self.state.fiber), self.state)
+            : Effect.succeed(self.state)
+        }
+        case "Empty": {
+          const scope = Scope.makeUnsafe()
+          return restore(Effect.provideContext(
             self.acquire as Effect.Effect<A, E>,
             Context.add(self.context, Scope.Scope, scope)
           )).pipe(Effect.map((value) => {
@@ -123,10 +123,10 @@ const getState = <A, E>(self: RcRefImpl<A, E>) =>
             self.state = state
             return state
           }))
-        )
+        }
       }
-    }
-  })
+    })
+  )
 
 /** @internal */
 export const get = Effect.fnUntraced(function*<A, E>(
