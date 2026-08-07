@@ -6,6 +6,7 @@ import * as Fiber from "effect/Fiber"
 import * as RcRef from "effect/RcRef"
 import * as Ref from "effect/Ref"
 import * as Scope from "effect/Scope"
+import { TestClock } from "effect/testing"
 
 describe("RcRef", () => {
   it.effect("deallocation", () =>
@@ -147,5 +148,49 @@ describe("RcRef", () => {
           released: 1
         }
       )
+    }))
+
+  it.effect("idleTimeToLive reuses and releases resources", () =>
+    Effect.gen(function*() {
+      let acquired = 0
+      let released = 0
+      const refScope = yield* Scope.make()
+      const ref = yield* RcRef.make({
+        acquire: Effect.acquireRelease(
+          Effect.sync(() => {
+            acquired++
+            return "foo"
+          }),
+          () =>
+            Effect.sync(() => {
+              released++
+            })
+        ),
+        idleTimeToLive: "10 millis"
+      }).pipe(Scope.provide(refScope))
+
+      assert.strictEqual(acquired, 0)
+      assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
+      assert.strictEqual(acquired, 1)
+      assert.strictEqual(released, 0)
+
+      yield* TestClock.adjust("5 millis")
+      assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
+      assert.strictEqual(acquired, 1)
+      assert.strictEqual(released, 0)
+
+      yield* TestClock.adjust("9 millis")
+      assert.strictEqual(released, 0)
+      yield* TestClock.adjust("1 millis")
+      assert.strictEqual(released, 1)
+
+      assert.strictEqual(yield* Effect.scoped(RcRef.get(ref)), "foo")
+      assert.strictEqual(acquired, 2)
+      assert.strictEqual(released, 1)
+
+      yield* TestClock.adjust("10 millis")
+      assert.strictEqual(released, 2)
+
+      yield* Scope.close(refScope, Exit.void)
     }))
 })

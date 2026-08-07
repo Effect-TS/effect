@@ -66,6 +66,6 @@ describe("NodeTerminal", () => {
     assertResult("read-line-after-end", "", "\"QuitError\"")
   })
 
-  it.effect("disposes readline after readLine completes", () =>
+  it.effect("disposes readline after its idle TTL", () =>
     assertOpenResult("read-line-disposed", "line\n", "{\"line\":\"line\",\"dataListeners\":0}"))
 })

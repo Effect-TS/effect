@@ -74,6 +74,7 @@ const readLineAfterEnd = Effect.gen(function*() {
 const readLineDisposed = Effect.gen(function*() {
   const terminal = yield* Terminal.Terminal
   const line = yield* terminal.readLine
+  yield* Effect.sleep("20 millis")
   return { line, dataListeners: process.stdin.listenerCount("data") }
 })
 
