@@ -247,15 +247,16 @@ describe("ExecutionPlan", () => {
             Effect.withExecutionPlan(ExecutionPlan.make({ provide: Context.empty() }), {
               onEvent: (event) =>
                 Effect.sync(() => events.push(event._tag)).pipe(
-                  Effect.andThen(event._tag === "AttemptStart" ? Effect.die("observer-defect") : Effect.void)
+                  Effect.andThen(Effect.die("observer-defect"))
                 )
             }),
             Effect.exit
           )
 
-          assert.deepStrictEqual(
+          deepStrictEqual(
             { exit, events },
-            { exit: Exit.succeed("source-success"), events: ["AttemptStart", "AttemptSuccess"] }
+            { exit: Exit.succeed("source-success"), events: ["AttemptStart", "AttemptSuccess"] },
+            "observer defects must not affect the source outcome"
           )
         }))
 
@@ -399,6 +400,27 @@ describe("ExecutionPlan", () => {
     })
 
     describe("Stream.withExecutionPlan", () => {
+      it.effect("observer defects do not change the outcome or leave attempts unpaired", () =>
+        Effect.gen(function*() {
+          const events = Array.empty<string>()
+          const exit = yield* Stream.succeed("source-success").pipe(
+            Stream.withExecutionPlan(ExecutionPlan.make({ provide: Context.empty() }), {
+              onEvent: (event) =>
+                Effect.sync(() => events.push(event._tag)).pipe(
+                  Effect.andThen(Effect.die("observer-defect"))
+                )
+            }),
+            Stream.runCollect,
+            Effect.exit
+          )
+
+          deepStrictEqual(
+            { exit, events },
+            { exit: Exit.succeed(["source-success"]), events: ["AttemptStart", "AttemptSuccess"] },
+            "observer defects must not affect the source outcome"
+          )
+        }))
+
       it.effect("emits events for each step attempt", () =>
         Effect.gen(function*() {
           const { events, onEvent } = makeCollector()
