@@ -8,6 +8,7 @@ import { InMemorySpanExporter, SimpleSpanProcessor, type SpanProcessor } from "@
 import * as Cause from "effect/Cause"
 import * as EffectContext from "effect/Context"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import * as Fiber from "effect/Fiber"
 import * as Layer from "effect/Layer"
 import * as Option from "effect/Option"
@@ -58,6 +59,7 @@ describe("Tracer", () => {
       yield* Fiber.await(releaseFiber)
 
       assert.isDefined(completed)
+      assert.isTrue(Exit.isSuccess(completed))
     }))
 
   describe("provided", () => {
