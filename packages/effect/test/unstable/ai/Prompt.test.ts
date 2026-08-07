@@ -81,6 +81,145 @@ describe("Prompt", () => {
       assert.deepStrictEqual(prompt, expected)
     })
 
+    it("preserves metadata on non-streaming response parts", () => {
+      const parts = [
+        Response.makePart("text", {
+          text: "Hello",
+          metadata: { test: { value: "text" } }
+        }),
+        Response.makePart("reasoning", {
+          text: "Thinking",
+          metadata: { openai: { encryptedContent: "encrypted-reasoning" } }
+        }),
+        Response.makePart("tool-call", {
+          id: "call-1",
+          name: "get_weather",
+          params: { city: "London" },
+          providerExecuted: false,
+          metadata: { google: { thoughtSignature: "signed-call" } }
+        }),
+        Response.makePart("tool-result", {
+          id: "call-1",
+          name: "get_weather",
+          isFailure: false,
+          result: { temp: 20 },
+          encodedResult: { temp: 20 },
+          preliminary: false,
+          providerExecuted: false,
+          metadata: { test: { value: "tool-result" } }
+        })
+      ]
+
+      const prompt = Prompt.fromResponseParts(parts)
+
+      assert.deepStrictEqual(
+        prompt,
+        Prompt.make([
+          {
+            role: "assistant",
+            content: [
+              { type: "text", text: "Hello", options: { test: { value: "text" } } },
+              {
+                type: "reasoning",
+                text: "Thinking",
+                options: { openai: { encryptedContent: "encrypted-reasoning" } }
+              },
+              {
+                type: "tool-call",
+                id: "call-1",
+                name: "get_weather",
+                params: { city: "London" },
+                providerExecuted: false,
+                options: { google: { thoughtSignature: "signed-call" } }
+              }
+            ]
+          },
+          {
+            role: "tool",
+            content: [{
+              type: "tool-result",
+              id: "call-1",
+              name: "get_weather",
+              isFailure: false,
+              result: { temp: 20 },
+              providerExecuted: false,
+              options: { test: { value: "tool-result" } }
+            }]
+          }
+        ])
+      )
+    })
+
+    it("accumulates metadata across streamed text and reasoning parts", () => {
+      const parts = [
+        Response.makePart("text-start", {
+          id: "text-1",
+          metadata: { testStart: { value: "text-start" } }
+        }),
+        Response.makePart("text-delta", {
+          id: "text-1",
+          delta: "Hello",
+          metadata: { testDelta: { value: "text-delta" } }
+        }),
+        Response.makePart("text-end", {
+          id: "text-1",
+          metadata: { testEnd: { value: "text-end" } }
+        }),
+        Response.makePart("reasoning-start", {
+          id: "reasoning-1",
+          metadata: { openai: { itemId: "reasoning-item" } }
+        }),
+        Response.makePart("reasoning-delta", {
+          id: "reasoning-1",
+          delta: "Thinking"
+        }),
+        Response.makePart("reasoning-delta", {
+          id: "reasoning-1",
+          delta: "",
+          metadata: { testDelta: { value: "reasoning-delta" } }
+        }),
+        Response.makePart("reasoning-end", {
+          id: "reasoning-1",
+          metadata: {
+            openai: { encryptedContent: "encrypted-reasoning" },
+            testEnd: { value: "reasoning-end" }
+          }
+        })
+      ]
+
+      const prompt = Prompt.fromResponseParts(parts)
+
+      assert.deepStrictEqual(
+        prompt,
+        Prompt.make([{
+          role: "assistant",
+          content: [
+            {
+              type: "text",
+              text: "Hello",
+              options: {
+                testStart: { value: "text-start" },
+                testDelta: { value: "text-delta" },
+                testEnd: { value: "text-end" }
+              }
+            },
+            {
+              type: "reasoning",
+              text: "Thinking",
+              options: {
+                openai: {
+                  itemId: "reasoning-item",
+                  encryptedContent: "encrypted-reasoning"
+                },
+                testDelta: { value: "reasoning-delta" },
+                testEnd: { value: "reasoning-end" }
+              }
+            }
+          ]
+        }])
+      )
+    })
+
     it("places tool calls in assistant messages and tool results in tool messages", () => {
       const parts = [
         Response.makePart("tool-call", {

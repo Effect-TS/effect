@@ -316,13 +316,23 @@ declare module "effect/unstable/ai/Prompt" {
    *
    * **Details**
    *
-   * Controls Anthropic prompt caching for tool result content.
+   * Carries Anthropic MCP metadata and controls prompt caching for tool result
+   * content.
    *
    * @category models
    * @since 4.0.0
    */
   export interface ToolResultPartOptions extends ProviderOptions {
     readonly anthropic?: {
+      /**
+       * Contains details about the MCP tool that produced the result.
+       */
+      readonly mcp_tool?: {
+        /**
+         * The name of the MCP server
+         */
+        readonly server: string
+      } | null
       /**
        * A breakpoint which marks the end of reusable content eligible for caching.
        */
