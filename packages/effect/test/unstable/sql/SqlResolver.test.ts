@@ -19,10 +19,9 @@ describe("SqlResolver", () => {
           }
         })
 
-        const exit = yield* Effect.exit(SqlResolver.request(-1, resolver))
-        yield* Effect.yieldNow
+        const error = yield* Effect.flip(SqlResolver.request(-1, resolver))
 
-        assert(Exit.isFailure(exit))
+        assert.strictEqual(error._tag, "SchemaError")
         assert.strictEqual(executions, 0)
       }))
   })
@@ -41,11 +40,28 @@ describe("SqlResolver", () => {
           }
         })
 
-        const exit = yield* Effect.exit(SqlResolver.request(-1, resolver))
-        yield* Effect.yieldNow
+        const error = yield* Effect.flip(SqlResolver.request(-1, resolver))
 
-        assert(Exit.isFailure(exit))
+        assert.strictEqual(error._tag, "SchemaError")
         assert.strictEqual(executions, 0)
+      }))
+
+    it.effect("completes duplicate requests when id encoding fails", () =>
+      Effect.gen(function*() {
+        const resolver = SqlResolver.findById({
+          Id: Schema.Number.check(Schema.isGreaterThan(0)),
+          Result: Schema.Struct({ id: Schema.Number }),
+          ResultId: (result) => result.id,
+          execute: (inputs) => Effect.succeed(inputs.map((id) => ({ id })))
+        })
+        const execute = SqlResolver.request(resolver)
+
+        const errors = yield* Effect.all([
+          Effect.flip(execute(-1)),
+          Effect.flip(execute(-1))
+        ], { concurrency: "unbounded" })
+
+        assert.deepStrictEqual(errors.map((error) => error._tag), ["SchemaError", "SchemaError"])
       }))
 
     it.effect("deduplicates requests by id", () =>
@@ -91,10 +107,9 @@ describe("SqlResolver", () => {
           }
         })
 
-        const exit = yield* Effect.exit(SqlResolver.request(-1, resolver))
-        yield* Effect.yieldNow
+        const error = yield* Effect.flip(SqlResolver.request(-1, resolver))
 
-        assert(Exit.isFailure(exit))
+        assert.strictEqual(error._tag, "SchemaError")
         assert.strictEqual(executions, 0)
       }))
 
@@ -129,10 +144,9 @@ describe("SqlResolver", () => {
           }
         })
 
-        const exit = yield* Effect.exit(SqlResolver.request(-1, resolver))
-        yield* Effect.yieldNow
+        const error = yield* Effect.flip(SqlResolver.request(-1, resolver))
 
-        assert(Exit.isFailure(exit))
+        assert.strictEqual(error._tag, "SchemaError")
         assert.strictEqual(executions, 0)
       }))
   })

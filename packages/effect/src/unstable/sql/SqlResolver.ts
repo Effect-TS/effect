@@ -358,6 +358,24 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
   const len = requests.length
   const inputs = Arr.empty<InE>()
   const byIdMap = MutableHashMap.empty<In, Request.Entry<SqlRequest<In, A, E, R>>>()
+
+  for (let i = 0; i < len; i++) {
+    const entry = requests[i]
+    const existing = MutableHashMap.get(byIdMap, entry.request.payload)
+    if (Option.isSome(existing)) {
+      const previous = existing.value
+      MutableHashMap.set(byIdMap, entry.request.payload, {
+        ...previous,
+        completeUnsafe(exit) {
+          previous.completeUnsafe(exit)
+          entry.completeUnsafe(exit)
+        }
+      })
+    } else {
+      MutableHashMap.set(byIdMap, entry.request.payload, entry)
+    }
+  }
+
   let entry!: Request.Entry<SqlRequest<In, A, E, R>>
   const encode = Schema.encodeEffect(schema)
   const handle = Effect.matchCauseEager({
@@ -368,23 +386,9 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
       inputs.push(value)
     }
   })
-
-  for (let i = 0; i < len; i++) {
-    entry = requests[i]
-    const existing = MutableHashMap.get(byIdMap, entry.request.payload)
-    if (Option.isSome(existing)) {
-      const duplicate = entry
-      MutableHashMap.set(byIdMap, entry.request.payload, {
-        ...existing.value,
-        completeUnsafe(exit) {
-          existing.value.completeUnsafe(exit)
-          duplicate.completeUnsafe(exit)
-        }
-      })
-    } else {
-      yield (Effect.provideContext(handle(encode(entry.request.payload)), entry.context) as Effect.Effect<void>)
-      MutableHashMap.set(byIdMap, entry.request.payload, entry)
-    }
+  for (const [, deduplicated] of Array.from(byIdMap)) {
+    entry = deduplicated
+    yield (Effect.provideContext(handle(encode(entry.request.payload)), entry.context) as Effect.Effect<void>)
   }
 
   return [inputs, byIdMap] as const
