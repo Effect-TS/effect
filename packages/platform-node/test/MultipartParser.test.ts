@@ -209,14 +209,11 @@ const cases: ReadonlyArray<MultipartCase> = [
     ],
     boundary: "---------------------------paZqsnEHRufoShdX6fh0lUhXBP4k",
     config: {
-      maxPartSize: 13,
       maxFieldSize: 5
     },
-    expected: [
-      ["field", "file_name_0", "super alpha file", "text/plain"],
-      ["file", "upload_file_0", 26, "1k_a.dat", "application/octet-stream"]
-    ],
-    name: "Fields and files (limits)"
+    expected: [],
+    errors: ["ReachedLimit"],
+    name: "stops after maxFieldSize is exceeded"
   },
   {
     source: [
@@ -231,12 +228,11 @@ const cases: ReadonlyArray<MultipartCase> = [
     ],
     boundary: "---------------------------paZqsnEHRufoShdX6fh0lUhXBP4k",
     config: {
-      maxParts: 0
+      maxPartSize: 13
     },
-    expected: [
-      ["file", "upload_file_0", 26, "1k_a.dat", "application/octet-stream"]
-    ],
-    name: "should not emit fieldsLimit if no field was sent"
+    expected: [],
+    errors: ["ReachedLimit"],
+    name: "stops after maxPartSize is exceeded"
   },
   {
     source: [
@@ -257,12 +253,9 @@ const cases: ReadonlyArray<MultipartCase> = [
     config: {
       maxParts: 0
     },
-    expected: [
-      ["field", "file_name_0", "super alpha file", "text/plain"],
-      ["file", "upload_file_0", 26, "1k_a.dat", "application/octet-stream"]
-    ],
-    errors: ["ReachedLimit", "ReachedLimit"],
-    name: "should respect parts limit of 0"
+    expected: [],
+    errors: ["ReachedLimit"],
+    name: "stops before the first part when maxParts is 0"
   },
   {
     source: [
@@ -287,13 +280,9 @@ const cases: ReadonlyArray<MultipartCase> = [
     config: {
       maxParts: 1
     },
-    errors: ["ReachedLimit", "ReachedLimit"],
-    expected: [
-      ["field", "file_name_0", "super alpha file", "text/plain"],
-      ["field", "file_name_1", "super beta file", "text/plain"],
-      ["file", "upload_file_0", 26, "1k_a.dat", "application/octet-stream"]
-    ],
-    name: "should respect parts limit of 1"
+    errors: ["ReachedLimit"],
+    expected: [["field", "file_name_0", "super alpha file", "text/plain"]],
+    name: "stops after maxParts is exceeded"
   },
   {
     source: [
