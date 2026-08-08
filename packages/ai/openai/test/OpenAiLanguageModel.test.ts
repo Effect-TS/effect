@@ -31,6 +31,162 @@ describe("OpenAiLanguageModel", () => {
 
   describe("generateText", () => {
     describe("message preparation", () => {
+      describe("prompt cache breakpoints", () => {
+        const breakpoint = { mode: "explicit" } as const
+
+        it.effect("places a breakpoint on system input_text", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([
+                Prompt.systemMessage({
+                  content: "Stable instructions",
+                  options: { openai: { promptCacheBreakpoint: breakpoint } }
+                }),
+                { role: "user", content: "Hello" }
+              ])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+            const systemMessage = body.input.find((message: any) => message.role === "developer")
+
+            deepStrictEqual(systemMessage.content, [{
+              type: "input_text",
+              text: "Stable instructions",
+              prompt_cache_breakpoint: breakpoint
+            }])
+          }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" } }))))
+
+        it.effect("places a breakpoint on a user input_text part", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([{
+                role: "user",
+                content: [Prompt.textPart({
+                  text: "Stable context",
+                  options: { openai: { promptCacheBreakpoint: breakpoint } }
+                })]
+              }])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            deepStrictEqual(body.input[0].content, [{
+              type: "input_text",
+              text: "Stable context",
+              prompt_cache_breakpoint: breakpoint
+            }])
+          }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" } }))))
+
+        it.effect("places a breakpoint on an input_image part", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([{
+                role: "user",
+                content: [Prompt.filePart({
+                  mediaType: "image/png",
+                  data: new URL("https://example.com/stable.png"),
+                  options: { openai: { promptCacheBreakpoint: breakpoint } }
+                })]
+              }])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            deepStrictEqual(body.input[0].content, [{
+              type: "input_image",
+              image_url: "https://example.com/stable.png",
+              detail: "auto",
+              prompt_cache_breakpoint: breakpoint
+            }])
+          }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" } }))))
+
+        it.effect("uses a user message breakpoint on the last input_file part", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([{
+                role: "user",
+                content: [
+                  Prompt.textPart({ text: "Read this file" }),
+                  Prompt.filePart({
+                    mediaType: "application/pdf",
+                    data: new URL("https://example.com/stable.pdf")
+                  })
+                ],
+                options: { openai: { promptCacheBreakpoint: breakpoint } }
+              }])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            deepStrictEqual(body.input[0].content, [
+              { type: "input_text", text: "Read this file" },
+              {
+                type: "input_file",
+                file_url: "https://example.com/stable.pdf",
+                prompt_cache_breakpoint: breakpoint
+              }
+            ])
+          }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" } }))))
+
+        it.effect("prefers a part breakpoint over the user message fallback", () =>
+          Effect.gen(function*() {
+            const messageOptions = {
+              openai: {
+                get promptCacheBreakpoint(): never {
+                  throw new Error("message fallback should not be read")
+                }
+              }
+            }
+
+            yield* LanguageModel.generateText({
+              prompt: Prompt.fromMessages([Prompt.userMessage({
+                content: [Prompt.textPart({
+                  text: "Stable context",
+                  options: { openai: { promptCacheBreakpoint: breakpoint } }
+                })],
+                options: messageOptions
+              })])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            deepStrictEqual(body.input[0].content[0].prompt_cache_breakpoint, breakpoint)
+          }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" } }))))
+
+        it.effect("omits breakpoints when no OpenAI provider option is set", () =>
+          Effect.gen(function*() {
+            yield* LanguageModel.generateText({
+              prompt: Prompt.make([{
+                role: "system",
+                content: "Instructions"
+              }, {
+                role: "user",
+                content: [
+                  Prompt.textPart({ text: "Question" }),
+                  Prompt.filePart({
+                    mediaType: "image/png",
+                    data: new URL("https://example.com/image.png")
+                  })
+                ]
+              }])
+            }).pipe(Effect.provide(OpenAiLanguageModel.model("gpt-5.6")))
+
+            const requests = yield* MockHttpClient.requests
+            const body = yield* getRequestBody(requests[0])
+
+            for (const message of body.input) {
+              if (Array.isArray(message.content)) {
+                assert.isTrue(message.content.every((part: any) => !("prompt_cache_breakpoint" in part)))
+              }
+            }
+          }).pipe(Effect.provide(makeTestLayer({ body: { model: "gpt-5.6" } }))))
+      })
+
       describe("system messages", () => {
         it.effect("uses system role for standard models", () =>
           Effect.gen(function*() {
