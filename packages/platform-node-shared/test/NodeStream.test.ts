@@ -174,19 +174,10 @@ describe("Stream", () => {
   it.effect("toString registers one error listener", () =>
     Effect.gen(function*() {
       const stream = new Readable({
-        read() {
-          this.destroy(new Error("boom"))
-        }
+        read() {}
       })
-      const once = stream.once.bind(stream)
-      let errorListeners = 0
-      stream.once = ((event: string, ...args: Array<any>) => {
-        if (event === "error") errorListeners++
-        return (once as any)(event, ...args)
-      }) as typeof stream.once
-
-      yield* NodeStream.toString(() => stream).pipe(Effect.exit)
-
-      assert.strictEqual(errorListeners, 1)
+      yield* NodeStream.toString(() => stream).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      assert.strictEqual(stream.listenerCount("error"), 1)
     }))
 })
