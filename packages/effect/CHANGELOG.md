@@ -1,5 +1,11 @@
 # effect
 
+## 4.0.0-beta.107
+
+### Patch Changes
+
+- [#7149](https://github.com/Effect-TS/effect/pull/7149) [`b32bdef`](https://github.com/Effect-TS/effect/commit/b32bdef0d119a1ad1463dc01a46763ffee1f9bd9) Thanks @gcanti! - Require explicit handling for regular expression pattern constraints translated from JSON Schema documents, with modes to apply trusted patterns or ignore their constraints.
+
 ## 4.0.0-beta.106
 
 ### Patch Changes
