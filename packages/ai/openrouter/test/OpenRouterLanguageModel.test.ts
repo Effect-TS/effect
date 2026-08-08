@@ -1,7 +1,7 @@
 import { Generated, OpenRouterClient, OpenRouterLanguageModel } from "@effect/ai-openrouter"
 import { assert, describe, it } from "@effect/vitest"
 import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
-import { Array, Context, Effect, Layer, Redacted, Ref, Schema } from "effect"
+import { Array, Context, Effect, Layer, Redacted, Ref, Schema, Stream } from "effect"
 import { LanguageModel, Prompt, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
@@ -209,6 +209,44 @@ describe("OpenRouterLanguageModel", () => {
         }).pipe(Effect.provide(makeTestLayer())))
     })
   })
+
+  describe("streamText", () => {
+    it.effect("preserves streamed citation start and end indexes", () =>
+      Effect.gen(function*() {
+        const parts = yield* LanguageModel.streamText({ prompt: "cite a source" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer([{
+            id: "response-1",
+            object: "chat.completion.chunk",
+            model: "openai/gpt-4o-mini",
+            created: 1,
+            choices: [{
+              index: 0,
+              delta: {
+                annotations: [{
+                  type: "url_citation",
+                  url_citation: {
+                    url: "https://example.com/source",
+                    title: "source",
+                    start_index: 2,
+                    end_index: 9
+                  }
+                }]
+              }
+            }]
+          }]))
+        )
+
+        const source = globalThis.Array.from(parts).find((part) => part.type === "source")
+        assert.isDefined(source)
+        if (source?.type === "source") {
+          assert.deepStrictEqual(source.metadata, {
+            openrouter: { startIndex: 2, endIndex: 9 }
+          })
+        }
+      }))
+  })
 })
 
 // =============================================================================
@@ -300,3 +338,23 @@ const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
     }
     return yield* Effect.die(new Error("Expected Uint8Array body"))
   })
+
+const makeStreamTestLayer = (events: ReadonlyArray<unknown>) => {
+  const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n"
+  const httpClient = HttpClient.makeWith(
+    Effect.fnUntraced(function*(requestEffect) {
+      const request = yield* requestEffect
+      return HttpClientResponse.fromWeb(
+        request,
+        new Response(body, {
+          status: 200,
+          headers: { "content-type": "text/event-stream" }
+        })
+      )
+    }),
+    Effect.succeed as HttpClient.HttpClient.Preprocess<HttpClientError.HttpClientError, never>
+  )
+  return OpenRouterClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+    Layer.provide(Layer.succeed(HttpClient.HttpClient, httpClient))
+  )
+}
