@@ -116,4 +116,24 @@ describe("Source", () => {
       ])
     })
   })
+
+  describe("MDX", () => {
+    it("extracts marked TypeScript fences from mdx content", () => {
+      const source = [
+        "import { SomeComponent } from './component'",
+        "",
+        "## Example",
+        "",
+        "<SomeComponent />",
+        "",
+        "```ts import.meta.vitest",
+        "const result = 42",
+        "```"
+      ].join("\n")
+
+      assert.deepStrictEqual(Source.extract(source, "markdown"), [
+        { source: "const result = 42", line: 7, name: undefined }
+      ])
+    })
+  })
 })
