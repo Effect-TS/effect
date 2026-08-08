@@ -639,7 +639,8 @@ export type TextResponseFormatConfiguration = typeof TextResponseFormatConfigura
  * Validates the Responses API request payload, including input content, model
  * selection, instructions, reasoning options, text output format, tools,
  * `tool_choice`, streaming, storage, response continuation, sampling options,
- * and optional response fields requested through `include`.
+ * safety identification, prompt caching, and optional response fields requested
+ * through `include`.
  *
  * **Gotchas**
  *
@@ -658,6 +659,13 @@ export const CreateResponse = Schema.Struct({
   temperature: Schema.optional(Schema.Finite),
   top_p: Schema.optional(Schema.Finite),
   user: Schema.optional(Schema.String),
+  safety_identifier: Schema.optional(Schema.String.check(Schema.isMaxLength(64))),
+  prompt_cache_key: Schema.optional(Schema.String),
+  prompt_cache_retention: Schema.optional(Schema.Literals(["in_memory", "24h"])),
+  prompt_cache_options: Schema.optional(Schema.Struct({
+    mode: Schema.optional(Schema.Literals(["implicit", "explicit"])),
+    ttl: Schema.optional(Schema.Literal("30m"))
+  })),
   service_tier: Schema.optional(Schema.String),
   previous_response_id: Schema.optional(Schema.String),
   model: Schema.optional(Schema.String),
