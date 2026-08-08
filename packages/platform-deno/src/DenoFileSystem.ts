@@ -67,8 +67,20 @@ const copy: FileSystem.FileSystem["copy"] = (fromPath, toPath, options) =>
       preserveTimestamps: options?.preserveTimestamps ?? false
     }))
 
-const copyFile: FileSystem.FileSystem["copyFile"] = (fromPath, toPath) =>
-  tryPromise("copyFile", fromPath, () => Deno.copyFile(fromPath, toPath))
+const copyFile: FileSystem.FileSystem["copyFile"] = (fromPath, toPath, options) => {
+  const mode = options?.mode ?? 0
+  const { COPYFILE_EXCL, COPYFILE_FICLONE_FORCE } = FileSystem.CopyFileFlag
+  if ((mode & COPYFILE_EXCL) !== 0 || (mode & COPYFILE_FICLONE_FORCE) !== 0) {
+    return Effect.fail(
+      PlatformError.badArgument({
+        module: "FileSystem",
+        method: "copyFile",
+        description: "The copy file mode is unsupported by Deno"
+      })
+    )
+  }
+  return tryPromise("copyFile", fromPath, () => Deno.copyFile(fromPath, toPath))
+}
 
 const chmod: FileSystem.FileSystem["chmod"] = (path, mode) => tryPromise("chmod", path, () => Deno.chmod(path, mode))
 
@@ -497,6 +509,12 @@ const makeFileSystem = Effect.map(Effect.serviceOption(FileSystem.WatchBackend),
 
 /**
  * Provides the `FileSystem` service backed by Deno filesystem APIs.
+ *
+ * **Gotchas**
+ *
+ * `COPYFILE_FICLONE` falls back to a regular copy. `COPYFILE_EXCL` and
+ * `COPYFILE_FICLONE_FORCE` fail with a PlatformError.BadArgument` because
+ * Deno cannot provide their semantics.
  *
  * @category layers
  * @since 4.0.0
