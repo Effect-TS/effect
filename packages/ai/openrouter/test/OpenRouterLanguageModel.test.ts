@@ -279,6 +279,71 @@ describe("OpenRouterLanguageModel", () => {
         const reasoningEnd = parts.find((part) => part.type === "reasoning-end")
         deepStrictEqual(reasoningEnd?.metadata, { openrouter: { reasoningDetails } })
       }))
+
+    it.effect("emits incremental tool parameter fragments", () =>
+      Effect.gen(function*() {
+        const ProbeTool = Tool.make("ProbeTool", {
+          parameters: Schema.Struct({ a: Schema.Number }),
+          success: Schema.String
+        })
+        const toolkit = Toolkit.make(ProbeTool)
+        const parts = yield* LanguageModel.streamText({
+          prompt: "call the tool",
+          toolkit,
+          disableToolCallResolution: true
+        }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(toolkit.toLayer({ ProbeTool: () => Effect.succeed("ok") })),
+          Effect.provide(makeStreamTestLayer([
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [{
+                index: 0,
+                delta: {
+                  tool_calls: [{
+                    index: 0,
+                    id: "call-1",
+                    type: "function",
+                    function: { name: "ProbeTool", arguments: "{\"a\":" }
+                  }]
+                }
+              }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [{
+                index: 0,
+                delta: { tool_calls: [{ index: 0 }] }
+              }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [{
+                index: 0,
+                finish_reason: "tool_calls",
+                delta: { tool_calls: [{ index: 0, function: { arguments: "1}" } }] }
+              }]
+            }
+          ]))
+        )
+
+        deepStrictEqual(
+          globalThis.Array.from(parts)
+            .filter((part) => part.type === "tool-params-delta")
+            .map((part) => part.delta),
+          ["{\"a\":", "1}"]
+        )
+      }))
   })
 })
 
