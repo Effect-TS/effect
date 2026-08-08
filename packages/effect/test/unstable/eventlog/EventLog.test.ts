@@ -55,48 +55,9 @@ describe("EventLog", () => {
       }).pipe(Effect.provide(logLayer(handled)))
     }))
 
-  it.effect("encrypts and decrypts entries", () =>
+  it.effect("encrypts and decrypts entries with a distinct IV per entry", () =>
     Effect.gen(function*() {
       const encryption = yield* EventLogEncryption.EventLogEncryption
-      const identity = yield* encryption.generateIdentity
-      const entry = new EventJournal.Entry({
-        id: EventJournal.makeEntryIdUnsafe(),
-        event: "UserCreated",
-        primaryKey: "user-1",
-        payload: new Uint8Array([1, 2, 3])
-      }, { disableChecks: true })
-      const encrypted = yield* encryption.encrypt(identity, [entry])
-      const decrypted = yield* encryption.decrypt(identity, [{
-        sequence: 0,
-        iv: encrypted[0].iv,
-        entryId: entry.id,
-        encryptedEntry: encrypted[0].encryptedEntry
-      }])
-      assert.strictEqual(decrypted.length, 1)
-      assert.strictEqual(decrypted[0].entry.idString, entry.idString)
-    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
-
-  it.effect("uses a distinct AES-GCM IV for each entry", () =>
-    Effect.gen(function*() {
-      const ivs: Array<Array<number>> = []
-      const subtle = new Proxy(globalThis.crypto.subtle, {
-        get(target, property) {
-          if (property === "encrypt") {
-            return (algorithm: AesGcmParams, key: CryptoKey, data: BufferSource) => {
-              const iv = algorithm.iv as ArrayBufferView<ArrayBuffer>
-              ivs.push(Array.from(new Uint8Array(iv.buffer, iv.byteOffset, iv.byteLength)))
-              return target.encrypt(algorithm, key, data)
-            }
-          }
-          const value = Reflect.get(target, property, target)
-          return typeof value === "function" ? value.bind(target) : value
-        }
-      })
-      const encryption = yield* EventLogEncryption.makeEncryptionSubtle({
-        subtle,
-        getRandomValues: globalThis.crypto.getRandomValues.bind(globalThis.crypto),
-        randomUUID: globalThis.crypto.randomUUID.bind(globalThis.crypto)
-      } as Crypto)
       const identity = yield* encryption.generateIdentity
       const entries = ["user-1", "user-2"].map((primaryKey, index) =>
         new EventJournal.Entry({
@@ -106,12 +67,17 @@ describe("EventLog", () => {
           payload: new Uint8Array([index])
         }, { disableChecks: true })
       )
-
-      yield* encryption.encrypt(identity, entries)
-
-      assert.lengthOf(ivs, 2)
-      assert.notDeepEqual(ivs[0], ivs[1])
-    }))
+      const encrypted = yield* encryption.encrypt(identity, entries)
+      assert.notDeepEqual(encrypted[0].iv, encrypted[1].iv)
+      const decrypted = yield* encryption.decrypt(
+        identity,
+        encrypted.map((entry, index) => ({ ...entry, sequence: index, entryId: entries[index].id }))
+      )
+      assert.deepStrictEqual(
+        decrypted.map((remote) => remote.entry.idString),
+        entries.map((entry) => entry.idString)
+      )
+    }).pipe(Effect.provide(EventLogEncryption.layerSubtle)))
 
   it.effect("publishes local journal changes through a scoped subscription", () =>
     Effect.gen(function*() {

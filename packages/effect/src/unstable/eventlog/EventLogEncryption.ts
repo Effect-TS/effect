@@ -19,8 +19,8 @@ import type { Identity } from "./EventLog.ts"
 import { makeGetIdentityRootSecretMaterial } from "./internal/identityRootSecretDerivation.ts"
 
 /**
- * Schema for an encrypted journal entry paired with the id of the original
- * entry.
+ * Schema for an encrypted journal entry paired with its initialization vector
+ * and the id of the original entry.
  *
  * @category models
  * @since 4.0.0
