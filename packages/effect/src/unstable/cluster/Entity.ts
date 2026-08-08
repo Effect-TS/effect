@@ -34,7 +34,12 @@ import * as RpcClient from "../rpc/RpcClient.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
 import * as RpcSchema from "../rpc/RpcSchema.ts"
 import * as RpcServer from "../rpc/RpcServer.ts"
-import type { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.ts"
+import type {
+  AlreadyProcessingMessage,
+  EntityNotAssignedToRunner,
+  MailboxFull,
+  PersistenceError
+} from "./ClusterError.ts"
 import { Persisted, ShardGroup, Uninterruptible } from "./ClusterSchema.ts"
 import { EntityAddress } from "./EntityAddress.ts"
 import type { EntityId } from "./EntityId.ts"
@@ -117,7 +122,7 @@ export interface Entity<
       entityId: string
     ) => RpcClient.RpcClient.From<
       Rpcs,
-      MailboxFull | AlreadyProcessingMessage | PersistenceError
+      MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner
     >,
     never,
     Sharding

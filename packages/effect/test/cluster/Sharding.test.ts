@@ -4,6 +4,7 @@ import {
   Cause,
   Clock,
   Context,
+  Deferred,
   Effect,
   Exit,
   Fiber,
@@ -13,10 +14,12 @@ import {
   MutableRef,
   Option,
   Queue,
+  Schema,
   Stream
 } from "effect"
 import { TestClock } from "effect/testing"
 import {
+  ClusterError,
   ClusterMetrics,
   ClusterSchema,
   Entity,
@@ -140,6 +143,7 @@ describe.concurrent("Sharding", () => {
         `shutdown completes when a finalizing entity sends an outgoing message (persisted=${persisted}, preemptiveShutdown=${preemptiveShutdown})`,
         () =>
           Effect.gen(function*() {
+            const discardExit = yield* Deferred.make<Exit.Exit<void, unknown>>()
             const Receiver = Entity.make("ShutdownDeadlockReceiver", [
               Rpc.make("Ping").annotate(ClusterSchema.Persisted, persisted)
             ])
@@ -151,7 +155,15 @@ describe.concurrent("Sharding", () => {
             const SenderLayer = Sender.toLayer(Effect.gen(function*() {
               const receiver = yield* Receiver.client
               // finalizer sends an outgoing message during entity teardown
-              yield* Effect.addFinalizer(() => receiver("peer").Ping(void 0, { discard: true }).pipe(Effect.ignore))
+              yield* Effect.addFinalizer(() =>
+                Effect.uninterruptible(
+                  Effect.sleep(300).pipe(
+                    Effect.andThen(receiver("peer").Ping(void 0, { discard: true })),
+                    Effect.exit,
+                    Effect.flatMap((exit) => Deferred.succeed(discardExit, exit))
+                  )
+                )
+              )
               return { Arm: () => Effect.void }
             }))
 
@@ -201,12 +213,181 @@ describe.concurrent("Sharding", () => {
             runFiber.interruptUnsafe()
             const completed = yield* Fiber.await(runFiber).pipe(Effect.timeoutOption("4 seconds"))
             assert(Option.isSome(completed), "Sharding scope-close hung during shutdown (deadlock)")
+            assert(Exit.isSuccess(yield* Deferred.await(discardExit)), "discard send failed during shutdown")
             assert.strictEqual(driver.journal.length, persisted ? 1 : 0)
           }),
         20_000
       )
     }
+
+    it.live(
+      `shutdown completes when a finalizing entity awaits a reply from an unroutable entity (persisted=${persisted})`,
+      () =>
+        Effect.gen(function*() {
+          const requestExit = yield* Deferred.make<Exit.Exit<void, unknown>>()
+          const Receiver = Entity.make("StrandReceiver", [
+            Rpc.make("Ping").annotate(ClusterSchema.Persisted, persisted)
+          ])
+          const ReceiverLayer = Receiver.toLayer({ Ping: () => Effect.void })
+
+          const Sender = Entity.make("StrandSender", [
+            Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
+          ])
+          const SenderLayer = Sender.toLayer(Effect.gen(function*() {
+            const receiver = yield* Receiver.client
+            // uninterruptible finalizer that awaits a reply from another entity
+            yield* Effect.addFinalizer(() =>
+              Effect.uninterruptible(
+                Effect.sleep(300).pipe(
+                  Effect.andThen(receiver("peer").Ping()),
+                  Effect.exit,
+                  Effect.flatMap((exit) => Deferred.succeed(requestExit, exit))
+                )
+              )
+            )
+            return { Arm: () => Effect.void }
+          }))
+
+          const env = Layer.mergeAll(SenderLayer, ReceiverLayer).pipe(
+            Layer.provideMerge(Sharding.layer),
+            Layer.provide(RunnerStorage.layerMemory),
+            Layer.provide(RunnerHealth.layerNoop),
+            Layer.provide(Runners.layerNoop),
+            Layer.provideMerge(MessageStorage.layerMemory),
+            Layer.provide(ShardingConfig.layer({
+              runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+              shardsPerGroup: 8,
+              entityTerminationTimeout: 0,
+              entityMessagePollInterval: 50,
+              refreshAssignmentsInterval: 20,
+              sendRetryInterval: 10
+            }))
+          )
+
+          const shardAcquired = Latch.makeUnsafe()
+          const armed = Latch.makeUnsafe()
+          let driver!: MessageStorage.MemoryDriver["Service"]
+          const runFiber = yield* Effect.gen(function*() {
+            driver = yield* MessageStorage.MemoryDriver
+            const sharding = yield* Sharding.Sharding
+            const shardId = sharding.getShardId(EntityId.make("1"), "default")
+            while (!sharding.hasShardId(shardId)) {
+              yield* Effect.sleep(5)
+            }
+            yield* shardAcquired.open
+            yield* (yield* Sender.client)("1").Arm()
+            yield* armed.open
+            return yield* Effect.never
+          }).pipe(Effect.provide(env), Effect.scoped, Effect.forkDetach)
+
+          const acquired = yield* shardAcquired.await.pipe(Effect.timeoutOption("8 seconds"))
+          if (Option.isNone(acquired)) {
+            runFiber.interruptUnsafe()
+            yield* Fiber.await(runFiber)
+          }
+          assert(Option.isSome(acquired), "Timed out waiting for sender shard acquisition")
+          yield* armed.await
+
+          runFiber.interruptUnsafe()
+          const completed = yield* Fiber.await(runFiber).pipe(Effect.timeoutOption("4 seconds"))
+          assert(Option.isSome(completed), "Sharding scope-close hung during shutdown (stranded caller)")
+          assert(!Exit.hasDies(completed.value), "finalizer defected instead of failing cleanly")
+          const exit = yield* Deferred.await(requestExit)
+          assert(Exit.isFailure(exit), "request succeeded instead of failing during shutdown")
+          const failure = Cause.findErrorOption(exit.cause)
+          assert(Option.isSome(failure), "request did not fail with a typed error")
+          assert(failure.value instanceof ClusterError.EntityNotAssignedToRunner)
+          assert.strictEqual(driver.journal.length, persisted ? 1 : 0)
+        }),
+      20_000
+    )
   }
+
+  it.live("fails a stream when its chunk acknowledgement is abandoned during shutdown", () =>
+    Effect.gen(function*() {
+      const chunks = yield* Queue.unbounded<number>()
+      const streamStarted = yield* Deferred.make<void>()
+      const streamExit = yield* Deferred.make<Exit.Exit<void, unknown>>()
+
+      const Receiver = Entity.make("ShutdownStreamReceiver", [
+        Rpc.make("Values", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, true)
+      ])
+      const ReceiverLayer = Receiver.toLayer({
+        Values: () => Stream.fromQueue(chunks).pipe(Stream.onStart(Deferred.succeed(streamStarted, void 0)))
+      })
+
+      const Sender = Entity.make("ShutdownStreamSender", [
+        Rpc.make("Arm").annotate(ClusterSchema.Persisted, false)
+      ])
+      const SenderLayer = Sender.toLayer(Effect.gen(function*() {
+        const receiver = yield* Receiver.client
+        const streamFiber = yield* receiver("peer").Values().pipe(
+          Stream.runDrain,
+          Effect.uninterruptible,
+          Effect.forkScoped({ startImmediately: true })
+        )
+        yield* Deferred.await(streamStarted)
+        yield* Effect.addFinalizer(() =>
+          Effect.uninterruptible(
+            Queue.offer(chunks, 1).pipe(
+              Effect.andThen(Fiber.await(streamFiber)),
+              Effect.flatMap((exit) => Deferred.succeed(streamExit, exit))
+            )
+          )
+        )
+        return { Arm: () => Effect.void }
+      }))
+
+      const env = Layer.mergeAll(SenderLayer, ReceiverLayer).pipe(
+        Layer.provideMerge(Sharding.layer),
+        Layer.provide(RunnerStorage.layerMemory),
+        Layer.provide(RunnerHealth.layerNoop),
+        Layer.provide(Runners.layerNoop),
+        Layer.provideMerge(MessageStorage.layerMemory),
+        Layer.provide(ShardingConfig.layer({
+          runnerAddress: Option.some(RunnerAddress.make("localhost", 1234)),
+          shardsPerGroup: 8,
+          entityTerminationTimeout: 1000,
+          entityMessagePollInterval: 50,
+          refreshAssignmentsInterval: 20,
+          sendRetryInterval: 10
+        }))
+      )
+
+      const shardAcquired = Latch.makeUnsafe()
+      const armed = Latch.makeUnsafe()
+      let driver!: MessageStorage.MemoryDriver["Service"]
+      const runFiber = yield* Effect.gen(function*() {
+        driver = yield* MessageStorage.MemoryDriver
+        const sharding = yield* Sharding.Sharding
+        const shardId = sharding.getShardId(EntityId.make("1"), "default")
+        while (!sharding.hasShardId(shardId)) {
+          yield* Effect.sleep(5)
+        }
+        yield* shardAcquired.open
+        yield* (yield* Sender.client)("1").Arm()
+        yield* armed.open
+        return yield* Effect.never
+      }).pipe(Effect.provide(env), Effect.scoped, Effect.forkDetach)
+
+      const acquired = yield* shardAcquired.await.pipe(Effect.timeoutOption("8 seconds"))
+      if (Option.isNone(acquired)) {
+        runFiber.interruptUnsafe()
+        yield* Fiber.await(runFiber)
+      }
+      assert(Option.isSome(acquired), "Timed out waiting for sender shard acquisition")
+      yield* armed.await
+
+      runFiber.interruptUnsafe()
+      const completed = yield* Fiber.await(runFiber).pipe(Effect.timeoutOption("4 seconds"))
+      assert(Option.isSome(completed), "Sharding scope-close hung after abandoning a stream chunk acknowledgement")
+      const exit = yield* Deferred.await(streamExit)
+      assert(Exit.isFailure(exit), "stream succeeded instead of failing during shutdown")
+      const failure = Cause.findErrorOption(exit.cause)
+      assert(Option.isSome(failure), "stream did not fail with a typed error")
+      assert(failure.value instanceof ClusterError.EntityNotAssignedToRunner)
+      assert.strictEqual(driver.journal.filter((envelope) => envelope._tag === "AckChunk").length, 1)
+    }), 20_000)
 
   it.effect("interrupts are sent for volatile messages on shutdown", () =>
     Effect.gen(function*() {
