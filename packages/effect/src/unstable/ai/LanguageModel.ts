@@ -1167,7 +1167,7 @@ export const make: (params: {
 
     // Construct the response schema with the tools from the toolkit
     const ResponseSchema = Schema.mutable(
-      Schema.Array(Response.Part(toolkit))
+      Schema.Array(Response.Part(toolkit, { relaxParams: true }))
     )
 
     // If tool call resolution is disabled, return the response without
@@ -1469,7 +1469,7 @@ export const make: (params: {
       >
     }
 
-    const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(toolkit))
+    const ResponseSchema = Schema.NonEmptyArray(Response.StreamPart(toolkit, { relaxParams: true }))
     const decodeParts = Schema.decodeEffect(ResponseSchema)
 
     // Queue for decoded parts and tool results
