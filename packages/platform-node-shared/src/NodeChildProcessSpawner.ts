@@ -354,13 +354,18 @@ const make = Effect.gen(function*() {
   ) => {
     if (globalThis.process.platform === "win32") {
       return Effect.callback<void, PlatformError.PlatformError>((resume) => {
-        NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, (error) => {
-          if (error) {
-            resume(Effect.fail(toPlatformError("kill", toError(error), command)))
-          } else {
-            resume(Effect.void)
+        NodeChildProcess.execFile(
+          "taskkill",
+          ["/pid", String(childProcess.pid), "/T", "/F"],
+          { windowsHide: true },
+          (error) => {
+            if (error) {
+              resume(Effect.fail(toPlatformError("kill", toError(error), command)))
+            } else {
+              resume(Effect.void)
+            }
           }
-        })
+        )
       })
     }
     return Effect.try({
@@ -376,9 +381,14 @@ const make = Effect.gen(function*() {
     signal: NodeJS.Signals
   ): void => {
     if (globalThis.process.platform === "win32") {
-      NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, () => {
-        // ignore errors during best-effort cleanup
-      })
+      NodeChildProcess.execFile(
+        "taskkill",
+        ["/pid", String(childProcess.pid), "/T", "/F"],
+        { windowsHide: true },
+        () => {
+          // ignore errors during best-effort cleanup
+        }
+      )
       return
     }
     try {
@@ -476,7 +486,10 @@ const make = Effect.gen(function*() {
             env,
             stdio,
             detached: cmd.options.detached ?? process.platform !== "win32",
-            shell: cmd.options.shell
+            shell: cmd.options.shell,
+            // Windows gives detached children their own console, so only hide it
+            // when the caller did not explicitly ask to detach
+            windowsHide: cmd.options.detached !== true
           }),
           Effect.fnUntraced(function*([childProcess, exitSignal]) {
             const exited = yield* Deferred.isDone(exitSignal)
