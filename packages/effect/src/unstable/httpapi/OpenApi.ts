@@ -224,6 +224,25 @@ const compileSchemas: CompileSchemas = (asts) =>
     )
   )
 
+const cloneOpenAPISpec = <A>(value: A): A => {
+  if (Array.isArray(value)) {
+    return value.map(cloneOpenAPISpec) as A
+  }
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(value)) {
+      Object.defineProperty(out, key, {
+        value: cloneOpenAPISpec((value as Record<string, unknown>)[key]),
+        enumerable: true,
+        configurable: true,
+        writable: true
+      })
+    }
+    return out as A
+  }
+  return value
+}
+
 /**
  * This function checks if a given tag exists within the provided context. If
  * the tag is present, it retrieves the associated value and applies the given
@@ -273,7 +292,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
 ): OpenAPISpec {
   const cached = cache.get(api)
   if (cached !== undefined) {
-    return cached
+    return cloneOpenAPISpec(cached)
   }
   let spec: OpenAPISpec = {
     openapi: "3.1.0",
@@ -684,7 +703,7 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
 
   cache.set(api, spec)
 
-  return spec
+  return cloneOpenAPISpec(spec)
 }
 
 type ResponseBodies = Map<
