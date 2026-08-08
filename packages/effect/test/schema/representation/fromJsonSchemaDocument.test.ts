@@ -6,14 +6,16 @@ function toSchemaFromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): Schema.Top {
-  return SchemaRepresentation.fromJsonSchemaDocument(document, options)
+  return SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options })
 }
 
 function fromJsonSchemaRepresentation(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): SchemaRepresentation.Document {
-  return SchemaRepresentation.toRepresentation(SchemaRepresentation.fromJsonSchemaDocument(document, options).ast)
+  return SchemaRepresentation.toRepresentation(
+    SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options }).ast
+  )
 }
 
 describe("fromJsonSchemaDocument", () => {
@@ -25,7 +27,7 @@ describe("fromJsonSchemaDocument", () => {
     expected: Schema.Json
   ) {
     const jsonDocument = JsonSchema.fromSchemaDraft2020_12(input.schema)
-    const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, input.options)
+    const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, { patterns: "apply", ...input.options })
     const document = SchemaRepresentation.toRepresentation(schema.ast)
     deepStrictEqual(SchemaRepresentation.toJson(document), expected)
     return schema
@@ -5519,6 +5521,79 @@ describe("fromJsonSchemaDocument", () => {
   })
 
   describe("options", () => {
+    describe("patterns", () => {
+      it("rejects patterns by default", () => {
+        for (
+          const [schema, path] of [
+            [{ type: "string", pattern: "^a+$" }, `["schema"]["pattern"]`],
+            [
+              { type: "object", patternProperties: { "^a+$": { type: "string" } } },
+              `["schema"]["patternProperties"]["^a+$"]`
+            ],
+            [
+              { type: "object", propertyNames: { pattern: "^a+$" } },
+              `["schema"]["propertyNames"]["pattern"]`
+            ]
+          ] as const
+        ) {
+          throws(
+            () => SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
+            `Pattern encountered while patterns is set to "error"\n  at ${path}`
+          )
+        }
+      })
+
+      it("applies patterns explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" }),
+          { patterns: "apply" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertFalse(is("bbb"))
+      })
+
+      it("ignores patterns explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" }),
+          { patterns: "ignore" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertTrue(is("bbb"))
+
+        const invalidPattern = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "[" }),
+          { patterns: "ignore" }
+        )
+        assertTrue(Schema.is(invalidPattern)("anything"))
+      })
+
+      it("ignores pattern property value constraints explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            patternProperties: { "^a+$": { type: "string" } },
+            additionalProperties: false
+          }),
+          { patterns: "ignore" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is({ aaa: "a" }))
+        assertTrue(is({ bbb: 1 }))
+
+        const withAdditionalProperties = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            patternProperties: { "^a+$": { type: "string" } },
+            additionalProperties: { type: "boolean" }
+          }),
+          { patterns: "ignore" }
+        )
+        assertTrue(Schema.is(withAdditionalProperties)({ bbb: 1 }))
+      })
+    })
+
     describe("onEnter", () => {
       it("additionalProperties false via onEnter", () => {
         assertFromJsonSchema(
