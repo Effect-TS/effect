@@ -376,19 +376,19 @@ const partitionRequestsById = function*<In, A, E, R, InE>(
     }
   }
 
-  let entry!: Request.Entry<SqlRequest<In, A, E, R>>
   const encode = Schema.encodeEffect(schema)
-  const handle = Effect.matchCauseEager({
-    onFailure(cause: Cause.Cause<Schema.SchemaError>) {
-      entry.completeUnsafe(Exit.failCause(cause))
-    },
-    onSuccess(value: InE) {
-      inputs.push(value)
-    }
-  })
-  for (const [, deduplicated] of Array.from(byIdMap)) {
-    entry = deduplicated
-    yield (Effect.provideContext(handle(encode(entry.request.payload)), entry.context) as Effect.Effect<void>)
+  for (const [, entry] of byIdMap) {
+    yield* Effect.provideContext(
+      Effect.matchCauseEager(encode(entry.request.payload), {
+        onFailure(cause) {
+          entry.completeUnsafe(Exit.failCause(cause))
+        },
+        onSuccess(value) {
+          inputs.push(value)
+        }
+      }),
+      entry.context
+    )
   }
 
   return [inputs, byIdMap] as const
