@@ -14,6 +14,7 @@ vi.mock("@clickhouse/client", () => ({
   createClient: () => ({
     exec: () => connectImmediately ? Promise.resolve({}) : new Promise(() => {}),
     query: () => new Promise(() => {}),
+    insert: () => new Promise(() => {}),
     command: (options: Record<string, unknown>) => {
       commandCalls.push(options)
       return Promise.resolve({})
@@ -48,13 +49,36 @@ describe("ClickhouseClient", () => {
       assert.strictEqual(closeCalls, 1)
     }).pipe(Effect.provide(Reactivity.layer)))
 
-  it.effect("parameterizes the query id when cancelling", () =>
+  it.effect("parameterizes the query id when cancelling a query", () =>
     Effect.gen(function*() {
       connectImmediately = true
       commandCalls.length = 0
       const queryId = "id' OR 1 = 1 --"
       const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
       const fiber = yield* client.withQueryId(client.unsafe("SELECT 1"), queryId).pipe(Effect.forkScoped)
+      yield* Effect.yieldNow
+
+      yield* Fiber.interrupt(fiber)
+
+      assert.deepStrictEqual(commandCalls, [{
+        query: "KILL QUERY WHERE query_id = {queryId:String}",
+        query_params: { queryId }
+      }])
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(Reactivity.layer)
+    ))
+
+  it.effect("parameterizes the query id when cancelling an insert", () =>
+    Effect.gen(function*() {
+      connectImmediately = true
+      commandCalls.length = 0
+      const queryId = "id' OR 1 = 1 --"
+      const client = yield* ClickhouseClient.make({ url: "http://localhost:8123" })
+      const fiber = yield* client.withQueryId(
+        client.insertQuery({ table: "test", values: [] }),
+        queryId
+      ).pipe(Effect.forkScoped)
       yield* Effect.yieldNow
 
       yield* Fiber.interrupt(fiber)
