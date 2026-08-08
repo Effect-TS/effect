@@ -1,8 +1,7 @@
-import type { HttpApiEndpoint } from "@effect/platform"
-import { HttpApiBuilder } from "@effect/platform"
+import { HttpApi, HttpApiBuilder, HttpApiEndpoint, HttpApiGroup, HttpServer } from "@effect/platform"
 import { describe, it } from "@effect/vitest"
-import { deepStrictEqual } from "@effect/vitest/utils"
-import { identity, Schema } from "effect"
+import { deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { Effect, identity, Layer, Schema } from "effect"
 
 const assertNormalizedUrlParams = <UrlParams extends Schema.Schema.Any>(
   schema: UrlParams & HttpApiEndpoint.HttpApiEndpoint.ValidateUrlParams<UrlParams>,
@@ -280,5 +279,29 @@ describe("HttpApiBuilder", () => {
       assertNormalizedUrlParams(schema, { a: "a" }, { a: ["a"] })
       assertNormalizedUrlParams(schema, { a: ["a"] }, { a: ["a"] })
     })
+  })
+
+  it("Union response status", async () => {
+    const Union = Schema.Union(Schema.Literal("A"), Schema.Literal("B"))
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("group")
+        .add(HttpApiEndpoint.get("endpoint1", "/1").addSuccess(Union, { status: 201 }))
+        .add(HttpApiEndpoint.get("endpoint2", "/2").addSuccess(Union))
+    )
+    const ApiImplementation = HttpApiBuilder.api(Api).pipe(
+      Layer.provide(
+        HttpApiBuilder.group(Api, "group", (_) =>
+          _
+            .handle("endpoint1", () => Effect.succeed("A"))
+            .handle("endpoint2", () => Effect.succeed("A")))
+      ),
+      Layer.merge(HttpServer.layerContext)
+    )
+    const { handler } = HttpApiBuilder.toWebHandler(ApiImplementation)
+
+    const response1 = await handler(new Request("http://localhost:3000/1"))
+    strictEqual(response1.status, 201)
+    const response2 = await handler(new Request("http://localhost:3000/2"))
+    strictEqual(response2.status, 200)
   })
 })
