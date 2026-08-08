@@ -5573,14 +5573,16 @@ describe("fromJsonSchemaDocument", () => {
         const schema = SchemaRepresentation.fromJsonSchemaDocument(
           JsonSchema.fromSchemaDraft2020_12({
             type: "object",
-            patternProperties: { "^a+$": { type: "string" } },
+            patternProperties: {
+              "^a+$": { type: "string" },
+              "^b+$": { type: "number" }
+            },
             additionalProperties: false
           }),
           { patterns: "ignore" }
         )
         const is = Schema.is(schema)
-        assertTrue(is({ aaa: "a" }))
-        assertTrue(is({ bbb: 1 }))
+        assertTrue(is({ aaa: 1, bbb: "b", ccc: true }))
 
         const withAdditionalProperties = SchemaRepresentation.fromJsonSchemaDocument(
           JsonSchema.fromSchemaDraft2020_12({

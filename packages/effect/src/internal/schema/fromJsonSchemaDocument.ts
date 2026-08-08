@@ -862,7 +862,6 @@ function translateJsonSchemaMultiDocument(
     path: Path
   ): Array<SchemaRepresentation.IndexSignature> {
     const signatures: Array<SchemaRepresentation.IndexSignature> = []
-    let hasIgnoredPattern = false
     if (
       typeof schema.patternProperties === "object" &&
       schema.patternProperties !== null &&
@@ -870,17 +869,16 @@ function translateJsonSchemaMultiDocument(
     ) {
       for (const [pattern, value] of Object.entries(schema.patternProperties)) {
         const check = importPattern(pattern, [...path, "patternProperties", pattern])
-        hasIgnoredPattern ||= check === undefined
+        if (check === undefined) return [{ parameter: string, type: unknown }]
         signatures.push({
           parameter: {
             _tag: "String",
-            checks: check === undefined ? [] : [check]
+            checks: [check]
           },
-          type: check === undefined ? unknown : recur(value, [...path, "patternProperties", pattern])
+          type: recur(value, [...path, "patternProperties", pattern])
         })
       }
     }
-    if (hasIgnoredPattern) return signatures
     if (schema.additionalProperties === undefined || schema.additionalProperties === true) {
       signatures.push({
         parameter: string,
