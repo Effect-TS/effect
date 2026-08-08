@@ -2,6 +2,7 @@ import * as Arr from "../../Array.ts"
 import * as Equal from "../../Equal.ts"
 import { escapeToken, unescapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
+import { rewriteRefs } from "../../JsonSchema.ts"
 import * as RegEx from "../../RegExp.ts"
 import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
@@ -147,12 +148,11 @@ function compileJsonSchema(
   references: SchemaRepresentation.References,
   options: Schema.ToJsonSchemaOptions | undefined
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
-  // null = compiling
-  const compiledDefinitions = new Map<string, JsonSchema.JsonSchema | null>()
-  const aliases = new Map<string, string>()
+  // null = compiling, string = canonical key, object = compiled schema
+  const definitionStates = new Map<string, JsonSchema.JsonSchema | string | null>()
   const compiledRepresentations = new WeakMap<SchemaRepresentation.Representation, JsonSchema.JsonSchema>()
   const fallbackDefinitions = new Map<string, Array<string>>()
-  const finalized = new WeakMap<object, unknown>()
+  let hasAliases = false
   const referenceKeys = Object.keys(references)
   for (const key of referenceKeys) {
     compileDefinition(key, ["references", key])
@@ -163,94 +163,48 @@ function compileJsonSchema(
   )
   const definitions: Record<string, JsonSchema.JsonSchema> = {}
   for (const key of referenceKeys) {
-    if (!aliases.has(key)) {
-      InternalRecord.assignProperty(
-        definitions,
-        key,
-        finalizeJsonSchema(compiledDefinitions.get(key)!)
-      )
+    const compiled = definitionStates.get(key)!
+    if (typeof compiled !== "string") {
+      InternalRecord.assignProperty(definitions, key, finalizeJsonSchema(compiled))
     }
   }
   return { dialect: "draft-2020-12", schemas, definitions }
 
   function compileDefinition(key: string, path: Path): string {
-    if (compiledDefinitions.has(key)) return resolveAlias(key)
+    const compiled = definitionStates.get(key)
+    if (compiled !== undefined) return typeof compiled === "string" ? compiled : key
     if (!Object.hasOwn(references, key)) {
       throw errorWithPath(`Invalid reference ${key}`, [...path, "$ref"])
     }
 
-    compiledDefinitions.set(key, null)
+    definitionStates.set(key, null)
     const representation = references[key]
     const schema = recur(representation, ["references", key])
-    compiledDefinitions.set(key, schema)
 
     const fallback = getIdentifierFallback(representation)
     if (fallback !== undefined) {
       const candidates = fallbackDefinitions.get(fallback)
-      const match = candidates?.find((candidate) => Equal.equals(compiledDefinitions.get(candidate), schema))
+      const match = candidates?.find((candidate) => Equal.equals(definitionStates.get(candidate), schema))
       if (match === undefined) {
         if (candidates === undefined) fallbackDefinitions.set(fallback, [key])
         else candidates.push(key)
       } else {
-        aliases.set(key, match)
+        hasAliases = true
+        definitionStates.set(key, match)
+        return match
       }
     }
-    return resolveAlias(key)
-  }
-
-  function resolveAlias(key: string): string {
-    const alias = aliases.get(key)
-    if (alias === undefined) return key
-    const canonical = resolveAlias(alias)
-    if (canonical !== alias) aliases.set(key, canonical)
-    return canonical
+    definitionStates.set(key, schema)
+    return key
   }
 
   function finalizeJsonSchema(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
-    return finalizeValue(schema) as JsonSchema.JsonSchema
-  }
-
-  function finalizeValue(value: unknown): unknown {
-    if (typeof value !== "object" || value === null) return value
-    const cached = finalized.get(value)
-    if (cached !== undefined) return cached
-    if (Array.isArray(value)) {
-      let changed = false
-      const output = value.map((item) => {
-        const out = finalizeValue(item)
-        if (out !== item) changed = true
-        return out
-      })
-      const out = changed ? output : value
-      finalized.set(value, out)
-      return out
-    }
-    let output: Record<string, unknown> | undefined
-    for (const [key, item] of Object.entries(value)) {
-      const out = key === "$ref" && typeof item === "string"
-        ? finalizeReference(item)
-        : finalizeValue(item)
-      if (out !== item) {
-        output ??= { ...value }
-        InternalRecord.assignProperty(output, key, out)
-      }
-    }
-    const out = output ?? value
-    finalized.set(value, out)
-    return out
-  }
-
-  function finalizeReference(reference: string): string {
-    const prefix = "#/$defs/"
-    if (!reference.startsWith(prefix)) return reference
-    const separator = reference.indexOf("/", prefix.length)
-    const token = separator === -1 ? reference.slice(prefix.length) : reference.slice(prefix.length, separator)
-    const key = unescapeToken(token)
-    if (!compiledDefinitions.has(key)) return reference
-    const canonical = resolveAlias(key)
-    return canonical === key
-      ? reference
-      : `${prefix}${escapeToken(canonical)}${separator === -1 ? "" : reference.slice(separator)}`
+    if (!hasAliases) return schema
+    return rewriteRefs(schema, ($ref) =>
+      $ref.replace(/^#\/\$defs\/([^/]*)/, (match, token) => {
+        const canonical = definitionStates.get(unescapeToken(token))
+        return typeof canonical === "string" ? `#/$defs/${escapeToken(canonical)}` : match
+      }))
   }
 
   function getIdentifierFallback(
