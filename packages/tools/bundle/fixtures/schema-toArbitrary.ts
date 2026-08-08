@@ -6,4 +6,4 @@ const schema = Schema.Struct({
   c: Schema.Array(Schema.String)
 })
 
-export const arbitrary = Schema.toArbitraryLazy(schema)
+export const arbitrary = Schema.toArbitrary(schema)

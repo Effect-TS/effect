@@ -63,7 +63,7 @@ import type * as SchemaRepresentation from "./SchemaRepresentation.ts"
 import * as SchemaTransformation from "./SchemaTransformation.ts"
 import type { Assign, Lambda, Mutable, Simplify } from "./Struct.ts"
 import * as Struct_ from "./Struct.ts"
-import * as FastCheck from "./testing/FastCheck.ts"
+import type * as FastCheck from "./testing/FastCheck.ts"
 import type { RequiredKeys, UnionToIntersection } from "./Types.ts"
 import type { Unify } from "./Unify.ts"
 
@@ -14507,44 +14507,32 @@ export const TaggedError: {
 // -----------------------------------------------------------------------------
 
 /**
- * A thunk that, given the `fast-check` module, returns an `Arbitrary<T>`.
- * Use this type when you need to defer instantiation of the arbitrary, for
- * example to support recursive schemas.
+ * Represents a function that builds a fast-check `Arbitrary<T>` from the
+ * `fast-check` module.
+ *
+ * **When to use**
+ *
+ * Use as the result type of schema arbitrary derivation.
  *
  * @category utility types
  * @since 4.0.0
  */
-export type LazyArbitrary<T> = (fc: typeof FastCheck) => FastCheck.Arbitrary<T>
+export type Arbitrary<T> = (fc: typeof FastCheck) => FastCheck.Arbitrary<T>
 
 /**
- * Derives a {@link LazyArbitrary} from a schema. The result is memoized so
- * repeated calls with the same schema are cheap.
+ * Returns an {@link Arbitrary} factory derived from a schema. The generated
+ * values satisfy the schema and use its decoded `Type`.
  *
- * **Details**
+ * **When to use**
  *
- * Prefer {@link toArbitrary} when you need the arbitrary directly, or when you
- * want derivation diagnostics via `{ report: true }`. Unsupported schema
- * nodes, impossible constraints, invalid candidates, and recursive schemas
- * without a finite terminal path fail immediately.
- *
- * @category generators
- * @since 4.0.0
- */
-export function toArbitraryLazy<S extends Constraint>(schema: S): LazyArbitrary<S["Type"]> {
-  const lawc = InternalArbitrary.memoized(schema.ast)
-  return (fc) => lawc(fc, {})
-}
-
-/**
- * Derives a `fast-check` `Arbitrary` from a schema for property-based
- * testing. The derived arbitrary generates values that satisfy the schema.
+ * Use when you need a fast-check generator for values accepted by a schema.
  *
  * **Details**
  *
  * Constraints refine base generators; candidates add weighted sources while
- * filters still validate every value. `{ report: true }` returns warnings such
- * as `OpaqueFilter`, while derivation errors remain fail-fast. Recursive
- * schemas use terminal branches and fail when no finite terminal path exists.
+ * filters still validate every value. Recursive schemas use terminal branches
+ * and fail when no finite terminal path exists. The result is memoized so
+ * repeated calls with the same schema are cheap.
  *
  * **Example** (Generating arbitrary values)
  *
@@ -14552,36 +14540,20 @@ export function toArbitraryLazy<S extends Constraint>(schema: S): LazyArbitrary<
  * import { Schema } from "effect"
  * import * as FastCheck from "fast-check"
  *
- * const PersonArb = Schema.toArbitrary(
+ * const makePersonArbitrary = Schema.toArbitrary(
  *   Schema.Struct({ name: Schema.String, age: Schema.Number })
  * )
  *
- * // Sample a random value
- * FastCheck.sample(PersonArb, 1)
+ * const PersonArbitrary = makePersonArbitrary(FastCheck)
+ * FastCheck.sample(PersonArbitrary, 1)
  * ```
  *
  * @category generators
  * @since 4.0.0
  */
-export function toArbitrary<S extends Constraint>(schema: S): FastCheck.Arbitrary<S["Type"]>
-export function toArbitrary<S extends Constraint>(
-  schema: S,
-  options: { readonly report: true }
-): Annotations.ToArbitrary.WithReport<FastCheck.Arbitrary<S["Type"]>>
-export function toArbitrary<S extends Constraint>(
-  schema: S,
-  options?: { readonly report?: boolean }
-): FastCheck.Arbitrary<S["Type"]> | Annotations.ToArbitrary.WithReport<FastCheck.Arbitrary<S["Type"]>> {
-  if (options?.report === true) {
-    const lawc = InternalArbitrary.memoized(schema.ast)
-    const report = InternalArbitrary.makeReport()
-    InternalArbitrary.collectReport(schema.ast, report)
-    return {
-      value: lawc(FastCheck, {}),
-      report: InternalArbitrary.toReport(report)
-    }
-  }
-  return toArbitraryLazy(schema)(FastCheck)
+export function toArbitrary<S extends Constraint>(schema: S): Arbitrary<S["Type"]> {
+  const lawc = InternalArbitrary.memoized(schema.ast)
+  return (fc) => lawc(fc, {})
 }
 
 // -----------------------------------------------------------------------------
@@ -16369,8 +16341,7 @@ export declare namespace Annotations {
 
   /**
    * Types used by arbitrary-derivation annotations to configure `toArbitrary`
-   * hooks, filter hints, candidate sources, diagnostics, and merged generation
-   * constraints.
+   * hooks, filter hints, candidate sources, and merged generation constraints.
    *
    * @since 4.0.0
    */
@@ -16383,8 +16354,7 @@ export declare namespace Annotations {
      * `constraint` refines the schema node's base generator. `candidate` adds a
      * weighted source before all filters run. If neither hint is provided, the
      * filter does not guide generation; generated values are still checked by
-     * the filter predicate. With `{ report: true }`, this is reported as
-     * `OpaqueFilter`.
+     * the filter predicate.
      *
      * @category models
      * @since 4.0.0
@@ -16571,58 +16541,6 @@ export declare namespace Annotations {
         /* Arbitrary derivations for any type parameters of the schema (if present) */
         typeParameters: { readonly [K in keyof TypeParameters]: TypeParameter<TypeParameters[K]["Type"]> }
       ): (fc: typeof FastCheck, context: Context) => Output<T>
-    }
-
-    /**
-     * Wraps a derived value together with arbitrary-derivation diagnostics.
-     *
-     * @category models
-     * @since 4.0.0
-     */
-    export interface WithReport<A> {
-      readonly value: A
-      readonly report: Report
-    }
-
-    /**
-     * Diagnostics collected while deriving an arbitrary.
-     *
-     * **Details**
-     *
-     * Reports contain warnings only. Unsupported schema nodes, impossible
-     * constraints, invalid candidate weights, and throwing candidate factories
-     * fail immediately.
-     *
-     * @category models
-     * @since 4.0.0
-     */
-    export interface Report {
-      readonly warnings: ReadonlyArray<Warning>
-    }
-
-    /**
-     * Non-fatal arbitrary-derivation warning.
-     *
-     * @category models
-     * @since 4.0.0
-     */
-    export type Warning = OpaqueFilterWarning
-
-    /**
-     * Warning emitted when a filter is handled only by the final `.filter`.
-     *
-     * **Details**
-     *
-     * The filter is still enforced. The warning means it did not contribute
-     * a constraint or candidate, so generation may rely on fast-check discards.
-     *
-     * @category models
-     * @since 4.0.0
-     */
-    export interface OpaqueFilterWarning {
-      readonly _tag: "OpaqueFilter"
-      readonly path: ReadonlyArray<PropertyKey>
-      readonly description?: string | undefined
     }
   }
 

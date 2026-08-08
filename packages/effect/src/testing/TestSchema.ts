@@ -172,7 +172,7 @@ export class Asserts<S extends Schema.Constraint> {
   }) {
     const decodeUnknownEffect = SchemaParser.decodeUnknownEffect(this.schema)
     const encodeEffect = SchemaParser.encodeEffect(this.schema)
-    const arbitrary = Schema.toArbitrary(this.schema)
+    const arbitrary = Schema.toArbitrary(this.schema)(FastCheck)
     return FastCheck.assert(
       FastCheck.asyncProperty(arbitrary, async (t) => {
         const r = await Effect.runPromise(
@@ -280,7 +280,7 @@ export class Asserts<S extends Schema.Constraint> {
       }) {
         const params = options?.params
         const is = Schema.is(schema)
-        const arb = Schema.toArbitrary(schema)
+        const arb = Schema.toArbitrary(schema)(FastCheck)
         FastCheck.assert(FastCheck.property(arb, (a) => is(a)), { numRuns: 20, ...params })
       }
     }

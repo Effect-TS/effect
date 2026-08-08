@@ -8508,7 +8508,7 @@ effect/unstable/rpc/Utils (barrel: effect/unstable/rpc)
 
 - `Arbitrary.ArbitraryGenerationContext` -> `Schema.Annotations.ToArbitrary.Context`: Use the v4 arbitrary-derivation context type from Schema.Annotations.
 
-- `Arbitrary.LazyArbitrary` -> `Schema.LazyArbitrary`: The lazy arbitrary type moved onto Schema.
+- `Arbitrary.LazyArbitrary` -> `Schema.Arbitrary`: The arbitrary factory type moved onto Schema.
 
 #### `Arbitrary.make`
 
@@ -8519,19 +8519,19 @@ Arbitrary derivation is now exposed directly by Schema.
 **Example**
 
 ```ts
-Schema.toArbitrary(schema)
+Schema.toArbitrary(schema)(FastCheck)
 ```
 
 #### `Arbitrary.makeLazy`
 
-**Replacement:** `Schema.toArbitraryLazy`
+**Replacement:** `Schema.toArbitrary`
 
 Lazy arbitrary derivation is now exposed directly by Schema.
 
 **Example**
 
 ```ts
-Schema.toArbitraryLazy(schema)
+Schema.toArbitrary(schema)
 ```
 
 ### `effect/Array`
