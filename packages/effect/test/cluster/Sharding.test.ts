@@ -310,7 +310,7 @@ describe.concurrent("Sharding", () => {
       const streamExit = yield* Deferred.make<Exit.Exit<void, unknown>>()
 
       const Receiver = Entity.make("ShutdownStreamReceiver", [
-        Rpc.make("Values", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, false)
+        Rpc.make("Values", { success: Schema.Number, stream: true }).annotate(ClusterSchema.Persisted, true)
       ])
       const ReceiverLayer = Receiver.toLayer({
         Values: () => Stream.fromQueue(chunks).pipe(Stream.onStart(Deferred.succeed(streamStarted, void 0)))
@@ -356,7 +356,9 @@ describe.concurrent("Sharding", () => {
 
       const shardAcquired = Latch.makeUnsafe()
       const armed = Latch.makeUnsafe()
+      let driver!: MessageStorage.MemoryDriver["Service"]
       const runFiber = yield* Effect.gen(function*() {
+        driver = yield* MessageStorage.MemoryDriver
         const sharding = yield* Sharding.Sharding
         const shardId = sharding.getShardId(EntityId.make("1"), "default")
         while (!sharding.hasShardId(shardId)) {
@@ -384,6 +386,7 @@ describe.concurrent("Sharding", () => {
       const failure = Cause.findErrorOption(exit.cause)
       assert(Option.isSome(failure), "stream did not fail with a typed error")
       assert(failure.value instanceof ClusterError.EntityNotAssignedToRunner)
+      assert.strictEqual(driver.journal.filter((envelope) => envelope._tag === "AckChunk").length, 1)
     }), 20_000)
 
   it.effect("interrupts are sent for volatile messages on shutdown", () =>

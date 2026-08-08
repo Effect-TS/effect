@@ -973,9 +973,9 @@ const make = Effect.gen(function*() {
       message._tag === "OutgoingRequest" ? message.annotations : message.rpc.annotations,
       Persisted
     )
+    const shouldFail = !discard &&
+      (message._tag === "OutgoingRequest" || message.envelope._tag === "AckChunk")
     const abandon = (error: EntityNotAssignedToRunner) => {
-      const shouldFail = !discard &&
-        (message._tag === "OutgoingRequest" || message.envelope._tag === "AckChunk")
       if (!isPersisted) {
         return shouldFail
           ? Effect.fail(error)
@@ -998,11 +998,8 @@ const make = Effect.gen(function*() {
         if (isPersisted && !storageEnabled) {
           return Effect.die("Sharding.sendOutgoing: Persisted messages require MessageStorage")
         }
-        if (
-          MutableRef.get(isShutdown) &&
-          (message._tag === "OutgoingRequest" || message.envelope._tag === "AckChunk")
-        ) {
-          return abandon(new EntityNotAssignedToRunner({ address }))
+        if (shouldFail && MutableRef.get(isShutdown)) {
+          return Effect.fail(new EntityNotAssignedToRunner({ address }))
         }
         const maybeRunner = MutableHashMap.get(shardAssignments, address.shardId)
         const runnerIsLocal = Option.isSome(maybeRunner) && isLocalRunner(maybeRunner.value)
