@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import { strictEqual } from "@effect/vitest/utils"
 import { Cause, Effect, Schema, Stream } from "effect"
 import { Sse } from "effect/unstable/encoding"
+import type { HttpBody } from "effect/unstable/http"
 import { HttpClient, HttpClientError, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { HttpApi, HttpApiClient, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from "effect/unstable/httpapi"
 
@@ -338,6 +339,51 @@ describe("HttpApiClient", () => {
         }
         const events = yield* Stream.runCollect(stream)
         assert.deepStrictEqual(events, [{ text: "hello" }])
+      }))
+  })
+
+  describe("streaming request payloads", () => {
+    it.effect("sends StreamUint8Array payloads as streamed bodies", () =>
+      Effect.gen(function*() {
+        let captured: HttpBody.HttpBody | undefined
+        const client = yield* HttpApiClient.makeWith(UploadApi, {
+          baseUrl: "http://test",
+          httpClient: HttpClient.make((request) => {
+            captured = request.body
+            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(undefined, { status: 200 })))
+          })
+        })
+
+        yield* client.test.upload({
+          payload: Stream.make(textEncoder.encode("hello "), textEncoder.encode("world"))
+        })
+
+        assert.strictEqual(captured?._tag, "Stream")
+        const body = captured as HttpBody.Stream
+        assert.strictEqual(body.contentType, "application/octet-stream")
+        const chunks = yield* Stream.runCollect(body.stream)
+        const textDecoder = new TextDecoder()
+        strictEqual(chunks.map((chunk) => textDecoder.decode(chunk, { stream: true })).join(""), "hello world")
+      }))
+
+    it.effect("preserves each endpoint's stream content type", () =>
+      Effect.gen(function*() {
+        const captured: Array<HttpBody.HttpBody> = []
+        const client = yield* HttpApiClient.makeWith(UploadApi, {
+          baseUrl: "http://test",
+          httpClient: HttpClient.make((request) => {
+            captured.push(request.body)
+            return Effect.succeed(HttpClientResponse.fromWeb(request, new Response(undefined, { status: 200 })))
+          })
+        })
+
+        yield* client.test.upload({ payload: Stream.make(textEncoder.encode("a")) })
+        yield* client.test.uploadCustom({ payload: Stream.make(textEncoder.encode("b")) })
+
+        assert.strictEqual(captured[0]?._tag, "Stream")
+        assert.strictEqual((captured[0] as HttpBody.Stream).contentType, "application/octet-stream")
+        assert.strictEqual(captured[1]?._tag, "Stream")
+        assert.strictEqual((captured[1] as HttpBody.Stream).contentType, "application/vnd.custom")
       }))
   })
 
@@ -823,6 +869,20 @@ const ErrorContentTypeApi = HttpApi.make("ErrorContentTypeApi").add(
         error: [FirstJsonResponseError, SecondJsonResponseError]
       })
     )
+)
+
+const UploadApi = HttpApi.make("UploadApi").add(
+  HttpApiGroup.make("test").add(
+    HttpApiEndpoint.post("upload", "/upload", {
+      payload: HttpApiSchema.StreamUint8Array(),
+      success: HttpApiSchema.Empty(200)
+    })
+  ).add(
+    HttpApiEndpoint.post("uploadCustom", "/uploadCustom", {
+      payload: HttpApiSchema.StreamUint8Array({ contentType: "application/vnd.custom" }),
+      success: HttpApiSchema.Empty(200)
+    })
+  )
 )
 
 const clientFromResponse = (response: () => Response): HttpClient.HttpClient =>

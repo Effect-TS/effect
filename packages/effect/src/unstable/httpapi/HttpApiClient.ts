@@ -1052,10 +1052,33 @@ function getEncodePayloadSchema(
 
 const bodyFromPayloadCache = new WeakMap<SchemaAST.AST, Schema.Top>()
 
+// Stream schemas share a single AST, with the content type carried on the
+// schema object itself, so their encoders are cached by schema identity
+const streamBodyFromPayloadCache = new WeakMap<HttpApiSchema.StreamUint8Array, Schema.Top>()
+
 function getEncodePayloadSchemaFromBody(
   schema: Schema.Constraint,
   method: HttpMethod.HttpMethod
 ): Schema.Top {
+  if (HttpApiSchema.isStreamUint8Array(schema)) {
+    const cachedStream = streamBodyFromPayloadCache.get(schema)
+    if (cachedStream !== undefined) {
+      return cachedStream
+    }
+    const out = $HttpBody.pipe(Schema.decodeTo(
+      schema,
+      SchemaTransformation.transformOrFail<Stream.Stream<Uint8Array, unknown>, HttpBody.HttpBody>({
+        decode(httpBody) {
+          return Effect.fail(new SchemaIssue.Forbidden(Option.some(httpBody), { message: "Encode only schema" }))
+        },
+        encode(stream) {
+          return Effect.succeed(HttpBody.stream(stream, schema.contentType))
+        }
+      })
+    ))
+    streamBodyFromPayloadCache.set(schema, out)
+    return out
+  }
   const ast = schema.ast
   const cached = bodyFromPayloadCache.get(ast)
   if (cached !== undefined) {
