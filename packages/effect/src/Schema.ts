@@ -5620,7 +5620,7 @@ export function decodeTo<To extends Constraint, From extends Constraint, RD = ne
  * ```
  *
  * @category transforming
- * @since 3.10.0
+ * @since 4.0.0
  */
 export function decode<S extends Constraint, RD = never, RE = never>(transformation: {
   readonly decode: SchemaGetter.Getter<S["Type"], S["Type"], RD>
@@ -5709,7 +5709,7 @@ export function encodeTo<To extends Constraint, From extends Constraint, RD = ne
  * ```
  *
  * @category transforming
- * @since 3.10.0
+ * @since 4.0.0
  */
 export function encode<S extends Constraint, RD = never, RE = never>(transformation: {
   readonly decode: SchemaGetter.Getter<S["Encoded"], S["Encoded"], RD>
@@ -14917,7 +14917,10 @@ export function toJsonSchemaDocument(
   schema: Constraint,
   options?: ToJsonSchemaOptions
 ): JsonSchema.Document<"draft-2020-12"> {
-  const document = InternalToRepresentation.toRepresentation(toCodecJsonAST(schema.ast))
+  const document = InternalToRepresentation.toRepresentation(
+    toCodecJsonAST(schema.ast),
+    InternalToJsonSchemaDocument.toRepresentationOptions
+  )
   return InternalToJsonSchemaDocument.toJsonSchemaDocument(document, options)
 }
 
@@ -16307,6 +16310,15 @@ export declare namespace Annotations {
     readonly representation?:
       | SchemaRepresentation.CheckRepresentationAnnotation<SchemaAST.AST>
       | undefined
+    /**
+     * Compiles this filter to a JSON Schema fragment.
+     *
+     * **Gotchas**
+     *
+     * Treat the input schemas as immutable. The returned value must be a valid JSON Schema object graph and must not be
+     * mutated after this function returns. Return a new object graph to produce different output during a later
+     * compilation.
+     */
     readonly toJsonSchema?: SchemaRepresentation.ToJsonSchema.Check | undefined
     readonly toCode?: SchemaRepresentation.Generation.Check | undefined
     /**

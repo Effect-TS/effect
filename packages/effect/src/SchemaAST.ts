@@ -3280,6 +3280,13 @@ function modifyOwnPropertyDescriptors<A extends AST>(
   return Object.create(Object.getPrototypeOf(ast), d)
 }
 
+const contextOwners = new WeakMap<AST, AST>()
+
+/** @internal */
+export function getContextOwner(ast: AST): AST {
+  return contextOwners.get(ast) ?? ast
+}
+
 /** @internal */
 export function replaceEncoding<A extends AST>(ast: A, encoding: Encoding | undefined): A {
   if (ast.encoding === encoding) {
@@ -3295,9 +3302,15 @@ export function replaceContext<A extends AST>(ast: A, context: Context | undefin
   if (ast.context === context) {
     return ast
   }
-  return modifyOwnPropertyDescriptors(ast, (d) => {
+  const owner = getContextOwner(ast)
+  if (owner.context === context) {
+    return owner as A
+  }
+  const out = modifyOwnPropertyDescriptors(ast, (d) => {
     d.context.value = context
   })
+  contextOwners.set(out, owner)
+  return out
 }
 
 /** @internal */
