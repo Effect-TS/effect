@@ -2,6 +2,8 @@ import { assert, describe, it } from "@effect/vitest"
 import { Effect, Schema } from "effect"
 import * as McpProtocol from "effect/unstable/ai/internal/mcpProtocol"
 import * as McpProtocolRegistry from "effect/unstable/ai/internal/mcpProtocolRegistry"
+import * as McpSchema2025_06_18 from "effect/unstable/ai/internal/mcpSchema/v2025_06_18"
+import * as McpSchema from "effect/unstable/ai/McpSchema"
 import * as Rpc from "effect/unstable/rpc/Rpc"
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup"
 
@@ -27,13 +29,41 @@ const makeTestProtocol = <
   return McpProtocol.make({
     protocolVersion,
     transport: {
-      acceptsJsonRpcBatches: true,
-      requiresVersionHeader: false
+      acceptsJsonRpcBatches: false,
+      requiresVersionHeader: true
     },
     clientRpcs: RpcGroup.make(TestRequest),
     clientNotificationRpcs: RpcGroup.make(),
     serverRequestRpcs: RpcGroup.make(),
-    serverNotificationRpcs: RpcGroup.make()
+    serverNotificationRpcs: RpcGroup.make(),
+    toReverseClient: () => ({
+      listRoots: () =>
+        Effect.fail(
+          new McpSchema.McpReverseOperationUnsupported({
+            operation: "roots/list",
+            protocolVersion: "2025-06-18",
+            reason: "Synthetic test adapter"
+          })
+        ),
+      createMessage: () =>
+        Effect.fail(
+          new McpSchema.McpReverseOperationUnsupported({
+            operation: "sampling/createMessage",
+            protocolVersion: "2025-06-18",
+            reason: "Synthetic test adapter"
+          })
+        ),
+      elicit: () =>
+        Effect.fail(
+          new McpSchema.McpReverseOperationUnsupported({
+            operation: "elicitation/create",
+            protocolVersion: "2025-06-18",
+            reason: "Synthetic test adapter"
+          })
+        )
+    }),
+    projectNotification: () => Effect.succeed(undefined),
+    normalizeCancellation: () => Effect.succeed({ requestId: "" })
   })
 }
 
@@ -121,8 +151,8 @@ describe("McpProtocolRegistry", () => {
       assert.notStrictEqual(selectedRequest.tag, unselectedRequest.tag)
       assert.notStrictEqual(selectedRequest.tag, "test/shape")
 
-      const selectedRpc = registry.clientRpcs.requests.get(selectedRequest.tag)
-      const unselectedRpc = registry.clientRpcs.requests.get(unselectedRequest.tag)
+      const selectedRpc = first.clientRpcs.requests.get("test/shape")
+      const unselectedRpc = second.clientRpcs.requests.get("test/shape")
       assert.isDefined(selectedRpc)
       assert.isDefined(unselectedRpc)
 
@@ -137,4 +167,33 @@ describe("McpProtocolRegistry", () => {
         value: "other adapter"
       })
     }))
+})
+
+describe("MCP v2025-06-18 schema", () => {
+  it("accepts resource links in prompt messages", () => {
+    const message = Schema.decodeUnknownSync(McpSchema2025_06_18.PromptMessage)({
+      role: "user",
+      content: {
+        type: "resource_link",
+        uri: "file:///example.txt",
+        name: "example"
+      }
+    })
+
+    assert.strictEqual(message.content.type, "resource_link")
+  })
+
+  it("does not expose future annotations or named extension capabilities", () => {
+    const annotations = Schema.decodeUnknownSync(McpSchema2025_06_18.Annotations)({
+      audience: ["user"],
+      lastModified: "2026-07-26"
+    })
+    const capabilities = Schema.decodeUnknownSync(McpSchema2025_06_18.ServerCapabilities)({
+      completions: {},
+      extensions: { "example/extension": { enabled: true } }
+    })
+
+    assert.notProperty(annotations, "lastModified")
+    assert.notProperty(capabilities, "extensions")
+  })
 })

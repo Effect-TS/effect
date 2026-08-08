@@ -84,7 +84,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            yield* peer.client["sampling/createMessage"](samplingRequest)
+            yield* peer.wireClient["sampling/createMessage"](samplingRequest)
 
             assert.strictEqual((yield* peer.takeRequest).method, "sampling/createMessage")
           }))
@@ -101,7 +101,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            yield* peer.client["sampling/createMessage"](samplingRequestWithOptions)
+            yield* peer.wireClient["sampling/createMessage"](samplingRequestWithOptions)
             const recorded = yield* peer.takeRequest
             const payload = yield* decodeSamplingRequest(recorded.payload)
 
@@ -138,7 +138,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const result = yield* peer.client["sampling/createMessage"](samplingRequest).pipe(
+            const result = yield* peer.wireClient["sampling/createMessage"](samplingRequest).pipe(
               Effect.flatMap(decodeSamplingResult)
             )
 
@@ -170,46 +170,49 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const result = yield* peer.client["sampling/createMessage"](samplingRequest).pipe(
+            const result = yield* peer.wireClient["sampling/createMessage"](samplingRequest).pipe(
               Effect.flatMap(decodeSamplingResult)
             )
 
             assert.deepStrictEqual(result.content, {
               type: "image",
-              data: new Uint8Array([1, 2, 3]),
+              data: "AQID",
               mimeType: "image/png"
             })
           }))
 
-        it.effect("MUST accept audio sampling content", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformance
-            const peer = yield* test.makePeer({
-              capabilities: { sampling: {} },
-              handlers: {
-                "sampling/createMessage": () =>
-                  Effect.succeed({
-                    role: "assistant",
-                    content: {
-                      type: "audio",
-                      data: "BAUG",
-                      mimeType: "audio/wav"
-                    },
-                    model: "audio-model"
-                  })
-              }
-            })
+        it.effect.skipIf(["2024-11-05"].includes(protocol.protocolVersion))(
+          "MUST accept audio sampling content",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const peer = yield* test.makePeer({
+                capabilities: { sampling: {} },
+                handlers: {
+                  "sampling/createMessage": () =>
+                    Effect.succeed({
+                      role: "assistant",
+                      content: {
+                        type: "audio",
+                        data: "BAUG",
+                        mimeType: "audio/wav"
+                      },
+                      model: "audio-model"
+                    })
+                }
+              })
 
-            const result = yield* peer.client["sampling/createMessage"](samplingRequest).pipe(
-              Effect.flatMap(decodeSamplingResult)
-            )
+              const result = yield* peer.wireClient["sampling/createMessage"](samplingRequest).pipe(
+                Effect.flatMap(decodeSamplingResult)
+              )
 
-            assert.deepStrictEqual(result.content, {
-              type: "audio",
-              data: new Uint8Array([4, 5, 6]),
-              mimeType: "audio/wav"
+              assert.deepStrictEqual(result.content, {
+                type: "audio",
+                data: "BAUG",
+                mimeType: "audio/wav"
+              })
             })
-          }))
+        )
 
         it.effect("MUST surface sampling errors returned by the client", () =>
           Effect.gen(function*() {
@@ -226,9 +229,10 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               }
             })
 
-            const error = yield* peer.client["sampling/createMessage"](samplingRequest).pipe(Effect.flip)
+            const error = yield* peer.wireClient["sampling/createMessage"](samplingRequest).pipe(Effect.flip)
 
-            assert.instanceOf(error, McpSchema.InternalError)
+            assert.isTrue("code" in error)
+            if ("code" in error) assert.strictEqual(error.code, McpSchema.INTERNAL_ERROR_CODE)
             assert.strictEqual(error.message, "Sampling failed")
           }))
       })

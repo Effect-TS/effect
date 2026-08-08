@@ -42,32 +42,6 @@ SamplingTest.suite(protocol, testLayer)
 ElicitationTest.suite(protocol, testLayer)
 
 it.layer(testLayer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
-  describe("Utilities", () => {
-    describe("Progress", () => {
-      // NOTE: Smoke test only. The client capability accepts this one-way notification,
-      // but McpServer does not expose an observer for its decoded payload.
-      it.effect("SCHEMA accepts the optional progress message", () =>
-        Effect.gen(function*() {
-          const test = yield* McpConformance
-          const initialized = yield* test.initialize()
-          yield* test.notifyInitialized(initialized)
-
-          const response = yield* test.send(initialized, {
-            jsonrpc: "2.0",
-            method: "notifications/progress",
-            params: {
-              progressToken: "task-with-message",
-              progress: 1,
-              message: "Working"
-            }
-          })
-
-          assert.strictEqual(response.status, 202)
-          assert.strictEqual(yield* Effect.promise(() => response.text()), "")
-        }))
-    })
-  })
-
   describe("Transport-specific behavior", () => {
     it.effect("MUST reject JSON-RPC batches", () =>
       Effect.gen(function*() {

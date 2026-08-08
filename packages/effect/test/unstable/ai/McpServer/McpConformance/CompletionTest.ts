@@ -47,16 +47,19 @@ const completeRaw = (
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Completion", () => {
-      // Shared by the 2024-11-05, 2025-03-26, and 2025-06-18 specifications,
-      // except completion context, which was added in 2025-06-18.
+      // Shared by the 2025-03-26 and 2025-06-18 specifications, except
+      // completion context, which was added in 2025-06-18.
       describe("Capabilities", () => {
-        it.effect("MUST advertise completions when argument completion is supported", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformance
-            const initialized = yield* test.initialize({ server: "features" })
+        it.effect.skipIf(["2024-11-05"].includes(protocol.protocolVersion))(
+          "MUST advertise completions when argument completion is supported",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const initialized = yield* test.initialize({ server: "features" })
 
-            assert.property(initialized.message.result.capabilities, "completions")
-          }))
+              assert.property(initialized.message.result.capabilities, "completions")
+            })
+        )
       })
 
       describe("Requesting Completions", () => {
@@ -79,16 +82,19 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.deepStrictEqual(result.completion.values, ["alpha", "beta"])
           }))
-        it.effect("MUST pass previously resolved argument context to the completion handler", () =>
-          Effect.gen(function*() {
-            const result = yield* complete(
-              { type: "ref/prompt", name: "ContextCompletionPrompt" },
-              { name: "value", value: "c" },
-              { arguments: { locale: "en" } }
-            )
+        it.effect.skipIf(["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion))(
+          "MUST pass previously resolved argument context to the completion handler",
+          () =>
+            Effect.gen(function*() {
+              const result = yield* complete(
+                { type: "ref/prompt", name: "ContextCompletionPrompt" },
+                { name: "value", value: "c" },
+                { arguments: { locale: "en" } }
+              )
 
-            assert.deepStrictEqual(result.completion.values, ["context received"])
-          }))
+              assert.deepStrictEqual(result.completion.values, ["context received"])
+            })
+        )
         it.effect("SHOULD reject an unknown prompt reference with Invalid Params", () =>
           Effect.gen(function*() {
             const test = yield* McpConformance

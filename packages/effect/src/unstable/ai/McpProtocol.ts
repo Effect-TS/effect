@@ -3,9 +3,9 @@
  *
  * @since 4.0.0
  */
-import type * as RpcGroup from "../rpc/RpcGroup.ts"
-import * as Internal from "./internal/mcpProtocol.ts"
-import * as McpSchema from "./McpSchema.ts"
+import { protocol as protocol2024_11_05 } from "./internal/mcpProtocol/v2024_11_05.ts"
+import { protocol as protocol2025_03_26 } from "./internal/mcpProtocol/v2025_03_26.ts"
+import { protocol as protocol2025_06_18 } from "./internal/mcpProtocol/v2025_06_18.ts"
 
 /**
  * The MCP 2025-06-18 protocol implementation.
@@ -13,17 +13,30 @@ import * as McpSchema from "./McpSchema.ts"
  * @category protocols
  * @since 4.0.0
  */
-export const v2025_06_18: ProtocolAdapter = Internal.make({
-  protocolVersion: "2025-06-18",
-  transport: {
-    acceptsJsonRpcBatches: false,
-    requiresVersionHeader: true
-  },
-  clientRpcs: McpSchema.ClientRpcs,
-  clientNotificationRpcs: McpSchema.ClientNotificationRpcs,
-  serverRequestRpcs: McpSchema.ServerRequestRpcs,
-  serverNotificationRpcs: McpSchema.ServerNotificationRpcs
-})
+export const v2025_06_18 = protocol2025_06_18
+
+/**
+ * The MCP 2025-03-26 protocol implementation.
+ *
+ * @category protocols
+ * @since 4.0.0
+ */
+export const v2025_03_26 = protocol2025_03_26
+
+/**
+ * The MCP 2024-11-05 protocol implementation.
+ *
+ * **Details**
+ *
+ * It provides the dated schema and stdio behavior. When supplied to
+ * `McpServer.layerHttp`, the server uses its single-endpoint Streamable HTTP
+ * compatibility transport; it does not implement the historical two-endpoint
+ * HTTP+SSE transport.
+ *
+ * @category protocols
+ * @since 4.0.0
+ */
+export const v2024_11_05 = protocol2024_11_05
 
 /**
  * An implemented MCP protocol that can be supplied to `McpServer`.
@@ -31,13 +44,7 @@ export const v2025_06_18: ProtocolAdapter = Internal.make({
  * @category models
  * @since 4.0.0
  */
-export type ProtocolAdapter = Internal.ProtocolAdapter<
-  "2025-06-18",
-  RpcGroup.Rpcs<typeof McpSchema.ClientRpcs>,
-  RpcGroup.Rpcs<typeof McpSchema.ClientNotificationRpcs>,
-  RpcGroup.Rpcs<typeof McpSchema.ServerRequestRpcs>,
-  RpcGroup.Rpcs<typeof McpSchema.ServerNotificationRpcs>
->
+export type ProtocolAdapter = typeof v2024_11_05 | typeof v2025_03_26 | typeof v2025_06_18
 
 /**
  * The MCP protocol versions implemented by this release.

@@ -70,9 +70,11 @@ describe("McpServer", () => {
       })
     })
 
-    it("should expose the supported protocol adapter", () => {
-      expect<"v2025_06_18">().type.toBeAssignableTo<keyof typeof McpProtocol>()
-      expect<McpProtocol.ProtocolVersion>().type.toBe<"2025-06-18">()
+    it("should expose every historical protocol adapter", () => {
+      expect<keyof typeof McpProtocol>().type.toBe<
+        "v2024_11_05" | "v2025_03_26" | "v2025_06_18"
+      >()
+      expect<McpProtocol.ProtocolVersion>().type.toBe<"2024-11-05" | "2025-03-26" | "2025-06-18">()
     })
 
     it("should expose invalid protocol declarations as typed constructor failures", () => {

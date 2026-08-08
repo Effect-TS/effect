@@ -96,6 +96,15 @@ const pingBody = {
   id: 0
 }
 
+const directClient = McpSchema.McpServerClient.of({
+  clientId: 1,
+  protocolVersion: "2025-06-18",
+  clientCapabilities: {},
+  clientInfo: initializePayload.clientInfo,
+  initializePayload,
+  getClient: Effect.die("not used")
+})
+
 const makeTestClientWith = Effect.fnUntraced(function*<A, E>(
   serverLayer: Layer.Layer<A, E, HttpRouter.HttpRouter>,
   options?: {
@@ -154,6 +163,68 @@ const toolResultText = (result: McpSchema.CallToolResult): string => {
 }
 
 describe("McpServer", () => {
+  describe("direct service", () => {
+    it.effect("should fail when a resource URI is unknown", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+
+        const error = yield* server.findResource("file:///unknown").pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient),
+          Effect.flip
+        )
+
+        assertTrue(error instanceof McpSchema.InvalidParams)
+        assert.strictEqual(error.message, "Resource 'file:///unknown' not found")
+      }))
+
+    it.effect("should preserve a registered resource handler's typed failure", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        const failure = new McpSchema.InternalError({ message: "resource failed" })
+        yield* server.addResource({
+          resource: new McpSchema.Resource({
+            uri: "file:///failure",
+            name: "failure"
+          }),
+          annotations: Context.empty(),
+          handle: Effect.fail(failure)
+        })
+
+        const error = yield* server.findResource("file:///failure").pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient),
+          Effect.flip
+        )
+
+        assert.strictEqual(error, failure)
+      }))
+
+    it.effect("should pass undefined to a low-level tool handler when arguments are omitted", () =>
+      Effect.gen(function*() {
+        const server = yield* McpServer.McpServer.make
+        let received: unknown = "not called"
+        yield* server.addTool({
+          tool: new McpSchema.Tool({
+            name: "arguments-omitted",
+            inputSchema: {
+              type: "object",
+              properties: {}
+            }
+          }),
+          annotations: Context.empty(),
+          handle: (payload) => {
+            received = payload
+            return Effect.succeed(new McpSchema.CallToolResult({ content: [] }))
+          }
+        })
+
+        yield* server.callTool({ name: "arguments-omitted" }).pipe(
+          Effect.provideService(McpSchema.McpServerClient, directClient)
+        )
+
+        assert.isUndefined(received)
+      }))
+  })
+
   it.effect("should reject browser Origins by default while accepting Origin-less clients", () =>
     Effect.gen(function*() {
       const harness = yield* makeHttpHarness(TestServerLayer)
@@ -251,7 +322,8 @@ describe("McpServer", () => {
         }).pipe(Effect.flip)
 
         assert.isFalse(handlerInvoked)
-        assert.instanceOf(error, McpSchema.InvalidParams)
+        assert.isTrue("code" in error)
+        if ("code" in error) assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
         assert.match(error.message, /Invalid parameters for tool 'OptionalStringTool'/)
         assert.match(error.message, /Expected string \| undefined/)
         assert.match(error.message, /at \["signature"\]/)
@@ -352,9 +424,11 @@ describe("McpServer", () => {
           arguments: {}
         }).pipe(Effect.flip)
 
-        assert.instanceOf(error, McpSchema.InvalidParams)
-        assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
-        assert.strictEqual(error.message, "Tool 'UnknownTool' not found")
+        assert.isTrue("code" in error)
+        if ("code" in error) {
+          assert.strictEqual(error.code, McpSchema.INVALID_PARAMS_ERROR_CODE)
+          assert.strictEqual(error.message, "Tool 'UnknownTool' not found")
+        }
       }))
   })
 

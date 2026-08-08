@@ -28,6 +28,11 @@ const jsonRequest = (method: string, body?: unknown, headers?: HeadersInit) => {
   })
 }
 
+const httpTransportSuiteName = (protocol: McpProtocol.ProtocolAdapter) =>
+  protocol.protocolVersion === "2024-11-05"
+    ? "Single-endpoint HTTP compatibility extension"
+    : "Streamable HTTP"
+
 export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConformanceLayer) =>
   it.layer(layer)(`Mcp Conformance (${protocol.protocolVersion})`, (it) => {
     describe("Transports", () => {
@@ -110,28 +115,31 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             })
           }))
 
-        it.effect("SCENARIO applies the revision-specific stdio batch policy", () =>
-          Effect.gen(function*() {
-            const fixture = yield* makeMcpStdioHarness(protocol)
-            yield* fixture.sendRaw({
-              jsonrpc: "2.0",
-              id: 1,
-              method: "initialize",
-              params: {
-                protocolVersion: protocol.protocolVersion,
-                capabilities: {},
-                clientInfo: { name: "stdio-client", version: "1.0.0" }
-              }
+        it.effect.skipIf(["2025-03-26"].includes(protocol.protocolVersion))(
+          "MUST reject JSON-RPC batches over stdio",
+          () =>
+            Effect.gen(function*() {
+              const fixture = yield* makeMcpStdioHarness(protocol)
+              yield* fixture.sendRaw({
+                jsonrpc: "2.0",
+                id: 1,
+                method: "initialize",
+                params: {
+                  protocolVersion: protocol.protocolVersion,
+                  capabilities: {},
+                  clientInfo: { name: "stdio-client", version: "1.0.0" }
+                }
+              })
+              yield* fixture.takeFrame
+              yield* fixture.sendRaw([
+                { jsonrpc: "2.0", id: 2, method: "ping", params: {} },
+                { jsonrpc: "2.0", id: 3, method: "ping", params: {} }
+              ])
+              const error = yield* fixture.takeFrame.pipe(Effect.flatMap(decodeErrorFrame))
+              assert.strictEqual(error.id, null)
+              assert.strictEqual(error.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
             })
-            yield* fixture.takeFrame
-            yield* fixture.sendRaw([
-              { jsonrpc: "2.0", id: 2, method: "ping", params: {} },
-              { jsonrpc: "2.0", id: 3, method: "ping", params: {} }
-            ])
-            const response = yield* fixture.takeFrame.pipe(Effect.flatMap(decodeErrorFrame))
-            assert.strictEqual(response.id, null)
-            assert.strictEqual(response.error.code, McpSchema.INVALID_REQUEST_ERROR_CODE)
-          }))
+        )
 
         it.effect("MUST shut down when the client closes stdin", () =>
           Effect.gen(function*() {
@@ -145,7 +153,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
           }))
       })
 
-      describe("Streamable HTTP", () => {
+      describe(httpTransportSuiteName(protocol), () => {
         describe("Sending Messages to the Server", () => {
           it.effect("MUST accept JSON-RPC requests through POST on the MCP endpoint", () =>
             Effect.gen(function*() {
@@ -341,48 +349,51 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             }))
         })
 
-        describe("Protocol Version Header", () => {
-          it.effect("MUST apply the revision-specific protocol header requirement", () =>
-            Effect.gen(function*() {
-              const test = yield* McpConformance
-              const initialized = yield* test.initialize()
-              const response = yield* test.ping(initialized, {
-                includeProtocolVersion: false
-              })
-              assert.strictEqual(response.status, 400)
-            }))
-          it.effect("MUST accept the negotiated protocol version", () =>
-            Effect.gen(function*() {
-              const test = yield* McpConformance
-              const initialized = yield* test.initialize()
-              const response = yield* test.ping(initialized, {
-                includeProtocolVersion: true,
-                protocolVersion: protocol.protocolVersion
-              })
-              assert.strictEqual(response.status, 200)
-            }))
-          it.effect("MUST reject an unsupported protocol version with bad request", () =>
-            Effect.gen(function*() {
-              const test = yield* McpConformance
-              const initialized = yield* test.initialize()
-              const response = yield* test.ping(initialized, {
-                includeProtocolVersion: true,
-                protocolVersion: "2099-01-01"
-              })
-              assert.strictEqual(response.status, 400)
-            }))
-          it.effect("SCENARIO replays the selected protocol version on HTTP responses", () =>
-            Effect.gen(function*() {
-              const test = yield* McpConformance
-              const initialized = yield* test.initialize()
-              assert.strictEqual(
-                initialized.response.headers.get("Mcp-Protocol-Version"),
-                protocol.protocolVersion
-              )
-              const response = yield* test.ping(initialized, { includeProtocolVersion: true })
-              assert.strictEqual(response.headers.get("Mcp-Protocol-Version"), protocol.protocolVersion)
-            }))
-        })
+        describe.skipIf(["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion))(
+          "Protocol Version Header",
+          () => {
+            it.effect("MUST apply the revision-specific protocol header requirement", () =>
+              Effect.gen(function*() {
+                const test = yield* McpConformance
+                const initialized = yield* test.initialize()
+                const response = yield* test.ping(initialized, {
+                  includeProtocolVersion: false
+                })
+                assert.strictEqual(response.status, 400)
+              }))
+            it.effect("MUST accept the negotiated protocol version", () =>
+              Effect.gen(function*() {
+                const test = yield* McpConformance
+                const initialized = yield* test.initialize()
+                const response = yield* test.ping(initialized, {
+                  includeProtocolVersion: true,
+                  protocolVersion: protocol.protocolVersion
+                })
+                assert.strictEqual(response.status, 200)
+              }))
+            it.effect("MUST reject an unsupported protocol version with bad request", () =>
+              Effect.gen(function*() {
+                const test = yield* McpConformance
+                const initialized = yield* test.initialize()
+                const response = yield* test.ping(initialized, {
+                  includeProtocolVersion: true,
+                  protocolVersion: "2099-01-01"
+                })
+                assert.strictEqual(response.status, 400)
+              }))
+            it.effect("SCENARIO replays the selected protocol version on HTTP responses", () =>
+              Effect.gen(function*() {
+                const test = yield* McpConformance
+                const initialized = yield* test.initialize()
+                assert.strictEqual(
+                  initialized.response.headers.get("Mcp-Protocol-Version"),
+                  protocol.protocolVersion
+                )
+                const response = yield* test.ping(initialized, { includeProtocolVersion: true })
+                assert.strictEqual(response.headers.get("Mcp-Protocol-Version"), protocol.protocolVersion)
+              }))
+          }
+        )
 
         describe("Security", () => {
           it.effect("MUST validate the Origin header before every MCP route", () =>

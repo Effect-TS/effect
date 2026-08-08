@@ -139,29 +139,32 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.isTrue(result.tools.every((tool) => tool.inputSchema.type === "object"))
           }))
-        it.effect("MUST return each declared tool output schema", () =>
-          Effect.gen(function*() {
-            const test = yield* McpConformance
-            const initialized = yield* test.initialize({ server: "features" })
-            yield* test.notifyInitialized(initialized)
-            const response = yield* test.send(initialized, {
-              jsonrpc: "2.0",
-              id: 2,
-              method: "tools/list",
-              params: {}
-            })
-            const result = yield* test.decodeResult(response).pipe(
-              Effect.flatMap((message) => decodeTools(message.result))
-            )
+        it.effect.skipIf(["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion))(
+          "MUST return each declared tool output schema",
+          () =>
+            Effect.gen(function*() {
+              const test = yield* McpConformance
+              const initialized = yield* test.initialize({ server: "features" })
+              yield* test.notifyInitialized(initialized)
+              const response = yield* test.send(initialized, {
+                jsonrpc: "2.0",
+                id: 2,
+                method: "tools/list",
+                params: {}
+              })
+              const result = yield* test.decodeResult(response).pipe(
+                Effect.flatMap((message) => decodeTools(message.result))
+              )
 
-            assert.strictEqual(
-              result.tools.find((tool) => tool.name === "StructuredTool")?.outputSchema?.type,
-              "object"
-            )
-            const scalarTool = result.tools.find((tool) => tool.name === "TestTool")
-            assert.isDefined(scalarTool)
-            assert.notProperty(scalarTool, "outputSchema")
-          }))
+              assert.strictEqual(
+                result.tools.find((tool) => tool.name === "StructuredTool")?.outputSchema?.type,
+                "object"
+              )
+              const scalarTool = result.tools.find((tool) => tool.name === "TestTool")
+              assert.isDefined(scalarTool)
+              assert.notProperty(scalarTool, "outputSchema")
+            })
+        )
       })
 
       describe("Calling Tools", () => {
@@ -271,25 +274,31 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               mimeType: "image/png"
             }])
           }))
-        it.effect("SCHEMA returns audio content", () =>
-          Effect.gen(function*() {
-            const result = yield* callToolWire("AudioTool")
-            assert.deepStrictEqual(result.result.content, [{
-              type: "audio",
-              data: "BAUG",
-              mimeType: "audio/wav"
-            }])
-          }))
-        it.effect("SCHEMA returns resource links", () =>
-          Effect.gen(function*() {
-            const result = yield* callTool("ResourceLinkTool")
-            assert.deepStrictEqual(result.content, [{
-              type: "resource_link",
-              uri: "file:///test",
-              name: "TestResource",
-              mimeType: "text/plain"
-            }])
-          }))
+        it.effect.skipIf(["2024-11-05"].includes(protocol.protocolVersion))(
+          "SCHEMA returns audio content",
+          () =>
+            Effect.gen(function*() {
+              const result = yield* callToolWire("AudioTool")
+              assert.deepStrictEqual(result.result.content, [{
+                type: "audio",
+                data: "BAUG",
+                mimeType: "audio/wav"
+              }])
+            })
+        )
+        it.effect.skipIf(["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion))(
+          "SCHEMA returns resource links",
+          () =>
+            Effect.gen(function*() {
+              const result = yield* callTool("ResourceLinkTool")
+              assert.deepStrictEqual(result.content, [{
+                type: "resource_link",
+                uri: "file:///test",
+                name: "TestResource",
+                mimeType: "text/plain"
+              }])
+            })
+        )
         it.effect("SCHEMA returns embedded resources", () =>
           Effect.gen(function*() {
             const result = yield* callTool("EmbeddedResourceTool")
@@ -310,11 +319,14 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               { type: "text", text: "second" }
             ])
           }))
-        it.effect("SCHEMA returns structured content", () =>
-          Effect.gen(function*() {
-            const result = yield* callTool("StructuredTool")
-            assert.deepStrictEqual(result.structuredContent, { value: "structured" })
-          }))
+        it.effect.skipIf(["2024-11-05", "2025-03-26"].includes(protocol.protocolVersion))(
+          "SCHEMA returns structured content",
+          () =>
+            Effect.gen(function*() {
+              const result = yield* callTool("StructuredTool")
+              assert.deepStrictEqual(result.structuredContent, { value: "structured" })
+            })
+        )
         it.effect("MUST return tool execution failures with isError", () =>
           Effect.gen(function*() {
             const result = yield* callTool("ErrorTool")
