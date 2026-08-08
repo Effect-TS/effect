@@ -86,13 +86,10 @@ export namespace Vitest {
     | Array<Schema.Schema.Any | FC.Arbitrary<any>>
     | { [K in string]: Schema.Schema.Any | FC.Arbitrary<any> }
 
-  /**
-   * @since 1.0.0
-   */
   export interface Tester<R> extends Vitest.Test<R> {
     skip: Vitest.Test<R>
-    skipIf: (condition: unknown) => Vitest.Test<R>
-    runIf: (condition: unknown) => Vitest.Test<R>
+    skipIf: (condition: unknown) => Tester<R>
+    runIf: (condition: unknown) => Tester<R>
     only: Vitest.Test<R>
     each: <T>(
       cases: ReadonlyArray<T>
