@@ -263,7 +263,8 @@ export type PartEncoded =
  * @since 4.0.0
  */
 export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
-  toolkit: T
+  toolkit: T,
+  options?: { readonly relaxParams?: boolean }
 ): Schema.Codec<
   Part<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
   PartEncoded,
@@ -273,7 +274,7 @@ export const Part = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolCalls: Array<Schema.Top> = []
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
+    const toolCall = ToolCallPart(tool.name, options?.relaxParams === true ? Schema.Unknown : tool.parametersSchema)
     const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
     toolCalls.push(toolCall)
     toolResults.push(toolResult)
@@ -355,7 +356,8 @@ export type StreamPartEncoded =
  * @since 4.0.0
  */
 export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
-  toolkit: T
+  toolkit: T,
+  options?: { readonly relaxParams?: boolean }
 ): Schema.Codec<
   StreamPart<T extends Toolkit.Any ? Toolkit.Tools<T> : Toolkit.WithHandlerTools<T>>,
   StreamPartEncoded,
@@ -365,7 +367,7 @@ export const StreamPart = <T extends Toolkit.Any | Toolkit.WithHandler<any>>(
   const toolCalls: Array<Schema.Top> = []
   const toolResults: Array<Schema.Top> = []
   for (const tool of Object.values(toolkit.tools as Record<string, Tool.Any>)) {
-    const toolCall = ToolCallPart(tool.name, tool.parametersSchema)
+    const toolCall = ToolCallPart(tool.name, options?.relaxParams === true ? Schema.Unknown : tool.parametersSchema)
     const toolResult = ToolResultPart(tool.name, tool.successSchema, tool.failureSchema)
     toolCalls.push(toolCall)
     toolResults.push(toolResult)

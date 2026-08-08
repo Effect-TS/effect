@@ -293,7 +293,8 @@ const Proto = {
         // Fetch cached schemas / handlers for the tool
         const schemas = getSchemas(tool)
 
-        // Decode the tool call parameters which will be passed to the handler
+        // Decode the tool call parameters which will be passed to the handler.
+        // When decoding fails, respect the tool's failureMode before propagating.
         const decodedParams = yield* schemas.decodeParameters(params).pipe(
           Effect.mapError((cause) =>
             AiError.make({
@@ -305,8 +306,26 @@ const Proto = {
                 description: cause.message
               })
             })
-          )
+          ),
+          Effect.matchEffect({
+            onFailure: (error) =>
+              tool.failureMode === "error"
+                ? Effect.fail(error)
+                : schemas.encodeResult(error).pipe(
+                  Effect.map((encodedResult) =>
+                    Stream.succeed({ result: error, encodedResult, isFailure: true, preliminary: false }) as Stream.Stream<
+                      { readonly result: any; readonly encodedResult: any; readonly isFailure: boolean; readonly preliminary: boolean },
+                      never
+                    >
+                  ),
+                  Effect.orDie
+                ),
+            onSuccess: Effect.succeed
+          })
         )
+        if (Stream.isStream(decodedParams)) {
+          return decodedParams
+        }
 
         // Setup the handler context
         const queue = yield* Queue.make<{
