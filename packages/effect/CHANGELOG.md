@@ -1,5 +1,51 @@
 # effect
 
+## 4.0.0-beta.106
+
+### Patch Changes
+
+- [#7110](https://github.com/Effect-TS/effect/pull/7110) [`2695168`](https://github.com/Effect-TS/effect/commit/269516851b24916d72771f8a554b88722e3732e7) Thanks @fubhy! - Ensure concurrent first `RcRef` borrowers share the same resource generation.
+
+- [#7114](https://github.com/Effect-TS/effect/pull/7114) [`6310a8c`](https://github.com/Effect-TS/effect/commit/6310a8c68c74dcf1d23948ec9243ac5f407a1651) Thanks @fubhy! - Report buffered worker send failures as `WorkerError` values.
+
+- [#7117](https://github.com/Effect-TS/effect/pull/7117) [`c2071b1`](https://github.com/Effect-TS/effect/commit/c2071b1647e2326568c1d0689274ef62b8a7183f) Thanks @fubhy! - Make `TxQueue.shutdown` safe to call after a queue has already been interrupted.
+
+- [#7119](https://github.com/Effect-TS/effect/pull/7119) [`7aff81a`](https://github.com/Effect-TS/effect/commit/7aff81a9cefe681483ef8abf717d786fd10e7e8d) Thanks @fubhy! - Prevent SQL resolvers from invoking non-empty batch callbacks when every request fails encoding.
+
+- [#7105](https://github.com/Effect-TS/effect/pull/7105) [`a1d4057`](https://github.com/Effect-TS/effect/commit/a1d4057711935a544ef441bc2d0ac3565dfa9266) Thanks @tim-smart! - Add `ConfigProvider.fromEnvRecord` for building a provider from an explicit environment record.
+
+- [#7111](https://github.com/Effect-TS/effect/pull/7111) [`abf77b0`](https://github.com/Effect-TS/effect/commit/abf77b04009dcb4d67a258f9d8ada778e9f4ffae) Thanks @fubhy! - Preserve input fiber error types in `Fiber.joinAll`.
+
+- [#7134](https://github.com/Effect-TS/effect/pull/7134) [`6c60375`](https://github.com/Effect-TS/effect/commit/6c60375e68683a32d54554150cc493e16550a06d) Thanks @marbemac! - Fix cluster shutdown hangs by failing abandoned non-discard requests and stream chunk acknowledgements with `EntityNotAssignedToRunner`, including persisted requests sent after runner unregistration. This adds `EntityNotAssignedToRunner` to the typed error channel of entity clients and request-only `EntityProxy` RPC/HTTP endpoints; discard endpoints remain unchanged.
+
+- [#7107](https://github.com/Effect-TS/effect/pull/7107) [`22f4897`](https://github.com/Effect-TS/effect/commit/22f4897bbae24783d4516f6bef353f1db4ec6d03) Thanks @fubhy! - Preserve FormData bodies when converting client requests through HttpServerRequest.
+
+- [#7120](https://github.com/Effect-TS/effect/pull/7120) [`615d1d5`](https://github.com/Effect-TS/effect/commit/615d1d5d0256ec8160f2e08d0dcf5dc83acb7bf1) Thanks @fubhy! - Fix `SqlResolver.findById` failing to complete duplicate requests when id encoding fails, which surfaced as a `RequestResolver did not complete request` defect instead of the underlying `SchemaError`.
+
+- [#7131](https://github.com/Effect-TS/effect/pull/7131) [`3a86757`](https://github.com/Effect-TS/effect/commit/3a867573ddeed5888dabdeb3225a9ebbf00491e7) Thanks @fubhy! - Ignore MCP cancellation notifications for unknown request identifiers.
+
+- [#7104](https://github.com/Effect-TS/effect/pull/7104) [`f4a9762`](https://github.com/Effect-TS/effect/commit/f4a9762bb9dfad59c215f2e099dcc829d74f4ed1) Thanks @gcanti! - Add `Function.memoizeIdempotent` and use it to avoid reprocessing canonical Schema ASTs, including optional and mutable property modifiers. Cache Config schema cursor AST compilation.
+
+- [#7144](https://github.com/Effect-TS/effect/pull/7144) [`0bcf6ed`](https://github.com/Effect-TS/effect/commit/0bcf6ed57c22e8a36964726b15464101d90f5997) Thanks @fubhy! - Stop multipart parsing after part count, part size, or field size limits are exceeded.
+
+- [#7121](https://github.com/Effect-TS/effect/pull/7121) [`ba9cb63`](https://github.com/Effect-TS/effect/commit/ba9cb63b87d45ce2df872dd8ef0905da147cc675) Thanks @fubhy! - Prevent execution-plan event observer defects from changing attempt outcomes or leaving attempt events unpaired.
+
+- [#7147](https://github.com/Effect-TS/effect/pull/7147) [`42c810d`](https://github.com/Effect-TS/effect/commit/42c810dd372275b822dd99c7d7e774e153f0a752) Thanks @tim-smart! - Release worker pool entries when an RPC worker's receive loop fails.
+
+- [#7148](https://github.com/Effect-TS/effect/pull/7148) [`1416ccd`](https://github.com/Effect-TS/effect/commit/1416ccd474bc9da8979f51b72b5e53fb3ac56edf) Thanks @gcanti! - Consolidate schema arbitrary derivation into `Schema.toArbitrary`, which now returns a `Schema.Arbitrary` factory that accepts the fast-check module. Remove `Schema.toArbitraryLazy` and arbitrary derivation reports.
+
+- [#7109](https://github.com/Effect-TS/effect/pull/7109) [`08d0d39`](https://github.com/Effect-TS/effect/commit/08d0d39a225deccb9db213ab5fcf55edb9f9ba5d) Thanks @fubhy! - Fix `RcRef` leaking resources acquired before a failed acquisition.
+
+- [#7146](https://github.com/Effect-TS/effect/pull/7146) [`548908a`](https://github.com/Effect-TS/effect/commit/548908a71d9337cb7defe7fc93b2fba8f6a04b6f) Thanks @gcanti! - Improve Schema representation identity, anonymous-reference eligibility, and JSON Schema alias finalization.
+
+- [#6862](https://github.com/Effect-TS/effect/pull/6862) [`4b3460d`](https://github.com/Effect-TS/effect/commit/4b3460daa434ec465a95a50704fe1103a9275999) Thanks @fubhy! - Ensure `ScopedRef.set` releases a replacement when the previous value's finalizer defects.
+
+- [#7060](https://github.com/Effect-TS/effect/pull/7060) [`d170596`](https://github.com/Effect-TS/effect/commit/d17059615cca37ca2776654078fe0501ac5202e6) Thanks @fubhy! - Preserve `maxItems` semantics when importing JSON Schema `prefixItems`.
+
+- [#7116](https://github.com/Effect-TS/effect/pull/7116) [`aea89d0`](https://github.com/Effect-TS/effect/commit/aea89d0c42ee0ac707a4962cd348fd3158cb469b) Thanks @fubhy! - Keep span end times at zero when tracer timing is disabled.
+
+- [#7124](https://github.com/Effect-TS/effect/pull/7124) [`deed5fb`](https://github.com/Effect-TS/effect/commit/deed5fbdc91cf8bf8c5fce7dfa5d6527ac944726) Thanks @fubhy! - Use a distinct AES-GCM initialization vector for each encrypted event log entry. `EventLogEncryption.encrypt` now returns each IV with its ciphertext, and encrypted event log clients and servers must be upgraded together because the `WriteEntries` wire shape changed.
+
 ## 4.0.0-beta.105
 
 ### Patch Changes
