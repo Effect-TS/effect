@@ -6406,6 +6406,13 @@ Import is best-effort: JSON Schema constructs are translated to Effect schemas w
 lossless reconstruction of an original Effect schema. The optional `onEnter` callback can normalize each JSON Schema node
 before it is translated.
 
+Regular expression constraints reached during best-effort translation are rejected by default because imported patterns
+use the runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
+`patterns: "apply"` only for trusted documents. Set `patterns: "ignore"` to skip reached pattern constraints explicitly;
+the resulting schema accepts values that the source document may reject. The policy includes `pattern`, the keys of
+`patternProperties`, and patterns nested in `propertyNames`. Ignoring `patternProperties` also skips its value constraints
+and `additionalProperties`, because matching keys cannot be determined without evaluating the patterns.
+
 ## Code generation
 
 ### `toCodeDocument`

@@ -743,7 +743,7 @@ function translateJsonSchemaMultiDocument(
       case "string":
         return {
           _tag: "String",
-          checks: collectStringChecks(schema)
+          checks: collectStringChecks(schema, path)
         }
       case "number":
       case "integer":
@@ -791,12 +791,23 @@ function translateJsonSchemaMultiDocument(
     }
   }
 
-  function collectStringChecks(schema: JsonSchema.JsonSchema): Array<Check> {
+  function importPatternChecks(pattern: string, path: Path): Array<Check> {
+    switch (options?.patterns ?? "error") {
+      case "error":
+        throw errorWithPath(`Pattern encountered while patterns is set to "error"`, path)
+      case "ignore":
+        return []
+      case "apply":
+        return [jsonSchemaFilter("effect/schema/isPattern", { source: pattern, flags: "" })]
+    }
+  }
+
+  function collectStringChecks(schema: JsonSchema.JsonSchema, path: Path): Array<Check> {
     const checks: Array<Check> = []
     addNumberCheck(checks, schema.minLength, "effect/schema/isMinLength", "minLength")
     addNumberCheck(checks, schema.maxLength, "effect/schema/isMaxLength", "maxLength")
     if (typeof schema.pattern === "string") {
-      checks.push(jsonSchemaFilter("effect/schema/isPattern", { source: schema.pattern, flags: "" }))
+      checks.push(...importPatternChecks(schema.pattern, [...path, "pattern"]))
     }
     return checks
   }
@@ -856,10 +867,12 @@ function translateJsonSchemaMultiDocument(
       !Array.isArray(schema.patternProperties)
     ) {
       for (const [pattern, value] of Object.entries(schema.patternProperties)) {
+        const checks = importPatternChecks(pattern, [...path, "patternProperties", pattern])
+        if (checks.length === 0) return [{ parameter: string, type: unknown }]
         signatures.push({
           parameter: {
             _tag: "String",
-            checks: [jsonSchemaFilter("effect/schema/isPattern", { source: pattern, flags: "" })]
+            checks
           },
           type: recur(value, [...path, "patternProperties", pattern])
         })

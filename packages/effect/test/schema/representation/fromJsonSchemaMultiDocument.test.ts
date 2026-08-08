@@ -1,5 +1,5 @@
 import { assert } from "@effect/vitest"
-import { type SchemaAST, SchemaRepresentation } from "effect"
+import { Schema, type SchemaAST, SchemaRepresentation } from "effect"
 import { describe, it } from "vitest"
 import { deepStrictEqual, throws } from "../../utils/assert.ts"
 
@@ -13,6 +13,25 @@ function importAndLower(
 }
 
 describe("SchemaRepresentation.fromJsonSchemaMultiDocument", () => {
+  it("propagates the pattern policy through reachable definitions", () => {
+    const document: Parameters<typeof SchemaRepresentation.fromJsonSchemaMultiDocument>[0] = {
+      dialect: "draft-2020-12" as const,
+      schemas: [{ $ref: "#/$defs/A" }],
+      definitions: {
+        A: { type: "string", pattern: "^a+$" }
+      }
+    }
+
+    throws(
+      () => SchemaRepresentation.fromJsonSchemaMultiDocument(document),
+      `Pattern encountered while patterns is set to "error"\n  at ["definitions"]["A"]["pattern"]`
+    )
+
+    const [schema] = SchemaRepresentation.fromJsonSchemaMultiDocument(document, { patterns: "apply" })
+    assert.isTrue(Schema.is(schema)("aaa"))
+    assert.isFalse(Schema.is(schema)("bbb"))
+  })
+
   it("preserves an onEnter exception by identity", () => {
     const cause = new Error("boom")
 

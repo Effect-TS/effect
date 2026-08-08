@@ -6,14 +6,14 @@ function toSchemaFromJsonSchemaDocument(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): Schema.Top {
-  return SchemaRepresentation.fromJsonSchemaDocument(document, options)
+  return SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options })
 }
 
 function fromJsonSchemaRepresentation(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): SchemaRepresentation.Document {
-  return SchemaRepresentation.toRepresentation(SchemaRepresentation.fromJsonSchemaDocument(document, options).ast)
+  return SchemaRepresentation.toRepresentation(toSchemaFromJsonSchemaDocument(document, options).ast)
 }
 
 describe("fromJsonSchemaDocument", () => {
@@ -25,7 +25,7 @@ describe("fromJsonSchemaDocument", () => {
     expected: Schema.Json
   ) {
     const jsonDocument = JsonSchema.fromSchemaDraft2020_12(input.schema)
-    const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, input.options)
+    const schema = toSchemaFromJsonSchemaDocument(jsonDocument, input.options)
     const document = SchemaRepresentation.toRepresentation(schema.ast)
     deepStrictEqual(SchemaRepresentation.toJson(document), expected)
     return schema
@@ -5519,6 +5519,93 @@ describe("fromJsonSchemaDocument", () => {
   })
 
   describe("options", () => {
+    describe("patterns", () => {
+      it("rejects patterns by default", () => {
+        for (
+          const [schema, path] of [
+            [{ type: "string", pattern: "^a+$" }, `["schema"]["pattern"]`],
+            [
+              { type: "object", patternProperties: { "^a+$": { type: "string" } } },
+              `["schema"]["patternProperties"]["^a+$"]`
+            ],
+            [
+              { type: "object", propertyNames: { pattern: "^a+$" } },
+              `["schema"]["propertyNames"]["pattern"]`
+            ]
+          ] as const
+        ) {
+          throws(
+            () => SchemaRepresentation.fromJsonSchemaDocument(JsonSchema.fromSchemaDraft2020_12(schema)),
+            `Pattern encountered while patterns is set to "error"\n  at ${path}`
+          )
+        }
+      })
+
+      it("applies patterns explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" }),
+          { patterns: "apply" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertFalse(is("bbb"))
+      })
+
+      it("ignores patterns explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "^a+$" }),
+          { patterns: "ignore" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is("aaa"))
+        assertTrue(is("bbb"))
+        deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast).representation, {
+          _tag: "String",
+          checks: []
+        })
+
+        const invalidPattern = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "[" }),
+          { patterns: "ignore" }
+        )
+        assertTrue(Schema.is(invalidPattern)("anything"))
+      })
+
+      it("ignores pattern property value constraints explicitly", () => {
+        const schema = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            patternProperties: {
+              "^a+$": { type: "string" },
+              "^b+$": { type: "number" }
+            },
+            additionalProperties: false
+          }),
+          { patterns: "ignore" }
+        )
+        const is = Schema.is(schema)
+        assertTrue(is({ aaa: 1, bbb: "b", ccc: true }))
+        const representation = SchemaRepresentation.toRepresentation(schema.ast).representation
+        strictEqual(representation._tag, "Objects")
+        if (representation._tag === "Objects") {
+          deepStrictEqual(representation.indexSignatures.map(({ parameter }) => parameter), [{
+            _tag: "String",
+            checks: []
+          }])
+        }
+
+        const withAdditionalProperties = SchemaRepresentation.fromJsonSchemaDocument(
+          JsonSchema.fromSchemaDraft2020_12({
+            type: "object",
+            patternProperties: { "^a+$": { type: "string" } },
+            additionalProperties: { type: "boolean" }
+          }),
+          { patterns: "ignore" }
+        )
+        assertTrue(Schema.is(withAdditionalProperties)({ bbb: 1 }))
+      })
+    })
+
     describe("onEnter", () => {
       it("additionalProperties false via onEnter", () => {
         assertFromJsonSchema(
