@@ -47,7 +47,8 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(flags.get("compensation")).toBeFalsy()
       // ensuring will run
       expect(flags.get("ensuring")).toBeTruthy()
-      expect(flags.get("catchCause")).toBeFalsy()
+      // catchCause receives the suspension interrupt
+      expect(flags.get("catchCause")).toBeTruthy()
 
       // --- resume the workflow using DurableDeferred.done
 
@@ -71,7 +72,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
 
       // ensuring will run
       expect(flags.get("ensuring")).toBeTruthy()
-      expect(flags.get("catchCause")).toBeFalsy()
+      expect(flags.get("catchCause")).toBeTruthy()
 
       // test deduplication
       yield* EmailWorkflow.execute({

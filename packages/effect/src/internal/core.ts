@@ -538,6 +538,7 @@ export const exitFailCause: <E>(cause: Cause.Cause<E>) => Exit.Exit<never, E> = 
     }
     let cont = fiber.getCont(contE)
     while (fiber.interruptible && fiber._interruptedCause && cont) {
+      cont[contE](cause, fiber, annotated ? undefined : this)
       cont = fiber.getCont(contE)
     }
     return cont

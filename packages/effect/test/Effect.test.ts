@@ -2947,18 +2947,20 @@ describe("Effect", () => {
         )
         assert.deepStrictEqual(result, "e2")
       }))
-    it.effect("receives interrupt causes on interruption", () =>
+    it.effect("receives interrupt causes from fiber interruption", () =>
       Effect.gen(function*() {
-        let caught = false
+        let caught: Cause.Cause<never> | undefined
         const fiber = yield* Effect.never.pipe(
-          Effect.catchCause(() => Effect.sync(() => {
-            caught = true
-          })),
+          Effect.catchCause((cause) => {
+            caught = cause
+            return Effect.void
+          }),
           Effect.forkChild({ startImmediately: true })
         )
 
         yield* Fiber.interrupt(fiber)
-        assert.isTrue(caught)
+        assert.isDefined(caught)
+        assert.isTrue(Cause.hasInterruptsOnly(caught))
       }))
   })
 
