@@ -134,13 +134,8 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             yield* Effect.yieldNow
 
             const reusedExit = reused.pollUnsafe()
-            assert.isDefined(reusedExit)
-            if (reusedExit !== undefined) {
-              assert(Exit.isSuccess(reusedExit))
-              if (Exit.isSuccess(reusedExit)) {
-                assert.deepStrictEqual(reusedExit.value.result, {})
-              }
-            }
+            assert(reusedExit !== undefined && Exit.isSuccess(reusedExit))
+            assert.deepStrictEqual(reusedExit.value.result, {})
           }))
         it.effect("SHOULD ignore cancellation for an already completed request identifier", () =>
           Effect.gen(function*() {
