@@ -82,7 +82,8 @@ export const make: (
               Queue.endUnsafe(lines)
             }
           })
-      )
+      ),
+      idleTimeToLive: "10 millis"
     })
 
     const columns = Effect.sync(() => stdout.columns ?? 0)
