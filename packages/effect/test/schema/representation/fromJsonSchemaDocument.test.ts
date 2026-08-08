@@ -13,9 +13,7 @@ function fromJsonSchemaRepresentation(
   document: JsonSchema.Document<"draft-2020-12">,
   options?: SchemaRepresentation.FromJsonSchemaOptions
 ): SchemaRepresentation.Document {
-  return SchemaRepresentation.toRepresentation(
-    SchemaRepresentation.fromJsonSchemaDocument(document, { patterns: "apply", ...options }).ast
-  )
+  return SchemaRepresentation.toRepresentation(toSchemaFromJsonSchemaDocument(document, options).ast)
 }
 
 describe("fromJsonSchemaDocument", () => {
@@ -27,7 +25,7 @@ describe("fromJsonSchemaDocument", () => {
     expected: Schema.Json
   ) {
     const jsonDocument = JsonSchema.fromSchemaDraft2020_12(input.schema)
-    const schema = SchemaRepresentation.fromJsonSchemaDocument(jsonDocument, { patterns: "apply", ...input.options })
+    const schema = toSchemaFromJsonSchemaDocument(jsonDocument, input.options)
     const document = SchemaRepresentation.toRepresentation(schema.ast)
     deepStrictEqual(SchemaRepresentation.toJson(document), expected)
     return schema
@@ -5561,6 +5559,10 @@ describe("fromJsonSchemaDocument", () => {
         const is = Schema.is(schema)
         assertTrue(is("aaa"))
         assertTrue(is("bbb"))
+        deepStrictEqual(SchemaRepresentation.toRepresentation(schema.ast).representation, {
+          _tag: "String",
+          checks: []
+        })
 
         const invalidPattern = SchemaRepresentation.fromJsonSchemaDocument(
           JsonSchema.fromSchemaDraft2020_12({ type: "string", pattern: "[" }),
@@ -5583,6 +5585,14 @@ describe("fromJsonSchemaDocument", () => {
         )
         const is = Schema.is(schema)
         assertTrue(is({ aaa: 1, bbb: "b", ccc: true }))
+        const representation = SchemaRepresentation.toRepresentation(schema.ast).representation
+        strictEqual(representation._tag, "Objects")
+        if (representation._tag === "Objects") {
+          deepStrictEqual(representation.indexSignatures.map(({ parameter }) => parameter), [{
+            _tag: "String",
+            checks: []
+          }])
+        }
 
         const withAdditionalProperties = SchemaRepresentation.fromJsonSchemaDocument(
           JsonSchema.fromSchemaDraft2020_12({
