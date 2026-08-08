@@ -688,6 +688,19 @@ importers:
         specifier: workspace:^
         version: link:../../effect
 
+  packages/sql/tursodatabase:
+    dependencies:
+      '@tursodatabase/database':
+        specifier: ^0.7.2
+        version: 0.7.2
+      '@tursodatabase/database-common':
+        specifier: ^0.7.2
+        version: 0.7.2
+    devDependencies:
+      effect:
+        specifier: workspace:^
+        version: link:../../effect
+
   packages/tools/ai-codegen:
     dependencies:
       '@effect/openapi-generator':
@@ -3128,6 +3141,32 @@ packages:
 
   '@ts-morph/common@0.28.1':
     resolution: {integrity: sha512-W74iWf7ILp1ZKNYXY5qbddNaml7e9Sedv5lvU1V8lftlitkc9Pq1A+jlH23ltDgWYeZFFEqGCD1Ies9hqu3O+g==}
+
+  '@tursodatabase/database-common@0.7.2':
+    resolution: {integrity: sha512-c4uWaA5m7nyDemUrjvX6lQQ89cBxv1jCv7nmwq5JoagyXgbMxDeBfLcY7N5kn0oEcnD0Y+cf09S0wKEXKFKbfg==}
+
+  '@tursodatabase/database-darwin-arm64@0.7.2':
+    resolution: {integrity: sha512-pDYbrPnmsqzWsf21bQXXGKmGhcLdfQQVjx+yrpC/IboCue5o/h9fDZ1QFzQEP6CHRXXoc+pwQCyF8KBntI8fdA==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@tursodatabase/database-linux-arm64-gnu@0.7.2':
+    resolution: {integrity: sha512-/Blz7cRssWh7dk8vGs7Cq3kupHOnI0GROAg+u9J4MD5U5ABAabJGN7iW5YQ16jZW35Bv2AkmJAyjvsCWdTyfTg==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@tursodatabase/database-linux-x64-gnu@0.7.2':
+    resolution: {integrity: sha512-rXxInfTxKRPG3XeOAZvzJuX4wF+m9t9BjLbFnKU83Ad8ob2z88r1x+EV7IBzEFhz2FbvrRgriH7PhIEZ7Lx5ug==}
+    cpu: [x64]
+    os: [linux]
+
+  '@tursodatabase/database-win32-x64-msvc@0.7.2':
+    resolution: {integrity: sha512-AUvN3KO1bZOpsXVofRIMM2+MJ6OghUhgK62t8/3Bsb0Zzt6PztaMvJrtaWI6u5Olx0WCfGdhaVKyegcjYPNAeA==}
+    cpu: [x64]
+    os: [win32]
+
+  '@tursodatabase/database@0.7.2':
+    resolution: {integrity: sha512-B84QicyDYnKt97qxgb7861cQQC26kuv/LkUlCnpxGs4tuGT9zgS2z/Mt+BkG/wOo1fB4rsSycOgGCbi0xU0YOQ==}
 
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
@@ -8775,6 +8814,29 @@ snapshots:
       minimatch: 10.2.5
       path-browserify: 1.0.1
       tinyglobby: 0.2.17
+
+  '@tursodatabase/database-common@0.7.2': {}
+
+  '@tursodatabase/database-darwin-arm64@0.7.2':
+    optional: true
+
+  '@tursodatabase/database-linux-arm64-gnu@0.7.2':
+    optional: true
+
+  '@tursodatabase/database-linux-x64-gnu@0.7.2':
+    optional: true
+
+  '@tursodatabase/database-win32-x64-msvc@0.7.2':
+    optional: true
+
+  '@tursodatabase/database@0.7.2':
+    dependencies:
+      '@tursodatabase/database-common': 0.7.2
+    optionalDependencies:
+      '@tursodatabase/database-darwin-arm64': 0.7.2
+      '@tursodatabase/database-linux-arm64-gnu': 0.7.2
+      '@tursodatabase/database-linux-x64-gnu': 0.7.2
+      '@tursodatabase/database-win32-x64-msvc': 0.7.2
 
   '@tybys/wasm-util@0.10.3':
     dependencies:

@@ -30,6 +30,7 @@
     { "path": "packages/sql/sqlite-node" },
     { "path": "packages/sql/sqlite-react-native" },
     { "path": "packages/sql/sqlite-wasm" },
+    { "path": "packages/sql/tursodatabase" },
     { "path": "packages/tools/ai-codegen" },
     { "path": "packages/tools/api-diff" },
     { "path": "packages/tools/bundle" },
