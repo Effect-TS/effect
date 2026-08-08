@@ -246,6 +246,39 @@ describe("OpenRouterLanguageModel", () => {
           })
         }
       }))
+
+    it.effect("uses lowercase openrouter reasoning-end metadata", () =>
+      Effect.gen(function*() {
+        const reasoningDetails = [{
+          type: "reasoning.text",
+          text: "thinking",
+          signature: "signature-final",
+          format: "unknown"
+        }] as const
+        const parts = yield* LanguageModel.streamText({ prompt: "reason then answer" }).pipe(
+          Stream.runCollect,
+          Effect.provide(OpenRouterLanguageModel.model("openai/gpt-4o-mini")),
+          Effect.provide(makeStreamTestLayer([
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [{ index: 0, delta: { reasoning_details: reasoningDetails } }]
+            },
+            {
+              id: "response-1",
+              object: "chat.completion.chunk",
+              model: "openai/gpt-4o-mini",
+              created: 1,
+              choices: [{ index: 0, finish_reason: "stop", delta: { content: "answer" } }]
+            }
+          ]))
+        )
+
+        const reasoningEnd = parts.find((part) => part.type === "reasoning-end")
+        deepStrictEqual(reasoningEnd?.metadata, { openrouter: { reasoningDetails } })
+      }))
   })
 })
 
@@ -339,7 +372,7 @@ const getRequestBody = (request: HttpClientRequest.HttpClientRequest) =>
     return yield* Effect.die(new Error("Expected Uint8Array body"))
   })
 
-const makeStreamTestLayer = (events: ReadonlyArray<unknown>) => {
+const makeStreamTestLayer = (events: ReadonlyArray<typeof Generated.ChatStreamChunk.Encoded>) => {
   const body = events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join("") + "data: [DONE]\n\n"
   const httpClient = HttpClient.makeWith(
     Effect.fnUntraced(function*(requestEffect) {
