@@ -5558,9 +5558,9 @@ console.log(JSON.stringify(document, null, 2))
 
 ### Generating an Arbitrary from a Schema
 
-Property-based tests need generators. `Schema.toArbitrary` derives a
-`fast-check` `Arbitrary` that generates decoded `Type` values accepted by the
-schema.
+Property-based tests need generators. `Schema.toArbitrary` derives a factory
+that accepts the `fast-check` module and returns an `Arbitrary` that generates
+decoded `Type` values accepted by the schema.
 
 Most schemas do not need any extra work:
 
@@ -5573,21 +5573,9 @@ const Person = Schema.Struct({
   age: Schema.Int.check(Schema.isBetween({ minimum: 18, maximum: 80 }))
 })
 
-const PersonArbitrary = Schema.toArbitrary(Person)
+const PersonArbitrary = Schema.toArbitrary(Person)(FastCheck)
 
 console.log(FastCheck.sample(PersonArbitrary, 3))
-```
-
-Use `Schema.toArbitraryLazy` only when you want the caller to provide
-`fast-check`:
-
-```ts
-import { Schema } from "effect"
-import { FastCheck } from "effect/testing"
-
-const makeStringArbitrary = Schema.toArbitraryLazy(Schema.String)
-
-const StringArbitrary = makeStringArbitrary(FastCheck)
 ```
 
 `Schema.Never` and declaration schemas without a `toArbitrary` annotation cannot
@@ -5641,35 +5629,6 @@ const Palindrome = Schema.String.check(
 This works because the final predicate check rejects strings that are not
 palindromes. It may need many attempts, because the base string generator has no
 reason to produce mirrored strings.
-
-#### Reports
-
-Use `{ report: true }` when you want to know which filters did not guide
-generation:
-
-```ts
-import { Schema } from "effect"
-
-const isPalindrome = (s: string) => s === Array.from(s).reverse().join("")
-
-const Palindrome = Schema.String.check(
-  Schema.makeFilter(isPalindrome, {
-    expected: "a palindrome"
-  })
-)
-
-const result = Schema.toArbitrary(Palindrome, { report: true })
-
-result.value
-result.report.warnings
-```
-
-An `OpaqueFilter` warning means: "this filter is still checked, but it did not
-help build the generator."
-
-Reports contain warnings only. Unsupported schemas, impossible constraints,
-invalid candidates, and recursive schemas without a finite terminal path still
-fail immediately.
 
 #### Custom Filters With Constraints
 
@@ -5947,7 +5906,7 @@ const Person = Schema.Struct({
   company: Company
 })
 
-console.log(FastCheck.sample(Schema.toArbitrary(Person), 3))
+console.log(FastCheck.sample(Schema.toArbitrary(Person)(FastCheck), 3))
 ```
 
 These overrides are useful because the values have domain shape: names look like

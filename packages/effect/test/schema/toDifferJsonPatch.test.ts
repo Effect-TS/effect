@@ -18,7 +18,7 @@ import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "..
 
 function roundtrip<T, E>(codec: Schema.Codec<T, E>) {
   const differ = Schema.toDifferJsonPatch(codec)
-  const arbitrary = Schema.toArbitrary(codec)
+  const arbitrary = Schema.toArbitrary(codec)(FastCheck)
   const arb = arbitrary.filter((v) => {
     // avoid prototype-poisoning-ish values that aren't valid JSON-ish containers for patching
     if (
