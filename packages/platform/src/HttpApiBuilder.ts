@@ -558,7 +558,7 @@ const requestPayload = (
   const contentType = request.headers["content-type"]
     ? request.headers["content-type"].toLowerCase().trim()
     : "application/json"
-  if (contentType.includes("application/json")) {
+  if (contentType.includes("application/json") || contentType.includes("+json")) {
     return Effect.orDie(request.json)
   } else if (contentType.includes("multipart/form-data")) {
     return Effect.orDie(Option.match(multipartLimits, {
