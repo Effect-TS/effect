@@ -1,7 +1,7 @@
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Stdio } from "effect"
+import { Context, Effect, Fiber, FileSystem, Layer, Option, Path, Runtime, Stdio } from "effect"
 import { TestConsole } from "effect/testing"
-import { Argument, CliConfig, CliOutput, Command, Flag, GlobalFlag } from "effect/unstable/cli"
+import { Argument, CliConfig, CliError, CliOutput, Command, Flag, GlobalFlag } from "effect/unstable/cli"
 import { toImpl } from "effect/unstable/cli/internal/command"
 import { ChildProcessSpawner } from "effect/unstable/process"
 import * as Cli from "./fixtures/ComprehensiveCli.ts"
@@ -721,6 +721,110 @@ describe("Command", () => {
       Effect.gen(function*() {
         const result = yield* Effect.flip(Cli.run(["test-failing", "--input", "test"]))
         assert.strictEqual(result, "Handler error")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should render and rethrow UserError handler failures without help", () =>
+      Effect.gen(function*() {
+        const failure = new CliError.UserError({
+          cause: new Error("internal details"),
+          userMessage: "Deployment failed"
+        })
+        const command = Command.make("deploy", {}, () => failure)
+
+        const error = yield* Effect.flip(Command.runWith(command, { version: "1.0.0" })([]))
+
+        assert.strictEqual(error, failure)
+        assert.isFalse(Runtime.getErrorReported(error))
+        const stderr = yield* TestConsole.errorLines
+        assert.lengthOf(stderr, 1)
+        assert.strictEqual(String(stderr[0]), "\nERROR\n  Deployment failed")
+        assert.isEmpty(yield* TestConsole.logLines)
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should render UserError handler failures with the installed formatter", () =>
+      Effect.gen(function*() {
+        const formatter: CliOutput.Formatter = {
+          ...CliOutput.defaultFormatter({ colors: false }),
+          formatError: (error) => `CUSTOM ERROR: ${error.message}`
+        }
+        const failure = new CliError.UserError({ cause: "Deployment failed" })
+        const command = Command.make("deploy", {}, () => failure)
+
+        yield* Command.runWith(command, { version: "1.0.0" })([]).pipe(
+          Effect.flip,
+          Effect.provide(TestLayerWithoutFormatter),
+          Effect.provideService(CliOutput.Formatter, formatter)
+        )
+
+        assert.deepStrictEqual(yield* TestConsole.errorLines, ["CUSTOM ERROR: Deployment failed"])
+      }))
+
+    it.effect("should render UserError once when running wizard-generated arguments", () =>
+      Effect.gen(function*() {
+        const failure = new CliError.UserError({ cause: "Deployment failed" })
+        const command = Command.make("deploy", {}, () => failure)
+
+        const fiber = yield* Command.runWith(command, { version: "1.0.0" })(["--wizard"]).pipe(
+          Effect.flip,
+          Effect.forkChild
+        )
+        yield* MockTerminal.inputKey("enter")
+        const error = yield* Fiber.join(fiber)
+
+        assert.strictEqual(error, failure)
+        assert.deepStrictEqual(yield* TestConsole.errorLines, ["\nERROR\n  Deployment failed"])
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should render UserError argument failures with command help", () =>
+      Effect.gen(function*() {
+        const command = Command.make("deploy", {
+          target: Argument.string("target").pipe(
+            Argument.mapEffect(() =>
+              Effect.fail(
+                new CliError.UserError({
+                  cause: "Invalid deployment target"
+                })
+              )
+            )
+          )
+        })
+
+        const error = yield* Effect.flip(Command.runWith(command, { version: "1.0.0" })(["invalid"]))
+
+        assert.instanceOf(error, CliError.ShowHelp)
+        assert.include((yield* TestConsole.errorLines).join("\n"), "Invalid deployment target")
+        assert.include((yield* TestConsole.logLines).join("\n"), "USAGE")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should suppress automatic error rendering", () =>
+      Effect.gen(function*() {
+        const userError = new CliError.UserError({ cause: "Deployment failed" })
+        const command = Command.make("deploy", {}, () => userError)
+        const config = { version: "1.0.0", renderErrors: false } as const
+
+        const handlerFailure = yield* Effect.flip(Command.runWith(command, config)([]))
+        const parseFailure = yield* Effect.flip(Command.runWith(command, config)(["--unknown"]))
+
+        assert.strictEqual(handlerFailure, userError)
+        assert.isTrue(Runtime.getErrorReported(handlerFailure))
+        assert.instanceOf(parseFailure, CliError.ShowHelp)
+        assert.isEmpty(yield* TestConsole.errorLines)
+        assert.include((yield* TestConsole.logLines).join("\n"), "USAGE")
+      }).pipe(Effect.provide(TestLayer)))
+
+    it.effect("should still render help when automatic error rendering is disabled", () =>
+      Effect.gen(function*() {
+        const child = Command.make("child")
+        const command = Command.make("app").pipe(Command.withSubcommands([child]))
+
+        const error = yield* Effect.flip(
+          Command.runWith(command, { version: "1.0.0", renderErrors: false })([])
+        )
+
+        assert.instanceOf(error, CliError.ShowHelp)
+        assert.isEmpty(error.errors)
+        assert.include((yield* TestConsole.logLines).join("\n"), "USAGE")
+        assert.isEmpty(yield* TestConsole.errorLines)
       }).pipe(Effect.provide(TestLayer)))
   })
 

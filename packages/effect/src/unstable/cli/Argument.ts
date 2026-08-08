@@ -499,7 +499,8 @@ export const map: {
  *       ? Effect.succeed(file)
  *       : Effect.fail(
  *         new CliError.UserError({
- *           cause: new Error("Only .txt files allowed")
+ *           cause: new Error(`Unsupported file extension: ${file}`),
+ *           userMessage: "Only .txt files allowed"
  *         })
  *       )
  *   )
