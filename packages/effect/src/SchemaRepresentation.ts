@@ -735,9 +735,9 @@ export function toMultiDocument(document: Document): MultiDocument {
  * **Gotchas**
  *
  * Opaque declarations are represented by an unconstrained JSON Schema. Check callback results are used directly, and
- * exceptions raised by a callback pass through unchanged. Callbacks must treat their input schemas as immutable and
- * must not mutate a returned object graph after returning it. Local definition references returned by callbacks are
- * resolved together with compiler-generated references.
+ * exceptions raised by a callback pass through unchanged. Callbacks must treat their input schemas as immutable. Each
+ * returned value must be a valid JSON Schema object graph and must not be mutated after the callback returns. Local
+ * definition references returned by callbacks are resolved together with compiler-generated references.
  *
  * @see {@link toJsonSchemaMultiDocument} for multiple roots sharing definitions
  *
@@ -761,8 +761,9 @@ export function toJsonSchemaDocument(
  * **Gotchas**
  *
  * Every definition is compiled, including definitions that are not reachable from a root. Check callbacks must treat
- * their input schemas as immutable and must not mutate a returned object graph after returning it. Local definition
- * references returned by callbacks are resolved together with compiler-generated references.
+ * their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must not be
+ * mutated after the callback returns. Local definition references returned by callbacks are resolved together with
+ * compiler-generated references.
  *
  * @see {@link toJsonSchemaDocument} for a single root
  *

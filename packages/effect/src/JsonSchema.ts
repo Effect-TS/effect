@@ -908,10 +908,7 @@ function rewriteSchemaRef(
 }
 
 function mapObject(value: unknown, f: (node: unknown) => unknown): Record<string, unknown> | undefined {
-  if (!Predicate.isObject(value)) return undefined
-  const out: Record<string, unknown> = {}
-  for (const k of Object.keys(value)) InternalRecord.assignProperty(out, k, f(value[k]))
-  return out
+  return Predicate.isObject(value) ? Rec.map(value, f) : undefined
 }
 
 function rewriteSubschemaKeyword(
