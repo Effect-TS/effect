@@ -354,10 +354,10 @@ const DurationProto: Omit<Duration, "value"> = {
     // Hash equal finite durations using the same canonical nanoseconds
     // representation used by `equals`.
     switch (this.value._tag) {
-      case "Millis":
-        return Number.isFinite(this.value.millis * 1_000_000)
-          ? Hash.hash(roundMillisToNanos(this.value.millis))
-          : Hash.number(this.value.millis)
+      case "Millis": {
+        const nanos = this.value.millis * 1_000_000
+        return Number.isFinite(nanos) ? Hash.hash(roundTiesAwayFromZero(nanos)) : Hash.number(this.value.millis)
+      }
       case "Nanos":
         return Hash.hash(this.value.nanos)
       default:
