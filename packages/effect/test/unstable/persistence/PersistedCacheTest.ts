@@ -1,5 +1,6 @@
 import { assert, it } from "@effect/vitest"
-import type { Layer } from "effect"
+import type { Vitest } from "@effect/vitest"
+import type { Duration, Layer } from "effect"
 import { Context, Data, Effect, Exit, Schema } from "effect"
 import { Persistable, PersistedCache, Persistence } from "effect/unstable/persistence"
 
@@ -20,8 +21,13 @@ export class TransientError extends Data.TaggedError("TransientError") {}
 
 class LookupService extends Context.Service<LookupService, { readonly value: string }>()("LookupService") {}
 
-export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistence, unknown>) =>
-  it.layer(layer, { timeout: "60 seconds" })(`PersistedCache (${storeId})`, (it) => {
+export const suiteWith = <R>(
+  storeId: string,
+  layer: Layer.Layer<Persistence.Persistence, unknown, R>,
+  testApi: Vitest.MethodsNonLive<R>,
+  timeout: Duration.Input = "60 seconds"
+) =>
+  testApi.layer(layer, { timeout })(`PersistedCache (${storeId})`, (it) => {
     it.effect("smoke test", () =>
       Effect.gen(function*() {
         const persistence = yield* Persistence.Persistence
@@ -93,3 +99,6 @@ export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistenc
         assert.deepStrictEqual(result3, new User({ id: 1, name: "first" }))
       }), 30_000)
   })
+
+export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistence, unknown>) =>
+  suiteWith(storeId, layer, it)
