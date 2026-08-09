@@ -13,6 +13,9 @@ describe("Client", () => {
       const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
       const sql = yield* SqliteClient.make({ filename: ":memory:" })
       assert.deepStrictEqual(yield* sql`PRAGMA busy_timeout`, [{ timeout: 5000 }])
+
+      const custom = yield* SqliteClient.make({ filename: ":memory:", busyTimeout: "1 second" })
+      assert.deepStrictEqual(yield* custom`PRAGMA busy_timeout`, [{ timeout: 1000 }])
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect.skipIf(!isBun)("starts transactions immediately", () =>
@@ -56,6 +59,7 @@ describe("Client", () => {
 
       const sql = yield* SqliteClient.make({ filename, readonly: true })
       assert.deepStrictEqual(yield* sql`SELECT * FROM test`, [])
+      assert.deepStrictEqual(yield* sql.withTransaction(sql`SELECT * FROM test`), [])
 
       const error = yield* Effect.flip(sql`INSERT INTO test DEFAULT VALUES`)
       assert.strictEqual(error._tag, "SqlError")
