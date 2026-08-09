@@ -8,6 +8,36 @@ const isBun = "bun" in process.versions
 describe("Client", () => {
   it.effect("should work", () => Effect.void)
 
+  it.effect.skipIf(!isBun)("uses a 5 second busy timeout", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const sql = yield* SqliteClient.make({ filename: ":memory:" })
+      assert.deepStrictEqual(yield* sql`PRAGMA busy_timeout`, [{ timeout: 5000 }])
+    }).pipe(Effect.provide(Reactivity.layer)))
+
+  it.effect.skipIf(!isBun)("starts transactions immediately", () =>
+    Effect.gen(function*() {
+      const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))
+      const filename = `/tmp/effect-sqlite-bun-transaction-${crypto.randomUUID()}.db`
+      yield* Effect.acquireRelease(
+        Effect.void,
+        () => Effect.promise(() => rm(filename, { force: true }))
+      )
+
+      const client = yield* SqliteClient.make({ filename })
+      const contender = yield* SqliteClient.make({ filename })
+      yield* contender`PRAGMA busy_timeout = 1`
+
+      yield* client.withTransaction(
+        Effect.gen(function*() {
+          const error = yield* Effect.flip(contender`BEGIN IMMEDIATE`)
+          assert.strictEqual(error._tag, "SqlError")
+          assert(error.reason.cause instanceof Error)
+          assert.match(error.reason.cause.message, /database is locked/i)
+        })
+      )
+    }).pipe(Effect.provide(Reactivity.layer)))
+
   it.effect.skipIf(!isBun)("readonly clients reject writes", () =>
     Effect.gen(function*() {
       const { SqliteClient } = yield* Effect.promise(() => import("@effect/sql-sqlite-bun"))

@@ -122,6 +122,7 @@ export const make = (
         create: readonly ? false : options.create ?? true
       } as any)
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
+      db.run("PRAGMA busy_timeout = 5000;")
 
       if (options.disableWAL !== true && !readonly) {
         db.run("PRAGMA journal_mode = WAL;")
@@ -217,6 +218,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        beginTransaction: "BEGIN IMMEDIATE",
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [ATTR_DB_SYSTEM_NAME, "sqlite"]

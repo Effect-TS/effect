@@ -129,6 +129,7 @@ export const make = (
       })
       yield* Scope.addFinalizer(scope, Effect.sync(() => db.close()))
       db.enableLoadExtension(false)
+      db.exec("PRAGMA busy_timeout = 5000")
 
       if (options.disableWAL !== true) {
         db.exec("PRAGMA journal_mode = WAL")
@@ -303,6 +304,7 @@ export const make = (
         acquirer,
         compiler,
         transactionAcquirer,
+        beginTransaction: "BEGIN IMMEDIATE",
         spanAttributes: [
           ...(options.spanAttributes ? Object.entries(options.spanAttributes) : []),
           [ATTR_DB_SYSTEM_NAME, "sqlite"]

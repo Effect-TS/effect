@@ -12,6 +12,16 @@ const makeClient = Effect.gen(function*() {
   })
 }).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
 
+const makeClients = Effect.gen(function*() {
+  const fs = yield* FileSystem.FileSystem
+  const dir = yield* fs.makeTempDirectoryScoped()
+  const filename = dir + "/test.db"
+  return {
+    client: yield* SqliteClient.make({ filename }),
+    contender: yield* SqliteClient.make({ filename })
+  }
+}).pipe(Effect.provide([NodeFileSystem.layer, Reactivity.layer]))
+
 describe("Client", () => {
   it.effect("should work", () =>
     Effect.gen(function*() {
@@ -73,6 +83,27 @@ describe("Client", () => {
       )
       const rows = yield* sql`SELECT * FROM test`
       assert.deepStrictEqual(rows, [])
+    }))
+
+  it.effect("uses a 5 second busy timeout", () =>
+    Effect.gen(function*() {
+      const sql = yield* makeClient
+      assert.deepStrictEqual(yield* sql`PRAGMA busy_timeout`, [{ timeout: 5000 }])
+    }))
+
+  it.effect("starts transactions immediately", () =>
+    Effect.gen(function*() {
+      const { client, contender } = yield* makeClients
+      yield* contender`PRAGMA busy_timeout = 1`
+
+      yield* client.withTransaction(
+        Effect.gen(function*() {
+          const error = yield* Effect.flip(contender`BEGIN IMMEDIATE`)
+          assert.strictEqual(error._tag, "SqlError")
+          assert(error.reason.cause instanceof Error)
+          assert.match(error.reason.cause.message, /database is locked/i)
+        })
+      )
     }))
 
   it.effect("supports backup and export", () =>
