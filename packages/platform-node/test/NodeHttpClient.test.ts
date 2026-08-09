@@ -28,6 +28,7 @@ const Todo = Schema.Struct({
 const TodoWithoutId = Schema.Struct({
   ...Struct.omit(Todo.fields, ["id"])
 })
+const largeResponseBody = "a".repeat(10 * 1024 * 1024)
 
 const makeLocalServerClient = Effect.gen(function*() {
   const client = yield* HttpClient.HttpClient
@@ -65,6 +66,7 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
     })
   ),
   HttpRouter.route("GET", "/text", Effect.succeed(HttpServerResponse.text("test"))),
+  HttpRouter.route("GET", "/large", Effect.succeed(HttpServerResponse.text(largeResponseBody))),
   HttpRouter.route("GET", "/hang", Effect.never),
   HttpRouter.route("GET", "/redirect", Effect.succeed(HttpServerResponse.redirect("/redirected"))),
   HttpRouter.route("GET", "/redirected", Effect.succeed(HttpServerResponse.text("redirected"))),
@@ -173,7 +175,7 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
 
     it.effect("close early", () =>
       Effect.gen(function*() {
-        const response = yield* HttpClient.get("/text")
+        const response = yield* HttpClient.get("/large")
         expect(response.status).toBe(200)
       }).pipe(Effect.provide(localServerTestLayer)))
   })
