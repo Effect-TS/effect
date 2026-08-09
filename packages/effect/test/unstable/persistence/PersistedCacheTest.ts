@@ -21,11 +21,11 @@ export class TransientError extends Data.TaggedError("TransientError") {}
 
 class LookupService extends Context.Service<LookupService, { readonly value: string }>()("LookupService") {}
 
-const registerSuite = <R>(
+export const suiteWith = <R>(
   storeId: string,
   layer: Layer.Layer<Persistence.Persistence, unknown, R>,
   testApi: Vitest.MethodsNonLive<R>,
-  timeout: Duration.Input
+  timeout: Duration.Input = "60 seconds"
 ) =>
   testApi.layer(layer, { timeout })(`PersistedCache (${storeId})`, (it) => {
     it.effect("smoke test", () =>
@@ -101,11 +101,4 @@ const registerSuite = <R>(
   })
 
 export const suite = (storeId: string, layer: Layer.Layer<Persistence.Persistence, unknown>) =>
-  registerSuite(storeId, layer, it, "60 seconds")
-
-export const suiteWith = <R>(
-  storeId: string,
-  layer: Layer.Layer<Persistence.Persistence, unknown, R>,
-  testApi: Vitest.MethodsNonLive<R>,
-  timeout: Duration.Input = "60 seconds"
-) => registerSuite(storeId, layer, testApi, timeout)
+  suiteWith(storeId, layer, it)

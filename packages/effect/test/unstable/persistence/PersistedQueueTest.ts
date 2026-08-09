@@ -5,11 +5,11 @@ import type { Duration } from "effect"
 import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
 
-const registerSuite = <R>(
+export const suiteWith = <R>(
   name: string,
   layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown, R>,
   testApi: Vitest.MethodsNonLive<R>,
-  timeout: Duration.Input
+  timeout: Duration.Input = "30 seconds"
 ) =>
   testApi.layer(
     PersistedQueue.layer.pipe(
@@ -218,11 +218,4 @@ const Item = Schema.Struct({
 })
 
 export const suite = (name: string, layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown>) =>
-  registerSuite(name, layer, it, "30 seconds")
-
-export const suiteWith = <R>(
-  name: string,
-  layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown, R>,
-  testApi: Vitest.MethodsNonLive<R>,
-  timeout: Duration.Input = "30 seconds"
-) => registerSuite(name, layer, testApi, timeout)
+  suiteWith(name, layer, it)
