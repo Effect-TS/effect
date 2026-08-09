@@ -1,7 +1,7 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem } from "effect"
+import { Duration, Effect, FileSystem } from "effect"
 import { Reactivity } from "effect/unstable/reactivity"
 
 const makeClient = Effect.gen(function*() {
@@ -94,6 +94,11 @@ describe("Client", () => {
         Effect.provide(Reactivity.layer)
       )
       assert.deepStrictEqual(yield* custom`PRAGMA busy_timeout`, [{ timeout: 1000 }])
+
+      const infinite = yield* SqliteClient.make({ filename: ":memory:", busyTimeout: Duration.infinity }).pipe(
+        Effect.provide(Reactivity.layer)
+      )
+      assert.deepStrictEqual(yield* infinite`PRAGMA busy_timeout`, [{ timeout: 2_147_483_647 }])
     }))
 
   it.effect("starts transactions immediately", () =>

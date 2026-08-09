@@ -4,11 +4,12 @@
  * This module opens a SQLite database and exposes it as both `SqliteClient` and
  * the generic Effect SQL client. It serializes access to the database, enables
  * WAL mode unless disabled, and waits up to five seconds for busy databases by
- * default. Explicit transactions use `BEGIN IMMEDIATE` to avoid read-to-write
- * lock upgrades, which serializes them behind other writers. Busy waits block
- * the event loop because `bun:sqlite` is synchronous. Database export and
- * extension loading are supported; streaming queries and `updateValues` are
- * not.
+ * default. Explicit transactions on writable connections use `BEGIN IMMEDIATE`
+ * to avoid read-to-write lock upgrades, which serializes them behind other
+ * writers even when they only read. Clients opened with `readonly: true` are
+ * unaffected. Busy waits block the event loop because `bun:sqlite` is
+ * synchronous. Database export and extension loading are supported; streaming
+ * queries and `updateValues` are not.
  *
  * @since 4.0.0
  */
@@ -30,6 +31,7 @@ import { classifySqliteError, SqlError } from "effect/unstable/sql/SqlError"
 import * as Statement from "effect/unstable/sql/Statement"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
+const MAX_BUSY_TIMEOUT = 2_147_483_647
 
 const classifyError = (cause: unknown, message: string, operation: string) =>
   classifySqliteError(cause, { message, operation })
@@ -92,6 +94,7 @@ export interface SqliteClientConfig {
   readonly disableWAL?: boolean | undefined
   /**
    * How long SQLite waits when the database is busy. Defaults to 5 seconds.
+   * `Duration.infinity` is clamped to SQLite's maximum timeout.
    * Waiting blocks the event loop because `bun:sqlite` is synchronous.
    */
   readonly busyTimeout?: Duration.Input | undefined
@@ -108,7 +111,7 @@ interface SqliteConnection extends Connection {
 }
 
 /**
- * Creates a scoped Bun SQLite client for a database file, enabling WAL and a 5-second busy timeout by default. Explicit transactions use `BEGIN IMMEDIATE`, so read-only transactions also serialize behind other writers. Streaming queries are not implemented.
+ * Creates a scoped Bun SQLite client for a database file, enabling WAL and a 5-second busy timeout by default. Explicit transactions on writable connections take the write lock for their duration, even when they only read; clients opened with `readonly: true` are unaffected. Streaming queries are not implemented.
  *
  * @category constructors
  * @since 4.0.0
@@ -132,7 +135,11 @@ export const make = (
         create: readonly ? false : options.create ?? true
       } as any)
       yield* Effect.addFinalizer(() => Effect.sync(() => db.close()))
-      db.run(`PRAGMA busy_timeout = ${Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))};`)
+      const busyTimeout = Math.min(
+        MAX_BUSY_TIMEOUT,
+        Math.max(0, Math.round(Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))))
+      )
+      db.run(`PRAGMA busy_timeout = ${busyTimeout};`)
 
       if (options.disableWAL !== true && !readonly) {
         db.run("PRAGMA journal_mode = WAL;")

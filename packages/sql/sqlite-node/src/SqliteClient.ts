@@ -4,11 +4,13 @@
  * This module opens a SQLite database and exposes it as both `SqliteClient` and
  * the generic Effect SQL client. It serializes access through one connection,
  * caches prepared statements, enables WAL mode unless disabled, and waits up
- * to five seconds for busy databases by default. Explicit transactions use
- * `BEGIN IMMEDIATE` to avoid read-to-write lock upgrades, which serializes them
- * behind other writers. Busy waits block the Node.js event loop because
- * `node:sqlite` is synchronous. Database backup and extension loading are
- * supported; streaming queries and `updateValues` are not.
+ * to five seconds for busy databases by default. Explicit transactions on
+ * writable connections use `BEGIN IMMEDIATE` to avoid read-to-write lock
+ * upgrades, which serializes them behind other writers even when they only
+ * read. Clients opened with `readonly: true` are unaffected. Busy waits block
+ * the Node.js event loop because `node:sqlite` is synchronous. Database backup
+ * and extension loading are supported; streaming queries and `updateValues`
+ * are not.
  *
  * @since 4.0.0
  */
@@ -32,6 +34,7 @@ import { backup as backupDatabase, DatabaseSync } from "node:sqlite"
 import type { StatementSync } from "node:sqlite"
 
 const ATTR_DB_SYSTEM_NAME = "db.system.name"
+const MAX_BUSY_TIMEOUT = 2_147_483_647
 
 /**
  * Runtime type identifier used to mark Node `SqliteClient` values.
@@ -98,6 +101,7 @@ export interface SqliteClientConfig {
   readonly disableWAL?: boolean | undefined
   /**
    * How long SQLite waits when the database is busy. Defaults to 5 seconds.
+   * `Duration.infinity` is clamped to SQLite's maximum timeout.
    * Waiting blocks the Node.js event loop because `node:sqlite` is synchronous.
    */
   readonly busyTimeout?: Duration.Input | undefined
@@ -113,7 +117,7 @@ interface SqliteConnection extends Connection {
 }
 
 /**
- * Creates a scoped node SQLite client from the supplied configuration, using a single serialized connection with WAL and a 5-second busy timeout enabled by default. Explicit transactions use `BEGIN IMMEDIATE`, so read-only transactions also serialize behind other writers.
+ * Creates a scoped node SQLite client from the supplied configuration, using a single serialized connection with WAL and a 5-second busy timeout enabled by default. Explicit transactions on writable connections take the write lock for their duration, even when they only read; clients opened with `readonly: true` are unaffected.
  *
  * @category constructors
  * @since 4.0.0
@@ -137,7 +141,11 @@ export const make = (
       })
       yield* Scope.addFinalizer(scope, Effect.sync(() => db.close()))
       db.enableLoadExtension(false)
-      db.exec(`PRAGMA busy_timeout = ${Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))}`)
+      const busyTimeout = Math.min(
+        MAX_BUSY_TIMEOUT,
+        Math.max(0, Math.round(Duration.toMillis(options.busyTimeout ?? Duration.seconds(5))))
+      )
+      db.exec(`PRAGMA busy_timeout = ${busyTimeout}`)
 
       if (options.disableWAL !== true) {
         db.exec("PRAGMA journal_mode = WAL")

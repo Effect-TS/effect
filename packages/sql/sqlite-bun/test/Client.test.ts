@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect } from "effect"
+import { Duration, Effect } from "effect"
 import { Reactivity } from "effect/unstable/reactivity"
 import { rm } from "node:fs/promises"
 
@@ -16,6 +16,9 @@ describe("Client", () => {
 
       const custom = yield* SqliteClient.make({ filename: ":memory:", busyTimeout: "1 second" })
       assert.deepStrictEqual(yield* custom`PRAGMA busy_timeout`, [{ timeout: 1000 }])
+
+      const infinite = yield* SqliteClient.make({ filename: ":memory:", busyTimeout: Duration.infinity })
+      assert.deepStrictEqual(yield* infinite`PRAGMA busy_timeout`, [{ timeout: 2_147_483_647 }])
     }).pipe(Effect.provide(Reactivity.layer)))
 
   it.effect.skipIf(!isBun)("starts transactions immediately", () =>
