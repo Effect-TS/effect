@@ -84,6 +84,14 @@ export function make({
     state.onChunk = noopOnChunk
   }
 
+  function stop(error: MultipartError) {
+    state.stopped = true
+    if (state.state === State.body && state.isFile) {
+      state.onChunk(null)
+    }
+    onError(error)
+  }
+
   const headerParser = HP.make()
 
   const split = Search.make(
@@ -132,14 +140,12 @@ export function make({
 
         state.parts++
         if (state.parts > maxParts) {
-          state.stopped = true
-          return onError(errMaxParts)
+          return stop(errMaxParts)
         }
       }
 
       if ((state.partSize += chunk.length) > maxPartSize) {
-        state.stopped = true
-        return onError(errMaxPartSize)
+        return stop(errMaxPartSize)
       }
 
       if (state.state === State.headers) {
@@ -206,8 +212,7 @@ export function make({
           } else {
             const buf = chunk.subarray(result.endPosition)
             if ((state.fieldSize += buf.length) > maxFieldSize) {
-              state.stopped = true
-              return onError(errMaxFieldSize)
+              return stop(errMaxFieldSize)
             }
             state.fieldChunks.push(buf)
           }
@@ -216,8 +221,7 @@ export function make({
         state.onChunk(chunk)
       } else {
         if ((state.fieldSize += chunk.length) > maxFieldSize) {
-          state.stopped = true
-          return onError(errMaxFieldSize)
+          return stop(errMaxFieldSize)
         }
         state.fieldChunks.push(chunk)
       }
@@ -232,14 +236,14 @@ export function make({
         return
       }
       if ((state.totalSize += chunk.length) > maxTotalSize) {
-        return onError(errMaxTotalSize)
+        return stop(errMaxTotalSize)
       }
       return split.write(chunk)
     },
     end() {
       split.end()
       if (!state.done && !state.stopped) {
-        onError(errEndNotReached)
+        stop(errEndNotReached)
       }
 
       state.state = State.headers
