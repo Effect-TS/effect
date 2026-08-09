@@ -2614,6 +2614,13 @@ export function collectSentinels(ast: AST): ReadonlyArray<Sentinel> {
         }
         return []
       })
+    case "Union": {
+      if (ast.types.length === 0) return []
+      const members = ast.types.map((type) => collectSentinels(toCandidate(type)))
+      return members[0].filter((s) =>
+        members.every((sentinels) => sentinels.some((o) => o.key === s.key && o.literal === s.literal))
+      )
+    }
     case "Suspend":
       return collectSentinels(ast.thunk())
   }
@@ -2726,12 +2733,16 @@ export function getCandidates(
     const base = idx.otherwise?.[runtimeType] ?? emptyCandidates
     if (Predicate.isObjectKeyword(input)) {
       const selected = new Set(base)
+      const excluded = new Set<number>()
       for (const [k, m] of idx.bySentinel) {
         const value = Object.hasOwn(input, k) ? (input as any)[k] : undefined
         if (value !== undefined) {
-          const match = m.get(value)
-          if (match) {
-            for (const candidate of match) selected.add(candidate)
+          for (const [literal, indexes] of m) {
+            if (literal === value) {
+              for (const candidate of indexes) selected.add(candidate)
+            } else {
+              for (const candidate of indexes) excluded.add(candidate)
+            }
           }
         } else if (isConstructor) {
           for (const indexes of m.values()) {
@@ -2739,7 +2750,7 @@ export function getCandidates(
           }
         }
       }
-      return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
+      return Array.from(selected).filter((i) => !excluded.has(i)).sort((a, b) => a - b).map((i) => types[i])
     }
     return base.map((i) => types[i])
   }
