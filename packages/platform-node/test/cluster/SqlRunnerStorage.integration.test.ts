@@ -86,8 +86,7 @@ describe("SqlRunnerStorage", () => {
 
       assert.strictEqual(partitioned.activeQueries, 0)
     }).pipe(
-      // Let reserved-connection finalizers finish if an assertion fails while
-      // the simulated connection is partitioned.
+      // Ensure layer teardown cannot mask a body failure with Vitest's timeout.
       Effect.ensuring(Effect.sync(() => {
         partitioned.current = false
       })),
