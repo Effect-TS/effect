@@ -1,3 +1,4 @@
+import { buildSpawnOptions } from "@effect/platform-node-shared/internal/nodeChildProcessSpawner"
 import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChildProcessSpawner"
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
@@ -23,19 +24,19 @@ describe("buildSpawnOptions", () => {
   const base = { stdio: "pipe" } as const
 
   it("defaults to hiding non-detached Windows children", () => {
-    assert.deepStrictEqual(NodeChildProcessSpawner.buildSpawnOptions({}, base, "win32"), {
+    assert.deepStrictEqual(buildSpawnOptions({}, base, "win32"), {
       stdio: "pipe",
       detached: false,
       shell: undefined,
       windowsHide: true
     })
-    assert.deepStrictEqual(NodeChildProcessSpawner.buildSpawnOptions({ detached: true }, base, "win32"), {
+    assert.deepStrictEqual(buildSpawnOptions({ detached: true }, base, "win32"), {
       stdio: "pipe",
       detached: true,
       shell: undefined,
       windowsHide: false
     })
-    assert.deepStrictEqual(NodeChildProcessSpawner.buildSpawnOptions({ detached: false }, base, "win32"), {
+    assert.deepStrictEqual(buildSpawnOptions({ detached: false }, base, "win32"), {
       stdio: "pipe",
       detached: false,
       shell: undefined,
@@ -45,7 +46,7 @@ describe("buildSpawnOptions", () => {
 
   it("allows windowsHide to be configured independently of detached", () => {
     assert.deepStrictEqual(
-      NodeChildProcessSpawner.buildSpawnOptions({ detached: false, windowsHide: false }, base, "win32"),
+      buildSpawnOptions({ detached: false, windowsHide: false }, base, "win32"),
       {
         stdio: "pipe",
         detached: false,
@@ -54,7 +55,7 @@ describe("buildSpawnOptions", () => {
       }
     )
     assert.deepStrictEqual(
-      NodeChildProcessSpawner.buildSpawnOptions({ detached: true, windowsHide: true }, base, "win32"),
+      buildSpawnOptions({ detached: true, windowsHide: true }, base, "win32"),
       {
         stdio: "pipe",
         detached: true,

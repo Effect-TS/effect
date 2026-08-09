@@ -40,6 +40,7 @@ import {
 } from "effect/unstable/process/ChildProcessSpawner"
 import * as NodeChildProcess from "node:child_process"
 import { PassThrough } from "node:stream"
+import { buildSpawnOptions } from "./internal/nodeChildProcessSpawner.ts"
 import { handleErrnoException } from "./internal/utils.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
@@ -668,26 +669,6 @@ export const layer: Layer.Layer<
 // =============================================================================
 // Internal Helpers
 // =============================================================================
-
-/**
- * Builds the Node.js spawn options for a child process command.
- *
- * @category constructors
- * @since 4.0.0
- */
-export const buildSpawnOptions = (
-  options: ChildProcess.CommandOptions,
-  base: Pick<NodeChildProcess.SpawnOptions, "cwd" | "env" | "stdio">,
-  platform: NodeJS.Platform
-): NodeChildProcess.SpawnOptions => {
-  const detached = options.detached ?? platform !== "win32"
-  return {
-    ...base,
-    detached,
-    shell: options.shell,
-    windowsHide: options.windowsHide ?? !detached
-  }
-}
 
 /**
  * Result of flattening a pipeline of commands.
