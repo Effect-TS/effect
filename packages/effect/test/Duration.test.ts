@@ -235,8 +235,18 @@ describe("Duration", () => {
     assertTrue(Duration.equals(millisTagged, nanosTagged))
     assertTrue(Equal.equals(millisTagged, nanosTagged))
     strictEqual(Hash.hash(millisTagged), Hash.hash(nanosTagged))
+    strictEqual(Hash.hash(Duration.millis(-5000)), Hash.hash(Duration.nanos(-5_000_000_000n)))
+    strictEqual(Hash.hash(Duration.infinity), Hash.hash(Duration.infinity))
+    assertFalse(Equal.equals(Duration.infinity, Duration.negativeInfinity))
 
     assertTrue(HashSet.has(HashSet.make(millisTagged), nanosTagged))
+  })
+
+  it("Hash.symbol handles finite millis too large to convert to nanos", () => {
+    const duration = Duration.millis(1e303)
+
+    assertTrue(Equal.equals(duration, Duration.millis(1e303)))
+    assertTrue(HashSet.has(HashSet.make(duration), Duration.millis(1e303)))
   })
 
   it("between", () => {
