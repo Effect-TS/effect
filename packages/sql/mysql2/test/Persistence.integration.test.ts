@@ -8,24 +8,32 @@ import { PersistedQueue, Persistence } from "effect/unstable/persistence"
 import { SqlClient } from "effect/unstable/sql"
 import { MysqlContainer } from "./utils.ts"
 
-PersistedCacheTest.suite(
-  "sql-mysql2-multi",
-  Persistence.layerSqlMultiTable.pipe(Layer.provide(MysqlContainer.layerClient))
+const layerClient = Layer.effect(SqlClient.SqlClient)(SqlClient.SqlClient).pipe(
+  Layer.provide(MysqlContainer.layerClient)
 )
 
-PersistedCacheTest.suite(
-  "sql-mysql2-single",
-  Persistence.layerSql.pipe(Layer.provide(MysqlContainer.layerClient))
-)
-
-PersistedQueueTest.suite(
-  "sql-mysql2",
-  PersistedQueue.layerStoreSql().pipe(
-    Layer.provide(MysqlContainer.layerClient)
+it.layer(layerClient, { timeout: "90 seconds" })("Persistence", (it) => {
+  PersistedCacheTest.suiteWith(
+    "sql-mysql2-multi",
+    Persistence.layerSqlMultiTable,
+    it,
+    "90 seconds"
   )
-)
 
-it.layer(MysqlContainer.layerClient, { timeout: "30 seconds" })("Persistence SQL cleanup", (it) => {
+  PersistedCacheTest.suiteWith(
+    "sql-mysql2-single",
+    Persistence.layerSql,
+    it,
+    "90 seconds"
+  )
+
+  PersistedQueueTest.suiteWith(
+    "sql-mysql2",
+    PersistedQueue.layerStoreSql(),
+    it,
+    "90 seconds"
+  )
+
   it.effect("deletes expired entries in batches", () =>
     Effect.gen(function*() {
       const sql = (yield* SqlClient.SqlClient).withoutTransforms()
@@ -33,6 +41,7 @@ it.layer(MysqlContainer.layerClient, { timeout: "30 seconds" })("Persistence SQL
       const expiredCount = sql<{ readonly count: number }>`
         SELECT COUNT(*) AS count FROM ${table} WHERE store_id = 'expired'
       `.pipe(Effect.map((rows) => Number(rows[0].count)))
+      yield* sql`DROP TABLE IF EXISTS ${table}`
       yield* sql`
         CREATE TABLE ${table} (
           store_id VARCHAR(191) NOT NULL,

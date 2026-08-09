@@ -1,14 +1,21 @@
 import { assert, it } from "@effect/vitest"
+import type { Vitest } from "@effect/vitest"
 import { Effect, Fiber, Latch, Layer, Schema } from "effect"
+import type { Duration } from "effect"
 import { TestClock } from "effect/testing"
 import { PersistedQueue } from "effect/unstable/persistence"
 
-export const suite = (name: string, layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown>) =>
-  it.layer(
+const registerSuite = <R>(
+  name: string,
+  layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown, R>,
+  testApi: Vitest.MethodsNonLive<R>,
+  timeout: Duration.Input
+) =>
+  testApi.layer(
     PersistedQueue.layer.pipe(
       Layer.provideMerge(layer)
     ),
-    { timeout: "30 seconds" }
+    { timeout }
   )(`PersistedQueue (${name})`, (it) => {
     it.effect("offer + take", () =>
       Effect.gen(function*() {
@@ -209,3 +216,13 @@ export const suite = (name: string, layer: Layer.Layer<PersistedQueue.PersistedQ
 const Item = Schema.Struct({
   n: Schema.BigInt
 })
+
+export const suite = (name: string, layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown>) =>
+  registerSuite(name, layer, it, "30 seconds")
+
+export const suiteWith = <R>(
+  name: string,
+  layer: Layer.Layer<PersistedQueue.PersistedQueueStore, unknown, R>,
+  testApi: Vitest.MethodsNonLive<R>,
+  timeout: Duration.Input = "30 seconds"
+) => registerSuite(name, layer, testApi, timeout)
