@@ -85,7 +85,14 @@ describe("SqlRunnerStorage", () => {
       yield* storage.release(runnerAddress1, shards[0]).pipe(TestClock.withLive)
 
       assert.strictEqual(partitioned.activeQueries, 0)
-    }).pipe(Effect.provide(layer))
+    }).pipe(
+      // Let reserved-connection finalizers finish if an assertion fails while
+      // the simulated connection is partitioned.
+      Effect.ensuring(Effect.sync(() => {
+        partitioned.current = false
+      })),
+      Effect.provide(layer)
+    )
   }, 60_000)
 
   it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
