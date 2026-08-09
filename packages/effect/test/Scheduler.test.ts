@@ -39,6 +39,40 @@ describe("Scheduler", () => {
     }
   })
 
+  it("sync dispatch falls back to Promise when queueMicrotask is missing", async () => {
+    const original = globalThis.queueMicrotask
+    // @ts-expect-error -- simulating a runtime without the global
+    delete globalThis.queueMicrotask
+    vi.resetModules()
+    const setImmediate = vi.spyOn(globalThis, "setImmediate").mockImplementation(() => {
+      throw new Error("setImmediate is not supported")
+    })
+    const setTimeout = vi.spyOn(globalThis, "setTimeout").mockImplementation(() => {
+      throw new Error("setTimeout is not supported")
+    })
+
+    try {
+      const FreshScheduler = await import("effect/Scheduler")
+      const dispatcher = new FreshScheduler.MixedScheduler("sync").makeDispatcher()
+      const order: Array<string> = []
+
+      dispatcher.scheduleTask(() => order.push("task"), 0)
+      assert.deepStrictEqual(order, [])
+
+      await Promise.resolve()
+      await Promise.resolve()
+
+      assert.deepStrictEqual(order, ["task"])
+      assert.strictEqual(setImmediate.mock.calls.length, 0)
+      assert.strictEqual(setTimeout.mock.calls.length, 0)
+    } finally {
+      globalThis.queueMicrotask = original
+      setImmediate.mockRestore()
+      setTimeout.mockRestore()
+      vi.resetModules()
+    }
+  })
+
   it.effect("MixedScheduler orders by priority (sync)", () =>
     Effect.sync(() => {
       const scheduler = new Scheduler.MixedScheduler("sync").makeDispatcher()
