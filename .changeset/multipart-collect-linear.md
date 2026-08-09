@@ -2,4 +2,4 @@
 "effect": patch
 ---
 
-Fix quadratic buffering in `Multipart.collectUint8Array`, which made collecting streamed multipart file content with `contentEffect` up to two orders of magnitude slower than necessary for larger files.
+Add `Channel.mkUint8Array` and reuse it from `Stream` and multipart file collection, keeping streamed byte concatenation linear across upstream pulls.

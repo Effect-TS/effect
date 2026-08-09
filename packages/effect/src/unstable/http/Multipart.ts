@@ -602,7 +602,7 @@ class FileImpl extends PartBase implements File {
     this.contentType = info.contentType
     this.content = Stream.fromChannel(channel)
     this.contentEffect = channel.pipe(
-      collectUint8Array,
+      Channel.mkUint8Array,
       Effect.mapError((cause) => MultipartError.fromReason("InternalError", cause))
     )
   }
@@ -643,28 +643,7 @@ const defaultWriteFile = (path: string, file: File) =>
  */
 export const collectUint8Array = <OE, OD, R>(
   self: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>, OE, OD, unknown, unknown, unknown, R>
-): Effect.Effect<Uint8Array<ArrayBuffer>, OE, R> =>
-  Effect.map(
-    Channel.runFold(self, () => [] as Array<Uint8Array>, (elements, chunk) => {
-      for (const element of chunk) {
-        elements.push(element)
-      }
-      return elements
-    }),
-    (elements) => {
-      let length = 0
-      for (const element of elements) {
-        length += element.length
-      }
-      const output = new Uint8Array(length)
-      let offset = 0
-      for (const element of elements) {
-        output.set(element, offset)
-        offset += element.length
-      }
-      return output
-    }
-  )
+): Effect.Effect<Uint8Array<ArrayBuffer>, OE, R> => Channel.mkUint8Array(self)
 
 /**
  * Persists a stream of multipart parts into a record.
