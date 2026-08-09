@@ -2766,8 +2766,12 @@ export function getCandidates(
         }
         if (seed) {
           const selected = new Set(base)
-          for (const i of seed) {
-            if (matchesSentinels(input, idx.sentinelsByCandidate![i]!, isConstructor)) selected.add(i)
+          if (idx.bySentinel.size === 1) {
+            for (const i of seed) selected.add(i)
+          } else {
+            for (const i of seed) {
+              if (matchesSentinels(input, idx.sentinelsByCandidate![i]!, isConstructor)) selected.add(i)
+            }
           }
           return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
         }
