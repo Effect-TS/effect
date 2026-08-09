@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { Effect, ErrorReporter, FileSystem, identity, Path, Schema, Stream, Unify } from "effect"
+import { Effect, ErrorReporter, FileSystem, identity, Path, Schema, Sink, Stream, Unify } from "effect"
 import { HttpClientRequest, HttpServerRequest, Multipart, MultipartParser } from "effect/unstable/http"
 import * as HttpServerRespondable from "effect/unstable/http/HttpServerRespondable"
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert"
@@ -195,6 +195,84 @@ describe("Multipart", () => {
       strictEqual(first.path, "/tmp/audit/same.txt")
       notStrictEqual(first.path, second.path)
       deepStrictEqual(writes, [first.path, second.path])
+    }))
+
+  const boundary = "----effectboundary"
+
+  const multipartRequest = (parts: ReadonlyArray<string>) => {
+    const body = `${parts.join("\r\n")}\r\n--${boundary}--\r\n`
+    const bytes = new TextEncoder().encode(body)
+    return Stream.fromReadableStream({
+      evaluate: () =>
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            for (let i = 0; i < bytes.length; i += 256) {
+              controller.enqueue(bytes.subarray(i, i + 256))
+            }
+            controller.close()
+          }
+        }),
+      onError: (cause) => Multipart.MultipartError.fromReason("InternalError", cause)
+    }).pipe(
+      Stream.pipeThroughChannel(
+        Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+      )
+    )
+  }
+
+  const filePart = (name: string, size: number) =>
+    `--${boundary}\r\nContent-Disposition: form-data; name="${name}"; filename="${name}.txt"\r\n\r\n${"A".repeat(size)}`
+
+  const noopFileSystem = FileSystem.makeNoop({
+    makeTempDirectoryScoped: () => Effect.succeed("/tmp/audit"),
+    sink: () => Sink.drain
+  })
+
+  // no Effect.timeout guard: the regression mode is an event-loop-starving busy
+  // loop, which no in-process timer can preempt
+  it.effect("fails the file content stream when maxTotalSize is exceeded mid-file", () =>
+    Effect.gen(function*() {
+      const stream = multipartRequest([filePart("file", 4096)])
+      const error = yield* Multipart.toPersisted(stream).pipe(
+        Effect.provide(Multipart.limitsServices({ maxTotalSize: 512 })),
+        Effect.provideService(FileSystem.FileSystem, noopFileSystem),
+        Effect.provide(Path.layer),
+        Effect.flip
+      )
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "BodyTooLarge")
+    }))
+
+  it.effect("fails the file content stream when maxFileSize is exceeded mid-file", () =>
+    Effect.gen(function*() {
+      const stream = multipartRequest([filePart("file", 4096)])
+      const error = yield* Multipart.toPersisted(stream).pipe(
+        Effect.provide(Multipart.limitsServices({ maxFileSize: 512 })),
+        Effect.provideService(FileSystem.FileSystem, noopFileSystem),
+        Effect.provide(Path.layer),
+        Effect.flip
+      )
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "FileTooLarge")
+    }))
+
+  it.effect("persists completed files before failing when maxTotalSize is exceeded in a later file", () =>
+    Effect.gen(function*() {
+      const first = filePart("first", 256)
+      const stream = multipartRequest([first, filePart("second", 4096)])
+      const written: Array<readonly [string, number]> = []
+      const error = yield* Multipart.toPersisted(
+        stream,
+        (_, file) => Effect.map(file.contentEffect, (bytes) => void written.push([file.name, bytes.length]))
+      ).pipe(
+        Effect.provide(Multipart.limitsServices({ maxTotalSize: first.length + 256 })),
+        Effect.provideService(FileSystem.FileSystem, noopFileSystem),
+        Effect.provide(Path.layer),
+        Effect.flip
+      )
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "BodyTooLarge")
+      deepStrictEqual(written, [["first.txt", 256]])
     }))
 
   it.effect("responds based on the reason and is ignored by the ErrorReporter", () =>
