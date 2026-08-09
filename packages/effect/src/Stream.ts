@@ -10854,6 +10854,11 @@ export const mkString = <E, R>(self: Stream<string, E, R>): Effect.Effect<string
  * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
+ * **Gotchas**
+ *
+ * This materializes the full content in memory. The source stream must not
+ * reuse or mutate emitted buffers, which are retained until collection completes.
+ *
  * @category destructors
  * @since 4.0.0
  */
@@ -10876,6 +10881,11 @@ export const mkArrayBuffer = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effe
  *
  * await Effect.runPromise(program)
  * ```
+ *
+ * **Gotchas**
+ *
+ * This materializes the full content in memory. The source stream must not
+ * reuse or mutate emitted buffers, which are retained until collection completes.
  *
  * @category destructors
  * @since 4.0.0
