@@ -153,7 +153,7 @@ describe("Multipart", () => {
           return Stream.runDrain(part.content)
         }),
         Stream.runDrain,
-        Effect.provideService(HttpIncomingMessage.MaxBodySize, 256),
+        Effect.provideService(HttpIncomingMessage.MaxBodySize, FileSystem.Size(256)),
         Effect.flip
       )
 
