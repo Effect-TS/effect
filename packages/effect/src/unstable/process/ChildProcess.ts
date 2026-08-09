@@ -433,6 +433,14 @@ export interface CommandOptions extends KillOptions {
    */
   readonly detached?: boolean | undefined
   /**
+   * If set to `true`, prevents the child process's console or GUI window from
+   * becoming visible on Windows.
+   *
+   * Defaults to `true` unless `detached` is set to `true`. This option has no
+   * effect on non-Windows platforms.
+   */
+  readonly windowsHide?: boolean | undefined
+  /**
    * Configuration options for the standard input stream for the child process.
    */
   readonly stdin?: CommandInput | StdinConfig | undefined

@@ -65,6 +65,17 @@ const toPlatformError = (
 type ExitCodeWithSignal = readonly [code: number | null, signal: NodeJS.Signals | null]
 type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
 
+const taskkill = (
+  childProcess: NodeChildProcess.ChildProcess,
+  onExit: (error: NodeChildProcess.ExecException | null) => void = () => {}
+) =>
+  NodeChildProcess.execFile(
+    "taskkill",
+    ["/pid", String(childProcess.pid!), "/T", "/F"],
+    { windowsHide: true },
+    onExit
+  )
+
 const make = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
   const path = yield* Path.Path
@@ -354,18 +365,13 @@ const make = Effect.gen(function*() {
   ) => {
     if (globalThis.process.platform === "win32") {
       return Effect.callback<void, PlatformError.PlatformError>((resume) => {
-        NodeChildProcess.execFile(
-          "taskkill",
-          ["/pid", String(childProcess.pid), "/T", "/F"],
-          { windowsHide: true },
-          (error) => {
-            if (error) {
-              resume(Effect.fail(toPlatformError("kill", toError(error), command)))
-            } else {
-              resume(Effect.void)
-            }
+        taskkill(childProcess, (error) => {
+          if (error) {
+            resume(Effect.fail(toPlatformError("kill", toError(error), command)))
+          } else {
+            resume(Effect.void)
           }
-        )
+        })
       })
     }
     return Effect.try({
@@ -381,14 +387,8 @@ const make = Effect.gen(function*() {
     signal: NodeJS.Signals
   ): void => {
     if (globalThis.process.platform === "win32") {
-      NodeChildProcess.execFile(
-        "taskkill",
-        ["/pid", String(childProcess.pid), "/T", "/F"],
-        { windowsHide: true },
-        () => {
-          // ignore errors during best-effort cleanup
-        }
-      )
+      // ignore errors during best-effort cleanup
+      taskkill(childProcess)
       return
     }
     try {
@@ -481,16 +481,7 @@ const make = Effect.gen(function*() {
         const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
 
         const [childProcess, exitSignal] = yield* Effect.acquireRelease(
-          spawn(cmd, {
-            cwd,
-            env,
-            stdio,
-            detached: cmd.options.detached ?? process.platform !== "win32",
-            shell: cmd.options.shell,
-            // Windows gives detached children their own console, so only hide it
-            // when the caller did not explicitly ask to detach
-            windowsHide: cmd.options.detached !== true
-          }),
+          spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
           Effect.fnUntraced(function*([childProcess, exitSignal]) {
             const exited = yield* Deferred.isDone(exitSignal)
             const killWithTimeout = withTimeout(childProcess, cmd, cmd.options)
@@ -677,6 +668,26 @@ export const layer: Layer.Layer<
 // =============================================================================
 // Internal Helpers
 // =============================================================================
+
+/**
+ * Builds the Node.js spawn options for a child process command.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const buildSpawnOptions = (
+  options: ChildProcess.CommandOptions,
+  base: Pick<NodeChildProcess.SpawnOptions, "cwd" | "env" | "stdio">,
+  platform: NodeJS.Platform
+): NodeChildProcess.SpawnOptions => {
+  const detached = options.detached ?? platform !== "win32"
+  return {
+    ...base,
+    detached,
+    shell: options.shell,
+    windowsHide: options.windowsHide ?? !detached
+  }
+}
 
 /**
  * Result of flattening a pipeline of commands.

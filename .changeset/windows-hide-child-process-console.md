@@ -2,4 +2,6 @@
 "@effect/platform-node-shared": patch
 ---
 
-Stop spawned child processes and Windows process-group kills from flashing console windows.
+Pass Node's `windowsHide` flag for spawned Windows children by default (except detached processes), with an independent
+`windowsHide` option for callers that need visible GUI windows. Process-group cleanup now invokes `taskkill` without a
+`cmd.exe` wrapper and hides its window.
