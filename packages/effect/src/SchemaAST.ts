@@ -2630,6 +2630,8 @@ type CandidateIndex =
   | ((input: any, isConstructor: boolean) => ReadonlyArray<AST>)
   | {
     bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
+    completeSentinelCoverage?: boolean
+    sentinelsByCandidate?: Array<ReadonlyArray<Sentinel> | undefined>
     otherwise?: { [K in Type]?: Array<number> }
   }
 
@@ -2663,6 +2665,8 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
 
     if (sentinels.length) { // discriminated variants
       idx.bySentinel ??= new Map()
+      const sentinelsByCandidate = idx.sentinelsByCandidate ??= []
+      sentinelsByCandidate[i] = sentinels
       for (const { key, literal } of sentinels) {
         let m = idx.bySentinel.get(key)
         if (!m) idx.bySentinel.set(key, m = new Map())
@@ -2675,6 +2679,13 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       const candidateTypes = getCandidateTypes(encoded)
       for (const t of candidateTypes) (idx.otherwise[t] ??= []).push(i)
     }
+  }
+
+  if (idx.bySentinel && idx.sentinelsByCandidate) {
+    const keys = Array.from(idx.bySentinel.keys())
+    idx.completeSentinelCoverage = idx.sentinelsByCandidate.every((sentinels) =>
+      sentinels === undefined || keys.every((key) => sentinels.some((sentinel) => sentinel.key === key))
+    )
   }
 
   if (literalCandidates) {
@@ -2712,6 +2723,14 @@ function filterLiterals(input: any) {
   }
 }
 
+function matchesSentinels(input: any, sentinels: ReadonlyArray<Sentinel>, isConstructor: boolean): boolean {
+  return sentinels.every(({ key, literal }) => {
+    if (!Object.hasOwn(input, key)) return true
+    const value = input[key]
+    return (isConstructor && value === undefined) || value === literal
+  })
+}
+
 /**
  * The goal is to reduce the number of a union members that will be checked.
  * This is useful to reduce the number of issues that will be returned.
@@ -2732,17 +2751,37 @@ export function getCandidates(
   if (idx.bySentinel) {
     const base = idx.otherwise?.[runtimeType] ?? emptyCandidates
     if (Predicate.isObjectKeyword(input)) {
+      if (idx.completeSentinelCoverage) {
+        // Every discriminated candidate is constrained by every sentinel key,
+        // so the smallest positive match is a safe and selective starting point.
+        let seed: ReadonlyArray<number> | undefined
+        for (const [key, byValue] of idx.bySentinel) {
+          const hasKey = Object.hasOwn(input, key)
+          const value = hasKey ? (input as any)[key] : undefined
+          if (hasKey && (!isConstructor || value !== undefined)) {
+            const match = byValue.get(value)
+            if (!match) return base.map((i) => types[i])
+            if (!seed || match.length < seed.length) seed = match
+          }
+        }
+        if (seed) {
+          const selected = new Set(base)
+          for (const i of seed) {
+            if (matchesSentinels(input, idx.sentinelsByCandidate![i]!, isConstructor)) selected.add(i)
+          }
+          return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
+        }
+        if (!isConstructor) return base.map((i) => types[i])
+      }
+
       const selected = new Set(base)
-      const excluded = new Set<number>()
       for (const [k, m] of idx.bySentinel) {
-        const value = Object.hasOwn(input, k) ? (input as any)[k] : undefined
-        if (value !== undefined) {
-          for (const [literal, indexes] of m) {
-            if (literal === value) {
-              for (const candidate of indexes) selected.add(candidate)
-            } else {
-              for (const candidate of indexes) excluded.add(candidate)
-            }
+        const hasKey = Object.hasOwn(input, k)
+        const value = hasKey ? (input as any)[k] : undefined
+        if (hasKey && (!isConstructor || value !== undefined)) {
+          const match = m.get(value)
+          if (match) {
+            for (const candidate of match) selected.add(candidate)
           }
         } else if (isConstructor) {
           for (const indexes of m.values()) {
@@ -2750,7 +2789,10 @@ export function getCandidates(
           }
         }
       }
-      return Array.from(selected).filter((i) => !excluded.has(i)).sort((a, b) => a - b).map((i) => types[i])
+      return Array.from(selected).filter((i) => {
+        const sentinels = idx.sentinelsByCandidate?.[i]
+        return !sentinels || matchesSentinels(input, sentinels, isConstructor)
+      }).sort((a, b) => a - b).map((i) => types[i])
     }
     return base.map((i) => types[i])
   }

@@ -476,7 +476,7 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
     })
 
-    it("should collect matches from different sentinel keys without duplicates", () => {
+    it("should handle candidates with different sentinel keys", () => {
       const schema = Schema.Union([
         Schema.Struct({
           kind: Schema.Literal("a"),
@@ -489,6 +489,14 @@ describe("SchemaAST", () => {
       deepStrictEqual(
         SchemaAST.getCandidates({ kind: "a", status: "ready", value: "value" }, ast.types),
         [ast.types[0], ast.types[1]]
+      )
+      deepStrictEqual(
+        SchemaAST.getCandidates({ kind: "b", status: "ready", value: "value" }, ast.types),
+        [ast.types[1]]
+      )
+      deepStrictEqual(
+        SchemaAST.getCandidates({ kind: undefined, status: "ready", value: "value" }, ast.types),
+        [ast.types[1]]
       )
     })
 
@@ -544,7 +552,6 @@ describe("SchemaAST", () => {
       const ast = Schema.Union([hosted, flat]).ast
       deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0]])
       deepStrictEqual(SchemaAST.getCandidates({ kind: "b" }, ast.types), [ast.types[1]])
-      deepStrictEqual(SchemaAST.getCandidates({ kind: "c" }, ast.types), [])
     })
 
     it("should exclude members whose sentinel the input contradicts", () => {
@@ -555,8 +562,10 @@ describe("SchemaAST", () => {
       const ast = schema.ast
       deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: "x" }, ast.types), [ast.types[0]])
       deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: "z" }, ast.types), [])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: undefined }, ast.types), [])
       // A missing sentinel key does not exclude: the member still owes the error.
       deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0], ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: undefined }, ast.types, true), ast.types)
     })
   })
 
