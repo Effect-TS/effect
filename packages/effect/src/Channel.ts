@@ -7966,6 +7966,64 @@ export const runForEachWhile: {
 )
 
 /**
+ * Concatenates a channel's `Uint8Array` chunks into a single `Uint8Array`.
+ *
+ * **Example** (Joining channel byte chunks)
+ *
+ * ```ts import.meta.vitest
+ * import { Channel, Effect } from "effect"
+ *
+ * const channel = Channel.fromArray([
+ *   [new Uint8Array([1, 2])],
+ *   [new Uint8Array([3, 4])]
+ * ] as const)
+ *
+ * const bytes = Effect.runSync(Channel.mkUint8Array(channel))
+ * Array.from(bytes) // => [1, 2, 3, 4]
+ * ```
+ *
+ * **Gotchas**
+ *
+ * This materializes the full content in memory. The source channel must not
+ * reuse or mutate emitted buffers, which are retained until collection completes.
+ *
+ * @category running
+ * @since 4.0.0
+ */
+export const mkUint8Array = <OutErr, OutDone, Env>(
+  self: Channel<Arr.NonEmptyReadonlyArray<Uint8Array>, OutErr, OutDone, unknown, unknown, unknown, Env>
+): Effect.Effect<Uint8Array<ArrayBuffer>, OutErr, Env> =>
+  Effect.map(
+    runFold(
+      self,
+      (): {
+        bytes: number
+        readonly arrays: Array<Uint8Array>
+      } => ({
+        bytes: 0,
+        arrays: []
+      }),
+      (acc, chunk) => {
+        for (let i = 0; i < chunk.length; i++) {
+          acc.bytes += chunk[i].length
+          acc.arrays.push(chunk[i])
+        }
+        return acc
+      }
+    ),
+    ({ arrays, bytes }) => {
+      const result = new Uint8Array(bytes)
+      let offset = 0
+      for (let i = 0; i < arrays.length; i++) {
+        const array = arrays[i]
+        result.set(array, offset)
+        offset += array.length
+      }
+      return result
+    }
+  )
+
+/**
  * Runs a channel and collects all output elements into an array.
  *
  * **Example** (Collecting channel output)
