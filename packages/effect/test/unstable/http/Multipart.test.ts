@@ -256,6 +256,34 @@ describe("Multipart", () => {
       strictEqual(error.reason._tag, "FileTooLarge")
     }))
 
+  it.effect("wraps upstream errors as InternalError in in-progress file content streams", () =>
+    Effect.gen(function*() {
+      const bytes = new TextEncoder().encode(`${filePart("file", 4096)}\r\n--${boundary}--\r\n`)
+      const stream = Stream.fromReadableStream({
+        evaluate: () =>
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(bytes.subarray(0, 256))
+              controller.enqueue(bytes.subarray(256, 512))
+            },
+            pull(controller) {
+              controller.error(new Error("boom"))
+            }
+          }),
+        onError: identity
+      }).pipe(
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        )
+      )
+      const error = yield* Stream.runForEach(stream, (part) =>
+        part._tag === "File" ? Effect.asVoid(part.contentEffect) : Effect.void).pipe(Effect.flip)
+      if (!(error instanceof Multipart.MultipartError)) {
+        throw new Error(`expected MultipartError, got ${String(error)}`)
+      }
+      strictEqual(error.reason._tag, "InternalError")
+    }))
+
   it.effect("persists completed files before failing when maxTotalSize is exceeded in a later file", () =>
     Effect.gen(function*() {
       const first = filePart("first", 256)

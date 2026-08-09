@@ -510,7 +510,9 @@ export const makeChannel = <IE>(headers: Record<string, string>): Channel.Channe
           if (Pull.isDoneCause(cause)) {
             parser.end()
           } else {
-            fileExit = Option.some(Exit.failCause(cause)) as any
+            fileExit = Option.some(
+              Exit.failCause(Cause.map(cause, (error) => MultipartError.fromReason("InternalError", error)))
+            )
             exit = Option.some(Exit.failCause(cause)) as any
           }
           return Effect.void
