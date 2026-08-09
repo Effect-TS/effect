@@ -107,10 +107,18 @@ export interface FileSystem {
   ) => Effect.Effect<void, PlatformError>
   /**
    * Copy a file from `fromPath` to `toPath`.
+   *
+   * **Details**
+   *
+   * The `mode` option accepts a bitwise combination of {@link CopyFileFlag}
+   * values.
    */
   readonly copyFile: (
     fromPath: string,
-    toPath: string
+    toPath: string,
+    options?: {
+      readonly mode?: number | undefined
+    }
   ) => Effect.Effect<void, PlatformError>
   /**
    * Change the permissions of a file.
@@ -618,6 +626,25 @@ export type OpenFlag =
   | "ax"
   | "a+"
   | "ax+"
+
+/**
+ * Flags for `FileSystem.copyFile`.
+ *
+ * **Details**
+ *
+ * Multiple flags can be combined with the bitwise OR operator.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export const CopyFileFlag = {
+  /** Fail if the destination already exists. */
+  COPYFILE_EXCL: 1,
+  /** Attempt copy-on-write and fall back to a regular copy if unavailable. */
+  COPYFILE_FICLONE: 2,
+  /** Require copy-on-write and fail if unavailable. */
+  COPYFILE_FICLONE_FORCE: 4
+} as const
 
 /**
  * Service tag for platform file-system operations.

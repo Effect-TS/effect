@@ -44,6 +44,28 @@ const startWatch = <E, R>(
 describe("FileSystem", () => {
   testLayer(NodeFileSystem.layer)
 
+  it.effect("copyFile supports copy file modes", () =>
+    Effect.gen(function*() {
+      const fs = yield* FileSystem.FileSystem
+      const root = yield* fs.makeTempDirectoryScoped()
+      const source = `${root}/source.txt`
+      const destination = `${root}/destination.txt`
+
+      yield* fs.writeFileString(source, "source")
+      yield* fs.writeFileString(destination, "destination")
+
+      const error = yield* Effect.flip(
+        fs.copyFile(source, destination, { mode: FileSystem.CopyFileFlag.COPYFILE_EXCL })
+      )
+      assert.strictEqual(error.reason._tag, "AlreadyExists")
+
+      yield* fs.copyFile(source, destination, { mode: FileSystem.CopyFileFlag.COPYFILE_FICLONE })
+      assert.strictEqual(yield* fs.readFileString(destination), "source")
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(NodeFileSystem.layer)
+    ))
+
   it.effect("watch does not report nested changes when recursive is false", () =>
     Effect.gen(function*() {
       const fs = yield* FileSystem.FileSystem
