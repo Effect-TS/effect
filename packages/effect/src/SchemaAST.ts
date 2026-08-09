@@ -2626,30 +2626,27 @@ export function collectSentinels(ast: AST): ReadonlyArray<Sentinel> {
   }
 }
 
-type CandidateIndex =
-  | ((input: any, isConstructor: boolean) => ReadonlyArray<AST>)
-  | {
-    bySentinel?: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>>
-    completeSentinelCoverage?: boolean
-    sentinelsByCandidate?: Array<ReadonlyArray<Sentinel> | undefined>
-    otherwise?: { [K in Type]?: Array<number> }
-  }
+type CandidateIndex = (input: any, isConstructor: boolean) => ReadonlyArray<AST>
 
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
 const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
 
 function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
-  let idx = candidateIndexCache.get(types)
-  if (idx) return idx
+  let index = candidateIndexCache.get(types)
+  if (index) return index
 
-  idx = {}
-  let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | null | undefined
+  let bySentinel: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>> | undefined
+  const sentinelCandidates: Array<number> = []
+  const sentinelsByCandidate: Array<ReadonlyArray<Sentinel> | undefined> = []
+  let otherwise: { [K in Type]?: Array<number> } | undefined
+  let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | undefined
+  let onlyLiterals = true
   for (let i = 0; i < types.length; i++) {
     const a = types[i]
     const encoded = toCandidate(a)
     if (isNever(encoded)) continue
 
-    if (literalCandidates !== null) {
+    if (onlyLiterals) {
       if (isLiteral(encoded) || isUniqueSymbol(encoded)) {
         literalCandidates ??= new Map()
         const literal = isLiteral(encoded) ? encoded.literal : encoded.symbol
@@ -2657,59 +2654,114 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
         if (!arr) literalCandidates.set(literal, arr = [])
         arr.push(a)
       } else {
-        literalCandidates = null
+        onlyLiterals = false
       }
     }
 
     const sentinels = collectSentinels(encoded)
 
     if (sentinels.length) { // discriminated variants
-      idx.bySentinel ??= new Map()
-      const sentinelsByCandidate = idx.sentinelsByCandidate ??= []
+      bySentinel ??= new Map()
+      sentinelCandidates.push(i)
       sentinelsByCandidate[i] = sentinels
       for (const { key, literal } of sentinels) {
-        let m = idx.bySentinel.get(key)
-        if (!m) idx.bySentinel.set(key, m = new Map())
+        let m = bySentinel.get(key)
+        if (!m) bySentinel.set(key, m = new Map())
         let arr = m.get(literal)
         if (!arr) m.set(literal, arr = [])
         if (arr[arr.length - 1] !== i) arr.push(i)
       }
     } else { // non-discriminated
-      idx.otherwise ??= {}
+      otherwise ??= {}
       const candidateTypes = getCandidateTypes(encoded)
-      for (const t of candidateTypes) (idx.otherwise[t] ??= []).push(i)
+      for (const t of candidateTypes) (otherwise[t] ??= []).push(i)
     }
   }
 
-  if (idx.bySentinel && idx.sentinelsByCandidate) {
-    const keys = Array.from(idx.bySentinel.keys())
-    idx.completeSentinelCoverage = idx.sentinelsByCandidate.every((sentinels) =>
-      sentinels === undefined || keys.every((key) => sentinels.some((sentinel) => sentinel.key === key))
-    )
-  }
-
-  if (literalCandidates) {
+  if (onlyLiterals && literalCandidates) {
     literalCandidates.forEach(Object.freeze)
-    idx = (input) => literalCandidates.get(input) ?? emptyCandidates
-  } else if (idx.bySentinel?.size === 1 && !idx.otherwise) {
-    for (const [key, byValue] of idx.bySentinel) {
-      const candidates = byValue as unknown as Map<LiteralValue | symbol, ReadonlyArray<AST>>
-      for (const [literal, indexes] of byValue) {
-        candidates.set(literal, Object.freeze(indexes.map((index) => types[index])))
+    index = (input) => literalCandidates.get(input) ?? emptyCandidates
+  } else if (bySentinel?.size === 1 && !otherwise) {
+    const [key, byValue] = bySentinel.entries().next().value!
+    const candidates = byValue as unknown as Map<LiteralValue | symbol, ReadonlyArray<AST>>
+    for (const [literal, indexes] of byValue) {
+      candidates.set(literal, Object.freeze(indexes.map((index) => types[index])))
+    }
+    index = (input, isConstructor) => {
+      if (Predicate.isObjectKeyword(input)) {
+        const value = Object.hasOwn(input, key) ? (input as any)[key] : undefined
+        if (value !== undefined) return candidates.get(value) ?? emptyCandidates
+        if (isConstructor) return types
       }
-      idx = (input, isConstructor) => {
-        if (Predicate.isObjectKeyword(input)) {
-          const value = Object.hasOwn(input, key) ? (input as any)[key] : undefined
-          if (value !== undefined) return candidates.get(value) ?? emptyCandidates
-          if (isConstructor) return types
+      return emptyCandidates
+    }
+  } else if (bySentinel) {
+    const keys = Array.from(bySentinel.keys())
+    const completeSentinelCoverage = sentinelCandidates.every((i) =>
+      keys.every((key) => sentinelsByCandidate[i]!.some((sentinel) => sentinel.key === key))
+    )
+
+    index = (input, isConstructor) => {
+      const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
+      const base = otherwise?.[runtimeType] ?? emptyCandidates
+      if (!Predicate.isObjectKeyword(input)) return base.map((i) => types[i])
+
+      if (completeSentinelCoverage) {
+        // Every discriminated candidate is constrained by every sentinel key,
+        // so the smallest positive match is a safe and selective starting point.
+        let seed: ReadonlyArray<number> | undefined
+        for (const [key, byValue] of bySentinel) {
+          const hasKey = Object.hasOwn(input, key)
+          const value = hasKey ? (input as any)[key] : undefined
+          if (hasKey && (!isConstructor || value !== undefined)) {
+            const match = byValue.get(value)
+            if (!match) return base.map((i) => types[i])
+            if (!seed || match.length < seed.length) seed = match
+          }
         }
-        return emptyCandidates
+        if (seed) {
+          const selected = new Set(base)
+          if (bySentinel.size === 1) {
+            for (const i of seed) selected.add(i)
+          } else {
+            for (const i of seed) {
+              if (matchesSentinels(input, sentinelsByCandidate[i]!, isConstructor)) selected.add(i)
+            }
+          }
+          return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
+        }
+        if (!isConstructor) return base.map((i) => types[i])
       }
+
+      const selected = new Set(base)
+      for (const [key, byValue] of bySentinel) {
+        const hasKey = Object.hasOwn(input, key)
+        const value = hasKey ? (input as any)[key] : undefined
+        if (hasKey && (!isConstructor || value !== undefined)) {
+          const match = byValue.get(value)
+          if (match) {
+            for (const i of match) selected.add(i)
+          }
+        } else if (isConstructor) {
+          for (const indexes of byValue.values()) {
+            for (const i of indexes) selected.add(i)
+          }
+        }
+      }
+      return Array.from(selected).filter((i) => {
+        const sentinels = sentinelsByCandidate[i]
+        return !sentinels || matchesSentinels(input, sentinels, isConstructor)
+      }).sort((a, b) => a - b).map((i) => types[i])
+    }
+  } else {
+    index = (input) => {
+      const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
+      return (otherwise?.[runtimeType] ?? emptyCandidates).map((i) => types[i]).filter(filterLiterals(input))
     }
   }
 
-  candidateIndexCache.set(types, idx)
-  return idx
+  candidateIndexCache.set(types, index)
+  return index
 }
 
 function filterLiterals(input: any) {
@@ -2742,67 +2794,7 @@ export function getCandidates(
   types: ReadonlyArray<AST>,
   isConstructor = false
 ): ReadonlyArray<AST> {
-  const idx = getIndex(types)
-  if (typeof idx === "function") return idx(input, isConstructor)
-
-  const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
-
-  // 1. Try sentinel-based dispatch (most selective)
-  if (idx.bySentinel) {
-    const base = idx.otherwise?.[runtimeType] ?? emptyCandidates
-    if (Predicate.isObjectKeyword(input)) {
-      if (idx.completeSentinelCoverage) {
-        // Every discriminated candidate is constrained by every sentinel key,
-        // so the smallest positive match is a safe and selective starting point.
-        let seed: ReadonlyArray<number> | undefined
-        for (const [key, byValue] of idx.bySentinel) {
-          const hasKey = Object.hasOwn(input, key)
-          const value = hasKey ? (input as any)[key] : undefined
-          if (hasKey && (!isConstructor || value !== undefined)) {
-            const match = byValue.get(value)
-            if (!match) return base.map((i) => types[i])
-            if (!seed || match.length < seed.length) seed = match
-          }
-        }
-        if (seed) {
-          const selected = new Set(base)
-          if (idx.bySentinel.size === 1) {
-            for (const i of seed) selected.add(i)
-          } else {
-            for (const i of seed) {
-              if (matchesSentinels(input, idx.sentinelsByCandidate![i]!, isConstructor)) selected.add(i)
-            }
-          }
-          return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
-        }
-        if (!isConstructor) return base.map((i) => types[i])
-      }
-
-      const selected = new Set(base)
-      for (const [k, m] of idx.bySentinel) {
-        const hasKey = Object.hasOwn(input, k)
-        const value = hasKey ? (input as any)[k] : undefined
-        if (hasKey && (!isConstructor || value !== undefined)) {
-          const match = m.get(value)
-          if (match) {
-            for (const candidate of match) selected.add(candidate)
-          }
-        } else if (isConstructor) {
-          for (const indexes of m.values()) {
-            for (const candidate of indexes) selected.add(candidate)
-          }
-        }
-      }
-      return Array.from(selected).filter((i) => {
-        const sentinels = idx.sentinelsByCandidate?.[i]
-        return !sentinels || matchesSentinels(input, sentinels, isConstructor)
-      }).sort((a, b) => a - b).map((i) => types[i])
-    }
-    return base.map((i) => types[i])
-  }
-
-  // 2. Fallback: runtime-type dispatch only
-  return (idx.otherwise?.[runtimeType] ?? emptyCandidates).map((i) => types[i]).filter(filterLiterals(input))
+  return getIndex(types)(input, isConstructor)
 }
 
 /**
