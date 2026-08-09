@@ -243,7 +243,7 @@ export function make({
     end() {
       split.end()
       if (!state.done && !state.stopped) {
-        onError(errEndNotReached)
+        stop(errEndNotReached)
       }
 
       state.state = State.headers
