@@ -2627,6 +2627,8 @@ export function collectSentinels(ast: AST): ReadonlyArray<Sentinel> {
 }
 
 type CandidateIndex = (input: any, isConstructor: boolean) => ReadonlyArray<AST>
+type SentinelEntry = readonly [Map<LiteralValue | symbol, Set<number>>, Set<number>]
+type SentinelIndex = Map<PropertyKey, SentinelEntry>
 
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
 const emptyCandidates: ReadonlyArray<never> = Object.freeze([])
@@ -2635,9 +2637,8 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
   let index = candidateIndexCache.get(types)
   if (index) return index
 
-  let bySentinel: Map<PropertyKey, Map<LiteralValue | symbol, Array<number>>> | undefined
-  const sentinelCandidates: Array<number> = []
-  const sentinelsByCandidate: Array<ReadonlyArray<Sentinel> | undefined> = []
+  let bySentinel: SentinelIndex | undefined
+  let sentinelCandidateCount = 0
   let otherwise: { [K in Type]?: Array<number> } | undefined
   let literalCandidates: Map<LiteralValue | symbol, Array<AST>> | undefined
   let onlyLiterals = true
@@ -2662,14 +2663,14 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
 
     if (sentinels.length) { // discriminated variants
       bySentinel ??= new Map()
-      sentinelCandidates.push(i)
-      sentinelsByCandidate[i] = sentinels
+      sentinelCandidateCount++
       for (const { key, literal } of sentinels) {
-        let m = bySentinel.get(key)
-        if (!m) bySentinel.set(key, m = new Map())
-        let arr = m.get(literal)
-        if (!arr) m.set(literal, arr = [])
-        if (arr[arr.length - 1] !== i) arr.push(i)
+        let entry = bySentinel.get(key)
+        if (!entry) bySentinel.set(key, entry = [new Map(), new Set()])
+        entry[1].add(i)
+        let indexes = entry[0].get(literal)
+        if (!indexes) entry[0].set(literal, indexes = new Set())
+        indexes.add(i)
       }
     } else { // non-discriminated
       otherwise ??= {}
@@ -2682,10 +2683,10 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
     literalCandidates.forEach(Object.freeze)
     index = (input) => literalCandidates.get(input) ?? emptyCandidates
   } else if (bySentinel?.size === 1 && !otherwise) {
-    const [key, byValue] = bySentinel.entries().next().value!
+    const [key, [byValue]] = bySentinel.entries().next().value!
     const candidates = byValue as unknown as Map<LiteralValue | symbol, ReadonlyArray<AST>>
     for (const [literal, indexes] of byValue) {
-      candidates.set(literal, Object.freeze(indexes.map((index) => types[index])))
+      candidates.set(literal, Object.freeze(Array.from(indexes, (index) => types[index])))
     }
     index = (input, isConstructor) => {
       if (Predicate.isObjectKeyword(input)) {
@@ -2696,62 +2697,61 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       return emptyCandidates
     }
   } else if (bySentinel) {
-    const keys = Array.from(bySentinel.keys())
-    const completeSentinelCoverage = sentinelCandidates.every((i) =>
-      keys.every((key) => sentinelsByCandidate[i]!.some((sentinel) => sentinel.key === key))
-    )
+    let commonSentinel: [PropertyKey, SentinelEntry] | undefined
+    for (const entry of bySentinel) {
+      if (
+        (!commonSentinel || entry[1][0].size > commonSentinel[1][0].size) &&
+        entry[1][1].size === sentinelCandidateCount
+      ) {
+        commonSentinel = entry
+      }
+    }
 
     index = (input, isConstructor) => {
       const runtimeType: Type = input === null ? "null" : Array.isArray(input) ? "array" : typeof input
       const base = otherwise?.[runtimeType] ?? emptyCandidates
       if (!Predicate.isObjectKeyword(input)) return base.map((i) => types[i])
 
-      if (completeSentinelCoverage) {
-        // Every discriminated candidate is constrained by every sentinel key,
-        // so the smallest positive match is a safe and selective starting point.
-        let seed: ReadonlyArray<number> | undefined
-        for (const [key, byValue] of bySentinel) {
-          const hasKey = Object.hasOwn(input, key)
-          const value = hasKey ? (input as any)[key] : undefined
-          if (hasKey && (!isConstructor || value !== undefined)) {
-            const match = byValue.get(value)
-            if (!match) return base.map((i) => types[i])
-            if (!seed || match.length < seed.length) seed = match
-          }
-        }
-        if (seed) {
-          const selected = new Set(base)
-          if (bySentinel.size === 1) {
-            for (const i of seed) selected.add(i)
-          } else {
-            for (const i of seed) {
-              if (matchesSentinels(input, sentinelsByCandidate[i]!, isConstructor)) selected.add(i)
-            }
-          }
-          return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
-        }
-        if (!isConstructor) return base.map((i) => types[i])
-      }
-
       const selected = new Set(base)
-      for (const [key, byValue] of bySentinel) {
+      let directKey: PropertyKey | undefined
+      if (commonSentinel) {
+        const [key, [byValue]] = commonSentinel
         const hasKey = Object.hasOwn(input, key)
         const value = hasKey ? (input as any)[key] : undefined
         if (hasKey && (!isConstructor || value !== undefined)) {
           const match = byValue.get(value)
-          if (match) {
-            for (const i of match) selected.add(i)
-          }
-        } else if (isConstructor) {
-          for (const indexes of byValue.values()) {
-            for (const i of indexes) selected.add(i)
+          if (!match) return base.map((i) => types[i])
+          for (const i of match) selected.add(i)
+          directKey = key
+        }
+      }
+
+      if (directKey === undefined) {
+        for (const [key, [byValue, all]] of bySentinel) {
+          const hasKey = Object.hasOwn(input, key)
+          const value = hasKey ? (input as any)[key] : undefined
+          if (hasKey && (!isConstructor || value !== undefined)) {
+            const match = byValue.get(value)
+            if (match) {
+              for (const i of match) selected.add(i)
+            }
+          } else if (isConstructor) {
+            for (const i of all) selected.add(i)
           }
         }
       }
-      return Array.from(selected).filter((i) => {
-        const sentinels = sentinelsByCandidate[i]
-        return !sentinels || matchesSentinels(input, sentinels, isConstructor)
-      }).sort((a, b) => a - b).map((i) => types[i])
+      for (const [key, [byValue, all]] of bySentinel) {
+        if (key === directKey) continue
+        const hasKey = Object.hasOwn(input, key)
+        const value = hasKey ? (input as any)[key] : undefined
+        if (hasKey && (!isConstructor || value !== undefined)) {
+          const match = byValue.get(value)
+          for (const i of selected) {
+            if (all.has(i) && !match?.has(i)) selected.delete(i)
+          }
+        }
+      }
+      return Array.from(selected).sort((a, b) => a - b).map((i) => types[i])
     }
   } else {
     index = (input) => {
@@ -2773,14 +2773,6 @@ function filterLiterals(input: any) {
       encoded.symbol === input
       : true
   }
-}
-
-function matchesSentinels(input: any, sentinels: ReadonlyArray<Sentinel>, isConstructor: boolean): boolean {
-  return sentinels.every(({ key, literal }) => {
-    if (!Object.hasOwn(input, key)) return true
-    const value = input[key]
-    return (isConstructor && value === undefined) || value === literal
-  })
 }
 
 /**
