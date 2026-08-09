@@ -84,6 +84,37 @@ describe("Multipart", () => {
       strictEqual(error.reason._tag, "TooManyParts")
     }))
 
+  it.effect("fails instead of hanging when a file exceeds a limit mid-stream", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      const fileStart = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+        `Content-Type: text/plain\r\n\r\n` +
+        "a"
+      const fileEnd = `\r\n--${boundary}--\r\n`
+
+      const error = yield* Stream.make(
+        encoder.encode(fileStart),
+        encoder.encode("a".repeat(1024)),
+        encoder.encode(fileEnd)
+      ).pipe(
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => part._tag === "File" ? Stream.runDrain(part.content) : Effect.void),
+        Stream.runDrain,
+        Effect.provideService(Multipart.MaxFileSize, 256),
+        Effect.timeout("1 second"),
+        Effect.flip
+      )
+
+      strictEqual(error._tag, "MultipartError")
+      if (error._tag === "MultipartError") {
+        strictEqual(error.reason._tag, "FileTooLarge")
+      }
+    }))
+
   it.each<{
     description: string
     options: {
