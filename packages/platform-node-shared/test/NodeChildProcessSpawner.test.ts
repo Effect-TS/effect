@@ -1,7 +1,8 @@
+import { buildSpawnOptions } from "@effect/platform-node-shared/internal/nodeChildProcessSpawner"
 import * as NodeChildProcessSpawner from "@effect/platform-node-shared/NodeChildProcessSpawner"
 import * as NodeFileSystem from "@effect/platform-node-shared/NodeFileSystem"
 import * as NodePath from "@effect/platform-node-shared/NodePath"
-import { assert, it } from "@effect/vitest"
+import { assert, describe, it } from "@effect/vitest"
 import * as ChildProcessSpawnerTest from "effect-test/unstable/process/ChildProcessSpawnerTest"
 import * as Effect from "effect/Effect"
 import * as FileSystem from "effect/FileSystem"
@@ -17,6 +18,52 @@ const NodeServices = NodeChildProcessSpawner.layer.pipe(
 
 ChildProcessSpawnerTest.suite("NodeChildProcessSpawner", NodeServices, {
   processGroups: true
+})
+
+describe("buildSpawnOptions", () => {
+  const base = { stdio: "pipe" } as const
+
+  it("defaults to hiding non-detached Windows children", () => {
+    assert.deepStrictEqual(buildSpawnOptions({}, base, "win32"), {
+      stdio: "pipe",
+      detached: false,
+      shell: undefined,
+      windowsHide: true
+    })
+    assert.deepStrictEqual(buildSpawnOptions({ detached: true }, base, "win32"), {
+      stdio: "pipe",
+      detached: true,
+      shell: undefined,
+      windowsHide: false
+    })
+    assert.deepStrictEqual(buildSpawnOptions({ detached: false }, base, "win32"), {
+      stdio: "pipe",
+      detached: false,
+      shell: undefined,
+      windowsHide: true
+    })
+  })
+
+  it("allows windowsHide to be configured independently of detached", () => {
+    assert.deepStrictEqual(
+      buildSpawnOptions({ detached: false, windowsHide: false }, base, "win32"),
+      {
+        stdio: "pipe",
+        detached: false,
+        shell: undefined,
+        windowsHide: false
+      }
+    )
+    assert.deepStrictEqual(
+      buildSpawnOptions({ detached: true, windowsHide: true }, base, "win32"),
+      {
+        stdio: "pipe",
+        detached: true,
+        shell: undefined,
+        windowsHide: true
+      }
+    )
+  })
 })
 
 it.live("kills every process in a pipeline", () =>
