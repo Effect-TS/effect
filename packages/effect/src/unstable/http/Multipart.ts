@@ -642,16 +642,27 @@ const defaultWriteFile = (path: string, file: File) =>
 export const collectUint8Array = <OE, OD, R>(
   self: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>, OE, OD, unknown, unknown, unknown, R>
 ): Effect.Effect<Uint8Array<ArrayBuffer>, OE, R> =>
-  Channel.runFold(self, constant(new Uint8Array(0)), (accumulator, chunk) => {
-    const totalLength = chunk.reduce((sum, element) => sum + element.length, accumulator.length)
-    const newAccumulator = new Uint8Array(totalLength)
-    newAccumulator.set(accumulator, 0)
-    let offset = accumulator.length
-    for (const element of chunk) {
-      newAccumulator.set(element, offset)
-      offset += element.length
-    }
-    return newAccumulator
+  Effect.suspend(() => {
+    const elements: Array<Uint8Array> = []
+    let length = 0
+    return Effect.map(
+      Channel.runForEach(self, (chunk) => {
+        for (const element of chunk) {
+          elements.push(element)
+          length += element.length
+        }
+        return Effect.void
+      }),
+      () => {
+        const output = new Uint8Array(length)
+        let offset = 0
+        for (const element of elements) {
+          output.set(element, offset)
+          offset += element.length
+        }
+        return output
+      }
+    )
   })
 
 /**
