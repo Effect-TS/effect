@@ -351,7 +351,20 @@ const negativeInfinityDurationValue: DurationValue = { _tag: "NegativeInfinity" 
 const DurationProto: Omit<Duration, "value"> = {
   [TypeId]: TypeId,
   [Hash.symbol](this: Duration) {
-    return Hash.structure(this.value)
+    // `value` is a tagged union that can represent the same span of time as
+    // either `Millis` or `Nanos` (e.g. `seconds(5)` vs `nanos(5_000_000_000n)`),
+    // and `equals` normalizes both before comparing -- so hashing the raw
+    // union directly breaks the Hash/Equal contract (equal values must hash
+    // equal). Hash the canonical nanos form instead for finite durations;
+    // `Infinity`/`NegativeInfinity` have no numeric representation to
+    // normalize, and each already has exactly one tagged form.
+    switch (this.value._tag) {
+      case "Infinity":
+      case "NegativeInfinity":
+        return Hash.structure(this.value)
+      default:
+        return Hash.hash(toNanosUnsafe(this))
+    }
   },
   [Equal.symbol](this: Duration, that: unknown): boolean {
     return isDuration(that) && equals(this, that)

@@ -8,7 +8,7 @@ import {
   strictEqual,
   throws
 } from "@effect/vitest/utils"
-import { Duration, Equal, pipe } from "effect"
+import { Duration, Equal, Hash, HashSet, pipe } from "effect"
 
 describe("Duration", () => {
   it("fromInputUnsafe", () => {
@@ -226,6 +226,17 @@ describe("Duration", () => {
 
   it("equals", () => {
     assertTrue(pipe(Duration.hours(1), Duration.equals(Duration.minutes(60))))
+  })
+
+  it("Hash.symbol agrees with equals across Millis/Nanos representations", () => {
+    const millisTagged = Duration.seconds(5)
+    const nanosTagged = Duration.nanos(5_000_000_000n)
+
+    assertTrue(Duration.equals(millisTagged, nanosTagged))
+    assertTrue(Equal.equals(millisTagged, nanosTagged))
+    strictEqual(Hash.hash(millisTagged), Hash.hash(nanosTagged))
+
+    assertTrue(HashSet.has(HashSet.make(millisTagged), nanosTagged))
   })
 
   it("between", () => {
