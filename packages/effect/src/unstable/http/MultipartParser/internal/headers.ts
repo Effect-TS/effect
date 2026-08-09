@@ -13,6 +13,8 @@ type State = (typeof State)[keyof typeof State]
 const constContinue: Continue = { _tag: "Continue" }
 
 // RFC 7230 token characters, allowed in header names
+// The previous table stopped at byte 126; zero-filled entries for bytes 127-255
+// preserve its rejection behavior because callers accept only entries equal to 1.
 const constNameChars = new Uint8Array(256)
 for (const char of "!#$%&'*+-.^_`|~0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") {
   constNameChars[char.charCodeAt(0)] = 1

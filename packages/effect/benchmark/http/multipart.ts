@@ -72,6 +72,7 @@ const runChannelDrain = (chunks: Array<Uint8Array>) =>
     )
   )
 
+// Stream.fromArray emits the chunks in one batch, so these are single-pull controls.
 const runChannelCollect = (chunks: Array<Uint8Array>) =>
   Effect.runPromise(
     Stream.fromArray(chunks).pipe(
@@ -81,7 +82,8 @@ const runChannelCollect = (chunks: Array<Uint8Array>) =>
     )
   )
 
-// rechunk(1) forces one upstream pull per chunk, simulating network reads
+// rechunk(1) forces one upstream pull per chunk, simulating network reads and
+// guarding against quadratic accumulation across pulls.
 const runChannelCollectStreaming = (chunks: Array<Uint8Array>) =>
   Effect.runPromise(
     Stream.fromArray(chunks).pipe(

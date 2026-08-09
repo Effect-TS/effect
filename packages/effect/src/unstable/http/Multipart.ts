@@ -635,6 +635,8 @@ const defaultWriteFile = (path: string, file: File) =>
  * **Gotchas**
  *
  * This materializes the full content in memory.
+ * The source channel must not reuse or mutate emitted buffers, which are retained
+ * until collection completes.
  *
  * @category converting
  * @since 4.0.0
@@ -642,28 +644,27 @@ const defaultWriteFile = (path: string, file: File) =>
 export const collectUint8Array = <OE, OD, R>(
   self: Channel.Channel<Arr.NonEmptyReadonlyArray<Uint8Array>, OE, OD, unknown, unknown, unknown, R>
 ): Effect.Effect<Uint8Array<ArrayBuffer>, OE, R> =>
-  Effect.suspend(() => {
-    const elements: Array<Uint8Array> = []
-    let length = 0
-    return Effect.map(
-      Channel.runForEach(self, (chunk) => {
-        for (const element of chunk) {
-          elements.push(element)
-          length += element.length
-        }
-        return Effect.void
-      }),
-      () => {
-        const output = new Uint8Array(length)
-        let offset = 0
-        for (const element of elements) {
-          output.set(element, offset)
-          offset += element.length
-        }
-        return output
+  Effect.map(
+    Channel.runFold(self, () => [] as Array<Uint8Array>, (elements, chunk) => {
+      for (const element of chunk) {
+        elements.push(element)
       }
-    )
-  })
+      return elements
+    }),
+    (elements) => {
+      let length = 0
+      for (const element of elements) {
+        length += element.length
+      }
+      const output = new Uint8Array(length)
+      let offset = 0
+      for (const element of elements) {
+        output.set(element, offset)
+        offset += element.length
+      }
+      return output
+    }
+  )
 
 /**
  * Persists a stream of multipart parts into a record.

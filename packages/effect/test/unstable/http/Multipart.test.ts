@@ -38,6 +38,34 @@ describe("Multipart", () => {
       ])
     }))
 
+  it.effect("collects file content across pulls and a split trailing boundary", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      const boundarySplit = 8
+      const chunks = [
+        encoder.encode(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+            `Content-Type: text/plain\r\n\r\n` +
+            "abc"
+        ),
+        encoder.encode(`def\r\n--${boundary.slice(0, boundarySplit)}`),
+        encoder.encode(`${boundary.slice(boundarySplit)}--\r\n`)
+      ]
+
+      const contents = yield* Stream.fromArray(chunks).pipe(
+        Stream.rechunk(1),
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => part._tag === "File" ? part.contentEffect : Effect.die("expected file")),
+        Stream.runCollect
+      )
+
+      deepStrictEqual(contents, [encoder.encode("abcdef")])
+    }))
+
   it.effect("parses non-Latin-1 filenames", () =>
     Effect.gen(function*() {
       const data = new globalThis.FormData()
