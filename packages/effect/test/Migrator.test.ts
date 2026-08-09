@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, FileSystem } from "effect"
+import { Effect, FileSystem, Layer, Path, PlatformError } from "effect"
 import * as Migrator from "effect/unstable/sql/Migrator"
 
 const migrationNames = (
@@ -55,7 +55,8 @@ describe("Migrator", () => {
                 "0001_first.js",
                 "0005_ignored.cjs"
               ])
-          }))
+          })),
+          Effect.provide(Path.layer)
         )
 
         assert.deepStrictEqual(migrationNames(migrations), [
@@ -64,6 +65,60 @@ describe("Migrator", () => {
           [3, "third"],
           [4, "fourth"]
         ])
+      }))
+
+    it.effect("fromFileSystem imports migrations through the file URL the platform resolves", () =>
+      Effect.gen(function*() {
+        const posix = yield* Effect.provide(Path.Path, Path.layer)
+        // stand in for a Windows platform layer, which core has no implementation of
+        const windowsLike = Layer.succeed(Path.Path)({
+          ...posix,
+          join: (...segments: ReadonlyArray<string>) => segments.join("\\"),
+          toFileUrl: (path: string) => Effect.succeed(new URL(`file:///${path.replaceAll("\\", "/")}`))
+        })
+
+        const migrations = yield* Migrator.fromFileSystem("C:\\migrations").pipe(
+          Effect.provide(FileSystem.layerNoop({
+            readDirectory: () => Effect.succeed(["0001_first.js"])
+          })),
+          Effect.provide(windowsLike)
+        )
+
+        // the loader is lazy, and `ResolvedMigration` declares a `SqlClient`
+        // requirement this loader never uses
+        const load = migrations[0]![2] as Effect.Effect<unknown, unknown>
+        const specifier = yield* load.pipe(
+          Effect.catchDefect((defect) => Effect.succeed(String(defect))),
+          Effect.orElseSucceed(() => "")
+        )
+
+        // the raw path would have been rejected as protocol "c:"
+        assert.include(specifier, "file:///C:/migrations/0001_first.js")
+      }))
+
+    it.effect("fromFileSystem surfaces file URL failures as import errors", () =>
+      Effect.gen(function*() {
+        const posix = yield* Effect.provide(Path.Path, Path.layer)
+        const failingPath = Layer.succeed(Path.Path)({
+          ...posix,
+          toFileUrl: () => Effect.fail(new PlatformError.BadArgument({ module: "Path", method: "toFileUrl" }))
+        })
+
+        const migrations = yield* Migrator.fromFileSystem("/migrations").pipe(
+          Effect.provide(FileSystem.layerNoop({
+            readDirectory: () => Effect.succeed(["0001_first.js"])
+          })),
+          Effect.provide(failingPath)
+        )
+
+        const load = migrations[0]![2] as Effect.Effect<unknown, unknown>
+        const outcome = yield* load.pipe(
+          Effect.catchDefect((defect) => Effect.succeed(`defect: ${defect}`)),
+          Effect.orElseSucceed(() => "no defect")
+        )
+
+        // a typed failure here would escape `make`'s MigrationError | SqlError channel
+        assert.include(outcome, "defect:")
       }))
   })
 })
