@@ -160,6 +160,34 @@
               ],
               "path": "invalid",
               "size": 100
+            },
+            {
+              "name": "multi-sentinel-100-valid-first-effect",
+              "export": "effectMultiSentinel100ValidFirst",
+              "scenario": "multi-sentinel-100-valid-first",
+              "implementation": "effect",
+              "family": "union",
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal"
+              ],
+              "path": "valid",
+              "size": 100
+            },
+            {
+              "name": "multi-sentinel-100-invalid-variant-effect",
+              "export": "effectMultiSentinel100InvalidVariant",
+              "scenario": "multi-sentinel-100-invalid-variant",
+              "implementation": "effect",
+              "family": "union",
+              "astTags": [
+                "Union",
+                "Objects",
+                "Literal"
+              ],
+              "path": "invalid",
+              "size": 100
             }
           ]
         },
