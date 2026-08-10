@@ -460,5 +460,35 @@ describe("Command", () => {
         const result = yield* Descriptor.getFishCompletions(command, "forge")
         yield* Effect.promise(() => expect(result).toMatchFileSnapshot("./snapshots/fish-completions"))
       }).pipe(runEffect))
+
+    describe("Descriptions Containing Quotes", () => {
+      const quoted = Descriptor.make("forge").pipe(Descriptor.withSubcommands([
+        [
+          "cache",
+          Descriptor.make("cache").pipe(
+            Descriptor.withDescription("Clear the project's cache")
+          )
+        ]
+      ]))
+
+      it("should escape quotes in zsh subcommand descriptions", () =>
+        Effect.gen(function*() {
+          const result = yield* Descriptor.getZshCompletions(quoted, "forge")
+          const candidate = result.find((line) => line.includes("cache:"))
+
+          // A quote ends a single-quoted string, so an unescaped one leaves the rest of the description — and
+          // then the rest of the generated script — outside the quotes, where the shell reads it as data.
+          expect(candidate).toContain("Clear the project'\\''s cache")
+          expect(candidate).not.toContain("project's cache")
+        }).pipe(runEffect))
+
+      it("should escape quotes in fish subcommand descriptions", () =>
+        Effect.gen(function*() {
+          const result = yield* Descriptor.getFishCompletions(quoted, "forge")
+          const candidate = result.find((line) => line.includes("Clear the project"))
+
+          expect(candidate).toContain("Clear the project'\\''s cache")
+        }).pipe(runEffect))
+    })
   })
 })
