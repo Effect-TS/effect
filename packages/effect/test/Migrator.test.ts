@@ -70,11 +70,16 @@ describe("Migrator", () => {
     it.effect("fromFileSystem imports migrations through the file URL the platform resolves", () =>
       Effect.gen(function*() {
         const posix = yield* Effect.provide(Path.Path, Path.layer)
+        const migrationUrl = new URL("./fixtures/migrator/0001_first.js", import.meta.url)
+        let resolvedPath: string | undefined
         // stand in for a Windows platform layer, which core has no implementation of
         const windowsLike = Layer.succeed(Path.Path)({
           ...posix,
           join: (...segments: ReadonlyArray<string>) => segments.join("\\"),
-          toFileUrl: (path: string) => Effect.succeed(new URL(`file:///${path.replaceAll("\\", "/")}`))
+          toFileUrl: (path: string) => {
+            resolvedPath = path
+            return Effect.succeed(migrationUrl)
+          }
         })
 
         const migrations = yield* Migrator.fromFileSystem("C:\\migrations").pipe(
@@ -87,13 +92,10 @@ describe("Migrator", () => {
         // the loader is lazy, and `ResolvedMigration` declares a `SqlClient`
         // requirement this loader never uses
         const load = migrations[0]![2] as Effect.Effect<unknown, unknown>
-        const specifier = yield* load.pipe(
-          Effect.catchDefect((defect) => Effect.succeed(String(defect))),
-          Effect.orElseSucceed(() => "")
-        )
+        const imported = yield* load
 
-        // the raw path would have been rejected as protocol "c:"
-        assert.include(specifier, "file:///C:/migrations/0001_first.js")
+        assert.strictEqual(resolvedPath, "C:\\migrations\\0001_first.js")
+        assert.strictEqual((imported as { readonly marker: string }).marker, "loaded")
       }))
 
     it.effect("fromFileSystem surfaces file URL failures as import errors", () =>
