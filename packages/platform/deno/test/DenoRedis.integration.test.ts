@@ -3,8 +3,8 @@ import { assert, it } from "@effect/vitest"
 import { RedisContainer } from "@testcontainers/redis"
 import { Deferred, Effect, Fiber, Layer, Schema } from "effect"
 import { PersistedQueue, Persistence } from "effect/unstable/persistence"
-import * as PersistedCacheTest from "../../effect/test/unstable/persistence/PersistedCacheTest.ts"
-import * as PersistedQueueTest from "../../effect/test/unstable/persistence/PersistedQueueTest.ts"
+import * as PersistedCacheTest from "../../../effect/test/unstable/persistence/PersistedCacheTest.ts"
+import * as PersistedQueueTest from "../../../effect/test/unstable/persistence/PersistedQueueTest.ts"
 
 const RedisLayer = Layer.unwrap(
   Effect.gen(function*() {

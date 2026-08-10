@@ -1,31 +1,30 @@
 {
-  "name": "@effect/platform-node-shared",
+  "name": "@effect/platform-browser",
   "type": "module",
   "version": "4.0.0-beta.107",
   "license": "MIT",
-  "description": "Unified interfaces for common platform-specific services",
+  "description": "Platform specific implementations for the browser",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/platform-node-shared"
+    "directory": "packages/platform/browser"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
   },
   "tags": [
+    "browser",
     "typescript",
     "algebraic-data-types",
     "functional-programming"
   ],
   "keywords": [
+    "browser",
     "typescript",
     "algebraic-data-types",
     "functional-programming"
   ],
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "sideEffects": [],
   "exports": {
     "./package.json": "./package.json",
@@ -67,12 +66,8 @@
     "effect": "workspace:^"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
     "effect": "workspace:^",
-    "tar": "^7.5.19"
-  },
-  "dependencies": {
-    "@types/ws": "^8.18.1",
-    "ws": "^8.21.0"
+    "fake-indexeddb": "^6.2.5",
+    "mock-xmlhttprequest": "^8.4.1"
   }
 }

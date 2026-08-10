@@ -6,7 +6,7 @@ import * as Fiber from "effect/Fiber"
 import * as FileSystem from "effect/FileSystem"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
-import { testLayer } from "../../effect/test/FileSystem.test-utils.ts"
+import { testLayer } from "../../../effect/test/FileSystem.test-utils.ts"
 
 const startWatch = <E, R>(
   fs: FileSystem.FileSystem,
