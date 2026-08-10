@@ -1,6 +1,6 @@
 # `@effect/doctest`
 
-`@effect/doctest` extracts marked TypeScript examples from JSDoc comments and Markdown files, then runs each example as an isolated Vitest module.
+`@effect/doctest` extracts marked TypeScript examples from JSDoc comments, Markdown, and MDX files, then runs each example as an isolated Vitest module.
 
 Mark runnable fences with `import.meta.vitest`:
 
@@ -51,7 +51,7 @@ export const value = 1
 
 Markers must trail a complete expression statement or supported `const` declaration on the same line. Standalone markers, destructuring declarations, multiple declarations, and `let` or `var` declarations are not supported. The transform does not implicitly await promises, run Effects, or consume iterators; write those operations explicitly. Ordinary comments are ignored. Await asynchronous work so all assertions and cleanup occur before the snippet module finishes evaluating.
 
-Regular tests can use `include` in the same project. Documentation sources use `includeSource`, which lets Vitest discard files without the marker before collection. The plugin resolves imports relative to each example's original TypeScript or Markdown file:
+Regular tests can use `include` in the same project. Documentation sources use `includeSource`, which lets Vitest discard files without the marker before collection. The plugin resolves imports relative to each example's original TypeScript, Markdown, or MDX file:
 
 ```ts
 import * as Doctest from "@effect/doctest/Plugin"
@@ -61,7 +61,7 @@ export default defineConfig({
   plugins: [Doctest.plugin()],
   test: {
     include: ["test/**/*.test.ts"],
-    includeSource: ["src/**/*.ts", "docs/**/*.md"]
+    includeSource: ["src/**/*.ts", "docs/**/*.{md,mdx}"]
   }
 })
 ```
