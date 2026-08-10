@@ -2627,7 +2627,10 @@ export function collectSentinels(ast: AST): ReadonlyArray<Sentinel> {
 }
 
 type CandidateIndex = (input: any, isConstructor: boolean) => ReadonlyArray<AST>
-type SentinelEntry = readonly [Map<LiteralValue | symbol, Set<number>>, Set<number>]
+type SentinelEntry = readonly [
+  byValue: Map<LiteralValue | symbol, Set<number>>,
+  all: Set<number>
+]
 type SentinelIndex = Map<PropertyKey, SentinelEntry>
 
 const candidateIndexCache = new WeakMap<ReadonlyArray<AST>, CandidateIndex>()
@@ -2697,6 +2700,9 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       return emptyCandidates
     }
   } else if (bySentinel) {
+    // A key owned by every discriminated candidate is safe to use as the initial selector: no candidate can
+    // be excluded merely because it uses a different sentinel key. Prefer the key with the most distinct values
+    // to minimize the matching bucket.
     let commonSentinel: [PropertyKey, SentinelEntry] | undefined
     for (const entry of bySentinel) {
       if (
@@ -2712,8 +2718,11 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
       const base = otherwise?.[runtimeType] ?? emptyCandidates
       if (!Predicate.isObjectKeyword(input)) return base.map((i) => types[i])
 
+      // Non-discriminated candidates are runtime-type fallbacks and are never removed by sentinel checks.
       const selected = new Set(base)
       let directKey: PropertyKey | undefined
+      // An observed common key can seed the selection directly; an unknown value rules out every
+      // discriminated candidate.
       if (commonSentinel) {
         const [key, [byValue]] = commonSentinel
         const hasKey = Object.hasOwn(input, key)
@@ -2726,6 +2735,8 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
         }
       }
 
+      // Without an observed common key, collect positive matches from every sentinel. Constructor mode treats
+      // absent and undefined keys as unconstrained and therefore selects every candidate that owns the key.
       if (directKey === undefined) {
         for (const [key, [byValue, all]] of bySentinel) {
           const hasKey = Object.hasOwn(input, key)
@@ -2740,6 +2751,7 @@ function getIndex(types: ReadonlyArray<AST>): CandidateIndex {
           }
         }
       }
+      // Missing keys are neutral. An observed key rejects only selected candidates that own it and do not match.
       for (const [key, [byValue, all]] of bySentinel) {
         if (key === directKey) continue
         const hasKey = Object.hasOwn(input, key)
