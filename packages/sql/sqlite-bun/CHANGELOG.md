@@ -1,5 +1,13 @@
 # @effect/sql-sqlite-bun
 
+## 4.0.0-beta.107
+
+### Patch Changes
+
+- [#7162](https://github.com/Effect-TS/effect/pull/7162) [`c30386d`](https://github.com/Effect-TS/effect/commit/c30386df4be367350ee480fa357ddeae7a8f0d08) Thanks @tim-smart! - Use a configurable five-second busy timeout and immediate transactions by default to avoid SQLite lock failures under concurrent access. Busy waits can block the event loop, while immediate transactions serialize behind other writers.
+- Updated dependencies [[`596f3f9`](https://github.com/Effect-TS/effect/commit/596f3f92d7fe355811b815cb212332b082268ce8), [`9611ed4`](https://github.com/Effect-TS/effect/commit/9611ed42d11300546b339ab13492a0f7bdb1ebfb), [`8b91605`](https://github.com/Effect-TS/effect/commit/8b9160548556e4b0ec7ee2f2707716776be49018), [`d901928`](https://github.com/Effect-TS/effect/commit/d901928efa44f573ed1247f53fdb203a8e4fcede), [`b32bdef`](https://github.com/Effect-TS/effect/commit/b32bdef0d119a1ad1463dc01a46763ffee1f9bd9)]:
+  - effect@4.0.0-beta.107
+
 ## 4.0.0-beta.106
 
 ### Patch Changes
