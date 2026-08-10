@@ -1147,49 +1147,63 @@ function formatCheck<T>(check: SchemaAST.Check<T>): string {
  * @since 4.0.0
  */
 export function makeFormatterDefault(): Formatter<string> {
-  return (issue) =>
-    toDefaultIssues(issue, [], defaultLeafHook, defaultCheckHook)
-      .map(formatDefaultIssue)
-      .join("\n")
+  return (issue) => formatIssue(issue, "")
 }
 
 /** @internal */
 export const defaultFormatter = makeFormatterDefault()
 
-function formatDefaultIssue(issue: DefaultIssue): string {
-  let out = issue.message
-  if (issue.path && issue.path.length > 0) {
-    const path = formatPath(issue.path as ReadonlyArray<PropertyKey>)
-    out += `\n  at ${path}`
+function formatIssue(issue: Issue, path: string): string {
+  let message: string
+  switch (issue._tag) {
+    case "Filter": {
+      const annotated = defaultCheckHook(issue)
+      if (annotated !== undefined) {
+        message = annotated
+      } else {
+        if (issue.issue._tag !== "InvalidValue") {
+          return formatIssue(issue.issue, path)
+        }
+        const expected = findExpected(issue.issue)
+        message = expected === undefined
+          ? getExpectedMessage(formatCheck(issue.filter), issue)
+          : getExpectedMessage(expected, issue.issue)
+      }
+      break
+    }
+    case "Encoding":
+      return formatIssue(issue.issue, path)
+    case "Pointer":
+      return formatIssue(issue.issue, path + formatPath(issue.path))
+    case "Composite":
+    case "AnyOf": {
+      if (issue._tag === "Composite" || issue.issues.length > 0) {
+        return issue.issues.map((issue) => formatIssue(issue, path)).join("\n")
+      }
+      message = findMessage(issue) ?? getExpectedMessage(InternalAnnotations.getExpected(issue.ast), issue)
+      break
+    }
+    default:
+      message = defaultLeafHook(issue)
+      break
   }
-  return out
+  return path ? `${message}\n  at ${path}` : message
 }
 
 function findMessage(issue: Issue): string | undefined {
-  switch (issue._tag) {
-    case "InvalidType":
-    case "OneOf":
-    case "Composite":
-    case "AnyOf":
-      return getMessageAnnotation(issue.ast.annotations)
-    case "InvalidValue":
-    case "Forbidden":
-      return getMessageAnnotation(issue.annotations)
-    case "MissingKey":
-      return getMessageAnnotation(issue.annotations, "messageMissingKey")
-    case "UnexpectedKey":
-      return getMessageAnnotation(issue.ast.annotations, "messageUnexpectedKey")
-    case "Filter":
-      return getMessageAnnotation(issue.filter.annotations)
-    case "Encoding":
-      return findMessage(issue.issue)
-  }
-}
-
-function getMessageAnnotation(
-  annotations: Schema.Annotations.Annotations | undefined,
-  type: "message" | "messageMissingKey" | "messageUnexpectedKey" = "message"
-): string | undefined {
-  const message = annotations?.[type]
+  if (issue._tag === "Pointer") return
+  if (issue._tag === "Encoding") return findMessage(issue.issue)
+  const annotations = issue._tag === "Filter"
+    ? issue.filter.annotations
+    : "annotations" in issue
+    ? issue.annotations
+    : issue.ast.annotations
+  const message = annotations?.[
+    issue._tag === "MissingKey"
+      ? "messageMissingKey"
+      : issue._tag === "UnexpectedKey"
+      ? "messageUnexpectedKey"
+      : "message"
+  ]
   if (typeof message === "string") return message
 }
