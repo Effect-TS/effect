@@ -1,5 +1,23 @@
 # effect
 
+## 4.0.0-beta.107
+
+### Patch Changes
+
+- [#7156](https://github.com/Effect-TS/effect/pull/7156) [`596f3f9`](https://github.com/Effect-TS/effect/commit/596f3f92d7fe355811b815cb212332b082268ce8) Thanks @tim-smart! - Terminate active multipart file streams when a parser limit is exceeded or the body ends unexpectedly, so file parts fail instead of hanging.
+
+- [#7153](https://github.com/Effect-TS/effect/pull/7153) [`9611ed4`](https://github.com/Effect-TS/effect/commit/9611ed42d11300546b339ab13492a0f7bdb1ebfb) Thanks @rajanpanth! - Fix `Duration`'s `Hash.symbol` implementation to hash a canonical nanoseconds form instead of the raw internal `Millis`/`Nanos` representation. Two durations that `Duration.equals`/`Equal.equals` consider equal (e.g. `Duration.seconds(5)` and `Duration.nanos(5_000_000_000n)`) previously hashed differently, violating the Hash/Equal contract and silently breaking `HashSet`/`HashMap` lookups keyed by `Duration`.
+
+- [#7166](https://github.com/Effect-TS/effect/pull/7166) [`8b91605`](https://github.com/Effect-TS/effect/commit/8b9160548556e4b0ec7ee2f2707716776be49018) Thanks @CDVolvik! - Import migrations through a file URL in `Migrator.fromFileSystem`, so absolute Windows paths are accepted by the ESM loader.
+  
+  Previously the directory and file name were passed to `import` as a plain path. On Windows that produced a specifier such as `D:\migrations\1_init.ts`, which the ESM loader rejects with `Only URLs with a scheme in: file, data, and node are supported`.
+  
+  `fromFileSystem` now resolves the specifier through the `Path` service, so its type widens from `Loader<FileSystem>` to `Loader<FileSystem | Path>`. Callers that already provide an aggregate platform layer such as `NodeServices.layer` are unaffected; callers that provide `FileSystem` on its own now also need a `Path` layer, and on Windows it must be a platform-aware one rather than the POSIX `Path.layer`.
+
+- [#7157](https://github.com/Effect-TS/effect/pull/7157) [`d901928`](https://github.com/Effect-TS/effect/commit/d901928efa44f573ed1247f53fdb203a8e4fcede) Thanks @tim-smart! - Add `Channel.mkUint8Array` and reuse it from `Stream` and multipart file collection. This also fixes quadratic buffering in `File.contentEffect`, improving collection of a 16 MiB chunked upload by approximately 90x.
+
+- [#7149](https://github.com/Effect-TS/effect/pull/7149) [`b32bdef`](https://github.com/Effect-TS/effect/commit/b32bdef0d119a1ad1463dc01a46763ffee1f9bd9) Thanks @gcanti! - Require explicit handling for regular expression pattern constraints translated from JSON Schema documents, with modes to apply trusted patterns or ignore their constraints.
+
 ## 4.0.0-beta.106
 
 ### Patch Changes
