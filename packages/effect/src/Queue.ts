@@ -1993,7 +1993,7 @@ const finalize = <A, E>(self: Enqueue<A, E> | Dequeue<A, E>, exit: Failure<never
   }
   openState.takers.clear()
   for (const awaiter of openState.awaiters) {
-    awaiter(exit)
+    awaiter(Pull.isDoneCause(exit.cause) ? internalEffect.exitVoid : exit)
   }
   openState.awaiters.clear()
 }

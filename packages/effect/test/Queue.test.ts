@@ -319,6 +319,16 @@ describe("Queue", () => {
       assert.isNotNull(fiber.pollUnsafe())
     }))
 
+  it.effect("await succeeds when registered before end", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<never, Cause.Done>()
+      const fiber = yield* Queue.await(queue).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      yield* Queue.end(queue)
+
+      assert.strictEqual(yield* Fiber.join(fiber), void 0)
+    }))
+
   it.effect("bounded 0 capacity", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(0)
