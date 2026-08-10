@@ -155,31 +155,4 @@ it.layer(NodeFileSystem.layer)("FileSystem (node-specific)", (it) => {
 
       assert.strictEqual(decoder.decode(data).trim(), "lorem ipsum dolar sit amet")
     }))
-
-  it.effect("should keep the file-handle cursor when truncation does not shorten before it", () =>
-    Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* fs.makeTempFileScoped()
-      const file = yield* fs.open(path, { flag: "w+" })
-
-      yield* file.writeAll(encoder.encode("lorem ipsum dolor sit amet"))
-      yield* file.seek(6, "start")
-      yield* file.truncate(11)
-      yield* file.writeAll(encoder.encode("!"))
-
-      assert.strictEqual(yield* fs.readFileString(path), "lorem !psum")
-    }))
-
-  it.effect("should clamp the file-handle cursor when truncation shortens before it", () =>
-    Effect.gen(function*() {
-      const fs = yield* FileSystem.FileSystem
-      const path = yield* fs.makeTempFileScoped()
-      const file = yield* fs.open(path, { flag: "w+" })
-
-      yield* file.writeAll(encoder.encode("lorem ipsum dolor sit amet"))
-      yield* file.truncate(11)
-      yield* file.writeAll(encoder.encode("!"))
-
-      assert.strictEqual(yield* fs.readFileString(path), "lorem ipsum!")
-    }))
 })

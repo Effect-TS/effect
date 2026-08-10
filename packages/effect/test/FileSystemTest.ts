@@ -251,6 +251,20 @@ export const suite = (name: string, layer: Layer.Layer<FileSystem.FileSystem, un
           assert.strictEqual(yield* fs.readFileString(file), "replacement appended")
         }))
 
+      it.effect("should honor write flags when writing empty data", () =>
+        Effect.gen(function*() {
+          const { fs, path } = yield* makeTestContext
+          const file = path("empty-write-flags.txt")
+
+          yield* fs.writeFileString(file, "content")
+          yield* fs.writeFileString(file, "")
+          assert.strictEqual(yield* fs.readFileString(file), "")
+
+          yield* fs.writeFileString(file, "content")
+          yield* fs.writeFileString(file, "", { flag: "r+" })
+          assert.strictEqual(yield* fs.readFileString(file), "content")
+        }))
+
       it.effect("should copy independent file and directory-tree contents when copying paths", () =>
         Effect.gen(function*() {
           const { fs, path } = yield* makeTestContext
@@ -751,6 +765,19 @@ export const suite = (name: string, layer: Layer.Layer<FileSystem.FileSystem, un
           yield* file.truncate(5)
           yield* file.writeAll(encoder.encode("?"))
           assert.strictEqual(yield* fs.readFileString(filePath), "lorem?")
+        }))
+
+      it.effect("should read appended bytes from a cursor clamped by truncation", () =>
+        Effect.gen(function*() {
+          const { fs, path } = yield* makeTestContext
+          const filePath = path("truncate-append-cursor.txt")
+          const file = yield* fs.open(filePath, { flag: "w+" })
+
+          yield* file.writeAll(encoder.encode("abcdefghij"))
+          yield* file.truncate(5)
+          yield* fs.writeFile(filePath, encoder.encode("xyz"), { flag: "a" })
+
+          assert.strictEqual(decoder.decode(yield* readAllocUpTo(file, 3)), "xyz")
         }))
     })
 
