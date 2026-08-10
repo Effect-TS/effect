@@ -9,7 +9,7 @@ import * as Predicate from "effect/Predicate"
 import * as Stream from "effect/Stream"
 import * as TestClock from "effect/testing/TestClock"
 import { ChildProcess } from "effect/unstable/process"
-import * as ChildProcessSpawnerTest from "../../effect/test/unstable/process/ChildProcessSpawnerTest.ts"
+import * as ChildProcessSpawnerTest from "../../../effect/test/unstable/process/ChildProcessSpawnerTest.ts"
 
 const platformError = (method: string, path: string, cause: unknown) =>
   PlatformError.systemError({

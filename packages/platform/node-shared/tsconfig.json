@@ -1,10 +1,9 @@
 {
   "$schema": "https://json.schemastore.org/tsconfig",
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../../tsconfig.base.json",
   "include": ["src"],
   "references": [
-    { "path": "../effect" },
-    { "path": "../platform-node-shared" }
+    { "path": "../../effect" }
   ],
   "compilerOptions": {
     "types": ["node"]

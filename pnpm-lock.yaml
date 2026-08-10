@@ -186,10 +186,10 @@ importers:
         version: link:../packages/opentelemetry
       '@effect/platform-bun':
         specifier: workspace:*
-        version: link:../packages/platform-bun
+        version: link:../packages/platform/bun
       '@effect/platform-node':
         specifier: workspace:*
-        version: link:../packages/platform-node
+        version: link:../packages/platform/node
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
@@ -422,11 +422,11 @@ importers:
         specifier: ^1.42.0
         version: 1.42.0
 
-  packages/platform-browser:
+  packages/platform/browser:
     devDependencies:
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
       fake-indexeddb:
         specifier: ^6.2.5
         version: 6.2.5
@@ -434,27 +434,27 @@ importers:
         specifier: ^8.4.1
         version: 8.4.1
 
-  packages/platform-bun:
+  packages/platform/bun:
     dependencies:
       '@effect/platform-node-shared':
         specifier: workspace:^
-        version: link:../platform-node-shared
+        version: link:../node-shared
     devDependencies:
       '@types/bun':
         specifier: ^1.3.14
         version: 1.3.14
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
 
-  packages/platform-deno:
+  packages/platform/deno:
     dependencies:
       '@db/redis':
         specifier: jsr:^0.41.2
         version: '@jsr/db__redis@0.41.2'
       '@effect/platform-node-shared':
         specifier: workspace:^
-        version: link:../platform-node-shared
+        version: link:../node-shared
       '@std/fs':
         specifier: jsr:^1.0.24
         version: '@jsr/std__fs@1.0.24'
@@ -479,13 +479,13 @@ importers:
         version: 2.7.0
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
 
-  packages/platform-node:
+  packages/platform/node:
     dependencies:
       '@effect/platform-node-shared':
         specifier: workspace:^
-        version: link:../platform-node-shared
+        version: link:../node-shared
       ioredis:
         specifier: '>=5.7.0 <6.0.0'
         version: 5.8.2
@@ -510,9 +510,9 @@ importers:
         version: 26.1.2
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
 
-  packages/platform-node-shared:
+  packages/platform/node-shared:
     dependencies:
       '@types/ws':
         specifier: ^8.18.1
@@ -526,7 +526,7 @@ importers:
         version: 26.1.2
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
       tar:
         specifier: ^7.5.19
         version: 7.5.19
@@ -539,7 +539,7 @@ importers:
     devDependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -641,7 +641,7 @@ importers:
     devDependencies:
       '@effect/platform-bun':
         specifier: workspace:^
-        version: link:../../platform-bun
+        version: link:../../platform/bun
       '@types/bun':
         specifier: ^1.3.14
         version: 1.3.14
@@ -662,7 +662,7 @@ importers:
     devDependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
@@ -695,7 +695,7 @@ importers:
         version: link:../openapi-generator
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -714,7 +714,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -733,7 +733,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -761,7 +761,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       '@rollup/plugin-node-resolve':
         specifier: ^16.0.3
         version: 16.0.3(rollup@4.62.3)
@@ -801,7 +801,7 @@ importers:
         version: 0.1.0
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -894,7 +894,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       swagger2openapi:
         specifier: ^7.0.8
         version: 7.0.8
@@ -935,7 +935,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -978,10 +978,10 @@ importers:
         version: link:../packages/opentelemetry
       '@effect/platform-bun':
         specifier: workspace:*
-        version: link:../packages/platform-bun
+        version: link:../packages/platform/bun
       '@effect/platform-node':
         specifier: workspace:*
-        version: link:../packages/platform-node
+        version: link:../packages/platform/node
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
@@ -1026,10 +1026,10 @@ importers:
     dependencies:
       '@effect/platform-bun':
         specifier: workspace:*
-        version: link:../packages/platform-bun
+        version: link:../packages/platform/bun
       '@effect/platform-node':
         specifier: workspace:*
-        version: link:../packages/platform-node
+        version: link:../packages/platform/node
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
