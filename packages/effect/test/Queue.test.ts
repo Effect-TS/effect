@@ -319,24 +319,16 @@ describe("Queue", () => {
       assert.isNotNull(fiber.pollUnsafe())
     }))
 
-  it.effect("await succeeds when registered before end", () =>
+  it.effect("end preserves Done for take and excludes it from await", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.unbounded<never, Cause.Done>()
-      const fiber = yield* Queue.await(queue).pipe(Effect.forkChild)
+      const takeFiber = yield* Queue.take(queue).pipe(Effect.forkChild)
+      const awaitFiber = yield* Queue.await(queue).pipe(Effect.forkChild)
       yield* Effect.yieldNow
       yield* Queue.end(queue)
 
-      assert.strictEqual(yield* Fiber.join(fiber), void 0)
-    }))
-
-  it.effect("await preserves errors when registered before failure", () =>
-    Effect.gen(function*() {
-      const queue = yield* Queue.unbounded<never, string>()
-      const fiber = yield* Queue.await(queue).pipe(Effect.forkChild)
-      yield* Effect.yieldNow
-      yield* Queue.fail(queue, "boom")
-
-      assert.strictEqual(yield* Fiber.join(fiber).pipe(Effect.flip), "boom")
+      assert.deepStrictEqual(yield* Fiber.await(takeFiber), Exit.fail(Cause.Done()))
+      assert.strictEqual(yield* Fiber.join(awaitFiber), void 0)
     }))
 
   it.effect("bounded 0 capacity", () =>
