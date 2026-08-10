@@ -329,6 +329,16 @@ describe("Queue", () => {
       assert.strictEqual(yield* Fiber.join(fiber), void 0)
     }))
 
+  it.effect("await preserves errors when registered before failure", () =>
+    Effect.gen(function*() {
+      const queue = yield* Queue.unbounded<never, string>()
+      const fiber = yield* Queue.await(queue).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      yield* Queue.fail(queue, "boom")
+
+      assert.strictEqual(yield* Fiber.join(fiber).pipe(Effect.flip), "boom")
+    }))
+
   it.effect("bounded 0 capacity", () =>
     Effect.gen(function*() {
       const queue = yield* Queue.bounded<number>(0)
