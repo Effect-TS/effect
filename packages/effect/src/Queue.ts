@@ -1570,16 +1570,14 @@ export const takeUnsafe = <A, E>(self: Dequeue<A, E>): Exit<A, E> | undefined =>
 
 const await_ = <A, E>(self: Dequeue<A, E>): Effect<void, Exclude<E, Done>> =>
   internalEffect.callback<void, Exclude<E, Done>>((resume) => {
+    const awaiter = (effect: Effect<void, E>) => resume(Pull.catchDone(effect, () => internalEffect.exitVoid))
     if (self.state._tag === "Done") {
-      if (Pull.isDoneCause(self.state.exit.cause)) {
-        return resume(internalEffect.exitVoid)
-      }
-      return resume(self.state.exit)
+      return awaiter(self.state.exit)
     }
-    self.state.awaiters.add(resume)
+    self.state.awaiters.add(awaiter)
     return internalEffect.sync(() => {
       if (self.state._tag !== "Done") {
-        self.state.awaiters.delete(resume)
+        self.state.awaiters.delete(awaiter)
       }
     })
   })
