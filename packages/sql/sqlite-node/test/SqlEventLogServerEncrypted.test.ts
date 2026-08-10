@@ -32,10 +32,10 @@ const persistEntries = (
 ) =>
   Effect.gen(function*() {
     const encrypted = yield* encryption.encrypt(identity, entries)
-    return encrypted.encryptedEntries.map((encryptedEntry, index) =>
+    return encrypted.map(({ encryptedEntry, iv }, index) =>
       new EventLogServer.PersistedEntry({
         entryId: entries[index].id,
-        iv: encrypted.iv,
+        iv,
         encryptedEntry
       })
     )
@@ -50,10 +50,10 @@ const encodeWrite = Effect.fnUntraced(function*(
   return yield* new EventLogMessage.WriteEntries({
     publicKey: identity.publicKey,
     storeId: storeIdA,
-    iv: encrypted.iv,
     encryptedEntries: [{
       entryId: entry.id,
-      encryptedEntry: encrypted.encryptedEntries[0]
+      iv: encrypted[0].iv,
+      encryptedEntry: encrypted[0].encryptedEntry
     }]
   }).encoded
 })

@@ -80,6 +80,17 @@ describe("Trie", () => {
     deepStrictEqual(Array.from(trie4), [["call", 0], ["me", 1], ["mid", 3], ["mind", 2]])
   })
 
+  it("insert replaces a key without mutating or growing the original", () => {
+    const before = Trie.make(["a", 1])
+    const after = Trie.insert(before, "a", 2)
+
+    deepStrictEqual(
+      [Array.from(before), Trie.size(before), Array.from(after), Trie.size(after)],
+      [[["a", 1]], 1, [["a", 2]], 1],
+      "replacement must be immutable and preserve size"
+    )
+  })
+
   it("fromIterable preserves an empty iterable", () => {
     const iterable: Array<[string, number]> = []
     const trie = Trie.fromIterable(iterable)

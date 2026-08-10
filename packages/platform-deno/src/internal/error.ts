@@ -16,6 +16,9 @@ export const handleError = (
   let tag: SystemErrorTag = "Unknown"
 
   switch (denoError?.name) {
+    case "AlreadyExists":
+      tag = "AlreadyExists"
+      break
     case "NotCapable":
       tag = "PermissionDenied"
       break

@@ -256,19 +256,6 @@ const DRAFT_07_SINGLE_SUBSCHEMA_KEYWORDS = new Set(["not", "additionalProperties
 
 const MAP_SUBSCHEMA_KEYWORDS = new Set(["properties", "patternProperties"])
 const ARRAY_SUBSCHEMA_KEYWORDS = new Set(["allOf", "anyOf", "oneOf"])
-const DRAFT_2020_12_MAP_SUBSCHEMA_KEYWORDS = new Set(["$defs", ...MAP_SUBSCHEMA_KEYWORDS, "dependentSchemas"])
-const DRAFT_2020_12_ARRAY_SUBSCHEMA_KEYWORDS = new Set([...ARRAY_SUBSCHEMA_KEYWORDS, "prefixItems"])
-const DRAFT_2020_12_SINGLE_SUBSCHEMA_KEYWORDS = new Set([
-  ...DRAFT_07_SINGLE_SUBSCHEMA_KEYWORDS,
-  "unevaluatedProperties",
-  "items",
-  "contains",
-  "unevaluatedItems",
-  "if",
-  "then",
-  "else",
-  "contentSchema"
-])
 
 /**
  * Parses a raw Draft-07 JSON Schema into a `Document<"draft-2020-12">`.
@@ -465,10 +452,7 @@ export function fromSchemaDraft2020_12(js: JsonSchema): Document<"draft-2020-12"
  * @since 4.0.0
  */
 export function fromSchemaOpenApi3_1(js: JsonSchema): Document<"draft-2020-12"> {
-  const schema = transformSchema(
-    js,
-    (schema) => rewriteSchemaRef(schema, (ref) => ref.replace(RE_COMPONENTS_SCHEMAS, "#/$defs"))
-  ) as JsonSchema
+  const schema = rewriteRefs(js, (ref) => ref.replace(RE_COMPONENTS_SCHEMAS, "#/$defs"))
   return fromSchemaDraft2020_12(schema)
 }
 
@@ -828,20 +812,16 @@ export function toMultiDocumentOpenApi3_1(multiDocument: MultiDocument<"draft-20
   }
 
   function rewrite(schema: JsonSchema): JsonSchema {
-    return transformSchema(
-      schema,
-      (schema) =>
-        rewriteSchemaRef(schema, ($ref) => {
-          if (!$ref.startsWith("#/$defs/")) return $ref
+    return rewriteRefs(schema, ($ref) => {
+      if (!$ref.startsWith("#/$defs/")) return $ref
 
-          const path = $ref.slice("#/$defs/".length)
-          const separatorIndex = path.indexOf("/")
-          const token = separatorIndex === -1 ? path : path.slice(0, separatorIndex)
-          const rest = separatorIndex === -1 ? "" : path.slice(separatorIndex)
-          const key = keyMap.get(unescapeToken(token)) ?? token
-          return `#/components/schemas/${key}${rest}`
-        })
-    ) as JsonSchema
+      const path = $ref.slice("#/$defs/".length)
+      const separatorIndex = path.indexOf("/")
+      const token = separatorIndex === -1 ? path : path.slice(0, separatorIndex)
+      const rest = separatorIndex === -1 ? "" : path.slice(separatorIndex)
+      const key = keyMap.get(unescapeToken(token)) ?? token
+      return `#/components/schemas/${key}${rest}`
+    })
   }
 
   return {
@@ -874,23 +854,47 @@ function transformSchema(
   return walk(node)
 
   function walk(node: unknown): unknown {
-    if (!Predicate.isObject(node) || Array.isArray(node)) return node
+    if (!Predicate.isObject(node)) return node
 
     const out: Record<string, unknown> = {}
     for (const key of Object.keys(node)) {
       const value = node[key]
       let transformed = value
-      if (DRAFT_2020_12_MAP_SUBSCHEMA_KEYWORDS.has(key)) {
-        transformed = Array.isArray(value) ? value : mapObject(value, walk) ?? value
-      } else if (DRAFT_2020_12_ARRAY_SUBSCHEMA_KEYWORDS.has(key)) {
-        transformed = Array.isArray(value) ? value.map(walk) : value
-      } else if (DRAFT_2020_12_SINGLE_SUBSCHEMA_KEYWORDS.has(key)) {
-        transformed = walk(value)
+      switch (key) {
+        case "$defs":
+        case "properties":
+        case "patternProperties":
+        case "dependentSchemas":
+          transformed = mapObject(value, walk) ?? value
+          break
+        case "allOf":
+        case "anyOf":
+        case "oneOf":
+        case "prefixItems":
+          transformed = Array.isArray(value) ? value.map(walk) : value
+          break
+        case "not":
+        case "additionalProperties":
+        case "propertyNames":
+        case "unevaluatedProperties":
+        case "items":
+        case "contains":
+        case "unevaluatedItems":
+        case "if":
+        case "then":
+        case "else":
+        case "contentSchema":
+          transformed = walk(value)
       }
       InternalRecord.assignProperty(out, key, transformed)
     }
     return transform(out)
   }
+}
+
+/** @internal */
+export function rewriteRefs(schema: JsonSchema, rewrite: ($ref: string) => string): JsonSchema {
+  return transformSchema(schema, (schema) => rewriteSchemaRef(schema, rewrite)) as JsonSchema
 }
 
 function rewriteSchemaRef(
@@ -904,10 +908,7 @@ function rewriteSchemaRef(
 }
 
 function mapObject(value: unknown, f: (node: unknown) => unknown): Record<string, unknown> | undefined {
-  if (!Predicate.isObject(value)) return undefined
-  const out: Record<string, unknown> = {}
-  for (const k of Object.keys(value)) InternalRecord.assignProperty(out, k, f(value[k]))
-  return out
+  return Predicate.isObject(value) ? Rec.map(value, f) : undefined
 }
 
 function rewriteSubschemaKeyword(

@@ -170,4 +170,14 @@ describe("Stream", () => {
       )
       assert.deepEqual(error.cause, "error")
     }))
+
+  it.effect("toString registers one error listener", () =>
+    Effect.gen(function*() {
+      const stream = new Readable({
+        read() {}
+      })
+      yield* NodeStream.toString(() => stream).pipe(Effect.forkChild)
+      yield* Effect.yieldNow
+      assert.strictEqual(stream.listenerCount("error"), 1)
+    }))
 })

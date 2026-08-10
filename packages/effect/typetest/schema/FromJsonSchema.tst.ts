@@ -34,4 +34,16 @@ describe("JSON Schema importer", () => {
       ((schema: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
     >()
   })
+
+  it("limits the pattern policy to the supported modes", () => {
+    const options: SchemaRepresentation.FromJsonSchemaOptions = { patterns: "error" }
+
+    expect(options.patterns).type.toBe<"error" | "ignore" | "apply" | undefined>()
+
+    const invalidOptions: SchemaRepresentation.FromJsonSchemaOptions = {
+      // @ts-expect-error Type '"safe"' is not assignable to type
+      patterns: "safe"
+    }
+    void invalidOptions
+  })
 })

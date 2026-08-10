@@ -546,7 +546,7 @@ describe("HttpServer", () => {
       yield* completed.await
 
       assert.strictEqual(closeListenerRemovals, 1)
-    }).pipe(Effect.scoped))
+    }))
 
   it.effect("coalesces streaming chunks from the same pull", () =>
     Effect.gen(function*() {
@@ -582,7 +582,7 @@ describe("HttpServer", () => {
       yield* completed.await
 
       assert.deepStrictEqual(writes.map((chunk) => Buffer.Buffer.from(chunk).toString()), ["ab"])
-    }).pipe(Effect.scoped))
+    }))
 
   it.effect("waits for drain after a streaming write applies backpressure", () =>
     Effect.gen(function*() {
@@ -623,7 +623,7 @@ describe("HttpServer", () => {
       nodeResponse.emit("drain")
       yield* completed.await
       assert.strictEqual(writeCount, 1)
-    }).pipe(Effect.scoped))
+    }))
 
   it.live("disposes after a client aborts a handler awaiting an upstream request", () => {
     const upstreamStarted = Latch.makeUnsafe()
@@ -864,7 +864,7 @@ describe("HttpServer", () => {
       expect(uncaught).toEqual([])
       const response = yield* HttpClient.get("/")
       expect(response.status).toEqual(200)
-    }).pipe(Effect.scoped, Effect.provide(layerTestWebsocket)))
+    }).pipe(Effect.provide(layerTestWebsocket)))
 })
 
 const layerTestWebsocket = HttpServer.layerTestClient.pipe(

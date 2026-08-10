@@ -351,7 +351,18 @@ const negativeInfinityDurationValue: DurationValue = { _tag: "NegativeInfinity" 
 const DurationProto: Omit<Duration, "value"> = {
   [TypeId]: TypeId,
   [Hash.symbol](this: Duration) {
-    return Hash.structure(this.value)
+    // Hash equal finite durations using the same canonical nanoseconds
+    // representation used by `equals`.
+    switch (this.value._tag) {
+      case "Millis": {
+        const nanos = this.value.millis * 1_000_000
+        return Number.isFinite(nanos) ? Hash.hash(roundTiesAwayFromZero(nanos)) : Hash.number(this.value.millis)
+      }
+      case "Nanos":
+        return Hash.hash(this.value.nanos)
+      default:
+        return Hash.structure(this.value)
+    }
   },
   [Equal.symbol](this: Duration, that: unknown): boolean {
     return isDuration(that) && equals(this, that)

@@ -5,7 +5,9 @@ import { TestClock } from "effect/testing"
 import * as Reactivity from "effect/unstable/reactivity/Reactivity"
 import { SqlClient } from "effect/unstable/sql"
 import * as Statement from "effect/unstable/sql/Statement"
+import * as Pg from "pg"
 import { parse as parsePgConnectionString } from "pg-connection-string"
+import { vi } from "vitest"
 import { PgContainer } from "./utils.ts"
 
 const compilerTransform = PgClient.makeCompiler(String.camelToSnake)
@@ -294,6 +296,35 @@ it.layer(PgContainer.layerMakeClient, { timeout: "30 seconds" })("PgClient.makeC
       assert.deepStrictEqual(rows, [{ value: 1 }])
     }))
 })
+
+it.effect("PgClient.makeClient handles errors emitted while connecting", () =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => ({
+      connect: vi.spyOn(Pg.Client.prototype, "connect").mockImplementation(function(this: Pg.Client) {
+        return new Promise<void>((resolve, reject) => {
+          queueMicrotask(() => {
+            try {
+              this.emit("error", new Error("connection failed"))
+              resolve()
+            } catch (cause) {
+              reject(cause)
+            }
+          })
+        })
+      }),
+      end: vi.spyOn(Pg.Client.prototype, "end").mockResolvedValue(undefined)
+    })),
+    () =>
+      PgClient.makeClient({ host: "localhost" }).pipe(
+        Effect.scoped,
+        Effect.provide(Reactivity.layer)
+      ),
+    ({ connect, end }) =>
+      Effect.sync(() => {
+        connect.mockRestore()
+        end.mockRestore()
+      })
+  ))
 
 it.layer(PgContainer.layerClientWithTransforms, { timeout: "30 seconds" })("PgClient transforms", (it) => {
   it.effect("insert helper", () =>

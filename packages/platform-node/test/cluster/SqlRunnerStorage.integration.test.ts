@@ -1,9 +1,10 @@
 import { NodeFileSystem } from "@effect/platform-node"
 import { SqliteClient } from "@effect/sql-sqlite-node"
 import { assert, describe, expect, it } from "@effect/vitest"
-import { Duration, Effect, Exit, FileSystem, Layer, Schedule } from "effect"
+import { Cause, Duration, Effect, Exit, FileSystem, Layer, Schedule } from "effect"
 import { TestClock } from "effect/testing"
 import {
+  ClusterError,
   Runner,
   RunnerAddress,
   RunnerStorage,
@@ -48,7 +49,8 @@ describe("SqlRunnerStorage", () => {
           TestClock.withLive
         )
         assert(Exit.isFailure(exit))
-        assert.isAtLeast(Duration.toMillis(elapsed), 90)
+        const error = Cause.squash(exit.cause)
+        assert(error instanceof ClusterError.PersistenceError)
         assert.isBelow(Duration.toMillis(elapsed), 1000)
         yield* Effect.sleep(20).pipe(TestClock.withLive)
       })
@@ -83,7 +85,13 @@ describe("SqlRunnerStorage", () => {
       yield* storage.release(runnerAddress1, shards[0]).pipe(TestClock.withLive)
 
       assert.strictEqual(partitioned.activeQueries, 0)
-    }).pipe(Effect.provide(layer))
+    }).pipe(
+      // Ensure layer teardown cannot mask a body failure with Vitest's timeout.
+      Effect.ensuring(Effect.sync(() => {
+        partitioned.current = false
+      })),
+      Effect.provide(layer)
+    )
   }, 60_000)
 
   it.effect("recovers when a blackholed query cannot resume after the partition clears", () => {
@@ -229,6 +237,7 @@ describe("SqlRunnerStorage", () => {
       expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
       expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([shard])
     }).pipe(
+      // Release the advisory-lock connections before the PostgreSQL layer.
       Effect.scoped,
       Effect.provide(PgContainer.layerClient),
       Effect.provide(ShardingConfig.layer())
@@ -243,6 +252,7 @@ describe("SqlRunnerStorage", () => {
       expect(yield* storageA.acquire(runnerAddress1, [shard])).toEqual([shard])
       expect(yield* storageB.acquire(runnerAddress2, [shard])).toEqual([])
     }).pipe(
+      // Release the advisory-lock connections before the PostgreSQL layer.
       Effect.scoped,
       Effect.provide(PgContainer.layerClient),
       Effect.provide(ShardingConfig.layer())

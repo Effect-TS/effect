@@ -55,7 +55,13 @@ export declare namespace ToJsonSchema {
   }
 
   /**
-   * JSON Schema compiler for a check.
+   * Compiles a check to a JSON Schema fragment.
+   *
+   * **Gotchas**
+   *
+   * Treat the input schemas as immutable. The returned value must be a valid JSON Schema object graph and must not be
+   * mutated after this function returns. Return a new object graph to produce different output during a later
+   * compilation.
    *
    * @category models
    * @since 4.0.0
@@ -600,17 +606,37 @@ export const makeFilterGroupReviver: <P>(
  *
  * **When to use**
  *
- * Use when each JSON Schema node must be transformed before it is translated.
+ * Use when you need to configure pattern handling or transform each JSON Schema node before translation.
+ *
+ * **Details**
+ *
+ * `patterns` controls pattern constraints reached during best-effort translation, including `pattern`, the keys of
+ * `patternProperties`, and patterns nested in `propertyNames`:
+ *
+ * - `"error"` rejects the document and is the default.
+ * - `"ignore"` skips the constraint.
+ * - `"apply"` compiles and enforces the constraint with the runtime's native regular expression engine.
  *
  * **Gotchas**
  *
- * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass through unchanged.
+ * Use `patterns: "apply"` only for trusted documents because regular expression evaluation may block for an unbounded
+ * amount of time. `patterns: "ignore"` weakens validation by accepting values that the source document may reject.
+ * Ignoring `patternProperties` also skips its value constraints and `additionalProperties`, because matching keys cannot
+ * be determined without evaluating the patterns.
+ * `onEnter` must return a JSON Schema object. Its result is used directly, and exceptions raised by the callback pass
+ * through unchanged.
  *
  * @category models
  * @since 4.0.0
  */
 export interface FromJsonSchemaOptions {
   readonly onEnter?: ((schema: JsonSchema.JsonSchema) => JsonSchema.JsonSchema) | undefined
+  /**
+   * Controls how reached JSON Schema regular expression patterns are imported.
+   *
+   * @default "error"
+   */
+  readonly patterns?: "error" | "ignore" | "apply" | undefined
 }
 
 /**
@@ -728,7 +754,10 @@ export function toMultiDocument(document: Document): MultiDocument {
  *
  * **Gotchas**
  *
- * Opaque declarations are represented by an unconstrained JSON Schema. Check callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * Opaque declarations are represented by an unconstrained JSON Schema. Check callback results are used directly, and
+ * exceptions raised by a callback pass through unchanged. Callbacks must treat their input schemas as immutable. Each
+ * returned value must be a valid JSON Schema object graph and must not be mutated after the callback returns. Local
+ * definition references returned by callbacks are resolved together with compiler-generated references.
  *
  * @see {@link toJsonSchemaMultiDocument} for multiple roots sharing definitions
  *
@@ -751,7 +780,10 @@ export function toJsonSchemaDocument(
  *
  * **Gotchas**
  *
- * Every definition is compiled, including definitions that are not reachable from a root.
+ * Every definition is compiled, including definitions that are not reachable from a root. Check callbacks must treat
+ * their input schemas as immutable. Each returned value must be a valid JSON Schema object graph and must not be
+ * mutated after the callback returns. Local definition references returned by callbacks are resolved together with
+ * compiler-generated references.
  *
  * @see {@link toJsonSchemaDocument} for a single root
  *
@@ -1148,7 +1180,10 @@ export function fromRepresentations(
  *
  * **Gotchas**
  *
- * Import is best-effort. Built-in declarations and checks are reconstructed with importer-owned revivers. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * Import is best-effort. Built-in declarations and checks are reconstructed with importer-owned revivers. Pattern
+ * constraints reached during translation cause an error by default. Use `patterns: "apply"` only for trusted documents,
+ * or `patterns: "ignore"` to weaken validation explicitly. Callback results are used directly, and exceptions raised by a
+ * callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaMultiDocument} for multiple roots sharing definitions
  * @see {@link toRepresentation} for converting the result to a representation document
@@ -1172,7 +1207,9 @@ export function fromJsonSchemaDocument(
  *
  * **Gotchas**
  *
- * Only definitions reachable from a root are translated. Callback results are used directly, and exceptions raised by a callback pass through unchanged.
+ * Only definitions reachable from a root are translated. Pattern constraints reached during translation cause an error
+ * by default. Use `patterns: "apply"` only for trusted documents, or `patterns: "ignore"` to weaken validation explicitly.
+ * Callback results are used directly, and exceptions raised by a callback pass through unchanged.
  *
  * @see {@link fromJsonSchemaDocument} for a single root
  * @see {@link toRepresentations} for converting the returned schema ASTs to a representation document

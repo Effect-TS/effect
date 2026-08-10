@@ -7,17 +7,24 @@ import * as InternalAnnotations from "./annotations.ts"
 
 /** @internal */
 export function toRepresentation(
-  ast: SchemaAST.AST
+  ast: SchemaAST.AST,
+  options?: Options
 ): SchemaRepresentation.Document {
-  const { references, representations } = toRepresentations([ast])
+  const { references, representations } = toRepresentations([ast], options)
   return { representation: representations[0], references }
 }
 
 /** @internal */
 export function toRepresentations(
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
+  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
+  options?: Options
 ): SchemaRepresentation.MultiDocument {
-  return fromASTs(asts)
+  return fromASTs(asts, options)
+}
+
+/** @internal */
+export interface Options {
+  readonly isAnonymousReferenceAllowed?: ((ast: SchemaAST.AST) => boolean) | undefined
 }
 
 type CheckRepresentationAnnotation = SchemaRepresentation.CheckRepresentationAnnotation<
@@ -28,11 +35,49 @@ function annotationsField<A>(annotations: A | undefined): { readonly annotations
   return annotations === undefined ? undefined : { annotations }
 }
 
-// Preserve repeated structural nodes as references without adding noise for leaf nodes.
-function isShareable(ast: SchemaAST.AST): boolean {
-  return SchemaAST.isArrays(ast) ||
-    SchemaAST.isObjects(ast) ||
-    (SchemaAST.isUnion(ast) && ast.types.some(isShareable))
+function hasShareableStructure(
+  ast: SchemaAST.AST,
+  isAnonymousReferenceAllowed: Options["isAnonymousReferenceAllowed"]
+): boolean {
+  if (isAnonymousReferenceAllowed?.(ast) === false) return false
+  switch (ast._tag) {
+    case "Arrays":
+    case "Objects":
+    case "Suspend":
+      return true
+    case "Declaration":
+      return true
+    case "Union":
+      return ast.types.some((ast) => hasShareableStructure(ast, isAnonymousReferenceAllowed))
+    default:
+      return false
+  }
+}
+
+function isWorthReferencing(bodyCost: number, occurrences: number): boolean {
+  return occurrences * bodyCost > bodyCost + occurrences + 1
+}
+
+function isAnonymousReferenceEligible(
+  ast: SchemaAST.AST,
+  occurrences: number,
+  isAnonymousReferenceAllowed: Options["isAnonymousReferenceAllowed"]
+): boolean {
+  if (isAnonymousReferenceAllowed?.(ast) === false) return false
+  if (hasShareableStructure(ast, isAnonymousReferenceAllowed)) return true
+  switch (ast._tag) {
+    case "Union":
+      return isWorthReferencing(ast.types.length + 1, occurrences)
+    case "Enum":
+      return isWorthReferencing(ast.enums.length + 1, occurrences)
+    case "TemplateLiteral":
+      return isWorthReferencing(ast.parts.length + 1, occurrences)
+    case "Literal":
+      return typeof ast.literal === "string" &&
+        isWorthReferencing(ast.literal.length / 32 + 1, occurrences)
+    default:
+      return false
+  }
 }
 
 interface ReferenceIdentifier {
@@ -54,17 +99,15 @@ function resolveReferenceIdentifier(
 }
 
 function fromASTs(
-  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>]
+  asts: readonly [SchemaAST.AST, ...Array<SchemaAST.AST>],
+  options: Options | undefined
 ): SchemaRepresentation.MultiDocument {
   const references: Record<string, SchemaRepresentation.Representation> = {}
   const anonymousReferences = new Map<SchemaAST.AST, string>()
   const referenceOwners = new Map<string, SchemaAST.AST>()
-  const valueIds = new Map<unknown, number>()
-  const canonicalByKey = new Map<string, SchemaAST.AST>()
-  let nextValueId = 0
   const buildingReferences = new Set<string>()
   const visiting = new Set<SchemaAST.AST>()
-  const visited = new Set<SchemaAST.AST>()
+  const occurrences = new Map<SchemaAST.AST, number>()
   const shared = new Set<SchemaAST.AST>()
 
   for (const ast of asts) visit(ast)
@@ -82,35 +125,6 @@ function fromASTs(
     }
     referenceOwners.set(candidate, owner)
     return candidate
-  }
-
-  function getValueId(value: unknown): number {
-    if (typeof value === "number" && globalThis.Number.isNaN(value)) {
-      return nextValueId++
-    }
-    const found = valueIds.get(value)
-    if (found !== undefined) return found
-    const id = nextValueId++
-    valueIds.set(value, id)
-    return id
-  }
-
-  function getIdentityKey(ast: SchemaAST.AST): string {
-    let identity = ast._tag
-    for (const [key, value] of Object.entries(ast)) {
-      if (key !== "_tag" && key !== "context") identity += `:${getValueId(value)}`
-    }
-    return identity
-  }
-
-  function getCanonicalAST(ast: SchemaAST.AST): SchemaAST.AST {
-    const key = getIdentityKey(ast)
-    const canonical = canonicalByKey.get(key)
-    if (canonical === undefined) {
-      canonicalByKey.set(key, ast)
-      return ast
-    }
-    return canonical
   }
 
   function annotateReference(
@@ -143,12 +157,16 @@ function fromASTs(
 
   function visit(input: SchemaAST.AST): void {
     const ast = SchemaAST.getLastEncoding(input)
-    const owner = getCanonicalAST(ast)
-    if (visited.has(owner)) {
-      if (isShareable(ast)) shared.add(owner)
+    const owner = SchemaAST.getContextOwner(ast)
+    const count = (occurrences.get(owner) ?? 0) + 1
+    occurrences.set(owner, count)
+    if (count > 1) {
+      if (
+        !shared.has(owner) &&
+        isAnonymousReferenceEligible(owner, count, options?.isAnonymousReferenceAllowed)
+      ) shared.add(owner)
       return
     }
-    visited.add(owner)
     visitChecks(ast.checks)
     switch (ast._tag) {
       case "Declaration":
@@ -178,7 +196,7 @@ function fromASTs(
 
   function recur(input: SchemaAST.AST): SchemaRepresentation.Representation {
     const ast = SchemaAST.getLastEncoding(input)
-    const owner = getCanonicalAST(ast)
+    const owner = SchemaAST.getContextOwner(ast)
     const referenceIdentifier = resolveReferenceIdentifier(input, ast)
     if (referenceIdentifier !== undefined) {
       const reference = getReference(referenceIdentifier.identifier, owner)

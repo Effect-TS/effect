@@ -74,7 +74,8 @@ export function make({
     isFile: false,
     fieldChunks: [] as Array<Uint8Array>,
     fieldSize: 0,
-    done: false
+    done: false,
+    stopped: false
   }
 
   function skipBody() {
@@ -83,11 +84,23 @@ export function make({
     state.onChunk = noopOnChunk
   }
 
+  function stop(error: MultipartError) {
+    state.stopped = true
+    if (state.state === State.body && state.isFile) {
+      state.onChunk(null)
+    }
+    onError(error)
+  }
+
   const headerParser = HP.make()
 
   const split = Search.make(
     `\r\n--${boundary}`,
     function(index, chunk) {
+      if (state.stopped) {
+        return
+      }
+
       if (index === 0) {
         // data before the first boundary
         skipBody()
@@ -127,12 +140,12 @@ export function make({
 
         state.parts++
         if (state.parts > maxParts) {
-          onError(errMaxParts)
+          return stop(errMaxParts)
         }
       }
 
       if ((state.partSize += chunk.length) > maxPartSize) {
-        onError(errMaxPartSize)
+        return stop(errMaxPartSize)
       }
 
       if (state.state === State.headers) {
@@ -199,7 +212,7 @@ export function make({
           } else {
             const buf = chunk.subarray(result.endPosition)
             if ((state.fieldSize += buf.length) > maxFieldSize) {
-              onError(errMaxFieldSize)
+              return stop(errMaxFieldSize)
             }
             state.fieldChunks.push(buf)
           }
@@ -208,7 +221,7 @@ export function make({
         state.onChunk(chunk)
       } else {
         if ((state.fieldSize += chunk.length) > maxFieldSize) {
-          onError(errMaxFieldSize)
+          return stop(errMaxFieldSize)
         }
         state.fieldChunks.push(chunk)
       }
@@ -219,15 +232,18 @@ export function make({
 
   return {
     write(chunk: Uint8Array) {
+      if (state.stopped) {
+        return
+      }
       if ((state.totalSize += chunk.length) > maxTotalSize) {
-        return onError(errMaxTotalSize)
+        return stop(errMaxTotalSize)
       }
       return split.write(chunk)
     },
     end() {
       split.end()
-      if (!state.done) {
-        onError(errEndNotReached)
+      if (!state.done && !state.stopped) {
+        stop(errEndNotReached)
       }
 
       state.state = State.headers
@@ -240,6 +256,7 @@ export function make({
       state.fieldChunks = []
       state.fieldSize = 0
       state.done = false
+      state.stopped = false
     }
   } as const
 }

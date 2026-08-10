@@ -40,6 +40,7 @@ import {
 } from "effect/unstable/process/ChildProcessSpawner"
 import * as NodeChildProcess from "node:child_process"
 import { PassThrough } from "node:stream"
+import { buildSpawnOptions } from "./internal/nodeChildProcessSpawner.ts"
 import { handleErrnoException } from "./internal/utils.ts"
 import * as NodeSink from "./NodeSink.ts"
 import * as NodeStream from "./NodeStream.ts"
@@ -64,6 +65,17 @@ const toPlatformError = (
 
 type ExitCodeWithSignal = readonly [code: number | null, signal: NodeJS.Signals | null]
 type ExitSignal = Deferred.Deferred<ExitCodeWithSignal>
+
+const taskkill = (
+  childProcess: NodeChildProcess.ChildProcess,
+  onExit: (error: NodeChildProcess.ExecException | null) => void = () => {}
+) =>
+  NodeChildProcess.execFile(
+    "taskkill",
+    ["/pid", String(childProcess.pid!), "/T", "/F"],
+    { windowsHide: true },
+    onExit
+  )
 
 const make = Effect.gen(function*() {
   const fs = yield* FileSystem.FileSystem
@@ -354,7 +366,7 @@ const make = Effect.gen(function*() {
   ) => {
     if (globalThis.process.platform === "win32") {
       return Effect.callback<void, PlatformError.PlatformError>((resume) => {
-        NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, (error) => {
+        taskkill(childProcess, (error) => {
           if (error) {
             resume(Effect.fail(toPlatformError("kill", toError(error), command)))
           } else {
@@ -376,9 +388,8 @@ const make = Effect.gen(function*() {
     signal: NodeJS.Signals
   ): void => {
     if (globalThis.process.platform === "win32") {
-      NodeChildProcess.exec(`taskkill /pid ${childProcess.pid} /T /F`, () => {
-        // ignore errors during best-effort cleanup
-      })
+      // ignore errors during best-effort cleanup
+      taskkill(childProcess)
       return
     }
     try {
@@ -471,13 +482,7 @@ const make = Effect.gen(function*() {
         const stdio = buildStdioArray(stdinConfig, stdoutConfig, stderrConfig, resolvedAdditionalFds)
 
         const [childProcess, exitSignal] = yield* Effect.acquireRelease(
-          spawn(cmd, {
-            cwd,
-            env,
-            stdio,
-            detached: cmd.options.detached ?? process.platform !== "win32",
-            shell: cmd.options.shell
-          }),
+          spawn(cmd, buildSpawnOptions(cmd.options, { cwd, env, stdio }, process.platform)),
           Effect.fnUntraced(function*([childProcess, exitSignal]) {
             const exited = yield* Deferred.isDone(exitSignal)
             const killWithTimeout = withTimeout(childProcess, cmd, cmd.options)
@@ -619,6 +624,8 @@ const make = Effect.gen(function*() {
         }
 
         const handle = handles[handles.length - 1]
+        const kill = (options?: ChildProcess.KillOptions | undefined) =>
+          Effect.forEach([...handles].reverse(), (handle) => Effect.ignore(handle.kill(options)), { discard: true })
         const unref = Effect.gen(function*() {
           const rerefs: Array<Effect.Effect<void, PlatformError.PlatformError>> = []
           for (const handle of handles) {
@@ -631,7 +638,7 @@ const make = Effect.gen(function*() {
           pid: handle.pid,
           exitCode: handle.exitCode,
           isRunning: handle.isRunning,
-          kill: handle.kill,
+          kill,
           stdin: handle.stdin,
           stdout: handle.stdout,
           stderr: handle.stderr,

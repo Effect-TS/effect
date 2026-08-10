@@ -1,6 +1,6 @@
 {
   "name": "@effect/atom-vue",
-  "version": "4.0.0-beta.103",
+  "version": "4.0.0-beta.107",
   "type": "module",
   "license": "MIT",
   "description": "Vue bindings for the Effect Atom modules",
@@ -37,7 +37,10 @@
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map"
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*"
   ],
   "publishConfig": {
     "access": "public",
@@ -62,6 +65,6 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
-    "vue": "^3.5.0"
+    "vue": ">=3.5.39 <4.0.0"
   }
 }

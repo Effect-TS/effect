@@ -5,6 +5,30 @@ import * as Option from "effect/Option"
 import { HttpBody, HttpClientRequest, HttpServerRequest } from "effect/unstable/http"
 
 describe("HttpServerRequest", () => {
+  it.effect("preserves FormData through client-server-client conversion", () =>
+    Effect.gen(function*() {
+      const formData = new FormData()
+      formData.set("name", "alice")
+      const clientRequest = HttpClientRequest.post("https://example.com/upload").pipe(
+        HttpClientRequest.bodyFormData(formData)
+      )
+
+      const roundTrip = HttpServerRequest.toClientRequest(HttpServerRequest.fromClientRequest(clientRequest))
+      const webRequest = yield* HttpClientRequest.toWeb(roundTrip)
+      const parsed = yield* Effect.tryPromise({
+        try: () => webRequest.formData(),
+        catch: () => undefined
+      }).pipe(Effect.option)
+
+      deepStrictEqual(
+        {
+          multipartMime: webRequest.headers.get("content-type")?.startsWith("multipart/form-data; boundary=") ?? false,
+          name: Option.isSome(parsed) ? parsed.value.get("name") : undefined
+        },
+        { multipartMime: true, name: "alice" }
+      )
+    }))
+
   it("toClientRequest", async () => {
     const serverRequest = HttpServerRequest.fromWeb(
       new Request("http://localhost:3000/todos/1?a=1&a=2#top", {

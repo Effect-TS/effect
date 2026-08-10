@@ -7,7 +7,7 @@
     "clean": "node scripts/clean.mjs",
     "codegen": "pnpm --recursive --parallel --filter \"./packages/**/*\" run codegen",
     "codemod": "node scripts/codemod.mjs",
-    "build": "tsc -b tsconfig.packages.json && pnpm --recursive --parallel --filter \"./packages/**/*\" run build",
+    "build": "tsc -b tsconfig.packages.json && pnpm --recursive --parallel --filter \"./packages/**/*\" run build && node scripts/copy-ai-docs.mjs",
     "bundle-analyze": "bash scripts/bundle-analyze.sh",
     "bundle-compare": "bash scripts/bundle-compare.sh",
     "bundle-compare-selected": "bash scripts/bundle-compare-selected.sh",
@@ -25,13 +25,12 @@
     "jsdocs": "effect-jsdocs",
     "lint": "oxlint -f unix && dprint check",
     "lint-fix": "oxlint --fix && dprint fmt",
-    "docgen": "pnpm --recursive --filter \"./packages/**/*\" exec docgen && node scripts/docs.mjs",
     "ai-docgen": "effect-ai-docgen ai-docs/src -o LLMS.md",
     "ai-docgen:watch": "pnpm ai-docgen --watch",
     "api-diff": "pnpm --dir packages/tools/api-diff exec node src/bin.ts",
     "test-types": "tstyche --target '>=5.9'",
     "changeset-version": "changeset version",
-    "changeset-publish": "pnpm codemod && pnpm build && changeset publish"
+    "changeset-publish": "node scripts/set-strip-internal.mjs && pnpm codemod && pnpm build && changeset publish"
   },
   "devDependencies": {
     "@babel/cli": "^8.0.4",

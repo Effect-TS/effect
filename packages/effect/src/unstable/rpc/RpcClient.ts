@@ -23,6 +23,7 @@ import * as Latch from "../../Latch.ts"
 import * as Layer from "../../Layer.ts"
 import * as Option from "../../Option.ts"
 import * as Pool from "../../Pool.ts"
+import * as Predicate from "../../Predicate.ts"
 import * as Queue from "../../Queue.ts"
 import * as Result from "../../Result.ts"
 import * as Schedule from "../../Schedule.ts"
@@ -50,6 +51,8 @@ import * as RpcSchema from "./RpcSchema.ts"
 import * as RpcSerialization from "./RpcSerialization.ts"
 import * as RpcWorker from "./RpcWorker.ts"
 import { withRunClient } from "./Utils.ts"
+
+const isRpcClientError = (u: unknown): u is RpcClientError => Predicate.isTagged(u, "RpcClientError")
 
 /**
  * The object-shaped client generated from a union of RPC definitions, with one
@@ -960,7 +963,7 @@ export const makeProtocolHttp = (client: HttpClient.HttpClient): Effect.Effect<
             })
           })
         )).pipe(
-          Effect.mapError((cause) => cause instanceof RpcClientError ? cause : httpClientError(cause))
+          Effect.mapError((cause) => isRpcClientError(cause) ? cause : httpClientError(cause))
         )
       if (!hasResponse) {
         return yield* emptyResponseError(request)
@@ -1008,6 +1011,13 @@ export const layerProtocolHttp = (options: {
 export const makeProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
   readonly retryPolicy?: Schedule.Schedule<any, Socket.SocketError> | undefined
+  /**
+   * Runs for each retried `SocketOpenError` when `retryTransientErrors` is enabled.
+   * Ping timeouts are also reported because the protocol classifies them as
+   * `SocketOpenError`. The returned `Effect<void>` cannot fail with a typed error
+   * or require services; defects are logged and ignored so retries can continue.
+   */
+  readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
 }): Effect.Effect<
   Protocol["Service"],
   never,
@@ -1032,6 +1042,13 @@ export const makeProtocolSocket = (options?: {
 
     const broadcast = (response: FromServerEncoded) =>
       Effect.forEach(clientIds, (clientId) => writeResponse(clientId, response))
+    const broadcastError = (error: RpcClientError) => {
+      currentError = error
+      return broadcast({
+        _tag: "ClientProtocolError",
+        error
+      })
+    }
 
     yield* Effect.suspend(() => {
       parser = serialization.makeUnsafe()
@@ -1096,24 +1113,29 @@ export const makeProtocolSocket = (options?: {
       Effect.tapCause((cause) => {
         const error = Cause.findError(cause)
         const hasError = Result.isSuccess(error)
-        if (
-          options?.retryTransientErrors && hasError &&
-          error.success.reason._tag === "SocketOpenError"
-        ) {
-          return Effect.void
-        }
-        currentError = new RpcClientError({
+        const rpcError = new RpcClientError({
           reason: hasError ? error.success.reason : new RpcClientDefect({
             message: "Unknown socket error",
             cause: Cause.squash(cause)
           })
         })
-        return broadcast({
-          _tag: "ClientProtocolError",
-          error: currentError
-        })
+        if (
+          options?.retryTransientErrors && hasError &&
+          error.success.reason._tag === "SocketOpenError"
+        ) {
+          return (options.onTransientError?.(rpcError) ?? Effect.void).pipe(
+            Effect.ignoreCause({
+              log: true,
+              message: "RpcClient onTransientError hook failed"
+            })
+          )
+        }
+        return broadcastError(rpcError)
       }),
-      Effect.retry(options?.retryPolicy ?? defaultRetryPolicy),
+      Effect.retryOrElse(
+        options?.retryPolicy ?? defaultRetryPolicy,
+        (error) => broadcastError(new RpcClientError({ reason: error.reason }))
+      ),
       Effect.annotateLogs({
         module: "RpcClient",
         method: "makeProtocolSocket"
@@ -1176,6 +1198,13 @@ const makePinger = Effect.fnUntraced(function*<A, E, R>(writePing: Effect.Effect
  */
 export const layerProtocolSocket = (options?: {
   readonly retryTransientErrors?: boolean | undefined
+  /**
+   * Runs for each retried `SocketOpenError` when `retryTransientErrors` is enabled.
+   * Ping timeouts are also reported because the protocol classifies them as
+   * `SocketOpenError`. The returned `Effect<void>` cannot fail with a typed error
+   * or require services; defects are logged and ignored so retries can continue.
+   */
+  readonly onTransientError?: ((error: RpcClientError) => Effect.Effect<void>) | undefined
 }): Layer.Layer<
   Protocol,
   never,
@@ -1256,6 +1285,11 @@ export const makeProtocolWorker = (
           undefined
       }).pipe(
         Effect.tapCause((cause) => {
+          for (const [requestId, entry] of entries) {
+            if (entry.worker !== backing) continue
+            entries.delete(requestId)
+            entry.latch.openUnsafe()
+          }
           const error = Cause.findError(cause)
           return broadcast({
             _tag: "ClientProtocolError",

@@ -1,6 +1,6 @@
 {
   "name": "@effect/atom-solid",
-  "version": "4.0.0-beta.103",
+  "version": "4.0.0-beta.107",
   "type": "module",
   "license": "MIT",
   "description": "SolidJS bindings for the Effect Atom modules",
@@ -37,7 +37,10 @@
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map"
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*"
   ],
   "publishConfig": {
     "access": "public",
@@ -58,7 +61,7 @@
   },
   "peerDependencies": {
     "effect": "workspace:^",
-    "solid-js": ">=1 <2"
+    "solid-js": ">=1.9.14 <2.0.0"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.0",

@@ -1,7 +1,7 @@
 {
   "name": "@effect/openapi-generator",
   "type": "module",
-  "version": "4.0.0-beta.103",
+  "version": "4.0.0-beta.107",
   "license": "MIT",
   "description": "Generate Effect Schema types, HTTP clients, and HttpApi modules from OpenAPI specifications",
   "homepage": "https://effect.website",
@@ -38,7 +38,10 @@
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map"
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*"
   ],
   "publishConfig": {
     "access": "public",

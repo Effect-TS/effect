@@ -140,6 +140,20 @@ describe("SchemaAST", () => {
   })
 
   describe("toType", () => {
+    it("is idempotent for suspended schemas", () => {
+      const schema = Schema.suspend(() => Schema.Struct({ a: Schema.NumberFromString }))
+      const ast = SchemaAST.toType(schema.ast)
+
+      strictEqual(SchemaAST.toType(ast), ast)
+    })
+
+    it("toEncoded is idempotent for suspended schemas", () => {
+      const schema = Schema.suspend(() => Schema.Struct({ a: Schema.NumberFromString }))
+      const ast = SchemaAST.toEncoded(schema.ast)
+
+      strictEqual(SchemaAST.toEncoded(ast), ast)
+    })
+
     it("promotes encodingChecks when contained type shape is preserved", () => {
       const schema = Schema.Struct({ a: Schema.String }).pipe(
         Schema.flip,
@@ -302,6 +316,27 @@ describe("SchemaAST", () => {
       const ast = E.ast
       deepStrictEqual(SchemaAST.collectSentinels(ast), [{ key: "_tag", literal: "E" }])
     })
+
+    it("Union: the sentinels common to every member", () => {
+      const shared = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a"), variant: Schema.Literal("x") }),
+        Schema.Struct({ kind: Schema.Literal("a"), variant: Schema.Literal("y") })
+      ])
+      deepStrictEqual(SchemaAST.collectSentinels(shared.ast), [{ key: "kind", literal: "a" }])
+
+      const disjoint = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a") }),
+        Schema.Struct({ kind: Schema.Literal("b") })
+      ])
+      deepStrictEqual(SchemaAST.collectSentinels(disjoint.ast), [])
+
+      // A suspended member stays opaque, so the intersection is conservative.
+      const withSuspend = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a") }),
+        Schema.suspend(() => Schema.Struct({ kind: Schema.Literal("a") }))
+      ])
+      deepStrictEqual(SchemaAST.collectSentinels(withSuspend.ast), [])
+    })
   })
 
   describe("getCandidates", () => {
@@ -441,7 +476,7 @@ describe("SchemaAST", () => {
       deepStrictEqual(SchemaAST.getCandidates(input, ast.types), [ast.types[0]])
     })
 
-    it("should collect matches from different sentinel keys without duplicates", () => {
+    it("should handle candidates with different sentinel keys", () => {
       const schema = Schema.Union([
         Schema.Struct({
           kind: Schema.Literal("a"),
@@ -454,6 +489,14 @@ describe("SchemaAST", () => {
       deepStrictEqual(
         SchemaAST.getCandidates({ kind: "a", status: "ready", value: "value" }, ast.types),
         [ast.types[0], ast.types[1]]
+      )
+      deepStrictEqual(
+        SchemaAST.getCandidates({ kind: "b", status: "ready", value: "value" }, ast.types),
+        [ast.types[1]]
+      )
+      deepStrictEqual(
+        SchemaAST.getCandidates({ kind: undefined, status: "ready", value: "value" }, ast.types),
+        [ast.types[1]]
       )
     })
 
@@ -498,6 +541,31 @@ describe("SchemaAST", () => {
       const schema = Schema.Union([member], { mode: "oneOf" })
       const input = { kind: "a" }
       strictEqual(Schema.decodeUnknownSync(schema)(input), input)
+    })
+
+    it("should dispatch a nested union member by its common sentinel", () => {
+      const hosted = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a"), variant: Schema.Literal("x") }),
+        Schema.Struct({ kind: Schema.Literal("a"), variant: Schema.Literal("y") })
+      ])
+      const flat = Schema.Struct({ kind: Schema.Literal("b") })
+      const ast = Schema.Union([hosted, flat]).ast
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "b" }, ast.types), [ast.types[1]])
+    })
+
+    it("should exclude members whose sentinel the input contradicts", () => {
+      const schema = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a"), variant: Schema.Literal("x"), value: Schema.String }),
+        Schema.Struct({ kind: Schema.Literal("a"), variant: Schema.Literal("y"), value: Schema.Number })
+      ])
+      const ast = schema.ast
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: "x" }, ast.types), [ast.types[0]])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: "z" }, ast.types), [])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: undefined }, ast.types), [])
+      // A missing sentinel key does not exclude: the member still owes the error.
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a" }, ast.types), [ast.types[0], ast.types[1]])
+      deepStrictEqual(SchemaAST.getCandidates({ kind: "a", variant: undefined }, ast.types, true), ast.types)
     })
   })
 

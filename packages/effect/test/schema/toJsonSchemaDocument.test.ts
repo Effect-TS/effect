@@ -43,7 +43,7 @@ function assertJsonSchemaDocument<T, E, RD>(
   const valid = ajvDraft2020_12.validateSchema(jsonSchema)
   assertTrue(valid)
   // const validate = ajvDraft2020_12.compile(jsonSchema)
-  // const arb = Schema.toArbitrary(schema)
+  // const arb = Schema.toArbitrary(schema)(FastCheck)
   // const codec = Schema.toCodecJson(schema)
   // const encode = Schema.encodeSync(codec)
   // FastCheck.assert(FastCheck.property(arb, (t) => {
@@ -123,6 +123,39 @@ describe("toJsonSchemaDocument", () => {
               },
               required: ["value"],
               additionalProperties: false
+            }
+          }
+        }
+      )
+    })
+
+    it("preserves repeated optional structural schemas with references", () => {
+      const shared = Schema.Struct({ value: Schema.String })
+
+      assertJsonSchemaDocument(
+        Schema.Struct({ left: Schema.optional(shared), right: Schema.optional(shared) }),
+        {
+          schema: {
+            type: "object",
+            properties: {
+              left: { $ref: "#/$defs/Union_" },
+              right: { $ref: "#/$defs/Union_" }
+            },
+            additionalProperties: false
+          },
+          definitions: {
+            Union_: {
+              anyOf: [
+                {
+                  type: "object",
+                  properties: {
+                    value: { type: "string" }
+                  },
+                  required: ["value"],
+                  additionalProperties: false
+                },
+                { type: "null" }
+              ]
             }
           }
         }

@@ -283,7 +283,7 @@ const makeFile = (() => {
           this.position = this.position + offsetSize
         }
 
-        return this.position
+        return FileSystem.Size(this.position)
       })
     }
 

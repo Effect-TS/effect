@@ -87,6 +87,29 @@ describe("SchemaRepresentation.toRepresentations", () => {
       })
     })
 
+    it("preserves the original owner through repeated Context replacements", () => {
+      const ast = Schema.String.annotate({ identifier: "Value" }).ast
+      const first = SchemaAST.replaceContext(ast, new SchemaAST.Context(true, false))
+      const chained = SchemaAST.replaceContext(first, new SchemaAST.Context(false, true))
+      const direct = SchemaAST.replaceContext(ast, new SchemaAST.Context(false, true))
+
+      assert.strictEqual(SchemaAST.getContextOwner(first), ast)
+      assert.strictEqual(SchemaAST.getContextOwner(chained), ast)
+      assert.deepStrictEqual(SchemaRepresentation.toRepresentations([chained, direct]), {
+        representations: [
+          { _tag: "Reference", $ref: "Value" },
+          { _tag: "Reference", $ref: "Value" }
+        ],
+        references: {
+          Value: {
+            _tag: "String",
+            annotations: { identifier: "Value" },
+            checks: []
+          }
+        }
+      })
+    })
+
     it("keeps a checked derivative distinct from its identified source", () => {
       const base = Schema.String.annotate({ identifier: "Text" })
       const refined = base.pipe(Schema.check(Schema.isMinLength(1)))

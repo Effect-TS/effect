@@ -154,5 +154,5 @@ describe("DenoHttpCompression", () => {
         const compressed = new Uint8Array(yield* zstd.arrayBuffer)
         assert.strictEqual(Zlib.zstdDecompressSync(compressed).toString(), bigJson)
       }
-    }).pipe(Effect.scoped, Effect.provide(DenoHttpServer.layerTest)))
+    }).pipe(Effect.provide(DenoHttpServer.layerTest)))
 })

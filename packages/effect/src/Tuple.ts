@@ -43,7 +43,8 @@ import type { Apply, Lambda } from "./Struct.ts"
  * @category constructors
  * @since 2.0.0
  */
-export const make = <Elements extends ReadonlyArray<unknown>>(...elements: Elements): Elements => elements
+export const make = <const Elements extends ReadonlyArray<unknown>>(...elements: [...Elements]): [...Elements] =>
+  elements
 
 type Indices<T extends ReadonlyArray<unknown>> = Exclude<Partial<T>["length"], T["length"]>
 
@@ -90,7 +91,9 @@ type _BuildTuple<
     [...I, unknown]
   >
 
-type PickTuple<T extends ReadonlyArray<unknown>, K> = _BuildTuple<T, K>
+type PickTuple<T extends ReadonlyArray<unknown>, I extends ReadonlyArray<Indices<T>>> = {
+  -readonly [K in keyof I]: T[I[K] & keyof T]
+}
 
 /**
  * Creates a new tuple containing only the elements at the specified indices.
@@ -119,11 +122,11 @@ type PickTuple<T extends ReadonlyArray<unknown>, K> = _BuildTuple<T, K>
 export const pick: {
   <const T extends ReadonlyArray<unknown>, const I extends ReadonlyArray<Indices<T>>>(
     indices: I
-  ): (self: T) => PickTuple<T, I[number]>
+  ): (self: T) => PickTuple<T, I>
   <const T extends ReadonlyArray<unknown>, const I extends ReadonlyArray<Indices<T>>>(
     self: T,
     indices: I
-  ): PickTuple<T, I[number]>
+  ): PickTuple<T, I>
 } = dual(
   2,
   <const T extends ReadonlyArray<unknown>>(

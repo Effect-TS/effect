@@ -830,6 +830,11 @@ const OutputItem = Schema.Union([
   WebSearchCall
 ])
 
+const ResponseError = Schema.Struct({
+  code: Schema.String,
+  message: Schema.String
+})
+
 /**
  * Schema for an OpenAI Responses API response object.
  *
@@ -858,6 +863,7 @@ export const Response = Schema.Struct({
     Schema.withDecodingDefault(Effect.succeed([]))
   ),
   usage: Schema.optionalKey(Schema.NullOr(ResponseUsage)),
+  error: Schema.optionalKey(Schema.NullOr(ResponseError)),
   incomplete_details: Schema.optionalKey(
     Schema.NullOr(
       Schema.Struct({

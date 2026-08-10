@@ -454,6 +454,77 @@ describe("SchemaRepresentation.toJsonSchemaMultiDocument", () => {
       ])
     })
 
+    it("preserves unknown references returned by callbacks", () => {
+      const reference = { $ref: "#/$defs/Unknown" }
+      const output = SchemaRepresentation.toJsonSchemaMultiDocument({
+        representations: [{
+          _tag: "String",
+          checks: [{
+            _tag: "Filter",
+            aborted: false,
+            annotations: { toJsonSchema: () => reference }
+          }]
+        }],
+        references: {}
+      })
+
+      assert.deepStrictEqual(output.schemas, [{
+        type: "string",
+        allOf: [reference]
+      }])
+    })
+
+    it("rewrites callback references without mutating callback output", () => {
+      const defaultValue = Object.freeze({ $ref: "#/$defs//properties/value" })
+      const reference = Object.freeze({ $ref: "#/$defs//properties/value", default: defaultValue })
+      const definition = (): SchemaRepresentation.Representation => ({
+        _tag: "String",
+        annotations: { "~identifier": "Value" },
+        checks: []
+      })
+      const output = SchemaRepresentation.toJsonSchemaMultiDocument({
+        representations: [{
+          _tag: "String",
+          annotations: { default: -0 },
+          checks: [{
+            _tag: "Filter",
+            aborted: false,
+            annotations: { toJsonSchema: () => reference }
+          }]
+        }],
+        references: { A: definition(), "": definition() }
+      })
+
+      assert.deepStrictEqual(reference, { $ref: "#/$defs//properties/value", default: defaultValue })
+      assert.strictEqual(Object.is(output.schemas[0].default, -0), true)
+      assert.deepStrictEqual(output, {
+        dialect: "draft-2020-12",
+        schemas: [{
+          type: "string",
+          default: -0,
+          allOf: [{ $ref: "#/$defs/A/properties/value", default: { $ref: "#/$defs//properties/value" } }]
+        }],
+        definitions: { A: { type: "string" } }
+      })
+    })
+
+    it("preserves unknown references in annotation values", () => {
+      const reference = { $ref: "#/$defs/Unknown" }
+      const output = SchemaRepresentation.toJsonSchemaMultiDocument({
+        representations: [{
+          _tag: "String",
+          annotations: { default: reference },
+          checks: []
+        }],
+        references: {}
+      })
+
+      assert.deepStrictEqual(output.schemas, [{
+        type: "string",
+        default: reference
+      }])
+    })
+
     it("resolves referenced index-signature parameters and stops cycles", () => {
       const record = (
         parameter: SchemaRepresentation.Representation

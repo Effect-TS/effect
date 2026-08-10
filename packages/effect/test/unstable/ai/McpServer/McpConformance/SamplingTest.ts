@@ -87,7 +87,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             yield* peer.client["sampling/createMessage"](samplingRequest)
 
             assert.strictEqual((yield* peer.takeRequest).method, "sampling/createMessage")
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe("Creating Messages", () => {
@@ -126,7 +126,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
             assert.deepStrictEqual(payload.stopSequences, ["STOP"])
             assert.deepStrictEqual(payload.metadata, { request: "metadata" })
             assert.strictEqual(payload.includeContext, "thisServer")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MUST accept and decode text sampling content", () =>
           Effect.gen(function*() {
@@ -149,7 +149,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               type: "text",
               text: "sampled"
             })
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MUST accept image sampling content", () =>
           Effect.gen(function*() {
@@ -179,7 +179,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               data: new Uint8Array([1, 2, 3]),
               mimeType: "image/png"
             })
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MUST accept audio sampling content", () =>
           Effect.gen(function*() {
@@ -209,7 +209,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
               data: new Uint8Array([4, 5, 6]),
               mimeType: "audio/wav"
             })
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("MUST surface sampling errors returned by the client", () =>
           Effect.gen(function*() {
@@ -230,7 +230,7 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.instanceOf(error, McpSchema.InternalError)
             assert.strictEqual(error.message, "Sampling failed")
-          }).pipe(Effect.scoped))
+          }))
       })
     })
   })

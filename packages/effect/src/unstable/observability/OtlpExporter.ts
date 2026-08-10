@@ -167,7 +167,7 @@ export const make: (
     readonly label: string
     readonly exportInterval: Duration.Input
     readonly maxBatchSize: number | "disabled"
-    readonly body: (data: Array<any>) => HttpBody
+    readonly body: (data: Array<any>) => readonly [body: HttpBody, onSuccess: Effect.Effect<void>]
     readonly shutdownTimeout: Duration.Input
   }
 ) => Effect.Effect<
@@ -208,9 +208,11 @@ export const make: (
       }
       buffer = []
     }
+    const [body, onSuccess] = options.body(items)
     return client.execute(
-      HttpClientRequest.setBody(request, options.body(items))
+      HttpClientRequest.setBody(request, body)
     ).pipe(
+      Effect.andThen(onSuccess),
       Effect.asVoid,
       Effect.withTracerEnabled(false)
     )

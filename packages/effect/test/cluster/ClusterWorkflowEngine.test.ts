@@ -294,7 +294,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
       assert(envelope)
       assert.strictEqual(envelope.address.shardId.group, "workflow")
-    }).pipe(Effect.scoped, Effect.provide(TestWorkflowEngine)))
+    }).pipe(Effect.provide(TestWorkflowEngine)))
 
   it.effect("propagates trace context to persisted workflow requests", () => {
     let callerSpan: Tracer.NativeSpan | undefined
@@ -335,7 +335,6 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       assert.strictEqual(envelope.sampled, callerSpan.sampled)
     }).pipe(
       Effect.provideService(Tracer.Tracer, tracer),
-      Effect.scoped,
       Effect.provide(TestWorkflowEngine)
     )
   })
@@ -373,7 +372,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
       assert(envelope)
       assert.strictEqual(envelope.address.shardId.group, "workflow")
-    }).pipe(Effect.scoped, Effect.provide(TestWorkflowEngine)))
+    }).pipe(Effect.provide(TestWorkflowEngine)))
 
   it.effect("SuspendOnFailure", () =>
     Effect.gen(function*() {

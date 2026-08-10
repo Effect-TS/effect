@@ -15,7 +15,7 @@ import type * as Cause from "./Cause.ts"
 import type { Clock } from "./Clock.ts"
 import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
-import type { ExecutionPlan } from "./ExecutionPlan.ts"
+import type * as ExecutionPlan from "./ExecutionPlan.ts"
 import * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import type * as Filter from "./Filter.ts"
@@ -4259,6 +4259,14 @@ export const ignoreCause: <
  * and retry timing is derived per step (the first attempt uses the remaining
  * attempts schedule; later retries apply the step schedule at least once).
  *
+ * Attempts can be observed from outside the effect by passing
+ * `options.onEvent`, which receives an `ExecutionPlan.Event` before each
+ * attempt and after it settles. The handler is awaited inline before and after
+ * every attempt, so events are strictly ordered; keep it cheap. It cannot
+ * fail, which keeps observation from changing the plan's outcome, and its
+ * requirements are added to the resulting effect. Terminal events run like
+ * finalizers, so they are emitted even when the attempt is interrupted.
+ *
  * **Example** (Retrying with an execution plan)
  *
  * ```ts import.meta.vitest
@@ -4283,19 +4291,55 @@ export const ignoreCause: <
  * Effect.runSync(program) // => "good"
  * ```
  *
+ * **Example** (Observing execution-plan attempts)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, ExecutionPlan, Layer } from "effect"
+ *
+ * const Endpoint = Context.Service<{ url: string }>("Endpoint")
+ *
+ * const fetchUrl = Effect.gen(function*() {
+ *   const endpoint = yield* Effect.service(Endpoint)
+ *   if (endpoint.url === "bad") {
+ *     return yield* Effect.fail("Unavailable")
+ *   }
+ *   return endpoint.url
+ * })
+ *
+ * const plan = ExecutionPlan.make(
+ *   { provide: Layer.succeed(Endpoint, { url: "bad" }) },
+ *   { provide: Layer.succeed(Endpoint, { url: "good" }) }
+ * )
+ *
+ * const events: Array<string> = []
+ * const program = Effect.withExecutionPlan(fetchUrl, plan, {
+ *   onEvent: (event) => Effect.sync(() => events.push(`${event._tag}:${event.stepIndex}`))
+ * })
+ *
+ * await Effect.runPromise(program) // => "good"
+ *
+ * events // => ["AttemptStart:0", "AttemptFailure:0", "AttemptStart:1", "AttemptSuccess:1"]
+ * ```
+ *
  * @category error handling
  * @since 3.16.0
  */
 export const withExecutionPlan: {
-  <Input, Provides, PlanE, PlanR>(
-    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
+  <Input, Provides, PlanE, PlanR, RX = never>(
+    plan: ExecutionPlan.ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>,
+    options?: {
+      readonly onEvent?: ((event: ExecutionPlan.Event<Input | PlanE>) => Effect<void, never, RX>) | undefined
+    }
   ): <A, E extends Input, R>(
     effect: Effect<A, E, R>
-  ) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
-  <A, E extends Input, R, Provides, Input, PlanE, PlanR>(
+  ) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR | RX>
+  <A, E extends Input, R, Provides, Input, PlanE, PlanR, RX = never>(
     effect: Effect<A, E, R>,
-    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
-  ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
+    plan: ExecutionPlan.ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>,
+    options?: {
+      readonly onEvent?: ((event: ExecutionPlan.Event<E | PlanE>) => Effect<void, never, RX>) | undefined
+    }
+  ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR | RX>
 } = internalExecutionPlan.withExecutionPlan
 
 /**
@@ -6099,12 +6143,12 @@ export const updateContext: {
 export const updateService: {
   <I, A>(
     service: Context.Key<I, A>,
-    f: (value: A) => A
+    f: (value: A) => NoInfer<A>
   ): <XA, E, R>(self: Effect<XA, E, R>) => Effect<XA, E, R | I>
   <XA, E, R, I, A>(
     self: Effect<XA, E, R>,
     service: Context.Key<I, A>,
-    f: (value: A) => A
+    f: (value: A) => NoInfer<A>
   ): Effect<XA, E, R | I>
 } = internal.updateService
 
@@ -6169,7 +6213,7 @@ export const updateService: {
  */
 export const updateServiceScoped: <I, A>(
   service: Context.Key<I, A>,
-  f: (value: A) => A,
+  f: (value: A) => NoInfer<A>,
   options?: {
     readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
   } | undefined
@@ -6298,12 +6342,12 @@ export const provideService: {
 export const provideServiceEffect: {
   <I, S, E2, R2>(
     service: Context.Key<I, S>,
-    acquire: Effect<S, E2, R2>
+    acquire: Effect<NoInfer<S>, E2, R2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, I> | R2>
   <A, E, R, I, S, E2, R2>(
     self: Effect<A, E, R>,
     service: Context.Key<I, S>,
-    acquire: Effect<S, E2, R2>
+    acquire: Effect<NoInfer<S>, E2, R2>
   ): Effect<A, E | E2, Exclude<R, I> | R2>
 } = internal.provideServiceEffect
 
@@ -7717,15 +7761,15 @@ export const replicateEffect: {
 export const schedule: {
   <Output, Error, Env>(
     schedule: Schedule<Output, unknown, Error, Env>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Output, E, R | Env>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Output, E | Error, R | Env>
   <A, E, R, Output, Error, Env>(
     self: Effect<A, E, R>,
     schedule: Schedule<Output, unknown, Error, Env>
-  ): Effect<Output, E, R | Env>
+  ): Effect<Output, E | Error, R | Env>
 } = dual(2, <A, E, R, Output, Error, Env>(
   self: Effect<A, E, R>,
   schedule: Schedule<Output, unknown, Error, Env>
-): Effect<Output, E, R | Env> => scheduleFrom(self, undefined, schedule))
+): Effect<Output, E | Error, R | Env> => scheduleFrom(self, undefined, schedule))
 
 /**
  * Runs an effect repeatedly according to a schedule that is initialized with a
@@ -7769,12 +7813,12 @@ export const scheduleFrom: {
   <Input, Output, Error, Env>(
     initial: Input,
     schedule: Schedule<Output, Input, Error, Env>
-  ): <E, R>(self: Effect<Input, E, R>) => Effect<Output, E, R | Env>
+  ): <E, R>(self: Effect<Input, E, R>) => Effect<Output, E | Error, R | Env>
   <Input, E, R, Output, Error, Env>(
     self: Effect<Input, E, R>,
     initial: Input,
     schedule: Schedule<Output, Input, Error, Env>
-  ): Effect<Output, E, R | Env>
+  ): Effect<Output, E | Error, R | Env>
 } = internalSchedule.scheduleFrom
 
 // -----------------------------------------------------------------------------

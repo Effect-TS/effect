@@ -170,6 +170,20 @@ describe("Channel", () => {
       }))
   })
 
+  describe("destructors", () => {
+    it.effect("mkUint8Array", () =>
+      Effect.gen(function*() {
+        const bytes = yield* Channel.fromArray(
+          [
+            [new Uint8Array([1, 2])],
+            [new Uint8Array([3]), new Uint8Array([4, 5])]
+          ] as const
+        ).pipe(Channel.mkUint8Array)
+
+        assert.deepStrictEqual(bytes, new Uint8Array([1, 2, 3, 4, 5]))
+      }))
+  })
+
   describe("mapping", () => {
     it.effect("map", () =>
       Effect.gen(function*() {

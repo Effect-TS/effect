@@ -83,7 +83,7 @@ export const make: (
           }]
         }]
       }
-      return serialization.traces(data)
+      return [serialization.traces(data), Effect.void]
     },
     shutdownTimeout: options.shutdownTimeout ?? Duration.seconds(3)
   })

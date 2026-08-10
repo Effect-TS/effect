@@ -1,6 +1,6 @@
 import { NodeHttpServer } from "@effect/platform-node"
 import * as NodeClient from "@effect/platform-node/NodeHttpClient"
-import { describe, expect, it } from "@effect/vitest"
+import { assert, describe, expect, it } from "@effect/vitest"
 import { Struct } from "effect"
 import * as Context from "effect/Context"
 import * as Effect from "effect/Effect"
@@ -8,6 +8,7 @@ import * as Layer from "effect/Layer"
 import * as Schema from "effect/Schema"
 import * as Stream from "effect/Stream"
 import {
+  HttpBody,
   HttpClient,
   HttpClientRequest,
   HttpClientResponse,
@@ -27,6 +28,7 @@ const Todo = Schema.Struct({
 const TodoWithoutId = Schema.Struct({
   ...Struct.omit(Todo.fields, ["id"])
 })
+const largeResponseBody = "a".repeat(10 * 1024 * 1024)
 
 const makeLocalServerClient = Effect.gen(function*() {
   const client = yield* HttpClient.HttpClient
@@ -63,6 +65,9 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
       return HttpServerResponse.jsonUnsafe({ ...todo, id: 201 })
     })
   ),
+  HttpRouter.route("GET", "/text", Effect.succeed(HttpServerResponse.text("test"))),
+  HttpRouter.route("GET", "/large", Effect.succeed(HttpServerResponse.text(largeResponseBody))),
+  HttpRouter.route("GET", "/hang", Effect.never),
   HttpRouter.route("GET", "/redirect", Effect.succeed(HttpServerResponse.redirect("/redirected"))),
   HttpRouter.route("GET", "/redirected", Effect.succeed(HttpServerResponse.text("redirected"))),
   HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
@@ -90,13 +95,13 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
   )
 
   describe(`NodeHttpClient - ${name}`, () => {
-    it.effect("google", () =>
+    it.effect("text", () =>
       Effect.gen(function*() {
-        const response = yield* HttpClient.get("https://www.google.com/").pipe(
+        const response = yield* HttpClient.get("/text").pipe(
           Effect.flatMap((_) => _.text)
         )
-        expect(response).toContain("Google")
-      }).pipe(Effect.provide(layer), flaky))
+        expect(response).toBe("test")
+      }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("local server followRedirects", () =>
       Effect.gen(function*() {
@@ -109,19 +114,17 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
         expect(response).toBe("redirected")
       }).pipe(Effect.provide(localServerTestLayer)))
 
-    it.effect("google stream", () =>
-      flaky(
-        Effect.gen(function*() {
-          const client = yield* HttpClient.HttpClient
-          const response = yield* client.get("https://www.google.com/").pipe(
-            Effect.map((_) => _.stream),
-            Stream.unwrap,
-            Stream.decodeText(),
-            Stream.mkString
-          )
-          expect(response).toContain("Google")
-        }).pipe(Effect.provide(layer))
-      ))
+    it.effect("text stream", () =>
+      Effect.gen(function*() {
+        const client = yield* HttpClient.HttpClient
+        const response = yield* client.get("/text").pipe(
+          Effect.map((_) => _.stream),
+          Stream.unwrap,
+          Stream.decodeText(),
+          Stream.mkString
+        )
+        expect(response).toBe("test")
+      }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("local server", () =>
       Effect.gen(function*() {
@@ -161,27 +164,37 @@ const LocalServerRoutes = HttpRouter.serve(HttpRouter.addAll([
     it.live("interrupt", () =>
       Effect.gen(function*() {
         const client = yield* HttpClient.HttpClient
-        const response = yield* client.get("https://www.google.com/").pipe(
+        const response = yield* client.get("/hang").pipe(
           Effect.flatMap((_) => _.text),
           Effect.timeout(1),
           Effect.asSome,
           Effect.catchTag("TimeoutError", () => Effect.succeedNone)
         )
         expect(response._tag).toEqual("None")
-      }).pipe(Effect.provide(layer), flaky))
+      }).pipe(Effect.provide(localServerTestLayer)))
 
     it.effect("close early", () =>
       Effect.gen(function*() {
-        const response = yield* HttpClient.get("https://www.google.com/")
+        const response = yield* HttpClient.get("/large")
         expect(response.status).toBe(200)
-      }).pipe(Effect.provide(layer), flaky))
+      }).pipe(Effect.provide(localServerTestLayer)))
   })
 })
 
-const flaky = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(
-    Effect.timeoutOrElse({
-      duration: "10 seconds",
-      orElse: () => Effect.void
-    })
-  )
+it.live("returns a stream body encoding failure", () =>
+  Effect.gen(function*() {
+    yield* Effect.gen(function*() {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      yield* request.text
+      return HttpServerResponse.empty()
+    }).pipe(HttpServer.serveEffect())
+    const error = yield* HttpClient.post("/", {
+      body: HttpBody.stream(Stream.fail("encode failure"))
+    }).pipe(Effect.timeout("1 second"), Effect.flip)
+    assert(error._tag === "HttpClientError")
+    assert.strictEqual(error.reason._tag, "EncodeError")
+    assert.strictEqual(error.reason.cause, "encode failure")
+  }).pipe(Effect.provide(HttpServer.layerTestClient.pipe(
+    Layer.provide(NodeClient.layerNodeHttp),
+    Layer.provideMerge(NodeHttpServer.layer(Http.createServer, { port: 0 }))
+  ))))

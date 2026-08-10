@@ -992,7 +992,8 @@ export declare namespace WithRateLimiter {
    *
    * **Details**
    *
-   * They define the backing limiter, initial limit window, keying strategy, algorithm, token cost, and whether response headers update future limits.
+   * They define the backing limiter, initial limit window, keying strategy,
+   * algorithm, token cost, retry count, and response header inspection.
    *
    * @category rate limiting
    * @since 4.0.0
@@ -1025,11 +1026,48 @@ export declare namespace WithRateLimiter {
      */
     readonly tokens?: number | ((request: HttpClientRequest.HttpClientRequest) => number) | undefined
     /**
-     * Disable automatic limits updates from response headers.
+     * The maximum number of automatic retries after an HTTP `429` response.
+     * Use a non-negative integer. Defaults to an unlimited number of retries.
+     * Set to `0` to disable automatic retries.
+     */
+    readonly times?: number | undefined
+    /**
+     * Overrides the response header names used for rate limit inspection.
+     * Header names are matched case-insensitively. An omitted field continues
+     * using the built-in names, while a configured field replaces them for
+     * that value. Header value formats are unchanged.
+     */
+    readonly responseHeaders?: {
+      /**
+       * Header containing the maximum number of requests in a window.
+       */
+      readonly limit?: string | undefined
+      /**
+       * Header containing the number of requests remaining in a window.
+       */
+      readonly remaining?: string | undefined
+      /**
+       * Header containing the rate limit reset time.
+       */
+      readonly reset?: string | undefined
+      /**
+       * Header containing the number of seconds until the rate limit resets.
+       */
+      readonly resetAfter?: string | undefined
+      /**
+       * Header containing the retry delay for an HTTP `429` response.
+       */
+      readonly retryAfter?: string | undefined
+    } | undefined
+    /**
+     * Disables automatic limit updates, `Retry-After` delays, and adaptive
+     * feedback from response headers. This does not disable automatic HTTP
+     * `429` retries. Set `times` to `0` to disable them.
      */
     readonly disableResponseInspection?: boolean | undefined
     /**
-     * Disable adaptive learning from `Retry-After` responses.
+     * Disables adaptive learning from `Retry-After` responses. Response
+     * inspection and direct `Retry-After` delays remain enabled.
      */
     readonly disableAdaptiveLearning?: boolean | undefined
   }
@@ -1043,6 +1081,12 @@ export declare namespace WithRateLimiter {
  * It can update limits by inspecting common rate limit response headers and
  * automatically retries HTTP `429` responses (or `HttpClientError` values
  * wrapping a `429` response) by forcing the retry back through the limiter.
+ *
+ * **Gotchas**
+ *
+ * Automatic HTTP `429` retries are unlimited unless `times` is specified.
+ * Disabling response inspection does not disable retries; set `times` to `0`
+ * to return or fail with the first `429`.
  *
  * @category rate limiting
  * @since 4.0.0
@@ -1075,6 +1119,7 @@ export const withRateLimiter: {
     ? tokensOption
     : constant(tokensOption ?? 1)
   const adaptiveLearningEnabled = !options.disableAdaptiveLearning
+  const headerNames = resolveRateLimiterHeaderNames(options.responseHeaders)
 
   const getState = (key: string): RateLimiterState => {
     const current = states.get(key)
@@ -1089,13 +1134,13 @@ export const withRateLimiter: {
     ? undefined
     : (clock: Clock, key: string, headers: Headers.Headers, tokens: number) => {
       const current = getState(key)
-      const next = parseRateLimiterState(current, clock, headers, tokens)
+      const next = parseRateLimiterState(current, clock, headers, tokens, headerNames)
       if (next.limit !== current.limit || !Duration.equals(next.window, current.window)) {
         states.set(key, next)
       }
     }
 
-  return transform(self, function loop(effect, request): Effect.Effect<
+  return transform(self, function loop(effect, request, retries = 0): Effect.Effect<
     HttpClientResponse.HttpClientResponse,
     E | RateLimiter.RateLimiterError,
     R
@@ -1105,11 +1150,11 @@ export const withRateLimiter: {
     const key = resolveKey(request)
     const tokens = Math.max(resolveTokens(request), 1)
     const current = getState(key)
+    const canRetry = options.times === undefined || retries < options.times
     function retry(retryAfter: Duration.Duration | undefined) {
-      if (options.disableResponseInspection) return loop(effect, request)
       return retryAfter
-        ? Effect.flatMap(Effect.sleep(retryAfter), () => loop(effect, request))
-        : loop(effect, request)
+        ? Effect.flatMap(Effect.sleep(retryAfter), () => loop(effect, request, retries + 1))
+        : loop(effect, request, retries + 1)
     }
     const inspectResponse = (
       response: HttpClientResponse.HttpClientResponse,
@@ -1119,11 +1164,11 @@ export const withRateLimiter: {
       if (options.disableResponseInspection || response.status !== 429) {
         return Effect.succeed<Duration.Duration | undefined>(undefined)
       }
-      const retryAfter = parseRetryAfter(clock, getHeader(response.headers, "retry-after"))
+      const retryAfter = parseRetryAfter(clock, getHeader(response.headers, ...headerNames.retryAfter))
       if (retryAfter === undefined) {
         return Effect.succeed<Duration.Duration | undefined>(undefined)
       }
-      const delay = parseRateLimitWindow(clock, response.headers) ?? retryAfter
+      const delay = parseRateLimitWindow(clock, response.headers, headerNames) ?? retryAfter
       if (adaptive === undefined) {
         return Effect.succeed<Duration.Duration | undefined>(delay)
       }
@@ -1157,7 +1202,7 @@ export const withRateLimiter: {
             const request = Effect.matchEffect(effect, {
               onSuccess(response) {
                 return Effect.flatMap(inspectResponse(response, adaptive), (retryAfter) => {
-                  if (response.status !== 429) return Effect.succeed(response)
+                  if (response.status !== 429 || !canRetry) return Effect.succeed(response)
                   return retry(retryAfter)
                 })
               },
@@ -1165,7 +1210,7 @@ export const withRateLimiter: {
                 if (isTooManyRequestsHttpClientError(error)) {
                   return Effect.flatMap(
                     inspectResponse(error.reason.response, adaptive),
-                    (retryAfter) => retry(retryAfter)
+                    (retryAfter) => canRetry ? retry(retryAfter) : Effect.fail(error)
                   )
                 }
                 return Effect.fail(error)
@@ -1199,6 +1244,34 @@ export const withRateLimiter: {
   })
 })
 
+interface RateLimiterHeaderNames {
+  readonly limit: ReadonlyArray<string>
+  readonly remaining: ReadonlyArray<string>
+  readonly reset: ReadonlyArray<string>
+  readonly resetAfter: ReadonlyArray<string>
+  readonly retryAfter: ReadonlyArray<string>
+}
+
+const resolveRateLimiterHeaderNames = (
+  responseHeaders: WithRateLimiter.Options["responseHeaders"]
+): RateLimiterHeaderNames => ({
+  limit: responseHeaders?.limit === undefined
+    ? ["ratelimit-limit", "x-ratelimit-limit"]
+    : [responseHeaders.limit.toLowerCase()],
+  remaining: responseHeaders?.remaining === undefined
+    ? ["ratelimit-remaining", "x-ratelimit-remaining"]
+    : [responseHeaders.remaining.toLowerCase()],
+  reset: responseHeaders?.reset === undefined
+    ? ["ratelimit-reset", "x-ratelimit-reset"]
+    : [responseHeaders.reset.toLowerCase()],
+  resetAfter: responseHeaders?.resetAfter === undefined
+    ? ["ratelimit-reset-after", "x-ratelimit-reset-after"]
+    : [responseHeaders.resetAfter.toLowerCase()],
+  retryAfter: responseHeaders?.retryAfter === undefined
+    ? ["retry-after"]
+    : [responseHeaders.retryAfter.toLowerCase()]
+})
+
 interface RateLimiterState {
   readonly limit: number
   readonly window: Duration.Duration
@@ -1209,10 +1282,11 @@ const parseRateLimiterState = (
   state: RateLimiterState,
   clock: Clock,
   headers: Headers.Headers,
-  tokens: number
+  tokens: number,
+  headerNames: RateLimiterHeaderNames
 ): RateLimiterState => {
-  const limit = parseRateLimitLimit(state, headers, tokens) ?? state.limit
-  const window = parseRateLimitWindow(clock, headers) ?? state.window
+  const limit = parseRateLimitLimit(state, headers, tokens, headerNames) ?? state.limit
+  const window = parseRateLimitWindow(clock, headers, headerNames) ?? state.window
   if (limit === state.limit && Duration.equals(window, state.window)) {
     return state
   }
@@ -1222,35 +1296,40 @@ const parseRateLimiterState = (
 const parseRateLimitLimit = (
   state: RateLimiterState,
   headers: Headers.Headers,
-  tokens: number
+  tokens: number,
+  headerNames: RateLimiterHeaderNames
 ): number | undefined => {
-  const raw = getHeader(headers, "ratelimit-limit", "x-ratelimit-limit")
+  const raw = getHeader(headers, ...headerNames.limit)
   const value = parseNumberHeader(raw)
   if (value !== undefined && value > 0) {
     return value
   }
-  const remaining = parseRateLimitRemaining(headers)
+  const remaining = parseRateLimitRemaining(headers, headerNames)
   if (remaining === undefined) {
     return undefined
   }
   return state.initial ? remaining + tokens : Math.max(remaining + tokens, state.limit)
 }
 
-const parseRateLimitRemaining = (headers: Headers.Headers): number | undefined => {
-  const raw = getHeader(headers, "ratelimit-remaining", "x-ratelimit-remaining")
+const parseRateLimitRemaining = (
+  headers: Headers.Headers,
+  headerNames: RateLimiterHeaderNames
+): number | undefined => {
+  const raw = getHeader(headers, ...headerNames.remaining)
   const value = parseNumberHeader(raw)
   return value !== undefined && value >= 0 ? value : undefined
 }
 
 const parseRateLimitWindow = (
   clock: Clock,
-  headers: Headers.Headers
+  headers: Headers.Headers,
+  headerNames: RateLimiterHeaderNames
 ): Duration.Duration | undefined => {
-  const resetAfter = parseResetAfter(getHeader(headers, "ratelimit-reset-after", "x-ratelimit-reset-after"))
+  const resetAfter = parseResetAfter(getHeader(headers, ...headerNames.resetAfter))
   if (resetAfter !== undefined) {
     return resetAfter
   }
-  return parseResetHeader(clock, getHeader(headers, "ratelimit-reset", "x-ratelimit-reset"))
+  return parseResetHeader(clock, getHeader(headers, ...headerNames.reset))
 }
 
 const parseRetryAfter = (

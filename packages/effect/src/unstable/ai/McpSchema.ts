@@ -1854,7 +1854,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
      * Optional metadata to pass through to the LLM provider. The format of
      * this metadata is provider-specific.
      */
-    metadata: Schema.Any
+    metadata: optional(Schema.Record(Schema.String, Schema.Unknown))
   }
 }) {}
 

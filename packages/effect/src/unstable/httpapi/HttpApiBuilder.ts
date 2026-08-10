@@ -1101,10 +1101,10 @@ function toResponseErrorSchema(
     HttpApiSchema.isNoContent(schema.schema.ast)
   )
   const transformation = withHeadersTransformation<HttpApiSchema.withHeaders<unknown, Schema.StringTree>>(
-    (body) =>
-      encodeBody(body).pipe(
+    (body, options) =>
+      encodeBody(body, options).pipe(
         Effect.mapError((error) => error.issue),
-        Effect.flatMap(encodeResponse)
+        Effect.flatMap((body) => encodeResponse(body, options))
       ),
     encodeHeaders
   )
@@ -1167,22 +1167,34 @@ function getResponseTransformation(
   )
 
   return SchemaTransformation.transformOrFail({
-    decode: () => Effect.fail(new SchemaIssue.Forbidden({ message: "Encode only schema" })),
+    decode: (input, options) =>
+      Effect.fail(
+        new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)
+      ),
     encode
   })
 }
 
 function withHeadersTransformation<T = unknown>(
-  encodeBody: (body: unknown) => Effect.Effect<Response.HttpServerResponse, SchemaIssue.Issue, unknown>,
-  encodeHeaders: (headers: unknown) => Effect.Effect<unknown, Schema.SchemaError, unknown>
+  encodeBody: (
+    body: unknown,
+    options?: SchemaAST.ParseOptions
+  ) => Effect.Effect<Response.HttpServerResponse, SchemaIssue.Issue, unknown>,
+  encodeHeaders: (
+    headers: unknown,
+    options?: SchemaAST.ParseOptions
+  ) => Effect.Effect<unknown, Schema.SchemaError, unknown>
 ): SchemaTransformation.Transformation<T, Response.HttpServerResponse, never, unknown> {
   return SchemaTransformation.transformOrFail<T, Response.HttpServerResponse, never, unknown>({
-    decode: () => Effect.fail(new SchemaIssue.Forbidden({ message: "Encode only schema" })),
-    encode: (value) => {
+    decode: (input, options) =>
+      Effect.fail(
+        new SchemaIssue.Forbidden({ message: "Encode only schema" }, input, options)
+      ),
+    encode: (value, options) => {
       const pair = value as { readonly body: unknown; readonly headers: unknown }
-      return Effect.flatMap(encodeBody(pair.body), (response) =>
+      return Effect.flatMap(encodeBody(pair.body, options), (response) =>
         Effect.map(
-          encodeHeaders(pair.headers).pipe(Effect.mapError((error) => error.issue)),
+          encodeHeaders(pair.headers, options).pipe(Effect.mapError((error) => error.issue)),
           (headers) => Response.setHeaders(response, headers as any)
         ))
     }
@@ -1193,10 +1205,13 @@ function getResponseEncode<E>(
   status: number,
   encoding: HttpApiSchema.ResponseEncoding,
   isNoContent: boolean
-): (e: E) => Effect.Effect<Response.HttpServerResponse, SchemaIssue.InvalidValue, never> {
+): (
+  e: E,
+  options?: SchemaAST.ParseOptions
+) => Effect.Effect<Response.HttpServerResponse, SchemaIssue.InvalidValue, never> {
   switch (encoding._tag) {
     case "Json": {
-      return ((e) => {
+      return ((e, options) => {
         if (e === undefined || isNoContent) {
           return Effect.succeed(Response.empty({ status }))
         }
@@ -1205,7 +1220,11 @@ function getResponseEncode<E>(
           return Effect.succeed(Response.text(s, { status, contentType: encoding.contentType }))
         } catch {
           return Effect.fail(
-            new SchemaIssue.InvalidValue({ message: "Expected a JSON-serializable response body" })
+            new SchemaIssue.InvalidValue(
+              { expected: "a JSON-serializable response body" },
+              e,
+              options
+            )
           )
         }
       })

@@ -172,7 +172,7 @@ export const insert = dual<
     key: key[0],
     count: 0
   }
-  const count = n.count + 1
+  let count = n.count + 1
   let cIndex = 0
 
   while (cIndex < key.length) {
@@ -194,7 +194,17 @@ export const insert = dual<
       }
     } else {
       if (cIndex === key.length - 1) {
-        n.value = { value }
+        if (n.value !== undefined) {
+          count -= 1
+        }
+        nStack[nStack.length - 1] = {
+          key: n.key,
+          count,
+          value: { value },
+          left: n.left,
+          mid: n.mid,
+          right: n.right
+        }
       } else if (n.mid === undefined) {
         dStack.push(0)
         n = { key: key[cIndex + 1], count }

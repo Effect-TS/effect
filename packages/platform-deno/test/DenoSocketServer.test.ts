@@ -141,6 +141,22 @@ describe("DenoSocketServer", () => {
       yield* Fiber.interrupt(runFiber)
     }))
 
+  it.effect("closes with a pending pre-run connection", () =>
+    Effect.gen(function*() {
+      const scope = yield* Scope.make()
+      const server = yield* DenoSocketServer.make({ hostname: "127.0.0.1", port: 0 }).pipe(Scope.provide(scope))
+      const address = server.address
+      assert.strictEqual(address._tag, "TcpAddress")
+      if (address._tag !== "TcpAddress") return
+      const conn = yield* Effect.acquireRelease(
+        Effect.promise(() => Deno.connect({ hostname: address.hostname, port: address.port })),
+        (conn) => Effect.sync(() => conn.close())
+      )
+      void conn
+
+      yield* Scope.close(scope, Exit.void).pipe(Effect.timeout("1 second"))
+    }))
+
   it.effect("closes the connection after its handler completes", () =>
     Effect.gen(function*() {
       const called = [Deferred.makeUnsafe<void>(), Deferred.makeUnsafe<void>()]

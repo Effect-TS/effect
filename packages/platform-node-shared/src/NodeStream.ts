@@ -235,9 +235,6 @@ export const toString = <E = Cause.UnknownError>(
       }
       resume(Effect.fail(onError(err) as E))
     })
-    stream.once("error", (err) => {
-      resume(Effect.fail(onError(err) as E))
-    })
 
     let string = ""
     let bytes = 0

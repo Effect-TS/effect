@@ -42,7 +42,6 @@ describe("Tracer", () => {
         assert.instanceOf(span, OtelTracer.OtelSpan)
         assert.lengthOf(span.links, 1)
       }).pipe(
-        Effect.scoped,
         Effect.provide(TracingLive)
       ))
 
@@ -88,6 +87,33 @@ describe("Tracer", () => {
         Effect.withSpan("ok"),
         Effect.provide(TracingLive)
       ))
+
+    it.effect.each([OtelApi.SpanStatusCode.UNSET, OtelApi.SpanStatusCode.OK])(
+      "honors non-error wrapper status %s",
+      (status) =>
+        Effect.gen(function*() {
+          const span = yield* Effect.currentSpan
+          const wrapper = yield* OtelTracer.currentOtelSpan
+          wrapper.setStatus({ code: status })
+          wrapper.end()
+          assert.strictEqual(span.status._tag, "Ended")
+          if (span.status._tag === "Ended") {
+            assert.strictEqual(span.status.exit._tag, "Success")
+          }
+        }).pipe(Effect.withSpan("repro"))
+    )
+
+    it.effect("honors an error wrapper status", () =>
+      Effect.gen(function*() {
+        const span = yield* Effect.currentSpan
+        const wrapper = yield* OtelTracer.currentOtelSpan
+        wrapper.setStatus({ code: OtelApi.SpanStatusCode.ERROR })
+        wrapper.end()
+        assert.strictEqual(span.status._tag, "Ended")
+        if (span.status._tag === "Ended") {
+          assert.strictEqual(span.status.exit._tag, "Failure")
+        }
+      }).pipe(Effect.withSpan("repro")))
 
     it.effect("preserves the sampling decision of generic external spans", () =>
       Effect.gen(function*() {
@@ -243,7 +269,6 @@ describe("Tracer", () => {
           })
         })
       }).pipe(
-        Effect.scoped,
         Effect.provide(TracingLive)
       ))
   })

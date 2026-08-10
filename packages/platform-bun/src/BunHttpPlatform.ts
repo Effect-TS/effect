@@ -43,8 +43,13 @@ const make: Effect.Effect<
     }
     return Response.raw(file, { headers, status, statusText })
   },
-  fileWebResponse(file, status, statusText, headers, _options) {
-    return Response.raw(file, { headers, status, statusText })
+  fileWebResponse(file, status, statusText, headers, options) {
+    const start = Number(options?.offset ?? 0)
+    const end = options?.bytesToRead !== undefined ? start + Number(options.bytesToRead) : undefined
+    const body = start > 0 || end !== undefined
+      ? (file as File).slice(start, end, file.type)
+      : file
+    return Response.raw(body, { headers, status, statusText })
   }
 })
 
