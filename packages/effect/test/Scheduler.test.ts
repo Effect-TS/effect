@@ -41,9 +41,6 @@ describe("Scheduler", () => {
 
   it("sync dispatch falls back to Promise when queueMicrotask is missing", async () => {
     const original = globalThis.queueMicrotask
-    // @ts-expect-error -- simulating a runtime without the global
-    delete globalThis.queueMicrotask
-    vi.resetModules()
     const setImmediate = vi.spyOn(globalThis, "setImmediate").mockImplementation(() => {
       throw new Error("setImmediate is not supported")
     })
@@ -52,6 +49,11 @@ describe("Scheduler", () => {
     })
 
     try {
+      // @ts-expect-error -- simulating a runtime without the global
+      delete globalThis.queueMicrotask
+      // The fallback is chosen when the module body evaluates, so a fresh copy
+      // of the module must be evaluated with the global absent.
+      vi.resetModules()
       const FreshScheduler = await import("effect/Scheduler")
       const dispatcher = new FreshScheduler.MixedScheduler("sync").makeDispatcher()
       const order: Array<string> = []

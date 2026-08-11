@@ -92,8 +92,6 @@ const setImmediate = "setImmediate" in globalThis
     return (): void => clearTimeout(timer)
   }
 
-// Some environments (e.g. Convex isolates) have a working microtask queue via
-// Promises but never install a `queueMicrotask` global.
 const scheduleMicrotask: (f: () => void) => void = "queueMicrotask" in globalThis
   ? (f) => queueMicrotask(f)
   : (f) => void Promise.resolve().then(f)
