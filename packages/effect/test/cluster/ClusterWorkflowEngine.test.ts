@@ -274,6 +274,53 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(flags.get("losing-deferred-tail-runs")).toEqual(1)
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("DurableDeferred.raceAll wakes the active run in place without replaying it", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* InPlaceWakeWorkflow.executionId({ id: "in-place-wake" })
+      const fiber = yield* InPlaceWakeWorkflow.execute({ id: "in-place-wake" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(1)
+      const token = DurableDeferred.tokenFromExecutionId(InPlaceWakeGate, {
+        workflow: InPlaceWakeWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(InPlaceWakeGate, { token, value: "signal" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("signal")
+      expect(flags.get("in-place-wake-runs")).toEqual(1)
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("DurableDeferred.raceAll suspends when every branch is pending and resumes with the winner", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* TwoGateWorkflow.executionId({ id: "two-gates" })
+      const fiber = yield* TwoGateWorkflow.execute({ id: "two-gates" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      // let the race suspend with both gates pending
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust("1 second")
+      const polled = yield* TwoGateWorkflow.poll(executionId)
+      assert(Option.isSome(polled) && polled.value._tag === "Suspended")
+
+      const token = DurableDeferred.tokenFromExecutionId(TwoGateB, {
+        workflow: TwoGateWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(TwoGateB, { token, value: "signal-b" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("5 seconds")
+
+      expect(yield* Fiber.join(fiber)).toEqual("signal-b")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("nested workflows", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
@@ -797,6 +844,61 @@ const LosingDeferredWorkflowLayer = LosingDeferredWorkflow.toLayer(Effect.fnUntr
   return `${winner}:${tail}`
 }))
 
+const InPlaceWakeWorkflow = Workflow.make("InPlaceWakeWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const InPlaceWakeGate = DurableDeferred.make("InPlaceWakeGate", {
+  success: Schema.String
+})
+
+const InPlaceWakeWorkflowLayer = InPlaceWakeWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+  const runs = flags.get("in-place-wake-runs")
+  flags.set("in-place-wake-runs", typeof runs === "number" ? runs + 1 : 1)
+  return yield* DurableDeferred.raceAll({
+    name: "in-place-wake",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableDeferred.await(InPlaceWakeGate),
+      Activity.make({
+        name: "in-place-wake-activity",
+        success: Schema.String,
+        execute: Effect.sleep("5 seconds").pipe(Effect.as("activity"))
+      })
+    ]
+  })
+}))
+
+const TwoGateWorkflow = Workflow.make("TwoGateWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const TwoGateA = DurableDeferred.make("TwoGateA", {
+  success: Schema.String
+})
+
+const TwoGateB = DurableDeferred.make("TwoGateB", {
+  success: Schema.String
+})
+
+const TwoGateWorkflowLayer = TwoGateWorkflow.toLayer(() =>
+  DurableDeferred.raceAll({
+    name: "two-gates",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableDeferred.await(TwoGateA),
+      DurableDeferred.await(TwoGateB)
+    ]
+  })
+)
+
 const ParentWorkflow = Workflow.make("ParentWorkflow", {
   payload: {
     id: Schema.String
@@ -945,6 +1047,8 @@ const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(DurableRaceWorkflowLayer),
   Layer.merge(MixedRaceWorkflowLayer),
   Layer.merge(LosingDeferredWorkflowLayer),
+  Layer.merge(InPlaceWakeWorkflowLayer),
+  Layer.merge(TwoGateWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
   Layer.merge(ShardedClockWorkflowLayer),

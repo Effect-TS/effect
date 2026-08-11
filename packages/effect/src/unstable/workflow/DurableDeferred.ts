@@ -19,6 +19,7 @@ import * as Encoding from "../../Encoding.ts"
 import * as Exit from "../../Exit.ts"
 import * as Filter from "../../Filter.ts"
 import { dual } from "../../Function.ts"
+import * as Latch from "../../Latch.ts"
 import * as Option from "../../Option.ts"
 import * as Schema from "../../Schema.ts"
 import * as SchemaGetter from "../../SchemaGetter.ts"
@@ -129,6 +130,23 @@ const CurrentAttempt = Context.Reference<number>(
   { defaultValue: () => 1 }
 )
 
+/**
+ * Internal channel between `raceAll` and the `await` calls in its branches.
+ *
+ * A branch that awaits a pending deferred registers it here before suspending,
+ * so the race's wake arm knows which deferreds can complete the race while
+ * other branches are still active. Registrations bubble to enclosing races.
+ */
+interface RaceState {
+  readonly register: (instance: unknown, deferred: Any) => void
+  readonly bubble: (deferred: Any) => void
+}
+
+const RaceContext = Context.Reference<RaceState | undefined>(
+  "effect/workflow/DurableDeferred/RaceContext",
+  { defaultValue: () => undefined }
+)
+
 const await_: <Success extends Schema.Constraint, Error extends Schema.Constraint>(
   self: DurableDeferred<Success, Error>
 ) => Effect.Effect<
@@ -148,12 +166,8 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
   if (Option.isSome(exit)) {
     return yield* exit.value as Exit.Exit<any, any>
   }
-  let waiters = instance.deferredWaiters.get(self.name)
-  if (!waiters) {
-    waiters = new Set()
-    instance.deferredWaiters.set(self.name, waiters)
-  }
-  waiters.add(instance)
+  const race = yield* RaceContext
+  race?.register(instance, self)
   exit = yield* Workflow.wrapActivityResult(
     engine.deferredResult(self),
     Option.isNone
@@ -250,15 +264,6 @@ export const into: {
               exit
             })
           })
-        ).pipe(
-          Effect.ensuring(Effect.sync(() => {
-            for (const [name, waiters] of instance.deferredWaiters) {
-              waiters.delete(instance)
-              if (waiters.size === 0) {
-                instance.deferredWaiters.delete(name)
-              }
-            }
-          }))
         )
       }
     )
@@ -297,12 +302,92 @@ export const raceAll = <
   })
   return Effect.gen(function*() {
     const engine = yield* EngineTag
-    const exit = yield* engine.deferredResult(deferred)
-    if (Option.isSome(exit)) {
-      return yield* exit.value
+    const persisted = yield* engine.deferredResult(deferred)
+    if (Option.isSome(persisted)) {
+      return yield* persisted.value
     }
+    const parentInstance = yield* InstanceTag
+    const outerRace = yield* RaceContext
     return yield* into(
-      Effect.raceAll(options.effects),
+      Effect.gen(function*() {
+        const raceInstance = yield* InstanceTag
+        const total = options.effects.length
+        const branchInstances = new Set<unknown>()
+        const registered = new Map<string, Any>()
+        const wakeLatch = Latch.makeUnsafe()
+        let settled = 0
+        let suspendedBranches = 0
+        const race: RaceState = {
+          register(instance, d) {
+            if (branchInstances.has(instance)) race.bubble(d)
+          },
+          bubble(d) {
+            registered.set(d.name, d)
+            outerRace?.bubble(d)
+          }
+        }
+        // Branches keep their normal semantics: awaiting a pending deferred
+        // or a suspended activity interrupts the branch. Each branch gets its
+        // own instance clone so the wake arm can tell suspension apart from
+        // failure or losing the race.
+        const branches = options.effects.map((effect) =>
+          Effect.suspend(() => {
+            const branchInstance = { ...raceInstance }
+            branchInstances.add(branchInstance)
+            return effect.pipe(
+              Effect.provideService(InstanceTag, branchInstance),
+              Effect.onExit((exit) =>
+                Effect.sync(() => {
+                  settled++
+                  if (
+                    Exit.isFailure(exit) &&
+                    Cause.hasInterruptsOnly(exit.cause) &&
+                    branchInstance.suspended
+                  ) {
+                    suspendedBranches++
+                  }
+                  wakeLatch.openUnsafe()
+                })
+              )
+            )
+          })
+        )
+        // The wake arm races alongside the branches. It wins with a deferred
+        // completion that arrives while other branches are still active, and
+        // it is the single place that converts "every branch suspended" into
+        // a durable suspension of the workflow.
+        const wakeArm = Effect.gen(function*() {
+          parentInstance.raceWake.add(wakeLatch)
+          while (true) {
+            wakeLatch.closeUnsafe()
+            for (const d of registered.values()) {
+              const exit = yield* engine.deferredResult(d as any)
+              if (Option.isSome(exit)) {
+                return yield* exit.value as Exit.Exit<any, any>
+              }
+            }
+            // Only commit to an outcome when nothing raced with the polling
+            // above; a completion or branch exit reopens the latch.
+            if (!wakeLatch.isOpen() && settled === total) {
+              if (suspendedBranches === total) {
+                parentInstance.suspended = true
+                return yield* Workflow.suspend(raceInstance)
+              }
+              // at least one branch failed for real: exit so the race
+              // settles with the aggregated failures
+              return yield* Effect.interrupt
+            }
+            yield* wakeLatch.await
+          }
+        }).pipe(
+          Effect.ensuring(Effect.sync(() => {
+            parentInstance.raceWake.delete(wakeLatch)
+          }))
+        )
+        return yield* Effect.raceAll([...branches, wakeArm]).pipe(
+          Effect.provideService(RaceContext, race)
+        )
+      }),
       deferred
     )
   })

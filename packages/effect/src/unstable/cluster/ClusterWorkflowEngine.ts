@@ -401,7 +401,6 @@ export const make = Effect.gen(function*() {
                       if (!instance.suspended) {
                         pendingDeferredResults.delete(executionId)
                       }
-                      instance.deferredWaiters.clear()
                       if (activeRun === run) {
                         activeRun = undefined
                       }
@@ -462,12 +461,14 @@ export const make = Effect.gen(function*() {
                     pendingDeferredResults.set(executionId, pending)
                   }
                   pending.set(payload.name, payload.exit)
-                  const waiters = run.instance.deferredWaiters.get(payload.name)
-                  if (waiters) {
-                    for (const waiter of waiters) {
-                      waiter.suspended = true
+                  if (run.instance.suspended) {
+                    // a suspension is committing: wait for the run to settle
+                    // so `resume` can observe the suspended reply
+                    yield* Fiber.await(run.fiber)
+                  } else {
+                    for (const latch of run.instance.raceWake) {
+                      latch.openUnsafe()
                     }
-                    yield* Fiber.interrupt(run.fiber)
                   }
                 }
                 yield* ensureSuccess(resume(workflow, executionId))
@@ -477,8 +478,8 @@ export const make = Effect.gen(function*() {
               resume: () => ensureSuccess(resume(workflow, executionId))
             }
           }),
-          // Keep one slot available for a deferred completion to interrupt
-          // and replay the active workflow run.
+          // Keep one slot available so a deferred completion can wake the
+          // active workflow run.
           { concurrency: 2 }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),

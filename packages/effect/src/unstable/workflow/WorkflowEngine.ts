@@ -262,9 +262,14 @@ export class WorkflowInstance extends Context.Service<
     cause: Cause.Cause<never> | undefined
 
     /**
-     * Workflow instances currently waiting for each durable deferred.
+     * Wake latches for `DurableDeferred.raceAll` calls currently parked in
+     * this execution. Opened by the engine when a durable deferred completes,
+     * so a live race can re-check its deferreds without a replay.
+     *
+     * The set is shared by reference with the instance clones that races
+     * create.
      */
-    readonly deferredWaiters: Map<string, Set<{ suspended: boolean }>>
+    readonly raceWake: Set<Latch.Latch>
 
     readonly activityState: {
       count: number
@@ -284,7 +289,7 @@ export class WorkflowInstance extends Context.Service<
       suspended: false,
       interrupted: false,
       cause: undefined,
-      deferredWaiters: new Map(),
+      raceWake: new Set(),
       activityState: {
         count: 0,
         latch: Latch.makeUnsafe()
@@ -745,10 +750,20 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         return Option.fromNullishOr(deferredResults.get(id))
       }),
       deferredDone: (options) =>
-        Effect.suspend(() => {
+        Effect.withFiber((currentFiber) => {
           const id = `${options.executionId}/${options.deferredName}`
           if (deferredResults.has(id)) return Effect.void
           deferredResults.set(id, options.exit)
+          const state = executions.get(options.executionId)
+          const fiber = state?.fiber
+          if (fiber && fiber !== currentFiber && !fiber.pollUnsafe()) {
+            if (state!.instance.suspended) {
+              // a suspension is committing: wait for the run to settle so
+              // `resume` can observe the suspended result
+              return Effect.andThen(Fiber.await(fiber), resume(options.executionId))
+            }
+            for (const latch of state!.instance.raceWake) latch.openUnsafe()
+          }
           return resume(options.executionId)
         }),
       scheduleClock: (workflow, options) =>
