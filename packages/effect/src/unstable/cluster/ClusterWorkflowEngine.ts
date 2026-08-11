@@ -128,8 +128,6 @@ export const make = Effect.gen(function*() {
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Latch.Latch>()
   const pendingDeferredResults = new Map<string, Map<string, Exit.Exit<unknown, unknown>>>()
-  const deferredExecutionKey = (workflowName: string, executionId: string) =>
-    JSON.stringify([workflowName, executionId])
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -401,7 +399,7 @@ export const make = Effect.gen(function*() {
                   return effect.pipe(
                     Effect.ensuring(Effect.sync(() => {
                       if (!instance.suspended) {
-                        pendingDeferredResults.delete(deferredExecutionKey(workflow._tag, executionId))
+                        pendingDeferredResults.delete(executionId)
                       }
                       instance.deferredWaiters.clear()
                       if (activeRun === run) {
@@ -457,15 +455,14 @@ export const make = Effect.gen(function*() {
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const payload = request.payload as any
                 const run = activeRun
-                const waiters = run?.instance.deferredWaiters.get(payload.name)
                 if (run) {
-                  const key = deferredExecutionKey(workflow._tag, executionId)
-                  let pending = pendingDeferredResults.get(key)
+                  let pending = pendingDeferredResults.get(executionId)
                   if (!pending) {
                     pending = new Map()
-                    pendingDeferredResults.set(key, pending)
+                    pendingDeferredResults.set(executionId, pending)
                   }
                   pending.set(payload.name, payload.exit)
+                  const waiters = run.instance.deferredWaiters.get(payload.name)
                   if (waiters) {
                     for (const waiter of waiters) {
                       waiter.suspended = true
@@ -592,9 +589,7 @@ export const make = Effect.gen(function*() {
     deferredResult: (deferred) =>
       WorkflowEngine.WorkflowInstance.pipe(
         Effect.flatMap((instance) => {
-          const key = deferredExecutionKey(instance.workflow._tag, instance.executionId)
-          const pending = pendingDeferredResults.get(key)
-          const exit = pending?.get(deferred.name)
+          const exit = pendingDeferredResults.get(instance.executionId)?.get(deferred.name)
           if (exit) {
             return Effect.succeedSome(exit)
           }

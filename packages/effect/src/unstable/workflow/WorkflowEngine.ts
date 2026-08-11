@@ -636,7 +636,6 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           instance.suspended = false
           return Effect.withFiber((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
         }),
-        Effect.ensuring(Effect.sync(() => instance.deferredWaiters.clear())),
         Workflow.intoResult,
         Effect.provideService(WorkflowInstance, instance),
         Effect.provideService(WorkflowEngine, engine),
