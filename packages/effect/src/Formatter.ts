@@ -301,7 +301,7 @@ export function formatJson(input: unknown, options?: {
     function(this: unknown, _key: string, value: unknown) {
       const redacted = redact(value)
       if (typeof redacted === "bigint") {
-        return `${redacted}n`
+        return format(redacted)
       }
       if (typeof redacted !== "object" || redacted === null) {
         return redacted

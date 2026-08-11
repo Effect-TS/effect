@@ -258,6 +258,7 @@ describe("Formatter", () => {
     })
 
     it("should stringify BigInt values", () => {
+      strictEqual(formatJson(123n), `"123n"`)
       strictEqual(formatJson({ value: 123n }), `{"value":"123n"}`)
       strictEqual(formatJson([1n, 2n]), `["1n","2n"]`)
     })
@@ -270,6 +271,7 @@ describe("Formatter", () => {
 
   describe("Inspectable.toStringUnknown", () => {
     it("should stringify BigInt values", () => {
+      strictEqual(Inspectable.toStringUnknown(123n), `123n`)
       strictEqual(
         Inspectable.toStringUnknown({ value: 123n }),
         `{
