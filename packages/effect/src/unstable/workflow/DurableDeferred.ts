@@ -144,7 +144,17 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
 >(self: DurableDeferred<Success, Error>) {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
-  const exit = yield* Workflow.wrapActivityResult(
+  let exit = yield* engine.deferredResult(self)
+  if (Option.isSome(exit)) {
+    return yield* exit.value as Exit.Exit<any, any>
+  }
+  let waiters = instance.deferredWaiters.get(self.name)
+  if (!waiters) {
+    waiters = new Set()
+    instance.deferredWaiters.set(self.name, waiters)
+  }
+  waiters.add(instance)
+  exit = yield* Workflow.wrapActivityResult(
     engine.deferredResult(self),
     Option.isNone
   )
@@ -283,7 +293,7 @@ export const raceAll = <
       return yield* exit.value
     }
     return yield* into(
-      Effect.raceAllFirst(options.effects),
+      Effect.raceAll(options.effects),
       deferred
     )
   })

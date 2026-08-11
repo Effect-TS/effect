@@ -176,6 +176,17 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(flags.get("interrupt3")).toBeFalsy()
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("Activity.raceAll ignores a failure when another activity can succeed", () =>
+    Effect.gen(function*() {
+      const fiber = yield* FailureRaceWorkflow.execute({
+        id: "failure-race"
+      }).pipe(Effect.forkChild({ startImmediately: true }))
+
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("slow")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("Activity.raceAll replays the first durable activity", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
@@ -222,6 +233,17 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       yield* TestClock.adjust("1 second")
 
       expect(yield* Fiber.join(fiber)).toEqual("signal")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("DurableDeferred.raceAll lets an active branch win while the deferred stays pending", () =>
+    Effect.gen(function*() {
+      const fiber = yield* MixedRaceWorkflow.execute({ id: "mixed-race-activity" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("activity")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
   it.effect("nested workflows", () =>
@@ -595,6 +617,30 @@ const RaceWorkflowLayer = RaceWorkflow.toLayer(Effect.fnUntraced(function*() {
   ])
 }))
 
+const FailureRaceWorkflow = Workflow.make("FailureRaceWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  error: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const FailureRaceWorkflowLayer = FailureRaceWorkflow.toLayer(() =>
+  Activity.raceAll("failure-race", [
+    Activity.make({
+      name: "failure-race-fast",
+      success: Schema.String,
+      error: Schema.String,
+      execute: Effect.fail("boom")
+    }),
+    Activity.make({
+      name: "failure-race-slow",
+      success: Schema.String,
+      error: Schema.String,
+      execute: Effect.sleep("1 second").pipe(Effect.as("slow"))
+    })
+  ])
+)
+
 const DurableRaceWorkflow = Workflow.make("DurableRaceWorkflow", {
   payload: {
     id: Schema.String
@@ -827,6 +873,7 @@ const makeBatchRequestError = () => {
 
 const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(RaceWorkflowLayer),
+  Layer.merge(FailureRaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
   Layer.merge(MixedRaceWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),

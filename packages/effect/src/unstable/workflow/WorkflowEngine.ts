@@ -261,6 +261,11 @@ export class WorkflowInstance extends Context.Service<
      */
     cause: Cause.Cause<never> | undefined
 
+    /**
+     * Workflow instances currently waiting for each durable deferred.
+     */
+    readonly deferredWaiters: Map<string, Set<{ suspended: boolean }>>
+
     readonly activityState: {
       count: number
       readonly latch: Latch.Latch
@@ -278,6 +283,7 @@ export class WorkflowInstance extends Context.Service<
       suspended: false,
       interrupted: false,
       cause: undefined,
+      deferredWaiters: new Map(),
       activityState: {
         count: 0,
         latch: Latch.makeUnsafe()
@@ -625,6 +631,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           instance.suspended = false
           return Effect.withFiber((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
         }),
+        Effect.ensuring(Effect.sync(() => instance.deferredWaiters.clear())),
         Workflow.intoResult,
         Effect.provideService(WorkflowInstance, instance),
         Effect.provideService(WorkflowEngine, engine),
@@ -738,7 +745,17 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           const id = `${options.executionId}/${options.deferredName}`
           if (deferredResults.has(id)) return Effect.void
           deferredResults.set(id, options.exit)
-          return resume(options.executionId)
+          const state = executions.get(options.executionId)
+          const waiters = state?.instance.deferredWaiters.get(options.deferredName)
+          if (!state?.fiber || !waiters || state.fiber.pollUnsafe()) {
+            return resume(options.executionId)
+          }
+          for (const waiter of waiters) {
+            waiter.suspended = true
+          }
+          return Fiber.interrupt(state.fiber).pipe(
+            Effect.andThen(resume(options.executionId))
+          )
         }),
       scheduleClock: (workflow, options) =>
         engine.deferredDone(options.clock.deferred, {

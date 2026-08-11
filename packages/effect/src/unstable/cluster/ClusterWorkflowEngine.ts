@@ -127,6 +127,9 @@ export const make = Effect.gen(function*() {
   }>()
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Latch.Latch>()
+  const pendingDeferredResults = new Map<string, Map<string, Exit.Exit<unknown, unknown>>>()
+  const deferredExecutionKey = (workflowName: string, executionId: string) =>
+    JSON.stringify([workflowName, executionId])
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -356,6 +359,10 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
+            let activeRun: {
+              readonly instance: WorkflowEngine.WorkflowInstance["Service"]
+              readonly fiber: Fiber.Fiber<any, any>
+            } | undefined
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
@@ -364,7 +371,7 @@ export const make = Effect.gen(function*() {
                 if (payload[payloadParentKey]) {
                   parent = payload[payloadParentKey]
                 }
-                return execute(workflow.payloadSchema.make(payload) as object, executionId).pipe(
+                const effect = execute(workflow.payloadSchema.make(payload) as object, executionId).pipe(
                   Effect.onExit((exit) => {
                     const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
                     if (!instance.suspended && !(suspendOnFailure && exit._tag === "Failure")) {
@@ -387,7 +394,22 @@ export const make = Effect.gen(function*() {
                   }),
                   Workflow.intoResult,
                   Effect.provideService(WorkflowEngine.WorkflowInstance, instance)
-                ) as any
+                )
+                return Effect.withFiber((fiber) => {
+                  const run = { instance, fiber }
+                  activeRun = run
+                  return effect.pipe(
+                    Effect.ensuring(Effect.sync(() => {
+                      if (!instance.suspended) {
+                        pendingDeferredResults.delete(deferredExecutionKey(workflow._tag, executionId))
+                      }
+                      instance.deferredWaiters.clear()
+                      if (activeRun === run) {
+                        activeRun = undefined
+                      }
+                    }))
+                  )
+                }) as any
               },
 
               activity(request: Entity.Request<any>) {
@@ -434,13 +456,31 @@ export const make = Effect.gen(function*() {
 
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const payload = request.payload as any
+                const run = activeRun
+                const waiters = run?.instance.deferredWaiters.get(payload.name)
+                if (run) {
+                  const key = deferredExecutionKey(workflow._tag, executionId)
+                  let pending = pendingDeferredResults.get(key)
+                  if (!pending) {
+                    pending = new Map()
+                    pendingDeferredResults.set(key, pending)
+                  }
+                  pending.set(payload.name, payload.exit)
+                  if (waiters) {
+                    for (const waiter of waiters) {
+                      waiter.suspended = true
+                    }
+                    yield* Fiber.interrupt(run.fiber)
+                  }
+                }
                 yield* ensureSuccess(resume(workflow, executionId))
                 return payload.exit
               }),
 
               resume: () => ensureSuccess(resume(workflow, executionId))
             }
-          })
+          }),
+          { concurrency: 2 }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
 
@@ -549,24 +589,35 @@ export const make = Effect.gen(function*() {
 
     deferredResult: (deferred) =>
       WorkflowEngine.WorkflowInstance.pipe(
-        Effect.flatMap((instance) =>
-          requestReply({
+        Effect.flatMap((instance) => {
+          const key = deferredExecutionKey(instance.workflow._tag, instance.executionId)
+          const pending = pendingDeferredResults.get(key)
+          const exit = pending?.get(deferred.name)
+          if (exit && pending) {
+            pending.delete(deferred.name)
+            if (pending.size === 0) {
+              pendingDeferredResults.delete(key)
+            }
+            return Effect.succeedSome(exit)
+          }
+          return requestReply({
             workflow: instance.workflow,
             entityType: `Workflow/${instance.workflow._tag}`,
             executionId: instance.executionId,
             tag: "deferred",
             id: deferred.name
-          })
-        ),
-        Effect.map((reply) => {
-          if (Option.isNone(reply)) {
-            return Option.none<Exit.Exit<unknown, unknown>>()
-          }
-          const decoded = decodeDeferredWithExit(reply.value as any)
-          return Option.some(
-            decoded.exit._tag === "Success"
-              ? decoded.exit.value
-              : decoded.exit
+          }).pipe(
+            Effect.map((reply) => {
+              if (Option.isNone(reply)) {
+                return Option.none<Exit.Exit<unknown, unknown>>()
+              }
+              const decoded = decodeDeferredWithExit(reply.value as any)
+              return Option.some(
+                decoded.exit._tag === "Success"
+                  ? decoded.exit.value
+                  : decoded.exit
+              )
+            })
           )
         }),
         Effect.retry({
