@@ -368,6 +368,40 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(yield* Fiber.join(fiber)).toEqual("signal!")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("DurableDeferred.raceAll re-runs a multi-await branch once per completion", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* TwoStepWorkflow.executionId({ id: "two-step" })
+      const fiber = yield* TwoStepWorkflow.execute({ id: "two-step" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(1)
+      const tokenA = DurableDeferred.tokenFromExecutionId(TwoStepGateA, {
+        workflow: TwoStepWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(TwoStepGateA, { token: tokenA, value: "a" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("1 second")
+
+      // one wake re-run parks on the second gate; without the completed-read
+      // guard in `await` the wake arm would re-run the branch continuously
+      expect(flags.get("two-step-branch-runs")).toEqual(2)
+
+      const tokenB = DurableDeferred.tokenFromExecutionId(TwoStepGateB, {
+        workflow: TwoStepWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(TwoStepGateB, { token: tokenB, value: "b" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("a:b")
+      expect(flags.get("two-step-branch-runs")).toEqual(3)
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("DurableDeferred.raceAll delivers a completion that lands while a suspension commits", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
@@ -1081,6 +1115,41 @@ const MappedGateWorkflowLayer = MappedGateWorkflow.toLayer(() =>
   })
 )
 
+const TwoStepWorkflow = Workflow.make("TwoStepWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const TwoStepGateA = DurableDeferred.make("TwoStepGateA", {
+  success: Schema.String
+})
+
+const TwoStepGateB = DurableDeferred.make("TwoStepGateB", {
+  success: Schema.String
+})
+
+const TwoStepWorkflowLayer = TwoStepWorkflow.toLayer(() =>
+  DurableDeferred.raceAll({
+    name: "two-step",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      Effect.gen(function*() {
+        const flags = yield* Flags
+        const runs = flags.get("two-step-branch-runs")
+        flags.set("two-step-branch-runs", typeof runs === "number" ? runs + 1 : 1)
+        const a = yield* DurableDeferred.await(TwoStepGateA)
+        const b = yield* DurableDeferred.await(TwoStepGateB)
+        return `${a}:${b}`
+      }),
+      // a live branch that holds no activity slot, so wake re-runs are
+      // processed while the race stays active
+      Effect.never
+    ]
+  })
+)
+
 const SlowUnwindWorkflow = Workflow.make("SlowUnwindWorkflow", {
   payload: { id: Schema.String },
   success: Schema.String,
@@ -1281,8 +1350,7 @@ const makeBatchRequestError = () => {
   return error
 }
 
-const TestWorkflowLayer = EmailWorkflowLayer.pipe(
-  Layer.merge(RaceWorkflowLayer),
+const RaceWorkflowLayers = RaceWorkflowLayer.pipe(
   Layer.merge(FailureRaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
   Layer.merge(MixedRaceWorkflowLayer),
@@ -1292,8 +1360,13 @@ const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(ClockCaptureWorkflowLayer),
   Layer.merge(BareClockWorkflowLayer),
   Layer.merge(MappedGateWorkflowLayer),
+  Layer.merge(TwoStepWorkflowLayer),
   Layer.merge(SlowUnwindWorkflowLayer),
-  Layer.merge(TwoGateWorkflowLayer),
+  Layer.merge(TwoGateWorkflowLayer)
+)
+
+const TestWorkflowLayer = EmailWorkflowLayer.pipe(
+  Layer.merge(RaceWorkflowLayers),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
   Layer.merge(ShardedClockWorkflowLayer),
