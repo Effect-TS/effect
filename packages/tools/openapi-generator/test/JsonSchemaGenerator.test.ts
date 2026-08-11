@@ -22,7 +22,7 @@ export const A = Schema.String
     const result = generator.generate("openapi-3.1", definitions, false)
     expect(result).toBe(`// non-recursive definitions
 export type B = string
-export const B = Schema.String
+export const B = Schema.String.annotate({ "identifier": "B" })
 // schemas
 export type A = B
 export const A = B
@@ -108,7 +108,7 @@ export const B = Schema.Struct({ "id": Schema.String })`)
     const result = generator.generate("openapi-3.1", definitions, false)
     expect(result).toBe(`// recursive definitions
 export type B = { readonly "name": string, readonly "children": ReadonlyArray<B> }
-export const B = Schema.Struct({ "name": Schema.String, "children": Schema.Array(Schema.suspend((): Schema.Codec<B> => B)) })
+export const B = Schema.Struct({ "name": Schema.String, "children": Schema.Array(Schema.suspend((): Schema.Codec<B> => B)) }).annotate({ "identifier": "B" })
 // schemas
 export type A = B
 export const A = B
@@ -144,15 +144,15 @@ export const A = B
 
     const result = generator.generate("openapi-3.1", definitions, false)
     const recursiveDeclaration =
-      "export const ResourcesNetworkCardSRIOV = Schema.suspend((): Schema.Codec<ResourcesNetworkCardSRIOV> => __recursive_ResourcesNetworkCardSRIOV)"
+      "export const ResourcesNetworkCard = Schema.suspend((): Schema.Codec<ResourcesNetworkCard> => __recursive_ResourcesNetworkCard)"
 
     expect(result).toContain(recursiveDeclaration)
-    expect(result).toContain("const __recursive_ResourcesNetworkCardSRIOV =")
+    expect(result).toContain("const __recursive_ResourcesNetworkCard =")
     expect(result.indexOf(recursiveDeclaration)).toBeLessThan(
-      result.indexOf("export const ResourcesNetworkCard =")
+      result.indexOf("export const ResourcesNetworkCardSRIOV =")
     )
-    expect(result.indexOf("export const ResourcesNetworkCard =")).toBeLessThan(
-      result.indexOf("const __recursive_ResourcesNetworkCardSRIOV =")
+    expect(result.indexOf("export const ResourcesNetworkCardSRIOV =")).toBeLessThan(
+      result.indexOf("const __recursive_ResourcesNetworkCard =")
     )
   })
 

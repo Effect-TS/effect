@@ -100,7 +100,7 @@ const ErrorTypeId: ErrorTypeId = "~effect/persistence/Redis/RedisError"
  * @category errors
  * @since 4.0.0
  */
-export class RedisError extends Schema.ErrorClass<RedisError>(ErrorTypeId)({
+export class RedisError extends Schema.Error<RedisError>(ErrorTypeId)({
   _tag: Schema.tag("RedisError"),
   cause: Schema.Defect()
 }) {
@@ -123,7 +123,7 @@ const ScriptTypeId: ScriptTypeId = "~effect/persistence/Redis/Script"
  * It defines the Lua source, parameter-to-argument mapping, Redis key count,
  * and result type used by `Redis.eval`.
  *
- * @category Scripting
+ * @category scripting
  * @since 4.0.0
  */
 export interface Script<
@@ -173,7 +173,7 @@ const ScriptProto = {
  * The result type defaults to `void` and can be refined with
  * `withReturnType`.
  *
- * @category Scripting
+ * @category scripting
  * @since 4.0.0
  */
 export const script = <Params extends ReadonlyArray<any>>(
@@ -186,8 +186,8 @@ export const script = <Params extends ReadonlyArray<any>>(
   params: Params
   result: void
 }> =>
-  Object.assign(Object.create(ScriptProto), {
+  Object.setPrototypeOf({
     ...options,
     params: f,
     numberOfKeys: typeof options.numberOfKeys === "number" ? constant(options.numberOfKeys) : options.numberOfKeys
-  })
+  }, ScriptProto)

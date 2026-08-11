@@ -184,7 +184,7 @@ export interface Strategy<A, E> {
  *
  * This predicate narrows the input to `Pool<unknown, unknown>`.
  *
- * @category refinements
+ * @category guards
  * @since 2.0.0
  */
 export const isPool = (u: unknown): u is Pool<unknown, unknown> => hasProperty(u, TypeId)
@@ -250,7 +250,7 @@ export const make = <A, E, R>(options: {
  *
  * **Example** (Creating a connection pool)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Duration, Effect, Pool } from "effect"
  *
  * interface Connection {
@@ -277,6 +277,8 @@ export const make = <A, E, R>(options: {
  *     (pool) => Effect.flatMap(Pool.get(pool), (connection) => connection.execute("select 1"))
  *   )
  * )
+ *
+ * await Effect.runPromise(program) // => ["executed: select 1"]
  * ```
  *
  * @category constructors

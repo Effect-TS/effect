@@ -320,7 +320,7 @@ export declare namespace Request {
  *
  * The check is based on the envelope type identifier.
  *
- * @category refinements
+ * @category guards
  * @since 4.0.0
  */
 export const isEnvelope = (u: unknown): u is Envelope<any> => Predicate.hasProperty(u, TypeId)
@@ -403,7 +403,7 @@ export const RequestTransform: SchemaTransformation.Transformation<
  * Returns the storage primary key for a request envelope whose payload has a
  * primary key, or `null` when the envelope is not a keyed request.
  *
- * @category primary key
+ * @category getters
  * @since 4.0.0
  */
 export const primaryKey = <R extends Rpc.Any>(envelope: Envelope<R>): string | null => {
@@ -421,7 +421,7 @@ export const primaryKey = <R extends Rpc.Any>(envelope: Envelope<R>): string | n
  * Builds a storage primary-key string from an entity address, RPC tag, and
  * payload primary-key ID.
  *
- * @category primary key
+ * @category constructors
  * @since 4.0.0
  */
 export const primaryKeyByAddress = (options: {
@@ -429,5 +429,6 @@ export const primaryKeyByAddress = (options: {
   readonly tag: string
   readonly id: string
 }): string =>
-  // hash the entity address to save space?
+  // storage drivers with fixed-width key columns (e.g. SqlMessageStorage)
+  // hash this composed key at their own boundary
   `${options.address.entityType}/${options.address.entityId}/${options.tag}/${options.id}`

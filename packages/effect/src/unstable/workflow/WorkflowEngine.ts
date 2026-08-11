@@ -269,12 +269,13 @@ export class WorkflowInstance extends Context.Service<
 >()("effect/workflow/WorkflowEngine/WorkflowInstance") {
   static initial(
     workflow: Workflow.Any,
-    executionId: string
+    executionId: string,
+    scope = Scope.makeUnsafe()
   ): WorkflowInstance["Service"] {
     return WorkflowInstance.of({
       executionId,
       workflow,
-      scope: Scope.makeUnsafe(),
+      scope,
       suspended: false,
       interrupted: false,
       cause: undefined,
@@ -290,7 +291,7 @@ export class WorkflowInstance extends Context.Service<
  * Low-level workflow engine contract that works with encoded payloads and
  * results before `makeUnsafe` adds typed schema decoding and encoding.
  *
- * @category Encoded
+ * @category services
  * @since 4.0.0
  */
 export interface Encoded {
@@ -614,7 +615,11 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
       }
 
       const entry = workflows.get(state.instance.workflow._tag)!
-      const instance = WorkflowInstance.initial(state.instance.workflow, state.instance.executionId)
+      const instance = WorkflowInstance.initial(
+        state.instance.workflow,
+        state.instance.executionId,
+        state.instance.scope
+      )
       instance.interrupted = state.instance.interrupted
       state.instance = instance
       state.fiber = yield* state.execute(state.payload, state.instance.executionId).pipe(

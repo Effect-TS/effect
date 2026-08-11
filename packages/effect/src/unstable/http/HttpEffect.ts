@@ -172,7 +172,7 @@ const scoped = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
 /**
  * Function run with the current request and response just before the response is sent, allowing the response to be replaced or failing with `HttpServerError`.
  *
- * @category Pre-response handlers
+ * @category handlers
  * @since 4.0.0
  */
 export type PreResponseHandler = (
@@ -183,7 +183,7 @@ export type PreResponseHandler = (
 /**
  * Registers an additional pre-response handler for the current HTTP server request.
  *
- * @category fiber refs
+ * @category handlers
  * @since 4.0.0
  */
 export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Effect<void, never, HttpServerRequest> =>
@@ -195,7 +195,7 @@ export const appendPreResponseHandler = (handler: PreResponseHandler): Effect.Ef
 /**
  * Registers a pre-response handler for the supplied HTTP server request.
  *
- * @category fiber refs
+ * @category unsafe
  * @since 4.0.0
  */
 export const appendPreResponseHandlerUnsafe: (
@@ -206,7 +206,7 @@ export const appendPreResponseHandlerUnsafe: (
 /**
  * Runs an effect after registering a pre-response handler for the current HTTP server request.
  *
- * @category fiber refs
+ * @category handlers
  * @since 4.0.0
  */
 export const withPreResponseHandler: {

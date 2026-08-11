@@ -44,7 +44,8 @@ const withSubcommands = (() => {
   }).pipe(Command.withDescription("Stop the server"))
 
   return Command.make("server", {
-    verbose: Flag.boolean("verbose").pipe(Flag.withAlias("v"))
+    verbose: Flag.boolean("verbose").pipe(Flag.withAlias("v")),
+    config: Flag.string("config")
   }).pipe(
     Command.withDescription("Server management"),
     Command.withSubcommands([start, stop])
@@ -91,6 +92,52 @@ const emptyCmd = Command.make("noop").pipe(
 // ---------------------------------------------------------------------------
 
 describe("Bash completions", () => {
+  it("completes the active positional argument instead of always using the first", () => {
+    const descriptor: Completions.CommandDescriptor = {
+      name: "tool",
+      description: undefined,
+      flags: [
+        {
+          name: "verbose",
+          aliases: ["v"],
+          description: undefined,
+          type: { _tag: "Boolean" }
+        },
+        {
+          name: "format",
+          aliases: ["f"],
+          description: undefined,
+          type: { _tag: "Choice", values: ["json", "text"] }
+        }
+      ],
+      arguments: [
+        {
+          name: "source",
+          description: undefined,
+          required: true,
+          variadic: false,
+          type: { _tag: "Choice", values: ["one"] }
+        },
+        {
+          name: "target",
+          description: undefined,
+          required: true,
+          variadic: false,
+          type: { _tag: "Choice", values: ["two"] }
+        }
+      ],
+      subcommands: []
+    }
+    const script = Bash.generate("tool", descriptor)
+
+    assert.include(script, `for ((i = _command_index + 1; i < cword; i++)); do`)
+    assert.include(script, `--verbose|-v|--no-verbose) ;;`)
+    assert.include(script, `--format|-f) _skip_next=1 ;;`)
+    assert.include(script, `--format=*|-f=*) ;;`)
+    assert.include(script, `0)\n      COMPREPLY=( $(compgen -W 'one' -- "$cur") )`)
+    assert.include(script, `1)\n      COMPREPLY=( $(compgen -W 'two' -- "$cur") )`)
+  })
+
   it("generates completion function for root command", () => {
     const desc = fromCommand(simpleCmd)
     const script = Bash.generate("greet", desc)
@@ -104,6 +151,23 @@ describe("Bash completions", () => {
     const script = Bash.generate("server", desc)
     assert.include(script, "start)")
     assert.include(script, "stop)")
+  })
+
+  it("does not dispatch subcommands from flag values", () => {
+    const desc = fromCommand(withSubcommands)
+    const script = Bash.generate("server", desc)
+    assert.include(
+      script,
+      `for ((i = _command_index + 1; i < cword; i++)); do
+    if (( _skip_next )); then
+      _skip_next=0
+      continue
+    fi
+    case "\${words[i]}" in
+      --config) _skip_next=1 ;;
+      --config=*) ;;
+      start)`
+    )
   })
 
   it("includes long flag names with -- prefix", () => {
@@ -149,6 +213,7 @@ describe("Bash completions", () => {
     assert.include(script, "_server()")
     assert.include(script, "_server_start()")
     assert.include(script, "_server_stop()")
+    assert.include(script, `_server_start "$i"`)
   })
 
   it("handles commands with no subcommands", () => {
@@ -339,6 +404,38 @@ describe("Zsh completions", () => {
 // ---------------------------------------------------------------------------
 
 describe("Fish completions", () => {
+  it("scopes nested completions by the full command path", () => {
+    const leaf = (name: string, flag: string): Completions.CommandDescriptor => ({
+      name,
+      description: undefined,
+      flags: [{ name: flag, aliases: [], description: undefined, type: { _tag: "Boolean" } }],
+      arguments: [],
+      subcommands: []
+    })
+    const descriptor: Completions.CommandDescriptor = {
+      name: "tool",
+      description: undefined,
+      flags: [],
+      arguments: [],
+      subcommands: [
+        {
+          name: "alpha",
+          description: undefined,
+          flags: [],
+          arguments: [],
+          subcommands: [leaf("common", "alpha-only")]
+        },
+        { name: "beta", description: undefined, flags: [], arguments: [], subcommands: [leaf("common", "beta-only")] }
+      ]
+    }
+    const lines = Fish.generate("tool", descriptor).split("\n")
+    const alphaOnly = lines.find((line) => line.includes("-l alpha-only"))!
+    const betaOnly = lines.find((line) => line.includes("-l beta-only"))!
+
+    assert.include(alphaOnly, "__fish_seen_subcommand_from alpha; and __fish_seen_subcommand_from common")
+    assert.include(betaOnly, "__fish_seen_subcommand_from beta; and __fish_seen_subcommand_from common")
+  })
+
   it("generates complete commands for root subcommands", () => {
     const desc = fromCommand(withSubcommands)
     const script = Fish.generate("server", desc)

@@ -180,14 +180,14 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  * @since 4.0.0
  *
  * ```ts
- * import { expect, layer } from "@effect/vitest"
+ * import { assert, layer } from "@effect/vitest"
  * import { Effect, Layer, Context } from "effect"
  *
- * class Foo extends Context.Service("Foo")<Foo, "foo">() {
+ * class Foo extends Context.Service<Foo, "foo">()("Foo") {
  *   static Live = Layer.succeed(Foo, "foo")
  * }
  *
- * class Bar extends Context.Service("Bar")<Bar, "bar">() {
+ * class Bar extends Context.Service<Bar, "bar">()("Bar") {
  *   static Live = Layer.effect(
  *     Bar,
  *     Effect.map(Foo, () => "bar" as const)
@@ -198,7 +198,7 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  *   it.effect("adds context", () =>
  *     Effect.gen(function*() {
  *       const foo = yield* Foo
- *       expect(foo).toEqual("foo")
+ *       assert.strictEqual(foo, "foo")
  *     }))
  *
  *   it.layer(Bar.Live)("nested", (it) => {
@@ -206,8 +206,8 @@ export const live: Vitest.Tester<Scope.Scope> = internal.live
  *       Effect.gen(function*() {
  *         const foo = yield* Foo
  *         const bar = yield* Bar
- *         expect(foo).toEqual("foo")
- *         expect(bar).toEqual("bar")
+ *         assert.strictEqual(foo, "foo")
+ *         assert.strictEqual(bar, "bar")
  *       }))
  *   })
  * })

@@ -220,10 +220,12 @@ export const make = (options?: {
             primaryKey,
             payload
           }, { disableChecks: true })
-          yield* insertEntry(toEntryRow(entry))
-          const value = yield* effect(entry)
-          yield* PubSub.publish(pubsub, entry)
-          return value
+          return yield* Effect.uninterruptibleMask((restore) =>
+            restore(effect(entry)).pipe(
+              Effect.tap(insertEntry(toEntryRow(entry))),
+              Effect.tap(PubSub.publish(pubsub, entry))
+            )
+          )
         },
         withTracerDisabled,
         Effect.mapError((cause) => new EventJournal.EventJournalError({ cause, method: "write" }))
@@ -319,7 +321,7 @@ const EntryRow = Schema.Struct({
   event: Schema.String,
   primary_key: Schema.String,
   payload: Schema.Uint8Array,
-  timestamp: Schema.Number
+  timestamp: Schema.Int
 })
 
 const EntryRowArray = Schema.Array(EntryRow)
@@ -345,7 +347,7 @@ const toEntryRow = (entry: EventJournal.Entry): EntryRow => ({
 const RemoteRow = Schema.Struct({
   remote_id: EventJournal.RemoteId,
   entry_id: EventJournal.EntryId,
-  sequence: Schema.Number
+  sequence: Schema.Natural
 })
 
 const RemoteRowArray = Schema.Array(RemoteRow)

@@ -36,7 +36,7 @@ import * as Errors from "./internal/errors.ts"
  * Represents the Anthropic client service with methods for the Messages API, including regular and streaming message
  * creation.
  *
- * @category models
+ * @category services
  * @since 4.0.0
  */
 export interface Service {
@@ -52,7 +52,7 @@ export interface Service {
     schema: S
   ) => (request: HttpClientRequest.HttpClientRequest) => Stream.Stream<
     S["Type"],
-    HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry,
+    HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
     S["DecodingServices"]
   >
 
@@ -194,6 +194,11 @@ const RedactedAnthropicHeaders = {
   AnthropicApiKey: "x-api-key"
 }
 
+const withRedactedHeaders = Effect.updateService(
+  Headers.CurrentRedactedNames,
+  Array.appendAll(Object.values(RedactedAnthropicHeaders))
+)
+
 /**
  * Creates an Anthropic client service with the given options.
  *
@@ -254,7 +259,7 @@ export const make = Effect.fnUntraced(
       <S extends Sse.EventCodec>(schema: S) =>
       (request: HttpClientRequest.HttpClientRequest): Stream.Stream<
         S["Type"],
-        HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry,
+        HttpClientError.HttpClientError | Schema.SchemaError | Sse.Retry | Sse.SseError,
         S["DecodingServices"]
       > =>
         httpClientOk.execute(request).pipe(
@@ -276,7 +281,8 @@ export const make = Effect.fnUntraced(
           BetaMessagesPost4XX: (error) => Effect.fail(Errors.mapClientError(error, "createMessage")),
           HttpClientError: (error) => Errors.mapHttpClientError(error, "createMessage"),
           SchemaError: (error) => Effect.fail(Errors.mapSchemaError(error, "createMessage"))
-        })
+        }),
+        withRedactedHeaders
       )
 
     const PingEvent = Schema.Struct({
@@ -306,6 +312,7 @@ export const make = Effect.fnUntraced(
         Stream.catchTags({
           // TODO: handle SSE retries
           Retry: (error) => Stream.die(error),
+          SseError: (error) => Stream.fail(Errors.mapSseError(error, "createMessageStream")),
           HttpClientError: (error) => Stream.fromEffect(Errors.mapHttpClientError(error, "createMessageStream")),
           SchemaError: (error) => Stream.fail(Errors.mapSchemaError(error, "createMessageStream"))
         })
@@ -329,7 +336,8 @@ export const make = Effect.fnUntraced(
         Effect.catchTag(
           "HttpClientError",
           (error) => Errors.mapHttpClientError(error, "createMessageStream")
-        )
+        ),
+        withRedactedHeaders
       )
     }
 
@@ -340,10 +348,7 @@ export const make = Effect.fnUntraced(
       createMessageStream
     })
   },
-  Effect.updateService(
-    Headers.CurrentRedactedNames,
-    Array.appendAll(Object.values(RedactedAnthropicHeaders))
-  )
+  withRedactedHeaders
 )
 
 // =============================================================================

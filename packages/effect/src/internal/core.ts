@@ -13,6 +13,7 @@ import type { StackFrame } from "../References.ts"
 import type * as Types from "../Types.ts"
 import { SingleShotGen } from "../Utils.ts"
 import type { FiberImpl } from "./effect.ts"
+import * as InternalRecord from "./record.ts"
 
 /** @internal */
 export const EffectTypeId = `~effect/Effect` as const
@@ -238,7 +239,7 @@ export abstract class ReasonBase<Tag extends string> implements Cause.Cause.Reas
 }
 
 /** @internal */
-export const constEmptyAnnotations = new Map<string, unknown>()
+export const constEmptyAnnotations: ReadonlyMap<string, unknown> = new Map<string, unknown>()
 
 /** @internal */
 export class Fail<E> extends ReasonBase<"Fail"> implements Cause.Fail<E> {
@@ -470,12 +471,12 @@ export const makeExit = <
   ) => Primitive | Yield
 }): Fn => {
   const Proto = {
-    ...makePrimitiveProto(options),
     [ExitTypeId]: ExitTypeId,
     _tag: options.op,
     get [options.prop](): any {
       return (this as any)[args]
     },
+    ...makePrimitiveProto(options),
     toString(this: any) {
       return `${options.op}(${format(this[args])})`
     },
@@ -587,10 +588,10 @@ export const Error: new<A extends Record<string, any> = {}>(
 ) => Cause.YieldableError & Readonly<A> = (function() {
   const plainArgsSymbol = Symbol.for("effect/Data/Error/plainArgs")
   return class Base extends YieldableError {
-    constructor(args: any) {
+    constructor(args: Record<string, any> | undefined) {
       super(args?.message, args?.cause ? { cause: args.cause } : undefined)
       if (args) {
-        Object.assign(this, args)
+        InternalRecord.assignProperties(this, args)
         // @effect-diagnostics-next-line floatingEffect:off
         Object.defineProperty(this, plainArgsSymbol, {
           value: args,

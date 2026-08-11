@@ -74,7 +74,7 @@ export const layerTracerProvider = (
           return provider
         }),
         (provider) =>
-          Effect.promise(() => provider.forceFlush().then(() => provider.shutdown())).pipe(
+          Effect.promise(() => provider.forceFlush().finally(() => provider.shutdown())).pipe(
             Effect.ignore,
             Effect.interruptible,
             Effect.timeoutOption(config?.shutdownTimeout ?? 3000)

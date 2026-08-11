@@ -1,12 +1,10 @@
 # Effect library documentation
 
-This documentation resides in the Effect monorepo, which contains the source
-code for the Effect library and its related packages.
+This documentation covers the Effect library and its related packages.
 
-When you need to find any information about the Effect library, only use this
-documentation and the source code found in `./packages`. Do not use
-`node_modules` or any other external documentation, as it may be outdated or
-incorrect.
+When you need to find information about Effect, use this documentation and the
+Effect source code available in your environment. Avoid unrelated copies of
+Effect or external documentation, as they may be outdated or incorrect.
 
 **Note**: The examples in this documentation contain comments for illustration
 purposes. In practice, you would not include these comments in your code.
@@ -42,8 +40,8 @@ Effect.gen(function*() {
   })
 )
 
-// Use Schema.TaggedErrorClass to define a custom error
-export class FileProcessingError extends Schema.TaggedErrorClass<FileProcessingError>()("FileProcessingError", {
+// Use Schema.TaggedError to define a custom error
+export class FileProcessingError extends Schema.TaggedError<FileProcessingError>()("FileProcessingError", {
   message: Schema.String
 }) {}
 ```
@@ -82,8 +80,8 @@ export const effectFunction = Effect.fn("effectFunction")(
   })
 )
 
-// Use Schema.TaggedErrorClass to define a custom error
-export class SomeError extends Schema.TaggedErrorClass<SomeError>()("SomeError", {
+// Use Schema.TaggedError to define a custom error
+export class SomeError extends Schema.TaggedError<SomeError>()("SomeError", {
   message: Schema.String
 }) {}
 ```
@@ -100,7 +98,7 @@ All validation and domain modeling in Effect is done with `Schema`.
 
 **AVOID using predicates or manual parsing**, instead use `Schema` to parse untrusted data and validate it.
 
-For a comprehensive guide, see [packages/effect/SCHEMA.md](./packages/effect/SCHEMA.md). Make sure to read the guide in chunks, as it is a large document.
+For a comprehensive guide, see [SCHEMA.md](https://github.com/Effect-TS/effect/blob/main/packages/effect/SCHEMA.md). Make sure to read the guide in chunks, as it is a large document.
 
 - **[Schema basics](./ai-docs/src/01_effect/02_schema/10_schema-basics.ts)**:
   Define `Schema.Class`s, decode unknown input into typed values, and
@@ -150,7 +148,7 @@ export class Database extends Context.Service<Database, {
   )
 }
 
-export class DatabaseError extends Schema.TaggedErrorClass<DatabaseError>()("DatabaseError", {
+export class DatabaseError extends Schema.TaggedError<DatabaseError>()("DatabaseError", {
   cause: Schema.Defect()
 }) {}
 
@@ -175,14 +173,14 @@ Defining custom errors and handling them with Effect.catch and Effect.catchTag.
 ```ts
 import { Effect, Schema } from "effect"
 
-// Define custom errors using Schema.TaggedErrorClass
-export class ParseError extends Schema.TaggedErrorClass<ParseError>()("ParseError", {
+// Define custom errors using Schema.TaggedError
+export class ParseError extends Schema.TaggedError<ParseError>()("ParseError", {
   input: Schema.String,
   message: Schema.String
 }) {}
 
-export class ReservedPortError extends Schema.TaggedErrorClass<ReservedPortError>()("ReservedPortError", {
-  port: Schema.Number
+export class ReservedPortError extends Schema.TaggedError<ReservedPortError>()("ReservedPortError", {
+  port: Schema.Int
 }) {}
 
 declare const loadPort: (input: string) => Effect.Effect<number, ParseError | ReservedPortError>

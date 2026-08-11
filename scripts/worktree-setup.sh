@@ -8,7 +8,9 @@ pnpm install
 # setup repositories
 git clone --depth 1 https://github.com/tstyche/tstyche.org.git .repos/tstyche.org
 
-cat << EOF >> AGENTS.md
+cp .agents/AGENTS.md AGENTS.md.tmp
+
+cat << EOF >> AGENTS.md.tmp
 
 ## Learning about "effect" v3
 
@@ -22,3 +24,5 @@ the website repository here:
 
 \`.repos/tstyche.org\`
 EOF
+
+mv AGENTS.md.tmp AGENTS.md

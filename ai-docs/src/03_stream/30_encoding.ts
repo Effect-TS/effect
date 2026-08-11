@@ -11,7 +11,7 @@ import { Msgpack, Ndjson } from "effect/unstable/encoding"
 // with `Msgpack` and using the appropriate channels (`Msgpack.decode()`,
 // `Msgpack.encode()`, etc.).
 export const msgpackDecoder = Msgpack.decodeSchema(Schema.Struct({
-  id: Schema.Number,
+  id: Schema.Int,
   name: Schema.String
 }))
 

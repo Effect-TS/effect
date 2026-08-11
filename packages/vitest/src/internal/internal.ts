@@ -2,7 +2,6 @@
  * @since 4.0.0
  */
 
-import { getCurrentSuite } from "@vitest/runner"
 import * as Cause from "effect/Cause"
 import * as Duration from "effect/Duration"
 import * as Effect from "effect/Effect"
@@ -10,6 +9,7 @@ import * as Exit from "effect/Exit"
 import { flow, pipe } from "effect/Function"
 import * as Layer from "effect/Layer"
 import { isObject } from "effect/Predicate"
+import * as Rec from "effect/Record"
 import * as Schedule from "effect/Schedule"
 import * as Schema from "effect/Schema"
 import * as Scope from "effect/Scope"
@@ -18,6 +18,8 @@ import * as TestClock from "effect/testing/TestClock"
 import * as TestConsole from "effect/testing/TestConsole"
 import * as V from "vitest"
 import type * as Vitest from "../index.ts"
+
+const getCurrentSuite = V.TestRunner.getCurrentSuite
 
 const runPromise: <E, A>(
   _: Effect.Effect<A, E, never>,
@@ -61,7 +63,7 @@ const makeItProxy = <Methods extends object>(
       return Reflect.apply(target, thisArg, argArray)
     },
     get(target, property, receiver) {
-      if (property in overrides) {
+      if (Object.hasOwn(overrides, property)) {
         return Reflect.get(overrides, property)
       }
       // do not bind: binding would strip vitest's static helpers (e.g. `describe.each`)
@@ -127,7 +129,7 @@ const makeTester = <R>(
     if (Array.isArray(arbitraries)) {
       const arbs = arbitraries.map((arbitrary) => {
         if (Schema.isSchema(arbitrary)) {
-          return Schema.toArbitrary(arbitrary)
+          return Schema.toArbitrary(arbitrary)(fc)
         }
         return arbitrary as fc.Arbitrary<any>
       })
@@ -148,7 +150,7 @@ const makeTester = <R>(
     const arbs = fc.record(
       Object.keys(arbitraries).reduce(function(result, key) {
         const arb: any = arbitraries[key]
-        result[key] = Schema.isSchema(arb) ? Schema.toArbitrary(arb) : arb
+        Rec.assignProperty(result, key, Schema.isSchema(arb) ? Schema.toArbitrary(arb)(fc) : arb)
         return result
       }, {} as Record<string, fc.Arbitrary<any>>)
     )
@@ -194,7 +196,7 @@ export const prop: Vitest.Vitest.Methods["prop"] = (name, arbitraries, self, tim
       if (Schema.isSchema(arb)) {
         throw new Error("Schemas are not supported yet")
       }
-      result[key] = arb
+      Rec.assignProperty(result, key, arb)
       return result
     }, {} as Record<string, fc.Arbitrary<any>>)
   )

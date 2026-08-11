@@ -52,7 +52,7 @@ export declare namespace AnthropicConfig {
    *
    * Use `transformClient` to wrap or replace the `HttpClient` used by generated Anthropic API requests.
    *
-   * @category models
+   * @category services
    * @since 4.0.0
    */
   export interface Service {

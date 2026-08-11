@@ -139,7 +139,7 @@ export const layerClientProtocolWebsocketDefault: Layer.Layer<
  * The returned effect is produced from `RunnerServer.layerHandlers` and the
  * cluster runner RPC group.
  *
- * @category http app
+ * @category running
  * @since 4.0.0
  */
 export const toHttpEffect: Effect.Effect<
@@ -150,7 +150,8 @@ export const toHttpEffect: Effect.Effect<
   const handlers = yield* Layer.build(RunnerServer.layerHandlers)
   return yield* RpcServer.toHttpEffect(Runners.Rpcs, {
     spanPrefix: "RunnerServer",
-    disableTracing: true
+    disableTracing: true,
+    disableFatalDefects: true
   }).pipe(Effect.provideContext(handlers))
 })
 
@@ -162,7 +163,7 @@ export const toHttpEffect: Effect.Effect<
  * The returned effect is produced from `RunnerServer.layerHandlers` and the
  * cluster runner RPC group.
  *
- * @category http app
+ * @category running
  * @since 4.0.0
  */
 export const toHttpEffectWebsocket: Effect.Effect<
@@ -173,7 +174,8 @@ export const toHttpEffectWebsocket: Effect.Effect<
   const handlers = yield* Layer.build(RunnerServer.layerHandlers)
   return yield* RpcServer.toHttpEffectWebsocket(Runners.Rpcs, {
     spanPrefix: "RunnerServer",
-    disableTracing: true
+    disableTracing: true,
+    disableFatalDefects: true
   }).pipe(Effect.provideContext(handlers))
 })
 

@@ -5,11 +5,13 @@ import {
   Context,
   Data,
   Effect,
+  type ExecutionPlan,
   Fiber,
   type Layer,
   type Option,
   pipe,
   Result,
+  type Schedule,
   type Scope,
   type Sink,
   type Stream,
@@ -72,6 +74,18 @@ declare const optionalEffect: Option.Option<Effect.Effect<string, "err-1", "dep-
 
 class AcquireReleaseDependency extends Context.Service<AcquireReleaseDependency, string>()(
   "AcquireReleaseDependency"
+) {}
+
+class UpdateServiceScopedService extends Context.Service<UpdateServiceScopedService, number>()(
+  "UpdateServiceScopedService"
+) {}
+
+const UpdateServiceScopedReference = Context.Reference<number>("UpdateServiceScopedReference", {
+  defaultValue: () => 0
+})
+
+class ProvideServiceEffectServiceLiteral extends Context.Service<ProvideServiceEffectServiceLiteral, "LITERAL">()(
+  "ProvideServiceEffectServiceLiteral"
 ) {}
 
 describe("Types", () => {
@@ -600,6 +614,34 @@ describe("Effect.annotateLogsScoped", () => {
   })
 })
 
+describe("Effect.updateServiceScoped", () => {
+  it("adds a Context.Service to the requirements", () => {
+    const result = Effect.updateServiceScoped(UpdateServiceScopedService, (value) => value + 1)
+    expect(result).type.toBe<Effect.Effect<void, never, UpdateServiceScopedService | Scope.Scope>>()
+  })
+
+  it("does not add a Context.Reference to the requirements", () => {
+    const result = Effect.updateServiceScoped(UpdateServiceScopedReference, (value) => value + 1)
+    expect(result).type.toBe<Effect.Effect<void, never, Scope.Scope>>()
+  })
+
+  it("types the reset values from the service", () => {
+    const result = Effect.updateServiceScoped(
+      UpdateServiceScopedService,
+      (value) => value + 1,
+      {
+        reset: (original, updated, current) => {
+          expect(original).type.toBe<number>()
+          expect(updated).type.toBe<number>()
+          expect(current).type.toBe<number>()
+          return current
+        }
+      }
+    )
+    expect(result).type.toBe<Effect.Effect<void, never, UpdateServiceScopedService | Scope.Scope>>()
+  })
+})
+
 describe("Effect.forkScoped", () => {
   it("adds Scope to requirements in data-first usage", () => {
     const result = pipe(
@@ -1061,5 +1103,123 @@ describe("Effect.retry", () => {
       })
     )
     expect(result).type.toBe<Effect.Effect<string, AiError | OtherError>>()
+  })
+})
+
+describe("Effect.schedule", () => {
+  it("includes schedule errors in data-first usage", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, unknown, "schedule-error">
+    expect(Effect.schedule(Effect.fail("effect-error" as const), schedule))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
+  })
+
+  it("includes schedule errors in data-last usage", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, unknown, "schedule-error">
+    expect(Effect.fail("effect-error" as const).pipe(Effect.schedule(schedule)))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
+  })
+})
+
+describe("Effect.scheduleFrom", () => {
+  it("includes schedule errors in data-first usage", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, string, "schedule-error">
+    expect(Effect.scheduleFrom(Effect.fail("effect-error" as const), "initial", schedule))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
+  })
+
+  it("includes schedule errors in data-last usage", () => {
+    const schedule = null as unknown as Schedule.Schedule<number, string, "schedule-error">
+    expect(Effect.fail("effect-error" as const).pipe(Effect.scheduleFrom("initial", schedule)))
+      .type.toBe<Effect.Effect<number, "effect-error" | "schedule-error">>()
+  })
+})
+
+describe("Effect.provideServiceEffect", () => {
+  it("data-first disallows supertype return", () => {
+    Effect.provideServiceEffect(
+      Effect.void,
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Argument of type 'Effect<string, never, never>' is not assignable to parameter of type 'Effect<"LITERAL", never, never>'
+      Effect.gen(function*() {
+        return "test"
+      })
+    )
+  })
+
+  it("data-last disallows supertype return", () => {
+    Effect.provideServiceEffect(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Argument of type 'Effect<string, never, never>' is not assignable to parameter of type 'Effect<"LITERAL", never, never>'
+      Effect.gen(function*() {
+        return "test"
+      })
+    )
+  })
+})
+
+describe("Effect.updateService", () => {
+  it("data-first disallows supertype return", () => {
+    Effect.updateService(
+      Effect.void,
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+
+  it("data-last disallows supertype return", () => {
+    Effect.updateService(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+})
+
+describe("Effect.updateServiceScoped", () => {
+  it("disallows supertype return", () => {
+    Effect.updateServiceScoped(
+      ProvideServiceEffectServiceLiteral,
+      // @ts-expect-error Type 'string' is not assignable to type '"LITERAL"'
+      () => "test"
+    )
+  })
+})
+
+describe("Effect.withExecutionPlan", () => {
+  const plan = null as unknown as ExecutionPlan.ExecutionPlan<{
+    provides: "provided"
+    input: string
+    error: "plan-error"
+    requirements: "plan-dep"
+  }>
+  const self = null as unknown as Effect.Effect<number, string, "provided" | "other-dep">
+
+  it("data-first adds handler requirements to R", () => {
+    const result = Effect.withExecutionPlan(self, plan, {
+      onEvent: (event) => {
+        expect(event).type.toBe<ExecutionPlan.Event<string>>()
+        return null as unknown as Effect.Effect<void, never, "handler-dep">
+      }
+    })
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep" | "handler-dep">>()
+  })
+
+  it("data-last adds handler requirements to R", () => {
+    const result = pipe(
+      self,
+      Effect.withExecutionPlan(plan, {
+        onEvent: (event) => {
+          expect(event).type.toBe<ExecutionPlan.Event<string>>()
+          return null as unknown as Effect.Effect<void, never, "handler-dep">
+        }
+      })
+    )
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep" | "handler-dep">>()
+  })
+
+  it("without options the requirements are unchanged", () => {
+    const result = Effect.withExecutionPlan(self, plan)
+    expect(result).type.toBe<Effect.Effect<number, string, "other-dep" | "plan-dep">>()
   })
 })

@@ -309,7 +309,7 @@ export type TokenTypeId = typeof TokenTypeId
  * Branded string token identifying a durable deferred for a workflow
  * execution.
  *
- * @category token
+ * @category models
  * @since 4.0.0
  */
 export type Token = Brand.Branded<string, TokenTypeId>
@@ -317,7 +317,7 @@ export type Token = Brand.Branded<string, TokenTypeId>
 /**
  * Schema for branded durable deferred tokens.
  *
- * @category token
+ * @category schemas
  * @since 4.0.0
  */
 export const Token: Schema.brand<Schema.String, TokenTypeId> = Schema.String.pipe(Schema.brand(TokenTypeId))
@@ -326,7 +326,7 @@ export const Token: Schema.brand<Schema.String, TokenTypeId> = Schema.String.pip
  * Schema for a decoded durable deferred token containing the workflow
  * name, execution ID, and deferred name.
  *
- * @category token
+ * @category schemas
  * @since 4.0.0
  */
 export class TokenParsed extends Schema.Class<TokenParsed>(
@@ -401,7 +401,7 @@ export class TokenParsed extends Schema.Class<TokenParsed>(
  * Creates a token for a durable deferred using the current workflow instance's
  * workflow name and execution ID.
  *
- * @category token
+ * @category constructors
  * @since 4.0.0
  */
 export const token: <Success extends Schema.Constraint, Error extends Schema.Constraint>(
@@ -419,7 +419,7 @@ export const token: <Success extends Schema.Constraint, Error extends Schema.Con
  * Creates a durable deferred token from an explicit workflow, execution ID,
  * and deferred name.
  *
- * @category token
+ * @category constructors
  * @since 4.0.0
  */
 export const tokenFromExecutionId: {
@@ -453,7 +453,7 @@ export const tokenFromExecutionId: {
  * Creates a durable deferred token by deriving the workflow execution ID from
  * the supplied workflow payload.
  *
- * @category token
+ * @category constructors
  * @since 4.0.0
  */
 export const tokenFromPayload: {

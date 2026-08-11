@@ -15,7 +15,7 @@ import type * as Cause from "./Cause.ts"
 import type { Clock } from "./Clock.ts"
 import * as Context from "./Context.ts"
 import * as Duration from "./Duration.ts"
-import type { ExecutionPlan } from "./ExecutionPlan.ts"
+import type * as ExecutionPlan from "./ExecutionPlan.ts"
 import * as Exit from "./Exit.ts"
 import type { Fiber } from "./Fiber.ts"
 import type * as Filter from "./Filter.ts"
@@ -26,6 +26,7 @@ import * as core from "./internal/core.ts"
 import * as internal from "./internal/effect.ts"
 import * as internalExecutionPlan from "./internal/executionPlan.ts"
 import * as internalLayer from "./internal/layer.ts"
+import * as InternalRecord from "./internal/record.ts"
 import * as internalRequest from "./internal/request.ts"
 import * as internalSchedule from "./internal/schedule.ts"
 import type * as Layer from "./Layer.ts"
@@ -137,7 +138,7 @@ export interface EffectUnify<A extends { [Unify.typeSymbol]?: any }> {
 /**
  * Type lambda used to represent `Effect` in higher-kinded APIs.
  *
- * @category type lambdas
+ * @category utility types
  * @since 2.0.0
  */
 export interface EffectTypeLambda extends TypeLambda {
@@ -167,7 +168,7 @@ export interface Variance<A, E, R> {
  * @see {@link Error} for extracting the failure type from the same `Effect`
  * @see {@link Services} for extracting the required services from the same `Effect`
  *
- * @category models
+ * @category utility types
  * @since 2.0.0
  */
 export type Success<T> = T extends Effect<infer _A, infer _E, infer _R> ? _A
@@ -188,7 +189,7 @@ export type Success<T> = T extends Effect<infer _A, infer _E, infer _R> ? _A
  * @see {@link Success} for extracting the success value type instead
  * @see {@link Services} for extracting the required services type instead
  *
- * @category models
+ * @category utility types
  * @since 2.0.0
  */
 export type Error<T> = T extends Effect<infer _A, infer _E, infer _R> ? _E
@@ -205,7 +206,7 @@ export type Error<T> = T extends Effect<infer _A, infer _E, infer _R> ? _E
  * @see {@link Success} for extracting the success value type instead
  * @see {@link Error} for extracting the failure type instead
  *
- * @category models
+ * @category utility types
  * @since 4.0.0
  */
 export type Services<T> = T extends Effect<infer _A, infer _E, infer _R> ? _R
@@ -216,11 +217,11 @@ export type Services<T> = T extends Effect<infer _A, infer _E, infer _R> ? _R
  *
  * **Example** (Checking whether a value is an Effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * console.log(Effect.isEffect(Effect.succeed(1))) // true
- * console.log(Effect.isEffect("hello")) // false
+ * Effect.isEffect(Effect.succeed(1)) // => true
+ * Effect.isEffect("hello") // => false
  * ```
  *
  * @category guards
@@ -403,112 +404,91 @@ export declare namespace All {
  *
  * **Example** (Collecting tuple results in order)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
  *
  * const tupleOfEffects = [
- *   Effect.succeed(42).pipe(Effect.tap(Console.log)),
- *   Effect.succeed("Hello").pipe(Effect.tap(Console.log))
+ *   Effect.succeed(42),
+ *   Effect.succeed("Hello")
  * ] as const
  *
  * //      ┌─── Effect<[number, string], never, never>
  * //      ▼
  * const resultsAsTuple = Effect.all(tupleOfEffects)
  *
- * Effect.runPromise(resultsAsTuple).then(console.log)
- * // Output:
- * // 42
- * // Hello
- * // [ 42, 'Hello' ]
+ * await Effect.runPromise(resultsAsTuple) // => [42, "Hello"]
  * ```
  *
  * **Example** (Collecting iterable results in order)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
  *
  * const iterableOfEffects: Iterable<Effect.Effect<number>> = [1, 2, 3].map(
- *   (n) => Effect.succeed(n).pipe(Effect.tap(Console.log))
+ *   Effect.succeed
  * )
  *
  * //      ┌─── Effect<number[], never, never>
  * //      ▼
  * const resultsAsArray = Effect.all(iterableOfEffects)
  *
- * Effect.runPromise(resultsAsArray).then(console.log)
- * // Output:
- * // 1
- * // 2
- * // 3
- * // [ 1, 2, 3 ]
+ * await Effect.runPromise(resultsAsArray) // => [1, 2, 3]
  * ```
  *
  * **Example** (Collecting struct results by key)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
  *
  * const structOfEffects = {
- *   a: Effect.succeed(42).pipe(Effect.tap(Console.log)),
- *   b: Effect.succeed("Hello").pipe(Effect.tap(Console.log))
+ *   a: Effect.succeed(42),
+ *   b: Effect.succeed("Hello")
  * }
  *
  * //      ┌─── Effect<{ a: number; b: string; }, never, never>
  * //      ▼
  * const resultsAsStruct = Effect.all(structOfEffects)
  *
- * Effect.runPromise(resultsAsStruct).then(console.log)
- * // Output:
- * // 42
- * // Hello
- * // { a: 42, b: 'Hello' }
+ * await Effect.runPromise(resultsAsStruct) // => { a: 42, b: "Hello" }
  * ```
  *
  * **Example** (Collecting record results by key)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
  *
  * const recordOfEffects: Record<string, Effect.Effect<number>> = {
- *   key1: Effect.succeed(1).pipe(Effect.tap(Console.log)),
- *   key2: Effect.succeed(2).pipe(Effect.tap(Console.log))
+ *   key1: Effect.succeed(1),
+ *   key2: Effect.succeed(2)
  * }
  *
  * //      ┌─── Effect<{ [x: string]: number; }, never, never>
  * //      ▼
  * const resultsAsRecord = Effect.all(recordOfEffects)
  *
- * Effect.runPromise(resultsAsRecord).then(console.log)
- * // Output:
- * // 1
- * // 2
- * // { key1: 1, key2: 2 }
+ * await Effect.runPromise(resultsAsRecord) // => { key1: 1, key2: 2 }
  * ```
  *
  * **Example** (Stopping on the first failure)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
+ * const record = (value: unknown) => Effect.sync(() => { output.push(value) })
  *
  * const program = Effect.all([
- *   Effect.succeed("Task1").pipe(Effect.tap(Console.log)),
- *   Effect.fail("Task2: Oh no!").pipe(Effect.tap(Console.log)),
+ *   Effect.succeed("Task1").pipe(Effect.tap(record)),
+ *   Effect.fail("Task2: Oh no!").pipe(Effect.tap(record)),
  *   // Won't execute due to earlier failure
- *   Effect.succeed("Task3").pipe(Effect.tap(Console.log))
+ *   Effect.succeed("Task3").pipe(Effect.tap(record))
  * ])
  *
- * Effect.runPromiseExit(program).then(console.log)
- * // Output:
- * // Task1
- * // {
- * //   _id: 'Exit',
- * //   _tag: 'Failure',
- * //   cause: { _id: 'Cause', _tag: 'Fail', failure: 'Task2: Oh no!' }
- * // }
+ * const outcome = await Effect.runPromiseExit(program)
+ * const observation = [output, outcome] // => [["Task1"], Exit.fail("Task2: Oh no!")]
  * ```
  *
  * @see {@link forEach} for iterating over elements and applying an effect.
- * @category collecting
+ * @category combining
  * @since 2.0.0
  */
 export const all: <
@@ -539,18 +519,17 @@ export const all: <
  *
  * **Example** (Separating successes and failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.partition([0, 1, 2, 3], (n) =>
  *   n % 2 === 0 ? Effect.fail(`${n} is even`) : Effect.succeed(n)
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // [ ["0 is even", "2 is even"], [1, 3] ]
+ * await Effect.runPromise(program) // => [['0 is even', '2 is even'], [1, 3]]
  * ```
  *
- * @category collecting
+ * @category filtering
  * @since 2.0.0
  */
 export const partition: {
@@ -582,27 +561,24 @@ export const partition: {
  *
  * **Example** (Summing values sequentially)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.reduce(
  *   [1, 2, 3],
  *   () => 0,
  *   (total, value, index) =>
- *     Console.log(`Adding ${value} at index ${index}`).pipe(
+ *     Effect.sync(() => { output.push(`Adding ${value} at index ${index}`) }).pipe(
  *       Effect.as(total + value)
  *     )
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Adding 1 at index 0
- * // Adding 2 at index 1
- * // Adding 3 at index 2
- * // 6
+ * void output.push(await Effect.runPromise(program))
+ * output // => ["Adding 1 at index 0", "Adding 2 at index 1", "Adding 3 at index 2", 6]
  * ```
  *
- * @category collecting
+ * @category folding
  * @since 2.0.0
  */
 export const reduce: {
@@ -631,28 +607,17 @@ export const reduce: {
  *
  * **Example** (Validating every element)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
  *
  * const program = Effect.validate([0, 1, 2, 3], (n) =>
  *   n % 2 === 0 ? Effect.fail(`${n} is even`) : Effect.succeed(n)
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
- * // {
- * //   _id: 'Exit',
- * //   _tag: 'Failure',
- * //   cause: {
- * //     _id: 'Cause',
- * //     reasons: [
- * //       { _id: 'Reason', _tag: 'Fail', error: '0 is even' },
- * //       { _id: 'Reason', _tag: 'Fail', error: '2 is even' }
- * //     ]
- * //   }
- * // }
+ * await Effect.runPromiseExit(program) // => Exit.fail(["0 is even", "2 is even"])
  * ```
  *
- * @category error accumulation
+ * @category validation
  * @since 2.0.0
  */
 export const validate: {
@@ -698,16 +663,15 @@ export const validate: {
  *
  * **Example** (Finding the first successful match)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
  * const program = Effect.findFirst([1, 2, 3, 4], (n) => Effect.succeed(n > 2))
  *
- * Effect.runPromise(program).then(console.log)
- * // { _id: 'Option', _tag: 'Some', value: 3 }
+ * await Effect.runPromise(program) // => Option.some(3)
  * ```
  *
- * @category collecting
+ * @category searching
  * @since 2.0.0
  */
 export const findFirst: {
@@ -735,7 +699,7 @@ export const findFirst: {
  *
  * @see {@link findFirst} for the simpler effectful predicate-based variant
  *
- * @category collecting
+ * @category searching
  * @since 4.0.0
  */
 export const findFirstFilter: {
@@ -776,50 +740,40 @@ export const findFirstFilter: {
  *
  * **Example** (Mapping over an iterable with effects)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const result = Effect.forEach(
  *   [1, 2, 3, 4, 5],
  *   (n, index) =>
- *     Console.log(`Currently at index ${index}`).pipe(Effect.as(n * 2))
+ *     Effect.sync(() => { output.push(`Currently at index ${index}`) }).pipe(Effect.as(n * 2))
  * )
  *
- * Effect.runPromise(result).then(console.log)
- * // Output:
- * // Currently at index 0
- * // Currently at index 1
- * // Currently at index 2
- * // Currently at index 3
- * // Currently at index 4
- * // [ 2, 4, 6, 8, 10 ]
+ * void output.push(await Effect.runPromise(result))
+ * output // => ["Currently at index 0", "Currently at index 1", "Currently at index 2", "Currently at index 3", "Currently at index 4", [2, 4, 6, 8, 10]]
  * ```
  *
  * **Example** (Running effects without collecting results)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Apply effects but discard the results
  * const result = Effect.forEach(
  *   [1, 2, 3, 4, 5],
  *   (n, index) =>
- *     Console.log(`Currently at index ${index}`).pipe(Effect.as(n * 2)),
+ *     Effect.sync(() => { output.push(`Currently at index ${index}`) }).pipe(Effect.as(n * 2)),
  *   { discard: true }
  * )
  *
- * Effect.runPromise(result).then(console.log)
- * // Output:
- * // Currently at index 0
- * // Currently at index 1
- * // Currently at index 2
- * // Currently at index 3
- * // Currently at index 4
- * // undefined
+ * void output.push(await Effect.runPromise(result))
+ * output // => ["Currently at index 0", "Currently at index 1", "Currently at index 2", "Currently at index 3", "Currently at index 4", undefined]
  * ```
  *
  * @see {@link all} for combining multiple effects into one.
- * @category collecting
+ * @category sequencing
  * @since 2.0.0
  */
 export const forEach: {
@@ -839,27 +793,23 @@ export const forEach: {
  *
  * **Example** (Repeating an effectful loop)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * let counter = 0
  *
  * const program = Effect.whileLoop({
  *   while: () => counter < 5,
  *   body: () => Effect.sync(() => ++counter),
- *   step: (n) => console.log(`Current count: ${n}`)
+ *   step: (n) => void output.push(`Current count: ${n}`)
  * })
  *
- * Effect.runPromise(program)
- * // Output:
- * // Current count: 1
- * // Current count: 2
- * // Current count: 3
- * // Current count: 4
- * // Current count: 5
+ * await Effect.runPromise(program)
+ * output // => ["Current count: 1", "Current count: 2", "Current count: 3", "Current count: 4", "Current count: 5"]
  * ```
  *
- * @category collecting
+ * @category repetition
  * @since 2.0.0
  */
 export const whileLoop: <A, E, R>(options: {
@@ -896,22 +846,16 @@ export const whileLoop: <A, E, R>(options: {
  *
  * **Example** (Wrapping a non-rejecting Promise)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const delay = (message: string) =>
- *   Effect.promise<string>(
- *     () =>
- *       new Promise((resolve) => {
- *         setTimeout(() => {
- *           resolve(message)
- *         }, 2000)
- *       })
- *   )
+ * const succeedAsync = (message: string) =>
+ *   Effect.promise<string>(() => Promise.resolve(message))
  *
  * //      ┌─── Effect<string, never, never>
  * //      ▼
- * const program = delay("Async operation completed successfully!")
+ * const program = succeedAsync("Async operation completed successfully!")
+ * await Effect.runPromise(program) // => "Async operation completed successfully!"
  * ```
  *
  * @see {@link tryPromise} for a version that can handle failures.
@@ -955,37 +899,37 @@ export const promise: <A>(
  *
  * **Example** (Wrapping a fetch request that may fail)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const getTodo = (id: number) =>
- *   // Will catch any errors and propagate them as UnknownError
- *   Effect.tryPromise(() =>
- *     fetch(`https://jsonplaceholder.typicode.com/todos/${id}`)
- *   )
+ *   Effect.tryPromise(() => Promise.resolve({ id, completed: false }))
  *
- * //      ┌─── Effect<Response, UnknownError, never>
+ * //      ┌─── Effect<{ id: number; completed: boolean }, UnknownError, never>
  * //      ▼
  * const program = getTodo(1)
+ * await Effect.runPromise(program) // => { id: 1, completed: false }
  * ```
  *
  * **Example** (Mapping Promise rejections to a tagged error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class TodoFetchError extends Data.TaggedError("TodoFetchError")<{ readonly cause: unknown }> {}
  *
  * const getTodo = (id: number) =>
  *   Effect.tryPromise({
- *     try: () => fetch(`https://jsonplaceholder.typicode.com/todos/${id}`),
+ *     try: () => Promise.reject(`Todo ${id} is unavailable`),
  *     // remap the error
  *     catch: (cause) => new TodoFetchError({ cause })
  *   })
  *
- * //      ┌─── Effect<Response, TodoFetchError, never>
+ * //      ┌─── Effect<never, TodoFetchError, never>
  * //      ▼
- * const program = getTodo(1)
+ * const program = Effect.flip(getTodo(1))
+ * const error = await Effect.runPromise(program)
+ * error._tag // => "TodoFetchError"
  * ```
  *
  * @see {@link promise} if the effectful computation is asynchronous and does not throw errors.
@@ -1008,7 +952,7 @@ export const tryPromise: <A, E = Cause.UnknownError>(
  *
  * **Example** (Creating a successful effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // Creating an effect that represents a successful scenario
@@ -1016,6 +960,7 @@ export const tryPromise: <A, E = Cause.UnknownError>(
  * //      ┌─── Effect<number, never, never>
  * //      ▼
  * const success = Effect.succeed(42)
+ * Effect.runSync(success) // => 42
  * ```
  *
  * @see {@link fail} to create an effect that represents a failure.
@@ -1029,13 +974,12 @@ export const succeed: <A>(value: A) => Effect<A> = internal.succeed
  *
  * **Example** (Succeeding with Option.none)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
  * const program = Effect.succeedNone
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: { _id: 'Option', _tag: 'None' }
+ * Effect.runSync(program) // => Option.none()
  * ```
  *
  * @category constructors
@@ -1048,13 +992,12 @@ export const succeedNone: Effect<Option<never>> = internal.succeedNone
  *
  * **Example** (Succeeding with Option.some)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
  * const program = Effect.succeedSome(42)
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: { _id: 'Option', _tag: 'Some', value: 42 }
+ * Effect.runSync(program) // => Option.some(42)
  * ```
  *
  * @category constructors
@@ -1080,7 +1023,7 @@ export const succeedSome: <A>(value: A) => Effect<Option<A>> = internal.succeedS
  *
  * **Example** (Lazily evaluating side effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * let i = 0
@@ -1089,16 +1032,16 @@ export const succeedSome: <A>(value: A) => Effect<Option<A>> = internal.succeedS
  *
  * const good = Effect.suspend(() => Effect.succeed(i++))
  *
- * console.log(Effect.runSync(bad)) // Output: 0
- * console.log(Effect.runSync(bad)) // Output: 0
+ * Effect.runSync(bad) // => 0
+ * Effect.runSync(bad) // => 0
  *
- * console.log(Effect.runSync(good)) // Output: 1
- * console.log(Effect.runSync(good)) // Output: 2
+ * Effect.runSync(good) // => 1
+ * Effect.runSync(good) // => 2
  * ```
  *
  * **Example** (Suspending recursive Fibonacci evaluation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const blowsUp = (n: number): Effect.Effect<number> =>
@@ -1118,13 +1061,12 @@ export const succeedSome: <A>(value: A) => Effect<Option<A>> = internal.succeedS
  *         (a, b) => a + b
  *       )
  *
- * console.log(Effect.runSync(allGood(32)))
- * // Output: 3524578
+ * Effect.runSync(allGood(16)) // => 1597
  * ```
  *
  * **Example** (Helping TypeScript infer recursive effect types)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * //   Without suspend, TypeScript may struggle with type inference.
@@ -1145,6 +1087,8 @@ export const succeedSome: <A>(value: A) => Effect<Option<A>> = internal.succeedS
  *       ? Effect.fail(new Error("Cannot divide by zero"))
  *       : Effect.succeed(a / b)
  *   )
+ *
+ * Effect.runSync(withSuspend(6, 2)) // => 3
  * ```
  *
  * @category constructors
@@ -1173,17 +1117,20 @@ export const suspend: <A, E, R>(
  *
  * **Example** (Capturing synchronous logging in an Effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const log = (message: string) =>
  *   Effect.sync(() => {
- *     console.log(message) // side effect
+ *     void output.push(message) // side effect
  *   })
  *
  * //      ┌─── Effect<void, never, never>
  * //      ▼
  * const program = log("Hello, World!")
+ * Effect.runSync(program)
+ * output // => ["Hello, World!"]
  * ```
  *
  * @see {@link try_ | try} for a version that can handle failures.
@@ -1231,19 +1178,20 @@ export {
  *
  * **Example** (Integrating callback APIs)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
- * const delay = (ms: number) =>
+ * const fromCallback = (message: string) =>
  *   Effect.callback<void>((resume) => {
- *     const timeoutId = setTimeout(() => {
+ *     queueMicrotask(() => {
+ *       void output.push(message)
  *       resume(Effect.void)
- *     }, ms)
- *     // Cleanup function for interruption
- *     return Effect.sync(() => clearTimeout(timeoutId))
+ *     })
  *   })
  *
- * const program = delay(1000)
+ * await Effect.runPromise(fromCallback("callback completed"))
+ * output // => ["callback completed"]
  * ```
  *
  * @category constructors
@@ -1263,17 +1211,11 @@ export const callback: <A, E = never, R = never>(
  *
  * **Example** (Creating a never-ending effect)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
- * // This effect will never complete
- * const program = Effect.never
- *
- * // This will run forever (or until interrupted)
- * // Effect.runPromise(program) // Never resolves
- *
- * // Use with timeout for practical applications
- * const timedProgram = Effect.timeout(program, "1 second")
+ * const program = Effect.timeoutOption(Effect.never, 0)
+ * await Effect.runPromise(program) // => Option.none()
  * ```
  *
  * @category constructors
@@ -1287,7 +1229,7 @@ export const never: Effect<never> = internal.never
  *
  * **Example** (Starting do notation)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, pipe } from "effect"
  *
  * const program = pipe(
@@ -1296,9 +1238,11 @@ export const never: Effect<never> = internal.never
  *   Effect.bind("y", ({ x }) => Effect.succeed(x + 1)),
  *   Effect.let("sum", ({ x, y }) => x + y)
  * )
+ *
+ * Effect.runSync(program) // => { x: 2, y: 3, sum: 5 }
  * ```
  *
- * @category do notation
+ * @category constructors
  * @since 2.0.0
  */
 export const Do: Effect<{}> = internal.Do
@@ -1315,7 +1259,7 @@ export const Do: Effect<{}> = internal.Do
  * @see {@link Do} for starting from an empty accumulated record
  * @see {@link bind} for adding fields produced by effects
  *
- * @category do notation
+ * @category mapping
  * @since 2.0.0
  */
 export const bindTo: {
@@ -1357,7 +1301,7 @@ export {
    * @see {@link Do} for starting from an empty accumulated record
    * @see {@link gen} for sequencing without accumulating a record
    *
-   * @category do notation
+   * @category mapping
    * @since 2.0.0
    */
   let_ as let
@@ -1387,7 +1331,7 @@ export {
  * @see {@link bindTo} for naming the success value of an existing effect
  * @see {@link gen} for generator-based sequencing without accumulating a record
  *
- * @category do notation
+ * @category sequencing
  * @since 2.0.0
  */
 export const bind: {
@@ -1420,7 +1364,7 @@ export const bind: {
  *
  * **Example** (Sequencing effects with generators)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class DiscountRateError extends Data.TaggedError("DiscountRateError")<{}> {}
@@ -1449,6 +1393,8 @@ export const bind: {
  *   const finalAmount = addServiceCharge(discountedAmount)
  *   return `Final amount to charge: ${finalAmount}`
  * })
+ *
+ * await Effect.runPromise(program) // => "Final amount to charge: 96"
  * ```
  *
  * @category constructors
@@ -1511,7 +1457,7 @@ export declare namespace gen {
  *
  * **Example** (Creating a failed effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class OperationFailedError extends Data.TaggedError("OperationFailedError")<{}> {}
@@ -1521,6 +1467,7 @@ export declare namespace gen {
  * const failure = Effect.fail(
  *   new OperationFailedError()
  * )
+ * Effect.runSync(Effect.flip(failure))._tag // => "OperationFailedError"
  * ```
  *
  * @see {@link succeed} to create an effect that represents a successful value.
@@ -1542,15 +1489,14 @@ export const fail: <E>(error: E) => Effect<never, E> = internal.fail
  *
  * **Example** (Lazily creating failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
- * class ProgramError extends Data.TaggedError("ProgramError")<{ readonly failedAt: Date }> {}
+ * class ProgramError extends Data.TaggedError("ProgramError")<{ readonly operation: string }> {}
  *
- * const program = Effect.failSync(() => new ProgramError({ failedAt: new Date() }))
+ * const program = Effect.failSync(() => new ProgramError({ operation: "sync" }))
  *
- * Effect.runPromiseExit(program).then(console.log)
- * // Output: { _id: 'Exit', _tag: 'Failure', cause: ... }
+ * Effect.runSync(Effect.flip(program)).operation // => "sync"
  * ```
  *
  * @category constructors
@@ -1574,15 +1520,14 @@ export const failSync: <E>(evaluate: LazyArg<E>) => Effect<never, E> = internal.
  *
  * **Example** (Failing with a full Cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect } from "effect"
  *
  * const program = Effect.failCause(
  *   Cause.fail("Network error")
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
- * // Output: { _id: 'Exit', _tag: 'Failure', cause: ... }
+ * Effect.runSync(Effect.flip(program)) // => "Network error"
  * ```
  *
  * @category constructors
@@ -1603,15 +1548,14 @@ export const failCause: <E>(cause: Cause.Cause<E>) => Effect<never, E> = interna
  *
  * **Example** (Lazily creating a Cause)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect } from "effect"
  *
  * const program = Effect.failCauseSync(() =>
  *   Cause.fail("Error computed at runtime")
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
- * // Output: { _id: 'Exit', _tag: 'Failure', cause: ... }
+ * Effect.runSync(Effect.flip(program)) // => "Error computed at runtime"
  * ```
  *
  * @category constructors
@@ -1640,22 +1584,20 @@ export const failCauseSync: <E>(
  *
  * **Example** (Failing on division by zero)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
  *
+ * const defect = new Error("Cannot divide by zero")
  * const divide = (a: number, b: number) =>
  *   b === 0
- *     ? Effect.die(new Error("Cannot divide by zero"))
+ *     ? Effect.die(defect)
  *     : Effect.succeed(a / b)
  *
  * //      ┌─── Effect<number, never, never>
  * //      ▼
  * const program = divide(1, 0)
  *
- * Effect.runPromise(program).catch(console.error)
- * // Output:
- * // (FiberFailure) Error: Cannot divide by zero
- * //   ...stack trace...
+ * Effect.runSyncExit(program) // => Exit.die(defect)
  * ```
  *
  * @category constructors
@@ -1698,23 +1640,23 @@ export {
    *
    * **Example** (Parsing JSON)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect } from "effect"
    *
    * const parseJSON = (input: string) =>
    *   Effect.try(() => JSON.parse(input))
    *
    * // Success case
-   * Effect.runPromise(parseJSON("{\"name\": \"Alice\"}")).then(console.log)
-   * // Output: { name: "Alice" }
+   * await Effect.runPromise(parseJSON("{\"name\": \"Alice\"}")) // => { name: 'Alice' }
    *
    * // Failure case maps the thrown value to UnknownError
-   * Effect.runPromiseExit(parseJSON("invalid json")).then(console.log)
+   * const exit = await Effect.runPromiseExit(parseJSON("invalid json"))
+   * exit._tag // => "Failure"
    * ```
    *
    * **Example** (Mapping exceptions to a tagged error)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Data, Effect } from "effect"
    *
    * class JsonParsingError extends Data.TaggedError("JsonParsingError")<{ readonly cause: unknown }> {}
@@ -1725,8 +1667,8 @@ export {
    *     catch: (cause) => new JsonParsingError({ cause })
    *   })
    *
-   * Effect.runPromiseExit(parseJSON("invalid json")).then(console.log)
-   * // Output: Exit.failure with custom Error message
+   * const error = await Effect.runPromise(Effect.flip(parseJSON("invalid json")))
+   * error._tag // => "JsonParsingError"
    * ```
    *
    * @see {@link sync} if the effectful computation is synchronous and does not
@@ -1742,16 +1684,18 @@ export {
  *
  * **Example** (Yielding to other fibers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
- *   console.log("Before yield")
+ *   void output.push("Before yield")
  *   yield* Effect.yieldNow
- *   console.log("After yield")
+ *   void output.push("After yield")
  * })
  *
- * Effect.runPromise(program)
+ * await Effect.runPromise(program)
+ * output // => ["Before yield", "After yield"]
  * ```
  *
  * @category constructors
@@ -1764,16 +1708,18 @@ export const yieldNow: Effect<void> = internal.yieldNow
  *
  * **Example** (Yielding with priority)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
- *   console.log("High priority task")
+ *   void output.push("High priority task")
  *   yield* Effect.yieldNowWith(10) // Higher priority
- *   console.log("Continued after yield")
+ *   void output.push("Continued after yield")
  * })
  *
- * Effect.runPromise(program)
+ * await Effect.runPromise(program)
+ * output // => ["High priority task", "Continued after yield"]
  * ```
  *
  * @category constructors
@@ -1786,15 +1732,12 @@ export const yieldNowWith: (priority?: number) => Effect<void> = internal.yieldN
  *
  * **Example** (Reading the current fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const program = Effect.withFiber((fiber) =>
- *   Effect.succeed(`Fiber ID: ${fiber.id}`)
- * )
+ * const program = Effect.withFiber((fiber) => Effect.succeed(typeof fiber.id))
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: Fiber ID: 1
+ * Effect.runSync(program) // => "number"
  * ```
  *
  * @category constructors
@@ -1813,8 +1756,9 @@ export const withFiber: <A, E = never, R = never>(
  *
  * **Example** (Converting a Result into an Effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Result } from "effect"
+ * const output: Array<unknown> = []
  *
  * const success = Result.succeed(42)
  * const failure = Result.fail("Something went wrong")
@@ -1822,9 +1766,9 @@ export const withFiber: <A, E = never, R = never>(
  * const effect1 = Effect.fromResult(success)
  * const effect2 = Effect.fromResult(failure)
  *
- * Effect.runPromise(effect1).then(console.log) // 42
- * Effect.runPromiseExit(effect2).then(console.log)
- * // { _id: 'Exit', _tag: 'Failure', cause: { _id: 'Cause', _tag: 'Fail', failure: 'Something went wrong' } }
+ * void output.push(Effect.runSync(effect1))
+ * void output.push(Effect.runSync(Effect.flip(effect2)))
+ * output // => [42, "Something went wrong"]
  * ```
  *
  * @category converting
@@ -1849,8 +1793,9 @@ export const fromResult: <A, E>(result: Result.Result<A, E>) => Effect<A, E> = i
  *
  * **Example** (Converting an Option into an Effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option } from "effect"
+ * const output: Array<unknown> = []
  *
  * const some = Option.some(42)
  * const none = Option.none()
@@ -1859,9 +1804,10 @@ export const fromResult: <A, E>(result: Result.Result<A, E>) => Effect<A, E> = i
  * const effect2 = Effect.fromOption(none)
  * const effect3 = Effect.fromOption(none, () => new Error("missing"))
  *
- * Effect.runPromise(effect1).then(console.log) // 42
- * Effect.runPromiseExit(effect2).then(console.log)
- * // { _id: 'Exit', _tag: 'Failure', cause: { _id: 'Cause', _tag: 'Fail', failure: { _id: 'NoSuchElementError' } } }
+ * void output.push(Effect.runSync(effect1))
+ * void output.push(Effect.runSync(Effect.flip(effect2))._tag)
+ * void output.push(Effect.runSync(Effect.flip(effect3)).message)
+ * output // => [42, "NoSuchElementError", "missing"]
  * ```
  *
  * @category converting
@@ -1890,7 +1836,7 @@ export const fromOption: <Arg extends Option<unknown> | LazyArg<unknown>, E = Ca
  *
  * **Example** (Transposing an Option of an Effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option } from "effect"
  *
  * const some = Option.some(Effect.succeed(42))
@@ -1899,8 +1845,7 @@ export const fromOption: <Arg extends Option<unknown> | LazyArg<unknown>, E = Ca
  * //      ▼
  * const program = Effect.transposeOption(some)
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: { _id: 'Option', _tag: 'Some', value: 42 }
+ * Effect.runSync(program) // => Option.some(42)
  * ```
  *
  * @category converting
@@ -1916,20 +1861,20 @@ export const transposeOption: <A = never, E = never, R = never>(
  *
  * **Example** (Failing on nullish values)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.fn(function*(input: string | null) {
  *   const value = yield* Effect.fromNullishOr(input)
- *   yield* Console.log(value)
+ *   yield* Effect.sync(() => { output.push(value) })
  * },
- *   Effect.catch(() => Console.log("missing"))
+ *   Effect.catch(() => Effect.sync(() => { output.push("missing") }))
  * )
  *
- * Effect.runPromise(program(null))
- * // Output: missing
- * Effect.runPromise(program("hello"))
- * // Output: hello
+ * await Effect.runPromise(program(null))
+ * await Effect.runPromise(program("hello"))
+ * output // => ["missing", "hello"]
  * ```
  *
  * @category converting
@@ -1963,8 +1908,9 @@ export const fromNullishOr: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuch
  *
  * **Example** (Choosing flatMap syntax variants)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, pipe } from "effect"
+ * const output: Array<unknown> = []
  *
  * const myEffect = Effect.succeed(1)
  * const transformation = (n: number) => Effect.succeed(n + 1)
@@ -1972,11 +1918,18 @@ export const fromNullishOr: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuch
  * const flatMappedWithPipe = pipe(myEffect, Effect.flatMap(transformation))
  * const flatMappedWithDataFirst = Effect.flatMap(myEffect, transformation)
  * const flatMappedWithMethod = myEffect.pipe(Effect.flatMap(transformation))
+ *
+ * void output.push(Effect.runSync(Effect.all([
+ *   flatMappedWithPipe,
+ *   flatMappedWithDataFirst,
+ *   flatMappedWithMethod
+ * ])))
+ * output // => [[2, 2, 2]]
  * ```
  *
  * **Example** (Sequencing dependent effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, pipe } from "effect"
  *
  * class DiscountRateError extends Data.TaggedError("DiscountRateError")<{}> {}
@@ -1999,8 +1952,7 @@ export const fromNullishOr: <A>(value: A) => Effect<NonNullable<A>, Cause.NoSuch
  *   Effect.flatMap((amount) => applyDiscount(amount, 5))
  * )
  *
- * Effect.runPromise(finalAmount).then(console.log)
- * // Output: 95
+ * await Effect.runPromise(finalAmount) // => 95
  * ```
  *
  * @see {@link tap} for a version that ignores the result of the effect.
@@ -2022,16 +1974,19 @@ export const flatMap: {
  *
  * **Example** (Flattening nested effects)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const nested = Effect.succeed(Effect.succeed("hello"))
  *
  * const program = Effect.gen(function*() {
  *   const value = yield* Effect.flatten(nested)
- *   yield* Console.log(value)
- *   // Output: hello
+ *   yield* Effect.sync(() => { output.push(value) })
  * })
+ *
+ * Effect.runSync(program)
+ * output // => ["hello"]
  * ```
  *
  * @category sequencing
@@ -2061,8 +2016,9 @@ export const flatten: <A, E, R, E2, R2>(self: Effect<Effect<A, E, R>, E2, R2>) =
  *
  * **Example** (Choosing andThen syntax variants)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, pipe } from "effect"
+ * const output: Array<unknown> = []
  *
  * const myEffect = Effect.succeed(1)
  * const anotherEffect = Effect.succeed("done")
@@ -2070,11 +2026,18 @@ export const flatten: <A, E, R, E2, R2>(self: Effect<Effect<A, E, R>, E2, R2>) =
  * const transformedWithPipe = pipe(myEffect, Effect.andThen(anotherEffect))
  * const transformedWithDataFirst = Effect.andThen(myEffect, anotherEffect)
  * const transformedWithMethod = myEffect.pipe(Effect.andThen(anotherEffect))
+ *
+ * void output.push(Effect.runSync(Effect.all([
+ *   transformedWithPipe,
+ *   transformedWithDataFirst,
+ *   transformedWithMethod
+ * ])))
+ * output // => [['done', 'done', 'done']]
  * ```
  *
  * **Example** (Sequencing a discount calculation after fetching a total)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, pipe } from "effect"
  *
  * class DiscountRateError extends Data.TaggedError("DiscountRateError")<{}> {}
@@ -2098,8 +2061,7 @@ export const flatten: <A, E, R, E2, R2>(self: Effect<Effect<A, E, R>, E2, R2>) =
  *   Effect.flatMap((amount) => applyDiscount(amount, 5))
  * )
  *
- * Effect.runPromise(result1).then(console.log)
- * // Output: 190
+ * await Effect.runPromise(result1) // => 190
  *
  * // Using Effect.andThen
  * const result2 = pipe(
@@ -2108,8 +2070,7 @@ export const flatten: <A, E, R, E2, R2>(self: Effect<Effect<A, E, R>, E2, R2>) =
  *   Effect.andThen((amount) => applyDiscount(amount, 5))
  * )
  *
- * Effect.runPromise(result2).then(console.log)
- * // Output: 190
+ * await Effect.runPromise(result2) // => 190
  * ```
  *
  * @category sequencing
@@ -2150,8 +2111,9 @@ export const andThen: {
  *
  * **Example** (Logging a step in a pipeline)
  *
- * ```ts
- * import { Console, Data, Effect, pipe } from "effect"
+ * ```ts import.meta.vitest
+ * import { Data, Effect, pipe } from "effect"
+ * const output: Array<unknown> = []
  *
  * class DiscountRateError extends Data.TaggedError("DiscountRateError")<{}> {}
  *
@@ -2170,15 +2132,13 @@ export const andThen: {
  * const finalAmount = pipe(
  *   fetchTransactionAmount,
  *   // Log the fetched transaction amount
- *   Effect.tap((amount) => Console.log(`Apply a discount to: ${amount}`)),
+ *   Effect.tap((amount) => Effect.sync(() => { output.push(`Apply a discount to: ${amount}`) })),
  *   // `amount` is still available!
  *   Effect.flatMap((amount) => applyDiscount(amount, 5))
  * )
  *
- * Effect.runPromise(finalAmount).then(console.log)
- * // Output:
- * // Apply a discount to: 100
- * // 95
+ * void output.push(await Effect.runPromise(finalAmount))
+ * output // => ["Apply a discount to: 100", 95]
  * ```
  *
  * @category sequencing
@@ -2232,8 +2192,8 @@ export const tap: {
  *
  * **Example** (Capturing success or failure as Result)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Result } from "effect"
  *
  * const success = Effect.succeed(42)
  * const failure = Effect.fail("Something went wrong")
@@ -2241,17 +2201,15 @@ export const tap: {
  * const program1 = Effect.result(success)
  * const program2 = Effect.result(failure)
  *
- * Effect.runPromise(program1).then(console.log)
- * // { _id: 'Result', _tag: 'Success', value: 42 }
+ * Effect.runSync(program1) // => Result.succeed(42)
  *
- * Effect.runPromise(program2).then(console.log)
- * // { _id: 'Result', _tag: 'Failure', error: 'Something went wrong' }
+ * Effect.runSync(program2) // => Result.fail("Something went wrong")
  * ```
  *
  * @see {@link option} for a version that uses `Option` instead.
  * @see {@link exit} for a version that encapsulates both recoverable errors and defects in an `Exit`.
  *
- * @category outcome encapsulation
+ * @category error handling
  * @since 4.0.0
  */
 export const result: <A, E, R>(self: Effect<A, E, R>) => Effect<Result.Result<A, E>, never, R> = internal.result
@@ -2280,26 +2238,21 @@ export const result: <A, E, R>(self: Effect<A, E, R>) => Effect<Result.Result<A,
  *
  * **Example** (Capturing success or failure as Option)
  *
- * ```ts
- * import { Console, Effect, Option } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   const someValue = yield* Effect.option(Effect.succeed(1))
- *   const noneValue = yield* Effect.option(Effect.fail("missing"))
+ * const program = Effect.all([
+ *   Effect.option(Effect.succeed(1)),
+ *   Effect.option(Effect.fail("missing"))
+ * ])
  *
- *   yield* Console.log(Option.isSome(someValue))
- *   yield* Console.log(Option.isNone(noneValue))
- * })
- *
- * Effect.runPromise(program)
- * // true
- * // true
+ * Effect.runSync(program) // => [Option.some(1), Option.none()]
  * ```
  *
  * @see {@link result} for a version that uses `Result` instead.
  * @see {@link exit} for a version that encapsulates both recoverable errors and defects in an `Exit`.
  *
- * @category outcome encapsulation
+ * @category error handling
  * @since 2.0.0
  */
 export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option<A>, never, R> = internal.option
@@ -2324,8 +2277,8 @@ export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option<A>, never
  *
  * **Example** (Capturing completion as Exit)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
  *
  * const success = Effect.succeed(42)
  * const failure = Effect.fail("Something went wrong")
@@ -2333,17 +2286,15 @@ export const option: <A, E, R>(self: Effect<A, E, R>) => Effect<Option<A>, never
  * const program1 = Effect.exit(success)
  * const program2 = Effect.exit(failure)
  *
- * Effect.runPromise(program1).then(console.log)
- * // { _id: 'Exit', _tag: 'Success', value: 42 }
+ * Effect.runSync(program1) // => Exit.succeed(42)
  *
- * Effect.runPromise(program2).then(console.log)
- * // { _id: 'Exit', _tag: 'Failure', cause: { _id: 'Cause', _tag: 'Fail', failure: 'Something went wrong' } }
+ * Effect.runSync(program2) // => Exit.fail("Something went wrong")
  * ```
  *
  * @see {@link option} for a version that uses `Option` instead.
  * @see {@link result} for a version that uses `Result` instead.
  *
- * @category outcome encapsulation
+ * @category error handling
  * @since 2.0.0
  */
 export const exit: <A, E, R>(
@@ -2370,8 +2321,9 @@ export const exit: <A, E, R>(
  *
  * **Example** (Choosing map syntax variants)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, pipe } from "effect"
+ * const output: Array<unknown> = []
  *
  * const myEffect = Effect.succeed(1)
  * const transformation = (n: number) => n + 1
@@ -2379,11 +2331,18 @@ export const exit: <A, E, R>(
  * const mappedWithPipe = pipe(myEffect, Effect.map(transformation))
  * const mappedWithDataFirst = Effect.map(myEffect, transformation)
  * const mappedWithMethod = myEffect.pipe(Effect.map(transformation))
+ *
+ * void output.push(Effect.runSync(Effect.all([
+ *   mappedWithPipe,
+ *   mappedWithDataFirst,
+ *   mappedWithMethod
+ * ])))
+ * output // => [[2, 2, 2]]
  * ```
  *
  * **Example** (Adding a service charge)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, pipe } from "effect"
  *
  * const addServiceCharge = (amount: number) => amount + 1
@@ -2395,8 +2354,7 @@ export const exit: <A, E, R>(
  *   Effect.map(addServiceCharge)
  * )
  *
- * Effect.runPromise(finalAmount).then(console.log)
- * // Output: 101
+ * await Effect.runPromise(finalAmount) // => 101
  * ```
  *
  * @see {@link mapError} for a version that operates on the error channel.
@@ -2425,14 +2383,13 @@ export const map: {
  *
  * **Example** (Replacing a success value)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, pipe } from "effect"
  *
  * // Replaces the value 5 with the constant "new value"
  * const program = pipe(Effect.succeed(5), Effect.as("new value"))
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: "new value"
+ * Effect.runSync(program) // => "new value"
  * ```
  *
  * @see {@link map} for deriving the replacement value from the success value
@@ -2451,13 +2408,12 @@ export const as: {
  *
  * **Example** (Wrapping success in Option.some)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
  * const program = Effect.asSome(Effect.succeed(42))
  *
- * Effect.runPromise(program).then(console.log)
- * // { _id: 'Option', _tag: 'Some', value: 42 }
+ * Effect.runSync(program) // => Option.some(42)
  * ```
  *
  * @category mapping
@@ -2470,13 +2426,12 @@ export const asSome: <A, E, R>(self: Effect<A, E, R>) => Effect<Option<A>, E, R>
  *
  * **Example** (Discarding success values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.asVoid(Effect.succeed(42))
  *
- * Effect.runPromise(program).then(console.log)
- * // undefined (void)
+ * Effect.runSync(program) // => undefined
  * ```
  *
  * @category mapping
@@ -2497,7 +2452,7 @@ export const asVoid: <A, E, R>(self: Effect<A, E, R>) => Effect<void, E, R> = in
  *
  * **Example** (Swapping success and failure channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * //      ┌─── Effect<number, string, never>
@@ -2507,6 +2462,7 @@ export const asVoid: <A, E, R>(self: Effect<A, E, R>) => Effect<void, E, R> = in
  * //      ┌─── Effect<string, number, never>
  * //      ▼
  * const flipped = Effect.flip(program)
+ * Effect.runSync(flipped) // => "Oh uh!"
  * ```
  *
  * @category mapping
@@ -2537,17 +2493,11 @@ export const flip: <A, E, R>(self: Effect<A, E, R>) => Effect<E, A, R> = interna
  *
  * **Example** (Combining two effects sequentially)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const task1 = Effect.succeed(1).pipe(
- *   Effect.delay("200 millis"),
- *   Effect.tap(Effect.log("task1 done"))
- * )
- * const task2 = Effect.succeed("hello").pipe(
- *   Effect.delay("100 millis"),
- *   Effect.tap(Effect.log("task2 done"))
- * )
+ * const task1 = Effect.succeed(1)
+ * const task2 = Effect.succeed("hello")
  *
  * // Combine the two effects together
  * //
@@ -2555,35 +2505,21 @@ export const flip: <A, E, R>(self: Effect<A, E, R>) => Effect<E, A, R> = interna
  * //      ▼
  * const program = Effect.zip(task1, task2)
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // timestamp=... level=INFO fiber=#0 message="task1 done"
- * // timestamp=... level=INFO fiber=#0 message="task2 done"
- * // [ 1, 'hello' ]
+ * Effect.runSync(program) // => [1, 'hello']
  * ```
  *
  * **Example** (Combining two effects concurrently)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const task1 = Effect.succeed(1).pipe(
- *   Effect.delay("200 millis"),
- *   Effect.tap(Effect.log("task1 done"))
- * )
- * const task2 = Effect.succeed("hello").pipe(
- *   Effect.delay("100 millis"),
- *   Effect.tap(Effect.log("task2 done"))
- * )
+ * const task1 = Effect.succeed(1)
+ * const task2 = Effect.succeed("hello")
  *
  * // Run both effects concurrently using the concurrent option
  * const program = Effect.zip(task1, task2, { concurrent: true })
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // timestamp=... level=INFO fiber=#0 message="task2 done"
- * // timestamp=... level=INFO fiber=#0 message="task1 done"
- * // [ 1, 'hello' ]
+ * await Effect.runPromise(program) // => [1, 'hello']
  * ```
  *
  * @see {@link zipWith} for a version that combines the results with a custom function.
@@ -2622,17 +2558,11 @@ export const zip: {
  *
  * **Example** (Combining two success values with a function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const task1 = Effect.succeed(1).pipe(
- *   Effect.delay("200 millis"),
- *   Effect.tap(Effect.log("task1 done"))
- * )
- * const task2 = Effect.succeed("hello").pipe(
- *   Effect.delay("100 millis"),
- *   Effect.tap(Effect.log("task2 done"))
- * )
+ * const task1 = Effect.succeed(1)
+ * const task2 = Effect.succeed("hello")
  *
  * const task3 = Effect.zipWith(
  *   task1,
@@ -2641,11 +2571,7 @@ export const zip: {
  *   (number, string) => number + string.length
  * )
  *
- * Effect.runPromise(task3).then(console.log)
- * // Output:
- * // timestamp=... level=INFO fiber=#3 message="task1 done"
- * // timestamp=... level=INFO fiber=#2 message="task2 done"
- * // 6
+ * Effect.runSync(task3) // => 6
  * ```
  *
  * @category zipping
@@ -2724,7 +2650,7 @@ export {
  *
  * **Example** (Handling a tagged error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * class NetworkError {
@@ -2737,13 +2663,16 @@ export {
  *   constructor(readonly message: string) {}
  * }
  *
- * declare const task: Effect.Effect<string, NetworkError | ValidationError>
+ * const task: Effect.Effect<string, NetworkError | ValidationError> =
+ *   Effect.fail(new NetworkError("offline"))
  *
  * const program = Effect.catchTag(
  *   task,
  *   "NetworkError",
  *   (error) => Effect.succeed(`Recovered from network error: ${error.message}`)
  * )
+ *
+ * Effect.runSync(program) // => "Recovered from network error: offline"
  * ```
  *
  * @see {@link catchTags} for handling multiple tagged errors in one call
@@ -2822,7 +2751,7 @@ export const catchTag: {
  *
  * **Example** (Handling multiple tagged errors)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * // Define tagged error types
@@ -2835,7 +2764,8 @@ export const catchTag: {
  * }> {}
  *
  * // An effect that might fail with multiple error types
- * declare const program: Effect.Effect<string, ValidationError | NetworkError>
+ * const program: Effect.Effect<string, ValidationError | NetworkError> =
+ *   Effect.fail(new NetworkError({ statusCode: 503 }))
  *
  * // Handle multiple error types at once
  * const handled = Effect.catchTags(program, {
@@ -2843,6 +2773,8 @@ export const catchTag: {
  *     Effect.succeed(`Validation failed: ${error.message}`),
  *   NetworkError: (error) => Effect.succeed(`Network error: ${error.statusCode}`)
  * })
+ *
+ * Effect.runSync(handled) // => "Network error: 503"
  * ```
  *
  * @category error handling
@@ -2927,7 +2859,7 @@ export const catchTags: {
  *
  * **Example** (Handling an error reason)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class RateLimitError extends Data.TaggedError("RateLimitError")<{
@@ -2942,7 +2874,9 @@ export const catchTags: {
  *   reason: RateLimitError | QuotaExceededError
  * }> {}
  *
- * declare const program: Effect.Effect<string, AiError>
+ * const program: Effect.Effect<string, AiError> = Effect.fail(
+ *   new AiError({ reason: new RateLimitError({ retryAfter: 30 }) })
+ * )
  *
  * // Handle rate limits specifically
  * const handled = program.pipe(
@@ -2950,6 +2884,8 @@ export const catchTags: {
  *     Effect.succeed(`Retry after ${reason.retryAfter}s`)
  *   )
  * )
+ *
+ * Effect.runSync(handled) // => "Retry after 30s"
  * ```
  *
  * @see {@link catchReasons} for handling several nested reason tags
@@ -3020,7 +2956,7 @@ export const catchReason: {
  *
  * **Example** (Handling multiple error reasons)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class RateLimitError extends Data.TaggedError("RateLimitError")<{
@@ -3035,7 +2971,9 @@ export const catchReason: {
  *   reason: RateLimitError | QuotaExceededError
  * }> {}
  *
- * declare const program: Effect.Effect<string, AiError>
+ * const program: Effect.Effect<string, AiError> = Effect.fail(
+ *   new AiError({ reason: new QuotaExceededError({ limit: 100 }) })
+ * )
  *
  * const handled = program.pipe(
  *   Effect.catchReasons("AiError", {
@@ -3045,6 +2983,8 @@ export const catchReason: {
  *       Effect.succeed(`Quota exceeded: ${reason.limit}`)
  *   })
  * )
+ *
+ * Effect.runSync(handled) // => "Quota exceeded: 100"
  * ```
  *
  * @category error handling
@@ -3166,7 +3106,7 @@ export type TagsWithReason<E> = {
  *
  * **Example** (Extracting the reason from a tagged error)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class RateLimitError extends Data.TaggedError("RateLimitError")<{
@@ -3181,11 +3121,14 @@ export type TagsWithReason<E> = {
  *   reason: RateLimitError | QuotaExceededError
  * }> {}
  *
- * declare const program: Effect.Effect<string, AiError>
+ * const program: Effect.Effect<string, AiError> = Effect.fail(
+ *   new AiError({ reason: new RateLimitError({ retryAfter: 30 }) })
+ * )
  *
  * // Before: Effect<string, AiError>
  * // After:  Effect<string, RateLimitError | QuotaExceededError>
  * const unwrapped = program.pipe(Effect.unwrapReason("AiError"))
+ * Effect.runSync(Effect.flip(unwrapped))._tag // => "RateLimitError"
  * ```
  *
  * @category error handling
@@ -3229,8 +3172,9 @@ export const unwrapReason: {
  *
  * **Example** (Recovering from full failure causes)
  *
- * ```ts
- * import { Cause, Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // An effect that might fail in different ways
  * const program = Effect.die("Something went wrong")
@@ -3238,12 +3182,15 @@ export const unwrapReason: {
  * // Recover from any cause (including defects)
  * const recovered = Effect.catchCause(program, (cause) => {
  *   if (Cause.hasDies(cause)) {
- *     return Console.log("Caught defect").pipe(
+ *     return Effect.sync(() => { output.push("Caught defect") }).pipe(
  *       Effect.as("Recovered from defect")
  *     )
  *   }
  *   return Effect.succeed("Unknown error")
  * })
+ *
+ * void output.push(Effect.runSync(recovered))
+ * output // => ["Caught defect", "Recovered from defect"]
  * ```
  *
  * @category error handling
@@ -3279,8 +3226,9 @@ export const catchCause: {
  *
  * **Example** (Recovering from defects)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // An effect that might throw an unexpected error (defect)
  * const program = Effect.sync(() => {
@@ -3289,10 +3237,13 @@ export const catchCause: {
  *
  * // Recover from defects only
  * const recovered = Effect.catchDefect(program, (defect) => {
- *   return Console.log(`Caught defect: ${defect}`).pipe(
+ *   return Effect.sync(() => { output.push(`Caught defect: ${(defect as Error).message}`) }).pipe(
  *     Effect.as("Recovered from defect")
  *   )
  * })
+ *
+ * void output.push(Effect.runSync(recovered))
+ * output // => ["Caught defect: Unexpected error", "Recovered from defect"]
  * ```
  *
  * @category error handling
@@ -3323,7 +3274,7 @@ export const catchDefect: {
  *
  * **Example** (Recovering when a predicate matches)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Filter } from "effect"
  *
  * class NotFound extends Data.TaggedError("NotFound")<{ id: string }> {}
@@ -3345,6 +3296,8 @@ export const catchDefect: {
  *     (error) => Effect.succeed(`missing:${error.id}`)
  *   )
  * )
+ *
+ * Effect.runSync(Effect.all([recovered, recovered2])) // => ['missing:user-1', 'missing:user-1']
  * ```
  *
  * @category error handling
@@ -3434,14 +3387,16 @@ export const catchFilter: {
  *
  * **Example** (Recovering from missing Option values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Option } from "effect"
+ * const output: Array<unknown> = []
  *
  * const some = Effect.fromNullishOr(1).pipe(Effect.catchNoSuchElement)
  * const none = Effect.fromNullishOr(null).pipe(Effect.catchNoSuchElement)
  *
- * Effect.runPromise(some).then(console.log) // { _id: 'Option', _tag: 'Some', value: 1 }
- * Effect.runPromise(none).then(console.log) // { _id: 'Option', _tag: 'None' }
+ * void output.push(Effect.runSync(some))
+ * void output.push(Effect.runSync(none))
+ * output // => [Option.some(1), Option.none()]
  * ```
  *
  * @see {@link fromOption} for converting `Option.none` into `NoSuchElementError`
@@ -3470,8 +3425,9 @@ export const catchNoSuchElement: <A, E, R>(
  *
  * **Example** (Recovering from selected causes)
  *
- * ```ts
- * import { Cause, Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const httpRequest = Effect.fail("Network Error")
  *
@@ -3481,14 +3437,13 @@ export const catchNoSuchElement: <A, E, R>(
  *   Cause.hasFails,
  *   (cause) =>
  *     Effect.gen(function*() {
- *       yield* Console.log(`Caught network error: ${Cause.squash(cause)}`)
+ *       yield* Effect.sync(() => { output.push(`Caught network error: ${Cause.squash(cause)}`) })
  *       return "Fallback response"
  *     })
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: "Caught network error: Network Error"
- * // Then: "Fallback response"
+ * void output.push(Effect.runSync(program))
+ * output // => ["Caught network error: Network Error", "Fallback response"]
  * ```
  *
  * @see {@link catchCause} for recovering from every cause
@@ -3559,7 +3514,7 @@ export const catchCauseFilter: {
  *
  * **Example** (Transforming the error channel)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class TaskError extends Data.TaggedError("TaskError")<{ readonly message: string }> {}
@@ -3574,6 +3529,7 @@ export const catchCauseFilter: {
  *   simulatedTask,
  *   (message) => new TaskError({ message })
  * )
+ * Effect.runSync(Effect.flip(mapped)).message // => "Oh no!"
  * ```
  *
  * @see {@link map} for a version that operates on the success channel.
@@ -3604,7 +3560,7 @@ export const mapError: {
  *
  * **Example** (Transforming success and failure channels)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class TaskError extends Data.TaggedError("TaskError")<{ readonly message: string }> {}
@@ -3619,6 +3575,7 @@ export const mapError: {
  *   onFailure: (message) => new TaskError({ message }),
  *   onSuccess: (n) => n > 0
  * })
+ * Effect.runSync(Effect.flip(modified)).message // => "Oh no!"
  * ```
  *
  * @see {@link map} for a version that operates on the success channel.
@@ -3648,8 +3605,8 @@ export const mapBoth: {
  *
  * **Example** (Converting typed failures into defects)
  *
- * ```ts
- * import { Data, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Data, Effect, Exit } from "effect"
  *
  * class DivideByZeroError extends Data.TaggedError("DivideByZeroError")<{}> {}
  *
@@ -3662,13 +3619,10 @@ export const mapBoth: {
  * //      ▼
  * const program = Effect.orDie(divide(1, 0))
  *
- * Effect.runPromise(program).catch(console.error)
- * // Output:
- * // (FiberFailure) DivideByZeroError
- * //   ...stack trace...
+ * Effect.runSyncExit(program) // => Exit.die(new DivideByZeroError())
  * ```
  *
- * @category converting failures to defects
+ * @category error handling
  * @since 2.0.0
  */
 export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = internal.orDie
@@ -3685,8 +3639,9 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = in
  *
  * **Example** (Running effects on failure)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Simulate a task that fails with an error
  * const task: Effect.Effect<number, string> = Effect.fail("NetworkError")
@@ -3694,12 +3649,11 @@ export const orDie: <A, E, R>(self: Effect<A, E, R>) => Effect<A, never, R> = in
  * // Use tapError to log the error message when the task fails
  * const tapping = Effect.tapError(
  *   task,
- *   (error) => Console.log(`expected error: ${error}`)
+ *   (error) => Effect.sync(() => { output.push(`expected error: ${error}`) })
  * )
  *
- * Effect.runFork(tapping)
- * // Output:
- * // expected error: NetworkError
+ * void output.push(Effect.runSyncExit(tapping))
+ * output // => ["expected error: NetworkError", Exit.fail("NetworkError")]
  * ```
  *
  * @category sequencing
@@ -3726,8 +3680,9 @@ export const tapError: {
  *
  * **Example** (Running effects for tagged failures)
  *
- * ```ts
- * import { Console, Data, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Data, Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * class NetworkError extends Data.TaggedError("NetworkError")<{
  *   statusCode: number
@@ -3741,12 +3696,11 @@ export const tapError: {
  *   Effect.fail(new NetworkError({ statusCode: 504 }))
  *
  * const program = Effect.tapErrorTag(task, "NetworkError", (error) =>
- *   Console.log(`expected error: ${error.statusCode}`)
+ *   Effect.sync(() => { output.push(`expected error: ${error.statusCode}`) })
  * )
  *
- * Effect.runPromiseExit(program)
- * // Output:
- * // expected error: 504
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["expected error: 504", Exit.fail(new NetworkError({ statusCode: 504 }))]
  * ```
  *
  * @category sequencing
@@ -3789,19 +3743,19 @@ export const tapErrorTag: {
  *
  * **Example** (Observing full failure causes)
  *
- * ```ts
- * import { Cause, Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * const task = Effect.fail("Something went wrong")
  *
  * const program = Effect.tapCause(
  *   task,
- *   (cause) => Console.log(`Logging cause: ${Cause.squash(cause)}`)
+ *   (cause) => Effect.sync(() => { output.push(`Logging cause: ${Cause.squash(cause)}`) })
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
- * // Output: "Logging cause: Error: Something went wrong"
- * // Then: { _id: 'Exit', _tag: 'Failure', cause: ... }
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["Logging cause: Something went wrong", Exit.fail("Something went wrong")]
  * ```
  *
  * @category sequencing
@@ -3828,8 +3782,9 @@ export const tapCause: {
  *
  * **Example** (Observing selected failure causes)
  *
- * ```ts
- * import { Cause, Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * const task = Effect.fail("Network timeout")
  *
@@ -3837,12 +3792,11 @@ export const tapCause: {
  * const program = Effect.tapCauseIf(
  *   task,
  *   Cause.hasFails,
- *   (cause) => Console.log(`Logging failure cause: ${Cause.squash(cause)}`)
+ *   (cause) => Effect.sync(() => { output.push(`Logging failure cause: ${Cause.squash(cause)}`) })
  * )
  *
- * Effect.runPromiseExit(program).then(console.log)
- * // Output: "Logging failure cause: Network timeout"
- * // Then: { _id: 'Exit', _tag: 'Failure', cause: ... }
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["Logging failure cause: Network timeout", Exit.fail("Network timeout")]
  * ```
  *
  * @category sequencing
@@ -3906,20 +3860,9 @@ export const tapCauseFilter: {
  *
  * **Example** (Observing defects)
  *
- * ```ts
- * import { Console, Effect } from "effect"
- *
- * // Simulate a task that fails with a recoverable error
- * const task1: Effect.Effect<number, string> = Effect.fail("NetworkError")
- *
- * // tapDefect won't log anything because NetworkError is not a defect
- * const tapping1 = Effect.tapDefect(
- *   task1,
- *   (cause) => Console.log(`defect: ${cause}`)
- * )
- *
- * Effect.runFork(tapping1)
- * // No Output
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Simulate a severe failure in the system
  * const task2: Effect.Effect<number> = Effect.die(
@@ -3929,13 +3872,11 @@ export const tapCauseFilter: {
  * // Log the defect using tapDefect
  * const tapping2 = Effect.tapDefect(
  *   task2,
- *   (cause) => Console.log(`defect: ${cause}`)
+ *   (defect) => Effect.sync(() => { output.push(`defect: ${defect}`) })
  * )
  *
- * Effect.runFork(tapping2)
- * // Output:
- * // defect: RuntimeException: Something went wrong
- * //   ... stack trace ...
+ * void output.push(Effect.runSyncExit(tapping2))
+ * output // => ["defect: Something went wrong", Exit.die("Something went wrong")]
  * ```
  *
  * @category sequencing
@@ -3955,14 +3896,15 @@ export const tapDefect: {
  *
  * **Example** (Retrying until success)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * let attempts = 0
  *
  * const flaky = Effect.gen(function*() {
  *   attempts++
- *   yield* Console.log(`Attempt ${attempts}`)
+ *   yield* Effect.sync(() => { output.push(`Attempt ${attempts}`) })
  *   if (attempts < 3) {
  *     return yield* Effect.fail("Not ready")
  *   }
@@ -3971,12 +3913,8 @@ export const tapDefect: {
  *
  * const program = Effect.eventually(flaky)
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Attempt 1
- * // Attempt 2
- * // Attempt 3
- * // Ready
+ * void output.push(await Effect.runPromise(program))
+ * output // => ["Attempt 1", "Attempt 2", "Attempt 3", "Ready"]
  * ```
  *
  * @category repetition
@@ -4062,7 +4000,7 @@ export declare namespace Retry {
  *
  * **Example** (Retrying with a schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Schedule } from "effect"
  *
  * class AttemptError extends Data.TaggedError("AttemptError")<{ readonly attempt: number }> {}
@@ -4077,11 +4015,10 @@ export declare namespace Retry {
  *   }
  * })
  *
- * const policy = Schedule.addDelay(Schedule.recurs(5), () => Effect.succeed("100 millis"))
+ * const policy = Schedule.recurs(5)
  * const program = Effect.retry(task, policy)
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: "Success!" (after 2 retries)
+ * await Effect.runPromise(program) // => "Success!"
  * ```
  *
  * @see {@link retryOrElse} for a version that allows you to run a fallback.
@@ -4130,15 +4067,16 @@ export const retry: {
  *
  * **Example** (Falling back after retries are exhausted)
  *
- * ```ts
- * import { Console, Data, Effect, Schedule } from "effect"
+ * ```ts import.meta.vitest
+ * import { Data, Effect, Schedule } from "effect"
+ * const output: Array<unknown> = []
  *
  * class NetworkTimeoutError extends Data.TaggedError("NetworkTimeoutError")<{}> {}
  *
  * let attempt = 0
  * const networkRequest = Effect.gen(function*() {
  *   attempt++
- *   yield* Console.log(`Network attempt ${attempt}`)
+ *   yield* Effect.sync(() => { output.push(`Network attempt ${attempt}`) })
  *   if (attempt < 3) {
  *     return yield* Effect.fail(new NetworkTimeoutError())
  *   }
@@ -4151,17 +4089,13 @@ export const retry: {
  *   Schedule.recurs(2),
  *   (error, retryCount) =>
  *     Effect.gen(function*() {
- *       yield* Console.log(`All ${retryCount} retries failed, using cache`)
+ *       yield* Effect.sync(() => { output.push(`All ${retryCount} retries failed, using cache`) })
  *       return "Cached data"
  *     })
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Network attempt 1
- * // Network attempt 2
- * // Network attempt 3
- * // Network data
+ * void output.push(await Effect.runPromise(program))
+ * output // => ["Network attempt 1", "Network attempt 2", "Network attempt 3", "Network data"]
  * ```
  *
  * @see {@link retry} for a version that does not run a fallback effect.
@@ -4191,7 +4125,7 @@ export const retryOrElse: {
  *
  * **Example** (Exposing failures as causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect } from "effect"
  *
  * const task = Effect.fail("Something went wrong")
@@ -4202,8 +4136,7 @@ export const retryOrElse: {
  *   return `Caught cause: ${Cause.squash(result)}`
  * })
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: "Caught cause: Something went wrong"
+ * Effect.runSync(program) // => "Caught cause: Something went wrong"
  * ```
  *
  * @category error handling
@@ -4228,7 +4161,7 @@ export const sandbox: <A, E, R>(
  *
  * **Example** (Discarding success and failure values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * //      ┌─── Effect<number, string, never>
@@ -4238,17 +4171,18 @@ export const sandbox: <A, E, R>(
  * //      ┌─── Effect<void, never, never>
  * //      ▼
  * const program = task.pipe(Effect.ignore)
+ * Effect.runSync(program) // => undefined
  * ```
  *
  * **Example** (Logging failures while ignoring results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const task = Effect.fail("Uh oh!")
  *
- * const program = task.pipe(Effect.ignore({ log: true }))
- * const programWarn = task.pipe(Effect.ignore({ log: "Warn", message: "Ignoring task failure" }))
+ * const program = task.pipe(Effect.ignore)
+ * Effect.runSync(program) // => undefined
  * ```
  *
  * @category error handling
@@ -4286,13 +4220,13 @@ export const ignore: <
  *
  * **Example** (Ignoring failures and logging causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const task = Effect.fail("boom")
  *
  * const program = task.pipe(Effect.ignoreCause)
- * const programLog = task.pipe(Effect.ignoreCause({ log: true, message: "Ignoring failure cause" }))
+ * Effect.runSync(program) // => undefined
  * ```
  *
  * @category error handling
@@ -4325,9 +4259,17 @@ export const ignoreCause: <
  * and retry timing is derived per step (the first attempt uses the remaining
  * attempts schedule; later retries apply the step schedule at least once).
  *
+ * Attempts can be observed from outside the effect by passing
+ * `options.onEvent`, which receives an `ExecutionPlan.Event` before each
+ * attempt and after it settles. The handler is awaited inline before and after
+ * every attempt, so events are strictly ordered; keep it cheap. It cannot
+ * fail, which keeps observation from changing the plan's outcome, and its
+ * requirements are added to the resulting effect. Terminal events run like
+ * finalizers, so they are emitted even when the attempt is interrupted.
+ *
  * **Example** (Retrying with an execution plan)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, ExecutionPlan, Layer } from "effect"
  *
  * const Endpoint = Context.Service<{ url: string }>("Endpoint")
@@ -4346,21 +4288,58 @@ export const ignoreCause: <
  * )
  *
  * const program = Effect.withExecutionPlan(fetchUrl, plan)
+ * Effect.runSync(program) // => "good"
  * ```
  *
- * @category fallback
+ * **Example** (Observing execution-plan attempts)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect, ExecutionPlan, Layer } from "effect"
+ *
+ * const Endpoint = Context.Service<{ url: string }>("Endpoint")
+ *
+ * const fetchUrl = Effect.gen(function*() {
+ *   const endpoint = yield* Effect.service(Endpoint)
+ *   if (endpoint.url === "bad") {
+ *     return yield* Effect.fail("Unavailable")
+ *   }
+ *   return endpoint.url
+ * })
+ *
+ * const plan = ExecutionPlan.make(
+ *   { provide: Layer.succeed(Endpoint, { url: "bad" }) },
+ *   { provide: Layer.succeed(Endpoint, { url: "good" }) }
+ * )
+ *
+ * const events: Array<string> = []
+ * const program = Effect.withExecutionPlan(fetchUrl, plan, {
+ *   onEvent: (event) => Effect.sync(() => events.push(`${event._tag}:${event.stepIndex}`))
+ * })
+ *
+ * await Effect.runPromise(program) // => "good"
+ *
+ * events // => ["AttemptStart:0", "AttemptFailure:0", "AttemptStart:1", "AttemptSuccess:1"]
+ * ```
+ *
+ * @category error handling
  * @since 3.16.0
  */
 export const withExecutionPlan: {
-  <Input, Provides, PlanE, PlanR>(
-    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
+  <Input, Provides, PlanE, PlanR, RX = never>(
+    plan: ExecutionPlan.ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>,
+    options?: {
+      readonly onEvent?: ((event: ExecutionPlan.Event<Input | PlanE>) => Effect<void, never, RX>) | undefined
+    }
   ): <A, E extends Input, R>(
     effect: Effect<A, E, R>
-  ) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
-  <A, E extends Input, R, Provides, Input, PlanE, PlanR>(
+  ) => Effect<A, E | PlanE, Exclude<R, Provides> | PlanR | RX>
+  <A, E extends Input, R, Provides, Input, PlanE, PlanR, RX = never>(
     effect: Effect<A, E, R>,
-    plan: ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>
-  ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR>
+    plan: ExecutionPlan.ExecutionPlan<{ provides: Provides; input: Input; error: PlanE; requirements: PlanR }>,
+    options?: {
+      readonly onEvent?: ((event: ExecutionPlan.Event<E | PlanE>) => Effect<void, never, RX>) | undefined
+    }
+  ): Effect<A, E | PlanE, Exclude<R, Provides> | PlanR | RX>
 } = internalExecutionPlan.withExecutionPlan
 
 /**
@@ -4401,8 +4380,8 @@ export const withErrorReporting: <
  *
  * **Example** (Replacing failures with a value)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
  *
  * const validate = (age: number): Effect.Effect<number, string> => {
  *   if (age < 0) {
@@ -4416,12 +4395,10 @@ export const withErrorReporting: <
  *
  * const program = Effect.orElseSucceed(validate(-1), () => 18)
  *
- * console.log(Effect.runSyncExit(program))
- * // Output:
- * // { _id: 'Exit', _tag: 'Success', value: 18 }
+ * Effect.runSyncExit(program) // => Exit.succeed(18)
  * ```
  *
- * @category fallback
+ * @category error handling
  * @since 2.0.0
  */
 export const orElseSucceed: {
@@ -4456,7 +4433,7 @@ export const orElseSucceed: {
  *
  * **Example** (Trying alternatives until one succeeds)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const primary = Effect.fail("primary unavailable")
@@ -4471,11 +4448,10 @@ export const orElseSucceed: {
  *   tertiary
  * ])
  *
- * console.log(Effect.runSync(program))
- * // Output: "secondary result"
+ * Effect.runSync(program) // => "secondary result"
  * ```
  *
- * @category fallback
+ * @category error handling
  * @since 2.0.0
  */
 export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
@@ -4499,8 +4475,8 @@ export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
  *
  * The `timeout` function allows you to specify a time limit for an
  * effect's execution. If the effect does not complete within the given time, a
- * `TimeoutException` is raised. This can be useful for controlling how long
- * your program waits for a task to finish, ensuring that it doesn't hang
+ * `TimeoutError` is raised. This can be useful for controlling how long your
+ * program waits for a task to finish, ensuring that it doesn't hang
  * indefinitely if the task takes too long.
  *
  * **Gotchas**
@@ -4509,32 +4485,12 @@ export const firstSuccessOf: <Eff extends Effect<any, any, any>>(
  *
  * **Example** (Failing when work takes too long)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const task = Effect.gen(function*() {
- *   console.log("Start processing...")
- *   yield* Effect.sleep("2 seconds") // Simulates a delay in processing
- *   console.log("Processing complete.")
- *   return "Result"
- * })
- *
- * // Output will show a TimeoutException as the task takes longer
- * // than the specified timeout duration
- * const timedEffect = task.pipe(Effect.timeout("1 second"))
- *
- * Effect.runPromiseExit(timedEffect).then(console.log)
- * // Output:
- * // Start processing...
- * // {
- * //   _id: 'Exit',
- * //   _tag: 'Failure',
- * //   cause: {
- * //     _id: 'Cause',
- * //     _tag: 'Fail',
- * //     failure: { _tag: 'TimeoutException' }
- * //   }
- * // }
+ * const timedEffect = Effect.never.pipe(Effect.timeout(0))
+ * const error = await Effect.runPromise(Effect.flip(timedEffect))
+ * error._tag // => "TimeoutError"
  * ```
  *
  * @see {@link timeoutOption} for returning `Option.none` on timeout.
@@ -4570,33 +4526,14 @@ export const timeout: {
  *
  * **Example** (Returning None on timeout)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
- * const task = Effect.gen(function*() {
- *   console.log("Start processing...")
- *   yield* Effect.sleep("2 seconds") // Simulates a delay in processing
- *   console.log("Processing complete.")
- *   return "Result"
- * })
- *
- * const timedOutEffect = Effect.all([
- *   task.pipe(Effect.timeoutOption("3 seconds")),
- *   task.pipe(Effect.timeoutOption("1 second"))
- * ])
- *
- * Effect.runPromise(timedOutEffect).then(console.log)
- * // Output:
- * // Start processing...
- * // Processing complete.
- * // Start processing...
- * // [
- * //   { _id: 'Option', _tag: 'Some', value: 'Result' },
- * //   { _id: 'Option', _tag: 'None' }
- * // ]
+ * const timedOutEffect = Effect.never.pipe(Effect.timeoutOption(0))
+ * await Effect.runPromise(timedOutEffect) // => Option.none()
  * ```
  *
- * @see {@link timeout} for a version that raises a `TimeoutException`.
+ * @see {@link timeout} for a version that raises a `TimeoutError`.
  * @see {@link timeoutOrElse} for a version that allows specifying both success and timeout handlers.
  *
  * @category delays & timeouts
@@ -4631,33 +4568,22 @@ export const timeoutOption: {
  *
  * **Example** (Falling back on timeout)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
- * const slowQuery = Effect.gen(function*() {
- *   yield* Console.log("Starting database query...")
- *   yield* Effect.sleep("5 seconds")
- *   return "Database result"
+ * const program = Effect.timeoutOrElse(Effect.never, {
+ *   duration: 0,
+ *   orElse: () => Effect.sync(() => { output.push("Query timed out, using cached data") }).pipe(
+ *     Effect.as("Cached result")
+ *   )
  * })
  *
- * // Use cached data as fallback when timeout is reached
- * const program = Effect.timeoutOrElse(slowQuery, {
- *   duration: "2 seconds",
- *   orElse: () =>
- *     Effect.gen(function*() {
- *       yield* Console.log("Query timed out, using cached data")
- *       return "Cached result"
- *     })
- * })
- *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Starting database query...
- * // Query timed out, using cached data
- * // Cached result
+ * void output.push(await Effect.runPromise(program))
+ * output // => ["Query timed out, using cached data", "Cached result"]
  * ```
  *
- * @see {@link timeout} for failing with a `TimeoutException`.
+ * @see {@link timeout} for failing with a `TimeoutError`.
  * @see {@link timeoutOption} for returning `Option.none` on timeout.
  *
  * @category delays & timeouts
@@ -4683,16 +4609,14 @@ export const timeoutOrElse: {
  *
  * **Example** (Delaying an effect)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
- * const program = Effect.delay(
- *   Console.log("Delayed message"),
- *   "1 second"
- * )
+ * const program = Effect.delay(Effect.sync(() => { output.push("Delayed message") }), 0)
  *
- * Effect.runFork(program)
- * // Waits 1 second, then prints: "Delayed message"
+ * await Effect.runPromise(program)
+ * output // => ["Delayed message"]
  * ```
  *
  * @category delays & timeouts
@@ -4714,18 +4638,18 @@ export const delay: {
  *
  * **Example** (Pausing without blocking)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
- *   yield* Console.log("Start")
- *   yield* Effect.sleep("2 seconds")
- *   yield* Console.log("End")
+ *   yield* Effect.sync(() => { output.push("Start") })
+ *   yield* Effect.sleep(0)
+ *   yield* Effect.sync(() => { output.push("End") })
  * })
  *
- * Effect.runFork(program)
- * // Output: "Start" (immediately)
- * // Output: "End" (after 2 seconds)
+ * await Effect.runPromise(program)
+ * output // => ["Start", "End"]
  * ```
  *
  * @category delays & timeouts
@@ -4743,13 +4667,15 @@ export const sleep: (duration: Duration.Input) => Effect<void> = internal.sleep
  *
  * **Example** (Measuring execution time)
  *
- * ```ts
- * import { Console, Duration, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   const [duration, value] = yield* Effect.timed(Effect.succeed("ok"))
- *   yield* Console.log(`took ${Duration.toMillis(duration)}ms: ${value}`)
+ *   const [, value] = yield* Effect.timed(Effect.succeed("ok"))
+ *   return value
  * })
+ *
+ * Effect.runSync(program) // => "ok"
  * ```
  *
  * @category delays & timeouts
@@ -4779,18 +4705,14 @@ export const timed: <A, E, R>(self: Effect<A, E, R>) => Effect<[duration: Durati
  *
  * **Example** (Racing many effects)
  *
- * ```ts
- * import { Duration, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
  *
- * // Multiple effects with different delays
- * const effect1 = Effect.delay(Effect.succeed("Fast"), Duration.millis(100))
- * const effect2 = Effect.delay(Effect.succeed("Slow"), Duration.millis(500))
- * const effect3 = Effect.delay(Effect.succeed("Very Slow"), Duration.millis(1000))
- *
- * // Race all effects - the first to succeed wins
- * const raced = Effect.raceAll([effect1, effect2, effect3])
- *
- * // Result: "Fast" (after ~100ms)
+ * const raced = Effect.raceAll([
+ *   Effect.succeed("Fast"),
+ *   Effect.never
+ * ])
+ * await Effect.runPromise(raced) // => "Fast"
  * ```
  *
  * @see {@link race} for a version that handles only two effects.
@@ -4820,18 +4742,14 @@ export const raceAll: <Eff extends Effect<any, any, any>>(
  *
  * **Example** (Taking the first settled result)
  *
- * ```ts
- * import { Duration, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
  *
- * // Multiple effects with different delays and potential failures
- * const effect1 = Effect.delay(Effect.succeed("First"), Duration.millis(200))
- * const effect2 = Effect.delay(Effect.fail("Second failed"), Duration.millis(100))
- * const effect3 = Effect.delay(Effect.succeed("Third"), Duration.millis(300))
- *
- * // Race all effects - the first to succeed wins
- * const raced = Effect.raceAllFirst([effect1, effect2, effect3])
- *
- * // Result: "First" (after ~200ms, even though effect2 completes first but fails)
+ * const raced = Effect.raceAllFirst([
+ *   Effect.fail("First failed"),
+ *   Effect.never
+ * ])
+ * await Effect.runPromise(Effect.flip(raced)) // => "First failed"
  * ```
  *
  * @category racing
@@ -4858,19 +4776,20 @@ export const raceAllFirst: <Eff extends Effect<any, any, any>>(
  *
  * **Example** (Racing two effects)
  *
- * ```ts
- * import { Console, Duration, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
- * const fastFail = Effect.delay(Effect.fail("fast-fail"), Duration.millis(10))
- * const slowSuccess = Effect.delay(Effect.succeed("slow-success"), Duration.millis(50))
+ * const fastFail = Effect.fail("fast-fail")
+ * const slowSuccess = Effect.succeed("slow-success")
  *
  * const program = Effect.gen(function*() {
  *   const result = yield* Effect.race(fastFail, slowSuccess)
- *   yield* Console.log(`winner: ${result}`)
+ *   yield* Effect.sync(() => { output.push(`winner: ${result}`) })
  * })
  *
- * Effect.runPromise(program)
- * // Output: winner: slow-success
+ * await Effect.runPromise(program)
+ * output // => ["winner: slow-success"]
  * ```
  *
  * @category racing
@@ -4911,22 +4830,23 @@ export const race: {
  *
  * **Example** (Observing the winning fiber)
  *
- * ```ts
- * import { Console, Duration, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
- * const fastFail = Effect.delay(Effect.fail("fast-fail"), Duration.millis(10))
- * const slowSuccess = Effect.delay(Effect.succeed("slow-success"), Duration.millis(50))
+ * const fastFail = Effect.fail("fast-fail")
+ * const slowSuccess = Effect.never
  *
  * const program = Effect.gen(function*() {
  *   const message = yield* Effect.match(Effect.raceFirst(fastFail, slowSuccess), {
  *     onFailure: (error) => `failed: ${error}`,
  *     onSuccess: (value) => `succeeded: ${value}`
  *   })
- *   yield* Console.log(message)
+ *   yield* Effect.sync(() => { output.push(message) })
  * })
  *
- * Effect.runPromise(program)
- * // Output: failed: fast-fail
+ * await Effect.runPromise(program)
+ * output // => ["failed: fast-fail"]
  * ```
  *
  * @category racing
@@ -4962,8 +4882,9 @@ export const raceFirst: {
  *
  * **Example** (Filtering success values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Sync predicate
  * const evens = Effect.filter([1, 2, 3, 4], (n) => n % 2 === 0)
@@ -4971,7 +4892,9 @@ export const raceFirst: {
  * // Effectful predicate
  * const checked = Effect.filter([1, 2, 3], (n) => Effect.succeed(n > 1))
  *
- * // Use Effect.filterMapEffect for effectful Filter.Filter callbacks
+ * void output.push(Effect.runSync(evens))
+ * void output.push(Effect.runSync(checked))
+ * output // => [[2, 4], [2, 3]]
  * ```
  *
  * @category filtering
@@ -5085,7 +5008,7 @@ export const filterMapEffect: {
  *
  * **Example** (Filtering with a fallback effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // An effect that produces a number
@@ -5098,7 +5021,7 @@ export const filterMapEffect: {
  *   (n) => Effect.succeed(`Number ${n} is odd`)
  * )
  *
- * // Result: "Number 5 is odd" (since 5 is not even)
+ * Effect.runSync(filtered) // => "Number 5 is odd"
  * ```
  *
  * @category filtering
@@ -5168,7 +5091,7 @@ export const filterMapOrElse: {
  *
  * **Example** (Filtering with a custom failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // An effect that produces a number
@@ -5181,7 +5104,7 @@ export const filterMapOrElse: {
  *   (n) => `Expected even number, got ${n}`
  * )
  *
- * // Result: Effect.fail("Expected even number, got 5")
+ * Effect.runSync(Effect.flip(filtered)) // => "Expected even number, got 5"
  * ```
  *
  * @category filtering
@@ -5283,22 +5206,22 @@ export const filterMapOrFail: {
  *
  * **Example** (Conditionally running an effect)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
+ * const output: Array<unknown> = []
  *
  * const shouldLog = true
  *
  * const program = Effect.when(
- *   Console.log("Condition is true!"),
+ *   Effect.sync(() => { output.push("Condition is true!") }),
  *   Effect.succeed(shouldLog)
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: "Condition is true!"
- * // { _id: 'Option', _tag: 'Some', value: undefined }
+ * void output.push(Effect.runSync(program))
+ * output // => ["Condition is true!", Option.some(undefined)]
  * ```
  *
- * @category conditional operators
+ * @category filtering
  * @since 2.0.0
  */
 export const when: {
@@ -5333,7 +5256,7 @@ export const when: {
  *
  * **Example** (Matching success and failure values)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class ExampleError extends Data.TaggedError("ExampleError")<{ readonly message: string }> {}
@@ -5346,8 +5269,7 @@ export const when: {
  * })
  *
  * // Run and log the result of the successful effect
- * Effect.runPromise(program1).then(console.log)
- * // Output: "success: 42"
+ * Effect.runSync(program1) // => "success: 42"
  *
  * const failure: Effect.Effect<number, ExampleError> = Effect.fail(
  *   new ExampleError({ message: "Uh oh!" })
@@ -5359,8 +5281,7 @@ export const when: {
  * })
  *
  * // Run and log the result of the failed effect
- * Effect.runPromise(program2).then(console.log)
- * // Output: "failure: Uh oh!"
+ * Effect.runSync(program2) // => "failure: Uh oh!"
  * ```
  *
  * @see {@link matchEffect} if you need to perform side effects in the handlers.
@@ -5399,16 +5320,20 @@ export const match: {
  *
  * **Example** (Pattern matching eagerly when possible)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   const result = yield* Effect.matchEager(Effect.succeed(42), {
  *     onFailure: (error) => `Failed: ${error}`,
  *     onSuccess: (value) => `Success: ${value}`
  *   })
- *   console.log(result) // "Success: 42"
+ *   void output.push(result)
  * })
+ *
+ * Effect.runSync(program)
+ * output // => ["Success: 42"]
  * ```
  *
  * @see {@link match} for the non-eager version.
@@ -5445,7 +5370,7 @@ export const matchEager: {
  *
  * **Example** (Matching on success or failure causes)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Cause, Effect } from "effect"
  *
  * const task = Effect.fail("Something went wrong")
@@ -5455,8 +5380,7 @@ export const matchEager: {
  *   onSuccess: (value) => `Success: ${value}`
  * })
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: "Failed: Error: Something went wrong"
+ * Effect.runSync(program) // => "Failed: Something went wrong"
  * ```
  *
  * @see {@link matchCauseEffect} if you need to perform side effects in the
@@ -5495,13 +5419,14 @@ export const matchCause: {
  *
  * **Example** (Eagerly matching already completed effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const handleResult = Effect.matchCauseEager(Effect.succeed(42), {
  *   onSuccess: (value) => `Success: ${value}`,
  *   onFailure: (cause) => `Failed: ${cause}`
  * })
+ * Effect.runSync(handleResult) // => "Success: 42"
  * ```
  *
  * @category pattern matching
@@ -5576,8 +5501,9 @@ export const matchCauseEffectEager: {
  *
  * **Example** (Effectfully matching on causes)
  *
- * ```ts
- * import { Cause, Console, Data, Effect, Result } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Data, Effect, Result } from "effect"
+ * const output: Array<unknown> = []
  *
  * class TaskError extends Data.TaggedError("TaskError")<{ readonly message: string }> {}
  *
@@ -5589,25 +5515,23 @@ export const matchCauseEffectEager: {
  *       if (Cause.hasFails(cause)) {
  *         const error = Cause.findError(cause)
  *         if (Result.isSuccess(error)) {
- *           yield* Console.log(`Handling error: ${error.success.message}`)
+ *           yield* Effect.sync(() => { output.push(`Handling error: ${error.success.message}`) })
  *         }
  *         return "recovered from error"
  *       } else {
- *         yield* Console.log("Handling interruption or defect")
+ *         yield* Effect.sync(() => { output.push("Handling interruption or defect") })
  *         return "recovered from interruption/defect"
  *       }
  *     }),
  *   onSuccess: (value) =>
  *     Effect.gen(function*() {
- *       yield* Console.log(`Success: ${value}`)
+ *       yield* Effect.sync(() => { output.push(`Success: ${value}`) })
  *       return `processed ${value}`
  *     })
  * })
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Handling error: Task failed
- * // recovered from error
+ * void output.push(Effect.runSync(program))
+ * output // => ["Handling error: Task failed", "recovered from error"]
  * ```
  *
  * @see {@link matchCause} if you don't need side effects and only want to handle the result or failure.
@@ -5646,7 +5570,7 @@ export const matchCauseEffect: {
  *
  * **Example** (Matching success and failure with effectful handlers)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class ExampleError extends Data.TaggedError("ExampleError")<{ readonly message: string }> {}
@@ -5658,31 +5582,21 @@ export const matchCauseEffect: {
  *
  * const program1 = Effect.matchEffect(success, {
  *   onFailure: (error) =>
- *     Effect.succeed(`failure: ${error.message}`).pipe(
- *       Effect.tap(Effect.log)
- *     ),
+ *     Effect.succeed(`failure: ${error.message}`),
  *   onSuccess: (value) =>
- *     Effect.succeed(`success: ${value}`).pipe(Effect.tap(Effect.log))
+ *     Effect.succeed(`success: ${value}`)
  * })
  *
- * console.log(Effect.runSync(program1))
- * // Output:
- * // timestamp=... level=INFO fiber=#0 message="success: 42"
- * // success: 42
+ * Effect.runSync(program1) // => "success: 42"
  *
  * const program2 = Effect.matchEffect(failure, {
  *   onFailure: (error) =>
- *     Effect.succeed(`failure: ${error.message}`).pipe(
- *       Effect.tap(Effect.log)
- *     ),
+ *     Effect.succeed(`failure: ${error.message}`),
  *   onSuccess: (value) =>
- *     Effect.succeed(`success: ${value}`).pipe(Effect.tap(Effect.log))
+ *     Effect.succeed(`success: ${value}`)
  * })
  *
- * console.log(Effect.runSync(program2))
- * // Output:
- * // timestamp=... level=INFO fiber=#1 message="failure: Uh oh!"
- * // failure: Uh oh!
+ * Effect.runSync(program2) // => "failure: Uh oh!"
  * ```
  *
  * @see {@link match} if you don't need side effects and only want to handle the
@@ -5717,19 +5631,20 @@ export const matchEffect: {
  *
  * **Example** (Checking whether an effect fails)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   const failed = yield* Effect.isFailure(Effect.fail("Uh oh!"))
- *   yield* Console.log(failed)
+ *   yield* Effect.sync(() => { output.push(failed) })
  * })
  *
- * Effect.runPromise(program)
- * // Output: true
+ * Effect.runSync(program)
+ * output // => [true]
  * ```
  *
- * @category condition checking
+ * @category predicates
  * @since 2.0.0
  */
 export const isFailure: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, never, R> = internal.isFailure
@@ -5744,23 +5659,22 @@ export const isFailure: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  *
  * **Example** (Checking whether an effect succeeds)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   const ok = yield* Effect.isSuccess(Effect.succeed("done"))
  *   const failed = yield* Effect.isSuccess(Effect.fail("Uh oh"))
- *   yield* Console.log(`ok: ${ok}`)
- *   yield* Console.log(`failed: ${failed}`)
+ *   yield* Effect.sync(() => { output.push(`ok: ${ok}`) })
+ *   yield* Effect.sync(() => { output.push(`failed: ${failed}`) })
  * })
  *
- * Effect.runPromise(program)
- * // Output:
- * // ok: true
- * // failed: false
+ * Effect.runSync(program)
+ * output // => ["ok: true", "failed: false"]
  * ```
  *
- * @category condition checking
+ * @category predicates
  * @since 2.0.0
  */
 export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, never, R> = internal.isSuccess
@@ -5784,8 +5698,9 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  *
  * **Example** (Reading the full context)
  *
- * ```ts
- * import { Console, Context, Effect, Option } from "effect"
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Option } from "effect"
+ * const output: Array<unknown> = []
  *
  * const Logger = Context.Service<{
  *   log: (msg: string) => void
@@ -5801,20 +5716,22 @@ export const isSuccess: <A, E, R>(self: Effect<A, E, R>) => Effect<boolean, neve
  *   const loggerOption = Context.getOption(allServices, Logger)
  *   const databaseOption = Context.getOption(allServices, Database)
  *
- *   yield* Console.log(`Logger available: ${Option.isSome(loggerOption)}`)
- *   yield* Console.log(`Database available: ${Option.isSome(databaseOption)}`)
+ *   yield* Effect.sync(() => { output.push(`Logger available: ${Option.isSome(loggerOption)}`) })
+ *   yield* Effect.sync(() => { output.push(`Database available: ${Option.isSome(databaseOption)}`) })
  * })
  *
- * const context = Context.make(Logger, { log: console.log })
+ * const context = Context.make(Logger, { log: () => {} })
  *   .pipe(Context.add(Database, { query: () => "result" }))
  *
  * const provided = Effect.provideContext(program, context)
+ * Effect.runSync(provided)
+ * output // => ["Logger available: true", "Database available: true"]
  * ```
  *
  * @see {@link contextWith} for deriving an effect from the complete context
  * @see {@link service} for reading one service from the context
  *
- * @category environment
+ * @category accessors
  * @since 2.0.0
  */
 export const context: <R = never>() => Effect<Context.Context<R>, never, R> = internal.context
@@ -5834,8 +5751,9 @@ export const context: <R = never>() => Effect<Context.Context<R>, never, R> = in
  *
  * **Example** (Deriving values from the context)
  *
- * ```ts
- * import { Console, Context, Effect, Option } from "effect"
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Option } from "effect"
+ * const output: Array<unknown> = []
  *
  * const Logger = Context.Service<{
  *   log: (msg: string) => void
@@ -5844,19 +5762,19 @@ export const context: <R = never>() => Effect<Context.Context<R>, never, R> = in
  *   get: (key: string) => string | null
  * }>("Cache")
  *
- * const program = Effect.contextWith((services) => {
+ * const program = Effect.contextWith((services: Context.Context<Context.Service.Identifier<typeof Cache>>) => {
  *   const cacheOption = Context.getOption(services, Cache)
  *   const hasCache = Option.isSome(cacheOption)
  *
  *   if (hasCache) {
  *     return Effect.gen(function*() {
  *       const cache = yield* Effect.service(Cache)
- *       yield* Console.log("Using cached data")
+ *       yield* Effect.sync(() => { output.push("Using cached data") })
  *       return cache.get("user:123") || "default"
  *     })
  *   } else {
  *     return Effect.gen(function*() {
- *       yield* Console.log("No cache available, using fallback")
+ *       yield* Effect.sync(() => { output.push("No cache available, using fallback") })
  *       return "fallback data"
  *     })
  *   }
@@ -5865,12 +5783,14 @@ export const context: <R = never>() => Effect<Context.Context<R>, never, R> = in
  * const withCache = Effect.provideService(program, Cache, {
  *   get: () => "cached_value"
  * })
+ * void output.push(Effect.runSync(withCache))
+ * output // => ["Using cached data", "cached_value"]
  * ```
  *
  * @see {@link context} for reading the complete context as a value
  * @see {@link service} for reading one service from the context
  *
- * @category environment
+ * @category accessors
  * @since 2.0.0
  */
 export const contextWith: <R, A, E, R2>(
@@ -5884,7 +5804,7 @@ export const contextWith: <R, A, E, R2>(
  *
  * **Example** (Providing dependencies with a layer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Layer } from "effect"
  *
  * interface Database {
@@ -5904,11 +5824,10 @@ export const contextWith: <R, A, E, R2>(
  *
  * const provided = Effect.provide(program, DatabaseLive)
  *
- * Effect.runPromise(provided).then(console.log)
- * // Output: "Result for: SELECT * FROM users"
+ * await Effect.runPromise(provided) // => "Result for: SELECT * FROM users"
  * ```
  *
- * @category environment
+ * @category providing services
  * @since 2.0.0
  */
 export const provide: {
@@ -5970,8 +5889,9 @@ export const provide: {
  *
  * **Example** (Providing a complete context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Define service keys
  * const Logger = Context.Service<{
@@ -5982,7 +5902,7 @@ export const provide: {
  * }>("Database")
  *
  * // Create a context with multiple services
- * const context = Context.make(Logger, { log: console.log })
+ * const context = Context.make(Logger, { log: (message) => { output.push(message) } })
  *   .pipe(Context.add(Database, { query: () => "result" }))
  *
  * // An effect that requires both services
@@ -5994,9 +5914,11 @@ export const provide: {
  * })
  *
  * const provided = Effect.provideContext(program, context)
+ * void output.push(Effect.runSync(provided))
+ * output // => ["Querying database", "result"]
  * ```
  *
- * @category environment
+ * @category providing services
  * @since 4.0.0
  */
 export const provideContext: {
@@ -6025,7 +5947,7 @@ export const provideContext: {
  *
  * **Example** (Running with a complete context)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
  * class Config extends Context.Service<Config, {
@@ -6041,14 +5963,13 @@ export const provideContext: {
  *
  * const runnable = Effect.setContext(program, context)
  *
- * Effect.runPromise(runnable).then(console.log)
- * // Output: "Hello, World!"
+ * Effect.runSync(runnable) // => "Hello, World!"
  * ```
  *
  * @see {@link provideContext} for partially satisfying an effect's context requirements.
  * @see {@link updateContext} for deriving the required context from the current one.
  *
- * @category environment
+ * @category providing services
  * @since 4.0.0
  */
 export const setContext: {
@@ -6061,7 +5982,7 @@ export const setContext: {
  *
  * **Example** (Accessing a required service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
  * interface Database {
@@ -6074,9 +5995,14 @@ export const setContext: {
  *   const db = yield* Effect.service(Database)
  *   return yield* db.query("SELECT * FROM users")
  * })
+ *
+ * const runnable = Effect.provideService(program, Database, {
+ *   query: (sql) => Effect.succeed(`Result for: ${sql}`)
+ * })
+ * Effect.runSync(runnable) // => "Result for: SELECT * FROM users"
  * ```
  *
- * @category context
+ * @category accessors
  * @since 4.0.0
  */
 export const service: <I, S>(service: Context.Key<I, S>) => Effect<S, never, I> = internal.service
@@ -6098,8 +6024,9 @@ export const service: <I, S>(service: Context.Key<I, S>) => Effect<S, never, I> 
  *
  * **Example** (Accessing an optional service)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Option } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Define a service key
  * const Logger = Context.Service<{
@@ -6113,12 +6040,15 @@ export const service: <I, S>(service: Context.Key<I, S>) => Effect<S, never, I> 
  *   if (Option.isSome(maybeLogger)) {
  *     maybeLogger.value.log("Service is available")
  *   } else {
- *     console.log("Service not available")
+ *     void output.push("Service not available")
  *   }
  * })
+ *
+ * Effect.runSync(program)
+ * output // => ["Service not available"]
  * ```
  *
- * @category context
+ * @category accessors
  * @since 2.0.0
  */
 export const serviceOption: <I, S>(key: Context.Key<I, S>) => Effect<Option<S>> = internal.serviceOption
@@ -6133,7 +6063,7 @@ export const serviceOption: <I, S>(key: Context.Key<I, S>) => Effect<Option<S>> 
  *
  * **Example** (Updating the context before running)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
  * // Define services
@@ -6150,18 +6080,19 @@ export const serviceOption: <I, S>(key: Context.Key<I, S>) => Effect<Option<S>> 
  *
  * // Transform services by providing Config while keeping Logger requirement
  * const configured = program.pipe(
- *   Effect.updateContext((context: Context.Context<typeof Logger>) =>
+ *   Effect.updateContext((context: Context.Context<Context.Service.Identifier<typeof Logger>>) =>
  *     Context.add(context, Config, { name: "World" })
  *   )
  * )
  *
  * // The effect now requires only Logger service
  * const result = Effect.provideService(configured, Logger, {
- *   log: (msg) => console.log(msg)
+ *   log: () => {}
  * })
+ * Effect.runSync(result) // => "Hello World!"
  * ```
  *
- * @category context
+ * @category providing services
  * @since 4.0.0
  */
 export const updateContext: {
@@ -6185,15 +6116,16 @@ export const updateContext: {
  *
  * **Example** (Replacing a service for one effect)
  *
- * ```ts
- * import { Console, Context, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Context, Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Define a counter service
  * const Counter = Context.Service<{ count: number }>("Counter")
  *
  * const program = Effect.gen(function*() {
  *   const updatedCounter = yield* Effect.service(Counter)
- *   yield* Console.log(`Updated count: ${updatedCounter.count}`)
+ *   yield* Effect.sync(() => { output.push(`Updated count: ${updatedCounter.count}`) })
  *   return updatedCounter.count
  * }).pipe(
  *   Effect.updateService(Counter, (counter) => ({ count: counter.count + 1 }))
@@ -6201,25 +6133,91 @@ export const updateContext: {
  *
  * // Provide initial service and run
  * const result = Effect.provideService(program, Counter, { count: 0 })
- * Effect.runPromise(result).then(console.log)
- * // Output: Updated count: 1
- * // 1
+ * void output.push(Effect.runSync(result))
+ * output // => ["Updated count: 1", 1]
  * ```
  *
- * @category context
+ * @category providing services
  * @since 2.0.0
  */
 export const updateService: {
   <I, A>(
     service: Context.Key<I, A>,
-    f: (value: A) => A
+    f: (value: A) => NoInfer<A>
   ): <XA, E, R>(self: Effect<XA, E, R>) => Effect<XA, E, R | I>
   <XA, E, R, I, A>(
     self: Effect<XA, E, R>,
     service: Context.Key<I, A>,
-    f: (value: A) => A
+    f: (value: A) => NoInfer<A>
   ): Effect<XA, E, R | I>
 } = internal.updateService
+
+/**
+ * Updates a service for the lifetime of the current scope and restores its
+ * previous value when the scope closes.
+ *
+ * **When to use**
+ *
+ * Use when you need a setup effect to change a service for subsequent effects
+ * in the same scope.
+ *
+ * **Details**
+ *
+ * The updater receives the currently visible service value. A
+ * `Context.Service` remains in the requirements, while a `Context.Reference`
+ * uses its default when no override is present and adds no service requirement.
+ * The returned effect always requires `Scope`. The optional `reset` function
+ * receives the original, updated, and current values when the scope closes,
+ * allowing changes to be merged during restoration. It defaults to returning
+ * the original value.
+ *
+ * **Example** (Updating a reference within a scope)
+ *
+ * ```ts import.meta.vitest
+ * import { Context, Effect } from "effect"
+ * const output: Array<unknown> = []
+ *
+ * const CurrentNumber = Context.Reference<number>("CurrentNumber", {
+ *   defaultValue: () => 1
+ * })
+ *
+ * const program = Effect.gen(function*() {
+ *   const before = yield* CurrentNumber
+ *   const during = yield* Effect.scoped(
+ *     Effect.gen(function*() {
+ *       yield* Effect.updateServiceScoped(
+ *         CurrentNumber,
+ *         (value) => value + 1,
+ *         {
+ *           // Optional: when omitted, the original value is restored
+ *           reset: (original, updated, current) =>
+ *             Math.max(original, updated, current) + 1
+ *         }
+ *       )
+ *       return yield* CurrentNumber
+ *     })
+ *   )
+ *   const after = yield* CurrentNumber
+ *
+ *   void output.push([before, during, after])
+ * })
+ *
+ * await Effect.runPromise(program)
+ * output // => [[1, 2, 3]]
+ * ```
+ *
+ * @see {@link updateService} for updating a service only within a wrapped effect
+ *
+ * @category providing services
+ * @since 4.0.0
+ */
+export const updateServiceScoped: <I, A>(
+  service: Context.Key<I, A>,
+  f: (value: A) => NoInfer<A>,
+  options?: {
+    readonly reset?: ((original: A, updated: A, current: A) => A) | undefined
+  } | undefined
+) => Effect<void, never, I | Scope> = internal.updateServiceScoped
 
 /**
  * Provides one concrete service implementation to an effect.
@@ -6235,8 +6233,9 @@ export const updateService: {
  *
  * **Example** (Providing a service value)
  *
- * ```ts
- * import { Console, Context, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Context, Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Define a service for configuration
  * const Config = Context.Service<{
@@ -6246,8 +6245,8 @@ export const updateService: {
  *
  * const fetchData = Effect.gen(function*() {
  *   const config = yield* Effect.service(Config)
- *   yield* Console.log(`Fetching from: ${config.apiUrl}`)
- *   yield* Console.log(`Timeout: ${config.timeout}ms`)
+ *   yield* Effect.sync(() => { output.push(`Fetching from: ${config.apiUrl}`) })
+ *   yield* Effect.sync(() => { output.push(`Timeout: ${config.timeout}ms`) })
  *   return "data"
  * })
  *
@@ -6257,17 +6256,14 @@ export const updateService: {
  *   timeout: 5000
  * })
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Fetching from: https://api.example.com
- * // Timeout: 5000ms
- * // data
+ * void output.push(Effect.runSync(program))
+ * output // => ["Fetching from: https://api.example.com", "Timeout: 5000ms", "data"]
  * ```
  *
  * @see {@link provide} for providing multiple layers to an effect.
  * @see {@link provideServiceEffect} for acquiring the service implementation effectfully.
  * @see {@link provideContext} for providing a complete context.
- * @category context
+ * @category providing services
  * @since 2.0.0
  */
 export const provideService: {
@@ -6305,8 +6301,9 @@ export const provideService: {
  *
  * **Example** (Providing a service with an effect)
  *
- * ```ts
- * import { Console, Context, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Context, Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Define a database connection service
  * interface DatabaseConnection {
@@ -6316,9 +6313,8 @@ export const provideService: {
  *
  * // Effect that creates a database connection
  * const createConnection = Effect.gen(function*() {
- *   yield* Console.log("Establishing database connection...")
- *   yield* Effect.sleep("100 millis") // Simulate connection time
- *   yield* Console.log("Database connected!")
+ *   yield* Effect.sync(() => { output.push("Establishing database connection...") })
+ *   yield* Effect.sync(() => { output.push("Database connected!") })
  *   return {
  *     query: (sql: string) => Effect.succeed(`Result for: ${sql}`)
  *   }
@@ -6336,73 +6332,24 @@ export const provideService: {
  *   createConnection
  * )
  *
- * Effect.runPromise(withDatabase).then(console.log)
- * // Output:
- * // Establishing database connection...
- * // Database connected!
- * // Result for: SELECT * FROM users
+ * void output.push(await Effect.runPromise(withDatabase))
+ * output // => ["Establishing database connection...", "Database connected!", "Result for: SELECT * FROM users"]
  * ```
  *
- * @category context
+ * @category providing services
  * @since 2.0.0
  */
 export const provideServiceEffect: {
   <I, S, E2, R2>(
     service: Context.Key<I, S>,
-    acquire: Effect<S, E2, R2>
+    acquire: Effect<NoInfer<S>, E2, R2>
   ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E | E2, Exclude<R, I> | R2>
   <A, E, R, I, S, E2, R2>(
     self: Effect<A, E, R>,
     service: Context.Key<I, S>,
-    acquire: Effect<S, E2, R2>
+    acquire: Effect<NoInfer<S>, E2, R2>
   ): Effect<A, E | E2, Exclude<R, I> | R2>
 } = internal.provideServiceEffect
-
-// -----------------------------------------------------------------------------
-// References
-// -----------------------------------------------------------------------------
-
-/**
- * Sets the concurrency level for parallel operations within an effect.
- *
- * **Example** (Setting local concurrency)
- *
- * ```ts
- * import { Console, Effect } from "effect"
- *
- * const task = (id: number) =>
- *   Effect.gen(function*() {
- *     yield* Console.log(`Task ${id} starting`)
- *     yield* Effect.sleep("100 millis")
- *     yield* Console.log(`Task ${id} completed`)
- *     return id
- *   })
- *
- * // Run tasks with limited concurrency (max 2 at a time)
- * const program = Effect.gen(function*() {
- *   const tasks = [1, 2, 3, 4, 5].map(task)
- *   return yield* Effect.all(tasks, { concurrency: 2 })
- * }).pipe(
- *   Effect.withConcurrency(2)
- * )
- *
- * Effect.runPromise(program).then(console.log)
- * // Tasks will run with max 2 concurrent operations
- * // [1, 2, 3, 4, 5]
- * ```
- *
- * @category references
- * @since 2.0.0
- */
-export const withConcurrency: {
-  (
-    concurrency: number | "unbounded"
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R>
-  <A, E, R>(
-    self: Effect<A, E, R>,
-    concurrency: number | "unbounded"
-  ): Effect<A, E, R>
-} = internal.withConcurrency
 
 // -----------------------------------------------------------------------------
 // Resource management & finalization
@@ -6413,28 +6360,25 @@ export const withConcurrency: {
  *
  * **Example** (Accessing the current scope)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   const currentScope = yield* Effect.scope
- *   yield* Console.log("Got scope for resource management")
+ *   yield* Effect.sync(() => { output.push("Got scope for resource management") })
  *
  *   // Use the scope to manually manage resources if needed
  *   const resource = yield* Effect.acquireRelease(
- *     Console.log("Acquiring resource").pipe(Effect.as("resource")),
- *     () => Console.log("Releasing resource")
+ *     Effect.sync(() => { output.push("Acquiring resource") }).pipe(Effect.as("resource")),
+ *     () => Effect.sync(() => { output.push("Releasing resource") })
  *   )
  *
  *   return resource
  * })
  *
- * Effect.runPromise(Effect.scoped(program)).then(console.log)
- * // Output:
- * // Got scope for resource management
- * // Acquiring resource
- * // resource
- * // Releasing resource
+ * void output.push(Effect.runSync(Effect.scoped(program)))
+ * output // => ["Got scope for resource management", "Acquiring resource", "Releasing resource", "resource"]
  * ```
  *
  * @category resource management
@@ -6456,26 +6400,25 @@ export const scope: Effect<Scope, never, Scope> = internal.scope
  *
  * **Example** (Running a scoped acquisition)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const resource = Effect.acquireRelease(
- *   Console.log("Acquiring resource").pipe(Effect.as("resource")),
- *   () => Console.log("Releasing resource")
+ *   Effect.sync(() => { output.push("Acquiring resource") }).pipe(Effect.as("resource")),
+ *   () => Effect.sync(() => { output.push("Releasing resource") })
  * )
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
  *     const res = yield* resource
- *     yield* Console.log(`Using ${res}`)
+ *     yield* Effect.sync(() => { output.push(`Using ${res}`) })
  *     return res
  *   })
  * )
  *
- * Effect.runFork(program)
- * // Output: "Acquiring resource"
- * // Output: "Using resource"
- * // Output: "Releasing resource"
+ * Effect.runSync(program)
+ * output // => ["Acquiring resource", "Using resource", "Releasing resource"]
  * ```
  *
  * @category resource management
@@ -6495,21 +6438,22 @@ export const scoped: <A, E, R>(
  *
  * **Example** (Working with an explicit scope)
  *
- * ```ts
- * import { Console, Effect, Scope } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Scope } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.scopedWith((scope) =>
  *   Effect.gen(function*() {
- *     yield* Console.log("Inside scoped context")
+ *     yield* Effect.sync(() => { output.push("Inside scoped context") })
  *
  *     // Manually add a finalizer to the scope
- *     yield* Scope.addFinalizer(scope, Console.log("Manual finalizer"))
+ *     yield* Scope.addFinalizer(scope, Effect.sync(() => { output.push("Manual finalizer") }))
  *
  *     // Create a scoped resource
  *     const resource = yield* Effect.scoped(
  *       Effect.acquireRelease(
- *         Console.log("Acquiring resource").pipe(Effect.as("resource")),
- *         () => Console.log("Releasing resource")
+ *         Effect.sync(() => { output.push("Acquiring resource") }).pipe(Effect.as("resource")),
+ *         () => Effect.sync(() => { output.push("Releasing resource") })
  *       )
  *     )
  *
@@ -6517,13 +6461,8 @@ export const scoped: <A, E, R>(
  *   })
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Inside scoped context
- * // Acquiring resource
- * // resource
- * // Releasing resource
- * // Manual finalizer
+ * void output.push(Effect.runSync(program))
+ * output // => ["Inside scoped context", "Acquiring resource", "Releasing resource", "Manual finalizer", "resource"]
  * ```
  *
  * @category resource management
@@ -6552,8 +6491,9 @@ export const scopedWith: <A, E, R>(
  *
  * **Example** (Acquiring and releasing a resource)
  *
- * ```ts
- * import { Console, Effect, Exit } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Simulate a resource that needs cleanup
  * interface FileHandle {
@@ -6563,17 +6503,17 @@ export const scopedWith: <A, E, R>(
  *
  * // Acquire a file handle
  * const acquire = Effect.gen(function*() {
- *   yield* Console.log("Opening file")
+ *   yield* Effect.sync(() => { output.push("Opening file") })
  *   return { path: "/tmp/file.txt", content: "file content" }
  * })
  *
  * // Release the file handle
  * const release = (handle: FileHandle, exit: Exit.Exit<unknown, unknown>) =>
- *   Console.log(
+ *   Effect.sync(() => { output.push(
  *     `Closing file ${handle.path} with exit: ${
  *       Exit.isSuccess(exit) ? "success" : "failure"
  *     }`
- *   )
+ *   ) })
  *
  * // Create a scoped resource
  * const resource = Effect.acquireRelease(acquire, release)
@@ -6582,10 +6522,13 @@ export const scopedWith: <A, E, R>(
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
  *     const handle = yield* resource
- *     yield* Console.log(`Using file: ${handle.path}`)
+ *     yield* Effect.sync(() => { output.push(`Using file: ${handle.path}`) })
  *     return handle.content
  *   })
  * )
+ *
+ * void output.push(Effect.runSync(program))
+ * output // => ["Opening file", "Using file: /tmp/file.txt", "Closing file /tmp/file.txt with exit: success", "file content"]
  * ```
  *
  * @see {@link acquireDisposable} for resources that implement JavaScript disposal protocols
@@ -6622,22 +6565,25 @@ export const acquireRelease: <A, E, R, R2>(
  *
  * **Example** (Acquiring a disposable resource)
  *
- * ```ts
- * import sqlite from "node:sqlite";
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
+ *
+ * class Resource implements Disposable {
+ *   [Symbol.dispose]() {
+ *     void output.push("disposed")
+ *   }
+ * }
  *
  * const program = Effect.scoped(
- *   Effect.gen(function* () {
- *     // acquire database connection
- *     // database will be closed when the scope is closed
- *     const db = yield* Effect.acquireDisposable(
- *       Effect.sync(() => new sqlite.DatabaseSync(":memory:"))
- *     )
- *
- *     const row = db.prepare("SELECT 1 AS value").get()
- *     yield* Effect.log(row) // { value: 1 }
+ *   Effect.gen(function*() {
+ *     yield* Effect.acquireDisposable(Effect.succeed(new Resource()))
+ *     void output.push("acquired")
  *   })
  * )
+ *
+ * Effect.runSync(program)
+ * output // => ["acquired", "disposed"]
  * ```
  *
  * @see {@link acquireRelease} for resources that need an explicit finalizer
@@ -6677,8 +6623,9 @@ export const acquireDisposable: <A extends AsyncDisposable | Disposable, E, R>(
  *
  * **Example** (Acquiring resources with cleanup)
  *
- * ```ts
- * import { Console, Effect, Exit } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * interface Database {
  *   readonly connection: string
@@ -6688,7 +6635,7 @@ export const acquireDisposable: <A extends AsyncDisposable | Disposable, E, R>(
  * const program = Effect.acquireUseRelease(
  *   // Acquire - connect to database
  *   Effect.gen(function*() {
- *     yield* Console.log("Connecting to database...")
+ *     yield* Effect.sync(() => { output.push("Connecting to database...") })
  *     return {
  *       connection: "db://localhost:5432",
  *       query: (sql: string) => Effect.succeed(`Result for: ${sql}`)
@@ -6697,28 +6644,24 @@ export const acquireDisposable: <A extends AsyncDisposable | Disposable, E, R>(
  *   // Use - perform database operations
  *   (db) =>
  *     Effect.gen(function*() {
- *       yield* Console.log(`Connected to ${db.connection}`)
+ *       yield* Effect.sync(() => { output.push(`Connected to ${db.connection}`) })
  *       const result = yield* db.query("SELECT * FROM users")
- *       yield* Console.log(`Query result: ${result}`)
+ *       yield* Effect.sync(() => { output.push(`Query result: ${result}`) })
  *       return result
  *     }),
  *   // Release - close database connection
  *   (db, exit) =>
  *     Effect.gen(function*() {
  *       if (Exit.isSuccess(exit)) {
- *         yield* Console.log(`Closing connection to ${db.connection} (success)`)
+ *         yield* Effect.sync(() => { output.push(`Closing connection to ${db.connection} (success)`) })
  *       } else {
- *         yield* Console.log(`Closing connection to ${db.connection} (failure)`)
+ *         yield* Effect.sync(() => { output.push(`Closing connection to ${db.connection} (failure)`) })
  *       }
  *     })
  * )
  *
- * Effect.runPromise(program)
- * // Output:
- * // Connecting to database...
- * // Connected to db://localhost:5432
- * // Query result: Result for: SELECT * FROM users
- * // Closing connection to db://localhost:5432 (success)
+ * await Effect.runPromise(program)
+ * output // => ["Connecting to database...", "Connected to db://localhost:5432", "Query result: Result for: SELECT * FROM users", "Closing connection to db://localhost:5432 (success)"]
  * ```
  *
  * @see {@link acquireRelease} for scoped resources whose use happens later
@@ -6746,32 +6689,30 @@ export const acquireUseRelease: <Resource, E, R, A, E2, R2, E3, R3>(
  *
  * **Example** (Registering scope finalizers)
  *
- * ```ts
- * import { Console, Effect, Exit } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
  *     // Add a finalizer that runs when the scope closes
  *     yield* Effect.addFinalizer((exit) =>
- *       Console.log(
+ *       Effect.sync(() => { output.push(
  *         Exit.isSuccess(exit)
  *           ? "Cleanup: Operation completed successfully"
  *           : "Cleanup: Operation failed, cleaning up resources"
- *       )
+ *       ) })
  *     )
  *
- *     yield* Console.log("Performing main operation...")
+ *     yield* Effect.sync(() => { output.push("Performing main operation...") })
  *
  *     // This could succeed or fail
  *     return "operation result"
  *   })
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Performing main operation...
- * // Cleanup: Operation completed successfully
- * // operation result
+ * void output.push(Effect.runSync(program))
+ * output // => ["Performing main operation...", "Cleanup: Operation completed successfully", "operation result"]
  * ```
  *
  * @see {@link acquireRelease} for resource acquisition with a release finalizer
@@ -6799,28 +6740,24 @@ export const addFinalizer: <R>(
  *
  * **Example** (Always running cleanup)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const task = Effect.gen(function*() {
- *   yield* Console.log("Task started")
- *   yield* Effect.sleep("1 second")
- *   yield* Console.log("Task completed")
+ *   yield* Effect.sync(() => { output.push("Task started") })
+ *   yield* Effect.sync(() => { output.push("Task completed") })
  *   return 42
  * })
  *
  * // Ensure cleanup always runs, regardless of success or failure
  * const program = Effect.ensuring(
  *   task,
- *   Console.log("Cleanup: This always runs!")
+ *   Effect.sync(() => { output.push("Cleanup: This always runs!") })
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Task started
- * // Task completed
- * // Cleanup: This always runs!
- * // 42
+ * void output.push(Effect.runSync(program))
+ * output // => ["Task started", "Task completed", "Cleanup: This always runs!", 42]
  * ```
  *
  * @category resource management
@@ -6842,22 +6779,22 @@ export const ensuring: {
  *
  * **Example** (Running cleanup on failure)
  *
- * ```ts
- * import { Cause, Console, Data, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Data, Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * class TaskError extends Data.TaggedError("TaskError")<{ readonly message: string }> {}
  *
- * const task = Effect.fail(new TaskError({ message: "Something went wrong" }))
+ * const error = new TaskError({ message: "Something went wrong" })
+ * const task = Effect.fail(error)
  *
  * const program = Effect.onError(
  *   task,
- *   (cause) => Console.log(`Cleanup on error: ${Cause.squash(cause)}`)
+ *   (cause) => Effect.sync(() => { output.push(`Cleanup on error: ${Cause.squash(cause)}`) })
  * )
  *
- * Effect.runPromise(program).catch(console.error)
- * // Output:
- * // Cleanup on error: TaskError: Something went wrong
- * // TaskError: Something went wrong
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["Cleanup on error: TaskError: Something went wrong", Exit.fail(error)]
  * ```
  *
  * @category resource management
@@ -6879,8 +6816,9 @@ export const onError: {
  *
  * **Example** (Running cleanup for selected failures)
  *
- * ```ts
- * import { Cause, Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * const task = Effect.fail("boom")
  *
@@ -6889,9 +6827,12 @@ export const onError: {
  *   Cause.hasFails,
  *   (cause) =>
  *     Effect.gen(function*() {
- *       yield* Console.log(`Cause: ${Cause.pretty(cause)}`)
+ *       yield* Effect.sync(() => { output.push(`Cause: ${Cause.squash(cause)}`) })
  *     })
  * )
+ *
+ * void output.push(Effect.runSyncExit(program))
+ * output // => ["Cause: boom", Exit.fail("boom")]
  * ```
  *
  * @category resource management
@@ -6969,22 +6910,21 @@ export const onExitPrimitive: <A, E, R, XE = never, XR = never>(
  *
  * **Example** (Observing every exit)
  *
- * ```ts
- * import { Console, Effect, Exit } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * const task = Effect.succeed(42)
  *
  * const program = Effect.onExit(task, (exit) =>
- *   Console.log(
+ *   Effect.sync(() => { output.push(
  *     Exit.isSuccess(exit)
  *       ? `Task succeeded with: ${exit.value}`
  *       : `Task failed: ${Exit.isFailure(exit) ? exit.cause : "interrupted"}`
- *   ))
+ *   ) }))
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Task succeeded with: 42
- * // 42
+ * void output.push(Effect.runSync(program))
+ * output // => ["Task succeeded with: 42", 42]
  * ```
  *
  * @category resource management
@@ -7006,17 +6946,21 @@ export const onExit: {
  *
  * **Example** (Observing selected exits)
  *
- * ```ts
- * import { Console, Effect, Exit } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.onExitIf(
  *   Effect.succeed(42),
  *   Exit.isSuccess,
  *   (exit) =>
  *     Exit.isSuccess(exit)
- *       ? Console.log(`Succeeded with: ${exit.value}`)
+ *       ? Effect.sync(() => { output.push(`Succeeded with: ${exit.value}`) })
  *       : Effect.void
  * )
+ *
+ * void output.push(Effect.runSync(program))
+ * output // => ["Succeeded with: 42", 42]
  * ```
  *
  * @category resource management
@@ -7089,40 +7033,29 @@ export const onExitFilter: {
  *
  * **Example** (Memoizing an effect until invalidated)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
+ * const record = (value: unknown) => Effect.sync(() => { output.push(value) })
  *
  * let i = 1
- * const expensiveTask = Effect.promise<string>(() => {
- *   console.log("expensive task...")
- *   return new Promise((resolve) => {
- *     setTimeout(() => {
- *       resolve(`result ${i++}`)
- *     }, 100)
- *   })
+ * const expensiveTask = Effect.sync(() => {
+ *   void output.push("expensive task...")
+ *   return `result ${i++}`
  * })
  *
  * const program = Effect.gen(function*() {
- *   console.log("non-cached version:")
- *   yield* expensiveTask.pipe(Effect.andThen(Console.log))
- *   yield* expensiveTask.pipe(Effect.andThen(Console.log))
- *   console.log("cached version:")
+ *   void output.push("non-cached version:")
+ *   yield* expensiveTask.pipe(Effect.andThen(record))
+ *   yield* expensiveTask.pipe(Effect.andThen(record))
+ *   void output.push("cached version:")
  *   const cached = yield* Effect.cached(expensiveTask)
- *   yield* cached.pipe(Effect.andThen(Console.log))
- *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   yield* cached.pipe(Effect.andThen(record))
+ *   yield* cached.pipe(Effect.andThen(record))
  * })
  *
- * Effect.runFork(program)
- * // Output:
- * // non-cached version:
- * // expensive task...
- * // result 1
- * // expensive task...
- * // result 2
- * // cached version:
- * // expensive task...
- * // result 3
- * // result 3
+ * await Effect.runPromise(program)
+ * output // => ["non-cached version:", "expensive task...", "result 1", "expensive task...", "result 2", "cached version:", "expensive task...", "result 3", "result 3"]
  * ```
  *
  * @see {@link cachedWithTTL} for a similar function that includes a
@@ -7157,34 +7090,26 @@ export const cached: <A, E, R>(self: Effect<A, E, R>) => Effect<Effect<A, E, R>>
  *
  * **Example** (Memoizing an effect with TTL)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
+ * const record = (value: unknown) => Effect.sync(() => { output.push(value) })
  *
  * let i = 1
- * const expensiveTask = Effect.promise<string>(() => {
- *   console.log("expensive task...")
- *   return new Promise((resolve) => {
- *     setTimeout(() => {
- *       resolve(`result ${i++}`)
- *     }, 100)
- *   })
+ * const expensiveTask = Effect.sync(() => {
+ *   void output.push("expensive task...")
+ *   return `result ${i++}`
  * })
  *
  * const program = Effect.gen(function*() {
- *   const cached = yield* Effect.cachedWithTTL(expensiveTask, "150 millis")
- *   yield* cached.pipe(Effect.andThen(Console.log))
- *   yield* cached.pipe(Effect.andThen(Console.log))
- *   yield* Effect.sleep("100 millis")
- *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   const cached = yield* Effect.cachedWithTTL(expensiveTask, "1 hour")
+ *   yield* cached.pipe(Effect.andThen(record))
+ *   yield* cached.pipe(Effect.andThen(record))
+ *   yield* cached.pipe(Effect.andThen(record))
  * })
  *
- * Effect.runFork(program)
- * // Output:
- * // expensive task...
- * // result 1
- * // result 1
- * // expensive task...
- * // result 2
+ * Effect.runSync(program)
+ * output // => ["expensive task...", "result 1", "result 1", "result 1"]
  * ```
  *
  * @see {@link cached} for a similar function that caches the result
@@ -7224,17 +7149,15 @@ export const cachedWithTTL: {
  *
  * **Example** (Memoizing with TTL and invalidation)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
+ * const record = (value: unknown) => Effect.sync(() => { output.push(value) })
  *
  * let i = 1
- * const expensiveTask = Effect.promise<string>(() => {
- *   console.log("expensive task...")
- *   return new Promise((resolve) => {
- *     setTimeout(() => {
- *       resolve(`result ${i++}`)
- *     }, 100)
- *   })
+ * const expensiveTask = Effect.sync(() => {
+ *   void output.push("expensive task...")
+ *   return `result ${i++}`
  * })
  *
  * const program = Effect.gen(function*() {
@@ -7242,19 +7165,14 @@ export const cachedWithTTL: {
  *     expensiveTask,
  *     "1 hour"
  *   )
- *   yield* cached.pipe(Effect.andThen(Console.log))
- *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   yield* cached.pipe(Effect.andThen(record))
+ *   yield* cached.pipe(Effect.andThen(record))
  *   yield* invalidate
- *   yield* cached.pipe(Effect.andThen(Console.log))
+ *   yield* cached.pipe(Effect.andThen(record))
  * })
  *
- * Effect.runFork(program)
- * // Output:
- * // expensive task...
- * // result 1
- * // result 1
- * // expensive task...
- * // result 2
+ * Effect.runSync(program)
+ * output // => ["expensive task...", "result 1", "result 1", "expensive task...", "result 2"]
  * ```
  *
  * @see {@link cached} for a similar function that caches the result
@@ -7278,7 +7196,7 @@ export const cachedInvalidateWithTTL: {
  *
  * **Example** (Creating an interrupted effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
@@ -7286,8 +7204,7 @@ export const cachedInvalidateWithTTL: {
  *   yield* Effect.succeed("This won't execute and is unreachable")
  * })
  *
- * Effect.runPromise(program).catch(console.error)
- * // Throws: InterruptedException
+ * Effect.runSyncExit(program)._tag // => "Failure"
  * ```
  *
  * @category interruption
@@ -7300,16 +7217,13 @@ export const interrupt: Effect<never> = internal.interrupt
  *
  * **Example** (Allowing interruption)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
- * const longRunning = Effect.forever(Effect.succeed("working..."))
- *
- * const program = Effect.interruptible(longRunning)
- *
- * // This effect can now be interrupted
- * const fiber = Effect.runFork(program)
- * // Later: fiber.interrupt()
+ * const program = Effect.interruptible(Effect.never).pipe(
+ *   Effect.timeoutOption(0)
+ * )
+ * await Effect.runPromise(program) // => Option.none()
  * ```
  *
  * @category interruption
@@ -7324,20 +7238,20 @@ export const interruptible: <A, E, R>(
  *
  * **Example** (Running cleanup on interruption)
  *
- * ```ts
- * import { Console, Effect, Fiber } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Fiber } from "effect"
+ * const output: Array<unknown> = []
  *
  * const task = Effect.forever(Effect.succeed("working..."))
  *
  * const program = Effect.onInterrupt(
  *   task,
- *   () => Console.log("Task was interrupted, cleaning up...")
+ *   () => Effect.sync(() => { output.push("Task was interrupted, cleaning up...") })
  * )
  *
  * const fiber = Effect.runFork(program)
- * // Later interrupt the task
- * Effect.runFork(Fiber.interrupt(fiber))
- * // Output: Task was interrupted, cleaning up...
+ * await Effect.runPromise(Fiber.interrupt(fiber))
+ * output // => ["Task was interrupted, cleaning up..."]
  * ```
  *
  * @category interruption
@@ -7358,20 +7272,19 @@ export const onInterrupt: {
  *
  * **Example** (Preventing interruption)
  *
- * ```ts
- * import { Console, Effect, Fiber } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const criticalTask = Effect.gen(function*() {
- *   yield* Console.log("Starting critical section...")
- *   yield* Effect.sleep("2 seconds")
- *   yield* Console.log("Critical section completed")
+ *   yield* Effect.sync(() => { output.push("Starting critical section...") })
+ *   yield* Effect.sync(() => { output.push("Critical section completed") })
  * })
  *
  * const program = Effect.uninterruptible(criticalTask)
  *
- * const fiber = Effect.runFork(program)
- * // Even if interrupted, the critical task will complete
- * Effect.runPromise(Fiber.interrupt(fiber))
+ * Effect.runSync(program)
+ * output // => ["Starting critical section...", "Critical section completed"]
  * ```
  *
  * @category interruption
@@ -7387,25 +7300,26 @@ export const uninterruptible: <A, E, R>(
  *
  * **Example** (Restoring interruption in protected regions)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.uninterruptibleMask((restore) =>
  *   Effect.gen(function*() {
- *     yield* Console.log("Uninterruptible phase...")
- *     yield* Effect.sleep("1 second")
- *
+ *     yield* Effect.sync(() => { output.push("Uninterruptible phase...") })
  *     // Restore interruptibility for this part
  *     yield* restore(
  *       Effect.gen(function*() {
- *         yield* Console.log("Interruptible phase...")
- *         yield* Effect.sleep("2 seconds")
+ *         yield* Effect.sync(() => { output.push("Interruptible phase...") })
  *       })
  *     )
  *
- *     yield* Console.log("Back to uninterruptible")
+ *     yield* Effect.sync(() => { output.push("Back to uninterruptible") })
  *   })
  * )
+ *
+ * Effect.runSync(program)
+ * output // => ["Uninterruptible phase...", "Interruptible phase...", "Back to uninterruptible"]
  * ```
  *
  * @category interruption
@@ -7423,25 +7337,26 @@ export const uninterruptibleMask: <A, E, R>(
  *
  * **Example** (Controlling interruptibility locally)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.interruptibleMask((restore) =>
  *   Effect.gen(function*() {
- *     yield* Console.log("Interruptible phase...")
- *     yield* Effect.sleep("1 second")
- *
+ *     yield* Effect.sync(() => { output.push("Interruptible phase...") })
  *     // Make this part uninterruptible
  *     yield* restore(
  *       Effect.gen(function*() {
- *         yield* Console.log("Uninterruptible phase...")
- *         yield* Effect.sleep("2 seconds")
+ *         yield* Effect.sync(() => { output.push("Uninterruptible phase...") })
  *       })
  *     )
  *
- *     yield* Console.log("Back to interruptible")
+ *     yield* Effect.sync(() => { output.push("Back to interruptible") })
  *   })
  * )
+ *
+ * Effect.runSync(program)
+ * output // => ["Interruptible phase...", "Uninterruptible phase...", "Back to interruptible"]
  * ```
  *
  * @category interruption
@@ -7539,26 +7454,11 @@ export declare namespace Repeat {
  *
  * **Example** (Repeating forever)
  *
- * ```ts
- * import { Console, Effect, Fiber } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option } from "effect"
  *
- * const task = Effect.gen(function*() {
- *   yield* Console.log("Task running...")
- *   yield* Effect.sleep("1 second")
- * })
- *
- * // This will run forever, printing every second
- * const program = task.pipe(Effect.forever)
- *
- * // This will run forever, without yielding every iteration
- * const programNoYield = task.pipe(Effect.forever({ disableYield: true }))
- *
- * // Run for 5 seconds then interrupt
- * const timedProgram = Effect.gen(function*() {
- *   const fiber = yield* Effect.forkChild(program)
- *   yield* Effect.sleep("5 seconds")
- *   yield* Fiber.interrupt(fiber)
- * })
+ * const program = Effect.forever(Effect.never).pipe(Effect.timeoutOption(0))
+ * await Effect.runPromise(program) // => Option.none()
  * ```
  *
  * @category repetition
@@ -7611,41 +7511,45 @@ export const forever: <
  *
  * **Example** (Repeating successful effects with a schedule)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * // Success Example
- * import { Console, Effect, Schedule } from "effect"
+ * import { Effect, Schedule } from "effect"
+ * const output: Array<unknown> = []
  *
- * const action = Console.log("success")
- * const policy = Schedule.addDelay(Schedule.recurs(2), () => Effect.succeed("100 millis"))
+ * const action = Effect.sync(() => { output.push("success") })
+ * const policy = Schedule.recurs(2)
  * const program = Effect.repeat(action, policy)
  *
- * // Effect.runPromise(program).then((n) => console.log(`repetitions: ${n}`))
+ * void output.push(Effect.runSync(program))
+ * output // => ["success", "success", "success", 2]
  * ```
  *
  * **Example** (Stopping repetition on failure)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * // Failure Example
  * import { Effect, Schedule } from "effect"
+ * const output: Array<unknown> = []
  *
  * let count = 0
  *
  * // Define a callback effect that simulates an action with possible failures
  * const action = Effect.callback<string, string>((resume) => {
  *   if (count > 1) {
- *     console.log("failure")
+ *     void output.push("failure")
  *     resume(Effect.fail("Uh oh!"))
  *   } else {
  *     count++
- *     console.log("success")
+ *     void output.push("success")
  *     resume(Effect.succeed("yay!"))
  *   }
  * })
  *
- * const policy = Schedule.addDelay(Schedule.recurs(2), () => Effect.succeed("100 millis"))
+ * const policy = Schedule.recurs(2)
  * const program = Effect.repeat(action, policy)
  *
- * // Effect.runPromiseExit(program).then(console.log)
+ * void output.push((await Effect.runPromiseExit(program))._tag)
+ * output // => ["success", "success", "failure", "Failure"]
  * ```
  *
  * @see {@link retry} for failure-based repetition
@@ -7695,17 +7599,18 @@ export const repeat: {
  *
  * **Example** (Recovering after repetition stops)
  *
- * ```ts
- * import { Console, Effect, Option, Schedule } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Option, Schedule } from "effect"
+ * const output: Array<unknown> = []
  *
  * let attempt = 0
  * const task = Effect.gen(function*() {
  *   attempt++
  *   if (attempt <= 2) {
- *     yield* Console.log(`Attempt ${attempt} failed`)
+ *     yield* Effect.sync(() => { output.push(`Attempt ${attempt} failed`) })
  *     return yield* Effect.fail(`Error ${attempt}`)
  *   }
- *   yield* Console.log(`Attempt ${attempt} succeeded`)
+ *   yield* Effect.sync(() => { output.push(`Attempt ${attempt} succeeded`) })
  *   return "success"
  * })
  *
@@ -7713,12 +7618,15 @@ export const repeat: {
  *   task,
  *   Schedule.recurs(3),
  *   (error, attempts) =>
- *     Console.log(
+ *     Effect.sync(() => { output.push(
  *       `Final failure: ${error}, after ${
  *         Option.getOrElse(attempts, () => 0)
  *       } attempts`
- *     ).pipe(Effect.map(() => 0))
+ *     ) }).pipe(Effect.map(() => 0))
  * )
+ *
+ * void output.push(Effect.runSync(program))
+ * output // => ["Attempt 1 failed", "Final failure: Error 1, after 0 attempts", 0]
  * ```
  *
  * @category repetition
@@ -7751,7 +7659,7 @@ export const repeatOrElse: {
  * @see {@link all} for running the returned effects and collecting results
  * @see {@link replicateEffect} for repeating an effect and collecting results in one step with concurrency and discard options
  *
- * @category collecting
+ * @category repetition
  * @since 2.0.0
  */
 export const replicate: {
@@ -7773,16 +7681,20 @@ export const replicate: {
  *
  * **Example** (Replicating an effect)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   const results = yield* Effect.replicateEffect(3)(Effect.succeed(1))
- *   yield* Console.log(results)
+ *   yield* Effect.sync(() => { output.push(results) })
  * })
+ *
+ * Effect.runSync(program)
+ * output // => [[1, 1, 1]]
  * ```
  *
- * @category collecting
+ * @category repetition
  * @since 2.0.0
  */
 export const replicateEffect: {
@@ -7825,26 +7737,19 @@ export const replicateEffect: {
  *
  * **Example** (Scheduling repeated execution)
  *
- * ```ts
- * import { Console, Effect, Schedule } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Schedule } from "effect"
+ * const output: Array<unknown> = []
  *
  * const task = Effect.gen(function*() {
- *   yield* Console.log("Task executing...")
- *   return Math.random()
+ *   yield* Effect.sync(() => { output.push("Task executing...") })
+ *   return 1
  * })
  *
- * // Repeat 3 times with 1 second delay between executions
- * const program = Effect.schedule(
- *   task,
- *   Schedule.addDelay(Schedule.recurs(2), () => Effect.succeed("1 second"))
- * )
+ * const program = Effect.schedule(task, Schedule.recurs(2))
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // Task executing... (immediate)
- * // Task executing... (after 1 second)
- * // Task executing... (after 1 second)
- * // Returns the count from Schedule.recurs
+ * void output.push(Effect.runSync(program))
+ * output // => ["Task executing...", "Task executing...", 2]
  * ```
  *
  * @see {@link scheduleFrom} for a variant that allows the schedule's decision
@@ -7856,15 +7761,15 @@ export const replicateEffect: {
 export const schedule: {
   <Output, Error, Env>(
     schedule: Schedule<Output, unknown, Error, Env>
-  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Output, E, R | Env>
+  ): <A, E, R>(self: Effect<A, E, R>) => Effect<Output, E | Error, R | Env>
   <A, E, R, Output, Error, Env>(
     self: Effect<A, E, R>,
     schedule: Schedule<Output, unknown, Error, Env>
-  ): Effect<Output, E, R | Env>
+  ): Effect<Output, E | Error, R | Env>
 } = dual(2, <A, E, R, Output, Error, Env>(
   self: Effect<A, E, R>,
   schedule: Schedule<Output, unknown, Error, Env>
-): Effect<Output, E, R | Env> => scheduleFrom(self, undefined, schedule))
+): Effect<Output, E | Error, R | Env> => scheduleFrom(self, undefined, schedule))
 
 /**
  * Runs an effect repeatedly according to a schedule that is initialized with a
@@ -7880,12 +7785,13 @@ export const schedule: {
  *
  * **Example** (Scheduling from an initial value)
  *
- * ```ts
- * import { Console, Effect, Schedule } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Schedule } from "effect"
+ * const output: Array<unknown> = []
  *
  * const task = (input: number) =>
  *   Effect.gen(function*() {
- *     yield* Console.log(`Processing: ${input}`)
+ *     yield* Effect.sync(() => { output.push(`Processing: ${input}`) })
  *     return input + 1
  *   })
  *
@@ -7896,8 +7802,8 @@ export const schedule: {
  *   Schedule.recurs(2)
  * )
  *
- * Effect.runPromise(program).then(console.log)
- * // Returns the schedule count
+ * void output.push(Effect.runSync(program))
+ * output // => ["Processing: 0", "Processing: 0", 2]
  * ```
  *
  * @category repetition
@@ -7907,12 +7813,12 @@ export const scheduleFrom: {
   <Input, Output, Error, Env>(
     initial: Input,
     schedule: Schedule<Output, Input, Error, Env>
-  ): <E, R>(self: Effect<Input, E, R>) => Effect<Output, E, R | Env>
+  ): <E, R>(self: Effect<Input, E, R>) => Effect<Output, E | Error, R | Env>
   <Input, E, R, Output, Error, Env>(
     self: Effect<Input, E, R>,
     initial: Input,
     schedule: Schedule<Output, Input, Error, Env>
-  ): Effect<Output, E, R | Env>
+  ): Effect<Output, E | Error, R | Env>
 } = internalSchedule.scheduleFrom
 
 // -----------------------------------------------------------------------------
@@ -7924,14 +7830,15 @@ export const scheduleFrom: {
  *
  * **Example** (Accessing the current tracer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const currentTracer = yield* Effect.tracer
- *   yield* Effect.log(`Using tracer: ${currentTracer}`)
- *   return "operation completed"
+ *   return typeof currentTracer.span
  * })
+ *
+ * Effect.runSync(program) // => "function"
  * ```
  *
  * @category tracing
@@ -7944,16 +7851,15 @@ export const tracer: Effect<Tracer> = internal.tracer
  *
  * **Example** (Providing a tracer)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   yield* Effect.log("Using tracer")
- *   return "completed"
+ *   const tracer = yield* Effect.tracer
+ *   return yield* Effect.withTracer(Effect.succeed("completed"), tracer)
  * })
  *
- * // withTracer provides a tracer to the effect context
- * // const traced = Effect.withTracer(program, customTracer)
+ * Effect.runSync(program) // => "completed"
  * ```
  *
  * @category tracing
@@ -7974,14 +7880,15 @@ export const withTracer: {
  *
  * **Example** (Enabling or disabling tracing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * Effect.succeed(42).pipe(
+ * const program = Effect.succeed(42).pipe(
  *   Effect.withSpan("my-span"),
  *   // the span will not be registered with the tracer
  *   Effect.withTracerEnabled(false)
  * )
+ * Effect.runSync(program) // => 42
  * ```
  *
  * @category tracing
@@ -7997,14 +7904,15 @@ export const withTracerEnabled: {
  *
  * **Example** (Enabling or disabling tracing timing)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * Effect.succeed(42).pipe(
+ * const program = Effect.succeed(42).pipe(
  *   Effect.withSpan("my-span"),
  *   // the span will not have timing information
  *   Effect.withTracerTiming(false)
  * )
+ * Effect.runSync(program) // => 42
  * ```
  *
  * @category tracing
@@ -8020,13 +7928,10 @@ export const withTracerTiming: {
  *
  * **Example** (Annotating all spans)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const program = Effect.gen(function*() {
- *   yield* Effect.log("Doing some work...")
- *   return "result"
- * })
+ * const program = Effect.succeed("result")
  *
  * // Add single annotation
  * const annotated1 = Effect.annotateSpans(program, "user", "john")
@@ -8037,6 +7942,8 @@ export const withTracerTiming: {
  *   version: "1.0.0",
  *   environment: "production"
  * })
+ *
+ * Effect.runSync(Effect.all([annotated1, annotated2])) // => ['result', 'result']
  * ```
  *
  * @category tracing
@@ -8066,20 +7973,19 @@ export const annotateSpans: {
  *
  * **Example** (Annotating the current span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   yield* Effect.annotateCurrentSpan("userId", "123")
  *   yield* Effect.annotateCurrentSpan({
- *     operation: "user-lookup",
- *     timestamp: Date.now()
+ *     operation: "user-lookup"
  *   })
- *   yield* Effect.log("User lookup completed")
  *   return "success"
  * })
  *
  * const traced = Effect.withSpan(program, "user-operation")
+ * Effect.runSync(traced) // => "success"
  * ```
  *
  * @category tracing
@@ -8100,16 +8006,16 @@ export const annotateCurrentSpan: {
  *
  * **Example** (Reading the current span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const span = yield* Effect.currentSpan
- *   yield* Effect.log(`Current span: ${span}`)
- *   return "done"
+ *   return span.name
  * })
  *
  * const traced = Effect.withSpan(program, "my-span")
+ * Effect.runSync(traced) // => "my-span"
  * ```
  *
  * @category tracing
@@ -8128,21 +8034,18 @@ export const currentSpan: Effect<Span, Cause.NoSuchElementError> = internal.curr
  *
  * **Example** (Reading the parent span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const childOperation = Effect.gen(function*() {
  *   const parentSpan = yield* Effect.currentParentSpan
- *   yield* Effect.log(`Parent span: ${parentSpan}`)
- *   return "child completed"
+ *   return parentSpan._tag
  * })
  *
- * const program = Effect.gen(function*() {
- *   yield* Effect.withSpan(childOperation, "child-span")
- *   return "parent completed"
- * })
+ * const program = Effect.withSpan(childOperation, "child-span")
  *
  * const traced = Effect.withSpan(program, "parent-span")
+ * Effect.runSync(traced) // => "Span"
  * ```
  *
  * @category tracing
@@ -8160,23 +8063,15 @@ export const currentParentSpan: Effect<AnySpan, Cause.NoSuchElementError> = inte
  *
  * **Example** (Providing span annotations)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   // Add some annotations to the current span
- *   yield* Effect.annotateCurrentSpan("userId", "123")
- *   yield* Effect.annotateCurrentSpan("operation", "data-processing")
- *
- *   // Retrieve all annotations
  *   const annotations = yield* Effect.spanAnnotations
- *
- *   console.log("Current span annotations:", annotations)
  *   return annotations
- * })
+ * }).pipe(Effect.annotateSpans({ userId: "123", operation: "data-processing" }))
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: Current span annotations: { userId: "123", operation: "data-processing" }
+ * Effect.runSync(program) // => { userId: '123', operation: 'data-processing' }
  * ```
  *
  * @category tracing
@@ -8194,15 +8089,16 @@ export const spanAnnotations: Effect<Readonly<Record<string, unknown>>> = intern
  *
  * **Example** (Providing span links)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   // Get the current span links
  *   const links = yield* Effect.spanLinks
- *   console.log(`Current span has ${links.length} links`)
  *   return links
  * })
+ *
+ * Effect.runSync(program).length // => 0
  * ```
  *
  * @category tracing
@@ -8221,44 +8117,37 @@ export const spanLinks: Effect<ReadonlyArray<SpanLink>> = internal.spanLinks
  *
  * **Example** (Linking one span to another span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const parentEffect = Effect.withSpan("parent-operation")(
- *   Effect.succeed("parent result")
- * )
- *
- * const childEffect = Effect.withSpan("child-operation")(
- *   Effect.succeed("child result")
- * )
- *
- * // Link the child span to the parent span
- * const program = Effect.gen(function*() {
+ * const program = Effect.withSpan(Effect.gen(function*() {
  *   const parentSpan = yield* Effect.currentSpan
- *   const result = yield* childEffect.pipe(
+ *   return yield* Effect.spanLinks.pipe(
  *     Effect.linkSpans(parentSpan, { relationship: "follows" })
  *   )
- *   return result
- * })
+ * }), "parent-operation")
+ *
+ * Effect.runSync(program).length // => 1
  * ```
  *
  * **Example** (Linking multiple spans at once)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * // Link multiple spans
  * const program = Effect.gen(function*() {
- *   const span1 = yield* Effect.currentSpan
- *   const span2 = yield* Effect.currentSpan
+ *   const span1 = yield* Effect.makeSpan("span-1")
+ *   const span2 = yield* Effect.makeSpan("span-2")
  *
- *   return yield* Effect.succeed("result").pipe(
+ *   return yield* Effect.spanLinks.pipe(
  *     Effect.linkSpans([span1, span2], {
  *       type: "dependency",
  *       source: "multiple-operations"
  *     })
  *   )
  * })
+ *
+ * Effect.runSync(program).length // => 2
  * ```
  *
  * @category tracing
@@ -8287,14 +8176,15 @@ export const linkSpans: {
  *
  * **Example** (Creating a span manually)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const span = yield* Effect.makeSpan("my-operation")
- *   yield* Effect.log("Operation in progress")
- *   return "completed"
+ *   return span.name
  * })
+ *
+ * Effect.runSync(program) // => "my-operation"
  * ```
  *
  * @category tracing
@@ -8313,17 +8203,18 @@ export const makeSpan: (name: string, options?: SpanOptionsNoTrace) => Effect<Sp
  *
  * **Example** (Creating a scoped standalone span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
  *     const span = yield* Effect.makeSpanScoped("scoped-operation")
- *     yield* Effect.log("Working...")
- *     return "done"
+ *     return span.name
  *     // Span automatically closes when scope ends
  *   })
  * )
+ *
+ * Effect.runSync(program) // => "scoped-operation"
  * ```
  *
  * @category tracing
@@ -8345,17 +8236,14 @@ export const makeSpanScoped: (
  *
  * **Example** (Running an effect with a standalone span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.useSpan(
  *   "user-operation",
- *   (span) =>
- *     Effect.gen(function*() {
- *       yield* Effect.log("Processing user data")
- *       return "success"
- *     })
+ *   (span) => Effect.succeed(`${span.name}: success`)
  * )
+ * Effect.runSync(program) // => "user-operation: success"
  * ```
  *
  * @category tracing
@@ -8371,17 +8259,15 @@ export const useSpan: {
  *
  * **Example** (Wrapping an effect in a child span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const task = Effect.gen(function*() {
- *   yield* Effect.log("Executing task")
- *   return "result"
- * })
+ * const task = Effect.succeed("result")
  *
  * const traced = Effect.withSpan(task, "my-task", {
  *   attributes: { version: "1.0" }
  * })
+ * Effect.runSync(traced) // => "result"
  * ```
  *
  * @category tracing
@@ -8412,16 +8298,17 @@ export const withSpan: {
  *
  * **Example** (Creating a scoped child span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
- *     const task = Effect.log("Working...")
+ *     const task = Effect.succeed("working")
  *     yield* Effect.withSpanScoped(task, "scoped-task")
  *     return "completed"
  *   })
  * )
+ * Effect.runSync(program) // => "completed"
  * ```
  *
  * @category tracing
@@ -8446,15 +8333,16 @@ export const withSpanScoped: {
  *
  * **Example** (Setting a parent span)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const program = Effect.gen(function*() {
  *   const span = yield* Effect.makeSpan("parent-span")
- *   const childTask = Effect.log("Child operation")
+ *   const childTask = Effect.succeed("child operation")
  *   yield* Effect.withParentSpan(childTask, span)
  *   return "completed"
  * })
+ * Effect.runSync(program) // => "completed"
  * ```
  *
  * @category tracing
@@ -8478,8 +8366,9 @@ export const withParentSpan: {
  *
  * **Example** (Executing a request through a resolver)
  *
- * ```ts
- * import { Console, Effect, Exit, Request, RequestResolver } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit, Request, RequestResolver } from "effect"
+ * const output: Array<unknown> = []
  *
  * interface GetUser extends Request.Request<string> {
  *   readonly _tag: "GetUser"
@@ -8497,13 +8386,16 @@ export const withParentSpan: {
  *
  * const program = Effect.gen(function*() {
  *   const name = yield* Effect.request(GetUser({ id: 1 }), resolver)
- *   yield* Console.log(name)
+ *   yield* Effect.sync(() => { output.push(name) })
  * })
+ *
+ * await Effect.runPromise(program)
+ * output // => ["user-1"]
  * ```
  *
  * @see {@link requestUnsafe} for the low-level entry point when you already have a `Context` and need to enqueue outside an `Effect`
  *
- * @category requests & batching
+ * @category running
  * @since 2.0.0
  */
 export const request: {
@@ -8530,7 +8422,7 @@ export const request: {
  *
  * @see {@link request} for the `Effect`-returning API used for normal request execution
  *
- * @category requests & batching
+ * @category unsafe
  * @since 4.0.0
  */
 export const requestUnsafe: <A extends Request.Any>(
@@ -8571,28 +8463,21 @@ export const requestUnsafe: <A extends Request.Any>(
  *
  * **Example** (Forking a child fiber)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Fiber } from "effect"
  *
- * const longRunningTask = Effect.gen(function*() {
- *   yield* Effect.sleep("2 seconds")
- *   yield* Effect.log("Task completed")
- *   return "result"
- * })
+ * const task = Effect.succeed("result")
  *
  * const program = Effect.gen(function*() {
- *   const fiber = yield* longRunningTask.pipe(Effect.forkChild)
- *
- *   // or fork a fiber that starts immediately:
- *   yield* longRunningTask.pipe(Effect.forkChild({ startImmediately: true }))
- *
- *   yield* Effect.log("Task forked, continuing...")
+ *   const fiber = yield* task.pipe(Effect.forkChild)
  *   const result = yield* Fiber.join(fiber)
  *   return result
  * })
+ *
+ * await Effect.runPromise(program) // => "result"
  * ```
  *
- * @category supervision & fibers
+ * @category forking
  * @since 4.0.0
  */
 export const forkChild: <
@@ -8618,26 +8503,24 @@ export const forkChild: <
  *
  * **Example** (Forking into a supplied scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const task = Effect.gen(function*() {
- *   yield* Effect.sleep("10 seconds")
- *   return "completed"
- * })
+ * const task = Effect.never
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
  *     const scope = yield* Effect.scope
  *     const fiber = yield* Effect.forkIn(task, scope)
- *     yield* Effect.sleep("1 second")
  *     // Fiber will be interrupted when scope closes
  *     return "done"
  *   })
  * )
+ *
+ * await Effect.runPromise(program) // => "done"
  * ```
  *
- * @category supervision & fibers
+ * @category forking
  * @since 2.0.0
  */
 export const forkIn: {
@@ -8663,32 +8546,24 @@ export const forkIn: {
  *
  * **Example** (Forking into the current scope)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const backgroundTask = Effect.gen(function*() {
- *   yield* Effect.sleep("5 seconds")
- *   yield* Effect.log("Background task completed")
- *   return "result"
- * })
+ * const backgroundTask = Effect.never
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
- *     const fiber = yield* backgroundTask.pipe(Effect.forkScoped)
- *
- *     // or fork a fiber that starts immediately:
- *     yield* backgroundTask.pipe(Effect.forkScoped({ startImmediately: true }))
- *
- *     yield* Effect.log("Task forked in scope")
- *     yield* Effect.sleep("1 second")
+ *     yield* backgroundTask.pipe(Effect.forkScoped)
  *
  *     // Fiber will be interrupted when scope closes
  *     return "scope completed"
  *   })
  * )
+ *
+ * await Effect.runPromise(program) // => "scope completed"
  * ```
  *
- * @category supervision & fibers
+ * @category forking
  * @since 2.0.0
  */
 export const forkScoped: <
@@ -8715,30 +8590,20 @@ export const forkScoped: <
  *
  * **Example** (Forking a detached fiber)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Fiber } from "effect"
  *
- * const daemonTask = Effect.gen(function*() {
- *   while (true) {
- *     yield* Effect.sleep("1 second")
- *     yield* Effect.log("Daemon running...")
- *   }
- * })
+ * const daemonTask = Effect.succeed("daemon result")
  *
  * const program = Effect.gen(function*() {
  *   const fiber = yield* daemonTask.pipe(Effect.forkDetach)
- *
- *   // or fork a fiber that starts immediately:
- *   yield* daemonTask.pipe(Effect.forkDetach({ startImmediately: true }))
- *
- *   yield* Effect.log("Daemon started")
- *   yield* Effect.sleep("3 seconds")
- *   // Daemon continues running after this effect completes
- *   return "main completed"
+ *   return yield* Fiber.join(fiber)
  * })
+ *
+ * await Effect.runPromise(program) // => "daemon result"
  * ```
  *
- * @category supervision & fibers
+ * @category forking
  * @since 4.0.0
  */
 export const forkDetach: <
@@ -8777,7 +8642,7 @@ export const forkDetach: <
  * @see {@link forkIn} for forking into an explicit scope
  * @see {@link forkScoped} for forking fibers tied to the current scope
  *
- * @category supervision & fibers
+ * @category sequencing
  * @since 2.0.0
  */
 export const awaitAllChildren: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, R> = internal.awaitAllChildren
@@ -8787,16 +8652,20 @@ export const awaitAllChildren: <A, E, R>(self: Effect<A, E, R>) => Effect<A, E, 
  *
  * **Example** (Accessing the current fiber)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   const fiber = yield* Effect.fiber
- *   yield* Console.log(`Fiber id: ${fiber.id}`)
+ *   yield* Effect.sync(() => { output.push(typeof fiber.id) })
  * })
+ *
+ * Effect.runSync(program)
+ * output // => ["number"]
  * ```
  *
- * @category supervision & fibers
+ * @category accessors
  * @since 4.0.0
  */
 export const fiber: Effect<Fiber<unknown, unknown>> = internal.fiber
@@ -8806,21 +8675,14 @@ export const fiber: Effect<Fiber<unknown, unknown>> = internal.fiber
  *
  * **Example** (Accessing the current fiber id)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * const program = Effect.log("event").pipe(
- *   // Read the current span with the fiber id for tagging.
- *   Effect.andThen(Effect.all([Effect.currentSpan, Effect.fiberId])),
- *   Effect.withSpan("A"),
- *   Effect.map(([span, fiberId]) => ({
- *     spanName: span.name,
- *     fiberId
- *   }))
- * )
+ * const program = Effect.fiberId.pipe(Effect.map((id) => typeof id))
+ * Effect.runSync(program) // => "number"
  * ```
  *
- * @category supervision & fibers
+ * @category accessors
  * @since 2.0.0
  */
 export const fiberId: Effect<number> = internal.fiberId
@@ -8869,23 +8731,20 @@ export interface RunOptions {
  *
  * **Example** (Running an effect in the background)
  *
- * ```ts
- * import { Console, Effect, Fiber, Schedule } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Fiber } from "effect"
+ * const output: Array<unknown> = []
  *
  * //      ┌─── Effect<number, never, never>
  * //      ▼
- * const program = Effect.repeat(
- *   Console.log("running..."),
- *   Schedule.spaced("200 millis")
- * )
+ * const program = Effect.sync(() => { output.push("running...") }).pipe(Effect.as("done"))
  *
  * //      ┌─── RuntimeFiber<number, never>
  * //      ▼
  * const fiber = Effect.runFork(program)
  *
- * setTimeout(() => {
- *   Effect.runFork(Fiber.interrupt(fiber))
- * }, 500)
+ * void output.push(await Effect.runPromise(Fiber.join(fiber)))
+ * output // => ["running...", "done"]
  * ```
  *
  * @category running
@@ -8904,8 +8763,9 @@ export const runFork: <A, E>(effect: Effect<A, E, never>, options?: RunOptions |
  *
  * **Example** (Running with services in the background)
  *
- * ```ts
- * import { Context, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Context, Effect, Fiber } from "effect"
+ * const output: Array<unknown> = []
  *
  * interface Logger {
  *   log: (message: string) => void
@@ -8914,7 +8774,7 @@ export const runFork: <A, E>(effect: Effect<A, E, never>, options?: RunOptions |
  * const Logger = Context.Service<Logger>("Logger")
  *
  * const services = Context.make(Logger, {
- *   log: (message) => console.log(message)
+ *   log: (message) => void output.push(message)
  * })
  *
  * const program = Effect.gen(function*() {
@@ -8924,6 +8784,8 @@ export const runFork: <A, E>(effect: Effect<A, E, never>, options?: RunOptions |
  * })
  *
  * const fiber = Effect.runForkWith(services)(program)
+ * void output.push(await Effect.runPromise(Fiber.join(fiber)))
+ * output // => ["Hello from service!", "done"]
  * ```
  *
  * @category running
@@ -8947,8 +8809,9 @@ export const runForkWith: <R>(
  *
  * **Example** (Running with services and a callback)
  *
- * ```ts
- * import { Console, Context, Effect, Exit } from "effect"
+ * ```ts import.meta.vitest
+ * import { Context, Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * interface Logger {
  *   log: (message: string) => Effect.Effect<void>
@@ -8957,7 +8820,7 @@ export const runForkWith: <R>(
  * const Logger = Context.Service<Logger>("Logger")
  *
  * const services = Context.make(Logger, {
- *   log: (message) => Console.log(message)
+ *   log: (message) => Effect.sync(() => { output.push(message) })
  * })
  *
  * const program = Effect.gen(function*() {
@@ -8966,16 +8829,15 @@ export const runForkWith: <R>(
  *   return "done"
  * })
  *
- * const interrupt = Effect.runCallbackWith(services)(program, {
- *   onExit: (exit) => {
- *     if (Exit.isFailure(exit)) {
- *       // handle failure or interruption
+ * await new Promise<void>((resolve) => {
+ *   Effect.runCallbackWith(services)(program, {
+ *     onExit: (exit) => {
+ *       void output.push(exit._tag)
+ *       resolve()
  *     }
- *   }
+ *   })
  * })
- *
- * // Use the interruptor if you need to cancel the fiber later.
- * interrupt()
+ * output // => ["Started", "Success"]
  * ```
  *
  * @category running
@@ -8999,30 +8861,30 @@ export const runCallbackWith: <R>(
  *
  * **Example** (Running with a callback)
  *
- * ```ts
- * import { Console, Effect, Exit } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
- *   yield* Console.log("working")
+ *   yield* Effect.sync(() => { output.push("working") })
  *   return "done"
  * })
  *
- * const interrupt = Effect.runCallback(program, {
- *   onExit: (exit) => {
- *     Effect.runSync(
- *       Exit.match(exit, {
- *         onFailure: () => Console.log("failed"),
- *         onSuccess: (value) => Console.log(`success: ${value}`)
- *       })
- *     )
- *   }
+ * await new Promise<void>((resolve) => {
+ *   Effect.runCallback(program, {
+ *     onExit: (exit) => {
+ *       Effect.runSync(
+ *         Exit.match(exit, {
+ *           onFailure: () => Effect.sync(() => { output.push("failed") }),
+ *           onSuccess: (value) => Effect.sync(() => { output.push(`success: ${value}`) })
+ *         })
+ *       )
+ *       resolve()
+ *     }
+ *   })
  * })
  *
- * // Output:
- * // working
- * // success: done
- *
- * // interrupt() to cancel the fiber if needed
+ * output // => ["working", "success: done"]
  * ```
  *
  * @category running
@@ -9047,22 +8909,23 @@ export const runCallback: <A, E>(
  *
  * **Example** (Running a successful effect as a Promise)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
- * Effect.runPromise(Effect.succeed(1)).then(console.log)
- * // Output: 1
+ * await Effect.runPromise(Effect.succeed(1)) // => 1
  * ```
  *
  * **Example** (Running effects as promises)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * //Example: Handling a Failing Effect as a Rejected Promise
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
- * Effect.runPromise(Effect.fail("my error")).catch(console.error)
- * // Output:
- * // (FiberFailure) Error: my error
+ * await Effect.runPromise(Effect.fail("my error")).catch(() => {
+ *   void output.push("rejected")
+ * })
+ * output // => ["rejected"]
  * ```
  *
  * @see {@link runPromiseExit} for a version that returns an `Exit` type instead of rejecting.
@@ -9084,7 +8947,7 @@ export const runPromise: <A, E>(
  *
  * **Example** (Running with services as a promise)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
  * interface Config {
@@ -9102,7 +8965,7 @@ export const runPromise: <A, E>(
  *   return `Connecting to ${config.apiUrl}`
  * })
  *
- * Effect.runPromiseWith(context)(program).then(console.log)
+ * await Effect.runPromiseWith(context)(program) // => "Connecting to https://api.example.com"
  * ```
  *
  * @category running
@@ -9129,30 +8992,14 @@ export const runPromiseWith: <R>(
  *
  * **Example** (Observing promise results as Exit)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
  *
  * // Execute a successful effect and get the Exit result as a Promise
- * Effect.runPromiseExit(Effect.succeed(1)).then(console.log)
- * // Output:
- * // {
- * //   _id: "Exit",
- * //   _tag: "Success",
- * //   value: 1
- * // }
+ * await Effect.runPromiseExit(Effect.succeed(1)) // => Exit.succeed(1)
  *
  * // Execute a failing effect and get the Exit result as a Promise
- * Effect.runPromiseExit(Effect.fail("my error")).then(console.log)
- * // Output:
- * // {
- * //   _id: "Exit",
- * //   _tag: "Failure",
- * //   cause: {
- * //     _id: "Cause",
- * //     _tag: "Fail",
- * //     failure: "my error"
- * //   }
- * // }
+ * await Effect.runPromiseExit(Effect.fail("my error")) // => Exit.fail("my error")
  * ```
  *
  * @see {@link runPromise} for a version that rejects on failure.
@@ -9175,8 +9022,9 @@ export const runPromiseExit: <A, E>(
  *
  * **Example** (Running with services as an Exit promise)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * interface Database {
  *   query: (sql: string) => string
@@ -9193,11 +9041,11 @@ export const runPromiseExit: <A, E>(
  *   return db.query("SELECT * FROM users")
  * })
  *
- * Effect.runPromiseExitWith(services)(program).then((exit) => {
- *   if (Exit.isSuccess(exit)) {
- *     console.log("Success:", exit.value)
- *   }
- * })
+ * const exit = await Effect.runPromiseExitWith(services)(program)
+ * if (Exit.isSuccess(exit)) {
+ *   void output.push(`Success: ${exit.value}`)
+ * }
+ * output // => ["Success: Result for: SELECT * FROM users"]
  * ```
  *
  * @category running
@@ -9224,43 +9072,39 @@ export const runPromiseExitWith: <R>(
  *
  * **Example** (Running a synchronous effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.sync(() => {
- *   console.log("Hello, World!")
+ *   void output.push("Hello, World!")
  *   return 1
  * })
  *
  * const result = Effect.runSync(program)
- * // Output: Hello, World!
- *
- * console.log(result)
- * // Output: 1
+ * void output.push(result)
+ * output // => ["Hello, World!", 1]
  * ```
  *
  * **Example** (Throwing for failed or async effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * try {
  *   // Attempt to run an effect that fails
  *   Effect.runSync(Effect.fail("my error"))
  * } catch (e) {
- *   console.error(e)
+ *   void output.push("failed effect")
  * }
- * // Output:
- * // (FiberFailure) Error: my error
- *
  * try {
  *   // Attempt to run an effect that involves async work
  *   Effect.runSync(Effect.promise(() => Promise.resolve(1)))
  * } catch (e) {
- *   console.error(e)
+ *   void output.push("async effect")
  * }
- * // Output:
- * // (FiberFailure) AsyncFiberException: Fiber #0 cannot be resolved synchronously. This is caused by using runSync on an effect that performs async work
+ * output // => ["failed effect", "async effect"]
  * ```
  *
  * @see {@link runSyncExit} for a version that returns an `Exit` type instead of
@@ -9280,7 +9124,7 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = internal.runSync
  *
  * **Example** (Running synchronously with services)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect } from "effect"
  *
  * interface MathService {
@@ -9299,7 +9143,7 @@ export const runSync: <A, E>(effect: Effect<A, E>) => A = internal.runSync
  * })
  *
  * const result = Effect.runSyncWith(context)(program)
- * console.log(result) // 5
+ * result // => 5
  * ```
  *
  * @category running
@@ -9330,50 +9174,25 @@ export const runSyncWith: <R>(
  *
  * **Example** (Observing synchronous results as Exit)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Exit } from "effect"
  *
- * console.log(Effect.runSyncExit(Effect.succeed(1)))
- * // Output:
- * // {
- * //   _id: "Exit",
- * //   _tag: "Success",
- * //   value: 1
- * // }
+ * Effect.runSyncExit(Effect.succeed(1)) // => Exit.succeed(1)
  *
- * console.log(Effect.runSyncExit(Effect.fail("my error")))
- * // Output:
- * // {
- * //   _id: "Exit",
- * //   _tag: "Failure",
- * //   cause: {
- * //     _id: "Cause",
- * //     _tag: "Fail",
- * //     failure: "my error"
- * //   }
- * // }
+ * Effect.runSyncExit(Effect.fail("my error")) // => Exit.fail("my error")
  * ```
  *
  * **Example** (Capturing async work as a Die cause)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Cause, Effect, Exit } from "effect"
  *
- * console.log(Effect.runSyncExit(Effect.promise(() => Promise.resolve(1))))
- * // Output:
- * // {
- * //   _id: 'Exit',
- * //   _tag: 'Failure',
- * //   cause: {
- * //     _id: 'Cause',
- * //     _tag: 'Die',
- * //     defect: [Fiber #0 cannot be resolved synchronously. This is caused by using runSync on an effect that performs async work] {
- * //       fiber: [FiberRuntime],
- * //       _tag: 'AsyncFiberException',
- * //       name: 'AsyncFiberException'
- * //     }
- * //   }
- * // }
+ * const exit = Effect.runSyncExit(Effect.promise(() => Promise.resolve(1)))
+ * const isAsyncDie = Exit.hasDies(exit) && exit.cause.reasons.some(
+ *   (reason) => Cause.isDieReason(reason) && Cause.isAsyncFiberError(reason.defect)
+ * )
+ *
+ * isAsyncDie // => true
  * ```
  *
  * @see {@link runSync} for a version that throws on failure.
@@ -9393,8 +9212,9 @@ export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = inte
  *
  * **Example** (Running synchronously with services as Exit)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Context, Effect, Exit } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Define a logger service
  * const Logger = Context.Service<{
@@ -9409,19 +9229,17 @@ export const runSyncExit: <A, E>(effect: Effect<A, E>) => Exit.Exit<A, E> = inte
  *
  * // Prepare context
  * const context = Context.make(Logger, {
- *   log: (msg) => console.log(`[LOG] ${msg}`)
+ *   log: (msg) => void output.push(`[LOG] ${msg}`)
  * })
  *
  * const exit = Effect.runSyncExitWith(context)(program)
  *
  * if (Exit.isSuccess(exit)) {
- *   console.log(`Success: ${exit.value}`)
+ *   void output.push(`Success: ${exit.value}`)
  * } else {
- *   console.log(`Failure: ${exit.cause}`)
+ *   void output.push(`Failure: ${exit.cause}`)
  * }
- * // Output:
- * // [LOG] Computing result...
- * // Success: 42
+ * output // => ["[LOG] Computing result...", "Success: 42"]
  * ```
  *
  * @category running
@@ -9455,7 +9273,7 @@ export declare namespace fn {
    *
    * **Example** (Annotating an Effect function)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect } from "effect"
    *
    * const f = Effect.fnUntraced(function*(
@@ -9467,11 +9285,12 @@ export declare namespace fn {
    * //      ┌─── Effect.Effect<number>
    * //      ▼
    * const program = f("hello")
+   * Effect.runSync(program) // => 5
    * ```
    *
    * **Example** (Annotating a parametric Effect function)
    *
-   * ```ts
+   * ```ts import.meta.vitest
    * import { Effect } from "effect"
    *
    * const f = Effect.fnUntraced(function*<A>(
@@ -9483,6 +9302,7 @@ export declare namespace fn {
    * //      ┌─── Effect.Effect<string>
    * //      ▼
    * const program = f("hello")
+   * Effect.runSync(program) // => "hello"
    * ```
    *
    * @category utility types
@@ -13545,7 +13365,7 @@ export declare namespace fn {
  *
  * **Example** (Defining untraced effect functions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const f = Effect.fnUntraced(function*(
@@ -13557,11 +13377,12 @@ export declare namespace fn {
  * //      ┌─── Effect.Effect<number>
  * //      ▼
  * const program = f("hello")
+ * Effect.runSync(program) // => 5
  * ```
  *
  * **Example** (Transforming the returned Effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const f = Effect.fnUntraced(
@@ -13575,11 +13396,12 @@ export declare namespace fn {
  * //      ┌─── Effect.Effect<string>
  * //      ▼
  * const program = f("hello")
+ * Effect.runSync(program) // => "hello: 5"
  * ```
  *
  * **Example** (Annotating an untraced non-parametric function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const f = Effect.fnUntraced(function*(
@@ -13591,11 +13413,12 @@ export declare namespace fn {
  * //      ┌─── Effect.Effect<number>
  * //      ▼
  * const program = f("hello")
+ * Effect.runSync(program) // => 5
  * ```
  *
  * **Example** (Annotating an untraced parametric function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const f = Effect.fnUntraced(function*<A>(
@@ -13607,9 +13430,10 @@ export declare namespace fn {
  * //      ┌─── Effect.Effect<string>
  * //      ▼
  * const program = f("hello")
+ * Effect.runSync(program) // => "hello"
  * ```
  *
- * @category functions
+ * @category constructors
  * @since 3.12.0
  */
 export const fnUntraced: fn.Untraced = internal.fnUntraced
@@ -13642,7 +13466,7 @@ export const fnUntraced: fn.Untraced = internal.fnUntraced
  *
  * **Example** (Defining traced effect functions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const f = Effect.fn("calculateLength")(function*(value: string) {
@@ -13652,11 +13476,12 @@ export const fnUntraced: fn.Untraced = internal.fnUntraced
  * //      ┌─── Effect.Effect<number>
  * //      ▼
  * const program = f("hello")
+ * Effect.runSync(program) // => 5
  * ```
  *
  * **Example** (Transforming the returned Effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const f = Effect.fn("formatLength")(
@@ -13670,11 +13495,12 @@ export const fnUntraced: fn.Untraced = internal.fnUntraced
  * //      ┌─── Effect.Effect<string>
  * //      ▼
  * const program = f("hello")
+ * Effect.runSync(program) // => "hello: 5"
  * ```
  *
  * **Example** (Binding this)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * class Counter {
@@ -13694,11 +13520,12 @@ export const fnUntraced: fn.Untraced = internal.fnUntraced
  * //      ┌─── Effect.Effect<number>
  * //      ▼
  * const program = counter.increment(1)
+ * Effect.runSync(program) // => 1
  * ```
  *
  * **Example** (Annotating a traced non-parametric function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const f = Effect.fn("calculateLength")(function*(
@@ -13710,11 +13537,12 @@ export const fnUntraced: fn.Untraced = internal.fnUntraced
  * //      ┌─── Effect.Effect<number>
  * //      ▼
  * const program = f("hello")
+ * Effect.runSync(program) // => 5
  * ```
  *
  * **Example** (Annotating a traced parametric function)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const f = Effect.fn("succeed")(function*<A>(
@@ -13726,9 +13554,10 @@ export const fnUntraced: fn.Untraced = internal.fnUntraced
  * //      ┌─── Effect.Effect<string>
  * //      ▼
  * const program = f("hello")
+ * Effect.runSync(program) // => "hello"
  * ```
  *
- * @category functions
+ * @category constructors
  * @since 3.11.0
  */
 export const fn: fn.Traced & {
@@ -13745,22 +13574,19 @@ export const fn: fn.Traced & {
  *
  * **Example** (Accessing the Clock service)
  *
- * ```ts
- * import { Console, Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect } from "effect"
  *
  * const program = Effect.clockWith((clock) =>
  *   clock.currentTimeMillis.pipe(
- *     Effect.map((currentTime) => `Current time is: ${currentTime}`),
- *     Effect.tap(Console.log)
+ *     Effect.map(() => "Clock is available")
  *   )
  * )
  *
- * Effect.runFork(program)
- * // Example Output:
- * // Current time is: 1735484929744
+ * Effect.runSync(program) // => "Clock is available"
  * ```
  *
- * @category clock
+ * @category accessors
  * @since 2.0.0
  */
 export const clockWith: <A, E, R>(
@@ -13781,14 +13607,24 @@ export const clockWith: <A, E, R>(
  *
  * **Example** (Logging at a dynamic level)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger, References } from "effect"
+ * const output: Array<unknown> = []
  *
  * const logWarn = Effect.logWithLevel("Warn")
  *
  * const program = Effect.gen(function*() {
- *   yield* logWarn("Cache miss", { key: "user:1" })
+ *   yield* logWarn("Cache miss")
  * })
+ * const logger = Logger.make<unknown, void>(({ logLevel, message }) => {
+ *   void output.push(`${logLevel}: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
+ * })
+ * const runnable = program.pipe(
+ *   Effect.provideService(References.MinimumLogLevel, "Debug"),
+ *   Effect.provide(Logger.layer([logger]))
+ * )
+ * Effect.runSync(runnable)
+ * output // => ["Warn: Cache miss"]
  * ```
  *
  * @category logging
@@ -13802,23 +13638,22 @@ export const logWithLevel: (level?: Severity) => (...message: ReadonlyArray<any>
  *
  * **Example** (Logging at the default level)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
- *   yield* Effect.log("Starting computation")
  *   const result = 2 + 2
  *   yield* Effect.log("Result:", result)
- *   yield* Effect.log("Multiple", "values", "can", "be", "logged")
  *   return result
  * })
  *
- * Effect.runPromise(program).then(console.log)
- * // Output:
- * // timestamp=2023-... level=INFO message="Starting computation"
- * // timestamp=2023-... level=INFO message="Result: 4"
- * // timestamp=2023-... level=INFO message="Multiple values can be logged"
- * // 4
+ * const logger = Logger.make<unknown, void>(({ logLevel, message }) => {
+ *   void output.push(`${logLevel}: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
+ * })
+ * const runnable = Effect.provide(program, Logger.layer([logger]))
+ * void output.push(Effect.runSync(runnable))
+ * output // => ["Info: Result: 4", 4]
  * ```
  *
  * @category logging
@@ -13831,24 +13666,20 @@ export const log: (...message: ReadonlyArray<any>) => Effect<void> = internal.lo
  *
  * **Example** (Logging fatal messages)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
- *   try {
- *     // Simulate a critical system failure
- *     throw new Error("System memory exhausted")
- *   } catch (error) {
- *     const errorMessage = error instanceof Error ? error.message : String(error)
- *     yield* Effect.logFatal("Critical system failure:", errorMessage)
- *     yield* Effect.logFatal("System shutting down")
- *   }
+ *   yield* Effect.logFatal("Critical system failure")
  * })
  *
- * Effect.runPromise(program)
- * // Output:
- * // timestamp=2023-... level=FATAL message="Critical system failure: System memory exhausted"
- * // timestamp=2023-... level=FATAL message="System shutting down"
+ * const logger = Logger.make<unknown, void>(({ logLevel, message }) => {
+ *   void output.push(`${logLevel}: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
+ * })
+ * const runnable = Effect.provide(program, Logger.layer([logger]))
+ * Effect.runSync(runnable)
+ * output // => ["Fatal: Critical system failure"]
  * ```
  *
  * @category logging
@@ -13861,25 +13692,19 @@ export const logFatal: (...message: ReadonlyArray<any>) => Effect<void> = intern
  *
  * **Example** (Logging warnings)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   yield* Effect.logWarning("API rate limit approaching")
- *   yield* Effect.logWarning("Retries remaining:", 2, "Operation:", "fetchData")
- *
- *   // Useful for non-critical issues
- *   const deprecated = true
- *   if (deprecated) {
- *     yield* Effect.logWarning("Using deprecated API endpoint")
- *   }
  * })
  *
- * Effect.runPromise(program)
- * // Output:
- * // timestamp=2023-... level=WARN message="API rate limit approaching"
- * // timestamp=2023-... level=WARN message="Retries remaining: 2 Operation: fetchData"
- * // timestamp=2023-... level=WARN message="Using deprecated API endpoint"
+ * const logger = Logger.make<unknown, void>(({ logLevel, message }) => {
+ *   void output.push(`${logLevel}: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
+ * })
+ * Effect.runSync(Effect.provide(program, Logger.layer([logger])))
+ * output // => ["Warn: API rate limit approaching"]
  * ```
  *
  * @category logging
@@ -13892,28 +13717,19 @@ export const logWarning: (...message: ReadonlyArray<any>) => Effect<void> = inte
  *
  * **Example** (Logging errors)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   yield* Effect.logError("Database connection failed")
- *   yield* Effect.logError(
- *     "Error code:",
- *     500,
- *     "Message:",
- *     "Internal server error"
- *   )
- *
- *   // Can be used with error objects
- *   const error = new Error("Something went wrong")
- *   yield* Effect.logError("Caught error:", error.message)
  * })
  *
- * Effect.runPromise(program)
- * // Output:
- * // timestamp=2023-... level=ERROR message="Database connection failed"
- * // timestamp=2023-... level=ERROR message="Error code: 500 Message: Internal server error"
- * // timestamp=2023-... level=ERROR message="Caught error: Something went wrong"
+ * const logger = Logger.make<unknown, void>(({ logLevel, message }) => {
+ *   void output.push(`${logLevel}: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
+ * })
+ * Effect.runSync(Effect.provide(program, Logger.layer([logger])))
+ * output // => ["Error: Database connection failed"]
  * ```
  *
  * @category logging
@@ -13926,23 +13742,19 @@ export const logError: (...message: ReadonlyArray<any>) => Effect<void> = intern
  *
  * **Example** (Logging information)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   yield* Effect.logInfo("Application starting up")
- *   yield* Effect.logInfo("Config loaded:", "production", "Port:", 3000)
- *
- *   // Useful for general information
- *   const version = "1.2.3"
- *   yield* Effect.logInfo("Application version:", version)
  * })
  *
- * Effect.runPromise(program)
- * // Output:
- * // timestamp=2023-... level=INFO message="Application starting up"
- * // timestamp=2023-... level=INFO message="Config loaded: production Port: 3000"
- * // timestamp=2023-... level=INFO message="Application version: 1.2.3"
+ * const logger = Logger.make<unknown, void>(({ logLevel, message }) => {
+ *   void output.push(`${logLevel}: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
+ * })
+ * Effect.runSync(Effect.provide(program, Logger.layer([logger])))
+ * output // => ["Info: Application starting up"]
  * ```
  *
  * @category logging
@@ -13955,24 +13767,23 @@ export const logInfo: (...message: ReadonlyArray<any>) => Effect<void> = interna
  *
  * **Example** (Logging debug messages)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger, References } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   yield* Effect.logDebug("Debug mode enabled")
- *
- *   const userInput = { name: "Alice", age: 30 }
- *   yield* Effect.logDebug("Processing user input:", userInput)
- *
- *   // Useful for detailed diagnostic information
- *   yield* Effect.logDebug("Variable state:", "x=10", "y=20", "z=30")
  * })
  *
- * Effect.runPromise(program)
- * // Output:
- * // timestamp=2023-... level=DEBUG message="Debug mode enabled"
- * // timestamp=2023-... level=DEBUG message="Processing user input: [object Object]"
- * // timestamp=2023-... level=DEBUG message="Variable state: x=10 y=20 z=30"
+ * const logger = Logger.make<unknown, void>(({ logLevel, message }) => {
+ *   void output.push(`${logLevel}: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
+ * })
+ * const runnable = program.pipe(
+ *   Effect.provideService(References.MinimumLogLevel, "Debug"),
+ *   Effect.provide(Logger.layer([logger]))
+ * )
+ * Effect.runSync(runnable)
+ * output // => ["Debug: Debug mode enabled"]
  * ```
  *
  * @category logging
@@ -13985,27 +13796,23 @@ export const logDebug: (...message: ReadonlyArray<any>) => Effect<void> = intern
  *
  * **Example** (Logging trace messages)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger, References } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   yield* Effect.logTrace("Entering function processData")
- *
- *   // Trace detailed execution flow
- *   for (let i = 0; i < 3; i++) {
- *     yield* Effect.logTrace("Loop iteration:", i, "Processing item")
- *   }
- *
- *   yield* Effect.logTrace("Exiting function processData")
  * })
  *
- * Effect.runPromise(program)
- * // Output:
- * // timestamp=2023-... level=TRACE message="Entering function processData"
- * // timestamp=2023-... level=TRACE message="Loop iteration: 0 Processing item"
- * // timestamp=2023-... level=TRACE message="Loop iteration: 1 Processing item"
- * // timestamp=2023-... level=TRACE message="Loop iteration: 2 Processing item"
- * // timestamp=2023-... level=TRACE message="Exiting function processData"
+ * const logger = Logger.make<unknown, void>(({ logLevel, message }) => {
+ *   void output.push(`${logLevel}: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
+ * })
+ * const runnable = program.pipe(
+ *   Effect.provideService(References.MinimumLogLevel, "Trace"),
+ *   Effect.provide(Logger.layer([logger]))
+ * )
+ * Effect.runSync(runnable)
+ * output // => ["Trace: Entering function processData"]
  * ```
  *
  * @category logging
@@ -14018,12 +13825,13 @@ export const logTrace: (...message: ReadonlyArray<any>) => Effect<void> = intern
  *
  * **Example** (Adding a logger to an effect)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * // Create a custom logger that logs to the console
- * const customLogger = Logger.make(({ message }) =>
- *   Effect.sync(() => console.log(`[CUSTOM]: ${message}`))
+ * const customLogger = Logger.make<unknown, void>(({ message }) =>
+ *   void output.push(`[CUSTOM]: ${Array.isArray(message) ? message.map(String).join(" ") : String(message)}`)
  * )
  *
  * const program = Effect.gen(function*() {
@@ -14034,8 +13842,8 @@ export const logTrace: (...message: ReadonlyArray<any>) => Effect<void> = intern
  * // Add the custom logger to the effect
  * const programWithLogger = Effect.withLogger(program, customLogger)
  *
- * Effect.runPromise(programWithLogger)
- * // Output includes both default and custom log outputs
+ * Effect.runSync(Effect.provide(programWithLogger, Logger.layer([])))
+ * output // => ["[CUSTOM]: This will go to both default and custom logger"]
  * ```
  *
  * @category logging
@@ -14061,13 +13869,12 @@ export const withLogger = dual<
  *
  * **Example** (Adding log annotations)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   yield* Effect.log("Starting operation")
- *   yield* Effect.log("Processing data")
- *   yield* Effect.log("Operation completed")
  * })
  *
  * // Add annotations to all log messages
@@ -14079,8 +13886,14 @@ export const withLogger = dual<
  * // Also supports single key-value annotations
  * const singleAnnotated = Effect.annotateLogs(program, "requestId", "req-456")
  *
- * Effect.runPromise(annotatedProgram)
- * // All log messages will include the userId and operation annotations
+ * const logger = Logger.make<unknown, void>(({ message }) =>
+ *   void output.push(Array.isArray(message) ? message.join(" ") : String(message))
+ * )
+ * const run = (effect: Effect.Effect<void>) =>
+ *   Effect.runSync(Effect.provide(effect, Logger.layer([logger])))
+ * run(annotatedProgram)
+ * run(singleAnnotated)
+ * output // => ["Starting operation", "Starting operation"]
  * ```
  *
  * @category logging
@@ -14114,11 +13927,11 @@ export const annotateLogs = dual<
     ...args: [Record<string, unknown>] | [key: string, value: unknown]
   ): Effect<A, E, R> =>
     internal.updateService(effect, CurrentLogAnnotations, (annotations) => {
-      const newAnnotations = { ...annotations }
+      const newAnnotations = args.length === 1 ? { ...annotations, ...args[0] } : { ...annotations }
       if (args.length === 1) {
-        Object.assign(newAnnotations, args[0])
+        return newAnnotations
       } else {
-        newAnnotations[args[0]] = args[1]
+        InternalRecord.assignProperty(newAnnotations, args[0], args[1])
       }
       return newAnnotations
     })
@@ -14139,8 +13952,9 @@ export const annotateLogs = dual<
  *
  * **Example** (Adding scoped log annotations)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.scoped(
  *   Effect.gen(function*() {
@@ -14150,7 +13964,11 @@ export const annotateLogs = dual<
  *   })
  * )
  *
- * Effect.runPromise(program)
+ * const logger = Logger.make<unknown, void>(({ message }) =>
+ *   void output.push(Array.isArray(message) ? message.join(" ") : String(message))
+ * )
+ * Effect.runSync(Effect.provide(program, Logger.layer([logger])))
+ * output // => ["before", "inside scope"]
  * ```
  *
  * @see {@link annotateLogs} for annotating one effect
@@ -14168,8 +13986,9 @@ export const annotateLogsScoped: {
  *
  * **Example** (Adding a log span)
  *
- * ```ts
- * import { Effect } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Logger } from "effect"
+ * const output: Array<unknown> = []
  *
  * const databaseOperation = Effect.gen(function*() {
  *   yield* Effect.log("Connecting to database")
@@ -14187,8 +14006,11 @@ export const annotateLogsScoped: {
  *
  * const program = Effect.withLogSpan(httpRequest, "http-handler")
  *
- * Effect.runPromise(program)
- * // All log messages will include span information showing the nested operation context
+ * const logger = Logger.make<unknown, void>(({ message }) =>
+ *   void output.push(Array.isArray(message) ? message.join(" ") : String(message))
+ * )
+ * void output.push(Effect.runSync(Effect.provide(program, Logger.layer([logger]))))
+ * output // => ["Making HTTP request", "Connecting to database", "Executing query", "Processing results", "Sending response", "data"]
  * ```
  *
  * @category logging
@@ -14221,7 +14043,7 @@ export const withLogSpan = dual<
  *
  * **Example** (Incrementing a metric for each execution)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const counter = Metric.counter("effect_executions", {
@@ -14232,16 +14054,13 @@ export const withLogSpan = dual<
  *   Effect.track(counter)
  * )
  *
- * // This will increment the counter by 1 when executed
- * Effect.runPromise(program).then(() =>
- *   Effect.runPromise(Metric.value(counter)).then(console.log)
- *   // Output: { count: 1, incremental: false }
- * )
+ * Effect.runSync(program)
+ * Effect.runSync(Metric.value(counter)).count // => 1
  * ```
  *
  * **Example** (Mapping exits before updating a metric)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Exit, Metric } from "effect"
  *
  * // Track different exit types with custom mapping
@@ -14258,9 +14077,11 @@ export const withLogSpan = dual<
  * const effect = Effect.succeed("result").pipe(
  *   Effect.track(exitTracker, mapExitToString)
  * )
+ * Effect.runSync(effect)
+ * Effect.runSync(Metric.value(exitTracker)).occurrences.get("success") // => 1
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const track: {
@@ -14304,7 +14125,7 @@ export const track: {
  *
  * **Example** (Counting successful results)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const successCounter = Metric.counter("successes").pipe(
@@ -14315,15 +14136,13 @@ export const track: {
  *   Effect.trackSuccesses(successCounter)
  * )
  *
- * Effect.runPromise(program).then(() =>
- *   Effect.runPromise(Metric.value(successCounter)).then(console.log)
- *   // Output: { count: 1, incremental: false }
- * )
+ * Effect.runSync(program)
+ * Effect.runSync(Metric.value(successCounter)).count // => 1
  * ```
  *
  * **Example** (Mapping successes before tracking)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * // Track successful request sizes
@@ -14333,13 +14152,11 @@ export const track: {
  *   Effect.trackSuccesses(requestSizeGauge, (value: string) => value.length)
  * )
  *
- * Effect.runPromise(program).then(() =>
- *   Effect.runPromise(Metric.value(requestSizeGauge)).then(console.log)
- *   // Output: { value: 12 }
- * )
+ * Effect.runSync(program)
+ * Effect.runSync(Metric.value(requestSizeGauge)).value // => 12
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const trackSuccesses: {
@@ -14383,7 +14200,7 @@ export const trackSuccesses: {
  *
  * **Example** (Counting expected failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const errorCounter = Metric.counter("errors").pipe(
@@ -14394,15 +14211,13 @@ export const trackSuccesses: {
  *   Effect.trackErrors(errorCounter)
  * )
  *
- * Effect.runPromiseExit(program).then(() =>
- *   Effect.runPromise(Metric.value(errorCounter)).then(console.log)
- *   // Output: { count: 1, incremental: false }
- * )
+ * Effect.runSyncExit(program)
+ * Effect.runSync(Metric.value(errorCounter)).count // => 1
  * ```
  *
  * **Example** (Mapping errors before tracking)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect, Metric } from "effect"
  *
  * class ConnectionFailedError extends Data.TaggedError("ConnectionFailedError")<{}> {}
@@ -14414,13 +14229,11 @@ export const trackSuccesses: {
  *   Effect.trackErrors(errorTypeFrequency, (error: ConnectionFailedError) => error._tag)
  * )
  *
- * Effect.runPromiseExit(program).then(() =>
- *   Effect.runPromise(Metric.value(errorTypeFrequency)).then(console.log)
- *   // Output: { occurrences: Map(1) { "ConnectionFailedError" => 1 } }
- * )
+ * Effect.runSyncExit(program)
+ * Effect.runSync(Metric.value(errorTypeFrequency)).occurrences.get("ConnectionFailedError") // => 1
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const trackErrors: {
@@ -14464,7 +14277,7 @@ export const trackErrors: {
  *
  * **Example** (Counting defects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const defectCounter = Metric.counter("defects").pipe(
@@ -14475,15 +14288,13 @@ export const trackErrors: {
  *   Effect.trackDefects(defectCounter)
  * )
  *
- * Effect.runPromiseExit(program).then(() =>
- *   Effect.runPromise(Metric.value(defectCounter)).then(console.log)
- *   // Output: { count: 1, incremental: false }
- * )
+ * Effect.runSyncExit(program)
+ * Effect.runSync(Metric.value(defectCounter)).count // => 1
  * ```
  *
  * **Example** (Mapping defects before tracking)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * // Track defect types using frequency metric
@@ -14496,13 +14307,11 @@ export const trackErrors: {
  *   })
  * )
  *
- * Effect.runPromiseExit(program).then(() =>
- *   Effect.runPromise(Metric.value(defectTypeFrequency)).then(console.log)
- *   // Output: { occurrences: Map(1) { "Error" => 1 } }
- * )
+ * Effect.runSyncExit(program)
+ * Effect.runSync(Metric.value(defectTypeFrequency)).occurrences.get("Error") // => 1
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const trackDefects: {
@@ -14543,40 +14352,36 @@ export const trackDefects: {
  *
  * **Example** (Recording execution duration)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, Metric } from "effect"
  *
  * const executionTimer = Metric.timer("execution_time")
  *
- * const program = Effect.sleep("100 millis").pipe(
+ * const program = Effect.succeed("done").pipe(
  *   Effect.trackDuration(executionTimer)
  * )
  *
- * Effect.runPromise(program).then(() =>
- *   Effect.runPromise(Metric.value(executionTimer)).then(console.log)
- *   // Output: { count: 1, min: 100000000, max: 100000000, sum: 100000000 }
- * )
+ * Effect.runSync(program)
+ * Effect.runSync(Metric.value(executionTimer)).count // => 1
  * ```
  *
  * **Example** (Mapping duration before tracking)
  *
- * ```ts
- * import { Duration, Effect, Metric } from "effect"
+ * ```ts import.meta.vitest
+ * import { Effect, Metric } from "effect"
  *
  * // Track execution time in milliseconds using custom mapping
  * const durationGauge = Metric.gauge("execution_millis")
  *
- * const program = Effect.sleep("200 millis").pipe(
- *   Effect.trackDuration(durationGauge, (duration) => Duration.toMillis(duration))
+ * const program = Effect.succeed("done").pipe(
+ *   Effect.trackDuration(durationGauge, () => 1)
  * )
  *
- * Effect.runPromise(program).then(() =>
- *   Effect.runPromise(Metric.value(durationGauge)).then(console.log)
- *   // Output: { value: 200 }
- * )
+ * Effect.runSync(program)
+ * Effect.runSync(Metric.value(durationGauge)).value // => 1
  * ```
  *
- * @category tracking
+ * @category metrics
  * @since 4.0.0
  */
 export const trackDuration: {
@@ -14604,9 +14409,9 @@ export const trackDuration: {
     f: ((duration: Duration.Duration) => Input) | undefined
   ): Effect<A, E, R> =>
     clockWith((clock) => {
-      const startTime = clock.currentTimeNanosUnsafe()
+      const startTime = clock.monotonicTimeNanosUnsafe()
       return onExit(self, () => {
-        const endTime = clock.currentTimeNanosUnsafe()
+        const endTime = clock.monotonicTimeNanosUnsafe()
         const duration = Duration.subtract(
           Duration.fromInputUnsafe(endTime),
           Duration.fromInputUnsafe(startTime)
@@ -14631,7 +14436,7 @@ export const trackDuration: {
  *
  * **Example** (Building transactions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // Transaction class for software transactional memory operations
@@ -14640,9 +14445,15 @@ export const trackDuration: {
  *   // Use transaction for coordinated state changes
  *   return "Transaction complete"
  * })
+ *
+ * const runnable = Effect.provideService(txEffect, Effect.Transaction, {
+ *   retry: false,
+ *   journal: new Map()
+ * })
+ * Effect.runSync(runnable) // => "Transaction complete"
  * ```
  *
- * @category transactions
+ * @category services
  * @since 4.0.0
  */
 export class Transaction extends Context.Service<
@@ -14678,8 +14489,9 @@ export class Transaction extends Context.Service<
  *
  * **Example** (Running a transaction)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect, TxRef } from "effect"
+ * const output: Array<unknown> = []
  *
  * const program = Effect.gen(function*() {
  *   const ref1 = yield* TxRef.make(0)
@@ -14690,12 +14502,15 @@ export class Transaction extends Context.Service<
  *     yield* TxRef.set(ref1, 10)
  *     yield* Effect.tx(TxRef.set(ref2, 20))
  *     const sum = (yield* TxRef.get(ref1)) + (yield* TxRef.get(ref2))
- *     console.log(`Transaction sum: ${sum}`)
+ *     void output.push(`Transaction sum: ${sum}`)
  *   }))
  *
- *   console.log(`Final ref1: ${yield* TxRef.get(ref1)}`) // 10
- *   console.log(`Final ref2: ${yield* TxRef.get(ref2)}`) // 20
+ *   void output.push(`Final ref1: ${yield* TxRef.get(ref1)}`)
+ *   void output.push(`Final ref2: ${yield* TxRef.get(ref2)}`)
  * })
+ *
+ * Effect.runSync(program)
+ * output // => ["Transaction sum: 30", "Final ref1: 10", "Final ref2: 20"]
  * ```
  *
  * @category transactions
@@ -14799,31 +14614,28 @@ function clearTransaction(state: Transaction["Service"]) {
  *
  * **Example** (Retrying transactions)
  *
- * ```ts
- * import { Effect, TxRef } from "effect"
+ * ```ts import.meta.vitest
+ * import { Deferred, Effect, TxRef } from "effect"
  *
  * const program = Effect.gen(function*() {
- *   // create a transactional reference
  *   const ref = yield* TxRef.make(0)
+ *   const update = yield* Deferred.make<void>()
  *
- *   // forks a fiber that increases the value of `ref` every 100 millis
- *   yield* Effect.forkChild(Effect.forever(
- *     // update to transactional value
- *     Effect.tx(TxRef.update(ref, (n) => n + 1)).pipe(Effect.delay("100 millis"))
- *   ))
+ *   yield* Effect.forkChild(
+ *     Deferred.await(update).pipe(Effect.andThen(Effect.tx(TxRef.set(ref, 1))))
+ *   )
  *
- *   // the following will retry 10 times until the `ref` value is 10
- *   yield* Effect.tx(Effect.gen(function*() {
+ *   return yield* Effect.tx(Effect.gen(function*() {
  *     const value = yield* TxRef.get(ref)
- *     if (value < 10) {
- *       yield* Effect.log(`retry due to value: ${value}`)
+ *     if (value === 0) {
+ *       yield* Deferred.succeed(update, undefined)
  *       return yield* Effect.txRetry
  *     }
- *     yield* Effect.log(`transaction done with value: ${value}`)
+ *     return value
  *   }))
  * })
  *
- * Effect.runPromise(program).catch(console.error)
+ * await Effect.runPromise(program) // => 1
  * ```
  *
  * @category transactions
@@ -14853,7 +14665,7 @@ export declare namespace Effectify {
   /**
    * Converts a callback-based function type into an `Effect`-returning function type.
    *
-   * @category effectify
+   * @category utility types
    * @since 4.0.0
    */
   export type Effectify<T, E> = T extends {
@@ -15001,7 +14813,7 @@ export declare namespace Effectify {
   /**
    * Extracts the callback error type from a callback-based function type.
    *
-   * @category effectify
+   * @category utility types
    * @since 4.0.0
    */
   export type EffectifyError<T> = T extends {
@@ -15096,38 +14908,42 @@ export declare namespace Effectify {
  *
  * **Example** (Converting callbacks to effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
- * import * as fs from "fs"
  *
- * // Convert Node.js readFile to an Effect
- * const readFile = Effect.effectify(fs.readFile)
+ * const uppercase = (
+ *   input: string,
+ *   callback: (error: Error | null, value?: string) => void
+ * ) => queueMicrotask(() => callback(null, input.toUpperCase()))
  *
- * // Use the effectified function
- * const program = readFile("package.json", "utf8")
+ * const effectfulUppercase = Effect.effectify(uppercase)
+ * const program = effectfulUppercase("hello")
  *
- * Effect.runPromise(program).then(console.log)
- * // Output: contents of package.json
+ * await Effect.runPromise(program) // => "HELLO"
  * ```
  *
  * **Example** (Mapping callback errors to typed failures)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
- * import * as fs from "fs"
  *
- * const readFile = Effect.effectify(
- *   fs.readFile,
- *   (error, args) => new Error(`Failed to read file ${args[0]}: ${error.message}`)
+ * const fail = (
+ *   input: string,
+ *   callback: (error: Error | null, value?: string) => void
+ * ) => queueMicrotask(() => callback(new Error("unavailable")))
+ *
+ * const effectfulFail = Effect.effectify(
+ *   fail,
+ *   (error, args) => new Error(`Failed to process ${args[0]}: ${error.message}`)
  * )
  *
- * const program = readFile("nonexistent.txt", "utf8")
+ * const program = Effect.flip(effectfulFail("hello"))
  *
- * Effect.runPromiseExit(program).then(console.log)
- * // Output: Exit.failure with custom error message
+ * const error = await Effect.runPromise(program)
+ * error.message // => "Failed to process hello: unavailable"
  * ```
  *
- * @category effectify
+ * @category converting
  * @since 4.0.0
  */
 export const effectify: {
@@ -15172,7 +14988,7 @@ export const effectify: {
  *
  * **Example** (Constraining the success type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // Define a constraint that the success type must be a number
@@ -15180,6 +14996,7 @@ export const effectify: {
  *
  * // This works - Effect<42, never, never> extends Effect<number, never, never>
  * const validEffect = satisfiesNumber(Effect.succeed(42))
+ * Effect.runSync(validEffect) // => 42
  *
  * // This would cause a TypeScript compilation error:
  * // const invalidEffect = satisfiesNumber(Effect.succeed("string"))
@@ -15202,7 +15019,7 @@ export const satisfiesSuccessType = <A>() => <A2 extends A, E, R>(effect: Effect
  *
  * **Example** (Constraining the error type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Data, Effect } from "effect"
  *
  * class ValidationError extends Data.TaggedError("ValidationError")<{}> {}
@@ -15212,6 +15029,7 @@ export const satisfiesSuccessType = <A>() => <A2 extends A, E, R>(effect: Effect
  *
  * // This works - Effect<number, ValidationError, never> extends the constrained type
  * const validEffect = satisfiesError(Effect.fail(new ValidationError()))
+ * Effect.runSync(Effect.flip(validEffect))._tag // => "ValidationError"
  *
  * // This would cause a TypeScript compilation error:
  * // const invalidEffect = satisfiesError(Effect.fail("string error"))
@@ -15234,7 +15052,7 @@ export const satisfiesErrorType = <E>() => <A, E2 extends E, R>(effect: Effect<A
  *
  * **Example** (Constraining the services type)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // Define a constraint that requires a string as the requirements type
@@ -15269,7 +15087,7 @@ export const satisfiesServicesType = <R>() => <A, E, R2 extends R>(effect: Effec
  *
  * **Example** (Mapping already completed effects)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // For resolved effects, the mapping is applied immediately
@@ -15277,11 +15095,13 @@ export const satisfiesServicesType = <R>() => <A, E, R2 extends R>(effect: Effec
  * const mapped = Effect.mapEager(resolved, (n) => n * 2) // Applied eagerly
  *
  * // For pending effects, behaves like regular map
- * const pending = Effect.delay(Effect.succeed(5), "100 millis")
+ * const pending = Effect.delay(Effect.succeed(5), 0)
  * const mappedPending = Effect.mapEager(pending, (n) => n * 2) // Uses regular map
+ *
+ * await Effect.runPromise(Effect.all([mapped, mappedPending])) // => [10, 10]
  * ```
  *
- * @category eager
+ * @category mapping
  * @since 4.0.0
  */
 export const mapEager: {
@@ -15306,22 +15126,29 @@ export const mapEager: {
  *
  * **Example** (Mapping errors eagerly when possible)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // For resolved failure effects, the error mapping is applied immediately
  * const failed = Effect.fail("original error")
  * const mapped = Effect.mapErrorEager(failed, (err: string) => `mapped: ${err}`) // Applied eagerly
  *
  * // For pending effects, behaves like regular mapError
- * const pending = Effect.delay(Effect.fail("error"), "100 millis")
+ * const pending = Effect.delay(Effect.fail("error"), 0)
  * const mappedPending = Effect.mapErrorEager(
  *   pending,
  *   (err: string) => `mapped: ${err}`
  * ) // Uses regular mapError
+ *
+ * void output.push(await Effect.runPromise(Effect.all([
+ *   Effect.flip(mapped),
+ *   Effect.flip(mappedPending)
+ * ])))
+ * output // => [['mapped: original error', 'mapped: error']]
  * ```
  *
- * @category eager
+ * @category error handling
  * @since 4.0.0
  */
 export const mapErrorEager: {
@@ -15345,8 +15172,9 @@ export const mapErrorEager: {
  *
  * **Example** (Mapping both channels eagerly when possible)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // For resolved effects, the appropriate mapping is applied immediately
  * const success = Effect.succeed(5)
@@ -15360,9 +15188,13 @@ export const mapErrorEager: {
  *   onFailure: (err: string) => `Failed: ${err}`,
  *   onSuccess: (n: number) => n * 2
  * }) // onFailure applied eagerly
+ *
+ * void output.push(Effect.runSync(mapped))
+ * void output.push(Effect.runSync(Effect.flip(mappedError)))
+ * output // => [10, "Failed: error"]
  * ```
  *
- * @category eager
+ * @category mapping
  * @since 4.0.0
  */
 export const mapBothEager: {
@@ -15391,7 +15223,7 @@ export const mapBothEager: {
  *
  * **Example** (Flat mapping eagerly when possible)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * // For resolved effects, the flatMap is applied immediately
@@ -15399,14 +15231,16 @@ export const mapBothEager: {
  * const flatMapped = Effect.flatMapEager(resolved, (n) => Effect.succeed(n * 2)) // Applied eagerly
  *
  * // For pending effects, behaves like regular flatMap
- * const pending = Effect.delay(Effect.succeed(5), "100 millis")
+ * const pending = Effect.delay(Effect.succeed(5), 0)
  * const flatMappedPending = Effect.flatMapEager(
  *   pending,
  *   (n) => Effect.succeed(n * 2)
  * ) // Uses regular flatMap
+ *
+ * await Effect.runPromise(Effect.all([flatMapped, flatMappedPending])) // => [10, 10]
  * ```
  *
- * @category eager
+ * @category sequencing
  * @since 4.0.0
  */
 export const flatMapEager: {
@@ -15430,8 +15264,9 @@ export const flatMapEager: {
  *
  * **Example** (Catching failures eagerly when possible)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
+ * const output: Array<unknown> = []
  *
  * // For resolved failure effects, the catch function is applied immediately
  * const failed = Effect.fail("original error")
@@ -15448,14 +15283,21 @@ export const flatMapEager: {
  * ) // Returns success as-is
  *
  * // For pending effects, behaves like regular catch
- * const pending = Effect.delay(Effect.fail("error"), "100 millis")
+ * const pending = Effect.delay(Effect.fail("error"), 0)
  * const recoveredPending = Effect.catchEager(
  *   pending,
  *   (err: string) => Effect.succeed(`recovered from: ${err}`)
  * ) // Uses regular catch
+ *
+ * void output.push(await Effect.runPromise(Effect.all([
+ *   recovered,
+ *   unchanged,
+ *   recoveredPending
+ * ])))
+ * output // => [['recovered from: original error', 42, 'recovered from: error']]
  * ```
  *
- * @category eager
+ * @category error handling
  * @since 4.0.0
  */
 export const catchEager: {
@@ -15478,7 +15320,7 @@ export const catchEager: {
  *
  * **Example** (Defining eager untraced effect functions)
  *
- * ```ts
+ * ```ts import.meta.vitest
  * import { Effect } from "effect"
  *
  * const computation = Effect.fnUntracedEager(function*() {
@@ -15488,9 +15330,10 @@ export const catchEager: {
  * })
  *
  * const effect = computation() // Executed immediately if all effects are sync
+ * Effect.runSync(effect) // => "computed eagerly"
  * ```
  *
- * @category eager
+ * @category constructors
  * @since 4.0.0
  */
 export const fnUntracedEager: fn.Untraced = internal.fnUntracedEager

@@ -2,7 +2,7 @@ import { Schema } from "effect"
 import * as DateTime from "effect/DateTime"
 import * as FastCheck from "effect/testing/FastCheck"
 import { describe, it } from "vitest"
-import { deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
+import { assertSchemaIssueError, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 /**
  * This suite intentionally avoids re-testing generic JSON Patch behavior
@@ -18,7 +18,7 @@ import { deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 function roundtrip<T, E>(codec: Schema.Codec<T, E>) {
   const differ = Schema.toDifferJsonPatch(codec)
-  const arbitrary = Schema.toArbitrary(codec)
+  const arbitrary = Schema.toArbitrary(codec)(FastCheck)
   const arb = arbitrary.filter((v) => {
     // avoid prototype-poisoning-ish values that aren't valid JSON-ish containers for patching
     if (
@@ -97,13 +97,12 @@ describe("Schema.toDifferJsonPatch", () => {
       deepStrictEqual(differ.patch(-0, [{ op: "replace", path: "", value: 0 }]), 0)
     })
 
-    it("Date: encodes invalid Date as a string on diff", () => {
+    it("Date: rejects an invalid Date on diff", () => {
       const differ = Schema.toDifferJsonPatch(Schema.Date)
 
-      deepStrictEqual(
-        differ.diff(new Date("1970-01-01T00:00:00.000Z"), new Date(NaN)),
-        [{ op: "replace", path: "", value: "Invalid Date" }]
-      )
+      throws(() => differ.diff(new Date("1970-01-01T00:00:00.000Z"), new Date(NaN)), (error) => {
+        assertSchemaIssueError(error, "Expected a valid Date")
+      })
     })
 
     it("Defect: diff encodes an Error to a plain object; patch decodes back to Error", () => {
@@ -218,13 +217,12 @@ describe("Schema.toDifferJsonPatch", () => {
       roundtrip(Schema.RegExp)
       roundtrip(Schema.Duration)
       roundtrip(Schema.DateTimeUtc)
-      roundtrip(Schema.DateValid)
       roundtrip(Schema.Uint8Array)
       roundtrip(Schema.PropertyKey)
       roundtrip(Schema.Option(Schema.String))
       roundtrip(Schema.Result(Schema.Number, Schema.String))
       roundtrip(Schema.ReadonlyMap(Schema.String, Schema.Number))
-      roundtrip(Schema.Error())
+      roundtrip(Schema.ErrorInstance())
       roundtrip(Schema.Json)
       roundtrip(Schema.Exit(Schema.Number, Schema.String, Schema.Json))
 
@@ -232,7 +230,7 @@ describe("Schema.toDifferJsonPatch", () => {
       class B extends Schema.Class<B>("B")({ a: A }) {}
       roundtrip(B)
 
-      class E extends Schema.ErrorClass<E>("E")({ message: Schema.String }) {}
+      class E extends Schema.Error<E>("E")({ message: Schema.String }) {}
       roundtrip(E)
     })
   })
