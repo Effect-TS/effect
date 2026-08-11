@@ -70,6 +70,45 @@ const makeSecurityApi = (
   )
 
 describe("OpenApi", () => {
+  it("returns fresh spec instances when using the cache", () => {
+    const Api = HttpApi.make("Api").add(
+      HttpApiGroup.make("test").add(
+        HttpApiEndpoint.get("get", "/resource")
+      )
+    )
+
+    const first = OpenApi.fromApi(Api)
+    first.info.title = "mutated"
+    first.paths["/resource"]!.get!.summary = "mutated"
+
+    const second = OpenApi.fromApi(Api)
+
+    assert.notStrictEqual(first, second)
+    assert.notStrictEqual(first.info, second.info)
+    assert.notStrictEqual(first.paths["/resource"]!.get, second.paths["/resource"]!.get)
+    assert.strictEqual(second.info.title, "Api")
+    assert.isUndefined(second.paths["/resource"]!.get!.summary)
+
+    second.info.title = "mutated again"
+    second.paths["/resource"]!.get!.summary = "mutated again"
+    const third = OpenApi.fromApi(Api)
+
+    assert.strictEqual(third.info.title, "Api")
+    assert.isUndefined(third.paths["/resource"]!.get!.summary)
+  })
+
+  it("isolates the cached spec from external override mutations", () => {
+    const info = { title: "Api", version: "1.0.0" }
+    const Api = HttpApi.make("Api").annotate(OpenApi.Override, { info })
+
+    OpenApi.fromApi(Api)
+    info.title = "mutated"
+
+    const cached = OpenApi.fromApi(Api)
+
+    assert.strictEqual(cached.info.title, "Api")
+  })
+
   it("preserves every declared payload content type for normalized equivalents", () => {
     const profileA = "Application/Vnd.Effect+JSON; Profile=A"
     const profileB = "application/vnd.effect+json; profile=b"
