@@ -94,7 +94,7 @@ const setImmediate = "setImmediate" in globalThis
 
 const setMicrotask = (f: () => void) => {
   let cancelled = false
-  queueMicrotask(() => {
+  Promise.resolve().then(() => {
     if (!cancelled) f()
   })
   return (): void => {
