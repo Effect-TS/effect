@@ -750,17 +750,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           const id = `${options.executionId}/${options.deferredName}`
           if (deferredResults.has(id)) return Effect.void
           deferredResults.set(id, options.exit)
-          const state = executions.get(options.executionId)
-          const waiters = state?.instance.deferredWaiters.get(options.deferredName)
-          if (!state?.fiber || !waiters || state.fiber.pollUnsafe()) {
-            return resume(options.executionId)
-          }
-          for (const waiter of waiters) {
-            waiter.suspended = true
-          }
-          return Fiber.interrupt(state.fiber).pipe(
-            Effect.andThen(resume(options.executionId))
-          )
+          return resume(options.executionId)
         }),
       scheduleClock: (workflow, options) =>
         engine.deferredDone(options.clock.deferred, {

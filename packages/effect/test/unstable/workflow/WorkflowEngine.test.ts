@@ -1,6 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Effect, Exit, Fiber, Layer, Option, Schema } from "effect"
-import { TestClock } from "effect/testing"
+import { Effect, Exit, Layer, Option, Schema } from "effect"
 import { DurableDeferred, Workflow, WorkflowEngine } from "effect/unstable/workflow"
 
 describe("WorkflowEngine", () => {
@@ -19,28 +18,6 @@ describe("WorkflowEngine", () => {
   }) {}
 
   const ClassWorkflowLayer = ClassWorkflow.toLayer(({ value }) => Effect.succeed(value + 1))
-
-  const DeferredRaceWorkflow = Workflow.make("WorkflowEngine/DeferredRaceWorkflow", {
-    payload: { id: Schema.String },
-    success: Schema.String,
-    idempotencyKey: ({ id }) => id
-  })
-
-  const DeferredRaceGate = DurableDeferred.make("WorkflowEngine/DeferredRaceGate", {
-    success: Schema.String
-  })
-
-  const DeferredRaceWorkflowLayer = DeferredRaceWorkflow.toLayer(() =>
-    DurableDeferred.raceAll({
-      name: "memory-deferred-race",
-      success: Schema.String,
-      error: Schema.Never,
-      effects: [
-        DurableDeferred.await(DeferredRaceGate),
-        Effect.sleep("10 seconds").pipe(Effect.as("activity"))
-      ]
-    })
-  )
 
   it.effect("layer executes and polls workflows", () =>
     Effect.gen(function*() {
@@ -77,28 +54,6 @@ describe("WorkflowEngine", () => {
       assert.strictEqual(result, 2)
     }).pipe(
       Effect.provide(ClassWorkflowLayer.pipe(
-        Layer.provideMerge(WorkflowEngine.layerMemory)
-      ))
-    ))
-
-  it.effect("layerMemory wakes an active workflow when a durable deferred completes", () =>
-    Effect.gen(function*() {
-      const payload = { id: "memory-deferred-race" }
-      const executionId = yield* DeferredRaceWorkflow.executionId(payload)
-      const fiber = yield* DeferredRaceWorkflow.execute(payload).pipe(
-        Effect.forkChild({ startImmediately: true })
-      )
-
-      yield* TestClock.adjust(1)
-      const token = DurableDeferred.tokenFromExecutionId(DeferredRaceGate, {
-        workflow: DeferredRaceWorkflow,
-        executionId
-      })
-      yield* DurableDeferred.succeed(DeferredRaceGate, { token, value: "signal" })
-
-      assert.strictEqual(yield* Fiber.join(fiber), "signal")
-    }).pipe(
-      Effect.provide(DeferredRaceWorkflowLayer.pipe(
         Layer.provideMerge(WorkflowEngine.layerMemory)
       ))
     ))
