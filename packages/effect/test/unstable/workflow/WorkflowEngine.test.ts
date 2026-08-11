@@ -30,15 +30,19 @@ describe("WorkflowEngine", () => {
     success: Schema.String
   })
 
+  let deferredRaceRuns = 0
   const DeferredRaceWorkflowLayer = DeferredRaceWorkflow.toLayer(() =>
-    DurableDeferred.raceAll({
-      name: "memory-deferred-race",
-      success: Schema.String,
-      error: Schema.Never,
-      effects: [
-        DurableDeferred.await(DeferredRaceGate),
-        Effect.sleep("10 seconds").pipe(Effect.as("activity"))
-      ]
+    Effect.suspend(() => {
+      deferredRaceRuns++
+      return DurableDeferred.raceAll({
+        name: "memory-deferred-race",
+        success: Schema.String,
+        error: Schema.Never,
+        effects: [
+          DurableDeferred.await(DeferredRaceGate),
+          Effect.sleep("10 seconds").pipe(Effect.as("activity"))
+        ]
+      })
     })
   )
 
@@ -89,14 +93,23 @@ describe("WorkflowEngine", () => {
         Effect.forkChild({ startImmediately: true })
       )
 
+      // let the deferred branch park before completing, so the result can
+      // only arrive through the live wake
+      yield* TestClock.adjust(1)
       yield* TestClock.adjust(1)
       const token = DurableDeferred.tokenFromExecutionId(DeferredRaceGate, {
         workflow: DeferredRaceWorkflow,
         executionId
       })
       yield* DurableDeferred.succeed(DeferredRaceGate, { token, value: "signal" })
+      // the race must settle from the wake alone, before the sleeping branch
+      // gets a chance to run out
+      yield* TestClock.adjust(1)
+      const polled = yield* DeferredRaceWorkflow.poll(executionId)
+      assert(Option.isSome(polled) && polled.value._tag === "Complete")
 
       assert.strictEqual(yield* Fiber.join(fiber), "signal")
+      assert.strictEqual(deferredRaceRuns, 1)
     }).pipe(
       Effect.provide(DeferredRaceWorkflowLayer.pipe(
         Layer.provideMerge(WorkflowEngine.layerMemory)

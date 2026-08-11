@@ -296,6 +296,73 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(flags.get("in-place-wake-runs")).toEqual(1)
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("DurableDeferred.raceAll wakes a branch wrapped in DurableDeferred.into", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* IntoWrapWorkflow.executionId({ id: "into-wrap" })
+      const fiber = yield* IntoWrapWorkflow.execute({ id: "into-wrap" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(1)
+      const token = DurableDeferred.tokenFromExecutionId(IntoWrapGate, {
+        workflow: IntoWrapWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(IntoWrapGate, { token, value: "signal" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("signal")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("DurableDeferred.raceAll ignores deferreds awaited inside activity bodies", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const fiber = yield* ClockCaptureWorkflow.execute({ id: "clock-capture" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      // fire the durable clock inside the suspended activity while the other
+      // branch keeps the run active; its completion must not win the race
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(5000)
+      yield* sharding.pollStorage
+      yield* TestClock.adjust(1000)
+      yield* TestClock.adjust("24 seconds")
+
+      expect(yield* Fiber.join(fiber)).toEqual("slow")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("DurableDeferred.raceAll delivers a completion that lands while a suspension commits", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* SlowUnwindWorkflow.executionId({ id: "slow-unwind" })
+      const fiber = yield* SlowUnwindWorkflow.execute({ id: "slow-unwind" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      // both branches park, the suspension commits, and the ensuring sleep
+      // keeps the run from settling
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(1)
+
+      const token = DurableDeferred.tokenFromExecutionId(SlowUnwindGateB, {
+        workflow: SlowUnwindWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(SlowUnwindGateB, { token, value: "signal-b" })
+      // finish the unwind so the completer can resume the settled execution
+      yield* TestClock.adjust("10 seconds")
+      yield* sharding.pollStorage
+      // the replay's ensuring sleep
+      yield* TestClock.adjust("10 seconds")
+
+      expect(yield* Fiber.join(fiber)).toEqual("signal-b")
+      expect(flags.get("slow-unwind-runs")).toEqual(2)
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("DurableDeferred.raceAll suspends when every branch is pending and resumes with the winner", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding
@@ -873,6 +940,93 @@ const InPlaceWakeWorkflowLayer = InPlaceWakeWorkflow.toLayer(Effect.fnUntraced(f
   })
 }))
 
+const IntoWrapWorkflow = Workflow.make("IntoWrapWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const IntoWrapGate = DurableDeferred.make("IntoWrapGate", {
+  success: Schema.String
+})
+
+const IntoWrapAux = DurableDeferred.make("IntoWrapAux", {
+  success: Schema.String
+})
+
+const IntoWrapWorkflowLayer = IntoWrapWorkflow.toLayer(() =>
+  DurableDeferred.raceAll({
+    name: "into-wrap",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableDeferred.into(DurableDeferred.await(IntoWrapGate), IntoWrapAux),
+      Activity.make({
+        name: "into-wrap-activity",
+        success: Schema.String,
+        execute: Effect.sleep("30 seconds").pipe(Effect.as("activity"))
+      })
+    ]
+  })
+)
+
+const ClockCaptureWorkflow = Workflow.make("ClockCaptureWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const ClockCaptureWorkflowLayer = ClockCaptureWorkflow.toLayer(() =>
+  Activity.raceAll("clock-capture", [
+    Activity.make({
+      name: "clock-capture-durable",
+      success: Schema.String,
+      execute: DurableClock.sleep({
+        name: "clock-capture-durable",
+        duration: 5000,
+        inMemoryThreshold: Duration.zero
+      }).pipe(Effect.as("clock"))
+    }),
+    Activity.make({
+      name: "clock-capture-slow",
+      success: Schema.String,
+      execute: Effect.sleep("30 seconds").pipe(Effect.as("slow"))
+    })
+  ])
+)
+
+const SlowUnwindWorkflow = Workflow.make("SlowUnwindWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const SlowUnwindGateA = DurableDeferred.make("SlowUnwindGateA", {
+  success: Schema.String
+})
+
+const SlowUnwindGateB = DurableDeferred.make("SlowUnwindGateB", {
+  success: Schema.String
+})
+
+const SlowUnwindWorkflowLayer = SlowUnwindWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+  const runs = flags.get("slow-unwind-runs")
+  flags.set("slow-unwind-runs", typeof runs === "number" ? runs + 1 : 1)
+  return yield* DurableDeferred.raceAll({
+    name: "slow-unwind",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableDeferred.await(SlowUnwindGateA),
+      DurableDeferred.await(SlowUnwindGateB)
+    ]
+  }).pipe(
+    // slows the unwind so completions can land while a suspension commits
+    Effect.ensuring(Effect.sleep("10 seconds"))
+  )
+}))
+
 const TwoGateWorkflow = Workflow.make("TwoGateWorkflow", {
   payload: { id: Schema.String },
   success: Schema.String,
@@ -1048,6 +1202,9 @@ const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(MixedRaceWorkflowLayer),
   Layer.merge(LosingDeferredWorkflowLayer),
   Layer.merge(InPlaceWakeWorkflowLayer),
+  Layer.merge(IntoWrapWorkflowLayer),
+  Layer.merge(ClockCaptureWorkflowLayer),
+  Layer.merge(SlowUnwindWorkflowLayer),
   Layer.merge(TwoGateWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),

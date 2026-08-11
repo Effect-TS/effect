@@ -147,6 +147,19 @@ const RaceContext = Context.Reference<RaceState | undefined>(
   { defaultValue: () => undefined }
 )
 
+/**
+ * Marks the instance clones that belong to a race's branch fiber tree.
+ *
+ * Registration must be limited to the race's own branches: engines capture the
+ * calling context for activity execution, so an `await` inside an activity
+ * body also sees the `RaceContext`, and registering its deferred would let the
+ * wake arm complete the race with a value that is not a branch result. The
+ * marker is copied by spread, so clones made by combinators like `into` stay
+ * inside the branch tree, while activity instances are built fresh and are
+ * excluded.
+ */
+const raceBranchKey = "~effect/workflow/DurableDeferred/raceBranch"
+
 const await_: <Success extends Schema.Constraint, Error extends Schema.Constraint>(
   self: DurableDeferred<Success, Error>
 ) => Effect.Effect<
@@ -312,14 +325,14 @@ export const raceAll = <
       Effect.gen(function*() {
         const raceInstance = yield* InstanceTag
         const total = options.effects.length
-        const branchInstances = new Set<unknown>()
+        const branchToken = {}
         const registered = new Map<string, Any>()
         const wakeLatch = Latch.makeUnsafe()
         let settled = 0
         let suspendedBranches = 0
         const race: RaceState = {
           register(instance, d) {
-            if (branchInstances.has(instance)) race.bubble(d)
+            if ((instance as any)[raceBranchKey] === branchToken) race.bubble(d)
           },
           bubble(d) {
             registered.set(d.name, d)
@@ -332,8 +345,7 @@ export const raceAll = <
         // failure or losing the race.
         const branches = options.effects.map((effect) =>
           Effect.suspend(() => {
-            const branchInstance = { ...raceInstance }
-            branchInstances.add(branchInstance)
+            const branchInstance = { ...raceInstance, [raceBranchKey]: branchToken }
             return effect.pipe(
               Effect.provideService(InstanceTag, branchInstance),
               Effect.onExit((exit) =>
@@ -370,6 +382,9 @@ export const raceAll = <
             // above; a completion or branch exit reopens the latch.
             if (!wakeLatch.isOpen() && settled === total) {
               if (suspendedBranches === total) {
+                // Load-bearing: a completer that observes this flag takes the
+                // wait-for-settle-then-resume path instead of the latch wake,
+                // so setting it here makes the commit visible synchronously.
                 parentInstance.suspended = true
                 return yield* Workflow.suspend(raceInstance)
               }
