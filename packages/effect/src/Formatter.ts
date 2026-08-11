@@ -127,32 +127,6 @@ export function format(input: unknown, options?: {
   }
 
   function recur(v: unknown, d = 0): string {
-    if (Array.isArray(v)) {
-      if (ancestors.has(v)) return CIRCULAR
-      ancestors.add(v)
-      const output = !gap || v.length <= 1
-        ? `[${v.map((x) => recur(x, d)).join(",")}]`
-        : `[\n${ind(d + 1)}${v.map((x) => recur(x, d + 1)).join(",\n" + ind(d + 1))}\n${ind(d)}]`
-      ancestors.delete(v)
-      return output
-    }
-
-    if (v instanceof Date) return formatDate(v)
-
-    if (
-      !options?.ignoreToString &&
-      Predicate.hasProperty(v, "toString") &&
-      typeof v["toString"] === "function" &&
-      v["toString"] !== Object.prototype.toString &&
-      v["toString"] !== Array.prototype.toString
-    ) {
-      const s = safeToString(v)
-      if (v instanceof Error && v.cause) {
-        return `${s} (cause: ${recur(v.cause, d)})`
-      }
-      return s
-    }
-
     if (typeof v === "string") return JSON.stringify(v)
 
     if (
@@ -170,7 +144,22 @@ export function format(input: unknown, options?: {
 
       let output: string
       if (symbolRedactable in v) {
-        output = format(getRedacted(v as any))
+        output = recur(getRedacted(v as any), d)
+      } else if (Array.isArray(v)) {
+        output = !gap || v.length <= 1
+          ? `[${v.map((x) => recur(x, d)).join(",")}]`
+          : `[\n${ind(d + 1)}${v.map((x) => recur(x, d + 1)).join(",\n" + ind(d + 1))}\n${ind(d)}]`
+      } else if (v instanceof Date) {
+        output = formatDate(v)
+      } else if (
+        !options?.ignoreToString &&
+        Predicate.hasProperty(v, "toString") &&
+        typeof v["toString"] === "function" &&
+        v["toString"] !== Object.prototype.toString &&
+        v["toString"] !== Array.prototype.toString
+      ) {
+        const s = safeToString(v)
+        output = v instanceof Error && v.cause ? `${s} (cause: ${recur(v.cause, d)})` : s
       } else if (Symbol.iterator in v) {
         output = `${v.constructor.name}(${recur(Array.from(v as any), d)})`
       } else {
@@ -298,8 +287,11 @@ export function formatJson(input: unknown, options?: {
   const ancestors: Array<object> = []
   return JSON.stringify(
     input,
-    function(this: unknown, _key: string, value: unknown) {
-      const redacted = redact(value)
+    function(this: object, key: string, value: unknown) {
+      const original = Object.getOwnPropertyDescriptor(this, key)?.value
+      const redacted = Predicate.hasProperty(original, symbolRedactable)
+        ? redact(original)
+        : redact(value)
       if (typeof redacted === "bigint") {
         return format(redacted)
       }
