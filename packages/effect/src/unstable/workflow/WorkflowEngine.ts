@@ -261,14 +261,7 @@ export class WorkflowInstance extends Context.Service<
      */
     cause: Cause.Cause<never> | undefined
 
-    /**
-     * Wake latches for `DurableDeferred.raceAll` calls currently parked in
-     * this execution, opened when a durable deferred completes so a live
-     * race can re-check its deferreds without a replay.
-     *
-     * The set is shared by reference with the instance clones that races
-     * create.
-     */
+    /** Active durable race wake latches shared with instance clones. */
     readonly raceWake: Set<Latch.Latch>
 
     readonly activityState: {
@@ -299,42 +292,25 @@ export class WorkflowInstance extends Context.Service<
 }
 
 /**
- * In-process durable deferred state for live workflow executions.
- *
- * Engines own persistence, transport, and resume scheduling; a
- * `DeferredState` owns everything in-process — which run is live for an
- * execution, completions that may not be durably readable yet, and delivering
- * a completion to a run that is actively racing on it.
+ * In-process deferred state for live workflow executions.
  *
  * @category models
  * @since 4.0.0
  */
 export interface DeferredState {
-  /**
-   * Returns a completion recorded for the execution that may not be durably
-   * readable yet. Engines use this as the fast path in `deferredResult`.
-   */
+  /** Returns a completion not yet durably readable. */
   readonly pendingResult: (
     executionId: string,
     name: string
   ) => Exit.Exit<unknown, unknown> | undefined
 
-  /**
-   * Runs the effect as the execution's live run, providing the instance to
-   * it. When the run ends without suspending, the execution's pending
-   * completions are dropped; a suspended run keeps them readable for the
-   * replay.
-   */
+  /** Tracks and provides a run, retaining pending results across suspension. */
   readonly trackRun: <A, E, R>(
     instance: WorkflowInstance["Service"],
     effect: Effect.Effect<A, E, R>
   ) => Effect.Effect<A, E, Exclude<R, WorkflowInstance>>
 
-  /**
-   * Records a completion and delivers it to the live run, if any: opens the
-   * run's race wake latches, or waits for a committing suspension to settle
-   * so the caller's resume can observe the suspended result.
-   */
+  /** Records a completion and coordinates it with the active run. */
   readonly deferredDone: (
     executionId: string,
     name: string,
@@ -343,8 +319,7 @@ export interface DeferredState {
 }
 
 /**
- * Creates the in-process durable deferred state shared by workflow engine
- * implementations.
+ * Creates deferred state shared by workflow engines.
  *
  * @category constructors
  * @since 4.0.0
@@ -385,8 +360,7 @@ export const makeDeferredState = (): DeferredState => {
         entries.set(name, exit)
         if (run.fiber === current || run.fiber.pollUnsafe()) return Effect.void
         if (run.instance.suspended) {
-          // a suspension is committing: wait for the run to settle so the
-          // caller's resume can observe the suspended result
+          // Wait for a committing suspension before resuming.
           return Effect.asVoid(Fiber.await(run.fiber))
         }
         for (const latch of run.instance.raceWake) latch.openUnsafe()

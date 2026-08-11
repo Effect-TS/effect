@@ -131,17 +131,7 @@ const CurrentAttempt = Context.Reference<number>(
   { defaultValue: () => 1 }
 )
 
-/**
- * Internal channel between `raceAll` and the `await` calls inside its
- * branches.
- *
- * Each branch gets its own registration context: an `await` on a pending
- * deferred registers it before suspending, so the race's wake arm knows which
- * branch to re-run when that deferred completes. The context flows anywhere
- * the branch computes, including activity bodies (engines capture the calling
- * context for activity execution) and nested races, whose registrations
- * bubble to the enclosing branch.
- */
+/** Tracks pending deferreds awaited by each race branch. */
 interface RaceState {
   readonly register: (deferred: Any) => void
 }
@@ -166,10 +156,7 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
 >(self: DurableDeferred<Success, Error>) {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
-  // The bare read doubles as a guard: a branch re-run by a race's wake arm
-  // returns here without re-registering deferreds it already consumed.
-  // Otherwise a branch that awaits a second deferred after the wake would be
-  // re-run continuously until the race settles.
+  // A completed read prevents wake replays from re-registering consumed deferreds.
   let exit = yield* engine.deferredResult(self)
   if (Option.isSome(exit)) {
     return yield* exit.value as Exit.Exit<any, any>
@@ -335,10 +322,7 @@ export const raceAll = <
             Effect.provideService(InstanceTag, instance),
             Effect.provideService(RaceContext, contexts[index])
           )
-        // Branches keep their normal semantics: awaiting a pending deferred
-        // or a suspended activity interrupts the branch. Each branch gets its
-        // own instance clone so the wake arm can tell suspension apart from
-        // failure or losing the race.
+        // Give each branch isolated suspension state for the wake arm.
         const branches = options.effects.map((_, index) =>
           Effect.suspend(() => {
             const branchInstance = { ...raceInstance }
@@ -359,12 +343,7 @@ export const raceAll = <
             )
           })
         )
-        // The wake arm races alongside the branches. When a registered
-        // deferred completes it re-runs the suspended branch that was waiting
-        // on it, so the branch's own pipeline produces the result (branch
-        // bodies are replay-safe by construction). It is also the single
-        // place that converts "every branch suspended" into a durable
-        // suspension of the workflow.
+        // Re-run branches on completion; suspend only after every branch parks.
         const wakeArm = Effect.gen(function*() {
           parentInstance.raceWake.add(wakeLatch)
           while (true) {
@@ -372,10 +351,7 @@ export const raceAll = <
             for (const [name, entry] of registered) {
               const exit = yield* engine.deferredResult(entry.deferred as any)
               if (Option.isNone(exit)) continue
-              // Re-running is safe even while the registering branch is still
-              // alive (parked awaits never produce a value, and a nested race
-              // handling the same wake can only produce the same winner):
-              // branches are replay-safe and completions are idempotent.
+              // Replays are safe: branch effects replay and completions are idempotent.
               registered.delete(name)
               const rerunInstance = { ...raceInstance }
               const fiber = yield* Effect.forkChild(runBranch(entry.branch, rerunInstance))
@@ -385,22 +361,17 @@ export const raceAll = <
               }
               const parkedAgain = Cause.hasInterruptsOnly(rerun.cause) && rerunInstance.suspended
               if (!parkedAgain) {
-                // a real failure participates in the race like any branch
                 return yield* rerun
               }
             }
-            // Only commit to an outcome when nothing raced with the polling
-            // above; a completion or branch exit reopens the latch.
+            // Retry if a branch settles during polling.
             if (!wakeLatch.isOpen() && settled === total) {
               if (suspendedBranches === total) {
-                // Load-bearing: a completer that observes this flag takes the
-                // wait-for-settle-then-resume path instead of the latch wake,
-                // so setting it here makes the commit visible synchronously.
+                // Publish suspension before completers choose their wake path.
                 parentInstance.suspended = true
                 return yield* Workflow.suspend(raceInstance)
               }
-              // at least one branch failed for real: exit so the race
-              // settles with the aggregated failures
+              // Let the race aggregate real failures.
               return yield* Effect.interrupt
             }
             yield* wakeLatch.await

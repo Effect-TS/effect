@@ -93,8 +93,7 @@ describe("WorkflowEngine", () => {
         Effect.forkChild({ startImmediately: true })
       )
 
-      // let the deferred branch park before completing, so the result can
-      // only arrive through the live wake
+      // Park the deferred branch before completing it.
       yield* TestClock.adjust(1)
       yield* TestClock.adjust(1)
       const token = DurableDeferred.tokenFromExecutionId(DeferredRaceGate, {
@@ -102,8 +101,7 @@ describe("WorkflowEngine", () => {
         executionId
       })
       yield* DurableDeferred.succeed(DeferredRaceGate, { token, value: "signal" })
-      // the race must settle from the wake alone, before the sleeping branch
-      // gets a chance to run out
+      // Require the wake to settle before the sleeper.
       yield* TestClock.adjust(1)
       const polled = yield* DeferredRaceWorkflow.poll(executionId)
       assert(Option.isSome(polled) && polled.value._tag === "Complete")

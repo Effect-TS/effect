@@ -443,8 +443,7 @@ export const make = Effect.gen(function*() {
               resume: () => ensureSuccess(resume(workflow, executionId))
             }
           }),
-          // Keep one slot available so a deferred completion can wake the
-          // active workflow run.
+          // Reserve a slot for deferred completions to wake the active run.
           { concurrency: 2 }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
