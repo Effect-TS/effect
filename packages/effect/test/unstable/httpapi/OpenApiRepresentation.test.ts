@@ -110,7 +110,7 @@ describe("OpenApi representation v2 consumer", () => {
     )
   })
 
-  it("shares definitions and caches by API identity", () => {
+  it("shares definitions and returns cached copies by API identity", () => {
     const Shared = Schema.Struct({ value: Schema.FiniteFromString }).annotate({ identifier: "Shared" })
     const Api = HttpApi.make("Api").add(
       HttpApiGroup.make("test").add(
@@ -122,8 +122,10 @@ describe("OpenApi representation v2 consumer", () => {
     )
 
     const first = OpenApi.fromApi(Api)
+    const second = OpenApi.fromApi(Api)
 
-    assert.strictEqual(OpenApi.fromApi(Api), first)
+    assert.notStrictEqual(second, first)
+    assert.deepStrictEqual(second, first)
     assert.deepStrictEqual(first.components.schemas.Shared, {
       type: "object",
       properties: { value: { type: "string" } },
