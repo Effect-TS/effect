@@ -11,7 +11,7 @@ import type * as Response from "effect/unstable/ai/Response"
 import type * as HttpClientError from "effect/unstable/http/HttpClientError"
 import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import type { GoogleVertexErrorMetadata } from "../GoogleVertexError.ts"
+import type { GoogleAgentPlatformErrorMetadata } from "../GoogleAgentPlatformError.ts"
 import { ErrorResponse } from "./schemas.ts"
 
 // =============================================================================
@@ -24,7 +24,7 @@ export const mapSchemaError = dual<
   (error: Schema.SchemaError, method: string) => AiError.AiError
 >(2, (error, method) =>
   AiError.make({
-    module: "GoogleVertexClient",
+    module: "GoogleAgentPlatformClient",
     method,
     reason: AiError.InvalidOutputError.fromSchemaError(error)
   }))
@@ -38,7 +38,7 @@ export const mapHttpClientError = dual<
   switch (reason._tag) {
     case "TransportError":
       return Effect.fail(AiError.make({
-        module: "GoogleVertexClient",
+        module: "GoogleAgentPlatformClient",
         method,
         reason: new AiError.NetworkError({
           reason: "TransportError",
@@ -48,7 +48,7 @@ export const mapHttpClientError = dual<
       }))
     case "EncodeError":
       return Effect.fail(AiError.make({
-        module: "GoogleVertexClient",
+        module: "GoogleAgentPlatformClient",
         method,
         reason: new AiError.NetworkError({
           reason: "EncodeError",
@@ -58,7 +58,7 @@ export const mapHttpClientError = dual<
       }))
     case "InvalidUrlError":
       return Effect.fail(AiError.make({
-        module: "GoogleVertexClient",
+        module: "GoogleAgentPlatformClient",
         method,
         reason: new AiError.NetworkError({
           reason: "InvalidUrlError",
@@ -70,7 +70,7 @@ export const mapHttpClientError = dual<
       return mapStatusCodeError(reason, method)
     case "DecodeError":
       return Effect.fail(AiError.make({
-        module: "GoogleVertexClient",
+        module: "GoogleAgentPlatformClient",
         method,
         reason: new AiError.InvalidOutputError({
           description: reason.description ?? "Failed to decode response"
@@ -78,7 +78,7 @@ export const mapHttpClientError = dual<
       }))
     case "EmptyBodyError":
       return Effect.fail(AiError.make({
-        module: "GoogleVertexClient",
+        module: "GoogleAgentPlatformClient",
         method,
         reason: new AiError.InvalidOutputError({
           description: reason.description ?? "Response body was empty"
@@ -118,7 +118,7 @@ const mapStatusCodeError = Effect.fnUntraced(function*(
     }
   })
 
-  return yield* AiError.make({ module: "GoogleVertexClient", method, reason })
+  return yield* AiError.make({ module: "GoogleAgentPlatformClient", method, reason })
 })
 
 // =============================================================================
@@ -182,7 +182,7 @@ export const mapStatusCodeToReason = ({ headers, http, message, metadata, status
   readonly status: number
   readonly headers: Record<string, string>
   readonly message: string | undefined
-  readonly metadata: GoogleVertexErrorMetadata
+  readonly metadata: GoogleAgentPlatformErrorMetadata
   readonly http: typeof AiError.HttpContext.Type
 }): AiError.AiErrorReason => {
   const invalidRequestDescription = buildInvalidRequestDescription({
@@ -197,25 +197,25 @@ export const mapStatusCodeToReason = ({ headers, http, message, metadata, status
     case 400:
       return new AiError.InvalidRequestError({
         description: invalidRequestDescription,
-        metadata: { googleVertex: metadata },
+        metadata: { googleAgentPlatform: metadata },
         http
       })
     case 401:
       return new AiError.AuthenticationError({
         kind: "InvalidKey",
-        metadata: { googleVertex: metadata },
+        metadata: { googleAgentPlatform: metadata },
         http
       })
     case 403:
       return new AiError.AuthenticationError({
         kind: "InsufficientPermissions",
-        metadata: { googleVertex: metadata },
+        metadata: { googleAgentPlatform: metadata },
         http
       })
     case 404:
       return new AiError.InvalidRequestError({
         description: invalidRequestDescription,
-        metadata: { googleVertex: metadata },
+        metadata: { googleAgentPlatform: metadata },
         http
       })
     case 429: {
@@ -229,7 +229,7 @@ export const mapStatusCodeToReason = ({ headers, http, message, metadata, status
       }
       return new AiError.RateLimitError({
         retryAfter,
-        metadata: { googleVertex: metadata },
+        metadata: { googleAgentPlatform: metadata },
         http
       })
     }
@@ -237,13 +237,13 @@ export const mapStatusCodeToReason = ({ headers, http, message, metadata, status
       if (status >= 500) {
         return new AiError.InternalProviderError({
           description: message ?? "Server error",
-          metadata: { googleVertex: metadata },
+          metadata: { googleAgentPlatform: metadata },
           http
         })
       }
       return new AiError.UnknownError({
         description: message,
-        metadata: { googleVertex: metadata },
+        metadata: { googleAgentPlatform: metadata },
         http
       })
   }

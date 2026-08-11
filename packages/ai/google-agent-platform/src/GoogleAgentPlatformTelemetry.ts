@@ -1,9 +1,9 @@
 /**
- * Google Vertex telemetry attributes for OpenTelemetry integration.
+ * Google Agent Platform telemetry attributes for OpenTelemetry integration.
  *
- * Provides Google Vertex-specific GenAI telemetry attributes following
+ * Provides Google Agent Platform-specific GenAI telemetry attributes following
  * OpenTelemetry semantic conventions, extending the base GenAI attributes with
- * Google Vertex-specific request and response metadata.
+ * Google Agent Platform-specific request and response metadata.
  *
  * @since 4.0.0
  */
@@ -21,15 +21,15 @@ import * as Telemetry from "effect/unstable/ai/Telemetry"
  * @category models
  * @since 4.0.0
  */
-export type GoogleVertexTelemetryAttributes = Simplify<
+export type GoogleAgentPlatformTelemetryAttributes = Simplify<
   & Telemetry.GenAITelemetryAttributes
-  & Telemetry.AttributesWithPrefix<RequestAttributes, "gen_ai.google_vertex.request">
-  & Telemetry.AttributesWithPrefix<ResponseAttributes, "gen_ai.google_vertex.response">
+  & Telemetry.AttributesWithPrefix<RequestAttributes, "gen_ai.google_agent_platform.request">
+  & Telemetry.AttributesWithPrefix<ResponseAttributes, "gen_ai.google_agent_platform.response">
 >
 
 /**
  * All telemetry attributes which are part of the GenAI specification, including
- * the Google Vertex-specific attributes.
+ * the Google Agent Platform-specific attributes.
  *
  * @category models
  * @since 4.0.0
@@ -38,7 +38,7 @@ export type AllAttributes = Telemetry.AllAttributes & RequestAttributes & Respon
 
 /**
  * Telemetry attributes which are part of the GenAI specification and are
- * namespaced by `gen_ai.google_vertex.request`.
+ * namespaced by `gen_ai.google_agent_platform.request`.
  *
  * @category models
  * @since 4.0.0
@@ -52,7 +52,7 @@ export interface RequestAttributes {
 
 /**
  * Telemetry attributes which are part of the GenAI specification and are
- * namespaced by `gen_ai.google_vertex.response`.
+ * namespaced by `gen_ai.google_agent_platform.response`.
  *
  * @category models
  * @since 4.0.0
@@ -74,27 +74,27 @@ export interface ResponseAttributes {
 
 /**
  * Options accepted by `addGenAIAnnotations`, combining standard GenAI telemetry
- * attributes with optional Google Vertex request and response attributes.
+ * attributes with optional Google Agent Platform request and response attributes.
  *
  * @category models
  * @since 4.0.0
  */
-export type GoogleVertexTelemetryAttributeOptions = Telemetry.GenAITelemetryAttributeOptions & {
-  googleVertex?: {
+export type GoogleAgentPlatformTelemetryAttributeOptions = Telemetry.GenAITelemetryAttributeOptions & {
+  googleAgentPlatform?: {
     request?: RequestAttributes | undefined
     response?: ResponseAttributes | undefined
   } | undefined
 }
 
-const addRequestAttributes = Telemetry.addSpanAttributes("gen_ai.google_vertex.request", String.camelToSnake)<
+const addRequestAttributes = Telemetry.addSpanAttributes("gen_ai.google_agent_platform.request", String.camelToSnake)<
   RequestAttributes
 >
-const addResponseAttributes = Telemetry.addSpanAttributes("gen_ai.google_vertex.response", String.camelToSnake)<
+const addResponseAttributes = Telemetry.addSpanAttributes("gen_ai.google_agent_platform.response", String.camelToSnake)<
   ResponseAttributes
 >
 
 /**
- * Applies the specified Google Vertex GenAI telemetry attributes to the
+ * Applies the specified Google Agent Platform GenAI telemetry attributes to the
  * provided `Span`.
  *
  * **Gotchas**
@@ -105,16 +105,16 @@ const addResponseAttributes = Telemetry.addSpanAttributes("gen_ai.google_vertex.
  * @since 4.0.0
  */
 export const addGenAIAnnotations: {
-  (options: GoogleVertexTelemetryAttributeOptions): (span: Span) => void
-  (span: Span, options: GoogleVertexTelemetryAttributeOptions): void
-} = dual(2, (span: Span, options: GoogleVertexTelemetryAttributeOptions) => {
+  (options: GoogleAgentPlatformTelemetryAttributeOptions): (span: Span) => void
+  (span: Span, options: GoogleAgentPlatformTelemetryAttributeOptions): void
+} = dual(2, (span: Span, options: GoogleAgentPlatformTelemetryAttributeOptions) => {
   Telemetry.addGenAIAnnotations(span, options)
-  if (options.googleVertex != null) {
-    if (options.googleVertex.request != null) {
-      addRequestAttributes(span, options.googleVertex.request)
+  if (options.googleAgentPlatform != null) {
+    if (options.googleAgentPlatform.request != null) {
+      addRequestAttributes(span, options.googleAgentPlatform.request)
     }
-    if (options.googleVertex.response != null) {
-      addResponseAttributes(span, options.googleVertex.response)
+    if (options.googleAgentPlatform.response != null) {
+      addResponseAttributes(span, options.googleAgentPlatform.response)
     }
   }
 })

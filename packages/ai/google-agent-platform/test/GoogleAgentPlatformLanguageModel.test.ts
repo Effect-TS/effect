@@ -1,10 +1,14 @@
-import { GoogleVertexClient, GoogleVertexLanguageModel, GoogleVertexTool } from "@effect/ai-google-vertex"
+import {
+  GoogleAgentPlatformClient,
+  GoogleAgentPlatformLanguageModel,
+  GoogleAgentPlatformTool
+} from "@effect/ai-google-agent-platform"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Layer, Redacted, Schema, Stream } from "effect"
 import { LanguageModel, Tool, Toolkit } from "effect/unstable/ai"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
-describe("GoogleVertexLanguageModel", () => {
+describe("GoogleAgentPlatformLanguageModel", () => {
   describe("generateText", () => {
     it.effect("decodes text content", () =>
       Effect.gen(function*() {
@@ -31,7 +35,7 @@ describe("GoogleVertexLanguageModel", () => {
         const response = yield* LanguageModel.generateText({
           prompt: "Say hello"
         }).pipe(
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -76,7 +80,7 @@ describe("GoogleVertexLanguageModel", () => {
           toolkit,
           disableToolCallResolution: true
         }).pipe(
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -108,7 +112,7 @@ describe("GoogleVertexLanguageModel", () => {
 
         yield* LanguageModel.generateText({ prompt: "hi" }).pipe(
           Effect.provide(
-            GoogleVertexLanguageModel.model("gemini-2.5-flash", {
+            GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash", {
               temperature: 0.5,
               maxOutputTokens: 100
             })
@@ -157,7 +161,7 @@ describe("GoogleVertexLanguageModel", () => {
           toolkit: Toolkit.make(GlobTool),
           disableToolCallResolution: true
         }).pipe(
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -216,7 +220,7 @@ describe("GoogleVertexLanguageModel", () => {
           toolkit: Toolkit.make(Contacts),
           disableToolCallResolution: true
         }).pipe(
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -264,10 +268,10 @@ describe("GoogleVertexLanguageModel", () => {
 
         yield* LanguageModel.generateText({
           prompt: "answer without tools",
-          toolkit: Toolkit.make(GoogleVertexTool.GoogleSearch()),
+          toolkit: Toolkit.make(GoogleAgentPlatformTool.GoogleSearch()),
           toolChoice: "none"
         }).pipe(
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -312,10 +316,10 @@ describe("GoogleVertexLanguageModel", () => {
 
         const response = yield* LanguageModel.generateText({
           prompt: "run code",
-          toolkit: Toolkit.make(GoogleVertexTool.CodeExecution()),
+          toolkit: Toolkit.make(GoogleAgentPlatformTool.CodeExecution()),
           disableToolCallResolution: true
         }).pipe(
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -353,14 +357,14 @@ describe("GoogleVertexLanguageModel", () => {
         const response = yield* LanguageModel.generateText({
           prompt: "answer"
         }).pipe(
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
         const text = response.content.find((part) => part.type === "text")
         assert.isDefined(text)
         if (text?.type !== "text") return
-        assert.deepStrictEqual(text.metadata.googleVertex, {
+        assert.deepStrictEqual(text.metadata.googleAgentPlatform, {
           thoughtSignature: "signature-1"
         })
       }))
@@ -396,7 +400,7 @@ describe("GoogleVertexLanguageModel", () => {
             city: Schema.String
           })
         }).pipe(
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -454,7 +458,7 @@ describe("GoogleVertexLanguageModel", () => {
           prompt: "Say hello"
         }).pipe(
           Stream.runCollect,
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -516,7 +520,7 @@ describe("GoogleVertexLanguageModel", () => {
           prompt: "answer"
         }).pipe(
           Stream.runCollect,
-          Effect.provide(GoogleVertexLanguageModel.model("gemini-2.5-flash")),
+          Effect.provide(GoogleAgentPlatformLanguageModel.model("gemini-2.5-flash")),
           Effect.provide(layer)
         )
 
@@ -531,10 +535,10 @@ describe("GoogleVertexLanguageModel", () => {
         ) {
           return
         }
-        assert.deepStrictEqual(reasoningDelta.metadata.googleVertex, {
+        assert.deepStrictEqual(reasoningDelta.metadata.googleAgentPlatform, {
           thoughtSignature: "reasoning-signature"
         })
-        assert.deepStrictEqual(textDelta.metadata.googleVertex, {
+        assert.deepStrictEqual(textDelta.metadata.googleAgentPlatform, {
           thoughtSignature: "text-signature"
         })
       }))
@@ -549,7 +553,7 @@ const clientLayer = (
     HttpClientError.HttpClientError
   >
 ) =>
-  GoogleVertexClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
+  GoogleAgentPlatformClient.layer({ apiKey: Redacted.make("sk-test-key") }).pipe(
     Layer.provide(
       Layer.succeed(HttpClient.HttpClient, makeHttpClient(handler))
     )

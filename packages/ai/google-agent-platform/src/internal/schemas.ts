@@ -102,13 +102,11 @@ export interface ToolConfig {
   readonly functionCallingConfig?: FunctionCallingConfig
 }
 
-/** @internal */
 export interface SafetySetting {
   readonly category: string
   readonly threshold: string
 }
 
-/** @internal */
 export interface ThinkingConfig {
   readonly thinkingBudget?: number
   readonly includeThoughts?: boolean
@@ -131,7 +129,6 @@ export interface GenerationConfig {
   readonly thinkingConfig?: ThinkingConfig
 }
 
-/** @internal */
 export interface GenerateContentRequest {
   readonly contents: ReadonlyArray<Content>
   readonly systemInstruction?: SystemInstruction
@@ -245,7 +242,6 @@ export const Candidate = Schema.Struct({
   urlContextMetadata: nullish(Schema.Json)
 })
 
-/** @internal */
 export const GenerateContentResponse = Schema.Struct({
   candidates: nullish(Schema.Array(Candidate)),
   usageMetadata: nullish(UsageMetadata),
@@ -259,14 +255,12 @@ export const GenerateContentResponse = Schema.Struct({
   responseId: nullish(Schema.String)
 })
 
-/** @internal */
 export type GenerateContentResponse = typeof GenerateContentResponse.Type
 
 // =============================================================================
 // Embedding Response Schema
 // =============================================================================
 
-/** @internal */
 export const PredictResponse = Schema.Struct({
   predictions: Schema.Array(
     Schema.Struct({
@@ -282,8 +276,26 @@ export const PredictResponse = Schema.Struct({
   )
 })
 
-/** @internal */
 export type PredictResponse = typeof PredictResponse.Type
+
+export interface EmbedContentRequest {
+  readonly content: {
+    readonly parts: ReadonlyArray<{ readonly text: string }>
+  }
+  readonly embedContentConfig?: {
+    readonly outputDimensionality?: number
+  }
+}
+
+export const EmbedContentResponse = Schema.Struct({
+  embedding: Schema.Struct({
+    values: Schema.Array(Schema.Number)
+  }),
+  usageMetadata: nullish(UsageMetadata),
+  truncated: nullish(Schema.Boolean)
+})
+
+export type EmbedContentResponse = typeof EmbedContentResponse.Type
 
 // =============================================================================
 // Error Response Schema

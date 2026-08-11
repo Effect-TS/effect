@@ -1,12 +1,12 @@
-import { GoogleVertexClient } from "@effect/ai-google-vertex"
+import { GoogleAgentPlatformClient } from "@effect/ai-google-agent-platform"
 import { assert, describe, it } from "@effect/vitest"
 import { Effect, Redacted } from "effect"
 import { HttpClient, type HttpClientError, type HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 
-describe("GoogleVertexClient", () => {
+describe("GoogleAgentPlatformClient", () => {
   it.effect("rejects regional configuration without a project", () =>
     Effect.gen(function*() {
-      const error = yield* GoogleVertexClient.make({}).pipe(
+      const error = yield* GoogleAgentPlatformClient.make({}).pipe(
         Effect.flip,
         Effect.provideService(HttpClient.HttpClient, unusedHttpClient)
       )
@@ -18,7 +18,7 @@ describe("GoogleVertexClient", () => {
 
   it.effect("rejects conflicting authentication options", () =>
     Effect.gen(function*() {
-      const error = yield* GoogleVertexClient.make({
+      const error = yield* GoogleAgentPlatformClient.make({
         apiKey: Redacted.make("key"),
         accessToken: Redacted.make("token")
       }).pipe(
@@ -33,7 +33,7 @@ describe("GoogleVertexClient", () => {
 
   it.effect("decodes provider errors without throwing", () =>
     Effect.gen(function*() {
-      const client = yield* GoogleVertexClient.make({
+      const client = yield* GoogleAgentPlatformClient.make({
         apiKey: Redacted.make("key")
       }).pipe(
         Effect.provideService(
@@ -69,9 +69,25 @@ describe("GoogleVertexClient", () => {
       assert.strictEqual(error.reason._tag, "InvalidRequestError")
       if (error.reason._tag !== "InvalidRequestError") return
       assert.match(error.reason.description ?? "", /^Invalid request/)
-      assert.deepStrictEqual(error.reason.metadata.googleVertex, {
+      assert.deepStrictEqual(error.reason.metadata.googleAgentPlatform, {
         status: "INVALID_ARGUMENT"
       })
+    }))
+
+  it.effect("rejects embedContent with express-mode API key authentication", () =>
+    Effect.gen(function*() {
+      const client = yield* GoogleAgentPlatformClient.make({
+        apiKey: Redacted.make("key")
+      }).pipe(Effect.provideService(HttpClient.HttpClient, unusedHttpClient))
+
+      const error = yield* client.embedContent({
+        model: "gemini-embedding-2",
+        request: { content: { parts: [{ text: "hello" }] } }
+      }).pipe(Effect.flip)
+
+      assert.strictEqual(error.reason._tag, "InvalidRequestError")
+      if (error.reason._tag !== "InvalidRequestError") return
+      assert.match(error.reason.description ?? "", /OAuth/)
     }))
 })
 

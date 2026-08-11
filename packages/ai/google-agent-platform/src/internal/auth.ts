@@ -9,12 +9,12 @@ const SCOPES = ["https://www.googleapis.com/auth/cloud-platform"]
 
 const authError = (cause: unknown): AiError.AiError =>
   AiError.make({
-    module: "GoogleVertexClient",
+    module: "GoogleAgentPlatformClient",
     method: "accessToken",
     reason: new AiError.AuthenticationError({
       kind: "Unknown",
       metadata: {
-        googleVertex: {
+        googleAgentPlatform: {
           message: cause instanceof Error ? cause.message : String(cause)
         }
       }

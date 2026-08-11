@@ -1,8 +1,8 @@
 /**
- * Google Vertex Client module for interacting with the Vertex AI Gemini API.
+ * Low-level client for the Gemini Enterprise Agent Platform APIs.
  *
  * Provides a type-safe, Effect-based client for the Gemini `generateContent`,
- * `streamGenerateContent`, and `predict` (embeddings) endpoints, including
+ * `streamGenerateContent`, `predict`, and `embedContent` endpoints, including
  * authentication via `google-auth-library` (OAuth) or an API key (express
  * mode).
  *
@@ -25,7 +25,7 @@ import * as HttpBody from "effect/unstable/http/HttpBody"
 import * as HttpClient from "effect/unstable/http/HttpClient"
 import * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import { GoogleVertexConfig } from "./GoogleVertexConfig.ts"
+import { GoogleAgentPlatformConfig } from "./GoogleAgentPlatformConfig.ts"
 import * as InternalAuth from "./internal/auth.ts"
 import * as Errors from "./internal/errors.ts"
 import * as Schemas from "./internal/schemas.ts"
@@ -36,8 +36,9 @@ import { getModelPath } from "./internal/utilities.ts"
 // =============================================================================
 
 /**
- * Represents the Google Vertex client service with methods for the Gemini
- * `generateContent`, `streamGenerateContent`, and `predict` endpoints.
+ * Represents the Agent Platform client service with methods for the Gemini
+ * `generateContent`, `streamGenerateContent`, `predict`, and `embedContent`
+ * endpoints.
  *
  * @category models
  * @since 4.0.0
@@ -71,8 +72,8 @@ export interface Service {
   >
 
   /**
-   * Computes embeddings using the Vertex AI `predict` endpoint and maps all
-   * errors to the unified `AiError` type.
+   * Computes text embeddings using the Agent Platform `predict` endpoint and
+   * maps all errors to the unified `AiError` type.
    */
   readonly predict: (options: {
     readonly model: string
@@ -82,6 +83,18 @@ export interface Service {
     [body: Schemas.PredictResponse, response: HttpClientResponse.HttpClientResponse],
     AiError.AiError
   >
+
+  /**
+   * Computes an embedding using the Agent Platform `embedContent` endpoint and
+   * maps all errors to the unified `AiError` type.
+   */
+  readonly embedContent: (options: {
+    readonly model: string
+    readonly request: Schemas.EmbedContentRequest
+  }) => Effect.Effect<
+    [body: Schemas.EmbedContentResponse, response: HttpClientResponse.HttpClientResponse],
+    AiError.AiError
+  >
 }
 
 // =============================================================================
@@ -89,13 +102,13 @@ export interface Service {
 // =============================================================================
 
 /**
- * Service identifier for the Google Vertex client.
+ * Service identifier for the Google Agent Platform client.
  *
  * @category services
  * @since 4.0.0
  */
-export class GoogleVertexClient extends Context.Service<GoogleVertexClient, Service>()(
-  "@effect/ai-google-vertex/GoogleVertexClient"
+export class GoogleAgentPlatformClient extends Context.Service<GoogleAgentPlatformClient, Service>()(
+  "@effect/ai-google-agent-platform/GoogleAgentPlatformClient"
 ) {}
 
 // =============================================================================
@@ -103,12 +116,12 @@ export class GoogleVertexClient extends Context.Service<GoogleVertexClient, Serv
 // =============================================================================
 
 /**
- * Configuration options for creating a Google Vertex client.
+ * Configuration options for creating a Google Agent Platform client.
  *
  * **Details**
  *
  * Provide exactly one authentication mechanism:
- * - `apiKey` — uses Vertex AI express mode (the `x-goog-api-key` header)
+ * - `apiKey` — uses Gemini Enterprise Agent Platform express mode (the `x-goog-api-key` header)
  * - `accessToken` — a static or dynamic OAuth bearer token
  * - `googleAuthOptions` — builds a bearer token generator via `google-auth-library`
  *
@@ -117,7 +130,7 @@ export class GoogleVertexClient extends Context.Service<GoogleVertexClient, Serv
  */
 export type Options = {
   /**
-   * The Google Vertex API key for express mode authentication.
+   * The Google Agent Platform API key for express mode authentication.
    */
   readonly apiKey?: Redacted.Redacted<string> | undefined
 
@@ -150,7 +163,7 @@ export type Options = {
   readonly location?: string | undefined
 
   /**
-   * The base URL for the Google Vertex API. Override this to use a proxy or a
+   * The base URL for the Google Agent Platform API. Override this to use a proxy or a
    * different endpoint. When omitted, it is derived from `project`/`location`
    * (OAuth) or set to the express-mode endpoint (`apiKey`).
    */
@@ -169,10 +182,10 @@ export type Options = {
 
 const RedactedHeaders = ["x-goog-api-key", "authorization"]
 
-const invalidConfiguration = (description: string): AiError.AiError =>
+const invalidConfiguration = (description: string, method: string = "make"): AiError.AiError =>
   AiError.make({
-    module: "GoogleVertexClient",
-    method: "make",
+    module: "GoogleAgentPlatformClient",
+    method,
     reason: new AiError.InvalidRequestError({ description })
   })
 
@@ -197,7 +210,7 @@ const resolveBaseUrl = (options: Options): Effect.Effect<string, AiError.AiError
   }
   if (Predicate.isUndefined(options.project)) {
     return Effect.fail(invalidConfiguration(
-      "`project` is required when using the standard Vertex endpoint with OAuth authentication"
+      "`project` is required when using the standard Agent Platform endpoint with OAuth authentication"
     ))
   }
 
@@ -206,6 +219,20 @@ const resolveBaseUrl = (options: Options): Effect.Effect<string, AiError.AiError
   return Effect.succeed(
     `https://${host}/v1/projects/${options.project}/locations/${region}/publishers/google`
   )
+}
+
+const resolveEmbedContentBaseUrl = (options: Options): string | undefined => {
+  if (Predicate.isNotUndefined(options.apiUrl)) {
+    return options.apiUrl
+  }
+  if (Predicate.isNotUndefined(options.apiKey) || Predicate.isUndefined(options.project)) {
+    return undefined
+  }
+  const location = options.location ?? "global"
+  const host = location === "global"
+    ? "aiplatform.googleapis.com"
+    : `aiplatform.${location}.rep.googleapis.com`
+  return `https://${host}/v1/projects/${options.project}/locations/${location}/publishers/google`
 }
 
 const resolveAccessToken = (options: Options): Options["accessToken"] => {
@@ -224,13 +251,13 @@ const resolveAccessToken = (options: Options): Options["accessToken"] => {
 }
 
 /**
- * Creates a Google Vertex client service with the given options.
+ * Creates a Google Agent Platform client service with the given options.
  *
  * **Details**
  *
  * The client handles authentication (API key express mode or OAuth bearer
  * token), error mapping to the unified `AiError` type, and request/response
- * transformations via `GoogleVertexConfig`. It requires an `HttpClient` in the
+ * transformations via `GoogleAgentPlatformConfig`. It requires an `HttpClient` in the
  * context.
  *
  * @category constructors
@@ -240,20 +267,22 @@ export const make = Effect.fnUntraced(
   function*(options: Options): Effect.fn.Return<Service, AiError.AiError, HttpClient.HttpClient> {
     const baseClient = yield* HttpClient.HttpClient
     const baseUrl = yield* resolveBaseUrl(options)
+    const embedContentBaseUrl = resolveEmbedContentBaseUrl(options)
     const accessToken = resolveAccessToken(options)
 
-    const httpClient = baseClient.pipe(
-      HttpClient.mapRequest((request) =>
-        request.pipe(
-          HttpClientRequest.prependUrl(baseUrl),
-          Predicate.isNotUndefined(options.apiKey)
-            ? HttpClientRequest.setHeader("x-goog-api-key", Redacted.value(options.apiKey))
-            : identity,
-          HttpClientRequest.acceptJson
-        )
-      ),
-      Predicate.isNotUndefined(options.transformClient) ? options.transformClient : identity
-    )
+    const makeHttpClient = (requestBaseUrl: string) =>
+      baseClient.pipe(
+        HttpClient.mapRequest((request) =>
+          request.pipe(
+            HttpClientRequest.prependUrl(requestBaseUrl),
+            Predicate.isNotUndefined(options.apiKey)
+              ? HttpClientRequest.setHeader("x-goog-api-key", Redacted.value(options.apiKey))
+              : identity,
+            HttpClientRequest.acceptJson
+          )
+        ),
+        Predicate.isNotUndefined(options.transformClient) ? options.transformClient : identity
+      )
 
     // Resolve a bearer token (if any) and attach it to the request. Kept out of
     // the `HttpClient` transform so that authentication failures surface as
@@ -269,8 +298,9 @@ export const make = Effect.fnUntraced(
         : Effect.succeed(HttpClientRequest.bearerToken(request, Redacted.value(accessToken)))
     }
 
-    const resolveClient = Effect.fnUntraced(function*() {
-      const config = yield* GoogleVertexConfig.getOrUndefined
+    const resolveClient = Effect.fnUntraced(function*(requestBaseUrl: string) {
+      const config = yield* GoogleAgentPlatformConfig.getOrUndefined
+      const httpClient = makeHttpClient(requestBaseUrl)
       const client = Predicate.isNotUndefined(config?.transformClient)
         ? config.transformClient(httpClient)
         : httpClient
@@ -287,9 +317,10 @@ export const make = Effect.fnUntraced(
     const executeRequest = <S extends Schema.Top>(
       method: string,
       schema: S,
-      request: HttpClientRequest.HttpClientRequest
+      request: HttpClientRequest.HttpClientRequest,
+      requestBaseUrl: string = baseUrl
     ) =>
-      Effect.flatMap(resolveClient(), (httpClientOk) =>
+      Effect.flatMap(resolveClient(requestBaseUrl), (httpClientOk) =>
         authorize(request).pipe(
           Effect.flatMap((request) => httpClientOk.execute(request)),
           Effect.flatMap((response) =>
@@ -311,7 +342,7 @@ export const make = Effect.fnUntraced(
       )
 
     const streamGenerateContent: Service["streamGenerateContent"] = (opts) =>
-      Effect.flatMap(resolveClient(), (httpClientOk) =>
+      Effect.flatMap(resolveClient(baseUrl), (httpClientOk) =>
         authorize(
           HttpClientRequest.post(`/${getModelPath(opts.model)}:streamGenerateContent`, {
             urlParams: { alt: "sse" },
@@ -351,7 +382,24 @@ export const make = Effect.fnUntraced(
         })
       )
 
-    return GoogleVertexClient.of({ generateContent, streamGenerateContent, predict })
+    const embedContent: Service["embedContent"] = (opts) => {
+      if (Predicate.isUndefined(embedContentBaseUrl)) {
+        return Effect.fail(invalidConfiguration(
+          "`embedContent` requires OAuth authentication with a Google Cloud `project`, or a custom `apiUrl`",
+          "embedContent"
+        ))
+      }
+      return executeRequest(
+        "embedContent",
+        Schemas.EmbedContentResponse,
+        HttpClientRequest.post(`/${getModelPath(opts.model)}:embedContent`, {
+          body: HttpBody.jsonUnsafe(opts.request)
+        }),
+        embedContentBaseUrl
+      )
+    }
+
+    return GoogleAgentPlatformClient.of({ generateContent, streamGenerateContent, predict, embedContent })
   },
   Effect.updateService(Headers.CurrentRedactedNames, Arr.appendAll(RedactedHeaders))
 )
@@ -361,16 +409,18 @@ export const make = Effect.fnUntraced(
 // =============================================================================
 
 /**
- * Creates a layer for the Google Vertex client with the given options.
+ * Creates a layer for the Google Agent Platform client with the given options.
  *
  * @category layers
  * @since 4.0.0
  */
-export const layer = (options: Options): Layer.Layer<GoogleVertexClient, AiError.AiError, HttpClient.HttpClient> =>
-  Layer.effect(GoogleVertexClient, make(options))
+export const layer = (
+  options: Options
+): Layer.Layer<GoogleAgentPlatformClient, AiError.AiError, HttpClient.HttpClient> =>
+  Layer.effect(GoogleAgentPlatformClient, make(options))
 
 /**
- * Creates a layer for the Google Vertex client, loading the requisite
+ * Creates a layer for the Google Agent Platform client, loading the requisite
  * configuration via Effect's `Config` module.
  *
  * @category layers
@@ -384,9 +434,9 @@ export const layerConfig = (options?: {
   readonly accessToken?: Options["accessToken"] | undefined
   readonly googleAuthOptions?: GoogleAuthOptions | undefined
   readonly transformClient?: ((client: HttpClient.HttpClient) => HttpClient.HttpClient) | undefined
-}): Layer.Layer<GoogleVertexClient, Config.ConfigError | AiError.AiError, HttpClient.HttpClient> =>
+}): Layer.Layer<GoogleAgentPlatformClient, Config.ConfigError | AiError.AiError, HttpClient.HttpClient> =>
   Layer.effect(
-    GoogleVertexClient,
+    GoogleAgentPlatformClient,
     Effect.gen(function*() {
       const apiKey = Predicate.isNotUndefined(options?.apiKey) ? yield* options.apiKey : undefined
       const project = Predicate.isNotUndefined(options?.project) ? yield* options.project : undefined

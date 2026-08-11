@@ -42,7 +42,7 @@ export const resolveFinishReason = (
 // =============================================================================
 
 /**
- * Builds the model path segment used in Vertex AI URLs. A raw resource path
+ * Builds the model path segment used in Gemini Enterprise Agent Platform URLs. A raw resource path
  * (containing a slash) is passed through unchanged.
  *
  * @internal

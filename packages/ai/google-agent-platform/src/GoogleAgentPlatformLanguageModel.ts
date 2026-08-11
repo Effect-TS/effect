@@ -1,5 +1,5 @@
 /**
- * The `GoogleVertexLanguageModel` module provides the Google Vertex (Gemini)
+ * The `GoogleAgentPlatformLanguageModel` module provides the Google Agent Platform (Gemini)
  * implementation of Effect AI's `LanguageModel` service. It converts Effect AI
  * prompts, tools, and provider options into Gemini `generateContent` requests,
  * and converts Gemini responses and streams back into Effect AI response parts.
@@ -39,26 +39,37 @@ import type * as Response from "effect/unstable/ai/Response"
 import * as Tool from "effect/unstable/ai/Tool"
 import type * as HttpClientRequest from "effect/unstable/http/HttpClientRequest"
 import type * as HttpClientResponse from "effect/unstable/http/HttpClientResponse"
-import { GoogleVertexClient } from "./GoogleVertexClient.ts"
-import { addGenAIAnnotations } from "./GoogleVertexTelemetry.ts"
-import type { GoogleVertexTool } from "./GoogleVertexTool.ts"
+import { GoogleAgentPlatformClient } from "./GoogleAgentPlatformClient.ts"
+import { addGenAIAnnotations } from "./GoogleAgentPlatformTelemetry.ts"
+import type { GoogleAgentPlatformTool } from "./GoogleAgentPlatformTool.ts"
 import type * as Schemas from "./internal/schemas.ts"
 import * as InternalUtilities from "./internal/utilities.ts"
 
 /**
- * The available Google Vertex (Gemini) model identifiers.
+ * The available Google Agent Platform (Gemini) text-generation model identifiers.
+ *
+ * See the [Gemini model versions and lifecycle](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/model-versions)
+ * documentation for the current model identifiers.
  *
  * @category models
  * @since 4.0.0
  */
-export type Model = (string & {}) | "gemini-3.5-flash" | "gemini-3.1-flash-lite" | "gemini-2.5-pro" | "gemini-2.5-flash" | "gemini-2.5-flash-lite"
+export type Model =
+  | (string & {})
+  | "gemini-3.6-flash"
+  | "gemini-3.5-flash"
+  | "gemini-3.5-flash-lite"
+  | "gemini-3.1-flash-lite"
+  | "gemini-2.5-pro"
+  | "gemini-2.5-flash"
+  | "gemini-2.5-flash-lite"
 
 // =============================================================================
 // Configuration
 // =============================================================================
 
 /**
- * Configuration options for the Google Vertex language model.
+ * Configuration options for the Google Agent Platform language model.
  *
  * **Details**
  *
@@ -106,7 +117,7 @@ export class Config extends Context.Service<
      */
     readonly structuredOutputs?: boolean
   }>
->()("@effect/ai-google-vertex/GoogleVertexLanguageModel/Config") {}
+>()("@effect/ai-google-agent-platform/GoogleAgentPlatformLanguageModel/Config") {}
 
 // =============================================================================
 // Provider Options / Metadata
@@ -114,13 +125,13 @@ export class Config extends Context.Service<
 
 declare module "effect/unstable/ai/Prompt" {
   /**
-   * Google Vertex-specific options for text prompt parts.
+   * Google Agent Platform-specific options for text prompt parts.
    *
    * @category request
    * @since 4.0.0
    */
   export interface TextPartOptions extends ProviderOptions {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       /**
        * The thought signature returned by the model, replayed back to preserve
        * reasoning continuity across turns.
@@ -130,13 +141,13 @@ declare module "effect/unstable/ai/Prompt" {
   }
 
   /**
-   * Google Vertex-specific options for reasoning prompt parts.
+   * Google Agent Platform-specific options for reasoning prompt parts.
    *
    * @category request
    * @since 4.0.0
    */
   export interface ReasoningPartOptions extends ProviderOptions {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       /**
        * The thought signature returned by the model, replayed back to preserve
        * reasoning continuity across turns.
@@ -146,13 +157,13 @@ declare module "effect/unstable/ai/Prompt" {
   }
 
   /**
-   * Google Vertex-specific options for tool call prompt parts.
+   * Google Agent Platform-specific options for tool call prompt parts.
    *
    * @category request
    * @since 4.0.0
    */
   export interface ToolCallPartOptions extends ProviderOptions {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       /**
        * The thought signature associated with the tool call, replayed back to
        * preserve reasoning continuity across turns.
@@ -164,97 +175,97 @@ declare module "effect/unstable/ai/Prompt" {
 
 declare module "effect/unstable/ai/Response" {
   /**
-   * Google Vertex metadata attached when a reasoning block begins.
+   * Google Agent Platform metadata attached when a reasoning block begins.
    *
    * @category response
    * @since 4.0.0
    */
   export interface ReasoningStartPartMetadata extends ProviderMetadata {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       readonly thoughtSignature?: string | null
     } | null
   }
 
   /**
-   * Google Vertex metadata attached to streamed reasoning deltas.
+   * Google Agent Platform metadata attached to streamed reasoning deltas.
    *
    * @category response
    * @since 4.0.0
    */
   export interface ReasoningDeltaPartMetadata extends ProviderMetadata {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       readonly thoughtSignature?: string | null
     } | null
   }
 
   /**
-   * Google Vertex metadata attached to completed reasoning parts.
+   * Google Agent Platform metadata attached to completed reasoning parts.
    *
    * @category response
    * @since 4.0.0
    */
   export interface ReasoningPartMetadata extends ProviderMetadata {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       readonly thoughtSignature?: string | null
     } | null
   }
 
   /**
-   * Google Vertex metadata attached to text parts.
+   * Google Agent Platform metadata attached to text parts.
    *
    * @category response
    * @since 4.0.0
    */
   export interface TextPartMetadata extends ProviderMetadata {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       readonly thoughtSignature?: string | null
     } | null
   }
 
   /**
-   * Google Vertex metadata attached when a streamed text block begins.
+   * Google Agent Platform metadata attached when a streamed text block begins.
    *
    * @category response
    * @since 4.0.0
    */
   export interface TextStartPartMetadata extends ProviderMetadata {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       readonly thoughtSignature?: string | null
     } | null
   }
 
   /**
-   * Google Vertex metadata attached to streamed text deltas.
+   * Google Agent Platform metadata attached to streamed text deltas.
    *
    * @category response
    * @since 4.0.0
    */
   export interface TextDeltaPartMetadata extends ProviderMetadata {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       readonly thoughtSignature?: string | null
     } | null
   }
 
   /**
-   * Google Vertex metadata attached to tool call response parts.
+   * Google Agent Platform metadata attached to tool call response parts.
    *
    * @category response
    * @since 4.0.0
    */
   export interface ToolCallPartMetadata extends ProviderMetadata {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       readonly thoughtSignature?: string | null
     } | null
   }
 
   /**
-   * Google Vertex metadata attached to the finish part of a response.
+   * Google Agent Platform metadata attached to the finish part of a response.
    *
    * @category response
    * @since 4.0.0
    */
   export interface FinishPartMetadata extends ProviderMetadata {
-    readonly googleVertex?: {
+    readonly googleAgentPlatform?: {
       readonly usageMetadata: Schemas.UsageMetadata | null
       readonly groundingMetadata: Schemas.GroundingMetadata | null
       readonly finishMessage: string | null
@@ -267,7 +278,7 @@ declare module "effect/unstable/ai/Response" {
 // =============================================================================
 
 /**
- * Creates a Google Vertex language model that can be used with
+ * Creates a Google Agent Platform language model that can be used with
  * `AiModel.provide`.
  *
  * @category constructors
@@ -276,11 +287,11 @@ declare module "effect/unstable/ai/Response" {
 export const model = (
   model: Model,
   config?: Omit<typeof Config.Service, "model">
-): AiModel.Model<"google-vertex", LanguageModel.LanguageModel, GoogleVertexClient> =>
-  AiModel.make("google-vertex", model, layer({ model, config }))
+): AiModel.Model<"google-agent-platform", LanguageModel.LanguageModel, GoogleAgentPlatformClient> =>
+  AiModel.make("google-agent-platform", model, layer({ model, config }))
 
 /**
- * Creates a Google Vertex language model service.
+ * Creates a Google Agent Platform language model service.
  *
  * @category constructors
  * @since 4.0.0
@@ -288,8 +299,8 @@ export const model = (
 export const make = Effect.fnUntraced(function*({ config: providerConfig, model }: {
   readonly model: Model
   readonly config?: Omit<typeof Config.Service, "model"> | undefined
-}): Effect.fn.Return<LanguageModel.Service, never, GoogleVertexClient> {
-  const client = yield* GoogleVertexClient
+}): Effect.fn.Return<LanguageModel.Service, never, GoogleAgentPlatformClient> {
+  const client = yield* GoogleAgentPlatformClient
 
   const makeConfig: Effect.Effect<typeof Config.Service & { readonly model: string }> = Effect.gen(function*() {
     const services = yield* Effect.context<never>()
@@ -404,7 +415,7 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
 })
 
 /**
- * Creates a layer for the Google Vertex language model.
+ * Creates a layer for the Google Agent Platform language model.
  *
  * @category layers
  * @since 4.0.0
@@ -412,11 +423,11 @@ export const make = Effect.fnUntraced(function*({ config: providerConfig, model 
 export const layer = (options: {
   readonly model: Model
   readonly config?: Omit<typeof Config.Service, "model"> | undefined
-}): Layer.Layer<LanguageModel.LanguageModel, never, GoogleVertexClient> =>
+}): Layer.Layer<LanguageModel.LanguageModel, never, GoogleAgentPlatformClient> =>
   Layer.effect(LanguageModel.LanguageModel, make(options))
 
 /**
- * Provides config overrides for Google Vertex language model operations.
+ * Provides config overrides for Google Agent Platform language model operations.
  *
  * @category configuration
  * @since 4.0.0
@@ -445,7 +456,7 @@ export const withConfigOverride: {
 
 const getThoughtSignature = (
   part: Prompt.TextPart | Prompt.ReasoningPart | Prompt.ToolCallPart
-): string | undefined => part.options.googleVertex?.thoughtSignature ?? undefined
+): string | undefined => part.options.googleAgentPlatform?.thoughtSignature ?? undefined
 
 const prepareMessages = (
   options: LanguageModel.ProviderOptions,
@@ -606,7 +617,7 @@ const prepareTools = Effect.fnUntraced(function*(options: LanguageModel.Provider
 
     if (Tool.isProviderDefined(tool)) {
       const toolName = tool.name
-      const providerTool = tool as GoogleVertexTool
+      const providerTool = tool as GoogleAgentPlatformTool
       switch (providerTool.id) {
         case "google.google_search": {
           providerTools.push({ googleSearch: {} })
@@ -622,7 +633,7 @@ const prepareTools = Effect.fnUntraced(function*(options: LanguageModel.Provider
         }
         default: {
           return yield* AiError.make({
-            module: "GoogleVertexLanguageModel",
+            module: "GoogleAgentPlatformLanguageModel",
             method: "prepareTools",
             reason: new AiError.InvalidRequestError({
               description: `Received request to use unknown provider-defined tool '${toolName}'`
@@ -718,7 +729,7 @@ const thoughtSignatureMetadata = (
   thoughtSignature: string | null | undefined
 ) =>
   Predicate.isNotNullish(thoughtSignature)
-    ? { metadata: { googleVertex: { thoughtSignature } } }
+    ? { metadata: { googleAgentPlatform: { thoughtSignature } } }
     : undefined
 
 const makeResponse = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Tool.Any>>({
@@ -828,7 +839,7 @@ const makeResponse = Effect.fnUntraced(function*<Tools extends ReadonlyArray<Too
     usage: convertUsage(rawResponse.usageMetadata),
     response: buildHttpResponseDetails(response),
     metadata: {
-      googleVertex: {
+      googleAgentPlatform: {
         usageMetadata: rawResponse.usageMetadata ?? null,
         groundingMetadata: candidate?.groundingMetadata ?? null,
         finishMessage: candidate?.finishMessage ?? null
@@ -1003,7 +1014,7 @@ const makeStreamResponse = <Tools extends ReadonlyArray<Tool.Any>>({
             usage: convertUsage(usage),
             response: buildHttpResponseDetails(response),
             metadata: {
-              googleVertex: {
+              googleAgentPlatform: {
                 usageMetadata: usage,
                 groundingMetadata,
                 finishMessage
@@ -1039,7 +1050,7 @@ const annotateRequest = (
       maxTokens: request.generationConfig?.maxOutputTokens,
       stopSequences: Arr.ensure(request.generationConfig?.stopSequences).filter(Predicate.isNotNullish)
     },
-    googleVertex: {
+    googleAgentPlatform: {
       request: {
         thinkingBudgetTokens: request.generationConfig?.thinkingConfig?.thinkingBudget
       }
@@ -1093,7 +1104,7 @@ const annotateStreamResponse = (
 
 const unsupportedSchemaError = (error: unknown, method: string): AiError.AiError =>
   AiError.make({
-    module: "GoogleVertexLanguageModel",
+    module: "GoogleAgentPlatformLanguageModel",
     method,
     reason: new AiError.UnsupportedSchemaError({
       description: error instanceof Error ? error.message : String(error)
@@ -1131,7 +1142,7 @@ const transformToolCallParams = Effect.fnUntraced(function*<Tools extends Readon
   ).pipe(
     Effect.mapError((error) =>
       AiError.make({
-        module: "GoogleVertexLanguageModel",
+        module: "GoogleAgentPlatformLanguageModel",
         method: "makeResponse",
         reason: new AiError.ToolParameterValidationError({
           toolName,

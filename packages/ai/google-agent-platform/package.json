@@ -1,14 +1,14 @@
 {
-  "name": "@effect/ai-google-vertex",
-  "version": "4.0.0-beta.98",
+  "name": "@effect/ai-google-agent-platform",
+  "version": "4.0.0-beta.107",
   "type": "module",
   "license": "MIT",
-  "description": "A Google Vertex AI provider integration for Effect AI SDK",
+  "description": "A Gemini Enterprise Agent Platform provider integration for Effect AI SDK",
   "homepage": "https://effect.website",
   "repository": {
     "type": "git",
     "url": "https://github.com/Effect-TS/effect.git",
-    "directory": "packages/ai/google-vertex"
+    "directory": "packages/ai/google-agent-platform"
   },
   "bugs": {
     "url": "https://github.com/Effect-TS/effect/issues"
@@ -16,12 +16,12 @@
   "tags": [
     "typescript",
     "ai",
-    "google-vertex"
+    "google-agent-platform"
   ],
   "keywords": [
     "typescript",
     "ai",
-    "google-vertex"
+    "google-agent-platform"
   ],
   "sideEffects": [],
   "exports": {
@@ -29,6 +29,7 @@
     ".": "./src/index.ts",
     "./*": "./src/*.ts",
     "./internal/*": null,
+    "./index": null,
     "./*/index": null
   },
   "files": [
@@ -36,7 +37,10 @@
     "dist/**/*.js",
     "dist/**/*.js.map",
     "dist/**/*.d.ts",
-    "dist/**/*.d.ts.map"
+    "dist/**/*.d.ts.map",
+    "AGENTS.md",
+    "CLAUDE.md",
+    "ai-docs/**/*"
   ],
   "publishConfig": {
     "access": "public",
@@ -46,17 +50,15 @@
       ".": "./dist/index.js",
       "./*": "./dist/*.js",
       "./internal/*": null,
+      "./index": null,
       "./*/index": null
     }
   },
   "scripts": {
     "codegen": "effect-utils codegen",
     "build": "tsc -b tsconfig.json && pnpm babel",
-    "build:tsgo": "tsgo -b tsconfig.json && pnpm babel",
     "babel": "babel dist --plugins annotate-pure-calls --out-dir dist --source-maps",
-    "check": "tsc -b tsconfig.json",
-    "test": "vitest",
-    "coverage": "vitest --coverage"
+    "check": "tsc -b tsconfig.json"
   },
   "dependencies": {
     "google-auth-library": "^10.6.2"

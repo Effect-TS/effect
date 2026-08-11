@@ -1,11 +1,11 @@
 /**
- * The `GoogleVertexConfig` module provides contextual configuration for the
- * Google Vertex AI provider integration. It is used to customize the underlying
- * Google Vertex HTTP client without changing individual request code.
+ * The `GoogleAgentPlatformConfig` module provides contextual configuration for the
+ * Gemini Enterprise Agent Platform provider integration. It is used to customize the underlying
+ * Google Agent Platform HTTP client without changing individual request code.
  *
  * **Common tasks**
  *
- * - Provide a shared `HttpClient` transformation for Google Vertex requests
+ * - Provide a shared `HttpClient` transformation for Google Agent Platform requests
  * - Add provider-specific concerns such as request instrumentation, proxying,
  *   retries, or header manipulation
  * - Scope a client transformation to a single effect with {@link withClientTransform}
@@ -15,7 +15,7 @@
  * - Configuration is read from the Effect context, so overrides only apply to
  *   effects run inside the configured scope
  * - `withClientTransform` replaces the current `transformClient` value while
- *   preserving any other Google Vertex configuration fields
+ *   preserving any other Google Agent Platform configuration fields
  *
  * @since 4.0.0
  */
@@ -25,41 +25,41 @@ import { dual } from "effect/Function"
 import type { HttpClient } from "effect/unstable/http/HttpClient"
 
 /**
- * Service tag for Google Vertex client configuration overrides, such as
+ * Service tag for Google Agent Platform client configuration overrides, such as
  * transformations applied to the underlying HTTP client.
  *
  * @category services
  * @since 4.0.0
  */
-export class GoogleVertexConfig extends Context.Service<
-  GoogleVertexConfig,
-  GoogleVertexConfig.Service
->()("@effect/ai-google-vertex/GoogleVertexConfig") {
+export class GoogleAgentPlatformConfig extends Context.Service<
+  GoogleAgentPlatformConfig,
+  GoogleAgentPlatformConfig.Service
+>()("@effect/ai-google-agent-platform/GoogleAgentPlatformConfig") {
   /**
-   * Gets the configured Google Vertex service from the current context when
+   * Gets the configured Google Agent Platform service from the current context when
    * present.
    *
    * @since 4.0.0
    */
-  static readonly getOrUndefined: Effect.Effect<typeof GoogleVertexConfig.Service | undefined> = Effect.map(
+  static readonly getOrUndefined: Effect.Effect<typeof GoogleAgentPlatformConfig.Service | undefined> = Effect.map(
     Effect.context<never>(),
-    (services) => services.mapUnsafe.get(GoogleVertexConfig.key)
+    (services) => services.mapUnsafe.get(GoogleAgentPlatformConfig.key)
   )
 }
 
 /**
- * Namespace containing types associated with the `GoogleVertexConfig` service.
+ * Namespace containing types associated with the `GoogleAgentPlatformConfig` service.
  *
  * @since 4.0.0
  */
-export declare namespace GoogleVertexConfig {
+export declare namespace GoogleAgentPlatformConfig {
   /**
-   * Configuration provided through `GoogleVertexConfig`.
+   * Configuration provided through `GoogleAgentPlatformConfig`.
    *
    * **Details**
    *
    * Use `transformClient` to wrap or replace the `HttpClient` used by Google
-   * Vertex API requests.
+   * Agent Platform API requests.
    *
    * @category models
    * @since 4.0.0
@@ -70,8 +70,8 @@ export declare namespace GoogleVertexConfig {
 }
 
 /**
- * Runs an effect with a `GoogleVertexConfig` override that transforms the
- * underlying `HttpClient` used by Google Vertex requests.
+ * Runs an effect with a `GoogleAgentPlatformConfig` override that transforms the
+ * underlying `HttpClient` used by Google Agent Platform requests.
  *
  * @category configuration
  * @since 4.0.0
@@ -84,6 +84,6 @@ export const withClientTransform: {
   transformClient: (client: HttpClient) => HttpClient
 ) =>
   Effect.flatMap(
-    GoogleVertexConfig.getOrUndefined,
-    (config) => Effect.provideService(self, GoogleVertexConfig, { ...config, transformClient })
+    GoogleAgentPlatformConfig.getOrUndefined,
+    (config) => Effect.provideService(self, GoogleAgentPlatformConfig, { ...config, transformClient })
   ))

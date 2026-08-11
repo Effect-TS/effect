@@ -1,5 +1,5 @@
 /**
- * Google Vertex provider-defined tools for use with the LanguageModel.
+ * Google Agent Platform provider-defined tools for use with the LanguageModel.
  *
  * Provides grounding and execution tools that are natively supported by the
  * Gemini API, including Google Search grounding, URL context, and code
@@ -11,12 +11,12 @@ import * as Schema from "effect/Schema"
 import * as Tool from "effect/unstable/ai/Tool"
 
 /**
- * Union of all Google Vertex provider-defined tools.
+ * Union of all Google Agent Platform provider-defined tools.
  *
  * @category models
  * @since 4.0.0
  */
-export type GoogleVertexTool =
+export type GoogleAgentPlatformTool =
   | ReturnType<typeof GoogleSearch>
   | ReturnType<typeof UrlContext>
   | ReturnType<typeof CodeExecution>
