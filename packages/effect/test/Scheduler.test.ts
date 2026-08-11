@@ -51,8 +51,6 @@ describe("Scheduler", () => {
     try {
       // @ts-expect-error -- simulating a runtime without the global
       delete globalThis.queueMicrotask
-      // The fallback is chosen when the module body evaluates, so a fresh copy
-      // of the module must be evaluated with the global absent.
       vi.resetModules()
       const FreshScheduler = await import("effect/Scheduler")
       const dispatcher = new FreshScheduler.MixedScheduler("sync").makeDispatcher()
