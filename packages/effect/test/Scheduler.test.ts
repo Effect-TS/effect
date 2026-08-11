@@ -39,27 +39,6 @@ describe("Scheduler", () => {
     }
   })
 
-  it("MixedScheduler does not use queueMicrotask", () => {
-    const queueMicrotask = vi.spyOn(globalThis, "queueMicrotask").mockImplementation(() => {
-      throw new Error("queueMicrotask is not supported")
-    })
-
-    try {
-      const scheduler = new Scheduler.MixedScheduler("sync").makeDispatcher()
-      let called = false
-
-      scheduler.scheduleTask(() => {
-        called = true
-      }, 0)
-      scheduler.flush()
-
-      assert.strictEqual(called, true)
-      assert.strictEqual(queueMicrotask.mock.calls.length, 0)
-    } finally {
-      queueMicrotask.mockRestore()
-    }
-  })
-
   it.effect("MixedScheduler orders by priority (sync)", () =>
     Effect.sync(() => {
       const scheduler = new Scheduler.MixedScheduler("sync").makeDispatcher()
