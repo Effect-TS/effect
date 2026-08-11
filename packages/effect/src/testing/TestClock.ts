@@ -203,6 +203,14 @@ const SleepOrder = Order.flip(Order.Struct({
   sequence: Order.Number
 }))
 
+const nanosPerMilli = BigInt(1_000_000)
+
+const millisToNanos = (millis: number): bigint => {
+  const wholeMillis = Math.floor(millis)
+  const fractionalNanos = Math.floor((millis - wholeMillis) * 1_000_000)
+  return BigInt(wholeMillis) * nanosPerMilli + BigInt(fractionalNanos)
+}
+
 /**
  * Creates a `TestClock` with optional configuration.
  *
@@ -247,6 +255,7 @@ export const make = Effect.fnUntraced(function*(
   const warningSemaphore = yield* Semaphore.make(1)
 
   let currentTimestamp: number = new Date(0).getTime()
+  let currentWallNanos = BigInt(0)
   let currentMonotonicNanos = BigInt(0)
   let warningState: WarningState = WarningState.Start()
 
@@ -255,7 +264,7 @@ export const make = Effect.fnUntraced(function*(
   }
 
   function currentTimeNanosUnsafe(): bigint {
-    return BigInt(Math.floor(currentTimestamp * 1000000))
+    return currentWallNanos
   }
 
   function monotonicTimeNanosUnsafe(): bigint {
@@ -338,6 +347,9 @@ export const make = Effect.fnUntraced(function*(
       const deltaMillis = timestamp - currentTimestamp
       if (deltaMillis > 0 && Number.isFinite(deltaMillis)) {
         currentMonotonicNanos += BigInt(Math.round(deltaMillis * 1_000_000))
+      }
+      if (Number.isFinite(timestamp)) {
+        currentWallNanos = millisToNanos(timestamp)
       }
       currentTimestamp = timestamp
     }

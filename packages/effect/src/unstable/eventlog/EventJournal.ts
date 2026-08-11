@@ -86,7 +86,7 @@ export class EventJournal extends Context.Service<EventJournal, {
   ) => Effect.Effect<A, EventJournalError | E, R>
 
   /**
-   * Retrieve the last known sequence number for a remote source.
+   * Retrieve the first unused sequence number for a remote source.
    */
   readonly nextRemoteSequence: (remoteId: RemoteId) => Effect.Effect<number, EventJournalError>
 
@@ -417,8 +417,8 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       for (const remoteEntry of options.entries) {
         if (byId.has(remoteEntry.entry.idString)) {
           duplicateEntries.push(remoteEntry.entry)
-          if (remoteEntry.remoteSequence > remote.sequence) {
-            remote.sequence = remoteEntry.remoteSequence
+          if (remoteEntry.remoteSequence >= remote.sequence) {
+            remote.sequence = remoteEntry.remoteSequence + 1
           }
           continue
         }
@@ -438,7 +438,7 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
           if (entry !== undefined && entry.createdAtMillis > entryMillis) {
             continue
           }
-          for (let j = i + 2; j < journal.length; j++) {
+          for (let j = i + 1; j < journal.length; j++) {
             const scannedEntry = journal[j]!
             if (scannedEntry.event === originEntry.event && scannedEntry.primaryKey === originEntry.primaryKey) {
               conflicts.push(scannedEntry)
@@ -451,11 +451,19 @@ export const makeMemory: Effect.Effect<EventJournal["Service"]> = Effect.gen(fun
       for (const remoteEntry of uncommittedRemotes) {
         journal.push(remoteEntry.entry)
         byId.set(remoteEntry.entry.idString, remoteEntry.entry)
-        if (remoteEntry.remoteSequence > remote.sequence) {
-          remote.sequence = remoteEntry.remoteSequence
+        remotes.forEach((target) => {
+          if (target !== remote) {
+            target.missing.push(remoteEntry.entry)
+          }
+        })
+        if (remoteEntry.remoteSequence >= remote.sequence) {
+          remote.sequence = remoteEntry.remoteSequence + 1
         }
       }
       journal.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
+      remotes.forEach((remote) => {
+        remote.missing.sort((a, b) => a.createdAtMillis - b.createdAtMillis)
+      })
       return {
         duplicateEntries
       }

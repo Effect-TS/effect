@@ -1,5 +1,4 @@
-import { Optic, Result, Schema } from "effect"
-import type { Option } from "effect"
+import { Optic, type Option, Result, Schema, type SchemaIssue } from "effect"
 import { describe, expect, it } from "tstyche"
 
 describe("Optic", () => {
@@ -36,6 +35,22 @@ describe("Optic", () => {
       expect(lens).type.not.toHaveProperty("node")
       expect(prism).type.not.toHaveProperty("node")
       expect(optional).type.not.toHaveProperty("node")
+    })
+
+    it("uses structured issues for failures", () => {
+      expect(prism.getResult).type.toBe<(source: number) => Result.Result<number, SchemaIssue.Issue>>()
+      expect(optional.getResult).type.toBe<(source: number) => Result.Result<number, SchemaIssue.Issue>>()
+      expect(optional.replaceResult)
+        .type.toBe<(value: number, source: number) => Result.Result<number, SchemaIssue.Issue>>()
+
+      expect(Optic.makePrism).type.not.toBeCallableWith(
+        (_: number) => Result.fail("failure"),
+        (n: number) => n
+      )
+      expect(Optic.makeOptional).type.not.toBeCallableWith(
+        (_: number) => Result.fail("failure"),
+        (n: number) => Result.succeed(n)
+      )
     })
   })
 

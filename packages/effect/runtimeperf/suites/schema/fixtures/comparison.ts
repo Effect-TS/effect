@@ -69,3 +69,23 @@ const effectTagged100 = Schema.Union(
 export const effectTagged100ValidLast = effectCase(effectTagged100, taggedInput, true)
 export const effectTagged100InvalidSelected = effectCase(effectTagged100, taggedInvalidSelected, false)
 export const effectTagged100InvalidTag = effectCase(effectTagged100, taggedInvalidTag, false)
+
+const makeEffectMultiSentinelMember = (index) =>
+  Schema.Struct({
+    kind: Schema.Literal("shared"),
+    variant: Schema.Literal(`variant${index}`),
+    value: Schema.String
+  })
+
+const effectMultiSentinel100 = Schema.Union(
+  Array.from({ length: 100 }, (_, index) => makeEffectMultiSentinelMember(index))
+)
+const multiSentinelValidFirst = { kind: "shared", variant: "variant0", value: "value" }
+const multiSentinelInvalidVariant = { kind: "shared", variant: "missing", value: "value" }
+
+export const effectMultiSentinel100ValidFirst = effectCase(effectMultiSentinel100, multiSentinelValidFirst, true)
+export const effectMultiSentinel100InvalidVariant = effectCase(
+  effectMultiSentinel100,
+  multiSentinelInvalidVariant,
+  false
+)

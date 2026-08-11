@@ -12,6 +12,8 @@ import {
   SchemaIssue,
   SchemaTransformation
 } from "effect"
+import { vi } from "vitest"
+import type * as ConfigProviderModule from "../src/ConfigProvider.ts"
 
 async function assertSuccess<T>(config: Config.Config<T>, provider: ConfigProvider.ConfigProvider, expected: T) {
   const r = await config.parse(provider).pipe(
@@ -31,6 +33,23 @@ async function assertFailure<T>(config: Config.Config<T>, provider: ConfigProvid
 }
 
 describe("Config", () => {
+  it("recognizes SourceError defects from a reloaded module copy", async () => {
+    vi.resetModules()
+    const ForeignConfigProvider = await vi.importActual<typeof ConfigProviderModule>(
+      "../src/ConfigProvider.ts"
+    )
+    const sourceError = new ForeignConfigProvider.SourceError({ message: "source unavailable" })
+    assert.isFalse(sourceError instanceof ConfigProvider.SourceError)
+
+    const provider = ConfigProvider.make(() => Effect.die(sourceError))
+    const error = await Config.string("value").parse(provider).pipe(
+      Effect.flip,
+      Effect.runPromise
+    )
+
+    assert.strictEqual(error.cause, sourceError)
+  })
+
   it.effect("uses the current ConfigProvider when yielded as an Effect", () =>
     Effect.gen(function*() {
       const provider = ConfigProvider.fromEnv({ env: { STRING: "value" } })
@@ -837,6 +856,34 @@ Expected "Infinity" | "-Infinity" | "NaN"
             ),
             required: Config.string("required")
           }).pipe(Config.withDefault({ recovered: { value: "default" }, required: "default" }))
+          const error = yield* config.parse(provider).pipe(Effect.flip)
+
+          assert.strictEqual(
+            error.cause.message,
+            `Expected string
+  at ["required"]`
+          )
+        }))
+
+      it.effect("preserves sibling input evidence when recovering an all failure", () =>
+        Effect.gen(function*() {
+          const sourceError = new ConfigProvider.SourceError({ message: "source unavailable" })
+          const provider = ConfigProvider.make((path) => {
+            if (path[0] === "failed") return Effect.fail(sourceError)
+            if (path[0] === "present") return Effect.succeed(ConfigProvider.makeValue("value"))
+            return Effect.succeed(undefined)
+          })
+          const recovered = Config.all({
+            failed: Config.string("failed"),
+            present: Config.string("present")
+          }).pipe(Config.orElse(() => Config.succeed({ failed: "recovered", present: "recovered" })))
+          const config = Config.all({
+            recovered,
+            required: Config.string("required")
+          }).pipe(Config.withDefault({
+            recovered: { failed: "default", present: "default" },
+            required: "default"
+          }))
           const error = yield* config.parse(provider).pipe(Effect.flip)
 
           assert.strictEqual(

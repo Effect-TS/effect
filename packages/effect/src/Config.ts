@@ -11,12 +11,13 @@ import type { Path, SourceError } from "./ConfigProvider.ts"
 import * as ConfigProvider from "./ConfigProvider.ts"
 import * as Effect from "./Effect.ts"
 import * as Effectable from "./Effectable.ts"
-import { dual } from "./Function.ts"
+import { dual, memoize } from "./Function.ts"
 import * as InternalRecord from "./internal/record.ts"
 import * as LogLevel_ from "./LogLevel.ts"
 import * as Option from "./Option.ts"
 import * as Predicate from "./Predicate.ts"
 import * as Rec from "./Record.ts"
+import * as Result from "./Result.ts"
 import * as Schema from "./Schema.ts"
 import * as SchemaAST from "./SchemaAST.ts"
 import * as SchemaGetter from "./SchemaGetter.ts"
@@ -193,13 +194,15 @@ const evaluationFailure = (error: ConfigError, hasInput: boolean): EvaluationFai
   hasInput
 })
 
+const isSourceError = (u: unknown): u is ConfigProvider.SourceError => Predicate.isTagged(u, "SourceError")
+
 const catchSourceError = <A, E, R>(
   self: Effect.Effect<A, E, R>,
   hasInput: boolean
 ): Effect.Effect<A, E | EvaluationFailure, R> =>
   self.pipe(
     Effect.catchDefect((defect) =>
-      defect instanceof ConfigProvider.SourceError
+      isSourceError(defect)
         ? Effect.fail(evaluationFailure(new ConfigError(defect), hasInput))
         : Effect.die(defect)
     )
@@ -414,14 +417,14 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
   if (Array.isArray(configs)) {
     return make((provider, pathPrefix) =>
       Effect.flatMapEager(
-        Effect.all(configs.map((config) => evaluateAt(config, provider, pathPrefix))),
+        Effect.all(configs.map((config) => Effect.result(evaluateAt(config, provider, pathPrefix)))),
         resolveArray
       )
     ) as any
   } else {
     return make((provider, pathPrefix) =>
       Effect.flatMapEager(
-        Effect.all(Rec.map(configs, (config) => evaluateAt(config, provider, pathPrefix))),
+        Effect.all(Rec.map(configs, (config) => Effect.result(evaluateAt(config, provider, pathPrefix)))),
         resolveRecord
       )
     ) as any
@@ -429,18 +432,28 @@ export function all<const Arg extends Iterable<Config<any>> | Record<string, Con
 }
 
 const resolveArray = (
-  resolutions: ReadonlyArray<Resolution<any>>
+  results: ReadonlyArray<Result.Result<Resolution<any>, EvaluationFailure>>
 ): Effect.Effect<Resolution<Array<any>>, EvaluationFailure> => {
   const values: Array<any> = []
+  let firstFailure: EvaluationFailure | undefined
   let firstAbsent: Absent | undefined
   let hasInput = false
-  for (const resolution of resolutions) {
+  for (const result of results) {
+    if (Result.isFailure(result)) {
+      firstFailure ??= result.failure
+      hasInput = hasInput || result.failure.hasInput
+      continue
+    }
+    const resolution = result.success
     if (resolution._tag === "Absent") {
       firstAbsent ??= resolution
     } else {
       values.push(resolution.value)
       hasInput = hasInput || resolution.hasInput
     }
+  }
+  if (firstFailure !== undefined) {
+    return Effect.fail(evaluationFailure(firstFailure.error, hasInput))
   }
   if (firstAbsent !== undefined) {
     return hasInput ? Effect.fail(evaluationFailure(firstAbsent.error, true)) : Effect.succeed(firstAbsent)
@@ -449,19 +462,29 @@ const resolveArray = (
 }
 
 const resolveRecord = (
-  resolutions: Record<string, Resolution<any>>
+  results: Record<string, Result.Result<Resolution<any>, EvaluationFailure>>
 ): Effect.Effect<Resolution<Record<string, any>>, EvaluationFailure> => {
   const values: Record<string, any> = {}
+  let firstFailure: EvaluationFailure | undefined
   let firstAbsent: Absent | undefined
   let hasInput = false
-  for (const key in resolutions) {
-    const resolution = resolutions[key]
+  for (const key in results) {
+    const result = results[key]
+    if (Result.isFailure(result)) {
+      firstFailure ??= result.failure
+      hasInput = hasInput || result.failure.hasInput
+      continue
+    }
+    const resolution = result.success
     if (resolution._tag === "Absent") {
       firstAbsent ??= resolution
     } else {
       InternalRecord.assignProperty(values, key, resolution.value)
       hasInput = hasInput || resolution.hasInput
     }
+  }
+  if (firstFailure !== undefined) {
+    return Effect.fail(evaluationFailure(firstFailure.error, hasInput))
   }
   if (firstAbsent !== undefined) {
     return hasInput ? Effect.fail(evaluationFailure(firstAbsent.error, true)) : Effect.succeed(firstAbsent)
@@ -704,7 +727,7 @@ const hasProviderInput = (
   }
 }
 
-const toConfigCursorAST = (root: SchemaAST.AST): SchemaAST.AST => {
+const toConfigCursorAST = memoize((root: SchemaAST.AST): SchemaAST.AST => {
   const seen = new WeakSet<SchemaAST.AST>()
   const recur = SchemaAST.applyToSelfOrLastLinkEncoding((ast) => {
     seen.add(ast)
@@ -768,7 +791,7 @@ const toConfigCursorAST = (root: SchemaAST.AST): SchemaAST.AST => {
     }
   })
   return recur(root)
-}
+})
 
 /**
  * Creates a `Config<T>` from a `Schema.Codec`.

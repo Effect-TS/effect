@@ -4,6 +4,86 @@ import * as Schema from "effect/Schema"
 import * as Sse from "effect/unstable/encoding/Sse"
 
 describe("Sse", () => {
+  it("treats CRLF split across chunks as one line ending", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed("data: first\r")
+    parser.feed("\ndata: second\n\n")
+
+    assert.deepStrictEqual(events, [{
+      _tag: "Event",
+      event: "message",
+      id: undefined,
+      data: "first\nsecond"
+    }])
+  })
+
+  it("retains the last event ID for later events", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed("id: 1\ndata: first\n\ndata: second\n\n")
+
+    assert.deepStrictEqual(events, [
+      {
+        _tag: "Event",
+        id: "1",
+        event: "message",
+        data: "first"
+      },
+      {
+        _tag: "Event",
+        id: "1",
+        event: "message",
+        data: "second"
+      }
+    ])
+  })
+
+  it("roundtrips an SSE event with empty data", () => {
+    const input: Sse.Event = { _tag: "Event", event: "message", id: undefined, data: "" }
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed(Sse.encoder.write(input))
+
+    assert.deepStrictEqual(events, [input])
+  })
+
+  it("strips a UTF-8 BOM from the start of an SSE stream", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed("\uFEFFdata: ok\n\n")
+
+    assert.deepStrictEqual(events, [{
+      _tag: "Event",
+      event: "message",
+      id: undefined,
+      data: "ok"
+    }])
+  })
+
+  it("uses message for an empty SSE event type", () => {
+    const events: Array<Sse.AnyEvent> = []
+    const parser = Sse.makeParser((event) => events.push(event))
+
+    parser.feed("event:\ndata: ok\n\n")
+
+    assert.strictEqual(events.length, 1)
+    assert.strictEqual((events[0] as Sse.Event).event, "message")
+  })
+
+  it("ignores retry values that are not ASCII digits", () => {
+    const events: Array<Sse.AnyEvent> = []
+    for (const value of ["123x", "+123", "-123", "1.5"]) {
+      Sse.makeParser((event) => events.push(event)).feed(`retry: ${value}\n`)
+    }
+
+    assert.deepStrictEqual(events, [])
+  })
+
   it("Event preserves string payloads", () => {
     const decode = Schema.decodeUnknownSync(Sse.Event)
     const encode = Schema.encodeSync(Sse.Event)

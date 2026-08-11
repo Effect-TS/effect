@@ -1,5 +1,5 @@
 import { describe, it } from "@effect/vitest"
-import { assertNone, assertSome, deepStrictEqual, strictEqual } from "@effect/vitest/utils"
+import { assertNone, assertSome, deepStrictEqual, strictEqual, throws } from "@effect/vitest/utils"
 import { DateTime, Duration, Effect, Option } from "effect"
 import { TestClock } from "effect/testing"
 
@@ -481,7 +481,19 @@ describe("DateTime", () => {
       }))
   })
 
+  describe("make", () => {
+    it("rejects invalid object instants", () => {
+      assertNone(DateTime.make({ epochMilliseconds: NaN }))
+      assertNone(DateTime.make({ epochMilliseconds: 8_640_000_000_000_001 }))
+    })
+  })
+
   describe("makeUnsafe", () => {
+    it("throws for invalid object instants", () => {
+      throws(() => DateTime.makeUnsafe({ epochMilliseconds: NaN }))
+      throws(() => DateTime.makeUnsafe({ epochMilliseconds: 8_640_000_000_000_001 }))
+    })
+
     it("treats strings without zone info as UTC", () => {
       const dt = DateTime.makeUnsafe("2024-01-01 01:00:00")
       strictEqual(dt.toJSON(), "2024-01-01T01:00:00.000Z")

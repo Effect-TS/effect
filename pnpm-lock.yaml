@@ -186,10 +186,10 @@ importers:
         version: link:../packages/opentelemetry
       '@effect/platform-bun':
         specifier: workspace:*
-        version: link:../packages/platform-bun
+        version: link:../packages/platform/bun
       '@effect/platform-node':
         specifier: workspace:*
-        version: link:../packages/platform-node
+        version: link:../packages/platform/node
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
@@ -291,10 +291,10 @@ importers:
         specifier: ^30.0.0
         version: 30.0.0
       react:
-        specifier: 19.2.7
+        specifier: ^19.2.7
         version: 19.2.7
       react-dom:
-        specifier: 19.2.7
+        specifier: ^19.2.7
         version: 19.2.7(react@19.2.7)
       react-error-boundary:
         specifier: ^6.1.2
@@ -341,34 +341,16 @@ importers:
       fast-check:
         specifier: ^4.9.0
         version: 4.9.0
-      find-my-way-ts:
-        specifier: ^0.1.6
-        version: 0.1.6
-      ini:
-        specifier: ^7.0.0
-        version: 7.0.0
       kubernetes-types:
         specifier: ^1.30.0
         version: 1.30.0
       msgpackr:
         specifier: ^2.0.4
         version: 2.0.4
-      multipasta:
-        specifier: ^0.2.8
-        version: 0.2.8
-      toml:
-        specifier: ^4.1.2
-        version: 4.1.2
       uuid:
         specifier: ^14.0.1
         version: 14.0.1
-      yaml:
-        specifier: ^2.9.0
-        version: 2.9.0
     devDependencies:
-      '@types/ini':
-        specifier: ^4.1.1
-        version: 4.1.1
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
@@ -440,15 +422,11 @@ importers:
         specifier: ^1.42.0
         version: 1.42.0
 
-  packages/platform-browser:
-    dependencies:
-      multipasta:
-        specifier: ^0.2.8
-        version: 0.2.8
+  packages/platform/browser:
     devDependencies:
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
       fake-indexeddb:
         specifier: ^6.2.5
         version: 6.2.5
@@ -456,27 +434,27 @@ importers:
         specifier: ^8.4.1
         version: 8.4.1
 
-  packages/platform-bun:
+  packages/platform/bun:
     dependencies:
       '@effect/platform-node-shared':
         specifier: workspace:^
-        version: link:../platform-node-shared
+        version: link:../node-shared
     devDependencies:
       '@types/bun':
         specifier: ^1.3.14
         version: 1.3.14
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
 
-  packages/platform-deno:
+  packages/platform/deno:
     dependencies:
       '@db/redis':
         specifier: jsr:^0.41.2
         version: '@jsr/db__redis@0.41.2'
       '@effect/platform-node-shared':
         specifier: workspace:^
-        version: link:../platform-node-shared
+        version: link:../node-shared
       '@std/fs':
         specifier: jsr:^1.0.24
         version: '@jsr/std__fs@1.0.24'
@@ -501,15 +479,15 @@ importers:
         version: 2.7.0
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
 
-  packages/platform-node:
+  packages/platform/node:
     dependencies:
       '@effect/platform-node-shared':
         specifier: workspace:^
-        version: link:../platform-node-shared
+        version: link:../node-shared
       ioredis:
-        specifier: ^5.7.0
+        specifier: '>=5.7.0 <6.0.0'
         version: 5.8.2
       mime:
         specifier: ^4.1.0
@@ -532,9 +510,9 @@ importers:
         version: 26.1.2
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
 
-  packages/platform-node-shared:
+  packages/platform/node-shared:
     dependencies:
       '@types/ws':
         specifier: ^8.18.1
@@ -548,7 +526,7 @@ importers:
         version: 26.1.2
       effect:
         specifier: workspace:^
-        version: link:../effect
+        version: link:../../effect
       tar:
         specifier: ^7.5.19
         version: 7.5.19
@@ -561,7 +539,7 @@ importers:
     devDependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -598,6 +576,9 @@ importers:
         specifier: ^19.2.1
         version: 19.2.1(@azure/core-client@1.10.1)
     devDependencies:
+      '@testcontainers/mssqlserver':
+        specifier: ^12.0.4
+        version: 12.0.4
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -621,7 +602,7 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       pg-connection-string:
-        specifier: 2.14.0
+        specifier: ^2.14.0
         version: 2.14.0
       pg-cursor:
         specifier: ^2.21.0
@@ -660,7 +641,7 @@ importers:
     devDependencies:
       '@effect/platform-bun':
         specifier: workspace:^
-        version: link:../../platform-bun
+        version: link:../../platform/bun
       '@types/bun':
         specifier: ^1.3.14
         version: 1.3.14
@@ -681,7 +662,7 @@ importers:
     devDependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
@@ -692,7 +673,7 @@ importers:
   packages/sql/sqlite-react-native:
     devDependencies:
       '@op-engineering/op-sqlite':
-        specifier: 17.1.2
+        specifier: ^17.1.2
         version: 17.1.2(react-native@0.83.0(@babel/core@8.0.1)(@types/react@19.2.17)(react@19.2.7))(react@19.2.7)
       effect:
         specifier: workspace:^
@@ -714,7 +695,7 @@ importers:
         version: link:../openapi-generator
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -733,7 +714,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -752,7 +733,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -780,7 +761,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       '@rollup/plugin-node-resolve':
         specifier: ^16.0.3
         version: 16.0.3(rollup@4.62.3)
@@ -820,7 +801,7 @@ importers:
         version: 0.1.0
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
@@ -850,7 +831,7 @@ importers:
         specifier: ^7.0.6
         version: 7.27.0
       '@types/doctrine':
-        specifier: 0.0.9
+        specifier: ^0.0.9
         version: 0.0.9
       '@types/node':
         specifier: ^26.1.2
@@ -862,7 +843,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vitest:
-        specifier: 4.1.10
+        specifier: ^4.1.10
         version: 4.1.10(@edge-runtime/vm@5.0.0)(@opentelemetry/api@1.9.1)(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(jsdom@30.0.0)(vite@8.1.5(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
   packages/tools/doctest:
@@ -884,7 +865,7 @@ importers:
         specifier: ^8.1.5
         version: 8.1.5(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0)
       vitest:
-        specifier: 4.1.10
+        specifier: ^4.1.10
         version: 4.1.10(@edge-runtime/vm@5.0.0)(@opentelemetry/api@1.9.1)(@types/node@26.1.2)(@vitest/coverage-v8@4.1.10)(happy-dom@20.11.1)(jsdom@30.0.0)(vite@8.1.5(@types/node@26.1.2)(esbuild@0.28.1)(terser@5.49.0)(tsx@4.23.1)(yaml@2.9.0))
 
   packages/tools/jsdocs:
@@ -913,7 +894,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       swagger2openapi:
         specifier: ^7.0.8
         version: 7.0.8
@@ -954,7 +935,7 @@ importers:
     dependencies:
       '@effect/platform-node':
         specifier: workspace:^
-        version: link:../../platform-node
+        version: link:../../platform/node
       effect:
         specifier: workspace:^
         version: link:../../effect
@@ -997,10 +978,10 @@ importers:
         version: link:../packages/opentelemetry
       '@effect/platform-bun':
         specifier: workspace:*
-        version: link:../packages/platform-bun
+        version: link:../packages/platform/bun
       '@effect/platform-node':
         specifier: workspace:*
-        version: link:../packages/platform-node
+        version: link:../packages/platform/node
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
@@ -1045,10 +1026,10 @@ importers:
     dependencies:
       '@effect/platform-bun':
         specifier: workspace:*
-        version: link:../packages/platform-bun
+        version: link:../packages/platform/bun
       '@effect/platform-node':
         specifier: workspace:*
-        version: link:../packages/platform-node
+        version: link:../packages/platform/node
       '@effect/sql-clickhouse':
         specifier: workspace:*
         version: link:../packages/sql/clickhouse
@@ -3092,6 +3073,9 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
+  '@testcontainers/mssqlserver@12.0.4':
+    resolution: {integrity: sha512-UkxfpOavn4V6yoLQ/uxBPCgc13J8PcWemqTJSe0JCj54ZcYSh/24qjN5eTHzcLsIYSpx/ZXXBP31E2vWKLtIfA==}
+
   '@testcontainers/mysql@12.0.4':
     resolution: {integrity: sha512-XZWh/L6EN8XQa5lsBdESDolDmyUA56bDgYh5SicLzzC2b4jho4lc0yA0GOOVX/bd0zK6VQK6hmDDJE+T3rFrdA==}
 
@@ -3195,9 +3179,6 @@ packages:
 
   '@types/graceful-fs@4.1.9':
     resolution: {integrity: sha512-olP3sd1qOEe5dXTSaFvQG+02VdRXcdytWLAZsAq1PecU8uqQAhkrnbli7DagjtXKW/Bl7YJbUsa8MPcuc8LHEQ==}
-
-  '@types/ini@4.1.1':
-    resolution: {integrity: sha512-MIyNUZipBTbyUNnhvuXJTY7B6qNI78meck9Jbv3wk0OgNwRyOOVEKDutAkOs1snB/tx0FafyR6/SN4Ps0hZPeg==}
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -4353,9 +4334,6 @@ packages:
     resolution: {integrity: sha512-wXZV5emFEjrridIgED11OoUKLxiYjAcqot/NJdAkOhlJ+vGzwhOAfcG5OX1jP+S0PcjEn8bdMJv+g2jwQ3Onig==}
     engines: {node: '>=8'}
 
-  find-my-way-ts@0.1.6:
-    resolution: {integrity: sha512-a85L9ZoXtNAey3Y6Z+eBWW658kO/MwR7zIafkIUPUMf3isZG0NCs2pjW2wtjxAKuJPxMAsHUIP4ZPGv0o5gyTA==}
-
   find-up@3.0.0:
     resolution: {integrity: sha512-1yD6RmLI1XBfxugvORwlck6f75tYL+iR0jqwsOrOxMZyGYqUuDhJ0l4AXdO1iX/FTs9cBAMEk1gWSEx1kSbylg==}
     engines: {node: '>=6'}
@@ -4566,10 +4544,6 @@ packages:
 
   ini@1.3.8:
     resolution: {integrity: sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==}
-
-  ini@7.0.0:
-    resolution: {integrity: sha512-ifK0CgjALofS5bkrcTy4RaQ9Vx2Knf/eLeIO+NaswQEpH1UblrtTSCIvN71qQDMq0PeQ/SSPojvEJp9vvvfr+w==}
-    engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
   invariant@2.2.4:
     resolution: {integrity: sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA==}
@@ -5245,9 +5219,6 @@ packages:
 
   msgpackr@2.0.4:
     resolution: {integrity: sha512-o1C5KRmuRt+apqMr1HuGSqWStZoRBUpEsCsl15uM9VdAF1qHLtvMOU2En747EnTyEl6c4pzPewRMFF31s1CNbA==}
-
-  multipasta@0.2.8:
-    resolution: {integrity: sha512-ZPWuMKyv0cSO29f7hozp+k6+crZbQijV8ipMvxNxRf2SwtYGTX1ZX89Kd20VV4H9Znonx+EQn+iy1wGQsJ+b+Q==}
 
   mysql2@3.22.6:
     resolution: {integrity: sha512-fPKmeDGUzvFP7bMD5SASlJ5zIgvCC4hbanTmhbUlEmhyrY1hR4Hi3xLOWgTd3luYjLVifx6uGvMNJ2m/LlqEpg==}
@@ -6267,6 +6238,10 @@ packages:
   testcontainers@12.0.4:
     resolution: {integrity: sha512-QIR/8xF1+F/26cIM+9B4yyxNTbKJxAv3hygZyhPRgZ8Q2AhlPZjDdpXRuk16V37X4bgJRI3hXFhoEICMBA7Adg==}
 
+  testcontainers@12.1.0:
+    resolution: {integrity: sha512-YjDLqIITuhGLMnM10yhg3oV6lIG5IMpz1R1DPBZoOOks83q7i7IVpeSWRTiyl7roozjiyLmwIoLK/KY8OnZmIA==}
+    engines: {node: '>= 22.22'}
+
   text-decoder@1.2.7:
     resolution: {integrity: sha512-vlLytXkeP4xvEq2otHeJfSQIRyWxo/oZGEbXrtEEF9Hnmrdly59sUbzZ/QgyWuLYHctCHxFF4tRQZNQ9k60ExQ==}
 
@@ -6323,10 +6298,6 @@ packages:
   toidentifier@1.0.1:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
     engines: {node: '>=0.6'}
-
-  toml@4.1.2:
-    resolution: {integrity: sha512-m0vXfHODcw3gk+KONAOlVQ5yNHc3yS3B1ybM3HS1vqDoS0RWTDDVBVVTYi8hH0k+2OM1vmo9fb1WX9EVqjqfHA==}
-    engines: {node: '>=20'}
 
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
@@ -8717,6 +8688,15 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
+  '@testcontainers/mssqlserver@12.0.4':
+    dependencies:
+      testcontainers: 12.1.0
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+      - supports-color
+
   '@testcontainers/mysql@12.0.4':
     dependencies:
       testcontainers: 12.0.4
@@ -8859,8 +8839,6 @@ snapshots:
   '@types/graceful-fs@4.1.9':
     dependencies:
       '@types/node': 26.1.2
-
-  '@types/ini@4.1.1': {}
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 
@@ -10077,8 +10055,6 @@ snapshots:
       make-dir: 3.1.0
       pkg-dir: 4.2.0
 
-  find-my-way-ts@0.1.6: {}
-
   find-up@3.0.0:
     dependencies:
       locate-path: 3.0.0
@@ -10286,8 +10262,6 @@ snapshots:
   inherits@2.0.4: {}
 
   ini@1.3.8: {}
-
-  ini@7.0.0: {}
 
   invariant@2.2.4:
     dependencies:
@@ -11108,8 +11082,6 @@ snapshots:
   msgpackr@2.0.4:
     optionalDependencies:
       msgpackr-extract: 3.0.4
-
-  multipasta@0.2.8: {}
 
   mysql2@3.22.6(@types/node@26.1.2):
     dependencies:
@@ -12289,6 +12261,29 @@ snapshots:
       - react-native-b4a
       - supports-color
 
+  testcontainers@12.1.0:
+    dependencies:
+      '@balena/dockerignore': 1.0.2
+      '@types/dockerode': 4.0.1
+      archiver: 7.0.1
+      async-lock: 1.4.1
+      byline: 5.0.0
+      debug: 4.4.3(supports-color@10.2.2)
+      docker-compose: 1.4.2
+      dockerode: 5.0.1
+      get-port: 5.1.1
+      proper-lockfile: 4.1.2
+      properties-reader: 3.0.1
+      ssh-remote-port-forward: 1.0.4
+      tar-fs: 3.1.3
+      tmp: 0.2.7
+      undici: 8.9.0
+    transitivePeerDependencies:
+      - bare-abort-controller
+      - bare-buffer
+      - react-native-b4a
+      - supports-color
+
   text-decoder@1.2.7:
     dependencies:
       b4a: 1.8.1
@@ -12336,8 +12331,6 @@ snapshots:
       is-number: 7.0.0
 
   toidentifier@1.0.1: {}
-
-  toml@4.1.2: {}
 
   totalist@3.0.1: {}
 

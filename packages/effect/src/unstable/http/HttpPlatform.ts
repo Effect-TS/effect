@@ -161,14 +161,42 @@ export const layer = Layer.effect(HttpPlatform)(
           { contentLength, headers, status, statusText }
         )
       },
-      fileWebResponse(file, status, statusText, headers, _options) {
-        return Response.stream(
-          Stream.fromReadableStream({
+      fileWebResponse(file, status, statusText, headers, options) {
+        const offset = Number(options?.offset ?? 0)
+        const bytesToRead = options?.bytesToRead !== undefined ? Number(options.bytesToRead) : undefined
+        const chunkSize = options?.chunkSize !== undefined ? Math.max(1, Number(options.chunkSize)) : Infinity
+        const end = offset + (bytesToRead ?? Infinity)
+        const stream = end <= offset
+          ? Stream.empty
+          : Stream.fromReadableStream({
             evaluate: () => file.stream() as ReadableStream<Uint8Array>,
             onError: identity
-          }),
-          { headers, status, statusText }
-        )
+          }).pipe(
+            Stream.mapAccum(
+              () => 0,
+              (position, bytes) => {
+                const next = position + bytes.length
+                const start = Math.min(Math.max(offset - position, 0), bytes.length)
+                const stop = Math.min(Math.max(end - position, 0), bytes.length)
+                const chunks: Array<{ readonly bytes: Uint8Array; readonly done: boolean }> = []
+                for (let index = start; index < stop; index += chunkSize) {
+                  chunks.push({
+                    bytes: bytes.subarray(index, Math.min(index + chunkSize, stop)),
+                    done: next >= end && index + chunkSize >= stop
+                  })
+                }
+                return [next, chunks]
+              }
+            ),
+            Stream.takeUntil((chunk) => chunk.done),
+            Stream.map((chunk) => chunk.bytes)
+          )
+        return Response.stream(stream, {
+          contentLength: bytesToRead ?? file.size - offset,
+          headers,
+          status,
+          statusText
+        })
       }
     }))
 ).pipe(Layer.provide(Etag.layerWeak))

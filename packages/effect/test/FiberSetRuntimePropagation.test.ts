@@ -4,7 +4,7 @@ import { Deferred, Effect, Fiber, FiberSet } from "effect"
 
 describe("FiberSet.runtime interruption propagation", () => {
   it.effect("records external interruption when enabled", () =>
-    Effect.scoped(Effect.gen(function*() {
+    Effect.gen(function*() {
       const set = yield* FiberSet.make()
       const run = yield* FiberSet.runtime(set)()
       const fiber = run(Effect.never, { propagateInterruption: true })
@@ -12,5 +12,5 @@ describe("FiberSet.runtime interruption propagation", () => {
       yield* Fiber.interrupt(fiber)
 
       assertTrue(yield* Deferred.isDone(set.deferred), "external interruption should be recorded")
-    })))
+    }))
 })

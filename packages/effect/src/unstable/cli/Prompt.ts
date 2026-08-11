@@ -693,10 +693,13 @@ export const all: <
   if (arguments.length === 1) {
     if (isPrompt(arguments[0])) {
       return map(arguments[0], (x) => [x]) as any
-    } else if (Array.isArray(arguments[0])) {
-      return allTupled(arguments[0]) as any
+    } else if (Predicate.isIterable(arguments[0])) {
+      return allTupled(Arr.fromIterable(arguments[0] as Iterable<Prompt<any>>)) as any
     } else {
       const entries = Object.entries(arguments[0] as Readonly<{ [K: string]: Prompt<any> }>)
+      if (entries.length === 0) {
+        return succeed({}) as any
+      }
       let result = map(entries[0][1], (value) => ({ [entries[0][0]]: value }))
       if (entries.length === 1) {
         return result as any
@@ -1216,7 +1219,7 @@ export const multiSelect = <const A>(
   const initialSelected = new Set<number>()
   for (let i = 0; i < opts.choices.length; i++) {
     const choice = opts.choices[i] as SelectChoice<A>
-    if (choice.selected === true) {
+    if (choice.selected === true && !choice.disabled) {
       initialSelected.add(i)
     }
   }
@@ -1999,6 +2002,9 @@ class Day extends DatePart {
   }
 
   private ordinalIndicator(day: number): string {
+    if (day >= 11 && day <= 13) {
+      return "th"
+    }
     switch (day % 10) {
       case 1:
         return "st"
@@ -2057,7 +2063,7 @@ class Year extends DatePart {
   override toString() {
     const year = `${this.date.getFullYear()}`.padStart(4, "0")
     return this.token.length === 2
-      ? year.substring(-2)
+      ? year.slice(-2)
       : year
   }
 }
@@ -2074,7 +2080,7 @@ class Meridiem extends DatePart {
   setValue(_value: string): void {}
 
   override toString() {
-    const meridiem = this.date.getHours() > 12 ? "pm" : "am"
+    const meridiem = this.date.getHours() >= 12 ? "pm" : "am"
     return /A/.test(this.token)
       ? meridiem.toUpperCase()
       : meridiem
@@ -2561,9 +2567,9 @@ const renderMultiSelectChoices = <A>(
   renderOptions?: RenderOptions | undefined
 ) => {
   const choices = options.choices
-  const totalChoices = choices.length
-  const selectedCount = state.selectedIndices.size
-  const allSelected = selectedCount === totalChoices
+  const selectableCount = choices.filter((choice) => !choice.disabled).length
+  const selectedCount = Array.from(state.selectedIndices).filter((index) => !choices[index].disabled).length
+  const allSelected = selectedCount === selectableCount
 
   const selectAllText = allSelected
     ? options?.selectNone ?? "Select None"
@@ -2599,8 +2605,9 @@ const renderMultiSelectChoices = <A>(
       const annotatedCheckbox = isHighlighted && renderOptions?.plain !== true
         ? Ansi.annotate(checkbox, Ansi.cyanBright)
         : checkbox
-      const title = renderMultiSelectTitle(choice.title, isHighlighted, renderOptions)
-      const description = renderChoiceDescription(choice as SelectChoice<A>, isHighlighted, renderOptions)
+      const selectChoice = choice as SelectChoice<A>
+      const title = renderChoiceTitle(selectChoice, isHighlighted, renderOptions)
+      const description = renderChoiceDescription(selectChoice, isHighlighted, renderOptions)
       documents.push(prefix + " " + annotatedCheckbox + " " + title + " " + description)
     }
   }
@@ -2649,16 +2656,20 @@ const processSpace = <A>(
 ) => {
   const selectedIndices = new Set(state.selectedIndices)
   if (state.index === 0) {
-    if (state.selectedIndices.size === options.choices.length) {
+    const selectableCount = options.choices.filter((choice) => !choice.disabled).length
+    const selectedCount = Array.from(state.selectedIndices).filter((index) => !options.choices[index].disabled).length
+    if (selectedCount === selectableCount) {
       selectedIndices.clear()
     } else {
       for (let i = 0; i < options.choices.length; i++) {
-        selectedIndices.add(i)
+        if (!options.choices[i].disabled) {
+          selectedIndices.add(i)
+        }
       }
     }
   } else if (state.index === 1) {
     for (let i = 0; i < options.choices.length; i++) {
-      if (state.selectedIndices.has(i)) {
+      if (options.choices[i].disabled || state.selectedIndices.has(i)) {
         selectedIndices.delete(i)
       } else {
         selectedIndices.add(i)
@@ -2666,7 +2677,9 @@ const processSpace = <A>(
     }
   } else {
     const choiceIndex = state.index - metaOptionsCount
-    if (selectedIndices.has(choiceIndex)) {
+    if (options.choices[choiceIndex].disabled) {
+      return Effect.succeed(Action.Beep())
+    } else if (selectedIndices.has(choiceIndex)) {
       selectedIndices.delete(choiceIndex)
     } else {
       selectedIndices.add(choiceIndex)
@@ -2706,7 +2719,8 @@ const handleMultiSelectProcess = <A>(options: SelectOptionsReq<A> & MultiSelectO
       }
       case "enter":
       case "return": {
-        const selectedCount = state.selectedIndices.size
+        const selectedIndices = Array.from(state.selectedIndices).filter((index) => !options.choices[index].disabled)
+        const selectedCount = selectedIndices.length
         if (options.min !== undefined && selectedCount < options.min) {
           return Effect.succeed(
             Action.NextFrame({ state: { ...state, error: Option.some(`At least ${options.min} are required`) } })
@@ -2717,9 +2731,7 @@ const handleMultiSelectProcess = <A>(options: SelectOptionsReq<A> & MultiSelectO
             Action.NextFrame({ state: { ...state, error: Option.some(`At most ${options.max} choices are allowed`) } })
           )
         }
-        const selectedValues = Array.from(state.selectedIndices).sort(EffectNumber.Order).map((index) =>
-          options.choices[index].value
-        )
+        const selectedValues = selectedIndices.sort(EffectNumber.Order).map((index) => options.choices[index].value)
         return Effect.succeed(Action.Submit({ value: selectedValues }))
       }
       default: {
@@ -2875,7 +2887,11 @@ const defaultFloatProcessor = (input: string, state: NumberState) => {
     return Effect.succeed(Action.NextFrame({
       state: {
         ...state,
-        value: input === "." ? `${parsed}.` : `${parsed}`,
+        value: input === "."
+          ? `${parsed}.`
+          : state.value.includes(".") && /^\d$/.test(input)
+          ? state.value + input
+          : `${parsed}`,
         error: Option.none()
       }
     }))

@@ -219,8 +219,9 @@ export const makeClient = (
      */
     readonly acquireForStream?: boolean | undefined
   }
-): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> =>
-  fromClient({
+): Effect.Effect<PgClient, SqlError, Scope.Scope | Reactivity.Reactivity> => {
+  function onError() {}
+  return fromClient({
     ...options,
     acquire: Effect.acquireRelease(
       Effect.tryPromise({
@@ -237,13 +238,17 @@ export const makeClient = (
             application_name: options.applicationName ?? "@effect/sql-pg",
             types: options.types
           })
+          client.on("error", onError)
           await client.connect()
           return client
         },
         catch: (cause) => new SqlError({ reason: classifyError(cause, "PgClient: Failed to connect", "connect") })
       }),
       (client) =>
-        Effect.promise(() => client.end()).pipe(
+        Effect.promise(() => {
+          client.off("error", onError)
+          return client.end()
+        }).pipe(
           Effect.timeoutOption(1000)
         ),
       { interruptible: true }
@@ -264,6 +269,7 @@ export const makeClient = (
     ),
     acquireForStream: options.acquireForStream ?? false
   })
+}
 
 /**
  * Builds a PostgreSQL client from a scoped `pg` pool acquisition effect, deriving transaction, streaming, and LISTEN/NOTIFY support from that pool.
@@ -522,6 +528,17 @@ export const fromClient = Effect.fnUntraced(function*(
     )
   const connection = makeConection(client)
   const acquirer = semaphore.withPermit(Effect.succeed(connection))
+  const transactionAcquirer = Effect.uninterruptibleMask((restore) => {
+    const fiber = Fiber.getCurrent()!
+    const scope = Context.getUnsafe(fiber.context, Scope.Scope)
+    return Effect.as(
+      Effect.tap(
+        restore(semaphore.take(1)),
+        () => Scope.addFinalizer(scope, semaphore.release(1))
+      ),
+      connection
+    )
+  })
 
   const config: PgClientConfig = {
     ...options,
@@ -535,7 +552,7 @@ export const fromClient = Effect.fnUntraced(function*(
 
   return yield* makeWith({
     acquirer,
-    transactionAcquirer: acquirer,
+    transactionAcquirer,
     listenAcquirer: streamClient,
     config,
     spanAttributes: options.spanAttributes,

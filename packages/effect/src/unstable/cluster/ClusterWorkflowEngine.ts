@@ -667,7 +667,10 @@ export const make = Effect.gen(function*() {
             payload: {
               name: options.clock.name,
               workflowName: workflow._tag,
-              wakeUp: DateTime.addDuration(now, options.clock.duration)
+              wakeUp: DateTime.mapEpochMillis(
+                DateTime.addDuration(now, options.clock.duration),
+                Math.ceil
+              )
             }
           })
         ),

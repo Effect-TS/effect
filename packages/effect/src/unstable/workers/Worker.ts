@@ -165,6 +165,17 @@ export const makePlatform = <W>() =>
         const spawn = (yield* Spawner) as SpawnerFn<W>
         let currentPort: P | undefined
         const buffer: Array<[unknown, ReadonlyArray<unknown> | undefined]> = []
+        const sendToPort = (port: P, message: unknown, transfers?: ReadonlyArray<unknown>) =>
+          Effect.try({
+            try: () => port.postMessage([0, message], transfers as any),
+            catch: (cause) =>
+              new WorkerError({
+                reason: new WorkerSendError({
+                  message: "Failed to send message to worker",
+                  cause
+                })
+              })
+          })
 
         const run = <A, E, R>(
           handler: (_: O) => Effect.Effect<A, E, R>,
@@ -209,7 +220,7 @@ export const makePlatform = <W>() =>
                 currentPort = port
                 if (buffer.length > 0) {
                   for (const [message, transfers] of buffer) {
-                    port.postMessage([0, message], transfers as any)
+                    yield* sendToPort(port, message, transfers)
                   }
                   buffer.length = 0
                 }
@@ -224,19 +235,7 @@ export const makePlatform = <W>() =>
               buffer.push([message, transfers])
               return Effect.void
             }
-            try {
-              currentPort.postMessage([0, message], transfers as any)
-              return Effect.void
-            } catch (cause) {
-              return Effect.fail(
-                new WorkerError({
-                  reason: new WorkerSendError({
-                    message: "Failed to send message to worker",
-                    cause
-                  })
-                })
-              )
-            }
+            return sendToPort(currentPort, message, transfers)
           })
 
         return { run, send }

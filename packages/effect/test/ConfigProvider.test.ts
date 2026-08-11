@@ -288,6 +288,33 @@ describe("ConfigProvider", () => {
     })
   })
 
+  describe("fromEnvRecord", () => {
+    it("reads defined values and skips undefined values", async () => {
+      const env: Record<string, string | undefined> = {
+        DEFINED: "value",
+        UNDEFINED: undefined
+      }
+      const provider = ConfigProvider.fromEnvRecord(env)
+
+      await assertSuccess(provider, ["DEFINED"], ConfigProvider.makeValue("value"))
+      await assertMissing(provider, ["UNDEFINED"])
+      await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["DEFINED"])))
+    })
+
+    it("treats empty strings as missing by default", async () => {
+      await assertMissing(ConfigProvider.fromEnvRecord({ EMPTY: "" }), ["EMPTY"])
+    })
+
+    it("preserves empty strings when requested", async () => {
+      const provider = ConfigProvider.fromEnvRecord(
+        { EMPTY: "" },
+        { preserveEmptyStrings: true }
+      )
+
+      await assertSuccess(provider, ["EMPTY"], ConfigProvider.makeValue(""))
+    })
+  })
+
   describe("fromEnv", () => {
     it("env without an underscore", async () => {
       const env = { A: "value1" }
@@ -809,6 +836,22 @@ DB_PASS=\${PASSWORD}
       await assertSuccess(provider, [], ConfigProvider.makeRecord(new Set(["PASSWORD", "DB"])))
       await assertSuccess(provider, ["PASSWORD"], ConfigProvider.makeValue("value"))
       await assertSuccess(provider, ["DB_PASS"], ConfigProvider.makeValue("value"))
+    })
+
+    it("expansion defaults are used only for empty or unset variables", async () => {
+      const provider = ConfigProvider.fromDotEnvContents(
+        `
+SET=actual
+EMPTY=
+FROM_SET=\${SET:-fallback}
+FROM_EMPTY=\${EMPTY:-fallback}
+FROM_UNSET=\${UNSET:-fallback}
+`,
+        { expandVariables: true }
+      )
+      await assertSuccess(provider, ["FROM_SET"], ConfigProvider.makeValue("actual"))
+      await assertSuccess(provider, ["FROM_EMPTY"], ConfigProvider.makeValue("fallback"))
+      await assertSuccess(provider, ["FROM_UNSET"], ConfigProvider.makeValue("fallback"))
     })
 
     it("does not expand missing inherited variables", async () => {

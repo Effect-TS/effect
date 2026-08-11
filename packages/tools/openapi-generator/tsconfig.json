@@ -4,6 +4,6 @@
   "include": ["src"],
   "references": [
     { "path": "../../effect" },
-    { "path": "../../platform-node" }
+    { "path": "../../platform/node" }
   ]
 }

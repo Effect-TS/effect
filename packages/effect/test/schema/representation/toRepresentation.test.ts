@@ -596,6 +596,55 @@ describe("SchemaRepresentation.toRepresentation", () => {
       }
     })
 
+    it("extracts leaf schemas only when references are estimated to be cheaper", () => {
+      const smallUnion = Schema.Union([Schema.String, Schema.Number])
+      const smallEnum = Schema.Enum({ A: "a", B: "b" })
+      const largeEnum = Schema.Enum({ A: "a", B: "b", C: "c" })
+      const smallTemplateLiteral = Schema.TemplateLiteral(["a", Schema.String])
+      const largeTemplateLiteral = Schema.TemplateLiteral(["a", Schema.String, "b"])
+      const shortLiteral = Schema.Literal("a".repeat(64))
+      const longLiteral = Schema.Literal("a".repeat(65))
+
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([smallUnion.ast, smallUnion.ast]).references),
+        []
+      )
+      assert.deepStrictEqual(
+        Object.keys(
+          SchemaRepresentation.toRepresentations([smallUnion.ast, smallUnion.ast, smallUnion.ast]).references
+        ),
+        ["Union_"]
+      )
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([smallEnum.ast, smallEnum.ast]).references),
+        []
+      )
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([largeEnum.ast, largeEnum.ast]).references),
+        ["Enum_"]
+      )
+      assert.deepStrictEqual(
+        Object.keys(
+          SchemaRepresentation.toRepresentations([smallTemplateLiteral.ast, smallTemplateLiteral.ast]).references
+        ),
+        []
+      )
+      assert.deepStrictEqual(
+        Object.keys(
+          SchemaRepresentation.toRepresentations([largeTemplateLiteral.ast, largeTemplateLiteral.ast]).references
+        ),
+        ["TemplateLiteral_"]
+      )
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([shortLiteral.ast, shortLiteral.ast]).references),
+        []
+      )
+      assert.deepStrictEqual(
+        Object.keys(SchemaRepresentation.toRepresentations([longLiteral.ast, longLiteral.ast]).references),
+        ["Literal_"]
+      )
+    })
+
     it("does not extract structurally equivalent schemas with distinct ASTs", () => {
       const first = Schema.Struct({ value: Schema.String })
       const second = Schema.Struct({ value: Schema.String })
@@ -609,16 +658,74 @@ describe("SchemaRepresentation.toRepresentation", () => {
       const parent = Schema.Struct({ child })
       const document = SchemaRepresentation.toRepresentation(Schema.Tuple([parent, parent]).ast)
 
-      assert.deepStrictEqual(Object.keys(document.references), ["Objects_"])
+      assert.deepStrictEqual(document.references, {
+        Objects_: {
+          _tag: "Objects",
+          propertySignatures: [{
+            name: "child",
+            type: {
+              _tag: "Objects",
+              propertySignatures: [{
+                name: "value",
+                type: { _tag: "String", checks: [] },
+                isOptional: false,
+                isMutable: false
+              }],
+              indexSignatures: [],
+              checks: []
+            },
+            isOptional: false,
+            isMutable: false
+          }],
+          indexSignatures: [],
+          checks: []
+        }
+      })
     })
 
-    it("does not extract shared trivial or Suspend schemas", () => {
+    it("extracts shared Suspend schemas but not shared trivial schemas", () => {
       const suspend = Schema.suspend(() => Schema.String)
       const document = SchemaRepresentation.toRepresentation(
         Schema.Tuple([Schema.String, Schema.String, suspend, suspend]).ast
       )
 
-      assert.deepStrictEqual(document.references, {})
+      assert.deepStrictEqual(document.references, {
+        Suspend_: {
+          _tag: "Suspend",
+          checks: [],
+          thunk: { _tag: "String", checks: [] }
+        }
+      })
+    })
+
+    it("extracts shared Declaration schemas", () => {
+      const declaration = Schema.declare<string>((input): input is string => typeof input === "string")
+      const document = SchemaRepresentation.toRepresentation(Schema.Tuple([declaration, declaration]).ast)
+
+      assert.deepStrictEqual(document, {
+        representation: {
+          _tag: "Arrays",
+          elements: [
+            {
+              isOptional: false,
+              type: { _tag: "Reference", $ref: "Declaration_" }
+            },
+            {
+              isOptional: false,
+              type: { _tag: "Reference", $ref: "Declaration_" }
+            }
+          ],
+          rest: [],
+          checks: []
+        },
+        references: {
+          Declaration_: {
+            _tag: "Declaration",
+            typeParameters: [],
+            checks: []
+          }
+        }
+      })
     })
   })
 

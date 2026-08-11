@@ -10,7 +10,9 @@
  * @since 3.16.0
  */
 import type { NonEmptyReadonlyArray } from "./Array.ts"
+import type * as Cause from "./Cause.ts"
 import * as Context from "./Context.ts"
+import type * as Duration from "./Duration.ts"
 import type * as Effect from "./Effect.ts"
 import { constant } from "./Function.ts"
 import * as effect from "./internal/effect.ts"
@@ -179,7 +181,7 @@ export const make = <const Steps extends NonEmptyReadonlyArray<make.Step>>(
     | (Steps[number]["schedule"] extends Schedule.Schedule<infer _O, infer _I, infer R> ? R : never)
 }> =>
   makeProto(steps.map((options, i) => {
-    if (options.attempts && options.attempts < 1) {
+    if (options.attempts !== undefined && options.attempts < 1) {
       throw new Error(`ExecutionPlan.make: step[${i}].attempts must be greater than 0`)
     }
     return {
@@ -372,3 +374,78 @@ export const CurrentMetadata = Context.Reference<Metadata>("effect/ExecutionPlan
     stepIndex: 0
   })
 })
+
+/**
+ * Lifecycle event emitted before an execution-plan attempt runs.
+ *
+ * **Details**
+ *
+ * `attempt` is the cumulative 1-based attempt number across all steps and
+ * matches `CurrentMetadata.attempt` for the same attempt. `stepAttempt` is the
+ * 1-based attempt number within the current step, and `stepIndex` is the
+ * 0-based index of the step being attempted.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface AttemptStart {
+  readonly _tag: "AttemptStart"
+  readonly attempt: number
+  readonly stepAttempt: number
+  readonly stepIndex: number
+}
+
+/**
+ * Lifecycle event emitted when an execution-plan attempt succeeds.
+ *
+ * **Details**
+ *
+ * A successful attempt completes the plan, so this is always the final event.
+ * `duration` is the elapsed time of the attempt.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface AttemptSuccess {
+  readonly _tag: "AttemptSuccess"
+  readonly attempt: number
+  readonly stepAttempt: number
+  readonly stepIndex: number
+  readonly duration: Duration.Duration
+}
+
+/**
+ * Lifecycle event emitted when an execution-plan attempt fails.
+ *
+ * **Details**
+ *
+ * `cause` holds the full failure cause, so defects and interruption are
+ * reported as well as expected errors. Whether the plan retries or fails over
+ * afterwards is decided by the step's `attempts`, `while`, and `schedule`; a
+ * following `AttemptStart` indicates another attempt was made.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface AttemptFailure<E> {
+  readonly _tag: "AttemptFailure"
+  readonly attempt: number
+  readonly stepAttempt: number
+  readonly stepIndex: number
+  readonly duration: Duration.Duration
+  readonly cause: Cause.Cause<E>
+}
+
+/**
+ * Union of the lifecycle events emitted while an execution plan runs.
+ *
+ * **Details**
+ *
+ * Every `AttemptStart` is followed by exactly one terminal event, either
+ * `AttemptSuccess` or `AttemptFailure`. An interrupted attempt emits
+ * `AttemptFailure` with the interruption cause.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export type Event<E> = AttemptStart | AttemptSuccess | AttemptFailure<E>

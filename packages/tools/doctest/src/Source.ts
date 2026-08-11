@@ -98,4 +98,6 @@ export const extract = (source: string, format: SourceFormat = "jsdoc"): Readonl
  * @since 4.0.0
  */
 export const extractFile = (file: string): Promise<ReadonlyArray<Snippet>> =>
-  readFile(file, "utf8").then((source) => extract(source, file.endsWith(".md") ? "markdown" : "jsdoc"))
+  readFile(file, "utf8").then((source) =>
+    extract(source, file.endsWith(".md") || file.endsWith(".mdx") ? "markdown" : "jsdoc")
+  )

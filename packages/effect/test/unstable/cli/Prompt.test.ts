@@ -1,5 +1,5 @@
 import { assert, describe, it } from "@effect/vitest"
-import { Data, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
+import { Data, DateTime, Effect, Fiber, FileSystem, Layer, Match, Path, Queue, Redacted } from "effect"
 import { Prompt } from "effect/unstable/cli"
 import * as MockTerminal from "./services/MockTerminal.ts"
 
@@ -49,6 +49,33 @@ const toRawFrames = (lines: ReadonlyArray<unknown>) =>
 
 const findFrame = (frames: ReadonlyArray<string>, text: string) => frames.find((frame) => frame.includes(text))
 
+describe("Prompt.date", () => {
+  it.effect("renders two-digit years, teen ordinals, and noon meridiem correctly", () =>
+    Effect.gen(function*() {
+      const initial = DateTime.toDateUtc(DateTime.makeUnsafe({ year: 2024, month: 1, day: 11, hour: 12 }))
+      yield* MockTerminal.inputKey("enter")
+
+      yield* Prompt.run(Prompt.date({ message: "When", initial, dateMask: "YY Do A" }))
+      const output = (yield* MockTerminal.displayLines).map(String).join("\n")
+
+      assert.include(output, "24 11th PM")
+    }).pipe(Effect.provide(TestLayer)))
+})
+
+describe("Prompt.all", () => {
+  it.effect("supports an empty record", () =>
+    Effect.gen(function*() {
+      const result = yield* Prompt.all({})
+      assert.deepStrictEqual(result, {})
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("supports a non-array iterable", () =>
+    Effect.gen(function*() {
+      const result = yield* Prompt.all(new Set([Prompt.succeed(1)]))
+      assert.deepStrictEqual(result, [1])
+    }).pipe(Effect.provide(TestLayer)))
+})
+
 describe("Prompt.integer", () => {
   it.effect("submits the default value", () =>
     Effect.gen(function*() {
@@ -85,6 +112,16 @@ describe("Prompt.integer", () => {
 })
 
 describe("Prompt.float", () => {
+  it.effect("preserves a leading zero in the fractional part", () =>
+    Effect.gen(function*() {
+      yield* MockTerminal.inputText("0.05")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(Prompt.float({ message: "Rate" }))
+
+      assert.strictEqual(value, 0.05)
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("renders appended input without literal parsed", () =>
     Effect.gen(function*() {
       const prompt = Prompt.float({ message: "Rate" })
@@ -483,6 +520,83 @@ describe("Prompt.file", () => {
 })
 
 describe("Prompt.multiSelect", () => {
+  it.effect("does not allow a disabled multi-select choice to be selected", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [{ title: "Unavailable", value: "unavailable", disabled: true }]
+      })
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, [])
+      const output = yield* MockTerminal.displayLines
+      assert.isTrue(output.some((line) => String(line).includes("\x07")))
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("does not select disabled choices when selecting all", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available" },
+          { title: "Unavailable", value: "unavailable", disabled: true }
+        ]
+      })
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+      const output = yield* MockTerminal.displayLines
+      assert.isTrue(findFrame(toFrames(output), "Select None") !== undefined)
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("does not select disabled choices when inverting the selection", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available" },
+          { title: "Unavailable", value: "unavailable", disabled: true }
+        ]
+      })
+      yield* MockTerminal.inputKey("down")
+      yield* MockTerminal.inputKey("space")
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+    }).pipe(Effect.provide(TestLayer)))
+
+  it.effect("ignores disabled preselected choices when validating and submitting", () =>
+    Effect.gen(function*() {
+      const prompt = Prompt.multiSelect({
+        message: "Pick items",
+        choices: [
+          { title: "Available", value: "available", selected: true },
+          { title: "Unavailable", value: "unavailable", disabled: true, selected: true }
+        ],
+        max: 1
+      })
+      yield* MockTerminal.inputKey("enter")
+
+      const value = yield* Prompt.run(prompt)
+
+      assert.deepStrictEqual(value, ["available"])
+      const output = yield* MockTerminal.displayLines
+      const initialFrame = findFrame(toFrames(output), "Unavailable")
+      assert.isTrue(initialFrame?.includes("☐ Unavailable"))
+      const rawInitialFrame = findFrame(toRawFrames(output), "Unavailable")
+      assert.isTrue(rawInitialFrame?.includes(`${escape}[9m${escape}[90mUnavailable`))
+    }).pipe(Effect.provide(TestLayer)))
+
   it.effect("underlines the active label", () =>
     Effect.gen(function*() {
       const prompt = Prompt.multiSelect({

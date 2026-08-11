@@ -307,14 +307,14 @@ export const makeEncrypted = Effect.gen(function*(): Effect.fn.Return<
   return yield* makeWith({
     encodeWrite: (options) =>
       encryption.encrypt(options.identity, options.entries).pipe(
-        Effect.flatMap((msg) =>
+        Effect.flatMap((encryptedEntries) =>
           new WriteEntries({
             publicKey: options.identity.publicKey,
             storeId: options.storeId,
-            iv: msg.iv,
-            encryptedEntries: msg.encryptedEntries.map((entry, i) => ({
+            encryptedEntries: encryptedEntries.map((entry, i) => ({
               entryId: options.entries[i].id,
-              encryptedEntry: entry
+              iv: entry.iv,
+              encryptedEntry: entry.encryptedEntry
             }))
           }).encoded
         )

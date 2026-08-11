@@ -606,11 +606,7 @@ export const makeEncoded: (encoded: Encoded) => Effect.Effect<
         ),
         Effect.asVoid
       ),
-    saveReply: (reply) =>
-      Effect.flatMap(
-        Reply.serialize(reply),
-        encoded.saveReply
-      ),
+    saveReply: (reply) => Effect.flatMap(Reply.serializeOrDefect(reply), encoded.saveReply),
     clearReplies: encoded.clearReplies,
     repliesFor: Effect.fnUntraced(function*(messages) {
       const requestIds = Arr.empty<string>()
@@ -995,6 +991,14 @@ export class MemoryDriver extends Context.Service<MemoryDriver>()("effect/cluste
       resetAddress: () => Effect.void,
       clearAddress: (address) =>
         Effect.sync(() => {
+          for (const [primaryKey, entry] of requestsByPrimaryKey) {
+            const envelope = entry.envelope
+            const sameAddress = address.entityType === envelope.address.entityType &&
+              address.entityId === envelope.address.entityId
+            if (sameAddress) {
+              requestsByPrimaryKey.delete(primaryKey)
+            }
+          }
           for (let i = journal.length - 1; i >= 0; i--) {
             const envelope = journal[i]
             const sameAddress = address.entityType === envelope.address.entityType &&

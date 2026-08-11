@@ -38,8 +38,22 @@ const makeJsonPlaceholder = Effect.gen(function*() {
 interface JsonPlaceholder extends Effect.Success<typeof makeJsonPlaceholder> {}
 const JsonPlaceholder = Context.Service<JsonPlaceholder>("test/JsonPlaceholder")
 const JsonPlaceholderLive = Layer.effect(JsonPlaceholder)(makeJsonPlaceholder)
-const JsonPlaceholderRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(router) {
+const TestRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(router) {
   yield* router.addAll([
+    HttpRouter.route("GET", "/", Effect.succeed(HttpServerResponse.text("test"))),
+    HttpRouter.route("GET", "/redirect", Effect.succeed(HttpServerResponse.redirect("/"))),
+    HttpRouter.route(
+      "GET",
+      "/stream",
+      Effect.succeed(HttpServerResponse.stream(Stream.make("test").pipe(Stream.encodeText)))
+    ),
+    HttpRouter.route(
+      "GET",
+      "/interrupt",
+      Effect.succeed(HttpServerResponse.stream(
+        Stream.make("test").pipe(Stream.concat(Stream.never), Stream.encodeText)
+      ))
+    ),
     HttpRouter.route(
       "GET",
       "/todos/1",
@@ -61,7 +75,7 @@ const JsonPlaceholderRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(
     HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
   ])
 })))
-const DenoHttpServerUrl = new URL("../../platform-deno/src/DenoHttpServer.ts", import.meta.url).href
+const DenoHttpServerUrl = new URL("../../platform/deno/src/DenoHttpServer.ts", import.meta.url).href
 const TestServerLive = Layer.unwrap(Effect.promise(() =>
   "Deno" in globalThis
     ? (import(DenoHttpServerUrl) as Promise<{
@@ -86,41 +100,41 @@ const TestServerLive = Layer.unwrap(Effect.promise(() =>
     Layer.provide(layer),
     Layer.provideMerge(TestServerLive)
   )
-  const jsonPlaceholderTestLayer = Layer.merge(JsonPlaceholderLive, JsonPlaceholderRoutes).pipe(
+  const testLayer = Layer.merge(JsonPlaceholderLive, TestRoutes).pipe(
     Layer.provideMerge(layerTest)
   )
 
   it.layer(layer)(name, (it) => {
-    it.effect("google", () =>
-      flakyTest(Effect.gen(function*() {
-        const response = yield* HttpClient.get("https://www.google.com/").pipe(
+    it.effect("get", () =>
+      Effect.gen(function*() {
+        const response = yield* HttpClient.get("/").pipe(
           Effect.flatMap((_) => _.text)
         )
-        expect(response).toContain("Google")
-      })))
+        expect(response).toBe("test")
+      }).pipe(Effect.provide(testLayer)))
 
-    it.effect("google followRedirects", () =>
-      flakyTest(Effect.gen(function*() {
+    it.effect("followRedirects", () =>
+      Effect.gen(function*() {
         const client = (yield* HttpClient.HttpClient).pipe(
           HttpClient.followRedirects()
         )
-        const response = yield* client.get("http://google.com/").pipe(
+        const response = yield* client.get("/redirect").pipe(
           Effect.flatMap((_) => _.text)
         )
-        expect(response).toContain("Google")
-      })))
+        expect(response).toBe("test")
+      }).pipe(Effect.provide(testLayer)))
 
-    it.effect("google stream", () =>
-      flakyTest(Effect.gen(function*() {
+    it.effect("stream", () =>
+      Effect.gen(function*() {
         const client = yield* HttpClient.HttpClient
-        const response = yield* client.get("https://www.google.com/").pipe(
+        const response = yield* client.get("/stream").pipe(
           Effect.map((_) => _.stream),
           Stream.unwrap,
           Stream.decodeText(),
           Stream.mkString
         )
-        expect(response).toContain("Google")
-      })))
+        expect(response).toBe("test")
+      }).pipe(Effect.provide(testLayer)))
 
     it.effect("jsonplaceholder", () =>
       Effect.gen(function*() {
@@ -129,7 +143,7 @@ const TestServerLive = Layer.unwrap(Effect.promise(() =>
           Effect.flatMap(HttpClientResponse.schemaBodyJson(Todo))
         )
         expect(response.id).toBe(1)
-      }).pipe(Effect.provide(jsonPlaceholderTestLayer)))
+      }).pipe(Effect.provide(testLayer)))
 
     it.effect("jsonplaceholder schemaBodyJson", () =>
       Effect.gen(function*() {
@@ -140,7 +154,7 @@ const TestServerLive = Layer.unwrap(Effect.promise(() =>
           completed: false
         })
         expect(response.title).toBe("test")
-      }).pipe(Effect.provide(jsonPlaceholderTestLayer)))
+      }).pipe(Effect.provide(testLayer)))
 
     it.effect("head request with schemaJson", () =>
       Effect.gen(function*() {
@@ -151,12 +165,12 @@ const TestServerLive = Layer.unwrap(Effect.promise(() =>
           )
         )
         expect(response).toEqual({ status: 200 })
-      }).pipe(Effect.provide(jsonPlaceholderTestLayer)))
+      }).pipe(Effect.provide(testLayer)))
 
     it.effect("interrupt", () =>
       Effect.gen(function*() {
         const client = yield* HttpClient.HttpClient
-        const response = yield* client.get("https://www.google.com/").pipe(
+        const response = yield* client.get("/interrupt").pipe(
           Effect.flatMap((_) => _.text),
           Effect.timeout(1),
           Effect.asSome,
@@ -164,20 +178,12 @@ const TestServerLive = Layer.unwrap(Effect.promise(() =>
           TestClock.withLive
         )
         expect(response._tag).toEqual("None")
-      }))
+      }).pipe(Effect.provide(testLayer)))
 
     it.effect("close early", () =>
-      flakyTest(Effect.gen(function*() {
-        const response = yield* HttpClient.get("https://www.google.com/")
+      Effect.gen(function*() {
+        const response = yield* HttpClient.get("/stream")
         expect(response.status).toBe(200)
-      })))
+      }).pipe(Effect.provide(testLayer)))
   })
 })
-
-const flakyTest = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  effect.pipe(
-    Effect.timeoutOrElse({
-      duration: "2 seconds",
-      orElse: () => Effect.void
-    })
-  )

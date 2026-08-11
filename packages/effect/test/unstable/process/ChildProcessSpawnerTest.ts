@@ -50,7 +50,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "portable")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should spawn echo command", () =>
             Effect.gen(function*() {
@@ -60,7 +60,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "hello world")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should spawn with template literal", () =>
             Effect.gen(function*() {
@@ -70,7 +70,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "spawned")
-            }).pipe(Effect.scoped))
+            }))
         })
 
         describe("cwd option", () => {
@@ -83,7 +83,7 @@ export const suite = (
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               // On macOS, /tmp is a symlink to /private/tmp
               assert.isTrue(output.includes("tmp"))
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should use cwd with template literal form", () =>
             Effect.gen(function*() {
@@ -93,7 +93,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.isTrue(output.includes("tmp"))
-            }).pipe(Effect.scoped))
+            }))
         })
 
         describe("env option", () => {
@@ -108,7 +108,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "test_value")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle multiple environment variables", () =>
             Effect.gen(function*() {
@@ -121,7 +121,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "one-two-three")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should merge environment variables with setEnv", () =>
             Effect.gen(function*() {
@@ -135,7 +135,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "one-override-three")
-            }).pipe(Effect.scoped))
+            }))
         })
 
         describe("shell option", () => {
@@ -151,7 +151,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "expanded")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should not expand variables without shell", () =>
             Effect.gen(function*() {
@@ -162,7 +162,7 @@ export const suite = (
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               // Without shell, $HOME should not be expanded
               assert.strictEqual(output, "$HOME")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should allow piping with shell", () =>
             Effect.gen(function*() {
@@ -172,7 +172,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "HELLO")
-            }).pipe(Effect.scoped))
+            }))
         })
 
         describe("template literal forms", () => {
@@ -184,7 +184,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "hello")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle string interpolation", () =>
             Effect.gen(function*() {
@@ -195,7 +195,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "hello world")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle number interpolation", () =>
             Effect.gen(function*() {
@@ -206,7 +206,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "count is 42")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle array interpolation", () =>
             Effect.gen(function*() {
@@ -223,7 +223,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.isTrue(output.includes("array-interpolation.txt"))
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle multiple interpolations", () =>
             Effect.gen(function*() {
@@ -235,7 +235,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "hello world")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle options with template literal", () =>
             Effect.gen(function*() {
@@ -246,7 +246,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(output, "test.txt")
-            }).pipe(Effect.scoped))
+            }))
         })
 
         describe("stderr streaming", () => {
@@ -258,7 +258,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(stderr, "error message")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should capture both stdout and stderr", () =>
             Effect.gen(function*() {
@@ -272,7 +272,7 @@ export const suite = (
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(stdout, "stdout")
               assert.strictEqual(stderr, "stderr")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle more stdout than stderr", () =>
             Effect.gen(function*() {
@@ -290,7 +290,7 @@ export const suite = (
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(stdout, ["line1", "line2", "line3", "line4", "line5"].join("\n"))
               assert.strictEqual(stderr, "error")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle more stderr than stdout", () =>
             Effect.gen(function*() {
@@ -308,7 +308,7 @@ export const suite = (
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(stdout, "output")
               assert.strictEqual(stderr, ["err1", "err2", "err3", "err4", "err5"].join("\n"))
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should allow reading only stdout when stderr is empty", () =>
             Effect.gen(function*() {
@@ -323,7 +323,7 @@ export const suite = (
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(stdout, "only stdout")
               assert.strictEqual(stderr, "")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should allow reading only stderr when stdout is empty", () =>
             Effect.gen(function*() {
@@ -338,7 +338,7 @@ export const suite = (
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(stdout, "")
               assert.strictEqual(stderr, "only stderr")
-            }).pipe(Effect.scoped))
+            }))
         })
 
         describe("combined output (all)", () => {
@@ -366,7 +366,7 @@ export const suite = (
               assert.strictEqual(lines.length, 4)
               assert.deepStrictEqual(lines.filter((line) => line.startsWith("stdout")), ["stdout1", "stdout2"])
               assert.deepStrictEqual(lines.filter((line) => line.startsWith("stderr")), ["stderr1", "stderr2"])
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should capture only stdout via .all when no stderr", () =>
             Effect.gen(function*() {
@@ -376,7 +376,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(all, "hello from stdout")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should capture only stderr via .all when no stdout", () =>
             Effect.gen(function*() {
@@ -386,7 +386,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(all, "hello from stderr")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should handle many lines of interspersed output via .all", () =>
             Effect.gen(function*() {
@@ -409,7 +409,7 @@ export const suite = (
                 lines.filter((line) => line.startsWith("stderr")),
                 ["stderr1", "stderr2", "stderr3", "stderr4", "stderr5"]
               )
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should allow reading .all independently", () =>
             Effect.gen(function*() {
@@ -422,7 +422,7 @@ export const suite = (
 
               assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
               assert.strictEqual(all, ["out", "err"].join("\n"))
-            }).pipe(Effect.scoped))
+            }))
         })
 
         describe("stdout streaming", () => {
@@ -432,7 +432,7 @@ export const suite = (
               const output = yield* decodeByteStream(handle.stdout)
 
               assert.strictEqual(output, "streaming output")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should stream multiple lines", () =>
             Effect.gen(function*() {
@@ -440,7 +440,7 @@ export const suite = (
               const output = yield* decodeByteStream(handle.stdout)
 
               assert.strictEqual(output, ["line1", "line2", "line3"].join("\n"))
-            }).pipe(Effect.scoped))
+            }))
         })
 
         describe("process control", () => {
@@ -453,7 +453,7 @@ export const suite = (
               // After killing, exitCode should eventually resolve (with signal error)
               const exit = yield* Effect.exit(handle.exitCode)
               assert.isTrue(exit._tag === "Failure")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should kill with specific signal", () =>
             Effect.gen(function*() {
@@ -463,7 +463,7 @@ export const suite = (
 
               const exit = yield* Effect.exit(handle.exitCode)
               assert.isTrue(exit._tag === "Failure")
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should force kill a process after the initial signal times out", () =>
             Effect.gen(function*() {
@@ -504,7 +504,7 @@ export const suite = (
               )
 
               assert.isTrue(completed)
-            }).pipe(Effect.scoped))
+            }))
 
           it.effect("should force kill a process when its scope closes", () =>
             Effect.gen(function*() {
@@ -542,7 +542,7 @@ export const suite = (
               )
 
               assert.isTrue(completed)
-            }).pipe(Effect.scoped))
+            }))
         })
       })
 
@@ -557,7 +557,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "HELLO WORLD")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should spawn a three-stage pipeline", () =>
           Effect.gen(function*() {
@@ -570,7 +570,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "HELLO-WORLD")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should pipe grep output", () =>
           Effect.gen(function*() {
@@ -582,7 +582,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "line2")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should handle mixed command forms in pipeline", () =>
           Effect.gen(function*() {
@@ -594,7 +594,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "HELLO")
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe("pipeline pipe options", () => {
@@ -609,7 +609,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "error")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should pipe combined output with { from: 'all' }", () =>
           Effect.gen(function*() {
@@ -628,7 +628,7 @@ export const suite = (
             assert.strictEqual(lines.length, 3)
             assert.deepStrictEqual(lines.filter((line) => line.startsWith("out")), ["out1", "out2"])
             assert.deepStrictEqual(lines.filter((line) => line.startsWith("err")), ["err1"])
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should default to stdout when no options provided", () =>
           Effect.gen(function*() {
@@ -642,7 +642,7 @@ export const suite = (
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             // Only stdout should be piped (default behavior)
             assert.strictEqual(output, "stdout")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should work with empty options object", () =>
           Effect.gen(function*() {
@@ -654,7 +654,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "HELLO")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should work with explicit { from: 'stdout' }", () =>
           Effect.gen(function*() {
@@ -666,7 +666,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "HELLO")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should work with explicit { to: 'stdin' }", () =>
           Effect.gen(function*() {
@@ -678,7 +678,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "HELLO")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should support chained pipes with different options", () =>
           Effect.gen(function*() {
@@ -693,7 +693,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, "error")
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe("error handling", () => {
@@ -703,7 +703,7 @@ export const suite = (
             const exitCode = yield* handle.exitCode
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(1))
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should fail for invalid command", () =>
           Effect.gen(function*() {
@@ -712,7 +712,7 @@ export const suite = (
             )
 
             assert.isTrue(exit._tag === "Failure")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should handle spawn error with invalid cwd", () =>
           Effect.gen(function*() {
@@ -721,7 +721,7 @@ export const suite = (
             )
 
             assert.isTrue(exit._tag === "Failure")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should throw permission denied as a typed error", () =>
           Effect.gen(function*() {
@@ -734,7 +734,7 @@ export const suite = (
             assert.strictEqual(result.reason._tag, "PermissionDenied")
             assert.strictEqual(result.reason.module, "ChildProcess")
             assert.strictEqual(result.reason.method, "spawn")
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe("stdin", () => {
@@ -748,7 +748,7 @@ export const suite = (
 
             assert.deepStrictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(output, input)
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe.skipIf(options.additionalFds === false)("additionalFds", () => {
@@ -765,7 +765,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(fd3Output, "hello from fd3")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should write data to an input fd (fd3)", () =>
           Effect.gen(function*() {
@@ -785,7 +785,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(stdout, inputData)
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should handle multiple additional fds", () =>
           Effect.gen(function*() {
@@ -808,7 +808,7 @@ export const suite = (
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(fd3Output, "output on fd3")
             assert.strictEqual(fd4Output, "output on fd4")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should handle fd gaps (e.g., fd3 and fd5 without fd4)", () =>
           Effect.gen(function*() {
@@ -831,7 +831,7 @@ export const suite = (
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(fd3Output, "on fd3")
             assert.strictEqual(fd5Output, "on fd5")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should return empty stream for unconfigured output fd", () =>
           Effect.gen(function*() {
@@ -843,7 +843,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(fd3Output, "")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should handle bidirectional communication via separate fds", () =>
           Effect.gen(function*() {
@@ -867,7 +867,7 @@ export const suite = (
 
             assert.strictEqual(exitCode, ChildProcessSpawner.ExitCode(0))
             assert.strictEqual(fd4Output, "HELLO")
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect("should work alongside normal stdin/stdout/stderr", () =>
           Effect.gen(function*() {
@@ -889,7 +889,7 @@ export const suite = (
             assert.strictEqual(stdout, "stdout")
             assert.strictEqual(stderr, "stderr")
             assert.strictEqual(fd3Output, "fd3")
-          }).pipe(Effect.scoped))
+          }))
       })
 
       describe.sequential("process supervision", () => {
@@ -969,7 +969,7 @@ export const suite = (
               Effect.orElseSucceed(() => 0)
             )
             assert.strictEqual(afterKill, 0)
-          }).pipe(Effect.scoped))
+          }))
 
         it.effect.skipIf(!options.processGroups)(
           "should cleanup child processes when parent exits with non-zero code",
@@ -1010,7 +1010,7 @@ export const suite = (
               )
               // Child processes should be cleaned up after non-zero exit
               assert.strictEqual(afterExit, 0)
-            }).pipe(Effect.scoped)
+            })
         )
 
         it.effect("should not kill an unrefed process when scope closes", () =>
@@ -1155,7 +1155,7 @@ export const suite = (
           assert.strictEqual(lines.length, 100000)
           assert.strictEqual(lines[0], "1")
           assert.strictEqual(lines[99999], "100000")
-        }).pipe(Effect.scoped), { timeout: 10_000 })
+        }), { timeout: 10_000 })
 
       it.effect("ChildProcess.string should not deadlock on large output", () =>
         Effect.gen(function*() {

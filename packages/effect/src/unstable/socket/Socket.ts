@@ -736,14 +736,21 @@ export const fromWebSocket = <RO>(
       )
 
     const write = (chunk: Uint8Array | string | CloseEvent) =>
-      latch.whenOpen(Effect.sync(() => {
-        const ws = currentWS!
-        if (isCloseEvent(chunk)) {
-          ws.close(chunk.code, chunk.reason)
-        } else {
-          ws.send(chunk as string | Uint8Array<ArrayBuffer>)
-        }
-      }))
+      latch.whenOpen(
+        Effect.suspend(() => {
+          try {
+            const ws = currentWS!
+            if (isCloseEvent(chunk)) {
+              ws.close(chunk.code, chunk.reason)
+            } else {
+              ws.send(chunk as string | Uint8Array<ArrayBuffer>)
+            }
+            return Effect.void
+          } catch (cause) {
+            return Effect.fail(new SocketError({ reason: new SocketWriteError({ cause }) }))
+          }
+        })
+      )
     const writer = Effect.succeed(write)
 
     return Effect.succeed(make({
@@ -906,7 +913,10 @@ export const fromTransformStream = <R>(acquire: Effect.Effect<InputTransformStre
             })
           )
         }
-        return Effect.promise(() => getWriter(stream).write(typeof chunk === "string" ? encoder.encode(chunk) : chunk))
+        return Effect.tryPromise({
+          try: () => getWriter(stream).write(typeof chunk === "string" ? encoder.encode(chunk) : chunk),
+          catch: (cause) => new SocketError({ reason: new SocketWriteError({ cause }) })
+        })
       }))
     const writer = Effect.acquireRelease(
       Effect.succeed(write),

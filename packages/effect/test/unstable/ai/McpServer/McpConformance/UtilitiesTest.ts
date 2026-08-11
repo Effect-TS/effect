@@ -2,6 +2,7 @@ import { assert, describe, it } from "@effect/vitest"
 import * as Context from "effect/Context"
 import * as Deferred from "effect/Deferred"
 import * as Effect from "effect/Effect"
+import * as Exit from "effect/Exit"
 import type * as McpProtocol from "effect/unstable/ai/McpProtocol"
 import * as McpSchema from "effect/unstable/ai/McpSchema"
 import { makeMcpStdioHarness } from "../TestUtils/McpStdioHarness.ts"
@@ -117,6 +118,24 @@ export const suite = (protocol: McpProtocol.ProtocolAdapter, layer: McpConforman
 
             assert.strictEqual(response.status, 202)
             assert.strictEqual(yield* Effect.promise(() => response.text()), "")
+          }))
+        it.effect("SHOULD allow a later request to reuse an unknown cancelled identifier", () =>
+          Effect.gen(function*() {
+            const fixture = yield* makeMcpStdioHarness(protocol)
+            yield* fixture.initialize()
+            yield* fixture.sendNotification("notifications/cancelled", {
+              requestId: "reused-id"
+            })
+
+            const reused = yield* fixture.sendRequest("ping", undefined, "reused-id").pipe(Effect.forkChild)
+            yield* Effect.yieldNow
+            const control = yield* fixture.sendRequest("ping", undefined, "control-id")
+            assert.deepStrictEqual(control.result, {})
+            yield* Effect.yieldNow
+
+            const reusedExit = reused.pollUnsafe()
+            assert(reusedExit !== undefined && Exit.isSuccess(reusedExit))
+            assert.deepStrictEqual(reusedExit.value.result, {})
           }))
         it.effect("SHOULD ignore cancellation for an already completed request identifier", () =>
           Effect.gen(function*() {

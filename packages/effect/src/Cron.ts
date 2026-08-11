@@ -12,7 +12,7 @@ import * as Data from "./Data.ts"
 import type * as DateTime from "./DateTime.ts"
 import * as Equal from "./Equal.ts"
 import * as Equ from "./Equivalence.ts"
-import { format } from "./Formatter.ts"
+import { format as formatValue } from "./Formatter.ts"
 import { constVoid, dual, pipe } from "./Function.ts"
 import * as Hash from "./Hash.ts"
 import { type Inspectable, NodeInspectSymbol } from "./Inspectable.ts"
@@ -152,7 +152,7 @@ const CronProto = {
     return toPojo(this)
   },
   toString(this: Cron) {
-    return `Cron(${format(toPojo(this))})`
+    return `Cron(${formatValue(toPojo(this))})`
   },
   toJSON(this: Cron) {
     const out = toPojo(this)
@@ -611,6 +611,69 @@ export const parse = (cron: string, tz?: DateTime.TimeZone | string): Result.Res
  * @since 4.0.0
  */
 export const parseUnsafe = (cron: string, tz?: DateTime.TimeZone | string): Cron => Result.getOrThrow(parse(cron, tz))
+
+/**
+ * Formats a `Cron` instance as a cron expression.
+ *
+ * **Details**
+ *
+ * The default seconds field (`0`) is omitted unless `includeSeconds` is `true`.
+ * Other seconds configurations are always included.
+ *
+ * **Gotchas**
+ *
+ * Formatting drops the timezone information and the `and` restriction between
+ * days and weekdays. Parsing the result is therefore not guaranteed to produce
+ * an equivalent schedule.
+ *
+ * **Example** (Formatting a cron expression)
+ *
+ * ```ts import.meta.vitest
+ * import { Cron } from "effect"
+ *
+ * const cron = Cron.parseUnsafe("23 0-20/2 * * 0", "UTC")
+ *
+ * Cron.format(cron) // => "23 0-20/2 * * 0"
+ * Cron.format(cron, { includeSeconds: true }) // => "0 23 0-20/2 * * 0"
+ * ```
+ *
+ * @category getters
+ * @since 4.0.0
+ */
+export const format = (cron: Cron, options?: {
+  readonly includeSeconds?: boolean | undefined
+}): string => {
+  const segments = [cron.seconds, cron.minutes, cron.hours, cron.days, cron.months, cron.weekdays]
+    .map(formatSegment)
+  return (
+    options?.includeSeconds !== true && cron.seconds.size === 1 && cron.seconds.has(0) ? segments.slice(1) : segments
+  ).join(" ")
+}
+
+const formatSegment = (values: ReadonlySet<number>): string => {
+  if (values.size === 0) {
+    return "*"
+  }
+  const array = Array.from(values)
+  const segments: Array<string> = []
+  let index = 0
+  while (index < array.length) {
+    const start = array[index]!
+    const step = array[index + 1]! - start
+    if (index + 2 < array.length && array[index + 2]! - array[index + 1]! === step) {
+      let end = index + 2
+      while (end + 1 < array.length && array[end + 1]! - array[end]! === step) {
+        end++
+      }
+      segments.push(`${start}-${array[end]}${step === 1 ? "" : `/${step}`}`)
+      index = end + 1
+    } else {
+      segments.push(`${start}`)
+      index++
+    }
+  }
+  return segments.join(",")
+}
 
 /**
  * Returns `true` when a date/time matches a `Cron` schedule.

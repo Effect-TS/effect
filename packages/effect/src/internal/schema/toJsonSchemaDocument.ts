@@ -1,7 +1,8 @@
 import * as Arr from "../../Array.ts"
 import * as Equal from "../../Equal.ts"
-import { escapeToken } from "../../JsonPointer.ts"
+import { escapeToken, unescapeToken } from "../../JsonPointer.ts"
 import type * as JsonSchema from "../../JsonSchema.ts"
+import { rewriteRefs } from "../../JsonSchema.ts"
 import * as RegEx from "../../RegExp.ts"
 import type * as Schema from "../../Schema.ts"
 import * as SchemaAST from "../../SchemaAST.ts"
@@ -20,6 +21,11 @@ const jsonSchemaAnnotationExcludedKeys = new Set([
   InternalAnnotations.IDENTIFIER_FALLBACK_KEY,
   ...InternalAnnotations.jsonSchemaAnnotationKeys
 ])
+
+/** @internal */
+export const toRepresentationOptions = {
+  isAnonymousReferenceAllowed: (ast: SchemaAST.AST): boolean => !SchemaAST.isDeclaration(ast)
+}
 
 function collectJsonSchemaAnnotations(
   annotations: Schema.Annotations.Annotations | undefined,
@@ -142,22 +148,26 @@ function compileJsonSchema(
   references: SchemaRepresentation.References,
   options: Schema.ToJsonSchemaOptions | undefined
 ): JsonSchema.MultiDocument<"draft-2020-12"> {
-  const definitions: Record<string, JsonSchema.JsonSchema> = {}
   // null = compiling, string = canonical key, object = compiled schema
   const definitionStates = new Map<string, JsonSchema.JsonSchema | string | null>()
   const compiledRepresentations = new WeakMap<SchemaRepresentation.Representation, JsonSchema.JsonSchema>()
   const fallbackDefinitions = new Map<string, Array<string>>()
+  let hasAliases = false
   const referenceKeys = Object.keys(references)
   for (const key of referenceKeys) {
     compileDefinition(key, ["references", key])
   }
+  const schemas = Arr.map(
+    representations,
+    (representation, index) => finalizeJsonSchema(recur(representation, rootPaths[index]))
+  )
+  const definitions: Record<string, JsonSchema.JsonSchema> = {}
   for (const key of referenceKeys) {
     const compiled = definitionStates.get(key)!
     if (typeof compiled !== "string") {
-      InternalRecord.assignProperty(definitions, key, compiled)
+      InternalRecord.assignProperty(definitions, key, finalizeJsonSchema(compiled))
     }
   }
-  const schemas = Arr.map(representations, (representation, index) => recur(representation, rootPaths[index]))
   return { dialect: "draft-2020-12", schemas, definitions }
 
   function compileDefinition(key: string, path: Path): string {
@@ -179,12 +189,22 @@ function compileJsonSchema(
         if (candidates === undefined) fallbackDefinitions.set(fallback, [key])
         else candidates.push(key)
       } else {
+        hasAliases = true
         definitionStates.set(key, match)
         return match
       }
     }
     definitionStates.set(key, schema)
     return key
+  }
+
+  function finalizeJsonSchema(schema: JsonSchema.JsonSchema): JsonSchema.JsonSchema {
+    if (!hasAliases) return schema
+    return rewriteRefs(schema, ($ref) =>
+      $ref.replace(/^#\/\$defs\/([^/]*)/, (match, token) => {
+        const canonical = definitionStates.get(unescapeToken(token))
+        return typeof canonical === "string" ? `#/$defs/${escapeToken(canonical)}` : match
+      }))
   }
 
   function getIdentifierFallback(

@@ -100,7 +100,7 @@ const Proto = {
   ...PipeInspectableProto,
   toJSON(this: FiberSet<unknown, unknown>) {
     return {
-      _id: "FiberMap",
+      _id: "FiberSet",
       state: this.state
     }
   }

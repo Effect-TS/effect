@@ -253,7 +253,12 @@ export const make = (
             }
             return Effect.suspend(() => {
               controller.abort()
-              return Effect.promise(() => this.conn.command({ query: `KILL QUERY WHERE query_id = '${queryId}'` }))
+              return Effect.promise(() =>
+                this.conn.command({
+                  query: "KILL QUERY WHERE query_id = {queryId:String}",
+                  query_params: { queryId }
+                })
+              )
             })
           })
         })
@@ -375,7 +380,12 @@ export const make = (
             )
             return Effect.suspend(() => {
               controller.abort()
-              return Effect.promise(() => client.command({ query: `KILL QUERY WHERE query_id = '${queryId}'` }))
+              return Effect.promise(() =>
+                client.command({
+                  query: "KILL QUERY WHERE query_id = {queryId:String}",
+                  query_params: { queryId }
+                })
+              )
             })
           })
         },

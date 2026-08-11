@@ -17,7 +17,7 @@ import * as Record from "../Record.ts"
 import * as Result from "../Result.ts"
 import * as Schema from "../Schema.ts"
 import * as SchemaAST from "../SchemaAST.ts"
-import type * as SchemaIssue from "../SchemaIssue.ts"
+import * as SchemaIssue from "../SchemaIssue.ts"
 import * as SchemaParser from "../SchemaParser.ts"
 import * as FastCheck from "../testing/FastCheck.ts"
 
@@ -123,7 +123,7 @@ export class Asserts<S extends Schema.Constraint> {
     async function succeed(input: S["~type.make.in"], expected?: S["Type"]) {
       const r = await Effect.runPromise(
         makeEffect(input, options).pipe(
-          Effect.mapErrorEager((issue) => issue.toString()),
+          Effect.mapErrorEager(SchemaIssue.defaultFormatter),
           Effect.result
         )
       )
@@ -135,7 +135,7 @@ export class Asserts<S extends Schema.Constraint> {
       async fail(input: unknown, message: string) {
         const r = await Effect.runPromise(
           makeEffect(input, options).pipe(
-            Effect.mapErrorEager((issue) => issue.toString()),
+            Effect.mapErrorEager(SchemaIssue.defaultFormatter),
             Effect.result
           )
         )
@@ -172,13 +172,13 @@ export class Asserts<S extends Schema.Constraint> {
   }) {
     const decodeUnknownEffect = SchemaParser.decodeUnknownEffect(this.schema)
     const encodeEffect = SchemaParser.encodeEffect(this.schema)
-    const arbitrary = Schema.toArbitrary(this.schema)
+    const arbitrary = Schema.toArbitrary(this.schema)(FastCheck)
     return FastCheck.assert(
       FastCheck.asyncProperty(arbitrary, async (t) => {
         const r = await Effect.runPromise(
           encodeEffect(t).pipe(
             Effect.flatMapEager((e) => decodeUnknownEffect(e)),
-            Effect.mapErrorEager((issue) => issue.toString()),
+            Effect.mapErrorEager(SchemaIssue.defaultFormatter),
             Effect.result
           )
         )
@@ -280,7 +280,7 @@ export class Asserts<S extends Schema.Constraint> {
       }) {
         const params = options?.params
         const is = Schema.is(schema)
-        const arb = Schema.toArbitrary(schema)
+        const arb = Schema.toArbitrary(schema)(FastCheck)
         FastCheck.assert(FastCheck.property(arb, (a) => is(a)), { numRuns: 20, ...params })
       }
     }
@@ -367,7 +367,7 @@ export class Decoding<S extends Schema.Constraint> {
   ) {
     const r = await Effect.runPromise(
       this.decodeUnknownEffect(input, this.options?.parseOptions).pipe(
-        Effect.mapErrorEager((issue) => issue.toString()),
+        Effect.mapErrorEager(SchemaIssue.defaultFormatter),
         Effect.result
       )
     )
@@ -401,7 +401,7 @@ export class Decoding<S extends Schema.Constraint> {
   ) {
     const r = await Effect.runPromise(
       this.decodeUnknownEffect(input, this.options?.parseOptions).pipe(
-        Effect.mapErrorEager((issue) => issue.toString()),
+        Effect.mapErrorEager(SchemaIssue.defaultFormatter),
         Effect.result
       )
     )
@@ -459,7 +459,7 @@ export class Encoding<S extends Schema.Constraint> {
   readonly encodeUnknownEffect: (
     input: unknown,
     options?: SchemaAST.ParseOptions
-  ) => Effect.Effect<S["Type"], SchemaIssue.Issue, S["EncodingServices"]>
+  ) => Effect.Effect<S["Encoded"], SchemaIssue.Issue, S["EncodingServices"]>
   readonly options?: {
     readonly parseOptions?: SchemaAST.ParseOptions | undefined
   } | undefined
@@ -507,7 +507,7 @@ export class Encoding<S extends Schema.Constraint> {
   ) {
     const r = await Effect.runPromise(
       this.encodeUnknownEffect(input, this.options?.parseOptions).pipe(
-        Effect.mapErrorEager((issue) => issue.toString()),
+        Effect.mapErrorEager(SchemaIssue.defaultFormatter),
         Effect.result
       )
     )
@@ -541,7 +541,7 @@ export class Encoding<S extends Schema.Constraint> {
   ) {
     const r = await Effect.runPromise(
       this.encodeUnknownEffect(input, this.options?.parseOptions).pipe(
-        Effect.mapErrorEager((issue) => issue.toString()),
+        Effect.mapErrorEager(SchemaIssue.defaultFormatter),
         Effect.result
       )
     )

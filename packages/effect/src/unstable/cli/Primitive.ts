@@ -10,9 +10,6 @@
  *
  * @since 4.0.0
  */
-import * as Ini from "ini"
-import * as Toml from "toml"
-import * as Yaml from "yaml"
 import * as Config from "../../Config.ts"
 import * as Effect from "../../Effect.ts"
 import * as FileSystem from "../../FileSystem.ts"
@@ -24,6 +21,9 @@ import * as Schema from "../../Schema.ts"
 import type { Formatter } from "../../SchemaIssue.ts"
 import type * as Struct from "../../Struct.ts"
 import type { Covariant } from "../../Types.ts"
+import * as Ini from "../encoding/Ini.ts"
+import * as Toml from "../encoding/Toml.ts"
+import * as Yaml from "../encoding/Yaml.ts"
 import type { Environment } from "./Command.ts"
 
 const TypeId = "~effect/cli/Primitive"
@@ -479,8 +479,8 @@ export type PathType = "file" | "directory" | "either"
 export const path = (
   pathType: PathType,
   mustExist?: boolean
-): Primitive<string> =>
-  makePrimitive(
+): Primitive<string> => {
+  const primitive = makePrimitive(
     "Path",
     Effect.fnUntraced(function*(value) {
       const fs = yield* FileSystem.FileSystem
@@ -518,6 +518,8 @@ export const path = (
       return absolutePath
     })
   )
+  return Object.assign(primitive, { pathType })
+}
 
 /**
  * Creates a primitive that wraps string input in `Redacted`.
@@ -984,3 +986,7 @@ export const getTypeName = <A>(primitive: Primitive<A>): string => {
 /** @internal */
 export const getChoiceKeys = (primitive: Primitive<unknown>): ReadonlyArray<string> | undefined =>
   primitive._tag === "Choice" ? (primitive as any).choiceKeys : undefined
+
+/** @internal */
+export const getPathType = (primitive: Primitive<unknown>): PathType | undefined =>
+  primitive._tag === "Path" ? (primitive as any).pathType : undefined

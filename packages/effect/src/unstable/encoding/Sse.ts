@@ -255,9 +255,9 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   let buffer: string
   let startingPosition: number
   let startingFieldLength: number
+  let discardTrailingNewline: boolean
 
   // Event state
-  let eventId: string | undefined
   let lastEventId: string | undefined
   let eventName: string | undefined
   let data: string
@@ -270,8 +270,9 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     buffer = ""
     startingPosition = 0
     startingFieldLength = -1
+    discardTrailingNewline = false
 
-    eventId = undefined
+    lastEventId = undefined
     eventName = undefined
     data = ""
   }
@@ -279,10 +280,10 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
   function feed(chunk: string): SseError | undefined {
     buffer = buffer ? buffer + chunk : chunk
 
-    // Strip any UTF8 byte order mark (BOM) at the start of the stream.
+    // Strip any UTF-8 byte order mark (BOM) at the start of the stream.
     // Note that we do not strip any non - UTF8 BOM, as eventsource streams are
     // always decoded as UTF8 as per the specification.
-    if (isFirstChunk && hasBom(buffer)) {
+    if (isFirstChunk && buffer.startsWith(BOM)) {
       buffer = buffer.slice(BOM.length)
     }
 
@@ -291,7 +292,6 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     // Set up chunk-specific processing state
     const length = buffer.length
     let position = 0
-    let discardTrailingNewline = false
 
     // Read the current buffer byte by byte
     while (position < length) {
@@ -364,12 +364,11 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
       if (data.length > 0) {
         onParse({
           _tag: "Event",
-          id: eventId,
-          event: eventName ?? "message",
+          id: lastEventId,
+          event: eventName || "message",
           data: data.slice(0, -1) // remove trailing newline
         })
         data = ""
-        eventId = undefined
       }
       eventName = undefined
       return
@@ -396,22 +395,15 @@ export function makeParser(onParse: (event: AnyEvent) => void, options?: DecodeO
     } else if (field === "event") {
       eventName = value
     } else if (field === "id" && !value.includes("\u0000")) {
-      eventId = value
       lastEventId = value
-    } else if (field === "retry") {
+    } else if (field === "retry" && /^\d+$/.test(value)) {
       const retry = parseInt(value, 10)
-      if (!Number.isNaN(retry)) {
-        onParse(new Retry({ duration: Duration.millis(retry), lastEventId }))
-      }
+      onParse(new Retry({ duration: Duration.millis(retry), lastEventId }))
     }
   }
 }
 
-const BOM = [239, 187, 191]
-
-function hasBom(buffer: string) {
-  return BOM.every((charCode: number, index: number) => buffer.charCodeAt(index) === charCode)
-}
+const BOM = "\uFEFF"
 
 /**
  * Stateful Server-Sent Events parser returned by `makeParser`.
@@ -662,9 +654,7 @@ export const encoder: Encoder = {
         if (event.event !== "message") {
           data += `event: ${event.event}\n`
         }
-        if (event.data !== "") {
-          data += `data: ${event.data.replace(/\n/g, "\ndata: ")}\n`
-        }
+        data += `data: ${event.data.replace(/\n/g, "\ndata: ")}\n`
         return data + "\n"
       }
       case "Retry": {

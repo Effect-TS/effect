@@ -19,6 +19,7 @@ import { describe, it } from "vitest"
 import { assertTrue, deepStrictEqual, strictEqual, throws } from "../utils/assert.ts"
 
 const isDeno = "Deno" in globalThis
+const formatIssue = SchemaIssue.makeFormatterDefault()
 
 const FiniteFromDate = Schema.Date.pipe(Schema.decodeTo(
   Schema.Number,
@@ -39,6 +40,11 @@ describe("Serializers", () => {
     it("treats Json as canonical", () => {
       strictEqual(Schema.toCodecJson(Schema.Json).ast, Schema.Json.ast)
       strictEqual(Schema.toCodecJson(Schema.MutableJson).ast, Schema.MutableJson.ast)
+    })
+
+    it("is idempotent", () => {
+      const once = Schema.toCodecJson(Schema.suspend(() => Schema.Struct({ value: Schema.Number })))
+      strictEqual(Schema.toCodecJson(once).ast, once.ast)
     })
 
     it("should reorder the types in the Union based on the encoded side", async () => {
@@ -334,11 +340,11 @@ describe("Serializers", () => {
           strictEqual(ast._tag, "Objects")
           if (ast._tag === "Objects") {
             const type = ast.propertySignatures[0].type
-            assertTrue(type.context?.defaultValue !== undefined)
+            assertTrue(type.context?.constructorDefault !== undefined)
             const encoded = SchemaAST.getLastEncoding(type)
             strictEqual(encoded.context?.isOptional, true)
             strictEqual(encoded.context?.isMutable, true)
-            strictEqual(encoded.context?.defaultValue, undefined)
+            strictEqual(encoded.context?.constructorDefault, undefined)
             deepStrictEqual(encoded.context?.annotations, { description: "a" })
           }
         })
@@ -1636,11 +1642,11 @@ describe("Serializers", () => {
       strictEqual(ast._tag, "Objects")
       if (ast._tag === "Objects") {
         const type = ast.propertySignatures[0].type
-        assertTrue(type.context?.defaultValue !== undefined)
+        assertTrue(type.context?.constructorDefault !== undefined)
         const encoded = SchemaAST.getLastEncoding(type)
         strictEqual(encoded.context?.isOptional, true)
         strictEqual(encoded.context?.isMutable, true)
-        strictEqual(encoded.context?.defaultValue, undefined)
+        strictEqual(encoded.context?.constructorDefault, undefined)
         deepStrictEqual(encoded.context?.annotations, { description: "a" })
       }
     })
@@ -1666,11 +1672,11 @@ describe("Serializers", () => {
       strictEqual(ast._tag, "Objects")
       if (ast._tag === "Objects") {
         const type = ast.propertySignatures[0].type
-        assertTrue(type.context?.defaultValue !== undefined)
+        assertTrue(type.context?.constructorDefault !== undefined)
         const encoded = SchemaAST.getLastEncoding(type)
         strictEqual(encoded.context?.isOptional, true)
         strictEqual(encoded.context?.isMutable, true)
-        strictEqual(encoded.context?.defaultValue, undefined)
+        strictEqual(encoded.context?.constructorDefault, undefined)
         deepStrictEqual(encoded.context?.annotations, { description: "a" })
       }
     })
@@ -1723,6 +1729,11 @@ describe("Serializers", () => {
 
       it("Unknown", () => {
         const serializer = Schema.toCodecStringTree(Schema.Unknown)
+        strictEqual(serializer.ast, Schema.toCodecStringTree(serializer).ast)
+      })
+
+      it("Suspend", () => {
+        const serializer = Schema.toCodecStringTree(Schema.suspend(() => Schema.Array(Schema.Finite)))
         strictEqual(serializer.ast, Schema.toCodecStringTree(serializer).ast)
       })
     })
@@ -2797,8 +2808,15 @@ Expected "Infinity" | "-Infinity" | "NaN"`
       await decoding.succeed([["1", "2"]], [[1, 2]])
     })
 
-    it("is idempotent", () => {
+    it("preserves array-from-single encoding when converting to StringTree again", () => {
       const schema = Schema.toCodecArrayFromSingle(Schema.toCodecStringTree(Schema.Array(Schema.Finite)))
+      strictEqual(Schema.toCodecStringTree(schema).ast, schema.ast)
+    })
+
+    it("is idempotent", () => {
+      const schema = Schema.toCodecArrayFromSingle(
+        Schema.toCodecStringTree(Schema.suspend(() => Schema.Array(Schema.Finite)))
+      )
       strictEqual(schema.ast, Schema.toCodecArrayFromSingle(schema).ast)
     })
   })
@@ -2812,7 +2830,7 @@ Expected "Infinity" | "-Infinity" | "NaN"`
     async function assertXmlFailure<T, E, RD>(schema: Schema.Codec<T, E, RD>, value: T, message: string) {
       const serializer = Schema.toEncoderXml(Schema.toCodecStringTree(schema))
       const r = await serializer(value).pipe(
-        Effect.mapError((err) => err.issue.toString()),
+        Effect.mapError((err) => formatIssue(err.issue)),
         Effect.result,
         Effect.runPromise
       )

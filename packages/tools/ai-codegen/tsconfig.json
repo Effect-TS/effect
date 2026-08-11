@@ -4,7 +4,7 @@
   "include": ["src"],
   "references": [
     { "path": "../../effect" },
-    { "path": "../../platform-node" },
+    { "path": "../../platform/node" },
     { "path": "../openapi-generator" }
   ],
   "compilerOptions": {

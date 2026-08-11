@@ -2281,10 +2281,10 @@ const URLSchema = Schema.declare(
         // How to convert between URL and string
         SchemaTransformation.transformOrFail<URL, string>({
           // JSON string -> URL (may fail if the string is not a valid URL)
-          decode: (s) =>
+          decode: (s, options) =>
             Effect.try({
               try: () => new URL(s),
-              catch: () => new SchemaIssue.InvalidValue({ message: "Invalid URL string" })
+              catch: () => new SchemaIssue.InvalidValue({ message: "Invalid URL string" }, s, options)
             }),
           // URL -> JSON string (always succeeds)
           encode: (url) => Effect.succeed(url.href)
@@ -2360,7 +2360,7 @@ const Box = <A extends Schema.Top>(item: A) =>
     (u, ast, options) => {
       // First, check the outer shape
       if (!isBox(u)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, u, options))
       }
       // Then, decode the inner value using the item codec
       return Effect.mapBothEager(
@@ -2741,13 +2741,15 @@ const myapi = (userId: number) =>
 
 const schema = Schema.Finite.pipe(
   Schema.decode({
-    decode: SchemaGetter.checkEffect((n) =>
+    decode: SchemaGetter.checkEffect((n, options) =>
       Effect.gen(function*() {
         // Call the async API and wrap the result in a Result
         const user = yield* Effect.result(myapi(n))
 
         // If the result is an error, return a SchemaIssue
-        return Result.isFailure(user) ? new SchemaIssue.InvalidValue({ title: "not found" }) : undefined // No issue, value is valid
+        return Result.isFailure(user)
+          ? new SchemaIssue.InvalidValue({ message: "not found" }, n, options)
+          : undefined // No issue, value is valid
       })
     ),
     encode: SchemaGetter.passthrough()
@@ -3216,10 +3218,10 @@ const URLFromString = Schema.String.pipe(
   Schema.decodeTo(
     Schema.instanceOf(URL),
     SchemaTransformation.transformOrFail({
-      decode: (s) =>
+      decode: (s, options) =>
         Effect.try({
           try: () => new URL(s),
-          catch: () => new SchemaIssue.InvalidValue({ message: "Invalid URL string" })
+          catch: () => new SchemaIssue.InvalidValue({ message: "Invalid URL string" }, s, options)
         }),
       encode: (url) => Effect.succeed(url.href)
     })
@@ -5556,9 +5558,9 @@ console.log(JSON.stringify(document, null, 2))
 
 ### Generating an Arbitrary from a Schema
 
-Property-based tests need generators. `Schema.toArbitrary` derives a
-`fast-check` `Arbitrary` that generates decoded `Type` values accepted by the
-schema.
+Property-based tests need generators. `Schema.toArbitrary` derives a factory
+that accepts the `fast-check` module and returns an `Arbitrary` that generates
+decoded `Type` values accepted by the schema.
 
 Most schemas do not need any extra work:
 
@@ -5571,21 +5573,9 @@ const Person = Schema.Struct({
   age: Schema.Int.check(Schema.isBetween({ minimum: 18, maximum: 80 }))
 })
 
-const PersonArbitrary = Schema.toArbitrary(Person)
+const PersonArbitrary = Schema.toArbitrary(Person)(FastCheck)
 
 console.log(FastCheck.sample(PersonArbitrary, 3))
-```
-
-Use `Schema.toArbitraryLazy` only when you want the caller to provide
-`fast-check`:
-
-```ts
-import { Schema } from "effect"
-import { FastCheck } from "effect/testing"
-
-const makeStringArbitrary = Schema.toArbitraryLazy(Schema.String)
-
-const StringArbitrary = makeStringArbitrary(FastCheck)
 ```
 
 `Schema.Never` and declaration schemas without a `toArbitrary` annotation cannot
@@ -5639,35 +5629,6 @@ const Palindrome = Schema.String.check(
 This works because the final predicate check rejects strings that are not
 palindromes. It may need many attempts, because the base string generator has no
 reason to produce mirrored strings.
-
-#### Reports
-
-Use `{ report: true }` when you want to know which filters did not guide
-generation:
-
-```ts
-import { Schema } from "effect"
-
-const isPalindrome = (s: string) => s === Array.from(s).reverse().join("")
-
-const Palindrome = Schema.String.check(
-  Schema.makeFilter(isPalindrome, {
-    expected: "a palindrome"
-  })
-)
-
-const result = Schema.toArbitrary(Palindrome, { report: true })
-
-result.value
-result.report.warnings
-```
-
-An `OpaqueFilter` warning means: "this filter is still checked, but it did not
-help build the generator."
-
-Reports contain warnings only. Unsupported schemas, impossible constraints,
-invalid candidates, and recursive schemas without a finite terminal path still
-fail immediately.
 
 #### Custom Filters With Constraints
 
@@ -5858,7 +5819,7 @@ const BoxSchema = <A extends Schema.Top>(value: A) =>
     [value],
     ([valueCodec]) => (input, ast, options) => {
       if (!isBox(input)) {
-        return Effect.fail(new SchemaIssue.InvalidType(ast))
+        return Effect.fail(new SchemaIssue.InvalidType(ast, input, options))
       }
       return Effect.map(
         SchemaParser.decodeUnknownEffect(valueCodec)(Box.unbox(input), options),
@@ -5945,7 +5906,7 @@ const Person = Schema.Struct({
   company: Company
 })
 
-console.log(FastCheck.sample(Schema.toArbitrary(Person), 3))
+console.log(FastCheck.sample(Schema.toArbitrary(Person)(FastCheck), 3))
 ```
 
 These overrides are useful because the values have domain shape: names look like
@@ -6070,6 +6031,8 @@ console.log(_s.replace("b", new B({ a: new A({ s: "a" }) })))
 // B { a: A { s: 'b' } }
 ```
 
+Reading through the generated `Iso` encodes the schema value, while replacing through it decodes the new focus. Either direction can throw an `Error` with the generic message `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Use `SchemaIssue.makeFormatterDefault()` to format that cause when human-readable details are needed.
+
 ### Using the Differ Module for Type-Safe JSON Patches
 
 The `Differ` module lets you compute and apply JSON Patch (RFC 6902) changes for any value described by a `Schema`. You give it a schema once, then use the returned differ to produce a patch from an old value to a new value, and to apply that patch.
@@ -6148,6 +6111,8 @@ The idea is simple: if you have a `Schema` for a type `T`, you can serialize any
   3. Decode the patched JSON back to `T` using the schema.
 
 This approach keeps patches independent from TypeScript types and uses the schema as the guardrail when turning JSON back into `T`.
+
+Schema conversion failures from `diff` or `patch` throw an `Error` with the generic message `"Schema validation failed"` and a `SchemaIssue.Issue` in its `cause`. Format that cause explicitly with `SchemaIssue.makeFormatterDefault()`. Errors raised while applying an invalid JSON Patch operation are separate `JsonPatch` errors rather than schema validation failures.
 
 # Schema Representation
 
@@ -6296,14 +6261,19 @@ const multiDocument = SchemaRepresentation.toRepresentations([
 ])
 ```
 
-Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. `toMultiDocument(document)`
-wraps a single document when a compiler requires multiple roots.
+Repeated structural nodes, identifiers, and recursive schemas are placed in `references`. Repeated `Suspend` and
+`Declaration` nodes are reference candidates as well. For unions, enums, template literals, and string literals, the
+converter uses an inexpensive size estimate and creates an anonymous reference only when it expects the reference to be
+smaller than repeating the body. `toMultiDocument(document)` wraps a single document when a compiler requires multiple
+roots.
 
-An explicit `identifier` requests a reference name within a conversion. Reusing the same schema shares its reference. Copies
-whose AST fields are referentially identical once property-key context is ignored are canonicalized and also share a
-reference. Otherwise, when referentially distinct schemas request the same name, the first schema keeps it and later schemas
-receive numeric suffixes in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback
-allocation hints; their generated names use the `Encoded` suffix and follow the same collision rules.
+An explicit `identifier` requests a reference name within a conversion. Reusing the same schema shares its reference.
+Context-only copies created through `SchemaAST.replaceContext` retain the original AST as their reference owner, including
+across several successive context changes. Context still belongs to each occurrence and does not, by itself, make a node a
+reference candidate. Independently constructed ASTs are not canonicalized merely because their other fields contain the
+same references. When distinct schemas request the same name, the first schema keeps it and later schemas receive numeric
+suffixes in encounter order, such as `Value_1` and `Value_2`. Internal `~identifier` annotations are fallback allocation
+hints; their generated names use the `Encoded` suffix and follow the same collision rules.
 
 ## JSON persistence
 
@@ -6403,11 +6373,23 @@ The same reviver can then be included in the `revivers` array passed to `fromRep
 ### Exporting JSON Schema
 
 For a runtime schema, prefer `Schema.toJsonSchemaDocument(schema)`. It first derives the schema's canonical JSON codec,
-then compiles its encoded representation to JSON Schema Draft 2020-12.
+then compiles its encoded representation to JSON Schema Draft 2020-12. During this high-level conversion, declarations
+are not extracted into anonymous references: their JSON Schema body is unconstrained, and leaving it inline preserves
+empty-schema simplifications. Explicit and recursive references are unaffected.
 
 At the lower level, `SchemaRepresentation.toJsonSchemaDocument(document)` compiles a live `Document`, and
 `toJsonSchemaMultiDocument` compiles a live `MultiDocument`. Check-level `toJsonSchema` callbacks contribute JSON Schema
 constraints. Opaque declarations that have not been structurally lowered compile to an unconstrained JSON Schema.
+
+`toJsonSchema` callbacks must treat their input schemas as immutable and return a valid JSON Schema object graph. After a
+callback returns, it must not mutate that object or anything reachable from it; returning a new graph is the supported way
+to produce different output during a later compilation. The compiler may cache structural comparisons while
+deduplicating completed definitions, so mutating a previously returned graph can make equality results stale.
+
+Definitions are compared only with definitions in the same internal fallback-identifier group. Equal definitions in
+different groups and definitions with explicit identifiers remain distinct. After compilation, local `#/$defs/...`
+references are rewritten to the surviving definition, including references returned directly by callbacks. External
+references and other local JSON Pointers remain unchanged.
 
 Because compiler callbacks are not persisted, compile the live document before calling `toJson`, or rebuild and lower the
 schema with revivers first.
@@ -6423,6 +6405,13 @@ roots. To pass the result to a representation compiler, call `toRepresentations`
 Import is best-effort: JSON Schema constructs are translated to Effect schemas where possible, but the result is not a
 lossless reconstruction of an original Effect schema. The optional `onEnter` callback can normalize each JSON Schema node
 before it is translated.
+
+Regular expression constraints reached during best-effort translation are rejected by default because imported patterns
+use the runtime's native regular expression engine and may block validation for an unbounded amount of time. Set
+`patterns: "apply"` only for trusted documents. Set `patterns: "ignore"` to skip reached pattern constraints explicitly;
+the resulting schema accepts values that the source document may reject. The policy includes `pattern`, the keys of
+`patternProperties`, and patterns nested in `propertyNames`. Ignoring `patternProperties` also skips its value constraints
+and `additionalProperties`, because matching keys cannot be determined without evaluating the patterns.
 
 ## Code generation
 
@@ -6443,6 +6432,31 @@ reviver option. To generate code from persisted JSON, first reconstruct the sche
 # Error Handling and Formatting
 
 When validation fails, Schema produces structured error objects that describe what went wrong. Formatters turn those error objects into human-readable messages you can display to users or write to logs.
+
+### Reporting Rejected Inputs
+
+By default, schema issues neither retain rejected input values nor include them in formatted messages. Pass `{ reportInput: true }` to a parser when the additional diagnostic context is worth the disclosure and retention risk:
+
+```ts
+import { Result, Schema, SchemaIssue, SchemaParser } from "effect"
+
+const result = SchemaParser.decodeUnknownResult(Schema.String)(1, { reportInput: true })
+const formatIssue = SchemaIssue.makeFormatterDefault()
+
+if (Result.isFailure(result)) {
+  SchemaIssue.hasInput(result.failure) // true
+  if (SchemaIssue.hasInput(result.failure)) {
+    result.failure.input // 1
+  }
+  formatIssue(result.failure) // "Expected string, got 1"
+}
+```
+
+Value-bearing issues created by the parser then expose an enumerable own `input` field. The input is retained by reference, not copied. Use `SchemaIssue.hasInput(issue)` instead of checking `issue.input !== undefined`, because a present input whose value is `undefined` is distinct from an issue that does not retain input.
+
+Enabling this option can retain or disclose secrets, personally identifiable information, and large object graphs. Object enumeration, spread, serialization, `SchemaIssue.makeFormatterDefault()`, `SchemaError.message`, and Standard Schema messages may expose the retained value. A Standard Schema failure still contains only its standard `message` and `path` fields; the input can appear inside `message`, but no non-standard `input` field is added.
+
+User-created `SchemaIssue.Issue` values returned directly by declarations, checks, transformations, or middleware are not modified. To make a custom value-bearing issue honor `reportInput`, pass the callback's input and effective parse options to its constructor, for example `new SchemaIssue.InvalidValue(annotations, input, options)`.
 
 ### Formatters
 

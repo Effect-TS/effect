@@ -743,7 +743,7 @@ function translateJsonSchemaMultiDocument(
       case "string":
         return {
           _tag: "String",
-          checks: collectStringChecks(schema)
+          checks: collectStringChecks(schema, path)
         }
       case "number":
       case "integer":
@@ -757,23 +757,26 @@ function translateJsonSchemaMultiDocument(
       case "boolean":
         return { _tag: "Boolean", checks: [] }
       case "array": {
+        const prefixItems = Array.isArray(schema.prefixItems) ? schema.prefixItems : undefined
         const minItems = typeof schema.minItems === "number" ? schema.minItems : 0
-        const elements = Array.isArray(schema.prefixItems)
-          ? schema.prefixItems.map((element, index) => ({
-            isOptional: index + 1 > minItems,
-            type: recur(element, [...path, "prefixItems", index])
-          }))
-          : []
-        const rest = schema.items !== undefined
-          ? [recur(schema.items, [...path, "items"])]
-          : schema.prefixItems !== undefined && typeof schema.maxItems === "number"
-          ? []
-          : [unknown]
+        const elements = prefixItems?.map((element, index) => ({
+          isOptional: index + 1 > minItems,
+          type: recur(element, [...path, "prefixItems", index])
+        })) ?? []
+        const isTupleClosed = schema.items === false ||
+          (schema.items === undefined &&
+            prefixItems !== undefined &&
+            schema.maxItems === prefixItems.length)
+        const isMaxItemsRedundant = isTupleClosed &&
+          typeof schema.maxItems === "number" &&
+          schema.maxItems >= elements.length
         return {
           _tag: "Arrays",
           elements,
-          rest,
-          checks: collectArrayChecks(schema)
+          rest: isTupleClosed
+            ? []
+            : [schema.items === undefined ? unknown : recur(schema.items, [...path, "items"])],
+          checks: collectArrayChecks(schema, isMaxItemsRedundant)
         }
       }
       case "object":
@@ -788,12 +791,23 @@ function translateJsonSchemaMultiDocument(
     }
   }
 
-  function collectStringChecks(schema: JsonSchema.JsonSchema): Array<Check> {
+  function importPatternChecks(pattern: string, path: Path): Array<Check> {
+    switch (options?.patterns ?? "error") {
+      case "error":
+        throw errorWithPath(`Pattern encountered while patterns is set to "error"`, path)
+      case "ignore":
+        return []
+      case "apply":
+        return [jsonSchemaFilter("effect/schema/isPattern", { source: pattern, flags: "" })]
+    }
+  }
+
+  function collectStringChecks(schema: JsonSchema.JsonSchema, path: Path): Array<Check> {
     const checks: Array<Check> = []
     addNumberCheck(checks, schema.minLength, "effect/schema/isMinLength", "minLength")
     addNumberCheck(checks, schema.maxLength, "effect/schema/isMaxLength", "maxLength")
     if (typeof schema.pattern === "string") {
-      checks.push(jsonSchemaFilter("effect/schema/isPattern", { source: schema.pattern, flags: "" }))
+      checks.push(...importPatternChecks(schema.pattern, [...path, "pattern"]))
     }
     return checks
   }
@@ -808,10 +822,12 @@ function translateJsonSchemaMultiDocument(
     return checks
   }
 
-  function collectArrayChecks(schema: JsonSchema.JsonSchema): Array<Check> {
+  function collectArrayChecks(schema: JsonSchema.JsonSchema, isMaxItemsRedundant: boolean): Array<Check> {
     const checks: Array<Check> = []
     if (schema.prefixItems === undefined) {
       addNumberCheck(checks, schema.minItems, "effect/schema/isMinLength", "minLength")
+    }
+    if (!isMaxItemsRedundant) {
       addNumberCheck(checks, schema.maxItems, "effect/schema/isMaxLength", "maxLength")
     }
     if (schema.uniqueItems === true) {
@@ -851,10 +867,12 @@ function translateJsonSchemaMultiDocument(
       !Array.isArray(schema.patternProperties)
     ) {
       for (const [pattern, value] of Object.entries(schema.patternProperties)) {
+        const checks = importPatternChecks(pattern, [...path, "patternProperties", pattern])
+        if (checks.length === 0) return [{ parameter: string, type: unknown }]
         signatures.push({
           parameter: {
             _tag: "String",
-            checks: [jsonSchemaFilter("effect/schema/isPattern", { source: pattern, flags: "" })]
+            checks
           },
           type: recur(value, [...path, "patternProperties", pattern])
         })

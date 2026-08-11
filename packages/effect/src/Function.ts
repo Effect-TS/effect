@@ -1323,10 +1323,11 @@ export const SK = <A, B>(_: A, b: B): B => b
  * **Details**
  *
  * Each memoized wrapper owns a private `WeakMap` keyed by object identity.
- * Cached `undefined` results are still returned because the cache is checked
- * with `WeakMap.has`.
  *
  * **Gotchas**
+ *
+ * `undefined` is reserved to represent a cache miss and is therefore not
+ * supported as a return value.
  *
  * Structurally equal objects do not share cache entries. If the same object is
  * mutated after its first call, later calls still return the cached result for
@@ -1335,14 +1336,50 @@ export const SK = <A, B>(_: A, b: B): B => b
  * @category caching
  * @since 4.0.0
  */
-export function memoize<A extends object, O>(f: (a: A) => O): (ast: A) => O {
+export function memoize<A extends object, O extends {} | null>(f: (a: A) => O): (ast: A) => O {
   const cache = new WeakMap<object, O>()
   return (a) => {
-    if (cache.has(a)) {
-      return cache.get(a)!
-    }
+    const cached = cache.get(a)
+    if (cached !== undefined) return cached
     const result = f(a)
     cache.set(a, result)
+    return result
+  }
+}
+
+/**
+ * Creates a memoized idempotent object transformation that caches both inputs
+ * and their outputs by object identity.
+ *
+ * **When to use**
+ *
+ * Use when an object transformation is idempotent and its output can be safely
+ * reused as a fixed point.
+ *
+ * **Details**
+ *
+ * After computing an input, the returned function caches both the input and
+ * the output. Calling it with either reference returns the output without
+ * invoking the supplied function again.
+ *
+ * **Gotchas**
+ *
+ * The returned function treats each computed output as a fixed point. If
+ * applying the supplied function to an output would produce an observably
+ * different value, this memoization changes that behavior.
+ *
+ * @see {@link memoize} for memoizing functions without an idempotence requirement
+ * @category caching
+ * @since 4.0.0
+ */
+export function memoizeIdempotent<A extends object>(f: (a: A) => A): (a: A) => A {
+  const cache = new WeakMap<A, A>()
+  return (a) => {
+    const cached = cache.get(a)
+    if (cached !== undefined) return cached
+    const result = f(a)
+    cache.set(a, result)
+    cache.set(result, result)
     return result
   }
 }

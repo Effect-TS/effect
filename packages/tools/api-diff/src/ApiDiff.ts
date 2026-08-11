@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer"
 import * as Path from "effect/Path"
 import { loadAnnotations } from "./Annotations.ts"
 import { diffSnapshots } from "./Diff.ts"
-import { ApiDiffError } from "./Error.ts"
+import { ApiDiffError, isApiDiffError } from "./Error.ts"
 import { prettyJson } from "./Json.ts"
 import {
   extractImportMapSections,
@@ -151,7 +151,7 @@ export class ApiDiff extends Context.Service<ApiDiff, {
       const run = (options: ApiDiffOptions): Effect.Effect<void, ApiDiffError> =>
         runInternal(options).pipe(
           Effect.mapError((cause) =>
-            cause instanceof ApiDiffError
+            isApiDiffError(cause)
               ? cause
               : new ApiDiffError({
                 message: "API diff failed",

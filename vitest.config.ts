@@ -121,26 +121,26 @@ export default defineConfig({
         }
       }),
       ...project("@effect/opentelemetry", "packages/opentelemetry"),
-      ...project("@effect/platform-browser", "packages/platform-browser", true, {
+      ...project("@effect/platform-browser", "packages/platform/browser", true, {
         test: {
           environment: "happy-dom",
           execArgv: [
             "--localstorage-file",
             path.resolve(os.tmpdir(), `vitest-${process.pid}.localstorage`)
           ],
-          setupFiles: [path.join(__dirname, "packages/platform-browser/vitest.setup.ts")]
+          setupFiles: [path.join(__dirname, "packages/platform/browser/vitest.setup.ts")]
         }
       }),
-      ...project("@effect/platform-bun", "packages/platform-bun", isBun),
-      ...project("@effect/platform-deno", "packages/platform-deno", isDeno),
-      ...project("@effect/platform-node", "packages/platform-node", isNode),
+      ...project("@effect/platform-bun", "packages/platform/bun", isBun),
+      ...project("@effect/platform-deno", "packages/platform/deno", isDeno),
+      ...project("@effect/platform-node", "packages/platform/node", isNode),
       ...project(
         "cluster-integration",
-        "packages/platform-node",
+        "packages/platform/node",
         isNode && clusterTestsEnabled,
         {
           test: {
-            globalSetup: [path.join(__dirname, "packages/platform-node/test/cluster-integration/globalSetup.ts")],
+            globalSetup: [path.join(__dirname, "packages/platform/node/test/cluster-integration/globalSetup.ts")],
             include: ["test/cluster-integration/**/*.test.ts"],
             retry: 0,
             sequence: {
@@ -154,13 +154,13 @@ export default defineConfig({
           "test/cluster-integration/**/*.test.ts"
         ]
       ),
-      ...project("@effect/platform-node-shared", "packages/platform-node-shared", !isDeno),
+      ...project("@effect/platform-node-shared", "packages/platform/node-shared", !isDeno),
       ...project("@effect/vitest", "packages/vitest"),
       ...project("@effect/sql-clickhouse", "packages/sql/clickhouse"),
       ...project("@effect/sql-d1", "packages/sql/d1", !isDeno),
       ...project("@effect/sql-libsql", "packages/sql/libsql"),
       ...project("@effect/sql-mssql", "packages/sql/mssql"),
-      // MySQL starts a fresh container per integration test, so avoid competing
+      // MySQL starts a fresh container per integration test suite, so avoid competing
       // with the other container-backed projects on Deno CI runners.
       ...project(
         "@effect/sql-mysql2",

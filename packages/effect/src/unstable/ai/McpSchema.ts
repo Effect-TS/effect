@@ -1562,9 +1562,12 @@ export class CallTool extends Rpc.make("tools/call", {
   payload: {
     ...RequestMeta.fields,
     name: Schema.String,
-    arguments: Schema.Record(
-      Schema.String,
-      Schema.Any
+    arguments: optionalWithDefault(
+      Schema.Record(
+        Schema.String,
+        Schema.Any
+      ),
+      () => ({})
     )
   }
 }) {}
@@ -1851,7 +1854,7 @@ export class CreateMessage extends Rpc.make("sampling/createMessage", {
      * Optional metadata to pass through to the LLM provider. The format of
      * this metadata is provider-specific.
      */
-    metadata: Schema.Any
+    metadata: optional(Schema.Record(Schema.String, Schema.Unknown))
   }
 }) {}
 

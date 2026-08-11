@@ -4766,6 +4766,23 @@ describe("Stream", () => {
         deepStrictEqual(result1, result2)
       }))
 
+    it.effect("slidingSize is independent of upstream chunk boundaries", () =>
+      Effect.gen(function*() {
+        const result = yield* Effect.all([
+          Stream.make(1, 2, 3, 4, 5),
+          Stream.fromArrays([1, 2], [3, 4, 5]),
+          Stream.fromArrays([1], [2], [3], [4], [5]),
+          Stream.fromArrays([1], [2], [3], [4])
+        ].map((stream) => stream.pipe(Stream.slidingSize(2, 3), Stream.runCollect)))
+
+        deepStrictEqual(result, [
+          [[1, 2], [4, 5]],
+          [[1, 2], [4, 5]],
+          [[1, 2], [4, 5]],
+          [[1, 2], [4]]
+        ])
+      }))
+
     it.effect("sliding - fails if upstream produces an error", () =>
       Effect.gen(function*() {
         const result = yield* pipe(
@@ -5149,7 +5166,7 @@ describe("Stream", () => {
 
   describe("broadcastN", () => {
     it.effect("fans out to a fixed number of streams", () =>
-      Effect.scoped(Effect.gen(function*() {
+      Effect.gen(function*() {
         const [left, right] = yield* Stream.make(1, 2, 3).pipe(
           Stream.broadcastN({ n: 2, capacity: 4 })
         )
@@ -5160,10 +5177,10 @@ describe("Stream", () => {
         ], { concurrency: "unbounded" })
 
         assert.deepStrictEqual(result, [[1, 2, 3], [1, 2, 3]])
-      })))
+      }))
 
     it.effect("propagates failures to all downstream streams", () =>
-      Effect.scoped(Effect.gen(function*() {
+      Effect.gen(function*() {
         const [left, right] = yield* Stream.fail("boom").pipe(
           Stream.broadcastN({ n: 2, capacity: 4 })
         )
@@ -5174,7 +5191,7 @@ describe("Stream", () => {
         ], { concurrency: "unbounded" })
 
         assert.deepStrictEqual(result, [Exit.fail("boom"), Exit.fail("boom")])
-      })))
+      }))
   })
 })
 

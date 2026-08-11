@@ -436,14 +436,19 @@ export const toClientRequest = (request: HttpServerRequest): HttpClientRequest.H
     Option.getOrElse(toURL(request), () => request.url)
   )
 
-const toClientBody = (request: HttpServerRequest): HttpBody.HttpBody =>
-  hasBody(request.method)
+const toClientBody = (request: HttpServerRequest): HttpBody.HttpBody => {
+  if (!hasBody(request.method)) {
+    return HttpBody.empty
+  }
+  const formData = getFormDataBody(request)
+  return formData === undefined
     ? HttpBody.stream(
       request.stream,
       request.headers["content-type"],
       parseContentLength(request.headers["content-length"])
     )
-    : HttpBody.empty
+    : HttpBody.formData(formData)
+}
 
 const parseContentLength = (contentLength: string | undefined): number | undefined => {
   if (contentLength === undefined) {
@@ -863,24 +868,24 @@ const rawBodyStream = (request: HttpServerRequest, body: unknown): Stream.Stream
   if (body instanceof Request) {
     return streamFromReadable(request, body.body)
   }
-  if (isFormData(body)) {
-    return streamFromReadable(request, new Response(body).body)
-  }
   if (isReadableStream(body)) {
     return streamFromReadable(request, body)
+  }
+  if (isBodyInit(body)) {
+    return streamFromReadable(request, new Response(body).body)
   }
   return Stream.fail(requestParseError(request, "Unsupported body type"))
 }
 
 const rawBodyBytes = (request: HttpServerRequest, body: unknown): Effect.Effect<Uint8Array, HttpServerError> => {
-  if (body instanceof Blob) {
-    return bytesFromBodyInit(request, body)
-  }
   if (body instanceof Request) {
     return Effect.tryPromise({
       try: () => body.arrayBuffer().then((buffer) => new Uint8Array(buffer)),
       catch: (cause) => requestParseError(request, undefined, cause)
     })
+  }
+  if (isBodyInit(body)) {
+    return bytesFromBodyInit(request, body)
   }
   return Effect.fail(requestParseError(request, "Unsupported body type"))
 }
@@ -994,6 +999,14 @@ const isReadableStream = (u: unknown): u is ReadableStream<Uint8Array> =>
   typeof ReadableStream !== "undefined" && u instanceof ReadableStream
 
 const isFormData = (u: unknown): u is FormData => typeof FormData !== "undefined" && u instanceof FormData
+
+const isBodyInit = (u: unknown): u is BodyInit =>
+  typeof u === "string" ||
+  (typeof ArrayBuffer !== "undefined" && (u instanceof ArrayBuffer || ArrayBuffer.isView(u))) ||
+  (typeof Blob !== "undefined" && u instanceof Blob) ||
+  isFormData(u) ||
+  (typeof URLSearchParams !== "undefined" && u instanceof URLSearchParams) ||
+  isReadableStream(u)
 
 const textDecoder = new TextDecoder()
 

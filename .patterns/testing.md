@@ -4,6 +4,9 @@
 
 Use `it.effect` for tests that return Effects.
 
+`it.effect` and `it.live` each provide and close a `Scope` for every test. Return scoped effects directly; do not wrap
+the test body in `Effect.scoped`.
+
 ```typescript
 import { assert, describe, it } from "@effect/vitest"
 import { Effect } from "effect"

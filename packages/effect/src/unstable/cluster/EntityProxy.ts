@@ -14,7 +14,7 @@ import * as HttpApiEndpoint from "../httpapi/HttpApiEndpoint.ts"
 import * as HttpApiGroup from "../httpapi/HttpApiGroup.ts"
 import * as Rpc from "../rpc/Rpc.ts"
 import * as RpcGroup from "../rpc/RpcGroup.ts"
-import { AlreadyProcessingMessage, MailboxFull, PersistenceError } from "./ClusterError.ts"
+import { AlreadyProcessingMessage, EntityNotAssignedToRunner, MailboxFull, PersistenceError } from "./ClusterError.ts"
 import type * as Entity from "./Entity.ts"
 import type { EntityId } from "./EntityId.ts"
 
@@ -22,6 +22,11 @@ const clientErrors = [
   MailboxFull,
   AlreadyProcessingMessage,
   PersistenceError
+] as const
+
+const requestErrors = [
+  ...clientErrors,
+  EntityNotAssignedToRunner
 ] as const
 
 /**
@@ -75,7 +80,7 @@ export const toRpcGroup = <Type extends string, Rpcs extends Rpc.Any>(
     }
     const rpc = Rpc.make(`${entity.type}.${parentRpc._tag}`, {
       payload: payloadSchema,
-      error: Schema.Union([parentRpc.errorSchema, ...clientErrors]),
+      error: Schema.Union([parentRpc.errorSchema, ...requestErrors]),
       success: parentRpc.successSchema
     }).annotateMerge(parentRpc.annotations)
     const rpcDiscard = Rpc.make(`${entity.type}.${parentRpc._tag}Discard`, {
@@ -115,11 +120,12 @@ export type ConvertRpcs<Rpcs extends Rpc.Any, Prefix extends string> = Rpcs exte
       }>,
       _Success,
       Schema.Codec<
-        _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError,
+        _Error["Type"] | MailboxFull | AlreadyProcessingMessage | PersistenceError | EntityNotAssignedToRunner,
         | _Error["Encoded"]
         | typeof MailboxFull["Encoded"]
         | typeof AlreadyProcessingMessage["Encoded"]
-        | typeof PersistenceError["Encoded"],
+        | typeof PersistenceError["Encoded"]
+        | typeof EntityNotAssignedToRunner["Encoded"],
         _Error["DecodingServices"],
         _Error["EncodingServices"]
       >
@@ -193,7 +199,7 @@ export const toHttpApiGroup = <const Name extends string, Type extends string, R
       params: entityIdPath,
       payload: parentRpc.payloadSchema,
       success: parentRpc.successSchema,
-      error: [parentRpc.errorSchema, ...clientErrors]
+      error: [parentRpc.errorSchema, ...requestErrors]
     }).annotateMerge(parentRpc.annotations)
     const endpointDiscard = HttpApiEndpoint.post(
       `${parentRpc._tag}Discard`,
@@ -250,6 +256,7 @@ export type ConvertHttpApi<Rpcs extends Rpc.Any> = Rpcs extends Rpc.Rpc<
       | typeof MailboxFull
       | typeof AlreadyProcessingMessage
       | typeof PersistenceError
+      | typeof EntityNotAssignedToRunner
     >
     | HttpApiEndpoint.HttpApiEndpoint<
       `${_Tag}Discard`,

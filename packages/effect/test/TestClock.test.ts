@@ -61,6 +61,14 @@ describe("TestClock", () => {
       assert.strictEqual(testClock.currentTimeNanosUnsafe(), 199023438000000n)
     }))
 
+  it.effect("setTime - preserves wall-clock nanoseconds for large timestamps", () =>
+    Effect.gen(function*() {
+      const testClock = yield* TestClock.make()
+      const timestamp = 1_000_000_000_001
+      yield* testClock.setTime(timestamp)
+      assert.strictEqual(testClock.currentTimeNanosUnsafe(), BigInt(timestamp) * 1_000_000n)
+    }))
+
   it.effect("adjust - advances wall and monotonic time", () =>
     Effect.gen(function*() {
       const testClock = yield* TestClock.make()
@@ -68,6 +76,15 @@ describe("TestClock", () => {
       assert.strictEqual(testClock.currentTimeMillisUnsafe(), 1_000)
       assert.strictEqual(testClock.monotonicTimeNanosUnsafe(), 1_000_000_000n)
       assert.strictEqual(yield* testClock.monotonicTimeNanos, 1_000_000_000n)
+    }))
+
+  it.effect("adjust - keeps nanosecond access total after infinite durations", () =>
+    Effect.gen(function*() {
+      for (const duration of [Duration.infinity, Duration.negativeInfinity]) {
+        const testClock = yield* TestClock.make()
+        yield* testClock.adjust(duration)
+        assert.strictEqual(typeof (yield* testClock.currentTimeNanos), "bigint")
+      }
     }))
 
   it.effect("setTime - advances monotonic time only when moving forward", () =>

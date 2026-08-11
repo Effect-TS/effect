@@ -33,12 +33,13 @@ import {
 } from "effect"
 import { TestSchema } from "effect/testing"
 import { produce } from "immer"
-import { deepStrictEqual, fail, ok, strictEqual } from "node:assert"
-import { assertFalse, assertInclude, assertTrue, throws } from "../utils/assert.ts"
+import { deepStrictEqual, fail, strictEqual } from "node:assert"
+import { assertFalse, assertInclude, assertSchemaIssueError, assertTrue, throws } from "../utils/assert.ts"
 
 const verifyGeneration = true
 
 const equals = TestSchema.Asserts.ast.fields.equals
+const formatIssue = SchemaIssue.makeFormatterDefault()
 
 const SnakeToCamel = Schema.String.pipe(
   Schema.decode(
@@ -168,25 +169,6 @@ Missing key
       const success = encode({ a: "a", b: "b" }, { onExcessProperty: "preserve" })
       assertTrue(Exit.isSuccess(success))
       deepStrictEqual(success.value, { a: "a", b: "b" })
-    })
-  })
-
-  describe("issue actual field", () => {
-    it("does not add actual to parser-created issues", () => {
-      const result = SchemaParser.decodeUnknownResult(Schema.String)({ secret: "value" })
-
-      assertTrue(Result.isFailure(result))
-      assertTrue(result.failure._tag === "InvalidType")
-      assertFalse("actual" in result.failure)
-      strictEqual(String(result.failure), "Expected string")
-    })
-
-    it("preserves user-provided messages", () => {
-      const schema = Schema.String.annotate({ message: "user supplied message" })
-      const result = SchemaParser.decodeUnknownResult(schema)(null)
-
-      assertTrue(Result.isFailure(result))
-      strictEqual(String(result.failure), "user supplied message")
     })
   })
 
@@ -503,6 +485,8 @@ Missing key
   it("optionalKey", () => {
     const schema = Schema.optionalKey(Schema.String)
     strictEqual(schema.ast.context?.isOptional, true)
+    strictEqual(Schema.optionalKey(Schema.String).ast, schema.ast)
+    strictEqual(Schema.optionalKey(schema).ast, schema.ast)
   })
 
   it("optionalKey & mutableKey", () => {
@@ -512,13 +496,18 @@ Missing key
   })
 
   it("optional", () => {
-    const schema = Schema.optionalKey(Schema.String)
+    const schema = Schema.optional(Schema.String)
     strictEqual(schema.ast.context?.isOptional, true)
+    strictEqual(Schema.optional(Schema.String).ast, schema.ast)
+    const nested = Schema.optional(schema)
+    strictEqual(Schema.required(nested), schema)
   })
 
   it("mutableKey", () => {
     const schema = Schema.mutableKey(Schema.String)
     strictEqual(schema.ast.context?.isMutable, true)
+    strictEqual(Schema.mutableKey(Schema.String).ast, schema.ast)
+    strictEqual(Schema.mutableKey(schema).ast, schema.ast)
   })
 
   it("mutableKey & optionalKey", () => {
@@ -3404,7 +3393,7 @@ Expected a value between -2147483648 and 2147483647`
 
     it("should throw an error when the cause contains both a schema issue and a defect", () => {
       const cause = Cause.combine(
-        Cause.fail(new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "schema issue" }))),
+        Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
         Cause.die(new Error("defect"))
       )
       const schema = Schema.Struct({
@@ -3460,7 +3449,7 @@ Expected a value between -2147483648 and 2147483647`
         deepStrictEqual(success, Result.succeed({ a: 1 }))
 
         const failure = yield* schema.makeEffect({ a: -1 }).pipe(Effect.flip)
-        assertTrue(Schema.isSchemaError(failure))
+        assertTrue(SchemaIssue.isIssue(failure))
       }))
 
     it.effect("Class", () =>
@@ -3471,15 +3460,13 @@ Expected a value between -2147483648 and 2147483647`
         deepStrictEqual(success, new A({ a: 1 }))
 
         const failure = yield* A.makeEffect({ a: -1 }).pipe(Effect.flip)
-        assertTrue(Schema.isSchemaError(failure))
+        assertTrue(SchemaIssue.isIssue(failure))
       }))
 
-    it.effect("should preserve mixed schema error and defect causes", () =>
+    it.effect("should preserve mixed schema issue and defect causes", () =>
       Effect.gen(function*() {
         const cause = Cause.combine(
-          Cause.fail(
-            new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "schema issue" }))
-          ),
+          Cause.fail(new SchemaIssue.InvalidValue({ message: "schema issue" })),
           Cause.die(new Error("defect"))
         )
         const schema = Schema.Struct({
@@ -3491,7 +3478,7 @@ Expected a value between -2147483648 and 2147483647`
         assertTrue(Exit.hasDies(exit))
         const error = Cause.findError(exit.cause)
         assertTrue(Result.isSuccess(error))
-        assertTrue(Schema.isSchemaError(error.success))
+        assertTrue(SchemaIssue.isIssue(error.success))
       }))
   })
 
@@ -3602,12 +3589,10 @@ Expected a value between -2147483648 and 2147483647`
         await make.succeed({}, { a: -1 })
       })
 
-      it("Effect failing with SchemaError propagates as parse failure", async () => {
+      it("Effect failing with SchemaIssue propagates as parse failure", async () => {
         const schema = Schema.Struct({
           a: Schema.FiniteFromString.pipe(Schema.withConstructorDefault(
-            Effect.fail(
-              new Schema.SchemaError(new SchemaIssue.InvalidValue({ message: "ctor default failed" }))
-            )
+            Effect.fail(new SchemaIssue.InvalidValue({ message: "ctor default failed" }))
           ))
         })
         const asserts = new TestSchema.Asserts(schema)
@@ -4144,6 +4129,32 @@ Expected a value between -2147483648 and 2147483647`
       await decoding.fail(
         { kind: "a", status: "ready", value: "value" },
         "Expected exactly one member to match"
+      )
+    })
+
+    it(`mode: "oneOf" with nested and contradicted sentinels`, async () => {
+      const nested = Schema.Union([
+        Schema.Struct({ kind: Schema.Literal("a"), variant: Schema.Literal("x") }),
+        Schema.Struct({ kind: Schema.Literal("a"), variant: Schema.Literal("y") })
+      ])
+      const schema = Schema.Struct({
+        block: Schema.Union([
+          nested,
+          Schema.Struct({ kind: Schema.Literal("b") })
+        ], { mode: "oneOf" })
+      })
+      const decoding = new TestSchema.Asserts(schema).decoding()
+
+      await decoding.succeed({ block: { kind: "a", variant: "x" } })
+      await decoding.fail(
+        { block: { kind: "a", variant: "z" } },
+        `Expected { readonly "kind": "a", readonly "variant": "x", ... } | { readonly "kind": "a", readonly "variant": "y", ... }
+  at ["block"]`
+      )
+      await decoding.fail(
+        { block: { kind: "a", variant: undefined } },
+        `Expected { readonly "kind": "a", readonly "variant": "x", ... } | { readonly "kind": "a", readonly "variant": "y", ... }
+  at ["block"]`
       )
     })
 
@@ -6485,6 +6496,69 @@ Expected a value between -2147483648 and 2147483647`
       strictEqual(checks, 1)
     })
 
+    it("make validates an existing nested Class once", () => {
+      let checks = 0
+      class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
+      const schema = Schema.Struct({
+        a: A.check(Schema.makeFilter(() => {
+          checks++
+          return true
+        }))
+      })
+      const instance = A.make({ a: "a" })
+
+      strictEqual(schema.make({ a: instance }).a, instance)
+      strictEqual(checks, 1)
+    })
+
+    it("make validates a nested Class source and output once", () => {
+      let sourceChecks = 0
+      let classChecks = 0
+      class A extends Schema.Class<A>("A")(
+        Schema.Struct({ a: Schema.String }).check(Schema.makeFilter(() => {
+          sourceChecks++
+          return true
+        }))
+      ) {}
+      const schema = Schema.Struct({
+        a: A.check(Schema.makeFilter(() => {
+          classChecks++
+          return true
+        }))
+      })
+
+      assertTrue(schema.make({ a: { a: "a" } }).a instanceof A)
+      strictEqual(sourceChecks, 1)
+      strictEqual(classChecks, 1)
+    })
+
+    it("make allows an optional nested Class to be omitted", () => {
+      class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
+      const schema = Schema.Struct({ a: Schema.optionalKey(A) })
+
+      deepStrictEqual(schema.make({}), {})
+    })
+
+    it("make applies constructor defaults only at a field occurrence", () => {
+      let defaults = 0
+      const defaulted = Schema.String.pipe(
+        Schema.withConstructorDefault(Effect.sync(() => {
+          defaults++
+          return "default"
+        }))
+      )
+      const field = Schema.Struct({ value: defaulted })
+      const unionMember = Schema.Struct({ value: Schema.Union([defaulted, Schema.Number]) })
+
+      deepStrictEqual(defaulted.makeOption(undefined as any), Option.none())
+      strictEqual(defaults, 0)
+      deepStrictEqual(field.make({}), { value: "default" })
+      strictEqual(defaults, 1)
+      deepStrictEqual(unionMember.makeOption({} as any), Option.none())
+      deepStrictEqual(unionMember.makeOption({ value: undefined } as any), Option.none())
+      strictEqual(defaults, 1)
+    })
+
     it("suspend before initialization", async () => {
       const schema = Schema.suspend(() => string)
       class A extends Schema.Class<A>("A")(Schema.Struct({ a: schema })) {}
@@ -6586,6 +6660,35 @@ Expected a value between -2147483648 and 2147483647`
       const make = asserts.make()
       await make.succeed({ a: new A({ a: "a" }) }, new B({ a: new A({ a: "a" }) }))
       await make.succeed({}, new B({ a: new A({ a: "default" }) }))
+    })
+
+    it("make preserves Class instances in Array(Class) and Array(Union(Class))", () => {
+      class Row extends Schema.Class<Row>("Row")({ value: Schema.String }) {}
+      class DirectTable extends Schema.Class<DirectTable>("DirectTable")({ rows: Schema.Array(Row) }) {}
+      class UnionTable extends Schema.Class<UnionTable>("UnionTable")({ rows: Schema.Array(Schema.Union([Row])) }) {}
+      const row = Row.make({ value: "a" })
+
+      strictEqual(DirectTable.make({ rows: [row] }).rows[0], row)
+      strictEqual(UnionTable.make({ rows: [row] }).rows[0], row)
+      deepStrictEqual(DirectTable.makeOption({ rows: [{ value: 1 } as any] }), Option.none())
+      deepStrictEqual(UnionTable.makeOption({ rows: [{ value: 1 } as any] }), Option.none())
+    })
+
+    it("make constructs nested Class instances with and without Union", () => {
+      class A extends Schema.Class<A>("A")({ a: Schema.String }) {}
+      const direct = Schema.Struct({ a: A })
+      const union = Schema.Struct({ a: Schema.Union([A]) })
+
+      assertTrue(direct.make({ a: { a: "a" } }).a instanceof A)
+      assertTrue(union.make({ a: { a: "a" } }).a instanceof A)
+    })
+
+    it("make selects the first TaggedClass Union member when the tag is defaulted", () => {
+      class A extends Schema.TaggedClass<A>()("A", { a: Schema.String }) {}
+      class B extends Schema.TaggedClass<B>()("B", { a: Schema.String }) {}
+      const schema = Schema.Union([A, B])
+
+      assertTrue(schema.make({ a: "a" } as any) instanceof A)
     })
 
     it("should be possible to define a class with a mutable field", async () => {
@@ -7905,8 +8008,7 @@ Expected a value between -2147483648 and 2147483647`
         Schema.asserts(schema, "a")
         fail("Expected asserts to throw an error")
       } catch (e) {
-        ok(e instanceof Error)
-        strictEqual(e.message, `Expected number`)
+        assertSchemaIssueError(e, "Expected number")
       }
     })
   })
@@ -7937,13 +8039,11 @@ Expected a value between -2147483648 and 2147483647`
 
       const r5 = await decodeUnknownPromiseIssue(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r5))
-      assertTrue(r5.failure instanceof Error)
-      strictEqual(r5.failure.message, "Expected string")
+      assertSchemaIssueError(r5.failure, "Expected string")
 
       const r6 = await encodeUnknownPromiseIssue(null).then(Result.succeed, Result.fail)
       assertTrue(Result.isFailure(r6))
-      assertTrue(r6.failure instanceof Error)
-      strictEqual(r6.failure.message, "Expected number")
+      assertSchemaIssueError(r6.failure, "Expected number")
     })
 
     it("should reject with an error when the cause contains both a schema issue and a defect", async () => {
@@ -8069,12 +8169,12 @@ Expected a value between -2147483648 and 2147483647`
       const r5 = SchemaParser.decodeUnknownResult(schema)(null)
       assertTrue(Result.isFailure(r5))
       assertTrue(SchemaIssue.isIssue(r5.failure))
-      strictEqual(r5.failure.toString(), "Expected string")
+      strictEqual(formatIssue(r5.failure), "Expected string")
 
       const r6 = SchemaParser.encodeUnknownResult(schema)(null)
       assertTrue(Result.isFailure(r6))
       assertTrue(SchemaIssue.isIssue(r6.failure))
-      strictEqual(r6.failure.toString(), "Expected number")
+      strictEqual(formatIssue(r6.failure), "Expected number")
     })
 
     it("should throw an error when the cause contains both a schema issue and a defect", () => {
@@ -8122,15 +8222,11 @@ Expected a value between -2147483648 and 2147483647`
       })
 
       throws(() => SchemaParser.decodeUnknownSync(schema)(null), (e) => {
-        assertTrue(e instanceof Error)
-        assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.cause.toString(), "Expected string")
+        assertSchemaIssueError(e, "Expected string")
       })
 
       throws(() => SchemaParser.encodeUnknownSync(schema)(null), (e) => {
-        assertTrue(e instanceof Error)
-        assertTrue(SchemaIssue.isIssue(e.cause))
-        strictEqual(e.cause.toString(), "Expected number")
+        assertSchemaIssueError(e, "Expected number")
       })
     })
 
