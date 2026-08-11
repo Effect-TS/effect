@@ -97,6 +97,18 @@ describe("OpenApi", () => {
     assert.isUndefined(third.paths["/resource"]!.get!.summary)
   })
 
+  it("isolates the cached spec from external override mutations", () => {
+    const info = { title: "Api", version: "1.0.0" }
+    const Api = HttpApi.make("Api").annotate(OpenApi.Override, { info })
+
+    OpenApi.fromApi(Api)
+    info.title = "mutated"
+
+    const cached = OpenApi.fromApi(Api)
+
+    assert.strictEqual(cached.info.title, "Api")
+  })
+
   it("preserves every declared payload content type for normalized equivalents", () => {
     const profileA = "Application/Vnd.Effect+JSON; Profile=A"
     const profileB = "application/vnd.effect+json; profile=b"

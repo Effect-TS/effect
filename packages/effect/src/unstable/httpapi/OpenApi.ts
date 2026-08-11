@@ -699,9 +699,9 @@ function fromApiWith<Id extends string, Groups extends HttpApiGroup.Constraint>(
     spec = transformFn(spec) as OpenAPISpec
   })
 
-  cache.set(api, spec)
+  cache.set(api, cloneOpenAPISpec(spec))
 
-  return cloneOpenAPISpec(spec)
+  return spec
 }
 
 type ResponseBodies = Map<
