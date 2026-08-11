@@ -16282,9 +16282,7 @@ export declare namespace Annotations {
     /**
      * Used to collect sentinels from a Declaration SchemaAST.
      *
-     * **Details**
-     *
-     * Reserved to internal use only.
+     * @internal
      */
     readonly "~sentinels"?: ReadonlyArray<SchemaAST.Sentinel> | undefined
   }
