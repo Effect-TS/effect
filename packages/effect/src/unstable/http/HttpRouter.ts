@@ -845,7 +845,8 @@ export interface Middleware<
   readonly [MiddlewareTypeId]: Config
 
   readonly layer: [Config["requires"]] extends [never] ? Layer.Layer<
-      Request.From<"Requires", Config["provides"]>,
+      | Request.From<"Requires", Config["provides"]>
+      | Request.From<"Error", Config["handles"]>,
       Config["layerError"],
       | Config["layerRequires"]
       | Request.From<"Requires", Config["requires"]>

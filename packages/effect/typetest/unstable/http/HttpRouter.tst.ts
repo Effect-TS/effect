@@ -3,6 +3,21 @@ import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
 import { describe, expect, it } from "tstyche"
 
 describe("HttpRouter", () => {
+  describe("middleware", () => {
+    it("provides handled request errors", () => {
+      class MyError {
+        readonly _tag = "MyError"
+      }
+
+      const middleware = HttpRouter.middleware<{ handles: MyError }>()((effect) =>
+        effect.pipe(Effect.catchTag("MyError", Effect.die))
+      )
+
+      expect<Layer.Success<typeof middleware.layer>>().type
+        .toBeAssignableFrom<HttpRouter.Request<"Error", MyError>>()
+    })
+  })
+
   describe("toWebHandler", () => {
     it("excludes adapter services required by middleware from the request context", () => {
       class CurrentUser extends Context.Service<CurrentUser, { readonly id: string }>()("CurrentUser") {}
