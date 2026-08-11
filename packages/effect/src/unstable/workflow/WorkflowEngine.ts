@@ -299,6 +299,102 @@ export class WorkflowInstance extends Context.Service<
 }
 
 /**
+ * In-process durable deferred state for live workflow executions.
+ *
+ * Engines own persistence, transport, and resume scheduling; a
+ * `DeferredState` owns everything in-process — which run is live for an
+ * execution, completions that may not be durably readable yet, and delivering
+ * a completion to a run that is actively racing on it.
+ *
+ * @category models
+ * @since 4.0.0
+ */
+export interface DeferredState {
+  /**
+   * Returns a completion recorded for the execution that may not be durably
+   * readable yet. Engines use this as the fast path in `deferredResult`.
+   */
+  readonly pendingResult: (
+    executionId: string,
+    name: string
+  ) => Exit.Exit<unknown, unknown> | undefined
+
+  /**
+   * Tracks the effect as the execution's live run. When the run ends without
+   * suspending, the execution's pending completions are dropped; a suspended
+   * run keeps them readable for the replay.
+   */
+  readonly trackRun: <A, E, R>(
+    instance: WorkflowInstance["Service"],
+    effect: Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E, R>
+
+  /**
+   * Records a completion and delivers it to the live run, if any: opens the
+   * run's race wake latches, or waits for a committing suspension to settle
+   * so the caller's resume can observe the suspended result.
+   */
+  readonly deferredDone: (
+    executionId: string,
+    name: string,
+    exit: Exit.Exit<unknown, unknown>
+  ) => Effect.Effect<void>
+}
+
+/**
+ * Creates the in-process durable deferred state shared by workflow engine
+ * implementations.
+ *
+ * @category constructors
+ * @since 4.0.0
+ */
+export const makeDeferredState = (): DeferredState => {
+  const pending = new Map<string, Map<string, Exit.Exit<unknown, unknown>>>()
+  const running = new Map<string, {
+    readonly instance: WorkflowInstance["Service"]
+    readonly fiber: Fiber.Fiber<unknown, unknown>
+  }>()
+  return {
+    pendingResult: (executionId, name) => pending.get(executionId)?.get(name),
+    trackRun: (instance, effect) =>
+      Effect.withFiber((fiber) => {
+        const run = { instance, fiber: fiber as Fiber.Fiber<unknown, unknown> }
+        running.set(instance.executionId, run)
+        return Effect.ensuring(
+          effect,
+          Effect.sync(() => {
+            if (!instance.suspended) {
+              pending.delete(instance.executionId)
+            }
+            if (running.get(instance.executionId) === run) {
+              running.delete(instance.executionId)
+            }
+          })
+        )
+      }),
+    deferredDone: (executionId, name, exit) =>
+      Effect.withFiber((current) => {
+        const run = running.get(executionId)
+        if (!run) return Effect.void
+        let entries = pending.get(executionId)
+        if (!entries) {
+          entries = new Map()
+          pending.set(executionId, entries)
+        }
+        entries.set(name, exit)
+        if (run.fiber === current || run.fiber.pollUnsafe()) return Effect.void
+        if (run.instance.suspended) {
+          // a suspension is committing: wait for the run to settle so the
+          // caller's resume can observe the suspended result
+          return Effect.asVoid(Fiber.await(run.fiber))
+        }
+        for (const latch of run.instance.raceWake) latch.openUnsafe()
+        return Effect.void
+      })
+  }
+}
+
+/**
  * Low-level workflow engine contract that works with encoded payloads and
  * results before `makeUnsafe` adds typed schema decoding and encoding.
  *
@@ -615,6 +711,8 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
     }
     const activities = new Map<string, ActivityState>()
 
+    const deferredState = makeDeferredState()
+
     const resume = Effect.fnUntraced(function*(executionId: string): Effect.fn.Return<void> {
       const state = executions.get(executionId)
       if (!state) return
@@ -644,6 +742,7 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         Workflow.intoResult,
         Effect.provideService(WorkflowInstance, instance),
         Effect.provideService(WorkflowEngine, engine),
+        (effect) => deferredState.trackRun(instance, effect),
         Effect.tap((result) => {
           if (!state.parent || result._tag !== "Complete") {
             return Effect.void
@@ -750,21 +849,14 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
         return Option.fromNullishOr(deferredResults.get(id))
       }),
       deferredDone: (options) =>
-        Effect.withFiber((currentFiber) => {
+        Effect.suspend(() => {
           const id = `${options.executionId}/${options.deferredName}`
           if (deferredResults.has(id)) return Effect.void
           deferredResults.set(id, options.exit)
-          const state = executions.get(options.executionId)
-          const fiber = state?.fiber
-          if (fiber && fiber !== currentFiber && !fiber.pollUnsafe()) {
-            if (state!.instance.suspended) {
-              // a suspension is committing: wait for the run to settle so
-              // `resume` can observe the suspended result
-              return Effect.andThen(Fiber.await(fiber), resume(options.executionId))
-            }
-            for (const latch of state!.instance.raceWake) latch.openUnsafe()
-          }
-          return resume(options.executionId)
+          return Effect.andThen(
+            deferredState.deferredDone(options.executionId, options.deferredName, options.exit),
+            resume(options.executionId)
+          )
         }),
       scheduleClock: (workflow, options) =>
         engine.deferredDone(options.clock.deferred, {

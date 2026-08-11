@@ -127,7 +127,7 @@ export const make = Effect.gen(function*() {
   }>()
   const interruptedActivities = new Set<string>()
   const activityLatches = new Map<string, Latch.Latch>()
-  const pendingDeferredResults = new Map<string, Map<string, Exit.Exit<unknown, unknown>>>()
+  const deferredState = WorkflowEngine.makeDeferredState()
   const clients = yield* RcMap.make({
     lookup: Effect.fnUntraced(function*(workflowName: string) {
       const entity = entities.get(workflowName)
@@ -357,10 +357,6 @@ export const make = Effect.gen(function*() {
           Effect.gen(function*() {
             const address = yield* Entity.CurrentAddress
             const executionId = address.entityId
-            let activeRun: {
-              readonly instance: WorkflowEngine.WorkflowInstance["Service"]
-              readonly fiber: Fiber.Fiber<any, any>
-            } | undefined
             return {
               run: (request: Entity.Request<any>) => {
                 const instance = WorkflowEngine.WorkflowInstance.initial(workflow, executionId)
@@ -369,7 +365,7 @@ export const make = Effect.gen(function*() {
                 if (payload[payloadParentKey]) {
                   parent = payload[payloadParentKey]
                 }
-                const effect = execute(workflow.payloadSchema.make(payload) as object, executionId).pipe(
+                return execute(workflow.payloadSchema.make(payload) as object, executionId).pipe(
                   Effect.onExit((exit) => {
                     const suspendOnFailure = Context.get(workflow.annotations, Workflow.SuspendOnFailure)
                     if (!instance.suspended && !(suspendOnFailure && exit._tag === "Failure")) {
@@ -391,22 +387,9 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
-                  Effect.provideService(WorkflowEngine.WorkflowInstance, instance)
-                )
-                return Effect.withFiber((fiber) => {
-                  const run = { instance, fiber }
-                  activeRun = run
-                  return effect.pipe(
-                    Effect.ensuring(Effect.sync(() => {
-                      if (!instance.suspended) {
-                        pendingDeferredResults.delete(executionId)
-                      }
-                      if (activeRun === run) {
-                        activeRun = undefined
-                      }
-                    }))
-                  )
-                }) as any
+                  Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
+                  (effect) => deferredState.trackRun(instance, effect)
+                ) as any
               },
 
               activity(request: Entity.Request<any>) {
@@ -453,24 +436,7 @@ export const make = Effect.gen(function*() {
 
               deferred: Effect.fnUntraced(function*(request: Entity.Request<any>) {
                 const payload = request.payload as any
-                const run = activeRun
-                if (run) {
-                  let pending = pendingDeferredResults.get(executionId)
-                  if (!pending) {
-                    pending = new Map()
-                    pendingDeferredResults.set(executionId, pending)
-                  }
-                  pending.set(payload.name, payload.exit)
-                  if (run.instance.suspended) {
-                    // a suspension is committing: wait for the run to settle
-                    // so `resume` can observe the suspended reply
-                    yield* Fiber.await(run.fiber)
-                  } else {
-                    for (const latch of run.instance.raceWake) {
-                      latch.openUnsafe()
-                    }
-                  }
-                }
+                yield* deferredState.deferredDone(executionId, payload.name, payload.exit)
                 yield* ensureSuccess(resume(workflow, executionId))
                 return payload.exit
               }),
@@ -590,7 +556,7 @@ export const make = Effect.gen(function*() {
     deferredResult: (deferred) =>
       WorkflowEngine.WorkflowInstance.pipe(
         Effect.flatMap((instance) => {
-          const exit = pendingDeferredResults.get(instance.executionId)?.get(deferred.name)
+          const exit = deferredState.pendingResult(instance.executionId, deferred.name)
           if (exit) {
             return Effect.succeedSome(exit)
           }
