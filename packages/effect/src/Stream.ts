@@ -10854,39 +10854,16 @@ export const mkString = <E, R>(self: Stream<string, E, R>): Effect.Effect<string
  * await Effect.runPromise(program) // => [1, 2, 3, 4]
  * ```
  *
+ * **Gotchas**
+ *
+ * This materializes the full content in memory. The source stream must not
+ * reuse or mutate emitted buffers, which are retained until collection completes.
+ *
  * @category destructors
  * @since 4.0.0
  */
 export const mkArrayBuffer = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effect<ArrayBuffer, E, R> =>
-  Effect.map(
-    Channel.runFold(
-      self.channel,
-      (): {
-        bytes: number
-        readonly arrays: Array<Uint8Array>
-      } => ({
-        bytes: 0,
-        arrays: []
-      }),
-      (acc, chunk) => {
-        for (let i = 0; i < chunk.length; i++) {
-          acc.bytes += chunk[i].length
-          acc.arrays.push(chunk[i])
-        }
-        return acc
-      }
-    ),
-    ({ arrays, bytes }) => {
-      const result = new Uint8Array(bytes)
-      let offset = 0
-      for (let i = 0; i < arrays.length; i++) {
-        const array = arrays[i]
-        result.set(array, offset)
-        offset += array.length
-      }
-      return result.buffer
-    }
-  )
+  Effect.map(Channel.mkUint8Array(self.channel), (bytes) => bytes.buffer)
 
 /**
  * Concatenates the stream's `Uint8Array` chunks into a single `Uint8Array`.
@@ -10905,11 +10882,16 @@ export const mkArrayBuffer = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effe
  * await Effect.runPromise(program)
  * ```
  *
+ * **Gotchas**
+ *
+ * This materializes the full content in memory. The source stream must not
+ * reuse or mutate emitted buffers, which are retained until collection completes.
+ *
  * @category destructors
  * @since 4.0.0
  */
 export const mkUint8Array = <E, R>(self: Stream<Uint8Array, E, R>): Effect.Effect<Uint8Array, E, R> =>
-  Effect.map(mkArrayBuffer(self), (buffer) => new Uint8Array(buffer))
+  Channel.mkUint8Array(self.channel)
 
 /**
  * Converts the stream to a `ReadableStream` using the provided services.

@@ -55,7 +55,7 @@ export const resolveBrands = resolveAt<ReadonlyArray<string>>("brands")
 
 /** @internal */
 export const getExpected = memoize((ast: SchemaAST.AST): string => {
-  const identifier = resolveIdentifier(ast)
+  const identifier = resolve(ast)?.identifier
   if (typeof identifier === "string") return identifier
   return ast.getExpected(getExpected)
 })

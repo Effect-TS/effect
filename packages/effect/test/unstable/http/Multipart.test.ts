@@ -1,6 +1,12 @@
 import { describe, it } from "@effect/vitest"
 import { Effect, ErrorReporter, FileSystem, identity, Path, Schema, Stream, Unify } from "effect"
-import { HttpClientRequest, HttpServerRequest, Multipart, MultipartParser } from "effect/unstable/http"
+import {
+  HttpClientRequest,
+  HttpIncomingMessage,
+  HttpServerRequest,
+  Multipart,
+  MultipartParser
+} from "effect/unstable/http"
 import * as HttpServerRespondable from "effect/unstable/http/HttpServerRespondable"
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert"
 
@@ -36,6 +42,34 @@ describe("Multipart", () => {
         ["test", "ing"],
         ["foo.txt", "A".repeat(1024 * 1024)]
       ])
+    }))
+
+  it.effect("collects file content across pulls and a split trailing boundary", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      const boundarySplit = 8
+      const chunks = [
+        encoder.encode(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+            `Content-Type: text/plain\r\n\r\n` +
+            "abc"
+        ),
+        encoder.encode(`def\r\n--${boundary.slice(0, boundarySplit)}`),
+        encoder.encode(`${boundary.slice(boundarySplit)}--\r\n`)
+      ]
+
+      const contents = yield* Stream.fromArray(chunks).pipe(
+        Stream.rechunk(1),
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => part._tag === "File" ? part.contentEffect : Effect.die("expected file")),
+        Stream.runCollect
+      )
+
+      deepStrictEqual(contents, [encoder.encode("abcdef")])
     }))
 
   it.effect("parses non-Latin-1 filenames", () =>
@@ -82,6 +116,111 @@ describe("Multipart", () => {
 
       strictEqual(error._tag, "MultipartError")
       strictEqual(error.reason._tag, "TooManyParts")
+    }))
+
+  it.effect("propagates FileTooLarge after a file exceeds the limit mid-stream", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      let fileParts = 0
+      const fileStart = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+        `Content-Type: text/plain\r\n\r\n` +
+        "a"
+      const fileEnd = `\r\n--${boundary}--\r\n`
+
+      const error = yield* Stream.make(
+        encoder.encode(fileStart),
+        encoder.encode("a".repeat(1024)),
+        encoder.encode(fileEnd)
+      ).pipe(
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => {
+          if (part._tag !== "File") {
+            return Effect.void
+          }
+          fileParts++
+          return Stream.runDrain(part.content)
+        }),
+        Stream.runDrain,
+        Effect.provideService(Multipart.MaxFileSize, 256),
+        Effect.flip
+      )
+
+      strictEqual(fileParts, 1)
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "FileTooLarge")
+    }))
+
+  it.effect("propagates BodyTooLarge after the total size limit is exceeded mid-file", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      let fileParts = 0
+      const fileStart = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+        `Content-Type: text/plain\r\n\r\n` +
+        "a"
+      const fileEnd = `\r\n--${boundary}--\r\n`
+
+      const error = yield* Stream.make(
+        encoder.encode(fileStart),
+        encoder.encode("a".repeat(1024)),
+        encoder.encode(fileEnd)
+      ).pipe(
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => {
+          if (part._tag !== "File") {
+            return Effect.void
+          }
+          fileParts++
+          return Stream.runDrain(part.content)
+        }),
+        Stream.runDrain,
+        Effect.provideService(HttpIncomingMessage.MaxBodySize, FileSystem.Size(256)),
+        Effect.flip
+      )
+
+      strictEqual(fileParts, 1)
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "BodyTooLarge")
+    }))
+
+  it.effect("propagates Parse when the body ends mid-file", () =>
+    Effect.gen(function*() {
+      const boundary = "----testboundary"
+      const encoder = new TextEncoder()
+      let fileParts = 0
+      const fileStart = `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="file.txt"\r\n` +
+        `Content-Type: text/plain\r\n\r\n` +
+        "a"
+
+      const error = yield* Stream.make(
+        encoder.encode(fileStart),
+        encoder.encode("bbbb")
+      ).pipe(
+        Stream.pipeThroughChannel(
+          Multipart.makeChannel({ "content-type": `multipart/form-data; boundary=${boundary}` })
+        ),
+        Stream.mapEffect((part) => {
+          if (part._tag !== "File") {
+            return Effect.void
+          }
+          fileParts++
+          return Stream.runDrain(part.content)
+        }),
+        Stream.runDrain,
+        Effect.flip
+      )
+
+      strictEqual(fileParts, 1)
+      strictEqual(error._tag, "MultipartError")
+      strictEqual(error.reason._tag, "Parse")
     }))
 
   it.each<{

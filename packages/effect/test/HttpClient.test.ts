@@ -75,7 +75,7 @@ const TestRoutes = HttpRouter.serve(HttpRouter.use(Effect.fnUntraced(function*(r
     HttpRouter.route("HEAD", "/todos", Effect.succeed(HttpServerResponse.empty({ status: 200 })))
   ])
 })))
-const DenoHttpServerUrl = new URL("../../platform-deno/src/DenoHttpServer.ts", import.meta.url).href
+const DenoHttpServerUrl = new URL("../../platform/deno/src/DenoHttpServer.ts", import.meta.url).href
 const TestServerLive = Layer.unwrap(Effect.promise(() =>
   "Deno" in globalThis
     ? (import(DenoHttpServerUrl) as Promise<{

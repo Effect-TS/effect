@@ -5,6 +5,7 @@ packages:
   - packages/*
   - packages/ai/*
   - packages/atom/*
+  - packages/platform/*
   - packages/sql/*
   - packages/tools/*
   - examples/*

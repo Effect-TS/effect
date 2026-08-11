@@ -5,13 +5,13 @@
   replacement: "Schema.Annotations.ToArbitrary.Context"
   note: "Use the v4 arbitrary-derivation context type from Schema.Annotations."
 "effect/Arbitrary#LazyArbitrary":
-  replacement: "Schema.LazyArbitrary"
-  note: "The lazy arbitrary type moved onto Schema."
+  replacement: "Schema.Arbitrary"
+  note: "The arbitrary factory type moved onto Schema."
 "effect/Arbitrary#make":
   replacement: "Schema.toArbitrary"
   note: "Arbitrary derivation is now exposed directly by Schema."
-  example: "Schema.toArbitrary(schema)"
+  example: "Schema.toArbitrary(schema)(FastCheck)"
 "effect/Arbitrary#makeLazy":
-  replacement: "Schema.toArbitraryLazy"
+  replacement: "Schema.toArbitrary"
   note: "Lazy arbitrary derivation is now exposed directly by Schema."
-  example: "Schema.toArbitraryLazy(schema)"
+  example: "Schema.toArbitrary(schema)"
