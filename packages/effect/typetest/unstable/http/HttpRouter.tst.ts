@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect"
-import { HttpRouter, HttpServerResponse } from "effect/unstable/http"
+import { HttpRouter, type HttpServerError, HttpServerResponse } from "effect/unstable/http"
 import { describe, expect, it } from "tstyche"
 
 describe("HttpRouter", () => {
@@ -15,6 +15,23 @@ describe("HttpRouter", () => {
 
       expect<Layer.Success<typeof middleware.layer>>().type
         .toBeAssignableFrom<HttpRouter.Request<"Error", MyError>>()
+    })
+  })
+
+  describe("toHttpEffect", () => {
+    it("includes errors from global middleware", () => {
+      class MyError {
+        readonly _tag = "MyError"
+      }
+
+      const globalMiddleware = HttpRouter.middleware(
+        (effect) => Effect.andThen(effect, Effect.fail(new MyError())),
+        { global: true }
+      )
+      const result = HttpRouter.toHttpEffect(globalMiddleware)
+
+      expect<Effect.Error<Effect.Success<typeof result>>>().type
+        .toBe<MyError | HttpServerError.HttpServerError>()
     })
   })
 
