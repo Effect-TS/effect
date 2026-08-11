@@ -2643,7 +2643,15 @@ const strategyCompletePollersUnsafe = <A>(
 ): void => {
   let keepPolling = true
   while (keepPolling && !subscription.isEmpty()) {
-    const poller = MutableList.take(pollers)
+    // `take` can observe a cleared slot (interruption clears a waiting
+    // poller's slot out of band), so `undefined` is a real possibility the
+    // signature does not admit; completing it would dereference undefined.
+    const poller: Deferred.Deferred<A> | typeof MutableList.Empty | undefined = MutableList.take(
+      pollers
+    )
+    if (poller === undefined) {
+      continue
+    }
     if (poller === MutableList.Empty) {
       removeSubscribers(subscribers, subscription, pollers)
       if (pollers.length === 0) {
