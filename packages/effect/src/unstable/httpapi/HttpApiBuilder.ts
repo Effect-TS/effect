@@ -758,7 +758,10 @@ function handlerToHttpEffect(
   const encodeError = Schema.encodeUnknownEffect(makeErrorSchema(endpoint))
   const decodeParams = UndefinedOr.map(endpoint.params, Schema.decodeUnknownEffect)
   const decodeHeaders = UndefinedOr.map(endpoint.headers, Schema.decodeUnknownEffect)
-  const decodeQuery = UndefinedOr.map(endpoint.query, Schema.decodeUnknownEffect)
+  const decodeQuery = UndefinedOr.map(
+    endpoint.query,
+    (schema) => Schema.decodeUnknownEffect(Schema.toCodecArrayFromSingle(schema))
+  )
   const encodeStream = makeStreamEncoder(endpoint)
   const encodeWithHeaders = makeWithHeadersEncoder(endpoint)
 
