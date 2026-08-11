@@ -747,6 +747,44 @@ function decodePayload(
   }
 }
 
+function acceptsSingleUrlParam(ast: SchemaAST.AST, key?: string): boolean {
+  ast = SchemaAST.toEncoded(ast)
+  switch (ast._tag) {
+    case "String":
+    case "TemplateLiteral":
+      return true
+    case "Literal":
+      return typeof ast.literal === "string"
+    case "Objects": {
+      if (key === undefined) return false
+      const property = ast.propertySignatures.find((property) => property.name === key)
+      if (property !== undefined) return acceptsSingleUrlParam(property.type)
+      const input = { [key]: undefined }
+      return ast.indexSignatures.some((index) =>
+        SchemaAST.getIndexSignatureKeys(input, index.parameter).length > 0 && acceptsSingleUrlParam(index.type)
+      )
+    }
+    case "Union":
+      return ast.types.some((ast) => acceptsSingleUrlParam(ast, key))
+    case "Suspend":
+      return acceptsSingleUrlParam(ast.thunk(), key)
+    default:
+      return false
+  }
+}
+
+function normalizeUrlParams(
+  params: Record<string, string | Array<string>>,
+  ast: SchemaAST.AST
+): Record<string, string | Array<string>> {
+  const normalized: Record<string, string | Array<string>> = {}
+  for (const key in params) {
+    const value = params[key]
+    normalized[key] = Array.isArray(value) || acceptsSingleUrlParam(ast, key) ? value : [value]
+  }
+  return normalized
+}
+
 function handlerToHttpEffect(
   group: HttpApiGroup.Top,
   endpoint: HttpApiEndpoint.Top,
@@ -786,8 +824,11 @@ function handlerToHttpEffect(
       if (decodeHeaders) {
         request.headers = yield* HttpApiSchemaError.wrap("Headers", decodeHeaders(httpRequest.headers))
       }
-      if (decodeQuery) {
-        request.query = yield* HttpApiSchemaError.wrap("Query", decodeQuery(query))
+      if (decodeQuery && endpoint.query) {
+        request.query = yield* HttpApiSchemaError.wrap(
+          "Query",
+          decodeQuery(normalizeUrlParams(query, endpoint.query.ast))
+        )
       }
       if (payloadBy) {
         const result = decodePayload(payloadBy, httpRequest, query)

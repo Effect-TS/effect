@@ -33,6 +33,40 @@ const TestServices = Layer.mergeAll(
   HttpPlatform.layer
 ).pipe(Layer.provideMerge(FileSystem.layerNoop({})))
 
+it.layer(TestServices)("HttpApiBuilder query parameters", (it) => {
+  const Api = HttpApi.make("Api").add(
+    HttpApiGroup.make("test").add(
+      HttpApiEndpoint.get("search", "/search", {
+        query: {
+          ids: Schema.Array(Schema.String)
+        },
+        success: Schema.Array(Schema.String)
+      })
+    )
+  )
+  const GroupLive = HttpApiBuilder.group(
+    Api,
+    "test",
+    (handlers) => handlers.handle("search", ({ query }) => Effect.succeed(query.ids))
+  )
+
+  it.effect("decodes a single array query parameter", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const result = yield* client.test.search({ query: { ids: ["a"] } })
+
+      assert.deepStrictEqual(result, ["a"])
+    }))
+
+  it.effect("decodes repeated array query parameters", () =>
+    Effect.gen(function*() {
+      const client = yield* HttpApiTest.groups(Api, ["test"]).pipe(Effect.provide(GroupLive))
+      const result = yield* client.test.search({ query: { ids: ["a", "b"] } })
+
+      assert.deepStrictEqual(result, ["a", "b"])
+    }))
+})
+
 it.effect("reuses response schema transformations by source AST", () => {
   const SharedSuccess = Schema.String.pipe(HttpApiSchema.asText())
   const DistinctSuccess = Schema.String.pipe(HttpApiSchema.asText({ contentType: "text/custom" }))
