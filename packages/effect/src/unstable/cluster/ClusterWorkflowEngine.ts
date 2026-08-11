@@ -480,6 +480,8 @@ export const make = Effect.gen(function*() {
               resume: () => ensureSuccess(resume(workflow, executionId))
             }
           }),
+          // Keep one slot available for a deferred completion to interrupt
+          // and replay the active workflow run.
           { concurrency: 2 }
         ) as Effect.Effect<void, never, Scope.Scope>
       ),
@@ -593,11 +595,7 @@ export const make = Effect.gen(function*() {
           const key = deferredExecutionKey(instance.workflow._tag, instance.executionId)
           const pending = pendingDeferredResults.get(key)
           const exit = pending?.get(deferred.name)
-          if (exit && pending) {
-            pending.delete(deferred.name)
-            if (pending.size === 0) {
-              pendingDeferredResults.delete(key)
-            }
+          if (exit) {
             return Effect.succeedSome(exit)
           }
           return requestReply({

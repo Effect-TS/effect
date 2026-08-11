@@ -246,6 +246,34 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(yield* Fiber.join(fiber)).toEqual("activity")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
+  it.effect("DurableDeferred.raceAll deregisters a deferred branch after it loses", () =>
+    Effect.gen(function*() {
+      const flags = yield* Flags
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* LosingDeferredWorkflow.executionId({ id: "losing-deferred" })
+      const fiber = yield* LosingDeferredWorkflow.execute({ id: "losing-deferred" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust("1 second")
+      while (flags.get("losing-deferred-tail-runs") !== 1) {
+        yield* Effect.yieldNow
+      }
+
+      const token = DurableDeferred.tokenFromExecutionId(LosingDeferredGate, {
+        workflow: LosingDeferredWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(LosingDeferredGate, { token, value: "signal" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("10 seconds")
+      yield* TestClock.adjust("10 seconds")
+
+      expect(yield* Fiber.join(fiber)).toEqual("activity:tail")
+      expect(flags.get("losing-deferred-tail-runs")).toEqual(1)
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
   it.effect("nested workflows", () =>
     Effect.gen(function*() {
       const flags = yield* Flags
@@ -497,7 +525,7 @@ const EmailWorkflow = Workflow.make("EmailWorkflow", {
 })
 
 class Flags extends Context.Service<Flags>()("Flags", {
-  make: Effect.sync(() => new Map<string, boolean | string>())
+  make: Effect.sync(() => new Map<string, boolean | number | string>())
 }) {
   static readonly layer = Layer.effect(Flags, this.make)
 }
@@ -729,6 +757,43 @@ const MixedRaceWorkflowLayer = MixedRaceWorkflow.toLayer(() =>
   })
 )
 
+const LosingDeferredWorkflow = Workflow.make("LosingDeferredWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const LosingDeferredGate = DurableDeferred.make("LosingDeferredGate", {
+  success: Schema.String
+})
+
+const LosingDeferredWorkflowLayer = LosingDeferredWorkflow.toLayer(Effect.fnUntraced(function*() {
+  const flags = yield* Flags
+  const winner = yield* DurableDeferred.raceAll({
+    name: "losing-deferred",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableDeferred.await(LosingDeferredGate),
+      Activity.make({
+        name: "losing-deferred-activity",
+        success: Schema.String,
+        execute: Effect.sleep("1 second").pipe(Effect.as("activity"))
+      })
+    ]
+  })
+  const tail = yield* Activity.make({
+    name: "losing-deferred-tail",
+    success: Schema.String,
+    execute: Effect.suspend(() => {
+      const runs = flags.get("losing-deferred-tail-runs")
+      flags.set("losing-deferred-tail-runs", typeof runs === "number" ? runs + 1 : 1)
+      return Effect.sleep("10 seconds").pipe(Effect.as("tail"))
+    })
+  })
+  return `${winner}:${tail}`
+}))
+
 const ParentWorkflow = Workflow.make("ParentWorkflow", {
   payload: {
     id: Schema.String
@@ -876,6 +941,7 @@ const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(FailureRaceWorkflowLayer),
   Layer.merge(DurableRaceWorkflowLayer),
   Layer.merge(MixedRaceWorkflowLayer),
+  Layer.merge(LosingDeferredWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
   Layer.merge(ChildWorkflowLayer),
   Layer.merge(ShardedClockWorkflowLayer),

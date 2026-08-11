@@ -250,6 +250,15 @@ export const into: {
               exit
             })
           })
+        ).pipe(
+          Effect.ensuring(Effect.sync(() => {
+            for (const [name, waiters] of instance.deferredWaiters) {
+              waiters.delete(instance)
+              if (waiters.size === 0) {
+                instance.deferredWaiters.delete(name)
+              }
+            }
+          }))
         )
       }
     )
