@@ -17,6 +17,7 @@ import * as Context from "../../Context.ts"
 import * as Effect from "../../Effect.ts"
 import * as Encoding from "../../Encoding.ts"
 import * as Exit from "../../Exit.ts"
+import * as Fiber from "../../Fiber.ts"
 import * as Filter from "../../Filter.ts"
 import { dual } from "../../Function.ts"
 import * as Latch from "../../Latch.ts"
@@ -131,34 +132,29 @@ const CurrentAttempt = Context.Reference<number>(
 )
 
 /**
- * Internal channel between `raceAll` and the `await` calls in its branches.
+ * Internal channel between `raceAll` and the `await` calls inside its
+ * branches.
  *
- * A branch that awaits a pending deferred registers it here before suspending,
- * so the race's wake arm knows which deferreds can complete the race while
- * other branches are still active. Registrations bubble to enclosing races.
+ * Each branch gets its own registration context: an `await` on a pending
+ * deferred registers it before suspending, so the race's wake arm knows which
+ * branch to re-run when that deferred completes. The context flows anywhere
+ * the branch computes, including activity bodies (engines capture the calling
+ * context for activity execution) and nested races, whose registrations
+ * bubble to the enclosing branch.
+ *
+ * `direct` distinguishes an `await` that parked on the deferred itself (safe
+ * to re-run immediately, the parked branch can never produce a value) from a
+ * registration bubbled out of a nested race (the nested race handles its own
+ * wake while its branch is alive).
  */
 interface RaceState {
-  readonly register: (instance: unknown, deferred: Any) => void
-  readonly bubble: (deferred: Any) => void
+  readonly register: (deferred: Any, direct: boolean) => void
 }
 
 const RaceContext = Context.Reference<RaceState | undefined>(
   "effect/workflow/DurableDeferred/RaceContext",
   { defaultValue: () => undefined }
 )
-
-/**
- * Marks the instance clones that belong to a race's branch fiber tree.
- *
- * Registration must be limited to the race's own branches: engines capture the
- * calling context for activity execution, so an `await` inside an activity
- * body also sees the `RaceContext`, and registering its deferred would let the
- * wake arm complete the race with a value that is not a branch result. The
- * marker is copied by spread, so clones made by combinators like `into` stay
- * inside the branch tree, while activity instances are built fresh and are
- * excluded.
- */
-const raceBranchKey = "~effect/workflow/DurableDeferred/raceBranch"
 
 const await_: <Success extends Schema.Constraint, Error extends Schema.Constraint>(
   self: DurableDeferred<Success, Error>
@@ -180,7 +176,7 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
     return yield* exit.value as Exit.Exit<any, any>
   }
   const race = yield* RaceContext
-  race?.register(instance, self)
+  race?.register(self, true)
   exit = yield* Workflow.wrapActivityResult(
     engine.deferredResult(self),
     Option.isNone
@@ -325,29 +321,38 @@ export const raceAll = <
       Effect.gen(function*() {
         const raceInstance = yield* InstanceTag
         const total = options.effects.length
-        const branchToken = {}
-        const registered = new Map<string, Any>()
+        const registered = new Map<
+          string,
+          { readonly deferred: Any; readonly branch: number; readonly direct: boolean }
+        >()
         const wakeLatch = Latch.makeUnsafe()
         let settled = 0
         let suspendedBranches = 0
-        const race: RaceState = {
-          register(instance, d) {
-            if ((instance as any)[raceBranchKey] === branchToken) race.bubble(d)
-          },
-          bubble(d) {
-            registered.set(d.name, d)
-            outerRace?.bubble(d)
+        const dead = options.effects.map(() => false)
+        const contexts = options.effects.map((_, index): RaceState => ({
+          register(d, direct) {
+            const existing = registered.get(d.name)
+            registered.set(d.name, {
+              deferred: d,
+              branch: index,
+              direct: direct || existing?.direct === true
+            })
+            outerRace?.register(d, false)
           }
-        }
+        }))
+        const runBranch = (index: number, instance: typeof raceInstance) =>
+          options.effects[index].pipe(
+            Effect.provideService(InstanceTag, instance),
+            Effect.provideService(RaceContext, contexts[index])
+          )
         // Branches keep their normal semantics: awaiting a pending deferred
         // or a suspended activity interrupts the branch. Each branch gets its
         // own instance clone so the wake arm can tell suspension apart from
         // failure or losing the race.
-        const branches = options.effects.map((effect) =>
+        const branches = options.effects.map((_, index) =>
           Effect.suspend(() => {
-            const branchInstance = { ...raceInstance, [raceBranchKey]: branchToken }
-            return effect.pipe(
-              Effect.provideService(InstanceTag, branchInstance),
+            const branchInstance = { ...raceInstance }
+            return runBranch(index, branchInstance).pipe(
               Effect.onExit((exit) =>
                 Effect.sync(() => {
                   settled++
@@ -357,6 +362,7 @@ export const raceAll = <
                     branchInstance.suspended
                   ) {
                     suspendedBranches++
+                    dead[index] = true
                   }
                   wakeLatch.openUnsafe()
                 })
@@ -364,18 +370,36 @@ export const raceAll = <
             )
           })
         )
-        // The wake arm races alongside the branches. It wins with a deferred
-        // completion that arrives while other branches are still active, and
-        // it is the single place that converts "every branch suspended" into
-        // a durable suspension of the workflow.
+        // The wake arm races alongside the branches. When a registered
+        // deferred completes it re-runs the suspended branch that was waiting
+        // on it, so the branch's own pipeline produces the result (branch
+        // bodies are replay-safe by construction). It is also the single
+        // place that converts "every branch suspended" into a durable
+        // suspension of the workflow.
         const wakeArm = Effect.gen(function*() {
           parentInstance.raceWake.add(wakeLatch)
           while (true) {
             wakeLatch.closeUnsafe()
-            for (const d of registered.values()) {
-              const exit = yield* engine.deferredResult(d as any)
-              if (Option.isSome(exit)) {
-                return yield* exit.value as Exit.Exit<any, any>
+            for (const [name, entry] of registered) {
+              const exit = yield* engine.deferredResult(entry.deferred as any)
+              if (Option.isNone(exit)) continue
+              // A direct registration means an await in this branch parked on
+              // the deferred, so the branch can never produce a value and a
+              // re-run is safe even while it unwinds. A bubbled registration
+              // belongs to a nested race that handles its own wake while its
+              // branch is alive; only take over once that branch is dead.
+              if (!entry.direct && !dead[entry.branch]) continue
+              registered.delete(name)
+              const rerunInstance = { ...raceInstance }
+              const fiber = yield* Effect.forkChild(runBranch(entry.branch, rerunInstance))
+              const rerun = yield* Fiber.await(fiber)
+              if (Exit.isSuccess(rerun)) {
+                return rerun.value
+              }
+              const parkedAgain = Cause.hasInterruptsOnly(rerun.cause) && rerunInstance.suspended
+              if (!parkedAgain) {
+                // a real failure participates in the race like any branch
+                return yield* rerun
               }
             }
             // Only commit to an outcome when nothing raced with the polling
@@ -399,9 +423,7 @@ export const raceAll = <
             parentInstance.raceWake.delete(wakeLatch)
           }))
         )
-        return yield* Effect.raceAll([...branches, wakeArm]).pipe(
-          Effect.provideService(RaceContext, race)
-        )
+        return yield* Effect.raceAll([...branches, wakeArm])
       }),
       deferred
     )

@@ -316,7 +316,7 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       expect(yield* Fiber.join(fiber)).toEqual("signal")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
-  it.effect("DurableDeferred.raceAll ignores deferreds awaited inside activity bodies", () =>
+  it.effect("DurableDeferred.raceAll wakes a durable clock awaited inside an activity body", () =>
     Effect.gen(function*() {
       const sharding = yield* Sharding.Sharding
       const fiber = yield* ClockCaptureWorkflow.execute({ id: "clock-capture" }).pipe(
@@ -324,14 +324,48 @@ describe.concurrent("ClusterWorkflowEngine", () => {
       )
 
       // fire the durable clock inside the suspended activity while the other
-      // branch keeps the run active; its completion must not win the race
+      // branch keeps the run active; the wake re-runs the activity branch
       yield* TestClock.adjust(1)
       yield* TestClock.adjust(5000)
       yield* sharding.pollStorage
-      yield* TestClock.adjust(1000)
-      yield* TestClock.adjust("24 seconds")
+      yield* TestClock.adjust("1 second")
 
-      expect(yield* Fiber.join(fiber)).toEqual("slow")
+      expect(yield* Fiber.join(fiber)).toEqual("clock")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("DurableDeferred.raceAll lets a bare durable clock branch win while another branch is active", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const fiber = yield* BareClockWorkflow.execute({ id: "bare-clock" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(1)
+      yield* TestClock.adjust(5000)
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("clock")
+    }).pipe(Effect.provide(TestWorkflowLayer)))
+
+  it.effect("DurableDeferred.raceAll runs a branch's transformations on a deferred wake", () =>
+    Effect.gen(function*() {
+      const sharding = yield* Sharding.Sharding
+      const executionId = yield* MappedGateWorkflow.executionId({ id: "mapped-gate" })
+      const fiber = yield* MappedGateWorkflow.execute({ id: "mapped-gate" }).pipe(
+        Effect.forkChild({ startImmediately: true })
+      )
+
+      yield* TestClock.adjust(1)
+      const token = DurableDeferred.tokenFromExecutionId(MappedGate, {
+        workflow: MappedGateWorkflow,
+        executionId
+      })
+      yield* DurableDeferred.succeed(MappedGate, { token, value: "signal" })
+      yield* sharding.pollStorage
+      yield* TestClock.adjust("1 second")
+
+      expect(yield* Fiber.join(fiber)).toEqual("signal!")
     }).pipe(Effect.provide(TestWorkflowLayer)))
 
   it.effect("DurableDeferred.raceAll delivers a completion that lands while a suspension commits", () =>
@@ -995,6 +1029,58 @@ const ClockCaptureWorkflowLayer = ClockCaptureWorkflow.toLayer(() =>
   ])
 )
 
+const BareClockWorkflow = Workflow.make("BareClockWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const BareClockWorkflowLayer = BareClockWorkflow.toLayer(() =>
+  DurableDeferred.raceAll({
+    name: "bare-clock",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableClock.sleep({
+        name: "bare-clock-timer",
+        duration: 5000,
+        inMemoryThreshold: Duration.zero
+      }).pipe(Effect.as("clock")),
+      Activity.make({
+        name: "bare-clock-slow",
+        success: Schema.String,
+        execute: Effect.sleep("30 seconds").pipe(Effect.as("slow"))
+      })
+    ]
+  })
+)
+
+const MappedGateWorkflow = Workflow.make("MappedGateWorkflow", {
+  payload: { id: Schema.String },
+  success: Schema.String,
+  idempotencyKey: ({ id }) => id
+})
+
+const MappedGate = DurableDeferred.make("MappedGate", {
+  success: Schema.String
+})
+
+const MappedGateWorkflowLayer = MappedGateWorkflow.toLayer(() =>
+  DurableDeferred.raceAll({
+    name: "mapped-gate",
+    success: Schema.String,
+    error: Schema.Never,
+    effects: [
+      DurableDeferred.await(MappedGate).pipe(Effect.map((s) => `${s}!`)),
+      Activity.make({
+        name: "mapped-gate-slow",
+        success: Schema.String,
+        execute: Effect.sleep("30 seconds").pipe(Effect.as("slow"))
+      })
+    ]
+  })
+)
+
 const SlowUnwindWorkflow = Workflow.make("SlowUnwindWorkflow", {
   payload: { id: Schema.String },
   success: Schema.String,
@@ -1204,6 +1290,8 @@ const TestWorkflowLayer = EmailWorkflowLayer.pipe(
   Layer.merge(InPlaceWakeWorkflowLayer),
   Layer.merge(IntoWrapWorkflowLayer),
   Layer.merge(ClockCaptureWorkflowLayer),
+  Layer.merge(BareClockWorkflowLayer),
+  Layer.merge(MappedGateWorkflowLayer),
   Layer.merge(SlowUnwindWorkflowLayer),
   Layer.merge(TwoGateWorkflowLayer),
   Layer.merge(ParentWorkflowLayer),
