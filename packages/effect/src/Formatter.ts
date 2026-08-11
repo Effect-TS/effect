@@ -250,9 +250,9 @@ function safeToString(input: any): string {
  * Uses `JSON.stringify` internally with a replacer that tracks the current
  * object ancestry. Circular references are replaced with `undefined`, which
  * omits them from object output. `Redactable` values are automatically redacted
- * before serialization. Values not supported by JSON otherwise follow standard
- * `JSON.stringify` behavior. The `space` parameter controls indentation and
- * defaults to `0`.
+ * before serialization. `BigInt` values are stringified with an `n` suffix.
+ * Values not supported by JSON otherwise follow standard `JSON.stringify`
+ * behavior. The `space` parameter controls indentation and defaults to `0`.
  *
  * **Gotchas**
  *
@@ -300,6 +300,9 @@ export function formatJson(input: unknown, options?: {
     input,
     function(this: unknown, _key: string, value: unknown) {
       const redacted = redact(value)
+      if (typeof redacted === "bigint") {
+        return format(redacted)
+      }
       if (typeof redacted !== "object" || redacted === null) {
         return redacted
       }

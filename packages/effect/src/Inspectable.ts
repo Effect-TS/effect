@@ -187,7 +187,7 @@ export const toStringUnknown = (u: unknown, whitespace: number | string | undefi
     return u
   }
   try {
-    return typeof u === "object" ? formatJson(u, { space: whitespace }) : String(u)
+    return typeof u === "object" ? formatJson(u, { space: whitespace }) : format(u, { space: whitespace })
   } catch {
     return String(u)
   }

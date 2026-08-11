@@ -6302,7 +6302,6 @@ export const formatLogSpan = (self: [label: string, timestamp: number], now: num
 /** @internal */
 export const structuredMessage = (u: unknown): unknown => {
   switch (typeof u) {
-    case "bigint":
     case "function":
     case "symbol": {
       return String(u)

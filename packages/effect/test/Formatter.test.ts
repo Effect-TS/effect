@@ -2,6 +2,7 @@ import { describe, it } from "@effect/vitest"
 import {
   Context,
   Effect,
+  Inspectable,
   Option,
   Redactable,
   Redacted,
@@ -256,9 +257,27 @@ describe("Formatter", () => {
       strictEqual(formatJson({ left: shared, right: shared }), `{"left":{"a":1},"right":{"a":1}}`)
     })
 
+    it("should stringify BigInt values", () => {
+      strictEqual(formatJson(123n), `"123n"`)
+      strictEqual(formatJson({ value: 123n }), `{"value":"123n"}`)
+      strictEqual(formatJson([1n, 2n]), `["1n","2n"]`)
+    })
+
     it("should redact sensitive data", () => {
       strictEqual(formatJson(data), `{"secret":"[REDACTED]"}`)
       strictEqual(formatJson({ a: data }), `{"a":{"secret":"[REDACTED]"}}`)
+    })
+  })
+
+  describe("Inspectable.toStringUnknown", () => {
+    it("should stringify BigInt values", () => {
+      strictEqual(Inspectable.toStringUnknown(123n), `123n`)
+      strictEqual(
+        Inspectable.toStringUnknown({ value: 123n }),
+        `{
+  "value": "123n"
+}`
+      )
     })
   })
 
