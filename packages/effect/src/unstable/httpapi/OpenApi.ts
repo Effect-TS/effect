@@ -234,12 +234,7 @@ const cloneOpenAPISpec = <A>(value: A): A => {
   if (value !== null && typeof value === "object") {
     const out: Record<string, unknown> = {}
     for (const key of Object.keys(value)) {
-      Object.defineProperty(out, key, {
-        value: cloneOpenAPISpec((value as Record<string, unknown>)[key]),
-        enumerable: true,
-        configurable: true,
-        writable: true
-      })
+      InternalRecord.assignProperty(out, key, cloneOpenAPISpec((value as Record<string, unknown>)[key]))
     }
     return out as A
   }
