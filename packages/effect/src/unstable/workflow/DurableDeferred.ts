@@ -141,14 +141,9 @@ const CurrentAttempt = Context.Reference<number>(
  * the branch computes, including activity bodies (engines capture the calling
  * context for activity execution) and nested races, whose registrations
  * bubble to the enclosing branch.
- *
- * `direct` distinguishes an `await` that parked on the deferred itself (safe
- * to re-run immediately, the parked branch can never produce a value) from a
- * registration bubbled out of a nested race (the nested race handles its own
- * wake while its branch is alive).
  */
 interface RaceState {
-  readonly register: (deferred: Any, direct: boolean) => void
+  readonly register: (deferred: Any) => void
 }
 
 const RaceContext = Context.Reference<RaceState | undefined>(
@@ -176,7 +171,7 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
     return yield* exit.value as Exit.Exit<any, any>
   }
   const race = yield* RaceContext
-  race?.register(self, true)
+  race?.register(self)
   exit = yield* Workflow.wrapActivityResult(
     engine.deferredResult(self),
     Option.isNone
@@ -321,23 +316,14 @@ export const raceAll = <
       Effect.gen(function*() {
         const raceInstance = yield* InstanceTag
         const total = options.effects.length
-        const registered = new Map<
-          string,
-          { readonly deferred: Any; readonly branch: number; readonly direct: boolean }
-        >()
+        const registered = new Map<string, { readonly deferred: Any; readonly branch: number }>()
         const wakeLatch = Latch.makeUnsafe()
         let settled = 0
         let suspendedBranches = 0
-        const dead = options.effects.map(() => false)
         const contexts = options.effects.map((_, index): RaceState => ({
-          register(d, direct) {
-            const existing = registered.get(d.name)
-            registered.set(d.name, {
-              deferred: d,
-              branch: index,
-              direct: direct || existing?.direct === true
-            })
-            outerRace?.register(d, false)
+          register(d) {
+            registered.set(d.name, { deferred: d, branch: index })
+            outerRace?.register(d)
           }
         }))
         const runBranch = (index: number, instance: typeof raceInstance) =>
@@ -362,7 +348,6 @@ export const raceAll = <
                     branchInstance.suspended
                   ) {
                     suspendedBranches++
-                    dead[index] = true
                   }
                   wakeLatch.openUnsafe()
                 })
@@ -383,12 +368,10 @@ export const raceAll = <
             for (const [name, entry] of registered) {
               const exit = yield* engine.deferredResult(entry.deferred as any)
               if (Option.isNone(exit)) continue
-              // A direct registration means an await in this branch parked on
-              // the deferred, so the branch can never produce a value and a
-              // re-run is safe even while it unwinds. A bubbled registration
-              // belongs to a nested race that handles its own wake while its
-              // branch is alive; only take over once that branch is dead.
-              if (!entry.direct && !dead[entry.branch]) continue
+              // Re-running is safe even while the registering branch is still
+              // alive (parked awaits never produce a value, and a nested race
+              // handling the same wake can only produce the same winner):
+              // branches are replay-safe and completions are idempotent.
               registered.delete(name)
               const rerunInstance = { ...raceInstance }
               const fiber = yield* Effect.forkChild(runBranch(entry.branch, rerunInstance))
