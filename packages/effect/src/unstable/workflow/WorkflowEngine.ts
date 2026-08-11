@@ -263,8 +263,8 @@ export class WorkflowInstance extends Context.Service<
 
     /**
      * Wake latches for `DurableDeferred.raceAll` calls currently parked in
-     * this execution. Opened by the engine when a durable deferred completes,
-     * so a live race can re-check its deferreds without a replay.
+     * this execution, opened when a durable deferred completes so a live
+     * race can re-check its deferreds without a replay.
      *
      * The set is shared by reference with the instance clones that races
      * create.
@@ -320,14 +320,15 @@ export interface DeferredState {
   ) => Exit.Exit<unknown, unknown> | undefined
 
   /**
-   * Tracks the effect as the execution's live run. When the run ends without
-   * suspending, the execution's pending completions are dropped; a suspended
-   * run keeps them readable for the replay.
+   * Runs the effect as the execution's live run, providing the instance to
+   * it. When the run ends without suspending, the execution's pending
+   * completions are dropped; a suspended run keeps them readable for the
+   * replay.
    */
   readonly trackRun: <A, E, R>(
     instance: WorkflowInstance["Service"],
     effect: Effect.Effect<A, E, R>
-  ) => Effect.Effect<A, E, R>
+  ) => Effect.Effect<A, E, Exclude<R, WorkflowInstance>>
 
   /**
    * Records a completion and delivers it to the live run, if any: opens the
@@ -361,7 +362,7 @@ export const makeDeferredState = (): DeferredState => {
         const run = { instance, fiber: fiber as Fiber.Fiber<unknown, unknown> }
         running.set(instance.executionId, run)
         return Effect.ensuring(
-          effect,
+          Effect.provideService(effect, WorkflowInstance, instance),
           Effect.sync(() => {
             if (!instance.suspended) {
               pending.delete(instance.executionId)
@@ -740,7 +741,6 @@ export const layerMemory: Layer.Layer<WorkflowEngine> = Layer.effect(WorkflowEng
           return Effect.withFiber((fiber) => Effect.interruptible(Fiber.interrupt(fiber)))
         }),
         Workflow.intoResult,
-        Effect.provideService(WorkflowInstance, instance),
         Effect.provideService(WorkflowEngine, engine),
         (effect) => deferredState.trackRun(instance, effect),
         Effect.tap((result) => {

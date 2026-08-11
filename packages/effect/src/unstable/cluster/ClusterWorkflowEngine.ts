@@ -387,7 +387,6 @@ export const make = Effect.gen(function*() {
                     )
                   }),
                   Workflow.intoResult,
-                  Effect.provideService(WorkflowEngine.WorkflowInstance, instance),
                   (effect) => deferredState.trackRun(instance, effect)
                 ) as any
               },

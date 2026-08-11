@@ -166,6 +166,9 @@ const await_: <Success extends Schema.Constraint, Error extends Schema.Constrain
 >(self: DurableDeferred<Success, Error>) {
   const engine = yield* EngineTag
   const instance = yield* InstanceTag
+  // The bare read doubles as a guard: a branch re-run by a race's wake arm
+  // returns here without re-registering its completed deferred, which would
+  // otherwise re-trigger the wake arm forever if the branch parks again.
   let exit = yield* engine.deferredResult(self)
   if (Option.isSome(exit)) {
     return yield* exit.value as Exit.Exit<any, any>
