@@ -55,7 +55,6 @@ import * as RegExp_ from "./RegExp.ts"
 import * as Result_ from "./Result.ts"
 import * as Scheduler from "./Scheduler.ts"
 import * as SchemaAST from "./SchemaAST.ts"
-import { isSchemaError, SchemaError } from "./SchemaError.ts"
 import * as SchemaGetter from "./SchemaGetter.ts"
 import * as SchemaIssue from "./SchemaIssue.ts"
 import * as SchemaParser from "./SchemaParser.ts"
@@ -1142,55 +1141,75 @@ export interface Optic<out T, out Iso> extends Schema<T> {
   readonly "Rebuild": Optic<T, Iso>
 }
 
-export {
-  /**
-   * Returns `true` if `u` is a {@link SchemaError}.
-   *
-   * **Example** (Narrowing Schema errors)
-   *
-   * ```ts import.meta.vitest
-   * import { Result, Schema } from "effect"
-   *
-   * const result = Result.try(() => Schema.decodeUnknownSync(Schema.Number)("oops"))
-   * const error: unknown = Result.isFailure(result) ? result.failure : undefined
-   * Schema.isSchemaError(error) // => true
-   * ```
-   *
-   * @category guards
-   * @since 4.0.0
-   */
-  isSchemaError,
-  /**
-   * Error thrown (or returned as the error channel value) when schema decoding
-   * or encoding fails.
-   *
-   * **Details**
-   *
-   * The `issue` field contains a structured {@link SchemaIssue.Issue} tree describing
-   * every validation failure, including the path to the problematic value and
-   * the expected type or constraint. Parsing with `reportInput: true` adds an
-   * enumerable `input` field to value-bearing issues created by the parser.
-   * Built-in messages may include reported input. Other issue fields and
-   * custom annotations or messages are not sanitized.
-   * `message` renders the issue tree as a human-readable string and can disclose
-   * retained input.
-   *
-   * Use {@link isSchemaError} to narrow an unknown value to `SchemaError`.
-   *
-   * **Example** (Inspecting a SchemaError)
-   *
-   * ```ts import.meta.vitest
-   * import { Result, Schema } from "effect"
-   *
-   * const result = Schema.decodeUnknownResult(Schema.Number)("not a number")
-   * const message = Result.isFailure(result) ? result.failure.message : ""
-   * message // => "Expected number"
-   * ```
-   *
-   * @category errors
-   * @since 4.0.0
-   */
-  SchemaError
+const SchemaErrorTypeId = "~effect/SchemaError/SchemaError"
+
+/**
+ * Error thrown or returned when schema decoding or encoding fails.
+ *
+ * **Details**
+ *
+ * The `issue` field contains a structured {@link SchemaIssue.Issue} tree describing
+ * every validation failure, including the path to the problematic value and
+ * the expected type or constraint. The `message` field renders the issue tree
+ * with the default formatter.
+ *
+ * **Gotchas**
+ *
+ * Parsing with `reportInput: true` adds an enumerable `input` field to
+ * value-bearing issues. Built-in messages may include reported input, and
+ * custom annotations or messages are not sanitized.
+ *
+ * **Example** (Inspecting a SchemaError)
+ *
+ * ```ts import.meta.vitest
+ * import { Result, Schema } from "effect"
+ *
+ * const result = Schema.decodeUnknownResult(Schema.Number)("not a number")
+ * const message = Result.isFailure(result) ? result.failure.message : ""
+ * message // => "Expected number"
+ * ```
+ *
+ * @see {@link isSchemaError} for narrowing unknown values
+ * @category errors
+ * @since 4.0.0
+ */
+export class SchemaError extends Data.TaggedError("SchemaError")<{
+  readonly issue: SchemaIssue.Issue
+}> {
+  readonly [SchemaErrorTypeId]: typeof SchemaErrorTypeId = SchemaErrorTypeId
+  constructor(issue: SchemaIssue.Issue) {
+    super({ issue })
+  }
+  override get message() {
+    return SchemaIssue.defaultFormatter(this.issue)
+  }
+  override toString() {
+    return `SchemaError(${this.message})`
+  }
+}
+
+/**
+ * Returns `true` if `u` is a {@link SchemaError}.
+ *
+ * **When to use**
+ *
+ * Use when you need to narrow an unknown value to `SchemaError`.
+ *
+ * **Example** (Narrowing Schema errors)
+ *
+ * ```ts import.meta.vitest
+ * import { Result, Schema } from "effect"
+ *
+ * const result = Result.try(() => Schema.decodeUnknownSync(Schema.Number)("oops"))
+ * const error: unknown = Result.isFailure(result) ? result.failure : undefined
+ * Schema.isSchemaError(error) // => true
+ * ```
+ *
+ * @category guards
+ * @since 4.0.0
+ */
+export function isSchemaError(u: unknown): u is SchemaError {
+  return Predicate.hasProperty(u, SchemaErrorTypeId) && u[SchemaErrorTypeId] === SchemaErrorTypeId
 }
 
 function makeStandardResult<A>(exit: Exit_.Exit<StandardSchemaV1.Result<A>>): StandardSchemaV1.Result<A> {

@@ -529,11 +529,6 @@ export * as SchemaAST from "./SchemaAST.ts"
 /**
  * @since 4.0.0
  */
-export * as SchemaError from "./SchemaError.ts"
-
-/**
- * @since 4.0.0
- */
 export * as SchemaGetter from "./SchemaGetter.ts"
 
 /**
